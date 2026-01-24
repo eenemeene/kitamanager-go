@@ -4,8 +4,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/eenemeene/kitamanager-go/internal/rbac"
 	"github.com/gin-gonic/gin"
+
+	"github.com/eenemeene/kitamanager-go/internal/rbac"
 )
 
 // AuthorizationMiddleware handles RBAC authorization.

@@ -1,0 +1,39 @@
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gofmt
+    - goimports
+    - misspell
+    - unconvert
+    - unparam
+    - gosec
+    - prealloc
+
+linters-settings:
+  goimports:
+    local-prefixes: github.com/eenemeene/kitamanager-go
+
+  gosec:
+    excludes:
+      - G104 # Audit errors not checked (we handle this case by case)
+
+issues:
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - gosec
+        - unparam
+
+    # Exclude shadow checking on err
+    - text: 'shadow: declaration of "err"'
+      linters:
+        - govet

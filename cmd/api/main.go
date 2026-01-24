@@ -4,6 +4,11 @@ import (
 	"log"
 	"os"
 
+	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
+	_ "github.com/eenemeene/kitamanager-go/docs"
 	"github.com/eenemeene/kitamanager-go/internal/config"
 	"github.com/eenemeene/kitamanager-go/internal/database"
 	"github.com/eenemeene/kitamanager-go/internal/handlers"
@@ -11,11 +16,6 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/rbac"
 	"github.com/eenemeene/kitamanager-go/internal/routes"
 	"github.com/eenemeene/kitamanager-go/internal/store"
-	"github.com/gin-gonic/gin"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
-
-	_ "github.com/eenemeene/kitamanager-go/docs"
 )
 
 // @title KitaManager API

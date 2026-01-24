@@ -4,10 +4,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/eenemeene/kitamanager-go/internal/store"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/eenemeene/kitamanager-go/internal/store"
 )
 
 type AuthHandler struct {

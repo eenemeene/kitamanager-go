@@ -7,24 +7,6 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
-func createTestEmployee(t *testing.T, db interface{ Create(value interface{}) interface{ Error() error } }, org *models.Organization) *models.Employee {
-	t.Helper()
-
-	employee := &models.Employee{
-		Person: models.Person{
-			OrganizationID: org.ID,
-			FirstName:      "Test",
-			LastName:       "Employee",
-			Birthdate:      time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC),
-		},
-	}
-
-	if err := db.Create(employee).Error(); err != nil {
-		t.Fatalf("failed to create test employee: %v", err)
-	}
-	return employee
-}
-
 func TestEmployeeStore_Create(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewEmployeeStore(db)

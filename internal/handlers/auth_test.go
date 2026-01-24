@@ -4,9 +4,10 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/eenemeene/kitamanager-go/internal/store"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/eenemeene/kitamanager-go/internal/store"
 )
 
 func TestAuthHandler_Login_Success(t *testing.T) {

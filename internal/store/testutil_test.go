@@ -3,9 +3,10 @@ package store
 import (
 	"testing"
 
-	"github.com/eenemeene/kitamanager-go/internal/models"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+
+	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
 // setupTestDB creates an in-memory SQLite database for testing.

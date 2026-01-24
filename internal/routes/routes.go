@@ -1,10 +1,11 @@
 package routes
 
 import (
+	"github.com/gin-gonic/gin"
+
 	"github.com/eenemeene/kitamanager-go/internal/handlers"
 	"github.com/eenemeene/kitamanager-go/internal/middleware"
 	"github.com/eenemeene/kitamanager-go/internal/rbac"
-	"github.com/gin-gonic/gin"
 )
 
 func Setup(

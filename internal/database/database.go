@@ -3,10 +3,11 @@ package database
 import (
 	"fmt"
 
-	"github.com/eenemeene/kitamanager-go/internal/config"
-	"github.com/eenemeene/kitamanager-go/internal/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+
+	"github.com/eenemeene/kitamanager-go/internal/config"
+	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
 func Connect(cfg *config.Config) (*gorm.DB, error) {

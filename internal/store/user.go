@@ -1,8 +1,9 @@
 package store
 
 import (
-	"github.com/eenemeene/kitamanager-go/internal/models"
 	"gorm.io/gorm"
+
+	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
 type UserStore struct {

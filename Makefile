@@ -1,8 +1,12 @@
-.PHONY: build run test clean schema-docs docker-up docker-down
+.PHONY: build run test lint clean schema-docs docker-up docker-down docker-rebuild
 
 # Build the application
 build:
 	go build -o bin/kitamanager-api ./cmd/api
+
+# Run linter
+lint:
+	golangci-lint run ./...
 
 # Run the application locally
 run:

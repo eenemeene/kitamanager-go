@@ -4,8 +4,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/eenemeene/kitamanager-go/internal/models"
 	"gorm.io/gorm"
+
+	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
 // ErrContractOverlap is returned when a contract would overlap with an existing one.

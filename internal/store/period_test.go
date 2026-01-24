@@ -111,10 +111,10 @@ func TestPeriodStore_GetContractOn(t *testing.T) {
 	db.Create(contract)
 
 	tests := []struct {
-		name     string
-		date     time.Time
-		wantID   *uint
-		wantNil  bool
+		name    string
+		date    time.Time
+		wantID  *uint
+		wantNil bool
 	}{
 		{
 			name:    "date before contract",
