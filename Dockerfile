@@ -3,6 +3,9 @@ FROM node:22-alpine AS web-builder
 
 WORKDIR /app/web
 
+# Update npm to latest version
+RUN npm install -g npm@latest
+
 # Copy package files
 COPY web/package*.json ./
 
