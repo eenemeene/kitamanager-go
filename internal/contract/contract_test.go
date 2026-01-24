@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -169,7 +170,7 @@ func validateResponse(t *testing.T, req *http.Request, resp *httptest.ResponseRe
 		RequestValidationInput: requestValidationInput,
 		Status:                 resp.Code,
 		Header:                 resp.Header(),
-		Body:                   resp.Body,
+		Body:                   io.NopCloser(resp.Body),
 	}
 
 	if err := openapi3filter.ValidateResponse(req.Context(), responseValidationInput); err != nil {
