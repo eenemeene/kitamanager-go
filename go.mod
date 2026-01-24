@@ -8,7 +8,7 @@ require (
 	github.com/getkin/kin-openapi v0.133.0
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.11.0
-	github.com/golang-jwt/jwt/v5 v5.2.2
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/joho/godotenv v1.5.1
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.1
