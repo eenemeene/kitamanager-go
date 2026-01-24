@@ -77,12 +77,16 @@ func TestGroupHandler_Create(t *testing.T) {
 	groupStore := store.NewGroupStore(db)
 	handler := NewGroupHandler(groupStore)
 
+	// Create an organization first
+	org := createTestOrganization(t, db, "Test Org")
+
 	r := setupTestRouter()
 	r.POST("/groups", handler.Create)
 
 	body := CreateGroupRequest{
-		Name:   "New Group",
-		Active: true,
+		Name:           "New Group",
+		OrganizationID: org.ID,
+		Active:         true,
 	}
 
 	w := performRequest(r, "POST", "/groups", body)
@@ -91,7 +95,7 @@ func TestGroupHandler_Create(t *testing.T) {
 		t.Errorf("expected status %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
 	}
 
-	var result models.Group
+	var result models.GroupResponse
 	parseResponse(t, w, &result)
 
 	if result.Name != "New Group" {
@@ -99,6 +103,9 @@ func TestGroupHandler_Create(t *testing.T) {
 	}
 	if result.CreatedBy != "test@example.com" {
 		t.Errorf("expected created_by 'test@example.com', got '%s'", result.CreatedBy)
+	}
+	if result.OrganizationID != org.ID {
+		t.Errorf("expected organization_id %d, got %d", org.ID, result.OrganizationID)
 	}
 }
 
@@ -173,55 +180,23 @@ func TestGroupHandler_Delete(t *testing.T) {
 	}
 }
 
-func TestGroupHandler_AddToOrganization(t *testing.T) {
+func TestGroupHandler_Create_BadRequest_MissingOrganization(t *testing.T) {
 	db := setupTestDB(t)
 	groupStore := store.NewGroupStore(db)
 	handler := NewGroupHandler(groupStore)
 
-	createTestGroup(t, db, "Test Group")
-	org := createTestOrganization(t, db, "Test Org")
-
 	r := setupTestRouter()
-	r.POST("/groups/:id/organizations", handler.AddToOrganization)
+	r.POST("/groups", handler.Create)
 
-	body := AddGroupToOrganizationRequest{
-		OrganizationID: org.ID,
+	// Missing required organization_id field
+	body := map[string]interface{}{
+		"name":   "Test Group",
+		"active": true,
 	}
 
-	w := performRequest(r, "POST", "/groups/1/organizations", body)
+	w := performRequest(r, "POST", "/groups", body)
 
-	if w.Code != http.StatusOK {
-		t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
-	}
-
-	// Verify group was added to organization
-	group, _ := groupStore.FindByID(1)
-	if len(group.Organizations) != 1 {
-		t.Errorf("expected 1 organization, got %d", len(group.Organizations))
-	}
-}
-
-func TestGroupHandler_RemoveFromOrganization(t *testing.T) {
-	db := setupTestDB(t)
-	groupStore := store.NewGroupStore(db)
-	handler := NewGroupHandler(groupStore)
-
-	createTestGroup(t, db, "Test Group")
-	org := createTestOrganization(t, db, "Test Org")
-	_ = groupStore.AddToOrganization(1, org.ID)
-
-	r := setupTestRouter()
-	r.DELETE("/groups/:id/organizations/:oid", handler.RemoveFromOrganization)
-
-	w := performRequest(r, "DELETE", "/groups/1/organizations/1", nil)
-
-	if w.Code != http.StatusNoContent {
-		t.Errorf("expected status %d, got %d: %s", http.StatusNoContent, w.Code, w.Body.String())
-	}
-
-	// Verify group was removed from organization
-	group, _ := groupStore.FindByID(1)
-	if len(group.Organizations) != 0 {
-		t.Errorf("expected 0 organizations, got %d", len(group.Organizations))
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
 	}
 }

@@ -167,15 +167,6 @@ class ApiClient {
     await this.client.delete(`/groups/${id}`)
   }
 
-  // Group-Organization assignments
-  async addGroupToOrganization(groupId: number, organizationId: number): Promise<void> {
-    await this.client.post(`/groups/${groupId}/organizations`, { organization_id: organizationId })
-  }
-
-  async removeGroupFromOrganization(groupId: number, organizationId: number): Promise<void> {
-    await this.client.delete(`/groups/${groupId}/organizations/${organizationId}`)
-  }
-
   // Employees (organization-scoped)
   async getEmployees(orgId: number): Promise<Employee[]> {
     const response = await this.client.get<Employee[]>(`/organizations/${orgId}/employees`)

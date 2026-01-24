@@ -46,6 +46,7 @@ export interface User {
   name: string
   email: string
   active: boolean
+  last_login?: string | null
   created_at: string
   created_by: string
   updated_at: string
@@ -66,20 +67,22 @@ export interface UserUpdate {
   active?: boolean
 }
 
-// Group
+// Group (each group belongs to exactly one organization)
 export interface Group {
   id: number
   name: string
+  organization_id: number
+  organization?: Organization
   active: boolean
   created_at: string
   created_by: string
   updated_at: string
   users?: User[]
-  organizations?: Organization[]
 }
 
 export interface GroupCreate {
   name: string
+  organization_id: number
   active?: boolean
 }
 

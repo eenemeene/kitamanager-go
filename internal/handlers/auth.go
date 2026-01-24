@@ -79,6 +79,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	// Update last login timestamp
+	if err := h.userStore.UpdateLastLogin(user.ID); err != nil {
+		// Log but don't fail login if last_login update fails
+		_ = c.Error(err)
+	}
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": user.ID,
 		"email":   user.Email,

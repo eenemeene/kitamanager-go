@@ -93,7 +93,7 @@ func setupRouter() *gin.Engine {
 
 	// Setup handlers
 	orgHandler := handlers.NewOrganizationHandler(orgStore)
-	userHandler := handlers.NewUserHandler(userStore)
+	userHandler := handlers.NewUserHandler(userStore, groupStore)
 	groupHandler := handlers.NewGroupHandler(groupStore)
 	employeeHandler := handlers.NewEmployeeHandler(employeeStore)
 	childHandler := handlers.NewChildHandler(childStore)

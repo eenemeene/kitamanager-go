@@ -25,7 +25,7 @@ func NewGroupHandler(store *store.GroupStore) *GroupHandler {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {array} models.Group
+// @Success 200 {array} models.GroupResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/groups [get]
@@ -35,7 +35,13 @@ func (h *GroupHandler) List(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch groups"})
 		return
 	}
-	c.JSON(http.StatusOK, groups)
+
+	responses := make([]models.GroupResponse, len(groups))
+	for i, group := range groups {
+		responses[i] = group.ToResponse()
+	}
+
+	c.JSON(http.StatusOK, responses)
 }
 
 // Get godoc
@@ -46,7 +52,7 @@ func (h *GroupHandler) List(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param id path int true "Group ID"
-// @Success 200 {object} models.Group
+// @Success 200 {object} models.GroupResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
@@ -64,24 +70,25 @@ func (h *GroupHandler) Get(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, group)
+	c.JSON(http.StatusOK, group.ToResponse())
 }
 
 // CreateGroupRequest represents the request body for creating a group
 type CreateGroupRequest struct {
-	Name   string `json:"name" binding:"required" example:"Administrators"`
-	Active bool   `json:"active" example:"true"`
+	Name           string `json:"name" binding:"required" example:"Administrators"`
+	OrganizationID uint   `json:"organization_id" binding:"required" example:"1"`
+	Active         bool   `json:"active" example:"true"`
 }
 
 // Create godoc
 // @Summary Create a new group
-// @Description Create a new group
+// @Description Create a new group within an organization
 // @Tags groups
 // @Accept json
 // @Produce json
 // @Security BearerAuth
 // @Param request body CreateGroupRequest true "Group data"
-// @Success 201 {object} models.Group
+// @Success 201 {object} models.GroupResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
@@ -97,9 +104,10 @@ func (h *GroupHandler) Create(c *gin.Context) {
 	createdBy, _ := userEmail.(string)
 
 	group := &models.Group{
-		Name:      req.Name,
-		Active:    req.Active,
-		CreatedBy: createdBy,
+		Name:           req.Name,
+		OrganizationID: req.OrganizationID,
+		Active:         req.Active,
+		CreatedBy:      createdBy,
 	}
 
 	if err := h.store.Create(group); err != nil {
@@ -107,7 +115,7 @@ func (h *GroupHandler) Create(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, group)
+	c.JSON(http.StatusCreated, group.ToResponse())
 }
 
 // UpdateGroupRequest represents the request body for updating a group
@@ -125,7 +133,7 @@ type UpdateGroupRequest struct {
 // @Security BearerAuth
 // @Param id path int true "Group ID"
 // @Param request body UpdateGroupRequest true "Group data"
-// @Success 200 {object} models.Group
+// @Success 200 {object} models.GroupResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
@@ -162,7 +170,7 @@ func (h *GroupHandler) Update(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, group)
+	c.JSON(http.StatusOK, group.ToResponse())
 }
 
 // Delete godoc
@@ -187,81 +195,6 @@ func (h *GroupHandler) Delete(c *gin.Context) {
 
 	if err := h.store.Delete(uint(id)); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete group"})
-		return
-	}
-
-	c.JSON(http.StatusNoContent, nil)
-}
-
-// AddGroupToOrganizationRequest represents the request body for adding a group to an organization
-type AddGroupToOrganizationRequest struct {
-	OrganizationID uint `json:"organization_id" binding:"required" example:"1"`
-}
-
-// AddToOrganization godoc
-// @Summary Add group to organization
-// @Description Add a group to an organization
-// @Tags groups
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path int true "Group ID"
-// @Param request body AddGroupToOrganizationRequest true "Organization ID"
-// @Success 200 {object} MessageResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
-// @Router /api/v1/groups/{id}/organizations [post]
-func (h *GroupHandler) AddToOrganization(c *gin.Context) {
-	groupID, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid group id"})
-		return
-	}
-
-	var req AddGroupToOrganizationRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	if err := h.store.AddToOrganization(uint(groupID), req.OrganizationID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to add group to organization"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "group added to organization"})
-}
-
-// RemoveFromOrganization godoc
-// @Summary Remove group from organization
-// @Description Remove a group from an organization
-// @Tags groups
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path int true "Group ID"
-// @Param oid path int true "Organization ID"
-// @Success 204 "No Content"
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
-// @Router /api/v1/groups/{id}/organizations/{oid} [delete]
-func (h *GroupHandler) RemoveFromOrganization(c *gin.Context) {
-	groupID, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid group id"})
-		return
-	}
-
-	orgID, err := strconv.ParseUint(c.Param("oid"), 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid organization id"})
-		return
-	}
-
-	if err := h.store.RemoveFromOrganization(uint(groupID), uint(orgID)); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to remove group from organization"})
 		return
 	}
 

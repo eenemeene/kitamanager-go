@@ -134,3 +134,42 @@ func TestAuthHandler_Login_BadRequest(t *testing.T) {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
 	}
 }
+
+func TestAuthHandler_Login_UpdatesLastLogin(t *testing.T) {
+	db := setupTestDB(t)
+	userStore := store.NewUserStore(db)
+
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+	user := createTestUser(t, db, "Test User", "test@example.com", string(hashedPassword))
+
+	// Verify last_login is nil initially
+	if user.LastLogin != nil {
+		t.Error("expected last_login to be nil initially")
+	}
+
+	handler := NewAuthHandler(userStore, "test-jwt-secret")
+
+	r := gin.New()
+	r.POST("/login", handler.Login)
+
+	body := LoginRequest{
+		Email:    "test@example.com",
+		Password: "password123",
+	}
+
+	w := performRequest(r, "POST", "/login", body)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	// Verify last_login was updated
+	updatedUser, err := userStore.FindByID(user.ID)
+	if err != nil {
+		t.Fatalf("failed to find user: %v", err)
+	}
+
+	if updatedUser.LastLogin == nil {
+		t.Error("expected last_login to be set after login")
+	}
+}

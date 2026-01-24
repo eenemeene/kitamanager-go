@@ -107,7 +107,7 @@ func setupRouter() *gin.Engine {
 	groupStore := store.NewGroupStore(testDB)
 
 	orgHandler := handlers.NewOrganizationHandler(orgStore)
-	userHandler := handlers.NewUserHandler(userStore)
+	userHandler := handlers.NewUserHandler(userStore, groupStore)
 	groupHandler := handlers.NewGroupHandler(groupStore)
 
 	api := r.Group("/api/v1")

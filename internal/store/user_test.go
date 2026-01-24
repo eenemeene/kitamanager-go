@@ -196,3 +196,57 @@ func TestUserStore_RemoveFromOrganization(t *testing.T) {
 		t.Errorf("expected 0 organizations, got %d", len(found.Organizations))
 	}
 }
+
+func TestUserStore_UpdateLastLogin(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewUserStore(db)
+
+	user := createTestUser(t, db, "Test User", "test@example.com")
+
+	// Initially last_login should be nil
+	if user.LastLogin != nil {
+		t.Error("expected last_login to be nil initially")
+	}
+
+	err := store.UpdateLastLogin(user.ID)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	found, _ := store.FindByID(user.ID)
+	if found.LastLogin == nil {
+		t.Error("expected last_login to be set after UpdateLastLogin")
+	}
+}
+
+func TestUserStore_FindAll_PreloadsGroups(t *testing.T) {
+	db := setupTestDB(t)
+	userStore := NewUserStore(db)
+
+	// Create organization and group
+	org := createTestOrganization(t, db, "Test Org")
+	group := createTestGroupWithOrg(t, db, "Test Group", org.ID)
+
+	user := createTestUser(t, db, "Test User", "test@example.com")
+
+	// Add user to group
+	_ = userStore.AddToGroup(user.ID, group.ID)
+
+	users, err := userStore.FindAll()
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(users) != 1 {
+		t.Fatalf("expected 1 user, got %d", len(users))
+	}
+
+	if len(users[0].Groups) != 1 {
+		t.Fatalf("expected 1 group, got %d", len(users[0].Groups))
+	}
+
+	// Verify that group's organization ID is set correctly
+	if users[0].Groups[0].OrganizationID != org.ID {
+		t.Errorf("expected group organization_id %d, got %d", org.ID, users[0].Groups[0].OrganizationID)
+	}
+}

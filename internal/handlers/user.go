@@ -12,11 +12,12 @@ import (
 )
 
 type UserHandler struct {
-	store *store.UserStore
+	store      *store.UserStore
+	groupStore *store.GroupStore
 }
 
-func NewUserHandler(store *store.UserStore) *UserHandler {
-	return &UserHandler{store: store}
+func NewUserHandler(store *store.UserStore, groupStore *store.GroupStore) *UserHandler {
+	return &UserHandler{store: store, groupStore: groupStore}
 }
 
 // List godoc
@@ -206,7 +207,7 @@ type AddToGroupRequest struct {
 
 // AddToGroup godoc
 // @Summary Add user to group
-// @Description Add a user to a group
+// @Description Add a user to a group. User must be a member of the group's organization.
 // @Tags users
 // @Accept json
 // @Produce json
@@ -216,6 +217,8 @@ type AddToGroupRequest struct {
 // @Success 200 {object} MessageResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
+// @Failure 403 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/users/{id}/groups [post]
 func (h *UserHandler) AddToGroup(c *gin.Context) {
@@ -228,6 +231,34 @@ func (h *UserHandler) AddToGroup(c *gin.Context) {
 	var req AddToGroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Get the user with their organizations
+	user, err := h.store.FindByID(uint(userID))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+
+	// Get the group to check its organization
+	group, err := h.groupStore.FindByID(req.GroupID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "group not found"})
+		return
+	}
+
+	// Validate user is a member of the group's organization
+	userInOrg := false
+	for _, org := range user.Organizations {
+		if org.ID == group.OrganizationID {
+			userInOrg = true
+			break
+		}
+	}
+
+	if !userInOrg {
+		c.JSON(http.StatusForbidden, gin.H{"error": "user must be a member of the group's organization"})
 		return
 	}
 

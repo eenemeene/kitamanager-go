@@ -60,7 +60,7 @@ func Setup(
 			}
 
 			// ============================================================
-			// Group management (global, not org-scoped)
+			// Group management (org-scoped - each group belongs to one org)
 			// ============================================================
 			groups := protected.Group("/groups")
 			{
@@ -69,8 +69,6 @@ func Setup(
 				groups.POST("", groupHandler.Create)
 				groups.PUT("/:id", groupHandler.Update)
 				groups.DELETE("/:id", groupHandler.Delete)
-				groups.POST("/:id/organizations", groupHandler.AddToOrganization)
-				groups.DELETE("/:id/organizations/:oid", groupHandler.RemoveFromOrganization)
 			}
 
 			// ============================================================

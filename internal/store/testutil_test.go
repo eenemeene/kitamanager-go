@@ -66,12 +66,32 @@ func createTestUser(t *testing.T, db *gorm.DB, name, email string) *models.User 
 }
 
 // createTestGroup creates a group for testing.
+// It creates a default organization for the group.
 func createTestGroup(t *testing.T, db *gorm.DB, name string) *models.Group {
 	t.Helper()
 
+	// Create a default organization for the group
+	org := createTestOrganization(t, db, name+" Org")
+
 	group := &models.Group{
-		Name:   name,
-		Active: true,
+		Name:           name,
+		OrganizationID: org.ID,
+		Active:         true,
+	}
+	if err := db.Create(group).Error; err != nil {
+		t.Fatalf("failed to create test group: %v", err)
+	}
+	return group
+}
+
+// createTestGroupWithOrg creates a group for testing with a specific organization.
+func createTestGroupWithOrg(t *testing.T, db *gorm.DB, name string, orgID uint) *models.Group {
+	t.Helper()
+
+	group := &models.Group{
+		Name:           name,
+		OrganizationID: orgID,
+		Active:         true,
 	}
 	if err := db.Create(group).Error; err != nil {
 		t.Fatalf("failed to create test group: %v", err)

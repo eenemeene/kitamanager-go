@@ -2,13 +2,16 @@
 import { ref, onMounted } from 'vue'
 import { useCrud } from '@/composables/useCrud'
 import { apiClient } from '@/api/client'
-import type { User, UserCreate, UserUpdate } from '@/api/types'
+import { useUiStore } from '@/stores/ui'
+import type { User, UserCreate, UserUpdate, Group } from '@/api/types'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import UserForm from './UserForm.vue'
 import UserMembershipsDialog from './UserMembershipsDialog.vue'
+
+const uiStore = useUiStore()
 
 const {
   items: users,
@@ -40,6 +43,17 @@ function openMembershipsDialog(user: User) {
 function closeMembershipsDialog() {
   membershipsDialogVisible.value = false
   selectedUserForMemberships.value = null
+}
+
+// Filter groups to only show those from the selected organization
+function getGroupsForSelectedOrg(userGroups: Group[] | undefined): Group[] {
+  if (!userGroups || !uiStore.selectedOrganizationId) return []
+  return userGroups.filter((group) => group.organization_id === uiStore.selectedOrganizationId)
+}
+
+function formatLastLogin(lastLogin: string | null | undefined): string {
+  if (!lastLogin) return 'Never'
+  return new Date(lastLogin).toLocaleString()
 }
 
 onMounted(() => {
@@ -74,7 +88,28 @@ onMounted(() => {
             />
           </template>
         </Column>
-        <Column field="created_at" header="Created" sortable style="width: 180px">
+        <Column field="groups" header="Groups" style="width: 200px">
+          <template #body="{ data }">
+            <div class="group-tags">
+              <Tag
+                v-for="group in getGroupsForSelectedOrg(data.groups)"
+                :key="group.id"
+                :value="group.name"
+                severity="info"
+                class="mr-1"
+              />
+              <span v-if="getGroupsForSelectedOrg(data.groups).length === 0" class="text-muted">
+                —
+              </span>
+            </div>
+          </template>
+        </Column>
+        <Column field="last_login" header="Last Login" sortable style="width: 180px">
+          <template #body="{ data }">
+            {{ formatLastLogin(data.last_login) }}
+          </template>
+        </Column>
+        <Column field="created_at" header="Created" sortable style="width: 150px">
           <template #body="{ data }">
             {{ new Date(data.created_at).toLocaleDateString() }}
           </template>
@@ -112,3 +147,19 @@ onMounted(() => {
     />
   </div>
 </template>
+
+<style scoped>
+.group-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.text-muted {
+  color: var(--text-color-secondary);
+}
+
+.mr-1 {
+  margin-right: 0.25rem;
+}
+</style>

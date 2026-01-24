@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -11,7 +12,8 @@ import (
 func TestUserHandler_List(t *testing.T) {
 	db := setupTestDB(t)
 	userStore := store.NewUserStore(db)
-	handler := NewUserHandler(userStore)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
 
 	createTestUser(t, db, "User 1", "user1@example.com", "password")
 	createTestUser(t, db, "User 2", "user2@example.com", "password")
@@ -36,7 +38,8 @@ func TestUserHandler_List(t *testing.T) {
 func TestUserHandler_Get(t *testing.T) {
 	db := setupTestDB(t)
 	userStore := store.NewUserStore(db)
-	handler := NewUserHandler(userStore)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
 
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 
@@ -60,7 +63,8 @@ func TestUserHandler_Get(t *testing.T) {
 func TestUserHandler_Get_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	userStore := store.NewUserStore(db)
-	handler := NewUserHandler(userStore)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
 
 	r := setupTestRouter()
 	r.GET("/users/:id", handler.Get)
@@ -75,7 +79,8 @@ func TestUserHandler_Get_NotFound(t *testing.T) {
 func TestUserHandler_Create(t *testing.T) {
 	db := setupTestDB(t)
 	userStore := store.NewUserStore(db)
-	handler := NewUserHandler(userStore)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
 
 	r := setupTestRouter()
 	r.POST("/users", handler.Create)
@@ -107,7 +112,8 @@ func TestUserHandler_Create(t *testing.T) {
 func TestUserHandler_Create_BadRequest(t *testing.T) {
 	db := setupTestDB(t)
 	userStore := store.NewUserStore(db)
-	handler := NewUserHandler(userStore)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
 
 	r := setupTestRouter()
 	r.POST("/users", handler.Create)
@@ -127,7 +133,8 @@ func TestUserHandler_Create_BadRequest(t *testing.T) {
 func TestUserHandler_Update(t *testing.T) {
 	db := setupTestDB(t)
 	userStore := store.NewUserStore(db)
-	handler := NewUserHandler(userStore)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
 
 	createTestUser(t, db, "Original Name", "test@example.com", "password")
 
@@ -155,7 +162,8 @@ func TestUserHandler_Update(t *testing.T) {
 func TestUserHandler_Delete(t *testing.T) {
 	db := setupTestDB(t)
 	userStore := store.NewUserStore(db)
-	handler := NewUserHandler(userStore)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
 
 	createTestUser(t, db, "To Delete", "delete@example.com", "password")
 
@@ -178,10 +186,16 @@ func TestUserHandler_Delete(t *testing.T) {
 func TestUserHandler_AddToGroup(t *testing.T) {
 	db := setupTestDB(t)
 	userStore := store.NewUserStore(db)
-	handler := NewUserHandler(userStore)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
 
-	createTestUser(t, db, "Test User", "test@example.com", "password")
-	group := createTestGroup(t, db, "Test Group")
+	// Create org, group, and user
+	org := createTestOrganization(t, db, "Test Org")
+	group := createTestGroupWithOrg(t, db, "Test Group", org.ID)
+	user := createTestUser(t, db, "Test User", "test@example.com", "password")
+
+	// User must be in the organization before being added to a group
+	_ = userStore.AddToOrganization(user.ID, org.ID)
 
 	r := setupTestRouter()
 	r.POST("/users/:id/groups", handler.AddToGroup)
@@ -197,41 +211,73 @@ func TestUserHandler_AddToGroup(t *testing.T) {
 	}
 
 	// Verify user was added to group
-	user, _ := userStore.FindByID(1)
-	if len(user.Groups) != 1 {
-		t.Errorf("expected 1 group, got %d", len(user.Groups))
+	foundUser, _ := userStore.FindByID(user.ID)
+	if len(foundUser.Groups) != 1 {
+		t.Errorf("expected 1 group, got %d", len(foundUser.Groups))
+	}
+}
+
+func TestUserHandler_AddToGroup_NotInOrganization(t *testing.T) {
+	db := setupTestDB(t)
+	userStore := store.NewUserStore(db)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
+
+	// Create group with its own org, and user without org membership
+	group := createTestGroup(t, db, "Test Group")
+	createTestUser(t, db, "Test User", "test@example.com", "password")
+
+	r := setupTestRouter()
+	r.POST("/users/:id/groups", handler.AddToGroup)
+
+	body := AddToGroupRequest{
+		GroupID: group.ID,
+	}
+
+	w := performRequest(r, "POST", "/users/1/groups", body)
+
+	// Should fail because user is not in the group's organization
+	if w.Code != http.StatusForbidden {
+		t.Errorf("expected status %d, got %d: %s", http.StatusForbidden, w.Code, w.Body.String())
 	}
 }
 
 func TestUserHandler_RemoveFromGroup(t *testing.T) {
 	db := setupTestDB(t)
 	userStore := store.NewUserStore(db)
-	handler := NewUserHandler(userStore)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
 
-	createTestUser(t, db, "Test User", "test@example.com", "password")
-	group := createTestGroup(t, db, "Test Group")
-	_ = userStore.AddToGroup(1, group.ID)
+	// Create org, group, and user
+	org := createTestOrganization(t, db, "Test Org")
+	group := createTestGroupWithOrg(t, db, "Test Group", org.ID)
+	user := createTestUser(t, db, "Test User", "test@example.com", "password")
+
+	// Add user to org and group
+	_ = userStore.AddToOrganization(user.ID, org.ID)
+	_ = userStore.AddToGroup(user.ID, group.ID)
 
 	r := setupTestRouter()
 	r.DELETE("/users/:id/groups/:gid", handler.RemoveFromGroup)
 
-	w := performRequest(r, "DELETE", "/users/1/groups/1", nil)
+	w := performRequest(r, "DELETE", fmt.Sprintf("/users/%d/groups/%d", user.ID, group.ID), nil)
 
 	if w.Code != http.StatusNoContent {
 		t.Errorf("expected status %d, got %d: %s", http.StatusNoContent, w.Code, w.Body.String())
 	}
 
 	// Verify user was removed from group
-	user, _ := userStore.FindByID(1)
-	if len(user.Groups) != 0 {
-		t.Errorf("expected 0 groups, got %d", len(user.Groups))
+	foundUser, _ := userStore.FindByID(user.ID)
+	if len(foundUser.Groups) != 0 {
+		t.Errorf("expected 0 groups, got %d", len(foundUser.Groups))
 	}
 }
 
 func TestUserHandler_AddToOrganization(t *testing.T) {
 	db := setupTestDB(t)
 	userStore := store.NewUserStore(db)
-	handler := NewUserHandler(userStore)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
 
 	createTestUser(t, db, "Test User", "test@example.com", "password")
 	org := createTestOrganization(t, db, "Test Org")
@@ -259,7 +305,8 @@ func TestUserHandler_AddToOrganization(t *testing.T) {
 func TestUserHandler_RemoveFromOrganization(t *testing.T) {
 	db := setupTestDB(t)
 	userStore := store.NewUserStore(db)
-	handler := NewUserHandler(userStore)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
 
 	createTestUser(t, db, "Test User", "test@example.com", "password")
 	org := createTestOrganization(t, db, "Test Org")

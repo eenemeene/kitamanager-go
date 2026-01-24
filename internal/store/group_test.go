@@ -10,10 +10,14 @@ func TestGroupStore_Create(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewGroupStore(db)
 
+	// Create an organization first
+	org := createTestOrganization(t, db, "Test Org")
+
 	group := &models.Group{
-		Name:      "Test Group",
-		Active:    true,
-		CreatedBy: "admin@test.com",
+		Name:           "Test Group",
+		OrganizationID: org.ID,
+		Active:         true,
+		CreatedBy:      "admin@test.com",
 	}
 
 	err := store.Create(group)
@@ -23,6 +27,9 @@ func TestGroupStore_Create(t *testing.T) {
 
 	if group.ID == 0 {
 		t.Error("expected group ID to be set")
+	}
+	if group.OrganizationID != org.ID {
+		t.Errorf("expected organization_id %d, got %d", org.ID, group.OrganizationID)
 	}
 }
 
@@ -104,40 +111,42 @@ func TestGroupStore_Delete(t *testing.T) {
 	}
 }
 
-func TestGroupStore_AddToOrganization(t *testing.T) {
+func TestGroupStore_FindByOrganization(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewGroupStore(db)
 
-	group := createTestGroup(t, db, "Test Group")
-	org := createTestOrganization(t, db, "Test Org")
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
 
-	err := store.AddToOrganization(group.ID, org.ID)
+	// Create groups in different organizations
+	createTestGroupWithOrg(t, db, "Group 1", org1.ID)
+	createTestGroupWithOrg(t, db, "Group 2", org1.ID)
+	createTestGroupWithOrg(t, db, "Group 3", org2.ID)
+
+	// Find groups in org1
+	groups, err := store.FindByOrganization(org1.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	found, _ := store.FindByID(group.ID)
-	if len(found.Organizations) != 1 {
-		t.Errorf("expected 1 organization, got %d", len(found.Organizations))
+	if len(groups) != 2 {
+		t.Errorf("expected 2 groups in org1, got %d", len(groups))
 	}
-}
 
-func TestGroupStore_RemoveFromOrganization(t *testing.T) {
-	db := setupTestDB(t)
-	store := NewGroupStore(db)
+	// Verify all groups belong to org1
+	for _, group := range groups {
+		if group.OrganizationID != org1.ID {
+			t.Errorf("expected organization_id %d, got %d", org1.ID, group.OrganizationID)
+		}
+	}
 
-	group := createTestGroup(t, db, "Test Group")
-	org := createTestOrganization(t, db, "Test Org")
-
-	_ = store.AddToOrganization(group.ID, org.ID)
-
-	err := store.RemoveFromOrganization(group.ID, org.ID)
+	// Find groups in org2
+	groups2, err := store.FindByOrganization(org2.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	found, _ := store.FindByID(group.ID)
-	if len(found.Organizations) != 0 {
-		t.Errorf("expected 0 organizations, got %d", len(found.Organizations))
+	if len(groups2) != 1 {
+		t.Errorf("expected 1 group in org2, got %d", len(groups2))
 	}
 }

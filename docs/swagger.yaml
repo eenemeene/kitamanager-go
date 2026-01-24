@@ -1,13 +1,5 @@
 basePath: /
 definitions:
-  handlers.AddGroupToOrganizationRequest:
-    properties:
-      organization_id:
-        example: 1
-        type: integer
-    required:
-    - organization_id
-    type: object
   handlers.AddToGroupRequest:
     properties:
       group_id:
@@ -32,8 +24,12 @@ definitions:
       name:
         example: Administrators
         type: string
+      organization_id:
+        example: 1
+        type: integer
     required:
     - name
+    - organization_id
     type: object
   handlers.CreateOrganizationRequest:
     properties:
@@ -50,6 +46,19 @@ definitions:
     properties:
       error:
         example: error message
+        type: string
+    type: object
+  handlers.HealthResponse:
+    properties:
+      services:
+        additionalProperties:
+          type: string
+        type: object
+      status:
+        example: healthy
+        type: string
+      version:
+        example: 1.0.0
         type: string
     type: object
   handlers.LoginRequest:
@@ -332,10 +341,11 @@ definitions:
       name:
         example: Administrators
         type: string
-      organizations:
-        items:
-          $ref: '#/definitions/models.Organization'
-        type: array
+      organization:
+        $ref: '#/definitions/models.Organization'
+      organization_id:
+        example: 1
+        type: integer
       updated_at:
         example: "2024-01-15T10:30:00Z"
         type: string
@@ -345,6 +355,36 @@ definitions:
         type: array
     required:
     - name
+    type: object
+  models.GroupResponse:
+    properties:
+      active:
+        example: true
+        type: boolean
+      created_at:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+      created_by:
+        example: admin@example.com
+        type: string
+      id:
+        example: 1
+        type: integer
+      name:
+        example: Administrators
+        type: string
+      organization:
+        $ref: '#/definitions/models.Organization'
+      organization_id:
+        example: 1
+        type: integer
+      updated_at:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+      users:
+        items:
+          $ref: '#/definitions/models.User'
+        type: array
     type: object
   models.Organization:
     properties:
@@ -398,6 +438,9 @@ definitions:
       id:
         example: 1
         type: integer
+      last_login:
+        example: "2024-01-15T10:30:00Z"
+        type: string
       name:
         example: John Doe
         type: string
@@ -453,6 +496,9 @@ definitions:
       id:
         example: 1
         type: integer
+      last_login:
+        example: "2024-01-15T10:30:00Z"
+        type: string
       name:
         example: John Doe
         type: string
@@ -1155,7 +1201,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/models.Group'
+              $ref: '#/definitions/models.GroupResponse'
             type: array
         "401":
           description: Unauthorized
@@ -1173,7 +1219,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a new group
+      description: Create a new group within an organization
       parameters:
       - description: Group data
         in: body
@@ -1187,7 +1233,7 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/models.Group'
+            $ref: '#/definitions/models.GroupResponse'
         "400":
           description: Bad Request
           schema:
@@ -1254,7 +1300,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.Group'
+            $ref: '#/definitions/models.GroupResponse'
         "400":
           description: Bad Request
           schema:
@@ -1294,7 +1340,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.Group'
+            $ref: '#/definitions/models.GroupResponse'
         "400":
           description: Bad Request
           schema:
@@ -1316,85 +1362,38 @@ paths:
       summary: Update a group
       tags:
       - groups
-  /api/v1/groups/{id}/organizations:
-    post:
-      consumes:
-      - application/json
-      description: Add a group to an organization
-      parameters:
-      - description: Group ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Organization ID
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.AddGroupToOrganizationRequest'
+  /api/v1/health:
+    get:
+      description: Check the health status of the API and its dependencies
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.MessageResponse'
-        "400":
-          description: Bad Request
+            $ref: '#/definitions/handlers.HealthResponse'
+        "503":
+          description: Service Unavailable
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Add group to organization
+            $ref: '#/definitions/handlers.HealthResponse'
+      summary: Health check
       tags:
-      - groups
-  /api/v1/groups/{id}/organizations/{oid}:
-    delete:
-      consumes:
-      - application/json
-      description: Remove a group from an organization
-      parameters:
-      - description: Group ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Organization ID
-        in: path
-        name: oid
-        required: true
-        type: integer
+      - health
+  /api/v1/live:
+    get:
+      description: Check if the API process is alive
       produces:
       - application/json
       responses:
-        "204":
-          description: No Content
-        "400":
-          description: Bad Request
+        "200":
+          description: OK
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Remove group from organization
+            additionalProperties:
+              type: string
+            type: object
+      summary: Liveness check
       tags:
-      - groups
+      - health
   /api/v1/login:
     post:
       consumes:
@@ -1602,6 +1601,27 @@ paths:
       summary: Update an organization
       tags:
       - organizations
+  /api/v1/ready:
+    get:
+      description: Check if the API is ready to accept traffic
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Readiness check
+      tags:
+      - health
   /api/v1/users:
     get:
       consumes:
@@ -1779,7 +1799,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Add a user to a group
+      description: Add a user to a group. User must be a member of the group's organization.
       parameters:
       - description: User ID
         in: path
@@ -1805,6 +1825,14 @@ paths:
             $ref: '#/definitions/handlers.ErrorResponse'
         "401":
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
           schema:
             $ref: '#/definitions/handlers.ErrorResponse'
         "500":

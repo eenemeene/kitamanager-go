@@ -1,6 +1,8 @@
 package store
 
 import (
+	"time"
+
 	"gorm.io/gorm"
 
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -16,7 +18,7 @@ func NewUserStore(db *gorm.DB) *UserStore {
 
 func (s *UserStore) FindAll() ([]models.User, error) {
 	var users []models.User
-	if err := s.db.Find(&users).Error; err != nil {
+	if err := s.db.Preload("Groups").Find(&users).Error; err != nil {
 		return nil, err
 	}
 	return users, nil
@@ -44,6 +46,10 @@ func (s *UserStore) Create(user *models.User) error {
 
 func (s *UserStore) Update(user *models.User) error {
 	return s.db.Save(user).Error
+}
+
+func (s *UserStore) UpdateLastLogin(userID uint) error {
+	return s.db.Model(&models.User{}).Where("id = ?", userID).Update("last_login", time.Now()).Error
 }
 
 func (s *UserStore) Delete(id uint) error {

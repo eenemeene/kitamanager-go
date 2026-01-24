@@ -1069,7 +1069,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.Group"
+                                "$ref": "#/definitions/models.GroupResponse"
                             }
                         }
                     },
@@ -1093,7 +1093,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create a new group",
+                "description": "Create a new group within an organization",
                 "consumes": [
                     "application/json"
                 ],
@@ -1119,7 +1119,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/models.Group"
+                            "$ref": "#/definitions/models.GroupResponse"
                         }
                     },
                     "400": {
@@ -1174,7 +1174,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.Group"
+                            "$ref": "#/definitions/models.GroupResponse"
                         }
                     },
                     "400": {
@@ -1236,7 +1236,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.Group"
+                            "$ref": "#/definitions/models.GroupResponse"
                         }
                     },
                     "400": {
@@ -1316,124 +1316,50 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/groups/{id}/organizations": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Add a group to an organization",
-                "consumes": [
-                    "application/json"
-                ],
+        "/api/v1/health": {
+            "get": {
+                "description": "Check the health status of the API and its dependencies",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "groups"
+                    "health"
                 ],
-                "summary": "Add group to organization",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Group ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Organization ID",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handlers.AddGroupToOrganizationRequest"
-                        }
-                    }
-                ],
+                "summary": "Health check",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.MessageResponse"
+                            "$ref": "#/definitions/handlers.HealthResponse"
                         }
                     },
-                    "400": {
-                        "description": "Bad Request",
+                    "503": {
+                        "description": "Service Unavailable",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/handlers.HealthResponse"
                         }
                     }
                 }
             }
         },
-        "/api/v1/groups/{id}/organizations/{oid}": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Remove a group from an organization",
-                "consumes": [
-                    "application/json"
-                ],
+        "/api/v1/live": {
+            "get": {
+                "description": "Check if the API process is alive",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "groups"
+                    "health"
                 ],
-                "summary": "Remove group from organization",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Group ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Organization ID",
-                        "name": "oid",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
+                "summary": "Liveness check",
                 "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "400": {
-                        "description": "Bad Request",
+                    "200": {
+                        "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -1762,6 +1688,38 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/ready": {
+            "get": {
+                "description": "Check if the API is ready to accept traffic",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "health"
+                ],
+                "summary": "Readiness check",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/users": {
             "get": {
                 "security": [
@@ -2040,7 +1998,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Add a user to a group",
+                "description": "Add a user to a group. User must be a member of the group's organization.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2084,6 +2042,18 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/handlers.ErrorResponse"
                         }
@@ -2281,18 +2251,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "handlers.AddGroupToOrganizationRequest": {
-            "type": "object",
-            "required": [
-                "organization_id"
-            ],
-            "properties": {
-                "organization_id": {
-                    "type": "integer",
-                    "example": 1
-                }
-            }
-        },
         "handlers.AddToGroupRequest": {
             "type": "object",
             "required": [
@@ -2320,7 +2278,8 @@ const docTemplate = `{
         "handlers.CreateGroupRequest": {
             "type": "object",
             "required": [
-                "name"
+                "name",
+                "organization_id"
             ],
             "properties": {
                 "active": {
@@ -2330,6 +2289,10 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "Administrators"
+                },
+                "organization_id": {
+                    "type": "integer",
+                    "example": 1
                 }
             }
         },
@@ -2355,6 +2318,25 @@ const docTemplate = `{
                 "error": {
                     "type": "string",
                     "example": "error message"
+                }
+            }
+        },
+        "handlers.HealthResponse": {
+            "type": "object",
+            "properties": {
+                "services": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "status": {
+                    "type": "string",
+                    "example": "healthy"
+                },
+                "version": {
+                    "type": "string",
+                    "example": "1.0.0"
                 }
             }
         },
@@ -2752,11 +2734,54 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Administrators"
                 },
-                "organizations": {
+                "organization": {
+                    "$ref": "#/definitions/models.Organization"
+                },
+                "organization_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2024-01-15T10:30:00Z"
+                },
+                "users": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.Organization"
+                        "$ref": "#/definitions/models.User"
                     }
+                }
+            }
+        },
+        "models.GroupResponse": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2024-01-15T10:30:00Z"
+                },
+                "created_by": {
+                    "type": "string",
+                    "example": "admin@example.com"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Administrators"
+                },
+                "organization": {
+                    "$ref": "#/definitions/models.Organization"
+                },
+                "organization_id": {
+                    "type": "integer",
+                    "example": 1
                 },
                 "updated_at": {
                     "type": "string",
@@ -2847,6 +2872,10 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 1
                 },
+                "last_login": {
+                    "type": "string",
+                    "example": "2024-01-15T10:30:00Z"
+                },
                 "name": {
                     "type": "string",
                     "example": "John Doe"
@@ -2918,6 +2947,10 @@ const docTemplate = `{
                 "id": {
                     "type": "integer",
                     "example": 1
+                },
+                "last_login": {
+                    "type": "string",
+                    "example": "2024-01-15T10:30:00Z"
                 },
                 "name": {
                     "type": "string",

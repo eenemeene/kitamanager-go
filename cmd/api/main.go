@@ -98,7 +98,7 @@ func main() {
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(userStore, cfg.JWTSecret)
-	userHandler := handlers.NewUserHandler(userStore)
+	userHandler := handlers.NewUserHandler(userStore, groupStore)
 	groupHandler := handlers.NewGroupHandler(groupStore)
 	orgHandler := handlers.NewOrganizationHandler(orgStore)
 	employeeHandler := handlers.NewEmployeeHandler(employeeStore)

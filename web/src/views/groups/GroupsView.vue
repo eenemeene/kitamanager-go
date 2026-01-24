@@ -2,13 +2,14 @@
 import { ref, onMounted } from 'vue'
 import { useCrud } from '@/composables/useCrud'
 import { apiClient } from '@/api/client'
-import type { Group, GroupCreate, GroupUpdate } from '@/api/types'
+import type { Group, GroupCreate, GroupUpdate, Organization } from '@/api/types'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import GroupForm from './GroupForm.vue'
-import GroupOrganizationsDialog from './GroupOrganizationsDialog.vue'
+
+const organizations = ref<Map<number, Organization>>(new Map())
 
 const {
   items: groups,
@@ -29,20 +30,21 @@ const {
   remove: (id) => apiClient.deleteGroup(id)
 })
 
-const orgsDialogVisible = ref(false)
-const selectedGroupForOrgs = ref<Group | null>(null)
-
-function openOrgsDialog(group: Group) {
-  selectedGroupForOrgs.value = group
-  orgsDialogVisible.value = true
+function getOrganizationName(orgId: number): string {
+  return organizations.value.get(orgId)?.name || 'Unknown'
 }
 
-function closeOrgsDialog() {
-  orgsDialogVisible.value = false
-  selectedGroupForOrgs.value = null
+async function loadOrganizations() {
+  try {
+    const orgs = await apiClient.getOrganizations()
+    organizations.value = new Map(orgs.map((o) => [o.id, o]))
+  } catch {
+    // Ignore errors
+  }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await loadOrganizations()
   fetchItems()
 })
 </script>
@@ -65,6 +67,11 @@ onMounted(() => {
       >
         <Column field="id" header="ID" sortable style="width: 80px"></Column>
         <Column field="name" header="Name" sortable></Column>
+        <Column field="organization_id" header="Organization" sortable style="width: 200px">
+          <template #body="{ data }">
+            {{ getOrganizationName(data.organization_id) }}
+          </template>
+        </Column>
         <Column field="active" header="Status" sortable style="width: 120px">
           <template #body="{ data }">
             <Tag
@@ -78,15 +85,8 @@ onMounted(() => {
             {{ new Date(data.created_at).toLocaleDateString() }}
           </template>
         </Column>
-        <Column header="Actions" style="width: 200px">
+        <Column header="Actions" style="width: 150px">
           <template #body="{ data }">
-            <Button
-              icon="pi pi-building"
-              text
-              rounded
-              title="Manage Organizations"
-              @click="openOrgsDialog(data)"
-            />
             <Button icon="pi pi-pencil" text rounded title="Edit" @click="openEditDialog(data)" />
             <Button
               icon="pi pi-trash"
@@ -106,13 +106,6 @@ onMounted(() => {
       :group="editingItem"
       @close="closeDialog"
       @save="saveItem"
-    />
-
-    <GroupOrganizationsDialog
-      :visible="orgsDialogVisible"
-      :group="selectedGroupForOrgs"
-      @close="closeOrgsDialog"
-      @updated="fetchItems"
     />
   </div>
 </template>

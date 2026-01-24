@@ -10,6 +10,7 @@ type User struct {
 	Email         string         `gorm:"size:255;uniqueIndex;not null" json:"email" binding:"required,email" example:"john@example.com"`
 	Password      string         `gorm:"size:255;not null" json:"-" binding:"required,min=6"`
 	Active        bool           `gorm:"default:true" json:"active" example:"true"`
+	LastLogin     *time.Time     `json:"last_login" example:"2024-01-15T10:30:00Z"`
 	CreatedAt     time.Time      `json:"created_at" example:"2024-01-15T10:30:00Z"`
 	CreatedBy     string         `gorm:"size:255" json:"created_by" example:"admin@example.com"`
 	UpdatedAt     time.Time      `json:"updated_at" example:"2024-01-15T10:30:00Z"`
@@ -38,6 +39,7 @@ type UserResponse struct {
 	Name          string         `json:"name" example:"John Doe"`
 	Email         string         `json:"email" example:"john@example.com"`
 	Active        bool           `json:"active" example:"true"`
+	LastLogin     *time.Time     `json:"last_login" example:"2024-01-15T10:30:00Z"`
 	CreatedAt     time.Time      `json:"created_at" example:"2024-01-15T10:30:00Z"`
 	CreatedBy     string         `json:"created_by" example:"admin@example.com"`
 	UpdatedAt     time.Time      `json:"updated_at" example:"2024-01-15T10:30:00Z"`
@@ -51,6 +53,7 @@ func (u *User) ToResponse() UserResponse {
 		Name:          u.Name,
 		Email:         u.Email,
 		Active:        u.Active,
+		LastLogin:     u.LastLogin,
 		CreatedAt:     u.CreatedAt,
 		CreatedBy:     u.CreatedBy,
 		UpdatedAt:     u.UpdatedAt,

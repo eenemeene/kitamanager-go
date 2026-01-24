@@ -69,27 +69,6 @@ describe('API Client - Assignment Methods', () => {
     })
   })
 
-  describe('Group-Organization Assignments', () => {
-    it('should call POST /groups/:id/organizations for addGroupToOrganization', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: { message: 'group added to organization' }
-      })
-
-      const { apiClient } = await import('../api/client')
-      await apiClient.addGroupToOrganization(2, 3)
-
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/groups/2/organizations', {
-        organization_id: 3
-      })
-    })
-
-    it('should call DELETE /groups/:id/organizations/:oid for removeGroupFromOrganization', async () => {
-      mockAxiosInstance.delete.mockResolvedValue({ data: {} })
-
-      const { apiClient } = await import('../api/client')
-      await apiClient.removeGroupFromOrganization(2, 3)
-
-      expect(mockAxiosInstance.delete).toHaveBeenCalledWith('/groups/2/organizations/3')
-    })
-  })
+  // Note: Group-Organization assignments were removed.
+  // Groups now belong to exactly one organization (set during creation).
 })
