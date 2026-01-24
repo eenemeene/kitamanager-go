@@ -1,4 +1,4 @@
-.PHONY: build run test test-unit test-integration test-contract test-fuzz test-coverage lint clean docs schema-docs swagger-docs docker-up docker-down docker-rebuild install-hooks uninstall-hooks pre-commit
+.PHONY: build run test test-unit test-integration test-contract test-fuzz test-coverage lint clean docs schema-docs swagger-docs docker-up docker-down docker-rebuild install-hooks uninstall-hooks pre-commit web-install web-dev web-build web-lint web-lint-style web-format web-test web-test-coverage web-check-all
 
 # Build the application
 build:
@@ -53,7 +53,7 @@ schema-docs:
 # Generate all documentation
 docs: swagger-docs schema-docs
 
-# Start docker containers
+# Start docker containers (API + web + DB)
 docker-up:
 	docker compose up -d
 
@@ -82,3 +82,48 @@ uninstall-hooks:
 # Run pre-commit on all files
 pre-commit:
 	pre-commit run --all-files
+
+# Frontend targets
+# Install frontend dependencies
+web-install:
+	cd web && npm install
+
+# Start frontend dev server
+web-dev:
+	cd web && npm run dev
+
+# Build frontend for production
+web-build:
+	cd web && npm run build
+
+# Lint frontend code (ESLint with accessibility checks)
+web-lint:
+	cd web && npm run lint
+
+# Lint frontend styles (Stylelint)
+web-lint-style:
+	cd web && npm run lint:style
+
+# Format frontend code (Prettier)
+web-format:
+	cd web && npm run format
+
+# Check formatting without writing
+web-format-check:
+	cd web && npm run format:check
+
+# Type-check frontend code
+web-type-check:
+	cd web && npm run type-check
+
+# Run frontend unit tests
+web-test:
+	cd web && npm run test:run
+
+# Run frontend tests with coverage
+web-test-coverage:
+	cd web && npm run test:coverage
+
+# Run all frontend checks (type-check, lint, stylelint, format, tests)
+web-check-all:
+	cd web && npm run check-all

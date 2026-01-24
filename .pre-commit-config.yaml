@@ -27,3 +27,38 @@ repos:
         language: system
         types: [go]
         pass_filenames: false
+
+      - id: vue-type-check
+        name: vue type check
+        entry: bash -c 'cd web && npm run type-check'
+        language: system
+        files: ^web/.*\.(vue|ts)$
+        pass_filenames: false
+
+      - id: vue-lint
+        name: vue eslint
+        entry: bash -c 'cd web && npm run lint'
+        language: system
+        files: ^web/.*\.(vue|ts|js)$
+        pass_filenames: false
+
+      - id: vue-stylelint
+        name: vue stylelint
+        entry: bash -c 'cd web && npm run lint:style'
+        language: system
+        files: ^web/.*\.(vue|css)$
+        pass_filenames: false
+
+      - id: vue-format-check
+        name: vue prettier check
+        entry: bash -c 'cd web && npm run format:check'
+        language: system
+        files: ^web/.*\.(vue|ts|js|css|json)$
+        pass_filenames: false
+
+      - id: vue-test
+        name: vue unit tests
+        entry: bash -c 'cd web && npm run test:run'
+        language: system
+        files: ^web/.*\.(vue|ts|js)$
+        pass_filenames: false

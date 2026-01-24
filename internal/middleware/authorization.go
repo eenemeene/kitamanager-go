@@ -48,7 +48,7 @@ func (m *AuthorizationMiddleware) RequirePermission(resource, action string) gin
 		}
 
 		// Get organization ID from path parameter
-		orgIDStr := c.Param("orgId")
+		orgIDStr := c.Param("id")
 		if orgIDStr == "" {
 			// For endpoints without orgId, try to get it from the resource itself
 			// This requires looking up the resource - for now, deny access
@@ -136,7 +136,7 @@ func (m *AuthorizationMiddleware) RequireOrgAccess() gin.HandlerFunc {
 			return
 		}
 
-		orgIDStr := c.Param("orgId")
+		orgIDStr := c.Param("id")
 		if orgIDStr == "" {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "organization id required"})
 			return

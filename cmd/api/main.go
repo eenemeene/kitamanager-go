@@ -1,9 +1,16 @@
 package main
 
 import (
-	"log"
+	"context"
+	"errors"
+	"log/slog"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -15,7 +22,9 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/middleware"
 	"github.com/eenemeene/kitamanager-go/internal/rbac"
 	"github.com/eenemeene/kitamanager-go/internal/routes"
+	"github.com/eenemeene/kitamanager-go/internal/seed"
 	"github.com/eenemeene/kitamanager-go/internal/store"
+	"github.com/eenemeene/kitamanager-go/internal/web"
 )
 
 // @title KitaManager API
@@ -38,57 +47,167 @@ import (
 // @description Type "Bearer" followed by a space and JWT token.
 
 func main() {
+	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		slog.Error("Failed to load configuration", "error", err)
+		os.Exit(1)
 	}
 
+	// Setup structured logging
+	setupLogging(cfg)
+
+	slog.Info("Starting KitaManager API", "port", cfg.ServerPort)
+
+	// Connect to database
 	db, err := database.Connect(cfg)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		slog.Error("Failed to connect to database", "error", err)
+		os.Exit(1)
 	}
 
 	// Initialize RBAC enforcer
 	enforcer, err := rbac.NewEnforcer(db, cfg.RBACModelPath)
 	if err != nil {
-		log.Fatalf("Failed to initialize RBAC enforcer: %v", err)
+		slog.Error("Failed to initialize RBAC enforcer", "error", err)
+		os.Exit(1)
 	}
 
 	// Seed default policies if requested
 	if os.Getenv("SEED_RBAC_POLICIES") == "true" {
-		log.Println("Seeding RBAC policies...")
+		slog.Info("Seeding RBAC policies...")
 		if err := enforcer.SeedDefaultPolicies(); err != nil {
-			log.Fatalf("Failed to seed RBAC policies: %v", err)
+			slog.Error("Failed to seed RBAC policies", "error", err)
+			os.Exit(1)
 		}
-		log.Println("RBAC policies seeded successfully")
+		slog.Info("RBAC policies seeded successfully")
 	}
 
+	// Initialize stores
 	userStore := store.NewUserStore(db)
 	groupStore := store.NewGroupStore(db)
 	orgStore := store.NewOrganizationStore(db)
 	employeeStore := store.NewEmployeeStore(db)
 	childStore := store.NewChildStore(db)
 
+	// Seed admin user if configured
+	if err := seed.SeedAdmin(cfg, userStore, enforcer); err != nil {
+		slog.Error("Failed to seed admin user", "error", err)
+		os.Exit(1)
+	}
+
+	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(userStore, cfg.JWTSecret)
 	userHandler := handlers.NewUserHandler(userStore)
 	groupHandler := handlers.NewGroupHandler(groupStore)
 	orgHandler := handlers.NewOrganizationHandler(orgStore)
 	employeeHandler := handlers.NewEmployeeHandler(employeeStore)
 	childHandler := handlers.NewChildHandler(childStore)
+	healthHandler := handlers.NewHealthHandler(db)
 
+	// Initialize middleware
 	authMiddleware := middleware.NewAuthMiddleware(cfg.JWTSecret)
 	authzMiddleware := middleware.NewAuthorizationMiddleware(enforcer)
 
-	r := gin.Default()
+	// Create Gin router
+	r := gin.New()
+	r.Use(gin.Recovery())
+	r.Use(middleware.StructuredLogger())
+
+	// Configure CORS
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     cfg.CORSAllowOrigins,
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: cfg.CORSAllowCredentials,
+		MaxAge:           12 * time.Hour,
+	}))
+
+	// Health check endpoints (no auth required)
+	r.GET("/api/v1/health", healthHandler.Check)
+	r.GET("/api/v1/ready", healthHandler.Ready)
+	r.GET("/api/v1/live", healthHandler.Live)
 
 	// Swagger UI
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
+	// Setup API routes
 	routes.Setup(r, authHandler, userHandler, groupHandler, orgHandler, employeeHandler, childHandler, authMiddleware, authzMiddleware)
 
-	log.Printf("Starting server on port %s", cfg.ServerPort)
-	log.Printf("Swagger UI available at http://localhost:%s/swagger/index.html", cfg.ServerPort)
-	if err := r.Run(":" + cfg.ServerPort); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+	// Register embedded web UI
+	if err := web.RegisterHandlers(r); err != nil {
+		slog.Error("Failed to register web handlers", "error", err)
+		os.Exit(1)
 	}
+
+	// Create HTTP server
+	srv := &http.Server{
+		Addr:         ":" + cfg.ServerPort,
+		Handler:      r,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	// Start server in goroutine
+	go func() {
+		slog.Info("Server started",
+			"port", cfg.ServerPort,
+			"swagger", "http://localhost:"+cfg.ServerPort+"/swagger/index.html",
+		)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			slog.Error("Server error", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	// Wait for interrupt signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	slog.Info("Shutting down server...")
+
+	// Graceful shutdown with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		slog.Error("Server forced to shutdown", "error", err)
+		os.Exit(1)
+	}
+
+	// Close database connection
+	sqlDB, err := db.DB()
+	if err == nil {
+		sqlDB.Close()
+	}
+
+	slog.Info("Server stopped gracefully")
+}
+
+func setupLogging(cfg *config.Config) {
+	var level slog.Level
+	switch cfg.LogLevel {
+	case "debug":
+		level = slog.LevelDebug
+	case "info":
+		level = slog.LevelInfo
+	case "warn":
+		level = slog.LevelWarn
+	case "error":
+		level = slog.LevelError
+	default:
+		level = slog.LevelInfo
+	}
+
+	var handler slog.Handler
+	if cfg.LogFormat == "json" {
+		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level})
+	} else {
+		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level})
+	}
+
+	slog.SetDefault(slog.New(handler))
 }

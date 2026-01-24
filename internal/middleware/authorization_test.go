@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/casbin/casbin/v2/model"
-	fileadapter "github.com/casbin/casbin/v2/persist/file-adapter"
+	"github.com/casbin/casbin/v3/model"
+	fileadapter "github.com/casbin/casbin/v3/persist/file-adapter"
 	"github.com/gin-gonic/gin"
 
 	"github.com/eenemeene/kitamanager-go/internal/rbac"
@@ -80,7 +80,7 @@ func TestAuthorizationMiddleware_RequirePermission_Allowed(t *testing.T) {
 		c.Set("userID", uint(1))
 		c.Next()
 	})
-	r.GET("/organizations/:orgId/employees",
+	r.GET("/organizations/:id/employees",
 		middleware.RequirePermission(rbac.ResourceEmployees, rbac.ActionRead),
 		func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"message": "success"})
@@ -106,7 +106,7 @@ func TestAuthorizationMiddleware_RequirePermission_Forbidden(t *testing.T) {
 		c.Set("userID", uint(1))
 		c.Next()
 	})
-	r.PUT("/organizations/:orgId/settings",
+	r.PUT("/organizations/:id/settings",
 		middleware.RequirePermission(rbac.ResourceOrganizations, rbac.ActionUpdate),
 		func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"message": "success"})
@@ -127,7 +127,7 @@ func TestAuthorizationMiddleware_RequirePermission_NoUserID(t *testing.T) {
 
 	r := gin.New()
 	// No userID set
-	r.GET("/organizations/:orgId/employees",
+	r.GET("/organizations/:id/employees",
 		middleware.RequirePermission(rbac.ResourceEmployees, rbac.ActionRead),
 		func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"message": "success"})
@@ -153,7 +153,7 @@ func TestAuthorizationMiddleware_RequirePermission_InvalidOrgID(t *testing.T) {
 		c.Set("userID", uint(1))
 		c.Next()
 	})
-	r.GET("/organizations/:orgId/employees",
+	r.GET("/organizations/:id/employees",
 		middleware.RequirePermission(rbac.ResourceEmployees, rbac.ActionRead),
 		func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"message": "success"})
@@ -179,7 +179,7 @@ func TestAuthorizationMiddleware_RequirePermission_SuperAdminBypass(t *testing.T
 		c.Set("userID", uint(1))
 		c.Next()
 	})
-	r.DELETE("/organizations/:orgId/employees/:id",
+	r.DELETE("/organizations/:id/employees/:id",
 		middleware.RequirePermission(rbac.ResourceEmployees, rbac.ActionDelete),
 		func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"message": "success"})
@@ -258,7 +258,7 @@ func TestAuthorizationMiddleware_RequireOrgAccess_Allowed(t *testing.T) {
 		c.Set("userID", uint(1))
 		c.Next()
 	})
-	r.GET("/organizations/:orgId",
+	r.GET("/organizations/:id",
 		middleware.RequireOrgAccess(),
 		func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"message": "success"})
@@ -284,7 +284,7 @@ func TestAuthorizationMiddleware_RequireOrgAccess_Forbidden(t *testing.T) {
 		c.Set("userID", uint(1))
 		c.Next()
 	})
-	r.GET("/organizations/:orgId",
+	r.GET("/organizations/:id",
 		middleware.RequireOrgAccess(),
 		func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"message": "success"})
@@ -312,7 +312,7 @@ func TestAuthorizationMiddleware_OrgIDSetInContext(t *testing.T) {
 		c.Set("userID", uint(1))
 		c.Next()
 	})
-	r.GET("/organizations/:orgId/employees",
+	r.GET("/organizations/:id/employees",
 		middleware.RequirePermission(rbac.ResourceEmployees, rbac.ActionRead),
 		func(c *gin.Context) {
 			if orgID, exists := c.Get("orgID"); exists {

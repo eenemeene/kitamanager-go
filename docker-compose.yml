@@ -11,6 +11,17 @@ services:
       - DB_NAME=kitamanager
       - JWT_SECRET=your-super-secret-jwt-key-change-in-production
       - SERVER_PORT=8080
+      # Admin seeding - set these to create initial admin user
+      - SEED_ADMIN_EMAIL=admin@example.com
+      - SEED_ADMIN_PASSWORD=changeme123
+      - SEED_ADMIN_NAME=admin
+      - SEED_RBAC_POLICIES=true
+      # CORS configuration
+      - CORS_ALLOW_ORIGINS=http://localhost:5173,http://localhost:8080
+      - CORS_ALLOW_CREDENTIALS=true
+      # Logging
+      - LOG_LEVEL=info
+      - LOG_FORMAT=json
     depends_on:
       db:
         condition: service_healthy
