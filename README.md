@@ -36,33 +36,15 @@ docker compose down -v
 
 ### Local Development
 
-Prerequisites:
-- Go 1.24+
-- PostgreSQL 18+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed development setup and Makefile targets.
+
+Quick start:
 
 ```bash
-# Copy environment template
-cp .env.example .env
-
-# Edit .env with your database settings
-vim .env
-
-# Run the API
-make run
+make web-install   # Install dependencies
+make api-build     # Build API
+make dev           # Start dev environment with hot reload
 ```
-
-## Makefile Targets
-
-| Target | Description |
-|--------|-------------|
-| `make build` | Compile to `bin/kitamanager-api` |
-| `make run` | Run locally with `go run` |
-| `make test` | Run all tests |
-| `make clean` | Remove build artifacts |
-| `make schema-docs` | Regenerate database schema docs |
-| `make docker-up` | Start docker containers |
-| `make docker-down` | Stop docker containers |
-| `make docker-rebuild` | Rebuild and restart containers |
 
 ## API Endpoints
 

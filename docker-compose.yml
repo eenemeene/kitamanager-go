@@ -13,7 +13,7 @@ services:
       - SERVER_PORT=8080
       # Admin seeding - set these to create initial admin user
       - SEED_ADMIN_EMAIL=admin@example.com
-      - SEED_ADMIN_PASSWORD=changeme123
+      - SEED_ADMIN_PASSWORD=admin
       - SEED_ADMIN_NAME=admin
       - SEED_RBAC_POLICIES=true
       # CORS configuration

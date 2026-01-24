@@ -1,22 +1,17 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useUiStore } from '@/stores/ui'
-import { apiClient } from '@/api/client'
-import type { Organization } from '@/api/types'
 import Dropdown from 'primevue/dropdown'
 
 const { t } = useI18n()
 const route = useRoute()
 const uiStore = useUiStore()
 
-const organizations = ref<Organization[]>([])
-const loading = ref(false)
-
 const selectedOrg = computed({
-  get: () => organizations.value.find((o) => o.id === uiStore.selectedOrganizationId) || null,
-  set: (org: Organization | null) => {
+  get: () => uiStore.selectedOrganization,
+  set: (org) => {
     uiStore.setSelectedOrganization(org?.id || null)
   }
 })
@@ -49,23 +44,8 @@ function isActive(item: { to: string; exact?: boolean }) {
   return route.path.startsWith(item.to)
 }
 
-async function loadOrganizations() {
-  loading.value = true
-  try {
-    organizations.value = await apiClient.getOrganizations()
-    // Auto-select first org if none selected and orgs exist
-    if (!uiStore.selectedOrganizationId && organizations.value.length > 0) {
-      uiStore.setSelectedOrganization(organizations.value[0].id)
-    }
-  } catch (error) {
-    console.error('Failed to load organizations:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
 onMounted(() => {
-  loadOrganizations()
+  uiStore.fetchOrganizations()
 })
 </script>
 
@@ -79,11 +59,11 @@ onMounted(() => {
     <div class="org-selector">
       <Dropdown
         v-model="selectedOrg"
-        :options="organizations"
+        :options="uiStore.organizations"
         option-label="name"
         :placeholder="t('organizations.selectOrg')"
         class="w-full"
-        :loading="loading"
+        :loading="uiStore.organizationsLoading"
       />
     </div>
 

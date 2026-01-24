@@ -40,7 +40,7 @@ dev:
 		SEED_ADMIN_PASSWORD=admin \
 		SEED_ADMIN_NAME=admin \
 		SEED_RBAC_POLICIES=true \
-		CORS_ALLOW_ORIGINS=http://localhost:5173,http://localhost:8080 \
+		CORS_ALLOW_ORIGINS="http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:8080" \
 		CORS_ALLOW_CREDENTIALS=true \
 		./bin/kitamanager-api > /tmp/kitamanager-api.log 2>&1 & echo $$! > /tmp/kitamanager-api.pid
 	@sleep 2

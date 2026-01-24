@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useCrud } from '@/composables/useCrud'
 import { apiClient } from '@/api/client'
 import type { User, UserCreate, UserUpdate } from '@/api/types'
@@ -8,6 +8,7 @@ import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import UserForm from './UserForm.vue'
+import UserMembershipsDialog from './UserMembershipsDialog.vue'
 
 const {
   items: users,
@@ -27,6 +28,19 @@ const {
   update: (id, data) => apiClient.updateUser(id, data),
   remove: (id) => apiClient.deleteUser(id)
 })
+
+const membershipsDialogVisible = ref(false)
+const selectedUserForMemberships = ref<User | null>(null)
+
+function openMembershipsDialog(user: User) {
+  selectedUserForMemberships.value = user
+  membershipsDialogVisible.value = true
+}
+
+function closeMembershipsDialog() {
+  membershipsDialogVisible.value = false
+  selectedUserForMemberships.value = null
+}
 
 onMounted(() => {
   fetchItems()
@@ -65,14 +79,22 @@ onMounted(() => {
             {{ new Date(data.created_at).toLocaleDateString() }}
           </template>
         </Column>
-        <Column header="Actions" style="width: 150px">
+        <Column header="Actions" style="width: 200px">
           <template #body="{ data }">
-            <Button icon="pi pi-pencil" text rounded @click="openEditDialog(data)" />
+            <Button
+              icon="pi pi-users"
+              text
+              rounded
+              title="Manage Memberships"
+              @click="openMembershipsDialog(data)"
+            />
+            <Button icon="pi pi-pencil" text rounded title="Edit" @click="openEditDialog(data)" />
             <Button
               icon="pi pi-trash"
               text
               rounded
               severity="danger"
+              title="Delete"
               @click="confirmDelete(data)"
             />
           </template>
@@ -81,5 +103,12 @@ onMounted(() => {
     </div>
 
     <UserForm :visible="dialogVisible" :user="editingItem" @close="closeDialog" @save="saveItem" />
+
+    <UserMembershipsDialog
+      :visible="membershipsDialogVisible"
+      :user="selectedUserForMemberships"
+      @close="closeMembershipsDialog"
+      @updated="fetchItems"
+    />
   </div>
 </template>

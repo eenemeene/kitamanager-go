@@ -1,11 +1,19 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { apiClient } from '@/api/client'
+import type { Organization } from '@/api/types'
 
 export const useUiStore = defineStore('ui', () => {
   const sidebarCollapsed = ref(false)
   const darkMode = ref(localStorage.getItem('darkMode') === 'true')
   const selectedOrganizationId = ref<number | null>(
     localStorage.getItem('selectedOrgId') ? Number(localStorage.getItem('selectedOrgId')) : null
+  )
+  const organizations = ref<Organization[]>([])
+  const organizationsLoading = ref(false)
+
+  const selectedOrganization = computed(
+    () => organizations.value.find((o) => o.id === selectedOrganizationId.value) || null
   )
 
   function toggleSidebar() {
@@ -41,6 +49,21 @@ export const useUiStore = defineStore('ui', () => {
     }
   }
 
+  async function fetchOrganizations() {
+    organizationsLoading.value = true
+    try {
+      organizations.value = await apiClient.getOrganizations()
+      // Auto-select first org if none selected and orgs exist
+      if (!selectedOrganizationId.value && organizations.value.length > 0) {
+        setSelectedOrganization(organizations.value[0].id)
+      }
+    } catch (error) {
+      console.error('Failed to load organizations:', error)
+    } finally {
+      organizationsLoading.value = false
+    }
+  }
+
   // Initialize dark mode on load
   updateDarkModeClass()
 
@@ -48,9 +71,13 @@ export const useUiStore = defineStore('ui', () => {
     sidebarCollapsed,
     darkMode,
     selectedOrganizationId,
+    organizations,
+    organizationsLoading,
+    selectedOrganization,
     toggleSidebar,
     toggleDarkMode,
     setDarkMode,
-    setSelectedOrganization
+    setSelectedOrganization,
+    fetchOrganizations
   }
 })

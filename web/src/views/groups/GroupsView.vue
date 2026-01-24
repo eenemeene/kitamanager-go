@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useCrud } from '@/composables/useCrud'
 import { apiClient } from '@/api/client'
 import type { Group, GroupCreate, GroupUpdate } from '@/api/types'
@@ -8,6 +8,7 @@ import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import GroupForm from './GroupForm.vue'
+import GroupOrganizationsDialog from './GroupOrganizationsDialog.vue'
 
 const {
   items: groups,
@@ -27,6 +28,19 @@ const {
   update: (id, data) => apiClient.updateGroup(id, data),
   remove: (id) => apiClient.deleteGroup(id)
 })
+
+const orgsDialogVisible = ref(false)
+const selectedGroupForOrgs = ref<Group | null>(null)
+
+function openOrgsDialog(group: Group) {
+  selectedGroupForOrgs.value = group
+  orgsDialogVisible.value = true
+}
+
+function closeOrgsDialog() {
+  orgsDialogVisible.value = false
+  selectedGroupForOrgs.value = null
+}
 
 onMounted(() => {
   fetchItems()
@@ -64,14 +78,22 @@ onMounted(() => {
             {{ new Date(data.created_at).toLocaleDateString() }}
           </template>
         </Column>
-        <Column header="Actions" style="width: 150px">
+        <Column header="Actions" style="width: 200px">
           <template #body="{ data }">
-            <Button icon="pi pi-pencil" text rounded @click="openEditDialog(data)" />
+            <Button
+              icon="pi pi-building"
+              text
+              rounded
+              title="Manage Organizations"
+              @click="openOrgsDialog(data)"
+            />
+            <Button icon="pi pi-pencil" text rounded title="Edit" @click="openEditDialog(data)" />
             <Button
               icon="pi pi-trash"
               text
               rounded
               severity="danger"
+              title="Delete"
               @click="confirmDelete(data)"
             />
           </template>
@@ -84,6 +106,13 @@ onMounted(() => {
       :group="editingItem"
       @close="closeDialog"
       @save="saveItem"
+    />
+
+    <GroupOrganizationsDialog
+      :visible="orgsDialogVisible"
+      :group="selectedGroupForOrgs"
+      @close="closeOrgsDialog"
+      @updated="fetchItems"
     />
   </div>
 </template>
