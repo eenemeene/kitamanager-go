@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-//go:embed dist/*
+//go:embed all:dist
 var embeddedFiles embed.FS
 
 // RegisterHandlers registers the static file handlers for the embedded web UI
