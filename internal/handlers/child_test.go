@@ -740,3 +740,291 @@ func TestChildHandler_GetCurrentContract_InvalidID(t *testing.T) {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
 	}
 }
+
+// Validation edge case tests
+
+func TestChildHandler_Create_FutureBirthdate(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService)
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	r := setupTestRouter()
+	r.POST("/children", handler.Create)
+
+	body := models.ChildCreate{
+		OrganizationID: org.ID,
+		FirstName:      "Test",
+		LastName:       "Child",
+		Birthdate:      time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+
+	w := performRequest(r, "POST", "/children", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for future birthdate, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestChildHandler_Create_WhitespaceOnlyFirstName(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService)
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	r := setupTestRouter()
+	r.POST("/children", handler.Create)
+
+	body := models.ChildCreate{
+		OrganizationID: org.ID,
+		FirstName:      "   ",
+		LastName:       "Child",
+		Birthdate:      time.Date(2020, 5, 15, 0, 0, 0, 0, time.UTC),
+	}
+
+	w := performRequest(r, "POST", "/children", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for whitespace-only first name, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestChildHandler_Create_WhitespaceOnlyLastName(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService)
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	r := setupTestRouter()
+	r.POST("/children", handler.Create)
+
+	body := models.ChildCreate{
+		OrganizationID: org.ID,
+		FirstName:      "Test",
+		LastName:       "   ",
+		Birthdate:      time.Date(2020, 5, 15, 0, 0, 0, 0, time.UTC),
+	}
+
+	w := performRequest(r, "POST", "/children", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for whitespace-only last name, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestChildHandler_CreateContract_FromAfterTo(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService)
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Test", LastName: "Child", Birthdate: time.Now()},
+	}
+	db.Create(child)
+
+	r := setupTestRouter()
+	r.POST("/children/:id/contracts", handler.CreateContract)
+
+	toDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	body := models.ChildContractCreate{
+		From:             time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC),
+		To:               &toDate,
+		CareHoursPerWeek: 40,
+	}
+
+	w := performRequest(r, "POST", "/children/1/contracts", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for from > to, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestChildHandler_CreateContract_NegativeCareHours(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService)
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Test", LastName: "Child", Birthdate: time.Now()},
+	}
+	db.Create(child)
+
+	r := setupTestRouter()
+	r.POST("/children/:id/contracts", handler.CreateContract)
+
+	body := models.ChildContractCreate{
+		From:             time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		CareHoursPerWeek: -1,
+	}
+
+	w := performRequest(r, "POST", "/children/1/contracts", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for negative care hours, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestChildHandler_CreateContract_CareHoursOver168(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService)
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Test", LastName: "Child", Birthdate: time.Now()},
+	}
+	db.Create(child)
+
+	r := setupTestRouter()
+	r.POST("/children/:id/contracts", handler.CreateContract)
+
+	body := models.ChildContractCreate{
+		From:             time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		CareHoursPerWeek: 169,
+	}
+
+	w := performRequest(r, "POST", "/children/1/contracts", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for care hours > 168, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestChildHandler_CreateContract_SpecialNeedsTooLong(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService)
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Test", LastName: "Child", Birthdate: time.Now()},
+	}
+	db.Create(child)
+
+	r := setupTestRouter()
+	r.POST("/children/:id/contracts", handler.CreateContract)
+
+	// Create a special needs string longer than 1000 characters
+	longSpecialNeeds := ""
+	for i := 0; i < 1001; i++ {
+		longSpecialNeeds += "a"
+	}
+
+	body := models.ChildContractCreate{
+		From:             time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		CareHoursPerWeek: 40,
+		SpecialNeeds:     longSpecialNeeds,
+	}
+
+	w := performRequest(r, "POST", "/children/1/contracts", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for special needs too long, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestChildHandler_CreateContract_SpecialNeedsXSS(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService)
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Test", LastName: "Child", Birthdate: time.Now()},
+	}
+	db.Create(child)
+
+	r := setupTestRouter()
+	r.POST("/children/:id/contracts", handler.CreateContract)
+
+	body := models.ChildContractCreate{
+		From:             time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		CareHoursPerWeek: 40,
+		SpecialNeeds:     "<script>alert('xss')</script>",
+	}
+
+	w := performRequest(r, "POST", "/children/1/contracts", body)
+
+	if w.Code != http.StatusCreated {
+		t.Errorf("expected status %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
+		return
+	}
+
+	var contract models.ChildContract
+	parseResponse(t, w, &contract)
+
+	// Verify XSS was sanitized
+	if contract.SpecialNeeds == "<script>alert('xss')</script>" {
+		t.Error("expected special needs to be sanitized for XSS")
+	}
+	if contract.SpecialNeeds != "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;" {
+		t.Errorf("expected sanitized HTML, got: %s", contract.SpecialNeeds)
+	}
+}
+
+func TestChildHandler_CreateContract_GroupNotInOrg(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService)
+
+	// Create two separate organizations
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+
+	// Create child in org1
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org1.ID, FirstName: "Test", LastName: "Child", Birthdate: time.Now()},
+	}
+	db.Create(child)
+
+	// Create group in org2
+	group := createTestGroupWithOrg(t, db, "Group in Org2", org2.ID)
+
+	r := setupTestRouter()
+	r.POST("/children/:id/contracts", handler.CreateContract)
+
+	body := models.ChildContractCreate{
+		From:             time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		CareHoursPerWeek: 40,
+		GroupID:          &group.ID, // Group from different org
+	}
+
+	w := performRequest(r, "POST", "/children/1/contracts", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for group from different org, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestChildHandler_CreateContract_GroupNotFound(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService)
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Test", LastName: "Child", Birthdate: time.Now()},
+	}
+	db.Create(child)
+
+	r := setupTestRouter()
+	r.POST("/children/:id/contracts", handler.CreateContract)
+
+	nonExistentGroupID := uint(999)
+	body := models.ChildContractCreate{
+		From:             time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		CareHoursPerWeek: 40,
+		GroupID:          &nonExistentGroupID,
+	}
+
+	w := performRequest(r, "POST", "/children/1/contracts", body)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d for non-existent group, got %d: %s", http.StatusNotFound, w.Code, w.Body.String())
+	}
+}

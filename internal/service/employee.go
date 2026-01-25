@@ -3,10 +3,12 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/store"
+	"github.com/eenemeene/kitamanager-go/internal/validation"
 )
 
 // EmployeeService handles business logic for employee operations
@@ -48,6 +50,20 @@ func (s *EmployeeService) GetByID(ctx context.Context, id uint) (*models.Employe
 
 // Create creates a new employee
 func (s *EmployeeService) Create(ctx context.Context, req *models.EmployeeCreate) (*models.Employee, error) {
+	// Trim and validate input
+	req.FirstName = strings.TrimSpace(req.FirstName)
+	req.LastName = strings.TrimSpace(req.LastName)
+
+	if validation.IsWhitespaceOnly(req.FirstName) {
+		return nil, apperror.BadRequest("first_name cannot be empty or whitespace only")
+	}
+	if validation.IsWhitespaceOnly(req.LastName) {
+		return nil, apperror.BadRequest("last_name cannot be empty or whitespace only")
+	}
+	if err := validation.ValidateBirthdate(req.Birthdate); err != nil {
+		return nil, apperror.BadRequest(err.Error())
+	}
+
 	employee := &models.Employee{
 		Person: models.Person{
 			OrganizationID: req.OrganizationID,
@@ -72,12 +88,23 @@ func (s *EmployeeService) Update(ctx context.Context, id uint, req *models.Emplo
 	}
 
 	if req.FirstName != nil {
-		employee.FirstName = *req.FirstName
+		trimmed := strings.TrimSpace(*req.FirstName)
+		if validation.IsWhitespaceOnly(trimmed) {
+			return nil, apperror.BadRequest("first_name cannot be empty or whitespace only")
+		}
+		employee.FirstName = trimmed
 	}
 	if req.LastName != nil {
-		employee.LastName = *req.LastName
+		trimmed := strings.TrimSpace(*req.LastName)
+		if validation.IsWhitespaceOnly(trimmed) {
+			return nil, apperror.BadRequest("last_name cannot be empty or whitespace only")
+		}
+		employee.LastName = trimmed
 	}
 	if req.Birthdate != nil {
+		if err := validation.ValidateBirthdate(*req.Birthdate); err != nil {
+			return nil, apperror.BadRequest(err.Error())
+		}
 		employee.Birthdate = *req.Birthdate
 	}
 
@@ -125,6 +152,16 @@ func (s *EmployeeService) GetCurrentContract(ctx context.Context, employeeID uin
 
 // CreateContract creates a new contract for an employee
 func (s *EmployeeService) CreateContract(ctx context.Context, employeeID uint, req *models.EmployeeContractCreate) (*models.EmployeeContract, error) {
+	// Trim and validate input
+	req.Position = strings.TrimSpace(req.Position)
+
+	if validation.IsWhitespaceOnly(req.Position) {
+		return nil, apperror.BadRequest("position cannot be empty or whitespace only")
+	}
+	if err := validation.ValidatePeriod(req.From, req.To); err != nil {
+		return nil, apperror.BadRequest(err.Error())
+	}
+
 	// Verify employee exists
 	_, err := s.store.FindByID(employeeID)
 	if err != nil {

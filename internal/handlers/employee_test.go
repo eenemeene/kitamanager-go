@@ -833,3 +833,219 @@ func TestEmployeeHandler_GetCurrentContract_InvalidID(t *testing.T) {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
 	}
 }
+
+// Validation edge case tests
+
+func TestEmployeeHandler_Create_FutureBirthdate(t *testing.T) {
+	db := setupTestDB(t)
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService)
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	r := setupTestRouter()
+	r.POST("/employees", handler.Create)
+
+	body := models.EmployeeCreate{
+		OrganizationID: org.ID,
+		FirstName:      "Test",
+		LastName:       "Employee",
+		Birthdate:      time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+
+	w := performRequest(r, "POST", "/employees", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for future birthdate, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestEmployeeHandler_Create_WhitespaceOnlyFirstName(t *testing.T) {
+	db := setupTestDB(t)
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService)
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	r := setupTestRouter()
+	r.POST("/employees", handler.Create)
+
+	body := models.EmployeeCreate{
+		OrganizationID: org.ID,
+		FirstName:      "   ",
+		LastName:       "Employee",
+		Birthdate:      time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC),
+	}
+
+	w := performRequest(r, "POST", "/employees", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for whitespace-only first name, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestEmployeeHandler_Create_WhitespaceOnlyLastName(t *testing.T) {
+	db := setupTestDB(t)
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService)
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	r := setupTestRouter()
+	r.POST("/employees", handler.Create)
+
+	body := models.EmployeeCreate{
+		OrganizationID: org.ID,
+		FirstName:      "Test",
+		LastName:       "   ",
+		Birthdate:      time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC),
+	}
+
+	w := performRequest(r, "POST", "/employees", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for whitespace-only last name, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestEmployeeHandler_CreateContract_FromAfterTo(t *testing.T) {
+	db := setupTestDB(t)
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService)
+
+	org := createTestOrganization(t, db, "Test Org")
+	employee := &models.Employee{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Test", LastName: "Employee", Birthdate: time.Now()},
+	}
+	db.Create(employee)
+
+	r := setupTestRouter()
+	r.POST("/employees/:id/contracts", handler.CreateContract)
+
+	toDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	body := models.EmployeeContractCreate{
+		From:        time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC),
+		To:          &toDate,
+		Position:    "Developer",
+		WeeklyHours: 40,
+		Salary:      600000,
+	}
+
+	w := performRequest(r, "POST", "/employees/1/contracts", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for from > to, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestEmployeeHandler_CreateContract_NegativeWeeklyHours(t *testing.T) {
+	db := setupTestDB(t)
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService)
+
+	org := createTestOrganization(t, db, "Test Org")
+	employee := &models.Employee{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Test", LastName: "Employee", Birthdate: time.Now()},
+	}
+	db.Create(employee)
+
+	r := setupTestRouter()
+	r.POST("/employees/:id/contracts", handler.CreateContract)
+
+	body := models.EmployeeContractCreate{
+		From:        time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		Position:    "Developer",
+		WeeklyHours: -1,
+		Salary:      600000,
+	}
+
+	w := performRequest(r, "POST", "/employees/1/contracts", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for negative weekly hours, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestEmployeeHandler_CreateContract_WeeklyHoursOver168(t *testing.T) {
+	db := setupTestDB(t)
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService)
+
+	org := createTestOrganization(t, db, "Test Org")
+	employee := &models.Employee{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Test", LastName: "Employee", Birthdate: time.Now()},
+	}
+	db.Create(employee)
+
+	r := setupTestRouter()
+	r.POST("/employees/:id/contracts", handler.CreateContract)
+
+	body := models.EmployeeContractCreate{
+		From:        time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		Position:    "Developer",
+		WeeklyHours: 169,
+		Salary:      600000,
+	}
+
+	w := performRequest(r, "POST", "/employees/1/contracts", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for weekly hours > 168, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestEmployeeHandler_CreateContract_NegativeSalary(t *testing.T) {
+	db := setupTestDB(t)
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService)
+
+	org := createTestOrganization(t, db, "Test Org")
+	employee := &models.Employee{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Test", LastName: "Employee", Birthdate: time.Now()},
+	}
+	db.Create(employee)
+
+	r := setupTestRouter()
+	r.POST("/employees/:id/contracts", handler.CreateContract)
+
+	body := models.EmployeeContractCreate{
+		From:        time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		Position:    "Developer",
+		WeeklyHours: 40,
+		Salary:      -1,
+	}
+
+	w := performRequest(r, "POST", "/employees/1/contracts", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for negative salary, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestEmployeeHandler_CreateContract_WhitespacePosition(t *testing.T) {
+	db := setupTestDB(t)
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService)
+
+	org := createTestOrganization(t, db, "Test Org")
+	employee := &models.Employee{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Test", LastName: "Employee", Birthdate: time.Now()},
+	}
+	db.Create(employee)
+
+	r := setupTestRouter()
+	r.POST("/employees/:id/contracts", handler.CreateContract)
+
+	body := models.EmployeeContractCreate{
+		From:        time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		Position:    "   ",
+		WeeklyHours: 40,
+		Salary:      600000,
+	}
+
+	w := performRequest(r, "POST", "/employees/1/contracts", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for whitespace-only position, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}

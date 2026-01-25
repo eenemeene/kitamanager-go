@@ -35,9 +35,8 @@ func TestUserHandler_List(t *testing.T) {
 
 func TestUserHandler_List_IncludesGroups(t *testing.T) {
 	db := setupTestDB(t)
-	userStore := store.NewUserStore(db)
-	groupStore := store.NewGroupStore(db)
-	handler := NewUserHandler(userStore, groupStore)
+	userService := createUserService(db)
+	handler := NewUserHandler(userService)
 
 	// Create org, group, and user
 	org := createTestOrganization(t, db, "Test Org")
@@ -45,8 +44,12 @@ func TestUserHandler_List_IncludesGroups(t *testing.T) {
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 
 	// Add user to org and group
-	_ = userStore.AddToOrganization(user.ID, org.ID)
-	_ = userStore.AddToGroup(user.ID, group.ID)
+	if err := db.Model(user).Association("Organizations").Append(org); err != nil {
+		t.Fatalf("failed to add user to organization: %v", err)
+	}
+	if err := db.Model(user).Association("Groups").Append(group); err != nil {
+		t.Fatalf("failed to add user to group: %v", err)
+	}
 
 	r := setupTestRouter()
 	r.GET("/users", handler.List)
@@ -57,23 +60,23 @@ func TestUserHandler_List_IncludesGroups(t *testing.T) {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
 	}
 
-	var users []models.UserResponse
-	parseResponse(t, w, &users)
+	var response models.PaginatedResponse[models.UserResponse]
+	parseResponse(t, w, &response)
 
-	if len(users) != 1 {
-		t.Fatalf("expected 1 user, got %d", len(users))
+	if len(response.Data) != 1 {
+		t.Fatalf("expected 1 user, got %d", len(response.Data))
 	}
 
-	if len(users[0].Groups) != 1 {
-		t.Errorf("expected 1 group in response, got %d", len(users[0].Groups))
+	if len(response.Data[0].Groups) != 1 {
+		t.Errorf("expected 1 group in response, got %d", len(response.Data[0].Groups))
 	}
 
-	if users[0].Groups[0].OrganizationID != org.ID {
-		t.Errorf("expected group organization_id %d, got %d", org.ID, users[0].Groups[0].OrganizationID)
+	if response.Data[0].Groups[0].OrganizationID != org.ID {
+		t.Errorf("expected group organization_id %d, got %d", org.ID, response.Data[0].Groups[0].OrganizationID)
 	}
 
-	if users[0].Groups[0].Name != "Test Group" {
-		t.Errorf("expected group name 'Test Group', got '%s'", users[0].Groups[0].Name)
+	if response.Data[0].Groups[0].Name != "Test Group" {
+		t.Errorf("expected group name 'Test Group', got '%s'", response.Data[0].Groups[0].Name)
 	}
 }
 
@@ -748,5 +751,107 @@ func TestUserHandler_RemoveFromOrganization_InvalidOrgID(t *testing.T) {
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+// Validation edge case tests
+
+func TestUserHandler_Create_WhitespaceOnlyName(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	handler := NewUserHandler(userService)
+
+	r := setupTestRouter()
+	r.POST("/users", handler.Create)
+
+	body := models.UserCreate{
+		Name:     "   ",
+		Email:    "test@example.com",
+		Password: "password123",
+		Active:   true,
+	}
+
+	w := performRequest(r, "POST", "/users", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for whitespace-only name, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestUserHandler_Create_NameTooLong(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	handler := NewUserHandler(userService)
+
+	r := setupTestRouter()
+	r.POST("/users", handler.Create)
+
+	// Create a name longer than 255 characters
+	longName := string(make([]byte, 256))
+	for i := range longName {
+		longName = longName[:i] + "a" + longName[i+1:]
+	}
+
+	body := models.UserCreate{
+		Name:     longName,
+		Email:    "test@example.com",
+		Password: "password123",
+		Active:   true,
+	}
+
+	w := performRequest(r, "POST", "/users", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for name too long, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestUserHandler_Create_PasswordTooShort(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	handler := NewUserHandler(userService)
+
+	r := setupTestRouter()
+	r.POST("/users", handler.Create)
+
+	body := models.UserCreate{
+		Name:     "Test User",
+		Email:    "test@example.com",
+		Password: "1234567", // 7 chars, min is 8
+		Active:   true,
+	}
+
+	w := performRequest(r, "POST", "/users", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for password too short, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestUserHandler_Create_PasswordTooLong(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	handler := NewUserHandler(userService)
+
+	r := setupTestRouter()
+	r.POST("/users", handler.Create)
+
+	// Create a password longer than 72 characters
+	longPassword := string(make([]byte, 73))
+	for i := range longPassword {
+		longPassword = longPassword[:i] + "a" + longPassword[i+1:]
+	}
+
+	body := models.UserCreate{
+		Name:     "Test User",
+		Email:    "test@example.com",
+		Password: longPassword,
+		Active:   true,
+	}
+
+	w := performRequest(r, "POST", "/users", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for password too long, got %d", http.StatusBadRequest, w.Code)
 	}
 }

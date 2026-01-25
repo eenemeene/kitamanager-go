@@ -83,7 +83,7 @@ func (h *GroupHandler) Get(c *gin.Context) {
 
 // CreateGroupRequest represents the request body for creating a group
 type CreateGroupRequest struct {
-	Name           string `json:"name" binding:"required" example:"Administrators"`
+	Name           string `json:"name" binding:"required,max=255" example:"Administrators"`
 	OrganizationID uint   `json:"organization_id" binding:"required" example:"1"`
 	Active         bool   `json:"active" example:"true"`
 }
@@ -126,7 +126,7 @@ func (h *GroupHandler) Create(c *gin.Context) {
 
 // UpdateGroupRequest represents the request body for updating a group
 type UpdateGroupRequest struct {
-	Name   string `json:"name" example:"Administrators Updated"`
+	Name   string `json:"name" binding:"omitempty,max=255" example:"Administrators Updated"`
 	Active *bool  `json:"active" example:"false"`
 }
 

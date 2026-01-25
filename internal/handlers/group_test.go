@@ -319,3 +319,57 @@ func TestGroupHandler_List_Empty(t *testing.T) {
 		t.Errorf("expected 0 groups, got %d", len(response.Data))
 	}
 }
+
+// Validation edge case tests
+
+func TestGroupHandler_Create_WhitespaceOnlyName(t *testing.T) {
+	db := setupTestDB(t)
+	groupService := createGroupService(db)
+	handler := NewGroupHandler(groupService)
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	r := setupTestRouter()
+	r.POST("/groups", handler.Create)
+
+	body := CreateGroupRequest{
+		Name:           "   ",
+		OrganizationID: org.ID,
+		Active:         true,
+	}
+
+	w := performRequest(r, "POST", "/groups", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for whitespace-only name, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestGroupHandler_Create_NameTooLong(t *testing.T) {
+	db := setupTestDB(t)
+	groupService := createGroupService(db)
+	handler := NewGroupHandler(groupService)
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	r := setupTestRouter()
+	r.POST("/groups", handler.Create)
+
+	// Create a name longer than 255 characters
+	longName := ""
+	for i := 0; i < 256; i++ {
+		longName += "a"
+	}
+
+	body := CreateGroupRequest{
+		Name:           longName,
+		OrganizationID: org.ID,
+		Active:         true,
+	}
+
+	w := performRequest(r, "POST", "/groups", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for name too long, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}

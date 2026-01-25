@@ -102,7 +102,7 @@ func main() {
 	orgService := service.NewOrganizationService(orgStore)
 	groupService := service.NewGroupService(groupStore)
 	employeeService := service.NewEmployeeService(employeeStore)
-	childService := service.NewChildService(childStore)
+	childService := service.NewChildService(childStore, groupStore)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(userStore, cfg.JWTSecret)

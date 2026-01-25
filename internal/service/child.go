@@ -3,20 +3,23 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/store"
+	"github.com/eenemeene/kitamanager-go/internal/validation"
 )
 
 // ChildService handles business logic for child operations
 type ChildService struct {
-	store store.ChildStorer
+	store      store.ChildStorer
+	groupStore store.GroupStorer
 }
 
 // NewChildService creates a new child service
-func NewChildService(store store.ChildStorer) *ChildService {
-	return &ChildService{store: store}
+func NewChildService(store store.ChildStorer, groupStore store.GroupStorer) *ChildService {
+	return &ChildService{store: store, groupStore: groupStore}
 }
 
 // List returns a paginated list of children
@@ -48,6 +51,20 @@ func (s *ChildService) GetByID(ctx context.Context, id uint) (*models.Child, err
 
 // Create creates a new child
 func (s *ChildService) Create(ctx context.Context, req *models.ChildCreate) (*models.Child, error) {
+	// Trim and validate input
+	req.FirstName = strings.TrimSpace(req.FirstName)
+	req.LastName = strings.TrimSpace(req.LastName)
+
+	if validation.IsWhitespaceOnly(req.FirstName) {
+		return nil, apperror.BadRequest("first_name cannot be empty or whitespace only")
+	}
+	if validation.IsWhitespaceOnly(req.LastName) {
+		return nil, apperror.BadRequest("last_name cannot be empty or whitespace only")
+	}
+	if err := validation.ValidateBirthdate(req.Birthdate); err != nil {
+		return nil, apperror.BadRequest(err.Error())
+	}
+
 	child := &models.Child{
 		Person: models.Person{
 			OrganizationID: req.OrganizationID,
@@ -72,12 +89,23 @@ func (s *ChildService) Update(ctx context.Context, id uint, req *models.ChildUpd
 	}
 
 	if req.FirstName != nil {
-		child.FirstName = *req.FirstName
+		trimmed := strings.TrimSpace(*req.FirstName)
+		if validation.IsWhitespaceOnly(trimmed) {
+			return nil, apperror.BadRequest("first_name cannot be empty or whitespace only")
+		}
+		child.FirstName = trimmed
 	}
 	if req.LastName != nil {
-		child.LastName = *req.LastName
+		trimmed := strings.TrimSpace(*req.LastName)
+		if validation.IsWhitespaceOnly(trimmed) {
+			return nil, apperror.BadRequest("last_name cannot be empty or whitespace only")
+		}
+		child.LastName = trimmed
 	}
 	if req.Birthdate != nil {
+		if err := validation.ValidateBirthdate(*req.Birthdate); err != nil {
+			return nil, apperror.BadRequest(err.Error())
+		}
 		child.Birthdate = *req.Birthdate
 	}
 
@@ -125,10 +153,29 @@ func (s *ChildService) GetCurrentContract(ctx context.Context, childID uint) (*m
 
 // CreateContract creates a new contract for a child
 func (s *ChildService) CreateContract(ctx context.Context, childID uint, req *models.ChildContractCreate) (*models.ChildContract, error) {
+	// Validate period
+	if err := validation.ValidatePeriod(req.From, req.To); err != nil {
+		return nil, apperror.BadRequest(err.Error())
+	}
+
+	// Sanitize SpecialNeeds for XSS
+	req.SpecialNeeds = validation.SanitizeHTML(strings.TrimSpace(req.SpecialNeeds))
+
 	// Verify child exists
-	_, err := s.store.FindByID(childID)
+	child, err := s.store.FindByID(childID)
 	if err != nil {
 		return nil, apperror.NotFound("child")
+	}
+
+	// Validate GroupID belongs to same organization as child
+	if req.GroupID != nil {
+		group, err := s.groupStore.FindByID(*req.GroupID)
+		if err != nil {
+			return nil, apperror.NotFound("group")
+		}
+		if group.OrganizationID != child.OrganizationID {
+			return nil, apperror.BadRequest("group must belong to the same organization as the child")
+		}
 	}
 
 	// Validate no overlap

@@ -2,12 +2,14 @@ package service
 
 import (
 	"context"
+	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/store"
+	"github.com/eenemeene/kitamanager-go/internal/validation"
 )
 
 // UserService handles business logic for user operations
@@ -47,6 +49,14 @@ func (s *UserService) GetByID(ctx context.Context, id uint) (*models.UserRespons
 
 // Create creates a new user
 func (s *UserService) Create(ctx context.Context, req *models.UserCreate, createdBy string) (*models.UserResponse, error) {
+	// Trim and validate input
+	req.Name = strings.TrimSpace(req.Name)
+	req.Email = strings.TrimSpace(req.Email)
+
+	if validation.IsWhitespaceOnly(req.Name) {
+		return nil, apperror.BadRequest("name cannot be empty or whitespace only")
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, apperror.Internal("failed to hash password")
@@ -75,7 +85,14 @@ func (s *UserService) Update(ctx context.Context, id uint, req *models.UserUpdat
 		return nil, apperror.NotFound("user")
 	}
 
+	// Trim and validate input
+	req.Name = strings.TrimSpace(req.Name)
+	req.Email = strings.TrimSpace(req.Email)
+
 	if req.Name != "" {
+		if validation.IsWhitespaceOnly(req.Name) {
+			return nil, apperror.BadRequest("name cannot be empty or whitespace only")
+		}
 		user.Name = req.Name
 	}
 	if req.Email != "" {

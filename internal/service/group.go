@@ -2,10 +2,12 @@ package service
 
 import (
 	"context"
+	"strings"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/store"
+	"github.com/eenemeene/kitamanager-go/internal/validation"
 )
 
 // GroupService handles business logic for group operations
@@ -51,6 +53,13 @@ type GroupCreateRequest struct {
 
 // Create creates a new group
 func (s *GroupService) Create(ctx context.Context, req *GroupCreateRequest, createdBy string) (*models.GroupResponse, error) {
+	// Trim and validate input
+	req.Name = strings.TrimSpace(req.Name)
+
+	if validation.IsWhitespaceOnly(req.Name) {
+		return nil, apperror.BadRequest("name cannot be empty or whitespace only")
+	}
+
 	group := &models.Group{
 		Name:           req.Name,
 		OrganizationID: req.OrganizationID,
@@ -79,7 +88,13 @@ func (s *GroupService) Update(ctx context.Context, id uint, req *GroupUpdateRequ
 		return nil, apperror.NotFound("group")
 	}
 
+	// Trim and validate input
+	req.Name = strings.TrimSpace(req.Name)
+
 	if req.Name != "" {
+		if validation.IsWhitespaceOnly(req.Name) {
+			return nil, apperror.BadRequest("name cannot be empty or whitespace only")
+		}
 		group.Name = req.Name
 	}
 	if req.Active != nil {

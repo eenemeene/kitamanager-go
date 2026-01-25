@@ -255,12 +255,34 @@ func TestOrganizationHandler_Create_WhitespaceOnlyName(t *testing.T) {
 
 	w := performRequest(r, "POST", "/organizations", body)
 
-	// Note: Current implementation may accept whitespace-only names
-	// This test documents the current behavior
-	if w.Code == http.StatusCreated {
-		var result models.Organization
-		parseResponse(t, w, &result)
-		t.Logf("Warning: whitespace-only name accepted: '%s'", result.Name)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for whitespace-only name, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestOrganizationHandler_Create_NameTooLong(t *testing.T) {
+	db := setupTestDB(t)
+	orgService := createOrganizationService(db)
+	handler := NewOrganizationHandler(orgService)
+
+	r := setupTestRouter()
+	r.POST("/organizations", handler.Create)
+
+	// Create a name longer than 255 characters
+	longName := ""
+	for i := 0; i < 256; i++ {
+		longName += "a"
+	}
+
+	body := CreateOrganizationRequest{
+		Name:   longName,
+		Active: true,
+	}
+
+	w := performRequest(r, "POST", "/organizations", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for name too long, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}
 }
 

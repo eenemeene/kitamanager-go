@@ -83,7 +83,7 @@ func (h *OrganizationHandler) Get(c *gin.Context) {
 
 // CreateOrganizationRequest represents the request body for creating an organization
 type CreateOrganizationRequest struct {
-	Name   string `json:"name" binding:"required" example:"Acme Corp"`
+	Name   string `json:"name" binding:"required,max=255" example:"Acme Corp"`
 	Active bool   `json:"active" example:"true"`
 }
 
@@ -124,7 +124,7 @@ func (h *OrganizationHandler) Create(c *gin.Context) {
 
 // UpdateOrganizationRequest represents the request body for updating an organization
 type UpdateOrganizationRequest struct {
-	Name   string `json:"name" example:"Acme Corp Updated"`
+	Name   string `json:"name" binding:"omitempty,max=255" example:"Acme Corp Updated"`
 	Active *bool  `json:"active" example:"false"`
 }
 

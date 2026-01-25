@@ -2,10 +2,12 @@ package service
 
 import (
 	"context"
+	"strings"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/store"
+	"github.com/eenemeene/kitamanager-go/internal/validation"
 )
 
 // OrganizationService handles business logic for organization operations
@@ -44,6 +46,13 @@ type OrganizationCreateRequest struct {
 
 // Create creates a new organization
 func (s *OrganizationService) Create(ctx context.Context, req *OrganizationCreateRequest, createdBy string) (*models.Organization, error) {
+	// Trim and validate input
+	req.Name = strings.TrimSpace(req.Name)
+
+	if validation.IsWhitespaceOnly(req.Name) {
+		return nil, apperror.BadRequest("name cannot be empty or whitespace only")
+	}
+
 	org := &models.Organization{
 		Name:      req.Name,
 		Active:    req.Active,
@@ -70,7 +79,13 @@ func (s *OrganizationService) Update(ctx context.Context, id uint, req *Organiza
 		return nil, apperror.NotFound("organization")
 	}
 
+	// Trim and validate input
+	req.Name = strings.TrimSpace(req.Name)
+
 	if req.Name != "" {
+		if validation.IsWhitespaceOnly(req.Name) {
+			return nil, apperror.BadRequest("name cannot be empty or whitespace only")
+		}
 		org.Name = req.Name
 	}
 	if req.Active != nil {

@@ -33,23 +33,23 @@ func (c ChildContract) GetPersonID() uint {
 type ChildContractCreate struct {
 	From             time.Time  `json:"from" binding:"required" example:"2025-01-01"`
 	To               *time.Time `json:"to" example:"2025-12-31"`
-	CareHoursPerWeek float64    `json:"care_hours_per_week" binding:"required" example:"35"`
+	CareHoursPerWeek float64    `json:"care_hours_per_week" binding:"required,gte=0,lte=168" example:"35"`
 	GroupID          *uint      `json:"group_id" example:"1"`
 	MealsIncluded    bool       `json:"meals_included" example:"true"`
-	SpecialNeeds     string     `json:"special_needs" example:""`
+	SpecialNeeds     string     `json:"special_needs" binding:"max=1000" example:""`
 }
 
 // ChildCreate represents the request body for creating a child.
 type ChildCreate struct {
 	OrganizationID uint      `json:"organization_id" binding:"required" example:"1"`
-	FirstName      string    `json:"first_name" binding:"required" example:"Emma"`
-	LastName       string    `json:"last_name" binding:"required" example:"Schmidt"`
+	FirstName      string    `json:"first_name" binding:"required,max=255" example:"Emma"`
+	LastName       string    `json:"last_name" binding:"required,max=255" example:"Schmidt"`
 	Birthdate      time.Time `json:"birthdate" binding:"required" example:"2020-03-10"`
 }
 
 // ChildUpdate represents the request body for updating a child.
 type ChildUpdate struct {
-	FirstName *string    `json:"first_name" example:"Emma"`
-	LastName  *string    `json:"last_name" example:"Schmidt"`
+	FirstName *string    `json:"first_name" binding:"omitempty,max=255" example:"Emma"`
+	LastName  *string    `json:"last_name" binding:"omitempty,max=255" example:"Schmidt"`
 	Birthdate *time.Time `json:"birthdate" example:"2020-03-10"`
 }
