@@ -35,12 +35,12 @@ func Setup(
 			{
 				// Superadmin only
 				orgs.POST("", authzMiddleware.RequireSuperAdmin(), orgHandler.Create)
-				orgs.DELETE("/:id", authzMiddleware.RequireSuperAdmin(), orgHandler.Delete)
+				orgs.DELETE("/:orgId", authzMiddleware.RequireSuperAdmin(), orgHandler.Delete)
 
 				// Any authenticated user can list (they'll see based on their access)
 				orgs.GET("", orgHandler.List)
-				orgs.GET("/:id", orgHandler.Get)
-				orgs.PUT("/:id", orgHandler.Update) // TODO: Add org-level permission check
+				orgs.GET("/:orgId", orgHandler.Get)
+				orgs.PUT("/:orgId", orgHandler.Update) // TODO: Add org-level permission check
 			}
 
 			// ============================================================

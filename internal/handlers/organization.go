@@ -59,14 +59,14 @@ func (h *OrganizationHandler) List(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "Organization ID"
+// @Param orgId path int true "Organization ID"
 // @Success 200 {object} models.Organization
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
-// @Router /api/v1/organizations/{id} [get]
+// @Router /api/v1/organizations/{orgId} [get]
 func (h *OrganizationHandler) Get(c *gin.Context) {
-	id, err := parseID(c, "id")
+	id, err := parseID(c, "orgId")
 	if err != nil {
 		respondError(c, err)
 		return
@@ -135,16 +135,16 @@ type UpdateOrganizationRequest struct {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "Organization ID"
+// @Param orgId path int true "Organization ID"
 // @Param request body UpdateOrganizationRequest true "Organization data"
 // @Success 200 {object} models.Organization
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/organizations/{id} [put]
+// @Router /api/v1/organizations/{orgId} [put]
 func (h *OrganizationHandler) Update(c *gin.Context) {
-	id, err := parseID(c, "id")
+	id, err := parseID(c, "orgId")
 	if err != nil {
 		respondError(c, err)
 		return
@@ -175,14 +175,14 @@ func (h *OrganizationHandler) Update(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "Organization ID"
+// @Param orgId path int true "Organization ID"
 // @Success 204 "No Content"
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/organizations/{id} [delete]
+// @Router /api/v1/organizations/{orgId} [delete]
 func (h *OrganizationHandler) Delete(c *gin.Context) {
-	id, err := parseID(c, "id")
+	id, err := parseID(c, "orgId")
 	if err != nil {
 		respondError(c, err)
 		return

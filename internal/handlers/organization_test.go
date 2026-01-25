@@ -40,7 +40,7 @@ func TestOrganizationHandler_Get(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.GET("/organizations/:id", handler.Get)
+	r.GET("/organizations/:orgId", handler.Get)
 
 	w := performRequest(r, "GET", "/organizations/1", nil)
 
@@ -62,7 +62,7 @@ func TestOrganizationHandler_Get_NotFound(t *testing.T) {
 	handler := NewOrganizationHandler(orgService)
 
 	r := setupTestRouter()
-	r.GET("/organizations/:id", handler.Get)
+	r.GET("/organizations/:orgId", handler.Get)
 
 	w := performRequest(r, "GET", "/organizations/999", nil)
 
@@ -77,7 +77,7 @@ func TestOrganizationHandler_Get_InvalidID(t *testing.T) {
 	handler := NewOrganizationHandler(orgService)
 
 	r := setupTestRouter()
-	r.GET("/organizations/:id", handler.Get)
+	r.GET("/organizations/:orgId", handler.Get)
 
 	w := performRequest(r, "GET", "/organizations/invalid", nil)
 
@@ -144,7 +144,7 @@ func TestOrganizationHandler_Update(t *testing.T) {
 	createTestOrganization(t, db, "Original Name")
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:id", handler.Update)
+	r.PUT("/organizations/:orgId", handler.Update)
 
 	body := UpdateOrganizationRequest{
 		Name: "Updated Name",
@@ -172,7 +172,7 @@ func TestOrganizationHandler_Delete(t *testing.T) {
 	createTestOrganization(t, db, "To Delete")
 
 	r := setupTestRouter()
-	r.DELETE("/organizations/:id", handler.Delete)
+	r.DELETE("/organizations/:orgId", handler.Delete)
 
 	w := performRequest(r, "DELETE", "/organizations/1", nil)
 
@@ -196,7 +196,7 @@ func TestOrganizationHandler_Get_ZeroID(t *testing.T) {
 	handler := NewOrganizationHandler(orgService)
 
 	r := setupTestRouter()
-	r.GET("/organizations/:id", handler.Get)
+	r.GET("/organizations/:orgId", handler.Get)
 
 	w := performRequest(r, "GET", "/organizations/0", nil)
 
@@ -211,7 +211,7 @@ func TestOrganizationHandler_Get_NegativeID(t *testing.T) {
 	handler := NewOrganizationHandler(orgService)
 
 	r := setupTestRouter()
-	r.GET("/organizations/:id", handler.Get)
+	r.GET("/organizations/:orgId", handler.Get)
 
 	w := performRequest(r, "GET", "/organizations/-1", nil)
 
@@ -292,7 +292,7 @@ func TestOrganizationHandler_Update_NotFound(t *testing.T) {
 	handler := NewOrganizationHandler(orgService)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:id", handler.Update)
+	r.PUT("/organizations/:orgId", handler.Update)
 
 	body := UpdateOrganizationRequest{
 		Name: "Updated Name",
@@ -311,7 +311,7 @@ func TestOrganizationHandler_Update_InvalidID(t *testing.T) {
 	handler := NewOrganizationHandler(orgService)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:id", handler.Update)
+	r.PUT("/organizations/:orgId", handler.Update)
 
 	body := UpdateOrganizationRequest{
 		Name: "Updated Name",
@@ -332,7 +332,7 @@ func TestOrganizationHandler_Update_EmptyBody(t *testing.T) {
 	createTestOrganization(t, db, "Original Name")
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:id", handler.Update)
+	r.PUT("/organizations/:orgId", handler.Update)
 
 	// Empty update - should succeed but not change anything
 	body := UpdateOrganizationRequest{}
@@ -357,7 +357,7 @@ func TestOrganizationHandler_Delete_NotFound(t *testing.T) {
 	handler := NewOrganizationHandler(orgService)
 
 	r := setupTestRouter()
-	r.DELETE("/organizations/:id", handler.Delete)
+	r.DELETE("/organizations/:orgId", handler.Delete)
 
 	w := performRequest(r, "DELETE", "/organizations/999", nil)
 
@@ -375,7 +375,7 @@ func TestOrganizationHandler_Delete_InvalidID(t *testing.T) {
 	handler := NewOrganizationHandler(orgService)
 
 	r := setupTestRouter()
-	r.DELETE("/organizations/:id", handler.Delete)
+	r.DELETE("/organizations/:orgId", handler.Delete)
 
 	w := performRequest(r, "DELETE", "/organizations/invalid", nil)
 
@@ -414,7 +414,7 @@ func TestOrganizationHandler_Update_ActiveStatus(t *testing.T) {
 	createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:id", handler.Update)
+	r.PUT("/organizations/:orgId", handler.Update)
 
 	// Update only active status to false
 	active := false
