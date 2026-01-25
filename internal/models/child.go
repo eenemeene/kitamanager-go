@@ -40,11 +40,11 @@ type ChildContractCreate struct {
 }
 
 // ChildCreate represents the request body for creating a child.
+// OrganizationID is derived from the URL path parameter.
 type ChildCreate struct {
-	OrganizationID uint      `json:"organization_id" binding:"required" example:"1"`
-	FirstName      string    `json:"first_name" binding:"required,max=255" example:"Emma"`
-	LastName       string    `json:"last_name" binding:"required,max=255" example:"Schmidt"`
-	Birthdate      time.Time `json:"birthdate" binding:"required" example:"2020-03-10"`
+	FirstName string    `json:"first_name" binding:"required,max=255" example:"Emma"`
+	LastName  string    `json:"last_name" binding:"required,max=255" example:"Schmidt"`
+	Birthdate time.Time `json:"birthdate" binding:"required" example:"2020-03-10"`
 }
 
 // ChildUpdate represents the request body for updating a child.

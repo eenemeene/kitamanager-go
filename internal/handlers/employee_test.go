@@ -23,9 +23,9 @@ func TestEmployeeHandler_List(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/employees", handler.List)
+	r.GET("/organizations/:orgId/employees", handler.List)
 
-	w := performRequest(r, "GET", "/employees", nil)
+	w := performRequest(r, "GET", "/organizations/1/employees", nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -74,16 +74,15 @@ func TestEmployeeHandler_Create(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.POST("/employees", handler.Create)
+	r.POST("/organizations/:orgId/employees", handler.Create)
 
 	body := models.EmployeeCreate{
-		OrganizationID: org.ID,
-		FirstName:      "New",
-		LastName:       "Employee",
-		Birthdate:      time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC),
+		FirstName: "New",
+		LastName:  "Employee",
+		Birthdate: time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC),
 	}
 
-	w := performRequest(r, "POST", "/employees", body)
+	w := performRequest(r, "POST", "/organizations/1/employees", body)
 
 	if w.Code != http.StatusCreated {
 		t.Errorf("expected status %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
@@ -94,6 +93,9 @@ func TestEmployeeHandler_Create(t *testing.T) {
 
 	if result.FirstName != "New" {
 		t.Errorf("expected first name 'New', got '%s'", result.FirstName)
+	}
+	if result.OrganizationID != org.ID {
+		t.Errorf("expected organization ID %d, got %d", org.ID, result.OrganizationID)
 	}
 }
 
@@ -393,13 +395,15 @@ func TestEmployeeHandler_Create_MissingRequiredFields(t *testing.T) {
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
 
+	createTestOrganization(t, db, "Test Org")
+
 	r := setupTestRouter()
-	r.POST("/employees", handler.Create)
+	r.POST("/organizations/:orgId/employees", handler.Create)
 
 	// Missing all required fields
 	body := map[string]interface{}{}
 
-	w := performRequest(r, "POST", "/employees", body)
+	w := performRequest(r, "POST", "/organizations/1/employees", body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for missing fields, got %d", http.StatusBadRequest, w.Code)
@@ -412,16 +416,15 @@ func TestEmployeeHandler_Create_InvalidOrganizationID(t *testing.T) {
 	handler := NewEmployeeHandler(employeeService)
 
 	r := setupTestRouter()
-	r.POST("/employees", handler.Create)
+	r.POST("/organizations/:orgId/employees", handler.Create)
 
 	body := models.EmployeeCreate{
-		OrganizationID: 999, // Non-existent org
-		FirstName:      "Test",
-		LastName:       "Employee",
-		Birthdate:      time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC),
+		FirstName: "Test",
+		LastName:  "Employee",
+		Birthdate: time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC),
 	}
 
-	w := performRequest(r, "POST", "/employees", body)
+	w := performRequest(r, "POST", "/organizations/999/employees", body)
 
 	// Should fail due to foreign key constraint (behavior depends on DB)
 	// SQLite may not enforce FK by default, PostgreSQL will
@@ -433,19 +436,18 @@ func TestEmployeeHandler_Create_EmptyFirstName(t *testing.T) {
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
 
-	org := createTestOrganization(t, db, "Test Org")
+	createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.POST("/employees", handler.Create)
+	r.POST("/organizations/:orgId/employees", handler.Create)
 
 	body := models.EmployeeCreate{
-		OrganizationID: org.ID,
-		FirstName:      "",
-		LastName:       "Employee",
-		Birthdate:      time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC),
+		FirstName: "",
+		LastName:  "Employee",
+		Birthdate: time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC),
 	}
 
-	w := performRequest(r, "POST", "/employees", body)
+	w := performRequest(r, "POST", "/organizations/1/employees", body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for empty first name, got %d", http.StatusBadRequest, w.Code)
@@ -457,19 +459,18 @@ func TestEmployeeHandler_Create_EmptyLastName(t *testing.T) {
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
 
-	org := createTestOrganization(t, db, "Test Org")
+	createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.POST("/employees", handler.Create)
+	r.POST("/organizations/:orgId/employees", handler.Create)
 
 	body := models.EmployeeCreate{
-		OrganizationID: org.ID,
-		FirstName:      "Test",
-		LastName:       "",
-		Birthdate:      time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC),
+		FirstName: "Test",
+		LastName:  "",
+		Birthdate: time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC),
 	}
 
-	w := performRequest(r, "POST", "/employees", body)
+	w := performRequest(r, "POST", "/organizations/1/employees", body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for empty last name, got %d", http.StatusBadRequest, w.Code)
@@ -582,10 +583,12 @@ func TestEmployeeHandler_List_Empty(t *testing.T) {
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
 
-	r := setupTestRouter()
-	r.GET("/employees", handler.List)
+	createTestOrganization(t, db, "Test Org")
 
-	w := performRequest(r, "GET", "/employees", nil)
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/employees", handler.List)
+
+	w := performRequest(r, "GET", "/organizations/1/employees", nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -841,19 +844,18 @@ func TestEmployeeHandler_Create_FutureBirthdate(t *testing.T) {
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
 
-	org := createTestOrganization(t, db, "Test Org")
+	createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.POST("/employees", handler.Create)
+	r.POST("/organizations/:orgId/employees", handler.Create)
 
 	body := models.EmployeeCreate{
-		OrganizationID: org.ID,
-		FirstName:      "Test",
-		LastName:       "Employee",
-		Birthdate:      time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC),
+		FirstName: "Test",
+		LastName:  "Employee",
+		Birthdate: time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 
-	w := performRequest(r, "POST", "/employees", body)
+	w := performRequest(r, "POST", "/organizations/1/employees", body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for future birthdate, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
@@ -865,19 +867,18 @@ func TestEmployeeHandler_Create_WhitespaceOnlyFirstName(t *testing.T) {
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
 
-	org := createTestOrganization(t, db, "Test Org")
+	createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.POST("/employees", handler.Create)
+	r.POST("/organizations/:orgId/employees", handler.Create)
 
 	body := models.EmployeeCreate{
-		OrganizationID: org.ID,
-		FirstName:      "   ",
-		LastName:       "Employee",
-		Birthdate:      time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC),
+		FirstName: "   ",
+		LastName:  "Employee",
+		Birthdate: time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC),
 	}
 
-	w := performRequest(r, "POST", "/employees", body)
+	w := performRequest(r, "POST", "/organizations/1/employees", body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for whitespace-only first name, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
@@ -889,19 +890,18 @@ func TestEmployeeHandler_Create_WhitespaceOnlyLastName(t *testing.T) {
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
 
-	org := createTestOrganization(t, db, "Test Org")
+	createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.POST("/employees", handler.Create)
+	r.POST("/organizations/:orgId/employees", handler.Create)
 
 	body := models.EmployeeCreate{
-		OrganizationID: org.ID,
-		FirstName:      "Test",
-		LastName:       "   ",
-		Birthdate:      time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC),
+		FirstName: "Test",
+		LastName:  "   ",
+		Birthdate: time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC),
 	}
 
-	w := performRequest(r, "POST", "/employees", body)
+	w := performRequest(r, "POST", "/organizations/1/employees", body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for whitespace-only last name, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())

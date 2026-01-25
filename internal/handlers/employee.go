@@ -19,19 +19,27 @@ func NewEmployeeHandler(service *service.EmployeeService) *EmployeeHandler {
 }
 
 // List godoc
-// @Summary List all employees
-// @Description Get a paginated list of all employees
+// @Summary List all employees in an organization
+// @Description Get a paginated list of all employees in the specified organization
 // @Tags employees
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param orgId path int true "Organization ID"
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(20) maximum(100)
 // @Success 200 {object} models.PaginatedResponse[models.Employee]
+// @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/employees [get]
+// @Router /api/v1/organizations/{orgId}/employees [get]
 func (h *EmployeeHandler) List(c *gin.Context) {
+	orgID, err := parseID(c, "orgId")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	var params models.PaginationParams
 	if err := c.ShouldBindQuery(&params); err != nil {
 		respondError(c, apperror.BadRequest("invalid pagination parameters"))
@@ -43,7 +51,7 @@ func (h *EmployeeHandler) List(c *gin.Context) {
 	}
 	params.SetDefaults()
 
-	employees, total, err := h.service.List(c.Request.Context(), params.Limit, params.Offset())
+	employees, total, err := h.service.ListByOrganization(c.Request.Context(), orgID, params.Limit, params.Offset())
 	if err != nil {
 		respondError(c, err)
 		return
@@ -59,12 +67,13 @@ func (h *EmployeeHandler) List(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param orgId path int true "Organization ID"
 // @Param id path int true "Employee ID"
 // @Success 200 {object} models.Employee
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
-// @Router /api/v1/employees/{id} [get]
+// @Router /api/v1/organizations/{orgId}/employees/{id} [get]
 func (h *EmployeeHandler) Get(c *gin.Context) {
 	id, err := parseID(c, "id")
 	if err != nil {
@@ -83,25 +92,32 @@ func (h *EmployeeHandler) Get(c *gin.Context) {
 
 // Create godoc
 // @Summary Create a new employee
-// @Description Create a new employee
+// @Description Create a new employee in the specified organization
 // @Tags employees
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param orgId path int true "Organization ID"
 // @Param request body models.EmployeeCreate true "Employee data"
 // @Success 201 {object} models.Employee
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/employees [post]
+// @Router /api/v1/organizations/{orgId}/employees [post]
 func (h *EmployeeHandler) Create(c *gin.Context) {
+	orgID, err := parseID(c, "orgId")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	var req models.EmployeeCreate
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
 	}
 
-	employee, err := h.service.Create(c.Request.Context(), &req)
+	employee, err := h.service.Create(c.Request.Context(), orgID, &req)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -117,6 +133,7 @@ func (h *EmployeeHandler) Create(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param orgId path int true "Organization ID"
 // @Param id path int true "Employee ID"
 // @Param request body models.EmployeeUpdate true "Employee data"
 // @Success 200 {object} models.Employee
@@ -124,7 +141,7 @@ func (h *EmployeeHandler) Create(c *gin.Context) {
 // @Failure 401 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/employees/{id} [put]
+// @Router /api/v1/organizations/{orgId}/employees/{id} [put]
 func (h *EmployeeHandler) Update(c *gin.Context) {
 	id, err := parseID(c, "id")
 	if err != nil {
@@ -154,12 +171,13 @@ func (h *EmployeeHandler) Update(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param orgId path int true "Organization ID"
 // @Param id path int true "Employee ID"
 // @Success 204 "No Content"
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/employees/{id} [delete]
+// @Router /api/v1/organizations/{orgId}/employees/{id} [delete]
 func (h *EmployeeHandler) Delete(c *gin.Context) {
 	id, err := parseID(c, "id")
 	if err != nil {
@@ -182,13 +200,14 @@ func (h *EmployeeHandler) Delete(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param orgId path int true "Organization ID"
 // @Param id path int true "Employee ID"
 // @Success 200 {array} models.EmployeeContract
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/employees/{id}/contracts [get]
+// @Router /api/v1/organizations/{orgId}/employees/{id}/contracts [get]
 func (h *EmployeeHandler) ListContracts(c *gin.Context) {
 	id, err := parseID(c, "id")
 	if err != nil {
@@ -212,12 +231,13 @@ func (h *EmployeeHandler) ListContracts(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param orgId path int true "Organization ID"
 // @Param id path int true "Employee ID"
 // @Success 200 {object} models.EmployeeContract
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
-// @Router /api/v1/employees/{id}/contracts/current [get]
+// @Router /api/v1/organizations/{orgId}/employees/{id}/contracts/current [get]
 func (h *EmployeeHandler) GetCurrentContract(c *gin.Context) {
 	id, err := parseID(c, "id")
 	if err != nil {
@@ -241,6 +261,7 @@ func (h *EmployeeHandler) GetCurrentContract(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param orgId path int true "Organization ID"
 // @Param id path int true "Employee ID"
 // @Param request body models.EmployeeContractCreate true "Contract data"
 // @Success 201 {object} models.EmployeeContract
@@ -249,7 +270,7 @@ func (h *EmployeeHandler) GetCurrentContract(c *gin.Context) {
 // @Failure 404 {object} ErrorResponse
 // @Failure 409 {object} ErrorResponse "Contract overlaps with existing"
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/employees/{id}/contracts [post]
+// @Router /api/v1/organizations/{orgId}/employees/{id}/contracts [post]
 func (h *EmployeeHandler) CreateContract(c *gin.Context) {
 	id, err := parseID(c, "id")
 	if err != nil {
@@ -279,13 +300,14 @@ func (h *EmployeeHandler) CreateContract(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param orgId path int true "Organization ID"
 // @Param id path int true "Employee ID"
 // @Param contractId path int true "Contract ID"
 // @Success 204 "No Content"
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/employees/{id}/contracts/{contractId} [delete]
+// @Router /api/v1/organizations/{orgId}/employees/{id}/contracts/{contractId} [delete]
 func (h *EmployeeHandler) DeleteContract(c *gin.Context) {
 	contractID, err := parseID(c, "contractId")
 	if err != nil {

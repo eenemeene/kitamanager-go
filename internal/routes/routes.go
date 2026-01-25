@@ -75,7 +75,7 @@ func Setup(
 			// Organization-scoped resources
 			// All routes under /organizations/:id/... require org access
 			// ============================================================
-			orgScoped := protected.Group("/organizations/:id")
+			orgScoped := protected.Group("/organizations/:orgId")
 			{
 				// Employees
 				employees := orgScoped.Group("/employees")

@@ -1,116 +1,13 @@
 basePath: /
 definitions:
-  handlers.AddToGroupRequest:
-    properties:
-      group_id:
-        example: 1
-        type: integer
-    required:
-    - group_id
-    type: object
-  handlers.AddToOrganizationRequest:
-    properties:
-      organization_id:
-        example: 1
-        type: integer
-    required:
-    - organization_id
-    type: object
-  handlers.CreateGroupRequest:
-    properties:
-      active:
-        example: true
-        type: boolean
-      name:
-        example: Administrators
-        type: string
-      organization_id:
-        example: 1
-        type: integer
-    required:
-    - name
-    - organization_id
-    type: object
-  handlers.CreateOrganizationRequest:
-    properties:
-      active:
-        example: true
-        type: boolean
-      name:
-        example: Acme Corp
-        type: string
-    required:
-    - name
-    type: object
-  handlers.ErrorResponse:
-    properties:
-      error:
-        example: error message
-        type: string
-    type: object
-  handlers.HealthResponse:
-    properties:
-      services:
-        additionalProperties:
-          type: string
-        type: object
-      status:
-        example: healthy
-        type: string
-      version:
-        example: 1.0.0
-        type: string
-    type: object
-  handlers.LoginRequest:
-    properties:
-      email:
-        example: user@example.com
-        type: string
-      password:
-        example: secret123
-        type: string
-    required:
-    - email
-    - password
-    type: object
-  handlers.LoginResponse:
-    properties:
-      token:
-        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-        type: string
-    type: object
-  handlers.MessageResponse:
-    properties:
-      message:
-        example: operation successful
-        type: string
-    type: object
-  handlers.UpdateGroupRequest:
-    properties:
-      active:
-        example: false
-        type: boolean
-      name:
-        example: Administrators Updated
-        type: string
-    type: object
-  handlers.UpdateOrganizationRequest:
-    properties:
-      active:
-        example: false
-        type: boolean
-      name:
-        example: Acme Corp Updated
-        type: string
-    type: object
-  models.Child:
+  github_com_eenemeene_kitamanager-go_internal_models.Child:
     properties:
       birthdate:
         example: "1990-05-15"
         type: string
       contracts:
         items:
-          $ref: '#/definitions/models.ChildContract'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContract'
         type: array
       created_at:
         type: string
@@ -124,14 +21,14 @@ definitions:
         example: Mustermann
         type: string
       organization:
-        $ref: '#/definitions/models.Organization'
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Organization'
       organization_id:
         example: 1
         type: integer
       updated_at:
         type: string
     type: object
-  models.ChildContract:
+  github_com_eenemeene_kitamanager-go_internal_models.ChildContract:
     properties:
       care_hours_per_week:
         description: Contract properties
@@ -159,10 +56,12 @@ definitions:
       to:
         type: string
     type: object
-  models.ChildContractCreate:
+  github_com_eenemeene_kitamanager-go_internal_models.ChildContractCreate:
     properties:
       care_hours_per_week:
         example: 35
+        maximum: 168
+        minimum: 0
         type: number
       from:
         example: "2025-01-01"
@@ -175,6 +74,7 @@ definitions:
         type: boolean
       special_needs:
         example: ""
+        maxLength: 1000
         type: string
       to:
         example: "2025-12-31"
@@ -183,46 +83,46 @@ definitions:
     - care_hours_per_week
     - from
     type: object
-  models.ChildCreate:
+  github_com_eenemeene_kitamanager-go_internal_models.ChildCreate:
     properties:
       birthdate:
         example: "2020-03-10"
         type: string
       first_name:
         example: Emma
+        maxLength: 255
         type: string
       last_name:
         example: Schmidt
+        maxLength: 255
         type: string
-      organization_id:
-        example: 1
-        type: integer
     required:
     - birthdate
     - first_name
     - last_name
-    - organization_id
     type: object
-  models.ChildUpdate:
+  github_com_eenemeene_kitamanager-go_internal_models.ChildUpdate:
     properties:
       birthdate:
         example: "2020-03-10"
         type: string
       first_name:
         example: Emma
+        maxLength: 255
         type: string
       last_name:
         example: Schmidt
+        maxLength: 255
         type: string
     type: object
-  models.Employee:
+  github_com_eenemeene_kitamanager-go_internal_models.Employee:
     properties:
       birthdate:
         example: "1990-05-15"
         type: string
       contracts:
         items:
-          $ref: '#/definitions/models.EmployeeContract'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContract'
         type: array
       created_at:
         type: string
@@ -236,14 +136,14 @@ definitions:
         example: Mustermann
         type: string
       organization:
-        $ref: '#/definitions/models.Organization'
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Organization'
       organization_id:
         example: 1
         type: integer
       updated_at:
         type: string
     type: object
-  models.EmployeeContract:
+  github_com_eenemeene_kitamanager-go_internal_models.EmployeeContract:
     properties:
       created_at:
         type: string
@@ -269,22 +169,26 @@ definitions:
         example: 40
         type: number
     type: object
-  models.EmployeeContractCreate:
+  github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractCreate:
     properties:
       from:
         example: "2025-01-01"
         type: string
       position:
         example: Erzieher
+        maxLength: 255
         type: string
       salary:
         example: 350000
+        minimum: 0
         type: integer
       to:
         example: "2025-12-31"
         type: string
       weekly_hours:
         example: 40
+        maximum: 168
+        minimum: 0
         type: number
     required:
     - from
@@ -292,39 +196,39 @@ definitions:
     - salary
     - weekly_hours
     type: object
-  models.EmployeeCreate:
+  github_com_eenemeene_kitamanager-go_internal_models.EmployeeCreate:
     properties:
       birthdate:
         example: "1990-05-15"
         type: string
       first_name:
         example: Max
+        maxLength: 255
         type: string
       last_name:
         example: Mustermann
+        maxLength: 255
         type: string
-      organization_id:
-        example: 1
-        type: integer
     required:
     - birthdate
     - first_name
     - last_name
-    - organization_id
     type: object
-  models.EmployeeUpdate:
+  github_com_eenemeene_kitamanager-go_internal_models.EmployeeUpdate:
     properties:
       birthdate:
         example: "1990-05-15"
         type: string
       first_name:
         example: Max
+        maxLength: 255
         type: string
       last_name:
         example: Mustermann
+        maxLength: 255
         type: string
     type: object
-  models.Group:
+  github_com_eenemeene_kitamanager-go_internal_models.Group:
     properties:
       active:
         example: true
@@ -338,11 +242,14 @@ definitions:
       id:
         example: 1
         type: integer
+      is_default:
+        example: false
+        type: boolean
       name:
         example: Administrators
         type: string
       organization:
-        $ref: '#/definitions/models.Organization'
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Organization'
       organization_id:
         example: 1
         type: integer
@@ -351,12 +258,12 @@ definitions:
         type: string
       users:
         items:
-          $ref: '#/definitions/models.User'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.User'
         type: array
     required:
     - name
     type: object
-  models.GroupResponse:
+  github_com_eenemeene_kitamanager-go_internal_models.GroupResponse:
     properties:
       active:
         example: true
@@ -370,11 +277,14 @@ definitions:
       id:
         example: 1
         type: integer
+      is_default:
+        example: false
+        type: boolean
       name:
         example: Administrators
         type: string
       organization:
-        $ref: '#/definitions/models.Organization'
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Organization'
       organization_id:
         example: 1
         type: integer
@@ -383,10 +293,10 @@ definitions:
         type: string
       users:
         items:
-          $ref: '#/definitions/models.User'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.User'
         type: array
     type: object
-  models.Organization:
+  github_com_eenemeene_kitamanager-go_internal_models.Organization:
     properties:
       active:
         example: true
@@ -399,7 +309,7 @@ definitions:
         type: string
       groups:
         items:
-          $ref: '#/definitions/models.Group'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Group'
         type: array
       id:
         example: 1
@@ -410,14 +320,105 @@ definitions:
       updated_at:
         example: "2024-01-15T10:30:00Z"
         type: string
-      users:
-        items:
-          $ref: '#/definitions/models.User'
-        type: array
     required:
     - name
     type: object
-  models.User:
+  github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_Child:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Child'
+        type: array
+      limit:
+        example: 20
+        type: integer
+      page:
+        example: 1
+        type: integer
+      total:
+        example: 100
+        type: integer
+      total_pages:
+        example: 5
+        type: integer
+    type: object
+  ? github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_Employee
+  : properties:
+      data:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Employee'
+        type: array
+      limit:
+        example: 20
+        type: integer
+      page:
+        example: 1
+        type: integer
+      total:
+        example: 100
+        type: integer
+      total_pages:
+        example: 5
+        type: integer
+    type: object
+  ? github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_GroupResponse
+  : properties:
+      data:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GroupResponse'
+        type: array
+      limit:
+        example: 20
+        type: integer
+      page:
+        example: 1
+        type: integer
+      total:
+        example: 100
+        type: integer
+      total_pages:
+        example: 5
+        type: integer
+    type: object
+  ? github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_Organization
+  : properties:
+      data:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Organization'
+        type: array
+      limit:
+        example: 20
+        type: integer
+      page:
+        example: 1
+        type: integer
+      total:
+        example: 100
+        type: integer
+      total_pages:
+        example: 5
+        type: integer
+    type: object
+  ? github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_UserResponse
+  : properties:
+      data:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserResponse'
+        type: array
+      limit:
+        example: 20
+        type: integer
+      page:
+        example: 1
+        type: integer
+      total:
+        example: 100
+        type: integer
+      total_pages:
+        example: 5
+        type: integer
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.User:
     properties:
       active:
         example: true
@@ -433,7 +434,7 @@ definitions:
         type: string
       groups:
         items:
-          $ref: '#/definitions/models.Group'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Group'
         type: array
       id:
         example: 1
@@ -444,10 +445,6 @@ definitions:
       name:
         example: John Doe
         type: string
-      organizations:
-        items:
-          $ref: '#/definitions/models.Organization'
-        type: array
       updated_at:
         example: "2024-01-15T10:30:00Z"
         type: string
@@ -455,27 +452,30 @@ definitions:
     - email
     - name
     type: object
-  models.UserCreate:
+  github_com_eenemeene_kitamanager-go_internal_models.UserCreate:
     properties:
       active:
         example: true
         type: boolean
       email:
         example: john@example.com
+        maxLength: 255
         type: string
       name:
         example: John Doe
+        maxLength: 255
         type: string
       password:
         example: secret123
-        minLength: 6
+        maxLength: 72
+        minLength: 8
         type: string
     required:
     - email
     - name
     - password
     type: object
-  models.UserResponse:
+  github_com_eenemeene_kitamanager-go_internal_models.UserResponse:
     properties:
       active:
         example: true
@@ -491,7 +491,7 @@ definitions:
         type: string
       groups:
         items:
-          $ref: '#/definitions/models.Group'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Group'
         type: array
       id:
         example: 1
@@ -502,24 +502,129 @@ definitions:
       name:
         example: John Doe
         type: string
-      organizations:
-        items:
-          $ref: '#/definitions/models.Organization'
-        type: array
       updated_at:
         example: "2024-01-15T10:30:00Z"
         type: string
     type: object
-  models.UserUpdate:
+  github_com_eenemeene_kitamanager-go_internal_models.UserUpdate:
     properties:
       active:
         example: false
         type: boolean
       email:
         example: john.updated@example.com
+        maxLength: 255
         type: string
       name:
         example: John Doe Updated
+        maxLength: 255
+        type: string
+    type: object
+  internal_handlers.AddToGroupRequest:
+    properties:
+      group_id:
+        example: 1
+        type: integer
+    required:
+    - group_id
+    type: object
+  internal_handlers.AddToOrganizationRequest:
+    properties:
+      organization_id:
+        example: 1
+        type: integer
+    required:
+    - organization_id
+    type: object
+  internal_handlers.CreateGroupRequest:
+    properties:
+      active:
+        example: true
+        type: boolean
+      name:
+        example: Administrators
+        maxLength: 255
+        type: string
+      organization_id:
+        example: 1
+        type: integer
+    required:
+    - name
+    - organization_id
+    type: object
+  internal_handlers.CreateOrganizationRequest:
+    properties:
+      active:
+        example: true
+        type: boolean
+      name:
+        example: Acme Corp
+        maxLength: 255
+        type: string
+    required:
+    - name
+    type: object
+  internal_handlers.ErrorResponse:
+    properties:
+      error:
+        example: error message
+        type: string
+    type: object
+  internal_handlers.HealthResponse:
+    properties:
+      services:
+        additionalProperties:
+          type: string
+        type: object
+      status:
+        example: healthy
+        type: string
+      version:
+        example: 1.0.0
+        type: string
+    type: object
+  internal_handlers.LoginRequest:
+    properties:
+      email:
+        example: user@example.com
+        type: string
+      password:
+        example: secret123
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  internal_handlers.LoginResponse:
+    properties:
+      token:
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
+    type: object
+  internal_handlers.MessageResponse:
+    properties:
+      message:
+        example: operation successful
+        type: string
+    type: object
+  internal_handlers.UpdateGroupRequest:
+    properties:
+      active:
+        example: false
+        type: boolean
+      name:
+        example: Administrators Updated
+        maxLength: 255
+        type: string
+    type: object
+  internal_handlers.UpdateOrganizationRequest:
+    properties:
+      active:
+        example: false
+        type: boolean
+      name:
+        example: Acme Corp Updated
+        maxLength: 255
         type: string
     type: object
 host: localhost:8080
@@ -535,682 +640,38 @@ info:
   title: KitaManager API
   version: "1.0"
 paths:
-  /api/v1/children:
-    get:
-      consumes:
-      - application/json
-      description: Get a list of all children
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.Child'
-            type: array
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: List all children
-      tags:
-      - children
-    post:
-      consumes:
-      - application/json
-      description: Create a new child
-      parameters:
-      - description: Child data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/models.ChildCreate'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/models.Child'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Create a new child
-      tags:
-      - children
-  /api/v1/children/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete a child by ID
-      parameters:
-      - description: Child ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Delete a child
-      tags:
-      - children
-    get:
-      consumes:
-      - application/json
-      description: Get a single child by their ID
-      parameters:
-      - description: Child ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.Child'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Get child by ID
-      tags:
-      - children
-    put:
-      consumes:
-      - application/json
-      description: Update an existing child by ID
-      parameters:
-      - description: Child ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Child data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/models.ChildUpdate'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.Child'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Update a child
-      tags:
-      - children
-  /api/v1/children/{id}/contracts:
-    get:
-      consumes:
-      - application/json
-      description: Get all contracts for a child
-      parameters:
-      - description: Child ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.ChildContract'
-            type: array
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: List child contracts
-      tags:
-      - children
-    post:
-      consumes:
-      - application/json
-      description: Create a new contract for a child
-      parameters:
-      - description: Child ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Contract data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/models.ChildContractCreate'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/models.ChildContract'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "409":
-          description: Contract overlaps with existing
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Create child contract
-      tags:
-      - children
-  /api/v1/children/{id}/contracts/{contractId}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete a contract by ID
-      parameters:
-      - description: Child ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Contract ID
-        in: path
-        name: contractId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Delete child contract
-      tags:
-      - children
-  /api/v1/children/{id}/contracts/current:
-    get:
-      consumes:
-      - application/json
-      description: Get the currently active contract for a child
-      parameters:
-      - description: Child ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.ChildContract'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Get current child contract
-      tags:
-      - children
-  /api/v1/employees:
-    get:
-      consumes:
-      - application/json
-      description: Get a list of all employees
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.Employee'
-            type: array
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: List all employees
-      tags:
-      - employees
-    post:
-      consumes:
-      - application/json
-      description: Create a new employee
-      parameters:
-      - description: Employee data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/models.EmployeeCreate'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/models.Employee'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Create a new employee
-      tags:
-      - employees
-  /api/v1/employees/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete an employee by ID
-      parameters:
-      - description: Employee ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Delete an employee
-      tags:
-      - employees
-    get:
-      consumes:
-      - application/json
-      description: Get a single employee by their ID
-      parameters:
-      - description: Employee ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.Employee'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Get employee by ID
-      tags:
-      - employees
-    put:
-      consumes:
-      - application/json
-      description: Update an existing employee by ID
-      parameters:
-      - description: Employee ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Employee data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/models.EmployeeUpdate'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.Employee'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Update an employee
-      tags:
-      - employees
-  /api/v1/employees/{id}/contracts:
-    get:
-      consumes:
-      - application/json
-      description: Get all contracts for an employee
-      parameters:
-      - description: Employee ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.EmployeeContract'
-            type: array
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: List employee contracts
-      tags:
-      - employees
-    post:
-      consumes:
-      - application/json
-      description: Create a new contract for an employee
-      parameters:
-      - description: Employee ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Contract data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/models.EmployeeContractCreate'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/models.EmployeeContract'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "409":
-          description: Contract overlaps with existing
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Create employee contract
-      tags:
-      - employees
-  /api/v1/employees/{id}/contracts/{contractId}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete a contract by ID
-      parameters:
-      - description: Employee ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Contract ID
-        in: path
-        name: contractId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Delete employee contract
-      tags:
-      - employees
-  /api/v1/employees/{id}/contracts/current:
-    get:
-      consumes:
-      - application/json
-      description: Get the currently active contract for an employee
-      parameters:
-      - description: Employee ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.EmployeeContract'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Get current employee contract
-      tags:
-      - employees
   /api/v1/groups:
     get:
       consumes:
       - application/json
-      description: Get a list of all groups
+      description: Get a paginated list of all groups
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        maximum: 100
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/models.GroupResponse'
-            type: array
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_GroupResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List all groups
@@ -1226,26 +687,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.CreateGroupRequest'
+          $ref: '#/definitions/internal_handlers.CreateGroupRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/models.GroupResponse'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GroupResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create a new group
@@ -1270,15 +731,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete a group
@@ -1300,19 +761,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.GroupResponse'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GroupResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get group by ID
@@ -1333,30 +794,30 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.UpdateGroupRequest'
+          $ref: '#/definitions/internal_handlers.UpdateGroupRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.GroupResponse'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GroupResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update a group
@@ -1371,11 +832,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.HealthResponse'
+            $ref: '#/definitions/internal_handlers.HealthResponse'
         "503":
           description: Service Unavailable
           schema:
-            $ref: '#/definitions/handlers.HealthResponse'
+            $ref: '#/definitions/internal_handlers.HealthResponse'
       summary: Health check
       tags:
       - health
@@ -1405,26 +866,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.LoginRequest'
+          $ref: '#/definitions/internal_handlers.LoginRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.LoginResponse'
+            $ref: '#/definitions/internal_handlers.LoginResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       summary: Login user
       tags:
       - auth
@@ -1432,24 +893,34 @@ paths:
     get:
       consumes:
       - application/json
-      description: Get a list of all organizations
+      description: Get a paginated list of all organizations
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        maximum: 100
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/models.Organization'
-            type: array
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_Organization'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List all organizations
@@ -1465,26 +936,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.CreateOrganizationRequest'
+          $ref: '#/definitions/internal_handlers.CreateOrganizationRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/models.Organization'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Organization'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create a new organization
@@ -1509,15 +980,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete an organization
@@ -1539,19 +1010,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.Organization'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Organization'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get organization by ID
@@ -1572,35 +1043,823 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.UpdateOrganizationRequest'
+          $ref: '#/definitions/internal_handlers.UpdateOrganizationRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.Organization'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Organization'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update an organization
       tags:
       - organizations
+  /api/v1/organizations/{orgId}/children:
+    get:
+      consumes:
+      - application/json
+      description: Get a paginated list of all children in the specified organization
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        maximum: 100
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_Child'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List all children in an organization
+      tags:
+      - children
+    post:
+      consumes:
+      - application/json
+      description: Create a new child in the specified organization
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Child data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildCreate'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Child'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new child
+      tags:
+      - children
+  /api/v1/organizations/{orgId}/children/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a child by ID
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Child ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a child
+      tags:
+      - children
+    get:
+      consumes:
+      - application/json
+      description: Get a single child by their ID
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Child ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Child'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get child by ID
+      tags:
+      - children
+    put:
+      consumes:
+      - application/json
+      description: Update an existing child by ID
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Child ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Child data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildUpdate'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Child'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a child
+      tags:
+      - children
+  /api/v1/organizations/{orgId}/children/{id}/contracts:
+    get:
+      consumes:
+      - application/json
+      description: Get all contracts for a child
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Child ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContract'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List child contracts
+      tags:
+      - children
+    post:
+      consumes:
+      - application/json
+      description: Create a new contract for a child
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Child ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Contract data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractCreate'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContract'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "409":
+          description: Contract overlaps with existing
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create child contract
+      tags:
+      - children
+  /api/v1/organizations/{orgId}/children/{id}/contracts/{contractId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a contract by ID
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Child ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Contract ID
+        in: path
+        name: contractId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete child contract
+      tags:
+      - children
+  /api/v1/organizations/{orgId}/children/{id}/contracts/current:
+    get:
+      consumes:
+      - application/json
+      description: Get the currently active contract for a child
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Child ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContract'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current child contract
+      tags:
+      - children
+  /api/v1/organizations/{orgId}/employees:
+    get:
+      consumes:
+      - application/json
+      description: Get a paginated list of all employees in the specified organization
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        maximum: 100
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_Employee'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List all employees in an organization
+      tags:
+      - employees
+    post:
+      consumes:
+      - application/json
+      description: Create a new employee in the specified organization
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Employee data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeCreate'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Employee'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new employee
+      tags:
+      - employees
+  /api/v1/organizations/{orgId}/employees/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete an employee by ID
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Employee ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete an employee
+      tags:
+      - employees
+    get:
+      consumes:
+      - application/json
+      description: Get a single employee by their ID
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Employee ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Employee'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get employee by ID
+      tags:
+      - employees
+    put:
+      consumes:
+      - application/json
+      description: Update an existing employee by ID
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Employee ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Employee data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeUpdate'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Employee'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update an employee
+      tags:
+      - employees
+  /api/v1/organizations/{orgId}/employees/{id}/contracts:
+    get:
+      consumes:
+      - application/json
+      description: Get all contracts for an employee
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Employee ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContract'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List employee contracts
+      tags:
+      - employees
+    post:
+      consumes:
+      - application/json
+      description: Create a new contract for an employee
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Employee ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Contract data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractCreate'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContract'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "409":
+          description: Contract overlaps with existing
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create employee contract
+      tags:
+      - employees
+  /api/v1/organizations/{orgId}/employees/{id}/contracts/{contractId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a contract by ID
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Employee ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Contract ID
+        in: path
+        name: contractId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete employee contract
+      tags:
+      - employees
+  /api/v1/organizations/{orgId}/employees/{id}/contracts/current:
+    get:
+      consumes:
+      - application/json
+      description: Get the currently active contract for an employee
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Employee ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContract'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current employee contract
+      tags:
+      - employees
   /api/v1/ready:
     get:
       description: Check if the API is ready to accept traffic
@@ -1626,24 +1885,34 @@ paths:
     get:
       consumes:
       - application/json
-      description: Get a list of all users
+      description: Get a paginated list of all users
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        maximum: 100
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/models.UserResponse'
-            type: array
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_UserResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List all users
@@ -1659,26 +1928,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.UserCreate'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserCreate'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/models.UserResponse'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create a new user
@@ -1703,15 +1972,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete a user
@@ -1733,19 +2002,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.UserResponse'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get user by ID
@@ -1766,30 +2035,30 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.UserUpdate'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserUpdate'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.UserResponse'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update a user
@@ -1811,34 +2080,34 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.AddToGroupRequest'
+          $ref: '#/definitions/internal_handlers.AddToGroupRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.MessageResponse'
+            $ref: '#/definitions/internal_handlers.MessageResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Add user to group
@@ -1868,15 +2137,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Remove user from group
@@ -1898,26 +2167,30 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.AddToOrganizationRequest'
+          $ref: '#/definitions/internal_handlers.AddToOrganizationRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.MessageResponse'
+            $ref: '#/definitions/internal_handlers.MessageResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Add user to organization
@@ -1947,15 +2220,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Remove user from organization

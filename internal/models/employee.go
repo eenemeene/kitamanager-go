@@ -38,11 +38,11 @@ type EmployeeContractCreate struct {
 }
 
 // EmployeeCreate represents the request body for creating an employee.
+// OrganizationID is derived from the URL path parameter.
 type EmployeeCreate struct {
-	OrganizationID uint      `json:"organization_id" binding:"required" example:"1"`
-	FirstName      string    `json:"first_name" binding:"required,max=255" example:"Max"`
-	LastName       string    `json:"last_name" binding:"required,max=255" example:"Mustermann"`
-	Birthdate      time.Time `json:"birthdate" binding:"required" example:"1990-05-15"`
+	FirstName string    `json:"first_name" binding:"required,max=255" example:"Max"`
+	LastName  string    `json:"last_name" binding:"required,max=255" example:"Mustermann"`
+	Birthdate time.Time `json:"birthdate" binding:"required" example:"1990-05-15"`
 }
 
 // EmployeeUpdate represents the request body for updating an employee.

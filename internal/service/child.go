@@ -50,7 +50,7 @@ func (s *ChildService) GetByID(ctx context.Context, id uint) (*models.Child, err
 }
 
 // Create creates a new child
-func (s *ChildService) Create(ctx context.Context, req *models.ChildCreate) (*models.Child, error) {
+func (s *ChildService) Create(ctx context.Context, orgID uint, req *models.ChildCreate) (*models.Child, error) {
 	// Trim and validate input
 	req.FirstName = strings.TrimSpace(req.FirstName)
 	req.LastName = strings.TrimSpace(req.LastName)
@@ -67,7 +67,7 @@ func (s *ChildService) Create(ctx context.Context, req *models.ChildCreate) (*mo
 
 	child := &models.Child{
 		Person: models.Person{
-			OrganizationID: req.OrganizationID,
+			OrganizationID: orgID,
 			FirstName:      req.FirstName,
 			LastName:       req.LastName,
 			Birthdate:      req.Birthdate,

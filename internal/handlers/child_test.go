@@ -23,9 +23,9 @@ func TestChildHandler_List(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/children", handler.List)
+	r.GET("/organizations/:orgId/children", handler.List)
 
-	w := performRequest(r, "GET", "/children", nil)
+	w := performRequest(r, "GET", "/organizations/1/children", nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -74,16 +74,15 @@ func TestChildHandler_Create(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.POST("/children", handler.Create)
+	r.POST("/organizations/:orgId/children", handler.Create)
 
 	body := models.ChildCreate{
-		OrganizationID: org.ID,
-		FirstName:      "New",
-		LastName:       "Child",
-		Birthdate:      time.Date(2020, 3, 15, 0, 0, 0, 0, time.UTC),
+		FirstName: "New",
+		LastName:  "Child",
+		Birthdate: time.Date(2020, 3, 15, 0, 0, 0, 0, time.UTC),
 	}
 
-	w := performRequest(r, "POST", "/children", body)
+	w := performRequest(r, "POST", "/organizations/1/children", body)
 
 	if w.Code != http.StatusCreated {
 		t.Errorf("expected status %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
@@ -94,6 +93,9 @@ func TestChildHandler_Create(t *testing.T) {
 
 	if result.FirstName != "New" {
 		t.Errorf("expected first name 'New', got '%s'", result.FirstName)
+	}
+	if result.OrganizationID != org.ID {
+		t.Errorf("expected organization ID %d, got %d", org.ID, result.OrganizationID)
 	}
 }
 
@@ -389,12 +391,14 @@ func TestChildHandler_Create_MissingRequiredFields(t *testing.T) {
 	childService := createChildService(db)
 	handler := NewChildHandler(childService)
 
+	createTestOrganization(t, db, "Test Org")
+
 	r := setupTestRouter()
-	r.POST("/children", handler.Create)
+	r.POST("/organizations/:orgId/children", handler.Create)
 
 	body := map[string]interface{}{}
 
-	w := performRequest(r, "POST", "/children", body)
+	w := performRequest(r, "POST", "/organizations/1/children", body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for missing fields, got %d", http.StatusBadRequest, w.Code)
@@ -406,19 +410,18 @@ func TestChildHandler_Create_EmptyFirstName(t *testing.T) {
 	childService := createChildService(db)
 	handler := NewChildHandler(childService)
 
-	org := createTestOrganization(t, db, "Test Org")
+	createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.POST("/children", handler.Create)
+	r.POST("/organizations/:orgId/children", handler.Create)
 
 	body := models.ChildCreate{
-		OrganizationID: org.ID,
-		FirstName:      "",
-		LastName:       "Child",
-		Birthdate:      time.Date(2020, 5, 15, 0, 0, 0, 0, time.UTC),
+		FirstName: "",
+		LastName:  "Child",
+		Birthdate: time.Date(2020, 5, 15, 0, 0, 0, 0, time.UTC),
 	}
 
-	w := performRequest(r, "POST", "/children", body)
+	w := performRequest(r, "POST", "/organizations/1/children", body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for empty first name, got %d", http.StatusBadRequest, w.Code)
@@ -430,19 +433,18 @@ func TestChildHandler_Create_EmptyLastName(t *testing.T) {
 	childService := createChildService(db)
 	handler := NewChildHandler(childService)
 
-	org := createTestOrganization(t, db, "Test Org")
+	createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.POST("/children", handler.Create)
+	r.POST("/organizations/:orgId/children", handler.Create)
 
 	body := models.ChildCreate{
-		OrganizationID: org.ID,
-		FirstName:      "Test",
-		LastName:       "",
-		Birthdate:      time.Date(2020, 5, 15, 0, 0, 0, 0, time.UTC),
+		FirstName: "Test",
+		LastName:  "",
+		Birthdate: time.Date(2020, 5, 15, 0, 0, 0, 0, time.UTC),
 	}
 
-	w := performRequest(r, "POST", "/children", body)
+	w := performRequest(r, "POST", "/organizations/1/children", body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for empty last name, got %d", http.StatusBadRequest, w.Code)
@@ -524,10 +526,12 @@ func TestChildHandler_List_Empty(t *testing.T) {
 	childService := createChildService(db)
 	handler := NewChildHandler(childService)
 
-	r := setupTestRouter()
-	r.GET("/children", handler.List)
+	createTestOrganization(t, db, "Test Org")
 
-	w := performRequest(r, "GET", "/children", nil)
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/children", handler.List)
+
+	w := performRequest(r, "GET", "/organizations/1/children", nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -748,19 +752,18 @@ func TestChildHandler_Create_FutureBirthdate(t *testing.T) {
 	childService := createChildService(db)
 	handler := NewChildHandler(childService)
 
-	org := createTestOrganization(t, db, "Test Org")
+	createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.POST("/children", handler.Create)
+	r.POST("/organizations/:orgId/children", handler.Create)
 
 	body := models.ChildCreate{
-		OrganizationID: org.ID,
-		FirstName:      "Test",
-		LastName:       "Child",
-		Birthdate:      time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC),
+		FirstName: "Test",
+		LastName:  "Child",
+		Birthdate: time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 
-	w := performRequest(r, "POST", "/children", body)
+	w := performRequest(r, "POST", "/organizations/1/children", body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for future birthdate, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
@@ -772,19 +775,18 @@ func TestChildHandler_Create_WhitespaceOnlyFirstName(t *testing.T) {
 	childService := createChildService(db)
 	handler := NewChildHandler(childService)
 
-	org := createTestOrganization(t, db, "Test Org")
+	createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.POST("/children", handler.Create)
+	r.POST("/organizations/:orgId/children", handler.Create)
 
 	body := models.ChildCreate{
-		OrganizationID: org.ID,
-		FirstName:      "   ",
-		LastName:       "Child",
-		Birthdate:      time.Date(2020, 5, 15, 0, 0, 0, 0, time.UTC),
+		FirstName: "   ",
+		LastName:  "Child",
+		Birthdate: time.Date(2020, 5, 15, 0, 0, 0, 0, time.UTC),
 	}
 
-	w := performRequest(r, "POST", "/children", body)
+	w := performRequest(r, "POST", "/organizations/1/children", body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for whitespace-only first name, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
@@ -796,19 +798,18 @@ func TestChildHandler_Create_WhitespaceOnlyLastName(t *testing.T) {
 	childService := createChildService(db)
 	handler := NewChildHandler(childService)
 
-	org := createTestOrganization(t, db, "Test Org")
+	createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.POST("/children", handler.Create)
+	r.POST("/organizations/:orgId/children", handler.Create)
 
 	body := models.ChildCreate{
-		OrganizationID: org.ID,
-		FirstName:      "Test",
-		LastName:       "   ",
-		Birthdate:      time.Date(2020, 5, 15, 0, 0, 0, 0, time.UTC),
+		FirstName: "Test",
+		LastName:  "   ",
+		Birthdate: time.Date(2020, 5, 15, 0, 0, 0, 0, time.UTC),
 	}
 
-	w := performRequest(r, "POST", "/children", body)
+	w := performRequest(r, "POST", "/organizations/1/children", body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for whitespace-only last name, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())

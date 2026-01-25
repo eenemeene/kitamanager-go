@@ -49,7 +49,7 @@ func (s *EmployeeService) GetByID(ctx context.Context, id uint) (*models.Employe
 }
 
 // Create creates a new employee
-func (s *EmployeeService) Create(ctx context.Context, req *models.EmployeeCreate) (*models.Employee, error) {
+func (s *EmployeeService) Create(ctx context.Context, orgID uint, req *models.EmployeeCreate) (*models.Employee, error) {
 	// Trim and validate input
 	req.FirstName = strings.TrimSpace(req.FirstName)
 	req.LastName = strings.TrimSpace(req.LastName)
@@ -66,7 +66,7 @@ func (s *EmployeeService) Create(ctx context.Context, req *models.EmployeeCreate
 
 	employee := &models.Employee{
 		Person: models.Person{
-			OrganizationID: req.OrganizationID,
+			OrganizationID: orgID,
 			FirstName:      req.FirstName,
 			LastName:       req.LastName,
 			Birthdate:      req.Birthdate,

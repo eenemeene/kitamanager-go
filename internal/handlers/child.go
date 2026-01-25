@@ -19,19 +19,27 @@ func NewChildHandler(service *service.ChildService) *ChildHandler {
 }
 
 // List godoc
-// @Summary List all children
-// @Description Get a paginated list of all children
+// @Summary List all children in an organization
+// @Description Get a paginated list of all children in the specified organization
 // @Tags children
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param orgId path int true "Organization ID"
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(20) maximum(100)
 // @Success 200 {object} models.PaginatedResponse[models.Child]
+// @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/children [get]
+// @Router /api/v1/organizations/{orgId}/children [get]
 func (h *ChildHandler) List(c *gin.Context) {
+	orgID, err := parseID(c, "orgId")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	var params models.PaginationParams
 	if err := c.ShouldBindQuery(&params); err != nil {
 		respondError(c, apperror.BadRequest("invalid pagination parameters"))
@@ -43,7 +51,7 @@ func (h *ChildHandler) List(c *gin.Context) {
 	}
 	params.SetDefaults()
 
-	children, total, err := h.service.List(c.Request.Context(), params.Limit, params.Offset())
+	children, total, err := h.service.ListByOrganization(c.Request.Context(), orgID, params.Limit, params.Offset())
 	if err != nil {
 		respondError(c, err)
 		return
@@ -59,12 +67,13 @@ func (h *ChildHandler) List(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param orgId path int true "Organization ID"
 // @Param id path int true "Child ID"
 // @Success 200 {object} models.Child
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
-// @Router /api/v1/children/{id} [get]
+// @Router /api/v1/organizations/{orgId}/children/{id} [get]
 func (h *ChildHandler) Get(c *gin.Context) {
 	id, err := parseID(c, "id")
 	if err != nil {
@@ -83,25 +92,32 @@ func (h *ChildHandler) Get(c *gin.Context) {
 
 // Create godoc
 // @Summary Create a new child
-// @Description Create a new child
+// @Description Create a new child in the specified organization
 // @Tags children
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param orgId path int true "Organization ID"
 // @Param request body models.ChildCreate true "Child data"
 // @Success 201 {object} models.Child
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/children [post]
+// @Router /api/v1/organizations/{orgId}/children [post]
 func (h *ChildHandler) Create(c *gin.Context) {
+	orgID, err := parseID(c, "orgId")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	var req models.ChildCreate
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
 	}
 
-	child, err := h.service.Create(c.Request.Context(), &req)
+	child, err := h.service.Create(c.Request.Context(), orgID, &req)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -117,6 +133,7 @@ func (h *ChildHandler) Create(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param orgId path int true "Organization ID"
 // @Param id path int true "Child ID"
 // @Param request body models.ChildUpdate true "Child data"
 // @Success 200 {object} models.Child
@@ -124,7 +141,7 @@ func (h *ChildHandler) Create(c *gin.Context) {
 // @Failure 401 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/children/{id} [put]
+// @Router /api/v1/organizations/{orgId}/children/{id} [put]
 func (h *ChildHandler) Update(c *gin.Context) {
 	id, err := parseID(c, "id")
 	if err != nil {
@@ -154,12 +171,13 @@ func (h *ChildHandler) Update(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param orgId path int true "Organization ID"
 // @Param id path int true "Child ID"
 // @Success 204 "No Content"
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/children/{id} [delete]
+// @Router /api/v1/organizations/{orgId}/children/{id} [delete]
 func (h *ChildHandler) Delete(c *gin.Context) {
 	id, err := parseID(c, "id")
 	if err != nil {
@@ -182,13 +200,14 @@ func (h *ChildHandler) Delete(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param orgId path int true "Organization ID"
 // @Param id path int true "Child ID"
 // @Success 200 {array} models.ChildContract
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/children/{id}/contracts [get]
+// @Router /api/v1/organizations/{orgId}/children/{id}/contracts [get]
 func (h *ChildHandler) ListContracts(c *gin.Context) {
 	id, err := parseID(c, "id")
 	if err != nil {
@@ -212,12 +231,13 @@ func (h *ChildHandler) ListContracts(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param orgId path int true "Organization ID"
 // @Param id path int true "Child ID"
 // @Success 200 {object} models.ChildContract
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
-// @Router /api/v1/children/{id}/contracts/current [get]
+// @Router /api/v1/organizations/{orgId}/children/{id}/contracts/current [get]
 func (h *ChildHandler) GetCurrentContract(c *gin.Context) {
 	id, err := parseID(c, "id")
 	if err != nil {
@@ -241,6 +261,7 @@ func (h *ChildHandler) GetCurrentContract(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param orgId path int true "Organization ID"
 // @Param id path int true "Child ID"
 // @Param request body models.ChildContractCreate true "Contract data"
 // @Success 201 {object} models.ChildContract
@@ -249,7 +270,7 @@ func (h *ChildHandler) GetCurrentContract(c *gin.Context) {
 // @Failure 404 {object} ErrorResponse
 // @Failure 409 {object} ErrorResponse "Contract overlaps with existing"
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/children/{id}/contracts [post]
+// @Router /api/v1/organizations/{orgId}/children/{id}/contracts [post]
 func (h *ChildHandler) CreateContract(c *gin.Context) {
 	id, err := parseID(c, "id")
 	if err != nil {
@@ -279,13 +300,14 @@ func (h *ChildHandler) CreateContract(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param orgId path int true "Organization ID"
 // @Param id path int true "Child ID"
 // @Param contractId path int true "Contract ID"
 // @Success 204 "No Content"
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/children/{id}/contracts/{contractId} [delete]
+// @Router /api/v1/organizations/{orgId}/children/{id}/contracts/{contractId} [delete]
 func (h *ChildHandler) DeleteContract(c *gin.Context) {
 	contractID, err := parseID(c, "contractId")
 	if err != nil {
