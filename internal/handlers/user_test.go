@@ -43,10 +43,7 @@ func TestUserHandler_List_IncludesGroups(t *testing.T) {
 	group := createTestGroupWithOrg(t, db, "Test Group", org.ID)
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 
-	// Add user to org and group
-	if err := db.Model(user).Association("Organizations").Append(org); err != nil {
-		t.Fatalf("failed to add user to organization: %v", err)
-	}
+	// Add user to group (this also makes them a member of the org)
 	if err := db.Model(user).Association("Groups").Append(group); err != nil {
 		t.Fatalf("failed to add user to group: %v", err)
 	}
@@ -232,11 +229,7 @@ func TestUserHandler_AddToGroup(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 	group := createTestGroupWithOrg(t, db, "Test Group", org.ID)
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
-
-	// User must be in the organization before being added to a group
-	if err := db.Model(user).Association("Organizations").Append(org); err != nil {
-		t.Fatalf("failed to add user to organization: %v", err)
-	}
+	_ = org // org is used to create the group
 
 	r := setupTestRouter()
 	r.POST("/users/:id/groups", handler.AddToGroup)
@@ -259,30 +252,6 @@ func TestUserHandler_AddToGroup(t *testing.T) {
 	}
 }
 
-func TestUserHandler_AddToGroup_NotInOrganization(t *testing.T) {
-	db := setupTestDB(t)
-	userService := createUserService(db)
-	handler := NewUserHandler(userService)
-
-	// Create group with its own org, and user without org membership
-	group := createTestGroup(t, db, "Test Group")
-	createTestUser(t, db, "Test User", "test@example.com", "password")
-
-	r := setupTestRouter()
-	r.POST("/users/:id/groups", handler.AddToGroup)
-
-	body := AddToGroupRequest{
-		GroupID: group.ID,
-	}
-
-	w := performRequest(r, "POST", "/users/1/groups", body)
-
-	// Should fail because user is not in the group's organization
-	if w.Code != http.StatusForbidden {
-		t.Errorf("expected status %d, got %d: %s", http.StatusForbidden, w.Code, w.Body.String())
-	}
-}
-
 func TestUserHandler_RemoveFromGroup(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
@@ -292,11 +261,9 @@ func TestUserHandler_RemoveFromGroup(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 	group := createTestGroupWithOrg(t, db, "Test Group", org.ID)
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
+	_ = org // org is used to create the group
 
-	// Add user to org and group
-	if err := db.Model(user).Association("Organizations").Append(org); err != nil {
-		t.Fatalf("failed to add user to organization: %v", err)
-	}
+	// Add user to group
 	if err := db.Model(user).Association("Groups").Append(group); err != nil {
 		t.Fatalf("failed to add user to group: %v", err)
 	}
@@ -325,6 +292,8 @@ func TestUserHandler_AddToOrganization(t *testing.T) {
 
 	createTestUser(t, db, "Test User", "test@example.com", "password")
 	org := createTestOrganization(t, db, "Test Org")
+	// Create a default group for the organization
+	defaultGroup := createTestGroupWithOrgAndDefault(t, db, "Members", org.ID, true)
 
 	r := setupTestRouter()
 	r.POST("/users/:id/organizations", handler.AddToOrganization)
@@ -339,11 +308,14 @@ func TestUserHandler_AddToOrganization(t *testing.T) {
 		t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
 	}
 
-	// Verify user was added to organization
+	// Verify user was added to the default group
 	var foundUser models.User
-	db.Preload("Organizations").First(&foundUser, 1)
-	if len(foundUser.Organizations) != 1 {
-		t.Errorf("expected 1 organization, got %d", len(foundUser.Organizations))
+	db.Preload("Groups").First(&foundUser, 1)
+	if len(foundUser.Groups) != 1 {
+		t.Errorf("expected 1 group, got %d", len(foundUser.Groups))
+	}
+	if foundUser.Groups[0].ID != defaultGroup.ID {
+		t.Errorf("expected user to be in default group %d, got %d", defaultGroup.ID, foundUser.Groups[0].ID)
 	}
 }
 
@@ -354,8 +326,10 @@ func TestUserHandler_RemoveFromOrganization(t *testing.T) {
 
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 	org := createTestOrganization(t, db, "Test Org")
-	if err := db.Model(user).Association("Organizations").Append(org); err != nil {
-		t.Fatalf("failed to add user to organization: %v", err)
+	group := createTestGroupWithOrg(t, db, "Test Group", org.ID)
+	// Add user to the group
+	if err := db.Model(user).Association("Groups").Append(group); err != nil {
+		t.Fatalf("failed to add user to group: %v", err)
 	}
 
 	r := setupTestRouter()
@@ -367,11 +341,11 @@ func TestUserHandler_RemoveFromOrganization(t *testing.T) {
 		t.Errorf("expected status %d, got %d: %s", http.StatusNoContent, w.Code, w.Body.String())
 	}
 
-	// Verify user was removed from organization
+	// Verify user was removed from all groups in the organization
 	var removedUser models.User
-	db.Preload("Organizations").First(&removedUser, 1)
-	if len(removedUser.Organizations) != 0 {
-		t.Errorf("expected 0 organizations, got %d", len(removedUser.Organizations))
+	db.Preload("Groups").First(&removedUser, 1)
+	if len(removedUser.Groups) != 0 {
+		t.Errorf("expected 0 groups, got %d", len(removedUser.Groups))
 	}
 }
 

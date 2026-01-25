@@ -99,7 +99,7 @@ func main() {
 
 	// Initialize services
 	userService := service.NewUserService(userStore, groupStore)
-	orgService := service.NewOrganizationService(orgStore)
+	orgService := service.NewOrganizationService(orgStore, groupStore)
 	groupService := service.NewGroupService(groupStore)
 	employeeService := service.NewEmployeeService(employeeStore)
 	childService := service.NewChildService(childStore, groupStore)

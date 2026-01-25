@@ -229,9 +229,6 @@ func TestUser_ToResponse(t *testing.T) {
 		CreatedAt: now,
 		CreatedBy: "admin@example.com",
 		UpdatedAt: now,
-		Organizations: []Organization{
-			{ID: 1, Name: "Org 1"},
-		},
 		Groups: []Group{
 			{ID: 1, Name: "Group 1"},
 		},
@@ -259,9 +256,6 @@ func TestUser_ToResponse(t *testing.T) {
 	}
 	if response.CreatedBy != user.CreatedBy {
 		t.Errorf("ToResponse().CreatedBy = %q, want %q", response.CreatedBy, user.CreatedBy)
-	}
-	if len(response.Organizations) != 1 {
-		t.Errorf("ToResponse().Organizations length = %d, want 1", len(response.Organizations))
 	}
 	if len(response.Groups) != 1 {
 		t.Errorf("ToResponse().Groups length = %d, want 1", len(response.Groups))

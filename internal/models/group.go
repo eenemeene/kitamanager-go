@@ -9,6 +9,7 @@ type Group struct {
 	Name           string        `gorm:"size:255;not null" json:"name" binding:"required" example:"Administrators"`
 	OrganizationID uint          `gorm:"not null" json:"organization_id" example:"1"`
 	Organization   *Organization `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
+	IsDefault      bool          `gorm:"default:false" json:"is_default" example:"false"`
 	Active         bool          `gorm:"default:true" json:"active" example:"true"`
 	CreatedAt      time.Time     `json:"created_at" example:"2024-01-15T10:30:00Z"`
 	CreatedBy      string        `gorm:"size:255" json:"created_by" example:"admin@example.com"`
@@ -35,6 +36,7 @@ type GroupResponse struct {
 	Name           string        `json:"name" example:"Administrators"`
 	OrganizationID uint          `json:"organization_id" example:"1"`
 	Organization   *Organization `json:"organization,omitempty"`
+	IsDefault      bool          `json:"is_default" example:"false"`
 	Active         bool          `json:"active" example:"true"`
 	CreatedAt      time.Time     `json:"created_at" example:"2024-01-15T10:30:00Z"`
 	CreatedBy      string        `json:"created_by" example:"admin@example.com"`
@@ -48,6 +50,7 @@ func (g *Group) ToResponse() GroupResponse {
 		Name:           g.Name,
 		OrganizationID: g.OrganizationID,
 		Organization:   g.Organization,
+		IsDefault:      g.IsDefault,
 		Active:         g.Active,
 		CreatedAt:      g.CreatedAt,
 		CreatedBy:      g.CreatedBy,

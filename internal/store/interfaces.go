@@ -17,8 +17,8 @@ type UserStorer interface {
 	Delete(id uint) error
 	AddToGroup(userID, groupID uint) error
 	RemoveFromGroup(userID, groupID uint) error
-	AddToOrganization(userID, orgID uint) error
-	RemoveFromOrganization(userID, orgID uint) error
+	RemoveFromAllGroupsInOrg(userID, orgID uint) error
+	GetUserOrganizations(userID uint) ([]models.Organization, error)
 }
 
 // OrganizationStorer defines the interface for organization storage operations
@@ -35,6 +35,7 @@ type GroupStorer interface {
 	FindAll(limit, offset int) ([]models.Group, int64, error)
 	FindByID(id uint) (*models.Group, error)
 	FindByOrganization(orgID uint) ([]models.Group, error)
+	FindDefaultGroup(orgID uint) (*models.Group, error)
 	Create(group *models.Group) error
 	Update(group *models.Group) error
 	Delete(id uint) error

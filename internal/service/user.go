@@ -120,26 +120,14 @@ func (s *UserService) Delete(ctx context.Context, id uint) error {
 
 // AddToGroup adds a user to a group
 func (s *UserService) AddToGroup(ctx context.Context, userID, groupID uint) error {
-	user, err := s.store.FindByID(userID)
+	_, err := s.store.FindByID(userID)
 	if err != nil {
 		return apperror.NotFound("user")
 	}
 
-	group, err := s.groupStore.FindByID(groupID)
+	_, err = s.groupStore.FindByID(groupID)
 	if err != nil {
 		return apperror.NotFound("group")
-	}
-
-	// Validate user is a member of the group's organization
-	userInOrg := false
-	for _, org := range user.Organizations {
-		if org.ID == group.OrganizationID {
-			userInOrg = true
-			break
-		}
-	}
-	if !userInOrg {
-		return apperror.Forbidden("user must be a member of the group's organization")
 	}
 
 	if err := s.store.AddToGroup(userID, groupID); err != nil {
@@ -156,27 +144,33 @@ func (s *UserService) RemoveFromGroup(ctx context.Context, userID, groupID uint)
 	return nil
 }
 
-// AddToOrganization adds a user to an organization
+// AddToOrganization adds a user to an organization by adding them to the default group
 func (s *UserService) AddToOrganization(ctx context.Context, userID, orgID uint) error {
 	_, err := s.store.FindByID(userID)
 	if err != nil {
 		return apperror.NotFound("user")
 	}
 
-	if err := s.store.AddToOrganization(userID, orgID); err != nil {
+	// Find the default group for the organization
+	defaultGroup, err := s.groupStore.FindDefaultGroup(orgID)
+	if err != nil {
+		return apperror.NotFound("organization or default group")
+	}
+
+	if err := s.store.AddToGroup(userID, defaultGroup.ID); err != nil {
 		return apperror.Internal("failed to add user to organization")
 	}
 	return nil
 }
 
-// RemoveFromOrganization removes a user from an organization
+// RemoveFromOrganization removes a user from an organization by removing them from all groups in that org
 func (s *UserService) RemoveFromOrganization(ctx context.Context, userID, orgID uint) error {
 	_, err := s.store.FindByID(userID)
 	if err != nil {
 		return apperror.NotFound("user")
 	}
 
-	if err := s.store.RemoveFromOrganization(userID, orgID); err != nil {
+	if err := s.store.RemoveFromAllGroupsInOrg(userID, orgID); err != nil {
 		return apperror.Internal("failed to remove user from organization")
 	}
 	return nil

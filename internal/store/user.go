@@ -33,7 +33,7 @@ func (s *UserStore) FindAll(limit, offset int) ([]models.User, int64, error) {
 
 func (s *UserStore) FindByID(id uint) (*models.User, error) {
 	var user models.User
-	if err := s.db.Preload("Organizations").Preload("Groups").First(&user, id).Error; err != nil {
+	if err := s.db.Preload("Groups").Preload("Groups.Organization").First(&user, id).Error; err != nil {
 		return nil, err
 	}
 	return &user, nil
@@ -75,14 +75,33 @@ func (s *UserStore) RemoveFromGroup(userID, groupID uint) error {
 	return s.db.Model(user).Association("Groups").Delete(group)
 }
 
-func (s *UserStore) AddToOrganization(userID, orgID uint) error {
+func (s *UserStore) RemoveFromAllGroupsInOrg(userID, orgID uint) error {
+	// Find all groups in the organization that the user belongs to
+	var groups []models.Group
+	err := s.db.Joins("JOIN user_groups ON user_groups.group_id = groups.id").
+		Where("user_groups.user_id = ? AND groups.organization_id = ?", userID, orgID).
+		Find(&groups).Error
+	if err != nil {
+		return err
+	}
+
+	// Remove user from each group
 	user := &models.User{ID: userID}
-	org := &models.Organization{ID: orgID}
-	return s.db.Model(user).Association("Organizations").Append(org)
+	for _, group := range groups {
+		g := group // avoid closure issue
+		if err := s.db.Model(user).Association("Groups").Delete(&g); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func (s *UserStore) RemoveFromOrganization(userID, orgID uint) error {
-	user := &models.User{ID: userID}
-	org := &models.Organization{ID: orgID}
-	return s.db.Model(user).Association("Organizations").Delete(org)
+func (s *UserStore) GetUserOrganizations(userID uint) ([]models.Organization, error) {
+	var orgs []models.Organization
+	err := s.db.Distinct().
+		Joins("JOIN groups ON groups.organization_id = organizations.id").
+		Joins("JOIN user_groups ON user_groups.group_id = groups.id").
+		Where("user_groups.user_id = ?", userID).
+		Find(&orgs).Error
+	return orgs, err
 }

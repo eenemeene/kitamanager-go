@@ -31,7 +31,7 @@ func (s *OrganizationStore) FindAll(limit, offset int) ([]models.Organization, i
 
 func (s *OrganizationStore) FindByID(id uint) (*models.Organization, error) {
 	var organization models.Organization
-	if err := s.db.Preload("Users").Preload("Groups").First(&organization, id).Error; err != nil {
+	if err := s.db.Preload("Groups").First(&organization, id).Error; err != nil {
 		return nil, err
 	}
 	return &organization, nil

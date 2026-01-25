@@ -45,6 +45,14 @@ func (s *GroupStore) FindByOrganization(orgID uint) ([]models.Group, error) {
 	return groups, nil
 }
 
+func (s *GroupStore) FindDefaultGroup(orgID uint) (*models.Group, error) {
+	var group models.Group
+	if err := s.db.Where("organization_id = ? AND is_default = ?", orgID, true).First(&group).Error; err != nil {
+		return nil, err
+	}
+	return &group, nil
+}
+
 func (s *GroupStore) Create(group *models.Group) error {
 	return s.db.Create(group).Error
 }

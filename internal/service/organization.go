@@ -12,12 +12,13 @@ import (
 
 // OrganizationService handles business logic for organization operations
 type OrganizationService struct {
-	store store.OrganizationStorer
+	store      store.OrganizationStorer
+	groupStore store.GroupStorer
 }
 
 // NewOrganizationService creates a new organization service
-func NewOrganizationService(store store.OrganizationStorer) *OrganizationService {
-	return &OrganizationService{store: store}
+func NewOrganizationService(store store.OrganizationStorer, groupStore store.GroupStorer) *OrganizationService {
+	return &OrganizationService{store: store, groupStore: groupStore}
 }
 
 // List returns a paginated list of organizations
@@ -44,7 +45,7 @@ type OrganizationCreateRequest struct {
 	Active bool
 }
 
-// Create creates a new organization
+// Create creates a new organization with a default group
 func (s *OrganizationService) Create(ctx context.Context, req *OrganizationCreateRequest, createdBy string) (*models.Organization, error) {
 	// Trim and validate input
 	req.Name = strings.TrimSpace(req.Name)
@@ -61,6 +62,19 @@ func (s *OrganizationService) Create(ctx context.Context, req *OrganizationCreat
 
 	if err := s.store.Create(org); err != nil {
 		return nil, apperror.Internal("failed to create organization")
+	}
+
+	// Create default group for the organization
+	defaultGroup := &models.Group{
+		Name:           "Members",
+		OrganizationID: org.ID,
+		IsDefault:      true,
+		Active:         true,
+		CreatedBy:      createdBy,
+	}
+
+	if err := s.groupStore.Create(defaultGroup); err != nil {
+		return nil, apperror.Internal("failed to create default group")
 	}
 
 	return org, nil

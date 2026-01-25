@@ -154,3 +154,100 @@ func TestGroupStore_FindByOrganization(t *testing.T) {
 		t.Errorf("expected 1 group in org2, got %d", len(groups2))
 	}
 }
+
+func TestGroupStore_FindDefaultGroup(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewGroupStore(db)
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	// Create a non-default group
+	createTestGroupWithOrg(t, db, "Regular Group", org.ID)
+
+	// Create a default group
+	defaultGroup := &models.Group{
+		Name:           "Members",
+		OrganizationID: org.ID,
+		IsDefault:      true,
+		Active:         true,
+	}
+	if err := db.Create(defaultGroup).Error; err != nil {
+		t.Fatalf("failed to create default group: %v", err)
+	}
+
+	// Find the default group
+	found, err := store.FindDefaultGroup(org.ID)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if found.ID != defaultGroup.ID {
+		t.Errorf("expected default group ID %d, got %d", defaultGroup.ID, found.ID)
+	}
+	if !found.IsDefault {
+		t.Error("expected IsDefault to be true")
+	}
+}
+
+func TestGroupStore_FindDefaultGroup_NotFound(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewGroupStore(db)
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	// Create only non-default groups
+	createTestGroupWithOrg(t, db, "Regular Group", org.ID)
+
+	// Try to find default group (should fail)
+	_, err := store.FindDefaultGroup(org.ID)
+	if err == nil {
+		t.Error("expected error when no default group exists")
+	}
+}
+
+// TestGroup_IsDefaultField verifies the IsDefault field works correctly
+func TestGroup_IsDefaultField(t *testing.T) {
+	db := setupTestDB(t)
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	// Create a group with IsDefault = true
+	defaultGroup := &models.Group{
+		Name:           "Default Group",
+		OrganizationID: org.ID,
+		IsDefault:      true,
+		Active:         true,
+	}
+	if err := db.Create(defaultGroup).Error; err != nil {
+		t.Fatalf("failed to create default group: %v", err)
+	}
+
+	// Reload and verify
+	var loaded models.Group
+	if err := db.First(&loaded, defaultGroup.ID).Error; err != nil {
+		t.Fatalf("failed to load group: %v", err)
+	}
+
+	if !loaded.IsDefault {
+		t.Error("expected IsDefault to be true after reload")
+	}
+
+	// Create a non-default group (default value should be false)
+	regularGroup := &models.Group{
+		Name:           "Regular Group",
+		OrganizationID: org.ID,
+		Active:         true,
+	}
+	if err := db.Create(regularGroup).Error; err != nil {
+		t.Fatalf("failed to create regular group: %v", err)
+	}
+
+	var loadedRegular models.Group
+	if err := db.First(&loadedRegular, regularGroup.ID).Error; err != nil {
+		t.Fatalf("failed to load regular group: %v", err)
+	}
+
+	if loadedRegular.IsDefault {
+		t.Error("expected IsDefault to be false for regular group")
+	}
+}
