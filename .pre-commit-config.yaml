@@ -14,7 +14,7 @@ repos:
         stages: [commit-msg]
 
   - repo: https://github.com/golangci/golangci-lint
-    rev: v1.64.5
+    rev: v2.8.0
     hooks:
       - id: golangci-lint
 

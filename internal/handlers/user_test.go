@@ -327,3 +327,402 @@ func TestUserHandler_RemoveFromOrganization(t *testing.T) {
 		t.Errorf("expected 0 organizations, got %d", len(user.Organizations))
 	}
 }
+
+// Edge case tests
+
+func TestUserHandler_Get_InvalidID(t *testing.T) {
+	db := setupTestDB(t)
+	userStore := store.NewUserStore(db)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
+
+	r := setupTestRouter()
+	r.GET("/users/:id", handler.Get)
+
+	w := performRequest(r, "GET", "/users/invalid", nil)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestUserHandler_Get_ZeroID(t *testing.T) {
+	db := setupTestDB(t)
+	userStore := store.NewUserStore(db)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
+
+	r := setupTestRouter()
+	r.GET("/users/:id", handler.Get)
+
+	w := performRequest(r, "GET", "/users/0", nil)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d for zero ID, got %d", http.StatusNotFound, w.Code)
+	}
+}
+
+func TestUserHandler_Create_EmptyEmail(t *testing.T) {
+	db := setupTestDB(t)
+	userStore := store.NewUserStore(db)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
+
+	r := setupTestRouter()
+	r.POST("/users", handler.Create)
+
+	body := models.UserCreate{
+		Name:     "Test User",
+		Email:    "",
+		Password: "password123",
+		Active:   true,
+	}
+
+	w := performRequest(r, "POST", "/users", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for empty email, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestUserHandler_Create_EmptyPassword(t *testing.T) {
+	db := setupTestDB(t)
+	userStore := store.NewUserStore(db)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
+
+	r := setupTestRouter()
+	r.POST("/users", handler.Create)
+
+	body := models.UserCreate{
+		Name:     "Test User",
+		Email:    "test@example.com",
+		Password: "",
+		Active:   true,
+	}
+
+	w := performRequest(r, "POST", "/users", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for empty password, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestUserHandler_Create_EmptyName(t *testing.T) {
+	db := setupTestDB(t)
+	userStore := store.NewUserStore(db)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
+
+	r := setupTestRouter()
+	r.POST("/users", handler.Create)
+
+	body := models.UserCreate{
+		Name:     "",
+		Email:    "test@example.com",
+		Password: "password123",
+		Active:   true,
+	}
+
+	w := performRequest(r, "POST", "/users", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for empty name, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestUserHandler_Create_DuplicateEmail(t *testing.T) {
+	db := setupTestDB(t)
+	userStore := store.NewUserStore(db)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
+
+	createTestUser(t, db, "Existing User", "existing@example.com", "password")
+
+	r := setupTestRouter()
+	r.POST("/users", handler.Create)
+
+	body := models.UserCreate{
+		Name:     "New User",
+		Email:    "existing@example.com", // Duplicate
+		Password: "password123",
+		Active:   true,
+	}
+
+	w := performRequest(r, "POST", "/users", body)
+
+	// Should fail due to unique constraint
+	if w.Code == http.StatusCreated {
+		t.Errorf("expected duplicate email to fail, but got status %d", w.Code)
+	}
+}
+
+func TestUserHandler_Update_NotFound(t *testing.T) {
+	db := setupTestDB(t)
+	userStore := store.NewUserStore(db)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
+
+	r := setupTestRouter()
+	r.PUT("/users/:id", handler.Update)
+
+	body := models.UserUpdate{
+		Name: "Updated Name",
+	}
+
+	w := performRequest(r, "PUT", "/users/999", body)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
+	}
+}
+
+func TestUserHandler_Update_InvalidID(t *testing.T) {
+	db := setupTestDB(t)
+	userStore := store.NewUserStore(db)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
+
+	r := setupTestRouter()
+	r.PUT("/users/:id", handler.Update)
+
+	body := models.UserUpdate{
+		Name: "Updated Name",
+	}
+
+	w := performRequest(r, "PUT", "/users/invalid", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestUserHandler_Delete_NotFound(t *testing.T) {
+	db := setupTestDB(t)
+	userStore := store.NewUserStore(db)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
+
+	r := setupTestRouter()
+	r.DELETE("/users/:id", handler.Delete)
+
+	w := performRequest(r, "DELETE", "/users/999", nil)
+
+	// Should return NoContent (idempotent) or NotFound
+	if w.Code != http.StatusNoContent && w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d or %d, got %d", http.StatusNoContent, http.StatusNotFound, w.Code)
+	}
+}
+
+func TestUserHandler_Delete_InvalidID(t *testing.T) {
+	db := setupTestDB(t)
+	userStore := store.NewUserStore(db)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
+
+	r := setupTestRouter()
+	r.DELETE("/users/:id", handler.Delete)
+
+	w := performRequest(r, "DELETE", "/users/invalid", nil)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestUserHandler_List_Empty(t *testing.T) {
+	db := setupTestDB(t)
+	userStore := store.NewUserStore(db)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
+
+	r := setupTestRouter()
+	r.GET("/users", handler.List)
+
+	w := performRequest(r, "GET", "/users", nil)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var users []models.UserResponse
+	parseResponse(t, w, &users)
+
+	if len(users) != 0 {
+		t.Errorf("expected empty list, got %d users", len(users))
+	}
+}
+
+func TestUserHandler_AddToGroup_InvalidUserID(t *testing.T) {
+	db := setupTestDB(t)
+	userStore := store.NewUserStore(db)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
+
+	r := setupTestRouter()
+	r.POST("/users/:id/groups", handler.AddToGroup)
+
+	body := AddToGroupRequest{
+		GroupID: 1,
+	}
+
+	w := performRequest(r, "POST", "/users/invalid/groups", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestUserHandler_AddToGroup_UserNotFound(t *testing.T) {
+	db := setupTestDB(t)
+	userStore := store.NewUserStore(db)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
+
+	group := createTestGroup(t, db, "Test Group")
+
+	r := setupTestRouter()
+	r.POST("/users/:id/groups", handler.AddToGroup)
+
+	body := AddToGroupRequest{
+		GroupID: group.ID,
+	}
+
+	w := performRequest(r, "POST", "/users/999/groups", body)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
+	}
+}
+
+func TestUserHandler_AddToGroup_GroupNotFound(t *testing.T) {
+	db := setupTestDB(t)
+	userStore := store.NewUserStore(db)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
+
+	createTestUser(t, db, "Test User", "test@example.com", "password")
+
+	r := setupTestRouter()
+	r.POST("/users/:id/groups", handler.AddToGroup)
+
+	body := AddToGroupRequest{
+		GroupID: 999, // Non-existent group
+	}
+
+	w := performRequest(r, "POST", "/users/1/groups", body)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d, got %d: %s", http.StatusNotFound, w.Code, w.Body.String())
+	}
+}
+
+func TestUserHandler_RemoveFromGroup_InvalidUserID(t *testing.T) {
+	db := setupTestDB(t)
+	userStore := store.NewUserStore(db)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
+
+	r := setupTestRouter()
+	r.DELETE("/users/:id/groups/:gid", handler.RemoveFromGroup)
+
+	w := performRequest(r, "DELETE", "/users/invalid/groups/1", nil)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestUserHandler_RemoveFromGroup_InvalidGroupID(t *testing.T) {
+	db := setupTestDB(t)
+	userStore := store.NewUserStore(db)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
+
+	createTestUser(t, db, "Test User", "test@example.com", "password")
+
+	r := setupTestRouter()
+	r.DELETE("/users/:id/groups/:gid", handler.RemoveFromGroup)
+
+	w := performRequest(r, "DELETE", "/users/1/groups/invalid", nil)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestUserHandler_AddToOrganization_InvalidUserID(t *testing.T) {
+	db := setupTestDB(t)
+	userStore := store.NewUserStore(db)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
+
+	r := setupTestRouter()
+	r.POST("/users/:id/organizations", handler.AddToOrganization)
+
+	body := AddToOrganizationRequest{
+		OrganizationID: 1,
+	}
+
+	w := performRequest(r, "POST", "/users/invalid/organizations", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestUserHandler_AddToOrganization_UserNotFound(t *testing.T) {
+	db := setupTestDB(t)
+	userStore := store.NewUserStore(db)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	r := setupTestRouter()
+	r.POST("/users/:id/organizations", handler.AddToOrganization)
+
+	body := AddToOrganizationRequest{
+		OrganizationID: org.ID,
+	}
+
+	w := performRequest(r, "POST", "/users/999/organizations", body)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
+	}
+}
+
+func TestUserHandler_RemoveFromOrganization_InvalidUserID(t *testing.T) {
+	db := setupTestDB(t)
+	userStore := store.NewUserStore(db)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
+
+	r := setupTestRouter()
+	r.DELETE("/users/:id/organizations/:oid", handler.RemoveFromOrganization)
+
+	w := performRequest(r, "DELETE", "/users/invalid/organizations/1", nil)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestUserHandler_RemoveFromOrganization_InvalidOrgID(t *testing.T) {
+	db := setupTestDB(t)
+	userStore := store.NewUserStore(db)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
+
+	createTestUser(t, db, "Test User", "test@example.com", "password")
+
+	r := setupTestRouter()
+	r.DELETE("/users/:id/organizations/:oid", handler.RemoveFromOrganization)
+
+	w := performRequest(r, "DELETE", "/users/1/organizations/invalid", nil)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}

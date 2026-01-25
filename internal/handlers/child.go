@@ -196,12 +196,20 @@ func (h *ChildHandler) Delete(c *gin.Context) {
 // @Success 200 {array} models.ChildContract
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/children/{id}/contracts [get]
 func (h *ChildHandler) ListContracts(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	// Verify child exists
+	_, err = h.store.FindByID(uint(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "child not found"})
 		return
 	}
 
@@ -259,6 +267,7 @@ func (h *ChildHandler) GetCurrentContract(c *gin.Context) {
 // @Success 201 {object} models.ChildContract
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
 // @Failure 409 {object} ErrorResponse "Contract overlaps with existing"
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/children/{id}/contracts [post]
@@ -266,6 +275,13 @@ func (h *ChildHandler) CreateContract(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	// Verify child exists
+	_, err = h.store.FindByID(uint(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "child not found"})
 		return
 	}
 

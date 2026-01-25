@@ -196,12 +196,20 @@ func (h *EmployeeHandler) Delete(c *gin.Context) {
 // @Success 200 {array} models.EmployeeContract
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/employees/{id}/contracts [get]
 func (h *EmployeeHandler) ListContracts(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	// Verify employee exists
+	_, err = h.store.FindByID(uint(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "employee not found"})
 		return
 	}
 
@@ -259,6 +267,7 @@ func (h *EmployeeHandler) GetCurrentContract(c *gin.Context) {
 // @Success 201 {object} models.EmployeeContract
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
 // @Failure 409 {object} ErrorResponse "Contract overlaps with existing"
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/employees/{id}/contracts [post]
@@ -266,6 +275,13 @@ func (h *EmployeeHandler) CreateContract(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	// Verify employee exists
+	_, err = h.store.FindByID(uint(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "employee not found"})
 		return
 	}
 

@@ -322,6 +322,7 @@ type AddToOrganizationRequest struct {
 // @Success 200 {object} MessageResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/users/{id}/organizations [post]
 func (h *UserHandler) AddToOrganization(c *gin.Context) {
@@ -334,6 +335,13 @@ func (h *UserHandler) AddToOrganization(c *gin.Context) {
 	var req AddToOrganizationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Verify user exists
+	_, err = h.store.FindByID(uint(userID))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 		return
 	}
 
@@ -357,6 +365,7 @@ func (h *UserHandler) AddToOrganization(c *gin.Context) {
 // @Success 204 "No Content"
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/users/{id}/organizations/{oid} [delete]
 func (h *UserHandler) RemoveFromOrganization(c *gin.Context) {
@@ -369,6 +378,13 @@ func (h *UserHandler) RemoveFromOrganization(c *gin.Context) {
 	orgID, err := strconv.ParseUint(c.Param("oid"), 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid organization id"})
+		return
+	}
+
+	// Verify user exists
+	_, err = h.store.FindByID(uint(userID))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 		return
 	}
 
