@@ -146,35 +146,6 @@ func Setup(
 				}
 			}
 
-			// ============================================================
-			// Legacy routes (without org scoping) - kept for backwards compatibility
-			// These should eventually be migrated to org-scoped routes
-			// ============================================================
-			legacyEmployees := protected.Group("/employees")
-			{
-				legacyEmployees.GET("", employeeHandler.List)
-				legacyEmployees.GET("/:id", employeeHandler.Get)
-				legacyEmployees.POST("", employeeHandler.Create)
-				legacyEmployees.PUT("/:id", employeeHandler.Update)
-				legacyEmployees.DELETE("/:id", employeeHandler.Delete)
-				legacyEmployees.GET("/:id/contracts", employeeHandler.ListContracts)
-				legacyEmployees.GET("/:id/contracts/current", employeeHandler.GetCurrentContract)
-				legacyEmployees.POST("/:id/contracts", employeeHandler.CreateContract)
-				legacyEmployees.DELETE("/:id/contracts/:contractId", employeeHandler.DeleteContract)
-			}
-
-			legacyChildren := protected.Group("/children")
-			{
-				legacyChildren.GET("", childHandler.List)
-				legacyChildren.GET("/:id", childHandler.Get)
-				legacyChildren.POST("", childHandler.Create)
-				legacyChildren.PUT("/:id", childHandler.Update)
-				legacyChildren.DELETE("/:id", childHandler.Delete)
-				legacyChildren.GET("/:id/contracts", childHandler.ListContracts)
-				legacyChildren.GET("/:id/contracts/current", childHandler.GetCurrentContract)
-				legacyChildren.POST("/:id/contracts", childHandler.CreateContract)
-				legacyChildren.DELETE("/:id/contracts/:contractId", childHandler.DeleteContract)
-			}
 		}
 	}
 }

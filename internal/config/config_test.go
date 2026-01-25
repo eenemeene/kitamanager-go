@@ -182,3 +182,328 @@ func TestLoad(t *testing.T) {
 		}
 	})
 }
+
+func TestConfig_Validate(t *testing.T) {
+	t.Run("passes validation in development with defaults", func(t *testing.T) {
+		cfg := &Config{
+			DBHost:           "localhost",
+			DBPort:           "5432",
+			DBUser:           "user",
+			DBPassword:       "pass",
+			DBName:           "db",
+			ServerPort:       "8080",
+			JWTSecret:        "default-secret-key",
+			LogLevel:         "info",
+			LogFormat:        "json",
+			Environment:      "development",
+			CORSAllowOrigins: []string{"http://localhost:3000"},
+		}
+
+		if err := cfg.Validate(); err != nil {
+			t.Errorf("Validate() error = %v, want nil", err)
+		}
+	})
+
+	t.Run("fails validation in production with default JWT secret", func(t *testing.T) {
+		cfg := &Config{
+			DBHost:           "localhost",
+			DBPort:           "5432",
+			DBUser:           "user",
+			DBPassword:       "pass",
+			DBName:           "db",
+			ServerPort:       "8080",
+			JWTSecret:        "default-secret-key",
+			LogLevel:         "info",
+			LogFormat:        "json",
+			Environment:      "production",
+			CORSAllowOrigins: []string{"https://example.com"},
+		}
+
+		err := cfg.Validate()
+		if err == nil {
+			t.Error("Validate() error = nil, want error for default JWT secret in production")
+		}
+	})
+
+	t.Run("fails validation with invalid server port", func(t *testing.T) {
+		cfg := &Config{
+			DBHost:           "localhost",
+			DBPort:           "5432",
+			DBUser:           "user",
+			DBPassword:       "pass",
+			DBName:           "db",
+			ServerPort:       "invalid",
+			JWTSecret:        "secret",
+			LogLevel:         "info",
+			LogFormat:        "json",
+			Environment:      "development",
+			CORSAllowOrigins: []string{"http://localhost:3000"},
+		}
+
+		err := cfg.Validate()
+		if err == nil {
+			t.Error("Validate() error = nil, want error for invalid server port")
+		}
+	})
+
+	t.Run("fails validation with port out of range", func(t *testing.T) {
+		cfg := &Config{
+			DBHost:           "localhost",
+			DBPort:           "5432",
+			DBUser:           "user",
+			DBPassword:       "pass",
+			DBName:           "db",
+			ServerPort:       "70000",
+			JWTSecret:        "secret",
+			LogLevel:         "info",
+			LogFormat:        "json",
+			Environment:      "development",
+			CORSAllowOrigins: []string{"http://localhost:3000"},
+		}
+
+		err := cfg.Validate()
+		if err == nil {
+			t.Error("Validate() error = nil, want error for port out of range")
+		}
+	})
+
+	t.Run("fails validation with invalid log level", func(t *testing.T) {
+		cfg := &Config{
+			DBHost:           "localhost",
+			DBPort:           "5432",
+			DBUser:           "user",
+			DBPassword:       "pass",
+			DBName:           "db",
+			ServerPort:       "8080",
+			JWTSecret:        "secret",
+			LogLevel:         "invalid",
+			LogFormat:        "json",
+			Environment:      "development",
+			CORSAllowOrigins: []string{"http://localhost:3000"},
+		}
+
+		err := cfg.Validate()
+		if err == nil {
+			t.Error("Validate() error = nil, want error for invalid log level")
+		}
+	})
+
+	t.Run("fails validation with invalid log format", func(t *testing.T) {
+		cfg := &Config{
+			DBHost:           "localhost",
+			DBPort:           "5432",
+			DBUser:           "user",
+			DBPassword:       "pass",
+			DBName:           "db",
+			ServerPort:       "8080",
+			JWTSecret:        "secret",
+			LogLevel:         "info",
+			LogFormat:        "xml",
+			Environment:      "development",
+			CORSAllowOrigins: []string{"http://localhost:3000"},
+		}
+
+		err := cfg.Validate()
+		if err == nil {
+			t.Error("Validate() error = nil, want error for invalid log format")
+		}
+	})
+
+	t.Run("fails validation with invalid CORS origin", func(t *testing.T) {
+		cfg := &Config{
+			DBHost:           "localhost",
+			DBPort:           "5432",
+			DBUser:           "user",
+			DBPassword:       "pass",
+			DBName:           "db",
+			ServerPort:       "8080",
+			JWTSecret:        "secret",
+			LogLevel:         "info",
+			LogFormat:        "json",
+			Environment:      "development",
+			CORSAllowOrigins: []string{"not-a-valid-url"},
+		}
+
+		err := cfg.Validate()
+		if err == nil {
+			t.Error("Validate() error = nil, want error for invalid CORS origin")
+		}
+	})
+
+	t.Run("fails validation with missing database config", func(t *testing.T) {
+		cfg := &Config{
+			DBHost:           "",
+			DBPort:           "5432",
+			DBUser:           "user",
+			DBPassword:       "pass",
+			DBName:           "db",
+			ServerPort:       "8080",
+			JWTSecret:        "secret",
+			LogLevel:         "info",
+			LogFormat:        "json",
+			Environment:      "development",
+			CORSAllowOrigins: []string{"http://localhost:3000"},
+		}
+
+		err := cfg.Validate()
+		if err == nil {
+			t.Error("Validate() error = nil, want error for missing database config")
+		}
+	})
+
+	t.Run("fails validation with weak admin password", func(t *testing.T) {
+		cfg := &Config{
+			DBHost:            "localhost",
+			DBPort:            "5432",
+			DBUser:            "user",
+			DBPassword:        "pass",
+			DBName:            "db",
+			ServerPort:        "8080",
+			JWTSecret:         "secret",
+			LogLevel:          "info",
+			LogFormat:         "json",
+			Environment:       "development",
+			CORSAllowOrigins:  []string{"http://localhost:3000"},
+			SeedAdminEmail:    "admin@example.com",
+			SeedAdminPassword: "short",
+		}
+
+		err := cfg.Validate()
+		if err == nil {
+			t.Error("Validate() error = nil, want error for weak admin password")
+		}
+	})
+
+	t.Run("fails validation with invalid admin email", func(t *testing.T) {
+		cfg := &Config{
+			DBHost:            "localhost",
+			DBPort:            "5432",
+			DBUser:            "user",
+			DBPassword:        "pass",
+			DBName:            "db",
+			ServerPort:        "8080",
+			JWTSecret:         "secret",
+			LogLevel:          "info",
+			LogFormat:         "json",
+			Environment:       "development",
+			CORSAllowOrigins:  []string{"http://localhost:3000"},
+			SeedAdminEmail:    "not-an-email",
+			SeedAdminPassword: "longenoughpassword",
+		}
+
+		err := cfg.Validate()
+		if err == nil {
+			t.Error("Validate() error = nil, want error for invalid admin email")
+		}
+	})
+
+	t.Run("fails validation with wildcard CORS and credentials in production", func(t *testing.T) {
+		cfg := &Config{
+			DBHost:               "localhost",
+			DBPort:               "5432",
+			DBUser:               "user",
+			DBPassword:           "pass",
+			DBName:               "db",
+			ServerPort:           "8080",
+			JWTSecret:            "a-very-long-and-secure-secret-key-for-production",
+			LogLevel:             "info",
+			LogFormat:            "json",
+			Environment:          "production",
+			CORSAllowOrigins:     []string{"*"},
+			CORSAllowCredentials: true,
+		}
+
+		err := cfg.Validate()
+		if err == nil {
+			t.Error("Validate() error = nil, want error for wildcard CORS with credentials in production")
+		}
+	})
+
+	t.Run("allows wildcard CORS without credentials in production", func(t *testing.T) {
+		cfg := &Config{
+			DBHost:               "localhost",
+			DBPort:               "5432",
+			DBUser:               "user",
+			DBPassword:           "pass",
+			DBName:               "db",
+			ServerPort:           "8080",
+			JWTSecret:            "a-very-long-and-secure-secret-key-for-production",
+			LogLevel:             "info",
+			LogFormat:            "json",
+			Environment:          "production",
+			CORSAllowOrigins:     []string{"*"},
+			CORSAllowCredentials: false,
+		}
+
+		err := cfg.Validate()
+		if err != nil {
+			t.Errorf("Validate() error = %v, want nil for wildcard CORS without credentials", err)
+		}
+	})
+}
+
+func TestConfig_IsProduction(t *testing.T) {
+	tests := []struct {
+		environment string
+		want        bool
+	}{
+		{"production", true},
+		{"development", false},
+		{"staging", false},
+		{"", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.environment, func(t *testing.T) {
+			cfg := &Config{Environment: tt.environment}
+			if got := cfg.IsProduction(); got != tt.want {
+				t.Errorf("IsProduction() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestConfig_IsDevelopment(t *testing.T) {
+	tests := []struct {
+		environment string
+		want        bool
+	}{
+		{"development", true},
+		{"", true},
+		{"production", false},
+		{"staging", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.environment, func(t *testing.T) {
+			cfg := &Config{Environment: tt.environment}
+			if got := cfg.IsDevelopment(); got != tt.want {
+				t.Errorf("IsDevelopment() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsValidPort(t *testing.T) {
+	tests := []struct {
+		port string
+		want bool
+	}{
+		{"8080", true},
+		{"1", true},
+		{"65535", true},
+		{"0", false},
+		{"65536", false},
+		{"-1", false},
+		{"invalid", false},
+		{"", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.port, func(t *testing.T) {
+			if got := isValidPort(tt.port); got != tt.want {
+				t.Errorf("isValidPort(%q) = %v, want %v", tt.port, got, tt.want)
+			}
+		})
+	}
+}
