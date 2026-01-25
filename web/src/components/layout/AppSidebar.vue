@@ -52,8 +52,7 @@ onMounted(() => {
 <template>
   <aside class="app-sidebar">
     <div class="logo">
-      <i class="pi pi-heart"></i>
-      KitaManager
+      <img src="/logo.svg" alt="KitaManager" class="logo-image" />
     </div>
 
     <div class="org-selector">

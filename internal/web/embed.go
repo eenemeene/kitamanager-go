@@ -35,8 +35,8 @@ func RegisterHandlers(r *gin.Engine) error {
 	})
 
 	// Serve other static files (favicon, etc.)
-	r.GET("/vite.svg", func(c *gin.Context) {
-		data, err := fs.ReadFile(distFS, "vite.svg")
+	r.GET("/logo.svg", func(c *gin.Context) {
+		data, err := fs.ReadFile(distFS, "logo.svg")
 		if err != nil {
 			c.Status(http.StatusNotFound)
 			return

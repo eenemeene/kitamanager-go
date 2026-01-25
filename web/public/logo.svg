@@ -1,0 +1,28 @@
+<svg width="600" height="400" viewBox="0 0 600 400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700&amp;display=swap');
+    </style>
+  </defs>
+
+  <rect width="100%" height="100%" fill="#ffffff" opacity="0"/>
+
+  <g transform="translate(150, 50)">
+    <rect x="50" y="120" width="80" height="80" fill="#4A6fa5" rx="2" /> <rect x="130" y="100" width="60" height="100" fill="#E09F3E" rx="2" /> <rect x="190" y="120" width="70" height="80" fill="#264653" rx="2" /> <path d="M50 120 L90 60 L130 120 Z" fill="#E76F51" /> <path d="M130 100 L160 40 L190 100 Z" fill="#2A9D8F" opacity="0.9" /> <path d="M190 120 L225 70 L260 120 Z" fill="#E9C46A" /> <circle cx="160" cy="90" r="25" fill="#F4A261" opacity="0.8" />
+    <path d="M90 120 L130 120 L90 160 Z" fill="#264653" opacity="0.3" />
+    <rect x="145" y="150" width="30" height="50" fill="#E76F51" rx="15" /> <circle cx="90" cy="150" r="15" fill="#F4A261" />
+    <path d="M75 190 L105 190 L90 165 Z" fill="#2A9D8F" />
+
+    <circle cx="225" cy="150" r="15" fill="#F4A261" />
+    <path d="M210 190 L240 190 L225 165 Z" fill="#E76F51" />
+
+    <circle cx="250" cy="50" r="30" fill="#E9C46A" opacity="0.6" />
+  </g>
+
+  <text x="300" y="320"
+        font-family="'Nunito', sans-serif"
+        font-weight="700"
+        font-size="64"
+        text-anchor="middle"
+        fill="#1d2d44">kitamanager</text>
+</svg>

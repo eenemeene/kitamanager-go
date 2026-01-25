@@ -55,7 +55,9 @@ async function handleSubmit() {
 <template>
   <div class="login-container">
     <div class="login-card">
-      <h1>{{ t('common.appName') }}</h1>
+      <div class="login-logo">
+        <img src="/logo.svg" alt="KitaManager" />
+      </div>
       <form @submit.prevent="handleSubmit">
         <div class="field">
           <label for="email">{{ t('auth.email') }}</label>
