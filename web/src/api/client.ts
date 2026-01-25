@@ -79,8 +79,8 @@ class ApiClient {
 
   // Organizations
   async getOrganizations(): Promise<Organization[]> {
-    const response = await this.client.get<Organization[]>('/organizations')
-    return response.data
+    const response = await this.client.get<{ data: Organization[] }>('/organizations')
+    return response.data.data
   }
 
   async getOrganization(id: number): Promise<Organization> {
@@ -104,8 +104,8 @@ class ApiClient {
 
   // Users
   async getUsers(): Promise<User[]> {
-    const response = await this.client.get<User[]>('/users')
-    return response.data
+    const response = await this.client.get<{ data: User[] }>('/users')
+    return response.data.data
   }
 
   async getUser(id: number): Promise<User> {
@@ -177,8 +177,8 @@ class ApiClient {
 
   // Groups (organization-scoped)
   async getGroups(orgId: number): Promise<Group[]> {
-    const response = await this.client.get<Group[]>(`/organizations/${orgId}/groups`)
-    return response.data
+    const response = await this.client.get<{ data: Group[] }>(`/organizations/${orgId}/groups`)
+    return response.data.data
   }
 
   async getGroup(orgId: number, groupId: number): Promise<Group> {
@@ -202,14 +202,16 @@ class ApiClient {
 
   // Organization users
   async getOrganizationUsers(orgId: number): Promise<User[]> {
-    const response = await this.client.get<User[]>(`/organizations/${orgId}/users`)
-    return response.data
+    const response = await this.client.get<{ data: User[] }>(`/organizations/${orgId}/users`)
+    return response.data.data
   }
 
   // Employees (organization-scoped)
   async getEmployees(orgId: number): Promise<Employee[]> {
-    const response = await this.client.get<Employee[]>(`/organizations/${orgId}/employees`)
-    return response.data
+    const response = await this.client.get<{ data: Employee[] }>(
+      `/organizations/${orgId}/employees`
+    )
+    return response.data.data
   }
 
   async getEmployee(orgId: number, id: number): Promise<Employee> {
@@ -269,8 +271,8 @@ class ApiClient {
 
   // Children (organization-scoped)
   async getChildren(orgId: number): Promise<Child[]> {
-    const response = await this.client.get<Child[]>(`/organizations/${orgId}/children`)
-    return response.data
+    const response = await this.client.get<{ data: Child[] }>(`/organizations/${orgId}/children`)
+    return response.data.data
   }
 
   async getChild(orgId: number, id: number): Promise<Child> {
