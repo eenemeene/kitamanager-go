@@ -1,18 +1,34 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useUiStore } from '@/stores/ui'
+import type { Organization } from '@/api/types'
 import Dropdown from 'primevue/dropdown'
 
 const { t } = useI18n()
 const route = useRoute()
+const router = useRouter()
 const uiStore = useUiStore()
+
+// Check if current route is org-scoped
+const isOnOrgScopedRoute = computed(() => {
+  return route.matched.some((record) => record.meta.orgScoped)
+})
 
 const selectedOrg = computed({
   get: () => uiStore.selectedOrganization,
-  set: (org) => {
-    uiStore.setSelectedOrganization(org?.id || null)
+  set: (org: Organization | null) => {
+    const newOrgId = org?.id || null
+    uiStore.setSelectedOrganization(newOrgId)
+
+    // If on an org-scoped route, navigate to the same route with new org
+    if (isOnOrgScopedRoute.value && newOrgId && route.name) {
+      router.push({
+        name: route.name as string,
+        params: { ...route.params, orgId: newOrgId }
+      })
+    }
   }
 })
 

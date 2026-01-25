@@ -40,13 +40,27 @@ export const useUiStore = defineStore('ui', () => {
     }
   }
 
-  function setSelectedOrganization(orgId: number | null) {
+  function setSelectedOrganization(orgId: number | null, persistToStorage = true) {
     selectedOrganizationId.value = orgId
-    if (orgId) {
-      localStorage.setItem('selectedOrgId', String(orgId))
-    } else {
-      localStorage.removeItem('selectedOrgId')
+    if (persistToStorage) {
+      if (orgId) {
+        localStorage.setItem('selectedOrgId', String(orgId))
+      } else {
+        localStorage.removeItem('selectedOrgId')
+      }
     }
+  }
+
+  // Sync organization from route parameter (called by router guard)
+  function syncFromRoute(orgId: number | null) {
+    if (orgId && orgId !== selectedOrganizationId.value) {
+      setSelectedOrganization(orgId, true)
+    }
+  }
+
+  // Check if an organization ID is valid (exists in the loaded list)
+  function isValidOrganization(orgId: number): boolean {
+    return organizations.value.some((o) => o.id === orgId)
   }
 
   async function fetchOrganizations() {
@@ -78,6 +92,8 @@ export const useUiStore = defineStore('ui', () => {
     toggleDarkMode,
     setDarkMode,
     setSelectedOrganization,
+    syncFromRoute,
+    isValidOrganization,
     fetchOrganizations
   }
 })
