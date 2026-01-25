@@ -15,8 +15,8 @@ import (
 
 // SeedAdmin creates an initial admin user if SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD are set.
 // If the user already exists, it will be skipped.
-// The user will be assigned the superadmin role.
-func SeedAdmin(cfg *config.Config, userStore *store.UserStore, enforcer *rbac.Enforcer) error {
+// The user will be assigned the superadmin role (in database).
+func SeedAdmin(cfg *config.Config, userStore *store.UserStore, userGroupStore *store.UserGroupStore, enforcer *rbac.Enforcer) error {
 	if cfg.SeedAdminEmail == "" || cfg.SeedAdminPassword == "" {
 		slog.Info("Admin seeding skipped: SEED_ADMIN_EMAIL or SEED_ADMIN_PASSWORD not set")
 		return nil
@@ -27,9 +27,18 @@ func SeedAdmin(cfg *config.Config, userStore *store.UserStore, enforcer *rbac.En
 	if err == nil && existingUser != nil {
 		slog.Info("Admin user already exists", "email", cfg.SeedAdminEmail)
 
-		// Ensure superadmin role is assigned
+		// Ensure superadmin is set in database
+		if !existingUser.IsSuperAdmin {
+			if err := userGroupStore.SetSuperAdmin(existingUser.ID, true); err != nil {
+				slog.Warn("Failed to ensure superadmin status in database", "error", err)
+			} else {
+				slog.Info("Superadmin status set in database", "userId", existingUser.ID)
+			}
+		}
+
+		// Also keep Casbin assignment for backwards compatibility during migration
 		if err := enforcer.AssignSuperAdmin(existingUser.ID); err != nil {
-			slog.Warn("Failed to ensure superadmin role", "error", err)
+			slog.Warn("Failed to ensure superadmin role in Casbin", "error", err)
 		}
 		return nil
 	}
@@ -44,13 +53,14 @@ func SeedAdmin(cfg *config.Config, userStore *store.UserStore, enforcer *rbac.En
 		return err
 	}
 
-	// Create admin user
+	// Create admin user with superadmin flag
 	user := &models.User{
-		Name:      cfg.SeedAdminName,
-		Email:     cfg.SeedAdminEmail,
-		Password:  string(hashedPassword),
-		Active:    true,
-		CreatedBy: "system",
+		Name:         cfg.SeedAdminName,
+		Email:        cfg.SeedAdminEmail,
+		Password:     string(hashedPassword),
+		Active:       true,
+		IsSuperAdmin: true,
+		CreatedBy:    "system",
 	}
 
 	if err := userStore.Create(user); err != nil {
@@ -59,9 +69,9 @@ func SeedAdmin(cfg *config.Config, userStore *store.UserStore, enforcer *rbac.En
 
 	slog.Info("Admin user created", "email", cfg.SeedAdminEmail, "id", user.ID)
 
-	// Assign superadmin role
+	// Also assign superadmin role in Casbin for backwards compatibility during migration
 	if err := enforcer.AssignSuperAdmin(user.ID); err != nil {
-		return err
+		slog.Warn("Failed to assign superadmin role in Casbin", "error", err)
 	}
 
 	slog.Info("Superadmin role assigned", "userId", user.ID)

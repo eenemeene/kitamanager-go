@@ -339,3 +339,126 @@ func TestEnforcer_NoRoleNoAccess(t *testing.T) {
 		t.Error("user without role should not have access")
 	}
 }
+
+func TestEnforcer_HasPermissionInAnyOrg_SuperAdmin(t *testing.T) {
+	enforcer := setupTestEnforcer(t)
+
+	_ = enforcer.AssignSuperAdmin(1)
+
+	allowed, err := enforcer.HasPermissionInAnyOrg(1, ResourceUsers, ActionCreate)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !allowed {
+		t.Error("superadmin should have permission in any org")
+	}
+}
+
+func TestEnforcer_HasPermissionInAnyOrg_AdminInOneOrg(t *testing.T) {
+	enforcer := setupTestEnforcer(t)
+
+	// User is admin in org 1 only
+	_ = enforcer.AssignRole(2, RoleAdmin, 1)
+
+	// Admin can create users
+	allowed, err := enforcer.HasPermissionInAnyOrg(2, ResourceUsers, ActionCreate)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !allowed {
+		t.Error("admin should have permission to create users")
+	}
+}
+
+func TestEnforcer_HasPermissionInAnyOrg_ManagerCannotCreateUsers(t *testing.T) {
+	enforcer := setupTestEnforcer(t)
+
+	// User is manager in org 1
+	_ = enforcer.AssignRole(3, RoleManager, 1)
+
+	// Manager cannot create users
+	allowed, err := enforcer.HasPermissionInAnyOrg(3, ResourceUsers, ActionCreate)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if allowed {
+		t.Error("manager should not have permission to create users")
+	}
+}
+
+func TestEnforcer_HasPermissionInAnyOrg_ManagerCanReadUsers(t *testing.T) {
+	enforcer := setupTestEnforcer(t)
+
+	// User is manager in org 1
+	_ = enforcer.AssignRole(3, RoleManager, 1)
+
+	// Manager can read users
+	allowed, err := enforcer.HasPermissionInAnyOrg(3, ResourceUsers, ActionRead)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !allowed {
+		t.Error("manager should have permission to read users")
+	}
+}
+
+func TestEnforcer_HasPermissionInAnyOrg_NoRole(t *testing.T) {
+	enforcer := setupTestEnforcer(t)
+
+	// User 99 has no roles
+	allowed, err := enforcer.HasPermissionInAnyOrg(99, ResourceUsers, ActionRead)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if allowed {
+		t.Error("user without any role should not have permission")
+	}
+}
+
+func TestEnforcer_HasAnyRole_SuperAdmin(t *testing.T) {
+	enforcer := setupTestEnforcer(t)
+
+	_ = enforcer.AssignSuperAdmin(1)
+
+	hasRole, err := enforcer.HasAnyRole(1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !hasRole {
+		t.Error("superadmin should have role")
+	}
+}
+
+func TestEnforcer_HasAnyRole_Manager(t *testing.T) {
+	enforcer := setupTestEnforcer(t)
+
+	_ = enforcer.AssignRole(2, RoleManager, 1)
+
+	hasRole, err := enforcer.HasAnyRole(2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !hasRole {
+		t.Error("user with manager role should have role")
+	}
+}
+
+func TestEnforcer_HasAnyRole_NoRole(t *testing.T) {
+	enforcer := setupTestEnforcer(t)
+
+	hasRole, err := enforcer.HasAnyRole(99)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if hasRole {
+		t.Error("user without any role should not have role")
+	}
+}

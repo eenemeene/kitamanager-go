@@ -90,15 +90,20 @@ func main() {
 	orgStore := store.NewOrganizationStore(db)
 	employeeStore := store.NewEmployeeStore(db)
 	childStore := store.NewChildStore(db)
+	userGroupStore := store.NewUserGroupStore(db)
 
 	// Seed admin user if configured
-	if err := seed.SeedAdmin(cfg, userStore, enforcer); err != nil {
+	if err := seed.SeedAdmin(cfg, userStore, userGroupStore, enforcer); err != nil {
 		slog.Error("Failed to seed admin user", "error", err)
 		os.Exit(1)
 	}
 
+	// Initialize RBAC permission service
+	permissionService := rbac.NewPermissionService(userGroupStore, enforcer)
+
 	// Initialize services
 	userService := service.NewUserService(userStore, groupStore)
+	userGroupService := service.NewUserGroupService(userGroupStore, userStore, groupStore)
 	orgService := service.NewOrganizationService(orgStore, groupStore)
 	groupService := service.NewGroupService(groupStore)
 	employeeService := service.NewEmployeeService(employeeStore)
@@ -106,7 +111,7 @@ func main() {
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(userStore, cfg.JWTSecret)
-	userHandler := handlers.NewUserHandler(userService)
+	userHandler := handlers.NewUserHandler(userService, userGroupService)
 	groupHandler := handlers.NewGroupHandler(groupService)
 	orgHandler := handlers.NewOrganizationHandler(orgService)
 	employeeHandler := handlers.NewEmployeeHandler(employeeService)
@@ -115,7 +120,7 @@ func main() {
 
 	// Initialize middleware
 	authMiddleware := middleware.NewAuthMiddleware(cfg.JWTSecret)
-	authzMiddleware := middleware.NewAuthorizationMiddleware(enforcer)
+	authzMiddleware := middleware.NewAuthorizationMiddleware(permissionService)
 
 	// Create Gin router
 	r := gin.New()

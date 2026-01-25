@@ -6,6 +6,23 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
+// UserGroupStorer defines the interface for user-group relationship operations
+type UserGroupStorer interface {
+	AddUserToGroup(userID, groupID uint, role models.Role, createdBy string) (*models.UserGroup, error)
+	UpdateRole(userID, groupID uint, role models.Role) error
+	RemoveUserFromGroup(userID, groupID uint) error
+	FindByUserAndGroup(userID, groupID uint) (*models.UserGroup, error)
+	FindByUser(userID uint) ([]models.UserGroup, error)
+	FindByGroup(groupID uint) ([]models.UserGroup, error)
+	FindByUserAndOrg(userID, orgID uint) ([]models.UserGroup, error)
+	GetEffectiveRoleInOrg(userID, orgID uint) (models.Role, error)
+	GetUserOrganizationsWithRoles(userID uint) (map[uint]models.Role, error)
+	RemoveUserFromOrg(userID, orgID uint) error
+	SetSuperAdmin(userID uint, isSuperAdmin bool) error
+	IsSuperAdmin(userID uint) (bool, error)
+	Exists(userID, groupID uint) (bool, error)
+}
+
 // UserStorer defines the interface for user storage operations
 type UserStorer interface {
 	FindAll(limit, offset int) ([]models.User, int64, error)
@@ -88,4 +105,5 @@ var (
 	_ GroupStorer        = (*GroupStore)(nil)
 	_ EmployeeStorer     = (*EmployeeStore)(nil)
 	_ ChildStorer        = (*ChildStore)(nil)
+	_ UserGroupStorer    = (*UserGroupStore)(nil)
 )

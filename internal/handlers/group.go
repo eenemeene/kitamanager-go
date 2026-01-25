@@ -59,14 +59,14 @@ func (h *GroupHandler) List(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "Group ID"
+// @Param groupId path int true "Group ID"
 // @Success 200 {object} models.GroupResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
-// @Router /api/v1/groups/{id} [get]
+// @Router /api/v1/groups/{groupId} [get]
 func (h *GroupHandler) Get(c *gin.Context) {
-	id, err := parseID(c, "id")
+	id, err := parseID(c, "groupId")
 	if err != nil {
 		respondError(c, err)
 		return
@@ -137,16 +137,16 @@ type UpdateGroupRequest struct {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "Group ID"
+// @Param groupId path int true "Group ID"
 // @Param request body UpdateGroupRequest true "Group data"
 // @Success 200 {object} models.GroupResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/groups/{id} [put]
+// @Router /api/v1/groups/{groupId} [put]
 func (h *GroupHandler) Update(c *gin.Context) {
-	id, err := parseID(c, "id")
+	id, err := parseID(c, "groupId")
 	if err != nil {
 		respondError(c, err)
 		return
@@ -177,14 +177,14 @@ func (h *GroupHandler) Update(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "Group ID"
+// @Param groupId path int true "Group ID"
 // @Success 204 "No Content"
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/groups/{id} [delete]
+// @Router /api/v1/groups/{groupId} [delete]
 func (h *GroupHandler) Delete(c *gin.Context) {
-	id, err := parseID(c, "id")
+	id, err := parseID(c, "groupId")
 	if err != nil {
 		respondError(c, err)
 		return

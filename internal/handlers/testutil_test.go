@@ -33,6 +33,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 		&models.Organization{},
 		&models.User{},
 		&models.Group{},
+		&models.UserGroup{},
 		&models.Employee{},
 		&models.EmployeeContract{},
 		&models.Child{},
@@ -166,6 +167,14 @@ func createUserService(db *gorm.DB) *service.UserService {
 	userStore := store.NewUserStore(db)
 	groupStore := store.NewGroupStore(db)
 	return service.NewUserService(userStore, groupStore)
+}
+
+// createUserGroupService creates a user group service for testing.
+func createUserGroupService(db *gorm.DB) *service.UserGroupService {
+	userGroupStore := store.NewUserGroupStore(db)
+	userStore := store.NewUserStore(db)
+	groupStore := store.NewGroupStore(db)
+	return service.NewUserGroupService(userGroupStore, userStore, groupStore)
 }
 
 // createGroupService creates a group service for testing.

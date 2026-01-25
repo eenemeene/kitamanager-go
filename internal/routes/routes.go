@@ -29,7 +29,10 @@ func Setup(
 		protected.Use(authMiddleware.RequireAuth())
 		{
 			// ============================================================
-			// Organization management (superadmin only for create/delete)
+			// Organization management
+			// Create/Delete: superadmin only
+			// Read: any role
+			// Update: admin+ (superadmin, admin)
 			// ============================================================
 			orgs := protected.Group("/organizations")
 			{
@@ -37,38 +40,85 @@ func Setup(
 				orgs.POST("", authzMiddleware.RequireSuperAdmin(), orgHandler.Create)
 				orgs.DELETE("/:orgId", authzMiddleware.RequireSuperAdmin(), orgHandler.Delete)
 
-				// Any authenticated user can list (they'll see based on their access)
+				// List: requires any role (filtered by access in handler/service)
 				orgs.GET("", orgHandler.List)
-				orgs.GET("/:orgId", orgHandler.Get)
-				orgs.PUT("/:orgId", orgHandler.Update) // TODO: Add org-level permission check
+
+				// Get specific org: requires read permission for that org
+				orgs.GET("/:orgId",
+					authzMiddleware.RequirePermission(rbac.ResourceOrganizations, rbac.ActionRead),
+					orgHandler.Get)
+
+				// Update specific org: requires update permission for that org
+				orgs.PUT("/:orgId",
+					authzMiddleware.RequirePermission(rbac.ResourceOrganizations, rbac.ActionUpdate),
+					orgHandler.Update)
 			}
 
 			// ============================================================
 			// User management (global, not org-scoped)
+			// Permissions checked against any org the user has a role in
 			// ============================================================
 			users := protected.Group("/users")
 			{
-				users.GET("", userHandler.List)
-				users.GET("/:id", userHandler.Get)
-				users.POST("", userHandler.Create)
-				users.PUT("/:id", userHandler.Update)
-				users.DELETE("/:id", userHandler.Delete)
-				users.POST("/:id/groups", userHandler.AddToGroup)
-				users.DELETE("/:id/groups/:gid", userHandler.RemoveFromGroup)
-				users.POST("/:id/organizations", userHandler.AddToOrganization)
-				users.DELETE("/:id/organizations/:oid", userHandler.RemoveFromOrganization)
+				users.GET("",
+					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionRead),
+					userHandler.List)
+				users.GET("/:uid",
+					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionRead),
+					userHandler.Get)
+				users.POST("",
+					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionCreate),
+					userHandler.Create)
+				users.PUT("/:uid",
+					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionUpdate),
+					userHandler.Update)
+				users.DELETE("/:uid",
+					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionDelete),
+					userHandler.Delete)
+				users.POST("/:uid/groups",
+					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionUpdate),
+					userHandler.AddToGroup)
+				users.PUT("/:uid/groups/:gid",
+					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionUpdate),
+					userHandler.UpdateGroupRole)
+				users.DELETE("/:uid/groups/:gid",
+					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionUpdate),
+					userHandler.RemoveFromGroup)
+				users.GET("/:uid/memberships",
+					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionRead),
+					userHandler.GetMemberships)
+				users.PUT("/:uid/superadmin",
+					authzMiddleware.RequireSuperAdmin(),
+					userHandler.SetSuperAdmin)
+				users.POST("/:uid/organizations",
+					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionUpdate),
+					userHandler.AddToOrganization)
+				users.DELETE("/:uid/organizations/:oid",
+					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionUpdate),
+					userHandler.RemoveFromOrganization)
 			}
 
 			// ============================================================
 			// Group management (org-scoped - each group belongs to one org)
+			// Permissions checked against any org the user has a role in
 			// ============================================================
 			groups := protected.Group("/groups")
 			{
-				groups.GET("", groupHandler.List)
-				groups.GET("/:id", groupHandler.Get)
-				groups.POST("", groupHandler.Create)
-				groups.PUT("/:id", groupHandler.Update)
-				groups.DELETE("/:id", groupHandler.Delete)
+				groups.GET("",
+					authzMiddleware.RequireGlobalPermission(rbac.ResourceGroups, rbac.ActionRead),
+					groupHandler.List)
+				groups.GET("/:groupId",
+					authzMiddleware.RequireGlobalPermission(rbac.ResourceGroups, rbac.ActionRead),
+					groupHandler.Get)
+				groups.POST("",
+					authzMiddleware.RequireGlobalPermission(rbac.ResourceGroups, rbac.ActionCreate),
+					groupHandler.Create)
+				groups.PUT("/:groupId",
+					authzMiddleware.RequireGlobalPermission(rbac.ResourceGroups, rbac.ActionUpdate),
+					groupHandler.Update)
+				groups.DELETE("/:groupId",
+					authzMiddleware.RequireGlobalPermission(rbac.ResourceGroups, rbac.ActionDelete),
+					groupHandler.Delete)
 			}
 
 			// ============================================================

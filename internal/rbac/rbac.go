@@ -13,6 +13,7 @@ const (
 	RoleSuperAdmin = "superadmin"
 	RoleAdmin      = "admin"
 	RoleManager    = "manager"
+	RoleMember     = "member"
 )
 
 // Resources
@@ -241,6 +242,13 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleManager, "*", ResourceChildContracts, ActionDelete},
 		{RoleManager, "*", ResourceUsers, ActionRead},
 		{RoleManager, "*", ResourceGroups, ActionRead},
+
+		// Member - read-only access to employees, children, contracts in their org
+		{RoleMember, "*", ResourceOrganizations, ActionRead},
+		{RoleMember, "*", ResourceEmployees, ActionRead},
+		{RoleMember, "*", ResourceChildren, ActionRead},
+		{RoleMember, "*", ResourceEmployeeContracts, ActionRead},
+		{RoleMember, "*", ResourceChildContracts, ActionRead},
 	}
 
 	_, err := e.AddPolicies(policies)
@@ -255,4 +263,71 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 func (e *Enforcer) ClearAllPolicies() error {
 	e.ClearPolicy()
 	return e.SavePolicy()
+}
+
+// HasPermissionInAnyOrg checks if a user has permission to perform an action on a resource
+// in any of their assigned organizations. This is used for global resources like users and groups.
+func (e *Enforcer) HasPermissionInAnyOrg(userID uint, resource, action string) (bool, error) {
+	// First check if superadmin
+	isSuperAdmin, err := e.IsSuperAdmin(userID)
+	if err != nil {
+		return false, err
+	}
+	if isSuperAdmin {
+		return true, nil
+	}
+
+	// Get all role assignments for this user
+	policies, err := e.GetUserRolesAllOrgs(userID)
+	if err != nil {
+		return false, err
+	}
+
+	// Check permission in each org the user has a role in
+	for _, policy := range policies {
+		if len(policy) >= 3 {
+			// policy[2] is the domain (e.g., "org:1")
+			dom := policy[2]
+			if dom == "*" {
+				continue // Skip global assignments, already handled by superadmin check
+			}
+
+			// Extract org ID from domain string
+			var orgID uint
+			_, err := fmt.Sscanf(dom, "org:%d", &orgID)
+			if err != nil {
+				continue
+			}
+
+			allowed, err := e.CheckPermission(userID, orgID, resource, action)
+			if err != nil {
+				return false, err
+			}
+			if allowed {
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
+}
+
+// HasAnyRole checks if a user has any role (admin or manager) in any organization.
+func (e *Enforcer) HasAnyRole(userID uint) (bool, error) {
+	// Check if superadmin
+	isSuperAdmin, err := e.IsSuperAdmin(userID)
+	if err != nil {
+		return false, err
+	}
+	if isSuperAdmin {
+		return true, nil
+	}
+
+	// Get all role assignments
+	policies, err := e.GetUserRolesAllOrgs(userID)
+	if err != nil {
+		return false, err
+	}
+
+	return len(policies) > 0, nil
 }

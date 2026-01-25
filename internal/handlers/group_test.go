@@ -40,7 +40,7 @@ func TestGroupHandler_Get(t *testing.T) {
 	group := createTestGroup(t, db, "Test Group")
 
 	r := setupTestRouter()
-	r.GET("/groups/:id", handler.Get)
+	r.GET("/groups/:groupId", handler.Get)
 
 	w := performRequest(r, "GET", "/groups/1", nil)
 
@@ -62,7 +62,7 @@ func TestGroupHandler_Get_NotFound(t *testing.T) {
 	handler := NewGroupHandler(groupService)
 
 	r := setupTestRouter()
-	r.GET("/groups/:id", handler.Get)
+	r.GET("/groups/:groupId", handler.Get)
 
 	w := performRequest(r, "GET", "/groups/999", nil)
 
@@ -136,7 +136,7 @@ func TestGroupHandler_Update(t *testing.T) {
 	createTestGroup(t, db, "Original Name")
 
 	r := setupTestRouter()
-	r.PUT("/groups/:id", handler.Update)
+	r.PUT("/groups/:groupId", handler.Update)
 
 	body := UpdateGroupRequest{
 		Name: "Updated Name",
@@ -164,7 +164,7 @@ func TestGroupHandler_Delete(t *testing.T) {
 	createTestGroup(t, db, "To Delete")
 
 	r := setupTestRouter()
-	r.DELETE("/groups/:id", handler.Delete)
+	r.DELETE("/groups/:groupId", handler.Delete)
 
 	w := performRequest(r, "DELETE", "/groups/1", nil)
 
@@ -207,7 +207,7 @@ func TestGroupHandler_Get_InvalidID(t *testing.T) {
 	handler := NewGroupHandler(groupService)
 
 	r := setupTestRouter()
-	r.GET("/groups/:id", handler.Get)
+	r.GET("/groups/:groupId", handler.Get)
 
 	w := performRequest(r, "GET", "/groups/invalid", nil)
 
@@ -222,7 +222,7 @@ func TestGroupHandler_Update_InvalidID(t *testing.T) {
 	handler := NewGroupHandler(groupService)
 
 	r := setupTestRouter()
-	r.PUT("/groups/:id", handler.Update)
+	r.PUT("/groups/:groupId", handler.Update)
 
 	body := UpdateGroupRequest{
 		Name: "Updated Name",
@@ -241,7 +241,7 @@ func TestGroupHandler_Update_NotFound(t *testing.T) {
 	handler := NewGroupHandler(groupService)
 
 	r := setupTestRouter()
-	r.PUT("/groups/:id", handler.Update)
+	r.PUT("/groups/:groupId", handler.Update)
 
 	body := UpdateGroupRequest{
 		Name: "Updated Name",
@@ -262,7 +262,7 @@ func TestGroupHandler_Update_ActiveFlag(t *testing.T) {
 	createTestGroup(t, db, "Test Group")
 
 	r := setupTestRouter()
-	r.PUT("/groups/:id", handler.Update)
+	r.PUT("/groups/:groupId", handler.Update)
 
 	active := false
 	body := UpdateGroupRequest{
@@ -289,7 +289,7 @@ func TestGroupHandler_Delete_InvalidID(t *testing.T) {
 	handler := NewGroupHandler(groupService)
 
 	r := setupTestRouter()
-	r.DELETE("/groups/:id", handler.Delete)
+	r.DELETE("/groups/:groupId", handler.Delete)
 
 	w := performRequest(r, "DELETE", "/groups/invalid", nil)
 

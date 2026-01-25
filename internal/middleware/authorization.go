@@ -11,12 +11,12 @@ import (
 
 // AuthorizationMiddleware handles RBAC authorization.
 type AuthorizationMiddleware struct {
-	enforcer *rbac.Enforcer
+	permissionService *rbac.PermissionService
 }
 
 // NewAuthorizationMiddleware creates a new authorization middleware.
-func NewAuthorizationMiddleware(enforcer *rbac.Enforcer) *AuthorizationMiddleware {
-	return &AuthorizationMiddleware{enforcer: enforcer}
+func NewAuthorizationMiddleware(permissionService *rbac.PermissionService) *AuthorizationMiddleware {
+	return &AuthorizationMiddleware{permissionService: permissionService}
 }
 
 // RequirePermission returns a middleware that checks if the user has permission
@@ -37,7 +37,7 @@ func (m *AuthorizationMiddleware) RequirePermission(resource, action string) gin
 		}
 
 		// First check if user is superadmin (can access everything)
-		isSuperAdmin, err := m.enforcer.IsSuperAdmin(userIDUint)
+		isSuperAdmin, err := m.permissionService.IsSuperAdmin(userIDUint)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "authorization check failed"})
 			return
@@ -48,7 +48,7 @@ func (m *AuthorizationMiddleware) RequirePermission(resource, action string) gin
 		}
 
 		// Get organization ID from path parameter
-		orgIDStr := c.Param("id")
+		orgIDStr := c.Param("orgId")
 		if orgIDStr == "" {
 			// For endpoints without orgId, try to get it from the resource itself
 			// This requires looking up the resource - for now, deny access
@@ -63,7 +63,7 @@ func (m *AuthorizationMiddleware) RequirePermission(resource, action string) gin
 		}
 
 		// Check permission
-		allowed, err := m.enforcer.CheckPermission(userIDUint, uint(orgID), resource, action)
+		allowed, err := m.permissionService.CheckPermission(userIDUint, uint(orgID), resource, action)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "authorization check failed"})
 			return
@@ -95,7 +95,7 @@ func (m *AuthorizationMiddleware) RequireSuperAdmin() gin.HandlerFunc {
 			return
 		}
 
-		isSuperAdmin, err := m.enforcer.IsSuperAdmin(userIDUint)
+		isSuperAdmin, err := m.permissionService.IsSuperAdmin(userIDUint)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "authorization check failed"})
 			return
@@ -103,6 +103,38 @@ func (m *AuthorizationMiddleware) RequireSuperAdmin() gin.HandlerFunc {
 
 		if !isSuperAdmin {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "superadmin access required"})
+			return
+		}
+
+		c.Next()
+	}
+}
+
+// RequireGlobalPermission returns a middleware that checks if the user has permission
+// to perform the specified action on a global resource (like users or groups) in ANY
+// of their assigned organizations. This is for resources that aren't org-scoped in URLs.
+func (m *AuthorizationMiddleware) RequireGlobalPermission(resource, action string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, exists := c.Get("userID")
+		if !exists {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+
+		userIDUint, ok := userID.(uint)
+		if !ok {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "invalid user id"})
+			return
+		}
+
+		allowed, err := m.permissionService.HasPermissionInAnyOrg(userIDUint, resource, action)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "authorization check failed"})
+			return
+		}
+
+		if !allowed {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "forbidden"})
 			return
 		}
 
@@ -126,7 +158,7 @@ func (m *AuthorizationMiddleware) RequireOrgAccess() gin.HandlerFunc {
 		}
 
 		// Superadmins can access any org
-		isSuperAdmin, err := m.enforcer.IsSuperAdmin(userIDUint)
+		isSuperAdmin, err := m.permissionService.IsSuperAdmin(userIDUint)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "authorization check failed"})
 			return
@@ -136,7 +168,7 @@ func (m *AuthorizationMiddleware) RequireOrgAccess() gin.HandlerFunc {
 			return
 		}
 
-		orgIDStr := c.Param("id")
+		orgIDStr := c.Param("orgId")
 		if orgIDStr == "" {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "organization id required"})
 			return
@@ -148,13 +180,13 @@ func (m *AuthorizationMiddleware) RequireOrgAccess() gin.HandlerFunc {
 			return
 		}
 
-		roles, err := m.enforcer.GetUserRoles(userIDUint, uint(orgID))
+		hasRole, err := m.permissionService.HasAnyRoleInOrg(userIDUint, uint(orgID))
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "authorization check failed"})
 			return
 		}
 
-		if len(roles) == 0 {
+		if !hasRole {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "no access to this organization"})
 			return
 		}
