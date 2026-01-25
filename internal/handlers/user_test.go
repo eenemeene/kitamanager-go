@@ -35,6 +35,50 @@ func TestUserHandler_List(t *testing.T) {
 	}
 }
 
+func TestUserHandler_List_IncludesGroups(t *testing.T) {
+	db := setupTestDB(t)
+	userStore := store.NewUserStore(db)
+	groupStore := store.NewGroupStore(db)
+	handler := NewUserHandler(userStore, groupStore)
+
+	// Create org, group, and user
+	org := createTestOrganization(t, db, "Test Org")
+	group := createTestGroupWithOrg(t, db, "Test Group", org.ID)
+	user := createTestUser(t, db, "Test User", "test@example.com", "password")
+
+	// Add user to org and group
+	_ = userStore.AddToOrganization(user.ID, org.ID)
+	_ = userStore.AddToGroup(user.ID, group.ID)
+
+	r := setupTestRouter()
+	r.GET("/users", handler.List)
+
+	w := performRequest(r, "GET", "/users", nil)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var users []models.UserResponse
+	parseResponse(t, w, &users)
+
+	if len(users) != 1 {
+		t.Fatalf("expected 1 user, got %d", len(users))
+	}
+
+	if len(users[0].Groups) != 1 {
+		t.Errorf("expected 1 group in response, got %d", len(users[0].Groups))
+	}
+
+	if users[0].Groups[0].OrganizationID != org.ID {
+		t.Errorf("expected group organization_id %d, got %d", org.ID, users[0].Groups[0].OrganizationID)
+	}
+
+	if users[0].Groups[0].Name != "Test Group" {
+		t.Errorf("expected group name 'Test Group', got '%s'", users[0].Groups[0].Name)
+	}
+}
+
 func TestUserHandler_Get(t *testing.T) {
 	db := setupTestDB(t)
 	userStore := store.NewUserStore(db)

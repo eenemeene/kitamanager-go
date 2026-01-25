@@ -45,10 +45,17 @@ function closeMembershipsDialog() {
   selectedUserForMemberships.value = null
 }
 
-// Filter groups to only show those from the selected organization
-function getGroupsForSelectedOrg(userGroups: Group[] | undefined): Group[] {
-  if (!userGroups || !uiStore.selectedOrganizationId) return []
+// Get groups to display - if org selected, filter to that org; otherwise show all
+function getGroupsToDisplay(userGroups: Group[] | undefined): Group[] {
+  if (!userGroups) return []
+  if (!uiStore.selectedOrganizationId) return userGroups
   return userGroups.filter((group) => group.organization_id === uiStore.selectedOrganizationId)
+}
+
+// Get organization name for a group (used when showing all groups without filter)
+function getOrgNameForGroup(group: Group): string {
+  const org = uiStore.organizations.find((o) => o.id === group.organization_id)
+  return org ? org.name : ''
 }
 
 function formatLastLogin(lastLogin: string | null | undefined): string {
@@ -92,13 +99,17 @@ onMounted(() => {
           <template #body="{ data }">
             <div class="group-tags">
               <Tag
-                v-for="group in getGroupsForSelectedOrg(data.groups)"
+                v-for="group in getGroupsToDisplay(data.groups)"
                 :key="group.id"
-                :value="group.name"
+                :value="
+                  uiStore.selectedOrganizationId
+                    ? group.name
+                    : `${group.name} (${getOrgNameForGroup(group)})`
+                "
                 severity="info"
                 class="mr-1"
               />
-              <span v-if="getGroupsForSelectedOrg(data.groups).length === 0" class="text-muted">
+              <span v-if="getGroupsToDisplay(data.groups).length === 0" class="text-muted">
                 —
               </span>
             </div>
