@@ -151,7 +151,7 @@ web-check-all:
 
 # Generate OpenAPI/Swagger documentation
 swagger-docs:
-	swag init -g cmd/api/main.go -o docs
+	swag init -g cmd/api/main.go -o docs --parseDependency --parseInternal
 
 # Update database schema documentation (requires running database)
 schema-docs:
