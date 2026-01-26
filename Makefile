@@ -37,7 +37,7 @@ dev:
 	@echo "3. Starting API server in background..."
 	@DATABASE_URL="postgres://kitamanager:kitamanager@localhost:5432/kitamanager?sslmode=disable" \
 		SEED_ADMIN_EMAIL=admin@example.com \
-		SEED_ADMIN_PASSWORD=admin \
+		SEED_ADMIN_PASSWORD=adminadmin \
 		SEED_ADMIN_NAME=admin \
 		SEED_RBAC_POLICIES=true \
 		CORS_ALLOW_ORIGINS="http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:8080" \
@@ -140,6 +140,18 @@ web-test:
 # Run web tests with coverage
 web-test-coverage:
 	cd web && npm run test:coverage
+
+# Run web E2E tests (requires dev server running or will start it)
+web-test-e2e:
+	cd web && npm run test:e2e
+
+# Run web E2E tests with browser visible
+web-test-e2e-headed:
+	cd web && npm run test:e2e:headed
+
+# Install Playwright browsers
+web-playwright-install:
+	cd web && npx playwright install firefox --with-deps
 
 # Run all web checks (type-check, lint, stylelint, format, tests)
 web-check-all:

@@ -266,3 +266,72 @@ jobs:
           TEST_DB_PASSWORD: kitamanager
           TEST_DB_NAME: kitamanager_test
         run: make api-test-contract
+
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [api-build, web-build]
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: kitamanager
+          POSTGRES_PASSWORD: kitamanager
+          POSTGRES_DB: kitamanager
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install web dependencies
+        run: make web-install
+
+      - name: Install Playwright browsers
+        run: cd web && npx playwright install firefox --with-deps
+
+      - name: Build web
+        run: make web-build
+
+      - name: Build API
+        run: make api-build
+
+      - name: Start API server
+        run: |
+          DATABASE_URL="postgres://kitamanager:kitamanager@localhost:5432/kitamanager?sslmode=disable" \
+          SEED_ADMIN_EMAIL=admin@example.com \
+          SEED_ADMIN_PASSWORD=adminadmin \
+          SEED_ADMIN_NAME=admin \
+          SEED_RBAC_POLICIES=true \
+          ./bin/kitamanager-api &
+          sleep 5
+          curl -f http://localhost:8080/api/v1/health || exit 1
+
+      - name: Run E2E tests
+        run: cd web && npm run test:e2e
+        env:
+          BASE_URL: http://localhost:8080
+          CI: true
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: web/test-results/
+          retention-days: 7
