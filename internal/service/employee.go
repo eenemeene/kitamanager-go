@@ -22,34 +22,49 @@ func NewEmployeeService(store store.EmployeeStorer) *EmployeeService {
 }
 
 // List returns a paginated list of employees
-func (s *EmployeeService) List(ctx context.Context, limit, offset int) ([]models.Employee, int64, error) {
+func (s *EmployeeService) List(ctx context.Context, limit, offset int) ([]models.EmployeeResponse, int64, error) {
 	employees, total, err := s.store.FindAll(limit, offset)
 	if err != nil {
 		return nil, 0, apperror.Internal("failed to fetch employees")
 	}
-	return employees, total, nil
+
+	responses := make([]models.EmployeeResponse, len(employees))
+	for i, emp := range employees {
+		responses[i] = emp.ToResponse()
+	}
+	return responses, total, nil
 }
 
 // ListByOrganization returns a paginated list of employees for an organization
-func (s *EmployeeService) ListByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.Employee, int64, error) {
+func (s *EmployeeService) ListByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.EmployeeResponse, int64, error) {
 	employees, total, err := s.store.FindByOrganization(orgID, limit, offset)
 	if err != nil {
 		return nil, 0, apperror.Internal("failed to fetch employees")
 	}
-	return employees, total, nil
+
+	responses := make([]models.EmployeeResponse, len(employees))
+	for i, emp := range employees {
+		responses[i] = emp.ToResponse()
+	}
+	return responses, total, nil
 }
 
-// GetByID returns an employee by ID
-func (s *EmployeeService) GetByID(ctx context.Context, id uint) (*models.Employee, error) {
+// GetByID returns an employee by ID, validating it belongs to the specified organization
+func (s *EmployeeService) GetByID(ctx context.Context, id, orgID uint) (*models.EmployeeResponse, error) {
 	employee, err := s.store.FindByID(id)
 	if err != nil {
 		return nil, apperror.NotFound("employee")
 	}
-	return employee, nil
+	// Security: Validate employee belongs to the specified organization
+	if employee.OrganizationID != orgID {
+		return nil, apperror.NotFound("employee")
+	}
+	resp := employee.ToResponse()
+	return &resp, nil
 }
 
 // Create creates a new employee
-func (s *EmployeeService) Create(ctx context.Context, orgID uint, req *models.EmployeeCreate) (*models.Employee, error) {
+func (s *EmployeeService) Create(ctx context.Context, orgID uint, req *models.EmployeeCreateRequest) (*models.EmployeeResponse, error) {
 	// Trim and validate input
 	req.FirstName = strings.TrimSpace(req.FirstName)
 	req.LastName = strings.TrimSpace(req.LastName)
@@ -77,13 +92,18 @@ func (s *EmployeeService) Create(ctx context.Context, orgID uint, req *models.Em
 		return nil, apperror.Internal("failed to create employee")
 	}
 
-	return employee, nil
+	resp := employee.ToResponse()
+	return &resp, nil
 }
 
-// Update updates an existing employee
-func (s *EmployeeService) Update(ctx context.Context, id uint, req *models.EmployeeUpdate) (*models.Employee, error) {
+// Update updates an existing employee, validating it belongs to the specified organization
+func (s *EmployeeService) Update(ctx context.Context, id, orgID uint, req *models.EmployeeUpdateRequest) (*models.EmployeeResponse, error) {
 	employee, err := s.store.FindByID(id)
 	if err != nil {
+		return nil, apperror.NotFound("employee")
+	}
+	// Security: Validate employee belongs to the specified organization
+	if employee.OrganizationID != orgID {
 		return nil, apperror.NotFound("employee")
 	}
 
@@ -112,22 +132,36 @@ func (s *EmployeeService) Update(ctx context.Context, id uint, req *models.Emplo
 		return nil, apperror.Internal("failed to update employee")
 	}
 
-	return employee, nil
+	resp := employee.ToResponse()
+	return &resp, nil
 }
 
-// Delete deletes an employee
-func (s *EmployeeService) Delete(ctx context.Context, id uint) error {
+// Delete deletes an employee, validating it belongs to the specified organization
+func (s *EmployeeService) Delete(ctx context.Context, id, orgID uint) error {
+	// Security: Validate employee belongs to the specified organization
+	employee, err := s.store.FindByID(id)
+	if err != nil {
+		return apperror.NotFound("employee")
+	}
+	if employee.OrganizationID != orgID {
+		return apperror.NotFound("employee")
+	}
+
 	if err := s.store.Delete(id); err != nil {
 		return apperror.Internal("failed to delete employee")
 	}
 	return nil
 }
 
-// ListContracts returns contract history for an employee
-func (s *EmployeeService) ListContracts(ctx context.Context, employeeID uint) ([]models.EmployeeContract, error) {
-	// Verify employee exists
-	_, err := s.store.FindByID(employeeID)
+// ListContracts returns contract history for an employee, validating it belongs to the specified organization
+func (s *EmployeeService) ListContracts(ctx context.Context, employeeID, orgID uint) ([]models.EmployeeContractResponse, error) {
+	// Verify employee exists and belongs to org
+	employee, err := s.store.FindByID(employeeID)
 	if err != nil {
+		return nil, apperror.NotFound("employee")
+	}
+	// Security: Validate employee belongs to the specified organization
+	if employee.OrganizationID != orgID {
 		return nil, apperror.NotFound("employee")
 	}
 
@@ -135,11 +169,25 @@ func (s *EmployeeService) ListContracts(ctx context.Context, employeeID uint) ([
 	if err != nil {
 		return nil, apperror.Internal("failed to fetch contracts")
 	}
-	return contracts, nil
+
+	responses := make([]models.EmployeeContractResponse, len(contracts))
+	for i, c := range contracts {
+		responses[i] = c.ToResponse()
+	}
+	return responses, nil
 }
 
-// GetCurrentContract returns the current active contract for an employee
-func (s *EmployeeService) GetCurrentContract(ctx context.Context, employeeID uint) (*models.EmployeeContract, error) {
+// GetCurrentContract returns the current active contract for an employee, validating it belongs to the specified organization
+func (s *EmployeeService) GetCurrentContract(ctx context.Context, employeeID, orgID uint) (*models.EmployeeContractResponse, error) {
+	// Security: Validate employee belongs to the specified organization
+	employee, err := s.store.FindByID(employeeID)
+	if err != nil {
+		return nil, apperror.NotFound("employee")
+	}
+	if employee.OrganizationID != orgID {
+		return nil, apperror.NotFound("employee")
+	}
+
 	contract, err := s.store.Contracts().GetCurrentContract(employeeID)
 	if err != nil {
 		return nil, apperror.Internal("failed to fetch contract")
@@ -147,11 +195,12 @@ func (s *EmployeeService) GetCurrentContract(ctx context.Context, employeeID uin
 	if contract == nil {
 		return nil, apperror.NotFound("active contract")
 	}
-	return contract, nil
+	resp := contract.ToResponse()
+	return &resp, nil
 }
 
-// CreateContract creates a new contract for an employee
-func (s *EmployeeService) CreateContract(ctx context.Context, employeeID uint, req *models.EmployeeContractCreate) (*models.EmployeeContract, error) {
+// CreateContract creates a new contract for an employee, validating it belongs to the specified organization
+func (s *EmployeeService) CreateContract(ctx context.Context, employeeID, orgID uint, req *models.EmployeeContractCreateRequest) (*models.EmployeeContractResponse, error) {
 	// Trim and validate input
 	req.Position = strings.TrimSpace(req.Position)
 
@@ -161,10 +210,20 @@ func (s *EmployeeService) CreateContract(ctx context.Context, employeeID uint, r
 	if err := validation.ValidatePeriod(req.From, req.To); err != nil {
 		return nil, apperror.BadRequest(err.Error())
 	}
+	if err := validation.ValidateWeeklyHours(req.WeeklyHours, "weekly_hours"); err != nil {
+		return nil, apperror.BadRequest(err.Error())
+	}
+	if err := validation.ValidateSalary(req.Salary); err != nil {
+		return nil, apperror.BadRequest(err.Error())
+	}
 
-	// Verify employee exists
-	_, err := s.store.FindByID(employeeID)
+	// Verify employee exists and belongs to org
+	employee, err := s.store.FindByID(employeeID)
 	if err != nil {
+		return nil, apperror.NotFound("employee")
+	}
+	// Security: Validate employee belongs to the specified organization
+	if employee.OrganizationID != orgID {
 		return nil, apperror.NotFound("employee")
 	}
 
@@ -191,11 +250,30 @@ func (s *EmployeeService) CreateContract(ctx context.Context, employeeID uint, r
 		return nil, apperror.Internal("failed to create contract")
 	}
 
-	return contract, nil
+	resp := contract.ToResponse()
+	return &resp, nil
 }
 
-// DeleteContract deletes a contract
-func (s *EmployeeService) DeleteContract(ctx context.Context, contractID uint) error {
+// DeleteContract deletes a contract, validating it belongs to an employee in the specified organization
+func (s *EmployeeService) DeleteContract(ctx context.Context, contractID, employeeID, orgID uint) error {
+	// Security: Validate employee belongs to the specified organization
+	employee, err := s.store.FindByID(employeeID)
+	if err != nil {
+		return apperror.NotFound("employee")
+	}
+	if employee.OrganizationID != orgID {
+		return apperror.NotFound("employee")
+	}
+
+	// Validate contract belongs to the employee
+	contract, err := s.store.FindContractByID(contractID)
+	if err != nil {
+		return apperror.NotFound("contract")
+	}
+	if contract.EmployeeID != employeeID {
+		return apperror.NotFound("contract")
+	}
+
 	if err := s.store.DeleteContract(contractID); err != nil {
 		return apperror.Internal("failed to delete contract")
 	}

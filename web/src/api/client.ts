@@ -3,39 +3,39 @@ import type {
   LoginRequest,
   LoginResponse,
   Organization,
-  OrganizationCreate,
-  OrganizationUpdate,
+  OrganizationCreateRequest,
+  OrganizationUpdateRequest,
   User,
-  UserCreate,
-  UserUpdate,
+  UserCreateRequest,
+  UserUpdateRequest,
   Group,
-  GroupCreate,
-  GroupUpdate,
+  GroupCreateRequest,
+  GroupUpdateRequest,
   Employee,
-  EmployeeCreate,
-  EmployeeUpdate,
+  EmployeeCreateRequest,
+  EmployeeUpdateRequest,
   EmployeeContract,
-  EmployeeContractCreate,
+  EmployeeContractCreateRequest,
   Child,
-  ChildCreate,
-  ChildUpdate,
+  ChildCreateRequest,
+  ChildUpdateRequest,
   ChildContract,
-  ChildContractCreate,
+  ChildContractCreateRequest,
   Role,
   UserGroupResponse,
   UserMembershipsResponse,
   Payplan,
-  PayplanCreate,
-  PayplanUpdate,
+  PayplanCreateRequest,
+  PayplanUpdateRequest,
   PayplanPeriod,
-  PayplanPeriodCreate,
-  PayplanPeriodUpdate,
+  PayplanPeriodCreateRequest,
+  PayplanPeriodUpdateRequest,
   PayplanEntry,
-  PayplanEntryCreate,
-  PayplanEntryUpdate,
+  PayplanEntryCreateRequest,
+  PayplanEntryUpdateRequest,
   PayplanProperty,
-  PayplanPropertyCreate,
-  PayplanPropertyUpdate
+  PayplanPropertyCreateRequest,
+  PayplanPropertyUpdateRequest
 } from './types'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
@@ -101,12 +101,12 @@ class ApiClient {
     return response.data
   }
 
-  async createOrganization(data: OrganizationCreate): Promise<Organization> {
+  async createOrganization(data: OrganizationCreateRequest): Promise<Organization> {
     const response = await this.client.post<Organization>('/organizations', data)
     return response.data
   }
 
-  async updateOrganization(id: number, data: OrganizationUpdate): Promise<Organization> {
+  async updateOrganization(id: number, data: OrganizationUpdateRequest): Promise<Organization> {
     const response = await this.client.put<Organization>(`/organizations/${id}`, data)
     return response.data
   }
@@ -126,12 +126,12 @@ class ApiClient {
     return response.data
   }
 
-  async createUser(data: UserCreate): Promise<User> {
+  async createUser(data: UserCreateRequest): Promise<User> {
     const response = await this.client.post<User>('/users', data)
     return response.data
   }
 
-  async updateUser(id: number, data: UserUpdate): Promise<User> {
+  async updateUser(id: number, data: UserUpdateRequest): Promise<User> {
     const response = await this.client.put<User>(`/users/${id}`, data)
     return response.data
   }
@@ -199,12 +199,12 @@ class ApiClient {
     return response.data
   }
 
-  async createGroup(orgId: number, data: GroupCreate): Promise<Group> {
+  async createGroup(orgId: number, data: GroupCreateRequest): Promise<Group> {
     const response = await this.client.post<Group>(`/organizations/${orgId}/groups`, data)
     return response.data
   }
 
-  async updateGroup(orgId: number, groupId: number, data: GroupUpdate): Promise<Group> {
+  async updateGroup(orgId: number, groupId: number, data: GroupUpdateRequest): Promise<Group> {
     const response = await this.client.put<Group>(`/organizations/${orgId}/groups/${groupId}`, data)
     return response.data
   }
@@ -234,13 +234,13 @@ class ApiClient {
 
   async createEmployee(
     orgId: number,
-    data: Omit<EmployeeCreate, 'organization_id'>
+    data: Omit<EmployeeCreateRequest, 'organization_id'>
   ): Promise<Employee> {
     const response = await this.client.post<Employee>(`/organizations/${orgId}/employees`, data)
     return response.data
   }
 
-  async updateEmployee(orgId: number, id: number, data: EmployeeUpdate): Promise<Employee> {
+  async updateEmployee(orgId: number, id: number, data: EmployeeUpdateRequest): Promise<Employee> {
     const response = await this.client.put<Employee>(
       `/organizations/${orgId}/employees/${id}`,
       data
@@ -263,7 +263,7 @@ class ApiClient {
   async createEmployeeContract(
     orgId: number,
     employeeId: number,
-    data: EmployeeContractCreate
+    data: EmployeeContractCreateRequest
   ): Promise<EmployeeContract> {
     const response = await this.client.post<EmployeeContract>(
       `/organizations/${orgId}/employees/${employeeId}/contracts`,
@@ -293,12 +293,15 @@ class ApiClient {
     return response.data
   }
 
-  async createChild(orgId: number, data: Omit<ChildCreate, 'organization_id'>): Promise<Child> {
+  async createChild(
+    orgId: number,
+    data: Omit<ChildCreateRequest, 'organization_id'>
+  ): Promise<Child> {
     const response = await this.client.post<Child>(`/organizations/${orgId}/children`, data)
     return response.data
   }
 
-  async updateChild(orgId: number, id: number, data: ChildUpdate): Promise<Child> {
+  async updateChild(orgId: number, id: number, data: ChildUpdateRequest): Promise<Child> {
     const response = await this.client.put<Child>(`/organizations/${orgId}/children/${id}`, data)
     return response.data
   }
@@ -318,7 +321,7 @@ class ApiClient {
   async createChildContract(
     orgId: number,
     childId: number,
-    data: ChildContractCreate
+    data: ChildContractCreateRequest
   ): Promise<ChildContract> {
     const response = await this.client.post<ChildContract>(
       `/organizations/${orgId}/children/${childId}/contracts`,
@@ -342,12 +345,12 @@ class ApiClient {
     return response.data
   }
 
-  async createPayplan(data: PayplanCreate): Promise<Payplan> {
+  async createPayplan(data: PayplanCreateRequest): Promise<Payplan> {
     const response = await this.client.post<Payplan>('/payplans', data)
     return response.data
   }
 
-  async updatePayplan(id: number, data: PayplanUpdate): Promise<Payplan> {
+  async updatePayplan(id: number, data: PayplanUpdateRequest): Promise<Payplan> {
     const response = await this.client.put<Payplan>(`/payplans/${id}`, data)
     return response.data
   }
@@ -357,7 +360,10 @@ class ApiClient {
   }
 
   // Payplan Periods
-  async createPayplanPeriod(payplanId: number, data: PayplanPeriodCreate): Promise<PayplanPeriod> {
+  async createPayplanPeriod(
+    payplanId: number,
+    data: PayplanPeriodCreateRequest
+  ): Promise<PayplanPeriod> {
     const response = await this.client.post<PayplanPeriod>(`/payplans/${payplanId}/periods`, data)
     return response.data
   }
@@ -365,7 +371,7 @@ class ApiClient {
   async updatePayplanPeriod(
     payplanId: number,
     periodId: number,
-    data: PayplanPeriodUpdate
+    data: PayplanPeriodUpdateRequest
   ): Promise<PayplanPeriod> {
     const response = await this.client.put<PayplanPeriod>(
       `/payplans/${payplanId}/periods/${periodId}`,
@@ -382,7 +388,7 @@ class ApiClient {
   async createPayplanEntry(
     payplanId: number,
     periodId: number,
-    data: PayplanEntryCreate
+    data: PayplanEntryCreateRequest
   ): Promise<PayplanEntry> {
     const response = await this.client.post<PayplanEntry>(
       `/payplans/${payplanId}/periods/${periodId}/entries`,
@@ -395,7 +401,7 @@ class ApiClient {
     payplanId: number,
     periodId: number,
     entryId: number,
-    data: PayplanEntryUpdate
+    data: PayplanEntryUpdateRequest
   ): Promise<PayplanEntry> {
     const response = await this.client.put<PayplanEntry>(
       `/payplans/${payplanId}/periods/${periodId}/entries/${entryId}`,
@@ -413,7 +419,7 @@ class ApiClient {
     payplanId: number,
     periodId: number,
     entryId: number,
-    data: PayplanPropertyCreate
+    data: PayplanPropertyCreateRequest
   ): Promise<PayplanProperty> {
     const response = await this.client.post<PayplanProperty>(
       `/payplans/${payplanId}/periods/${periodId}/entries/${entryId}/properties`,
@@ -427,7 +433,7 @@ class ApiClient {
     periodId: number,
     entryId: number,
     propId: number,
-    data: PayplanPropertyUpdate
+    data: PayplanPropertyUpdateRequest
   ): Promise<PayplanProperty> {
     const response = await this.client.put<PayplanProperty>(
       `/payplans/${payplanId}/periods/${periodId}/entries/${entryId}/properties/${propId}`,

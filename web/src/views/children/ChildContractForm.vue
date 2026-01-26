@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
-import type { Child, ChildContractCreate } from '@/api/types'
+import type { Child, ChildContractCreateRequest } from '@/api/types'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import DatePicker from 'primevue/datepicker'
 import Checkbox from 'primevue/checkbox'
 import Button from 'primevue/button'
+import Chips from 'primevue/chips'
 
 const props = defineProps<{
   visible: boolean
@@ -15,7 +16,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  save: [data: ChildContractCreate]
+  save: [data: ChildContractCreateRequest]
 }>()
 
 const form = ref({
@@ -24,7 +25,8 @@ const form = ref({
   care_hours_per_week: 35,
   group_id: null as number | null,
   meals_included: true,
-  special_needs: ''
+  special_needs: '',
+  attributes: [] as string[]
 })
 
 const errors = ref<{
@@ -48,7 +50,8 @@ watch(
         care_hours_per_week: 35,
         group_id: null,
         meals_included: true,
-        special_needs: ''
+        special_needs: '',
+        attributes: []
       }
       errors.value = {}
     }
@@ -77,7 +80,8 @@ function handleSave() {
       care_hours_per_week: form.value.care_hours_per_week,
       group_id: form.value.group_id,
       meals_included: form.value.meals_included,
-      special_needs: form.value.special_needs
+      special_needs: form.value.special_needs,
+      attributes: form.value.attributes
     })
   }
 }
@@ -147,6 +151,16 @@ function handleSave() {
           placeholder="Any special requirements"
         />
       </div>
+
+      <div class="field">
+        <label for="attributes">Attributes (for payplan calculation)</label>
+        <Chips
+          id="attributes"
+          v-model="form.attributes"
+          placeholder="e.g. ganztag, ndh, integration"
+        />
+        <small class="text-secondary">Press Enter to add each attribute</small>
+      </div>
     </div>
 
     <template #footer>
@@ -169,5 +183,9 @@ function handleSave() {
 
 .gap-2 {
   gap: 0.5rem;
+}
+
+.text-secondary {
+  color: var(--text-color-secondary);
 }
 </style>

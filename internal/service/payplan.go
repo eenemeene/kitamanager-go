@@ -23,24 +23,31 @@ func NewPayplanService(store store.PayplanStorer, orgStore store.OrganizationSto
 }
 
 // List returns a paginated list of payplans
-func (s *PayplanService) List(ctx context.Context, limit, offset int) ([]models.Payplan, int64, error) {
+func (s *PayplanService) List(ctx context.Context, limit, offset int) ([]models.PayplanResponse, int64, error) {
 	payplans, total, err := s.store.FindAll(limit, offset)
 	if err != nil {
 		return nil, 0, apperror.Internal("failed to fetch payplans")
 	}
-	return payplans, total, nil
+
+	responses := make([]models.PayplanResponse, len(payplans))
+	for i, p := range payplans {
+		responses[i] = p.ToResponse()
+	}
+	return responses, total, nil
 }
 
 // GetByID returns a payplan by ID without nested details
-func (s *PayplanService) GetByID(ctx context.Context, id uint) (*models.Payplan, error) {
+func (s *PayplanService) GetByID(ctx context.Context, id uint) (*models.PayplanResponse, error) {
 	payplan, err := s.store.FindByID(id)
 	if err != nil {
 		return nil, apperror.NotFound("payplan")
 	}
-	return payplan, nil
+	resp := payplan.ToResponse()
+	return &resp, nil
 }
 
 // GetByIDWithDetails returns a payplan by ID with all nested periods, entries, and properties
+// Note: Returns raw model for complex nested structure
 func (s *PayplanService) GetByIDWithDetails(ctx context.Context, id uint) (*models.Payplan, error) {
 	payplan, err := s.store.FindByIDWithDetails(id)
 	if err != nil {
@@ -55,7 +62,7 @@ type PayplanCreateRequest struct {
 }
 
 // Create creates a new payplan
-func (s *PayplanService) Create(ctx context.Context, req *PayplanCreateRequest) (*models.Payplan, error) {
+func (s *PayplanService) Create(ctx context.Context, req *PayplanCreateRequest) (*models.PayplanResponse, error) {
 	req.Name = strings.TrimSpace(req.Name)
 
 	if validation.IsWhitespaceOnly(req.Name) {
@@ -70,7 +77,8 @@ func (s *PayplanService) Create(ctx context.Context, req *PayplanCreateRequest) 
 		return nil, apperror.Internal("failed to create payplan")
 	}
 
-	return payplan, nil
+	resp := payplan.ToResponse()
+	return &resp, nil
 }
 
 // PayplanUpdateRequest represents the request for updating a payplan
@@ -79,7 +87,7 @@ type PayplanUpdateRequest struct {
 }
 
 // Update updates an existing payplan
-func (s *PayplanService) Update(ctx context.Context, id uint, req *PayplanUpdateRequest) (*models.Payplan, error) {
+func (s *PayplanService) Update(ctx context.Context, id uint, req *PayplanUpdateRequest) (*models.PayplanResponse, error) {
 	payplan, err := s.store.FindByID(id)
 	if err != nil {
 		return nil, apperror.NotFound("payplan")
@@ -97,7 +105,8 @@ func (s *PayplanService) Update(ctx context.Context, id uint, req *PayplanUpdate
 		return nil, apperror.Internal("failed to update payplan")
 	}
 
-	return payplan, nil
+	resp := payplan.ToResponse()
+	return &resp, nil
 }
 
 // Delete deletes a payplan
@@ -113,7 +122,7 @@ func (s *PayplanService) Delete(ctx context.Context, id uint) error {
 // PeriodCreateRequest represents the request for creating a period
 type PeriodCreateRequest struct {
 	PayplanID uint
-	From      models.PayplanPeriodCreate
+	From      models.PayplanPeriodCreateRequest
 }
 
 // periodsOverlap checks if two date ranges overlap.
@@ -161,7 +170,7 @@ func (s *PayplanService) validatePeriodNoOverlap(payplanID uint, from time.Time,
 }
 
 // CreatePeriod creates a new period
-func (s *PayplanService) CreatePeriod(ctx context.Context, payplanID uint, req *models.PayplanPeriodCreate) (*models.PayplanPeriod, error) {
+func (s *PayplanService) CreatePeriod(ctx context.Context, payplanID uint, req *models.PayplanPeriodCreateRequest) (*models.PayplanPeriodResponse, error) {
 	// Verify payplan exists
 	if _, err := s.store.FindByID(payplanID); err != nil {
 		return nil, apperror.NotFound("payplan")
@@ -183,20 +192,22 @@ func (s *PayplanService) CreatePeriod(ctx context.Context, payplanID uint, req *
 		return nil, apperror.Internal("failed to create period")
 	}
 
-	return period, nil
+	resp := period.ToResponse()
+	return &resp, nil
 }
 
 // GetPeriodByID returns a period by ID
-func (s *PayplanService) GetPeriodByID(ctx context.Context, id uint) (*models.PayplanPeriod, error) {
+func (s *PayplanService) GetPeriodByID(ctx context.Context, id uint) (*models.PayplanPeriodResponse, error) {
 	period, err := s.store.FindPeriodByID(id)
 	if err != nil {
 		return nil, apperror.NotFound("period")
 	}
-	return period, nil
+	resp := period.ToResponse()
+	return &resp, nil
 }
 
 // UpdatePeriod updates an existing period
-func (s *PayplanService) UpdatePeriod(ctx context.Context, periodID uint, req *models.PayplanPeriodUpdate) (*models.PayplanPeriod, error) {
+func (s *PayplanService) UpdatePeriod(ctx context.Context, periodID uint, req *models.PayplanPeriodUpdateRequest) (*models.PayplanPeriodResponse, error) {
 	period, err := s.store.FindPeriodByID(periodID)
 	if err != nil {
 		return nil, apperror.NotFound("period")
@@ -228,7 +239,8 @@ func (s *PayplanService) UpdatePeriod(ctx context.Context, periodID uint, req *m
 		return nil, apperror.Internal("failed to update period")
 	}
 
-	return period, nil
+	resp := period.ToResponse()
+	return &resp, nil
 }
 
 // DeletePeriod deletes a period
@@ -242,7 +254,7 @@ func (s *PayplanService) DeletePeriod(ctx context.Context, periodID uint) error 
 // Entry operations
 
 // CreateEntry creates a new entry
-func (s *PayplanService) CreateEntry(ctx context.Context, periodID uint, req *models.PayplanEntryCreate) (*models.PayplanEntry, error) {
+func (s *PayplanService) CreateEntry(ctx context.Context, periodID uint, req *models.PayplanEntryCreateRequest) (*models.PayplanEntryResponse, error) {
 	// Verify period exists
 	if _, err := s.store.FindPeriodByID(periodID); err != nil {
 		return nil, apperror.NotFound("period")
@@ -262,20 +274,22 @@ func (s *PayplanService) CreateEntry(ctx context.Context, periodID uint, req *mo
 		return nil, apperror.Internal("failed to create entry")
 	}
 
-	return entry, nil
+	resp := entry.ToResponse()
+	return &resp, nil
 }
 
 // GetEntryByID returns an entry by ID
-func (s *PayplanService) GetEntryByID(ctx context.Context, id uint) (*models.PayplanEntry, error) {
+func (s *PayplanService) GetEntryByID(ctx context.Context, id uint) (*models.PayplanEntryResponse, error) {
 	entry, err := s.store.FindEntryByID(id)
 	if err != nil {
 		return nil, apperror.NotFound("entry")
 	}
-	return entry, nil
+	resp := entry.ToResponse()
+	return &resp, nil
 }
 
 // UpdateEntry updates an existing entry
-func (s *PayplanService) UpdateEntry(ctx context.Context, entryID uint, req *models.PayplanEntryUpdate) (*models.PayplanEntry, error) {
+func (s *PayplanService) UpdateEntry(ctx context.Context, entryID uint, req *models.PayplanEntryUpdateRequest) (*models.PayplanEntryResponse, error) {
 	entry, err := s.store.FindEntryByID(entryID)
 	if err != nil {
 		return nil, apperror.NotFound("entry")
@@ -296,7 +310,8 @@ func (s *PayplanService) UpdateEntry(ctx context.Context, entryID uint, req *mod
 		return nil, apperror.Internal("failed to update entry")
 	}
 
-	return entry, nil
+	resp := entry.ToResponse()
+	return &resp, nil
 }
 
 // DeleteEntry deletes an entry
@@ -310,7 +325,7 @@ func (s *PayplanService) DeleteEntry(ctx context.Context, entryID uint) error {
 // Property operations
 
 // CreateProperty creates a new property
-func (s *PayplanService) CreateProperty(ctx context.Context, entryID uint, req *models.PayplanPropertyCreate) (*models.PayplanProperty, error) {
+func (s *PayplanService) CreateProperty(ctx context.Context, entryID uint, req *models.PayplanPropertyCreateRequest) (*models.PayplanPropertyResponse, error) {
 	// Verify entry exists
 	if _, err := s.store.FindEntryByID(entryID); err != nil {
 		return nil, apperror.NotFound("entry")
@@ -332,20 +347,22 @@ func (s *PayplanService) CreateProperty(ctx context.Context, entryID uint, req *
 		return nil, apperror.Internal("failed to create property")
 	}
 
-	return property, nil
+	resp := property.ToResponse()
+	return &resp, nil
 }
 
 // GetPropertyByID returns a property by ID
-func (s *PayplanService) GetPropertyByID(ctx context.Context, id uint) (*models.PayplanProperty, error) {
+func (s *PayplanService) GetPropertyByID(ctx context.Context, id uint) (*models.PayplanPropertyResponse, error) {
 	property, err := s.store.FindPropertyByID(id)
 	if err != nil {
 		return nil, apperror.NotFound("property")
 	}
-	return property, nil
+	resp := property.ToResponse()
+	return &resp, nil
 }
 
 // UpdateProperty updates an existing property
-func (s *PayplanService) UpdateProperty(ctx context.Context, propertyID uint, req *models.PayplanPropertyUpdate) (*models.PayplanProperty, error) {
+func (s *PayplanService) UpdateProperty(ctx context.Context, propertyID uint, req *models.PayplanPropertyUpdateRequest) (*models.PayplanPropertyResponse, error) {
 	property, err := s.store.FindPropertyByID(propertyID)
 	if err != nil {
 		return nil, apperror.NotFound("property")
@@ -372,7 +389,8 @@ func (s *PayplanService) UpdateProperty(ctx context.Context, propertyID uint, re
 		return nil, apperror.Internal("failed to update property")
 	}
 
-	return property, nil
+	resp := property.ToResponse()
+	return &resp, nil
 }
 
 // DeleteProperty deletes a property

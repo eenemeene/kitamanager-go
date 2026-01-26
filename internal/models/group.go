@@ -17,15 +17,15 @@ type Group struct {
 	Users          []User        `gorm:"many2many:user_groups;" json:"users,omitempty"`
 }
 
-// GroupCreate represents the request body for creating a group
-type GroupCreate struct {
+// GroupCreateRequest represents the request body for creating a group
+type GroupCreateRequest struct {
 	Name           string `json:"name" binding:"required" example:"Administrators"`
 	OrganizationID uint   `json:"organization_id" binding:"required" example:"1"`
 	Active         bool   `json:"active" example:"true"`
 }
 
-// GroupUpdate represents the request body for updating a group
-type GroupUpdate struct {
+// GroupUpdateRequest represents the request body for updating a group
+type GroupUpdateRequest struct {
 	Name   string `json:"name" example:"Administrators Updated"`
 	Active *bool  `json:"active" example:"false"`
 }

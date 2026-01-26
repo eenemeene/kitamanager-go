@@ -209,7 +209,7 @@ func TestUserHandler_Create(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/users", handler.Create)
 
-	body := models.UserCreate{
+	body := models.UserCreateRequest{
 		Name:     "New User",
 		Email:    "new@example.com",
 		Password: "password123",
@@ -265,7 +265,7 @@ func TestUserHandler_Update(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/users/:uid", handler.Update)
 
-	body := models.UserUpdate{
+	body := models.UserUpdateRequest{
 		Name: "Updated Name",
 	}
 
@@ -485,7 +485,7 @@ func TestUserHandler_Create_EmptyEmail(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/users", handler.Create)
 
-	body := models.UserCreate{
+	body := models.UserCreateRequest{
 		Name:     "Test User",
 		Email:    "",
 		Password: "password123",
@@ -508,7 +508,7 @@ func TestUserHandler_Create_EmptyPassword(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/users", handler.Create)
 
-	body := models.UserCreate{
+	body := models.UserCreateRequest{
 		Name:     "Test User",
 		Email:    "test@example.com",
 		Password: "",
@@ -531,7 +531,7 @@ func TestUserHandler_Create_EmptyName(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/users", handler.Create)
 
-	body := models.UserCreate{
+	body := models.UserCreateRequest{
 		Name:     "",
 		Email:    "test@example.com",
 		Password: "password123",
@@ -556,7 +556,7 @@ func TestUserHandler_Create_DuplicateEmail(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/users", handler.Create)
 
-	body := models.UserCreate{
+	body := models.UserCreateRequest{
 		Name:     "New User",
 		Email:    "existing@example.com", // Duplicate
 		Password: "password123",
@@ -580,7 +580,7 @@ func TestUserHandler_Update_NotFound(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/users/:uid", handler.Update)
 
-	body := models.UserUpdate{
+	body := models.UserUpdateRequest{
 		Name: "Updated Name",
 	}
 
@@ -600,7 +600,7 @@ func TestUserHandler_Update_InvalidID(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/users/:uid", handler.Update)
 
-	body := models.UserUpdate{
+	body := models.UserUpdateRequest{
 		Name: "Updated Name",
 	}
 
@@ -855,7 +855,7 @@ func TestUserHandler_Create_WhitespaceOnlyName(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/users", handler.Create)
 
-	body := models.UserCreate{
+	body := models.UserCreateRequest{
 		Name:     "   ",
 		Email:    "test@example.com",
 		Password: "password123",
@@ -884,7 +884,7 @@ func TestUserHandler_Create_NameTooLong(t *testing.T) {
 		longName = longName[:i] + "a" + longName[i+1:]
 	}
 
-	body := models.UserCreate{
+	body := models.UserCreateRequest{
 		Name:     longName,
 		Email:    "test@example.com",
 		Password: "password123",
@@ -907,7 +907,7 @@ func TestUserHandler_Create_PasswordTooShort(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/users", handler.Create)
 
-	body := models.UserCreate{
+	body := models.UserCreateRequest{
 		Name:     "Test User",
 		Email:    "test@example.com",
 		Password: "1234567", // 7 chars, min is 8
@@ -936,7 +936,7 @@ func TestUserHandler_Create_PasswordTooLong(t *testing.T) {
 		longPassword = longPassword[:i] + "a" + longPassword[i+1:]
 	}
 
-	body := models.UserCreate{
+	body := models.UserCreateRequest{
 		Name:     "Test User",
 		Email:    "test@example.com",
 		Password: longPassword,

@@ -4,7 +4,12 @@ import { useCrud } from '@/composables/useCrud'
 import { useToast } from 'primevue/usetoast'
 import { useUiStore } from '@/stores/ui'
 import { apiClient } from '@/api/client'
-import type { Organization, OrganizationCreate, OrganizationUpdate, Payplan } from '@/api/types'
+import type {
+  Organization,
+  OrganizationCreateRequest,
+  OrganizationUpdateRequest,
+  Payplan
+} from '@/api/types'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
@@ -27,7 +32,7 @@ const {
   closeDialog,
   saveItem: crudSaveItem,
   confirmDelete
-} = useCrud<Organization, OrganizationCreate, OrganizationUpdate>({
+} = useCrud<Organization, OrganizationCreateRequest, OrganizationUpdateRequest>({
   entityName: 'Organization',
   fetchAll: () => apiClient.getOrganizations(),
   create: (data) => apiClient.createOrganization(data),
@@ -36,7 +41,7 @@ const {
 })
 
 // Wrap saveItem to also refresh the sidebar's org list
-async function saveItem(data: OrganizationCreate | OrganizationUpdate) {
+async function saveItem(data: OrganizationCreateRequest | OrganizationUpdateRequest) {
   await crudSaveItem(data)
   // Refresh sidebar organization dropdown
   await uiStore.fetchOrganizations()

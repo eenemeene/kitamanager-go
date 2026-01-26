@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
-import type { Payplan, PayplanCreate } from '@/api/types'
+import type { Payplan, PayplanCreateRequest } from '@/api/types'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
@@ -12,7 +12,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  save: [data: PayplanCreate]
+  save: [data: PayplanCreateRequest]
 }>()
 
 const form = ref({

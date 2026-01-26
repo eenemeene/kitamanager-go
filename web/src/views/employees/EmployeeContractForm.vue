@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
-import type { Employee, EmployeeContractCreate } from '@/api/types'
+import type { Employee, EmployeeContractCreateRequest } from '@/api/types'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
@@ -14,7 +14,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  save: [data: EmployeeContractCreate]
+  save: [data: EmployeeContractCreateRequest]
 }>()
 
 const form = ref({

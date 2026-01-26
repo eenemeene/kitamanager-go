@@ -72,8 +72,8 @@ func TestValidatePeriod_FromBeforeTo(t *testing.T) {
 
 func TestValidatePeriod_FromEqualsTo(t *testing.T) {
 	date := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	if err := ValidatePeriod(date, &date); err != nil {
-		t.Errorf("expected from equals to to be valid, got error: %v", err)
+	if err := ValidatePeriod(date, &date); err == nil {
+		t.Error("expected from equals to to be invalid (from must be strictly before to)")
 	}
 }
 

@@ -8,8 +8,11 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/store"
 )
+
+// Note: net/http is still needed for http.StatusOK in the successful response
 
 type AuthHandler struct {
 	userStore *store.UserStore
@@ -34,9 +37,10 @@ type LoginResponse struct {
 	Token string `json:"token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
 }
 
-// ErrorResponse represents an error response
+// ErrorResponse represents a structured error response
 type ErrorResponse struct {
-	Error string `json:"error" example:"error message"`
+	Code    string `json:"code" example:"not_found"`
+	Message string `json:"message" example:"resource not found"`
 }
 
 // MessageResponse represents a success message response
@@ -59,23 +63,25 @@ type MessageResponse struct {
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondError(c, apperror.BadRequest(err.Error()))
 		return
 	}
 
 	user, err := h.userStore.FindByEmail(req.Email)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
+		// Use generic message to prevent user enumeration
+		respondError(c, apperror.Unauthorized("invalid credentials"))
 		return
 	}
 
 	if !user.Active {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "user is inactive"})
+		respondError(c, apperror.Unauthorized("user is inactive"))
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
+		// Use generic message to prevent password guessing
+		respondError(c, apperror.Unauthorized("invalid credentials"))
 		return
 	}
 
@@ -93,7 +99,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	tokenString, err := token.SignedString([]byte(h.jwtSecret))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
+		respondError(c, apperror.Internal("failed to generate token"))
 		return
 	}
 

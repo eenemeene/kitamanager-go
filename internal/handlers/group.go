@@ -57,7 +57,7 @@ func (h *GroupHandler) List(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.NewPaginatedResponse(groups, params.Page, params.Limit, total))
+	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(groups, params.Page, params.Limit, total, c.Request.URL.Path))
 }
 
 // Get godoc
@@ -96,8 +96,8 @@ func (h *GroupHandler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, group)
 }
 
-// CreateGroupRequest represents the request body for creating a group
-type CreateGroupRequest struct {
+// GroupCreateRequest represents the request body for creating a group
+type GroupCreateRequest struct {
 	Name   string `json:"name" binding:"required,max=255" example:"Administrators"`
 	Active bool   `json:"active" example:"true"`
 }
@@ -110,7 +110,7 @@ type CreateGroupRequest struct {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param request body CreateGroupRequest true "Group data"
+// @Param request body GroupCreateRequest true "Group data"
 // @Success 201 {object} models.GroupResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
@@ -123,7 +123,7 @@ func (h *GroupHandler) Create(c *gin.Context) {
 		return
 	}
 
-	var req CreateGroupRequest
+	var req GroupCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
@@ -145,8 +145,8 @@ func (h *GroupHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, group)
 }
 
-// UpdateGroupRequest represents the request body for updating a group
-type UpdateGroupRequest struct {
+// GroupUpdateRequest represents the request body for updating a group
+type GroupUpdateRequest struct {
 	Name   string `json:"name" binding:"omitempty,max=255" example:"Administrators Updated"`
 	Active *bool  `json:"active" example:"false"`
 }
@@ -160,7 +160,7 @@ type UpdateGroupRequest struct {
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
 // @Param groupId path int true "Group ID"
-// @Param request body UpdateGroupRequest true "Group data"
+// @Param request body GroupUpdateRequest true "Group data"
 // @Success 200 {object} models.GroupResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
@@ -180,20 +180,13 @@ func (h *GroupHandler) Update(c *gin.Context) {
 		return
 	}
 
-	// Verify the group belongs to this organization
-	_, err = h.service.GetByIDAndOrg(c.Request.Context(), id, orgID)
-	if err != nil {
-		respondError(c, err)
-		return
-	}
-
-	var req UpdateGroupRequest
+	var req GroupUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
 	}
 
-	group, err := h.service.Update(c.Request.Context(), id, &service.GroupUpdateRequest{
+	group, err := h.service.UpdateByIDAndOrg(c.Request.Context(), id, orgID, &service.GroupUpdateRequest{
 		Name:   req.Name,
 		Active: req.Active,
 	})
@@ -233,14 +226,7 @@ func (h *GroupHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	// Verify the group belongs to this organization
-	_, err = h.service.GetByIDAndOrg(c.Request.Context(), id, orgID)
-	if err != nil {
-		respondError(c, err)
-		return
-	}
-
-	if err := h.service.Delete(c.Request.Context(), id); err != nil {
+	if err := h.service.DeleteByIDAndOrg(c.Request.Context(), id, orgID); err != nil {
 		respondError(c, err)
 		return
 	}

@@ -49,7 +49,7 @@ func (h *PayplanHandler) List(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.NewPaginatedResponse(payplans, params.Page, params.Limit, total))
+	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(payplans, params.Page, params.Limit, total, c.Request.URL.Path))
 }
 
 // Get godoc
@@ -81,8 +81,8 @@ func (h *PayplanHandler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, payplan)
 }
 
-// CreatePayplanRequest represents the request body for creating a payplan
-type CreatePayplanRequest struct {
+// PayplanCreateRequest represents the request body for creating a payplan
+type PayplanCreateRequest struct {
 	Name string `json:"name" binding:"required,max=255" example:"Berlin"`
 }
 
@@ -93,7 +93,7 @@ type CreatePayplanRequest struct {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param request body CreatePayplanRequest true "Payplan data"
+// @Param request body PayplanCreateRequest true "Payplan data"
 // @Success 201 {object} models.Payplan
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
@@ -101,7 +101,7 @@ type CreatePayplanRequest struct {
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/payplans [post]
 func (h *PayplanHandler) Create(c *gin.Context) {
-	var req CreatePayplanRequest
+	var req PayplanCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
@@ -118,8 +118,8 @@ func (h *PayplanHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, payplan)
 }
 
-// UpdatePayplanRequest represents the request body for updating a payplan
-type UpdatePayplanRequest struct {
+// PayplanUpdateRequest represents the request body for updating a payplan
+type PayplanUpdateRequest struct {
 	Name *string `json:"name" binding:"omitempty,max=255" example:"Berlin Updated"`
 }
 
@@ -131,7 +131,7 @@ type UpdatePayplanRequest struct {
 // @Produce json
 // @Security BearerAuth
 // @Param id path int true "Payplan ID"
-// @Param request body UpdatePayplanRequest true "Payplan data"
+// @Param request body PayplanUpdateRequest true "Payplan data"
 // @Success 200 {object} models.Payplan
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
@@ -146,7 +146,7 @@ func (h *PayplanHandler) Update(c *gin.Context) {
 		return
 	}
 
-	var req UpdatePayplanRequest
+	var req PayplanUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
@@ -202,7 +202,7 @@ func (h *PayplanHandler) Delete(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param id path int true "Payplan ID"
-// @Param request body models.PayplanPeriodCreate true "Period data"
+// @Param request body models.PayplanPeriodCreateRequest true "Period data"
 // @Success 201 {object} models.PayplanPeriod
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
@@ -217,7 +217,7 @@ func (h *PayplanHandler) CreatePeriod(c *gin.Context) {
 		return
 	}
 
-	var req models.PayplanPeriodCreate
+	var req models.PayplanPeriodCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
@@ -241,7 +241,7 @@ func (h *PayplanHandler) CreatePeriod(c *gin.Context) {
 // @Security BearerAuth
 // @Param id path int true "Payplan ID"
 // @Param periodId path int true "Period ID"
-// @Param request body models.PayplanPeriodUpdate true "Period data"
+// @Param request body models.PayplanPeriodUpdateRequest true "Period data"
 // @Success 200 {object} models.PayplanPeriod
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
@@ -262,7 +262,7 @@ func (h *PayplanHandler) UpdatePeriod(c *gin.Context) {
 		return
 	}
 
-	var req models.PayplanPeriodUpdate
+	var req models.PayplanPeriodUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
@@ -324,7 +324,7 @@ func (h *PayplanHandler) DeletePeriod(c *gin.Context) {
 // @Security BearerAuth
 // @Param id path int true "Payplan ID"
 // @Param periodId path int true "Period ID"
-// @Param request body models.PayplanEntryCreate true "Entry data"
+// @Param request body models.PayplanEntryCreateRequest true "Entry data"
 // @Success 201 {object} models.PayplanEntry
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
@@ -345,7 +345,7 @@ func (h *PayplanHandler) CreateEntry(c *gin.Context) {
 		return
 	}
 
-	var req models.PayplanEntryCreate
+	var req models.PayplanEntryCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
@@ -370,7 +370,7 @@ func (h *PayplanHandler) CreateEntry(c *gin.Context) {
 // @Param id path int true "Payplan ID"
 // @Param periodId path int true "Period ID"
 // @Param entryId path int true "Entry ID"
-// @Param request body models.PayplanEntryUpdate true "Entry data"
+// @Param request body models.PayplanEntryUpdateRequest true "Entry data"
 // @Success 200 {object} models.PayplanEntry
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
@@ -397,7 +397,7 @@ func (h *PayplanHandler) UpdateEntry(c *gin.Context) {
 		return
 	}
 
-	var req models.PayplanEntryUpdate
+	var req models.PayplanEntryUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
@@ -467,7 +467,7 @@ func (h *PayplanHandler) DeleteEntry(c *gin.Context) {
 // @Param id path int true "Payplan ID"
 // @Param periodId path int true "Period ID"
 // @Param entryId path int true "Entry ID"
-// @Param request body models.PayplanPropertyCreate true "Property data"
+// @Param request body models.PayplanPropertyCreateRequest true "Property data"
 // @Success 201 {object} models.PayplanProperty
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
@@ -494,7 +494,7 @@ func (h *PayplanHandler) CreateProperty(c *gin.Context) {
 		return
 	}
 
-	var req models.PayplanPropertyCreate
+	var req models.PayplanPropertyCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
@@ -520,7 +520,7 @@ func (h *PayplanHandler) CreateProperty(c *gin.Context) {
 // @Param periodId path int true "Period ID"
 // @Param entryId path int true "Entry ID"
 // @Param propId path int true "Property ID"
-// @Param request body models.PayplanPropertyUpdate true "Property data"
+// @Param request body models.PayplanPropertyUpdateRequest true "Property data"
 // @Success 200 {object} models.PayplanProperty
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
@@ -553,7 +553,7 @@ func (h *PayplanHandler) UpdateProperty(c *gin.Context) {
 		return
 	}
 
-	var req models.PayplanPropertyUpdate
+	var req models.PayplanPropertyUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return

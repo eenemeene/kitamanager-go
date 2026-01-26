@@ -22,21 +22,27 @@ func NewOrganizationService(store store.OrganizationStorer, groupStore store.Gro
 }
 
 // List returns a paginated list of organizations
-func (s *OrganizationService) List(ctx context.Context, limit, offset int) ([]models.Organization, int64, error) {
+func (s *OrganizationService) List(ctx context.Context, limit, offset int) ([]models.OrganizationResponse, int64, error) {
 	orgs, total, err := s.store.FindAll(limit, offset)
 	if err != nil {
 		return nil, 0, apperror.Internal("failed to fetch organizations")
 	}
-	return orgs, total, nil
+
+	responses := make([]models.OrganizationResponse, len(orgs))
+	for i, org := range orgs {
+		responses[i] = org.ToResponse()
+	}
+	return responses, total, nil
 }
 
 // GetByID returns an organization by ID
-func (s *OrganizationService) GetByID(ctx context.Context, id uint) (*models.Organization, error) {
+func (s *OrganizationService) GetByID(ctx context.Context, id uint) (*models.OrganizationResponse, error) {
 	org, err := s.store.FindByID(id)
 	if err != nil {
 		return nil, apperror.NotFound("organization")
 	}
-	return org, nil
+	resp := org.ToResponse()
+	return &resp, nil
 }
 
 // OrganizationCreateRequest represents the request for creating an organization
@@ -45,8 +51,8 @@ type OrganizationCreateRequest struct {
 	Active bool
 }
 
-// Create creates a new organization with a default group
-func (s *OrganizationService) Create(ctx context.Context, req *OrganizationCreateRequest, createdBy string) (*models.Organization, error) {
+// Create creates a new organization with a default group (transactional)
+func (s *OrganizationService) Create(ctx context.Context, req *OrganizationCreateRequest, createdBy string) (*models.OrganizationResponse, error) {
 	// Trim and validate input
 	req.Name = strings.TrimSpace(req.Name)
 
@@ -60,24 +66,21 @@ func (s *OrganizationService) Create(ctx context.Context, req *OrganizationCreat
 		CreatedBy: createdBy,
 	}
 
-	if err := s.store.Create(org); err != nil {
+	// Create default group for the organization
+	defaultGroup := &models.Group{
+		Name:      "Members",
+		IsDefault: true,
+		Active:    true,
+		CreatedBy: createdBy,
+	}
+
+	// Create organization and default group in a single transaction
+	if err := s.store.CreateWithDefaultGroup(org, defaultGroup); err != nil {
 		return nil, apperror.Internal("failed to create organization")
 	}
 
-	// Create default group for the organization
-	defaultGroup := &models.Group{
-		Name:           "Members",
-		OrganizationID: org.ID,
-		IsDefault:      true,
-		Active:         true,
-		CreatedBy:      createdBy,
-	}
-
-	if err := s.groupStore.Create(defaultGroup); err != nil {
-		return nil, apperror.Internal("failed to create default group")
-	}
-
-	return org, nil
+	resp := org.ToResponse()
+	return &resp, nil
 }
 
 // OrganizationUpdateRequest represents the request for updating an organization
@@ -87,7 +90,7 @@ type OrganizationUpdateRequest struct {
 }
 
 // Update updates an existing organization
-func (s *OrganizationService) Update(ctx context.Context, id uint, req *OrganizationUpdateRequest) (*models.Organization, error) {
+func (s *OrganizationService) Update(ctx context.Context, id uint, req *OrganizationUpdateRequest) (*models.OrganizationResponse, error) {
 	org, err := s.store.FindByID(id)
 	if err != nil {
 		return nil, apperror.NotFound("organization")
@@ -110,7 +113,8 @@ func (s *OrganizationService) Update(ctx context.Context, id uint, req *Organiza
 		return nil, apperror.Internal("failed to update organization")
 	}
 
-	return org, nil
+	resp := org.ToResponse()
+	return &resp, nil
 }
 
 // Delete deletes an organization

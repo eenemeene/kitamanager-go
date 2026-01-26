@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
-import type { Group, GroupCreate } from '@/api/types'
+import type { Group, GroupCreateRequest } from '@/api/types'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Checkbox from 'primevue/checkbox'
@@ -13,7 +13,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  save: [data: GroupCreate]
+  save: [data: GroupCreateRequest]
 }>()
 
 const form = ref({

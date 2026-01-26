@@ -124,6 +124,7 @@ func main() {
 	// Initialize middleware
 	authMiddleware := middleware.NewAuthMiddleware(cfg.JWTSecret)
 	authzMiddleware := middleware.NewAuthorizationMiddleware(permissionService)
+	loginRateLimiter := middleware.LoginRateLimiter()
 
 	// Create Gin router
 	r := gin.New()
@@ -149,7 +150,7 @@ func main() {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Setup API routes
-	routes.Setup(r, authHandler, userHandler, groupHandler, orgHandler, employeeHandler, childHandler, payplanHandler, authMiddleware, authzMiddleware)
+	routes.Setup(r, authHandler, userHandler, groupHandler, orgHandler, employeeHandler, childHandler, payplanHandler, authMiddleware, authzMiddleware, loginRateLimiter)
 
 	// Register embedded web UI
 	if err := web.RegisterHandlers(r); err != nil {

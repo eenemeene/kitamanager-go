@@ -29,6 +29,7 @@ type UserStorer interface {
 	FindByOrganization(orgID uint, limit, offset int) ([]models.User, int64, error)
 	FindByID(id uint) (*models.User, error)
 	FindByEmail(email string) (*models.User, error)
+	EmailExistsForOtherUser(email string, excludeUserID uint) (bool, error)
 	Create(user *models.User) error
 	Update(user *models.User) error
 	UpdateLastLogin(userID uint) error
@@ -44,6 +45,7 @@ type OrganizationStorer interface {
 	FindAll(limit, offset int) ([]models.Organization, int64, error)
 	FindByID(id uint) (*models.Organization, error)
 	Create(org *models.Organization) error
+	CreateWithDefaultGroup(org *models.Organization, defaultGroup *models.Group) error
 	Update(org *models.Organization) error
 	Delete(id uint) error
 }

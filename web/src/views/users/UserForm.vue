@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
-import type { User, UserCreate } from '@/api/types'
+import type { User, UserCreateRequest } from '@/api/types'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
@@ -14,7 +14,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  save: [data: UserCreate]
+  save: [data: UserCreateRequest]
 }>()
 
 const form = ref({
@@ -77,7 +77,7 @@ function validate(): boolean {
 
 function handleSave() {
   if (validate()) {
-    const data: UserCreate = {
+    const data: UserCreateRequest = {
       name: form.value.name,
       email: form.value.email,
       password: form.value.password,
@@ -85,7 +85,7 @@ function handleSave() {
     }
     // Don't send empty password for updates
     if (isEditing.value && !form.value.password) {
-      delete (data as Partial<UserCreate>).password
+      delete (data as Partial<UserCreateRequest>).password
     }
     emit('save', data)
   }

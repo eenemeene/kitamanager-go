@@ -3,7 +3,7 @@ import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCrud } from '@/composables/useCrud'
 import { apiClient } from '@/api/client'
-import type { Payplan, PayplanCreate, PayplanUpdate } from '@/api/types'
+import type { Payplan, PayplanCreateRequest, PayplanUpdateRequest } from '@/api/types'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
@@ -22,7 +22,7 @@ const {
   closeDialog,
   saveItem,
   confirmDelete
-} = useCrud<Payplan, PayplanCreate, PayplanUpdate>({
+} = useCrud<Payplan, PayplanCreateRequest, PayplanUpdateRequest>({
   entityName: 'Payplan',
   fetchAll: () => apiClient.getPayplans(),
   create: (data) => apiClient.createPayplan(data),

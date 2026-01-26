@@ -25,7 +25,7 @@ This starts:
 - **API** at http://localhost:8080
 - **PostgreSQL** via Docker
 
-Login with `admin@example.com` / `admin`
+Login with `admin@example.com` / `adminadmin`
 
 Press `Ctrl+C` to stop all services.
 

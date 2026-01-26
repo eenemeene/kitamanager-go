@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -25,7 +26,7 @@ func TestEmployeeHandler_List(t *testing.T) {
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/employees", handler.List)
 
-	w := performRequest(r, "GET", "/organizations/1/employees", nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees", org.ID), nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -45,17 +46,18 @@ func TestEmployeeHandler_Get(t *testing.T) {
 	handler := NewEmployeeHandler(employeeService)
 
 	org := createTestOrganization(t, db, "Test Org")
-	db.Create(&models.Employee{
+	employee := &models.Employee{
 		Person: models.Person{OrganizationID: org.ID, FirstName: "Test", LastName: "Employee", Birthdate: time.Now()},
-	})
+	}
+	db.Create(employee)
 
 	r := setupTestRouter()
-	r.GET("/employees/:id", handler.Get)
+	r.GET("/organizations/:orgId/employees/:id", handler.Get)
 
-	w := performRequest(r, "GET", "/employees/1", nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/%d", org.ID, employee.ID), nil)
 
 	if w.Code != http.StatusOK {
-		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
+		t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
 	}
 
 	var result models.Employee
@@ -63,6 +65,31 @@ func TestEmployeeHandler_Get(t *testing.T) {
 
 	if result.FirstName != "Test" {
 		t.Errorf("expected first name 'Test', got '%s'", result.FirstName)
+	}
+}
+
+func TestEmployeeHandler_Get_WrongOrg(t *testing.T) {
+	db := setupTestDB(t)
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService)
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+
+	// Create employee in org1
+	employee := &models.Employee{
+		Person: models.Person{OrganizationID: org1.ID, FirstName: "Test", LastName: "Employee", Birthdate: time.Now()},
+	}
+	db.Create(employee)
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/employees/:id", handler.Get)
+
+	// Try to access employee from org2 (should fail with 404)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/%d", org2.ID, employee.ID), nil)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d for cross-org access, got %d", http.StatusNotFound, w.Code)
 	}
 }
 
@@ -76,13 +103,13 @@ func TestEmployeeHandler_Create(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/organizations/:orgId/employees", handler.Create)
 
-	body := models.EmployeeCreate{
+	body := models.EmployeeCreateRequest{
 		FirstName: "New",
 		LastName:  "Employee",
 		Birthdate: time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC),
 	}
 
-	w := performRequest(r, "POST", "/organizations/1/employees", body)
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/employees", org.ID), body)
 
 	if w.Code != http.StatusCreated {
 		t.Errorf("expected status %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
@@ -105,19 +132,20 @@ func TestEmployeeHandler_Update(t *testing.T) {
 	handler := NewEmployeeHandler(employeeService)
 
 	org := createTestOrganization(t, db, "Test Org")
-	db.Create(&models.Employee{
+	employee := &models.Employee{
 		Person: models.Person{OrganizationID: org.ID, FirstName: "Original", LastName: "Employee", Birthdate: time.Now()},
-	})
+	}
+	db.Create(employee)
 
 	r := setupTestRouter()
-	r.PUT("/employees/:id", handler.Update)
+	r.PUT("/organizations/:orgId/employees/:id", handler.Update)
 
 	newName := "Updated"
-	body := models.EmployeeUpdate{
+	body := models.EmployeeUpdateRequest{
 		FirstName: &newName,
 	}
 
-	w := performRequest(r, "PUT", "/employees/1", body)
+	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/employees/%d", org.ID, employee.ID), body)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
@@ -131,23 +159,92 @@ func TestEmployeeHandler_Update(t *testing.T) {
 	}
 }
 
+func TestEmployeeHandler_Update_WrongOrg(t *testing.T) {
+	db := setupTestDB(t)
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService)
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+
+	// Create employee in org1
+	employee := &models.Employee{
+		Person: models.Person{OrganizationID: org1.ID, FirstName: "Original", LastName: "Employee", Birthdate: time.Now()},
+	}
+	db.Create(employee)
+
+	r := setupTestRouter()
+	r.PUT("/organizations/:orgId/employees/:id", handler.Update)
+
+	newName := "Hacked"
+	body := models.EmployeeUpdateRequest{
+		FirstName: &newName,
+	}
+
+	// Try to update employee from org2 (should fail with 404)
+	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/employees/%d", org2.ID, employee.ID), body)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d for cross-org access, got %d", http.StatusNotFound, w.Code)
+	}
+
+	// Verify employee was not modified
+	var unchanged models.Employee
+	db.First(&unchanged, employee.ID)
+	if unchanged.FirstName != "Original" {
+		t.Errorf("employee was modified despite wrong org access: got '%s'", unchanged.FirstName)
+	}
+}
+
 func TestEmployeeHandler_Delete(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
 
 	org := createTestOrganization(t, db, "Test Org")
-	db.Create(&models.Employee{
+	employee := &models.Employee{
 		Person: models.Person{OrganizationID: org.ID, FirstName: "ToDelete", LastName: "Employee", Birthdate: time.Now()},
-	})
+	}
+	db.Create(employee)
 
 	r := setupTestRouter()
-	r.DELETE("/employees/:id", handler.Delete)
+	r.DELETE("/organizations/:orgId/employees/:id", handler.Delete)
 
-	w := performRequest(r, "DELETE", "/employees/1", nil)
+	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d", org.ID, employee.ID), nil)
 
 	if w.Code != http.StatusNoContent {
 		t.Errorf("expected status %d, got %d", http.StatusNoContent, w.Code)
+	}
+}
+
+func TestEmployeeHandler_Delete_WrongOrg(t *testing.T) {
+	db := setupTestDB(t)
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService)
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+
+	// Create employee in org1
+	employee := &models.Employee{
+		Person: models.Person{OrganizationID: org1.ID, FirstName: "Protected", LastName: "Employee", Birthdate: time.Now()},
+	}
+	db.Create(employee)
+
+	r := setupTestRouter()
+	r.DELETE("/organizations/:orgId/employees/:id", handler.Delete)
+
+	// Try to delete employee from org2 (should fail with 404)
+	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d", org2.ID, employee.ID), nil)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d for cross-org access, got %d", http.StatusNotFound, w.Code)
+	}
+
+	// Verify employee was not deleted
+	var stillExists models.Employee
+	if err := db.First(&stillExists, employee.ID).Error; err != nil {
+		t.Errorf("employee was deleted despite wrong org access")
 	}
 }
 
@@ -170,9 +267,9 @@ func TestEmployeeHandler_ListContracts(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/employees/:id/contracts", handler.ListContracts)
+	r.GET("/organizations/:orgId/employees/:id/contracts", handler.ListContracts)
 
-	w := performRequest(r, "GET", "/employees/1/contracts", nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/%d/contracts", org.ID, employee.ID), nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -183,6 +280,38 @@ func TestEmployeeHandler_ListContracts(t *testing.T) {
 
 	if len(contracts) != 1 {
 		t.Errorf("expected 1 contract, got %d", len(contracts))
+	}
+}
+
+func TestEmployeeHandler_ListContracts_WrongOrg(t *testing.T) {
+	db := setupTestDB(t)
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService)
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+
+	// Create employee in org1
+	employee := &models.Employee{
+		Person: models.Person{OrganizationID: org1.ID, FirstName: "Test", LastName: "Employee", Birthdate: time.Now()},
+	}
+	db.Create(employee)
+
+	// Create contract
+	db.Create(&models.EmployeeContract{
+		EmployeeID: employee.ID,
+		Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		Position:   "Developer",
+	})
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/employees/:id/contracts", handler.ListContracts)
+
+	// Try to list contracts from org2 (should fail with 404)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/%d/contracts", org2.ID, employee.ID), nil)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d for cross-org access, got %d", http.StatusNotFound, w.Code)
 	}
 }
 
@@ -205,9 +334,9 @@ func TestEmployeeHandler_GetCurrentContract(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/employees/:id/contracts/current", handler.GetCurrentContract)
+	r.GET("/organizations/:orgId/employees/:id/contracts/current", handler.GetCurrentContract)
 
-	w := performRequest(r, "GET", "/employees/1/contracts/current", nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/%d/contracts/current", org.ID, employee.ID), nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -218,6 +347,38 @@ func TestEmployeeHandler_GetCurrentContract(t *testing.T) {
 
 	if contract.Position != "Developer" {
 		t.Errorf("expected position 'Developer', got '%s'", contract.Position)
+	}
+}
+
+func TestEmployeeHandler_GetCurrentContract_WrongOrg(t *testing.T) {
+	db := setupTestDB(t)
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService)
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+
+	// Create employee in org1
+	employee := &models.Employee{
+		Person: models.Person{OrganizationID: org1.ID, FirstName: "Test", LastName: "Employee", Birthdate: time.Now()},
+	}
+	db.Create(employee)
+
+	// Create ongoing contract
+	db.Create(&models.EmployeeContract{
+		EmployeeID: employee.ID,
+		Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: nil},
+		Position:   "Developer",
+	})
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/employees/:id/contracts/current", handler.GetCurrentContract)
+
+	// Try to get current contract from org2 (should fail with 404)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/%d/contracts/current", org2.ID, employee.ID), nil)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d for cross-org access, got %d", http.StatusNotFound, w.Code)
 	}
 }
 
@@ -233,9 +394,9 @@ func TestEmployeeHandler_GetCurrentContract_NotFound(t *testing.T) {
 	db.Create(employee)
 
 	r := setupTestRouter()
-	r.GET("/employees/:id/contracts/current", handler.GetCurrentContract)
+	r.GET("/organizations/:orgId/employees/:id/contracts/current", handler.GetCurrentContract)
 
-	w := performRequest(r, "GET", "/employees/1/contracts/current", nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/%d/contracts/current", org.ID, employee.ID), nil)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
@@ -254,9 +415,9 @@ func TestEmployeeHandler_CreateContract(t *testing.T) {
 	db.Create(employee)
 
 	r := setupTestRouter()
-	r.POST("/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
 
-	body := models.EmployeeContractCreate{
+	body := models.EmployeeContractCreateRequest{
 		From:        time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		To:          nil,
 		Position:    "Senior Developer",
@@ -264,7 +425,7 @@ func TestEmployeeHandler_CreateContract(t *testing.T) {
 		Salary:      600000,
 	}
 
-	w := performRequest(r, "POST", "/employees/1/contracts", body)
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/employees/%d/contracts", org.ID, employee.ID), body)
 
 	if w.Code != http.StatusCreated {
 		t.Errorf("expected status %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
@@ -275,6 +436,46 @@ func TestEmployeeHandler_CreateContract(t *testing.T) {
 
 	if contract.Position != "Senior Developer" {
 		t.Errorf("expected position 'Senior Developer', got '%s'", contract.Position)
+	}
+}
+
+func TestEmployeeHandler_CreateContract_WrongOrg(t *testing.T) {
+	db := setupTestDB(t)
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService)
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+
+	// Create employee in org1
+	employee := &models.Employee{
+		Person: models.Person{OrganizationID: org1.ID, FirstName: "Test", LastName: "Employee", Birthdate: time.Now()},
+	}
+	db.Create(employee)
+
+	r := setupTestRouter()
+	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
+
+	body := models.EmployeeContractCreateRequest{
+		From:        time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		To:          nil,
+		Position:    "Malicious Contract",
+		WeeklyHours: 40,
+		Salary:      600000,
+	}
+
+	// Try to create contract from org2 (should fail with 404)
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/employees/%d/contracts", org2.ID, employee.ID), body)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d for cross-org access, got %d", http.StatusNotFound, w.Code)
+	}
+
+	// Verify no contract was created
+	var count int64
+	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", employee.ID).Count(&count)
+	if count != 0 {
+		t.Errorf("contract was created despite wrong org access")
 	}
 }
 
@@ -297,10 +498,10 @@ func TestEmployeeHandler_CreateContract_Overlap(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.POST("/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
 
 	// Try to create overlapping contract
-	body := models.EmployeeContractCreate{
+	body := models.EmployeeContractCreateRequest{
 		From:        time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
 		To:          nil,
 		Position:    "Senior Developer",
@@ -308,7 +509,7 @@ func TestEmployeeHandler_CreateContract_Overlap(t *testing.T) {
 		Salary:      600000,
 	}
 
-	w := performRequest(r, "POST", "/employees/1/contracts", body)
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/employees/%d/contracts", org.ID, employee.ID), body)
 
 	if w.Code != http.StatusConflict {
 		t.Errorf("expected status %d, got %d: %s", http.StatusConflict, w.Code, w.Body.String())
@@ -334,12 +535,93 @@ func TestEmployeeHandler_DeleteContract(t *testing.T) {
 	db.Create(contract)
 
 	r := setupTestRouter()
-	r.DELETE("/employees/:id/contracts/:contractId", handler.DeleteContract)
+	r.DELETE("/organizations/:orgId/employees/:id/contracts/:contractId", handler.DeleteContract)
 
-	w := performRequest(r, "DELETE", "/employees/1/contracts/1", nil)
+	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d/contracts/%d", org.ID, employee.ID, contract.ID), nil)
 
 	if w.Code != http.StatusNoContent {
 		t.Errorf("expected status %d, got %d", http.StatusNoContent, w.Code)
+	}
+}
+
+func TestEmployeeHandler_DeleteContract_WrongOrg(t *testing.T) {
+	db := setupTestDB(t)
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService)
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+
+	// Create employee in org1
+	employee := &models.Employee{
+		Person: models.Person{OrganizationID: org1.ID, FirstName: "Test", LastName: "Employee", Birthdate: time.Now()},
+	}
+	db.Create(employee)
+
+	contract := &models.EmployeeContract{
+		EmployeeID: employee.ID,
+		Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		Position:   "Developer",
+	}
+	db.Create(contract)
+
+	r := setupTestRouter()
+	r.DELETE("/organizations/:orgId/employees/:id/contracts/:contractId", handler.DeleteContract)
+
+	// Try to delete contract from org2 (should fail with 404)
+	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d/contracts/%d", org2.ID, employee.ID, contract.ID), nil)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d for cross-org access, got %d", http.StatusNotFound, w.Code)
+	}
+
+	// Verify contract was not deleted
+	var stillExists models.EmployeeContract
+	if err := db.First(&stillExists, contract.ID).Error; err != nil {
+		t.Errorf("contract was deleted despite wrong org access")
+	}
+}
+
+func TestEmployeeHandler_DeleteContract_WrongEmployee(t *testing.T) {
+	db := setupTestDB(t)
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService)
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	// Create two employees in same org
+	employee1 := &models.Employee{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Employee", LastName: "One", Birthdate: time.Now()},
+	}
+	db.Create(employee1)
+
+	employee2 := &models.Employee{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Employee", LastName: "Two", Birthdate: time.Now()},
+	}
+	db.Create(employee2)
+
+	// Create contract for employee1
+	contract := &models.EmployeeContract{
+		EmployeeID: employee1.ID,
+		Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		Position:   "Developer",
+	}
+	db.Create(contract)
+
+	r := setupTestRouter()
+	r.DELETE("/organizations/:orgId/employees/:id/contracts/:contractId", handler.DeleteContract)
+
+	// Try to delete contract via employee2 URL (should fail with 404)
+	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d/contracts/%d", org.ID, employee2.ID, contract.ID), nil)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d for wrong employee access, got %d", http.StatusNotFound, w.Code)
+	}
+
+	// Verify contract was not deleted
+	var stillExists models.EmployeeContract
+	if err := db.First(&stillExists, contract.ID).Error; err != nil {
+		t.Errorf("contract was deleted despite wrong employee access")
 	}
 }
 
@@ -350,10 +632,12 @@ func TestEmployeeHandler_Get_NotFound(t *testing.T) {
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
 
-	r := setupTestRouter()
-	r.GET("/employees/:id", handler.Get)
+	org := createTestOrganization(t, db, "Test Org")
 
-	w := performRequest(r, "GET", "/employees/999", nil)
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/employees/:id", handler.Get)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/999", org.ID), nil)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
@@ -365,10 +649,12 @@ func TestEmployeeHandler_Get_InvalidID(t *testing.T) {
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
 
-	r := setupTestRouter()
-	r.GET("/employees/:id", handler.Get)
+	org := createTestOrganization(t, db, "Test Org")
 
-	w := performRequest(r, "GET", "/employees/invalid", nil)
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/employees/:id", handler.Get)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/invalid", org.ID), nil)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
@@ -380,13 +666,30 @@ func TestEmployeeHandler_Get_ZeroID(t *testing.T) {
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
 
-	r := setupTestRouter()
-	r.GET("/employees/:id", handler.Get)
+	org := createTestOrganization(t, db, "Test Org")
 
-	w := performRequest(r, "GET", "/employees/0", nil)
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/employees/:id", handler.Get)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/0", org.ID), nil)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d for zero ID, got %d", http.StatusNotFound, w.Code)
+	}
+}
+
+func TestEmployeeHandler_Get_InvalidOrgID(t *testing.T) {
+	db := setupTestDB(t)
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService)
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/employees/:id", handler.Get)
+
+	w := performRequest(r, "GET", "/organizations/invalid/employees/1", nil)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for invalid org ID, got %d", http.StatusBadRequest, w.Code)
 	}
 }
 
@@ -395,7 +698,7 @@ func TestEmployeeHandler_Create_MissingRequiredFields(t *testing.T) {
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
 
-	createTestOrganization(t, db, "Test Org")
+	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
 	r.POST("/organizations/:orgId/employees", handler.Create)
@@ -403,7 +706,7 @@ func TestEmployeeHandler_Create_MissingRequiredFields(t *testing.T) {
 	// Missing all required fields
 	body := map[string]interface{}{}
 
-	w := performRequest(r, "POST", "/organizations/1/employees", body)
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/employees", org.ID), body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for missing fields, got %d", http.StatusBadRequest, w.Code)
@@ -418,17 +721,11 @@ func TestEmployeeHandler_Create_InvalidOrganizationID(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/organizations/:orgId/employees", handler.Create)
 
-	body := models.EmployeeCreate{
-		FirstName: "Test",
-		LastName:  "Employee",
-		Birthdate: time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC),
+	w := performRequest(r, "POST", "/organizations/invalid/employees", nil)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for invalid org ID, got %d", http.StatusBadRequest, w.Code)
 	}
-
-	w := performRequest(r, "POST", "/organizations/999/employees", body)
-
-	// Should fail due to foreign key constraint (behavior depends on DB)
-	// SQLite may not enforce FK by default, PostgreSQL will
-	t.Logf("Create with invalid org ID returned status %d", w.Code)
 }
 
 func TestEmployeeHandler_Create_EmptyFirstName(t *testing.T) {
@@ -436,18 +733,18 @@ func TestEmployeeHandler_Create_EmptyFirstName(t *testing.T) {
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
 
-	createTestOrganization(t, db, "Test Org")
+	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
 	r.POST("/organizations/:orgId/employees", handler.Create)
 
-	body := models.EmployeeCreate{
+	body := models.EmployeeCreateRequest{
 		FirstName: "",
 		LastName:  "Employee",
 		Birthdate: time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC),
 	}
 
-	w := performRequest(r, "POST", "/organizations/1/employees", body)
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/employees", org.ID), body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for empty first name, got %d", http.StatusBadRequest, w.Code)
@@ -459,18 +756,18 @@ func TestEmployeeHandler_Create_EmptyLastName(t *testing.T) {
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
 
-	createTestOrganization(t, db, "Test Org")
+	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
 	r.POST("/organizations/:orgId/employees", handler.Create)
 
-	body := models.EmployeeCreate{
+	body := models.EmployeeCreateRequest{
 		FirstName: "Test",
 		LastName:  "",
 		Birthdate: time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC),
 	}
 
-	w := performRequest(r, "POST", "/organizations/1/employees", body)
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/employees", org.ID), body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for empty last name, got %d", http.StatusBadRequest, w.Code)
@@ -482,15 +779,17 @@ func TestEmployeeHandler_Update_NotFound(t *testing.T) {
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
 
+	org := createTestOrganization(t, db, "Test Org")
+
 	r := setupTestRouter()
-	r.PUT("/employees/:id", handler.Update)
+	r.PUT("/organizations/:orgId/employees/:id", handler.Update)
 
 	newName := "Updated"
-	body := models.EmployeeUpdate{
+	body := models.EmployeeUpdateRequest{
 		FirstName: &newName,
 	}
 
-	w := performRequest(r, "PUT", "/employees/999", body)
+	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/employees/999", org.ID), body)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
@@ -502,15 +801,17 @@ func TestEmployeeHandler_Update_InvalidID(t *testing.T) {
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
 
+	org := createTestOrganization(t, db, "Test Org")
+
 	r := setupTestRouter()
-	r.PUT("/employees/:id", handler.Update)
+	r.PUT("/organizations/:orgId/employees/:id", handler.Update)
 
 	newName := "Updated"
-	body := models.EmployeeUpdate{
+	body := models.EmployeeUpdateRequest{
 		FirstName: &newName,
 	}
 
-	w := performRequest(r, "PUT", "/employees/invalid", body)
+	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/employees/invalid", org.ID), body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
@@ -523,17 +824,18 @@ func TestEmployeeHandler_Update_EmptyBody(t *testing.T) {
 	handler := NewEmployeeHandler(employeeService)
 
 	org := createTestOrganization(t, db, "Test Org")
-	db.Create(&models.Employee{
+	employee := &models.Employee{
 		Person: models.Person{OrganizationID: org.ID, FirstName: "Original", LastName: "Employee", Birthdate: time.Now()},
-	})
+	}
+	db.Create(employee)
 
 	r := setupTestRouter()
-	r.PUT("/employees/:id", handler.Update)
+	r.PUT("/organizations/:orgId/employees/:id", handler.Update)
 
 	// Empty update
-	body := models.EmployeeUpdate{}
+	body := models.EmployeeUpdateRequest{}
 
-	w := performRequest(r, "PUT", "/employees/1", body)
+	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/employees/%d", org.ID, employee.ID), body)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d for empty update, got %d", http.StatusOK, w.Code)
@@ -552,14 +854,16 @@ func TestEmployeeHandler_Delete_NotFound(t *testing.T) {
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
 
+	org := createTestOrganization(t, db, "Test Org")
+
 	r := setupTestRouter()
-	r.DELETE("/employees/:id", handler.Delete)
+	r.DELETE("/organizations/:orgId/employees/:id", handler.Delete)
 
-	w := performRequest(r, "DELETE", "/employees/999", nil)
+	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/999", org.ID), nil)
 
-	// Should return NoContent (idempotent) or NotFound
-	if w.Code != http.StatusNoContent && w.Code != http.StatusNotFound {
-		t.Errorf("expected status %d or %d, got %d", http.StatusNoContent, http.StatusNotFound, w.Code)
+	// Should return NotFound for non-existent employee
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
 	}
 }
 
@@ -568,10 +872,12 @@ func TestEmployeeHandler_Delete_InvalidID(t *testing.T) {
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
 
-	r := setupTestRouter()
-	r.DELETE("/employees/:id", handler.Delete)
+	org := createTestOrganization(t, db, "Test Org")
 
-	w := performRequest(r, "DELETE", "/employees/invalid", nil)
+	r := setupTestRouter()
+	r.DELETE("/organizations/:orgId/employees/:id", handler.Delete)
+
+	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/invalid", org.ID), nil)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
@@ -583,12 +889,12 @@ func TestEmployeeHandler_List_Empty(t *testing.T) {
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
 
-	createTestOrganization(t, db, "Test Org")
+	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/employees", handler.List)
 
-	w := performRequest(r, "GET", "/organizations/1/employees", nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees", org.ID), nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -602,15 +908,75 @@ func TestEmployeeHandler_List_Empty(t *testing.T) {
 	}
 }
 
+func TestEmployeeHandler_List_IsolatesOrganizations(t *testing.T) {
+	db := setupTestDB(t)
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService)
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+
+	// Create employees in different orgs
+	db.Create(&models.Employee{
+		Person: models.Person{OrganizationID: org1.ID, FirstName: "Emp1", LastName: "Org1", Birthdate: time.Now()},
+	})
+	db.Create(&models.Employee{
+		Person: models.Person{OrganizationID: org1.ID, FirstName: "Emp2", LastName: "Org1", Birthdate: time.Now()},
+	})
+	db.Create(&models.Employee{
+		Person: models.Person{OrganizationID: org2.ID, FirstName: "Emp1", LastName: "Org2", Birthdate: time.Now()},
+	})
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/employees", handler.List)
+
+	// List org1 employees
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees", org1.ID), nil)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var response models.PaginatedResponse[models.Employee]
+	parseResponse(t, w, &response)
+
+	if len(response.Data) != 2 {
+		t.Errorf("expected 2 employees for org1, got %d", len(response.Data))
+	}
+
+	// Verify all returned employees belong to org1
+	for _, emp := range response.Data {
+		if emp.OrganizationID != org1.ID {
+			t.Errorf("employee %d belongs to org %d, expected org %d", emp.ID, emp.OrganizationID, org1.ID)
+		}
+	}
+
+	// List org2 employees
+	w2 := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees", org2.ID), nil)
+
+	if w2.Code != http.StatusOK {
+		t.Errorf("expected status %d, got %d", http.StatusOK, w2.Code)
+	}
+
+	var response2 models.PaginatedResponse[models.Employee]
+	parseResponse(t, w2, &response2)
+
+	if len(response2.Data) != 1 {
+		t.Errorf("expected 1 employee for org2, got %d", len(response2.Data))
+	}
+}
+
 func TestEmployeeHandler_ListContracts_EmployeeNotFound(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
 
-	r := setupTestRouter()
-	r.GET("/employees/:id/contracts", handler.ListContracts)
+	org := createTestOrganization(t, db, "Test Org")
 
-	w := performRequest(r, "GET", "/employees/999/contracts", nil)
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/employees/:id/contracts", handler.ListContracts)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/999/contracts", org.ID), nil)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
@@ -623,14 +989,15 @@ func TestEmployeeHandler_ListContracts_Empty(t *testing.T) {
 	handler := NewEmployeeHandler(employeeService)
 
 	org := createTestOrganization(t, db, "Test Org")
-	db.Create(&models.Employee{
+	employee := &models.Employee{
 		Person: models.Person{OrganizationID: org.ID, FirstName: "Test", LastName: "Employee", Birthdate: time.Now()},
-	})
+	}
+	db.Create(employee)
 
 	r := setupTestRouter()
-	r.GET("/employees/:id/contracts", handler.ListContracts)
+	r.GET("/organizations/:orgId/employees/:id/contracts", handler.ListContracts)
 
-	w := performRequest(r, "GET", "/employees/1/contracts", nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/%d/contracts", org.ID, employee.ID), nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -649,17 +1016,19 @@ func TestEmployeeHandler_CreateContract_EmployeeNotFound(t *testing.T) {
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
 
-	r := setupTestRouter()
-	r.POST("/employees/:id/contracts", handler.CreateContract)
+	org := createTestOrganization(t, db, "Test Org")
 
-	body := models.EmployeeContractCreate{
+	r := setupTestRouter()
+	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
+
+	body := models.EmployeeContractCreateRequest{
 		From:        time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		Position:    "Developer",
 		WeeklyHours: 40,
 		Salary:      600000,
 	}
 
-	w := performRequest(r, "POST", "/employees/999/contracts", body)
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/employees/999/contracts", org.ID), body)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
@@ -671,17 +1040,19 @@ func TestEmployeeHandler_CreateContract_InvalidEmployeeID(t *testing.T) {
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
 
-	r := setupTestRouter()
-	r.POST("/employees/:id/contracts", handler.CreateContract)
+	org := createTestOrganization(t, db, "Test Org")
 
-	body := models.EmployeeContractCreate{
+	r := setupTestRouter()
+	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
+
+	body := models.EmployeeContractCreateRequest{
 		From:        time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		Position:    "Developer",
 		WeeklyHours: 40,
 		Salary:      600000,
 	}
 
-	w := performRequest(r, "POST", "/employees/invalid/contracts", body)
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/employees/invalid/contracts", org.ID), body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
@@ -700,7 +1071,7 @@ func TestEmployeeHandler_CreateContract_MissingPosition(t *testing.T) {
 	db.Create(employee)
 
 	r := setupTestRouter()
-	r.POST("/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
 
 	body := map[string]interface{}{
 		"from":         "2025-01-01T00:00:00Z",
@@ -709,7 +1080,7 @@ func TestEmployeeHandler_CreateContract_MissingPosition(t *testing.T) {
 		// Missing position
 	}
 
-	w := performRequest(r, "POST", "/employees/1/contracts", body)
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/employees/%d/contracts", org.ID, employee.ID), body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for missing position, got %d", http.StatusBadRequest, w.Code)
@@ -728,16 +1099,16 @@ func TestEmployeeHandler_CreateContract_ZeroWeeklyHours(t *testing.T) {
 	db.Create(employee)
 
 	r := setupTestRouter()
-	r.POST("/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
 
-	body := models.EmployeeContractCreate{
+	body := models.EmployeeContractCreateRequest{
 		From:        time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		Position:    "Developer",
 		WeeklyHours: 0,
 		Salary:      600000,
 	}
 
-	w := performRequest(r, "POST", "/employees/1/contracts", body)
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/employees/%d/contracts", org.ID, employee.ID), body)
 
 	// Document current behavior - zero hours may or may not be valid
 	t.Logf("Create contract with zero weekly hours returned status %d", w.Code)
@@ -763,17 +1134,17 @@ func TestEmployeeHandler_CreateContract_ContractBoundaryTouch(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.POST("/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
 
 	// Create contract starting the day after
-	body := models.EmployeeContractCreate{
+	body := models.EmployeeContractCreateRequest{
 		From:        time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		Position:    "Senior Developer",
 		WeeklyHours: 40,
 		Salary:      700000,
 	}
 
-	w := performRequest(r, "POST", "/employees/1/contracts", body)
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/employees/%d/contracts", org.ID, employee.ID), body)
 
 	if w.Code != http.StatusCreated {
 		t.Errorf("expected status %d for non-overlapping contract, got %d: %s",
@@ -787,18 +1158,19 @@ func TestEmployeeHandler_DeleteContract_NotFound(t *testing.T) {
 	handler := NewEmployeeHandler(employeeService)
 
 	org := createTestOrganization(t, db, "Test Org")
-	db.Create(&models.Employee{
+	employee := &models.Employee{
 		Person: models.Person{OrganizationID: org.ID, FirstName: "Test", LastName: "Employee", Birthdate: time.Now()},
-	})
+	}
+	db.Create(employee)
 
 	r := setupTestRouter()
-	r.DELETE("/employees/:id/contracts/:contractId", handler.DeleteContract)
+	r.DELETE("/organizations/:orgId/employees/:id/contracts/:contractId", handler.DeleteContract)
 
-	w := performRequest(r, "DELETE", "/employees/1/contracts/999", nil)
+	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d/contracts/999", org.ID, employee.ID), nil)
 
-	// Should return NoContent (idempotent) or NotFound
-	if w.Code != http.StatusNoContent && w.Code != http.StatusNotFound {
-		t.Errorf("expected status %d or %d, got %d", http.StatusNoContent, http.StatusNotFound, w.Code)
+	// Should return NotFound for non-existent contract
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
 	}
 }
 
@@ -808,14 +1180,15 @@ func TestEmployeeHandler_DeleteContract_InvalidContractID(t *testing.T) {
 	handler := NewEmployeeHandler(employeeService)
 
 	org := createTestOrganization(t, db, "Test Org")
-	db.Create(&models.Employee{
+	employee := &models.Employee{
 		Person: models.Person{OrganizationID: org.ID, FirstName: "Test", LastName: "Employee", Birthdate: time.Now()},
-	})
+	}
+	db.Create(employee)
 
 	r := setupTestRouter()
-	r.DELETE("/employees/:id/contracts/:contractId", handler.DeleteContract)
+	r.DELETE("/organizations/:orgId/employees/:id/contracts/:contractId", handler.DeleteContract)
 
-	w := performRequest(r, "DELETE", "/employees/1/contracts/invalid", nil)
+	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d/contracts/invalid", org.ID, employee.ID), nil)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
@@ -827,10 +1200,12 @@ func TestEmployeeHandler_GetCurrentContract_InvalidID(t *testing.T) {
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
 
-	r := setupTestRouter()
-	r.GET("/employees/:id/contracts/current", handler.GetCurrentContract)
+	org := createTestOrganization(t, db, "Test Org")
 
-	w := performRequest(r, "GET", "/employees/invalid/contracts/current", nil)
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/employees/:id/contracts/current", handler.GetCurrentContract)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/invalid/contracts/current", org.ID), nil)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
@@ -844,18 +1219,18 @@ func TestEmployeeHandler_Create_FutureBirthdate(t *testing.T) {
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
 
-	createTestOrganization(t, db, "Test Org")
+	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
 	r.POST("/organizations/:orgId/employees", handler.Create)
 
-	body := models.EmployeeCreate{
+	body := models.EmployeeCreateRequest{
 		FirstName: "Test",
 		LastName:  "Employee",
 		Birthdate: time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 
-	w := performRequest(r, "POST", "/organizations/1/employees", body)
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/employees", org.ID), body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for future birthdate, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
@@ -867,18 +1242,18 @@ func TestEmployeeHandler_Create_WhitespaceOnlyFirstName(t *testing.T) {
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
 
-	createTestOrganization(t, db, "Test Org")
+	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
 	r.POST("/organizations/:orgId/employees", handler.Create)
 
-	body := models.EmployeeCreate{
+	body := models.EmployeeCreateRequest{
 		FirstName: "   ",
 		LastName:  "Employee",
 		Birthdate: time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC),
 	}
 
-	w := performRequest(r, "POST", "/organizations/1/employees", body)
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/employees", org.ID), body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for whitespace-only first name, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
@@ -890,18 +1265,18 @@ func TestEmployeeHandler_Create_WhitespaceOnlyLastName(t *testing.T) {
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
 
-	createTestOrganization(t, db, "Test Org")
+	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
 	r.POST("/organizations/:orgId/employees", handler.Create)
 
-	body := models.EmployeeCreate{
+	body := models.EmployeeCreateRequest{
 		FirstName: "Test",
 		LastName:  "   ",
 		Birthdate: time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC),
 	}
 
-	w := performRequest(r, "POST", "/organizations/1/employees", body)
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/employees", org.ID), body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for whitespace-only last name, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
@@ -920,10 +1295,10 @@ func TestEmployeeHandler_CreateContract_FromAfterTo(t *testing.T) {
 	db.Create(employee)
 
 	r := setupTestRouter()
-	r.POST("/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
 
 	toDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
-	body := models.EmployeeContractCreate{
+	body := models.EmployeeContractCreateRequest{
 		From:        time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC),
 		To:          &toDate,
 		Position:    "Developer",
@@ -931,7 +1306,7 @@ func TestEmployeeHandler_CreateContract_FromAfterTo(t *testing.T) {
 		Salary:      600000,
 	}
 
-	w := performRequest(r, "POST", "/employees/1/contracts", body)
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/employees/%d/contracts", org.ID, employee.ID), body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for from > to, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
@@ -950,16 +1325,16 @@ func TestEmployeeHandler_CreateContract_NegativeWeeklyHours(t *testing.T) {
 	db.Create(employee)
 
 	r := setupTestRouter()
-	r.POST("/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
 
-	body := models.EmployeeContractCreate{
+	body := models.EmployeeContractCreateRequest{
 		From:        time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		Position:    "Developer",
 		WeeklyHours: -1,
 		Salary:      600000,
 	}
 
-	w := performRequest(r, "POST", "/employees/1/contracts", body)
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/employees/%d/contracts", org.ID, employee.ID), body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for negative weekly hours, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
@@ -978,16 +1353,16 @@ func TestEmployeeHandler_CreateContract_WeeklyHoursOver168(t *testing.T) {
 	db.Create(employee)
 
 	r := setupTestRouter()
-	r.POST("/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
 
-	body := models.EmployeeContractCreate{
+	body := models.EmployeeContractCreateRequest{
 		From:        time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		Position:    "Developer",
 		WeeklyHours: 169,
 		Salary:      600000,
 	}
 
-	w := performRequest(r, "POST", "/employees/1/contracts", body)
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/employees/%d/contracts", org.ID, employee.ID), body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for weekly hours > 168, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
@@ -1006,16 +1381,16 @@ func TestEmployeeHandler_CreateContract_NegativeSalary(t *testing.T) {
 	db.Create(employee)
 
 	r := setupTestRouter()
-	r.POST("/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
 
-	body := models.EmployeeContractCreate{
+	body := models.EmployeeContractCreateRequest{
 		From:        time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		Position:    "Developer",
 		WeeklyHours: 40,
 		Salary:      -1,
 	}
 
-	w := performRequest(r, "POST", "/employees/1/contracts", body)
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/employees/%d/contracts", org.ID, employee.ID), body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for negative salary, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
@@ -1034,16 +1409,16 @@ func TestEmployeeHandler_CreateContract_WhitespacePosition(t *testing.T) {
 	db.Create(employee)
 
 	r := setupTestRouter()
-	r.POST("/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
 
-	body := models.EmployeeContractCreate{
+	body := models.EmployeeContractCreateRequest{
 		From:        time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		Position:    "   ",
 		WeeklyHours: 40,
 		Salary:      600000,
 	}
 
-	w := performRequest(r, "POST", "/employees/1/contracts", body)
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/employees/%d/contracts", org.ID, employee.ID), body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for whitespace-only position, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())

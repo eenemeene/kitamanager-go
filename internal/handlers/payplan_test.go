@@ -83,7 +83,7 @@ func TestPayplanHandler_CreateEntry_ValidAgeRange(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			body := models.PayplanEntryCreate{
+			body := models.PayplanEntryCreateRequest{
 				MinAge: tt.minAge,
 				MaxAge: tt.maxAge,
 			}
@@ -161,7 +161,7 @@ func TestPayplanHandler_UpdateEntry_AgeRangeValidation(t *testing.T) {
 				"max_age": 3,
 			})
 
-			body := models.PayplanEntryUpdate{
+			body := models.PayplanEntryUpdateRequest{
 				MinAge: tt.minAge,
 				MaxAge: tt.maxAge,
 			}
@@ -204,7 +204,7 @@ func TestPayplanHandler_Entry_AgeRangeBoundarySemantics(t *testing.T) {
 	r.POST("/payplans/:id/periods/:periodId/entries", handler.CreateEntry)
 
 	// Create an entry for ages 0-2 (covers ages 0 and 1)
-	body := models.PayplanEntryCreate{
+	body := models.PayplanEntryCreateRequest{
 		MinAge: 0,
 		MaxAge: 2,
 	}
@@ -247,7 +247,7 @@ func TestPayplanHandler_CRUD(t *testing.T) {
 
 	// Test Create
 	t.Run("Create", func(t *testing.T) {
-		body := CreatePayplanRequest{Name: "Berlin"}
+		body := PayplanCreateRequest{Name: "Berlin"}
 		w := performRequest(r, "POST", "/payplans", body)
 
 		if w.Code != http.StatusCreated {
@@ -294,7 +294,7 @@ func TestPayplanHandler_CRUD(t *testing.T) {
 	// Test Update
 	t.Run("Update", func(t *testing.T) {
 		name := "Berlin Updated"
-		body := UpdatePayplanRequest{Name: &name}
+		body := PayplanUpdateRequest{Name: &name}
 		w := performRequest(r, "PUT", "/payplans/1", body)
 
 		if w.Code != http.StatusOK {

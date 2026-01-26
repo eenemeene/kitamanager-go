@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
-import type { Employee, EmployeeCreate } from '@/api/types'
+import type { Employee, EmployeeCreateRequest } from '@/api/types'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import DatePicker from 'primevue/datepicker'
@@ -13,7 +13,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  save: [data: Omit<EmployeeCreate, 'organization_id'>]
+  save: [data: Omit<EmployeeCreateRequest, 'organization_id'>]
 }>()
 
 const form = ref({

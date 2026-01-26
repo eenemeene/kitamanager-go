@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -50,12 +51,12 @@ func TestChildHandler_Get(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/children/:id", handler.Get)
+	r.GET("/organizations/:orgId/children/:id", handler.Get)
 
-	w := performRequest(r, "GET", "/children/1", nil)
+	w := performRequest(r, "GET", "/organizations/1/children/1", nil)
 
 	if w.Code != http.StatusOK {
-		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
+		t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
 	}
 
 	var result models.Child
@@ -76,7 +77,7 @@ func TestChildHandler_Create(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/organizations/:orgId/children", handler.Create)
 
-	body := models.ChildCreate{
+	body := models.ChildCreateRequest{
 		FirstName: "New",
 		LastName:  "Child",
 		Birthdate: time.Date(2020, 3, 15, 0, 0, 0, 0, time.UTC),
@@ -110,14 +111,14 @@ func TestChildHandler_Update(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.PUT("/children/:id", handler.Update)
+	r.PUT("/organizations/:orgId/children/:id", handler.Update)
 
 	newName := "Updated"
-	body := models.ChildUpdate{
+	body := models.ChildUpdateRequest{
 		FirstName: &newName,
 	}
 
-	w := performRequest(r, "PUT", "/children/1", body)
+	w := performRequest(r, "PUT", "/organizations/1/children/1", body)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
@@ -142,9 +143,9 @@ func TestChildHandler_Delete(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.DELETE("/children/:id", handler.Delete)
+	r.DELETE("/organizations/:orgId/children/:id", handler.Delete)
 
-	w := performRequest(r, "DELETE", "/children/1", nil)
+	w := performRequest(r, "DELETE", "/organizations/1/children/1", nil)
 
 	if w.Code != http.StatusNoContent {
 		t.Errorf("expected status %d, got %d", http.StatusNoContent, w.Code)
@@ -169,9 +170,9 @@ func TestChildHandler_ListContracts(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/children/:id/contracts", handler.ListContracts)
+	r.GET("/organizations/:orgId/children/:id/contracts", handler.ListContracts)
 
-	w := performRequest(r, "GET", "/children/1/contracts", nil)
+	w := performRequest(r, "GET", "/organizations/1/children/1/contracts", nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -204,9 +205,9 @@ func TestChildHandler_GetCurrentContract(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/children/:id/contracts/current", handler.GetCurrentContract)
+	r.GET("/organizations/:orgId/children/:id/contracts/current", handler.GetCurrentContract)
 
-	w := performRequest(r, "GET", "/children/1/contracts/current", nil)
+	w := performRequest(r, "GET", "/organizations/1/children/1/contracts/current", nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -232,9 +233,9 @@ func TestChildHandler_GetCurrentContract_NotFound(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.GET("/children/:id/contracts/current", handler.GetCurrentContract)
+	r.GET("/organizations/:orgId/children/:id/contracts/current", handler.GetCurrentContract)
 
-	w := performRequest(r, "GET", "/children/1/contracts/current", nil)
+	w := performRequest(r, "GET", "/organizations/1/children/1/contracts/current", nil)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
@@ -253,16 +254,16 @@ func TestChildHandler_CreateContract(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.POST("/children/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
 
-	body := models.ChildContractCreate{
+	body := models.ChildContractCreateRequest{
 		From:             time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		To:               nil,
 		CareHoursPerWeek: 40,
 		MealsIncluded:    true,
 	}
 
-	w := performRequest(r, "POST", "/children/1/contracts", body)
+	w := performRequest(r, "POST", "/organizations/1/children/1/contracts", body)
 
 	if w.Code != http.StatusCreated {
 		t.Errorf("expected status %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
@@ -295,16 +296,16 @@ func TestChildHandler_CreateContract_Overlap(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.POST("/children/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
 
 	// Try to create overlapping contract
-	body := models.ChildContractCreate{
+	body := models.ChildContractCreateRequest{
 		From:             time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
 		To:               nil,
 		CareHoursPerWeek: 40,
 	}
 
-	w := performRequest(r, "POST", "/children/1/contracts", body)
+	w := performRequest(r, "POST", "/organizations/1/children/1/contracts", body)
 
 	if w.Code != http.StatusConflict {
 		t.Errorf("expected status %d, got %d: %s", http.StatusConflict, w.Code, w.Body.String())
@@ -330,9 +331,9 @@ func TestChildHandler_DeleteContract(t *testing.T) {
 	db.Create(contract)
 
 	r := setupTestRouter()
-	r.DELETE("/children/:id/contracts/:contractId", handler.DeleteContract)
+	r.DELETE("/organizations/:orgId/children/:id/contracts/:contractId", handler.DeleteContract)
 
-	w := performRequest(r, "DELETE", "/children/1/contracts/1", nil)
+	w := performRequest(r, "DELETE", "/organizations/1/children/1/contracts/1", nil)
 
 	if w.Code != http.StatusNoContent {
 		t.Errorf("expected status %d, got %d", http.StatusNoContent, w.Code)
@@ -346,10 +347,13 @@ func TestChildHandler_Get_NotFound(t *testing.T) {
 	childService := createChildService(db)
 	handler := NewChildHandler(childService)
 
-	r := setupTestRouter()
-	r.GET("/children/:id", handler.Get)
+	org := createTestOrganization(t, db, "Test Org")
+	_ = org
 
-	w := performRequest(r, "GET", "/children/999", nil)
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/children/:id", handler.Get)
+
+	w := performRequest(r, "GET", "/organizations/1/children/999", nil)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
@@ -361,10 +365,12 @@ func TestChildHandler_Get_InvalidID(t *testing.T) {
 	childService := createChildService(db)
 	handler := NewChildHandler(childService)
 
-	r := setupTestRouter()
-	r.GET("/children/:id", handler.Get)
+	createTestOrganization(t, db, "Test Org")
 
-	w := performRequest(r, "GET", "/children/invalid", nil)
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/children/:id", handler.Get)
+
+	w := performRequest(r, "GET", "/organizations/1/children/invalid", nil)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
@@ -376,10 +382,12 @@ func TestChildHandler_Get_ZeroID(t *testing.T) {
 	childService := createChildService(db)
 	handler := NewChildHandler(childService)
 
-	r := setupTestRouter()
-	r.GET("/children/:id", handler.Get)
+	createTestOrganization(t, db, "Test Org")
 
-	w := performRequest(r, "GET", "/children/0", nil)
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/children/:id", handler.Get)
+
+	w := performRequest(r, "GET", "/organizations/1/children/0", nil)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d for zero ID, got %d", http.StatusNotFound, w.Code)
@@ -415,7 +423,7 @@ func TestChildHandler_Create_EmptyFirstName(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/organizations/:orgId/children", handler.Create)
 
-	body := models.ChildCreate{
+	body := models.ChildCreateRequest{
 		FirstName: "",
 		LastName:  "Child",
 		Birthdate: time.Date(2020, 5, 15, 0, 0, 0, 0, time.UTC),
@@ -438,7 +446,7 @@ func TestChildHandler_Create_EmptyLastName(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/organizations/:orgId/children", handler.Create)
 
-	body := models.ChildCreate{
+	body := models.ChildCreateRequest{
 		FirstName: "Test",
 		LastName:  "",
 		Birthdate: time.Date(2020, 5, 15, 0, 0, 0, 0, time.UTC),
@@ -456,15 +464,17 @@ func TestChildHandler_Update_NotFound(t *testing.T) {
 	childService := createChildService(db)
 	handler := NewChildHandler(childService)
 
+	createTestOrganization(t, db, "Test Org")
+
 	r := setupTestRouter()
-	r.PUT("/children/:id", handler.Update)
+	r.PUT("/organizations/:orgId/children/:id", handler.Update)
 
 	newName := "Updated"
-	body := models.ChildUpdate{
+	body := models.ChildUpdateRequest{
 		FirstName: &newName,
 	}
 
-	w := performRequest(r, "PUT", "/children/999", body)
+	w := performRequest(r, "PUT", "/organizations/1/children/999", body)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
@@ -476,15 +486,17 @@ func TestChildHandler_Update_InvalidID(t *testing.T) {
 	childService := createChildService(db)
 	handler := NewChildHandler(childService)
 
+	createTestOrganization(t, db, "Test Org")
+
 	r := setupTestRouter()
-	r.PUT("/children/:id", handler.Update)
+	r.PUT("/organizations/:orgId/children/:id", handler.Update)
 
 	newName := "Updated"
-	body := models.ChildUpdate{
+	body := models.ChildUpdateRequest{
 		FirstName: &newName,
 	}
 
-	w := performRequest(r, "PUT", "/children/invalid", body)
+	w := performRequest(r, "PUT", "/organizations/1/children/invalid", body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
@@ -496,10 +508,12 @@ func TestChildHandler_Delete_NotFound(t *testing.T) {
 	childService := createChildService(db)
 	handler := NewChildHandler(childService)
 
-	r := setupTestRouter()
-	r.DELETE("/children/:id", handler.Delete)
+	createTestOrganization(t, db, "Test Org")
 
-	w := performRequest(r, "DELETE", "/children/999", nil)
+	r := setupTestRouter()
+	r.DELETE("/organizations/:orgId/children/:id", handler.Delete)
+
+	w := performRequest(r, "DELETE", "/organizations/1/children/999", nil)
 
 	if w.Code != http.StatusNoContent && w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d or %d, got %d", http.StatusNoContent, http.StatusNotFound, w.Code)
@@ -511,10 +525,12 @@ func TestChildHandler_Delete_InvalidID(t *testing.T) {
 	childService := createChildService(db)
 	handler := NewChildHandler(childService)
 
-	r := setupTestRouter()
-	r.DELETE("/children/:id", handler.Delete)
+	createTestOrganization(t, db, "Test Org")
 
-	w := performRequest(r, "DELETE", "/children/invalid", nil)
+	r := setupTestRouter()
+	r.DELETE("/organizations/:orgId/children/:id", handler.Delete)
+
+	w := performRequest(r, "DELETE", "/organizations/1/children/invalid", nil)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
@@ -550,10 +566,12 @@ func TestChildHandler_ListContracts_ChildNotFound(t *testing.T) {
 	childService := createChildService(db)
 	handler := NewChildHandler(childService)
 
-	r := setupTestRouter()
-	r.GET("/children/:id/contracts", handler.ListContracts)
+	createTestOrganization(t, db, "Test Org")
 
-	w := performRequest(r, "GET", "/children/999/contracts", nil)
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/children/:id/contracts", handler.ListContracts)
+
+	w := performRequest(r, "GET", "/organizations/1/children/999/contracts", nil)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
@@ -571,9 +589,9 @@ func TestChildHandler_ListContracts_Empty(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/children/:id/contracts", handler.ListContracts)
+	r.GET("/organizations/:orgId/children/:id/contracts", handler.ListContracts)
 
-	w := performRequest(r, "GET", "/children/1/contracts", nil)
+	w := performRequest(r, "GET", "/organizations/1/children/1/contracts", nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -592,15 +610,17 @@ func TestChildHandler_CreateContract_ChildNotFound(t *testing.T) {
 	childService := createChildService(db)
 	handler := NewChildHandler(childService)
 
-	r := setupTestRouter()
-	r.POST("/children/:id/contracts", handler.CreateContract)
+	createTestOrganization(t, db, "Test Org")
 
-	body := models.ChildContractCreate{
+	r := setupTestRouter()
+	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
+
+	body := models.ChildContractCreateRequest{
 		From:             time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		CareHoursPerWeek: 40,
 	}
 
-	w := performRequest(r, "POST", "/children/999/contracts", body)
+	w := performRequest(r, "POST", "/organizations/1/children/999/contracts", body)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
@@ -612,15 +632,17 @@ func TestChildHandler_CreateContract_InvalidChildID(t *testing.T) {
 	childService := createChildService(db)
 	handler := NewChildHandler(childService)
 
-	r := setupTestRouter()
-	r.POST("/children/:id/contracts", handler.CreateContract)
+	createTestOrganization(t, db, "Test Org")
 
-	body := models.ChildContractCreate{
+	r := setupTestRouter()
+	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
+
+	body := models.ChildContractCreateRequest{
 		From:             time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		CareHoursPerWeek: 40,
 	}
 
-	w := performRequest(r, "POST", "/children/invalid/contracts", body)
+	w := performRequest(r, "POST", "/organizations/1/children/invalid/contracts", body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
@@ -639,15 +661,15 @@ func TestChildHandler_CreateContract_ZeroCareHours(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.POST("/children/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
 
-	body := models.ChildContractCreate{
+	body := models.ChildContractCreateRequest{
 		From:             time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		CareHoursPerWeek: 0,
 		MealsIncluded:    false,
 	}
 
-	w := performRequest(r, "POST", "/children/1/contracts", body)
+	w := performRequest(r, "POST", "/organizations/1/children/1/contracts", body)
 
 	// Document current behavior - zero hours may or may not be valid
 	t.Logf("Create contract with zero care hours returned status %d", w.Code)
@@ -673,16 +695,16 @@ func TestChildHandler_CreateContract_ContractBoundaryTouch(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.POST("/children/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
 
 	// Create contract starting the day after
-	body := models.ChildContractCreate{
+	body := models.ChildContractCreateRequest{
 		From:             time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		CareHoursPerWeek: 40,
 		MealsIncluded:    true,
 	}
 
-	w := performRequest(r, "POST", "/children/1/contracts", body)
+	w := performRequest(r, "POST", "/organizations/1/children/1/contracts", body)
 
 	if w.Code != http.StatusCreated {
 		t.Errorf("expected status %d for non-overlapping contract, got %d: %s",
@@ -701,9 +723,9 @@ func TestChildHandler_DeleteContract_NotFound(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.DELETE("/children/:id/contracts/:contractId", handler.DeleteContract)
+	r.DELETE("/organizations/:orgId/children/:id/contracts/:contractId", handler.DeleteContract)
 
-	w := performRequest(r, "DELETE", "/children/1/contracts/999", nil)
+	w := performRequest(r, "DELETE", "/organizations/1/children/1/contracts/999", nil)
 
 	if w.Code != http.StatusNoContent && w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d or %d, got %d", http.StatusNoContent, http.StatusNotFound, w.Code)
@@ -721,9 +743,9 @@ func TestChildHandler_DeleteContract_InvalidContractID(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.DELETE("/children/:id/contracts/:contractId", handler.DeleteContract)
+	r.DELETE("/organizations/:orgId/children/:id/contracts/:contractId", handler.DeleteContract)
 
-	w := performRequest(r, "DELETE", "/children/1/contracts/invalid", nil)
+	w := performRequest(r, "DELETE", "/organizations/1/children/1/contracts/invalid", nil)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
@@ -735,10 +757,12 @@ func TestChildHandler_GetCurrentContract_InvalidID(t *testing.T) {
 	childService := createChildService(db)
 	handler := NewChildHandler(childService)
 
-	r := setupTestRouter()
-	r.GET("/children/:id/contracts/current", handler.GetCurrentContract)
+	createTestOrganization(t, db, "Test Org")
 
-	w := performRequest(r, "GET", "/children/invalid/contracts/current", nil)
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/children/:id/contracts/current", handler.GetCurrentContract)
+
+	w := performRequest(r, "GET", "/organizations/1/children/invalid/contracts/current", nil)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
@@ -757,7 +781,7 @@ func TestChildHandler_Create_FutureBirthdate(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/organizations/:orgId/children", handler.Create)
 
-	body := models.ChildCreate{
+	body := models.ChildCreateRequest{
 		FirstName: "Test",
 		LastName:  "Child",
 		Birthdate: time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC),
@@ -780,7 +804,7 @@ func TestChildHandler_Create_WhitespaceOnlyFirstName(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/organizations/:orgId/children", handler.Create)
 
-	body := models.ChildCreate{
+	body := models.ChildCreateRequest{
 		FirstName: "   ",
 		LastName:  "Child",
 		Birthdate: time.Date(2020, 5, 15, 0, 0, 0, 0, time.UTC),
@@ -803,7 +827,7 @@ func TestChildHandler_Create_WhitespaceOnlyLastName(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/organizations/:orgId/children", handler.Create)
 
-	body := models.ChildCreate{
+	body := models.ChildCreateRequest{
 		FirstName: "Test",
 		LastName:  "   ",
 		Birthdate: time.Date(2020, 5, 15, 0, 0, 0, 0, time.UTC),
@@ -828,16 +852,16 @@ func TestChildHandler_CreateContract_FromAfterTo(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.POST("/children/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
 
 	toDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
-	body := models.ChildContractCreate{
+	body := models.ChildContractCreateRequest{
 		From:             time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC),
 		To:               &toDate,
 		CareHoursPerWeek: 40,
 	}
 
-	w := performRequest(r, "POST", "/children/1/contracts", body)
+	w := performRequest(r, "POST", "/organizations/1/children/1/contracts", body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for from > to, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
@@ -856,14 +880,14 @@ func TestChildHandler_CreateContract_NegativeCareHours(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.POST("/children/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
 
-	body := models.ChildContractCreate{
+	body := models.ChildContractCreateRequest{
 		From:             time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		CareHoursPerWeek: -1,
 	}
 
-	w := performRequest(r, "POST", "/children/1/contracts", body)
+	w := performRequest(r, "POST", "/organizations/1/children/1/contracts", body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for negative care hours, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
@@ -882,14 +906,14 @@ func TestChildHandler_CreateContract_CareHoursOver168(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.POST("/children/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
 
-	body := models.ChildContractCreate{
+	body := models.ChildContractCreateRequest{
 		From:             time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		CareHoursPerWeek: 169,
 	}
 
-	w := performRequest(r, "POST", "/children/1/contracts", body)
+	w := performRequest(r, "POST", "/organizations/1/children/1/contracts", body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for care hours > 168, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
@@ -908,7 +932,7 @@ func TestChildHandler_CreateContract_SpecialNeedsTooLong(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.POST("/children/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
 
 	// Create a special needs string longer than 1000 characters
 	longSpecialNeeds := ""
@@ -916,13 +940,13 @@ func TestChildHandler_CreateContract_SpecialNeedsTooLong(t *testing.T) {
 		longSpecialNeeds += "a"
 	}
 
-	body := models.ChildContractCreate{
+	body := models.ChildContractCreateRequest{
 		From:             time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		CareHoursPerWeek: 40,
 		SpecialNeeds:     longSpecialNeeds,
 	}
 
-	w := performRequest(r, "POST", "/children/1/contracts", body)
+	w := performRequest(r, "POST", "/organizations/1/children/1/contracts", body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for special needs too long, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
@@ -941,15 +965,15 @@ func TestChildHandler_CreateContract_SpecialNeedsXSS(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.POST("/children/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
 
-	body := models.ChildContractCreate{
+	body := models.ChildContractCreateRequest{
 		From:             time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		CareHoursPerWeek: 40,
 		SpecialNeeds:     "<script>alert('xss')</script>",
 	}
 
-	w := performRequest(r, "POST", "/children/1/contracts", body)
+	w := performRequest(r, "POST", "/organizations/1/children/1/contracts", body)
 
 	if w.Code != http.StatusCreated {
 		t.Errorf("expected status %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
@@ -987,15 +1011,15 @@ func TestChildHandler_CreateContract_GroupNotInOrg(t *testing.T) {
 	group := createTestGroupWithOrg(t, db, "Group in Org2", org2.ID)
 
 	r := setupTestRouter()
-	r.POST("/children/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
 
-	body := models.ChildContractCreate{
+	body := models.ChildContractCreateRequest{
 		From:             time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		CareHoursPerWeek: 40,
 		GroupID:          &group.ID, // Group from different org
 	}
 
-	w := performRequest(r, "POST", "/children/1/contracts", body)
+	w := performRequest(r, "POST", "/organizations/1/children/1/contracts", body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for group from different org, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
@@ -1014,18 +1038,220 @@ func TestChildHandler_CreateContract_GroupNotFound(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.POST("/children/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
 
 	nonExistentGroupID := uint(999)
-	body := models.ChildContractCreate{
+	body := models.ChildContractCreateRequest{
 		From:             time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		CareHoursPerWeek: 40,
 		GroupID:          &nonExistentGroupID,
 	}
 
-	w := performRequest(r, "POST", "/children/1/contracts", body)
+	w := performRequest(r, "POST", "/organizations/1/children/1/contracts", body)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d for non-existent group, got %d: %s", http.StatusNotFound, w.Code, w.Body.String())
+	}
+}
+
+// SECURITY TESTS: Cross-organization access attempts
+
+func TestChildHandler_Get_WrongOrg(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService)
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+
+	// Create child in org1
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org1.ID, FirstName: "Test", LastName: "Child", Birthdate: time.Now()},
+	}
+	db.Create(child)
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/children/:id", handler.Get)
+
+	// Try to access org1's child via org2's URL
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/%d", org2.ID, child.ID), nil)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("SECURITY: expected status %d when accessing child from wrong org, got %d", http.StatusNotFound, w.Code)
+	}
+}
+
+func TestChildHandler_Update_WrongOrg(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService)
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+
+	// Create child in org1
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org1.ID, FirstName: "Original", LastName: "Child", Birthdate: time.Now()},
+	}
+	db.Create(child)
+
+	r := setupTestRouter()
+	r.PUT("/organizations/:orgId/children/:id", handler.Update)
+
+	newName := "Hacker"
+	body := models.ChildUpdateRequest{
+		FirstName: &newName,
+	}
+
+	// Try to update org1's child via org2's URL
+	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/children/%d", org2.ID, child.ID), body)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("SECURITY: expected status %d when updating child from wrong org, got %d", http.StatusNotFound, w.Code)
+	}
+}
+
+func TestChildHandler_Delete_WrongOrg(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService)
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+
+	// Create child in org1
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org1.ID, FirstName: "Test", LastName: "Child", Birthdate: time.Now()},
+	}
+	db.Create(child)
+
+	r := setupTestRouter()
+	r.DELETE("/organizations/:orgId/children/:id", handler.Delete)
+
+	// Try to delete org1's child via org2's URL
+	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/children/%d", org2.ID, child.ID), nil)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("SECURITY: expected status %d when deleting child from wrong org, got %d", http.StatusNotFound, w.Code)
+	}
+}
+
+func TestChildHandler_ListContracts_WrongOrg(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService)
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+
+	// Create child in org1
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org1.ID, FirstName: "Test", LastName: "Child", Birthdate: time.Now()},
+	}
+	db.Create(child)
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/children/:id/contracts", handler.ListContracts)
+
+	// Try to list contracts for org1's child via org2's URL
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/%d/contracts", org2.ID, child.ID), nil)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("SECURITY: expected status %d when listing contracts from wrong org, got %d", http.StatusNotFound, w.Code)
+	}
+}
+
+func TestChildHandler_CreateContract_WrongOrg(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService)
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+
+	// Create child in org1
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org1.ID, FirstName: "Test", LastName: "Child", Birthdate: time.Now()},
+	}
+	db.Create(child)
+
+	r := setupTestRouter()
+	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
+
+	body := models.ChildContractCreateRequest{
+		From:             time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		CareHoursPerWeek: 40,
+	}
+
+	// Try to create contract for org1's child via org2's URL
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/children/%d/contracts", org2.ID, child.ID), body)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("SECURITY: expected status %d when creating contract from wrong org, got %d", http.StatusNotFound, w.Code)
+	}
+}
+
+func TestChildHandler_DeleteContract_WrongOrg(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService)
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+
+	// Create child in org1
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org1.ID, FirstName: "Test", LastName: "Child", Birthdate: time.Now()},
+	}
+	db.Create(child)
+
+	// Create contract for child
+	contract := &models.ChildContract{
+		ChildID:          child.ID,
+		Period:           models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		CareHoursPerWeek: 35,
+	}
+	db.Create(contract)
+
+	r := setupTestRouter()
+	r.DELETE("/organizations/:orgId/children/:id/contracts/:contractId", handler.DeleteContract)
+
+	// Try to delete contract for org1's child via org2's URL
+	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org2.ID, child.ID, contract.ID), nil)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("SECURITY: expected status %d when deleting contract from wrong org, got %d", http.StatusNotFound, w.Code)
+	}
+}
+
+func TestChildHandler_GetCurrentContract_WrongOrg(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService)
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+
+	// Create child in org1
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org1.ID, FirstName: "Test", LastName: "Child", Birthdate: time.Now()},
+	}
+	db.Create(child)
+
+	// Create active contract
+	db.Create(&models.ChildContract{
+		ChildID:          child.ID,
+		Period:           models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		CareHoursPerWeek: 35,
+	})
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/children/:id/contracts/current", handler.GetCurrentContract)
+
+	// Try to get current contract for org1's child via org2's URL
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/%d/contracts/current", org2.ID, child.ID), nil)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("SECURITY: expected status %d when getting current contract from wrong org, got %d", http.StatusNotFound, w.Code)
 	}
 }

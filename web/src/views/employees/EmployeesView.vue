@@ -4,7 +4,12 @@ import { useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { apiClient } from '@/api/client'
-import type { Employee, EmployeeCreate, EmployeeUpdate, EmployeeContractCreate } from '@/api/types'
+import type {
+  Employee,
+  EmployeeCreateRequest,
+  EmployeeUpdateRequest,
+  EmployeeContractCreateRequest
+} from '@/api/types'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
@@ -64,10 +69,14 @@ function closeDialog() {
   editingEmployee.value = null
 }
 
-async function saveEmployee(data: EmployeeCreate | EmployeeUpdate) {
+async function saveEmployee(data: EmployeeCreateRequest | EmployeeUpdateRequest) {
   try {
     if (editingEmployee.value) {
-      await apiClient.updateEmployee(orgId.value, editingEmployee.value.id, data as EmployeeUpdate)
+      await apiClient.updateEmployee(
+        orgId.value,
+        editingEmployee.value.id,
+        data as EmployeeUpdateRequest
+      )
       toast.add({
         severity: 'success',
         summary: 'Success',
@@ -75,7 +84,10 @@ async function saveEmployee(data: EmployeeCreate | EmployeeUpdate) {
         life: 3000
       })
     } else {
-      await apiClient.createEmployee(orgId.value, data as Omit<EmployeeCreate, 'organization_id'>)
+      await apiClient.createEmployee(
+        orgId.value,
+        data as Omit<EmployeeCreateRequest, 'organization_id'>
+      )
       toast.add({
         severity: 'success',
         summary: 'Success',
@@ -133,7 +145,7 @@ function closeContractDialog() {
   selectedEmployee.value = null
 }
 
-async function saveContract(data: EmployeeContractCreate) {
+async function saveContract(data: EmployeeContractCreateRequest) {
   if (!selectedEmployee.value) return
 
   try {

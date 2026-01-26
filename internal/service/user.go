@@ -62,7 +62,7 @@ func (s *UserService) GetByID(ctx context.Context, id uint) (*models.UserRespons
 }
 
 // Create creates a new user
-func (s *UserService) Create(ctx context.Context, req *models.UserCreate, createdBy string) (*models.UserResponse, error) {
+func (s *UserService) Create(ctx context.Context, req *models.UserCreateRequest, createdBy string) (*models.UserResponse, error) {
 	// Trim and validate input
 	req.Name = strings.TrimSpace(req.Name)
 	req.Email = strings.TrimSpace(req.Email)
@@ -93,7 +93,7 @@ func (s *UserService) Create(ctx context.Context, req *models.UserCreate, create
 }
 
 // Update updates an existing user
-func (s *UserService) Update(ctx context.Context, id uint, req *models.UserUpdate) (*models.UserResponse, error) {
+func (s *UserService) Update(ctx context.Context, id uint, req *models.UserUpdateRequest) (*models.UserResponse, error) {
 	user, err := s.store.FindByID(id)
 	if err != nil {
 		return nil, apperror.NotFound("user")
@@ -110,6 +110,14 @@ func (s *UserService) Update(ctx context.Context, id uint, req *models.UserUpdat
 		user.Name = req.Name
 	}
 	if req.Email != "" {
+		// Check if email is already used by another user
+		exists, err := s.store.EmailExistsForOtherUser(req.Email, id)
+		if err != nil {
+			return nil, apperror.Internal("failed to validate email")
+		}
+		if exists {
+			return nil, apperror.EmailConflict()
+		}
 		user.Email = req.Email
 	}
 	if req.Active != nil {

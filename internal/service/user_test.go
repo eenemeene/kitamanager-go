@@ -99,7 +99,7 @@ func TestUserService_Create(t *testing.T) {
 	svc := createUserService(db)
 	ctx := context.Background()
 
-	req := &models.UserCreate{
+	req := &models.UserCreateRequest{
 		Name:     "New User",
 		Email:    "new@example.com",
 		Password: "password123",
@@ -128,7 +128,7 @@ func TestUserService_Create_HashesPassword(t *testing.T) {
 	ctx := context.Background()
 
 	plainPassword := "mySecretPassword123"
-	req := &models.UserCreate{
+	req := &models.UserCreateRequest{
 		Name:     "Test User",
 		Email:    "test@example.com",
 		Password: plainPassword,
@@ -163,10 +163,10 @@ func TestUserService_Create_WhitespaceOnlyName(t *testing.T) {
 
 	tests := []struct {
 		name string
-		req  *models.UserCreate
+		req  *models.UserCreateRequest
 	}{
-		{"empty name", &models.UserCreate{Name: "", Email: "test@example.com", Password: "password123"}},
-		{"whitespace only", &models.UserCreate{Name: "   ", Email: "test@example.com", Password: "password123"}},
+		{"empty name", &models.UserCreateRequest{Name: "", Email: "test@example.com", Password: "password123"}},
+		{"whitespace only", &models.UserCreateRequest{Name: "   ", Email: "test@example.com", Password: "password123"}},
 	}
 
 	for _, tt := range tests {
@@ -192,7 +192,7 @@ func TestUserService_Create_TrimmedInput(t *testing.T) {
 	svc := createUserService(db)
 	ctx := context.Background()
 
-	req := &models.UserCreate{
+	req := &models.UserCreateRequest{
 		Name:     "  Trimmed Name  ",
 		Email:    "  test@example.com  ",
 		Password: "password123",
@@ -219,7 +219,7 @@ func TestUserService_Update(t *testing.T) {
 
 	user := createTestUser(t, db, "Original Name", "test@example.com", "password")
 
-	req := &models.UserUpdate{
+	req := &models.UserUpdateRequest{
 		Name: "Updated Name",
 	}
 
@@ -241,7 +241,7 @@ func TestUserService_Update_PartialUpdate(t *testing.T) {
 	user := createTestUser(t, db, "Original Name", "original@example.com", "password")
 
 	// Update only email
-	req := &models.UserUpdate{
+	req := &models.UserUpdateRequest{
 		Email: "new@example.com",
 	}
 
@@ -264,7 +264,7 @@ func TestUserService_Update_NotFound(t *testing.T) {
 	svc := createUserService(db)
 	ctx := context.Background()
 
-	req := &models.UserUpdate{
+	req := &models.UserUpdateRequest{
 		Name: "New Name",
 	}
 

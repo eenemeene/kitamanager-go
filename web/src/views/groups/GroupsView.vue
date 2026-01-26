@@ -4,7 +4,7 @@ import { useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { apiClient } from '@/api/client'
-import type { Group, GroupCreate, GroupUpdate } from '@/api/types'
+import type { Group, GroupCreateRequest, GroupUpdateRequest } from '@/api/types'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
@@ -61,10 +61,10 @@ function closeDialog() {
   editingGroup.value = null
 }
 
-async function saveGroup(data: GroupCreate | GroupUpdate) {
+async function saveGroup(data: GroupCreateRequest | GroupUpdateRequest) {
   try {
     if (editingGroup.value) {
-      await apiClient.updateGroup(orgId.value, editingGroup.value.id, data as GroupUpdate)
+      await apiClient.updateGroup(orgId.value, editingGroup.value.id, data as GroupUpdateRequest)
       toast.add({
         severity: 'success',
         summary: 'Success',
@@ -72,7 +72,7 @@ async function saveGroup(data: GroupCreate | GroupUpdate) {
         life: 3000
       })
     } else {
-      await apiClient.createGroup(orgId.value, data as GroupCreate)
+      await apiClient.createGroup(orgId.value, data as GroupCreateRequest)
       toast.add({
         severity: 'success',
         summary: 'Success',

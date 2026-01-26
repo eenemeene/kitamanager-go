@@ -23,34 +23,49 @@ func NewChildService(store store.ChildStorer, groupStore store.GroupStorer) *Chi
 }
 
 // List returns a paginated list of children
-func (s *ChildService) List(ctx context.Context, limit, offset int) ([]models.Child, int64, error) {
+func (s *ChildService) List(ctx context.Context, limit, offset int) ([]models.ChildResponse, int64, error) {
 	children, total, err := s.store.FindAll(limit, offset)
 	if err != nil {
 		return nil, 0, apperror.Internal("failed to fetch children")
 	}
-	return children, total, nil
+
+	responses := make([]models.ChildResponse, len(children))
+	for i, c := range children {
+		responses[i] = c.ToResponse()
+	}
+	return responses, total, nil
 }
 
 // ListByOrganization returns a paginated list of children for an organization
-func (s *ChildService) ListByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.Child, int64, error) {
+func (s *ChildService) ListByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.ChildResponse, int64, error) {
 	children, total, err := s.store.FindByOrganization(orgID, limit, offset)
 	if err != nil {
 		return nil, 0, apperror.Internal("failed to fetch children")
 	}
-	return children, total, nil
+
+	responses := make([]models.ChildResponse, len(children))
+	for i, c := range children {
+		responses[i] = c.ToResponse()
+	}
+	return responses, total, nil
 }
 
-// GetByID returns a child by ID
-func (s *ChildService) GetByID(ctx context.Context, id uint) (*models.Child, error) {
+// GetByID returns a child by ID, validating it belongs to the specified organization
+func (s *ChildService) GetByID(ctx context.Context, id, orgID uint) (*models.ChildResponse, error) {
 	child, err := s.store.FindByID(id)
 	if err != nil {
 		return nil, apperror.NotFound("child")
 	}
-	return child, nil
+	// Security: Validate child belongs to the specified organization
+	if child.OrganizationID != orgID {
+		return nil, apperror.NotFound("child")
+	}
+	resp := child.ToResponse()
+	return &resp, nil
 }
 
 // Create creates a new child
-func (s *ChildService) Create(ctx context.Context, orgID uint, req *models.ChildCreate) (*models.Child, error) {
+func (s *ChildService) Create(ctx context.Context, orgID uint, req *models.ChildCreateRequest) (*models.ChildResponse, error) {
 	// Trim and validate input
 	req.FirstName = strings.TrimSpace(req.FirstName)
 	req.LastName = strings.TrimSpace(req.LastName)
@@ -78,13 +93,18 @@ func (s *ChildService) Create(ctx context.Context, orgID uint, req *models.Child
 		return nil, apperror.Internal("failed to create child")
 	}
 
-	return child, nil
+	resp := child.ToResponse()
+	return &resp, nil
 }
 
-// Update updates an existing child
-func (s *ChildService) Update(ctx context.Context, id uint, req *models.ChildUpdate) (*models.Child, error) {
+// Update updates an existing child, validating it belongs to the specified organization
+func (s *ChildService) Update(ctx context.Context, id, orgID uint, req *models.ChildUpdateRequest) (*models.ChildResponse, error) {
 	child, err := s.store.FindByID(id)
 	if err != nil {
+		return nil, apperror.NotFound("child")
+	}
+	// Security: Validate child belongs to the specified organization
+	if child.OrganizationID != orgID {
 		return nil, apperror.NotFound("child")
 	}
 
@@ -113,22 +133,36 @@ func (s *ChildService) Update(ctx context.Context, id uint, req *models.ChildUpd
 		return nil, apperror.Internal("failed to update child")
 	}
 
-	return child, nil
+	resp := child.ToResponse()
+	return &resp, nil
 }
 
-// Delete deletes a child
-func (s *ChildService) Delete(ctx context.Context, id uint) error {
+// Delete deletes a child, validating it belongs to the specified organization
+func (s *ChildService) Delete(ctx context.Context, id, orgID uint) error {
+	// Security: Validate child belongs to the specified organization
+	child, err := s.store.FindByID(id)
+	if err != nil {
+		return apperror.NotFound("child")
+	}
+	if child.OrganizationID != orgID {
+		return apperror.NotFound("child")
+	}
+
 	if err := s.store.Delete(id); err != nil {
 		return apperror.Internal("failed to delete child")
 	}
 	return nil
 }
 
-// ListContracts returns contract history for a child
-func (s *ChildService) ListContracts(ctx context.Context, childID uint) ([]models.ChildContract, error) {
-	// Verify child exists
-	_, err := s.store.FindByID(childID)
+// ListContracts returns contract history for a child, validating it belongs to the specified organization
+func (s *ChildService) ListContracts(ctx context.Context, childID, orgID uint) ([]models.ChildContractResponse, error) {
+	// Verify child exists and belongs to org
+	child, err := s.store.FindByID(childID)
 	if err != nil {
+		return nil, apperror.NotFound("child")
+	}
+	// Security: Validate child belongs to the specified organization
+	if child.OrganizationID != orgID {
 		return nil, apperror.NotFound("child")
 	}
 
@@ -136,11 +170,25 @@ func (s *ChildService) ListContracts(ctx context.Context, childID uint) ([]model
 	if err != nil {
 		return nil, apperror.Internal("failed to fetch contracts")
 	}
-	return contracts, nil
+
+	responses := make([]models.ChildContractResponse, len(contracts))
+	for i, c := range contracts {
+		responses[i] = c.ToResponse()
+	}
+	return responses, nil
 }
 
-// GetCurrentContract returns the current active contract for a child
-func (s *ChildService) GetCurrentContract(ctx context.Context, childID uint) (*models.ChildContract, error) {
+// GetCurrentContract returns the current active contract for a child, validating it belongs to the specified organization
+func (s *ChildService) GetCurrentContract(ctx context.Context, childID, orgID uint) (*models.ChildContractResponse, error) {
+	// Security: Validate child belongs to the specified organization
+	child, err := s.store.FindByID(childID)
+	if err != nil {
+		return nil, apperror.NotFound("child")
+	}
+	if child.OrganizationID != orgID {
+		return nil, apperror.NotFound("child")
+	}
+
 	contract, err := s.store.Contracts().GetCurrentContract(childID)
 	if err != nil {
 		return nil, apperror.Internal("failed to fetch contract")
@@ -148,22 +196,31 @@ func (s *ChildService) GetCurrentContract(ctx context.Context, childID uint) (*m
 	if contract == nil {
 		return nil, apperror.NotFound("active contract")
 	}
-	return contract, nil
+	resp := contract.ToResponse()
+	return &resp, nil
 }
 
-// CreateContract creates a new contract for a child
-func (s *ChildService) CreateContract(ctx context.Context, childID uint, req *models.ChildContractCreate) (*models.ChildContract, error) {
+// CreateContract creates a new contract for a child, validating it belongs to the specified organization
+func (s *ChildService) CreateContract(ctx context.Context, childID, orgID uint, req *models.ChildContractCreateRequest) (*models.ChildContractResponse, error) {
 	// Validate period
 	if err := validation.ValidatePeriod(req.From, req.To); err != nil {
+		return nil, apperror.BadRequest(err.Error())
+	}
+	// Validate care hours
+	if err := validation.ValidateWeeklyHours(req.CareHoursPerWeek, "care_hours_per_week"); err != nil {
 		return nil, apperror.BadRequest(err.Error())
 	}
 
 	// Sanitize SpecialNeeds for XSS
 	req.SpecialNeeds = validation.SanitizeHTML(strings.TrimSpace(req.SpecialNeeds))
 
-	// Verify child exists
+	// Verify child exists and belongs to org
 	child, err := s.store.FindByID(childID)
 	if err != nil {
+		return nil, apperror.NotFound("child")
+	}
+	// Security: Validate child belongs to the specified organization
+	if child.OrganizationID != orgID {
 		return nil, apperror.NotFound("child")
 	}
 
@@ -196,17 +253,37 @@ func (s *ChildService) CreateContract(ctx context.Context, childID uint, req *mo
 		GroupID:          req.GroupID,
 		MealsIncluded:    req.MealsIncluded,
 		SpecialNeeds:     req.SpecialNeeds,
+		Attributes:       req.Attributes,
 	}
 
 	if err := s.store.CreateContract(contract); err != nil {
 		return nil, apperror.Internal("failed to create contract")
 	}
 
-	return contract, nil
+	resp := contract.ToResponse()
+	return &resp, nil
 }
 
-// DeleteContract deletes a contract
-func (s *ChildService) DeleteContract(ctx context.Context, contractID uint) error {
+// DeleteContract deletes a contract, validating it belongs to a child in the specified organization
+func (s *ChildService) DeleteContract(ctx context.Context, contractID, childID, orgID uint) error {
+	// Security: Validate child belongs to the specified organization
+	child, err := s.store.FindByID(childID)
+	if err != nil {
+		return apperror.NotFound("child")
+	}
+	if child.OrganizationID != orgID {
+		return apperror.NotFound("child")
+	}
+
+	// Validate contract belongs to the child
+	contract, err := s.store.FindContractByID(contractID)
+	if err != nil {
+		return apperror.NotFound("contract")
+	}
+	if contract.ChildID != childID {
+		return apperror.NotFound("contract")
+	}
+
 	if err := s.store.DeleteContract(contractID); err != nil {
 		return apperror.Internal("failed to delete contract")
 	}

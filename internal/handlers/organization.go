@@ -49,7 +49,7 @@ func (h *OrganizationHandler) List(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.NewPaginatedResponse(organizations, params.Page, params.Limit, total))
+	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(organizations, params.Page, params.Limit, total, c.Request.URL.Path))
 }
 
 // Get godoc
@@ -81,8 +81,8 @@ func (h *OrganizationHandler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, organization)
 }
 
-// CreateOrganizationRequest represents the request body for creating an organization
-type CreateOrganizationRequest struct {
+// OrganizationCreateRequest represents the request body for creating an organization
+type OrganizationCreateRequest struct {
 	Name   string `json:"name" binding:"required,max=255" example:"Acme Corp"`
 	Active bool   `json:"active" example:"true"`
 }
@@ -94,14 +94,14 @@ type CreateOrganizationRequest struct {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param request body CreateOrganizationRequest true "Organization data"
+// @Param request body OrganizationCreateRequest true "Organization data"
 // @Success 201 {object} models.Organization
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/organizations [post]
 func (h *OrganizationHandler) Create(c *gin.Context) {
-	var req CreateOrganizationRequest
+	var req OrganizationCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
@@ -122,8 +122,8 @@ func (h *OrganizationHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, organization)
 }
 
-// UpdateOrganizationRequest represents the request body for updating an organization
-type UpdateOrganizationRequest struct {
+// OrganizationUpdateRequest represents the request body for updating an organization
+type OrganizationUpdateRequest struct {
 	Name   string `json:"name" binding:"omitempty,max=255" example:"Acme Corp Updated"`
 	Active *bool  `json:"active" example:"false"`
 }
@@ -136,7 +136,7 @@ type UpdateOrganizationRequest struct {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param request body UpdateOrganizationRequest true "Organization data"
+// @Param request body OrganizationUpdateRequest true "Organization data"
 // @Success 200 {object} models.Organization
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
@@ -150,7 +150,7 @@ func (h *OrganizationHandler) Update(c *gin.Context) {
 		return
 	}
 
-	var req UpdateOrganizationRequest
+	var req OrganizationUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return

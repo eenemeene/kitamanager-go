@@ -35,7 +35,7 @@ func (h *Handler) HandlerName(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param request body models.UserCreate true "User data"
+// @Param request body models.UserCreateRequest true "User data"
 // @Success 201 {object} models.UserResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
@@ -48,13 +48,40 @@ func (h *UserHandler) Create(c *gin.Context) {
 
 ### Request/Response Types
 
-All request and response structs should include `example` tags for better documentation:
+All request and response structs should include `example` tags for better documentation.
+
+#### DTO Naming Convention
+
+All DTOs (Data Transfer Objects) must follow a consistent naming pattern.
+
+**Request DTOs** - Use `{Resource}{Action}Request`:
+- Create: `UserCreateRequest`, `ChildCreateRequest`, `EmployeeContractCreateRequest`
+- Update: `UserUpdateRequest`, `ChildUpdateRequest`, `PayplanPeriodUpdateRequest`
+- Other actions: `AssignPayplanRequest`, `SetSuperAdminRequest`
+
+**Response DTOs** - Use `{Resource}Response`:
+- `UserResponse`, `ChildResponse`, `EmployeeContractResponse`, `PayplanPeriodResponse`
+
+**Nested resources follow the same pattern**:
+- `ChildContractCreateRequest` (not `CreateChildContractRequest`)
+- `PayplanEntryUpdateRequest` (not `UpdatePayplanEntryRequest`)
+
+**DO NOT** use these incorrect patterns:
+- `Create{Resource}Request` (wrong: `CreateUserRequest`)
+- `Update{Resource}Request` (wrong: `UpdateUserRequest`)
+- `{Resource}Create` (wrong: `UserCreate` - missing `Request` suffix)
 
 ```go
-type CreateUserRequest struct {
+type UserCreateRequest struct {
     Name     string `json:"name" binding:"required" example:"John Doe"`
     Email    string `json:"email" binding:"required,email" example:"john@example.com"`
     Password string `json:"password" binding:"required,min=6" example:"secret123"`
+}
+
+type UserResponse struct {
+    ID    uint   `json:"id" example:"1"`
+    Name  string `json:"name" example:"John Doe"`
+    Email string `json:"email" example:"john@example.com"`
 }
 ```
 

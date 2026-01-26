@@ -41,6 +41,19 @@ func (s *OrganizationStore) Create(organization *models.Organization) error {
 	return s.db.Create(organization).Error
 }
 
+func (s *OrganizationStore) CreateWithDefaultGroup(org *models.Organization, defaultGroup *models.Group) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(org).Error; err != nil {
+			return err
+		}
+		defaultGroup.OrganizationID = org.ID
+		if err := tx.Create(defaultGroup).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
 func (s *OrganizationStore) Update(organization *models.Organization) error {
 	return s.db.Save(organization).Error
 }

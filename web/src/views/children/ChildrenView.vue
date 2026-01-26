@@ -4,7 +4,12 @@ import { useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { apiClient } from '@/api/client'
-import type { Child, ChildCreate, ChildUpdate, ChildContractCreate } from '@/api/types'
+import type {
+  Child,
+  ChildCreateRequest,
+  ChildUpdateRequest,
+  ChildContractCreateRequest
+} from '@/api/types'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
@@ -65,10 +70,10 @@ function closeDialog() {
   editingChild.value = null
 }
 
-async function saveChild(data: ChildCreate | ChildUpdate) {
+async function saveChild(data: ChildCreateRequest | ChildUpdateRequest) {
   try {
     if (editingChild.value) {
-      await apiClient.updateChild(orgId.value, editingChild.value.id, data as ChildUpdate)
+      await apiClient.updateChild(orgId.value, editingChild.value.id, data as ChildUpdateRequest)
       toast.add({
         severity: 'success',
         summary: 'Success',
@@ -76,7 +81,7 @@ async function saveChild(data: ChildCreate | ChildUpdate) {
         life: 3000
       })
     } else {
-      await apiClient.createChild(orgId.value, data as Omit<ChildCreate, 'organization_id'>)
+      await apiClient.createChild(orgId.value, data as Omit<ChildCreateRequest, 'organization_id'>)
       toast.add({
         severity: 'success',
         summary: 'Success',
@@ -134,7 +139,7 @@ function closeContractDialog() {
   selectedChild.value = null
 }
 
-async function saveContract(data: ChildContractCreate) {
+async function saveContract(data: ChildContractCreateRequest) {
   if (!selectedChild.value) return
 
   try {

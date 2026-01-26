@@ -53,7 +53,7 @@ func (h *UserHandler) List(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.NewPaginatedResponse(users, params.Page, params.Limit, total))
+	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(users, params.Page, params.Limit, total, c.Request.URL.Path))
 }
 
 // ListByOrganization godoc
@@ -95,7 +95,7 @@ func (h *UserHandler) ListByOrganization(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.NewPaginatedResponse(users, params.Page, params.Limit, total))
+	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(users, params.Page, params.Limit, total, c.Request.URL.Path))
 }
 
 // Get godoc
@@ -134,14 +134,14 @@ func (h *UserHandler) Get(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param request body models.UserCreate true "User data"
+// @Param request body models.UserCreateRequest true "User data"
 // @Success 201 {object} models.UserResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/users [post]
 func (h *UserHandler) Create(c *gin.Context) {
-	var req models.UserCreate
+	var req models.UserCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
@@ -167,7 +167,7 @@ func (h *UserHandler) Create(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param uid path int true "User ID"
-// @Param request body models.UserUpdate true "User data"
+// @Param request body models.UserUpdateRequest true "User data"
 // @Success 200 {object} models.UserResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
@@ -181,7 +181,7 @@ func (h *UserHandler) Update(c *gin.Context) {
 		return
 	}
 
-	var req models.UserUpdate
+	var req models.UserUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return

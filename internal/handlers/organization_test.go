@@ -94,7 +94,7 @@ func TestOrganizationHandler_Create(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/organizations", handler.Create)
 
-	body := CreateOrganizationRequest{
+	body := OrganizationCreateRequest{
 		Name:   "New Org",
 		Active: true,
 	}
@@ -146,7 +146,7 @@ func TestOrganizationHandler_Update(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/organizations/:orgId", handler.Update)
 
-	body := UpdateOrganizationRequest{
+	body := OrganizationUpdateRequest{
 		Name: "Updated Name",
 	}
 
@@ -228,7 +228,7 @@ func TestOrganizationHandler_Create_EmptyName(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/organizations", handler.Create)
 
-	body := CreateOrganizationRequest{
+	body := OrganizationCreateRequest{
 		Name:   "",
 		Active: true,
 	}
@@ -248,7 +248,7 @@ func TestOrganizationHandler_Create_WhitespaceOnlyName(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/organizations", handler.Create)
 
-	body := CreateOrganizationRequest{
+	body := OrganizationCreateRequest{
 		Name:   "   ",
 		Active: true,
 	}
@@ -274,7 +274,7 @@ func TestOrganizationHandler_Create_NameTooLong(t *testing.T) {
 		longName += "a"
 	}
 
-	body := CreateOrganizationRequest{
+	body := OrganizationCreateRequest{
 		Name:   longName,
 		Active: true,
 	}
@@ -294,7 +294,7 @@ func TestOrganizationHandler_Update_NotFound(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/organizations/:orgId", handler.Update)
 
-	body := UpdateOrganizationRequest{
+	body := OrganizationUpdateRequest{
 		Name: "Updated Name",
 	}
 
@@ -313,7 +313,7 @@ func TestOrganizationHandler_Update_InvalidID(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/organizations/:orgId", handler.Update)
 
-	body := UpdateOrganizationRequest{
+	body := OrganizationUpdateRequest{
 		Name: "Updated Name",
 	}
 
@@ -335,7 +335,7 @@ func TestOrganizationHandler_Update_EmptyBody(t *testing.T) {
 	r.PUT("/organizations/:orgId", handler.Update)
 
 	// Empty update - should succeed but not change anything
-	body := UpdateOrganizationRequest{}
+	body := OrganizationUpdateRequest{}
 
 	w := performRequest(r, "PUT", "/organizations/1", body)
 
@@ -418,7 +418,7 @@ func TestOrganizationHandler_Update_ActiveStatus(t *testing.T) {
 
 	// Update only active status to false
 	active := false
-	body := UpdateOrganizationRequest{
+	body := OrganizationUpdateRequest{
 		Active: &active,
 	}
 

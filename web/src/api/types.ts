@@ -59,44 +59,44 @@ export interface PayplanProperty {
   created_at: string
 }
 
-export interface PayplanCreate {
+export interface PayplanCreateRequest {
   name: string
 }
 
-export interface PayplanUpdate {
+export interface PayplanUpdateRequest {
   name?: string
 }
 
-export interface PayplanPeriodCreate {
+export interface PayplanPeriodCreateRequest {
   from: string
   to?: string | null
   comment?: string
 }
 
-export interface PayplanPeriodUpdate {
+export interface PayplanPeriodUpdateRequest {
   from?: string
   to?: string | null
   comment?: string
 }
 
-export interface PayplanEntryCreate {
+export interface PayplanEntryCreateRequest {
   min_age: number
   max_age: number
 }
 
-export interface PayplanEntryUpdate {
+export interface PayplanEntryUpdateRequest {
   min_age?: number
   max_age?: number
 }
 
-export interface PayplanPropertyCreate {
+export interface PayplanPropertyCreateRequest {
   name: string
   payment: number
   requirement: number
   comment?: string
 }
 
-export interface PayplanPropertyUpdate {
+export interface PayplanPropertyUpdateRequest {
   name?: string
   payment?: number
   requirement?: number
@@ -121,12 +121,12 @@ export interface Organization {
   groups?: Group[]
 }
 
-export interface OrganizationCreate {
+export interface OrganizationCreateRequest {
   name: string
   active?: boolean
 }
 
-export interface OrganizationUpdate {
+export interface OrganizationUpdateRequest {
   name?: string
   active?: boolean
 }
@@ -146,14 +146,14 @@ export interface User {
   groups?: Group[]
 }
 
-export interface UserCreate {
+export interface UserCreateRequest {
   name: string
   email: string
   password: string
   active?: boolean
 }
 
-export interface UserUpdate {
+export interface UserUpdateRequest {
   name?: string
   email?: string
   active?: boolean
@@ -172,12 +172,12 @@ export interface Group {
   users?: User[]
 }
 
-export interface GroupCreate {
+export interface GroupCreateRequest {
   name: string
   active?: boolean
 }
 
-export interface GroupUpdate {
+export interface GroupUpdateRequest {
   name?: string
   active?: boolean
 }
@@ -210,20 +210,20 @@ export interface EmployeeContract {
   created_at: string
 }
 
-export interface EmployeeCreate {
+export interface EmployeeCreateRequest {
   organization_id: number
   first_name: string
   last_name: string
   birthdate: string
 }
 
-export interface EmployeeUpdate {
+export interface EmployeeUpdateRequest {
   first_name?: string
   last_name?: string
   birthdate?: string
 }
 
-export interface EmployeeContractCreate {
+export interface EmployeeContractCreateRequest {
   from: string
   to?: string | null
   position: string
@@ -249,20 +249,20 @@ export interface ChildContract {
   created_at: string
 }
 
-export interface ChildCreate {
+export interface ChildCreateRequest {
   organization_id: number
   first_name: string
   last_name: string
   birthdate: string
 }
 
-export interface ChildUpdate {
+export interface ChildUpdateRequest {
   first_name?: string
   last_name?: string
   birthdate?: string
 }
 
-export interface ChildContractCreate {
+export interface ChildContractCreateRequest {
   from: string
   to?: string | null
   care_hours_per_week: number

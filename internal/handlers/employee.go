@@ -57,7 +57,7 @@ func (h *EmployeeHandler) List(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.NewPaginatedResponse(employees, params.Page, params.Limit, total))
+	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(employees, params.Page, params.Limit, total, c.Request.URL.Path))
 }
 
 // Get godoc
@@ -75,13 +75,19 @@ func (h *EmployeeHandler) List(c *gin.Context) {
 // @Failure 404 {object} ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id} [get]
 func (h *EmployeeHandler) Get(c *gin.Context) {
+	orgID, err := parseID(c, "orgId")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	id, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	employee, err := h.service.GetByID(c.Request.Context(), id)
+	employee, err := h.service.GetByID(c.Request.Context(), id, orgID)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -98,7 +104,7 @@ func (h *EmployeeHandler) Get(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param request body models.EmployeeCreate true "Employee data"
+// @Param request body models.EmployeeCreateRequest true "Employee data"
 // @Success 201 {object} models.Employee
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
@@ -111,7 +117,7 @@ func (h *EmployeeHandler) Create(c *gin.Context) {
 		return
 	}
 
-	var req models.EmployeeCreate
+	var req models.EmployeeCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
@@ -135,7 +141,7 @@ func (h *EmployeeHandler) Create(c *gin.Context) {
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
 // @Param id path int true "Employee ID"
-// @Param request body models.EmployeeUpdate true "Employee data"
+// @Param request body models.EmployeeUpdateRequest true "Employee data"
 // @Success 200 {object} models.Employee
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
@@ -143,19 +149,25 @@ func (h *EmployeeHandler) Create(c *gin.Context) {
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id} [put]
 func (h *EmployeeHandler) Update(c *gin.Context) {
+	orgID, err := parseID(c, "orgId")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	id, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	var req models.EmployeeUpdate
+	var req models.EmployeeUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
 	}
 
-	employee, err := h.service.Update(c.Request.Context(), id, &req)
+	employee, err := h.service.Update(c.Request.Context(), id, orgID, &req)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -179,13 +191,19 @@ func (h *EmployeeHandler) Update(c *gin.Context) {
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id} [delete]
 func (h *EmployeeHandler) Delete(c *gin.Context) {
+	orgID, err := parseID(c, "orgId")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	id, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	if err := h.service.Delete(c.Request.Context(), id); err != nil {
+	if err := h.service.Delete(c.Request.Context(), id, orgID); err != nil {
 		respondError(c, err)
 		return
 	}
@@ -209,13 +227,19 @@ func (h *EmployeeHandler) Delete(c *gin.Context) {
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id}/contracts [get]
 func (h *EmployeeHandler) ListContracts(c *gin.Context) {
+	orgID, err := parseID(c, "orgId")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	id, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	contracts, err := h.service.ListContracts(c.Request.Context(), id)
+	contracts, err := h.service.ListContracts(c.Request.Context(), id, orgID)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -239,13 +263,19 @@ func (h *EmployeeHandler) ListContracts(c *gin.Context) {
 // @Failure 404 {object} ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id}/contracts/current [get]
 func (h *EmployeeHandler) GetCurrentContract(c *gin.Context) {
+	orgID, err := parseID(c, "orgId")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	id, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	contract, err := h.service.GetCurrentContract(c.Request.Context(), id)
+	contract, err := h.service.GetCurrentContract(c.Request.Context(), id, orgID)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -263,7 +293,7 @@ func (h *EmployeeHandler) GetCurrentContract(c *gin.Context) {
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
 // @Param id path int true "Employee ID"
-// @Param request body models.EmployeeContractCreate true "Contract data"
+// @Param request body models.EmployeeContractCreateRequest true "Contract data"
 // @Success 201 {object} models.EmployeeContract
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
@@ -272,19 +302,25 @@ func (h *EmployeeHandler) GetCurrentContract(c *gin.Context) {
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id}/contracts [post]
 func (h *EmployeeHandler) CreateContract(c *gin.Context) {
+	orgID, err := parseID(c, "orgId")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	id, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	var req models.EmployeeContractCreate
+	var req models.EmployeeContractCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
 	}
 
-	contract, err := h.service.CreateContract(c.Request.Context(), id, &req)
+	contract, err := h.service.CreateContract(c.Request.Context(), id, orgID, &req)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -309,13 +345,25 @@ func (h *EmployeeHandler) CreateContract(c *gin.Context) {
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id}/contracts/{contractId} [delete]
 func (h *EmployeeHandler) DeleteContract(c *gin.Context) {
+	orgID, err := parseID(c, "orgId")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	id, err := parseID(c, "id")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	contractID, err := parseID(c, "contractId")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	if err := h.service.DeleteContract(c.Request.Context(), contractID); err != nil {
+	if err := h.service.DeleteContract(c.Request.Context(), contractID, id, orgID); err != nil {
 		respondError(c, err)
 		return
 	}

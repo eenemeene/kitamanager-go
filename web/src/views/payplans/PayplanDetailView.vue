@@ -9,12 +9,12 @@ import type {
   PayplanPeriod,
   PayplanEntry,
   PayplanProperty,
-  PayplanPeriodCreate,
-  PayplanEntryCreate,
-  PayplanPropertyCreate,
-  PayplanPeriodUpdate,
-  PayplanEntryUpdate,
-  PayplanPropertyUpdate
+  PayplanPeriodCreateRequest,
+  PayplanEntryCreateRequest,
+  PayplanPropertyCreateRequest,
+  PayplanPeriodUpdateRequest,
+  PayplanEntryUpdateRequest,
+  PayplanPropertyUpdateRequest
 } from '@/api/types'
 import { flattenPayplanToRows } from '@/utils/payplan'
 import Button from 'primevue/button'
@@ -122,7 +122,7 @@ async function savePeriod() {
 
   try {
     if (editingPeriod.value) {
-      const data: PayplanPeriodUpdate = {
+      const data: PayplanPeriodUpdateRequest = {
         from: formatDate(periodForm.value.from),
         to: periodForm.value.to ? formatDate(periodForm.value.to) : null,
         comment: periodForm.value.comment || undefined
@@ -130,7 +130,7 @@ async function savePeriod() {
       await apiClient.updatePayplanPeriod(payplanId.value, editingPeriod.value.id, data)
       toast.add({ severity: 'success', summary: 'Success', detail: 'Period updated', life: 3000 })
     } else {
-      const data: PayplanPeriodCreate = {
+      const data: PayplanPeriodCreateRequest = {
         from: formatDate(periodForm.value.from),
         to: periodForm.value.to ? formatDate(periodForm.value.to) : undefined,
         comment: periodForm.value.comment || undefined
@@ -197,7 +197,7 @@ async function saveEntry() {
 
   try {
     if (editingEntry.value && currentPeriodId.value) {
-      const data: PayplanEntryUpdate = {
+      const data: PayplanEntryUpdateRequest = {
         min_age: entryForm.value.min_age,
         max_age: entryForm.value.max_age
       }
@@ -209,7 +209,7 @@ async function saveEntry() {
       )
       toast.add({ severity: 'success', summary: 'Success', detail: 'Entry updated', life: 3000 })
     } else if (currentPeriodId.value) {
-      const data: PayplanEntryCreate = {
+      const data: PayplanEntryCreateRequest = {
         min_age: entryForm.value.min_age,
         max_age: entryForm.value.max_age
       }
@@ -276,7 +276,7 @@ async function saveProperty() {
 
   try {
     if (editingProperty.value && currentPeriodId.value && currentEntryId.value) {
-      const data: PayplanPropertyUpdate = {
+      const data: PayplanPropertyUpdateRequest = {
         name: propertyForm.value.name,
         payment: propertyForm.value.payment,
         requirement: propertyForm.value.requirement,
@@ -291,7 +291,7 @@ async function saveProperty() {
       )
       toast.add({ severity: 'success', summary: 'Success', detail: 'Property updated', life: 3000 })
     } else if (currentPeriodId.value && currentEntryId.value) {
-      const data: PayplanPropertyCreate = {
+      const data: PayplanPropertyCreateRequest = {
         name: propertyForm.value.name,
         payment: propertyForm.value.payment,
         requirement: propertyForm.value.requirement,

@@ -19,11 +19,12 @@ func Setup(
 	payplanHandler *handlers.PayplanHandler,
 	authMiddleware *middleware.AuthMiddleware,
 	authzMiddleware *middleware.AuthorizationMiddleware,
+	loginRateLimiter *middleware.RateLimiter,
 ) {
 	api := r.Group("/api/v1")
 	{
-		// Public endpoints
-		api.POST("/login", authHandler.Login)
+		// Public endpoints with rate limiting
+		api.POST("/login", loginRateLimiter.RateLimit(), authHandler.Login)
 
 		// Protected endpoints (require authentication)
 		protected := api.Group("")

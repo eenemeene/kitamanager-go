@@ -19,16 +19,16 @@ type User struct {
 	UserGroups   []UserGroup `gorm:"foreignKey:UserID" json:"-"`
 }
 
-// UserCreate represents the request body for creating a user
-type UserCreate struct {
+// UserCreateRequest represents the request body for creating a user
+type UserCreateRequest struct {
 	Name     string `json:"name" binding:"required,max=255" example:"John Doe"`
 	Email    string `json:"email" binding:"required,email,max=255" example:"john@example.com"`
 	Password string `json:"password" binding:"required,min=8,max=72" example:"secret123"`
 	Active   bool   `json:"active" example:"true"`
 }
 
-// UserUpdate represents the request body for updating a user
-type UserUpdate struct {
+// UserUpdateRequest represents the request body for updating a user
+type UserUpdateRequest struct {
 	Name   string `json:"name" binding:"omitempty,max=255" example:"John Doe Updated"`
 	Email  string `json:"email" binding:"omitempty,email,max=255" example:"john.updated@example.com"`
 	Active *bool  `json:"active" example:"false"`

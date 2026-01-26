@@ -52,54 +52,54 @@ type PayplanProperty struct {
 	CreatedAt   time.Time `json:"created_at" example:"2024-01-15T10:30:00Z"`
 }
 
-// PayplanCreate represents the request body for creating a payplan.
-type PayplanCreate struct {
+// PayplanCreateRequest represents the request body for creating a payplan.
+type PayplanCreateRequest struct {
 	Name string `json:"name" binding:"required,max=255" example:"Berlin"`
 }
 
-// PayplanUpdate represents the request body for updating a payplan.
-type PayplanUpdate struct {
+// PayplanUpdateRequest represents the request body for updating a payplan.
+type PayplanUpdateRequest struct {
 	Name *string `json:"name" binding:"omitempty,max=255" example:"Berlin Updated"`
 }
 
-// PayplanPeriodCreate represents the request body for creating a payplan period.
-type PayplanPeriodCreate struct {
+// PayplanPeriodCreateRequest represents the request body for creating a payplan period.
+type PayplanPeriodCreateRequest struct {
 	From    time.Time  `json:"from" binding:"required" example:"2023-03-01"`
 	To      *time.Time `json:"to" example:"2024-02-29"`
 	Comment string     `json:"comment" binding:"max=1000" example:"Funding period 2023/2024"`
 }
 
-// PayplanPeriodUpdate represents the request body for updating a payplan period.
-type PayplanPeriodUpdate struct {
+// PayplanPeriodUpdateRequest represents the request body for updating a payplan period.
+type PayplanPeriodUpdateRequest struct {
 	From    *time.Time `json:"from" example:"2023-03-01"`
 	To      *time.Time `json:"to" example:"2024-02-29"`
 	Comment *string    `json:"comment" binding:"omitempty,max=1000" example:"Updated comment"`
 }
 
-// PayplanEntryCreate represents the request body for creating a payplan entry.
+// PayplanEntryCreateRequest represents the request body for creating a payplan entry.
 // MinAge is inclusive, MaxAge is exclusive (e.g., MinAge=0, MaxAge=2 covers ages 0 and 1).
-type PayplanEntryCreate struct {
+type PayplanEntryCreateRequest struct {
 	MinAge int `json:"min_age" binding:"gte=0" example:"0"`
 	MaxAge int `json:"max_age" binding:"required,gtfield=MinAge" example:"2"`
 }
 
-// PayplanEntryUpdate represents the request body for updating a payplan entry.
+// PayplanEntryUpdateRequest represents the request body for updating a payplan entry.
 // MinAge is inclusive, MaxAge is exclusive (e.g., MinAge=0, MaxAge=2 covers ages 0 and 1).
-type PayplanEntryUpdate struct {
+type PayplanEntryUpdateRequest struct {
 	MinAge *int `json:"min_age" binding:"omitempty,gte=0" example:"0"`
 	MaxAge *int `json:"max_age" example:"3"`
 }
 
-// PayplanPropertyCreate represents the request body for creating a payplan property.
-type PayplanPropertyCreate struct {
+// PayplanPropertyCreateRequest represents the request body for creating a payplan property.
+type PayplanPropertyCreateRequest struct {
 	Name        string  `json:"name" binding:"required,max=255" example:"ganztag"`
 	Payment     int     `json:"payment" binding:"gte=0" example:"166847"`
 	Requirement float64 `json:"requirement" binding:"gte=0" example:"0.261"`
 	Comment     string  `json:"comment" binding:"max=500" example:"Full-day care funding"`
 }
 
-// PayplanPropertyUpdate represents the request body for updating a payplan property.
-type PayplanPropertyUpdate struct {
+// PayplanPropertyUpdateRequest represents the request body for updating a payplan property.
+type PayplanPropertyUpdateRequest struct {
 	Name        *string  `json:"name" binding:"omitempty,max=255" example:"ganztag"`
 	Payment     *int     `json:"payment" binding:"omitempty,gte=0" example:"166847"`
 	Requirement *float64 `json:"requirement" binding:"omitempty,gte=0" example:"0.261"`
@@ -109,4 +109,84 @@ type PayplanPropertyUpdate struct {
 // AssignPayplanRequest represents the request body for assigning a payplan to an organization.
 type AssignPayplanRequest struct {
 	PayplanID uint `json:"payplan_id" binding:"required" example:"1"`
+}
+
+// PayplanResponse represents the payplan response
+type PayplanResponse struct {
+	ID        uint      `json:"id" example:"1"`
+	Name      string    `json:"name" example:"Berlin"`
+	CreatedAt time.Time `json:"created_at" example:"2024-01-15T10:30:00Z"`
+	UpdatedAt time.Time `json:"updated_at" example:"2024-01-15T10:30:00Z"`
+}
+
+func (p *Payplan) ToResponse() PayplanResponse {
+	return PayplanResponse{
+		ID:        p.ID,
+		Name:      p.Name,
+		CreatedAt: p.CreatedAt,
+		UpdatedAt: p.UpdatedAt,
+	}
+}
+
+// PayplanPeriodResponse represents the payplan period response
+type PayplanPeriodResponse struct {
+	ID        uint       `json:"id" example:"1"`
+	PayplanID uint       `json:"payplan_id" example:"1"`
+	From      time.Time  `json:"from" example:"2023-03-01"`
+	To        *time.Time `json:"to" example:"2024-02-29"`
+	Comment   string     `json:"comment,omitempty" example:"Funding period 2023/2024"`
+	CreatedAt time.Time  `json:"created_at" example:"2024-01-15T10:30:00Z"`
+}
+
+func (p *PayplanPeriod) ToResponse() PayplanPeriodResponse {
+	return PayplanPeriodResponse{
+		ID:        p.ID,
+		PayplanID: p.PayplanID,
+		From:      p.From,
+		To:        p.To,
+		Comment:   p.Comment,
+		CreatedAt: p.CreatedAt,
+	}
+}
+
+// PayplanEntryResponse represents the payplan entry response
+type PayplanEntryResponse struct {
+	ID        uint      `json:"id" example:"1"`
+	PeriodID  uint      `json:"period_id" example:"1"`
+	MinAge    int       `json:"min_age" example:"0"`
+	MaxAge    int       `json:"max_age" example:"2"`
+	CreatedAt time.Time `json:"created_at" example:"2024-01-15T10:30:00Z"`
+}
+
+func (e *PayplanEntry) ToResponse() PayplanEntryResponse {
+	return PayplanEntryResponse{
+		ID:        e.ID,
+		PeriodID:  e.PeriodID,
+		MinAge:    e.MinAge,
+		MaxAge:    e.MaxAge,
+		CreatedAt: e.CreatedAt,
+	}
+}
+
+// PayplanPropertyResponse represents the payplan property response
+type PayplanPropertyResponse struct {
+	ID          uint      `json:"id" example:"1"`
+	EntryID     uint      `json:"entry_id" example:"1"`
+	Name        string    `json:"name" example:"ganztag"`
+	Payment     int       `json:"payment" example:"166847"`
+	Requirement float64   `json:"requirement" example:"0.261"`
+	Comment     string    `json:"comment,omitempty" example:"Full-day care funding"`
+	CreatedAt   time.Time `json:"created_at" example:"2024-01-15T10:30:00Z"`
+}
+
+func (p *PayplanProperty) ToResponse() PayplanPropertyResponse {
+	return PayplanPropertyResponse{
+		ID:          p.ID,
+		EntryID:     p.EntryID,
+		Name:        p.Name,
+		Payment:     p.Payment,
+		Requirement: p.Requirement,
+		Comment:     p.Comment,
+		CreatedAt:   p.CreatedAt,
+	}
 }

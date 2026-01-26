@@ -57,7 +57,7 @@ func (h *ChildHandler) List(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.NewPaginatedResponse(children, params.Page, params.Limit, total))
+	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(children, params.Page, params.Limit, total, c.Request.URL.Path))
 }
 
 // Get godoc
@@ -75,13 +75,19 @@ func (h *ChildHandler) List(c *gin.Context) {
 // @Failure 404 {object} ErrorResponse
 // @Router /api/v1/organizations/{orgId}/children/{id} [get]
 func (h *ChildHandler) Get(c *gin.Context) {
+	orgID, err := parseID(c, "orgId")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	id, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	child, err := h.service.GetByID(c.Request.Context(), id)
+	child, err := h.service.GetByID(c.Request.Context(), id, orgID)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -98,7 +104,7 @@ func (h *ChildHandler) Get(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param request body models.ChildCreate true "Child data"
+// @Param request body models.ChildCreateRequest true "Child data"
 // @Success 201 {object} models.Child
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
@@ -111,7 +117,7 @@ func (h *ChildHandler) Create(c *gin.Context) {
 		return
 	}
 
-	var req models.ChildCreate
+	var req models.ChildCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
@@ -135,7 +141,7 @@ func (h *ChildHandler) Create(c *gin.Context) {
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
 // @Param id path int true "Child ID"
-// @Param request body models.ChildUpdate true "Child data"
+// @Param request body models.ChildUpdateRequest true "Child data"
 // @Success 200 {object} models.Child
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
@@ -143,19 +149,25 @@ func (h *ChildHandler) Create(c *gin.Context) {
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/organizations/{orgId}/children/{id} [put]
 func (h *ChildHandler) Update(c *gin.Context) {
+	orgID, err := parseID(c, "orgId")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	id, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	var req models.ChildUpdate
+	var req models.ChildUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
 	}
 
-	child, err := h.service.Update(c.Request.Context(), id, &req)
+	child, err := h.service.Update(c.Request.Context(), id, orgID, &req)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -179,13 +191,19 @@ func (h *ChildHandler) Update(c *gin.Context) {
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/organizations/{orgId}/children/{id} [delete]
 func (h *ChildHandler) Delete(c *gin.Context) {
+	orgID, err := parseID(c, "orgId")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	id, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	if err := h.service.Delete(c.Request.Context(), id); err != nil {
+	if err := h.service.Delete(c.Request.Context(), id, orgID); err != nil {
 		respondError(c, err)
 		return
 	}
@@ -209,13 +227,19 @@ func (h *ChildHandler) Delete(c *gin.Context) {
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/organizations/{orgId}/children/{id}/contracts [get]
 func (h *ChildHandler) ListContracts(c *gin.Context) {
+	orgID, err := parseID(c, "orgId")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	id, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	contracts, err := h.service.ListContracts(c.Request.Context(), id)
+	contracts, err := h.service.ListContracts(c.Request.Context(), id, orgID)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -239,13 +263,19 @@ func (h *ChildHandler) ListContracts(c *gin.Context) {
 // @Failure 404 {object} ErrorResponse
 // @Router /api/v1/organizations/{orgId}/children/{id}/contracts/current [get]
 func (h *ChildHandler) GetCurrentContract(c *gin.Context) {
+	orgID, err := parseID(c, "orgId")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	id, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	contract, err := h.service.GetCurrentContract(c.Request.Context(), id)
+	contract, err := h.service.GetCurrentContract(c.Request.Context(), id, orgID)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -263,7 +293,7 @@ func (h *ChildHandler) GetCurrentContract(c *gin.Context) {
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
 // @Param id path int true "Child ID"
-// @Param request body models.ChildContractCreate true "Contract data"
+// @Param request body models.ChildContractCreateRequest true "Contract data"
 // @Success 201 {object} models.ChildContract
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
@@ -272,19 +302,25 @@ func (h *ChildHandler) GetCurrentContract(c *gin.Context) {
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/organizations/{orgId}/children/{id}/contracts [post]
 func (h *ChildHandler) CreateContract(c *gin.Context) {
+	orgID, err := parseID(c, "orgId")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	id, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	var req models.ChildContractCreate
+	var req models.ChildContractCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
 	}
 
-	contract, err := h.service.CreateContract(c.Request.Context(), id, &req)
+	contract, err := h.service.CreateContract(c.Request.Context(), id, orgID, &req)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -309,13 +345,25 @@ func (h *ChildHandler) CreateContract(c *gin.Context) {
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/organizations/{orgId}/children/{id}/contracts/{contractId} [delete]
 func (h *ChildHandler) DeleteContract(c *gin.Context) {
+	orgID, err := parseID(c, "orgId")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	id, err := parseID(c, "id")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	contractID, err := parseID(c, "contractId")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	if err := h.service.DeleteContract(c.Request.Context(), contractID); err != nil {
+	if err := h.service.DeleteContract(c.Request.Context(), contractID, id, orgID); err != nil {
 		respondError(c, err)
 		return
 	}

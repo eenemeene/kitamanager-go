@@ -5,7 +5,7 @@ import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
-import type { User, UserCreate, UserUpdate, Group } from '@/api/types'
+import type { User, UserCreateRequest, UserUpdateRequest, Group } from '@/api/types'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
@@ -34,7 +34,7 @@ const {
   closeDialog,
   saveItem,
   confirmDelete
-} = useCrud<User, UserCreate, UserUpdate>({
+} = useCrud<User, UserCreateRequest, UserUpdateRequest>({
   entityName: 'User',
   fetchAll: () => apiClient.getOrganizationUsers(orgIdNum.value),
   create: (data) => apiClient.createUser(data),

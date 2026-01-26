@@ -204,7 +204,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers.CreateOrganizationRequest"
+                            "$ref": "#/definitions/internal_handlers.OrganizationCreateRequest"
                         }
                     }
                 ],
@@ -321,7 +321,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers.UpdateOrganizationRequest"
+                            "$ref": "#/definitions/internal_handlers.OrganizationUpdateRequest"
                         }
                     }
                 ],
@@ -509,7 +509,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildCreate"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildCreateRequest"
                         }
                     }
                 ],
@@ -640,7 +640,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildUpdate"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildUpdateRequest"
                         }
                     }
                 ],
@@ -843,7 +843,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractCreate"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractCreateRequest"
                         }
                     }
                 ],
@@ -1115,7 +1115,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeCreate"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeCreateRequest"
                         }
                     }
                 ],
@@ -1246,7 +1246,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeUpdate"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeUpdateRequest"
                         }
                     }
                 ],
@@ -1449,7 +1449,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractCreate"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractCreateRequest"
                         }
                     }
                 ],
@@ -1721,7 +1721,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers.CreateGroupRequest"
+                            "$ref": "#/definitions/internal_handlers.GroupCreateRequest"
                         }
                     }
                 ],
@@ -1852,7 +1852,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers.UpdateGroupRequest"
+                            "$ref": "#/definitions/internal_handlers.GroupUpdateRequest"
                         }
                     }
                 ],
@@ -1953,6 +1953,147 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/organizations/{orgId}/payplan": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Assign a payplan to an organization (superadmin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Assign payplan to organization",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Payplan assignment",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.AssignPayplanRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Remove the payplan assignment from an organization (superadmin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Remove payplan from organization",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/organizations/{orgId}/users": {
             "get": {
                 "security": [
@@ -2011,6 +2152,1038 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/payplans": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a paginated list of all payplans",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payplans"
+                ],
+                "summary": "List all payplans",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_Payplan"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new payplan (superadmin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payplans"
+                ],
+                "summary": "Create a new payplan",
+                "parameters": [
+                    {
+                        "description": "Payplan data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.PayplanCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Payplan"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/payplans/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a single payplan by its ID with all nested periods, entries, and properties",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payplans"
+                ],
+                "summary": "Get payplan by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Payplan ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Payplan"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update an existing payplan by ID (superadmin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payplans"
+                ],
+                "summary": "Update a payplan",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Payplan ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Payplan data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.PayplanUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Payplan"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a payplan by ID (superadmin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payplans"
+                ],
+                "summary": "Delete a payplan",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Payplan ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/payplans/{id}/periods": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new period for a payplan (superadmin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payplans"
+                ],
+                "summary": "Create a new period",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Payplan ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Period data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanPeriodCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanPeriod"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/payplans/{id}/periods/{periodId}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update an existing period by ID (superadmin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payplans"
+                ],
+                "summary": "Update a period",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Payplan ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Period ID",
+                        "name": "periodId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Period data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanPeriodUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanPeriod"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a period by ID (superadmin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payplans"
+                ],
+                "summary": "Delete a period",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Payplan ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Period ID",
+                        "name": "periodId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/payplans/{id}/periods/{periodId}/entries": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new entry for a period (superadmin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payplans"
+                ],
+                "summary": "Create a new entry",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Payplan ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Period ID",
+                        "name": "periodId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Entry data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanEntryCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanEntry"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/payplans/{id}/periods/{periodId}/entries/{entryId}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update an existing entry by ID (superadmin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payplans"
+                ],
+                "summary": "Update an entry",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Payplan ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Period ID",
+                        "name": "periodId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Entry ID",
+                        "name": "entryId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Entry data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanEntryUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanEntry"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete an entry by ID (superadmin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payplans"
+                ],
+                "summary": "Delete an entry",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Payplan ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Period ID",
+                        "name": "periodId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Entry ID",
+                        "name": "entryId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/payplans/{id}/periods/{periodId}/entries/{entryId}/properties": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new property for an entry (superadmin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payplans"
+                ],
+                "summary": "Create a new property",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Payplan ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Period ID",
+                        "name": "periodId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Entry ID",
+                        "name": "entryId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Property data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanPropertyCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanProperty"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/payplans/{id}/periods/{periodId}/entries/{entryId}/properties/{propId}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update an existing property by ID (superadmin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payplans"
+                ],
+                "summary": "Update a property",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Payplan ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Period ID",
+                        "name": "periodId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Entry ID",
+                        "name": "entryId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Property ID",
+                        "name": "propId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Property data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanPropertyUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanProperty"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a property by ID (superadmin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payplans"
+                ],
+                "summary": "Delete a property",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Payplan ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Period ID",
+                        "name": "periodId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Entry ID",
+                        "name": "entryId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Property ID",
+                        "name": "propId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
@@ -2136,7 +3309,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserCreate"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserCreateRequest"
                         }
                     }
                 ],
@@ -2253,7 +3426,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserUpdate"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserUpdateRequest"
                         }
                     }
                 ],
@@ -2858,6 +4031,18 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.AssignPayplanRequest": {
+            "type": "object",
+            "required": [
+                "payplan_id"
+            ],
+            "properties": {
+                "payplan_id": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.Child": {
             "type": "object",
             "properties": {
@@ -2901,6 +4086,16 @@ const docTemplate = `{
         "github_com_eenemeene_kitamanager-go_internal_models.ChildContract": {
             "type": "object",
             "properties": {
+                "attributes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "ganztag",
+                        "ndh"
+                    ]
+                },
                 "care_hours_per_week": {
                     "description": "Contract properties",
                     "type": "number",
@@ -2937,13 +4132,23 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_eenemeene_kitamanager-go_internal_models.ChildContractCreate": {
+        "github_com_eenemeene_kitamanager-go_internal_models.ChildContractCreateRequest": {
             "type": "object",
             "required": [
                 "care_hours_per_week",
                 "from"
             ],
             "properties": {
+                "attributes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "ganztag",
+                        "ndh"
+                    ]
+                },
                 "care_hours_per_week": {
                     "type": "number",
                     "maximum": 168,
@@ -2973,7 +4178,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_eenemeene_kitamanager-go_internal_models.ChildCreate": {
+        "github_com_eenemeene_kitamanager-go_internal_models.ChildCreateRequest": {
             "type": "object",
             "required": [
                 "birthdate",
@@ -2997,7 +4202,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_eenemeene_kitamanager-go_internal_models.ChildUpdate": {
+        "github_com_eenemeene_kitamanager-go_internal_models.ChildUpdateRequest": {
             "type": "object",
             "properties": {
                 "birthdate": {
@@ -3092,7 +4297,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractCreate": {
+        "github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractCreateRequest": {
             "type": "object",
             "required": [
                 "from",
@@ -3127,7 +4332,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_eenemeene_kitamanager-go_internal_models.EmployeeCreate": {
+        "github_com_eenemeene_kitamanager-go_internal_models.EmployeeCreateRequest": {
             "type": "object",
             "required": [
                 "birthdate",
@@ -3151,7 +4356,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_eenemeene_kitamanager-go_internal_models.EmployeeUpdate": {
+        "github_com_eenemeene_kitamanager-go_internal_models.EmployeeUpdateRequest": {
             "type": "object",
             "properties": {
                 "birthdate": {
@@ -3297,6 +4502,13 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Acme Corp"
                 },
+                "payplan": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Payplan"
+                },
+                "payplan_id": {
+                    "type": "integer",
+                    "example": 1
+                },
                 "updated_at": {
                     "type": "string",
                     "example": "2024-01-15T10:30:00Z"
@@ -3306,6 +4518,9 @@ const docTemplate = `{
         "github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_Child": {
             "type": "object",
             "properties": {
+                "_links": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginationLinks"
+                },
                 "data": {
                     "type": "array",
                     "items": {
@@ -3333,6 +4548,9 @@ const docTemplate = `{
         "github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_Employee": {
             "type": "object",
             "properties": {
+                "_links": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginationLinks"
+                },
                 "data": {
                     "type": "array",
                     "items": {
@@ -3360,6 +4578,9 @@ const docTemplate = `{
         "github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_GroupResponse": {
             "type": "object",
             "properties": {
+                "_links": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginationLinks"
+                },
                 "data": {
                     "type": "array",
                     "items": {
@@ -3387,6 +4608,9 @@ const docTemplate = `{
         "github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_Organization": {
             "type": "object",
             "properties": {
+                "_links": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginationLinks"
+                },
                 "data": {
                     "type": "array",
                     "items": {
@@ -3411,9 +4635,42 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_Payplan": {
+            "type": "object",
+            "properties": {
+                "_links": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginationLinks"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Payplan"
+                    }
+                },
+                "limit": {
+                    "type": "integer",
+                    "example": 20
+                },
+                "page": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "total": {
+                    "type": "integer",
+                    "example": 100
+                },
+                "total_pages": {
+                    "type": "integer",
+                    "example": 5
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_UserResponse": {
             "type": "object",
             "properties": {
+                "_links": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginationLinks"
+                },
                 "data": {
                     "type": "array",
                     "items": {
@@ -3435,6 +4692,282 @@ const docTemplate = `{
                 "total_pages": {
                     "type": "integer",
                     "example": 5
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.PaginationLinks": {
+            "type": "object",
+            "properties": {
+                "first": {
+                    "type": "string",
+                    "example": "/api/v1/users?page=1\u0026limit=20"
+                },
+                "last": {
+                    "type": "string",
+                    "example": "/api/v1/users?page=5\u0026limit=20"
+                },
+                "next": {
+                    "type": "string",
+                    "example": "/api/v1/users?page=3\u0026limit=20"
+                },
+                "prev": {
+                    "type": "string",
+                    "example": "/api/v1/users?page=1\u0026limit=20"
+                },
+                "self": {
+                    "type": "string",
+                    "example": "/api/v1/users?page=2\u0026limit=20"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.Payplan": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2024-01-15T10:30:00Z"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Berlin"
+                },
+                "periods": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanPeriod"
+                    }
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2024-01-15T10:30:00Z"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.PayplanEntry": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2024-01-15T10:30:00Z"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "max_age": {
+                    "description": "MaxAge is the maximum age in years (exclusive). A child whose age \u003c MaxAge qualifies.",
+                    "type": "integer",
+                    "example": 2
+                },
+                "min_age": {
+                    "description": "MinAge is the minimum age in years (inclusive). A child whose age \u003e= MinAge qualifies.",
+                    "type": "integer",
+                    "example": 0
+                },
+                "period_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "properties": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanProperty"
+                    }
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.PayplanEntryCreateRequest": {
+            "type": "object",
+            "required": [
+                "max_age"
+            ],
+            "properties": {
+                "max_age": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "min_age": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "example": 0
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.PayplanEntryUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "max_age": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "min_age": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "example": 0
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.PayplanPeriod": {
+            "type": "object",
+            "properties": {
+                "comment": {
+                    "type": "string",
+                    "example": "Funding period 2023/2024"
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2024-01-15T10:30:00Z"
+                },
+                "entries": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanEntry"
+                    }
+                },
+                "from": {
+                    "type": "string",
+                    "example": "2023-03-01"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "payplan_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "to": {
+                    "type": "string",
+                    "example": "2024-02-29"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.PayplanPeriodCreateRequest": {
+            "type": "object",
+            "required": [
+                "from"
+            ],
+            "properties": {
+                "comment": {
+                    "type": "string",
+                    "maxLength": 1000,
+                    "example": "Funding period 2023/2024"
+                },
+                "from": {
+                    "type": "string",
+                    "example": "2023-03-01"
+                },
+                "to": {
+                    "type": "string",
+                    "example": "2024-02-29"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.PayplanPeriodUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "comment": {
+                    "type": "string",
+                    "maxLength": 1000,
+                    "example": "Updated comment"
+                },
+                "from": {
+                    "type": "string",
+                    "example": "2023-03-01"
+                },
+                "to": {
+                    "type": "string",
+                    "example": "2024-02-29"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.PayplanProperty": {
+            "type": "object",
+            "properties": {
+                "comment": {
+                    "type": "string",
+                    "example": "Full-day care funding"
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2024-01-15T10:30:00Z"
+                },
+                "entry_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "name": {
+                    "type": "string",
+                    "example": "ganztag"
+                },
+                "payment": {
+                    "type": "integer",
+                    "example": 166847
+                },
+                "requirement": {
+                    "type": "number",
+                    "example": 0.261
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.PayplanPropertyCreateRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "comment": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "example": "Full-day care funding"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "ganztag"
+                },
+                "payment": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "example": 166847
+                },
+                "requirement": {
+                    "type": "number",
+                    "minimum": 0,
+                    "example": 0.261
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.PayplanPropertyUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "comment": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "example": "Updated comment"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "ganztag"
+                },
+                "payment": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "example": 166847
+                },
+                "requirement": {
+                    "type": "number",
+                    "minimum": 0,
+                    "example": 0.261
                 }
             }
         },
@@ -3527,7 +5060,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_eenemeene_kitamanager-go_internal_models.UserCreate": {
+        "github_com_eenemeene_kitamanager-go_internal_models.UserCreateRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -3682,7 +5215,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_eenemeene_kitamanager-go_internal_models.UserUpdate": {
+        "github_com_eenemeene_kitamanager-go_internal_models.UserUpdateRequest": {
             "type": "object",
             "properties": {
                 "active": {
@@ -3713,7 +5246,20 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_handlers.CreateGroupRequest": {
+        "internal_handlers.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "not_found"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "resource not found"
+                }
+            }
+        },
+        "internal_handlers.GroupCreateRequest": {
             "type": "object",
             "required": [
                 "name"
@@ -3730,29 +5276,17 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_handlers.CreateOrganizationRequest": {
+        "internal_handlers.GroupUpdateRequest": {
             "type": "object",
-            "required": [
-                "name"
-            ],
             "properties": {
                 "active": {
                     "type": "boolean",
-                    "example": true
+                    "example": false
                 },
                 "name": {
                     "type": "string",
                     "maxLength": 255,
-                    "example": "Acme Corp"
-                }
-            }
-        },
-        "internal_handlers.ErrorResponse": {
-            "type": "object",
-            "properties": {
-                "error": {
-                    "type": "string",
-                    "example": "error message"
+                    "example": "Administrators Updated"
                 }
             }
         },
@@ -3801,21 +5335,24 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_handlers.UpdateGroupRequest": {
+        "internal_handlers.OrganizationCreateRequest": {
             "type": "object",
+            "required": [
+                "name"
+            ],
             "properties": {
                 "active": {
                     "type": "boolean",
-                    "example": false
+                    "example": true
                 },
                 "name": {
                     "type": "string",
                     "maxLength": 255,
-                    "example": "Administrators Updated"
+                    "example": "Acme Corp"
                 }
             }
         },
-        "internal_handlers.UpdateOrganizationRequest": {
+        "internal_handlers.OrganizationUpdateRequest": {
             "type": "object",
             "properties": {
                 "active": {
@@ -3826,6 +5363,29 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255,
                     "example": "Acme Corp Updated"
+                }
+            }
+        },
+        "internal_handlers.PayplanCreateRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "Berlin"
+                }
+            }
+        },
+        "internal_handlers.PayplanUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "Berlin Updated"
                 }
             }
         }

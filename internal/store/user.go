@@ -77,6 +77,14 @@ func (s *UserStore) FindByEmail(email string) (*models.User, error) {
 	return &user, nil
 }
 
+func (s *UserStore) EmailExistsForOtherUser(email string, excludeUserID uint) (bool, error) {
+	var count int64
+	if err := s.db.Model(&models.User{}).Where("email = ? AND id != ?", email, excludeUserID).Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
 func (s *UserStore) Create(user *models.User) error {
 	return s.db.Create(user).Error
 }

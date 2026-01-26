@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
-import type { Organization, OrganizationCreate } from '@/api/types'
+import type { Organization, OrganizationCreateRequest } from '@/api/types'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Checkbox from 'primevue/checkbox'
@@ -13,7 +13,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  save: [data: OrganizationCreate]
+  save: [data: OrganizationCreateRequest]
 }>()
 
 const form = ref({

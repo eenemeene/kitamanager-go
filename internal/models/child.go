@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/lib/pq"
+)
 
 // Child represents a child enrolled in the Kita.
 type Child struct {
@@ -16,10 +20,11 @@ type ChildContract struct {
 	Period
 
 	// Contract properties
-	CareHoursPerWeek float64 `json:"care_hours_per_week" example:"35"`
-	GroupID          *uint   `json:"group_id" example:"1"`
-	MealsIncluded    bool    `json:"meals_included" example:"true"`
-	SpecialNeeds     string  `gorm:"size:1000" json:"special_needs" example:""`
+	CareHoursPerWeek float64        `json:"care_hours_per_week" example:"35"`
+	GroupID          *uint          `json:"group_id" example:"1"`
+	MealsIncluded    bool           `json:"meals_included" example:"true"`
+	SpecialNeeds     string         `gorm:"size:1000" json:"special_needs" example:""`
+	Attributes       pq.StringArray `gorm:"type:text[]" json:"attributes" swaggertype:"array,string" example:"ganztag,ndh"`
 
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -29,27 +34,80 @@ func (c ChildContract) GetPersonID() uint {
 	return c.ChildID
 }
 
-// ChildContractCreate represents the request body for creating a child contract.
-type ChildContractCreate struct {
+// ChildContractCreateRequest represents the request body for creating a child contract.
+type ChildContractCreateRequest struct {
 	From             time.Time  `json:"from" binding:"required" example:"2025-01-01"`
 	To               *time.Time `json:"to" example:"2025-12-31"`
 	CareHoursPerWeek float64    `json:"care_hours_per_week" binding:"required,gte=0,lte=168" example:"35"`
 	GroupID          *uint      `json:"group_id" example:"1"`
 	MealsIncluded    bool       `json:"meals_included" example:"true"`
 	SpecialNeeds     string     `json:"special_needs" binding:"max=1000" example:""`
+	Attributes       []string   `json:"attributes" example:"ganztag,ndh"`
 }
 
-// ChildCreate represents the request body for creating a child.
+// ChildCreateRequest represents the request body for creating a child.
 // OrganizationID is derived from the URL path parameter.
-type ChildCreate struct {
+type ChildCreateRequest struct {
 	FirstName string    `json:"first_name" binding:"required,max=255" example:"Emma"`
 	LastName  string    `json:"last_name" binding:"required,max=255" example:"Schmidt"`
 	Birthdate time.Time `json:"birthdate" binding:"required" example:"2020-03-10"`
 }
 
-// ChildUpdate represents the request body for updating a child.
-type ChildUpdate struct {
+// ChildUpdateRequest represents the request body for updating a child.
+type ChildUpdateRequest struct {
 	FirstName *string    `json:"first_name" binding:"omitempty,max=255" example:"Emma"`
 	LastName  *string    `json:"last_name" binding:"omitempty,max=255" example:"Schmidt"`
 	Birthdate *time.Time `json:"birthdate" example:"2020-03-10"`
+}
+
+// ChildResponse represents the child response
+type ChildResponse struct {
+	ID             uint      `json:"id" example:"1"`
+	OrganizationID uint      `json:"organization_id" example:"1"`
+	FirstName      string    `json:"first_name" example:"Emma"`
+	LastName       string    `json:"last_name" example:"Schmidt"`
+	Birthdate      time.Time `json:"birthdate" example:"2020-03-10"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+func (c *Child) ToResponse() ChildResponse {
+	return ChildResponse{
+		ID:             c.ID,
+		OrganizationID: c.OrganizationID,
+		FirstName:      c.FirstName,
+		LastName:       c.LastName,
+		Birthdate:      c.Birthdate,
+		CreatedAt:      c.CreatedAt,
+		UpdatedAt:      c.UpdatedAt,
+	}
+}
+
+// ChildContractResponse represents the child contract response
+type ChildContractResponse struct {
+	ID               uint       `json:"id" example:"1"`
+	ChildID          uint       `json:"child_id" example:"1"`
+	From             time.Time  `json:"from" example:"2025-01-01"`
+	To               *time.Time `json:"to" example:"2025-12-31"`
+	CareHoursPerWeek float64    `json:"care_hours_per_week" example:"35"`
+	GroupID          *uint      `json:"group_id" example:"1"`
+	MealsIncluded    bool       `json:"meals_included" example:"true"`
+	SpecialNeeds     string     `json:"special_needs" example:""`
+	Attributes       []string   `json:"attributes" example:"ganztag,ndh"`
+	CreatedAt        time.Time  `json:"created_at"`
+}
+
+func (c *ChildContract) ToResponse() ChildContractResponse {
+	return ChildContractResponse{
+		ID:               c.ID,
+		ChildID:          c.ChildID,
+		From:             c.From,
+		To:               c.To,
+		CareHoursPerWeek: c.CareHoursPerWeek,
+		GroupID:          c.GroupID,
+		MealsIncluded:    c.MealsIncluded,
+		SpecialNeeds:     c.SpecialNeeds,
+		Attributes:       c.Attributes,
+		CreatedAt:        c.CreatedAt,
+	}
 }

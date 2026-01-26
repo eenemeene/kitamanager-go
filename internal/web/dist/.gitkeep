@@ -1,3 +1,0 @@
-# This directory contains the built web UI files.
-# During development, run `make web-build` to populate this directory.
-# In Docker builds, this is populated during the build process.

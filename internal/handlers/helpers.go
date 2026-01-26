@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -17,8 +18,25 @@ func parseID(c *gin.Context, param string) (uint, error) {
 	return uint(id), nil
 }
 
-// respondError sends consistent error response
+// StructuredErrorResponse represents a structured error response with code and message
+type StructuredErrorResponse struct {
+	Code    string `json:"code" example:"not_found"`
+	Message string `json:"message" example:"resource not found"`
+}
+
+// respondError sends consistent structured error response
 func respondError(c *gin.Context, err error) {
-	code := apperror.HTTPStatus(err)
-	c.JSON(code, gin.H{"error": err.Error()})
+	httpCode := apperror.HTTPStatus(err)
+
+	// Try to get error code from AppError
+	var appErr *apperror.AppError
+	errorCode := "error"
+	if errors.As(err, &appErr) {
+		errorCode = appErr.GetErrorCode()
+	}
+
+	c.JSON(httpCode, StructuredErrorResponse{
+		Code:    errorCode,
+		Message: err.Error(),
+	})
 }

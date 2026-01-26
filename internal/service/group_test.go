@@ -349,3 +349,158 @@ func TestGroupService_ListByOrganization(t *testing.T) {
 		t.Errorf("expected total 2, got %d", total)
 	}
 }
+
+func TestGroupService_UpdateByIDAndOrg(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createGroupService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	group := createTestGroupWithOrg(t, db, "Original Name", org.ID)
+
+	req := &GroupUpdateRequest{
+		Name: "Updated Name",
+	}
+
+	updated, err := svc.UpdateByIDAndOrg(ctx, group.ID, org.ID, req)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if updated.Name != "Updated Name" {
+		t.Errorf("Name = %v, want Updated Name", updated.Name)
+	}
+}
+
+func TestGroupService_UpdateByIDAndOrg_WrongOrg(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createGroupService(db)
+	ctx := context.Background()
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+	group := createTestGroupWithOrg(t, db, "Test Group", org1.ID)
+
+	req := &GroupUpdateRequest{
+		Name: "Hacked Name",
+	}
+
+	// Try to update group from wrong org (security boundary)
+	_, err := svc.UpdateByIDAndOrg(ctx, group.ID, org2.ID, req)
+	if err == nil {
+		t.Fatal("expected error for wrong org, got nil")
+	}
+
+	var appErr *apperror.AppError
+	if !errors.As(err, &appErr) {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+
+	// Verify the group was NOT updated
+	found, err := svc.GetByID(ctx, group.ID)
+	if err != nil {
+		t.Fatalf("failed to get group: %v", err)
+	}
+	if found.Name != "Test Group" {
+		t.Errorf("group name was modified despite wrong org, got %v", found.Name)
+	}
+}
+
+func TestGroupService_UpdateByIDAndOrg_NotFound(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createGroupService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	req := &GroupUpdateRequest{
+		Name: "New Name",
+	}
+
+	_, err := svc.UpdateByIDAndOrg(ctx, 999, org.ID, req)
+	if err == nil {
+		t.Fatal("expected error for non-existent group, got nil")
+	}
+
+	var appErr *apperror.AppError
+	if !errors.As(err, &appErr) {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestGroupService_DeleteByIDAndOrg(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createGroupService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	group := createTestGroupWithOrg(t, db, "To Delete", org.ID)
+
+	err := svc.DeleteByIDAndOrg(ctx, group.ID, org.ID)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	// Verify it's deleted
+	_, err = svc.GetByID(ctx, group.ID)
+	if err == nil {
+		t.Error("expected group to be deleted")
+	}
+}
+
+func TestGroupService_DeleteByIDAndOrg_WrongOrg(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createGroupService(db)
+	ctx := context.Background()
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+	group := createTestGroupWithOrg(t, db, "Test Group", org1.ID)
+
+	// Try to delete group from wrong org (security boundary)
+	err := svc.DeleteByIDAndOrg(ctx, group.ID, org2.ID)
+	if err == nil {
+		t.Fatal("expected error for wrong org, got nil")
+	}
+
+	var appErr *apperror.AppError
+	if !errors.As(err, &appErr) {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+
+	// Verify the group was NOT deleted
+	_, err = svc.GetByID(ctx, group.ID)
+	if err != nil {
+		t.Errorf("group was deleted despite wrong org: %v", err)
+	}
+}
+
+func TestGroupService_DeleteByIDAndOrg_NotFound(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createGroupService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	err := svc.DeleteByIDAndOrg(ctx, 999, org.ID)
+	if err == nil {
+		t.Fatal("expected error for non-existent group, got nil")
+	}
+
+	var appErr *apperror.AppError
+	if !errors.As(err, &appErr) {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
