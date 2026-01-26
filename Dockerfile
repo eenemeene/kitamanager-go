@@ -33,7 +33,7 @@ RUN go mod download
 COPY . .
 
 # Copy built web UI into the embed directory
-COPY --from=web-builder /app/web/dist ./internal/web/dist
+COPY --from=web-builder /app/internal/web/dist ./internal/web/dist
 
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/api

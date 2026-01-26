@@ -342,7 +342,7 @@ jobs:
           exit 1
 
       - name: Run E2E tests
-        run: cd web && npm run test:e2e
+        run: cd web && npx playwright test --project=firefox
         env:
           BASE_URL: http://localhost:8080
           CI: true
