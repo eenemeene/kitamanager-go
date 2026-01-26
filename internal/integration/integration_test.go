@@ -190,6 +190,16 @@ func parseResponse(t *testing.T, w *httptest.ResponseRecorder, v interface{}) {
 	}
 }
 
+// PaginatedResponse wraps paginated API responses
+type PaginatedResponse[T any] struct {
+	Data []T `json:"data"`
+	Meta struct {
+		Total   int `json:"total"`
+		Page    int `json:"page"`
+		PerPage int `json:"per_page"`
+	} `json:"meta"`
+}
+
 // Integration Tests
 
 func TestOrganizationCRUD(t *testing.T) {
@@ -242,10 +252,10 @@ func TestOrganizationCRUD(t *testing.T) {
 		t.Fatalf("expected status 200, got %d", listResp.Code)
 	}
 
-	var orgs []models.Organization
-	parseResponse(t, listResp, &orgs)
-	if len(orgs) != 1 {
-		t.Errorf("expected 1 organization, got %d", len(orgs))
+	var orgsResp PaginatedResponse[models.Organization]
+	parseResponse(t, listResp, &orgsResp)
+	if len(orgsResp.Data) != 1 {
+		t.Errorf("expected 1 organization, got %d", len(orgsResp.Data))
 	}
 
 	// Delete
@@ -390,10 +400,10 @@ func TestGroupOperations(t *testing.T) {
 		t.Fatalf("expected status 200, got %d", listResp.Code)
 	}
 
-	var groups []models.Group
-	parseResponse(t, listResp, &groups)
-	if len(groups) != 1 {
-		t.Errorf("expected 1 group, got %d", len(groups))
+	var groupsResp PaginatedResponse[models.Group]
+	parseResponse(t, listResp, &groupsResp)
+	if len(groupsResp.Data) != 1 {
+		t.Errorf("expected 1 group, got %d", len(groupsResp.Data))
 	}
 }
 
@@ -423,9 +433,9 @@ func TestConcurrentOrganizationCreation(t *testing.T) {
 
 	// Verify all were created
 	listResp := performRequest("GET", "/api/v1/organizations", nil)
-	var orgs []models.Organization
-	parseResponse(t, listResp, &orgs)
-	if len(orgs) != 5 {
-		t.Errorf("expected 5 organizations, got %d", len(orgs))
+	var orgsResp PaginatedResponse[models.Organization]
+	parseResponse(t, listResp, &orgsResp)
+	if len(orgsResp.Data) != 5 {
+		t.Errorf("expected 5 organizations, got %d", len(orgsResp.Data))
 	}
 }
