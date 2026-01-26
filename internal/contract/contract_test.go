@@ -20,6 +20,7 @@ import (
 
 	"github.com/eenemeene/kitamanager-go/internal/handlers"
 	"github.com/eenemeene/kitamanager-go/internal/models"
+	"github.com/eenemeene/kitamanager-go/internal/service"
 	"github.com/eenemeene/kitamanager-go/internal/store"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -74,6 +75,7 @@ func TestMain(m *testing.M) {
 		&models.Organization{},
 		&models.User{},
 		&models.Group{},
+		&models.UserGroup{},
 		&models.Employee{},
 		&models.EmployeeContract{},
 		&models.Child{},
@@ -102,13 +104,22 @@ func getEnv(key, defaultValue string) string {
 func setupRouter() *gin.Engine {
 	r := gin.New()
 
+	// Setup stores
 	orgStore := store.NewOrganizationStore(testDB)
 	userStore := store.NewUserStore(testDB)
 	groupStore := store.NewGroupStore(testDB)
+	userGroupStore := store.NewUserGroupStore(testDB)
 
-	orgHandler := handlers.NewOrganizationHandler(orgStore)
-	userHandler := handlers.NewUserHandler(userStore, groupStore)
-	groupHandler := handlers.NewGroupHandler(groupStore)
+	// Setup services
+	orgService := service.NewOrganizationService(orgStore, groupStore)
+	userService := service.NewUserService(userStore, groupStore)
+	userGroupService := service.NewUserGroupService(userGroupStore, userStore, groupStore)
+	groupService := service.NewGroupService(groupStore)
+
+	// Setup handlers
+	orgHandler := handlers.NewOrganizationHandler(orgService)
+	userHandler := handlers.NewUserHandler(userService, userGroupService)
+	groupHandler := handlers.NewGroupHandler(groupService)
 
 	api := r.Group("/api/v1")
 	{

@@ -15,6 +15,7 @@ import (
 
 	"github.com/eenemeene/kitamanager-go/internal/handlers"
 	"github.com/eenemeene/kitamanager-go/internal/models"
+	"github.com/eenemeene/kitamanager-go/internal/service"
 	"github.com/eenemeene/kitamanager-go/internal/store"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -53,6 +54,7 @@ func TestMain(m *testing.M) {
 		&models.Organization{},
 		&models.User{},
 		&models.Group{},
+		&models.UserGroup{},
 		&models.Employee{},
 		&models.EmployeeContract{},
 		&models.Child{},
@@ -90,13 +92,22 @@ func setupRouter() *gin.Engine {
 	groupStore := store.NewGroupStore(testDB)
 	employeeStore := store.NewEmployeeStore(testDB)
 	childStore := store.NewChildStore(testDB)
+	userGroupStore := store.NewUserGroupStore(testDB)
+
+	// Setup services
+	orgService := service.NewOrganizationService(orgStore, groupStore)
+	userService := service.NewUserService(userStore, groupStore)
+	userGroupService := service.NewUserGroupService(userGroupStore, userStore, groupStore)
+	groupService := service.NewGroupService(groupStore)
+	employeeService := service.NewEmployeeService(employeeStore)
+	childService := service.NewChildService(childStore, groupStore)
 
 	// Setup handlers
-	orgHandler := handlers.NewOrganizationHandler(orgStore)
-	userHandler := handlers.NewUserHandler(userStore, groupStore)
-	groupHandler := handlers.NewGroupHandler(groupStore)
-	employeeHandler := handlers.NewEmployeeHandler(employeeStore)
-	childHandler := handlers.NewChildHandler(childStore)
+	orgHandler := handlers.NewOrganizationHandler(orgService)
+	userHandler := handlers.NewUserHandler(userService, userGroupService)
+	groupHandler := handlers.NewGroupHandler(groupService)
+	employeeHandler := handlers.NewEmployeeHandler(employeeService)
+	childHandler := handlers.NewChildHandler(childService)
 
 	// Routes
 	api := r.Group("/api/v1")
