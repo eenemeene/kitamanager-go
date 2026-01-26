@@ -38,3 +38,6 @@ go.work.sum
 
 # OS
 .DS_Store
+
+# Playwright test results
+web/test-results/

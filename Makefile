@@ -149,6 +149,11 @@ web-test-e2e:
 web-test-e2e-headed:
 	cd web && npm run test:e2e:headed
 
+# Run web E2E tests with browser visible and slow motion (for human watching)
+# Uses Chromium for better video recording support
+web-test-e2e-demo:
+	cd web && SLOWMO=500 VIDEO=1 npx playwright test --headed --project=chromium
+
 # Install Playwright browsers
 web-playwright-install:
 	cd web && npx playwright install firefox --with-deps
