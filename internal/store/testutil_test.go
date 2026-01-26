@@ -23,6 +23,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 		&models.Organization{},
 		&models.User{},
 		&models.Group{},
+		&models.UserGroup{},
 		&models.Employee{},
 		&models.EmployeeContract{},
 		&models.Child{},
@@ -97,4 +98,20 @@ func createTestGroupWithOrg(t *testing.T, db *gorm.DB, name string, orgID uint) 
 		t.Fatalf("failed to create test group: %v", err)
 	}
 	return group
+}
+
+// createTestUserGroup creates a user-group relationship for testing.
+func createTestUserGroup(t *testing.T, db *gorm.DB, userID, groupID uint, role models.Role) *models.UserGroup {
+	t.Helper()
+
+	ug := &models.UserGroup{
+		UserID:    userID,
+		GroupID:   groupID,
+		Role:      role,
+		CreatedBy: "test@example.com",
+	}
+	if err := db.Create(ug).Error; err != nil {
+		t.Fatalf("failed to create test user group: %v", err)
+	}
+	return ug
 }

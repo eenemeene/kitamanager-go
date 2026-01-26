@@ -949,3 +949,458 @@ func TestUserHandler_Create_PasswordTooLong(t *testing.T) {
 		t.Errorf("expected status %d for password too long, got %d", http.StatusBadRequest, w.Code)
 	}
 }
+
+// UpdateGroupRole tests
+
+func TestUserHandler_UpdateGroupRole(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userGroupService := createUserGroupService(db)
+	handler := NewUserHandler(userService, userGroupService)
+
+	org := createTestOrganization(t, db, "Test Org")
+	group := createTestGroupWithOrg(t, db, "Test Group", org.ID)
+	user := createTestUser(t, db, "Test User", "test@example.com", "password")
+
+	// Add user to group first
+	ug := &models.UserGroup{
+		UserID:    user.ID,
+		GroupID:   group.ID,
+		Role:      models.RoleMember,
+		CreatedBy: "test@example.com",
+	}
+	db.Create(ug)
+
+	r := setupTestRouter()
+	r.PUT("/users/:uid/groups/:gid", handler.UpdateGroupRole)
+
+	body := models.UpdateUserGroupRoleRequest{
+		Role: models.RoleAdmin,
+	}
+
+	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/groups/%d", user.ID, group.ID), body)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var result models.UserGroupResponse
+	parseResponse(t, w, &result)
+
+	if result.Role != models.RoleAdmin {
+		t.Errorf("expected role %v, got %v", models.RoleAdmin, result.Role)
+	}
+}
+
+func TestUserHandler_UpdateGroupRole_InvalidRole(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userGroupService := createUserGroupService(db)
+	handler := NewUserHandler(userService, userGroupService)
+
+	org := createTestOrganization(t, db, "Test Org")
+	group := createTestGroupWithOrg(t, db, "Test Group", org.ID)
+	user := createTestUser(t, db, "Test User", "test@example.com", "password")
+
+	// Add user to group
+	ug := &models.UserGroup{
+		UserID:    user.ID,
+		GroupID:   group.ID,
+		Role:      models.RoleMember,
+		CreatedBy: "test@example.com",
+	}
+	db.Create(ug)
+
+	r := setupTestRouter()
+	r.PUT("/users/:uid/groups/:gid", handler.UpdateGroupRole)
+
+	body := map[string]interface{}{
+		"role": "invalid_role",
+	}
+
+	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/groups/%d", user.ID, group.ID), body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for invalid role, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestUserHandler_UpdateGroupRole_UserNotFound(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userGroupService := createUserGroupService(db)
+	handler := NewUserHandler(userService, userGroupService)
+
+	group := createTestGroup(t, db, "Test Group")
+
+	r := setupTestRouter()
+	r.PUT("/users/:uid/groups/:gid", handler.UpdateGroupRole)
+
+	body := models.UpdateUserGroupRoleRequest{
+		Role: models.RoleAdmin,
+	}
+
+	w := performRequest(r, "PUT", fmt.Sprintf("/users/999/groups/%d", group.ID), body)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
+	}
+}
+
+func TestUserHandler_UpdateGroupRole_UserNotInGroup(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userGroupService := createUserGroupService(db)
+	handler := NewUserHandler(userService, userGroupService)
+
+	org := createTestOrganization(t, db, "Test Org")
+	group := createTestGroupWithOrg(t, db, "Test Group", org.ID)
+	user := createTestUser(t, db, "Test User", "test@example.com", "password")
+	// User is NOT added to group
+
+	r := setupTestRouter()
+	r.PUT("/users/:uid/groups/:gid", handler.UpdateGroupRole)
+
+	body := models.UpdateUserGroupRoleRequest{
+		Role: models.RoleAdmin,
+	}
+
+	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/groups/%d", user.ID, group.ID), body)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d for user not in group, got %d", http.StatusNotFound, w.Code)
+	}
+}
+
+func TestUserHandler_UpdateGroupRole_InvalidUserID(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userGroupService := createUserGroupService(db)
+	handler := NewUserHandler(userService, userGroupService)
+
+	r := setupTestRouter()
+	r.PUT("/users/:uid/groups/:gid", handler.UpdateGroupRole)
+
+	body := models.UpdateUserGroupRoleRequest{
+		Role: models.RoleAdmin,
+	}
+
+	w := performRequest(r, "PUT", "/users/invalid/groups/1", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestUserHandler_UpdateGroupRole_InvalidGroupID(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userGroupService := createUserGroupService(db)
+	handler := NewUserHandler(userService, userGroupService)
+
+	createTestUser(t, db, "Test User", "test@example.com", "password")
+
+	r := setupTestRouter()
+	r.PUT("/users/:uid/groups/:gid", handler.UpdateGroupRole)
+
+	body := models.UpdateUserGroupRoleRequest{
+		Role: models.RoleAdmin,
+	}
+
+	w := performRequest(r, "PUT", "/users/1/groups/invalid", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+// GetMemberships tests
+
+func TestUserHandler_GetMemberships(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userGroupService := createUserGroupService(db)
+	handler := NewUserHandler(userService, userGroupService)
+
+	org := createTestOrganization(t, db, "Test Org")
+	group1 := createTestGroupWithOrg(t, db, "Group 1", org.ID)
+	group2 := createTestGroupWithOrg(t, db, "Group 2", org.ID)
+	user := createTestUser(t, db, "Test User", "test@example.com", "password")
+
+	// Add user to groups
+	db.Create(&models.UserGroup{UserID: user.ID, GroupID: group1.ID, Role: models.RoleAdmin, CreatedBy: "test@example.com"})
+	db.Create(&models.UserGroup{UserID: user.ID, GroupID: group2.ID, Role: models.RoleMember, CreatedBy: "test@example.com"})
+
+	r := setupTestRouter()
+	r.GET("/users/:uid/memberships", handler.GetMemberships)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/users/%d/memberships", user.ID), nil)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var result models.UserMembershipsResponse
+	parseResponse(t, w, &result)
+
+	if len(result.Memberships) != 2 {
+		t.Errorf("expected 2 memberships, got %d", len(result.Memberships))
+	}
+}
+
+func TestUserHandler_GetMemberships_WithEffectiveRole(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userGroupService := createUserGroupService(db)
+	handler := NewUserHandler(userService, userGroupService)
+
+	org := createTestOrganization(t, db, "Test Org")
+	group1 := createTestGroupWithOrg(t, db, "Group 1", org.ID)
+	group2 := createTestGroupWithOrg(t, db, "Group 2", org.ID)
+	user := createTestUser(t, db, "Test User", "test@example.com", "password")
+
+	// Admin in group1, member in group2 (same org)
+	db.Create(&models.UserGroup{UserID: user.ID, GroupID: group1.ID, Role: models.RoleAdmin, CreatedBy: "test@example.com"})
+	db.Create(&models.UserGroup{UserID: user.ID, GroupID: group2.ID, Role: models.RoleMember, CreatedBy: "test@example.com"})
+
+	r := setupTestRouter()
+	r.GET("/users/:uid/memberships", handler.GetMemberships)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/users/%d/memberships", user.ID), nil)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var result models.UserMembershipsResponse
+	parseResponse(t, w, &result)
+
+	// Both memberships should have effective org role = admin (highest)
+	for _, m := range result.Memberships {
+		if m.EffectiveOrgRole != models.RoleAdmin {
+			t.Errorf("expected EffectiveOrgRole = admin, got %v", m.EffectiveOrgRole)
+		}
+	}
+}
+
+func TestUserHandler_GetMemberships_UserNotFound(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userGroupService := createUserGroupService(db)
+	handler := NewUserHandler(userService, userGroupService)
+
+	r := setupTestRouter()
+	r.GET("/users/:uid/memberships", handler.GetMemberships)
+
+	w := performRequest(r, "GET", "/users/999/memberships", nil)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
+	}
+}
+
+func TestUserHandler_GetMemberships_Empty(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userGroupService := createUserGroupService(db)
+	handler := NewUserHandler(userService, userGroupService)
+
+	user := createTestUser(t, db, "Test User", "test@example.com", "password")
+
+	r := setupTestRouter()
+	r.GET("/users/:uid/memberships", handler.GetMemberships)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/users/%d/memberships", user.ID), nil)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var result models.UserMembershipsResponse
+	parseResponse(t, w, &result)
+
+	if len(result.Memberships) != 0 {
+		t.Errorf("expected 0 memberships, got %d", len(result.Memberships))
+	}
+}
+
+func TestUserHandler_GetMemberships_InvalidUserID(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userGroupService := createUserGroupService(db)
+	handler := NewUserHandler(userService, userGroupService)
+
+	r := setupTestRouter()
+	r.GET("/users/:uid/memberships", handler.GetMemberships)
+
+	w := performRequest(r, "GET", "/users/invalid/memberships", nil)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+// SetSuperAdmin tests
+
+func TestUserHandler_SetSuperAdmin_True(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userGroupService := createUserGroupService(db)
+	handler := NewUserHandler(userService, userGroupService)
+
+	user := createTestUser(t, db, "Test User", "test@example.com", "password")
+
+	r := setupTestRouter()
+	r.PUT("/users/:uid/superadmin", handler.SetSuperAdmin)
+
+	body := models.SetSuperAdminRequest{
+		IsSuperAdmin: true,
+	}
+
+	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/superadmin", user.ID), body)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var result models.UserResponse
+	parseResponse(t, w, &result)
+
+	if !result.IsSuperAdmin {
+		t.Error("expected IsSuperAdmin = true")
+	}
+}
+
+func TestUserHandler_SetSuperAdmin_False(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userGroupService := createUserGroupService(db)
+	handler := NewUserHandler(userService, userGroupService)
+
+	user := createTestUser(t, db, "Test User", "test@example.com", "password")
+	// Set as superadmin first
+	db.Model(&models.User{}).Where("id = ?", user.ID).Update("is_superadmin", true)
+
+	r := setupTestRouter()
+	r.PUT("/users/:uid/superadmin", handler.SetSuperAdmin)
+
+	body := models.SetSuperAdminRequest{
+		IsSuperAdmin: false,
+	}
+
+	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/superadmin", user.ID), body)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var result models.UserResponse
+	parseResponse(t, w, &result)
+
+	if result.IsSuperAdmin {
+		t.Error("expected IsSuperAdmin = false")
+	}
+}
+
+func TestUserHandler_SetSuperAdmin_UserNotFound(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userGroupService := createUserGroupService(db)
+	handler := NewUserHandler(userService, userGroupService)
+
+	r := setupTestRouter()
+	r.PUT("/users/:uid/superadmin", handler.SetSuperAdmin)
+
+	body := models.SetSuperAdminRequest{
+		IsSuperAdmin: true,
+	}
+
+	w := performRequest(r, "PUT", "/users/999/superadmin", body)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
+	}
+}
+
+func TestUserHandler_SetSuperAdmin_InvalidUserID(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userGroupService := createUserGroupService(db)
+	handler := NewUserHandler(userService, userGroupService)
+
+	r := setupTestRouter()
+	r.PUT("/users/:uid/superadmin", handler.SetSuperAdmin)
+
+	body := models.SetSuperAdminRequest{
+		IsSuperAdmin: true,
+	}
+
+	w := performRequest(r, "PUT", "/users/invalid/superadmin", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestUserHandler_SetSuperAdmin_MissingBody(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userGroupService := createUserGroupService(db)
+	handler := NewUserHandler(userService, userGroupService)
+
+	user := createTestUser(t, db, "Test User", "test@example.com", "password")
+
+	r := setupTestRouter()
+	r.PUT("/users/:uid/superadmin", handler.SetSuperAdmin)
+
+	// Send empty body
+	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/superadmin", user.ID), nil)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for missing body, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+// Additional AddToOrganization tests
+
+func TestUserHandler_AddToOrganization_OrgNotFound(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userGroupService := createUserGroupService(db)
+	handler := NewUserHandler(userService, userGroupService)
+
+	createTestUser(t, db, "Test User", "test@example.com", "password")
+
+	r := setupTestRouter()
+	r.POST("/users/:uid/organizations", handler.AddToOrganization)
+
+	body := AddToOrganizationRequest{
+		OrganizationID: 999, // Non-existent
+	}
+
+	w := performRequest(r, "POST", "/users/1/organizations", body)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d for non-existent org, got %d", http.StatusNotFound, w.Code)
+	}
+}
+
+// Additional RemoveFromOrganization tests
+
+func TestUserHandler_RemoveFromOrganization_UserNotFound(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userGroupService := createUserGroupService(db)
+	handler := NewUserHandler(userService, userGroupService)
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	r := setupTestRouter()
+	r.DELETE("/users/:uid/organizations/:oid", handler.RemoveFromOrganization)
+
+	w := performRequest(r, "DELETE", fmt.Sprintf("/users/999/organizations/%d", org.ID), nil)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
+	}
+}
