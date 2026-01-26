@@ -401,6 +401,7 @@ func TestGroupOperations(t *testing.T) {
 	}
 
 	// List groups (org-scoped)
+	// Should have 2 groups: default "Members" group + the one we created
 	listResp := performRequest("GET", fmt.Sprintf("/api/v1/organizations/%d/groups", org.ID), nil)
 	if listResp.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", listResp.Code)
@@ -408,8 +409,8 @@ func TestGroupOperations(t *testing.T) {
 
 	var groupsResp PaginatedResponse[models.Group]
 	parseResponse(t, listResp, &groupsResp)
-	if len(groupsResp.Data) != 1 {
-		t.Errorf("expected 1 group, got %d", len(groupsResp.Data))
+	if len(groupsResp.Data) != 2 {
+		t.Errorf("expected 2 groups (default + created), got %d", len(groupsResp.Data))
 	}
 }
 

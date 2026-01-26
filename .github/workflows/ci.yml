@@ -319,16 +319,26 @@ jobs:
           SEED_ADMIN_NAME=admin \
           SEED_RBAC_POLICIES=true \
           ./bin/kitamanager-api &
+          API_PID=$!
           # Wait for API to be ready with retry loop
           for i in {1..30}; do
-            if curl -sf http://localhost:8080/api/v1/health > /dev/null 2>&1; then
+            # Check if process is still running
+            if ! kill -0 $API_PID 2>/dev/null; then
+              echo "API process died"
+              exit 1
+            fi
+            # Try the health check
+            if curl -sf http://localhost:8080/api/v1/health; then
               echo "API is ready"
               exit 0
             fi
             echo "Waiting for API... ($i/30)"
             sleep 1
           done
-          echo "API failed to start"
+          echo "API failed to start - checking what's listening on 8080:"
+          ss -tlnp | grep 8080 || echo "Nothing on 8080"
+          echo "Process status:"
+          ps aux | grep kitamanager || echo "No kitamanager process"
           exit 1
 
       - name: Run E2E tests
