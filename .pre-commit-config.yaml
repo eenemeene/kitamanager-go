@@ -3,7 +3,6 @@ repos:
     rev: v6.0.0
     hooks:
       - id: trailing-whitespace
-      - id: end-of-file-fixer
       - id: check-yaml
       - id: check-added-large-files
 
@@ -20,6 +19,13 @@ repos:
 
   - repo: local
     hooks:
+      - id: go-mod-tidy
+        name: go mod tidy
+        entry: bash -c 'go mod tidy && git diff --exit-code go.mod go.sum'
+        language: system
+        types: [go]
+        pass_filenames: false
+
       - id: go-test
         name: go test
         entry: go test -race ./...
@@ -30,6 +36,20 @@ repos:
       - id: go-build
         name: go build
         entry: go build -o /dev/null ./cmd/api
+        language: system
+        types: [go]
+        pass_filenames: false
+
+      - id: govulncheck
+        name: govulncheck
+        entry: bash -c 'go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./...'
+        language: system
+        types: [go]
+        pass_filenames: false
+
+      - id: swagger-check
+        name: swagger docs check
+        entry: bash -c 'go install github.com/swaggo/swag/cmd/swag@latest && swag init -g cmd/api/main.go -o docs --parseDependency --parseInternal && git diff --exit-code docs/'
         language: system
         types: [go]
         pass_filenames: false
