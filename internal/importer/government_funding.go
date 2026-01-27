@@ -129,6 +129,7 @@ func (i *GovernmentFundingImporter) importPeriod(tx *gorm.DB, fundingID uint, ya
 }
 
 // importPropertiesFromEntry converts a YAML entry (with age range) to properties with age filters.
+// Both YAML and code use inclusive age ranges: [0,1] means ages 0 AND 1.
 func (i *GovernmentFundingImporter) importPropertiesFromEntry(tx *gorm.DB, periodID uint, yamlEntry YAMLGovernmentFundingEntry) error {
 	minAge := yamlEntry.Age[0]
 	maxAge := yamlEntry.Age[1]

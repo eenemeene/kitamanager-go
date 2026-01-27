@@ -154,6 +154,7 @@ func TestImportGovernmentFundingFromFile(t *testing.T) {
 	require.NotNil(t, ganztag.MinAge)
 	require.NotNil(t, ganztag.MaxAge)
 	assert.Equal(t, 0, *ganztag.MinAge)
+	// Both MinAge and MaxAge are inclusive: [0,2] means ages 0, 1, and 2
 	assert.Equal(t, 2, *ganztag.MaxAge)
 
 	// Check second period has end date and comment

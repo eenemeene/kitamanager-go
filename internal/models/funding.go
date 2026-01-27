@@ -38,7 +38,7 @@ func (GovernmentFundingPeriod) TableName() string {
 
 // GovernmentFundingProperty represents a funding property with optional age range.
 // If MinAge and MaxAge are nil, the property applies to all ages.
-// If set, MinAge is inclusive and MaxAge is exclusive (e.g., MinAge=0, MaxAge=3 covers ages 0, 1, and 2).
+// If set, both MinAge and MaxAge are inclusive (e.g., MinAge=0, MaxAge=2 covers ages 0, 1, and 2).
 // Payment is stored in cents to avoid floating-point issues (e.g., 166847 = 1668.47 EUR).
 type GovernmentFundingProperty struct {
 	ID          uint      `gorm:"primaryKey" json:"id" example:"1"`
@@ -59,6 +59,7 @@ func (GovernmentFundingProperty) TableName() string {
 
 // MatchesAge checks if the property applies to the given age.
 // Returns true if no age filter is set, or if the age falls within the range.
+// Both MinAge and MaxAge are inclusive: MinAge <= age <= MaxAge.
 func (p *GovernmentFundingProperty) MatchesAge(age int) bool {
 	// No age filter means it applies to all ages
 	if p.MinAge == nil && p.MaxAge == nil {
@@ -68,8 +69,8 @@ func (p *GovernmentFundingProperty) MatchesAge(age int) bool {
 	if p.MinAge != nil && age < *p.MinAge {
 		return false
 	}
-	// Check MaxAge (exclusive)
-	if p.MaxAge != nil && age >= *p.MaxAge {
+	// Check MaxAge (inclusive)
+	if p.MaxAge != nil && age > *p.MaxAge {
 		return false
 	}
 	return true
