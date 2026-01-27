@@ -219,9 +219,9 @@ class ApiClient {
   }
 
   // Employees (organization-scoped)
-  async getEmployees(orgId: number): Promise<Employee[]> {
+  async getEmployees(orgId: number, limit: number = 100): Promise<Employee[]> {
     const response = await this.client.get<{ data: Employee[] }>(
-      `/organizations/${orgId}/employees`
+      `/organizations/${orgId}/employees?limit=${limit}`
     )
     return response.data.data
   }
@@ -282,8 +282,10 @@ class ApiClient {
   }
 
   // Children (organization-scoped)
-  async getChildren(orgId: number): Promise<Child[]> {
-    const response = await this.client.get<{ data: Child[] }>(`/organizations/${orgId}/children`)
+  async getChildren(orgId: number, limit: number = 100): Promise<Child[]> {
+    const response = await this.client.get<{ data: Child[] }>(
+      `/organizations/${orgId}/children?limit=${limit}`
+    )
     return response.data.data
   }
 
