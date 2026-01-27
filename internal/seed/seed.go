@@ -138,7 +138,11 @@ var attributeCombinations = [][]string{
 // SeedTestData creates test data for development:
 // - Berlin government funding plan
 // - Organization "Kita Sonnenschein" with Berlin funding assigned
-// - Manager user "manager@example.com" (password: "supersecret")
+// - Test users with different roles (all with password "supersecret"):
+//   - superadmin@example.com (superadmin - full system access)
+//   - admin@example.com (admin role in organization)
+//   - manager@example.com (manager role in organization)
+//
 // - 50 children distributed by age with contracts
 func SeedTestData(cfg *config.Config, db *gorm.DB, fundingStore *store.GovernmentFundingStore) error {
 	if !cfg.SeedTestData {
@@ -196,42 +200,58 @@ func SeedTestData(cfg *config.Config, db *gorm.DB, fundingStore *store.Governmen
 	}
 	slog.Info("Created test group", "name", group.Name, "id", group.ID)
 
-	// Create manager user
+	// Hash password for all test users
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("supersecret"), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 
-	// Check if manager user already exists
-	var existingUser models.User
-	if err := db.Where("email = ?", "manager@example.com").First(&existingUser).Error; err == nil {
-		slog.Info("Manager user already exists", "email", existingUser.Email)
-	} else {
-		manager := &models.User{
-			Name:      "Manager",
-			Email:     "manager@example.com",
-			Password:  string(hashedPassword),
-			Active:    true,
-			CreatedBy: "seed",
-		}
-		if err := db.Create(manager).Error; err != nil {
-			return err
-		}
-		existingUser = *manager
-		slog.Info("Created manager user", "email", manager.Email, "id", manager.ID)
+	// Define test users with their roles
+	testUsers := []struct {
+		name         string
+		email        string
+		isSuperAdmin bool
+		groupRole    models.Role // empty string means no group membership
+	}{
+		{"Super Admin", "superadmin@example.com", true, ""},
+		{"Admin", "admin@example.com", false, models.RoleAdmin},
+		{"Manager", "manager@example.com", false, models.RoleManager},
 	}
 
-	// Add manager to group with manager role
-	userGroup := &models.UserGroup{
-		UserID:    existingUser.ID,
-		GroupID:   group.ID,
-		Role:      models.RoleManager,
-		CreatedBy: "seed",
-	}
-	if err := db.Create(userGroup).Error; err != nil {
-		slog.Warn("Failed to add manager to group (may already exist)", "error", err)
-	} else {
-		slog.Info("Added manager to group", "userId", existingUser.ID, "groupId", group.ID, "role", models.RoleManager)
+	// Create test users
+	for _, tu := range testUsers {
+		var user models.User
+		if err := db.Where("email = ?", tu.email).First(&user).Error; err == nil {
+			slog.Info("User already exists", "email", user.Email)
+		} else {
+			user = models.User{
+				Name:         tu.name,
+				Email:        tu.email,
+				Password:     string(hashedPassword),
+				Active:       true,
+				IsSuperAdmin: tu.isSuperAdmin,
+				CreatedBy:    "seed",
+			}
+			if err := db.Create(&user).Error; err != nil {
+				return err
+			}
+			slog.Info("Created user", "email", user.Email, "id", user.ID, "isSuperAdmin", tu.isSuperAdmin)
+		}
+
+		// Add user to group with specified role (if applicable)
+		if tu.groupRole != "" {
+			userGroup := &models.UserGroup{
+				UserID:    user.ID,
+				GroupID:   group.ID,
+				Role:      tu.groupRole,
+				CreatedBy: "seed",
+			}
+			if err := db.Create(userGroup).Error; err != nil {
+				slog.Warn("Failed to add user to group (may already exist)", "email", tu.email, "error", err)
+			} else {
+				slog.Info("Added user to group", "email", tu.email, "groupId", group.ID, "role", tu.groupRole)
+			}
+		}
 	}
 
 	// Create 50 children with age distribution
@@ -259,8 +279,8 @@ func SeedTestData(cfg *config.Config, db *gorm.DB, fundingStore *store.Governmen
 
 	slog.Info("Test data seeding completed",
 		"organization", org.Name,
-		"managerEmail", "manager@example.com",
-		"managerPassword", "supersecret",
+		"users", "superadmin@example.com, admin@example.com, manager@example.com",
+		"password", "supersecret",
 		"childrenCount", len(children),
 	)
 

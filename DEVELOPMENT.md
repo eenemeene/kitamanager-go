@@ -25,9 +25,30 @@ This starts:
 - **API** at http://localhost:8080
 - **PostgreSQL** via Docker
 
-Login with `admin@example.com` / `supersecret`
-
 Press `Ctrl+C` to stop all services.
+
+## Test Data Seeding
+
+When `SEED_TEST_DATA=true` (enabled by default in `make dev`), the following test data is created:
+
+### Test Users
+
+All test users have password: `supersecret`
+
+| Email | Role | Permissions |
+|-------|------|-------------|
+| `superadmin@example.com` | Superadmin | Full system access across all organizations |
+| `admin@example.com` | Admin | Full access within the test organization |
+| `manager@example.com` | Manager | Operational access (employees, children, contracts); read-only for users/groups |
+
+### Test Organization
+
+- **Name**: Kita Sonnenschein
+- **Group**: Mitarbeiter (default group)
+- **Government Funding**: Berlin funding plan
+- **Children**: 50 children with age-appropriate distribution and contracts
+
+See [RBAC documentation](docs/RBAC.md) for detailed permission matrix.
 
 ## Makefile Targets
 
