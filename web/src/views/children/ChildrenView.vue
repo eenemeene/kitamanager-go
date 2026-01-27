@@ -16,6 +16,7 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import ChildForm from './ChildForm.vue'
 import ChildContractForm from './ChildContractForm.vue'
+import ChildContractHistory from './ChildContractHistory.vue'
 
 const route = useRoute()
 const toast = useToast()
@@ -30,6 +31,9 @@ const editingChild = ref<Child | null>(null)
 
 const contractDialogVisible = ref(false)
 const selectedChild = ref<Child | null>(null)
+
+const historyDialogVisible = ref(false)
+const historyChild = ref<Child | null>(null)
 
 watch(
   () => route.params.orgId,
@@ -139,6 +143,16 @@ function closeContractDialog() {
   selectedChild.value = null
 }
 
+function openHistoryDialog(child: Child) {
+  historyChild.value = child
+  historyDialogVisible.value = true
+}
+
+function closeHistoryDialog() {
+  historyDialogVisible.value = false
+  historyChild.value = null
+}
+
 async function saveContract(data: ChildContractCreateRequest) {
   if (!selectedChild.value) return
 
@@ -235,22 +249,36 @@ onMounted(() => {
             <span v-else>-</span>
           </template>
         </Column>
-        <Column header="Actions" style="width: 200px">
+        <Column header="Actions" style="width: 250px">
           <template #body="{ data }">
             <Button
-              icon="pi pi-file"
+              icon="pi pi-history"
+              text
+              rounded
+              @click="openHistoryDialog(data)"
+              title="Contract History"
+            />
+            <Button
+              icon="pi pi-file-plus"
               text
               rounded
               @click="openContractDialog(data)"
               title="Add Contract"
             />
-            <Button icon="pi pi-pencil" text rounded @click="openEditDialog(data)" />
+            <Button
+              icon="pi pi-pencil"
+              text
+              rounded
+              @click="openEditDialog(data)"
+              title="Edit Child"
+            />
             <Button
               icon="pi pi-trash"
               text
               rounded
               severity="danger"
               @click="confirmDelete(data)"
+              title="Delete Child"
             />
           </template>
         </Column>
@@ -269,6 +297,13 @@ onMounted(() => {
       :child="selectedChild"
       @close="closeContractDialog"
       @save="saveContract"
+    />
+
+    <ChildContractHistory
+      :visible="historyDialogVisible"
+      :child="historyChild"
+      :org-id="orgId"
+      @close="closeHistoryDialog"
     />
   </div>
 </template>
