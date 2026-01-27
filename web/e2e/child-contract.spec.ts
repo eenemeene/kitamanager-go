@@ -80,7 +80,7 @@ test.describe('Child Contract Management', () => {
 
     // Find the row with our child and click the Add Contract button
     const childRow = page.getByRole('row').filter({ hasText: childFullName })
-    await childRow.getByRole('button', { name: /add contract/i }).click()
+    await childRow.locator('button[title="Add Contract"]').click()
 
     // Wait for dialog
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 })
@@ -116,7 +116,7 @@ test.describe('Child Contract Management', () => {
     // =====================================
 
     // Click Add Contract again
-    await childRow.getByRole('button', { name: /add contract/i }).click()
+    await childRow.locator('button[title="Add Contract"]').click()
 
     // Wait for dialog
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 })
@@ -125,7 +125,8 @@ test.describe('Child Contract Management', () => {
     await expect(page.getByText(/this child has an active contract/i)).toBeVisible({
       timeout: 5000
     })
-    await expect(page.getByText(/ganztags/i)).toBeVisible() // Shows current contract attributes
+    // Shows current contract attributes in the warning message
+    await expect(page.getByText(/active since.*ganztags/i)).toBeVisible()
 
     // The checkbox should be visible and checked by default
     const endContractCheckbox = page.locator('#endContract')
@@ -168,31 +169,26 @@ test.describe('Child Contract Management', () => {
     // =====================================
 
     // Click the history button
-    await childRow.getByRole('button', { name: /contract history/i }).click()
+    await childRow.locator('button[title="Contract History"]').click()
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 })
     await expect(page.getByRole('dialog')).toContainText(/contract history/i)
 
-    // Should see both contracts
-    await expect(page.getByText('ganztags')).toBeVisible()
-    await expect(page.getByText('halbtags')).toBeVisible()
+    // Should see both contracts in the history dialog
+    const historyDialog = page.getByRole('dialog')
+    await expect(historyDialog.getByText('ganztags')).toBeVisible()
+    await expect(historyDialog.getByText('halbtags')).toBeVisible()
 
     // First contract should now show as inactive (has end date)
     // The newer contract should be active
-    const activeTag = page
-      .getByRole('dialog')
-      .locator('.p-tag')
-      .filter({ hasText: /active/i })
-    const inactiveTag = page
-      .getByRole('dialog')
-      .locator('.p-tag')
-      .filter({ hasText: /inactive/i })
+    const activeTag = historyDialog.locator('.p-tag').filter({ hasText: /^Active$/i })
+    const inactiveTag = historyDialog.locator('.p-tag').filter({ hasText: /^Inactive$/i })
 
     // Should have one active and one inactive
     await expect(activeTag).toHaveCount(1)
     await expect(inactiveTag).toHaveCount(1)
 
-    // Close history dialog
-    await page.getByRole('button', { name: 'Close' }).click()
+    // Close history dialog (click the footer Close button, not the header X)
+    await historyDialog.locator('button:has-text("Close"):not(.p-dialog-close-button)').click()
     await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
   })
 
@@ -231,7 +227,7 @@ test.describe('Child Contract Management', () => {
 
     // Add first contract
     const childRow = page.getByRole('row').filter({ hasText: `Test ${childName2}` })
-    await childRow.getByRole('button', { name: /add contract/i }).click()
+    await childRow.locator('button[title="Add Contract"]').click()
     await page.locator('#from').click()
     await page.waitForTimeout(300)
     await page.locator('.p-datepicker-calendar td.p-datepicker-today span').click()
@@ -239,7 +235,7 @@ test.describe('Child Contract Management', () => {
     await expect(page.getByText(/contract created successfully/i)).toBeVisible({ timeout: 5000 })
 
     // Try to add overlapping contract with checkbox unchecked
-    await childRow.getByRole('button', { name: /add contract/i }).click()
+    await childRow.locator('button[title="Add Contract"]').click()
     await expect(page.getByText(/this child has an active contract/i)).toBeVisible({
       timeout: 5000
     })

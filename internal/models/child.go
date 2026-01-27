@@ -63,17 +63,18 @@ type ChildUpdateRequest struct {
 
 // ChildResponse represents the child response
 type ChildResponse struct {
-	ID             uint      `json:"id" example:"1"`
-	OrganizationID uint      `json:"organization_id" example:"1"`
-	FirstName      string    `json:"first_name" example:"Emma"`
-	LastName       string    `json:"last_name" example:"Schmidt"`
-	Birthdate      time.Time `json:"birthdate" example:"2020-03-10"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	ID             uint                    `json:"id" example:"1"`
+	OrganizationID uint                    `json:"organization_id" example:"1"`
+	FirstName      string                  `json:"first_name" example:"Emma"`
+	LastName       string                  `json:"last_name" example:"Schmidt"`
+	Birthdate      time.Time               `json:"birthdate" example:"2020-03-10"`
+	Contracts      []ChildContractResponse `json:"contracts,omitempty"`
+	CreatedAt      time.Time               `json:"created_at"`
+	UpdatedAt      time.Time               `json:"updated_at"`
 }
 
 func (c *Child) ToResponse() ChildResponse {
-	return ChildResponse{
+	resp := ChildResponse{
 		ID:             c.ID,
 		OrganizationID: c.OrganizationID,
 		FirstName:      c.FirstName,
@@ -82,6 +83,13 @@ func (c *Child) ToResponse() ChildResponse {
 		CreatedAt:      c.CreatedAt,
 		UpdatedAt:      c.UpdatedAt,
 	}
+	if len(c.Contracts) > 0 {
+		resp.Contracts = make([]ChildContractResponse, len(c.Contracts))
+		for i, contract := range c.Contracts {
+			resp.Contracts[i] = contract.ToResponse()
+		}
+	}
+	return resp
 }
 
 // ChildContractResponse represents the child contract response
