@@ -158,15 +158,24 @@ onMounted(() => {
               text
               rounded
               title="Assign Government Funding"
+              aria-label="Assign Government Funding"
               @click="openGovernmentFundingDialog(data)"
             />
-            <Button icon="pi pi-pencil" text rounded title="Edit" @click="openEditDialog(data)" />
+            <Button
+              icon="pi pi-pencil"
+              text
+              rounded
+              title="Edit"
+              aria-label="Edit"
+              @click="openEditDialog(data)"
+            />
             <Button
               icon="pi pi-trash"
               text
               rounded
               severity="danger"
               title="Delete"
+              aria-label="Delete"
               @click="confirmDelete(data)"
             />
           </template>

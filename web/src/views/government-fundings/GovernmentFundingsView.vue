@@ -68,14 +68,29 @@ onMounted(() => {
         </Column>
         <Column header="Actions" style="width: 200px">
           <template #body="{ data }">
-            <Button icon="pi pi-eye" text rounded title="View Details" @click="openDetails(data)" />
-            <Button icon="pi pi-pencil" text rounded title="Edit" @click="openEditDialog(data)" />
+            <Button
+              icon="pi pi-eye"
+              text
+              rounded
+              title="View Details"
+              aria-label="View Details"
+              @click="openDetails(data)"
+            />
+            <Button
+              icon="pi pi-pencil"
+              text
+              rounded
+              title="Edit"
+              aria-label="Edit"
+              @click="openEditDialog(data)"
+            />
             <Button
               icon="pi pi-trash"
               text
               rounded
               severity="danger"
               title="Delete"
+              aria-label="Delete"
               @click="confirmDelete(data)"
             />
           </template>

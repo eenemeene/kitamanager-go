@@ -319,6 +319,8 @@ jobs:
           SEED_ADMIN_NAME=admin \
           SEED_RBAC_POLICIES=true \
           LOGIN_RATE_LIMIT_PER_MINUTE=0 \
+          GOVERNMENT_FUNDING_SEED_PATH=configs/government-fundings/berlin.yaml \
+          GOVERNMENT_FUNDING_SEED_NAME=Berlin \
           ./bin/kitamanager-api &
           API_PID=$!
           # Wait for API to be ready with retry loop

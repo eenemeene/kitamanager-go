@@ -44,6 +44,8 @@ dev:
 		SEED_ADMIN_PASSWORD=adminadmin \
 		SEED_ADMIN_NAME=admin \
 		SEED_RBAC_POLICIES=true \
+		GOVERNMENT_FUNDING_SEED_PATH=configs/government-fundings/berlin.yaml \
+		GOVERNMENT_FUNDING_SEED_NAME=Berlin \
 		CORS_ALLOW_ORIGINS="http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:8080" \
 		CORS_ALLOW_CREDENTIALS=true \
 		./bin/kitamanager-api > /tmp/kitamanager-api.log 2>&1 & echo $$! > /tmp/kitamanager-api.pid

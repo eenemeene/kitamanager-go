@@ -249,3 +249,60 @@ export async function createUserWithRole(
 
   return user
 }
+
+/**
+ * Get all government fundings via the API.
+ * Requires superadmin token.
+ */
+export async function getGovernmentFundings(
+  page: Page,
+  token: string
+): Promise<Array<{ id: number; name: string }>> {
+  return page.evaluate(async ({ token }) => {
+    const res = await fetch('/api/v1/government-fundings', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (!res.ok) {
+      throw new Error(`Failed to fetch government fundings: ${res.status}`)
+    }
+    const data = await res.json()
+    return data.data || data
+  }, { token })
+}
+
+/**
+ * Assign a government funding to an organization via the UI.
+ * Assumes user is on the organizations page.
+ */
+export async function assignGovernmentFundingToOrganization(
+  page: Page,
+  orgName: string,
+  fundingName: string
+) {
+  // Find the row with the organization and click the money button
+  const row = page.getByRole('row').filter({ hasText: orgName })
+  await row.getByRole('button', { name: /assign government funding/i }).click()
+
+  // Wait for the dialog to appear
+  await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 })
+
+  // Select the government funding from the dropdown (use combobox role)
+  const dropdown = page.getByRole('dialog').getByRole('combobox', { name: /select a government funding/i })
+  await dropdown.click()
+
+  // Select the funding option
+  const fundingOption = page.getByRole('option', { name: fundingName })
+  await expect(fundingOption).toBeVisible({ timeout: 5000 })
+  await fundingOption.click()
+
+  // Save the assignment
+  await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click()
+
+  // Wait for success toast
+  await expect(page.getByText(/government funding assigned successfully/i)).toBeVisible({
+    timeout: 5000
+  })
+
+  // Wait for dialog to close
+  await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
+}
