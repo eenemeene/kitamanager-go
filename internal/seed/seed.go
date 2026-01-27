@@ -2,6 +2,7 @@ package seed
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"math/rand"
 	"time"
@@ -134,10 +135,11 @@ var attributeCombinations = [][]string{
 }
 
 // SeedTestData creates test data for development:
-// - Organization "Kita Sonnenschein"
+// - Berlin government funding plan
+// - Organization "Kita Sonnenschein" with Berlin funding assigned
 // - Manager user "manager@example.com" (password: "supersecret")
 // - 50 children distributed by age with contracts
-func SeedTestData(cfg *config.Config, db *gorm.DB) error {
+func SeedTestData(cfg *config.Config, db *gorm.DB, fundingStore *store.GovernmentFundingStore) error {
 	if !cfg.SeedTestData {
 		slog.Info("Test data seeding skipped: SEED_TEST_DATA not set to true")
 		return nil
@@ -152,16 +154,33 @@ func SeedTestData(cfg *config.Config, db *gorm.DB) error {
 
 	slog.Info("Seeding test data...")
 
-	// Create organization
+	// Import Berlin government funding plan
+	var fundingID *uint
+	governmentFundingImporter := importer.NewGovernmentFundingImporter(db, fundingStore)
+	id, err := governmentFundingImporter.ImportGovernmentFundingFromFile("configs/government-fundings/berlin.yaml", "Berlin")
+	if err != nil {
+		if errors.Is(err, importer.ErrGovernmentFundingExists) {
+			slog.Info("Berlin government funding already exists", "id", id)
+			fundingID = &id
+		} else {
+			return fmt.Errorf("failed to import Berlin government funding: %w", err)
+		}
+	} else {
+		slog.Info("Berlin government funding imported", "id", id)
+		fundingID = &id
+	}
+
+	// Create organization with Berlin funding
 	org := &models.Organization{
-		Name:      "Kita Sonnenschein",
-		Active:    true,
-		CreatedBy: "seed",
+		Name:                "Kita Sonnenschein",
+		Active:              true,
+		GovernmentFundingID: fundingID,
+		CreatedBy:           "seed",
 	}
 	if err := db.Create(org).Error; err != nil {
 		return err
 	}
-	slog.Info("Created test organization", "name", org.Name, "id", org.ID)
+	slog.Info("Created test organization", "name", org.Name, "id", org.ID, "fundingId", fundingID)
 
 	// Create default group for the organization
 	group := &models.Group{

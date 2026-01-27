@@ -106,7 +106,7 @@ func main() {
 	}
 
 	// Seed test data if configured
-	if err := seed.SeedTestData(cfg, db); err != nil {
+	if err := seed.SeedTestData(cfg, db, governmentFundingStore); err != nil {
 		slog.Error("Failed to seed test data", "error", err)
 		os.Exit(1)
 	}
