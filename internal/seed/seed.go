@@ -224,13 +224,18 @@ func SeedTestData(cfg *config.Config, db *gorm.DB) error {
 	slog.Info("Created test children", "count", len(children))
 
 	// Create contracts for all children
-	for _, child := range children {
-		contract := createTestContract(child.ID, child.Birthdate)
-		if err := db.Create(&contract).Error; err != nil {
-			return err
+	// ~30% of children get multiple contracts (contract history)
+	contractCount := 0
+	for i, child := range children {
+		contracts := createTestContracts(child.ID, child.Birthdate, i%3 == 0) // every 3rd child gets history
+		for _, contract := range contracts {
+			if err := db.Create(&contract).Error; err != nil {
+				return err
+			}
+			contractCount++
 		}
 	}
-	slog.Info("Created test contracts", "count", len(children))
+	slog.Info("Created test contracts", "count", contractCount)
 
 	slog.Info("Test data seeding completed",
 		"organization", org.Name,
@@ -302,23 +307,66 @@ func createTestChildren(orgID uint, count int) []models.Child {
 }
 
 //nolint:gosec // G404: math/rand is fine for test data generation
-func createTestContract(childID uint, birthdate time.Time) models.ChildContract {
+func createTestContracts(childID uint, birthdate time.Time, withHistory bool) []models.ChildContract {
+	now := time.Now()
+
+	// First contract starts 6-18 months after birth
 	contractStart := birthdate.AddDate(0, 6+rand.Intn(12), 0)
 	contractStart = time.Date(contractStart.Year(), contractStart.Month(), 1, 0, 0, 0, 0, time.UTC)
 
-	now := time.Now()
 	if contractStart.After(now) {
 		contractStart = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
 	}
 
-	attrs := attributeCombinations[rand.Intn(len(attributeCombinations))]
-
-	return models.ChildContract{
-		ChildID: childID,
-		Period: models.Period{
-			From: contractStart,
-			To:   nil,
-		},
-		Attributes: attrs,
+	if !withHistory {
+		// Single contract (open-ended)
+		return []models.ChildContract{{
+			ChildID: childID,
+			Period: models.Period{
+				From: contractStart,
+				To:   nil,
+			},
+			Attributes: attributeCombinations[rand.Intn(len(attributeCombinations))],
+		}}
 	}
+
+	// Create 2-3 contracts with history
+	numContracts := 2 + rand.Intn(2) // 2 or 3 contracts
+	contracts := make([]models.ChildContract, 0, numContracts)
+
+	currentStart := contractStart
+	for i := 0; i < numContracts; i++ {
+		// Each contract lasts 6-18 months
+		duration := 6 + rand.Intn(12)
+		contractEnd := currentStart.AddDate(0, duration, 0)
+		contractEnd = time.Date(contractEnd.Year(), contractEnd.Month(), 1, 0, 0, 0, 0, time.UTC).AddDate(0, 0, -1) // last day of prev month
+
+		isLast := i == numContracts-1
+		if contractEnd.After(now) || isLast {
+			// Last contract or would end in future: make it open-ended
+			contracts = append(contracts, models.ChildContract{
+				ChildID: childID,
+				Period: models.Period{
+					From: currentStart,
+					To:   nil,
+				},
+				Attributes: attributeCombinations[rand.Intn(len(attributeCombinations))],
+			})
+			break
+		}
+
+		contracts = append(contracts, models.ChildContract{
+			ChildID: childID,
+			Period: models.Period{
+				From: currentStart,
+				To:   &contractEnd,
+			},
+			Attributes: attributeCombinations[rand.Intn(len(attributeCombinations))],
+		})
+
+		// Next contract starts the day after
+		currentStart = contractEnd.AddDate(0, 0, 1)
+	}
+
+	return contracts
 }
