@@ -21,6 +21,7 @@ import type {
   ChildUpdateRequest,
   ChildContract,
   ChildContractCreateRequest,
+  ChildContractUpdateRequest,
   Role,
   UserGroupResponse,
   UserMembershipsResponse,
@@ -325,6 +326,19 @@ class ApiClient {
   ): Promise<ChildContract> {
     const response = await this.client.post<ChildContract>(
       `/organizations/${orgId}/children/${childId}/contracts`,
+      data
+    )
+    return response.data
+  }
+
+  async updateChildContract(
+    orgId: number,
+    childId: number,
+    contractId: number,
+    data: ChildContractUpdateRequest
+  ): Promise<ChildContract> {
+    const response = await this.client.put<ChildContract>(
+      `/organizations/${orgId}/children/${childId}/contracts/${contractId}`,
       data
     )
     return response.data

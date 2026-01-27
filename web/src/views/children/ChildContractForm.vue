@@ -1,19 +1,22 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
-import type { Child, ChildContractCreateRequest } from '@/api/types'
+import type { Child, ChildContract, ChildContractCreateRequest } from '@/api/types'
 import Dialog from 'primevue/dialog'
 import DatePicker from 'primevue/datepicker'
 import Button from 'primevue/button'
 import Chips from 'primevue/chips'
+import Checkbox from 'primevue/checkbox'
+import Message from 'primevue/message'
 
 const props = defineProps<{
   visible: boolean
   child: Child | null
+  currentContract: ChildContract | null
 }>()
 
 const emit = defineEmits<{
   close: []
-  save: [data: ChildContractCreateRequest]
+  save: [data: ChildContractCreateRequest, endCurrentContract: boolean]
 }>()
 
 const form = ref({
@@ -21,6 +24,8 @@ const form = ref({
   to: null as Date | null,
   attributes: [] as string[]
 })
+
+const endCurrentContract = ref(true)
 
 const errors = ref<{
   from?: string
@@ -32,6 +37,22 @@ const dialogTitle = computed(() =>
     : 'New Contract'
 )
 
+const hasActiveContract = computed(() => props.currentContract !== null)
+
+const currentContractInfo = computed(() => {
+  if (!props.currentContract) return ''
+  const from = new Date(props.currentContract.from).toLocaleDateString()
+  const attrs = props.currentContract.attributes?.join(', ') || 'no attributes'
+  return `Active since ${from} (${attrs})`
+})
+
+const suggestedEndDate = computed(() => {
+  if (!form.value.from) return null
+  const endDate = new Date(form.value.from)
+  endDate.setDate(endDate.getDate() - 1)
+  return endDate.toLocaleDateString()
+})
+
 watch(
   () => props.visible,
   (visible) => {
@@ -41,6 +62,7 @@ watch(
         to: null,
         attributes: []
       }
+      endCurrentContract.value = true
       errors.value = {}
     }
   }
@@ -58,11 +80,15 @@ function validate(): boolean {
 
 function handleSave() {
   if (validate()) {
-    emit('save', {
-      from: form.value.from!.toISOString(),
-      to: form.value.to ? form.value.to.toISOString() : null,
-      attributes: form.value.attributes
-    })
+    emit(
+      'save',
+      {
+        from: form.value.from!.toISOString(),
+        to: form.value.to ? form.value.to.toISOString() : null,
+        attributes: form.value.attributes
+      },
+      hasActiveContract.value && endCurrentContract.value
+    )
   }
 }
 </script>
@@ -73,10 +99,26 @@ function handleSave() {
     :header="dialogTitle"
     modal
     :closable="true"
-    :style="{ width: '500px' }"
+    :style="{ width: '550px' }"
     @update:visible="$emit('close')"
   >
     <div class="form-grid">
+      <!-- Active contract warning -->
+      <Message v-if="hasActiveContract" severity="warn" :closable="false" class="mb-3">
+        <div class="active-contract-info">
+          <p class="mb-2">
+            <strong>This child has an active contract:</strong><br />
+            {{ currentContractInfo }}
+          </p>
+          <div class="flex items-center gap-2">
+            <Checkbox v-model="endCurrentContract" input-id="endContract" :binary="true" />
+            <label for="endContract">
+              End current contract on {{ suggestedEndDate }} (day before new contract starts)
+            </label>
+          </div>
+        </div>
+      </Message>
+
       <div class="field">
         <label for="from">Start Date</label>
         <DatePicker
@@ -126,5 +168,29 @@ function handleSave() {
 <style scoped>
 .text-secondary {
   color: var(--text-color-secondary);
+}
+
+.active-contract-info p {
+  margin: 0;
+}
+
+.mb-2 {
+  margin-bottom: 0.5rem;
+}
+
+.mb-3 {
+  margin-bottom: 1rem;
+}
+
+.flex {
+  display: flex;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.gap-2 {
+  gap: 0.5rem;
 }
 </style>

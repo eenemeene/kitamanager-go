@@ -39,6 +39,13 @@ type ChildContractCreateRequest struct {
 	Attributes []string   `json:"attributes" example:"ganztags,ndh"`
 }
 
+// ChildContractUpdateRequest represents the request body for updating a child contract.
+type ChildContractUpdateRequest struct {
+	From       *time.Time `json:"from" example:"2025-01-01"`
+	To         *time.Time `json:"to" example:"2025-12-31"`
+	Attributes []string   `json:"attributes" example:"ganztags,ndh"`
+}
+
 // ChildCreateRequest represents the request body for creating a child.
 // OrganizationID is derived from the URL path parameter.
 type ChildCreateRequest struct {

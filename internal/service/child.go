@@ -241,6 +241,58 @@ func (s *ChildService) CreateContract(ctx context.Context, childID, orgID uint, 
 	return &resp, nil
 }
 
+// UpdateContract updates an existing contract, validating it belongs to a child in the specified organization
+func (s *ChildService) UpdateContract(ctx context.Context, contractID, childID, orgID uint, req *models.ChildContractUpdateRequest) (*models.ChildContractResponse, error) {
+	// Security: Validate child belongs to the specified organization
+	child, err := s.store.FindByID(childID)
+	if err != nil {
+		return nil, apperror.NotFound("child")
+	}
+	if child.OrganizationID != orgID {
+		return nil, apperror.NotFound("child")
+	}
+
+	// Validate contract belongs to the child
+	contract, err := s.store.FindContractByID(contractID)
+	if err != nil {
+		return nil, apperror.NotFound("contract")
+	}
+	if contract.ChildID != childID {
+		return nil, apperror.NotFound("contract")
+	}
+
+	// Update fields if provided
+	if req.From != nil {
+		contract.From = *req.From
+	}
+	if req.To != nil {
+		contract.To = req.To
+	}
+	if req.Attributes != nil {
+		contract.Attributes = req.Attributes
+	}
+
+	// Validate period
+	if err := validation.ValidatePeriod(contract.From, contract.To); err != nil {
+		return nil, apperror.BadRequest(err.Error())
+	}
+
+	// Validate no overlap (excluding this contract)
+	if err := s.store.Contracts().ValidateNoOverlap(childID, contract.From, contract.To, &contractID); err != nil {
+		if errors.Is(err, store.ErrContractOverlap) {
+			return nil, apperror.Conflict(err.Error())
+		}
+		return nil, apperror.Internal("failed to validate contract")
+	}
+
+	if err := s.store.UpdateContract(contract); err != nil {
+		return nil, apperror.Internal("failed to update contract")
+	}
+
+	resp := contract.ToResponse()
+	return &resp, nil
+}
+
 // DeleteContract deletes a contract, validating it belongs to a child in the specified organization
 func (s *ChildService) DeleteContract(ctx context.Context, contractID, childID, orgID uint) error {
 	// Security: Validate child belongs to the specified organization

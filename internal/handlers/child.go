@@ -329,6 +329,58 @@ func (h *ChildHandler) CreateContract(c *gin.Context) {
 	c.JSON(http.StatusCreated, contract)
 }
 
+// UpdateContract godoc
+// @Summary Update child contract
+// @Description Update an existing contract by ID
+// @Tags children
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Param id path int true "Child ID"
+// @Param contractId path int true "Contract ID"
+// @Param request body models.ChildContractUpdateRequest true "Contract data"
+// @Success 200 {object} models.ChildContract
+// @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 409 {object} ErrorResponse "Contract overlaps with existing"
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/organizations/{orgId}/children/{id}/contracts/{contractId} [put]
+func (h *ChildHandler) UpdateContract(c *gin.Context) {
+	orgID, err := parseID(c, "orgId")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	id, err := parseID(c, "id")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	contractID, err := parseID(c, "contractId")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	var req models.ChildContractUpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respondError(c, apperror.BadRequest(err.Error()))
+		return
+	}
+
+	contract, err := h.service.UpdateContract(c.Request.Context(), contractID, id, orgID, &req)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, contract)
+}
+
 // DeleteContract godoc
 // @Summary Delete child contract
 // @Description Delete a contract by ID

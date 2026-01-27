@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -34,6 +34,12 @@ const selectedChild = ref<Child | null>(null)
 
 const historyDialogVisible = ref(false)
 const historyChild = ref<Child | null>(null)
+
+// Computed property for the current contract of the selected child
+const selectedChildCurrentContract = computed(() => {
+  if (!selectedChild.value) return null
+  return getCurrentContract(selectedChild.value) ?? null
+})
 
 watch(
   () => route.params.orgId,
@@ -153,15 +159,32 @@ function closeHistoryDialog() {
   historyChild.value = null
 }
 
-async function saveContract(data: ChildContractCreateRequest) {
+async function saveContract(data: ChildContractCreateRequest, endCurrentContract: boolean) {
   if (!selectedChild.value) return
 
   try {
+    // If we need to end the current contract first
+    if (endCurrentContract && selectedChildCurrentContract.value) {
+      const newStartDate = new Date(data.from)
+      const endDate = new Date(newStartDate)
+      endDate.setDate(endDate.getDate() - 1)
+
+      await apiClient.updateChildContract(
+        orgId.value,
+        selectedChild.value.id,
+        selectedChildCurrentContract.value.id,
+        { to: endDate.toISOString() }
+      )
+    }
+
+    // Create the new contract
     await apiClient.createChildContract(orgId.value, selectedChild.value.id, data)
     toast.add({
       severity: 'success',
       summary: 'Success',
-      detail: 'Contract created successfully',
+      detail: endCurrentContract
+        ? 'Previous contract ended and new contract created successfully'
+        : 'Contract created successfully',
       life: 3000
     })
     closeContractDialog()
@@ -295,6 +318,7 @@ onMounted(() => {
     <ChildContractForm
       :visible="contractDialogVisible"
       :child="selectedChild"
+      :current-contract="selectedChildCurrentContract"
       @close="closeContractDialog"
       @save="saveContract"
     />

@@ -267,6 +267,12 @@ export interface ChildContractCreateRequest {
   attributes?: string[]
 }
 
+export interface ChildContractUpdateRequest {
+  from?: string
+  to?: string | null
+  attributes?: string[]
+}
+
 // Pagination response wrapper
 export interface PaginatedResponse<T> {
   data: T[]
