@@ -110,7 +110,7 @@ func TestGovernmentFundingHandler_UpdateEntry_AgeRangeValidation(t *testing.T) {
 	db.Create(funding)
 	period := &models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:      time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		From:                time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 	db.Create(period)
 	entry := &models.GovernmentFundingEntry{
@@ -196,7 +196,7 @@ func TestGovernmentFundingHandler_Entry_AgeRangeBoundarySemantics(t *testing.T) 
 	db.Create(funding)
 	period := &models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:      time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		From:                time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 	db.Create(period)
 
@@ -433,7 +433,7 @@ func TestGovernmentFundingHandler_CreatePeriod_NoOverlap(t *testing.T) {
 			existingFrom, _ := time.Parse("2006-01-02", tt.existingFrom)
 			existingPeriod := &models.GovernmentFundingPeriod{
 				GovernmentFundingID: funding.ID,
-				From:      existingFrom,
+				From:                existingFrom,
 			}
 			if tt.existingTo != nil {
 				to, _ := time.Parse("2006-01-02", *tt.existingTo)

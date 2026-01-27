@@ -139,11 +139,11 @@ type GovernmentFundingStorer interface {
 
 // Compile-time interface compliance checks
 var (
-	_ UserStorer         = (*UserStore)(nil)
-	_ OrganizationStorer = (*OrganizationStore)(nil)
-	_ GroupStorer        = (*GroupStore)(nil)
-	_ EmployeeStorer     = (*EmployeeStore)(nil)
-	_ ChildStorer        = (*ChildStore)(nil)
-	_ UserGroupStorer    = (*UserGroupStore)(nil)
+	_ UserStorer              = (*UserStore)(nil)
+	_ OrganizationStorer      = (*OrganizationStore)(nil)
+	_ GroupStorer             = (*GroupStore)(nil)
+	_ EmployeeStorer          = (*EmployeeStore)(nil)
+	_ ChildStorer             = (*ChildStore)(nil)
+	_ UserGroupStorer         = (*UserGroupStore)(nil)
 	_ GovernmentFundingStorer = (*GovernmentFundingStore)(nil)
 )

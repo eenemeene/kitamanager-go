@@ -48,6 +48,7 @@ func (i *GovernmentFundingImporter) ImportGovernmentFundingFromFile(filePath, fu
 	}
 
 	// Read YAML file
+	// #nosec G304 -- filePath is from trusted configuration, not user input
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return 0, fmt.Errorf("failed to read file: %w", err)
