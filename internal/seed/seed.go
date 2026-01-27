@@ -123,13 +123,14 @@ var lastNames = []string{
 }
 
 // Contract attribute combinations
+// These must match the property names in the Berlin government funding YAML
 var attributeCombinations = [][]string{
-	{"ganztags"},
-	{"ganztags", "ndh"},
-	{"ganztags", "integration_a"},
-	{"ganztags", "ndh", "integration_a"},
-	{"halbtags"},
-	{"halbtags", "ndh"},
+	{"ganztag"},
+	{"ganztag", "ndh"},
+	{"ganztag", "integration a"},
+	{"ganztag", "ndh", "integration a"},
+	{"halbtag"},
+	{"halbtag", "ndh"},
 	{"teilzeit"},
 	{"teilzeit", "ndh"},
 }
