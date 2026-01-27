@@ -728,3 +728,422 @@ func TestAuthorizationMiddleware_RequirePermission_MemberCannotCreate(t *testing
 		t.Errorf("expected status %d, got %d", http.StatusForbidden, w.Code)
 	}
 }
+
+// Tests for Government Funding authorization
+// All government funding endpoints require superadmin access
+
+func TestAuthorizationMiddleware_GovernmentFunding_SuperAdminCanList(t *testing.T) {
+	db := setupTestDB(t)
+	enforcer := setupTestEnforcer(t)
+	assignSuperAdmin(t, db, 1)
+	permissionService := setupTestPermissionService(t, db, enforcer)
+
+	middleware := NewAuthorizationMiddleware(permissionService)
+
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", uint(1))
+		c.Next()
+	})
+	r.GET("/government-fundings",
+		middleware.RequireSuperAdmin(),
+		func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+		})
+
+	req, _ := http.NewRequest("GET", "/government-fundings", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d for superadmin listing government fundings, got %d", http.StatusOK, w.Code)
+	}
+}
+
+func TestAuthorizationMiddleware_GovernmentFunding_SuperAdminCanCreate(t *testing.T) {
+	db := setupTestDB(t)
+	enforcer := setupTestEnforcer(t)
+	assignSuperAdmin(t, db, 1)
+	permissionService := setupTestPermissionService(t, db, enforcer)
+
+	middleware := NewAuthorizationMiddleware(permissionService)
+
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", uint(1))
+		c.Next()
+	})
+	r.POST("/government-fundings",
+		middleware.RequireSuperAdmin(),
+		func(c *gin.Context) {
+			c.JSON(http.StatusCreated, gin.H{"id": 1, "name": "Berlin"})
+		})
+
+	req, _ := http.NewRequest("POST", "/government-fundings", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Errorf("expected status %d for superadmin creating government funding, got %d", http.StatusCreated, w.Code)
+	}
+}
+
+func TestAuthorizationMiddleware_GovernmentFunding_SuperAdminCanUpdate(t *testing.T) {
+	db := setupTestDB(t)
+	enforcer := setupTestEnforcer(t)
+	assignSuperAdmin(t, db, 1)
+	permissionService := setupTestPermissionService(t, db, enforcer)
+
+	middleware := NewAuthorizationMiddleware(permissionService)
+
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", uint(1))
+		c.Next()
+	})
+	r.PUT("/government-fundings/:id",
+		middleware.RequireSuperAdmin(),
+		func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"id": 1, "name": "Berlin Updated"})
+		})
+
+	req, _ := http.NewRequest("PUT", "/government-fundings/1", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d for superadmin updating government funding, got %d", http.StatusOK, w.Code)
+	}
+}
+
+func TestAuthorizationMiddleware_GovernmentFunding_SuperAdminCanDelete(t *testing.T) {
+	db := setupTestDB(t)
+	enforcer := setupTestEnforcer(t)
+	assignSuperAdmin(t, db, 1)
+	permissionService := setupTestPermissionService(t, db, enforcer)
+
+	middleware := NewAuthorizationMiddleware(permissionService)
+
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", uint(1))
+		c.Next()
+	})
+	r.DELETE("/government-fundings/:id",
+		middleware.RequireSuperAdmin(),
+		func(c *gin.Context) {
+			c.JSON(http.StatusNoContent, nil)
+		})
+
+	req, _ := http.NewRequest("DELETE", "/government-fundings/1", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Errorf("expected status %d for superadmin deleting government funding, got %d", http.StatusNoContent, w.Code)
+	}
+}
+
+func TestAuthorizationMiddleware_GovernmentFunding_AdminCannotList(t *testing.T) {
+	db := setupTestDB(t)
+	enforcer := setupTestEnforcer(t)
+	assignRole(t, db, 1, models.RoleAdmin, 1) // Admin, not superadmin
+	permissionService := setupTestPermissionService(t, db, enforcer)
+
+	middleware := NewAuthorizationMiddleware(permissionService)
+
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", uint(1))
+		c.Next()
+	})
+	r.GET("/government-fundings",
+		middleware.RequireSuperAdmin(),
+		func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+		})
+
+	req, _ := http.NewRequest("GET", "/government-fundings", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("expected status %d for admin listing government fundings, got %d", http.StatusForbidden, w.Code)
+	}
+}
+
+func TestAuthorizationMiddleware_GovernmentFunding_AdminCannotCreate(t *testing.T) {
+	db := setupTestDB(t)
+	enforcer := setupTestEnforcer(t)
+	assignRole(t, db, 1, models.RoleAdmin, 1) // Admin, not superadmin
+	permissionService := setupTestPermissionService(t, db, enforcer)
+
+	middleware := NewAuthorizationMiddleware(permissionService)
+
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", uint(1))
+		c.Next()
+	})
+	r.POST("/government-fundings",
+		middleware.RequireSuperAdmin(),
+		func(c *gin.Context) {
+			c.JSON(http.StatusCreated, gin.H{"id": 1})
+		})
+
+	req, _ := http.NewRequest("POST", "/government-fundings", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("expected status %d for admin creating government funding, got %d", http.StatusForbidden, w.Code)
+	}
+}
+
+func TestAuthorizationMiddleware_GovernmentFunding_AdminCannotUpdate(t *testing.T) {
+	db := setupTestDB(t)
+	enforcer := setupTestEnforcer(t)
+	assignRole(t, db, 1, models.RoleAdmin, 1) // Admin, not superadmin
+	permissionService := setupTestPermissionService(t, db, enforcer)
+
+	middleware := NewAuthorizationMiddleware(permissionService)
+
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", uint(1))
+		c.Next()
+	})
+	r.PUT("/government-fundings/:id",
+		middleware.RequireSuperAdmin(),
+		func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"id": 1})
+		})
+
+	req, _ := http.NewRequest("PUT", "/government-fundings/1", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("expected status %d for admin updating government funding, got %d", http.StatusForbidden, w.Code)
+	}
+}
+
+func TestAuthorizationMiddleware_GovernmentFunding_AdminCannotDelete(t *testing.T) {
+	db := setupTestDB(t)
+	enforcer := setupTestEnforcer(t)
+	assignRole(t, db, 1, models.RoleAdmin, 1) // Admin, not superadmin
+	permissionService := setupTestPermissionService(t, db, enforcer)
+
+	middleware := NewAuthorizationMiddleware(permissionService)
+
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", uint(1))
+		c.Next()
+	})
+	r.DELETE("/government-fundings/:id",
+		middleware.RequireSuperAdmin(),
+		func(c *gin.Context) {
+			c.JSON(http.StatusNoContent, nil)
+		})
+
+	req, _ := http.NewRequest("DELETE", "/government-fundings/1", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("expected status %d for admin deleting government funding, got %d", http.StatusForbidden, w.Code)
+	}
+}
+
+func TestAuthorizationMiddleware_GovernmentFunding_ManagerCannotAccess(t *testing.T) {
+	db := setupTestDB(t)
+	enforcer := setupTestEnforcer(t)
+	assignRole(t, db, 1, models.RoleManager, 1) // Manager, not superadmin
+	permissionService := setupTestPermissionService(t, db, enforcer)
+
+	middleware := NewAuthorizationMiddleware(permissionService)
+
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", uint(1))
+		c.Next()
+	})
+	r.GET("/government-fundings",
+		middleware.RequireSuperAdmin(),
+		func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+		})
+
+	req, _ := http.NewRequest("GET", "/government-fundings", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("expected status %d for manager accessing government fundings, got %d", http.StatusForbidden, w.Code)
+	}
+}
+
+func TestAuthorizationMiddleware_GovernmentFunding_MemberCannotAccess(t *testing.T) {
+	db := setupTestDB(t)
+	enforcer := setupTestEnforcer(t)
+	assignRole(t, db, 1, models.RoleMember, 1) // Member, not superadmin
+	permissionService := setupTestPermissionService(t, db, enforcer)
+
+	middleware := NewAuthorizationMiddleware(permissionService)
+
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", uint(1))
+		c.Next()
+	})
+	r.GET("/government-fundings",
+		middleware.RequireSuperAdmin(),
+		func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+		})
+
+	req, _ := http.NewRequest("GET", "/government-fundings", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("expected status %d for member accessing government fundings, got %d", http.StatusForbidden, w.Code)
+	}
+}
+
+func TestAuthorizationMiddleware_GovernmentFunding_NoUserID(t *testing.T) {
+	db := setupTestDB(t)
+	enforcer := setupTestEnforcer(t)
+	permissionService := setupTestPermissionService(t, db, enforcer)
+
+	middleware := NewAuthorizationMiddleware(permissionService)
+
+	r := gin.New()
+	// No userID set - simulates unauthenticated request
+	r.GET("/government-fundings",
+		middleware.RequireSuperAdmin(),
+		func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+		})
+
+	req, _ := http.NewRequest("GET", "/government-fundings", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected status %d for unauthenticated access to government fundings, got %d", http.StatusUnauthorized, w.Code)
+	}
+}
+
+func TestAuthorizationMiddleware_GovernmentFunding_SuperAdminCanCreatePeriod(t *testing.T) {
+	db := setupTestDB(t)
+	enforcer := setupTestEnforcer(t)
+	assignSuperAdmin(t, db, 1)
+	permissionService := setupTestPermissionService(t, db, enforcer)
+
+	middleware := NewAuthorizationMiddleware(permissionService)
+
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", uint(1))
+		c.Next()
+	})
+	r.POST("/government-fundings/:id/periods",
+		middleware.RequireSuperAdmin(),
+		func(c *gin.Context) {
+			c.JSON(http.StatusCreated, gin.H{"id": 1})
+		})
+
+	req, _ := http.NewRequest("POST", "/government-fundings/1/periods", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Errorf("expected status %d for superadmin creating period, got %d", http.StatusCreated, w.Code)
+	}
+}
+
+func TestAuthorizationMiddleware_GovernmentFunding_AdminCannotCreatePeriod(t *testing.T) {
+	db := setupTestDB(t)
+	enforcer := setupTestEnforcer(t)
+	assignRole(t, db, 1, models.RoleAdmin, 1) // Admin, not superadmin
+	permissionService := setupTestPermissionService(t, db, enforcer)
+
+	middleware := NewAuthorizationMiddleware(permissionService)
+
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", uint(1))
+		c.Next()
+	})
+	r.POST("/government-fundings/:id/periods",
+		middleware.RequireSuperAdmin(),
+		func(c *gin.Context) {
+			c.JSON(http.StatusCreated, gin.H{"id": 1})
+		})
+
+	req, _ := http.NewRequest("POST", "/government-fundings/1/periods", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("expected status %d for admin creating period, got %d", http.StatusForbidden, w.Code)
+	}
+}
+
+func TestAuthorizationMiddleware_GovernmentFunding_SuperAdminCanAssignToOrg(t *testing.T) {
+	db := setupTestDB(t)
+	enforcer := setupTestEnforcer(t)
+	assignSuperAdmin(t, db, 1)
+	permissionService := setupTestPermissionService(t, db, enforcer)
+
+	middleware := NewAuthorizationMiddleware(permissionService)
+
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", uint(1))
+		c.Next()
+	})
+	r.PUT("/organizations/:orgId/government-funding",
+		middleware.RequireSuperAdmin(),
+		func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"message": "assigned"})
+		})
+
+	req, _ := http.NewRequest("PUT", "/organizations/1/government-funding", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d for superadmin assigning funding to org, got %d", http.StatusOK, w.Code)
+	}
+}
+
+func TestAuthorizationMiddleware_GovernmentFunding_AdminCannotAssignToOrg(t *testing.T) {
+	db := setupTestDB(t)
+	enforcer := setupTestEnforcer(t)
+	assignRole(t, db, 1, models.RoleAdmin, 1) // Admin, not superadmin
+	permissionService := setupTestPermissionService(t, db, enforcer)
+
+	middleware := NewAuthorizationMiddleware(permissionService)
+
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", uint(1))
+		c.Next()
+	})
+	r.PUT("/organizations/:orgId/government-funding",
+		middleware.RequireSuperAdmin(),
+		func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"message": "assigned"})
+		})
+
+	req, _ := http.NewRequest("PUT", "/organizations/1/government-funding", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("expected status %d for admin assigning funding to org, got %d", http.StatusForbidden, w.Code)
+	}
+}
