@@ -35,7 +35,12 @@ export default {
     failedToCreate: 'Fehler beim Erstellen von {resource}',
     ongoing: 'laufend',
     viewDetails: 'Details anzeigen',
-    created: 'Erstellt'
+    created: 'Erstellt',
+    add: 'Hinzufügen',
+    remove: 'Entfernen',
+    organization: 'Organisation',
+    comment: 'Kommentar',
+    unknown: 'Unbekannt'
   },
   auth: {
     login: 'Anmelden',
@@ -151,7 +156,28 @@ export default {
     deleteSuccess: 'Benutzer erfolgreich gelöscht',
     createSuccess: 'Benutzer erfolgreich erstellt',
     updateSuccess: 'Benutzer erfolgreich aktualisiert',
-    newUser: 'Neuer Benutzer'
+    newUser: 'Neuer Benutzer',
+    lastLogin: 'Letzte Anmeldung',
+    manageMemberships: 'Mitgliedschaften verwalten',
+    addToGroup: 'Zur Gruppe hinzufügen',
+    addUserToGroup: 'Benutzer zur Gruppe hinzufügen',
+    editRole: 'Rolle bearbeiten',
+    confirmRemoval: 'Entfernung bestätigen',
+    removeFromGroupConfirm: 'Diesen Benutzer aus der Gruppe "{name}" entfernen?',
+    addedToGroup: 'Benutzer zur Gruppe hinzugefügt',
+    failedToAddToGroup: 'Fehler beim Hinzufügen zur Gruppe',
+    roleUpdated: 'Rolle aktualisiert',
+    failedToUpdateRole: 'Fehler beim Aktualisieren der Rolle',
+    removedFromGroup: 'Benutzer aus Gruppe entfernt',
+    failedToRemoveFromGroup: 'Fehler beim Entfernen aus der Gruppe',
+    failedToLoadMemberships: 'Fehler beim Laden der Mitgliedschaftsdaten',
+    groupMembershipsFor: 'Gruppenmitgliedschaften verwalten: {name}',
+    groupMemberships: 'Gruppenmitgliedschaften verwalten',
+    groupsUserBelongsTo: 'Gruppen, denen dieser Benutzer angehört:',
+    notMemberOfAnyGroups: 'Benutzer ist in keiner Gruppe Mitglied',
+    selectGroup: 'Gruppe auswählen',
+    selectRole: 'Rolle auswählen',
+    changeRoleFor: 'Rolle ändern für'
   },
   groups: {
     title: 'Gruppen',
@@ -163,7 +189,14 @@ export default {
     deleteSuccess: 'Gruppe erfolgreich gelöscht',
     createSuccess: 'Gruppe erfolgreich erstellt',
     updateSuccess: 'Gruppe erfolgreich aktualisiert',
-    newGroup: 'Neue Gruppe'
+    newGroup: 'Neue Gruppe',
+    group: 'Gruppe'
+  },
+  roles: {
+    role: 'Rolle',
+    admin: 'Admin',
+    manager: 'Manager',
+    member: 'Mitglied'
   },
   contracts: {
     title: 'Verträge',
@@ -202,7 +235,9 @@ export default {
     lastNameRequired: 'Nachname ist erforderlich',
     birthdateRequired: 'Geburtsdatum ist erforderlich',
     nameRequired: 'Name ist erforderlich',
-    selectBirthdate: 'Geburtsdatum auswählen'
+    selectBirthdate: 'Geburtsdatum auswählen',
+    fromDateRequired: 'Von-Datum ist erforderlich',
+    maxAgeMustBeGreater: 'Höchstalter muss größer als Mindestalter sein'
   },
   settings: {
     title: 'Einstellungen',
@@ -224,6 +259,64 @@ export default {
     deleteConfirm: 'Möchten Sie diese Finanzierung wirklich löschen?',
     deleteSuccess: 'Finanzierung erfolgreich gelöscht',
     createSuccess: 'Finanzierung erfolgreich erstellt',
-    updateSuccess: 'Finanzierung erfolgreich aktualisiert'
+    updateSuccess: 'Finanzierung erfolgreich aktualisiert',
+    // Detail view
+    viewPanels: 'Panels',
+    viewTable: 'Tabelle',
+    addPeriod: 'Zeitraum hinzufügen',
+    editPeriod: 'Zeitraum bearbeiten',
+    deletePeriod: 'Zeitraum löschen',
+    addEntry: 'Eintrag hinzufügen',
+    editEntry: 'Eintrag bearbeiten',
+    deleteEntry: 'Eintrag löschen',
+    addProperty: 'Eigenschaft hinzufügen',
+    editProperty: 'Eigenschaft bearbeiten',
+    deleteProperty: 'Eigenschaft löschen',
+    // Table headers
+    period: 'Zeitraum',
+    ageRange: 'Altersbereich',
+    property: 'Eigenschaft',
+    payment: 'Zahlung',
+    requirementFte: 'Bedarf (VZÄ)',
+    // Form labels
+    fromDate: 'Von-Datum',
+    toDateOptional: 'Bis-Datum (leer lassen für laufend)',
+    minAge: 'Mindestalter (inklusive)',
+    maxAge: 'Höchstalter (exklusive)',
+    paymentInCents: 'Zahlung (in Cent)',
+    requirement: 'Bedarf (Betreuungsschlüssel)',
+    // Messages
+    periodCreated: 'Zeitraum erstellt',
+    periodUpdated: 'Zeitraum aktualisiert',
+    periodDeleted: 'Zeitraum gelöscht',
+    failedToSavePeriod: 'Fehler beim Speichern des Zeitraums',
+    failedToDeletePeriod: 'Fehler beim Löschen des Zeitraums',
+    entryCreated: 'Eintrag erstellt',
+    entryUpdated: 'Eintrag aktualisiert',
+    entryDeleted: 'Eintrag gelöscht',
+    failedToSaveEntry: 'Fehler beim Speichern des Eintrags',
+    failedToDeleteEntry: 'Fehler beim Löschen des Eintrags',
+    propertyCreated: 'Eigenschaft erstellt',
+    propertyUpdated: 'Eigenschaft aktualisiert',
+    propertyDeleted: 'Eigenschaft gelöscht',
+    failedToSaveProperty: 'Fehler beim Speichern der Eigenschaft',
+    failedToDeleteProperty: 'Fehler beim Löschen der Eigenschaft',
+    failedToLoadFunding: 'Fehler beim Laden der staatlichen Finanzierung',
+    // Confirmations
+    deletePeriodConfirm:
+      'Möchten Sie diesen Zeitraum wirklich löschen? Dies löscht auch alle Einträge und Eigenschaften.',
+    deleteEntryConfirm:
+      'Möchten Sie diesen Eintrag wirklich löschen? Dies löscht auch alle Eigenschaften.',
+    deletePropertyConfirm: 'Möchten Sie diese Eigenschaft wirklich löschen?',
+    // Empty states
+    noDataDefined:
+      'Keine Daten definiert. Wechseln Sie zur Panels-Ansicht, um Zeiträume, Einträge und Eigenschaften hinzuzufügen.',
+    noPropertiesDefined: 'Keine Eigenschaften definiert. Klicken Sie auf +, um eine hinzuzufügen.',
+    noEntriesDefined:
+      'Keine Einträge definiert. Klicken Sie auf +, um Altersbereiche hinzuzufügen.',
+    noPeriodsDefined:
+      'Keine Zeiträume definiert. Klicken Sie auf "Zeitraum hinzufügen", um zu beginnen.',
+    // Units
+    years: 'Jahre'
   }
 }

@@ -35,7 +35,12 @@ export default {
     failedToCreate: 'Failed to create {resource}',
     ongoing: 'ongoing',
     viewDetails: 'View Details',
-    created: 'Created'
+    created: 'Created',
+    add: 'Add',
+    remove: 'Remove',
+    organization: 'Organization',
+    comment: 'Comment',
+    unknown: 'Unknown'
   },
   auth: {
     login: 'Login',
@@ -151,7 +156,28 @@ export default {
     deleteSuccess: 'User deleted successfully',
     createSuccess: 'User created successfully',
     updateSuccess: 'User updated successfully',
-    newUser: 'New User'
+    newUser: 'New User',
+    lastLogin: 'Last Login',
+    manageMemberships: 'Manage Memberships',
+    addToGroup: 'Add to Group',
+    addUserToGroup: 'Add User to Group',
+    editRole: 'Edit Role',
+    confirmRemoval: 'Confirm Removal',
+    removeFromGroupConfirm: 'Remove this user from group "{name}"?',
+    addedToGroup: 'User added to group',
+    failedToAddToGroup: 'Failed to add user to group',
+    roleUpdated: 'Role updated',
+    failedToUpdateRole: 'Failed to update role',
+    removedFromGroup: 'User removed from group',
+    failedToRemoveFromGroup: 'Failed to remove user from group',
+    failedToLoadMemberships: 'Failed to load membership data',
+    groupMembershipsFor: 'Manage Group Memberships: {name}',
+    groupMemberships: 'Manage Group Memberships',
+    groupsUserBelongsTo: 'Groups this user belongs to:',
+    notMemberOfAnyGroups: 'User is not a member of any groups',
+    selectGroup: 'Select Group',
+    selectRole: 'Select Role',
+    changeRoleFor: 'Change role for'
   },
   groups: {
     title: 'Groups',
@@ -163,7 +189,14 @@ export default {
     deleteSuccess: 'Group deleted successfully',
     createSuccess: 'Group created successfully',
     updateSuccess: 'Group updated successfully',
-    newGroup: 'New Group'
+    newGroup: 'New Group',
+    group: 'Group'
+  },
+  roles: {
+    role: 'Role',
+    admin: 'Admin',
+    manager: 'Manager',
+    member: 'Member'
   },
   contracts: {
     title: 'Contracts',
@@ -202,7 +235,9 @@ export default {
     lastNameRequired: 'Last name is required',
     birthdateRequired: 'Birthdate is required',
     nameRequired: 'Name is required',
-    selectBirthdate: 'Select birthdate'
+    selectBirthdate: 'Select birthdate',
+    fromDateRequired: 'From date is required',
+    maxAgeMustBeGreater: 'Max age must be greater than min age'
   },
   settings: {
     title: 'Settings',
@@ -224,6 +259,62 @@ export default {
     deleteConfirm: 'Are you sure you want to delete this funding?',
     deleteSuccess: 'Funding deleted successfully',
     createSuccess: 'Funding created successfully',
-    updateSuccess: 'Funding updated successfully'
+    updateSuccess: 'Funding updated successfully',
+    // Detail view
+    viewPanels: 'Panels',
+    viewTable: 'Table',
+    addPeriod: 'Add Period',
+    editPeriod: 'Edit Period',
+    deletePeriod: 'Delete Period',
+    addEntry: 'Add Entry',
+    editEntry: 'Edit Entry',
+    deleteEntry: 'Delete Entry',
+    addProperty: 'Add Property',
+    editProperty: 'Edit Property',
+    deleteProperty: 'Delete Property',
+    // Table headers
+    period: 'Period',
+    ageRange: 'Age Range',
+    property: 'Property',
+    payment: 'Payment',
+    requirementFte: 'Requirement (FTE)',
+    // Form labels
+    fromDate: 'From Date',
+    toDateOptional: 'To Date (leave empty for ongoing)',
+    minAge: 'Min Age (inclusive)',
+    maxAge: 'Max Age (exclusive)',
+    paymentInCents: 'Payment (in cents)',
+    requirement: 'Requirement (staffing ratio)',
+    // Messages
+    periodCreated: 'Period created',
+    periodUpdated: 'Period updated',
+    periodDeleted: 'Period deleted',
+    failedToSavePeriod: 'Failed to save period',
+    failedToDeletePeriod: 'Failed to delete period',
+    entryCreated: 'Entry created',
+    entryUpdated: 'Entry updated',
+    entryDeleted: 'Entry deleted',
+    failedToSaveEntry: 'Failed to save entry',
+    failedToDeleteEntry: 'Failed to delete entry',
+    propertyCreated: 'Property created',
+    propertyUpdated: 'Property updated',
+    propertyDeleted: 'Property deleted',
+    failedToSaveProperty: 'Failed to save property',
+    failedToDeleteProperty: 'Failed to delete property',
+    failedToLoadFunding: 'Failed to load government funding',
+    // Confirmations
+    deletePeriodConfirm:
+      'Are you sure you want to delete this period? This will also delete all entries and properties.',
+    deleteEntryConfirm:
+      'Are you sure you want to delete this entry? This will also delete all properties.',
+    deletePropertyConfirm: 'Are you sure you want to delete this property?',
+    // Empty states
+    noDataDefined:
+      'No data defined. Switch to Panels view to add periods, entries, and properties.',
+    noPropertiesDefined: 'No properties defined. Click + to add one.',
+    noEntriesDefined: 'No entries defined. Click + to add age ranges.',
+    noPeriodsDefined: 'No periods defined. Click "Add Period" to get started.',
+    // Units
+    years: 'years'
   }
 }

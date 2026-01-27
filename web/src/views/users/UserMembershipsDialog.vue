@@ -2,6 +2,7 @@
 import { ref, watch, computed } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
+import { useI18n } from 'vue-i18n'
 import { apiClient } from '@/api/client'
 import type { User, Group, UserMembership, Role } from '@/api/types'
 import Dialog from 'primevue/dialog'
@@ -23,6 +24,7 @@ const emit = defineEmits<{
 
 const toast = useToast()
 const confirm = useConfirm()
+const { t } = useI18n()
 const loading = ref(false)
 
 // Memberships data
@@ -41,14 +43,16 @@ const editRoleDialogVisible = ref(false)
 const editingMembership = ref<UserMembership | null>(null)
 const editingRole = ref<Role>('member')
 
-const roleOptions = [
-  { label: 'Admin', value: 'admin' as Role },
-  { label: 'Manager', value: 'manager' as Role },
-  { label: 'Member', value: 'member' as Role }
-]
+const roleOptions = computed(() => [
+  { label: t('roles.admin'), value: 'admin' as Role },
+  { label: t('roles.manager'), value: 'manager' as Role },
+  { label: t('roles.member'), value: 'member' as Role }
+])
 
 const dialogTitle = computed(() =>
-  props.user ? `Manage Group Memberships: ${props.user.name}` : 'Manage Group Memberships'
+  props.user
+    ? t('users.groupMembershipsFor', { name: props.user.name })
+    : t('users.groupMemberships')
 )
 
 // Groups available to add (not already a member of)
@@ -59,7 +63,7 @@ const availableGroups = computed(() => {
 
 // Format group for dropdown display
 function formatGroupOption(group: Group): string {
-  const orgName = group.organization?.name || 'Unknown Org'
+  const orgName = group.organization?.name || t('common.unknown')
   return `${group.name} (${orgName})`
 }
 
@@ -92,8 +96,8 @@ async function loadData() {
   } catch {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load membership data',
+      summary: t('common.error'),
+      detail: t('users.failedToLoadMemberships'),
       life: 3000
     })
   } finally {
@@ -113,7 +117,14 @@ function getRoleSeverity(role: Role): 'success' | 'info' | 'secondary' {
 }
 
 function getRoleLabel(role: Role): string {
-  return role.charAt(0).toUpperCase() + role.slice(1)
+  switch (role) {
+    case 'admin':
+      return t('roles.admin')
+    case 'manager':
+      return t('roles.manager')
+    default:
+      return t('roles.member')
+  }
 }
 
 // Add to group functions
@@ -135,8 +146,8 @@ async function handleAddToGroup() {
     )
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'User added to group',
+      summary: t('common.success'),
+      detail: t('users.addedToGroup'),
       life: 3000
     })
     addGroupDialogVisible.value = false
@@ -145,8 +156,8 @@ async function handleAddToGroup() {
   } catch {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to add user to group',
+      summary: t('common.error'),
+      detail: t('users.failedToAddToGroup'),
       life: 3000
     })
   } finally {
@@ -173,8 +184,8 @@ async function handleUpdateRole() {
     )
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'Role updated',
+      summary: t('common.success'),
+      detail: t('users.roleUpdated'),
       life: 3000
     })
     editRoleDialogVisible.value = false
@@ -183,8 +194,8 @@ async function handleUpdateRole() {
   } catch {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to update role',
+      summary: t('common.error'),
+      detail: t('users.failedToUpdateRole'),
       life: 3000
     })
   } finally {
@@ -195,8 +206,8 @@ async function handleUpdateRole() {
 // Remove from group
 function confirmRemoveFromGroup(membership: UserMembership) {
   confirm.require({
-    message: `Remove this user from group "${membership.group.name}"?`,
-    header: 'Confirm Removal',
+    message: t('users.removeFromGroupConfirm', { name: membership.group.name }),
+    header: t('users.confirmRemoval'),
     icon: 'pi pi-exclamation-triangle',
     acceptClass: 'p-button-danger',
     accept: async () => {
@@ -207,8 +218,8 @@ function confirmRemoveFromGroup(membership: UserMembership) {
         await apiClient.removeUserFromGroup(props.user.id, membership.group_id)
         toast.add({
           severity: 'success',
-          summary: 'Success',
-          detail: 'User removed from group',
+          summary: t('common.success'),
+          detail: t('users.removedFromGroup'),
           life: 3000
         })
         await loadData()
@@ -216,8 +227,8 @@ function confirmRemoveFromGroup(membership: UserMembership) {
       } catch {
         toast.add({
           severity: 'error',
-          summary: 'Error',
-          detail: 'Failed to remove user from group',
+          summary: t('common.error'),
+          detail: t('users.failedToRemoveFromGroup'),
           life: 3000
         })
       } finally {
@@ -238,9 +249,9 @@ function confirmRemoveFromGroup(membership: UserMembership) {
     @update:visible="$emit('close')"
   >
     <div class="mb-3 flex justify-between">
-      <p>Groups this user belongs to:</p>
+      <p>{{ t('users.groupsUserBelongsTo') }}</p>
       <Button
-        label="Add to Group"
+        :label="t('users.addToGroup')"
         icon="pi pi-plus"
         size="small"
         :disabled="availableGroups.length === 0"
@@ -255,25 +266,25 @@ function confirmRemoveFromGroup(membership: UserMembership) {
       :paginator="memberships.length > 10"
       :rows="10"
     >
-      <Column header="Organization" style="width: 30%">
+      <Column :header="t('common.organization')" style="width: 30%">
         <template #body="{ data }">
-          {{ data.group.organization?.name || 'Unknown' }}
+          {{ data.group.organization?.name || t('common.unknown') }}
         </template>
       </Column>
-      <Column field="group.name" header="Group" style="width: 25%"></Column>
-      <Column header="Role" style="width: 20%">
+      <Column field="group.name" :header="t('groups.group')" style="width: 25%"></Column>
+      <Column :header="t('roles.role')" style="width: 20%">
         <template #body="{ data }">
           <Tag :value="getRoleLabel(data.role)" :severity="getRoleSeverity(data.role)" />
         </template>
       </Column>
-      <Column header="Actions" style="width: 25%">
+      <Column :header="t('common.actions')" style="width: 25%">
         <template #body="{ data }">
           <Button
             icon="pi pi-pencil"
             text
             rounded
             size="small"
-            title="Edit Role"
+            :title="t('users.editRole')"
             @click="openEditRoleDialog(data)"
           />
           <Button
@@ -282,19 +293,19 @@ function confirmRemoveFromGroup(membership: UserMembership) {
             rounded
             size="small"
             severity="danger"
-            title="Remove"
+            :title="t('common.remove')"
             @click="confirmRemoveFromGroup(data)"
           />
         </template>
       </Column>
       <template #empty>
-        <div class="text-center text-muted py-4">User is not a member of any groups</div>
+        <div class="text-center text-muted py-4">{{ t('users.notMemberOfAnyGroups') }}</div>
       </template>
     </DataTable>
 
     <template #footer>
       <div class="dialog-footer">
-        <Button label="Close" text @click="$emit('close')" />
+        <Button :label="t('common.close')" text @click="$emit('close')" />
       </div>
     </template>
   </Dialog>
@@ -302,7 +313,7 @@ function confirmRemoveFromGroup(membership: UserMembership) {
   <!-- Add to Group Dialog -->
   <Dialog
     :visible="addGroupDialogVisible"
-    header="Add User to Group"
+    :header="t('users.addUserToGroup')"
     modal
     :closable="true"
     :style="{ width: '450px' }"
@@ -310,27 +321,27 @@ function confirmRemoveFromGroup(membership: UserMembership) {
   >
     <div class="form-grid">
       <div class="field">
-        <label for="add-group">Group</label>
+        <label for="add-group">{{ t('groups.group') }}</label>
         <Dropdown
           id="add-group"
           v-model="selectedGroupForAdd"
           :options="availableGroups"
           :option-label="formatGroupOption"
-          placeholder="Select Group"
+          :placeholder="t('users.selectGroup')"
           filter
           class="w-full"
         />
       </div>
 
       <div class="field">
-        <label for="add-role">Role</label>
+        <label for="add-role">{{ t('roles.role') }}</label>
         <Dropdown
           id="add-role"
           v-model="selectedRoleForAdd"
           :options="roleOptions"
           option-label="label"
           option-value="value"
-          placeholder="Select Role"
+          :placeholder="t('users.selectRole')"
           class="w-full"
         />
       </div>
@@ -338,9 +349,9 @@ function confirmRemoveFromGroup(membership: UserMembership) {
 
     <template #footer>
       <div class="dialog-footer">
-        <Button label="Cancel" text @click="addGroupDialogVisible = false" />
+        <Button :label="t('common.cancel')" text @click="addGroupDialogVisible = false" />
         <Button
-          label="Add"
+          :label="t('common.add')"
           :loading="loading"
           :disabled="!selectedGroupForAdd"
           @click="handleAddToGroup"
@@ -352,7 +363,7 @@ function confirmRemoveFromGroup(membership: UserMembership) {
   <!-- Edit Role Dialog -->
   <Dialog
     :visible="editRoleDialogVisible"
-    header="Edit Role"
+    :header="t('users.editRole')"
     modal
     :closable="true"
     :style="{ width: '400px' }"
@@ -360,11 +371,11 @@ function confirmRemoveFromGroup(membership: UserMembership) {
   >
     <div class="form-grid">
       <p v-if="editingMembership">
-        Change role for <strong>{{ editingMembership.group.name }}</strong
+        {{ t('users.changeRoleFor') }} <strong>{{ editingMembership.group.name }}</strong
         >:
       </p>
       <div class="field">
-        <label for="edit-role">Role</label>
+        <label for="edit-role">{{ t('roles.role') }}</label>
         <Dropdown
           id="edit-role"
           v-model="editingRole"
@@ -378,8 +389,8 @@ function confirmRemoveFromGroup(membership: UserMembership) {
 
     <template #footer>
       <div class="dialog-footer">
-        <Button label="Cancel" text @click="editRoleDialogVisible = false" />
-        <Button label="Save" :loading="loading" @click="handleUpdateRole" />
+        <Button :label="t('common.cancel')" text @click="editRoleDialogVisible = false" />
+        <Button :label="t('common.save')" :loading="loading" @click="handleUpdateRole" />
       </div>
     </template>
   </Dialog>

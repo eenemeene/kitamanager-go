@@ -163,7 +163,7 @@ onMounted(() => {
             </div>
           </template>
         </Column>
-        <Column field="last_login" header="Last Login" sortable style="width: 180px">
+        <Column field="last_login" :header="t('users.lastLogin')" sortable style="width: 180px">
           <template #body="{ data }">
             {{ formatLastLogin(data.last_login) }}
           </template>
@@ -188,7 +188,7 @@ onMounted(() => {
               icon="pi pi-users"
               text
               rounded
-              title="Manage Memberships"
+              :title="t('users.manageMemberships')"
               @click="openMembershipsDialog(data)"
             />
             <Button

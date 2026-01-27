@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
+import { useI18n } from 'vue-i18n'
 import { apiClient } from '@/api/client'
 import type {
   GovernmentFunding,
@@ -32,6 +33,7 @@ const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 const confirm = useConfirm()
+const { t } = useI18n()
 
 const governmentFundingId = computed(() => Number(route.params.id))
 const governmentFunding = ref<GovernmentFunding | null>(null)
@@ -39,10 +41,10 @@ const loading = ref(false)
 
 // View mode toggle
 const viewMode = ref<'panels' | 'table'>('panels')
-const viewModeOptions = [
-  { label: 'Panels', value: 'panels', icon: 'pi pi-list' },
-  { label: 'Table', value: 'table', icon: 'pi pi-table' }
-]
+const viewModeOptions = computed(() => [
+  { label: t('governmentFundings.viewPanels'), value: 'panels', icon: 'pi pi-list' },
+  { label: t('governmentFundings.viewTable'), value: 'table', icon: 'pi pi-table' }
+])
 
 // Compute flattened rows for table view using utility function
 const flattenedRows = computed(() => flattenGovernmentFundingToRows(governmentFunding.value))
@@ -85,8 +87,8 @@ async function fetchGovernmentFunding() {
   } catch {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load government funding',
+      summary: t('common.error'),
+      detail: t('governmentFundings.failedToLoadFunding'),
       life: 3000
     })
     router.push({ name: 'government-fundings' })
@@ -114,7 +116,12 @@ function openEditPeriod(period: GovernmentFundingPeriod) {
 
 async function savePeriod() {
   if (!periodForm.value.from) {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'From date is required', life: 3000 })
+    toast.add({
+      severity: 'error',
+      summary: t('common.error'),
+      detail: t('validation.fromDateRequired'),
+      life: 3000
+    })
     return
   }
 
@@ -132,7 +139,12 @@ async function savePeriod() {
         editingPeriod.value.id,
         data
       )
-      toast.add({ severity: 'success', summary: 'Success', detail: 'Period updated', life: 3000 })
+      toast.add({
+        severity: 'success',
+        summary: t('common.success'),
+        detail: t('governmentFundings.periodUpdated'),
+        life: 3000
+      })
     } else {
       const data: GovernmentFundingPeriodCreateRequest = {
         from: formatDate(periodForm.value.from),
@@ -140,32 +152,46 @@ async function savePeriod() {
         comment: periodForm.value.comment || undefined
       }
       await apiClient.createGovernmentFundingPeriod(governmentFundingId.value, data)
-      toast.add({ severity: 'success', summary: 'Success', detail: 'Period created', life: 3000 })
+      toast.add({
+        severity: 'success',
+        summary: t('common.success'),
+        detail: t('governmentFundings.periodCreated'),
+        life: 3000
+      })
     }
     periodDialog.value = false
     await fetchGovernmentFunding()
   } catch {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to save period', life: 3000 })
+    toast.add({
+      severity: 'error',
+      summary: t('common.error'),
+      detail: t('governmentFundings.failedToSavePeriod'),
+      life: 3000
+    })
   }
 }
 
 function confirmDeletePeriod(period: GovernmentFundingPeriod) {
   confirm.require({
-    message:
-      'Are you sure you want to delete this period? This will also delete all entries and properties.',
-    header: 'Confirm Delete',
+    message: t('governmentFundings.deletePeriodConfirm'),
+    header: t('common.confirmDelete'),
     icon: 'pi pi-exclamation-triangle',
     acceptClass: 'p-button-danger',
     accept: async () => {
       try {
         await apiClient.deleteGovernmentFundingPeriod(governmentFundingId.value, period.id)
-        toast.add({ severity: 'success', summary: 'Success', detail: 'Period deleted', life: 3000 })
+        toast.add({
+          severity: 'success',
+          summary: t('common.success'),
+          detail: t('governmentFundings.periodDeleted'),
+          life: 3000
+        })
         await fetchGovernmentFunding()
       } catch {
         toast.add({
           severity: 'error',
-          summary: 'Error',
-          detail: 'Failed to delete period',
+          summary: t('common.error'),
+          detail: t('governmentFundings.failedToDeletePeriod'),
           life: 3000
         })
       }
@@ -192,8 +218,8 @@ async function saveEntry() {
   if (entryForm.value.min_age >= entryForm.value.max_age) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Max age must be greater than min age',
+      summary: t('common.error'),
+      detail: t('validation.maxAgeMustBeGreater'),
       life: 3000
     })
     return
@@ -211,7 +237,12 @@ async function saveEntry() {
         editingEntry.value.id,
         data
       )
-      toast.add({ severity: 'success', summary: 'Success', detail: 'Entry updated', life: 3000 })
+      toast.add({
+        severity: 'success',
+        summary: t('common.success'),
+        detail: t('governmentFundings.entryUpdated'),
+        life: 3000
+      })
     } else if (currentPeriodId.value) {
       const data: GovernmentFundingEntryCreateRequest = {
         min_age: entryForm.value.min_age,
@@ -222,31 +253,46 @@ async function saveEntry() {
         currentPeriodId.value,
         data
       )
-      toast.add({ severity: 'success', summary: 'Success', detail: 'Entry created', life: 3000 })
+      toast.add({
+        severity: 'success',
+        summary: t('common.success'),
+        detail: t('governmentFundings.entryCreated'),
+        life: 3000
+      })
     }
     entryDialog.value = false
     await fetchGovernmentFunding()
   } catch {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to save entry', life: 3000 })
+    toast.add({
+      severity: 'error',
+      summary: t('common.error'),
+      detail: t('governmentFundings.failedToSaveEntry'),
+      life: 3000
+    })
   }
 }
 
 function confirmDeleteEntry(periodId: number, entry: GovernmentFundingEntry) {
   confirm.require({
-    message: 'Are you sure you want to delete this entry? This will also delete all properties.',
-    header: 'Confirm Delete',
+    message: t('governmentFundings.deleteEntryConfirm'),
+    header: t('common.confirmDelete'),
     icon: 'pi pi-exclamation-triangle',
     acceptClass: 'p-button-danger',
     accept: async () => {
       try {
         await apiClient.deleteGovernmentFundingEntry(governmentFundingId.value, periodId, entry.id)
-        toast.add({ severity: 'success', summary: 'Success', detail: 'Entry deleted', life: 3000 })
+        toast.add({
+          severity: 'success',
+          summary: t('common.success'),
+          detail: t('governmentFundings.entryDeleted'),
+          life: 3000
+        })
         await fetchGovernmentFunding()
       } catch {
         toast.add({
           severity: 'error',
-          summary: 'Error',
-          detail: 'Failed to delete entry',
+          summary: t('common.error'),
+          detail: t('governmentFundings.failedToDeleteEntry'),
           life: 3000
         })
       }
@@ -278,7 +324,12 @@ function openEditProperty(periodId: number, entryId: number, property: Governmen
 
 async function saveProperty() {
   if (!propertyForm.value.name.trim()) {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Name is required', life: 3000 })
+    toast.add({
+      severity: 'error',
+      summary: t('common.error'),
+      detail: t('validation.nameRequired'),
+      life: 3000
+    })
     return
   }
 
@@ -297,7 +348,12 @@ async function saveProperty() {
         editingProperty.value.id,
         data
       )
-      toast.add({ severity: 'success', summary: 'Success', detail: 'Property updated', life: 3000 })
+      toast.add({
+        severity: 'success',
+        summary: t('common.success'),
+        detail: t('governmentFundings.propertyUpdated'),
+        life: 3000
+      })
     } else if (currentPeriodId.value && currentEntryId.value) {
       const data: GovernmentFundingPropertyCreateRequest = {
         name: propertyForm.value.name,
@@ -311,15 +367,20 @@ async function saveProperty() {
         currentEntryId.value,
         data
       )
-      toast.add({ severity: 'success', summary: 'Success', detail: 'Property created', life: 3000 })
+      toast.add({
+        severity: 'success',
+        summary: t('common.success'),
+        detail: t('governmentFundings.propertyCreated'),
+        life: 3000
+      })
     }
     propertyDialog.value = false
     await fetchGovernmentFunding()
   } catch {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to save property',
+      summary: t('common.error'),
+      detail: t('governmentFundings.failedToSaveProperty'),
       life: 3000
     })
   }
@@ -331,8 +392,8 @@ function confirmDeleteProperty(
   property: GovernmentFundingProperty
 ) {
   confirm.require({
-    message: 'Are you sure you want to delete this property?',
-    header: 'Confirm Delete',
+    message: t('governmentFundings.deletePropertyConfirm'),
+    header: t('common.confirmDelete'),
     icon: 'pi pi-exclamation-triangle',
     acceptClass: 'p-button-danger',
     accept: async () => {
@@ -345,16 +406,16 @@ function confirmDeleteProperty(
         )
         toast.add({
           severity: 'success',
-          summary: 'Success',
-          detail: 'Property deleted',
+          summary: t('common.success'),
+          detail: t('governmentFundings.propertyDeleted'),
           life: 3000
         })
         await fetchGovernmentFunding()
       } catch {
         toast.add({
           severity: 'error',
-          summary: 'Error',
-          detail: 'Failed to delete property',
+          summary: t('common.error'),
+          detail: t('governmentFundings.failedToDeleteProperty'),
           life: 3000
         })
       }
@@ -397,7 +458,11 @@ onMounted(() => {
           option-label="label"
           option-value="value"
         />
-        <Button label="Add Period" icon="pi pi-plus" @click="openAddPeriod" />
+        <Button
+          :label="t('governmentFundings.addPeriod')"
+          icon="pi pi-plus"
+          @click="openAddPeriod"
+        />
       </div>
     </div>
 
@@ -411,13 +476,15 @@ onMounted(() => {
         size="small"
         class="government-funding-table"
       >
-        <Column header="Period" style="min-width: 180px">
+        <Column :header="t('governmentFundings.period')" style="min-width: 180px">
           <template #body="{ data }">
             <template v-if="data.isFirstEntryInPeriod">
               <div class="period-cell">
                 <strong>{{ formatDate(data.periodFrom) }}</strong>
                 <span> - </span>
-                <strong>{{ data.periodTo ? formatDate(data.periodTo) : 'ongoing' }}</strong>
+                <strong>{{
+                  data.periodTo ? formatDate(data.periodTo) : t('common.ongoing')
+                }}</strong>
                 <div v-if="data.periodComment" class="text-secondary text-sm">
                   {{ data.periodComment }}
                 </div>
@@ -425,41 +492,48 @@ onMounted(() => {
             </template>
           </template>
         </Column>
-        <Column header="Age Range" style="width: 120px">
+        <Column :header="t('governmentFundings.ageRange')" style="width: 120px">
           <template #body="{ data }">
             <template v-if="data.isFirstPropertyInEntry && data.entryId">
-              {{ data.ageRange }} years
+              {{ data.ageRange }} {{ t('governmentFundings.years') }}
             </template>
             <template v-else-if="!data.entryId">
               <span class="text-secondary">-</span>
             </template>
           </template>
         </Column>
-        <Column field="propertyName" header="Property" style="width: 120px">
+        <Column
+          field="propertyName"
+          :header="t('governmentFundings.property')"
+          style="width: 120px"
+        >
           <template #body="{ data }">
             <span :class="{ 'text-secondary': !data.propertyId }">{{ data.propertyName }}</span>
           </template>
         </Column>
-        <Column header="Payment" style="width: 120px; text-align: right">
+        <Column :header="t('governmentFundings.payment')" style="width: 120px; text-align: right">
           <template #body="{ data }">
             <span v-if="data.propertyId">{{ formatCurrency(data.payment) }}</span>
             <span v-else class="text-secondary">-</span>
           </template>
         </Column>
-        <Column header="Requirement (FTE)" style="width: 120px; text-align: right">
+        <Column
+          :header="t('governmentFundings.requirementFte')"
+          style="width: 120px; text-align: right"
+        >
           <template #body="{ data }">
             <span v-if="data.propertyId">{{ data.requirement.toFixed(3) }}</span>
             <span v-else class="text-secondary">-</span>
           </template>
         </Column>
-        <Column field="propertyComment" header="Comment">
+        <Column field="propertyComment" :header="t('common.comment')">
           <template #body="{ data }">
             <span class="text-secondary">{{ data.propertyComment }}</span>
           </template>
         </Column>
       </DataTable>
       <p v-else class="text-secondary">
-        No data defined. Switch to Panels view to add periods, entries, and properties.
+        {{ t('governmentFundings.noDataDefined') }}
       </p>
     </div>
 
@@ -468,23 +542,28 @@ onMounted(() => {
       <Panel
         v-for="period in governmentFunding.periods"
         :key="period.id"
-        :header="`${formatDate(period.from)} - ${period.to ? formatDate(period.to) : 'ongoing'}`"
+        :header="`${formatDate(period.from)} - ${period.to ? formatDate(period.to) : t('common.ongoing')}`"
         toggleable
         class="mb-3"
       >
         <template #icons>
-          <Button icon="pi pi-plus" text title="Add Entry" @click.stop="openAddEntry(period.id)" />
+          <Button
+            icon="pi pi-plus"
+            text
+            :title="t('governmentFundings.addEntry')"
+            @click.stop="openAddEntry(period.id)"
+          />
           <Button
             icon="pi pi-pencil"
             text
-            title="Edit Period"
+            :title="t('governmentFundings.editPeriod')"
             @click.stop="openEditPeriod(period)"
           />
           <Button
             icon="pi pi-trash"
             text
             severity="danger"
-            title="Delete Period"
+            :title="t('governmentFundings.deletePeriod')"
             @click.stop="confirmDeletePeriod(period)"
           />
         </template>
@@ -495,7 +574,7 @@ onMounted(() => {
           <Panel
             v-for="entry in period.entries"
             :key="entry.id"
-            :header="`Age ${entry.min_age} - ${entry.max_age} years`"
+            :header="`${t('children.age')} ${entry.min_age} - ${entry.max_age} ${t('governmentFundings.years')}`"
             toggleable
             class="mb-2"
           >
@@ -503,20 +582,20 @@ onMounted(() => {
               <Button
                 icon="pi pi-plus"
                 text
-                title="Add Property"
+                :title="t('governmentFundings.addProperty')"
                 @click.stop="openAddProperty(period.id, entry.id)"
               />
               <Button
                 icon="pi pi-pencil"
                 text
-                title="Edit Entry"
+                :title="t('governmentFundings.editEntry')"
                 @click.stop="openEditEntry(period.id, entry)"
               />
               <Button
                 icon="pi pi-trash"
                 text
                 severity="danger"
-                title="Delete Entry"
+                :title="t('governmentFundings.deleteEntry')"
                 @click.stop="confirmDeleteEntry(period.id, entry)"
               />
             </template>
@@ -527,19 +606,19 @@ onMounted(() => {
               size="small"
               striped-rows
             >
-              <Column field="name" header="Name"></Column>
-              <Column field="payment" header="Payment">
+              <Column field="name" :header="t('common.name')"></Column>
+              <Column field="payment" :header="t('governmentFundings.payment')">
                 <template #body="{ data }">
                   {{ formatCurrency(data.payment) }}
                 </template>
               </Column>
-              <Column field="requirement" header="Requirement (FTE)">
+              <Column field="requirement" :header="t('governmentFundings.requirementFte')">
                 <template #body="{ data }">
                   {{ data.requirement.toFixed(3) }}
                 </template>
               </Column>
-              <Column field="comment" header="Comment"></Column>
-              <Column header="Actions" style="width: 100px">
+              <Column field="comment" :header="t('common.comment')"></Column>
+              <Column :header="t('common.actions')" style="width: 100px">
                 <template #body="{ data: prop }">
                   <Button
                     icon="pi pi-pencil"
@@ -559,30 +638,32 @@ onMounted(() => {
                 </template>
               </Column>
             </DataTable>
-            <p v-else class="text-secondary">No properties defined. Click + to add one.</p>
+            <p v-else class="text-secondary">{{ t('governmentFundings.noPropertiesDefined') }}</p>
           </Panel>
         </div>
-        <p v-else class="text-secondary">No entries defined. Click + to add age ranges.</p>
+        <p v-else class="text-secondary">{{ t('governmentFundings.noEntriesDefined') }}</p>
       </Panel>
     </div>
     <div v-else-if="viewMode === 'panels'" class="card">
-      <p class="text-secondary">No periods defined. Click "Add Period" to get started.</p>
+      <p class="text-secondary">{{ t('governmentFundings.noPeriodsDefined') }}</p>
     </div>
 
     <!-- Period Dialog -->
     <Dialog
       v-model:visible="periodDialog"
-      :header="editingPeriod ? 'Edit Period' : 'Add Period'"
+      :header="
+        editingPeriod ? t('governmentFundings.editPeriod') : t('governmentFundings.addPeriod')
+      "
       modal
       :style="{ width: '450px' }"
     >
       <div class="form-grid">
         <div class="field">
-          <label for="period-from">From Date</label>
+          <label for="period-from">{{ t('governmentFundings.fromDate') }}</label>
           <Calendar id="period-from" v-model="periodForm.from" date-format="yy-mm-dd" show-icon />
         </div>
         <div class="field">
-          <label for="period-to">To Date (leave empty for ongoing)</label>
+          <label for="period-to">{{ t('governmentFundings.toDateOptional') }}</label>
           <Calendar
             id="period-to"
             v-model="periodForm.to"
@@ -592,49 +673,51 @@ onMounted(() => {
           />
         </div>
         <div class="field">
-          <label for="period-comment">Comment</label>
+          <label for="period-comment">{{ t('common.comment') }}</label>
           <Textarea id="period-comment" v-model="periodForm.comment" rows="2" />
         </div>
       </div>
       <template #footer>
-        <Button label="Cancel" text @click="periodDialog = false" />
-        <Button label="Save" @click="savePeriod" />
+        <Button :label="t('common.cancel')" text @click="periodDialog = false" />
+        <Button :label="t('common.save')" @click="savePeriod" />
       </template>
     </Dialog>
 
     <!-- Entry Dialog -->
     <Dialog
       v-model:visible="entryDialog"
-      :header="editingEntry ? 'Edit Entry' : 'Add Entry'"
+      :header="editingEntry ? t('governmentFundings.editEntry') : t('governmentFundings.addEntry')"
       modal
       :style="{ width: '400px' }"
     >
       <div class="form-grid">
         <div class="field">
-          <label for="entry-min-age">Min Age (inclusive)</label>
+          <label for="entry-min-age">{{ t('governmentFundings.minAge') }}</label>
           <InputNumber id="entry-min-age" v-model="entryForm.min_age" :min="0" :max="99" />
         </div>
         <div class="field">
-          <label for="entry-max-age">Max Age (exclusive)</label>
+          <label for="entry-max-age">{{ t('governmentFundings.maxAge') }}</label>
           <InputNumber id="entry-max-age" v-model="entryForm.max_age" :min="1" :max="100" />
         </div>
       </div>
       <template #footer>
-        <Button label="Cancel" text @click="entryDialog = false" />
-        <Button label="Save" @click="saveEntry" />
+        <Button :label="t('common.cancel')" text @click="entryDialog = false" />
+        <Button :label="t('common.save')" @click="saveEntry" />
       </template>
     </Dialog>
 
     <!-- Property Dialog -->
     <Dialog
       v-model:visible="propertyDialog"
-      :header="editingProperty ? 'Edit Property' : 'Add Property'"
+      :header="
+        editingProperty ? t('governmentFundings.editProperty') : t('governmentFundings.addProperty')
+      "
       modal
       :style="{ width: '450px' }"
     >
       <div class="form-grid">
         <div class="field">
-          <label for="property-name">Name</label>
+          <label for="property-name">{{ t('common.name') }}</label>
           <InputText
             id="property-name"
             v-model="propertyForm.name"
@@ -642,12 +725,12 @@ onMounted(() => {
           />
         </div>
         <div class="field">
-          <label for="property-payment">Payment (in cents)</label>
+          <label for="property-payment">{{ t('governmentFundings.paymentInCents') }}</label>
           <InputNumber id="property-payment" v-model="propertyForm.payment" :min="0" />
           <small class="text-secondary">{{ formatCurrency(propertyForm.payment) }}</small>
         </div>
         <div class="field">
-          <label for="property-requirement">Requirement (staffing ratio)</label>
+          <label for="property-requirement">{{ t('governmentFundings.requirement') }}</label>
           <InputNumber
             id="property-requirement"
             v-model="propertyForm.requirement"
@@ -658,18 +741,18 @@ onMounted(() => {
           />
         </div>
         <div class="field">
-          <label for="property-comment">Comment</label>
+          <label for="property-comment">{{ t('common.comment') }}</label>
           <InputText id="property-comment" v-model="propertyForm.comment" />
         </div>
       </div>
       <template #footer>
-        <Button label="Cancel" text @click="propertyDialog = false" />
-        <Button label="Save" @click="saveProperty" />
+        <Button :label="t('common.cancel')" text @click="propertyDialog = false" />
+        <Button :label="t('common.save')" @click="saveProperty" />
       </template>
     </Dialog>
   </div>
   <div v-else-if="loading" class="card">
-    <p>Loading...</p>
+    <p>{{ t('common.loading') }}</p>
   </div>
 </template>
 
