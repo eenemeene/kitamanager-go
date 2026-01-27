@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
-import type { Payplan, PayplanCreateRequest } from '@/api/types'
+import type { GovernmentFunding, GovernmentFundingCreateRequest } from '@/api/types'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 
 const props = defineProps<{
   visible: boolean
-  payplan: Payplan | null
+  governmentFunding: GovernmentFunding | null
 }>()
 
 const emit = defineEmits<{
   close: []
-  save: [data: PayplanCreateRequest]
+  save: [data: GovernmentFundingCreateRequest]
 }>()
 
 const form = ref({
@@ -21,16 +21,18 @@ const form = ref({
 
 const errors = ref<{ name?: string }>({})
 
-const isEditing = computed(() => !!props.payplan)
-const dialogTitle = computed(() => (isEditing.value ? 'Edit Payplan' : 'New Payplan'))
+const isEditing = computed(() => !!props.governmentFunding)
+const dialogTitle = computed(() =>
+  isEditing.value ? 'Edit Government Funding' : 'New Government Funding'
+)
 
 watch(
   () => props.visible,
   (visible) => {
     if (visible) {
-      if (props.payplan) {
+      if (props.governmentFunding) {
         form.value = {
-          name: props.payplan.name
+          name: props.governmentFunding.name
         }
       } else {
         form.value = {
@@ -73,7 +75,7 @@ function handleSave() {
           id="name"
           v-model="form.name"
           :class="{ 'p-invalid': errors.name }"
-          placeholder="Payplan name (e.g. Berlin)"
+          placeholder="Government funding name (e.g. Berlin)"
         />
         <small v-if="errors.name" class="p-error">{{ errors.name }}</small>
       </div>

@@ -16,7 +16,7 @@ func Setup(
 	orgHandler *handlers.OrganizationHandler,
 	employeeHandler *handlers.EmployeeHandler,
 	childHandler *handlers.ChildHandler,
-	payplanHandler *handlers.PayplanHandler,
+	governmentFundingHandler *handlers.GovernmentFundingHandler,
 	authMiddleware *middleware.AuthMiddleware,
 	authzMiddleware *middleware.AuthorizationMiddleware,
 	loginRateLimiter *middleware.RateLimiter,
@@ -45,8 +45,8 @@ func Setup(
 				// Superadmin only
 				orgs.POST("", authzMiddleware.RequireSuperAdmin(), orgHandler.Create)
 				orgs.DELETE("/:orgId", authzMiddleware.RequireSuperAdmin(), orgHandler.Delete)
-				orgs.PUT("/:orgId/payplan", authzMiddleware.RequireSuperAdmin(), payplanHandler.AssignPayplan)
-				orgs.DELETE("/:orgId/payplan", authzMiddleware.RequireSuperAdmin(), payplanHandler.RemovePayplan)
+				orgs.PUT("/:orgId/government-funding", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.AssignFunding)
+				orgs.DELETE("/:orgId/government-funding", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.RemoveFunding)
 
 				// List: requires any role (filtered by access in handler/service)
 				orgs.GET("", orgHandler.List)
@@ -63,30 +63,30 @@ func Setup(
 			}
 
 			// ============================================================
-			// Payplan management (superadmin only)
+			// Government Funding management (superadmin only)
 			// ============================================================
-			payplans := protected.Group("/payplans")
+			governmentFundings := protected.Group("/government-fundings")
 			{
-				payplans.GET("", authzMiddleware.RequireSuperAdmin(), payplanHandler.List)
-				payplans.GET("/:id", authzMiddleware.RequireSuperAdmin(), payplanHandler.Get)
-				payplans.POST("", authzMiddleware.RequireSuperAdmin(), payplanHandler.Create)
-				payplans.PUT("/:id", authzMiddleware.RequireSuperAdmin(), payplanHandler.Update)
-				payplans.DELETE("/:id", authzMiddleware.RequireSuperAdmin(), payplanHandler.Delete)
+				governmentFundings.GET("", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.List)
+				governmentFundings.GET("/:id", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.Get)
+				governmentFundings.POST("", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.Create)
+				governmentFundings.PUT("/:id", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.Update)
+				governmentFundings.DELETE("/:id", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.Delete)
 
 				// Period management
-				payplans.POST("/:id/periods", authzMiddleware.RequireSuperAdmin(), payplanHandler.CreatePeriod)
-				payplans.PUT("/:id/periods/:periodId", authzMiddleware.RequireSuperAdmin(), payplanHandler.UpdatePeriod)
-				payplans.DELETE("/:id/periods/:periodId", authzMiddleware.RequireSuperAdmin(), payplanHandler.DeletePeriod)
+				governmentFundings.POST("/:id/periods", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.CreatePeriod)
+				governmentFundings.PUT("/:id/periods/:periodId", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.UpdatePeriod)
+				governmentFundings.DELETE("/:id/periods/:periodId", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.DeletePeriod)
 
 				// Entry management
-				payplans.POST("/:id/periods/:periodId/entries", authzMiddleware.RequireSuperAdmin(), payplanHandler.CreateEntry)
-				payplans.PUT("/:id/periods/:periodId/entries/:entryId", authzMiddleware.RequireSuperAdmin(), payplanHandler.UpdateEntry)
-				payplans.DELETE("/:id/periods/:periodId/entries/:entryId", authzMiddleware.RequireSuperAdmin(), payplanHandler.DeleteEntry)
+				governmentFundings.POST("/:id/periods/:periodId/entries", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.CreateEntry)
+				governmentFundings.PUT("/:id/periods/:periodId/entries/:entryId", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.UpdateEntry)
+				governmentFundings.DELETE("/:id/periods/:periodId/entries/:entryId", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.DeleteEntry)
 
 				// Property management
-				payplans.POST("/:id/periods/:periodId/entries/:entryId/properties", authzMiddleware.RequireSuperAdmin(), payplanHandler.CreateProperty)
-				payplans.PUT("/:id/periods/:periodId/entries/:entryId/properties/:propId", authzMiddleware.RequireSuperAdmin(), payplanHandler.UpdateProperty)
-				payplans.DELETE("/:id/periods/:periodId/entries/:entryId/properties/:propId", authzMiddleware.RequireSuperAdmin(), payplanHandler.DeleteProperty)
+				governmentFundings.POST("/:id/periods/:periodId/entries/:entryId/properties", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.CreateProperty)
+				governmentFundings.PUT("/:id/periods/:periodId/entries/:entryId/properties/:propId", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.UpdateProperty)
+				governmentFundings.DELETE("/:id/periods/:periodId/entries/:entryId/properties/:propId", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.DeleteProperty)
 			}
 
 			// ============================================================

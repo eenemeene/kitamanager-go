@@ -44,6 +44,10 @@ type Config struct {
 	SeedAdminPassword string
 	SeedAdminName     string
 
+	// Government Funding Seeding
+	GovernmentFundingSeedPath string
+	GovernmentFundingSeedName string
+
 	// CORS
 	CORSAllowOrigins     []string
 	CORSAllowCredentials bool
@@ -175,6 +179,10 @@ func Load() (*Config, error) {
 		SeedAdminEmail:    getEnv("SEED_ADMIN_EMAIL", ""),
 		SeedAdminPassword: getEnv("SEED_ADMIN_PASSWORD", ""),
 		SeedAdminName:     getEnv("SEED_ADMIN_NAME", "admin"),
+
+		// Government Funding Seeding
+		GovernmentFundingSeedPath: getEnv("GOVERNMENT_FUNDING_SEED_PATH", ""),
+		GovernmentFundingSeedName: getEnv("GOVERNMENT_FUNDING_SEED_NAME", "Berlin"),
 
 		// CORS
 		CORSAllowOrigins:     origins,

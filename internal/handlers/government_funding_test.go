@@ -11,24 +11,24 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/store"
 )
 
-func TestPayplanHandler_CreateEntry_ValidAgeRange(t *testing.T) {
+func TestGovernmentFundingHandler_CreateEntry_ValidAgeRange(t *testing.T) {
 	db := setupTestDB(t)
-	payplanStore := store.NewPayplanStore(db)
+	fundingStore := store.NewGovernmentFundingStore(db)
 	orgStore := store.NewOrganizationStore(db)
-	svc := service.NewPayplanService(payplanStore, orgStore)
-	handler := NewPayplanHandler(svc)
+	svc := service.NewGovernmentFundingService(fundingStore, orgStore)
+	handler := NewGovernmentFundingHandler(svc)
 
-	// Create test payplan and period
-	payplan := &models.Payplan{Name: "Test Payplan"}
-	db.Create(payplan)
-	period := &models.PayplanPeriod{
-		PayplanID: payplan.ID,
-		From:      time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+	// Create test funding and period
+	funding := &models.GovernmentFunding{Name: "Test Funding"}
+	db.Create(funding)
+	period := &models.GovernmentFundingPeriod{
+		GovernmentFundingID: funding.ID,
+		From:                time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 	db.Create(period)
 
 	r := setupTestRouter()
-	r.POST("/payplans/:id/periods/:periodId/entries", handler.CreateEntry)
+	r.POST("/fundings/:id/periods/:periodId/entries", handler.CreateEntry)
 
 	tests := []struct {
 		name           string
@@ -83,12 +83,12 @@ func TestPayplanHandler_CreateEntry_ValidAgeRange(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			body := models.PayplanEntryCreateRequest{
+			body := models.GovernmentFundingEntryCreateRequest{
 				MinAge: tt.minAge,
 				MaxAge: tt.maxAge,
 			}
 
-			w := performRequest(r, "POST", "/payplans/1/periods/1/entries", body)
+			w := performRequest(r, "POST", "/fundings/1/periods/1/entries", body)
 
 			if w.Code != tt.expectedStatus {
 				t.Errorf("%s: expected status %d, got %d: %s",
@@ -98,22 +98,22 @@ func TestPayplanHandler_CreateEntry_ValidAgeRange(t *testing.T) {
 	}
 }
 
-func TestPayplanHandler_UpdateEntry_AgeRangeValidation(t *testing.T) {
+func TestGovernmentFundingHandler_UpdateEntry_AgeRangeValidation(t *testing.T) {
 	db := setupTestDB(t)
-	payplanStore := store.NewPayplanStore(db)
+	fundingStore := store.NewGovernmentFundingStore(db)
 	orgStore := store.NewOrganizationStore(db)
-	svc := service.NewPayplanService(payplanStore, orgStore)
-	handler := NewPayplanHandler(svc)
+	svc := service.NewGovernmentFundingService(fundingStore, orgStore)
+	handler := NewGovernmentFundingHandler(svc)
 
-	// Create test payplan, period, and entry
-	payplan := &models.Payplan{Name: "Test Payplan"}
-	db.Create(payplan)
-	period := &models.PayplanPeriod{
-		PayplanID: payplan.ID,
+	// Create test funding, period, and entry
+	funding := &models.GovernmentFunding{Name: "Test Funding"}
+	db.Create(funding)
+	period := &models.GovernmentFundingPeriod{
+		GovernmentFundingID: funding.ID,
 		From:      time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 	db.Create(period)
-	entry := &models.PayplanEntry{
+	entry := &models.GovernmentFundingEntry{
 		PeriodID: period.ID,
 		MinAge:   0,
 		MaxAge:   3,
@@ -121,7 +121,7 @@ func TestPayplanHandler_UpdateEntry_AgeRangeValidation(t *testing.T) {
 	db.Create(entry)
 
 	r := setupTestRouter()
-	r.PUT("/payplans/:id/periods/:periodId/entries/:entryId", handler.UpdateEntry)
+	r.PUT("/fundings/:id/periods/:periodId/entries/:entryId", handler.UpdateEntry)
 
 	tests := []struct {
 		name           string
@@ -156,17 +156,17 @@ func TestPayplanHandler_UpdateEntry_AgeRangeValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Reset entry to known state
-			db.Model(&models.PayplanEntry{}).Where("id = ?", entry.ID).Updates(map[string]interface{}{
+			db.Model(&models.GovernmentFundingEntry{}).Where("id = ?", entry.ID).Updates(map[string]interface{}{
 				"min_age": 0,
 				"max_age": 3,
 			})
 
-			body := models.PayplanEntryUpdateRequest{
+			body := models.GovernmentFundingEntryUpdateRequest{
 				MinAge: tt.minAge,
 				MaxAge: tt.maxAge,
 			}
 
-			w := performRequest(r, "PUT", "/payplans/1/periods/1/entries/1", body)
+			w := performRequest(r, "PUT", "/fundings/1/periods/1/entries/1", body)
 
 			if w.Code != tt.expectedStatus {
 				t.Errorf("%s: expected status %d, got %d: %s",
@@ -176,7 +176,7 @@ func TestPayplanHandler_UpdateEntry_AgeRangeValidation(t *testing.T) {
 	}
 }
 
-func TestPayplanHandler_Entry_AgeRangeBoundarySemantics(t *testing.T) {
+func TestGovernmentFundingHandler_Entry_AgeRangeBoundarySemantics(t *testing.T) {
 	// This test documents the expected behavior of age ranges:
 	// - MinAge is INCLUSIVE: a child whose age >= MinAge qualifies
 	// - MaxAge is EXCLUSIVE: a child whose age < MaxAge qualifies
@@ -187,35 +187,35 @@ func TestPayplanHandler_Entry_AgeRangeBoundarySemantics(t *testing.T) {
 	// - Age 2 does NOT qualify (2 >= 0 BUT 2 < 2 is FALSE)
 
 	db := setupTestDB(t)
-	payplanStore := store.NewPayplanStore(db)
+	fundingStore := store.NewGovernmentFundingStore(db)
 	orgStore := store.NewOrganizationStore(db)
-	svc := service.NewPayplanService(payplanStore, orgStore)
-	handler := NewPayplanHandler(svc)
+	svc := service.NewGovernmentFundingService(fundingStore, orgStore)
+	handler := NewGovernmentFundingHandler(svc)
 
-	payplan := &models.Payplan{Name: "Test Payplan"}
-	db.Create(payplan)
-	period := &models.PayplanPeriod{
-		PayplanID: payplan.ID,
+	funding := &models.GovernmentFunding{Name: "Test Funding"}
+	db.Create(funding)
+	period := &models.GovernmentFundingPeriod{
+		GovernmentFundingID: funding.ID,
 		From:      time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 	db.Create(period)
 
 	r := setupTestRouter()
-	r.POST("/payplans/:id/periods/:periodId/entries", handler.CreateEntry)
+	r.POST("/fundings/:id/periods/:periodId/entries", handler.CreateEntry)
 
 	// Create an entry for ages 0-2 (covers ages 0 and 1)
-	body := models.PayplanEntryCreateRequest{
+	body := models.GovernmentFundingEntryCreateRequest{
 		MinAge: 0,
 		MaxAge: 2,
 	}
 
-	w := performRequest(r, "POST", "/payplans/1/periods/1/entries", body)
+	w := performRequest(r, "POST", "/fundings/1/periods/1/entries", body)
 
 	if w.Code != http.StatusCreated {
 		t.Fatalf("failed to create entry: %s", w.Body.String())
 	}
 
-	var result models.PayplanEntry
+	var result models.GovernmentFundingEntry
 	parseResponse(t, w, &result)
 
 	// Verify the entry was created with correct values
@@ -231,30 +231,30 @@ func TestPayplanHandler_Entry_AgeRangeBoundarySemantics(t *testing.T) {
 	t.Logf("This entry covers children aged 0 and 1 (from birth up to but not including 2nd birthday)")
 }
 
-func TestPayplanHandler_CRUD(t *testing.T) {
+func TestGovernmentFundingHandler_CRUD(t *testing.T) {
 	db := setupTestDB(t)
-	payplanStore := store.NewPayplanStore(db)
+	fundingStore := store.NewGovernmentFundingStore(db)
 	orgStore := store.NewOrganizationStore(db)
-	svc := service.NewPayplanService(payplanStore, orgStore)
-	handler := NewPayplanHandler(svc)
+	svc := service.NewGovernmentFundingService(fundingStore, orgStore)
+	handler := NewGovernmentFundingHandler(svc)
 
 	r := setupTestRouter()
-	r.GET("/payplans", handler.List)
-	r.GET("/payplans/:id", handler.Get)
-	r.POST("/payplans", handler.Create)
-	r.PUT("/payplans/:id", handler.Update)
-	r.DELETE("/payplans/:id", handler.Delete)
+	r.GET("/fundings", handler.List)
+	r.GET("/fundings/:id", handler.Get)
+	r.POST("/fundings", handler.Create)
+	r.PUT("/fundings/:id", handler.Update)
+	r.DELETE("/fundings/:id", handler.Delete)
 
 	// Test Create
 	t.Run("Create", func(t *testing.T) {
-		body := PayplanCreateRequest{Name: "Berlin"}
-		w := performRequest(r, "POST", "/payplans", body)
+		body := GovernmentFundingCreateRequest{Name: "Berlin"}
+		w := performRequest(r, "POST", "/fundings", body)
 
 		if w.Code != http.StatusCreated {
 			t.Errorf("expected status %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
 		}
 
-		var result models.Payplan
+		var result models.GovernmentFunding
 		parseResponse(t, w, &result)
 		if result.Name != "Berlin" {
 			t.Errorf("expected name 'Berlin', got '%s'", result.Name)
@@ -263,28 +263,28 @@ func TestPayplanHandler_CRUD(t *testing.T) {
 
 	// Test List
 	t.Run("List", func(t *testing.T) {
-		w := performRequest(r, "GET", "/payplans", nil)
+		w := performRequest(r, "GET", "/fundings", nil)
 
 		if w.Code != http.StatusOK {
 			t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
 		}
 
-		var response models.PaginatedResponse[models.Payplan]
+		var response models.PaginatedResponse[models.GovernmentFunding]
 		parseResponse(t, w, &response)
 		if len(response.Data) != 1 {
-			t.Errorf("expected 1 payplan, got %d", len(response.Data))
+			t.Errorf("expected 1 funding, got %d", len(response.Data))
 		}
 	})
 
 	// Test Get
 	t.Run("Get", func(t *testing.T) {
-		w := performRequest(r, "GET", "/payplans/1", nil)
+		w := performRequest(r, "GET", "/fundings/1", nil)
 
 		if w.Code != http.StatusOK {
 			t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
 		}
 
-		var result models.Payplan
+		var result models.GovernmentFunding
 		parseResponse(t, w, &result)
 		if result.Name != "Berlin" {
 			t.Errorf("expected name 'Berlin', got '%s'", result.Name)
@@ -294,14 +294,14 @@ func TestPayplanHandler_CRUD(t *testing.T) {
 	// Test Update
 	t.Run("Update", func(t *testing.T) {
 		name := "Berlin Updated"
-		body := PayplanUpdateRequest{Name: &name}
-		w := performRequest(r, "PUT", "/payplans/1", body)
+		body := GovernmentFundingUpdateRequest{Name: &name}
+		w := performRequest(r, "PUT", "/fundings/1", body)
 
 		if w.Code != http.StatusOK {
 			t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
 		}
 
-		var result models.Payplan
+		var result models.GovernmentFunding
 		parseResponse(t, w, &result)
 		if result.Name != "Berlin Updated" {
 			t.Errorf("expected name 'Berlin Updated', got '%s'", result.Name)
@@ -310,7 +310,7 @@ func TestPayplanHandler_CRUD(t *testing.T) {
 
 	// Test Delete
 	t.Run("Delete", func(t *testing.T) {
-		w := performRequest(r, "DELETE", "/payplans/1", nil)
+		w := performRequest(r, "DELETE", "/fundings/1", nil)
 
 		if w.Code != http.StatusNoContent {
 			t.Errorf("expected status %d, got %d", http.StatusNoContent, w.Code)
@@ -318,23 +318,19 @@ func TestPayplanHandler_CRUD(t *testing.T) {
 	})
 }
 
-func intPtr(i int) *int {
-	return &i
-}
-
-func TestPayplanHandler_CreatePeriod_NoOverlap(t *testing.T) {
+func TestGovernmentFundingHandler_CreatePeriod_NoOverlap(t *testing.T) {
 	db := setupTestDB(t)
-	payplanStore := store.NewPayplanStore(db)
+	fundingStore := store.NewGovernmentFundingStore(db)
 	orgStore := store.NewOrganizationStore(db)
-	svc := service.NewPayplanService(payplanStore, orgStore)
-	handler := NewPayplanHandler(svc)
+	svc := service.NewGovernmentFundingService(fundingStore, orgStore)
+	handler := NewGovernmentFundingHandler(svc)
 
-	// Create test payplan
-	payplan := &models.Payplan{Name: "Test Payplan"}
-	db.Create(payplan)
+	// Create test funding
+	funding := &models.GovernmentFunding{Name: "Test Funding"}
+	db.Create(funding)
 
 	r := setupTestRouter()
-	r.POST("/payplans/:id/periods", handler.CreatePeriod)
+	r.POST("/fundings/:id/periods", handler.CreatePeriod)
 
 	tests := []struct {
 		name           string
@@ -431,12 +427,12 @@ func TestPayplanHandler_CreatePeriod_NoOverlap(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clean up periods from previous test
-			db.Where("payplan_id = ?", payplan.ID).Delete(&models.PayplanPeriod{})
+			db.Where("government_funding_id = ?", funding.ID).Delete(&models.GovernmentFundingPeriod{})
 
 			// Create existing period
 			existingFrom, _ := time.Parse("2006-01-02", tt.existingFrom)
-			existingPeriod := &models.PayplanPeriod{
-				PayplanID: payplan.ID,
+			existingPeriod := &models.GovernmentFundingPeriod{
+				GovernmentFundingID: funding.ID,
 				From:      existingFrom,
 			}
 			if tt.existingTo != nil {
@@ -455,7 +451,7 @@ func TestPayplanHandler_CreatePeriod_NoOverlap(t *testing.T) {
 				body["to"] = newTo.Format(time.RFC3339)
 			}
 
-			w := performRequest(r, "POST", "/payplans/1/periods", body)
+			w := performRequest(r, "POST", "/fundings/1/periods", body)
 
 			if w.Code != tt.expectedStatus {
 				t.Errorf("%s: expected status %d, got %d: %s",
@@ -465,33 +461,33 @@ func TestPayplanHandler_CreatePeriod_NoOverlap(t *testing.T) {
 	}
 }
 
-func TestPayplanHandler_UpdatePeriod_NoOverlap(t *testing.T) {
+func TestGovernmentFundingHandler_UpdatePeriod_NoOverlap(t *testing.T) {
 	db := setupTestDB(t)
-	payplanStore := store.NewPayplanStore(db)
+	fundingStore := store.NewGovernmentFundingStore(db)
 	orgStore := store.NewOrganizationStore(db)
-	svc := service.NewPayplanService(payplanStore, orgStore)
-	handler := NewPayplanHandler(svc)
+	svc := service.NewGovernmentFundingService(fundingStore, orgStore)
+	handler := NewGovernmentFundingHandler(svc)
 
-	// Create test payplan
-	payplan := &models.Payplan{Name: "Test Payplan"}
-	db.Create(payplan)
+	// Create test funding
+	funding := &models.GovernmentFunding{Name: "Test Funding"}
+	db.Create(funding)
 
 	r := setupTestRouter()
-	r.PUT("/payplans/:id/periods/:periodId", handler.UpdatePeriod)
+	r.PUT("/fundings/:id/periods/:periodId", handler.UpdatePeriod)
 
 	t.Run("update period to overlap with another", func(t *testing.T) {
 		// Clean up
-		db.Where("payplan_id = ?", payplan.ID).Delete(&models.PayplanPeriod{})
+		db.Where("government_funding_id = ?", funding.ID).Delete(&models.GovernmentFundingPeriod{})
 
 		// Create two non-overlapping periods
 		from1, _ := time.Parse("2006-01-02", "2024-01-01")
 		to1, _ := time.Parse("2006-01-02", "2024-06-30")
-		period1 := &models.PayplanPeriod{PayplanID: payplan.ID, From: from1, To: &to1}
+		period1 := &models.GovernmentFundingPeriod{GovernmentFundingID: funding.ID, From: from1, To: &to1}
 		db.Create(period1)
 
 		from2, _ := time.Parse("2006-01-02", "2024-07-01")
 		to2, _ := time.Parse("2006-01-02", "2024-12-31")
-		period2 := &models.PayplanPeriod{PayplanID: payplan.ID, From: from2, To: &to2}
+		period2 := &models.GovernmentFundingPeriod{GovernmentFundingID: funding.ID, From: from2, To: &to2}
 		db.Create(period2)
 
 		// Try to update period2 to overlap with period1
@@ -500,7 +496,7 @@ func TestPayplanHandler_UpdatePeriod_NoOverlap(t *testing.T) {
 			"from": newFrom.Format(time.RFC3339),
 		}
 
-		w := performRequest(r, "PUT", "/payplans/1/periods/"+itoa(int(period2.ID)), body)
+		w := performRequest(r, "PUT", "/fundings/1/periods/"+itoa(int(period2.ID)), body)
 
 		if w.Code != http.StatusBadRequest {
 			t.Errorf("expected status %d for overlapping update, got %d: %s",
@@ -510,17 +506,17 @@ func TestPayplanHandler_UpdatePeriod_NoOverlap(t *testing.T) {
 
 	t.Run("update period without causing overlap", func(t *testing.T) {
 		// Clean up
-		db.Where("payplan_id = ?", payplan.ID).Delete(&models.PayplanPeriod{})
+		db.Where("government_funding_id = ?", funding.ID).Delete(&models.GovernmentFundingPeriod{})
 
 		// Create two non-overlapping periods
 		from1, _ := time.Parse("2006-01-02", "2024-01-01")
 		to1, _ := time.Parse("2006-01-02", "2024-06-30")
-		period1 := &models.PayplanPeriod{PayplanID: payplan.ID, From: from1, To: &to1}
+		period1 := &models.GovernmentFundingPeriod{GovernmentFundingID: funding.ID, From: from1, To: &to1}
 		db.Create(period1)
 
 		from2, _ := time.Parse("2006-01-02", "2024-07-01")
 		to2, _ := time.Parse("2006-01-02", "2024-12-31")
-		period2 := &models.PayplanPeriod{PayplanID: payplan.ID, From: from2, To: &to2}
+		period2 := &models.GovernmentFundingPeriod{GovernmentFundingID: funding.ID, From: from2, To: &to2}
 		db.Create(period2)
 
 		// Update period2's end date (no overlap)
@@ -529,7 +525,7 @@ func TestPayplanHandler_UpdatePeriod_NoOverlap(t *testing.T) {
 			"to": newTo.Format(time.RFC3339),
 		}
 
-		w := performRequest(r, "PUT", "/payplans/1/periods/"+itoa(int(period2.ID)), body)
+		w := performRequest(r, "PUT", "/fundings/1/periods/"+itoa(int(period2.ID)), body)
 
 		if w.Code != http.StatusOK {
 			t.Errorf("expected status %d for valid update, got %d: %s",
@@ -538,10 +534,14 @@ func TestPayplanHandler_UpdatePeriod_NoOverlap(t *testing.T) {
 	})
 }
 
-func strPtr(s string) *string {
-	return &s
-}
-
 func itoa(i int) string {
 	return fmt.Sprintf("%d", i)
+}
+
+func intPtr(i int) *int {
+	return &i
+}
+
+func strPtr(s string) *string {
+	return &s
 }

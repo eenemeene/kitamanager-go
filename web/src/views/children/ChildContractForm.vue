@@ -153,7 +153,7 @@ function handleSave() {
       </div>
 
       <div class="field">
-        <label for="attributes">Attributes (for payplan calculation)</label>
+        <label for="attributes">Attributes (for funding calculation)</label>
         <Chips
           id="attributes"
           v-model="form.attributes"

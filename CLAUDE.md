@@ -56,15 +56,15 @@ All DTOs (Data Transfer Objects) must follow a consistent naming pattern.
 
 **Request DTOs** - Use `{Resource}{Action}Request`:
 - Create: `UserCreateRequest`, `ChildCreateRequest`, `EmployeeContractCreateRequest`
-- Update: `UserUpdateRequest`, `ChildUpdateRequest`, `PayplanPeriodUpdateRequest`
-- Other actions: `AssignPayplanRequest`, `SetSuperAdminRequest`
+- Update: `UserUpdateRequest`, `ChildUpdateRequest`, `FundingPeriodUpdateRequest`
+- Other actions: `AssignFundingRequest`, `SetSuperAdminRequest`
 
 **Response DTOs** - Use `{Resource}Response`:
-- `UserResponse`, `ChildResponse`, `EmployeeContractResponse`, `PayplanPeriodResponse`
+- `UserResponse`, `ChildResponse`, `EmployeeContractResponse`, `FundingPeriodResponse`
 
 **Nested resources follow the same pattern**:
 - `ChildContractCreateRequest` (not `CreateChildContractRequest`)
-- `PayplanEntryUpdateRequest` (not `UpdatePayplanEntryRequest`)
+- `FundingEntryUpdateRequest` (not `UpdateFundingEntryRequest`)
 
 **DO NOT** use these incorrect patterns:
 - `Create{Resource}Request` (wrong: `CreateUserRequest`)
@@ -145,3 +145,50 @@ When making changes to the database schema (models), you MUST:
 The project uses [tbls](https://github.com/k1LoW/tbls) to auto-generate database documentation including ER diagrams.
 
 Install: `go install github.com/k1LoW/tbls@latest`
+
+## Currency Storage
+
+**All monetary values MUST be stored as integers in cents** (or the smallest currency unit).
+
+This avoids floating-point precision errors that occur with decimal arithmetic:
+```go
+// Floating point - WRONG
+0.1 + 0.2 = 0.30000000000000004
+
+// Cents as integers - CORRECT
+10 + 20 = 30
+```
+
+### Examples
+
+| EUR Amount | Stored Value (cents) |
+|------------|---------------------|
+| €1,668.47  | 166847              |
+| €0.01      | 1                   |
+| €100.00    | 10000               |
+
+### In Code
+
+```go
+// Model - store as int
+type FundingProperty struct {
+    Payment int `gorm:"not null" json:"payment"` // cents
+}
+
+// Converting EUR to cents
+func euroToCents(eur float64) int {
+    return int(math.Round(eur * 100))
+}
+
+// Display in frontend (TypeScript)
+function formatCurrency(cents: number): string {
+    return (cents / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })
+}
+```
+
+### When Importing Data
+
+When importing monetary data from external sources (YAML, CSV, APIs), always convert to cents before storage:
+```go
+payment := int(math.Round(yamlProperty.Payment * 100))
+```

@@ -13,13 +13,13 @@ definitions:
     - group_id
     - role
     type: object
-  github_com_eenemeene_kitamanager-go_internal_models.AssignPayplanRequest:
+  github_com_eenemeene_kitamanager-go_internal_models.AssignGovernmentFundingRequest:
     properties:
-      payplan_id:
+      government_funding_id:
         example: 1
         type: integer
     required:
-    - payplan_id
+    - government_funding_id
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.Child:
     properties:
@@ -263,6 +263,190 @@ definitions:
         maxLength: 255
         type: string
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.GovernmentFunding:
+    properties:
+      created_at:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+      id:
+        example: 1
+        type: integer
+      name:
+        example: Berlin
+        type: string
+      periods:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriod'
+        type: array
+      updated_at:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingEntry:
+    properties:
+      created_at:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+      id:
+        example: 1
+        type: integer
+      max_age:
+        description: MaxAge is the maximum age in years (exclusive). A child whose
+          age < MaxAge qualifies.
+        example: 2
+        type: integer
+      min_age:
+        description: MinAge is the minimum age in years (inclusive). A child whose
+          age >= MinAge qualifies.
+        example: 0
+        type: integer
+      period_id:
+        example: 1
+        type: integer
+      properties:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingProperty'
+        type: array
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingEntryCreateRequest:
+    properties:
+      max_age:
+        example: 2
+        type: integer
+      min_age:
+        example: 0
+        minimum: 0
+        type: integer
+    required:
+    - max_age
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingEntryUpdateRequest:
+    properties:
+      max_age:
+        example: 3
+        type: integer
+      min_age:
+        example: 0
+        minimum: 0
+        type: integer
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriod:
+    properties:
+      comment:
+        example: Funding period 2023/2024
+        type: string
+      created_at:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+      entries:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingEntry'
+        type: array
+      from:
+        example: "2023-03-01"
+        type: string
+      government_funding_id:
+        example: 1
+        type: integer
+      id:
+        example: 1
+        type: integer
+      to:
+        example: "2024-02-29"
+        type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriodCreateRequest:
+    properties:
+      comment:
+        example: Funding period 2023/2024
+        maxLength: 1000
+        type: string
+      from:
+        example: "2023-03-01"
+        type: string
+      to:
+        example: "2024-02-29"
+        type: string
+    required:
+    - from
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriodUpdateRequest:
+    properties:
+      comment:
+        example: Updated comment
+        maxLength: 1000
+        type: string
+      from:
+        example: "2023-03-01"
+        type: string
+      to:
+        example: "2024-02-29"
+        type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingProperty:
+    properties:
+      comment:
+        example: Full-day care funding
+        type: string
+      created_at:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+      entry_id:
+        example: 1
+        type: integer
+      id:
+        example: 1
+        type: integer
+      name:
+        example: ganztag
+        type: string
+      payment:
+        example: 166847
+        type: integer
+      requirement:
+        example: 0.261
+        type: number
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPropertyCreateRequest:
+    properties:
+      comment:
+        example: Full-day care funding
+        maxLength: 500
+        type: string
+      name:
+        example: ganztag
+        maxLength: 255
+        type: string
+      payment:
+        example: 166847
+        minimum: 0
+        type: integer
+      requirement:
+        example: 0.261
+        minimum: 0
+        type: number
+    required:
+    - name
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPropertyUpdateRequest:
+    properties:
+      comment:
+        example: Updated comment
+        maxLength: 500
+        type: string
+      name:
+        example: ganztag
+        maxLength: 255
+        type: string
+      payment:
+        example: 166847
+        minimum: 0
+        type: integer
+      requirement:
+        example: 0.261
+        minimum: 0
+        type: number
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.Group:
     properties:
       active:
@@ -342,6 +526,11 @@ definitions:
       created_by:
         example: admin@example.com
         type: string
+      government_funding:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFunding'
+      government_funding_id:
+        example: 1
+        type: integer
       groups:
         items:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Group'
@@ -352,11 +541,6 @@ definitions:
       name:
         example: Acme Corp
         type: string
-      payplan:
-        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Payplan'
-      payplan_id:
-        example: 1
-        type: integer
       updated_at:
         example: "2024-01-15T10:30:00Z"
         type: string
@@ -391,6 +575,27 @@ definitions:
       data:
         items:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Employee'
+        type: array
+      limit:
+        example: 20
+        type: integer
+      page:
+        example: 1
+        type: integer
+      total:
+        example: 100
+        type: integer
+      total_pages:
+        example: 5
+        type: integer
+    type: object
+  ? github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_GovernmentFunding
+  : properties:
+      _links:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginationLinks'
+      data:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFunding'
         type: array
       limit:
         example: 20
@@ -447,27 +652,6 @@ definitions:
         example: 5
         type: integer
     type: object
-  ? github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_Payplan
-  : properties:
-      _links:
-        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginationLinks'
-      data:
-        items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Payplan'
-        type: array
-      limit:
-        example: 20
-        type: integer
-      page:
-        example: 1
-        type: integer
-      total:
-        example: 100
-        type: integer
-      total_pages:
-        example: 5
-        type: integer
-    type: object
   ? github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_UserResponse
   : properties:
       _links:
@@ -506,190 +690,6 @@ definitions:
       self:
         example: /api/v1/users?page=2&limit=20
         type: string
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.Payplan:
-    properties:
-      created_at:
-        example: "2024-01-15T10:30:00Z"
-        type: string
-      id:
-        example: 1
-        type: integer
-      name:
-        example: Berlin
-        type: string
-      periods:
-        items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanPeriod'
-        type: array
-      updated_at:
-        example: "2024-01-15T10:30:00Z"
-        type: string
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.PayplanEntry:
-    properties:
-      created_at:
-        example: "2024-01-15T10:30:00Z"
-        type: string
-      id:
-        example: 1
-        type: integer
-      max_age:
-        description: MaxAge is the maximum age in years (exclusive). A child whose
-          age < MaxAge qualifies.
-        example: 2
-        type: integer
-      min_age:
-        description: MinAge is the minimum age in years (inclusive). A child whose
-          age >= MinAge qualifies.
-        example: 0
-        type: integer
-      period_id:
-        example: 1
-        type: integer
-      properties:
-        items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanProperty'
-        type: array
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.PayplanEntryCreateRequest:
-    properties:
-      max_age:
-        example: 2
-        type: integer
-      min_age:
-        example: 0
-        minimum: 0
-        type: integer
-    required:
-    - max_age
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.PayplanEntryUpdateRequest:
-    properties:
-      max_age:
-        example: 3
-        type: integer
-      min_age:
-        example: 0
-        minimum: 0
-        type: integer
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.PayplanPeriod:
-    properties:
-      comment:
-        example: Funding period 2023/2024
-        type: string
-      created_at:
-        example: "2024-01-15T10:30:00Z"
-        type: string
-      entries:
-        items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanEntry'
-        type: array
-      from:
-        example: "2023-03-01"
-        type: string
-      id:
-        example: 1
-        type: integer
-      payplan_id:
-        example: 1
-        type: integer
-      to:
-        example: "2024-02-29"
-        type: string
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.PayplanPeriodCreateRequest:
-    properties:
-      comment:
-        example: Funding period 2023/2024
-        maxLength: 1000
-        type: string
-      from:
-        example: "2023-03-01"
-        type: string
-      to:
-        example: "2024-02-29"
-        type: string
-    required:
-    - from
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.PayplanPeriodUpdateRequest:
-    properties:
-      comment:
-        example: Updated comment
-        maxLength: 1000
-        type: string
-      from:
-        example: "2023-03-01"
-        type: string
-      to:
-        example: "2024-02-29"
-        type: string
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.PayplanProperty:
-    properties:
-      comment:
-        example: Full-day care funding
-        type: string
-      created_at:
-        example: "2024-01-15T10:30:00Z"
-        type: string
-      entry_id:
-        example: 1
-        type: integer
-      id:
-        example: 1
-        type: integer
-      name:
-        example: ganztag
-        type: string
-      payment:
-        example: 166847
-        type: integer
-      requirement:
-        example: 0.261
-        type: number
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.PayplanPropertyCreateRequest:
-    properties:
-      comment:
-        example: Full-day care funding
-        maxLength: 500
-        type: string
-      name:
-        example: ganztag
-        maxLength: 255
-        type: string
-      payment:
-        example: 166847
-        minimum: 0
-        type: integer
-      requirement:
-        example: 0.261
-        minimum: 0
-        type: number
-    required:
-    - name
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.PayplanPropertyUpdateRequest:
-    properties:
-      comment:
-        example: Updated comment
-        maxLength: 500
-        type: string
-      name:
-        example: ganztag
-        maxLength: 255
-        type: string
-      payment:
-        example: 166847
-        minimum: 0
-        type: integer
-      requirement:
-        example: 0.261
-        minimum: 0
-        type: number
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.Role:
     enum:
@@ -890,6 +890,22 @@ definitions:
         example: resource not found
         type: string
     type: object
+  internal_handlers.GovernmentFundingCreateRequest:
+    properties:
+      name:
+        example: Berlin
+        maxLength: 255
+        type: string
+    required:
+    - name
+    type: object
+  internal_handlers.GovernmentFundingUpdateRequest:
+    properties:
+      name:
+        example: Berlin Updated
+        maxLength: 255
+        type: string
+    type: object
   internal_handlers.GroupCreateRequest:
     properties:
       active:
@@ -965,22 +981,6 @@ definitions:
         maxLength: 255
         type: string
     type: object
-  internal_handlers.PayplanCreateRequest:
-    properties:
-      name:
-        example: Berlin
-        maxLength: 255
-        type: string
-    required:
-    - name
-    type: object
-  internal_handlers.PayplanUpdateRequest:
-    properties:
-      name:
-        example: Berlin Updated
-        maxLength: 255
-        type: string
-    type: object
 host: localhost:8080
 info:
   contact:
@@ -994,6 +994,679 @@ info:
   title: KitaManager API
   version: "1.0"
 paths:
+  /api/v1/government-fundings:
+    get:
+      consumes:
+      - application/json
+      description: Get a paginated list of all government fundings
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        maximum: 100
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_GovernmentFunding'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List all government fundings
+      tags:
+      - government-fundings
+    post:
+      consumes:
+      - application/json
+      description: Create a new government funding (superadmin only)
+      parameters:
+      - description: GovernmentFunding data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.GovernmentFundingCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFunding'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new government funding
+      tags:
+      - government-fundings
+  /api/v1/government-fundings/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a government funding by ID (superadmin only)
+      parameters:
+      - description: GovernmentFunding ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a government funding
+      tags:
+      - government-fundings
+    get:
+      consumes:
+      - application/json
+      description: Get a single government funding by its ID with all nested periods,
+        entries, and properties
+      parameters:
+      - description: GovernmentFunding ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFunding'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get government funding by ID
+      tags:
+      - government-fundings
+    put:
+      consumes:
+      - application/json
+      description: Update an existing government funding by ID (superadmin only)
+      parameters:
+      - description: GovernmentFunding ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: GovernmentFunding data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.GovernmentFundingUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFunding'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a government funding
+      tags:
+      - government-fundings
+  /api/v1/government-fundings/{id}/periods:
+    post:
+      consumes:
+      - application/json
+      description: Create a new period for a government funding (superadmin only)
+      parameters:
+      - description: GovernmentFunding ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Period data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriodCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriod'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new period
+      tags:
+      - government-fundings
+  /api/v1/government-fundings/{id}/periods/{periodId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a period by ID (superadmin only)
+      parameters:
+      - description: GovernmentFunding ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Period ID
+        in: path
+        name: periodId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a period
+      tags:
+      - government-fundings
+    put:
+      consumes:
+      - application/json
+      description: Update an existing period by ID (superadmin only)
+      parameters:
+      - description: GovernmentFunding ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Period ID
+        in: path
+        name: periodId
+        required: true
+        type: integer
+      - description: Period data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriodUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriod'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a period
+      tags:
+      - government-fundings
+  /api/v1/government-fundings/{id}/periods/{periodId}/entries:
+    post:
+      consumes:
+      - application/json
+      description: Create a new entry for a period (superadmin only)
+      parameters:
+      - description: GovernmentFunding ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Period ID
+        in: path
+        name: periodId
+        required: true
+        type: integer
+      - description: Entry data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingEntryCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingEntry'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new entry
+      tags:
+      - government-fundings
+  /api/v1/government-fundings/{id}/periods/{periodId}/entries/{entryId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete an entry by ID (superadmin only)
+      parameters:
+      - description: GovernmentFunding ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Period ID
+        in: path
+        name: periodId
+        required: true
+        type: integer
+      - description: Entry ID
+        in: path
+        name: entryId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete an entry
+      tags:
+      - government-fundings
+    put:
+      consumes:
+      - application/json
+      description: Update an existing entry by ID (superadmin only)
+      parameters:
+      - description: GovernmentFunding ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Period ID
+        in: path
+        name: periodId
+        required: true
+        type: integer
+      - description: Entry ID
+        in: path
+        name: entryId
+        required: true
+        type: integer
+      - description: Entry data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingEntryUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingEntry'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update an entry
+      tags:
+      - government-fundings
+  /api/v1/government-fundings/{id}/periods/{periodId}/entries/{entryId}/properties:
+    post:
+      consumes:
+      - application/json
+      description: Create a new property for an entry (superadmin only)
+      parameters:
+      - description: GovernmentFunding ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Period ID
+        in: path
+        name: periodId
+        required: true
+        type: integer
+      - description: Entry ID
+        in: path
+        name: entryId
+        required: true
+        type: integer
+      - description: Property data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPropertyCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingProperty'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new property
+      tags:
+      - government-fundings
+  /api/v1/government-fundings/{id}/periods/{periodId}/entries/{entryId}/properties/{propId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a property by ID (superadmin only)
+      parameters:
+      - description: GovernmentFunding ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Period ID
+        in: path
+        name: periodId
+        required: true
+        type: integer
+      - description: Entry ID
+        in: path
+        name: entryId
+        required: true
+        type: integer
+      - description: Property ID
+        in: path
+        name: propId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a property
+      tags:
+      - government-fundings
+    put:
+      consumes:
+      - application/json
+      description: Update an existing property by ID (superadmin only)
+      parameters:
+      - description: GovernmentFunding ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Period ID
+        in: path
+        name: periodId
+        required: true
+        type: integer
+      - description: Entry ID
+        in: path
+        name: entryId
+        required: true
+        type: integer
+      - description: Property ID
+        in: path
+        name: propId
+        required: true
+        type: integer
+      - description: Property data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPropertyUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingProperty'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a property
+      tags:
+      - government-fundings
   /api/v1/health:
     get:
       description: Check the health status of the API and its dependencies
@@ -2031,6 +2704,98 @@ paths:
       summary: Get current employee contract
       tags:
       - employees
+  /api/v1/organizations/{orgId}/government-funding:
+    delete:
+      consumes:
+      - application/json
+      description: Remove the government funding assignment from an organization (superadmin
+        only)
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove government funding from organization
+      tags:
+      - organizations
+    put:
+      consumes:
+      - application/json
+      description: Assign a government funding to an organization (superadmin only)
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: GovernmentFunding assignment
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.AssignGovernmentFundingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Assign government funding to organization
+      tags:
+      - organizations
   /api/v1/organizations/{orgId}/groups:
     get:
       consumes:
@@ -2247,98 +3012,6 @@ paths:
       summary: Update a group
       tags:
       - groups
-  /api/v1/organizations/{orgId}/payplan:
-    delete:
-      consumes:
-      - application/json
-      description: Remove the payplan assignment from an organization (superadmin
-        only)
-      parameters:
-      - description: Organization ID
-        in: path
-        name: orgId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Remove payplan from organization
-      tags:
-      - organizations
-    put:
-      consumes:
-      - application/json
-      description: Assign a payplan to an organization (superadmin only)
-      parameters:
-      - description: Organization ID
-        in: path
-        name: orgId
-        required: true
-        type: integer
-      - description: Payplan assignment
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.AssignPayplanRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Assign payplan to organization
-      tags:
-      - organizations
   /api/v1/organizations/{orgId}/users:
     get:
       consumes:
@@ -2387,679 +3060,6 @@ paths:
       tags:
       - users
       - organizations
-  /api/v1/payplans:
-    get:
-      consumes:
-      - application/json
-      description: Get a paginated list of all payplans
-      parameters:
-      - default: 1
-        description: Page number
-        in: query
-        name: page
-        type: integer
-      - default: 20
-        description: Items per page
-        in: query
-        maximum: 100
-        name: limit
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_Payplan'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: List all payplans
-      tags:
-      - payplans
-    post:
-      consumes:
-      - application/json
-      description: Create a new payplan (superadmin only)
-      parameters:
-      - description: Payplan data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/internal_handlers.PayplanCreateRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Payplan'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Create a new payplan
-      tags:
-      - payplans
-  /api/v1/payplans/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete a payplan by ID (superadmin only)
-      parameters:
-      - description: Payplan ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Delete a payplan
-      tags:
-      - payplans
-    get:
-      consumes:
-      - application/json
-      description: Get a single payplan by its ID with all nested periods, entries,
-        and properties
-      parameters:
-      - description: Payplan ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Payplan'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Get payplan by ID
-      tags:
-      - payplans
-    put:
-      consumes:
-      - application/json
-      description: Update an existing payplan by ID (superadmin only)
-      parameters:
-      - description: Payplan ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Payplan data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/internal_handlers.PayplanUpdateRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Payplan'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Update a payplan
-      tags:
-      - payplans
-  /api/v1/payplans/{id}/periods:
-    post:
-      consumes:
-      - application/json
-      description: Create a new period for a payplan (superadmin only)
-      parameters:
-      - description: Payplan ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Period data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanPeriodCreateRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanPeriod'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Create a new period
-      tags:
-      - payplans
-  /api/v1/payplans/{id}/periods/{periodId}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete a period by ID (superadmin only)
-      parameters:
-      - description: Payplan ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Period ID
-        in: path
-        name: periodId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Delete a period
-      tags:
-      - payplans
-    put:
-      consumes:
-      - application/json
-      description: Update an existing period by ID (superadmin only)
-      parameters:
-      - description: Payplan ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Period ID
-        in: path
-        name: periodId
-        required: true
-        type: integer
-      - description: Period data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanPeriodUpdateRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanPeriod'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Update a period
-      tags:
-      - payplans
-  /api/v1/payplans/{id}/periods/{periodId}/entries:
-    post:
-      consumes:
-      - application/json
-      description: Create a new entry for a period (superadmin only)
-      parameters:
-      - description: Payplan ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Period ID
-        in: path
-        name: periodId
-        required: true
-        type: integer
-      - description: Entry data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanEntryCreateRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanEntry'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Create a new entry
-      tags:
-      - payplans
-  /api/v1/payplans/{id}/periods/{periodId}/entries/{entryId}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete an entry by ID (superadmin only)
-      parameters:
-      - description: Payplan ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Period ID
-        in: path
-        name: periodId
-        required: true
-        type: integer
-      - description: Entry ID
-        in: path
-        name: entryId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Delete an entry
-      tags:
-      - payplans
-    put:
-      consumes:
-      - application/json
-      description: Update an existing entry by ID (superadmin only)
-      parameters:
-      - description: Payplan ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Period ID
-        in: path
-        name: periodId
-        required: true
-        type: integer
-      - description: Entry ID
-        in: path
-        name: entryId
-        required: true
-        type: integer
-      - description: Entry data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanEntryUpdateRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanEntry'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Update an entry
-      tags:
-      - payplans
-  /api/v1/payplans/{id}/periods/{periodId}/entries/{entryId}/properties:
-    post:
-      consumes:
-      - application/json
-      description: Create a new property for an entry (superadmin only)
-      parameters:
-      - description: Payplan ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Period ID
-        in: path
-        name: periodId
-        required: true
-        type: integer
-      - description: Entry ID
-        in: path
-        name: entryId
-        required: true
-        type: integer
-      - description: Property data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanPropertyCreateRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanProperty'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Create a new property
-      tags:
-      - payplans
-  /api/v1/payplans/{id}/periods/{periodId}/entries/{entryId}/properties/{propId}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete a property by ID (superadmin only)
-      parameters:
-      - description: Payplan ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Period ID
-        in: path
-        name: periodId
-        required: true
-        type: integer
-      - description: Entry ID
-        in: path
-        name: entryId
-        required: true
-        type: integer
-      - description: Property ID
-        in: path
-        name: propId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Delete a property
-      tags:
-      - payplans
-    put:
-      consumes:
-      - application/json
-      description: Update an existing property by ID (superadmin only)
-      parameters:
-      - description: Payplan ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Period ID
-        in: path
-        name: periodId
-        required: true
-        type: integer
-      - description: Entry ID
-        in: path
-        name: entryId
-        required: true
-        type: integer
-      - description: Property ID
-        in: path
-        name: propId
-        required: true
-        type: integer
-      - description: Property data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanPropertyUpdateRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayplanProperty'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Update a property
-      tags:
-      - payplans
   /api/v1/ready:
     get:
       description: Check if the API is ready to accept traffic

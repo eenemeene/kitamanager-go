@@ -1,26 +1,26 @@
 import { describe, it, expect } from 'vitest'
-import { flattenPayplanToRows } from '../utils/payplan'
-import type { Payplan } from '../api/types'
+import { flattenGovernmentFundingToRows } from '../utils/government-funding'
+import type { GovernmentFunding } from '../api/types'
 
-describe('flattenPayplanToRows', () => {
-  it('should return empty array for null payplan', () => {
-    const result = flattenPayplanToRows(null)
+describe('flattenGovernmentFundingToRows', () => {
+  it('should return empty array for null government funding', () => {
+    const result = flattenGovernmentFundingToRows(null)
     expect(result).toEqual([])
   })
 
-  it('should return empty array for payplan without periods', () => {
-    const payplan: Payplan = {
+  it('should return empty array for government funding without periods', () => {
+    const governmentFunding: GovernmentFunding = {
       id: 1,
       name: 'Test',
       created_at: '2024-01-01T00:00:00Z',
       updated_at: '2024-01-01T00:00:00Z'
     }
-    const result = flattenPayplanToRows(payplan)
+    const result = flattenGovernmentFundingToRows(governmentFunding)
     expect(result).toEqual([])
   })
 
   it('should handle period with no entries', () => {
-    const payplan: Payplan = {
+    const governmentFunding: GovernmentFunding = {
       id: 1,
       name: 'Test',
       created_at: '2024-01-01T00:00:00Z',
@@ -28,7 +28,7 @@ describe('flattenPayplanToRows', () => {
       periods: [
         {
           id: 1,
-          payplan_id: 1,
+          government_funding_id: 1,
           from: '2024-01-01',
           to: '2024-12-31',
           comment: 'Test period',
@@ -38,7 +38,7 @@ describe('flattenPayplanToRows', () => {
       ]
     }
 
-    const result = flattenPayplanToRows(payplan)
+    const result = flattenGovernmentFundingToRows(governmentFunding)
 
     expect(result).toHaveLength(1)
     expect(result[0].periodId).toBe(1)
@@ -51,7 +51,7 @@ describe('flattenPayplanToRows', () => {
   })
 
   it('should handle entry with no properties', () => {
-    const payplan: Payplan = {
+    const governmentFunding: GovernmentFunding = {
       id: 1,
       name: 'Test',
       created_at: '2024-01-01T00:00:00Z',
@@ -59,7 +59,7 @@ describe('flattenPayplanToRows', () => {
       periods: [
         {
           id: 1,
-          payplan_id: 1,
+          government_funding_id: 1,
           from: '2024-01-01',
           to: null,
           comment: '',
@@ -78,7 +78,7 @@ describe('flattenPayplanToRows', () => {
       ]
     }
 
-    const result = flattenPayplanToRows(payplan)
+    const result = flattenGovernmentFundingToRows(governmentFunding)
 
     expect(result).toHaveLength(1)
     expect(result[0].entryId).toBe(1)
@@ -91,7 +91,7 @@ describe('flattenPayplanToRows', () => {
   })
 
   it('should flatten full hierarchy correctly', () => {
-    const payplan: Payplan = {
+    const governmentFunding: GovernmentFunding = {
       id: 1,
       name: 'Berlin',
       created_at: '2024-01-01T00:00:00Z',
@@ -99,7 +99,7 @@ describe('flattenPayplanToRows', () => {
       periods: [
         {
           id: 1,
-          payplan_id: 1,
+          government_funding_id: 1,
           from: '2024-01-01',
           to: '2024-12-31',
           comment: 'Period 2024',
@@ -155,7 +155,7 @@ describe('flattenPayplanToRows', () => {
       ]
     }
 
-    const result = flattenPayplanToRows(payplan)
+    const result = flattenGovernmentFundingToRows(governmentFunding)
 
     // Should have 3 rows: 2 properties for first entry + 1 property for second entry
     expect(result).toHaveLength(3)
@@ -195,7 +195,7 @@ describe('flattenPayplanToRows', () => {
   })
 
   it('should handle multiple periods', () => {
-    const payplan: Payplan = {
+    const governmentFunding: GovernmentFunding = {
       id: 1,
       name: 'Test',
       created_at: '2024-01-01T00:00:00Z',
@@ -203,7 +203,7 @@ describe('flattenPayplanToRows', () => {
       periods: [
         {
           id: 1,
-          payplan_id: 1,
+          government_funding_id: 1,
           from: '2024-01-01',
           to: '2024-06-30',
           comment: '',
@@ -231,7 +231,7 @@ describe('flattenPayplanToRows', () => {
         },
         {
           id: 2,
-          payplan_id: 1,
+          government_funding_id: 1,
           from: '2024-07-01',
           to: null,
           comment: 'New rates',
@@ -260,7 +260,7 @@ describe('flattenPayplanToRows', () => {
       ]
     }
 
-    const result = flattenPayplanToRows(payplan)
+    const result = flattenGovernmentFundingToRows(governmentFunding)
 
     expect(result).toHaveLength(2)
 
@@ -283,7 +283,7 @@ describe('flattenPayplanToRows', () => {
 
   it('should correctly calculate row spans for complex structure', () => {
     // Period with 2 entries: first has 3 properties, second has 1 property
-    const payplan: Payplan = {
+    const governmentFunding: GovernmentFunding = {
       id: 1,
       name: 'Test',
       created_at: '2024-01-01T00:00:00Z',
@@ -291,7 +291,7 @@ describe('flattenPayplanToRows', () => {
       periods: [
         {
           id: 1,
-          payplan_id: 1,
+          government_funding_id: 1,
           from: '2024-01-01',
           to: null,
           comment: '',
@@ -356,7 +356,7 @@ describe('flattenPayplanToRows', () => {
       ]
     }
 
-    const result = flattenPayplanToRows(payplan)
+    const result = flattenGovernmentFundingToRows(governmentFunding)
 
     expect(result).toHaveLength(4)
 

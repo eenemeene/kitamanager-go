@@ -8,8 +8,8 @@ type Organization struct {
 	ID        uint      `gorm:"primaryKey" json:"id" example:"1"`
 	Name      string    `gorm:"size:255;not null" json:"name" binding:"required" example:"Acme Corp"`
 	Active    bool      `gorm:"default:true" json:"active" example:"true"`
-	PayplanID *uint     `json:"payplan_id,omitempty" example:"1"`
-	Payplan   *Payplan  `gorm:"foreignKey:PayplanID" json:"payplan,omitempty"`
+	GovernmentFundingID *uint              `json:"government_funding_id,omitempty" example:"1"`
+	GovernmentFunding   *GovernmentFunding `gorm:"foreignKey:GovernmentFundingID" json:"government_funding,omitempty"`
 	CreatedAt time.Time `json:"created_at" example:"2024-01-15T10:30:00Z"`
 	CreatedBy string    `gorm:"size:255" json:"created_by" example:"admin@example.com"`
 	UpdatedAt time.Time `json:"updated_at" example:"2024-01-15T10:30:00Z"`
@@ -18,23 +18,23 @@ type Organization struct {
 
 // OrganizationResponse represents the organization response
 type OrganizationResponse struct {
-	ID        uint      `json:"id" example:"1"`
-	Name      string    `json:"name" example:"Acme Corp"`
-	Active    bool      `json:"active" example:"true"`
-	PayplanID *uint     `json:"payplan_id,omitempty" example:"1"`
-	CreatedAt time.Time `json:"created_at" example:"2024-01-15T10:30:00Z"`
-	CreatedBy string    `json:"created_by" example:"admin@example.com"`
-	UpdatedAt time.Time `json:"updated_at" example:"2024-01-15T10:30:00Z"`
+	ID                  uint      `json:"id" example:"1"`
+	Name                string    `json:"name" example:"Acme Corp"`
+	Active              bool      `json:"active" example:"true"`
+	GovernmentFundingID *uint     `json:"government_funding_id,omitempty" example:"1"`
+	CreatedAt           time.Time `json:"created_at" example:"2024-01-15T10:30:00Z"`
+	CreatedBy           string    `json:"created_by" example:"admin@example.com"`
+	UpdatedAt           time.Time `json:"updated_at" example:"2024-01-15T10:30:00Z"`
 }
 
 func (o *Organization) ToResponse() OrganizationResponse {
 	return OrganizationResponse{
-		ID:        o.ID,
-		Name:      o.Name,
-		Active:    o.Active,
-		PayplanID: o.PayplanID,
-		CreatedAt: o.CreatedAt,
-		CreatedBy: o.CreatedBy,
-		UpdatedAt: o.UpdatedAt,
+		ID:                  o.ID,
+		Name:                o.Name,
+		Active:              o.Active,
+		GovernmentFundingID: o.GovernmentFundingID,
+		CreatedAt:           o.CreatedAt,
+		CreatedBy:           o.CreatedBy,
+		UpdatedAt:           o.UpdatedAt,
 	}
 }

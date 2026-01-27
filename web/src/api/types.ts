@@ -21,35 +21,35 @@ export interface MessageResponse {
   message: string
 }
 
-// Payplan
-export interface Payplan {
+// GovernmentFunding
+export interface GovernmentFunding {
   id: number
   name: string
   created_at: string
   updated_at: string
-  periods?: PayplanPeriod[]
+  periods?: GovernmentFundingPeriod[]
 }
 
-export interface PayplanPeriod {
+export interface GovernmentFundingPeriod {
   id: number
-  payplan_id: number
+  government_funding_id: number
   from: string
   to?: string | null
   comment?: string
   created_at: string
-  entries?: PayplanEntry[]
+  entries?: GovernmentFundingEntry[]
 }
 
-export interface PayplanEntry {
+export interface GovernmentFundingEntry {
   id: number
   period_id: number
   min_age: number
   max_age: number
   created_at: string
-  properties?: PayplanProperty[]
+  properties?: GovernmentFundingProperty[]
 }
 
-export interface PayplanProperty {
+export interface GovernmentFundingProperty {
   id: number
   entry_id: number
   name: string
@@ -59,52 +59,52 @@ export interface PayplanProperty {
   created_at: string
 }
 
-export interface PayplanCreateRequest {
+export interface GovernmentFundingCreateRequest {
   name: string
 }
 
-export interface PayplanUpdateRequest {
+export interface GovernmentFundingUpdateRequest {
   name?: string
 }
 
-export interface PayplanPeriodCreateRequest {
+export interface GovernmentFundingPeriodCreateRequest {
   from: string
   to?: string | null
   comment?: string
 }
 
-export interface PayplanPeriodUpdateRequest {
+export interface GovernmentFundingPeriodUpdateRequest {
   from?: string
   to?: string | null
   comment?: string
 }
 
-export interface PayplanEntryCreateRequest {
+export interface GovernmentFundingEntryCreateRequest {
   min_age: number
   max_age: number
 }
 
-export interface PayplanEntryUpdateRequest {
+export interface GovernmentFundingEntryUpdateRequest {
   min_age?: number
   max_age?: number
 }
 
-export interface PayplanPropertyCreateRequest {
+export interface GovernmentFundingPropertyCreateRequest {
   name: string
   payment: number
   requirement: number
   comment?: string
 }
 
-export interface PayplanPropertyUpdateRequest {
+export interface GovernmentFundingPropertyUpdateRequest {
   name?: string
   payment?: number
   requirement?: number
   comment?: string
 }
 
-export interface AssignPayplanRequest {
-  payplan_id: number
+export interface AssignGovernmentFundingRequest {
+  government_funding_id: number
 }
 
 // Organization
@@ -112,8 +112,8 @@ export interface Organization {
   id: number
   name: string
   active: boolean
-  payplan_id?: number | null
-  payplan?: Payplan
+  government_funding_id?: number | null
+  government_funding?: GovernmentFunding
   created_at: string
   created_by: string
   updated_at: string

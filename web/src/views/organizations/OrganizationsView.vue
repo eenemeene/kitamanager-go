@@ -8,7 +8,7 @@ import type {
   Organization,
   OrganizationCreateRequest,
   OrganizationUpdateRequest,
-  Payplan
+  GovernmentFunding
 } from '@/api/types'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -47,68 +47,71 @@ async function saveItem(data: OrganizationCreateRequest | OrganizationUpdateRequ
   await uiStore.fetchOrganizations()
 }
 
-// Payplan assignment
-const payplans = ref<Payplan[]>([])
-const payplanDialogVisible = ref(false)
+// GovernmentFunding assignment
+const governmentFundings = ref<GovernmentFunding[]>([])
+const governmentFundingDialogVisible = ref(false)
 const selectedOrg = ref<Organization | null>(null)
-const selectedPayplanId = ref<number | null>(null)
+const selectedGovernmentFundingId = ref<number | null>(null)
 
-async function fetchPayplans() {
+async function fetchGovernmentFundings() {
   try {
-    payplans.value = await apiClient.getPayplans()
+    governmentFundings.value = await apiClient.getGovernmentFundings()
   } catch {
-    // Payplans might not be available to non-superadmins
+    // GovernmentFundings might not be available to non-superadmins
   }
 }
 
-function openPayplanDialog(org: Organization) {
+function openGovernmentFundingDialog(org: Organization) {
   selectedOrg.value = org
-  selectedPayplanId.value = org.payplan_id || null
-  payplanDialogVisible.value = true
+  selectedGovernmentFundingId.value = org.government_funding_id || null
+  governmentFundingDialogVisible.value = true
 }
 
-async function savePayplanAssignment() {
+async function saveGovernmentFundingAssignment() {
   if (!selectedOrg.value) return
 
   try {
-    if (selectedPayplanId.value) {
-      await apiClient.assignPayplanToOrganization(selectedOrg.value.id, selectedPayplanId.value)
+    if (selectedGovernmentFundingId.value) {
+      await apiClient.assignGovernmentFundingToOrganization(
+        selectedOrg.value.id,
+        selectedGovernmentFundingId.value
+      )
       toast.add({
         severity: 'success',
         summary: 'Success',
-        detail: 'Payplan assigned successfully',
+        detail: 'Government funding assigned successfully',
         life: 3000
       })
     } else {
-      await apiClient.removePayplanFromOrganization(selectedOrg.value.id)
+      await apiClient.removeGovernmentFundingFromOrganization(selectedOrg.value.id)
       toast.add({
         severity: 'success',
         summary: 'Success',
-        detail: 'Payplan removed successfully',
+        detail: 'Government funding removed successfully',
         life: 3000
       })
     }
-    payplanDialogVisible.value = false
+    governmentFundingDialogVisible.value = false
     await fetchItems()
   } catch {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: 'Failed to update payplan assignment',
+      detail: 'Failed to update government funding assignment',
       life: 3000
     })
   }
 }
 
-function getPayplanName(org: Organization): string {
-  if (org.payplan) return org.payplan.name
-  const plan = payplans.value.find((p) => p.id === org.payplan_id)
+function getGovernmentFundingName(org: Organization): string {
+  if (org.government_funding) return org.government_funding.name
+  const plan = governmentFundings.value.find((p) => p.id === org.government_funding_id)
   return plan?.name || '-'
 }
 
 onMounted(() => {
   fetchItems()
-  fetchPayplans()
+  fetchGovernmentFundings()
 })
 </script>
 
@@ -130,9 +133,9 @@ onMounted(() => {
       >
         <Column field="id" header="ID" sortable style="width: 80px"></Column>
         <Column field="name" header="Name" sortable></Column>
-        <Column header="Payplan" style="width: 150px">
+        <Column header="Government Funding" style="width: 150px">
           <template #body="{ data }">
-            <span>{{ getPayplanName(data) }}</span>
+            <span>{{ getGovernmentFundingName(data) }}</span>
           </template>
         </Column>
         <Column field="active" header="Status" sortable style="width: 120px">
@@ -154,8 +157,8 @@ onMounted(() => {
               icon="pi pi-money-bill"
               text
               rounded
-              title="Assign Payplan"
-              @click="openPayplanDialog(data)"
+              title="Assign Government Funding"
+              @click="openGovernmentFundingDialog(data)"
             />
             <Button icon="pi pi-pencil" text rounded title="Edit" @click="openEditDialog(data)" />
             <Button
@@ -178,10 +181,10 @@ onMounted(() => {
       @save="saveItem"
     />
 
-    <!-- Payplan Assignment Dialog -->
+    <!-- GovernmentFunding Assignment Dialog -->
     <Dialog
-      v-model:visible="payplanDialogVisible"
-      header="Assign Payplan"
+      v-model:visible="governmentFundingDialogVisible"
+      header="Assign Government Funding"
       modal
       :style="{ width: '400px' }"
     >
@@ -191,22 +194,22 @@ onMounted(() => {
           <p>{{ selectedOrg?.name }}</p>
         </div>
         <div class="field">
-          <label for="payplan">Payplan</label>
+          <label for="government-funding">Government Funding</label>
           <Dropdown
-            id="payplan"
-            v-model="selectedPayplanId"
-            :options="payplans"
+            id="government-funding"
+            v-model="selectedGovernmentFundingId"
+            :options="governmentFundings"
             option-label="name"
             option-value="id"
-            placeholder="Select a payplan"
+            placeholder="Select a government funding"
             :show-clear="true"
             class="w-full"
           />
         </div>
       </div>
       <template #footer>
-        <Button label="Cancel" text @click="payplanDialogVisible = false" />
-        <Button label="Save" @click="savePayplanAssignment" />
+        <Button label="Cancel" text @click="governmentFundingDialogVisible = false" />
+        <Button label="Save" @click="saveGovernmentFundingAssignment" />
       </template>
     </Dialog>
   </div>

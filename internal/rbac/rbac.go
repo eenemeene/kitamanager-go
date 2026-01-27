@@ -25,7 +25,7 @@ const (
 	ResourceChildContracts    = "child_contracts"
 	ResourceUsers             = "users"
 	ResourceGroups            = "groups"
-	ResourcePayplans          = "payplans"
+	ResourceFundings          = "fundings"
 )
 
 // Actions
@@ -194,10 +194,10 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleSuperAdmin, "*", ResourceGroups, ActionRead},
 		{RoleSuperAdmin, "*", ResourceGroups, ActionUpdate},
 		{RoleSuperAdmin, "*", ResourceGroups, ActionDelete},
-		{RoleSuperAdmin, "*", ResourcePayplans, ActionCreate},
-		{RoleSuperAdmin, "*", ResourcePayplans, ActionRead},
-		{RoleSuperAdmin, "*", ResourcePayplans, ActionUpdate},
-		{RoleSuperAdmin, "*", ResourcePayplans, ActionDelete},
+		{RoleSuperAdmin, "*", ResourceFundings, ActionCreate},
+		{RoleSuperAdmin, "*", ResourceFundings, ActionRead},
+		{RoleSuperAdmin, "*", ResourceFundings, ActionUpdate},
+		{RoleSuperAdmin, "*", ResourceFundings, ActionDelete},
 
 		// Admin - full access within their organization (domain is checked at runtime)
 		{RoleAdmin, "*", ResourceOrganizations, ActionRead},

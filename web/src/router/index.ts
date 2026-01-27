@@ -55,14 +55,14 @@ const router = createRouter({
           meta: { orgScoped: true }
         },
         {
-          path: 'payplans',
-          name: 'payplans',
-          component: () => import('@/views/payplans/PayplansView.vue')
+          path: 'government-fundings',
+          name: 'government-fundings',
+          component: () => import('@/views/government-fundings/GovernmentFundingsView.vue')
         },
         {
-          path: 'payplans/:id',
-          name: 'payplan-detail',
-          component: () => import('@/views/payplans/PayplanDetailView.vue'),
+          path: 'government-fundings/:id',
+          name: 'government-funding-detail',
+          component: () => import('@/views/government-fundings/GovernmentFundingDetailView.vue'),
           props: true
         }
       ]

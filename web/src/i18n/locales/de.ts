@@ -44,7 +44,7 @@ export default {
     children: 'Kinder',
     users: 'Benutzer',
     groups: 'Gruppen',
-    payplans: 'Zahlpläne',
+    governmentFundings: 'Staatliche Finanzierungen',
     settings: 'Einstellungen'
   },
   dashboard: {

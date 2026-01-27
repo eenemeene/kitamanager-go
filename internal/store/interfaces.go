@@ -102,38 +102,39 @@ type ContractStorer[T models.HasPeriod] interface {
 	CloseCurrentContract(personID uint, endDate time.Time) error
 }
 
-// PayplanStorer defines the interface for payplan storage operations
-type PayplanStorer interface {
-	// Payplan CRUD
-	FindAll(limit, offset int) ([]models.Payplan, int64, error)
-	FindByID(id uint) (*models.Payplan, error)
-	FindByIDWithDetails(id uint) (*models.Payplan, error)
-	Create(payplan *models.Payplan) error
-	Update(payplan *models.Payplan) error
+// GovernmentFundingStorer defines the interface for government funding storage operations
+type GovernmentFundingStorer interface {
+	// GovernmentFunding CRUD
+	FindAll(limit, offset int) ([]models.GovernmentFunding, int64, error)
+	FindByID(id uint) (*models.GovernmentFunding, error)
+	FindByIDWithDetails(id uint) (*models.GovernmentFunding, error)
+	FindByName(name string) (*models.GovernmentFunding, error)
+	Create(funding *models.GovernmentFunding) error
+	Update(funding *models.GovernmentFunding) error
 	Delete(id uint) error
 
 	// Period CRUD
-	FindPeriodByID(id uint) (*models.PayplanPeriod, error)
-	FindPeriodsByPayplanID(payplanID uint) ([]models.PayplanPeriod, error)
-	CreatePeriod(period *models.PayplanPeriod) error
-	UpdatePeriod(period *models.PayplanPeriod) error
+	FindPeriodByID(id uint) (*models.GovernmentFundingPeriod, error)
+	FindPeriodsByGovernmentFundingID(fundingID uint) ([]models.GovernmentFundingPeriod, error)
+	CreatePeriod(period *models.GovernmentFundingPeriod) error
+	UpdatePeriod(period *models.GovernmentFundingPeriod) error
 	DeletePeriod(id uint) error
 
 	// Entry CRUD
-	FindEntryByID(id uint) (*models.PayplanEntry, error)
-	CreateEntry(entry *models.PayplanEntry) error
-	UpdateEntry(entry *models.PayplanEntry) error
+	FindEntryByID(id uint) (*models.GovernmentFundingEntry, error)
+	CreateEntry(entry *models.GovernmentFundingEntry) error
+	UpdateEntry(entry *models.GovernmentFundingEntry) error
 	DeleteEntry(id uint) error
 
 	// Property CRUD
-	FindPropertyByID(id uint) (*models.PayplanProperty, error)
-	CreateProperty(property *models.PayplanProperty) error
-	UpdateProperty(property *models.PayplanProperty) error
+	FindPropertyByID(id uint) (*models.GovernmentFundingProperty, error)
+	CreateProperty(property *models.GovernmentFundingProperty) error
+	UpdateProperty(property *models.GovernmentFundingProperty) error
 	DeleteProperty(id uint) error
 
-	// Organization payplan assignment
-	AssignPayplanToOrg(orgID, payplanID uint) error
-	RemovePayplanFromOrg(orgID uint) error
+	// Organization government funding assignment
+	AssignGovernmentFundingToOrg(orgID, fundingID uint) error
+	RemoveGovernmentFundingFromOrg(orgID uint) error
 }
 
 // Compile-time interface compliance checks
@@ -144,5 +145,5 @@ var (
 	_ EmployeeStorer     = (*EmployeeStore)(nil)
 	_ ChildStorer        = (*ChildStore)(nil)
 	_ UserGroupStorer    = (*UserGroupStore)(nil)
-	_ PayplanStorer      = (*PayplanStore)(nil)
+	_ GovernmentFundingStorer = (*GovernmentFundingStore)(nil)
 )

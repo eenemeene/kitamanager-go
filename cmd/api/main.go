@@ -91,11 +91,17 @@ func main() {
 	employeeStore := store.NewEmployeeStore(db)
 	childStore := store.NewChildStore(db)
 	userGroupStore := store.NewUserGroupStore(db)
-	payplanStore := store.NewPayplanStore(db)
+	governmentFundingStore := store.NewGovernmentFundingStore(db)
 
 	// Seed admin user if configured
 	if err := seed.SeedAdmin(cfg, userStore, userGroupStore, enforcer); err != nil {
 		slog.Error("Failed to seed admin user", "error", err)
+		os.Exit(1)
+	}
+
+	// Seed government funding if configured
+	if err := seed.SeedGovernmentFunding(cfg, db, governmentFundingStore); err != nil {
+		slog.Error("Failed to seed government funding", "error", err)
 		os.Exit(1)
 	}
 
@@ -109,7 +115,7 @@ func main() {
 	groupService := service.NewGroupService(groupStore)
 	employeeService := service.NewEmployeeService(employeeStore)
 	childService := service.NewChildService(childStore, groupStore)
-	payplanService := service.NewPayplanService(payplanStore, orgStore)
+	governmentFundingService := service.NewGovernmentFundingService(governmentFundingStore, orgStore)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(userStore, cfg.JWTSecret)
@@ -118,7 +124,7 @@ func main() {
 	orgHandler := handlers.NewOrganizationHandler(orgService)
 	employeeHandler := handlers.NewEmployeeHandler(employeeService)
 	childHandler := handlers.NewChildHandler(childService)
-	payplanHandler := handlers.NewPayplanHandler(payplanService)
+	governmentFundingHandler := handlers.NewGovernmentFundingHandler(governmentFundingService)
 	healthHandler := handlers.NewHealthHandler(db)
 
 	// Initialize middleware
@@ -150,7 +156,7 @@ func main() {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Setup API routes
-	routes.Setup(r, authHandler, userHandler, groupHandler, orgHandler, employeeHandler, childHandler, payplanHandler, authMiddleware, authzMiddleware, loginRateLimiter)
+	routes.Setup(r, authHandler, userHandler, groupHandler, orgHandler, employeeHandler, childHandler, governmentFundingHandler, authMiddleware, authzMiddleware, loginRateLimiter)
 
 	// Register embedded web UI
 	if err := web.RegisterHandlers(r); err != nil {

@@ -5,18 +5,18 @@ import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { apiClient } from '@/api/client'
 import type {
-  Payplan,
-  PayplanPeriod,
-  PayplanEntry,
-  PayplanProperty,
-  PayplanPeriodCreateRequest,
-  PayplanEntryCreateRequest,
-  PayplanPropertyCreateRequest,
-  PayplanPeriodUpdateRequest,
-  PayplanEntryUpdateRequest,
-  PayplanPropertyUpdateRequest
+  GovernmentFunding,
+  GovernmentFundingPeriod,
+  GovernmentFundingEntry,
+  GovernmentFundingProperty,
+  GovernmentFundingPeriodCreateRequest,
+  GovernmentFundingEntryCreateRequest,
+  GovernmentFundingPropertyCreateRequest,
+  GovernmentFundingPeriodUpdateRequest,
+  GovernmentFundingEntryUpdateRequest,
+  GovernmentFundingPropertyUpdateRequest
 } from '@/api/types'
-import { flattenPayplanToRows } from '@/utils/payplan'
+import { flattenGovernmentFundingToRows } from '@/utils/government-funding'
 import Button from 'primevue/button'
 import Panel from 'primevue/panel'
 import DataTable from 'primevue/datatable'
@@ -33,8 +33,8 @@ const router = useRouter()
 const toast = useToast()
 const confirm = useConfirm()
 
-const payplanId = computed(() => Number(route.params.id))
-const payplan = ref<Payplan | null>(null)
+const governmentFundingId = computed(() => Number(route.params.id))
+const governmentFunding = ref<GovernmentFunding | null>(null)
 const loading = ref(false)
 
 // View mode toggle
@@ -45,7 +45,7 @@ const viewModeOptions = [
 ]
 
 // Compute flattened rows for table view using utility function
-const flattenedRows = computed(() => flattenPayplanToRows(payplan.value))
+const flattenedRows = computed(() => flattenGovernmentFundingToRows(governmentFunding.value))
 
 // Dialog states
 const periodDialog = ref(false)
@@ -53,9 +53,9 @@ const entryDialog = ref(false)
 const propertyDialog = ref(false)
 
 // Current editing contexts
-const editingPeriod = ref<PayplanPeriod | null>(null)
-const editingEntry = ref<PayplanEntry | null>(null)
-const editingProperty = ref<PayplanProperty | null>(null)
+const editingPeriod = ref<GovernmentFundingPeriod | null>(null)
+const editingEntry = ref<GovernmentFundingEntry | null>(null)
+const editingProperty = ref<GovernmentFundingProperty | null>(null)
 const currentPeriodId = ref<number | null>(null)
 const currentEntryId = ref<number | null>(null)
 
@@ -78,18 +78,18 @@ const propertyForm = ref({
   comment: ''
 })
 
-async function fetchPayplan() {
+async function fetchGovernmentFunding() {
   loading.value = true
   try {
-    payplan.value = await apiClient.getPayplan(payplanId.value)
+    governmentFunding.value = await apiClient.getGovernmentFunding(governmentFundingId.value)
   } catch {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: 'Failed to load payplan',
+      detail: 'Failed to load government funding',
       life: 3000
     })
-    router.push({ name: 'payplans' })
+    router.push({ name: 'government-fundings' })
   } finally {
     loading.value = false
   }
@@ -102,7 +102,7 @@ function openAddPeriod() {
   periodDialog.value = true
 }
 
-function openEditPeriod(period: PayplanPeriod) {
+function openEditPeriod(period: GovernmentFundingPeriod) {
   editingPeriod.value = period
   periodForm.value = {
     from: new Date(period.from),
@@ -122,30 +122,34 @@ async function savePeriod() {
 
   try {
     if (editingPeriod.value) {
-      const data: PayplanPeriodUpdateRequest = {
+      const data: GovernmentFundingPeriodUpdateRequest = {
         from: formatDate(periodForm.value.from),
         to: periodForm.value.to ? formatDate(periodForm.value.to) : null,
         comment: periodForm.value.comment || undefined
       }
-      await apiClient.updatePayplanPeriod(payplanId.value, editingPeriod.value.id, data)
+      await apiClient.updateGovernmentFundingPeriod(
+        governmentFundingId.value,
+        editingPeriod.value.id,
+        data
+      )
       toast.add({ severity: 'success', summary: 'Success', detail: 'Period updated', life: 3000 })
     } else {
-      const data: PayplanPeriodCreateRequest = {
+      const data: GovernmentFundingPeriodCreateRequest = {
         from: formatDate(periodForm.value.from),
         to: periodForm.value.to ? formatDate(periodForm.value.to) : undefined,
         comment: periodForm.value.comment || undefined
       }
-      await apiClient.createPayplanPeriod(payplanId.value, data)
+      await apiClient.createGovernmentFundingPeriod(governmentFundingId.value, data)
       toast.add({ severity: 'success', summary: 'Success', detail: 'Period created', life: 3000 })
     }
     periodDialog.value = false
-    await fetchPayplan()
+    await fetchGovernmentFunding()
   } catch {
     toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to save period', life: 3000 })
   }
 }
 
-function confirmDeletePeriod(period: PayplanPeriod) {
+function confirmDeletePeriod(period: GovernmentFundingPeriod) {
   confirm.require({
     message:
       'Are you sure you want to delete this period? This will also delete all entries and properties.',
@@ -154,9 +158,9 @@ function confirmDeletePeriod(period: PayplanPeriod) {
     acceptClass: 'p-button-danger',
     accept: async () => {
       try {
-        await apiClient.deletePayplanPeriod(payplanId.value, period.id)
+        await apiClient.deleteGovernmentFundingPeriod(governmentFundingId.value, period.id)
         toast.add({ severity: 'success', summary: 'Success', detail: 'Period deleted', life: 3000 })
-        await fetchPayplan()
+        await fetchGovernmentFunding()
       } catch {
         toast.add({
           severity: 'error',
@@ -177,7 +181,7 @@ function openAddEntry(periodId: number) {
   entryDialog.value = true
 }
 
-function openEditEntry(periodId: number, entry: PayplanEntry) {
+function openEditEntry(periodId: number, entry: GovernmentFundingEntry) {
   currentPeriodId.value = periodId
   editingEntry.value = entry
   entryForm.value = { min_age: entry.min_age, max_age: entry.max_age }
@@ -197,33 +201,37 @@ async function saveEntry() {
 
   try {
     if (editingEntry.value && currentPeriodId.value) {
-      const data: PayplanEntryUpdateRequest = {
+      const data: GovernmentFundingEntryUpdateRequest = {
         min_age: entryForm.value.min_age,
         max_age: entryForm.value.max_age
       }
-      await apiClient.updatePayplanEntry(
-        payplanId.value,
+      await apiClient.updateGovernmentFundingEntry(
+        governmentFundingId.value,
         currentPeriodId.value,
         editingEntry.value.id,
         data
       )
       toast.add({ severity: 'success', summary: 'Success', detail: 'Entry updated', life: 3000 })
     } else if (currentPeriodId.value) {
-      const data: PayplanEntryCreateRequest = {
+      const data: GovernmentFundingEntryCreateRequest = {
         min_age: entryForm.value.min_age,
         max_age: entryForm.value.max_age
       }
-      await apiClient.createPayplanEntry(payplanId.value, currentPeriodId.value, data)
+      await apiClient.createGovernmentFundingEntry(
+        governmentFundingId.value,
+        currentPeriodId.value,
+        data
+      )
       toast.add({ severity: 'success', summary: 'Success', detail: 'Entry created', life: 3000 })
     }
     entryDialog.value = false
-    await fetchPayplan()
+    await fetchGovernmentFunding()
   } catch {
     toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to save entry', life: 3000 })
   }
 }
 
-function confirmDeleteEntry(periodId: number, entry: PayplanEntry) {
+function confirmDeleteEntry(periodId: number, entry: GovernmentFundingEntry) {
   confirm.require({
     message: 'Are you sure you want to delete this entry? This will also delete all properties.',
     header: 'Confirm Delete',
@@ -231,9 +239,9 @@ function confirmDeleteEntry(periodId: number, entry: PayplanEntry) {
     acceptClass: 'p-button-danger',
     accept: async () => {
       try {
-        await apiClient.deletePayplanEntry(payplanId.value, periodId, entry.id)
+        await apiClient.deleteGovernmentFundingEntry(governmentFundingId.value, periodId, entry.id)
         toast.add({ severity: 'success', summary: 'Success', detail: 'Entry deleted', life: 3000 })
-        await fetchPayplan()
+        await fetchGovernmentFunding()
       } catch {
         toast.add({
           severity: 'error',
@@ -255,7 +263,7 @@ function openAddProperty(periodId: number, entryId: number) {
   propertyDialog.value = true
 }
 
-function openEditProperty(periodId: number, entryId: number, property: PayplanProperty) {
+function openEditProperty(periodId: number, entryId: number, property: GovernmentFundingProperty) {
   currentPeriodId.value = periodId
   currentEntryId.value = entryId
   editingProperty.value = property
@@ -276,14 +284,14 @@ async function saveProperty() {
 
   try {
     if (editingProperty.value && currentPeriodId.value && currentEntryId.value) {
-      const data: PayplanPropertyUpdateRequest = {
+      const data: GovernmentFundingPropertyUpdateRequest = {
         name: propertyForm.value.name,
         payment: propertyForm.value.payment,
         requirement: propertyForm.value.requirement,
         comment: propertyForm.value.comment || undefined
       }
-      await apiClient.updatePayplanProperty(
-        payplanId.value,
+      await apiClient.updateGovernmentFundingProperty(
+        governmentFundingId.value,
         currentPeriodId.value,
         currentEntryId.value,
         editingProperty.value.id,
@@ -291,14 +299,14 @@ async function saveProperty() {
       )
       toast.add({ severity: 'success', summary: 'Success', detail: 'Property updated', life: 3000 })
     } else if (currentPeriodId.value && currentEntryId.value) {
-      const data: PayplanPropertyCreateRequest = {
+      const data: GovernmentFundingPropertyCreateRequest = {
         name: propertyForm.value.name,
         payment: propertyForm.value.payment,
         requirement: propertyForm.value.requirement,
         comment: propertyForm.value.comment || undefined
       }
-      await apiClient.createPayplanProperty(
-        payplanId.value,
+      await apiClient.createGovernmentFundingProperty(
+        governmentFundingId.value,
         currentPeriodId.value,
         currentEntryId.value,
         data
@@ -306,7 +314,7 @@ async function saveProperty() {
       toast.add({ severity: 'success', summary: 'Success', detail: 'Property created', life: 3000 })
     }
     propertyDialog.value = false
-    await fetchPayplan()
+    await fetchGovernmentFunding()
   } catch {
     toast.add({
       severity: 'error',
@@ -317,7 +325,11 @@ async function saveProperty() {
   }
 }
 
-function confirmDeleteProperty(periodId: number, entryId: number, property: PayplanProperty) {
+function confirmDeleteProperty(
+  periodId: number,
+  entryId: number,
+  property: GovernmentFundingProperty
+) {
   confirm.require({
     message: 'Are you sure you want to delete this property?',
     header: 'Confirm Delete',
@@ -325,14 +337,19 @@ function confirmDeleteProperty(periodId: number, entryId: number, property: Payp
     acceptClass: 'p-button-danger',
     accept: async () => {
       try {
-        await apiClient.deletePayplanProperty(payplanId.value, periodId, entryId, property.id)
+        await apiClient.deleteGovernmentFundingProperty(
+          governmentFundingId.value,
+          periodId,
+          entryId,
+          property.id
+        )
         toast.add({
           severity: 'success',
           summary: 'Success',
           detail: 'Property deleted',
           life: 3000
         })
-        await fetchPayplan()
+        await fetchGovernmentFunding()
       } catch {
         toast.add({
           severity: 'error',
@@ -350,20 +367,28 @@ function formatCurrency(cents: number): string {
 }
 
 function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString()
+  return new Date(dateStr).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  })
 }
 
 onMounted(() => {
-  fetchPayplan()
+  fetchGovernmentFunding()
 })
 </script>
 
 <template>
-  <div v-if="payplan">
+  <div v-if="governmentFunding">
     <div class="page-header">
       <div class="flex align-items-center gap-2">
-        <Button icon="pi pi-arrow-left" text @click="router.push({ name: 'payplans' })" />
-        <h1>{{ payplan.name }}</h1>
+        <Button
+          icon="pi pi-arrow-left"
+          text
+          @click="router.push({ name: 'government-fundings' })"
+        />
+        <h1>{{ governmentFunding.name }}</h1>
       </div>
       <div class="flex align-items-center gap-2">
         <SelectButton
@@ -384,7 +409,7 @@ onMounted(() => {
         striped-rows
         show-gridlines
         size="small"
-        class="payplan-table"
+        class="government-funding-table"
       >
         <Column header="Period" style="min-width: 180px">
           <template #body="{ data }">
@@ -421,7 +446,7 @@ onMounted(() => {
             <span v-else class="text-secondary">-</span>
           </template>
         </Column>
-        <Column header="Requirement" style="width: 100px; text-align: right">
+        <Column header="Requirement (FTE)" style="width: 120px; text-align: right">
           <template #body="{ data }">
             <span v-if="data.propertyId">{{ data.requirement.toFixed(3) }}</span>
             <span v-else class="text-secondary">-</span>
@@ -439,9 +464,9 @@ onMounted(() => {
     </div>
 
     <!-- Panels View -->
-    <div v-else-if="payplan.periods && payplan.periods.length > 0">
+    <div v-else-if="governmentFunding.periods && governmentFunding.periods.length > 0">
       <Panel
-        v-for="period in payplan.periods"
+        v-for="period in governmentFunding.periods"
         :key="period.id"
         :header="`${formatDate(period.from)} - ${period.to ? formatDate(period.to) : 'ongoing'}`"
         toggleable
@@ -508,7 +533,7 @@ onMounted(() => {
                   {{ formatCurrency(data.payment) }}
                 </template>
               </Column>
-              <Column field="requirement" header="Requirement">
+              <Column field="requirement" header="Requirement (FTE)">
                 <template #body="{ data }">
                   {{ data.requirement.toFixed(3) }}
                 </template>
@@ -681,12 +706,12 @@ onMounted(() => {
   line-height: 1.4;
 }
 
-.payplan-table :deep(td) {
+.government-funding-table :deep(td) {
   vertical-align: top;
 }
 
-.payplan-table :deep(.p-datatable-tbody > tr > td:nth-child(4)),
-.payplan-table :deep(.p-datatable-tbody > tr > td:nth-child(5)) {
+.government-funding-table :deep(.p-datatable-tbody > tr > td:nth-child(4)),
+.government-funding-table :deep(.p-datatable-tbody > tr > td:nth-child(5)) {
   text-align: right;
 }
 

@@ -51,10 +51,10 @@ func TestMain(m *testing.M) {
 
 	// Run migrations
 	if err := testDB.AutoMigrate(
-		&models.Payplan{},
-		&models.PayplanPeriod{},
-		&models.PayplanEntry{},
-		&models.PayplanProperty{},
+		&models.GovernmentFunding{},
+		&models.GovernmentFundingPeriod{},
+		&models.GovernmentFundingEntry{},
+		&models.GovernmentFundingProperty{},
 		&models.Organization{},
 		&models.User{},
 		&models.Group{},
@@ -161,10 +161,10 @@ func cleanupDatabase() {
 	testDB.Exec("DELETE FROM groups")
 	testDB.Exec("DELETE FROM users")
 	testDB.Exec("DELETE FROM organizations")
-	testDB.Exec("DELETE FROM payplan_properties")
-	testDB.Exec("DELETE FROM payplan_entries")
-	testDB.Exec("DELETE FROM payplan_periods")
-	testDB.Exec("DELETE FROM payplans")
+	testDB.Exec("DELETE FROM government_funding_properties")
+	testDB.Exec("DELETE FROM government_funding_entries")
+	testDB.Exec("DELETE FROM government_funding_periods")
+	testDB.Exec("DELETE FROM government_fundings")
 }
 
 func cleanupBetweenTests() {

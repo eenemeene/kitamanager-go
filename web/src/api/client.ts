@@ -24,18 +24,18 @@ import type {
   Role,
   UserGroupResponse,
   UserMembershipsResponse,
-  Payplan,
-  PayplanCreateRequest,
-  PayplanUpdateRequest,
-  PayplanPeriod,
-  PayplanPeriodCreateRequest,
-  PayplanPeriodUpdateRequest,
-  PayplanEntry,
-  PayplanEntryCreateRequest,
-  PayplanEntryUpdateRequest,
-  PayplanProperty,
-  PayplanPropertyCreateRequest,
-  PayplanPropertyUpdateRequest
+  GovernmentFunding,
+  GovernmentFundingCreateRequest,
+  GovernmentFundingUpdateRequest,
+  GovernmentFundingPeriod,
+  GovernmentFundingPeriodCreateRequest,
+  GovernmentFundingPeriodUpdateRequest,
+  GovernmentFundingEntry,
+  GovernmentFundingEntryCreateRequest,
+  GovernmentFundingEntryUpdateRequest,
+  GovernmentFundingProperty,
+  GovernmentFundingPropertyCreateRequest,
+  GovernmentFundingPropertyUpdateRequest
 } from './types'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
@@ -334,132 +334,152 @@ class ApiClient {
     await this.client.delete(`/organizations/${orgId}/children/${childId}/contracts/${contractId}`)
   }
 
-  // Payplans
-  async getPayplans(): Promise<Payplan[]> {
-    const response = await this.client.get<{ data: Payplan[] }>('/payplans')
+  // GovernmentFundings
+  async getGovernmentFundings(): Promise<GovernmentFunding[]> {
+    const response = await this.client.get<{ data: GovernmentFunding[] }>('/government-fundings')
     return response.data.data
   }
 
-  async getPayplan(id: number): Promise<Payplan> {
-    const response = await this.client.get<Payplan>(`/payplans/${id}`)
+  async getGovernmentFunding(id: number): Promise<GovernmentFunding> {
+    const response = await this.client.get<GovernmentFunding>(`/government-fundings/${id}`)
     return response.data
   }
 
-  async createPayplan(data: PayplanCreateRequest): Promise<Payplan> {
-    const response = await this.client.post<Payplan>('/payplans', data)
+  async createGovernmentFunding(data: GovernmentFundingCreateRequest): Promise<GovernmentFunding> {
+    const response = await this.client.post<GovernmentFunding>('/government-fundings', data)
     return response.data
   }
 
-  async updatePayplan(id: number, data: PayplanUpdateRequest): Promise<Payplan> {
-    const response = await this.client.put<Payplan>(`/payplans/${id}`, data)
+  async updateGovernmentFunding(
+    id: number,
+    data: GovernmentFundingUpdateRequest
+  ): Promise<GovernmentFunding> {
+    const response = await this.client.put<GovernmentFunding>(`/government-fundings/${id}`, data)
     return response.data
   }
 
-  async deletePayplan(id: number): Promise<void> {
-    await this.client.delete(`/payplans/${id}`)
+  async deleteGovernmentFunding(id: number): Promise<void> {
+    await this.client.delete(`/government-fundings/${id}`)
   }
 
-  // Payplan Periods
-  async createPayplanPeriod(
-    payplanId: number,
-    data: PayplanPeriodCreateRequest
-  ): Promise<PayplanPeriod> {
-    const response = await this.client.post<PayplanPeriod>(`/payplans/${payplanId}/periods`, data)
-    return response.data
-  }
-
-  async updatePayplanPeriod(
-    payplanId: number,
-    periodId: number,
-    data: PayplanPeriodUpdateRequest
-  ): Promise<PayplanPeriod> {
-    const response = await this.client.put<PayplanPeriod>(
-      `/payplans/${payplanId}/periods/${periodId}`,
+  // GovernmentFunding Periods
+  async createGovernmentFundingPeriod(
+    governmentFundingId: number,
+    data: GovernmentFundingPeriodCreateRequest
+  ): Promise<GovernmentFundingPeriod> {
+    const response = await this.client.post<GovernmentFundingPeriod>(
+      `/government-fundings/${governmentFundingId}/periods`,
       data
     )
     return response.data
   }
 
-  async deletePayplanPeriod(payplanId: number, periodId: number): Promise<void> {
-    await this.client.delete(`/payplans/${payplanId}/periods/${periodId}`)
-  }
-
-  // Payplan Entries
-  async createPayplanEntry(
-    payplanId: number,
+  async updateGovernmentFundingPeriod(
+    governmentFundingId: number,
     periodId: number,
-    data: PayplanEntryCreateRequest
-  ): Promise<PayplanEntry> {
-    const response = await this.client.post<PayplanEntry>(
-      `/payplans/${payplanId}/periods/${periodId}/entries`,
+    data: GovernmentFundingPeriodUpdateRequest
+  ): Promise<GovernmentFundingPeriod> {
+    const response = await this.client.put<GovernmentFundingPeriod>(
+      `/government-fundings/${governmentFundingId}/periods/${periodId}`,
       data
     )
     return response.data
   }
 
-  async updatePayplanEntry(
-    payplanId: number,
+  async deleteGovernmentFundingPeriod(
+    governmentFundingId: number,
+    periodId: number
+  ): Promise<void> {
+    await this.client.delete(`/government-fundings/${governmentFundingId}/periods/${periodId}`)
+  }
+
+  // GovernmentFunding Entries
+  async createGovernmentFundingEntry(
+    governmentFundingId: number,
     periodId: number,
-    entryId: number,
-    data: PayplanEntryUpdateRequest
-  ): Promise<PayplanEntry> {
-    const response = await this.client.put<PayplanEntry>(
-      `/payplans/${payplanId}/periods/${periodId}/entries/${entryId}`,
+    data: GovernmentFundingEntryCreateRequest
+  ): Promise<GovernmentFundingEntry> {
+    const response = await this.client.post<GovernmentFundingEntry>(
+      `/government-fundings/${governmentFundingId}/periods/${periodId}/entries`,
       data
     )
     return response.data
   }
 
-  async deletePayplanEntry(payplanId: number, periodId: number, entryId: number): Promise<void> {
-    await this.client.delete(`/payplans/${payplanId}/periods/${periodId}/entries/${entryId}`)
-  }
-
-  // Payplan Properties
-  async createPayplanProperty(
-    payplanId: number,
+  async updateGovernmentFundingEntry(
+    governmentFundingId: number,
     periodId: number,
     entryId: number,
-    data: PayplanPropertyCreateRequest
-  ): Promise<PayplanProperty> {
-    const response = await this.client.post<PayplanProperty>(
-      `/payplans/${payplanId}/periods/${periodId}/entries/${entryId}/properties`,
+    data: GovernmentFundingEntryUpdateRequest
+  ): Promise<GovernmentFundingEntry> {
+    const response = await this.client.put<GovernmentFundingEntry>(
+      `/government-fundings/${governmentFundingId}/periods/${periodId}/entries/${entryId}`,
       data
     )
     return response.data
   }
 
-  async updatePayplanProperty(
-    payplanId: number,
+  async deleteGovernmentFundingEntry(
+    governmentFundingId: number,
+    periodId: number,
+    entryId: number
+  ): Promise<void> {
+    await this.client.delete(
+      `/government-fundings/${governmentFundingId}/periods/${periodId}/entries/${entryId}`
+    )
+  }
+
+  // GovernmentFunding Properties
+  async createGovernmentFundingProperty(
+    governmentFundingId: number,
+    periodId: number,
+    entryId: number,
+    data: GovernmentFundingPropertyCreateRequest
+  ): Promise<GovernmentFundingProperty> {
+    const response = await this.client.post<GovernmentFundingProperty>(
+      `/government-fundings/${governmentFundingId}/periods/${periodId}/entries/${entryId}/properties`,
+      data
+    )
+    return response.data
+  }
+
+  async updateGovernmentFundingProperty(
+    governmentFundingId: number,
     periodId: number,
     entryId: number,
     propId: number,
-    data: PayplanPropertyUpdateRequest
-  ): Promise<PayplanProperty> {
-    const response = await this.client.put<PayplanProperty>(
-      `/payplans/${payplanId}/periods/${periodId}/entries/${entryId}/properties/${propId}`,
+    data: GovernmentFundingPropertyUpdateRequest
+  ): Promise<GovernmentFundingProperty> {
+    const response = await this.client.put<GovernmentFundingProperty>(
+      `/government-fundings/${governmentFundingId}/periods/${periodId}/entries/${entryId}/properties/${propId}`,
       data
     )
     return response.data
   }
 
-  async deletePayplanProperty(
-    payplanId: number,
+  async deleteGovernmentFundingProperty(
+    governmentFundingId: number,
     periodId: number,
     entryId: number,
     propId: number
   ): Promise<void> {
     await this.client.delete(
-      `/payplans/${payplanId}/periods/${periodId}/entries/${entryId}/properties/${propId}`
+      `/government-fundings/${governmentFundingId}/periods/${periodId}/entries/${entryId}/properties/${propId}`
     )
   }
 
-  // Organization Payplan Assignment
-  async assignPayplanToOrganization(orgId: number, payplanId: number): Promise<void> {
-    await this.client.put(`/organizations/${orgId}/payplan`, { payplan_id: payplanId })
+  // Organization GovernmentFunding Assignment
+  async assignGovernmentFundingToOrganization(
+    orgId: number,
+    governmentFundingId: number
+  ): Promise<void> {
+    await this.client.put(`/organizations/${orgId}/government-funding`, {
+      government_funding_id: governmentFundingId
+    })
   }
 
-  async removePayplanFromOrganization(orgId: number): Promise<void> {
-    await this.client.delete(`/organizations/${orgId}/payplan`)
+  async removeGovernmentFundingFromOrganization(orgId: number): Promise<void> {
+    await this.client.delete(`/organizations/${orgId}/government-funding`)
   }
 }
 

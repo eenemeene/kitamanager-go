@@ -38,10 +38,10 @@ func setupTestDB(t *testing.T) *gorm.DB {
 		&models.EmployeeContract{},
 		&models.Child{},
 		&models.ChildContract{},
-		&models.Payplan{},
-		&models.PayplanPeriod{},
-		&models.PayplanEntry{},
-		&models.PayplanProperty{},
+		&models.GovernmentFunding{},
+		&models.GovernmentFundingPeriod{},
+		&models.GovernmentFundingEntry{},
+		&models.GovernmentFundingProperty{},
 	)
 	if err != nil {
 		t.Fatalf("failed to migrate test database: %v", err)

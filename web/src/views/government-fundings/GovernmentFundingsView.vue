@@ -3,16 +3,20 @@ import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCrud } from '@/composables/useCrud'
 import { apiClient } from '@/api/client'
-import type { Payplan, PayplanCreateRequest, PayplanUpdateRequest } from '@/api/types'
+import type {
+  GovernmentFunding,
+  GovernmentFundingCreateRequest,
+  GovernmentFundingUpdateRequest
+} from '@/api/types'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
-import PayplanForm from './PayplanForm.vue'
+import GovernmentFundingForm from './GovernmentFundingForm.vue'
 
 const router = useRouter()
 
 const {
-  items: payplans,
+  items: governmentFundings,
   loading,
   dialogVisible,
   editingItem,
@@ -22,16 +26,16 @@ const {
   closeDialog,
   saveItem,
   confirmDelete
-} = useCrud<Payplan, PayplanCreateRequest, PayplanUpdateRequest>({
-  entityName: 'Payplan',
-  fetchAll: () => apiClient.getPayplans(),
-  create: (data) => apiClient.createPayplan(data),
-  update: (id, data) => apiClient.updatePayplan(id, data),
-  remove: (id) => apiClient.deletePayplan(id)
+} = useCrud<GovernmentFunding, GovernmentFundingCreateRequest, GovernmentFundingUpdateRequest>({
+  entityName: 'Government Funding',
+  fetchAll: () => apiClient.getGovernmentFundings(),
+  create: (data) => apiClient.createGovernmentFunding(data),
+  update: (id, data) => apiClient.updateGovernmentFunding(id, data),
+  remove: (id) => apiClient.deleteGovernmentFunding(id)
 })
 
-function openDetails(payplan: Payplan) {
-  router.push({ name: 'payplan-detail', params: { id: payplan.id } })
+function openDetails(governmentFunding: GovernmentFunding) {
+  router.push({ name: 'government-funding-detail', params: { id: governmentFunding.id } })
 }
 
 onMounted(() => {
@@ -42,13 +46,13 @@ onMounted(() => {
 <template>
   <div>
     <div class="page-header">
-      <h1>Payplans</h1>
-      <Button label="New Payplan" icon="pi pi-plus" @click="openCreateDialog" />
+      <h1>Government Fundings</h1>
+      <Button label="New Government Funding" icon="pi pi-plus" @click="openCreateDialog" />
     </div>
 
     <div class="card">
       <DataTable
-        :value="payplans"
+        :value="governmentFundings"
         :loading="loading"
         striped-rows
         paginator
@@ -79,9 +83,9 @@ onMounted(() => {
       </DataTable>
     </div>
 
-    <PayplanForm
+    <GovernmentFundingForm
       :visible="dialogVisible"
-      :payplan="editingItem"
+      :government-funding="editingItem"
       @close="closeDialog"
       @save="saveItem"
     />

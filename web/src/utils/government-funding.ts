@@ -1,10 +1,10 @@
-import type { Payplan } from '@/api/types'
+import type { GovernmentFunding } from '@/api/types'
 
 /**
- * Represents a flattened row in the payplan table view.
+ * Represents a flattened row in the government funding table view.
  * Each row combines data from period, entry, and property levels.
  */
-export interface FlattenedPayplanRow {
+export interface FlattenedGovernmentFundingRow {
   periodId: number
   periodFrom: string
   periodTo: string | null
@@ -26,21 +26,23 @@ export interface FlattenedPayplanRow {
 }
 
 /**
- * Flattens the hierarchical payplan structure into rows for table display.
+ * Flattens the hierarchical government funding structure into rows for table display.
  *
- * The payplan hierarchy is: Payplan -> Periods -> Entries -> Properties
+ * The government funding hierarchy is: GovernmentFunding -> Periods -> Entries -> Properties
  * This function flattens it into one row per property, with flags indicating
  * group boundaries for visual display.
  *
- * @param payplan - The payplan object with nested periods, entries, and properties
+ * @param governmentFunding - The government funding object with nested periods, entries, and properties
  * @returns Array of flattened rows suitable for table display
  */
-export function flattenPayplanToRows(payplan: Payplan | null): FlattenedPayplanRow[] {
-  if (!payplan?.periods) return []
+export function flattenGovernmentFundingToRows(
+  governmentFunding: GovernmentFunding | null
+): FlattenedGovernmentFundingRow[] {
+  if (!governmentFunding?.periods) return []
 
-  const rows: FlattenedPayplanRow[] = []
+  const rows: FlattenedGovernmentFundingRow[] = []
 
-  for (const period of payplan.periods) {
+  for (const period of governmentFunding.periods) {
     const entries = period.entries || []
     let periodRowCount = 0
 

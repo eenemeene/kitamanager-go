@@ -1,0 +1,773 @@
+---
+# That data is from the Berliner Senat and reflects what a Kita gets paid for different
+# childs
+# the data is mostly based on the Kostenblatt files from https://www.daks-berlin.de/themen/finanzierung
+
+
+-
+  to: ''
+  from: '2025-02-01'
+  comment: |
+    Aufschlag für Praxisunterstützungssystem (60€ pro Kind/Jahr) und Digitalisierung (2,50€ pro Kind/Monat) inklusive
+  entries:
+    -
+      age: [0,8]
+      properties:
+        'integration a':
+          'payment': 1656.80
+          'requirement': 0.25
+        'integration b':
+          'payment': 3306.41
+          'requirement': 0.5
+        'ndh':
+          'payment': 102.66
+          'requirement': 0.017
+        'qm/mss':
+          'payment': 60.39
+          'requirement': 0.01
+    - age: [0,1]
+      properties:
+        'ganztag erweitert':
+          'payment': 1995.67
+          'requirement': 0.276
+        'ganztag':
+          'payment': 1909.61
+          'requirement': 0.261
+        'teilzeit':
+          'payment': 1530.98
+          'requirement': 0.195
+        'halbtag':
+          'payment': 1215.45
+          'requirement': 0.14
+    - age: [2,2]
+      properties:
+        'ganztag erweitert':
+          'payment': 1680.14
+          'requirement': 0.221
+        'ganztag':
+          'payment': 1594.09
+          'requirement': 0.206
+        'teilzeit':
+          'payment': 1347.40
+          'requirement': 0.163
+        'halbtag':
+          'payment': 1112.19
+          'requirement': 0.122
+    - age: [3,8]
+      properties:
+        'ganztag erweitert':
+          'payment': 1123.66
+          'requirement': 0.124
+        'ganztag':
+          'payment': 1037.61
+          'requirement': 0.109
+        'teilzeit':
+          'payment': 922.87
+          'requirement': 0.089
+        'halbtag':
+          'payment': 813.87
+          'requirement': 0.07
+
+
+-
+  to: '2025-02-01'
+  from: '2025-01-01'
+  comment: |
+    Aufschlag für Praxisunterstützungssystem (60€ pro Kind/Jahr) und Digitalisierung (2,50€ pro Kind/Monat) inklusive
+  entries:
+    -
+      age: [0,8]
+      properties:
+        'integration a':
+          'payment': 1578.82
+          'requirement': 0.25
+        'integration b':
+          'payment': 3150.45
+          'requirement': 0.5
+        'ndh':
+          'payment': 97.82
+          'requirement': 0.017
+        'qm/mss':
+          'payment': 57.54
+          'requirement': 0.01
+    - age: [0,1]
+      properties:
+        'ganztag erweitert':
+          'payment': 1916.75
+          'requirement': 0.276
+        'ganztag':
+          'payment': 1834.75
+          'requirement': 0.261
+        'teilzeit':
+          'payment': 1473.97
+          'requirement': 0.195
+        'halbtag':
+          'payment': 1173.31
+          'requirement': 0.14
+    - age: [2,2]
+      properties:
+        'ganztag erweitert':
+          'payment': 1616.09
+          'requirement': 0.221
+        'ganztag':
+          'payment': 1534.10
+          'requirement': 0.206
+        'teilzeit':
+          'payment': 1299.05
+          'requirement': 0.163
+        'halbtag':
+          'payment': 1074.92
+          'requirement': 0.122
+    - age: [3,8]
+      properties:
+        'ganztag erweitert':
+          'payment': 1085.86
+          'requirement': 0.124
+        'ganztag':
+          'payment': 1003.86
+          'requirement': 0.109
+        'teilzeit':
+          'payment': 894.53
+          'requirement': 0.089
+        'halbtag':
+          'payment': 790.67
+          'requirement': 0.07
+
+
+-
+  to: '2025-01-01'
+  from: '2024-11-01'
+  comment: |
+    Aufschlag für Praxisunterstützungssystem (60€ pro Kind/Jahr) und Digitalisierung (2,50€ pro Kind/Monat) inklusive
+  entries:
+    -
+      age: [0,8]
+      properties:
+        'integration a':
+          'payment': 1565.66
+          'requirement': 0.25
+        'integration b':
+          'payment': 3124.40
+          'requirement': 0.5
+        'ndh':
+          'payment': 97.09
+          'requirement': 0.017
+        'qm/mss':
+          'payment': 57.11
+          'requirement': 0.01
+    - age: [0,1]
+      properties:
+        'ganztag erweitert':
+          'payment': 1896.61
+          'requirement': 0.276
+        'ganztag':
+          'payment': 1815.23
+          'requirement': 0.261
+        'teilzeit':
+          'payment': 1457.13
+          'requirement': 0.195
+        'halbtag':
+          'payment': 1158.73
+          'requirement': 0.14
+    - age: [2,2]
+      properties:
+        'ganztag erweitert':
+          'payment': 1598.20
+          'requirement': 0.221
+        'ganztag':
+          'payment': 1516.81
+          'requirement': 0.206
+        'teilzeit':
+          'payment': 1283.51
+          'requirement': 0.163
+        'halbtag':
+          'payment': 1061.07
+          'requirement': 0.122
+    - age: [3,8]
+      properties:
+        'ganztag erweitert':
+          'payment': 1071.92
+          'requirement': 0.124
+        'ganztag':
+          'payment': 990.53
+          'requirement': 0.109
+        'teilzeit':
+          'payment': 882.02
+          'requirement': 0.089
+        'halbtag':
+          'payment': 778.93
+          'requirement': 0.07
+
+
+-
+  to: '2024-11-01'
+  from: '2024-10-01'
+  comment: |
+    Aufschlag für Praxisunterstützungssystem (60€ pro Kind/Jahr) und Digitalisierung (2,50€ pro Kind/Monat) inklusive
+  entries:
+    -
+      age: [0,8]
+      properties:
+        'integration a':
+          'payment': 1532.66
+          'requirement': 0.25
+        'integration b':
+          'payment': 3058.40
+          'requirement': 0.5
+        'ndh':
+          'payment': 94.84
+          'requirement': 0.017
+        'qm/mss':
+          'payment': 55.79
+          'requirement': 0.01
+    - age: [0,1]
+      properties:
+        'ganztag erweitert':
+          'payment': 1860.51
+          'requirement': 0.276
+        'ganztag':
+          'payment': 1781.01
+          'requirement': 0.261
+        'teilzeit':
+          'payment': 1431.21
+          'requirement': 0.195
+        'halbtag':
+          'payment': 1139.70
+          'requirement': 0.14
+    - age: [2,2]
+      properties:
+        'ganztag erweitert':
+          'payment': 1569.01
+          'requirement': 0.221
+        'ganztag':
+          'payment': 1489.51
+          'requirement': 0.206
+        'teilzeit':
+          'payment': 1261.60
+          'requirement': 0.163
+        'halbtag':
+          'payment': 1044.30
+          'requirement': 0.122
+    - age: [3,8]
+      properties:
+        'ganztag erweitert':
+          'payment': 1054.89
+          'requirement': 0.124
+        'ganztag':
+          'payment': 975.40
+          'requirement': 0.109
+        'teilzeit':
+          'payment': 869.40
+          'requirement': 0.089
+        'halbtag':
+          'payment': 768.69
+          'requirement': 0.07
+
+-
+  to: '2024-10-01'
+  from: '2024-02-01'
+  comment: |
+    Aufschlag für Praxisunterstützungssystem (60€ pro Kind/Jahr) und Digitalisierung (2,50€ pro Kind/Monat) inklusive
+  entries:
+    -
+      age: [0,8]
+      properties:
+        'integration a':
+          'payment': 1498.11
+          'requirement': 0.25
+        'integration b':
+          'payment': 2989.30
+          'requirement': 0.5
+        'ndh':
+          'payment': 94.03
+          'requirement': 0.017
+        'qm/mss':
+          'payment': 55.31
+          'requirement': 0.01
+    - age: [0,1]
+      properties:
+        'ganztag erweitert':
+          'payment': 1847.06
+          'requirement': 0.276
+        'ganztag':
+          'payment': 1768.24
+          'requirement': 0.261
+        'teilzeit':
+          'payment': 1421.42
+          'requirement': 0.195
+        'halbtag':
+          'payment': 1132.40
+          'requirement': 0.14
+    - age: [2,2]
+      properties:
+        'ganztag erweitert':
+          'payment': 1558.04
+          'requirement': 0.221
+        'ganztag':
+          'payment': 1479.22
+          'requirement': 0.206
+        'teilzeit':
+          'payment': 1253.26
+          'requirement': 0.163
+        'halbtag':
+          'payment': 1037.81
+          'requirement': 0.122
+    - age: [3,8]
+      properties:
+        'ganztag erweitert':
+          'payment': 1048.32
+          'requirement': 0.124
+        'ganztag':
+          'payment': 969.50
+          'requirement': 0.109
+        'teilzeit':
+          'payment': 864.41
+          'requirement': 0.089
+        'halbtag':
+          'payment': 764.56
+          'requirement': 0.07
+
+-
+  to: '2024-02-01'
+  from: '2023-03-01'
+  comment: |
+    Aufschlag für Praxisunterstützungssystem (60€ pro Kind/Jahr) und Digitalisierung (2,50€ pro Kind/Monat) inklusive
+  entries:
+    -
+      age: [0,8]
+      properties:
+        'integration a':
+          'payment': 1423.62
+          'requirement': 0.25
+        'integration b':
+          'payment': 2840.85
+          'requirement': 0.5
+        'ndh':
+          'payment': 89.00
+          'requirement': 0.017
+        'qm/mss':
+          'payment': 52.36
+          'requirement': 0.01
+    - age: [0,1]
+      properties:
+        'ganztag erweitert':
+          'payment': 1744.09
+          'requirement': 0.276
+        'ganztag':
+          'payment': 1669.49
+          'requirement': 0.261
+        'teilzeit':
+          'payment': 1341.21
+          'requirement': 0.195
+        'halbtag':
+          'payment': 1067.66
+          'requirement': 0.14
+    - age: [2,2]
+      properties:
+        'ganztag erweitert':
+          'payment': 1470.54
+          'requirement': 0.221
+        'ganztag':
+          'payment': 1395.93
+          'requirement': 0.206
+        'teilzeit':
+          'payment': 1182.06
+          'requirement': 0.163
+        'halbtag':
+          'payment': 978.13
+          'requirement': 0.122
+    - age: [3,8]
+      properties:
+        'ganztag erweitert':
+          'payment': 988.08
+          'requirement': 0.124
+        'ganztag':
+          'payment': 913.48
+          'requirement': 0.109
+        'teilzeit':
+          'payment': 814.00
+          'requirement': 0.089
+        'halbtag':
+          'payment': 719.51
+          'requirement': 0.07
+
+-
+  to: '2023-03-01'
+  from: '2023-01-01'
+  comment: |
+    Aufschlag für Praxisunterstützungssystem (60€ pro Kind/Jahr) und Digitalisierung (2,50€ pro Kind/Monat) inklusive
+    Die Energiekostenpauschale beträgt 300€ pro Kind verteilt auf 3 Monate. Dies entspricht 100€ pro Kind/Monat von Januar bis März. Die Pauschale ist inklusive.
+  entries:
+    -
+      age: [0,8]
+      properties:
+        'integration a':
+          'payment': 1423.62
+          'requirement': 0.25
+        'integration b':
+          'payment': 2840.85
+          'requirement': 0.5
+        'ndh':
+          'payment': 89.00
+          'requirement': 0.017
+        'qm/mss':
+          'payment': 52.36
+          'requirement': 0.01
+    - age: [0,1]
+      properties:
+        'ganztag erweitert':
+          'payment': 1844.09
+          'requirement': 0.276
+        'ganztag':
+          'payment': 1769.49
+          'requirement': 0.261
+        'teilzeit':
+          'payment': 1441.21
+          'requirement': 0.195
+        'halbtag':
+          'payment': 1167.66
+          'requirement': 0.14
+    - age: [2,2]
+      properties:
+        'ganztag erweitert':
+          'payment': 1570.54
+          'requirement': 0.221
+        'ganztag':
+          'payment': 1495.93
+          'requirement': 0.206
+        'teilzeit':
+          'payment': 1282.06
+          'requirement': 0.163
+        'halbtag':
+          'payment': 1078.13
+          'requirement': 0.122
+    - age: [3,8]
+      properties:
+        'ganztag erweitert':
+          'payment': 1088.08
+          'requirement': 0.124
+        'ganztag':
+          'payment': 1013.48
+          'requirement': 0.109
+        'teilzeit':
+          'payment': 914.00
+          'requirement': 0.089
+        'halbtag':
+          'payment': 819.51
+          'requirement': 0.07
+
+-
+  to: '2023-01-01'
+  from: '2022-01-01'
+  # payments are "zzgl. Sachverhalte aus dem Gute-Kita-Gesetz (Aufschlag fuer Praxisunterstuetzungsystem (47.70 Euro/King/Jahr) und Digitalisierung (2.50 Euro/Kind/Jahr)"
+  entries:
+    -
+      age: [0,8]
+      properties:
+        'integration a':
+          'payment': 1415.01
+          'requirement': 0.25
+        'integration b':
+          'payment': 2842.13
+          'requirement': 0.5
+        'ndh':
+          'payment': 88.64
+          'requirement': 0.017
+        'qm/mss':
+          'payment': 52.14
+          'requirement': 0.01
+    - age: [0,1]
+      properties:
+        'ganztag erweitert':
+          'payment': 1714.72
+          'requirement': 0.276
+        'ganztag':
+          'payment': 1640.43
+          'requirement': 0.261
+        'teilzeit':
+          'payment': 1313.52
+          'requirement': 0.195
+        'halbtag':
+          'payment': 1014.09
+          'requirement': 0.14
+    - age: [2,2]
+      properties:
+        'ganztag erweitert':
+          'payment': 1442.30
+          'requirement': 0.221
+        'ganztag':
+          'payment': 1368.00
+          'requirement': 0.206
+        'teilzeit':
+          'payment': 1155.01
+          'requirement': 0.163
+        'halbtag':
+          'payment': 951.93
+          'requirement': 0.122
+    - age: [3,8]
+      properties:
+        'ganztag erweitert':
+          'payment': 961.84
+          'requirement': 0.124
+        'ganztag':
+          'payment': 887.54
+          'requirement': 0.109
+        'teilzeit':
+          'payment': 788.47
+          'requirement': 0.089
+        'halbtag':
+          'payment': 694.36
+          'requirement': 0.07
+
+-
+  to: '2022-01-01'
+  from: '2021-01-01'
+    # payments are "zzgl. Aufschlag fuer Praxisunterstuetzungsystem (47.70 Euro/King/Jahr) und Digitalisierung (2.50 Euro/Kind/Jahr)"
+  entries:
+    -
+      age: [0,8]
+      properties:
+        'integration a':
+          'payment': 1389.64
+          'requirement': 0.25
+        'integration b':
+          'payment': 2773.62
+          'requirement': 0.5
+        'ndh':
+          'payment': 88.71
+          'requirement': 0.017
+        'qm/mss':
+          'payment': 51.00
+          'requirement': 0.01
+    - age: [0,1]
+      properties:
+        'ganztag erweitert':
+          'payment': 1671.28
+          'requirement': 0.276
+        'ganztag':
+          'payment': 1598.59
+          'requirement': 0.261
+        'teilzeit':
+          'payment': 1278.80
+          'requirement': 0.195
+        'halbtag':
+          'payment': 1012.31
+          'requirement': 0.14
+    - age: [2,2]
+      properties:
+        'ganztag erweitert':
+          'payment': 1404.78
+          'requirement': 0.221
+        'ganztag':
+          'payment': 1332.10
+          'requirement': 0.206
+        'teilzeit':
+          'payment': 1123.75
+          'requirement': 0.163
+        'halbtag':
+          'payment': 925.09
+          'requirement': 0.122
+    - age: [3,8]
+      properties:
+        'ganztag erweitert':
+          'payment': 934.78
+          'requirement': 0.124
+        'ganztag':
+          'payment': 862.11
+          'requirement': 0.109
+        'teilzeit':
+          'payment': 765.20
+          'requirement': 0.089
+        'halbtag':
+          'payment': 673.13
+          'requirement': 0.07
+
+
+-
+  to: '2021-01-01'
+  from: '2020-08-01'
+    # payments are "zzgl. Aufschlag fuer Praxisunterstuetzungsystem (47.70 Euro/King/Jahr)"
+  entries:
+    -
+      age: [0,8]
+      properties:
+        'integration a':
+          'payment': 1377.07
+          'requirement': 0.25
+        'integration b':
+          'payment': 2748.62
+          'requirement': 0.5
+        'ndh':
+          'payment': 85.76
+          'requirement': 0.017
+        'qm/mss':
+          'payment': 50.44
+          'requirement': 0.01
+    - age: [0,1]
+      properties:
+        'ganztag erweitert':
+          'payment': 1639.84
+          'requirement': 0.276
+        'ganztag':
+          'payment': 1568.33
+          'requirement': 0.261
+        'teilzeit':
+          'payment': 1253.71
+          'requirement': 0.195
+        'halbtag':
+          'payment': 991.52
+          'requirement': 0.14
+    - age: [2,2]
+      properties:
+        'ganztag erweitert':
+          'payment': 1377.65
+          'requirement': 0.221
+        'ganztag':
+          'payment': 1306.15
+          'requirement': 0.206
+        'teilzeit':
+          'payment': 1101.17
+          'requirement': 0.163
+        'halbtag':
+          'payment': 905.72
+          'requirement': 0.122
+    - age: [3,8]
+      properties:
+        'ganztag erweitert':
+          'payment': 915.25
+          'requirement': 0.124
+        'ganztag':
+          'payment': 845.75
+          'requirement': 0.109
+        'teilzeit':
+          'payment': 748.41
+          'requirement': 0.089
+        'halbtag':
+          'payment': 657.83
+          'requirement': 0.07
+
+-
+  to: '2020-08-01'
+  from: '2020-01-01'
+  entries:
+    -
+      age: [0,8]
+      properties:
+        'integration a':
+          'payment': 1377.07
+          'requirement': 0.25
+        'integration b':
+          'payment': 2748.62
+          'requirement': 0.5
+        'ndh':
+          'payment': 85.76
+          'requirement': 0.017
+        'qm/mss':
+          'payment': 50.44
+          'requirement': 0.01
+    - age: [0,1]
+      properties:
+        'ganztag erweitert':
+          'payment': 1631.39
+          'requirement': 0.276
+        'ganztag':
+          'payment': 1559.89
+          'requirement': 0.261
+        'teilzeit':
+          'payment': 1245.27
+          'requirement': 0.195
+        'halbtag':
+          'payment': 983.08
+          'requirement': 0.14
+    - age: [2,2]
+      properties:
+        'ganztag erweitert':
+          'payment': 1369.21
+          'requirement': 0.221
+        'ganztag':
+          'payment': 1297.70
+          'requirement': 0.206
+        'teilzeit':
+          'payment': 1092.72
+          'requirement': 0.163
+        'halbtag':
+          'payment': 897.28
+          'requirement': 0.122
+    - age: [3,8]
+      properties:
+        'ganztag erweitert':
+          'payment': 906.81
+          'requirement': 0.124
+        'ganztag':
+          'payment': 835.31
+          'requirement': 0.109
+        'teilzeit':
+          'payment': 739.97
+          'requirement': 0.089
+        'halbtag':
+          'payment': 649.39
+          'requirement': 0.07
+
+
+# NOTE: the is very likely some data missing between 2018-10-01 and 2020-01-01
+-
+  to: '2020-01-01'
+  from: '2018-10-01'
+  entries:
+    -
+      age: [0,8]
+      properties:
+        'integration a':
+          'payment': 1188.36
+          'requirement': 0.25
+        'integration b':
+          'payment': 2371.64
+          'requirement': 0.5
+        'ndh':
+          'payment': 75.59
+          'requirement': 0.017
+        'qm/mss':
+          'payment': 44.47
+          'requirement': 0.01
+    - age: [0,1]
+      properties:
+        'ganztag erweitert':
+          'payment': 1356.30
+          'requirement': 0.259
+        'ganztag':
+          'payment': 1293.94
+          'requirement': 0.244
+        'teilzeit':
+          'payment': 1090.22
+          'requirement': 0.195
+        'halbtag':
+          'payment': 861.55
+          'requirement': 0.14
+    - age: [2,2]
+      properties:
+        'ganztag erweitert':
+          'payment': 1152.58
+          'requirement': 0.220
+        'ganztag':
+          'payment': 1090.22
+          'requirement': 0.195
+        'teilzeit':
+          'payment': 957.17
+          'requirement': 0.163
+        'halbtag':
+          'payment': 786.71
+          'requirement': 0.122
+    - age: [3,8]
+      properties:
+        'ganztag erweitert':
+          'payment': 795.02
+          'requirement': 0.124
+        'ganztag':
+          'payment': 732.66
+          'requirement': 0.109
+        'teilzeit':
+          'payment': 649.51
+          'requirement': 0.089
+        'halbtag':
+          'payment': 560.51
+          'requirement': 0.07

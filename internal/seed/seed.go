@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/eenemeene/kitamanager-go/internal/config"
+	"github.com/eenemeene/kitamanager-go/internal/importer"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/rbac"
 	"github.com/eenemeene/kitamanager-go/internal/store"
@@ -76,5 +77,28 @@ func SeedAdmin(cfg *config.Config, userStore *store.UserStore, userGroupStore *s
 
 	slog.Info("Superadmin role assigned", "userId", user.ID)
 
+	return nil
+}
+
+// SeedGovernmentFunding imports a government funding from YAML if GOVERNMENT_FUNDING_SEED_PATH is set.
+// If the government funding already exists, it will be skipped.
+func SeedGovernmentFunding(cfg *config.Config, db *gorm.DB, fundingStore *store.GovernmentFundingStore) error {
+	if cfg.GovernmentFundingSeedPath == "" {
+		slog.Info("Government funding seeding skipped: GOVERNMENT_FUNDING_SEED_PATH not set")
+		return nil
+	}
+
+	governmentFundingImporter := importer.NewGovernmentFundingImporter(db, fundingStore)
+
+	fundingID, err := governmentFundingImporter.ImportGovernmentFundingFromFile(cfg.GovernmentFundingSeedPath, cfg.GovernmentFundingSeedName)
+	if err != nil {
+		if errors.Is(err, importer.ErrGovernmentFundingExists) {
+			slog.Info("Government funding already seeded", "name", cfg.GovernmentFundingSeedName, "id", fundingID)
+			return nil
+		}
+		return err
+	}
+
+	slog.Info("Government funding seeded successfully", "name", cfg.GovernmentFundingSeedName, "id", fundingID, "path", cfg.GovernmentFundingSeedPath)
 	return nil
 }

@@ -11,86 +11,86 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/validation"
 )
 
-// PayplanService handles business logic for payplan operations
-type PayplanService struct {
-	store    store.PayplanStorer
+// GovernmentFundingService handles business logic for government funding operations
+type GovernmentFundingService struct {
+	store    store.GovernmentFundingStorer
 	orgStore store.OrganizationStorer
 }
 
-// NewPayplanService creates a new payplan service
-func NewPayplanService(store store.PayplanStorer, orgStore store.OrganizationStorer) *PayplanService {
-	return &PayplanService{store: store, orgStore: orgStore}
+// NewGovernmentFundingService creates a new government funding service
+func NewGovernmentFundingService(store store.GovernmentFundingStorer, orgStore store.OrganizationStorer) *GovernmentFundingService {
+	return &GovernmentFundingService{store: store, orgStore: orgStore}
 }
 
-// List returns a paginated list of payplans
-func (s *PayplanService) List(ctx context.Context, limit, offset int) ([]models.PayplanResponse, int64, error) {
-	payplans, total, err := s.store.FindAll(limit, offset)
+// List returns a paginated list of government fundings
+func (s *GovernmentFundingService) List(ctx context.Context, limit, offset int) ([]models.GovernmentFundingResponse, int64, error) {
+	fundings, total, err := s.store.FindAll(limit, offset)
 	if err != nil {
-		return nil, 0, apperror.Internal("failed to fetch payplans")
+		return nil, 0, apperror.Internal("failed to fetch government fundings")
 	}
 
-	responses := make([]models.PayplanResponse, len(payplans))
-	for i, p := range payplans {
-		responses[i] = p.ToResponse()
+	responses := make([]models.GovernmentFundingResponse, len(fundings))
+	for i, f := range fundings {
+		responses[i] = f.ToResponse()
 	}
 	return responses, total, nil
 }
 
-// GetByID returns a payplan by ID without nested details
-func (s *PayplanService) GetByID(ctx context.Context, id uint) (*models.PayplanResponse, error) {
-	payplan, err := s.store.FindByID(id)
+// GetByID returns a government funding by ID without nested details
+func (s *GovernmentFundingService) GetByID(ctx context.Context, id uint) (*models.GovernmentFundingResponse, error) {
+	funding, err := s.store.FindByID(id)
 	if err != nil {
-		return nil, apperror.NotFound("payplan")
+		return nil, apperror.NotFound("government funding")
 	}
-	resp := payplan.ToResponse()
+	resp := funding.ToResponse()
 	return &resp, nil
 }
 
-// GetByIDWithDetails returns a payplan by ID with all nested periods, entries, and properties
+// GetByIDWithDetails returns a government funding by ID with all nested periods, entries, and properties
 // Note: Returns raw model for complex nested structure
-func (s *PayplanService) GetByIDWithDetails(ctx context.Context, id uint) (*models.Payplan, error) {
-	payplan, err := s.store.FindByIDWithDetails(id)
+func (s *GovernmentFundingService) GetByIDWithDetails(ctx context.Context, id uint) (*models.GovernmentFunding, error) {
+	funding, err := s.store.FindByIDWithDetails(id)
 	if err != nil {
-		return nil, apperror.NotFound("payplan")
+		return nil, apperror.NotFound("government funding")
 	}
-	return payplan, nil
+	return funding, nil
 }
 
-// PayplanCreateRequest represents the request for creating a payplan
-type PayplanCreateRequest struct {
+// GovernmentFundingCreateRequest represents the request for creating a government funding
+type GovernmentFundingCreateRequest struct {
 	Name string
 }
 
-// Create creates a new payplan
-func (s *PayplanService) Create(ctx context.Context, req *PayplanCreateRequest) (*models.PayplanResponse, error) {
+// Create creates a new government funding
+func (s *GovernmentFundingService) Create(ctx context.Context, req *GovernmentFundingCreateRequest) (*models.GovernmentFundingResponse, error) {
 	req.Name = strings.TrimSpace(req.Name)
 
 	if validation.IsWhitespaceOnly(req.Name) {
 		return nil, apperror.BadRequest("name cannot be empty or whitespace only")
 	}
 
-	payplan := &models.Payplan{
+	funding := &models.GovernmentFunding{
 		Name: req.Name,
 	}
 
-	if err := s.store.Create(payplan); err != nil {
-		return nil, apperror.Internal("failed to create payplan")
+	if err := s.store.Create(funding); err != nil {
+		return nil, apperror.Internal("failed to create government funding")
 	}
 
-	resp := payplan.ToResponse()
+	resp := funding.ToResponse()
 	return &resp, nil
 }
 
-// PayplanUpdateRequest represents the request for updating a payplan
-type PayplanUpdateRequest struct {
+// GovernmentFundingUpdateRequest represents the request for updating a government funding
+type GovernmentFundingUpdateRequest struct {
 	Name *string
 }
 
-// Update updates an existing payplan
-func (s *PayplanService) Update(ctx context.Context, id uint, req *PayplanUpdateRequest) (*models.PayplanResponse, error) {
-	payplan, err := s.store.FindByID(id)
+// Update updates an existing government funding
+func (s *GovernmentFundingService) Update(ctx context.Context, id uint, req *GovernmentFundingUpdateRequest) (*models.GovernmentFundingResponse, error) {
+	funding, err := s.store.FindByID(id)
 	if err != nil {
-		return nil, apperror.NotFound("payplan")
+		return nil, apperror.NotFound("government funding")
 	}
 
 	if req.Name != nil {
@@ -98,36 +98,36 @@ func (s *PayplanService) Update(ctx context.Context, id uint, req *PayplanUpdate
 		if validation.IsWhitespaceOnly(name) {
 			return nil, apperror.BadRequest("name cannot be empty or whitespace only")
 		}
-		payplan.Name = name
+		funding.Name = name
 	}
 
-	if err := s.store.Update(payplan); err != nil {
-		return nil, apperror.Internal("failed to update payplan")
+	if err := s.store.Update(funding); err != nil {
+		return nil, apperror.Internal("failed to update government funding")
 	}
 
-	resp := payplan.ToResponse()
+	resp := funding.ToResponse()
 	return &resp, nil
 }
 
-// Delete deletes a payplan
-func (s *PayplanService) Delete(ctx context.Context, id uint) error {
+// Delete deletes a government funding
+func (s *GovernmentFundingService) Delete(ctx context.Context, id uint) error {
 	if err := s.store.Delete(id); err != nil {
-		return apperror.Internal("failed to delete payplan")
+		return apperror.Internal("failed to delete government funding")
 	}
 	return nil
 }
 
 // Period operations
 
-// PeriodCreateRequest represents the request for creating a period
-type PeriodCreateRequest struct {
-	PayplanID uint
-	From      models.PayplanPeriodCreateRequest
+// GovernmentFundingPeriodServiceCreateRequest represents the request for creating a period
+type GovernmentFundingPeriodServiceCreateRequest struct {
+	GovernmentFundingID uint
+	From                models.GovernmentFundingPeriodCreateRequest
 }
 
-// periodsOverlap checks if two date ranges overlap.
+// governmentFundingPeriodsOverlap checks if two date ranges overlap.
 // A period with nil To date extends indefinitely into the future.
-func periodsOverlap(from1 time.Time, to1 *time.Time, from2 time.Time, to2 *time.Time) bool {
+func governmentFundingPeriodsOverlap(from1 time.Time, to1 *time.Time, from2 time.Time, to2 *time.Time) bool {
 	// Period 1 ends before period 2 starts (no overlap)
 	if to1 != nil && !to1.After(from2) && !to1.Equal(from2) {
 		// to1 < from2, but we need to check if to1 == from2 is allowed
@@ -149,8 +149,8 @@ func periodsOverlap(from1 time.Time, to1 *time.Time, from2 time.Time, to2 *time.
 
 // validatePeriodNoOverlap checks that the new/updated period doesn't overlap with existing periods.
 // excludeID is used when updating to exclude the period being updated from the check.
-func (s *PayplanService) validatePeriodNoOverlap(payplanID uint, from time.Time, to *time.Time, excludeID *uint) error {
-	existingPeriods, err := s.store.FindPeriodsByPayplanID(payplanID)
+func (s *GovernmentFundingService) validatePeriodNoOverlap(governmentFundingID uint, from time.Time, to *time.Time, excludeID *uint) error {
+	existingPeriods, err := s.store.FindPeriodsByGovernmentFundingID(governmentFundingID)
 	if err != nil {
 		return apperror.Internal("failed to check for period overlaps")
 	}
@@ -161,7 +161,7 @@ func (s *PayplanService) validatePeriodNoOverlap(payplanID uint, from time.Time,
 			continue
 		}
 
-		if periodsOverlap(from, to, existing.From, existing.To) {
+		if governmentFundingPeriodsOverlap(from, to, existing.From, existing.To) {
 			return apperror.BadRequest("period overlaps with existing period")
 		}
 	}
@@ -170,22 +170,22 @@ func (s *PayplanService) validatePeriodNoOverlap(payplanID uint, from time.Time,
 }
 
 // CreatePeriod creates a new period
-func (s *PayplanService) CreatePeriod(ctx context.Context, payplanID uint, req *models.PayplanPeriodCreateRequest) (*models.PayplanPeriodResponse, error) {
-	// Verify payplan exists
-	if _, err := s.store.FindByID(payplanID); err != nil {
-		return nil, apperror.NotFound("payplan")
+func (s *GovernmentFundingService) CreatePeriod(ctx context.Context, governmentFundingID uint, req *models.GovernmentFundingPeriodCreateRequest) (*models.GovernmentFundingPeriodResponse, error) {
+	// Verify government funding exists
+	if _, err := s.store.FindByID(governmentFundingID); err != nil {
+		return nil, apperror.NotFound("government funding")
 	}
 
 	// Validate no overlap with existing periods
-	if err := s.validatePeriodNoOverlap(payplanID, req.From, req.To, nil); err != nil {
+	if err := s.validatePeriodNoOverlap(governmentFundingID, req.From, req.To, nil); err != nil {
 		return nil, err
 	}
 
-	period := &models.PayplanPeriod{
-		PayplanID: payplanID,
-		From:      req.From,
-		To:        req.To,
-		Comment:   strings.TrimSpace(req.Comment),
+	period := &models.GovernmentFundingPeriod{
+		GovernmentFundingID: governmentFundingID,
+		From:                req.From,
+		To:                  req.To,
+		Comment:             strings.TrimSpace(req.Comment),
 	}
 
 	if err := s.store.CreatePeriod(period); err != nil {
@@ -197,7 +197,7 @@ func (s *PayplanService) CreatePeriod(ctx context.Context, payplanID uint, req *
 }
 
 // GetPeriodByID returns a period by ID
-func (s *PayplanService) GetPeriodByID(ctx context.Context, id uint) (*models.PayplanPeriodResponse, error) {
+func (s *GovernmentFundingService) GetPeriodByID(ctx context.Context, id uint) (*models.GovernmentFundingPeriodResponse, error) {
 	period, err := s.store.FindPeriodByID(id)
 	if err != nil {
 		return nil, apperror.NotFound("period")
@@ -207,7 +207,7 @@ func (s *PayplanService) GetPeriodByID(ctx context.Context, id uint) (*models.Pa
 }
 
 // UpdatePeriod updates an existing period
-func (s *PayplanService) UpdatePeriod(ctx context.Context, periodID uint, req *models.PayplanPeriodUpdateRequest) (*models.PayplanPeriodResponse, error) {
+func (s *GovernmentFundingService) UpdatePeriod(ctx context.Context, periodID uint, req *models.GovernmentFundingPeriodUpdateRequest) (*models.GovernmentFundingPeriodResponse, error) {
 	period, err := s.store.FindPeriodByID(periodID)
 	if err != nil {
 		return nil, apperror.NotFound("period")
@@ -224,7 +224,7 @@ func (s *PayplanService) UpdatePeriod(ctx context.Context, periodID uint, req *m
 	}
 
 	// Validate no overlap with other periods (excluding this one)
-	if err := s.validatePeriodNoOverlap(period.PayplanID, newFrom, newTo, &periodID); err != nil {
+	if err := s.validatePeriodNoOverlap(period.GovernmentFundingID, newFrom, newTo, &periodID); err != nil {
 		return nil, err
 	}
 
@@ -244,7 +244,7 @@ func (s *PayplanService) UpdatePeriod(ctx context.Context, periodID uint, req *m
 }
 
 // DeletePeriod deletes a period
-func (s *PayplanService) DeletePeriod(ctx context.Context, periodID uint) error {
+func (s *GovernmentFundingService) DeletePeriod(ctx context.Context, periodID uint) error {
 	if err := s.store.DeletePeriod(periodID); err != nil {
 		return apperror.Internal("failed to delete period")
 	}
@@ -254,7 +254,7 @@ func (s *PayplanService) DeletePeriod(ctx context.Context, periodID uint) error 
 // Entry operations
 
 // CreateEntry creates a new entry
-func (s *PayplanService) CreateEntry(ctx context.Context, periodID uint, req *models.PayplanEntryCreateRequest) (*models.PayplanEntryResponse, error) {
+func (s *GovernmentFundingService) CreateEntry(ctx context.Context, periodID uint, req *models.GovernmentFundingEntryCreateRequest) (*models.GovernmentFundingEntryResponse, error) {
 	// Verify period exists
 	if _, err := s.store.FindPeriodByID(periodID); err != nil {
 		return nil, apperror.NotFound("period")
@@ -264,7 +264,7 @@ func (s *PayplanService) CreateEntry(ctx context.Context, periodID uint, req *mo
 		return nil, apperror.BadRequest("max_age must be greater than min_age")
 	}
 
-	entry := &models.PayplanEntry{
+	entry := &models.GovernmentFundingEntry{
 		PeriodID: periodID,
 		MinAge:   req.MinAge,
 		MaxAge:   req.MaxAge,
@@ -279,7 +279,7 @@ func (s *PayplanService) CreateEntry(ctx context.Context, periodID uint, req *mo
 }
 
 // GetEntryByID returns an entry by ID
-func (s *PayplanService) GetEntryByID(ctx context.Context, id uint) (*models.PayplanEntryResponse, error) {
+func (s *GovernmentFundingService) GetEntryByID(ctx context.Context, id uint) (*models.GovernmentFundingEntryResponse, error) {
 	entry, err := s.store.FindEntryByID(id)
 	if err != nil {
 		return nil, apperror.NotFound("entry")
@@ -289,7 +289,7 @@ func (s *PayplanService) GetEntryByID(ctx context.Context, id uint) (*models.Pay
 }
 
 // UpdateEntry updates an existing entry
-func (s *PayplanService) UpdateEntry(ctx context.Context, entryID uint, req *models.PayplanEntryUpdateRequest) (*models.PayplanEntryResponse, error) {
+func (s *GovernmentFundingService) UpdateEntry(ctx context.Context, entryID uint, req *models.GovernmentFundingEntryUpdateRequest) (*models.GovernmentFundingEntryResponse, error) {
 	entry, err := s.store.FindEntryByID(entryID)
 	if err != nil {
 		return nil, apperror.NotFound("entry")
@@ -315,7 +315,7 @@ func (s *PayplanService) UpdateEntry(ctx context.Context, entryID uint, req *mod
 }
 
 // DeleteEntry deletes an entry
-func (s *PayplanService) DeleteEntry(ctx context.Context, entryID uint) error {
+func (s *GovernmentFundingService) DeleteEntry(ctx context.Context, entryID uint) error {
 	if err := s.store.DeleteEntry(entryID); err != nil {
 		return apperror.Internal("failed to delete entry")
 	}
@@ -325,13 +325,13 @@ func (s *PayplanService) DeleteEntry(ctx context.Context, entryID uint) error {
 // Property operations
 
 // CreateProperty creates a new property
-func (s *PayplanService) CreateProperty(ctx context.Context, entryID uint, req *models.PayplanPropertyCreateRequest) (*models.PayplanPropertyResponse, error) {
+func (s *GovernmentFundingService) CreateProperty(ctx context.Context, entryID uint, req *models.GovernmentFundingPropertyCreateRequest) (*models.GovernmentFundingPropertyResponse, error) {
 	// Verify entry exists
 	if _, err := s.store.FindEntryByID(entryID); err != nil {
 		return nil, apperror.NotFound("entry")
 	}
 
-	property := &models.PayplanProperty{
+	property := &models.GovernmentFundingProperty{
 		EntryID:     entryID,
 		Name:        strings.TrimSpace(req.Name),
 		Payment:     req.Payment,
@@ -352,7 +352,7 @@ func (s *PayplanService) CreateProperty(ctx context.Context, entryID uint, req *
 }
 
 // GetPropertyByID returns a property by ID
-func (s *PayplanService) GetPropertyByID(ctx context.Context, id uint) (*models.PayplanPropertyResponse, error) {
+func (s *GovernmentFundingService) GetPropertyByID(ctx context.Context, id uint) (*models.GovernmentFundingPropertyResponse, error) {
 	property, err := s.store.FindPropertyByID(id)
 	if err != nil {
 		return nil, apperror.NotFound("property")
@@ -362,7 +362,7 @@ func (s *PayplanService) GetPropertyByID(ctx context.Context, id uint) (*models.
 }
 
 // UpdateProperty updates an existing property
-func (s *PayplanService) UpdateProperty(ctx context.Context, propertyID uint, req *models.PayplanPropertyUpdateRequest) (*models.PayplanPropertyResponse, error) {
+func (s *GovernmentFundingService) UpdateProperty(ctx context.Context, propertyID uint, req *models.GovernmentFundingPropertyUpdateRequest) (*models.GovernmentFundingPropertyResponse, error) {
 	property, err := s.store.FindPropertyByID(propertyID)
 	if err != nil {
 		return nil, apperror.NotFound("property")
@@ -394,42 +394,42 @@ func (s *PayplanService) UpdateProperty(ctx context.Context, propertyID uint, re
 }
 
 // DeleteProperty deletes a property
-func (s *PayplanService) DeleteProperty(ctx context.Context, propertyID uint) error {
+func (s *GovernmentFundingService) DeleteProperty(ctx context.Context, propertyID uint) error {
 	if err := s.store.DeleteProperty(propertyID); err != nil {
 		return apperror.Internal("failed to delete property")
 	}
 	return nil
 }
 
-// Organization payplan assignment
+// Organization government funding assignment
 
-// AssignPayplanToOrg assigns a payplan to an organization
-func (s *PayplanService) AssignPayplanToOrg(ctx context.Context, orgID, payplanID uint) error {
+// AssignGovernmentFundingToOrg assigns a government funding to an organization
+func (s *GovernmentFundingService) AssignGovernmentFundingToOrg(ctx context.Context, orgID, governmentFundingID uint) error {
 	// Verify organization exists
 	if _, err := s.orgStore.FindByID(orgID); err != nil {
 		return apperror.NotFound("organization")
 	}
 
-	// Verify payplan exists
-	if _, err := s.store.FindByID(payplanID); err != nil {
-		return apperror.NotFound("payplan")
+	// Verify government funding exists
+	if _, err := s.store.FindByID(governmentFundingID); err != nil {
+		return apperror.NotFound("government funding")
 	}
 
-	if err := s.store.AssignPayplanToOrg(orgID, payplanID); err != nil {
-		return apperror.Internal("failed to assign payplan to organization")
+	if err := s.store.AssignGovernmentFundingToOrg(orgID, governmentFundingID); err != nil {
+		return apperror.Internal("failed to assign government funding to organization")
 	}
 	return nil
 }
 
-// RemovePayplanFromOrg removes the payplan assignment from an organization
-func (s *PayplanService) RemovePayplanFromOrg(ctx context.Context, orgID uint) error {
+// RemoveGovernmentFundingFromOrg removes the government funding assignment from an organization
+func (s *GovernmentFundingService) RemoveGovernmentFundingFromOrg(ctx context.Context, orgID uint) error {
 	// Verify organization exists
 	if _, err := s.orgStore.FindByID(orgID); err != nil {
 		return apperror.NotFound("organization")
 	}
 
-	if err := s.store.RemovePayplanFromOrg(orgID); err != nil {
-		return apperror.Internal("failed to remove payplan from organization")
+	if err := s.store.RemoveGovernmentFundingFromOrg(orgID); err != nil {
+		return apperror.Internal("failed to remove government funding from organization")
 	}
 	return nil
 }

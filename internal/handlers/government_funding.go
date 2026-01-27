@@ -10,28 +10,28 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/service"
 )
 
-type PayplanHandler struct {
-	service *service.PayplanService
+type GovernmentFundingHandler struct {
+	service *service.GovernmentFundingService
 }
 
-func NewPayplanHandler(service *service.PayplanService) *PayplanHandler {
-	return &PayplanHandler{service: service}
+func NewGovernmentFundingHandler(service *service.GovernmentFundingService) *GovernmentFundingHandler {
+	return &GovernmentFundingHandler{service: service}
 }
 
 // List godoc
-// @Summary List all payplans
-// @Description Get a paginated list of all payplans
-// @Tags payplans
+// @Summary List all government fundings
+// @Description Get a paginated list of all government fundings
+// @Tags government-fundings
 // @Accept json
 // @Produce json
 // @Security BearerAuth
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(20) maximum(100)
-// @Success 200 {object} models.PaginatedResponse[models.Payplan]
+// @Success 200 {object} models.PaginatedResponse[models.GovernmentFunding]
 // @Failure 401 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/payplans [get]
-func (h *PayplanHandler) List(c *gin.Context) {
+// @Router /api/v1/government-fundings [get]
+func (h *GovernmentFundingHandler) List(c *gin.Context) {
 	var params models.PaginationParams
 	if err := c.ShouldBindQuery(&params); err != nil {
 		respondError(c, apperror.BadRequest("invalid pagination parameters"))
@@ -43,71 +43,71 @@ func (h *PayplanHandler) List(c *gin.Context) {
 	}
 	params.SetDefaults()
 
-	payplans, total, err := h.service.List(c.Request.Context(), params.Limit, params.Offset())
+	fundings, total, err := h.service.List(c.Request.Context(), params.Limit, params.Offset())
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(payplans, params.Page, params.Limit, total, c.Request.URL.Path))
+	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(fundings, params.Page, params.Limit, total, c.Request.URL.Path))
 }
 
 // Get godoc
-// @Summary Get payplan by ID
-// @Description Get a single payplan by its ID with all nested periods, entries, and properties
-// @Tags payplans
+// @Summary Get government funding by ID
+// @Description Get a single government funding by its ID with all nested periods, entries, and properties
+// @Tags government-fundings
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "Payplan ID"
-// @Success 200 {object} models.Payplan
+// @Param id path int true "GovernmentFunding ID"
+// @Success 200 {object} models.GovernmentFunding
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
-// @Router /api/v1/payplans/{id} [get]
-func (h *PayplanHandler) Get(c *gin.Context) {
+// @Router /api/v1/government-fundings/{id} [get]
+func (h *GovernmentFundingHandler) Get(c *gin.Context) {
 	id, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	payplan, err := h.service.GetByIDWithDetails(c.Request.Context(), id)
+	funding, err := h.service.GetByIDWithDetails(c.Request.Context(), id)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, payplan)
+	c.JSON(http.StatusOK, funding)
 }
 
-// PayplanCreateRequest represents the request body for creating a payplan
-type PayplanCreateRequest struct {
+// GovernmentFundingCreateRequest represents the request body for creating a government funding
+type GovernmentFundingCreateRequest struct {
 	Name string `json:"name" binding:"required,max=255" example:"Berlin"`
 }
 
 // Create godoc
-// @Summary Create a new payplan
-// @Description Create a new payplan (superadmin only)
-// @Tags payplans
+// @Summary Create a new government funding
+// @Description Create a new government funding (superadmin only)
+// @Tags government-fundings
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param request body PayplanCreateRequest true "Payplan data"
-// @Success 201 {object} models.Payplan
+// @Param request body GovernmentFundingCreateRequest true "GovernmentFunding data"
+// @Success 201 {object} models.GovernmentFunding
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 403 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/payplans [post]
-func (h *PayplanHandler) Create(c *gin.Context) {
-	var req PayplanCreateRequest
+// @Router /api/v1/government-fundings [post]
+func (h *GovernmentFundingHandler) Create(c *gin.Context) {
+	var req GovernmentFundingCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
 	}
 
-	payplan, err := h.service.Create(c.Request.Context(), &service.PayplanCreateRequest{
+	funding, err := h.service.Create(c.Request.Context(), &service.GovernmentFundingCreateRequest{
 		Name: req.Name,
 	})
 	if err != nil {
@@ -115,44 +115,44 @@ func (h *PayplanHandler) Create(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, payplan)
+	c.JSON(http.StatusCreated, funding)
 }
 
-// PayplanUpdateRequest represents the request body for updating a payplan
-type PayplanUpdateRequest struct {
+// GovernmentFundingUpdateRequest represents the request body for updating a government funding
+type GovernmentFundingUpdateRequest struct {
 	Name *string `json:"name" binding:"omitempty,max=255" example:"Berlin Updated"`
 }
 
 // Update godoc
-// @Summary Update a payplan
-// @Description Update an existing payplan by ID (superadmin only)
-// @Tags payplans
+// @Summary Update a government funding
+// @Description Update an existing government funding by ID (superadmin only)
+// @Tags government-fundings
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "Payplan ID"
-// @Param request body PayplanUpdateRequest true "Payplan data"
-// @Success 200 {object} models.Payplan
+// @Param id path int true "GovernmentFunding ID"
+// @Param request body GovernmentFundingUpdateRequest true "GovernmentFunding data"
+// @Success 200 {object} models.GovernmentFunding
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 403 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/payplans/{id} [put]
-func (h *PayplanHandler) Update(c *gin.Context) {
+// @Router /api/v1/government-fundings/{id} [put]
+func (h *GovernmentFundingHandler) Update(c *gin.Context) {
 	id, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	var req PayplanUpdateRequest
+	var req GovernmentFundingUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
 	}
 
-	payplan, err := h.service.Update(c.Request.Context(), id, &service.PayplanUpdateRequest{
+	funding, err := h.service.Update(c.Request.Context(), id, &service.GovernmentFundingUpdateRequest{
 		Name: req.Name,
 	})
 	if err != nil {
@@ -160,24 +160,24 @@ func (h *PayplanHandler) Update(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, payplan)
+	c.JSON(http.StatusOK, funding)
 }
 
 // Delete godoc
-// @Summary Delete a payplan
-// @Description Delete a payplan by ID (superadmin only)
-// @Tags payplans
+// @Summary Delete a government funding
+// @Description Delete a government funding by ID (superadmin only)
+// @Tags government-fundings
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "Payplan ID"
+// @Param id path int true "GovernmentFunding ID"
 // @Success 204 "No Content"
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 403 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/payplans/{id} [delete]
-func (h *PayplanHandler) Delete(c *gin.Context) {
+// @Router /api/v1/government-fundings/{id} [delete]
+func (h *GovernmentFundingHandler) Delete(c *gin.Context) {
 	id, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
@@ -196,34 +196,34 @@ func (h *PayplanHandler) Delete(c *gin.Context) {
 
 // CreatePeriod godoc
 // @Summary Create a new period
-// @Description Create a new period for a payplan (superadmin only)
-// @Tags payplans
+// @Description Create a new period for a government funding (superadmin only)
+// @Tags government-fundings
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "Payplan ID"
-// @Param request body models.PayplanPeriodCreateRequest true "Period data"
-// @Success 201 {object} models.PayplanPeriod
+// @Param id path int true "GovernmentFunding ID"
+// @Param request body models.GovernmentFundingPeriodCreateRequest true "Period data"
+// @Success 201 {object} models.GovernmentFundingPeriod
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 403 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/payplans/{id}/periods [post]
-func (h *PayplanHandler) CreatePeriod(c *gin.Context) {
-	payplanID, err := parseID(c, "id")
+// @Router /api/v1/government-fundings/{id}/periods [post]
+func (h *GovernmentFundingHandler) CreatePeriod(c *gin.Context) {
+	fundingID, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	var req models.PayplanPeriodCreateRequest
+	var req models.GovernmentFundingPeriodCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
 	}
 
-	period, err := h.service.CreatePeriod(c.Request.Context(), payplanID, &req)
+	period, err := h.service.CreatePeriod(c.Request.Context(), fundingID, &req)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -235,21 +235,21 @@ func (h *PayplanHandler) CreatePeriod(c *gin.Context) {
 // UpdatePeriod godoc
 // @Summary Update a period
 // @Description Update an existing period by ID (superadmin only)
-// @Tags payplans
+// @Tags government-fundings
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "Payplan ID"
+// @Param id path int true "GovernmentFunding ID"
 // @Param periodId path int true "Period ID"
-// @Param request body models.PayplanPeriodUpdateRequest true "Period data"
-// @Success 200 {object} models.PayplanPeriod
+// @Param request body models.GovernmentFundingPeriodUpdateRequest true "Period data"
+// @Success 200 {object} models.GovernmentFundingPeriod
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 403 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/payplans/{id}/periods/{periodId} [put]
-func (h *PayplanHandler) UpdatePeriod(c *gin.Context) {
+// @Router /api/v1/government-fundings/{id}/periods/{periodId} [put]
+func (h *GovernmentFundingHandler) UpdatePeriod(c *gin.Context) {
 	_, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
@@ -262,7 +262,7 @@ func (h *PayplanHandler) UpdatePeriod(c *gin.Context) {
 		return
 	}
 
-	var req models.PayplanPeriodUpdateRequest
+	var req models.GovernmentFundingPeriodUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
@@ -280,19 +280,19 @@ func (h *PayplanHandler) UpdatePeriod(c *gin.Context) {
 // DeletePeriod godoc
 // @Summary Delete a period
 // @Description Delete a period by ID (superadmin only)
-// @Tags payplans
+// @Tags government-fundings
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "Payplan ID"
+// @Param id path int true "GovernmentFunding ID"
 // @Param periodId path int true "Period ID"
 // @Success 204 "No Content"
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 403 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/payplans/{id}/periods/{periodId} [delete]
-func (h *PayplanHandler) DeletePeriod(c *gin.Context) {
+// @Router /api/v1/government-fundings/{id}/periods/{periodId} [delete]
+func (h *GovernmentFundingHandler) DeletePeriod(c *gin.Context) {
 	_, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
@@ -318,21 +318,21 @@ func (h *PayplanHandler) DeletePeriod(c *gin.Context) {
 // CreateEntry godoc
 // @Summary Create a new entry
 // @Description Create a new entry for a period (superadmin only)
-// @Tags payplans
+// @Tags government-fundings
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "Payplan ID"
+// @Param id path int true "GovernmentFunding ID"
 // @Param periodId path int true "Period ID"
-// @Param request body models.PayplanEntryCreateRequest true "Entry data"
-// @Success 201 {object} models.PayplanEntry
+// @Param request body models.GovernmentFundingEntryCreateRequest true "Entry data"
+// @Success 201 {object} models.GovernmentFundingEntry
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 403 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/payplans/{id}/periods/{periodId}/entries [post]
-func (h *PayplanHandler) CreateEntry(c *gin.Context) {
+// @Router /api/v1/government-fundings/{id}/periods/{periodId}/entries [post]
+func (h *GovernmentFundingHandler) CreateEntry(c *gin.Context) {
 	_, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
@@ -345,7 +345,7 @@ func (h *PayplanHandler) CreateEntry(c *gin.Context) {
 		return
 	}
 
-	var req models.PayplanEntryCreateRequest
+	var req models.GovernmentFundingEntryCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
@@ -363,22 +363,22 @@ func (h *PayplanHandler) CreateEntry(c *gin.Context) {
 // UpdateEntry godoc
 // @Summary Update an entry
 // @Description Update an existing entry by ID (superadmin only)
-// @Tags payplans
+// @Tags government-fundings
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "Payplan ID"
+// @Param id path int true "GovernmentFunding ID"
 // @Param periodId path int true "Period ID"
 // @Param entryId path int true "Entry ID"
-// @Param request body models.PayplanEntryUpdateRequest true "Entry data"
-// @Success 200 {object} models.PayplanEntry
+// @Param request body models.GovernmentFundingEntryUpdateRequest true "Entry data"
+// @Success 200 {object} models.GovernmentFundingEntry
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 403 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/payplans/{id}/periods/{periodId}/entries/{entryId} [put]
-func (h *PayplanHandler) UpdateEntry(c *gin.Context) {
+// @Router /api/v1/government-fundings/{id}/periods/{periodId}/entries/{entryId} [put]
+func (h *GovernmentFundingHandler) UpdateEntry(c *gin.Context) {
 	_, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
@@ -397,7 +397,7 @@ func (h *PayplanHandler) UpdateEntry(c *gin.Context) {
 		return
 	}
 
-	var req models.PayplanEntryUpdateRequest
+	var req models.GovernmentFundingEntryUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
@@ -415,11 +415,11 @@ func (h *PayplanHandler) UpdateEntry(c *gin.Context) {
 // DeleteEntry godoc
 // @Summary Delete an entry
 // @Description Delete an entry by ID (superadmin only)
-// @Tags payplans
+// @Tags government-fundings
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "Payplan ID"
+// @Param id path int true "GovernmentFunding ID"
 // @Param periodId path int true "Period ID"
 // @Param entryId path int true "Entry ID"
 // @Success 204 "No Content"
@@ -427,8 +427,8 @@ func (h *PayplanHandler) UpdateEntry(c *gin.Context) {
 // @Failure 401 {object} ErrorResponse
 // @Failure 403 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/payplans/{id}/periods/{periodId}/entries/{entryId} [delete]
-func (h *PayplanHandler) DeleteEntry(c *gin.Context) {
+// @Router /api/v1/government-fundings/{id}/periods/{periodId}/entries/{entryId} [delete]
+func (h *GovernmentFundingHandler) DeleteEntry(c *gin.Context) {
 	_, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
@@ -460,22 +460,22 @@ func (h *PayplanHandler) DeleteEntry(c *gin.Context) {
 // CreateProperty godoc
 // @Summary Create a new property
 // @Description Create a new property for an entry (superadmin only)
-// @Tags payplans
+// @Tags government-fundings
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "Payplan ID"
+// @Param id path int true "GovernmentFunding ID"
 // @Param periodId path int true "Period ID"
 // @Param entryId path int true "Entry ID"
-// @Param request body models.PayplanPropertyCreateRequest true "Property data"
-// @Success 201 {object} models.PayplanProperty
+// @Param request body models.GovernmentFundingPropertyCreateRequest true "Property data"
+// @Success 201 {object} models.GovernmentFundingProperty
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 403 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/payplans/{id}/periods/{periodId}/entries/{entryId}/properties [post]
-func (h *PayplanHandler) CreateProperty(c *gin.Context) {
+// @Router /api/v1/government-fundings/{id}/periods/{periodId}/entries/{entryId}/properties [post]
+func (h *GovernmentFundingHandler) CreateProperty(c *gin.Context) {
 	_, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
@@ -494,7 +494,7 @@ func (h *PayplanHandler) CreateProperty(c *gin.Context) {
 		return
 	}
 
-	var req models.PayplanPropertyCreateRequest
+	var req models.GovernmentFundingPropertyCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
@@ -512,23 +512,23 @@ func (h *PayplanHandler) CreateProperty(c *gin.Context) {
 // UpdateProperty godoc
 // @Summary Update a property
 // @Description Update an existing property by ID (superadmin only)
-// @Tags payplans
+// @Tags government-fundings
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "Payplan ID"
+// @Param id path int true "GovernmentFunding ID"
 // @Param periodId path int true "Period ID"
 // @Param entryId path int true "Entry ID"
 // @Param propId path int true "Property ID"
-// @Param request body models.PayplanPropertyUpdateRequest true "Property data"
-// @Success 200 {object} models.PayplanProperty
+// @Param request body models.GovernmentFundingPropertyUpdateRequest true "Property data"
+// @Success 200 {object} models.GovernmentFundingProperty
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 403 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/payplans/{id}/periods/{periodId}/entries/{entryId}/properties/{propId} [put]
-func (h *PayplanHandler) UpdateProperty(c *gin.Context) {
+// @Router /api/v1/government-fundings/{id}/periods/{periodId}/entries/{entryId}/properties/{propId} [put]
+func (h *GovernmentFundingHandler) UpdateProperty(c *gin.Context) {
 	_, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
@@ -553,7 +553,7 @@ func (h *PayplanHandler) UpdateProperty(c *gin.Context) {
 		return
 	}
 
-	var req models.PayplanPropertyUpdateRequest
+	var req models.GovernmentFundingPropertyUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
@@ -571,11 +571,11 @@ func (h *PayplanHandler) UpdateProperty(c *gin.Context) {
 // DeleteProperty godoc
 // @Summary Delete a property
 // @Description Delete a property by ID (superadmin only)
-// @Tags payplans
+// @Tags government-fundings
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "Payplan ID"
+// @Param id path int true "GovernmentFunding ID"
 // @Param periodId path int true "Period ID"
 // @Param entryId path int true "Entry ID"
 // @Param propId path int true "Property ID"
@@ -584,8 +584,8 @@ func (h *PayplanHandler) UpdateProperty(c *gin.Context) {
 // @Failure 401 {object} ErrorResponse
 // @Failure 403 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/payplans/{id}/periods/{periodId}/entries/{entryId}/properties/{propId} [delete]
-func (h *PayplanHandler) DeleteProperty(c *gin.Context) {
+// @Router /api/v1/government-fundings/{id}/periods/{periodId}/entries/{entryId}/properties/{propId} [delete]
+func (h *GovernmentFundingHandler) DeleteProperty(c *gin.Context) {
 	_, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
@@ -618,48 +618,48 @@ func (h *PayplanHandler) DeleteProperty(c *gin.Context) {
 	c.JSON(http.StatusNoContent, nil)
 }
 
-// Organization payplan assignment handlers
+// Organization funding assignment handlers
 
-// AssignPayplan godoc
-// @Summary Assign payplan to organization
-// @Description Assign a payplan to an organization (superadmin only)
+// AssignFunding godoc
+// @Summary Assign government funding to organization
+// @Description Assign a government funding to an organization (superadmin only)
 // @Tags organizations
 // @Accept json
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param request body models.AssignPayplanRequest true "Payplan assignment"
+// @Param request body models.AssignGovernmentFundingRequest true "GovernmentFunding assignment"
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 403 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/organizations/{orgId}/payplan [put]
-func (h *PayplanHandler) AssignPayplan(c *gin.Context) {
+// @Router /api/v1/organizations/{orgId}/government-funding [put]
+func (h *GovernmentFundingHandler) AssignFunding(c *gin.Context) {
 	orgID, err := parseID(c, "orgId")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	var req models.AssignPayplanRequest
+	var req models.AssignGovernmentFundingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
 	}
 
-	if err := h.service.AssignPayplanToOrg(c.Request.Context(), orgID, req.PayplanID); err != nil {
+	if err := h.service.AssignGovernmentFundingToOrg(c.Request.Context(), orgID, req.GovernmentFundingID); err != nil {
 		respondError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "payplan assigned successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "funding assigned successfully"})
 }
 
-// RemovePayplan godoc
-// @Summary Remove payplan from organization
-// @Description Remove the payplan assignment from an organization (superadmin only)
+// RemoveFunding godoc
+// @Summary Remove government funding from organization
+// @Description Remove the government funding assignment from an organization (superadmin only)
 // @Tags organizations
 // @Accept json
 // @Produce json
@@ -671,15 +671,15 @@ func (h *PayplanHandler) AssignPayplan(c *gin.Context) {
 // @Failure 403 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/organizations/{orgId}/payplan [delete]
-func (h *PayplanHandler) RemovePayplan(c *gin.Context) {
+// @Router /api/v1/organizations/{orgId}/government-funding [delete]
+func (h *GovernmentFundingHandler) RemoveFunding(c *gin.Context) {
 	orgID, err := parseID(c, "orgId")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	if err := h.service.RemovePayplanFromOrg(c.Request.Context(), orgID); err != nil {
+	if err := h.service.RemoveGovernmentFundingFromOrg(c.Request.Context(), orgID); err != nil {
 		respondError(c, err)
 		return
 	}
