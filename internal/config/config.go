@@ -48,6 +48,9 @@ type Config struct {
 	GovernmentFundingSeedPath string
 	GovernmentFundingSeedName string
 
+	// Test Data Seeding
+	SeedTestData bool
+
 	// CORS
 	CORSAllowOrigins     []string
 	CORSAllowCredentials bool
@@ -183,6 +186,9 @@ func Load() (*Config, error) {
 		// Government Funding Seeding
 		GovernmentFundingSeedPath: getEnv("GOVERNMENT_FUNDING_SEED_PATH", ""),
 		GovernmentFundingSeedName: getEnv("GOVERNMENT_FUNDING_SEED_NAME", "Berlin"),
+
+		// Test Data Seeding
+		SeedTestData: getEnv("SEED_TEST_DATA", "false") == "true",
 
 		// CORS
 		CORSAllowOrigins:     origins,

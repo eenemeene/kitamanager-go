@@ -105,6 +105,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Seed test data if configured
+	if err := seed.SeedTestData(cfg, db); err != nil {
+		slog.Error("Failed to seed test data", "error", err)
+		os.Exit(1)
+	}
+
 	// Initialize RBAC permission service
 	permissionService := rbac.NewPermissionService(userGroupStore, enforcer)
 
