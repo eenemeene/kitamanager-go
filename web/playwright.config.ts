@@ -9,6 +9,8 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI ? 'github' : 'list',
   timeout: 30000,
+  // Global setup to clean up old test data before running tests
+  globalSetup: './e2e/global-setup.ts',
 
   use: {
     baseURL: process.env.BASE_URL || 'http://localhost:8080',
@@ -39,7 +41,8 @@ export default defineConfig({
     ? {}
     : {
         webServer: {
-          command: 'cd .. && make dev',
+          // Disable rate limiting for E2E tests to prevent HTTP 429 errors
+          command: 'cd .. && LOGIN_RATE_LIMIT_PER_MINUTE=0 make dev',
           url: 'http://localhost:8080/api/v1/health',
           reuseExistingServer: true,
           timeout: 120000,

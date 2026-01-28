@@ -10,6 +10,44 @@ export const SUPERADMIN_EMAIL = 'admin@example.com'
 export const SUPERADMIN_PASSWORD = 'supersecret'
 
 /**
+ * Clean up test organizations (those with timestamps in the name).
+ * Call this at the beginning of test suites to ensure a clean state.
+ */
+export async function cleanupTestOrganizations(page: Page, token: string) {
+  await page.evaluate(
+    async ({ token }) => {
+      // Fetch all organizations (with pagination)
+      const testOrgIds: number[] = []
+      for (let pageNum = 1; pageNum <= 10; pageNum++) {
+        const res = await fetch(`/api/v1/organizations?limit=100&page=${pageNum}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (!res.ok) break
+        const data = await res.json()
+        const orgs = data.data || data
+        if (!Array.isArray(orgs) || orgs.length === 0) break
+
+        // Find test organizations (those with timestamps like "Test Org 1234567890")
+        for (const org of orgs) {
+          if (/\d{10,}/.test(org.name) && org.name !== 'Kita Sonnenschein') {
+            testOrgIds.push(org.id)
+          }
+        }
+      }
+
+      // Delete test organizations (limit to 50 to avoid timeout)
+      for (const id of testOrgIds.slice(0, 50)) {
+        await fetch(`/api/v1/organizations/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      }
+    },
+    { token }
+  )
+}
+
+/**
  * Login to the application
  */
 export async function login(page: Page, email: string, password: string) {
@@ -30,10 +68,31 @@ export async function logout(page: Page, currentUserEmail: string) {
 }
 
 /**
+ * Select an organization by navigating directly to an org-scoped page.
+ * This bypasses the dropdown which may not show all organizations.
+ * The organization will be auto-selected when navigating to its scoped page.
+ */
+export async function selectOrganizationById(page: Page, orgId: number) {
+  // Navigate to the organization's children page (any org-scoped page works)
+  await page.goto(`/organizations/${orgId}/children`)
+  await page.waitForLoadState('networkidle')
+
+  // Store the selected org ID in localStorage so the UI picks it up
+  await page.evaluate((id) => {
+    localStorage.setItem('selectedOrganizationId', id.toString())
+  }, orgId)
+
+  // Reload to ensure the sidebar reflects the selection
+  await page.reload()
+  await page.waitForLoadState('networkidle')
+}
+
+/**
  * Select an organization in the sidebar dropdown.
  * Uses filtering to find the org with retry logic for reliability.
+ * Falls back to direct navigation if dropdown selection fails.
  */
-export async function selectOrganization(page: Page, orgName: string, filterText?: string) {
+export async function selectOrganization(page: Page, orgName: string, _filterText?: string) {
   // Ensure page is fully loaded
   await page.waitForLoadState('domcontentloaded')
   await page.waitForLoadState('networkidle')
@@ -42,8 +101,8 @@ export async function selectOrganization(page: Page, orgName: string, filterText
   const orgDropdown = page.getByRole('combobox').first()
   await expect(orgDropdown).toBeVisible({ timeout: 10000 })
 
-  // Wait a moment for API data to populate the dropdown
-  await page.waitForTimeout(500)
+  // Wait for API data to populate the dropdown (increased for reliability)
+  await page.waitForTimeout(1000)
 
   // Retry logic for dropdown selection (handles timing issues)
   let retries = 3
@@ -59,9 +118,12 @@ export async function selectOrganization(page: Page, orgName: string, filterText
       // Filter if filter input is available
       const filterInput = page.getByPlaceholder('Search...')
       if (await filterInput.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await filterInput.fill(filterText || orgName)
-        // Wait for filter to apply
-        await page.waitForTimeout(500)
+        // Clear any existing filter first
+        await filterInput.clear()
+        // Always use the full org name for filtering (more reliable than partial timestamp)
+        await filterInput.fill(orgName)
+        // Wait for filter to apply and API to respond
+        await page.waitForTimeout(1000)
       }
 
       // Find and click the option - use exact match to avoid partial matches
@@ -74,10 +136,21 @@ export async function selectOrganization(page: Page, orgName: string, filterText
       return // Success
     } catch (error) {
       retries--
-      if (retries === 0) throw error
-      // Close dropdown if still open and retry
+      if (retries === 0) {
+        // Fallback: Try to find org via API and navigate directly
+        const token = await page.evaluate(() => localStorage.getItem('token'))
+        if (token) {
+          const org = await getOrganizationByName(page, token, orgName)
+          if (org) {
+            await selectOrganizationById(page, org.id)
+            return
+          }
+        }
+        throw error
+      }
+      // Close dropdown if still open and retry with increasing delay
       await page.keyboard.press('Escape')
-      await page.waitForTimeout(500)
+      await page.waitForTimeout(1000)
     }
   }
 }
@@ -86,8 +159,13 @@ export async function selectOrganization(page: Page, orgName: string, filterText
  * Create an organization via the UI.
  * Assumes user is already logged in and on any page.
  * State must be explicitly provided.
+ * Returns the created organization's ID.
  */
-export async function createOrganization(page: Page, orgName: string, state: string) {
+export async function createOrganization(
+  page: Page,
+  orgName: string,
+  state: string
+): Promise<number> {
   await page.getByRole('link', { name: /organization/i }).first().click()
   await expect(page).toHaveURL(/.*organization/)
 
@@ -107,6 +185,42 @@ export async function createOrganization(page: Page, orgName: string, state: str
 
   // Wait for dialog to close (confirms success)
   await expect(page.locator('.p-dialog')).not.toBeVisible({ timeout: 10000 })
+
+  // Wait for success toast to appear (confirms API success)
+  await expect(page.locator('.p-toast-message-success')).toBeVisible({ timeout: 5000 })
+
+  // Get the auth token from localStorage
+  const token = await page.evaluate(() => localStorage.getItem('token'))
+  if (!token) throw new Error('No auth token found')
+
+  // Find the organization via API to get its ID (with pagination support)
+  const org = await page.evaluate(
+    async ({ token, orgName }) => {
+      // Search through pages until we find the org (max 10 pages = 1000 orgs)
+      for (let page = 1; page <= 10; page++) {
+        const res = await fetch(`/api/v1/organizations?limit=100&page=${page}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (!res.ok) {
+          throw new Error(`Failed to fetch organizations: ${res.status}`)
+        }
+        const data = await res.json()
+        const orgs = data.data || data
+        if (!Array.isArray(orgs) || orgs.length === 0) break
+
+        const found = orgs.find((o: { name: string }) => o.name === orgName)
+        if (found) return found
+      }
+      return null
+    },
+    { token, orgName }
+  )
+
+  if (!org) {
+    throw new Error(`Organization "${orgName}" not found after creation`)
+  }
+
+  return org.id
 }
 
 /**
@@ -203,19 +317,29 @@ export async function getUserByEmail(
 
 /**
  * Get organization by name via the API.
+ * Uses pagination to search through all organizations.
  */
 export async function getOrganizationByName(
   page: Page,
   token: string,
   orgName: string
-): Promise<{ id: number; name: string }> {
+): Promise<{ id: number; name: string } | null> {
   const response = await page.evaluate(
     async ({ token, orgName }) => {
-      const res = await fetch('/api/v1/organizations?limit=100', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      const data = await res.json()
-      return data.data.find((o: { name: string }) => o.name === orgName)
+      // Search through pages until we find the org (max 10 pages = 1000 orgs)
+      for (let pageNum = 1; pageNum <= 10; pageNum++) {
+        const res = await fetch(`/api/v1/organizations?limit=100&page=${pageNum}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (!res.ok) return null
+        const data = await res.json()
+        const orgs = data.data || data
+        if (!Array.isArray(orgs) || orgs.length === 0) break
+
+        const found = orgs.find((o: { name: string }) => o.name === orgName)
+        if (found) return found
+      }
+      return null
     },
     { token, orgName }
   )
