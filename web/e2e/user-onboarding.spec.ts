@@ -59,7 +59,7 @@ test.describe('User Onboarding', () => {
     const superadminToken = await getApiToken(page, SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD)
 
     // Step 2: Create Organization
-    await createOrganization(page, orgName)
+    await createOrganization(page, orgName, 'berlin')
 
     // Step 3: Select new organization in sidebar
     await selectOrganization(page, orgName, timestamp.toString())

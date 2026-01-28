@@ -32,7 +32,7 @@ test.describe('Child Contract Management', () => {
     await login(page, SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD)
 
     // Create a new organization
-    await createOrganization(page, orgName)
+    await createOrganization(page, orgName, 'berlin')
 
     // Select the organization
     await selectOrganization(page, orgName, timestamp.toString())
@@ -206,7 +206,7 @@ test.describe('Child Contract Management', () => {
     await login(page, SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD)
 
     // Create org
-    await createOrganization(page, orgName2)
+    await createOrganization(page, orgName2, 'berlin')
     await selectOrganization(page, orgName2, timestamp2.toString())
 
     // Navigate to children

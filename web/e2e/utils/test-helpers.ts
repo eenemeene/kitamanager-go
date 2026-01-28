@@ -54,17 +54,28 @@ export async function selectOrganization(page: Page, orgName: string, filterText
 /**
  * Create an organization via the UI.
  * Assumes user is already logged in and on any page.
+ * State must be explicitly provided.
  */
-export async function createOrganization(page: Page, orgName: string) {
+export async function createOrganization(page: Page, orgName: string, state: string) {
   await page.getByRole('link', { name: /organization/i }).first().click()
   await expect(page).toHaveURL(/.*organization/)
 
   await page.getByRole('button', { name: /new organization/i }).click()
-  await page.getByPlaceholder('Organization name').fill(orgName)
+  await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 })
+
+  // Fill organization name (input has id="name")
+  await page.locator('#name').fill(orgName)
+
+  // Select state from dropdown (the Select component has id="state")
+  const stateDropdown = page.locator('#state')
+  await stateDropdown.click()
+  await page.waitForTimeout(300)
+  await page.getByRole('option', { name: new RegExp(state, 'i') }).click()
+
   await page.getByRole('button', { name: 'Save' }).click()
 
   await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
-  await expect(page.getByText('Organization created successfully')).toBeVisible({ timeout: 5000 })
+  await expect(page.getByText(/organization created successfully/i)).toBeVisible({ timeout: 5000 })
 }
 
 /**
@@ -76,7 +87,10 @@ export async function createGroup(page: Page, groupName: string) {
   await expect(page).toHaveURL(/.*groups/)
 
   await page.getByRole('button', { name: /new group/i }).click()
-  await page.getByPlaceholder('Group name').fill(groupName)
+  await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 })
+
+  // The name field has id="name"
+  await page.locator('#name').fill(groupName)
   await page.getByRole('button', { name: 'Save' }).click()
 
   await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
@@ -92,9 +106,13 @@ export async function createUser(page: Page, name: string, email: string, passwo
   await expect(page).toHaveURL(/.*users/)
 
   await page.getByRole('button', { name: /new user/i }).click()
-  await page.getByPlaceholder('Full name').fill(name)
-  await page.getByPlaceholder('Email address').fill(email)
-  await page.getByPlaceholder('Password').fill(password)
+  await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 })
+
+  // Fields have id attributes: name, email, password
+  // Password field is a PrimeVue component, so we need to target the inner input
+  await page.locator('#name').fill(name)
+  await page.locator('#email').fill(email)
+  await page.locator('#password input').fill(password)
   await page.getByRole('button', { name: 'Save' }).click()
 
   await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
@@ -270,39 +288,5 @@ export async function getGovernmentFundings(
   }, { token })
 }
 
-/**
- * Assign a government funding to an organization via the UI.
- * Assumes user is on the organizations page.
- */
-export async function assignGovernmentFundingToOrganization(
-  page: Page,
-  orgName: string,
-  fundingName: string
-) {
-  // Find the row with the organization and click the money button
-  const row = page.getByRole('row').filter({ hasText: orgName })
-  await row.getByRole('button', { name: /assign government funding/i }).click()
-
-  // Wait for the dialog to appear
-  await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 })
-
-  // Select the government funding from the dropdown (use combobox role)
-  const dropdown = page.getByRole('dialog').getByRole('combobox', { name: /select a government funding/i })
-  await dropdown.click()
-
-  // Select the funding option
-  const fundingOption = page.getByRole('option', { name: fundingName })
-  await expect(fundingOption).toBeVisible({ timeout: 5000 })
-  await fundingOption.click()
-
-  // Save the assignment
-  await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click()
-
-  // Wait for success toast
-  await expect(page.getByText(/government funding assigned successfully/i)).toBeVisible({
-    timeout: 5000
-  })
-
-  // Wait for dialog to close
-  await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
-}
+// Note: assignGovernmentFundingToOrganization was removed.
+// Government funding is now automatically determined by the organization's state.

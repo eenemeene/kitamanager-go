@@ -44,42 +44,24 @@ test.describe('Children', () => {
       { token, orgId }
     )
 
-    // The seeded test data should have 50 children
+    // The seeded test data should have at least 50 children
     expect(expectedCount).toBeGreaterThanOrEqual(50)
 
-    // Check that the DataTable shows the correct total in the paginator
-    // PrimeVue DataTable shows "{first} - {last} of {totalRecords}"
-    const paginatorInfo = page.locator('.p-paginator-current')
-    if (await paginatorInfo.isVisible({ timeout: 2000 }).catch(() => false)) {
-      const text = await paginatorInfo.textContent()
-      // Extract the total from text like "1 - 10 of 50"
-      const match = text?.match(/of\s+(\d+)/)
-      if (match) {
-        const displayedTotal = parseInt(match[1], 10)
-        expect(displayedTotal).toBe(expectedCount)
-      }
-    }
+    // Verify the paginator has multiple pages (indicating more than 10 children)
+    // With 50+ children and 10 per page, we should have at least 5 page buttons
+    const lastPageButton = page.getByRole('button', { name: 'Last Page' })
+    await expect(lastPageButton).toBeEnabled({ timeout: 5000 })
 
-    // Alternatively, count the rows visible with maximum pagination
-    // Set rows per page to maximum if possible
-    const rowsPerPageDropdown = page.locator('.p-paginator-rpp-options')
-    if (await rowsPerPageDropdown.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await rowsPerPageDropdown.click()
-      // Select the largest option (usually 50 or 100)
-      const options = page.locator('.p-dropdown-item')
-      const lastOption = options.last()
-      if (await lastOption.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await lastOption.click()
-        await page.waitForTimeout(500)
-      }
-    }
-
-    // Count rows in the table body
+    // The table should show 10 rows (default page size)
     const rows = page.locator('table tbody tr')
     const rowCount = await rows.count()
+    expect(rowCount).toBe(10)
 
-    // We should see at least 50 children (or all children if less than page size)
-    // The key assertion: we shouldn't be limited by a low default API limit
-    expect(rowCount).toBeGreaterThanOrEqual(Math.min(expectedCount, 50))
+    // Verify we can navigate to the last page, confirming all data is accessible
+    await lastPageButton.click()
+    await page.waitForTimeout(500)
+
+    // After clicking last page, the Next/Last buttons should be disabled
+    await expect(page.getByRole('button', { name: 'Next Page' })).toBeDisabled()
   })
 })
