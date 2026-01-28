@@ -4484,7 +4484,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "attributes": {
-                    "description": "Contract properties - care type and extras are stored in Attributes\ne.g., [\"ganztags\", \"integration_a\", \"ndh\"]",
+                    "description": "Contract properties - care type and extras are stored in Attributes\ne.g., [\"ganztags\", \"integration_a\", \"ndh\"]\nStored as JSON for database portability (works with PostgreSQL and SQLite)",
                     "type": "array",
                     "items": {
                         "type": "string"

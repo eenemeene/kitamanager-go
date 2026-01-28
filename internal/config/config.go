@@ -184,7 +184,7 @@ func Load() (*Config, error) {
 		SeedAdminName:     getEnv("SEED_ADMIN_NAME", "admin"),
 
 		// Government Funding Seeding
-		GovernmentFundingSeedPath: getEnv("GOVERNMENT_FUNDING_SEED_PATH", ""),
+		GovernmentFundingSeedPath:  getEnv("GOVERNMENT_FUNDING_SEED_PATH", ""),
 		GovernmentFundingSeedState: getEnv("GOVERNMENT_FUNDING_SEED_STATE", "berlin"),
 
 		// Test Data Seeding

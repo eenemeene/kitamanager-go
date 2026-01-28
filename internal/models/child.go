@@ -2,8 +2,6 @@ package models
 
 import (
 	"time"
-
-	"github.com/lib/pq"
 )
 
 // Child represents a child enrolled in the Kita.
@@ -21,7 +19,8 @@ type ChildContract struct {
 
 	// Contract properties - care type and extras are stored in Attributes
 	// e.g., ["ganztags", "integration_a", "ndh"]
-	Attributes pq.StringArray `gorm:"type:text[]" json:"attributes" swaggertype:"array,string" example:"ganztags,ndh"`
+	// Stored as JSON for database portability (works with PostgreSQL and SQLite)
+	Attributes []string `gorm:"serializer:json" json:"attributes" example:"ganztags,ndh"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

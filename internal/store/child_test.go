@@ -449,3 +449,122 @@ func TestChildStore_FindByOrganizationWithContractOn(t *testing.T) {
 		t.Errorf("expected Active and Ongoing children, got names: %v", names)
 	}
 }
+
+func TestChildStore_ContractAttributes_JSONSerialization(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewChildStore(db)
+	org := createTestOrganization(t, db, "Test Org")
+
+	child := &models.Child{
+		Person: models.Person{
+			OrganizationID: org.ID,
+			FirstName:      "Test",
+			LastName:       "Child",
+			Birthdate:      time.Now(),
+		},
+	}
+	db.Create(child)
+
+	tests := []struct {
+		name       string
+		attributes []string
+	}{
+		{
+			name:       "empty attributes",
+			attributes: []string{},
+		},
+		{
+			name:       "single attribute",
+			attributes: []string{"ganztags"},
+		},
+		{
+			name:       "multiple attributes",
+			attributes: []string{"ganztags", "ndh", "integration_a"},
+		},
+		{
+			name:       "attribute with special chars",
+			attributes: []string{"type-a", "type_b", "type.c"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			contract := &models.ChildContract{
+				ChildID: child.ID,
+				Period: models.Period{
+					From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+				},
+				Attributes: tt.attributes,
+			}
+
+			err := store.CreateContract(contract)
+			if err != nil {
+				t.Fatalf("failed to create contract: %v", err)
+			}
+
+			// Retrieve the contract from database
+			retrieved, err := store.FindContractByID(contract.ID)
+			if err != nil {
+				t.Fatalf("failed to retrieve contract: %v", err)
+			}
+
+			// Verify attributes round-trip correctly
+			if len(retrieved.Attributes) != len(tt.attributes) {
+				t.Errorf("expected %d attributes, got %d", len(tt.attributes), len(retrieved.Attributes))
+			}
+
+			for i, attr := range tt.attributes {
+				if i >= len(retrieved.Attributes) {
+					break
+				}
+				if retrieved.Attributes[i] != attr {
+					t.Errorf("attribute[%d]: expected %q, got %q", i, attr, retrieved.Attributes[i])
+				}
+			}
+
+			// Cleanup for next test
+			_ = store.DeleteContract(contract.ID)
+		})
+	}
+}
+
+func TestChildStore_ContractAttributes_NilHandling(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewChildStore(db)
+	org := createTestOrganization(t, db, "Test Org")
+
+	child := &models.Child{
+		Person: models.Person{
+			OrganizationID: org.ID,
+			FirstName:      "Test",
+			LastName:       "Child",
+			Birthdate:      time.Now(),
+		},
+	}
+	db.Create(child)
+
+	// Create contract with nil attributes
+	contract := &models.ChildContract{
+		ChildID: child.ID,
+		Period: models.Period{
+			From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		},
+		Attributes: nil,
+	}
+
+	err := store.CreateContract(contract)
+	if err != nil {
+		t.Fatalf("failed to create contract with nil attributes: %v", err)
+	}
+
+	// Retrieve and verify
+	retrieved, err := store.FindContractByID(contract.ID)
+	if err != nil {
+		t.Fatalf("failed to retrieve contract: %v", err)
+	}
+
+	// nil or empty slice should be acceptable
+	if len(retrieved.Attributes) != 0 {
+		t.Errorf("expected nil or empty attributes, got %v", retrieved.Attributes)
+	}
+}
