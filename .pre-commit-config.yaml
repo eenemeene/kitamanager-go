@@ -33,6 +33,13 @@ repos:
         types: [go]
         pass_filenames: false
 
+      - id: go-integration-test
+        name: go integration test (sqlite)
+        entry: go test -tags=integration ./internal/integration/...
+        language: system
+        types: [go]
+        pass_filenames: false
+
       - id: go-build
         name: go build
         entry: go build -o /dev/null ./cmd/api

@@ -18,32 +18,44 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/service"
 	"github.com/eenemeene/kitamanager-go/internal/store"
 	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
 var (
-	testDB     *gorm.DB
-	testRouter *gin.Engine
+	testDB      *gorm.DB
+	testRouter  *gin.Engine
+	usingSQLite bool
 )
 
 func TestMain(m *testing.M) {
 	gin.SetMode(gin.TestMode)
 
-	// Get database connection from environment
-	dsn := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		getEnv("TEST_DB_HOST", "localhost"),
-		getEnv("TEST_DB_PORT", "5432"),
-		getEnv("TEST_DB_USER", "kitamanager"),
-		getEnv("TEST_DB_PASSWORD", "kitamanager"),
-		getEnv("TEST_DB_NAME", "kitamanager_test"),
-	)
-
 	var err error
-	testDB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
-	})
+	dbType := getEnv("TEST_DB_TYPE", "sqlite")
+	usingSQLite = dbType != "postgres"
+
+	if dbType == "postgres" {
+		// PostgreSQL connection for CI/production-like testing
+		dsn := fmt.Sprintf(
+			"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+			getEnv("TEST_DB_HOST", "localhost"),
+			getEnv("TEST_DB_PORT", "5432"),
+			getEnv("TEST_DB_USER", "kitamanager"),
+			getEnv("TEST_DB_PASSWORD", "kitamanager"),
+			getEnv("TEST_DB_NAME", "kitamanager_test"),
+		)
+		testDB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Silent),
+		})
+	} else {
+		// SQLite in-memory database for fast local testing (pre-commit hooks)
+		testDB, err = gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Silent),
+		})
+	}
+
 	if err != nil {
 		fmt.Printf("Failed to connect to test database: %v\n", err)
 		os.Exit(1)
@@ -126,7 +138,7 @@ func setupRouter() *gin.Engine {
 		// Global user routes
 		api.GET("/users", userHandler.List)
 		api.POST("/users", userHandler.Create)
-		api.GET("/users/:uid", userHandler.Get)
+		api.GET("/users/:userId", userHandler.Get)
 
 		// Org-scoped routes
 		orgScoped := api.Group("/organizations/:orgId")
@@ -419,6 +431,10 @@ func TestGroupOperations(t *testing.T) {
 }
 
 func TestConcurrentOrganizationCreation(t *testing.T) {
+	if usingSQLite {
+		t.Skip("skipping concurrent test with SQLite (doesn't support concurrent writes)")
+	}
+
 	cleanupBetweenTests()
 
 	// Test concurrent creation to ensure no race conditions
