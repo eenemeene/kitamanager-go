@@ -17,6 +17,12 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/store"
 )
 
+// randInt returns a random integer in [0, n) for test data generation.
+// #nosec G404 - math/rand is acceptable for non-security test data
+func randInt(n int) int {
+	return rand.Intn(n)
+}
+
 // SeedAdmin creates an initial admin user if SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD are set.
 // If the user already exists, it will be skipped.
 // The user will be assigned the superadmin role (in database).
@@ -313,14 +319,14 @@ func createTestChildren(orgID uint, count int) []models.Child {
 	for _, dist := range ageDistribution {
 		childrenInGroup := count * dist.percent / 100
 		for i := 0; i < childrenInGroup && idx < count; i++ {
-			ageMonths := dist.minMonths + rand.Intn(dist.maxMonths-dist.minMonths)
-			birthdate := now.AddDate(0, -ageMonths, -rand.Intn(28))
+			ageMonths := dist.minMonths + randInt(dist.maxMonths-dist.minMonths)
+			birthdate := now.AddDate(0, -ageMonths, -randInt(28))
 
 			children[idx] = models.Child{
 				Person: models.Person{
 					OrganizationID: orgID,
-					FirstName:      firstNames[rand.Intn(len(firstNames))],
-					LastName:       lastNames[rand.Intn(len(lastNames))],
+					FirstName:      firstNames[randInt(len(firstNames))],
+					LastName:       lastNames[randInt(len(lastNames))],
 					Birthdate:      birthdate,
 				},
 			}
@@ -330,14 +336,14 @@ func createTestChildren(orgID uint, count int) []models.Child {
 
 	// Fill remaining slots
 	for idx < count {
-		ageMonths := 24 + rand.Intn(60)
-		birthdate := now.AddDate(0, -ageMonths, -rand.Intn(28))
+		ageMonths := 24 + randInt(60)
+		birthdate := now.AddDate(0, -ageMonths, -randInt(28))
 
 		children[idx] = models.Child{
 			Person: models.Person{
 				OrganizationID: orgID,
-				FirstName:      firstNames[rand.Intn(len(firstNames))],
-				LastName:       lastNames[rand.Intn(len(lastNames))],
+				FirstName:      firstNames[randInt(len(firstNames))],
+				LastName:       lastNames[randInt(len(lastNames))],
 				Birthdate:      birthdate,
 			},
 		}
@@ -358,7 +364,7 @@ func createTestContractsDistributed(childID uint, birthdate time.Time, childInde
 
 	// Determine when this child's contract should start based on their index
 	// Distribute contract starts over the last 4 years (48 months)
-	monthsAgo := rand.Intn(48) // Random start within last 4 years
+	monthsAgo := randInt(48) // Random start within last 4 years
 
 	// Contract must start at least 6 months after birth
 	earliestStart := birthdate.AddDate(0, 6, 0)
@@ -380,9 +386,9 @@ func createTestContractsDistributed(childID uint, birthdate time.Time, childInde
 	// Children over 6 years old (72 months) have typically left for school
 	hasLeft := false
 	if childAgeMonths > 72 {
-		hasLeft = rand.Intn(100) < 90 // 90% of school-age children have left
+		hasLeft = randInt(100) < 90 // 90% of school-age children have left
 	} else if childAgeMonths > 60 {
-		hasLeft = rand.Intn(100) < 30 // 30% of 5-6 year olds have left
+		hasLeft = randInt(100) < 30 // 30% of 5-6 year olds have left
 	}
 
 	withHistory := childIndex%3 == 0 // ~30% get contract history
@@ -406,7 +412,7 @@ func createTestContractsDistributed(childID uint, birthdate time.Time, childInde
 					From: contractStart,
 					To:   &contractEnd,
 				},
-				Attributes: attributeCombinations[rand.Intn(len(attributeCombinations))],
+				Attributes: attributeCombinations[randInt(len(attributeCombinations))],
 			}}
 		}
 
@@ -417,12 +423,12 @@ func createTestContractsDistributed(childID uint, birthdate time.Time, childInde
 				From: contractStart,
 				To:   nil,
 			},
-			Attributes: attributeCombinations[rand.Intn(len(attributeCombinations))],
+			Attributes: attributeCombinations[randInt(len(attributeCombinations))],
 		}}
 	}
 
 	// Create 2-3 contracts with history
-	numContracts := 2 + rand.Intn(2)
+	numContracts := 2 + randInt(2)
 	contracts := make([]models.ChildContract, 0, numContracts)
 
 	currentStart := contractStart
@@ -442,7 +448,7 @@ func createTestContractsDistributed(childID uint, birthdate time.Time, childInde
 						From: currentStart,
 						To:   &contractEnd,
 					},
-					Attributes: attributeCombinations[rand.Intn(len(attributeCombinations))],
+					Attributes: attributeCombinations[randInt(len(attributeCombinations))],
 				})
 			} else {
 				// Last contract is open-ended (still enrolled)
@@ -452,7 +458,7 @@ func createTestContractsDistributed(childID uint, birthdate time.Time, childInde
 						From: currentStart,
 						To:   nil,
 					},
-					Attributes: attributeCombinations[rand.Intn(len(attributeCombinations))],
+					Attributes: attributeCombinations[randInt(len(attributeCombinations))],
 				})
 			}
 			break
@@ -472,7 +478,7 @@ func createTestContractsDistributed(childID uint, birthdate time.Time, childInde
 					From: currentStart,
 					To:   nil,
 				},
-				Attributes: attributeCombinations[rand.Intn(len(attributeCombinations))],
+				Attributes: attributeCombinations[randInt(len(attributeCombinations))],
 			})
 			break
 		}
@@ -483,7 +489,7 @@ func createTestContractsDistributed(childID uint, birthdate time.Time, childInde
 				From: currentStart,
 				To:   &contractEnd,
 			},
-			Attributes: attributeCombinations[rand.Intn(len(attributeCombinations))],
+			Attributes: attributeCombinations[randInt(len(attributeCombinations))],
 		})
 
 		// Next contract starts August 1st
