@@ -236,8 +236,8 @@ func TestContract_OrganizationsList(t *testing.T) {
 	cleanupBetweenTests()
 
 	// Create test data
-	testDB.Create(&models.Organization{Name: "Org 1", Active: true})
-	testDB.Create(&models.Organization{Name: "Org 2", Active: true})
+	testDB.Create(&models.Organization{Name: "Org 1", Active: true, State: "berlin"})
+	testDB.Create(&models.Organization{Name: "Org 2", Active: true, State: "berlin"})
 
 	resp := performRequest(t, "GET", "/api/v1/organizations", nil)
 
@@ -252,6 +252,7 @@ func TestContract_OrganizationCreate(t *testing.T) {
 	resp := performRequest(t, "POST", "/api/v1/organizations", map[string]interface{}{
 		"name":   "New Organization",
 		"active": true,
+		"state":  "berlin",
 	})
 
 	if resp.Code != http.StatusCreated {
@@ -262,7 +263,7 @@ func TestContract_OrganizationCreate(t *testing.T) {
 func TestContract_OrganizationGet(t *testing.T) {
 	cleanupBetweenTests()
 
-	org := &models.Organization{Name: "Test Org", Active: true}
+	org := &models.Organization{Name: "Test Org", Active: true, State: "berlin"}
 	testDB.Create(org)
 
 	resp := performRequest(t, "GET", fmt.Sprintf("/api/v1/organizations/%d", org.ID), nil)
@@ -275,7 +276,7 @@ func TestContract_OrganizationGet(t *testing.T) {
 func TestContract_OrganizationUpdate(t *testing.T) {
 	cleanupBetweenTests()
 
-	org := &models.Organization{Name: "Test Org", Active: true}
+	org := &models.Organization{Name: "Test Org", Active: true, State: "berlin"}
 	testDB.Create(org)
 
 	resp := performRequest(t, "PUT", fmt.Sprintf("/api/v1/organizations/%d", org.ID), map[string]interface{}{
@@ -290,7 +291,7 @@ func TestContract_OrganizationUpdate(t *testing.T) {
 func TestContract_OrganizationDelete(t *testing.T) {
 	cleanupBetweenTests()
 
-	org := &models.Organization{Name: "Test Org", Active: true}
+	org := &models.Organization{Name: "Test Org", Active: true, State: "berlin"}
 	testDB.Create(org)
 
 	resp := performRequest(t, "DELETE", fmt.Sprintf("/api/v1/organizations/%d", org.ID), nil)
@@ -342,6 +343,7 @@ func TestContract_GroupsList(t *testing.T) {
 	orgResp := performRequest(t, "POST", "/api/v1/organizations", map[string]interface{}{
 		"name":   "Groups List Test Org",
 		"active": true,
+		"state":  "berlin",
 	})
 	if orgResp.Code != http.StatusCreated {
 		t.Fatalf("failed to create organization: %d: %s", orgResp.Code, orgResp.Body.String())
@@ -365,6 +367,7 @@ func TestContract_GroupCreate(t *testing.T) {
 	orgResp := performRequest(t, "POST", "/api/v1/organizations", map[string]interface{}{
 		"name":   "Group Test Org",
 		"active": true,
+		"state":  "berlin",
 	})
 	if orgResp.Code != http.StatusCreated {
 		t.Fatalf("failed to create organization: %d: %s", orgResp.Code, orgResp.Body.String())
