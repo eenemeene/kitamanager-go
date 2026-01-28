@@ -1780,7 +1780,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create a new contract for a child",
+                "description": "Create a new contract for a child.\n\n**Contract Date Rules:**\n- Both ` + "`" + `from` + "`" + ` and ` + "`" + `to` + "`" + ` dates are inclusive (the contract is active on both dates)\n- Same-day contracts are allowed (` + "`" + `from` + "`" + ` == ` + "`" + `to` + "`" + `)\n- Contracts must not overlap with existing contracts\n- \"Touching\" contracts (where contract A ends on the same day contract B starts) are considered overlapping\n- To transition between contracts, the new contract must start the day AFTER the previous one ends\n\n**Example:** If contract A ends on 2025-01-31, contract B must start on 2025-02-01 or later.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1824,7 +1824,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Invalid request (e.g., from date after to date)",
                         "schema": {
                             "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
@@ -1836,13 +1836,13 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Child not found",
                         "schema": {
                             "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "409": {
-                        "description": "Contract overlaps with existing",
+                        "description": "Contract overlaps with existing contract",
                         "schema": {
                             "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
@@ -1925,7 +1925,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update an existing contract by ID",
+                "description": "Update an existing contract by ID. The same date rules apply as for creation:\nboth dates are inclusive, same-day contracts allowed, no overlapping contracts.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1976,7 +1976,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Invalid request (e.g., from date after to date)",
                         "schema": {
                             "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
@@ -1988,13 +1988,13 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Contract not found",
                         "schema": {
                             "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "409": {
-                        "description": "Contract overlaps with existing",
+                        "description": "Updated dates would overlap with another contract",
                         "schema": {
                             "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
@@ -2474,7 +2474,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create a new contract for an employee",
+                "description": "Create a new contract for an employee.\n\n**Contract Date Rules:**\n- Both ` + "`" + `from` + "`" + ` and ` + "`" + `to` + "`" + ` dates are inclusive (the contract is active on both dates)\n- Same-day contracts are allowed (` + "`" + `from` + "`" + ` == ` + "`" + `to` + "`" + `)\n- Contracts must not overlap with existing contracts\n- \"Touching\" contracts (where contract A ends on the same day contract B starts) are considered overlapping\n- To transition between contracts, the new contract must start the day AFTER the previous one ends\n\n**Example:** If contract A ends on 2025-01-31, contract B must start on 2025-02-01 or later.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2518,7 +2518,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Invalid request (e.g., from date after to date)",
                         "schema": {
                             "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
@@ -2530,13 +2530,13 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Employee not found",
                         "schema": {
                             "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "409": {
-                        "description": "Contract overlaps with existing",
+                        "description": "Contract overlaps with existing contract",
                         "schema": {
                             "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
@@ -2686,7 +2686,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update an existing contract by ID",
+                "description": "Update an existing contract by ID. The same date rules apply as for creation:\nboth dates are inclusive, same-day contracts allowed, no overlapping contracts.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2737,7 +2737,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Invalid request (e.g., from date after to date)",
                         "schema": {
                             "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
@@ -2749,13 +2749,13 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Contract not found",
                         "schema": {
                             "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "409": {
-                        "description": "Contract overlaps with existing",
+                        "description": "Updated dates would overlap with another contract",
                         "schema": {
                             "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }

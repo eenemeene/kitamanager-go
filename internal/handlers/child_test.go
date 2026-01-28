@@ -683,6 +683,8 @@ func TestChildHandler_CreateContract_InvalidChildID(t *testing.T) {
 }
 
 func TestChildHandler_CreateContract_ContractBoundaryTouch(t *testing.T) {
+	// Tests that adjacent contracts (A ends day before B starts) are allowed.
+	// This is the correct way to transition between contracts.
 	db := setupTestDB(t)
 	childService := createChildService(db)
 	handler := NewChildHandler(childService)
@@ -693,7 +695,7 @@ func TestChildHandler_CreateContract_ContractBoundaryTouch(t *testing.T) {
 	}
 	db.Create(child)
 
-	// Create contract ending on specific date
+	// Create contract ending on Dec 31, 2024
 	endDate := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
 	db.Create(&models.ChildContract{
 		ChildID:    child.ID,
@@ -704,7 +706,7 @@ func TestChildHandler_CreateContract_ContractBoundaryTouch(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
 
-	// Create contract starting the day after
+	// Create contract starting Jan 1, 2025 (day after previous ends) - should succeed
 	body := models.ChildContractCreateRequest{
 		From:       time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		Attributes: []string{"teilzeit"},
@@ -713,8 +715,47 @@ func TestChildHandler_CreateContract_ContractBoundaryTouch(t *testing.T) {
 	w := performRequest(r, "POST", "/organizations/1/children/1/contracts", body)
 
 	if w.Code != http.StatusCreated {
-		t.Errorf("expected status %d for non-overlapping contract, got %d: %s",
+		t.Errorf("expected status %d for adjacent (non-overlapping) contract, got %d: %s",
 			http.StatusCreated, w.Code, w.Body.String())
+	}
+}
+
+func TestChildHandler_CreateContract_SameDayTransitionRejected(t *testing.T) {
+	// Tests that "touching" contracts (A ends same day B starts) are rejected.
+	// Both start and end dates are inclusive, so same-day transition would mean
+	// both contracts are active on that day, which is not allowed.
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService)
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Test", LastName: "Child", Birthdate: time.Now()},
+	}
+	db.Create(child)
+
+	// Create contract ending on Jan 31, 2025
+	endDate := time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC)
+	db.Create(&models.ChildContract{
+		ChildID:    child.ID,
+		Period:     models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), To: &endDate},
+		Attributes: []string{"ganztags"},
+	})
+
+	r := setupTestRouter()
+	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
+
+	// Try to create contract starting Jan 31, 2025 (same day as previous ends) - should fail
+	body := models.ChildContractCreateRequest{
+		From:       time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC),
+		Attributes: []string{"teilzeit"},
+	}
+
+	w := performRequest(r, "POST", "/organizations/1/children/1/contracts", body)
+
+	if w.Code != http.StatusConflict {
+		t.Errorf("expected status %d for same-day transition (overlap), got %d: %s",
+			http.StatusConflict, w.Code, w.Body.String())
 	}
 }
 

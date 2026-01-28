@@ -1159,6 +1159,8 @@ func TestEmployeeHandler_CreateContract_ZeroWeeklyHours(t *testing.T) {
 }
 
 func TestEmployeeHandler_CreateContract_ContractBoundaryTouch(t *testing.T) {
+	// Tests that adjacent contracts (A ends day before B starts) are allowed.
+	// This is the correct way to transition between contracts.
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService)
@@ -1169,7 +1171,7 @@ func TestEmployeeHandler_CreateContract_ContractBoundaryTouch(t *testing.T) {
 	}
 	db.Create(employee)
 
-	// Create contract ending on specific date
+	// Create contract ending on Dec 31, 2024
 	endDate := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
 	db.Create(&models.EmployeeContract{
 		EmployeeID: employee.ID,
@@ -1180,7 +1182,7 @@ func TestEmployeeHandler_CreateContract_ContractBoundaryTouch(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
 
-	// Create contract starting the day after
+	// Create contract starting Jan 1, 2025 (day after previous ends) - should succeed
 	body := models.EmployeeContractCreateRequest{
 		From:        time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		Position:    "Senior Developer",
@@ -1191,8 +1193,49 @@ func TestEmployeeHandler_CreateContract_ContractBoundaryTouch(t *testing.T) {
 	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/employees/%d/contracts", org.ID, employee.ID), body)
 
 	if w.Code != http.StatusCreated {
-		t.Errorf("expected status %d for non-overlapping contract, got %d: %s",
+		t.Errorf("expected status %d for adjacent (non-overlapping) contract, got %d: %s",
 			http.StatusCreated, w.Code, w.Body.String())
+	}
+}
+
+func TestEmployeeHandler_CreateContract_SameDayTransitionRejected(t *testing.T) {
+	// Tests that "touching" contracts (A ends same day B starts) are rejected.
+	// Both start and end dates are inclusive, so same-day transition would mean
+	// both contracts are active on that day, which is not allowed.
+	db := setupTestDB(t)
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService)
+
+	org := createTestOrganization(t, db, "Test Org")
+	employee := &models.Employee{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Test", LastName: "Employee", Birthdate: time.Now()},
+	}
+	db.Create(employee)
+
+	// Create contract ending on Jan 31, 2025
+	endDate := time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC)
+	db.Create(&models.EmployeeContract{
+		EmployeeID: employee.ID,
+		Period:     models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), To: &endDate},
+		Position:   "Developer",
+	})
+
+	r := setupTestRouter()
+	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
+
+	// Try to create contract starting Jan 31, 2025 (same day as previous ends) - should fail
+	body := models.EmployeeContractCreateRequest{
+		From:        time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC),
+		Position:    "Senior Developer",
+		WeeklyHours: 40,
+		Salary:      700000,
+	}
+
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/employees/%d/contracts", org.ID, employee.ID), body)
+
+	if w.Code != http.StatusConflict {
+		t.Errorf("expected status %d for same-day transition (overlap), got %d: %s",
+			http.StatusConflict, w.Code, w.Body.String())
 	}
 }
 

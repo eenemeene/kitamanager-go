@@ -288,7 +288,16 @@ func (h *ChildHandler) GetCurrentContract(c *gin.Context) {
 
 // CreateContract godoc
 // @Summary Create child contract
-// @Description Create a new contract for a child
+// @Description Create a new contract for a child.
+// @Description
+// @Description **Contract Date Rules:**
+// @Description - Both `from` and `to` dates are inclusive (the contract is active on both dates)
+// @Description - Same-day contracts are allowed (`from` == `to`)
+// @Description - Contracts must not overlap with existing contracts
+// @Description - "Touching" contracts (where contract A ends on the same day contract B starts) are considered overlapping
+// @Description - To transition between contracts, the new contract must start the day AFTER the previous one ends
+// @Description
+// @Description **Example:** If contract A ends on 2025-01-31, contract B must start on 2025-02-01 or later.
 // @Tags children
 // @Accept json
 // @Produce json
@@ -297,10 +306,10 @@ func (h *ChildHandler) GetCurrentContract(c *gin.Context) {
 // @Param id path int true "Child ID"
 // @Param request body models.ChildContractCreateRequest true "Contract data"
 // @Success 201 {object} models.ChildContract
-// @Failure 400 {object} ErrorResponse
+// @Failure 400 {object} ErrorResponse "Invalid request (e.g., from date after to date)"
 // @Failure 401 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 409 {object} ErrorResponse "Contract overlaps with existing"
+// @Failure 404 {object} ErrorResponse "Child not found"
+// @Failure 409 {object} ErrorResponse "Contract overlaps with existing contract"
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/organizations/{orgId}/children/{id}/contracts [post]
 func (h *ChildHandler) CreateContract(c *gin.Context) {
@@ -333,7 +342,8 @@ func (h *ChildHandler) CreateContract(c *gin.Context) {
 
 // UpdateContract godoc
 // @Summary Update child contract
-// @Description Update an existing contract by ID
+// @Description Update an existing contract by ID. The same date rules apply as for creation:
+// @Description both dates are inclusive, same-day contracts allowed, no overlapping contracts.
 // @Tags children
 // @Accept json
 // @Produce json
@@ -343,10 +353,10 @@ func (h *ChildHandler) CreateContract(c *gin.Context) {
 // @Param contractId path int true "Contract ID"
 // @Param request body models.ChildContractUpdateRequest true "Contract data"
 // @Success 200 {object} models.ChildContract
-// @Failure 400 {object} ErrorResponse
+// @Failure 400 {object} ErrorResponse "Invalid request (e.g., from date after to date)"
 // @Failure 401 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 409 {object} ErrorResponse "Contract overlaps with existing"
+// @Failure 404 {object} ErrorResponse "Contract not found"
+// @Failure 409 {object} ErrorResponse "Updated dates would overlap with another contract"
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/organizations/{orgId}/children/{id}/contracts/{contractId} [put]
 func (h *ChildHandler) UpdateContract(c *gin.Context) {
