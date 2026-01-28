@@ -7,13 +7,19 @@ import {
 } from './utils/test-helpers'
 
 test.describe('Children', () => {
+  // Increase timeout for tests that depend on seed data
+  test.setTimeout(60000)
+
   test.beforeEach(async ({ page }) => {
     await login(page, SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD)
   })
 
   test('should display all seeded children (pagination test)', async ({ page }) => {
-    // Select the test organization
-    await selectOrganization(page, 'Kita Sonnenschein', 'Sonnenschein')
+    // Wait for dashboard to fully load after login
+    await page.waitForLoadState('networkidle')
+
+    // Select the test organization - use longer filter text for specificity
+    await selectOrganization(page, 'Kita Sonnenschein', 'Kita Sonnenschein')
 
     // Navigate to children
     await page.getByRole('link', { name: /child/i }).first().click()

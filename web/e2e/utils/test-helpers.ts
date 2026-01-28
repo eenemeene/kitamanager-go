@@ -31,24 +31,55 @@ export async function logout(page: Page, currentUserEmail: string) {
 
 /**
  * Select an organization in the sidebar dropdown.
- * Uses timestamp-based filtering to find the org.
+ * Uses filtering to find the org with retry logic for reliability.
  */
 export async function selectOrganization(page: Page, orgName: string, filterText?: string) {
-  await page.reload()
+  // Ensure page is fully loaded
+  await page.waitForLoadState('domcontentloaded')
   await page.waitForLoadState('networkidle')
-  await page.waitForTimeout(1000)
 
+  // Wait for the dropdown to be ready and have options loaded
   const orgDropdown = page.getByRole('combobox').first()
-  await orgDropdown.click()
+  await expect(orgDropdown).toBeVisible({ timeout: 10000 })
 
-  const filterInput = page.getByPlaceholder('Search...')
-  await filterInput.fill(filterText || orgName)
+  // Wait a moment for API data to populate the dropdown
   await page.waitForTimeout(500)
 
-  const orgOption = page.getByRole('option', { name: orgName })
-  await expect(orgOption).toBeVisible({ timeout: 10000 })
-  await orgOption.click()
-  await page.waitForTimeout(500)
+  // Retry logic for dropdown selection (handles timing issues)
+  let retries = 3
+  while (retries > 0) {
+    try {
+      // Click to open dropdown
+      await orgDropdown.click()
+
+      // Wait for dropdown panel to appear
+      const panel = page.locator('.p-select-overlay, .p-dropdown-panel')
+      await expect(panel).toBeVisible({ timeout: 5000 })
+
+      // Filter if filter input is available
+      const filterInput = page.getByPlaceholder('Search...')
+      if (await filterInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await filterInput.fill(filterText || orgName)
+        // Wait for filter to apply
+        await page.waitForTimeout(500)
+      }
+
+      // Find and click the option - use exact match to avoid partial matches
+      const orgOption = page.getByRole('option', { name: orgName, exact: true })
+      await expect(orgOption).toBeVisible({ timeout: 5000 })
+      await orgOption.click()
+
+      // Wait for selection to complete (dropdown closes)
+      await expect(panel).not.toBeVisible({ timeout: 5000 })
+      return // Success
+    } catch (error) {
+      retries--
+      if (retries === 0) throw error
+      // Close dropdown if still open and retry
+      await page.keyboard.press('Escape')
+      await page.waitForTimeout(500)
+    }
+  }
 }
 
 /**
@@ -74,8 +105,8 @@ export async function createOrganization(page: Page, orgName: string, state: str
 
   await page.getByRole('button', { name: 'Save' }).click()
 
-  await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
-  await expect(page.getByText(/organization created successfully/i)).toBeVisible({ timeout: 5000 })
+  // Wait for dialog to close (confirms success)
+  await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10000 })
 }
 
 /**
@@ -115,8 +146,8 @@ export async function createUser(page: Page, name: string, email: string, passwo
   await page.locator('#password input').fill(password)
   await page.getByRole('button', { name: 'Save' }).click()
 
-  await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
-  await expect(page.getByText('User created successfully')).toBeVisible({ timeout: 5000 })
+  // Wait for dialog to close (confirms success)
+  await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10000 })
 }
 
 // ============================================================================

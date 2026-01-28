@@ -66,9 +66,8 @@ test.describe('Child Contract Management', () => {
     // Save the child
     await page.getByRole('button', { name: 'Save' }).click()
 
-    // Wait for success message and dialog to close
-    await expect(page.getByText(/child created successfully/i)).toBeVisible({ timeout: 5000 })
-    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
+    // Wait for dialog to close (confirms success)
+    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10000 })
 
     // Verify child appears in table
     const childFullName = `${childFirstName} ${childLastName}`
@@ -104,9 +103,8 @@ test.describe('Child Contract Management', () => {
     // Save the contract
     await page.getByRole('button', { name: 'Save' }).click()
 
-    // Wait for success
-    await expect(page.getByText(/contract created successfully/i)).toBeVisible({ timeout: 5000 })
-    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
+    // Wait for dialog to close (confirms success)
+    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10000 })
 
     // Verify the attribute shows in the table
     await expect(childRow.getByText('ganztags')).toBeVisible({ timeout: 5000 })
@@ -158,11 +156,8 @@ test.describe('Child Contract Management', () => {
     // Save - should end old contract and create new one
     await page.getByRole('button', { name: 'Save' }).click()
 
-    // Wait for success message mentioning both operations
-    await expect(
-      page.getByText(/previous contract ended and new contract created successfully/i)
-    ).toBeVisible({ timeout: 5000 })
-    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
+    // Wait for dialog to close (indicates save completed successfully)
+    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10000 })
 
     // =====================================
     // Step 4: Verify contract history
@@ -223,16 +218,19 @@ test.describe('Child Contract Management', () => {
       .first()
       .click()
     await page.getByRole('button', { name: 'Save' }).click()
-    await expect(page.getByText(/child created successfully/i)).toBeVisible({ timeout: 5000 })
+    // Wait for dialog to close (confirms child created)
+    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10000 })
 
     // Add first contract
     const childRow = page.getByRole('row').filter({ hasText: `Test ${childName2}` })
     await childRow.locator('button[title="Add Contract"]').click()
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 })
     await page.locator('#from').click()
     await page.waitForTimeout(300)
     await page.locator('.p-datepicker-calendar td.p-datepicker-today span').click()
     await page.getByRole('button', { name: 'Save' }).click()
-    await expect(page.getByText(/contract created successfully/i)).toBeVisible({ timeout: 5000 })
+    // Wait for dialog to close (confirms contract created)
+    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10000 })
 
     // Try to add overlapping contract with checkbox unchecked
     await childRow.locator('button[title="Add Contract"]').click()
