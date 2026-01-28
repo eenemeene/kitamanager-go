@@ -70,8 +70,13 @@ dev:
 # API targets
 # =============================================================================
 
-# Build the API application
+# Build the API application (with embedded web assets)
+# Requires web-build to be run first
 api-build:
+	go build -tags=embed_web -o bin/kitamanager-api ./cmd/api
+
+# Build the API application without embedded web assets (for testing)
+api-build-noweb:
 	go build -o bin/kitamanager-api ./cmd/api
 
 # Run the API application locally

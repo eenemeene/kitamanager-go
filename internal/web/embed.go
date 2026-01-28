@@ -1,3 +1,5 @@
+//go:build embed_web
+
 package web
 
 import (

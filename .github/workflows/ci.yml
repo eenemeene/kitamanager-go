@@ -159,7 +159,19 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - name: Build API
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install web dependencies
+        run: make web-install
+
+      - name: Build web
+        run: make web-build
+
+      - name: Build API (with embedded web)
         run: make api-build
 
       - name: Verify go.mod is tidy
