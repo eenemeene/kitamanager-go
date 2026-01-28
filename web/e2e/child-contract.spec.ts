@@ -189,14 +189,14 @@ test.describe('Child Contract Management', () => {
     await expect(historyDialog.getByText('ganztags')).toBeVisible()
     await expect(historyDialog.getByText('halbtags')).toBeVisible()
 
-    // First contract should now show as inactive (has end date)
-    // The newer contract should be active
+    // First contract (today only) should be "Active" (it's the current day)
+    // Second contract (starts tomorrow) should be "Upcoming" (future contract)
     const activeTag = historyDialog.locator('.p-tag').filter({ hasText: /^Active$/i })
-    const inactiveTag = historyDialog.locator('.p-tag').filter({ hasText: /^Inactive$/i })
+    const upcomingTag = historyDialog.locator('.p-tag').filter({ hasText: /^Upcoming$/i })
 
-    // Should have one active and one inactive
+    // Should have one active (today's contract) and one upcoming (tomorrow's contract)
     await expect(activeTag).toHaveCount(1)
-    await expect(inactiveTag).toHaveCount(1)
+    await expect(upcomingTag).toHaveCount(1)
 
     // Close history dialog (click the footer Close button, not the header X)
     await historyDialog.locator('button:has-text("Close"):not(.p-dialog-close-button)').click()

@@ -70,11 +70,56 @@ function formatDate(dateStr: string | null | undefined): string {
   return new Date(dateStr).toLocaleDateString()
 }
 
-function isCurrentContract(contract: ChildContract): boolean {
+function getContractStatus(contract: ChildContract): 'active' | 'upcoming' | 'ended' {
   const now = new Date()
+  now.setHours(0, 0, 0, 0) // Normalize to start of day for date comparison
   const from = new Date(contract.from)
+  from.setHours(0, 0, 0, 0)
   const to = contract.to ? new Date(contract.to) : null
-  return from <= now && (!to || to >= now)
+  if (to) {
+    to.setHours(0, 0, 0, 0)
+  }
+
+  // Future contract (hasn't started yet)
+  if (from > now) {
+    return 'upcoming'
+  }
+
+  // Active contract (started and hasn't ended)
+  if (from <= now && (!to || to >= now)) {
+    return 'active'
+  }
+
+  // Ended contract
+  return 'ended'
+}
+
+function getStatusLabel(status: 'active' | 'upcoming' | 'ended'): string {
+  switch (status) {
+    case 'active':
+      return t('common.active')
+    case 'upcoming':
+      return t('common.upcoming')
+    case 'ended':
+      return t('common.ended')
+  }
+}
+
+function getStatusSeverity(
+  status: 'active' | 'upcoming' | 'ended'
+): 'success' | 'info' | 'secondary' {
+  switch (status) {
+    case 'active':
+      return 'success'
+    case 'upcoming':
+      return 'info'
+    case 'ended':
+      return 'secondary'
+  }
+}
+
+function rowClass(data: ChildContract): string | undefined {
+  return getContractStatus(data) === 'active' ? 'active-contract-row' : undefined
 }
 </script>
 
@@ -99,12 +144,12 @@ function isCurrentContract(contract: ChildContract): boolean {
       {{ t('children.noContractsFound') }}
     </div>
 
-    <DataTable v-else :value="sortedContracts" striped-rows>
-      <Column :header="t('common.status')" style="width: 100px">
+    <DataTable v-else :value="sortedContracts" striped-rows :row-class="rowClass">
+      <Column :header="t('common.status')" style="width: 120px">
         <template #body="{ data }">
           <Tag
-            :value="isCurrentContract(data) ? t('common.active') : t('common.inactive')"
-            :severity="isCurrentContract(data) ? 'success' : 'secondary'"
+            :value="getStatusLabel(getContractStatus(data))"
+            :severity="getStatusSeverity(getContractStatus(data))"
           />
         </template>
       </Column>
@@ -161,5 +206,14 @@ function isCurrentContract(contract: ChildContract): boolean {
 
 .mr-1 {
   margin-right: 0.25rem;
+}
+
+:deep(.active-contract-row) {
+  background-color: var(--green-50) !important;
+  font-weight: 500;
+}
+
+:deep(.p-datatable-dark .active-contract-row) {
+  background-color: var(--green-900) !important;
 }
 </style>

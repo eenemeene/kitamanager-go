@@ -14,6 +14,8 @@ export default {
     no: 'Nein',
     active: 'Aktiv',
     inactive: 'Inaktiv',
+    upcoming: 'Zukünftig',
+    ended: 'Beendet',
     name: 'Name',
     email: 'E-Mail',
     description: 'Beschreibung',
