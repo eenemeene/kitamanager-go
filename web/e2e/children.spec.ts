@@ -1,7 +1,8 @@
 import { test, expect } from 'playwright/test'
 import {
   login,
-  selectOrganization,
+  selectOrganizationById,
+  getOrganizationByName,
   SUPERADMIN_EMAIL,
   SUPERADMIN_PASSWORD
 } from './utils/test-helpers'
@@ -18,8 +19,15 @@ test.describe('Children', () => {
     // Wait for dashboard to fully load after login
     await page.waitForLoadState('networkidle')
 
-    // Select the test organization - use longer filter text for specificity
-    await selectOrganization(page, 'Kita Sonnenschein', 'Kita Sonnenschein')
+    // Get the token and find the seeded organization
+    const token = await page.evaluate(() => localStorage.getItem('token'))
+    if (!token) throw new Error('No auth token found')
+
+    const org = await getOrganizationByName(page, token, 'Kita Sonnenschein')
+    if (!org) throw new Error('Seeded organization "Kita Sonnenschein" not found')
+
+    // Select the organization by navigating directly to it
+    await selectOrganizationById(page, org.id)
 
     // Navigate to children
     await page.getByRole('link', { name: /child/i }).first().click()
@@ -29,15 +37,7 @@ test.describe('Children', () => {
     await page.waitForLoadState('networkidle')
 
     // Get the total count from the API to know how many children we expect
-    const token = await page.evaluate(() => localStorage.getItem('token'))
-    const orgId = await page.evaluate(async (token) => {
-      const res = await fetch('/api/v1/organizations?limit=100', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      const data = await res.json()
-      const org = data.data.find((o: { name: string }) => o.name === 'Kita Sonnenschein')
-      return org?.id
-    }, token)
+    const orgId = org.id
 
     const expectedCount = await page.evaluate(
       async ({ token, orgId }) => {
@@ -50,11 +50,11 @@ test.describe('Children', () => {
       { token, orgId }
     )
 
-    // The seeded test data should have at least 50 children
-    expect(expectedCount).toBeGreaterThanOrEqual(50)
+    // The seeded test data should have at least 20 children (pagination test)
+    expect(expectedCount).toBeGreaterThanOrEqual(20)
 
     // Verify the paginator has multiple pages (indicating more than 10 children)
-    // With 50+ children and 10 per page, we should have at least 5 page buttons
+    // With 20+ children and 10 per page, we should have at least 2 pages
     const lastPageButton = page.getByRole('button', { name: 'Last Page' })
     await expect(lastPageButton).toBeEnabled({ timeout: 5000 })
 

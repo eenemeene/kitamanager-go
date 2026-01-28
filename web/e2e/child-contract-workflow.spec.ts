@@ -1,7 +1,7 @@
 import { test, expect } from 'playwright/test'
 import {
   login,
-  selectOrganization,
+  selectOrganizationById,
   createOrganization,
   SUPERADMIN_EMAIL,
   SUPERADMIN_PASSWORD
@@ -30,8 +30,8 @@ test.describe('Child Contract Workflow', () => {
     // =====================================
 
     await login(page, SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD)
-    await createOrganization(page, orgName, 'berlin')
-    await selectOrganization(page, orgName, timestamp.toString())
+    const orgId = await createOrganization(page, orgName, 'berlin')
+    await selectOrganizationById(page, orgId)
 
     // =====================================
     // Step 1: Create a new child
@@ -47,8 +47,11 @@ test.describe('Child Contract Workflow', () => {
     await page.getByLabel('First Name').fill(childFirstName)
     await page.getByLabel('Last Name').fill(childLastName)
 
-    // Select gender
+    // Select gender - wait for dropdown panel to appear
     await page.locator('#gender').click()
+    await page.waitForTimeout(300)
+    const genderPanel = page.locator('.p-select-overlay, .p-dropdown-panel')
+    await expect(genderPanel).toBeVisible({ timeout: 5000 })
     await page.getByRole('option', { name: 'Female' }).click()
 
     // Set birthdate
@@ -162,8 +165,8 @@ test.describe('Child Contract Workflow', () => {
     await page.locator('#from').click()
     await expect(page.locator('.p-datepicker-panel')).toBeVisible({ timeout: 5000 })
 
-    // Click previous month button (PrimeVue 4 uses button with chevron icon)
-    await page.locator('.p-datepicker-panel button').first().click()
+    // Click previous month button using aria-label (PrimeVue 4)
+    await page.locator('.p-datepicker-panel').getByRole('button', { name: /prev/i }).click()
     await page.waitForTimeout(300)
 
     // Click first day of last month
@@ -177,8 +180,8 @@ test.describe('Child Contract Workflow', () => {
     await page.locator('#to').click()
     await expect(page.locator('.p-datepicker-panel')).toBeVisible({ timeout: 5000 })
 
-    // Navigate to last month
-    await page.locator('.p-datepicker-panel button').first().click()
+    // Navigate to last month using aria-label
+    await page.locator('.p-datepicker-panel').getByRole('button', { name: /prev/i }).click()
     await page.waitForTimeout(300)
 
     // Click day 15
@@ -222,8 +225,8 @@ test.describe('Child Contract Workflow', () => {
     await page.locator('#from').click()
     await expect(page.locator('.p-datepicker-panel')).toBeVisible({ timeout: 5000 })
 
-    // Click next month button (last button in header)
-    await page.locator('.p-datepicker-panel button').last().click()
+    // Click next month button using aria-label (PrimeVue 4)
+    await page.locator('.p-datepicker-panel').getByRole('button', { name: /next/i }).click()
     await page.waitForTimeout(300)
 
     // Click first day

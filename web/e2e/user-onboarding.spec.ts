@@ -2,13 +2,12 @@ import { test, expect } from 'playwright/test'
 import {
   login,
   logout,
-  selectOrganization,
+  selectOrganizationById,
   createOrganization,
   createGroup,
   createUser,
   getApiToken,
   getUserByEmail,
-  getOrganizationByName,
   getGroupByName,
   addUserToGroup,
   SUPERADMIN_EMAIL,
@@ -58,11 +57,11 @@ test.describe('User Onboarding', () => {
     // Get superadmin token for API operations
     const superadminToken = await getApiToken(page, SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD)
 
-    // Step 2: Create Organization
-    await createOrganization(page, orgName, 'berlin')
+    // Step 2: Create Organization - returns org ID
+    const orgId = await createOrganization(page, orgName, 'berlin')
 
     // Step 3: Select new organization in sidebar
-    await selectOrganization(page, orgName, timestamp.toString())
+    await selectOrganizationById(page, orgId)
 
     // Step 4: Create Group for the organization
     await createGroup(page, groupName)
@@ -72,8 +71,7 @@ test.describe('User Onboarding', () => {
 
     // Step 6: Add admin user to group with admin role via API
     const adminUser = await getUserByEmail(page, superadminToken, adminUserEmail)
-    const org = await getOrganizationByName(page, superadminToken, orgName)
-    const group = await getGroupByName(page, superadminToken, org.id, groupName)
+    const group = await getGroupByName(page, superadminToken, orgId, groupName)
     await addUserToGroup(page, superadminToken, adminUser.id, group.id, 'admin')
 
     // Verify admin user appears in table
@@ -93,7 +91,7 @@ test.describe('User Onboarding', () => {
     await login(page, adminUserEmail, adminUserPassword)
 
     // Step 9: Select the organization
-    await selectOrganization(page, orgName, timestamp.toString())
+    await selectOrganizationById(page, orgId)
 
     // Step 10: Admin creates manager user
     await createUser(page, managerUserName, managerUserEmail, managerUserPassword)

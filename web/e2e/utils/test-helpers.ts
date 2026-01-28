@@ -73,18 +73,20 @@ export async function logout(page: Page, currentUserEmail: string) {
  * The organization will be auto-selected when navigating to its scoped page.
  */
 export async function selectOrganizationById(page: Page, orgId: number) {
-  // Navigate to the organization's children page (any org-scoped page works)
-  await page.goto(`/organizations/${orgId}/children`)
-  await page.waitForLoadState('networkidle')
-
-  // Store the selected org ID in localStorage so the UI picks it up
+  // Store the selected org ID in localStorage BEFORE navigating
   await page.evaluate((id) => {
     localStorage.setItem('selectedOrganizationId', id.toString())
   }, orgId)
 
-  // Reload to ensure the sidebar reflects the selection
-  await page.reload()
+  // Navigate to the organization's children page (any org-scoped page works)
+  await page.goto(`/organizations/${orgId}/children`)
   await page.waitForLoadState('networkidle')
+
+  // Wait for the UI to update with the correct org
+  await page.waitForTimeout(500)
+
+  // Verify the URL contains the correct org ID
+  await expect(page).toHaveURL(new RegExp(`/organizations/${orgId}/`))
 }
 
 /**
@@ -100,6 +102,12 @@ export async function selectOrganization(page: Page, orgName: string, _filterTex
   // Wait for the dropdown to be ready and have options loaded
   const orgDropdown = page.getByRole('combobox').first()
   await expect(orgDropdown).toBeVisible({ timeout: 10000 })
+
+  // Check if already selected (combobox accessible name contains the org name)
+  const currentName = await orgDropdown.getAttribute('aria-label')
+  if (currentName === orgName) {
+    return // Already selected
+  }
 
   // Wait for API data to populate the dropdown (increased for reliability)
   await page.waitForTimeout(1000)
@@ -133,6 +141,9 @@ export async function selectOrganization(page: Page, orgName: string, _filterTex
 
       // Wait for selection to complete (dropdown closes)
       await expect(panel).not.toBeVisible({ timeout: 5000 })
+
+      // Wait for page to settle after selection
+      await page.waitForLoadState('networkidle')
       return // Success
     } catch (error) {
       retries--
@@ -360,9 +371,16 @@ export async function getGroupByName(
       const res = await fetch(`/api/v1/organizations/${orgId}/groups`, {
         headers: { Authorization: `Bearer ${token}` }
       })
+      if (!res.ok) {
+        throw new Error(`Failed to fetch groups: ${res.status} ${res.statusText}`)
+      }
       const data = await res.json()
       const groups = Array.isArray(data) ? data : data.data || []
-      return groups.find((g: { name: string }) => g.name === groupName)
+      const group = groups.find((g: { name: string }) => g.name === groupName)
+      if (!group) {
+        throw new Error(`Group "${groupName}" not found in org ${orgId}. Available groups: ${groups.map((g: { name: string }) => g.name).join(', ')}`)
+      }
+      return group
     },
     { token, orgId, groupName }
   )

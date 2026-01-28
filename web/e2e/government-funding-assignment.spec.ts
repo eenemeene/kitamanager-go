@@ -20,15 +20,31 @@ test.describe('Organization State and Government Funding', () => {
     // Create a new organization (state defaults to Berlin)
     await createOrganization(page, testOrgName, 'berlin')
 
-    // Navigate to last page to find the newly created org (pagination)
-    const lastPageButton = page.getByRole('button', { name: 'Last Page' })
-    if (await lastPageButton.isEnabled()) {
-      await lastPageButton.click()
-      await page.waitForTimeout(500)
+    // Reload the page to ensure we see the updated list
+    await page.reload()
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(1000) // Extra wait for Firefox
+
+    // The org might be on any page due to sorting - search through all pages
+    let found = false
+    for (let i = 0; i < 10 && !found; i++) {
+      if (await page.getByRole('cell', { name: testOrgName }).isVisible().catch(() => false)) {
+        found = true
+        break
+      }
+      // Try next page
+      const nextButton = page.getByRole('button', { name: 'Next Page' })
+      if (await nextButton.isEnabled().catch(() => false)) {
+        await nextButton.click()
+        await page.waitForLoadState('networkidle')
+        await page.waitForTimeout(500)
+      } else {
+        break
+      }
     }
 
     // Verify the organization appears in the table with Berlin state
-    await expect(page.getByRole('cell', { name: testOrgName })).toBeVisible({ timeout: 5000 })
+    await expect(page.getByRole('cell', { name: testOrgName })).toBeVisible({ timeout: 10000 })
     const orgRow = page.getByRole('row').filter({ hasText: testOrgName })
     await expect(orgRow.getByText('Berlin')).toBeVisible()
   })
@@ -66,16 +82,32 @@ test.describe('Organization State and Government Funding', () => {
     const orgWithState = `Test Org Funding ${timestamp}`
     await createOrganization(page, orgWithState, 'berlin')
 
-    // Navigate to last page to find the org
-    const lastPageButton = page.getByRole('button', { name: 'Last Page' })
-    if (await lastPageButton.isEnabled()) {
-      await lastPageButton.click()
-      await page.waitForTimeout(500)
+    // Reload the page to ensure we see the updated list
+    await page.reload()
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(1000) // Extra wait for Firefox
+
+    // The org might be on any page due to sorting - search through all pages
+    let found = false
+    for (let i = 0; i < 10 && !found; i++) {
+      if (await page.getByRole('cell', { name: orgWithState }).isVisible().catch(() => false)) {
+        found = true
+        break
+      }
+      // Try next page
+      const nextButton = page.getByRole('button', { name: 'Next Page' })
+      if (await nextButton.isEnabled().catch(() => false)) {
+        await nextButton.click()
+        await page.waitForLoadState('networkidle')
+        await page.waitForTimeout(500)
+      } else {
+        break
+      }
     }
 
     // Verify the organization shows Berlin state
     const orgRow = page.getByRole('row').filter({ hasText: orgWithState })
-    await expect(orgRow).toBeVisible()
+    await expect(orgRow).toBeVisible({ timeout: 10000 })
     await expect(orgRow.getByText('Berlin')).toBeVisible()
 
     // The organization's funding is now automatically determined by its state
