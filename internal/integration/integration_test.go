@@ -214,6 +214,7 @@ func TestOrganizationCRUD(t *testing.T) {
 	createResp := performRequest("POST", "/api/v1/organizations", map[string]interface{}{
 		"name":   "Test Organization",
 		"active": true,
+		"state":  "berlin",
 	})
 	if createResp.Code != http.StatusCreated {
 		t.Fatalf("expected status 201, got %d: %s", createResp.Code, createResp.Body.String())
@@ -283,6 +284,7 @@ func TestUserCreationWithOrganization(t *testing.T) {
 	orgResp := performRequest("POST", "/api/v1/organizations", map[string]interface{}{
 		"name":   "User Test Org",
 		"active": true,
+		"state":  "berlin",
 	})
 	if orgResp.Code != http.StatusCreated {
 		t.Fatalf("failed to create org: %s", orgResp.Body.String())
@@ -316,6 +318,7 @@ func TestEmployeeWithContracts(t *testing.T) {
 	orgResp := performRequest("POST", "/api/v1/organizations", map[string]interface{}{
 		"name":   "Employee Test Org",
 		"active": true,
+		"state":  "berlin",
 	})
 	var org models.Organization
 	parseResponse(t, orgResp, &org)
@@ -349,6 +352,7 @@ func TestChildWithContracts(t *testing.T) {
 	orgResp := performRequest("POST", "/api/v1/organizations", map[string]interface{}{
 		"name":   "Child Test Org",
 		"active": true,
+		"state":  "berlin",
 	})
 	var org models.Organization
 	parseResponse(t, orgResp, &org)
@@ -377,6 +381,7 @@ func TestGroupOperations(t *testing.T) {
 	orgResp := performRequest("POST", "/api/v1/organizations", map[string]interface{}{
 		"name":   "Group Test Org",
 		"active": true,
+		"state":  "berlin",
 	})
 	if orgResp.Code != http.StatusCreated {
 		t.Fatalf("failed to create organization: %d: %s", orgResp.Code, orgResp.Body.String())
@@ -424,6 +429,7 @@ func TestConcurrentOrganizationCreation(t *testing.T) {
 			resp := performRequest("POST", "/api/v1/organizations", map[string]interface{}{
 				"name":   fmt.Sprintf("Concurrent Org %d", idx),
 				"active": true,
+				"state":  "berlin",
 			})
 			if resp.Code != http.StatusCreated {
 				t.Errorf("concurrent creation %d failed: %d", idx, resp.Code)
