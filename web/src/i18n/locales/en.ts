@@ -219,7 +219,8 @@ export default {
     notMemberOfAnyGroups: 'User is not a member of any groups',
     selectGroup: 'Select Group',
     selectRole: 'Select Role',
-    changeRoleFor: 'Change role for'
+    changeRoleFor: 'Change role for',
+    passwordHint: '(leave blank to keep current)'
   },
   groups: {
     title: 'Groups',
@@ -278,9 +279,22 @@ export default {
     birthdateRequired: 'Birthdate is required',
     genderRequired: 'Gender is required',
     nameRequired: 'Name is required',
+    nameTooLong: 'Name is too long',
     selectBirthdate: 'Select birthdate',
     fromDateRequired: 'From date is required',
-    maxAgeMustBeGreater: 'Max age must be greater than min age'
+    maxAgeMustBeGreater: 'Max age must be greater than min age',
+    emailRequired: 'Email is required',
+    invalidEmail: 'Please enter a valid email address',
+    passwordRequired: 'Password is required',
+    passwordTooShort: 'Password must be at least 6 characters',
+    stateRequired: 'State is required',
+    toDateMustBeAfterFromDate: 'End date must be after start date',
+    positionRequired: 'Position is required',
+    weeklyHoursRequired: 'Weekly hours is required',
+    weeklyHoursMin: 'Weekly hours must be at least 0',
+    weeklyHoursMax: 'Weekly hours cannot exceed 168',
+    salaryRequired: 'Salary is required',
+    salaryMin: 'Salary must be at least 0'
   },
   settings: {
     title: 'Settings',

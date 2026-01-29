@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Employee, EmployeeCreateRequest, Gender } from '@/api/types'
+import { employeeSchema } from '@/validation/schemas'
+import { useFormValidation } from '@/composables/useFormValidation'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import DatePicker from 'primevue/datepicker'
@@ -20,25 +22,14 @@ const emit = defineEmits<{
   save: [data: Omit<EmployeeCreateRequest, 'organization_id'>]
 }>()
 
-const form = ref({
-  first_name: '',
-  last_name: '',
-  gender: null as Gender | null,
-  birthdate: null as Date | null
-})
+const { values, errors, resetForm, setValues, handleSubmit, hasError } =
+  useFormValidation(employeeSchema)
 
 const genderOptions = computed(() => [
   { value: 'male', label: t('gender.male') },
   { value: 'female', label: t('gender.female') },
   { value: 'diverse', label: t('gender.diverse') }
 ])
-
-const errors = ref<{
-  first_name?: string
-  last_name?: string
-  gender?: string
-  birthdate?: string
-}>({})
 
 const isEditing = computed(() => !!props.employee)
 const dialogTitle = computed(() =>
@@ -50,57 +41,34 @@ watch(
   (visible) => {
     if (visible) {
       if (props.employee) {
-        form.value = {
+        setValues({
           first_name: props.employee.first_name,
           last_name: props.employee.last_name,
-          gender: props.employee.gender,
+          gender: props.employee.gender as Gender,
           birthdate: new Date(props.employee.birthdate)
-        }
+        })
       } else {
-        form.value = {
-          first_name: '',
-          last_name: '',
-          gender: null,
-          birthdate: null
-        }
+        resetForm({
+          values: {
+            first_name: '',
+            last_name: '',
+            gender: undefined as unknown as Gender,
+            birthdate: undefined as unknown as Date
+          }
+        })
       }
-      errors.value = {}
     }
   }
 )
 
-function validate(): boolean {
-  errors.value = {}
-
-  if (!form.value.first_name.trim()) {
-    errors.value.first_name = t('validation.firstNameRequired')
-  }
-
-  if (!form.value.last_name.trim()) {
-    errors.value.last_name = t('validation.lastNameRequired')
-  }
-
-  if (!form.value.gender) {
-    errors.value.gender = t('validation.genderRequired')
-  }
-
-  if (!form.value.birthdate) {
-    errors.value.birthdate = t('validation.birthdateRequired')
-  }
-
-  return Object.keys(errors.value).length === 0
-}
-
-function handleSave() {
-  if (validate()) {
-    emit('save', {
-      first_name: form.value.first_name,
-      last_name: form.value.last_name,
-      gender: form.value.gender!,
-      birthdate: form.value.birthdate!.toISOString()
-    })
-  }
-}
+const onSubmit = handleSubmit((formValues) => {
+  emit('save', {
+    first_name: formValues.first_name,
+    last_name: formValues.last_name,
+    gender: formValues.gender,
+    birthdate: formValues.birthdate.toISOString()
+  })
+})
 </script>
 
 <template>
@@ -112,61 +80,63 @@ function handleSave() {
     :style="{ width: '450px' }"
     @update:visible="$emit('close')"
   >
-    <div class="form-grid">
-      <div class="field">
-        <label for="first_name">{{ t('employees.firstName') }}</label>
-        <InputText
-          id="first_name"
-          v-model="form.first_name"
-          :class="{ 'p-invalid': errors.first_name }"
-          :placeholder="t('employees.firstName')"
-        />
-        <small v-if="errors.first_name" class="p-error">{{ errors.first_name }}</small>
-      </div>
+    <form @submit.prevent="onSubmit">
+      <div class="form-grid">
+        <div class="field">
+          <label for="first_name">{{ t('employees.firstName') }}</label>
+          <InputText
+            id="first_name"
+            v-model="values.first_name"
+            :class="{ 'p-invalid': hasError('first_name') }"
+            :placeholder="t('employees.firstName')"
+          />
+          <small v-if="errors.first_name" class="p-error">{{ errors.first_name }}</small>
+        </div>
 
-      <div class="field">
-        <label for="last_name">{{ t('employees.lastName') }}</label>
-        <InputText
-          id="last_name"
-          v-model="form.last_name"
-          :class="{ 'p-invalid': errors.last_name }"
-          :placeholder="t('employees.lastName')"
-        />
-        <small v-if="errors.last_name" class="p-error">{{ errors.last_name }}</small>
-      </div>
+        <div class="field">
+          <label for="last_name">{{ t('employees.lastName') }}</label>
+          <InputText
+            id="last_name"
+            v-model="values.last_name"
+            :class="{ 'p-invalid': hasError('last_name') }"
+            :placeholder="t('employees.lastName')"
+          />
+          <small v-if="errors.last_name" class="p-error">{{ errors.last_name }}</small>
+        </div>
 
-      <div class="field">
-        <label for="gender">{{ t('gender.label') }}</label>
-        <Select
-          id="gender"
-          v-model="form.gender"
-          :options="genderOptions"
-          option-label="label"
-          option-value="value"
-          :class="{ 'p-invalid': errors.gender }"
-          :placeholder="t('gender.selectGender')"
-        />
-        <small v-if="errors.gender" class="p-error">{{ errors.gender }}</small>
-      </div>
+        <div class="field">
+          <label for="gender">{{ t('gender.label') }}</label>
+          <Select
+            id="gender"
+            v-model="values.gender"
+            :options="genderOptions"
+            option-label="label"
+            option-value="value"
+            :class="{ 'p-invalid': hasError('gender') }"
+            :placeholder="t('gender.selectGender')"
+          />
+          <small v-if="errors.gender" class="p-error">{{ errors.gender }}</small>
+        </div>
 
-      <div class="field">
-        <label for="birthdate">{{ t('employees.birthdate') }}</label>
-        <DatePicker
-          id="birthdate"
-          v-model="form.birthdate"
-          date-format="dd.mm.yy"
-          :class="{ 'p-invalid': errors.birthdate }"
-          :placeholder="t('validation.selectBirthdate')"
-          show-icon
-        />
-        <small v-if="errors.birthdate" class="p-error">{{ errors.birthdate }}</small>
+        <div class="field">
+          <label for="birthdate">{{ t('employees.birthdate') }}</label>
+          <DatePicker
+            id="birthdate"
+            v-model="values.birthdate"
+            date-format="dd.mm.yy"
+            :class="{ 'p-invalid': hasError('birthdate') }"
+            :placeholder="t('validation.selectBirthdate')"
+            show-icon
+          />
+          <small v-if="errors.birthdate" class="p-error">{{ errors.birthdate }}</small>
+        </div>
       </div>
-    </div>
+    </form>
 
     <template #footer>
       <div class="dialog-footer">
         <Button :label="t('common.cancel')" text @click="$emit('close')" />
-        <Button :label="t('common.save')" @click="handleSave" />
+        <Button :label="t('common.save')" @click="onSubmit" />
       </div>
     </template>
   </Dialog>
