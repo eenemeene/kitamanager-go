@@ -359,28 +359,112 @@ func SeedTestData(cfg *config.Config, db *gorm.DB, fundingStore *store.Governmen
 	}
 	slog.Info("Created test employees", "count", len(employees))
 
-	// Create employee contracts with grade and step from pay plan
+	// Create employee contracts with varied scenarios:
+	// - Some with single current contract
+	// - Some with multiple contracts (past + current)
+	// - Some with only past contracts (left the organization)
+	// - Some with future contracts (starting soon)
 	now := time.Now()
 	employeeContractCount := 0
-	grades := []string{"S4", "S8a", "S8a", "S8b", "S8a", "S9", "S8a", "S8a", "S4", "S8b"}
-	steps := []int{2, 3, 4, 2, 5, 3, 1, 6, 4, 3}
-	hours := []float64{30, 39, 39, 35, 39, 30, 39, 39, 20, 39}
-	positions := []string{"Kinderpfleger", "Erzieher", "Erzieher", "Erzieher", "Gruppenleitung", "Sozialarbeiter", "Erzieher", "Erzieher", "Kinderpfleger", "Erzieher"}
 
-	for i, emp := range employees {
-		contract := models.EmployeeContract{
-			EmployeeID:  emp.ID,
-			Period:      models.Period{From: now.AddDate(-2, -i, 0), To: nil},
-			Position:    positions[i],
-			Grade:       grades[i],
-			Step:        steps[i],
-			WeeklyHours: hours[i],
-		}
-		if err := db.Create(&contract).Error; err != nil {
-			return err
-		}
-		employeeContractCount++
+	// Employee 0: Single current contract (started 2 years ago)
+	if err := createEmployeeContract(db, employees[0].ID, "Kinderpfleger", "S4", 2, 30,
+		now.AddDate(-2, 0, 0), nil); err != nil {
+		return err
 	}
+	employeeContractCount++
+
+	// Employee 1: Multiple contracts - past contract ended, current ongoing
+	pastEnd := now.AddDate(-1, 0, 0)
+	if err := createEmployeeContract(db, employees[1].ID, "Praktikant", "S4", 1, 20,
+		now.AddDate(-3, 0, 0), &pastEnd); err != nil {
+		return err
+	}
+	employeeContractCount++
+	if err := createEmployeeContract(db, employees[1].ID, "Erzieher", "S8a", 3, 39,
+		now.AddDate(-1, 0, 1), nil); err != nil {
+		return err
+	}
+	employeeContractCount++
+
+	// Employee 2: Three contracts showing career progression
+	end1 := now.AddDate(-4, 0, 0)
+	if err := createEmployeeContract(db, employees[2].ID, "Auszubildende", "S4", 1, 39,
+		now.AddDate(-6, 0, 0), &end1); err != nil {
+		return err
+	}
+	employeeContractCount++
+	end2 := now.AddDate(-1, 0, 0)
+	if err := createEmployeeContract(db, employees[2].ID, "Erzieher", "S8a", 2, 39,
+		now.AddDate(-4, 0, 1), &end2); err != nil {
+		return err
+	}
+	employeeContractCount++
+	if err := createEmployeeContract(db, employees[2].ID, "Erzieher", "S8a", 4, 39,
+		now.AddDate(-1, 0, 1), nil); err != nil {
+		return err
+	}
+	employeeContractCount++
+
+	// Employee 3: Only past contract (left the organization)
+	leftEnd := now.AddDate(0, -3, 0)
+	if err := createEmployeeContract(db, employees[3].ID, "Erzieher", "S8b", 2, 35,
+		now.AddDate(-2, 0, 0), &leftEnd); err != nil {
+		return err
+	}
+	employeeContractCount++
+
+	// Employee 4: Current contract, senior position
+	if err := createEmployeeContract(db, employees[4].ID, "Gruppenleitung", "S8a", 5, 39,
+		now.AddDate(-5, 0, 0), nil); err != nil {
+		return err
+	}
+	employeeContractCount++
+
+	// Employee 5: Part-time current contract
+	if err := createEmployeeContract(db, employees[5].ID, "Sozialarbeiter", "S9", 3, 30,
+		now.AddDate(-3, 0, 0), nil); err != nil {
+		return err
+	}
+	employeeContractCount++
+
+	// Employee 6: Future contract (starts next month)
+	futureStart := now.AddDate(0, 1, 0)
+	if err := createEmployeeContract(db, employees[6].ID, "Erzieher", "S8a", 1, 39,
+		futureStart, nil); err != nil {
+		return err
+	}
+	employeeContractCount++
+
+	// Employee 7: Current contract with planned end (temporary)
+	tempEnd := now.AddDate(0, 6, 0)
+	if err := createEmployeeContract(db, employees[7].ID, "Erzieher", "S8a", 6, 39,
+		now.AddDate(-1, 0, 0), &tempEnd); err != nil {
+		return err
+	}
+	employeeContractCount++
+
+	// Employee 8: Mini-job (low hours)
+	if err := createEmployeeContract(db, employees[8].ID, "Kinderpfleger", "S4", 4, 20,
+		now.AddDate(-1, 6, 0), nil); err != nil {
+		return err
+	}
+	employeeContractCount++
+
+	// Employee 9: Multiple past contracts, no current (on leave/gap)
+	oldEnd1 := now.AddDate(-2, 0, 0)
+	if err := createEmployeeContract(db, employees[9].ID, "Erzieher", "S8b", 1, 39,
+		now.AddDate(-4, 0, 0), &oldEnd1); err != nil {
+		return err
+	}
+	employeeContractCount++
+	oldEnd2 := now.AddDate(0, -6, 0)
+	if err := createEmployeeContract(db, employees[9].ID, "Erzieher", "S8b", 3, 39,
+		now.AddDate(-1, 6, 0), &oldEnd2); err != nil {
+		return err
+	}
+	employeeContractCount++
+
 	slog.Info("Created employee contracts", "count", employeeContractCount)
 
 	slog.Info("Test data seeding completed",
@@ -663,4 +747,17 @@ func createTestEmployees(orgID uint, count int) []models.Employee {
 	}
 
 	return employees
+}
+
+// createEmployeeContract is a helper to create an employee contract
+func createEmployeeContract(db *gorm.DB, employeeID uint, position, grade string, step int, weeklyHours float64, from time.Time, to *time.Time) error {
+	contract := models.EmployeeContract{
+		EmployeeID:  employeeID,
+		Period:      models.Period{From: from, To: to},
+		Position:    position,
+		Grade:       grade,
+		Step:        step,
+		WeeklyHours: weeklyHours,
+	}
+	return db.Create(&contract).Error
 }
