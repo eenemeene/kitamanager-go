@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import { watch, computed } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Employee, EmployeeCreateRequest, Gender } from '@/api/types'
-import { employeeSchema } from '@/validation/schemas'
-import { useFormValidation } from '@/composables/useFormValidation'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import DatePicker from 'primevue/datepicker'
@@ -22,14 +20,25 @@ const emit = defineEmits<{
   save: [data: Omit<EmployeeCreateRequest, 'organization_id'>]
 }>()
 
-const { values, errors, resetForm, setValues, handleSubmit, hasError } =
-  useFormValidation(employeeSchema)
+const form = ref({
+  first_name: '',
+  last_name: '',
+  gender: null as Gender | null,
+  birthdate: null as Date | null
+})
 
 const genderOptions = computed(() => [
   { value: 'male', label: t('gender.male') },
   { value: 'female', label: t('gender.female') },
   { value: 'diverse', label: t('gender.diverse') }
 ])
+
+const errors = ref<{
+  first_name?: string
+  last_name?: string
+  gender?: string
+  birthdate?: string
+}>({})
 
 const isEditing = computed(() => !!props.employee)
 const dialogTitle = computed(() =>
@@ -41,34 +50,57 @@ watch(
   (visible) => {
     if (visible) {
       if (props.employee) {
-        setValues({
+        form.value = {
           first_name: props.employee.first_name,
           last_name: props.employee.last_name,
           gender: props.employee.gender as Gender,
           birthdate: new Date(props.employee.birthdate)
-        })
+        }
       } else {
-        resetForm({
-          values: {
-            first_name: '',
-            last_name: '',
-            gender: undefined as unknown as Gender,
-            birthdate: undefined as unknown as Date
-          }
-        })
+        form.value = {
+          first_name: '',
+          last_name: '',
+          gender: null,
+          birthdate: null
+        }
       }
+      errors.value = {}
     }
   }
 )
 
-const onSubmit = handleSubmit((formValues) => {
+function validate(): boolean {
+  errors.value = {}
+
+  if (!form.value.first_name.trim()) {
+    errors.value.first_name = t('validation.firstNameRequired')
+  }
+
+  if (!form.value.last_name.trim()) {
+    errors.value.last_name = t('validation.lastNameRequired')
+  }
+
+  if (!form.value.gender) {
+    errors.value.gender = t('validation.genderRequired')
+  }
+
+  if (!form.value.birthdate) {
+    errors.value.birthdate = t('validation.birthdateRequired')
+  }
+
+  return Object.keys(errors.value).length === 0
+}
+
+function onSubmit() {
+  if (!validate()) return
+
   emit('save', {
-    first_name: formValues.first_name,
-    last_name: formValues.last_name,
-    gender: formValues.gender,
-    birthdate: formValues.birthdate.toISOString()
+    first_name: form.value.first_name,
+    last_name: form.value.last_name,
+    gender: form.value.gender!,
+    birthdate: form.value.birthdate!.toISOString()
   })
-})
+}
 </script>
 
 <template>
@@ -86,8 +118,8 @@ const onSubmit = handleSubmit((formValues) => {
           <label for="first_name">{{ t('employees.firstName') }}</label>
           <InputText
             id="first_name"
-            v-model="values.first_name"
-            :class="{ 'p-invalid': hasError('first_name') }"
+            v-model="form.first_name"
+            :class="{ 'p-invalid': errors.first_name }"
             :placeholder="t('employees.firstName')"
           />
           <small v-if="errors.first_name" class="p-error">{{ errors.first_name }}</small>
@@ -97,8 +129,8 @@ const onSubmit = handleSubmit((formValues) => {
           <label for="last_name">{{ t('employees.lastName') }}</label>
           <InputText
             id="last_name"
-            v-model="values.last_name"
-            :class="{ 'p-invalid': hasError('last_name') }"
+            v-model="form.last_name"
+            :class="{ 'p-invalid': errors.last_name }"
             :placeholder="t('employees.lastName')"
           />
           <small v-if="errors.last_name" class="p-error">{{ errors.last_name }}</small>
@@ -108,11 +140,11 @@ const onSubmit = handleSubmit((formValues) => {
           <label for="gender">{{ t('gender.label') }}</label>
           <Select
             id="gender"
-            v-model="values.gender"
+            v-model="form.gender"
             :options="genderOptions"
             option-label="label"
             option-value="value"
-            :class="{ 'p-invalid': hasError('gender') }"
+            :class="{ 'p-invalid': errors.gender }"
             :placeholder="t('gender.selectGender')"
           />
           <small v-if="errors.gender" class="p-error">{{ errors.gender }}</small>
@@ -122,9 +154,9 @@ const onSubmit = handleSubmit((formValues) => {
           <label for="birthdate">{{ t('employees.birthdate') }}</label>
           <DatePicker
             id="birthdate"
-            v-model="values.birthdate"
+            v-model="form.birthdate"
             date-format="dd.mm.yy"
-            :class="{ 'p-invalid': hasError('birthdate') }"
+            :class="{ 'p-invalid': errors.birthdate }"
             :placeholder="t('validation.selectBirthdate')"
             show-icon
           />

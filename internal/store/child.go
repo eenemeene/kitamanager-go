@@ -43,8 +43,7 @@ func (s *ChildStore) FindByOrganization(orgID uint, limit, offset int) ([]models
 		return nil, 0, err
 	}
 
-	// Don't preload Contracts for list view - fetch them separately when needed
-	if err := s.db.Where("organization_id = ?", orgID).Limit(limit).Offset(offset).Find(&children).Error; err != nil {
+	if err := s.db.Preload("Contracts").Where("organization_id = ?", orgID).Limit(limit).Offset(offset).Find(&children).Error; err != nil {
 		return nil, 0, err
 	}
 

@@ -351,7 +351,7 @@ func SeedTestData(cfg *config.Config, db *gorm.DB, fundingStore *store.Governmen
 	slog.Info("Created PayPlan entries", "count", len(payEntries))
 
 	// Create employees
-	employees := createTestEmployees(org.ID, 10)
+	employees := createTestEmployees(org.ID, 20)
 	for i := range employees {
 		if err := db.Create(&employees[i]).Error; err != nil {
 			return err
@@ -461,6 +461,97 @@ func SeedTestData(cfg *config.Config, db *gorm.DB, fundingStore *store.Governmen
 	oldEnd2 := now.AddDate(0, -6, 0)
 	if err := createEmployeeContract(db, employees[9].ID, "Erzieher", "S8b", 3, 39,
 		now.AddDate(-1, 6, 0), &oldEnd2); err != nil {
+		return err
+	}
+	employeeContractCount++
+
+	// Employee 10: New hire, current contract
+	if err := createEmployeeContract(db, employees[10].ID, "Erzieher", "S8a", 1, 39,
+		now.AddDate(0, -3, 0), nil); err != nil {
+		return err
+	}
+	employeeContractCount++
+
+	// Employee 11: Long-term employee, single contract
+	if err := createEmployeeContract(db, employees[11].ID, "Erzieher", "S8a", 6, 39,
+		now.AddDate(-8, 0, 0), nil); err != nil {
+		return err
+	}
+	employeeContractCount++
+
+	// Employee 12: Part-time, current contract
+	if err := createEmployeeContract(db, employees[12].ID, "Kinderpfleger", "S4", 3, 25,
+		now.AddDate(-2, 0, 0), nil); err != nil {
+		return err
+	}
+	employeeContractCount++
+
+	// Employee 13: Recently promoted (2 contracts)
+	promoEnd := now.AddDate(0, -2, 0)
+	if err := createEmployeeContract(db, employees[13].ID, "Erzieher", "S8a", 3, 39,
+		now.AddDate(-3, 0, 0), &promoEnd); err != nil {
+		return err
+	}
+	employeeContractCount++
+	if err := createEmployeeContract(db, employees[13].ID, "Gruppenleitung", "S9", 1, 39,
+		now.AddDate(0, -2, 1), nil); err != nil {
+		return err
+	}
+	employeeContractCount++
+
+	// Employee 14: Retired last year
+	retiredEnd := now.AddDate(-1, 0, 0)
+	if err := createEmployeeContract(db, employees[14].ID, "Erzieher", "S8a", 6, 39,
+		now.AddDate(-15, 0, 0), &retiredEnd); err != nil {
+		return err
+	}
+	employeeContractCount++
+
+	// Employee 15: Current contract, standard
+	if err := createEmployeeContract(db, employees[15].ID, "Erzieher", "S8b", 2, 39,
+		now.AddDate(-1, 6, 0), nil); err != nil {
+		return err
+	}
+	employeeContractCount++
+
+	// Employee 16: Maternity cover (temporary, ends in 3 months)
+	maternityEnd := now.AddDate(0, 3, 0)
+	if err := createEmployeeContract(db, employees[16].ID, "Erzieher", "S8a", 2, 39,
+		now.AddDate(0, -9, 0), &maternityEnd); err != nil {
+		return err
+	}
+	employeeContractCount++
+
+	// Employee 17: No contract yet (just hired, starts in 2 weeks)
+	futureStart2 := now.AddDate(0, 0, 14)
+	if err := createEmployeeContract(db, employees[17].ID, "Praktikant", "S4", 1, 39,
+		futureStart2, nil); err != nil {
+		return err
+	}
+	employeeContractCount++
+
+	// Employee 18: Multiple contracts with step increases
+	step1End := now.AddDate(-3, 0, 0)
+	if err := createEmployeeContract(db, employees[18].ID, "Erzieher", "S8a", 1, 39,
+		now.AddDate(-5, 0, 0), &step1End); err != nil {
+		return err
+	}
+	employeeContractCount++
+	step2End := now.AddDate(-1, 0, 0)
+	if err := createEmployeeContract(db, employees[18].ID, "Erzieher", "S8a", 2, 39,
+		now.AddDate(-3, 0, 1), &step2End); err != nil {
+		return err
+	}
+	employeeContractCount++
+	if err := createEmployeeContract(db, employees[18].ID, "Erzieher", "S8a", 3, 39,
+		now.AddDate(-1, 0, 1), nil); err != nil {
+		return err
+	}
+	employeeContractCount++
+
+	// Employee 19: Current full-time
+	if err := createEmployeeContract(db, employees[19].ID, "Sozialarbeiter", "S9", 4, 39,
+		now.AddDate(-4, 0, 0), nil); err != nil {
 		return err
 	}
 	employeeContractCount++
@@ -721,10 +812,14 @@ func createTestEmployees(orgID uint, count int) []models.Employee {
 	employeeFirstNames := []string{
 		"Anna", "Thomas", "Maria", "Michael", "Julia",
 		"Stefan", "Sabine", "Martin", "Petra", "Andreas",
+		"Claudia", "Frank", "Susanne", "Christian", "Monika",
+		"Jürgen", "Katrin", "Wolfgang", "Birgit", "Uwe",
 	}
 	employeeLastNames := []string{
 		"Müller", "Schmidt", "Weber", "Fischer", "Meyer",
 		"Wagner", "Becker", "Schulz", "Hoffmann", "Koch",
+		"Richter", "Braun", "Schröder", "Neumann", "Klein",
+		"Wolf", "Krüger", "Hartmann", "Lang", "Zimmermann",
 	}
 
 	employees := make([]models.Employee, count)

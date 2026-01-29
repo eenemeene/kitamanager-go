@@ -5,8 +5,8 @@ import { expect, Page } from 'playwright/test'
  * These provide reusable utilities for common operations.
  */
 
-// Superadmin credentials (seeded in dev environment)
-export const SUPERADMIN_EMAIL = 'admin@example.com'
+// Superadmin credentials (seeded by SEED_TEST_DATA)
+export const SUPERADMIN_EMAIL = 'superadmin@example.com'
 export const SUPERADMIN_PASSWORD = 'supersecret'
 
 /**
@@ -61,8 +61,10 @@ export async function login(page: Page, email: string, password: string) {
 /**
  * Logout from the application
  */
-export async function logout(page: Page, currentUserEmail: string) {
-  await page.getByRole('button', { name: currentUserEmail }).click()
+export async function logout(page: Page, _currentUserEmail?: string) {
+  // The user menu button has aria-label="User menu" (or localized equivalent)
+  // The email is displayed as the button label but aria-label takes precedence
+  await page.getByRole('button', { name: /user menu|benutzermenü/i }).click()
   await page.getByRole('menuitem', { name: /logout|sign out|abmelden/i }).click()
   await expect(page).toHaveURL(/.*login/, { timeout: 10000 })
 }

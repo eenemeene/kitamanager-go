@@ -188,18 +188,19 @@ type EmployeeUpdateRequest struct {
 
 // EmployeeResponse represents the employee response
 type EmployeeResponse struct {
-	ID             uint      `json:"id" example:"1"`
-	OrganizationID uint      `json:"organization_id" example:"1"`
-	FirstName      string    `json:"first_name" example:"Max"`
-	LastName       string    `json:"last_name" example:"Mustermann"`
-	Gender         string    `json:"gender" example:"male"`
-	Birthdate      time.Time `json:"birthdate" example:"1990-05-15"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	ID             uint                       `json:"id" example:"1"`
+	OrganizationID uint                       `json:"organization_id" example:"1"`
+	FirstName      string                     `json:"first_name" example:"Max"`
+	LastName       string                     `json:"last_name" example:"Mustermann"`
+	Gender         string                     `json:"gender" example:"male"`
+	Birthdate      time.Time                  `json:"birthdate" example:"1990-05-15"`
+	Contracts      []EmployeeContractResponse `json:"contracts,omitempty"`
+	CreatedAt      time.Time                  `json:"created_at"`
+	UpdatedAt      time.Time                  `json:"updated_at"`
 }
 
 func (e *Employee) ToResponse() EmployeeResponse {
-	return EmployeeResponse{
+	resp := EmployeeResponse{
 		ID:             e.ID,
 		OrganizationID: e.OrganizationID,
 		FirstName:      e.FirstName,
@@ -209,6 +210,15 @@ func (e *Employee) ToResponse() EmployeeResponse {
 		CreatedAt:      e.CreatedAt,
 		UpdatedAt:      e.UpdatedAt,
 	}
+
+	if len(e.Contracts) > 0 {
+		resp.Contracts = make([]EmployeeContractResponse, len(e.Contracts))
+		for i, c := range e.Contracts {
+			resp.Contracts[i] = c.ToResponse()
+		}
+	}
+
+	return resp
 }
 
 // EmployeeContractResponse represents the employee contract response

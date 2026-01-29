@@ -147,7 +147,8 @@ export default {
     birthdate: 'Geburtsdatum',
     position: 'Position',
     positionRequired: 'Position ist erforderlich',
-    weeklyHoursRequired: 'Wochenstunden müssen größer als 0 sein'
+    weeklyHoursRequired: 'Wochenstunden müssen größer als 0 sein',
+    noContractsFound: 'Keine Verträge für diesen Mitarbeiter gefunden.'
   },
   gender: {
     label: 'Geschlecht',

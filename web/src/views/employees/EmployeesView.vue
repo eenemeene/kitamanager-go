@@ -17,6 +17,7 @@ import Column from 'primevue/column'
 import Button from 'primevue/button'
 import EmployeeForm from './EmployeeForm.vue'
 import EmployeeContractForm from './EmployeeContractForm.vue'
+import EmployeeContractHistory from './EmployeeContractHistory.vue'
 
 const route = useRoute()
 const toast = useToast()
@@ -32,6 +33,9 @@ const editingEmployee = ref<Employee | null>(null)
 
 const contractDialogVisible = ref(false)
 const selectedEmployee = ref<Employee | null>(null)
+
+const historyDialogVisible = ref(false)
+const historyEmployee = ref<Employee | null>(null)
 
 watch(
   () => route.params.orgId,
@@ -189,6 +193,16 @@ function getCurrentContract(employee: Employee) {
   })
 }
 
+function openHistoryDialog(employee: Employee) {
+  historyEmployee.value = employee
+  historyDialogVisible.value = true
+}
+
+function closeHistoryDialog() {
+  historyDialogVisible.value = false
+  historyEmployee.value = null
+}
+
 onMounted(() => {
   fetchEmployees()
 })
@@ -240,8 +254,15 @@ onMounted(() => {
             {{ getCurrentContract(data)?.step || '-' }}
           </template>
         </Column>
-        <Column :header="t('common.actions')" style="width: 200px">
+        <Column :header="t('common.actions')" style="width: 240px">
           <template #body="{ data }">
+            <Button
+              icon="pi pi-history"
+              text
+              rounded
+              @click="openHistoryDialog(data)"
+              :title="t('employees.contractHistory')"
+            />
             <Button
               icon="pi pi-file"
               text
@@ -281,6 +302,13 @@ onMounted(() => {
       :employee="selectedEmployee"
       @close="closeContractDialog"
       @save="saveContract"
+    />
+
+    <EmployeeContractHistory
+      :visible="historyDialogVisible"
+      :employee="historyEmployee"
+      :org-id="orgId"
+      @close="closeHistoryDialog"
     />
   </div>
 </template>
