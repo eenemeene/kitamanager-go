@@ -15,25 +15,21 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const statsData = ref<AgeDistributionResponse | null>(null)
 
-const chartColors = [
-  'rgba(59, 130, 246, 0.7)', // blue - 0
-  'rgba(34, 197, 94, 0.7)', // green - 1
-  'rgba(249, 115, 22, 0.7)', // orange - 2
-  'rgba(168, 85, 247, 0.7)', // purple - 3
-  'rgba(236, 72, 153, 0.7)', // pink - 4
-  'rgba(20, 184, 166, 0.7)', // teal - 5
-  'rgba(239, 68, 68, 0.7)' // red - 6+
-]
-
-const chartBorderColors = [
-  'rgb(59, 130, 246)',
-  'rgb(34, 197, 94)',
-  'rgb(249, 115, 22)',
-  'rgb(168, 85, 247)',
-  'rgb(236, 72, 153)',
-  'rgb(20, 184, 166)',
-  'rgb(239, 68, 68)'
-]
+// Gender colors for stacked bars
+const genderColors = {
+  male: {
+    background: 'rgba(59, 130, 246, 0.7)', // blue
+    border: 'rgb(59, 130, 246)'
+  },
+  female: {
+    background: 'rgba(236, 72, 153, 0.7)', // pink
+    border: 'rgb(236, 72, 153)'
+  },
+  diverse: {
+    background: 'rgba(168, 85, 247, 0.7)', // purple
+    border: 'rgb(168, 85, 247)'
+  }
+}
 
 const chartData = computed(() => {
   if (!statsData.value) {
@@ -46,16 +42,32 @@ const chartData = computed(() => {
       : t('statistics.ageYears', { age: bucket.age_label })
   )
 
-  const data = statsData.value.distribution.map((bucket) => bucket.count)
+  const maleData = statsData.value.distribution.map((bucket) => bucket.male_count)
+  const femaleData = statsData.value.distribution.map((bucket) => bucket.female_count)
+  const diverseData = statsData.value.distribution.map((bucket) => bucket.diverse_count)
 
   return {
     labels,
     datasets: [
       {
-        label: t('statistics.childrenCount'),
-        data,
-        backgroundColor: chartColors,
-        borderColor: chartBorderColors,
+        label: t('gender.male'),
+        data: maleData,
+        backgroundColor: genderColors.male.background,
+        borderColor: genderColors.male.border,
+        borderWidth: 1
+      },
+      {
+        label: t('gender.female'),
+        data: femaleData,
+        backgroundColor: genderColors.female.background,
+        borderColor: genderColors.female.border,
+        borderWidth: 1
+      },
+      {
+        label: t('gender.diverse'),
+        data: diverseData,
+        backgroundColor: genderColors.diverse.background,
+        borderColor: genderColors.diverse.border,
         borderWidth: 1
       }
     ]
@@ -72,21 +84,27 @@ const chartOptions = computed(() => ({
   },
   plugins: {
     legend: {
-      display: false
+      display: true,
+      position: 'bottom' as const
     },
     datalabels: {
-      anchor: 'end' as const,
-      align: 'end' as const,
-      color: 'var(--text-color)',
-      font: {
-        size: 12,
-        weight: 'bold' as const
-      },
-      formatter: (value: number) => (value > 0 ? value : '')
+      display: false // Disable individual bar labels for stacked bars
+    },
+    tooltip: {
+      callbacks: {
+        footer: (items: { parsed: { y: number } }[]) => {
+          const total = items.reduce((sum, item) => sum + item.parsed.y, 0)
+          return `${t('common.total')}: ${total}`
+        }
+      }
     }
   },
   scales: {
+    x: {
+      stacked: true
+    },
     y: {
+      stacked: true,
       beginAtZero: true,
       grace: '15%',
       ticks: {

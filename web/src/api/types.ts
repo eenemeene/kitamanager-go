@@ -365,6 +365,9 @@ export interface AgeDistributionBucket {
   min_age: number
   max_age?: number | null // null for open-ended (6+)
   count: number
+  male_count: number
+  female_count: number
+  diverse_count: number
 }
 
 // PayPlan (organization-scoped salary tables)

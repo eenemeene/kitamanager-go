@@ -5539,6 +5539,18 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 12
                 },
+                "diverse_count": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "female_count": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "male_count": {
+                    "type": "integer",
+                    "example": 6
+                },
                 "max_age": {
                     "description": "nil for open-ended (6+)",
                     "type": "integer",

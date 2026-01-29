@@ -30,6 +30,15 @@ definitions:
       count:
         example: 12
         type: integer
+      diverse_count:
+        example: 1
+        type: integer
+      female_count:
+        example: 5
+        type: integer
+      male_count:
+        example: 6
+        type: integer
       max_age:
         description: nil for open-ended (6+)
         example: 3

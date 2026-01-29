@@ -145,8 +145,11 @@ type AgeDistributionResponse struct {
 
 // AgeDistributionBucket represents count of children in an age range
 type AgeDistributionBucket struct {
-	AgeLabel string `json:"age_label" example:"3"` // e.g., "0", "1", "2", "3", "4", "5", "6+"
-	MinAge   int    `json:"min_age" example:"3"`
-	MaxAge   *int   `json:"max_age,omitempty" example:"3"` // nil for open-ended (6+)
-	Count    int    `json:"count" example:"12"`
+	AgeLabel     string `json:"age_label" example:"3"` // e.g., "0", "1", "2", "3", "4", "5", "6+"
+	MinAge       int    `json:"min_age" example:"3"`
+	MaxAge       *int   `json:"max_age,omitempty" example:"3"` // nil for open-ended (6+)
+	Count        int    `json:"count" example:"12"`
+	MaleCount    int    `json:"male_count" example:"6"`
+	FemaleCount  int    `json:"female_count" example:"5"`
+	DiverseCount int    `json:"diverse_count" example:"1"`
 }

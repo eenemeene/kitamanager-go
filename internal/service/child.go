@@ -513,14 +513,25 @@ func (s *ChildService) GetAgeDistribution(ctx context.Context, orgID uint, date 
 		// Find matching bucket
 		for i := range buckets {
 			bucket := &buckets[i]
+			matches := false
 			if bucket.MaxAge == nil {
 				// Open-ended bucket (6+)
-				if age >= bucket.MinAge {
-					bucket.Count++
-					break
-				}
-			} else if age >= bucket.MinAge && age <= *bucket.MaxAge {
+				matches = age >= bucket.MinAge
+			} else {
+				matches = age >= bucket.MinAge && age <= *bucket.MaxAge
+			}
+
+			if matches {
 				bucket.Count++
+				// Count by gender
+				switch child.Gender {
+				case string(models.GenderMale):
+					bucket.MaleCount++
+				case string(models.GenderFemale):
+					bucket.FemaleCount++
+				case string(models.GenderDiverse):
+					bucket.DiverseCount++
+				}
 				break
 			}
 		}
