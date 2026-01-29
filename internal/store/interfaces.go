@@ -108,6 +108,7 @@ type ContractStorer[T models.HasPeriod] interface {
 	GetCurrentContract(personID uint) (*T, error)
 	GetContractOn(personID uint, date time.Time) (*T, error)
 	GetHistory(personID uint) ([]T, error)
+	GetHistoryPaginated(personID uint, limit, offset int) ([]T, int64, error)
 	HasActiveContract(personID uint, date time.Time) (bool, error)
 	ValidateNoOverlap(personID uint, from time.Time, to *time.Time, excludeID *uint) error
 	CloseCurrentContract(personID uint, endDate time.Time) error

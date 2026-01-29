@@ -28,8 +28,8 @@ func NewOrganizationHandler(service *service.OrganizationService) *OrganizationH
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(20) maximum(100)
 // @Success 200 {object} models.PaginatedResponse[models.Organization]
-// @Failure 401 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations [get]
 func (h *OrganizationHandler) List(c *gin.Context) {
 	params, ok := parsePagination(c)
@@ -55,9 +55,9 @@ func (h *OrganizationHandler) List(c *gin.Context) {
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
 // @Success 200 {object} models.Organization
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId} [get]
 func (h *OrganizationHandler) Get(c *gin.Context) {
 	id, err := parseID(c, "orgId")
@@ -91,9 +91,9 @@ type OrganizationCreateRequest struct {
 // @Security BearerAuth
 // @Param request body OrganizationCreateRequest true "Organization data"
 // @Success 201 {object} models.Organization
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations [post]
 func (h *OrganizationHandler) Create(c *gin.Context) {
 	var req OrganizationCreateRequest
@@ -132,10 +132,10 @@ type OrganizationUpdateRequest struct {
 // @Param orgId path int true "Organization ID"
 // @Param request body OrganizationUpdateRequest true "Organization data"
 // @Success 200 {object} models.Organization
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId} [put]
 func (h *OrganizationHandler) Update(c *gin.Context) {
 	id, err := parseID(c, "orgId")
@@ -172,9 +172,9 @@ func (h *OrganizationHandler) Update(c *gin.Context) {
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
 // @Success 204 "No Content"
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId} [delete]
 func (h *OrganizationHandler) Delete(c *gin.Context) {
 	id, err := parseID(c, "orgId")

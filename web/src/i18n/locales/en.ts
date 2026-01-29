@@ -175,7 +175,8 @@ export default {
     confirmDeleteMessage: 'Are you sure you want to delete {name}?',
     birthdate: 'Birthdate',
     noContractsFound: 'No contracts found for this child.',
-    funding: 'Funding'
+    funding: 'Funding',
+    fundingDataUnavailable: 'Funding data could not be loaded'
   },
   users: {
     title: 'Users',

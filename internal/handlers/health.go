@@ -5,6 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+
+	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
 // HealthHandler handles health check requests.
@@ -17,20 +19,13 @@ func NewHealthHandler(db *gorm.DB) *HealthHandler {
 	return &HealthHandler{db: db}
 }
 
-// HealthResponse represents the health check response.
-type HealthResponse struct {
-	Status   string            `json:"status" example:"healthy"`
-	Version  string            `json:"version" example:"1.0.0"`
-	Services map[string]string `json:"services"`
-}
-
 // Check godoc
 // @Summary Health check
 // @Description Check the health status of the API and its dependencies
 // @Tags health
 // @Produce json
-// @Success 200 {object} HealthResponse
-// @Failure 503 {object} HealthResponse
+// @Success 200 {object} models.HealthResponse
+// @Failure 503 {object} models.HealthResponse
 // @Router /api/v1/health [get]
 func (h *HealthHandler) Check(c *gin.Context) {
 	services := make(map[string]string)
@@ -55,7 +50,7 @@ func (h *HealthHandler) Check(c *gin.Context) {
 		statusCode = http.StatusServiceUnavailable
 	}
 
-	c.JSON(statusCode, HealthResponse{
+	c.JSON(statusCode, models.HealthResponse{
 		Status:   status,
 		Version:  "1.0.0",
 		Services: services,

@@ -170,28 +170,28 @@ func (s *ChildService) Delete(ctx context.Context, id, orgID uint) error {
 	return nil
 }
 
-// ListContracts returns contract history for a child, validating it belongs to the specified organization
-func (s *ChildService) ListContracts(ctx context.Context, childID, orgID uint) ([]models.ChildContractResponse, error) {
+// ListContracts returns paginated contract history for a child, validating it belongs to the specified organization
+func (s *ChildService) ListContracts(ctx context.Context, childID, orgID uint, limit, offset int) ([]models.ChildContractResponse, int64, error) {
 	// Verify child exists and belongs to org
 	child, err := s.store.FindByID(childID)
 	if err != nil {
-		return nil, apperror.NotFound("child")
+		return nil, 0, apperror.NotFound("child")
 	}
 	// Security: Validate child belongs to the specified organization
 	if child.OrganizationID != orgID {
-		return nil, apperror.NotFound("child")
+		return nil, 0, apperror.NotFound("child")
 	}
 
-	contracts, err := s.store.Contracts().GetHistory(childID)
+	contracts, total, err := s.store.Contracts().GetHistoryPaginated(childID, limit, offset)
 	if err != nil {
-		return nil, apperror.Internal("failed to fetch contracts")
+		return nil, 0, apperror.Internal("failed to fetch contracts")
 	}
 
 	responses := make([]models.ChildContractResponse, len(contracts))
 	for i, c := range contracts {
 		responses[i] = c.ToResponse()
 	}
-	return responses, nil
+	return responses, total, nil
 }
 
 // GetCurrentContract returns the current active contract for a child, validating it belongs to the specified organization
@@ -212,6 +212,30 @@ func (s *ChildService) GetCurrentContract(ctx context.Context, childID, orgID ui
 	if contract == nil {
 		return nil, apperror.NotFound("active contract")
 	}
+	resp := contract.ToResponse()
+	return &resp, nil
+}
+
+// GetContractByID returns a contract by ID, validating ownership
+func (s *ChildService) GetContractByID(ctx context.Context, contractID, childID, orgID uint) (*models.ChildContractResponse, error) {
+	// Security: Validate child belongs to the specified organization
+	child, err := s.store.FindByID(childID)
+	if err != nil {
+		return nil, apperror.NotFound("child")
+	}
+	if child.OrganizationID != orgID {
+		return nil, apperror.NotFound("child")
+	}
+
+	// Get contract
+	contract, err := s.store.FindContractByID(contractID)
+	if err != nil {
+		return nil, apperror.NotFound("contract")
+	}
+	if contract.ChildID != childID {
+		return nil, apperror.NotFound("contract")
+	}
+
 	resp := contract.ToResponse()
 	return &resp, nil
 }

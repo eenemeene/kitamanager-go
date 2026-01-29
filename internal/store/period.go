@@ -54,6 +54,25 @@ func (s *PeriodStore[T]) GetHistory(personID uint) ([]T, error) {
 	return contracts, err
 }
 
+// GetHistoryPaginated returns paginated contracts for a person ordered by from_date desc.
+func (s *PeriodStore[T]) GetHistoryPaginated(personID uint, limit, offset int) ([]T, int64, error) {
+	var contracts []T
+	var total int64
+
+	// Count total
+	if err := s.db.Model(new(T)).Where(s.personIDCol+" = ?", personID).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Get paginated results (desc for most recent first)
+	err := s.db.Where(s.personIDCol+" = ?", personID).
+		Order("from_date DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&contracts).Error
+	return contracts, total, err
+}
+
 // HasActiveContract checks if a person has a contract on the given date.
 func (s *PeriodStore[T]) HasActiveContract(personID uint, date time.Time) (bool, error) {
 	var count int64

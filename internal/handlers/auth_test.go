@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/store"
 )
 
@@ -23,7 +24,7 @@ func TestAuthHandler_Login_Success(t *testing.T) {
 	r := gin.New()
 	r.POST("/login", handler.Login)
 
-	body := LoginRequest{
+	body := models.LoginRequest{
 		Email:    "test@example.com",
 		Password: "password123",
 	}
@@ -34,7 +35,7 @@ func TestAuthHandler_Login_Success(t *testing.T) {
 		t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
 	}
 
-	var result LoginResponse
+	var result models.LoginResponse
 	parseResponse(t, w, &result)
 
 	if result.Token == "" {
@@ -50,7 +51,7 @@ func TestAuthHandler_Login_InvalidEmail(t *testing.T) {
 	r := gin.New()
 	r.POST("/login", handler.Login)
 
-	body := LoginRequest{
+	body := models.LoginRequest{
 		Email:    "nonexistent@example.com",
 		Password: "password123",
 	}
@@ -74,7 +75,7 @@ func TestAuthHandler_Login_InvalidPassword(t *testing.T) {
 	r := gin.New()
 	r.POST("/login", handler.Login)
 
-	body := LoginRequest{
+	body := models.LoginRequest{
 		Email:    "test@example.com",
 		Password: "wrongpassword",
 	}
@@ -102,7 +103,7 @@ func TestAuthHandler_Login_InactiveUser(t *testing.T) {
 	r := gin.New()
 	r.POST("/login", handler.Login)
 
-	body := LoginRequest{
+	body := models.LoginRequest{
 		Email:    "test@example.com",
 		Password: "password123",
 	}
@@ -152,7 +153,7 @@ func TestAuthHandler_Login_UpdatesLastLogin(t *testing.T) {
 	r := gin.New()
 	r.POST("/login", handler.Login)
 
-	body := LoginRequest{
+	body := models.LoginRequest{
 		Email:    "test@example.com",
 		Password: "password123",
 	}

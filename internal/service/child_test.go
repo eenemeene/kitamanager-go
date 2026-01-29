@@ -525,7 +525,7 @@ func TestChildService_ListContracts(t *testing.T) {
 	req2 := &models.ChildContractCreateRequest{From: from2, Attributes: []string{"ganztags"}}
 	_, _ = svc.CreateContract(ctx, child.ID, org.ID, req2)
 
-	contracts, err := svc.ListContracts(ctx, child.ID, org.ID)
+	contracts, _, err := svc.ListContracts(ctx, child.ID, org.ID, 100, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -542,7 +542,7 @@ func TestChildService_ListContracts_ChildNotFound(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 
-	_, err := svc.ListContracts(ctx, 999, org.ID)
+	_, _, err := svc.ListContracts(ctx, 999, org.ID, 100, 0)
 	if err == nil {
 		t.Fatal("expected error for non-existent child, got nil")
 	}
@@ -568,7 +568,7 @@ func TestChildService_ListContracts_WrongOrg(t *testing.T) {
 	_, _ = svc.CreateContract(ctx, child.ID, org1.ID, req)
 
 	// Try to list contracts from wrong organization
-	_, err := svc.ListContracts(ctx, child.ID, org2.ID)
+	_, _, err := svc.ListContracts(ctx, child.ID, org2.ID, 100, 0)
 	if err == nil {
 		t.Fatal("expected error when listing contracts from wrong org, got nil")
 	}
@@ -659,7 +659,7 @@ func TestChildService_DeleteContract_WrongOrg(t *testing.T) {
 	}
 
 	// Verify contract still exists
-	contracts, _ := svc.ListContracts(ctx, child.ID, org1.ID)
+	contracts, _, _ := svc.ListContracts(ctx, child.ID, org1.ID, 100, 0)
 	if len(contracts) != 1 {
 		t.Error("contract was deleted despite wrong org")
 	}

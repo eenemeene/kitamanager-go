@@ -29,9 +29,9 @@ func NewGroupHandler(service *service.GroupService) *GroupHandler {
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(20) maximum(100)
 // @Success 200 {object} models.PaginatedResponse[models.GroupResponse]
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/groups [get]
 func (h *GroupHandler) List(c *gin.Context) {
 	orgID, ok := parseOrgID(c)
@@ -63,9 +63,9 @@ func (h *GroupHandler) List(c *gin.Context) {
 // @Param orgId path int true "Organization ID"
 // @Param groupId path int true "Group ID"
 // @Success 200 {object} models.GroupResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/groups/{groupId} [get]
 func (h *GroupHandler) Get(c *gin.Context) {
 	orgID, groupID, ok := parseOrgAndResourceID(c, "groupId")
@@ -98,9 +98,9 @@ type GroupCreateRequest struct {
 // @Param orgId path int true "Organization ID"
 // @Param request body GroupCreateRequest true "Group data"
 // @Success 201 {object} models.GroupResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/groups [post]
 func (h *GroupHandler) Create(c *gin.Context) {
 	orgID, ok := parseOrgID(c)
@@ -144,10 +144,10 @@ type GroupUpdateRequest struct {
 // @Param groupId path int true "Group ID"
 // @Param request body GroupUpdateRequest true "Group data"
 // @Success 200 {object} models.GroupResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/groups/{groupId} [put]
 func (h *GroupHandler) Update(c *gin.Context) {
 	orgID, groupID, ok := parseOrgAndResourceID(c, "groupId")
@@ -183,10 +183,10 @@ func (h *GroupHandler) Update(c *gin.Context) {
 // @Param orgId path int true "Organization ID"
 // @Param groupId path int true "Group ID"
 // @Success 204 "No Content"
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/groups/{groupId} [delete]
 func (h *GroupHandler) Delete(c *gin.Context) {
 	orgID, groupID, ok := parseOrgAndResourceID(c, "groupId")

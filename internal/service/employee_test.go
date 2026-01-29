@@ -466,7 +466,7 @@ func TestEmployeeService_CreateContract_WrongOrg(t *testing.T) {
 	}
 
 	// Verify no contract was created
-	contracts, err := svc.ListContracts(ctx, employee.ID, org1.ID)
+	contracts, _, err := svc.ListContracts(ctx, employee.ID, org1.ID, 100, 0)
 	if err != nil {
 		t.Fatalf("failed to list contracts: %v", err)
 	}
@@ -688,7 +688,7 @@ func TestEmployeeService_ListContracts(t *testing.T) {
 	req2 := &models.EmployeeContractCreateRequest{From: from2, Position: "Senior", WeeklyHours: 40, Salary: 5000000}
 	_, _ = svc.CreateContract(ctx, employee.ID, org.ID, req2)
 
-	contracts, err := svc.ListContracts(ctx, employee.ID, org.ID)
+	contracts, _, err := svc.ListContracts(ctx, employee.ID, org.ID, 100, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -705,7 +705,7 @@ func TestEmployeeService_ListContracts_EmployeeNotFound(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 
-	_, err := svc.ListContracts(ctx, 999, org.ID)
+	_, _, err := svc.ListContracts(ctx, 999, org.ID, 100, 0)
 	if err == nil {
 		t.Fatal("expected error for non-existent employee, got nil")
 	}
@@ -735,7 +735,7 @@ func TestEmployeeService_ListContracts_WrongOrg(t *testing.T) {
 	_, _ = svc.CreateContract(ctx, employee.ID, org1.ID, req)
 
 	// Try to list contracts for employee from org1 using org2's context
-	_, err := svc.ListContracts(ctx, employee.ID, org2.ID)
+	_, _, err := svc.ListContracts(ctx, employee.ID, org2.ID, 100, 0)
 	if err == nil {
 		t.Fatal("SECURITY: expected error when listing contracts for employee from wrong org, got nil")
 	}
@@ -894,7 +894,7 @@ func TestEmployeeService_DeleteContract_WrongOrg(t *testing.T) {
 	}
 
 	// Verify the contract was NOT deleted
-	contracts, err := svc.ListContracts(ctx, employee.ID, org1.ID)
+	contracts, _, err := svc.ListContracts(ctx, employee.ID, org1.ID, 100, 0)
 	if err != nil {
 		t.Fatalf("failed to list contracts: %v", err)
 	}
@@ -927,7 +927,7 @@ func TestEmployeeService_DeleteContract(t *testing.T) {
 	}
 
 	// Verify it's deleted
-	contracts, err := svc.ListContracts(ctx, employee.ID, org.ID)
+	contracts, _, err := svc.ListContracts(ctx, employee.ID, org.ID, 100, 0)
 	if err != nil {
 		t.Fatalf("failed to list contracts: %v", err)
 	}
@@ -992,7 +992,7 @@ func TestEmployeeService_DeleteContract_WrongEmployee(t *testing.T) {
 	}
 
 	// Verify the contract was NOT deleted
-	contracts, err := svc.ListContracts(ctx, employee1.ID, org.ID)
+	contracts, _, err := svc.ListContracts(ctx, employee1.ID, org.ID, 100, 0)
 	if err != nil {
 		t.Fatalf("failed to list contracts: %v", err)
 	}

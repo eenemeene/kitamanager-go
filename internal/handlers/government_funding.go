@@ -29,8 +29,8 @@ func NewGovernmentFundingHandler(service *service.GovernmentFundingService) *Gov
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(20) maximum(100)
 // @Success 200 {object} models.PaginatedResponse[models.GovernmentFunding]
-// @Failure 401 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/government-fundings [get]
 func (h *GovernmentFundingHandler) List(c *gin.Context) {
 	params, ok := parsePagination(c)
@@ -57,9 +57,9 @@ func (h *GovernmentFundingHandler) List(c *gin.Context) {
 // @Param id path int true "GovernmentFunding ID"
 // @Param periods_limit query int false "Limit number of periods returned (0 = all, default 1 for latest only)"
 // @Success 200 {object} service.GovernmentFundingWithDetailsResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
 // @Router /api/v1/government-fundings/{id} [get]
 func (h *GovernmentFundingHandler) Get(c *gin.Context) {
 	id, err := parseID(c, "id")
@@ -99,10 +99,10 @@ func (h *GovernmentFundingHandler) Get(c *gin.Context) {
 // @Security BearerAuth
 // @Param request body models.GovernmentFundingCreateRequest true "GovernmentFunding data"
 // @Success 201 {object} models.GovernmentFunding
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/government-fundings [post]
 func (h *GovernmentFundingHandler) Create(c *gin.Context) {
 	var req models.GovernmentFundingCreateRequest
@@ -133,11 +133,11 @@ func (h *GovernmentFundingHandler) Create(c *gin.Context) {
 // @Param id path int true "GovernmentFunding ID"
 // @Param request body models.GovernmentFundingUpdateRequest true "GovernmentFunding data"
 // @Success 200 {object} models.GovernmentFunding
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/government-fundings/{id} [put]
 func (h *GovernmentFundingHandler) Update(c *gin.Context) {
 	id, err := parseID(c, "id")
@@ -172,10 +172,10 @@ func (h *GovernmentFundingHandler) Update(c *gin.Context) {
 // @Security BearerAuth
 // @Param id path int true "GovernmentFunding ID"
 // @Success 204 "No Content"
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/government-fundings/{id} [delete]
 func (h *GovernmentFundingHandler) Delete(c *gin.Context) {
 	id, err := parseID(c, "id")
@@ -204,11 +204,11 @@ func (h *GovernmentFundingHandler) Delete(c *gin.Context) {
 // @Param id path int true "GovernmentFunding ID"
 // @Param request body models.GovernmentFundingPeriodCreateRequest true "Period data"
 // @Success 201 {object} models.GovernmentFundingPeriod
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/government-fundings/{id}/periods [post]
 func (h *GovernmentFundingHandler) CreatePeriod(c *gin.Context) {
 	fundingID, err := parseID(c, "id")
@@ -243,11 +243,11 @@ func (h *GovernmentFundingHandler) CreatePeriod(c *gin.Context) {
 // @Param periodId path int true "Period ID"
 // @Param request body models.GovernmentFundingPeriodUpdateRequest true "Period data"
 // @Success 200 {object} models.GovernmentFundingPeriod
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/government-fundings/{id}/periods/{periodId} [put]
 func (h *GovernmentFundingHandler) UpdatePeriod(c *gin.Context) {
 	_, err := parseID(c, "id")
@@ -287,10 +287,10 @@ func (h *GovernmentFundingHandler) UpdatePeriod(c *gin.Context) {
 // @Param id path int true "GovernmentFunding ID"
 // @Param periodId path int true "Period ID"
 // @Success 204 "No Content"
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/government-fundings/{id}/periods/{periodId} [delete]
 func (h *GovernmentFundingHandler) DeletePeriod(c *gin.Context) {
 	_, err := parseID(c, "id")
@@ -326,11 +326,11 @@ func (h *GovernmentFundingHandler) DeletePeriod(c *gin.Context) {
 // @Param periodId path int true "Period ID"
 // @Param request body models.GovernmentFundingPropertyCreateRequest true "Property data"
 // @Success 201 {object} models.GovernmentFundingProperty
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/government-fundings/{id}/periods/{periodId}/properties [post]
 func (h *GovernmentFundingHandler) CreateProperty(c *gin.Context) {
 	_, err := parseID(c, "id")
@@ -372,11 +372,11 @@ func (h *GovernmentFundingHandler) CreateProperty(c *gin.Context) {
 // @Param propId path int true "Property ID"
 // @Param request body models.GovernmentFundingPropertyUpdateRequest true "Property data"
 // @Success 200 {object} models.GovernmentFundingProperty
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/government-fundings/{id}/periods/{periodId}/properties/{propId} [put]
 func (h *GovernmentFundingHandler) UpdateProperty(c *gin.Context) {
 	_, err := parseID(c, "id")
@@ -423,10 +423,10 @@ func (h *GovernmentFundingHandler) UpdateProperty(c *gin.Context) {
 // @Param periodId path int true "Period ID"
 // @Param propId path int true "Property ID"
 // @Success 204 "No Content"
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/government-fundings/{id}/periods/{periodId}/properties/{propId} [delete]
 func (h *GovernmentFundingHandler) DeleteProperty(c *gin.Context) {
 	_, err := parseID(c, "id")

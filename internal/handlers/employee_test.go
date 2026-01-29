@@ -276,11 +276,11 @@ func TestEmployeeHandler_ListContracts(t *testing.T) {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
 	}
 
-	var contracts []models.EmployeeContract
-	parseResponse(t, w, &contracts)
+	var response models.PaginatedResponse[models.EmployeeContractResponse]
+	parseResponse(t, w, &response)
 
-	if len(contracts) != 1 {
-		t.Errorf("expected 1 contract, got %d", len(contracts))
+	if len(response.Data) != 1 {
+		t.Errorf("expected 1 contract, got %d", len(response.Data))
 	}
 }
 
@@ -1050,11 +1050,11 @@ func TestEmployeeHandler_ListContracts_Empty(t *testing.T) {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
 	}
 
-	var contracts []models.EmployeeContract
-	parseResponse(t, w, &contracts)
+	var response models.PaginatedResponse[models.EmployeeContractResponse]
+	parseResponse(t, w, &response)
 
-	if len(contracts) != 0 {
-		t.Errorf("expected empty list, got %d contracts", len(contracts))
+	if len(response.Data) != 0 {
+		t.Errorf("expected empty list, got %d contracts", len(response.Data))
 	}
 }
 

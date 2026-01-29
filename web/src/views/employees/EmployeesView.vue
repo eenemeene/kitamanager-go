@@ -5,6 +5,7 @@ import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useI18n } from 'vue-i18n'
 import { apiClient, getErrorMessage } from '@/api/client'
+import { formatDate, formatCurrency } from '@/utils/formatting'
 import type {
   Employee,
   EmployeeCreateRequest,
@@ -176,14 +177,6 @@ async function saveContract(data: EmployeeContractCreateRequest) {
       life: 5000
     })
   }
-}
-
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString()
-}
-
-function formatCurrency(cents: number): string {
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(cents / 100)
 }
 
 function getCurrentContract(employee: Employee) {

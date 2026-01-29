@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
 func TestHealthHandler_Check(t *testing.T) {
@@ -21,7 +23,7 @@ func TestHealthHandler_Check(t *testing.T) {
 			t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
 		}
 
-		var response HealthResponse
+		var response models.HealthResponse
 		parseResponse(t, w, &response)
 
 		if response.Status != "healthy" {

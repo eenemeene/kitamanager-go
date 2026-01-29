@@ -163,28 +163,28 @@ func (s *EmployeeService) Delete(ctx context.Context, id, orgID uint) error {
 	return nil
 }
 
-// ListContracts returns contract history for an employee, validating it belongs to the specified organization
-func (s *EmployeeService) ListContracts(ctx context.Context, employeeID, orgID uint) ([]models.EmployeeContractResponse, error) {
+// ListContracts returns paginated contract history for an employee, validating it belongs to the specified organization
+func (s *EmployeeService) ListContracts(ctx context.Context, employeeID, orgID uint, limit, offset int) ([]models.EmployeeContractResponse, int64, error) {
 	// Verify employee exists and belongs to org
 	employee, err := s.store.FindByID(employeeID)
 	if err != nil {
-		return nil, apperror.NotFound("employee")
+		return nil, 0, apperror.NotFound("employee")
 	}
 	// Security: Validate employee belongs to the specified organization
 	if employee.OrganizationID != orgID {
-		return nil, apperror.NotFound("employee")
+		return nil, 0, apperror.NotFound("employee")
 	}
 
-	contracts, err := s.store.Contracts().GetHistory(employeeID)
+	contracts, total, err := s.store.Contracts().GetHistoryPaginated(employeeID, limit, offset)
 	if err != nil {
-		return nil, apperror.Internal("failed to fetch contracts")
+		return nil, 0, apperror.Internal("failed to fetch contracts")
 	}
 
 	responses := make([]models.EmployeeContractResponse, len(contracts))
 	for i, c := range contracts {
 		responses[i] = c.ToResponse()
 	}
-	return responses, nil
+	return responses, total, nil
 }
 
 // GetCurrentContract returns the current active contract for an employee, validating it belongs to the specified organization

@@ -175,7 +175,8 @@ export default {
     confirmDeleteMessage: 'Möchten Sie {name} wirklich löschen?',
     birthdate: 'Geburtsdatum',
     noContractsFound: 'Keine Verträge für dieses Kind gefunden.',
-    funding: 'Finanzierung'
+    funding: 'Finanzierung',
+    fundingDataUnavailable: 'Finanzierungsdaten konnten nicht geladen werden'
   },
   users: {
     title: 'Benutzer',

@@ -255,10 +255,10 @@ class ApiClient {
 
   // Employee Contracts
   async getEmployeeContracts(orgId: number, employeeId: number): Promise<EmployeeContract[]> {
-    const response = await this.client.get<EmployeeContract[]>(
+    const response = await this.client.get<{ data: EmployeeContract[] }>(
       `/organizations/${orgId}/employees/${employeeId}/contracts`
     )
-    return response.data
+    return response.data.data
   }
 
   async createEmployeeContract(
@@ -315,10 +315,10 @@ class ApiClient {
 
   // Child Contracts
   async getChildContracts(orgId: number, childId: number): Promise<ChildContract[]> {
-    const response = await this.client.get<ChildContract[]>(
+    const response = await this.client.get<{ data: ChildContract[] }>(
       `/organizations/${orgId}/children/${childId}/contracts`
     )
-    return response.data
+    return response.data.data
   }
 
   async createChildContract(

@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { apiClient } from '@/api/client'
+import { formatDate } from '@/utils/formatting'
 import type { Child, ChildContract } from '@/api/types'
 import Dialog from 'primevue/dialog'
 import DataTable from 'primevue/datatable'
@@ -65,9 +66,8 @@ async function fetchContracts() {
   }
 }
 
-function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return t('common.ongoing')
-  return new Date(dateStr).toLocaleDateString()
+function formatContractDate(dateStr: string | null | undefined): string {
+  return formatDate(dateStr, 'de-DE', t('common.ongoing'))
 }
 
 function getContractStatus(contract: ChildContract): 'active' | 'upcoming' | 'ended' {
@@ -155,12 +155,12 @@ function rowClass(data: ChildContract): string | undefined {
       </Column>
       <Column :header="t('contracts.from')" style="width: 120px">
         <template #body="{ data }">
-          {{ formatDate(data.from) }}
+          {{ formatContractDate(data.from) }}
         </template>
       </Column>
       <Column :header="t('contracts.to')" style="width: 120px">
         <template #body="{ data }">
-          {{ formatDate(data.to) }}
+          {{ formatContractDate(data.to) }}
         </template>
       </Column>
       <Column :header="t('children.attributes')">

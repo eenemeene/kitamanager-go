@@ -146,12 +146,6 @@ func parseOrgResourceContractAndPropertyID(c *gin.Context, resourceParam string)
 	return orgID, resourceID, contractID, propID, true
 }
 
-// StructuredErrorResponse represents a structured error response with code and message
-type StructuredErrorResponse struct {
-	Code    string `json:"code" example:"not_found"`
-	Message string `json:"message" example:"resource not found"`
-}
-
 // respondError sends consistent structured error response
 func respondError(c *gin.Context, err error) {
 	httpCode := apperror.HTTPStatus(err)
@@ -163,7 +157,7 @@ func respondError(c *gin.Context, err error) {
 		errorCode = appErr.GetErrorCode()
 	}
 
-	c.JSON(httpCode, StructuredErrorResponse{
+	c.JSON(httpCode, models.ErrorResponse{
 		Code:    errorCode,
 		Message: err.Error(),
 	})

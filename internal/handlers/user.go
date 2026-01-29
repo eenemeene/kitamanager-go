@@ -32,8 +32,8 @@ func NewUserHandler(service *service.UserService, userGroupService *service.User
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(20) maximum(100)
 // @Success 200 {object} models.PaginatedResponse[models.UserResponse]
-// @Failure 401 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/users [get]
 func (h *UserHandler) List(c *gin.Context) {
 	params, ok := parsePagination(c)
@@ -61,9 +61,9 @@ func (h *UserHandler) List(c *gin.Context) {
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(20) maximum(100)
 // @Success 200 {object} models.PaginatedResponse[models.UserResponse]
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/users [get]
 func (h *UserHandler) ListByOrganization(c *gin.Context) {
 	orgID, ok := parseOrgID(c)
@@ -94,9 +94,9 @@ func (h *UserHandler) ListByOrganization(c *gin.Context) {
 // @Security BearerAuth
 // @Param userId path int true "User ID"
 // @Success 200 {object} models.UserResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
 // @Router /api/v1/users/{userId} [get]
 func (h *UserHandler) Get(c *gin.Context) {
 	id, err := parseID(c, "userId")
@@ -123,9 +123,9 @@ func (h *UserHandler) Get(c *gin.Context) {
 // @Security BearerAuth
 // @Param request body models.UserCreateRequest true "User data"
 // @Success 201 {object} models.UserResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/users [post]
 func (h *UserHandler) Create(c *gin.Context) {
 	var req models.UserCreateRequest
@@ -153,10 +153,10 @@ func (h *UserHandler) Create(c *gin.Context) {
 // @Param userId path int true "User ID"
 // @Param request body models.UserUpdateRequest true "User data"
 // @Success 200 {object} models.UserResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/users/{userId} [put]
 func (h *UserHandler) Update(c *gin.Context) {
 	id, err := parseID(c, "userId")
@@ -189,9 +189,9 @@ func (h *UserHandler) Update(c *gin.Context) {
 // @Security BearerAuth
 // @Param userId path int true "User ID"
 // @Success 204 "No Content"
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/users/{userId} [delete]
 func (h *UserHandler) Delete(c *gin.Context) {
 	id, err := parseID(c, "userId")
@@ -218,11 +218,11 @@ func (h *UserHandler) Delete(c *gin.Context) {
 // @Param userId path int true "User ID"
 // @Param request body models.AddUserToGroupRequest true "Group ID and role"
 // @Success 201 {object} models.UserGroupResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/users/{userId}/groups [post]
 func (h *UserHandler) AddToGroup(c *gin.Context) {
 	userID, err := parseID(c, "userId")
@@ -257,11 +257,11 @@ func (h *UserHandler) AddToGroup(c *gin.Context) {
 // @Param groupId path int true "Group ID"
 // @Param request body models.UpdateUserGroupRoleRequest true "New role"
 // @Success 200 {object} models.UserGroupResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/users/{userId}/groups/{groupId} [put]
 func (h *UserHandler) UpdateGroupRole(c *gin.Context) {
 	userID, err := parseID(c, "userId")
@@ -301,10 +301,10 @@ func (h *UserHandler) UpdateGroupRole(c *gin.Context) {
 // @Param userId path int true "User ID"
 // @Param groupId path int true "Group ID"
 // @Success 204 "No Content"
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/users/{userId}/groups/{groupId} [delete]
 func (h *UserHandler) RemoveFromGroup(c *gin.Context) {
 	userID, err := parseID(c, "userId")
@@ -336,10 +336,10 @@ func (h *UserHandler) RemoveFromGroup(c *gin.Context) {
 // @Security BearerAuth
 // @Param userId path int true "User ID"
 // @Success 200 {object} models.UserMembershipsResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/users/{userId}/memberships [get]
 func (h *UserHandler) GetMemberships(c *gin.Context) {
 	userID, err := parseID(c, "userId")
@@ -367,11 +367,11 @@ func (h *UserHandler) GetMemberships(c *gin.Context) {
 // @Param userId path int true "User ID"
 // @Param request body models.SetSuperAdminRequest true "Superadmin status"
 // @Success 200 {object} models.UserResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/users/{userId}/superadmin [put]
 func (h *UserHandler) SetSuperAdmin(c *gin.Context) {
 	userID, err := parseID(c, "userId")
@@ -401,11 +401,6 @@ func (h *UserHandler) SetSuperAdmin(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
-// AddToOrganizationRequest represents the request body for adding a user to an organization
-type AddToOrganizationRequest struct {
-	OrganizationID uint `json:"organization_id" binding:"required" example:"1"`
-}
-
 // AddToOrganization godoc
 // @Summary Add user to organization
 // @Description Add a user to an organization's default group with member role
@@ -414,12 +409,12 @@ type AddToOrganizationRequest struct {
 // @Produce json
 // @Security BearerAuth
 // @Param userId path int true "User ID"
-// @Param request body AddToOrganizationRequest true "Organization ID"
+// @Param request body models.AddToOrganizationRequest true "Organization ID"
 // @Success 201 {object} models.UserGroupResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/users/{userId}/organizations [post]
 func (h *UserHandler) AddToOrganization(c *gin.Context) {
 	userID, err := parseID(c, "userId")
@@ -428,7 +423,7 @@ func (h *UserHandler) AddToOrganization(c *gin.Context) {
 		return
 	}
 
-	var req AddToOrganizationRequest
+	var req models.AddToOrganizationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
@@ -453,10 +448,10 @@ func (h *UserHandler) AddToOrganization(c *gin.Context) {
 // @Param userId path int true "User ID"
 // @Param orgId path int true "Organization ID"
 // @Success 204 "No Content"
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/users/{userId}/organizations/{orgId} [delete]
 func (h *UserHandler) RemoveFromOrganization(c *gin.Context) {
 	userID, err := parseID(c, "userId")

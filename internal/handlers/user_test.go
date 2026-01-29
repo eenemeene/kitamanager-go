@@ -390,7 +390,7 @@ func TestUserHandler_AddToOrganization(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/users/:userId/organizations", handler.AddToOrganization)
 
-	body := AddToOrganizationRequest{
+	body := models.AddToOrganizationRequest{
 		OrganizationID: org.ID,
 	}
 
@@ -777,7 +777,7 @@ func TestUserHandler_AddToOrganization_InvalidUserID(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/users/:userId/organizations", handler.AddToOrganization)
 
-	body := AddToOrganizationRequest{
+	body := models.AddToOrganizationRequest{
 		OrganizationID: 1,
 	}
 
@@ -799,7 +799,7 @@ func TestUserHandler_AddToOrganization_UserNotFound(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/users/:userId/organizations", handler.AddToOrganization)
 
-	body := AddToOrganizationRequest{
+	body := models.AddToOrganizationRequest{
 		OrganizationID: org.ID,
 	}
 
@@ -1374,7 +1374,7 @@ func TestUserHandler_AddToOrganization_OrgNotFound(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/users/:userId/organizations", handler.AddToOrganization)
 
-	body := AddToOrganizationRequest{
+	body := models.AddToOrganizationRequest{
 		OrganizationID: 999, // Non-existent
 	}
 

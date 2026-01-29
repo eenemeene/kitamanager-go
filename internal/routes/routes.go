@@ -258,6 +258,9 @@ func Setup(
 					children.POST("/:id/contracts",
 						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionCreate),
 						childHandler.CreateContract)
+					children.GET("/:id/contracts/:contractId",
+						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionRead),
+						childHandler.GetContract)
 					children.PUT("/:id/contracts/:contractId",
 						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionUpdate),
 						childHandler.UpdateContract)

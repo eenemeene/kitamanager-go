@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
+import type { User } from '@/api/types'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -108,6 +109,18 @@ router.beforeEach(async (to, _from, next) => {
     // Validate org exists
     if (!uiStore.isValidOrganization(orgId)) {
       // Invalid org ID - redirect to dashboard
+      next('/')
+      return
+    }
+
+    // Check user permission to access this organization
+    const user = authStore.user as User | null
+    const isSuperAdmin = user?.is_superadmin ?? false
+    const hasOrgAccess =
+      isSuperAdmin || (user?.organizations?.some((org) => org.id === orgId) ?? false)
+
+    if (!hasOrgAccess) {
+      // User doesn't have access to this organization
       next('/')
       return
     }

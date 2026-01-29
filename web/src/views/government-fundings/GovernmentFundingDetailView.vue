@@ -15,6 +15,7 @@ import type {
   GovernmentFundingPropertyUpdateRequest
 } from '@/api/types'
 import { flattenGovernmentFundingToRows } from '@/utils/government-funding'
+import { formatDate, formatCurrency, formatDateToISO } from '@/utils/formatting'
 import Button from 'primevue/button'
 import Panel from 'primevue/panel'
 import DataTable from 'primevue/datatable'
@@ -127,13 +128,11 @@ async function savePeriod() {
     return
   }
 
-  const formatDate = (d: Date) => d.toISOString().split('T')[0]
-
   try {
     if (editingPeriod.value) {
       const data: GovernmentFundingPeriodUpdateRequest = {
-        from: formatDate(periodForm.value.from),
-        to: periodForm.value.to ? formatDate(periodForm.value.to) : null,
+        from: formatDateToISO(periodForm.value.from),
+        to: periodForm.value.to ? formatDateToISO(periodForm.value.to) : null,
         comment: periodForm.value.comment || undefined
       }
       await apiClient.updateGovernmentFundingPeriod(
@@ -149,8 +148,8 @@ async function savePeriod() {
       })
     } else {
       const data: GovernmentFundingPeriodCreateRequest = {
-        from: formatDate(periodForm.value.from),
-        to: periodForm.value.to ? formatDate(periodForm.value.to) : undefined,
+        from: formatDateToISO(periodForm.value.from),
+        to: periodForm.value.to ? formatDateToISO(periodForm.value.to) : undefined,
         comment: periodForm.value.comment || undefined
       }
       await apiClient.createGovernmentFundingPeriod(governmentFundingId.value, data)
@@ -338,18 +337,6 @@ function confirmDeleteProperty(periodId: number, property: GovernmentFundingProp
         })
       }
     }
-  })
-}
-
-function formatCurrency(cents: number): string {
-  return (cents / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })
-}
-
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric'
   })
 }
 

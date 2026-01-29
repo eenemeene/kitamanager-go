@@ -5,6 +5,7 @@ import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useI18n } from 'vue-i18n'
 import { apiClient, getErrorMessage } from '@/api/client'
+import { formatDate, formatCurrency, calculateAge } from '@/utils/formatting'
 import type {
   Child,
   ChildCreateRequest,
@@ -67,7 +68,16 @@ async function fetchChildren() {
   try {
     const [childrenResult, fundingResult] = await Promise.all([
       apiClient.getChildren(orgId.value),
-      apiClient.getChildrenFunding(orgId.value).catch(() => ({ date: '', children: [] }))
+      apiClient.getChildrenFunding(orgId.value).catch((error) => {
+        console.warn('Failed to load funding data:', error)
+        toast.add({
+          severity: 'warn',
+          summary: t('common.warning'),
+          detail: t('children.fundingDataUnavailable'),
+          life: 5000
+        })
+        return { date: '', children: [] }
+      })
     ])
     children.value = childrenResult
     fundingData.value = fundingResult.children
@@ -223,14 +233,6 @@ async function saveContract(data: ChildContractCreateRequest, endCurrentContract
   }
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString()
-}
-
-function formatCurrency(cents: number): string {
-  return (cents / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })
-}
-
 function getChildFunding(childId: number): number | null {
   return fundingByChildId.value.get(childId)?.funding ?? null
 }
@@ -243,17 +245,6 @@ function getCurrentContract(child: Child) {
     const to = c.to ? new Date(c.to) : null
     return from <= now && (!to || to >= now)
   })
-}
-
-function calculateAge(birthdate: string): number {
-  const birth = new Date(birthdate)
-  const today = new Date()
-  let age = today.getFullYear() - birth.getFullYear()
-  const monthDiff = today.getMonth() - birth.getMonth()
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-    age--
-  }
-  return age
 }
 
 onMounted(() => {

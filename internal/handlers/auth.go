@@ -9,6 +9,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
+	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/store"
 )
 
@@ -26,42 +27,20 @@ func NewAuthHandler(userStore *store.UserStore, jwtSecret string) *AuthHandler {
 	}
 }
 
-// LoginRequest represents the login request body
-type LoginRequest struct {
-	Email    string `json:"email" binding:"required,email" example:"user@example.com"`
-	Password string `json:"password" binding:"required" example:"secret123"`
-}
-
-// LoginResponse represents the login response
-type LoginResponse struct {
-	Token string `json:"token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
-}
-
-// ErrorResponse represents a structured error response
-type ErrorResponse struct {
-	Code    string `json:"code" example:"not_found"`
-	Message string `json:"message" example:"resource not found"`
-}
-
-// MessageResponse represents a success message response
-type MessageResponse struct {
-	Message string `json:"message" example:"operation successful"`
-}
-
 // Login godoc
 // @Summary Login user
 // @Description Authenticate user with email and password, returns JWT token
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Param request body LoginRequest true "Login credentials"
-// @Success 200 {object} LoginResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Param request body models.LoginRequest true "Login credentials"
+// @Success 200 {object} models.LoginResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
-	var req LoginRequest
+	var req models.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
@@ -103,5 +82,5 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, LoginResponse{Token: tokenString})
+	c.JSON(http.StatusOK, models.LoginResponse{Token: tokenString})
 }

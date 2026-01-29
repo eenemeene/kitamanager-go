@@ -29,9 +29,9 @@ func NewEmployeeHandler(service *service.EmployeeService) *EmployeeHandler {
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(20) maximum(100)
 // @Success 200 {object} models.PaginatedResponse[models.Employee]
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees [get]
 func (h *EmployeeHandler) List(c *gin.Context) {
 	orgID, ok := parseOrgID(c)
@@ -63,9 +63,9 @@ func (h *EmployeeHandler) List(c *gin.Context) {
 // @Param orgId path int true "Organization ID"
 // @Param id path int true "Employee ID"
 // @Success 200 {object} models.Employee
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id} [get]
 func (h *EmployeeHandler) Get(c *gin.Context) {
 	orgID, id, ok := parseOrgAndResourceID(c, "id")
@@ -92,9 +92,9 @@ func (h *EmployeeHandler) Get(c *gin.Context) {
 // @Param orgId path int true "Organization ID"
 // @Param request body models.EmployeeCreateRequest true "Employee data"
 // @Success 201 {object} models.Employee
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees [post]
 func (h *EmployeeHandler) Create(c *gin.Context) {
 	orgID, ok := parseOrgID(c)
@@ -128,10 +128,10 @@ func (h *EmployeeHandler) Create(c *gin.Context) {
 // @Param id path int true "Employee ID"
 // @Param request body models.EmployeeUpdateRequest true "Employee data"
 // @Success 200 {object} models.Employee
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id} [put]
 func (h *EmployeeHandler) Update(c *gin.Context) {
 	orgID, id, ok := parseOrgAndResourceID(c, "id")
@@ -164,9 +164,9 @@ func (h *EmployeeHandler) Update(c *gin.Context) {
 // @Param orgId path int true "Organization ID"
 // @Param id path int true "Employee ID"
 // @Success 204 "No Content"
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id} [delete]
 func (h *EmployeeHandler) Delete(c *gin.Context) {
 	orgID, id, ok := parseOrgAndResourceID(c, "id")
@@ -184,18 +184,20 @@ func (h *EmployeeHandler) Delete(c *gin.Context) {
 
 // ListContracts godoc
 // @Summary List employee contracts
-// @Description Get all contracts for an employee
+// @Description Get paginated contracts for an employee
 // @Tags employees
 // @Accept json
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
 // @Param id path int true "Employee ID"
-// @Success 200 {array} models.EmployeeContract
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page" default(20) maximum(100)
+// @Success 200 {object} models.PaginatedResponse[models.EmployeeContractResponse]
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id}/contracts [get]
 func (h *EmployeeHandler) ListContracts(c *gin.Context) {
 	orgID, id, ok := parseOrgAndResourceID(c, "id")
@@ -203,13 +205,18 @@ func (h *EmployeeHandler) ListContracts(c *gin.Context) {
 		return
 	}
 
-	contracts, err := h.service.ListContracts(c.Request.Context(), id, orgID)
+	params, ok := parsePagination(c)
+	if !ok {
+		return
+	}
+
+	contracts, total, err := h.service.ListContracts(c.Request.Context(), id, orgID, params.Limit, params.Offset())
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, contracts)
+	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(contracts, params.Page, params.Limit, total, c.Request.URL.Path))
 }
 
 // GetCurrentContract godoc
@@ -222,9 +229,9 @@ func (h *EmployeeHandler) ListContracts(c *gin.Context) {
 // @Param orgId path int true "Organization ID"
 // @Param id path int true "Employee ID"
 // @Success 200 {object} models.EmployeeContract
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id}/contracts/current [get]
 func (h *EmployeeHandler) GetCurrentContract(c *gin.Context) {
 	orgID, id, ok := parseOrgAndResourceID(c, "id")
@@ -261,11 +268,11 @@ func (h *EmployeeHandler) GetCurrentContract(c *gin.Context) {
 // @Param id path int true "Employee ID"
 // @Param request body models.EmployeeContractCreateRequest true "Contract data"
 // @Success 201 {object} models.EmployeeContract
-// @Failure 400 {object} ErrorResponse "Invalid request (e.g., from date after to date)"
-// @Failure 401 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse "Employee not found"
-// @Failure 409 {object} ErrorResponse "Contract overlaps with existing contract"
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse "Invalid request (e.g., from date after to date)"
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse "Employee not found"
+// @Failure 409 {object} models.ErrorResponse "Contract overlaps with existing contract"
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id}/contracts [post]
 func (h *EmployeeHandler) CreateContract(c *gin.Context) {
 	orgID, employeeID, ok := parseOrgAndResourceID(c, "id")
@@ -299,9 +306,9 @@ func (h *EmployeeHandler) CreateContract(c *gin.Context) {
 // @Param id path int true "Employee ID"
 // @Param contractId path int true "Contract ID"
 // @Success 200 {object} models.EmployeeContractResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id}/contracts/{contractId} [get]
 func (h *EmployeeHandler) GetContract(c *gin.Context) {
 	orgID, employeeID, contractID, ok := parseOrgResourceAndContractID(c, "id")
@@ -331,11 +338,11 @@ func (h *EmployeeHandler) GetContract(c *gin.Context) {
 // @Param contractId path int true "Contract ID"
 // @Param request body models.EmployeeContractUpdateRequest true "Contract data"
 // @Success 200 {object} models.EmployeeContractResponse
-// @Failure 400 {object} ErrorResponse "Invalid request (e.g., from date after to date)"
-// @Failure 401 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse "Contract not found"
-// @Failure 409 {object} ErrorResponse "Updated dates would overlap with another contract"
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse "Invalid request (e.g., from date after to date)"
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse "Contract not found"
+// @Failure 409 {object} models.ErrorResponse "Updated dates would overlap with another contract"
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id}/contracts/{contractId} [put]
 func (h *EmployeeHandler) UpdateContract(c *gin.Context) {
 	orgID, employeeID, contractID, ok := parseOrgResourceAndContractID(c, "id")
@@ -369,9 +376,9 @@ func (h *EmployeeHandler) UpdateContract(c *gin.Context) {
 // @Param id path int true "Employee ID"
 // @Param contractId path int true "Contract ID"
 // @Success 204 "No Content"
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id}/contracts/{contractId} [delete]
 func (h *EmployeeHandler) DeleteContract(c *gin.Context) {
 	orgID, employeeID, contractID, ok := parseOrgResourceAndContractID(c, "id")
@@ -398,9 +405,9 @@ func (h *EmployeeHandler) DeleteContract(c *gin.Context) {
 // @Param id path int true "Employee ID"
 // @Param contractId path int true "Contract ID"
 // @Success 200 {array} models.EmployeeContractPropertyResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id}/contracts/{contractId}/properties [get]
 func (h *EmployeeHandler) ListContractProperties(c *gin.Context) {
 	orgID, employeeID, contractID, ok := parseOrgResourceAndContractID(c, "id")
@@ -429,11 +436,11 @@ func (h *EmployeeHandler) ListContractProperties(c *gin.Context) {
 // @Param contractId path int true "Contract ID"
 // @Param request body models.EmployeeContractPropertyCreateRequest true "Property data"
 // @Success 201 {object} models.EmployeeContractPropertyResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 409 {object} ErrorResponse "Property with this name already exists"
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 409 {object} models.ErrorResponse "Property with this name already exists"
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id}/contracts/{contractId}/properties [post]
 func (h *EmployeeHandler) CreateContractProperty(c *gin.Context) {
 	orgID, employeeID, contractID, ok := parseOrgResourceAndContractID(c, "id")
@@ -469,10 +476,10 @@ func (h *EmployeeHandler) CreateContractProperty(c *gin.Context) {
 // @Param propId path int true "Property ID"
 // @Param request body models.EmployeeContractPropertyUpdateRequest true "Property data"
 // @Success 200 {object} models.EmployeeContractPropertyResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id}/contracts/{contractId}/properties/{propId} [put]
 func (h *EmployeeHandler) UpdateContractProperty(c *gin.Context) {
 	orgID, employeeID, contractID, propID, ok := parseOrgResourceContractAndPropertyID(c, "id")
@@ -507,10 +514,10 @@ func (h *EmployeeHandler) UpdateContractProperty(c *gin.Context) {
 // @Param contractId path int true "Contract ID"
 // @Param propId path int true "Property ID"
 // @Success 204 "No Content"
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id}/contracts/{contractId}/properties/{propId} [delete]
 func (h *EmployeeHandler) DeleteContractProperty(c *gin.Context) {
 	orgID, employeeID, contractID, propID, ok := parseOrgResourceContractAndPropertyID(c, "id")
