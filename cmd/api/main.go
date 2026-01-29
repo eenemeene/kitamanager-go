@@ -92,6 +92,7 @@ func main() {
 	childStore := store.NewChildStore(db)
 	userGroupStore := store.NewUserGroupStore(db)
 	governmentFundingStore := store.NewGovernmentFundingStore(db)
+	auditStore := store.NewAuditStore(db)
 
 	// Seed admin user if configured
 	if err := seed.SeedAdmin(cfg, userStore, userGroupStore, enforcer); err != nil {
@@ -115,6 +116,7 @@ func main() {
 	permissionService := rbac.NewPermissionService(userGroupStore, enforcer)
 
 	// Initialize services
+	auditService := service.NewAuditService(auditStore)
 	userService := service.NewUserService(userStore, groupStore)
 	userGroupService := service.NewUserGroupService(userGroupStore, userStore, groupStore)
 	orgService := service.NewOrganizationService(orgStore, groupStore)
@@ -124,12 +126,12 @@ func main() {
 	governmentFundingService := service.NewGovernmentFundingService(governmentFundingStore)
 
 	// Initialize handlers
-	authHandler := handlers.NewAuthHandler(userStore, cfg.JWTSecret)
-	userHandler := handlers.NewUserHandler(userService, userGroupService)
+	authHandler := handlers.NewAuthHandler(userStore, cfg.JWTSecret, auditService)
+	userHandler := handlers.NewUserHandler(userService, userGroupService, auditService)
 	groupHandler := handlers.NewGroupHandler(groupService)
-	orgHandler := handlers.NewOrganizationHandler(orgService)
-	employeeHandler := handlers.NewEmployeeHandler(employeeService)
-	childHandler := handlers.NewChildHandler(childService)
+	orgHandler := handlers.NewOrganizationHandler(orgService, auditService)
+	employeeHandler := handlers.NewEmployeeHandler(employeeService, auditService)
+	childHandler := handlers.NewChildHandler(childService, auditService)
 	governmentFundingHandler := handlers.NewGovernmentFundingHandler(governmentFundingService)
 	healthHandler := handlers.NewHealthHandler(db)
 
@@ -144,6 +146,7 @@ func main() {
 	r.Use(middleware.StructuredLogger())
 	r.Use(middleware.SecurityHeaders())
 	r.Use(middleware.BodySizeLimit(middleware.MaxRequestBodySize))
+	r.Use(middleware.RequestTimeout(middleware.DefaultRequestTimeout))
 
 	// Configure CORS
 	r.Use(cors.New(cors.Config{

@@ -53,6 +53,16 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 			return
 		}
 
+		// Verify this is an access token (not a refresh token)
+		// For backwards compatibility, accept tokens without type claim
+		if tokenType, exists := claims["type"]; exists {
+			if tokenType != "access" {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token type"})
+				c.Abort()
+				return
+			}
+		}
+
 		// JWT numbers are parsed as float64, convert to uint
 		userIDFloat, ok := claims["user_id"].(float64)
 		if !ok {

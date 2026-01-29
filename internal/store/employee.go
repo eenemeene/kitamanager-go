@@ -61,6 +61,16 @@ func (s *EmployeeStore) FindByID(id uint) (*models.Employee, error) {
 	return &employee, nil
 }
 
+// FindByIDMinimal returns an employee without preloading relationships.
+// Useful for existence checks and org validation where relationships aren't needed.
+func (s *EmployeeStore) FindByIDMinimal(id uint) (*models.Employee, error) {
+	var employee models.Employee
+	if err := s.db.First(&employee, id).Error; err != nil {
+		return nil, err
+	}
+	return &employee, nil
+}
+
 func (s *EmployeeStore) Create(employee *models.Employee) error {
 	return s.db.Create(employee).Error
 }

@@ -12,7 +12,7 @@ import (
 func TestEmployeeHandler_List(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -43,7 +43,7 @@ func TestEmployeeHandler_List(t *testing.T) {
 func TestEmployeeHandler_Get(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := &models.Employee{
@@ -71,7 +71,7 @@ func TestEmployeeHandler_Get(t *testing.T) {
 func TestEmployeeHandler_Get_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
@@ -96,7 +96,7 @@ func TestEmployeeHandler_Get_WrongOrg(t *testing.T) {
 func TestEmployeeHandler_Create(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -130,7 +130,7 @@ func TestEmployeeHandler_Create(t *testing.T) {
 func TestEmployeeHandler_Update(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := &models.Employee{
@@ -163,7 +163,7 @@ func TestEmployeeHandler_Update(t *testing.T) {
 func TestEmployeeHandler_Update_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
@@ -200,7 +200,7 @@ func TestEmployeeHandler_Update_WrongOrg(t *testing.T) {
 func TestEmployeeHandler_Delete(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := &models.Employee{
@@ -221,7 +221,7 @@ func TestEmployeeHandler_Delete(t *testing.T) {
 func TestEmployeeHandler_Delete_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
@@ -252,7 +252,7 @@ func TestEmployeeHandler_Delete_WrongOrg(t *testing.T) {
 func TestEmployeeHandler_ListContracts(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := &models.Employee{
@@ -287,7 +287,7 @@ func TestEmployeeHandler_ListContracts(t *testing.T) {
 func TestEmployeeHandler_ListContracts_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
@@ -319,7 +319,7 @@ func TestEmployeeHandler_ListContracts_WrongOrg(t *testing.T) {
 func TestEmployeeHandler_GetCurrentContract(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := &models.Employee{
@@ -354,7 +354,7 @@ func TestEmployeeHandler_GetCurrentContract(t *testing.T) {
 func TestEmployeeHandler_GetCurrentContract_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
@@ -386,7 +386,7 @@ func TestEmployeeHandler_GetCurrentContract_WrongOrg(t *testing.T) {
 func TestEmployeeHandler_GetCurrentContract_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := &models.Employee{
@@ -407,7 +407,7 @@ func TestEmployeeHandler_GetCurrentContract_NotFound(t *testing.T) {
 func TestEmployeeHandler_CreateContract(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := &models.Employee{
@@ -443,7 +443,7 @@ func TestEmployeeHandler_CreateContract(t *testing.T) {
 func TestEmployeeHandler_CreateContract_SameDay(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := &models.Employee{
@@ -487,7 +487,7 @@ func TestEmployeeHandler_CreateContract_SameDay(t *testing.T) {
 func TestEmployeeHandler_CreateContract_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
@@ -527,7 +527,7 @@ func TestEmployeeHandler_CreateContract_WrongOrg(t *testing.T) {
 func TestEmployeeHandler_CreateContract_Overlap(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := &models.Employee{
@@ -564,7 +564,7 @@ func TestEmployeeHandler_CreateContract_Overlap(t *testing.T) {
 func TestEmployeeHandler_DeleteContract(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := &models.Employee{
@@ -592,7 +592,7 @@ func TestEmployeeHandler_DeleteContract(t *testing.T) {
 func TestEmployeeHandler_DeleteContract_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
@@ -630,7 +630,7 @@ func TestEmployeeHandler_DeleteContract_WrongOrg(t *testing.T) {
 func TestEmployeeHandler_DeleteContract_WrongEmployee(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -675,7 +675,7 @@ func TestEmployeeHandler_DeleteContract_WrongEmployee(t *testing.T) {
 func TestEmployeeHandler_Get_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -692,7 +692,7 @@ func TestEmployeeHandler_Get_NotFound(t *testing.T) {
 func TestEmployeeHandler_Get_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -709,7 +709,7 @@ func TestEmployeeHandler_Get_InvalidID(t *testing.T) {
 func TestEmployeeHandler_Get_ZeroID(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -726,7 +726,7 @@ func TestEmployeeHandler_Get_ZeroID(t *testing.T) {
 func TestEmployeeHandler_Get_InvalidOrgID(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/employees/:id", handler.Get)
@@ -741,7 +741,7 @@ func TestEmployeeHandler_Get_InvalidOrgID(t *testing.T) {
 func TestEmployeeHandler_Create_MissingRequiredFields(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -761,7 +761,7 @@ func TestEmployeeHandler_Create_MissingRequiredFields(t *testing.T) {
 func TestEmployeeHandler_Create_InvalidOrganizationID(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	r := setupTestRouter()
 	r.POST("/organizations/:orgId/employees", handler.Create)
@@ -776,7 +776,7 @@ func TestEmployeeHandler_Create_InvalidOrganizationID(t *testing.T) {
 func TestEmployeeHandler_Create_EmptyFirstName(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -800,7 +800,7 @@ func TestEmployeeHandler_Create_EmptyFirstName(t *testing.T) {
 func TestEmployeeHandler_Create_EmptyLastName(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -824,7 +824,7 @@ func TestEmployeeHandler_Create_EmptyLastName(t *testing.T) {
 func TestEmployeeHandler_Update_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -846,7 +846,7 @@ func TestEmployeeHandler_Update_NotFound(t *testing.T) {
 func TestEmployeeHandler_Update_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -868,7 +868,7 @@ func TestEmployeeHandler_Update_InvalidID(t *testing.T) {
 func TestEmployeeHandler_Update_EmptyBody(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := &models.Employee{
@@ -899,7 +899,7 @@ func TestEmployeeHandler_Update_EmptyBody(t *testing.T) {
 func TestEmployeeHandler_Delete_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -917,7 +917,7 @@ func TestEmployeeHandler_Delete_NotFound(t *testing.T) {
 func TestEmployeeHandler_Delete_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -934,7 +934,7 @@ func TestEmployeeHandler_Delete_InvalidID(t *testing.T) {
 func TestEmployeeHandler_List_Empty(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -958,7 +958,7 @@ func TestEmployeeHandler_List_Empty(t *testing.T) {
 func TestEmployeeHandler_List_IsolatesOrganizations(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
@@ -1016,7 +1016,7 @@ func TestEmployeeHandler_List_IsolatesOrganizations(t *testing.T) {
 func TestEmployeeHandler_ListContracts_EmployeeNotFound(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1033,7 +1033,7 @@ func TestEmployeeHandler_ListContracts_EmployeeNotFound(t *testing.T) {
 func TestEmployeeHandler_ListContracts_Empty(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := &models.Employee{
@@ -1061,7 +1061,7 @@ func TestEmployeeHandler_ListContracts_Empty(t *testing.T) {
 func TestEmployeeHandler_CreateContract_EmployeeNotFound(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1085,7 +1085,7 @@ func TestEmployeeHandler_CreateContract_EmployeeNotFound(t *testing.T) {
 func TestEmployeeHandler_CreateContract_InvalidEmployeeID(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1109,7 +1109,7 @@ func TestEmployeeHandler_CreateContract_InvalidEmployeeID(t *testing.T) {
 func TestEmployeeHandler_CreateContract_MissingPosition(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := &models.Employee{
@@ -1137,7 +1137,7 @@ func TestEmployeeHandler_CreateContract_MissingPosition(t *testing.T) {
 func TestEmployeeHandler_CreateContract_ZeroWeeklyHours(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := &models.Employee{
@@ -1166,7 +1166,7 @@ func TestEmployeeHandler_CreateContract_ContractBoundaryTouch(t *testing.T) {
 	// This is the correct way to transition between contracts.
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := &models.Employee{
@@ -1207,7 +1207,7 @@ func TestEmployeeHandler_CreateContract_SameDayTransitionRejected(t *testing.T) 
 	// both contracts are active on that day, which is not allowed.
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := &models.Employee{
@@ -1245,7 +1245,7 @@ func TestEmployeeHandler_CreateContract_SameDayTransitionRejected(t *testing.T) 
 func TestEmployeeHandler_DeleteContract_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := &models.Employee{
@@ -1267,7 +1267,7 @@ func TestEmployeeHandler_DeleteContract_NotFound(t *testing.T) {
 func TestEmployeeHandler_DeleteContract_InvalidContractID(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := &models.Employee{
@@ -1288,7 +1288,7 @@ func TestEmployeeHandler_DeleteContract_InvalidContractID(t *testing.T) {
 func TestEmployeeHandler_GetCurrentContract_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1307,7 +1307,7 @@ func TestEmployeeHandler_GetCurrentContract_InvalidID(t *testing.T) {
 func TestEmployeeHandler_Create_FutureBirthdate(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1331,7 +1331,7 @@ func TestEmployeeHandler_Create_FutureBirthdate(t *testing.T) {
 func TestEmployeeHandler_Create_WhitespaceOnlyFirstName(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1355,7 +1355,7 @@ func TestEmployeeHandler_Create_WhitespaceOnlyFirstName(t *testing.T) {
 func TestEmployeeHandler_Create_WhitespaceOnlyLastName(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1379,7 +1379,7 @@ func TestEmployeeHandler_Create_WhitespaceOnlyLastName(t *testing.T) {
 func TestEmployeeHandler_CreateContract_FromAfterTo(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := &models.Employee{
@@ -1409,7 +1409,7 @@ func TestEmployeeHandler_CreateContract_FromAfterTo(t *testing.T) {
 func TestEmployeeHandler_CreateContract_NegativeWeeklyHours(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := &models.Employee{
@@ -1437,7 +1437,7 @@ func TestEmployeeHandler_CreateContract_NegativeWeeklyHours(t *testing.T) {
 func TestEmployeeHandler_CreateContract_WeeklyHoursOver168(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := &models.Employee{
@@ -1465,7 +1465,7 @@ func TestEmployeeHandler_CreateContract_WeeklyHoursOver168(t *testing.T) {
 func TestEmployeeHandler_CreateContract_NegativeSalary(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := &models.Employee{
@@ -1493,7 +1493,7 @@ func TestEmployeeHandler_CreateContract_NegativeSalary(t *testing.T) {
 func TestEmployeeHandler_CreateContract_WhitespacePosition(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
-	handler := NewEmployeeHandler(employeeService)
+	handler := NewEmployeeHandler(employeeService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := &models.Employee{

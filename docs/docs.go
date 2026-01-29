@@ -978,7 +978,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers.OrganizationCreateRequest"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.OrganizationCreateRequest"
                         }
                     }
                 ],
@@ -1095,7 +1095,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers.OrganizationUpdateRequest"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.OrganizationUpdateRequest"
                         }
                     }
                 ],
@@ -3687,6 +3687,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/refresh": {
+            "post": {
+                "description": "Exchange a valid refresh token for new access and refresh tokens",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Refresh access token",
+                "parameters": [
+                    {
+                        "description": "Refresh token",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.RefreshRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/users": {
             "get": {
                 "security": [
@@ -5590,6 +5642,14 @@ const docTemplate = `{
         "github_com_eenemeene_kitamanager-go_internal_models.LoginResponse": {
             "type": "object",
             "properties": {
+                "expires_in": {
+                    "type": "integer",
+                    "example": 3600
+                },
+                "refresh_token": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                },
                 "token": {
                     "type": "string",
                     "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
@@ -5635,6 +5695,46 @@ const docTemplate = `{
                 "updated_at": {
                     "type": "string",
                     "example": "2024-01-15T10:30:00Z"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.OrganizationCreateRequest": {
+            "type": "object",
+            "required": [
+                "name",
+                "state"
+            ],
+            "properties": {
+                "active": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "Acme Corp"
+                },
+                "state": {
+                    "type": "string",
+                    "example": "berlin"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.OrganizationUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "Acme Corp Updated"
+                },
+                "state": {
+                    "type": "string",
+                    "example": "berlin"
                 }
             }
         },
@@ -5900,6 +6000,18 @@ const docTemplate = `{
                 "self": {
                     "type": "string",
                     "example": "/api/v1/users?page=2\u0026limit=20"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.RefreshRequest": {
+            "type": "object",
+            "required": [
+                "refresh_token"
+            ],
+            "properties": {
+                "refresh_token": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                 }
             }
         },
@@ -6228,46 +6340,6 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255,
                     "example": "Administrators Updated"
-                }
-            }
-        },
-        "internal_handlers.OrganizationCreateRequest": {
-            "type": "object",
-            "required": [
-                "name",
-                "state"
-            ],
-            "properties": {
-                "active": {
-                    "type": "boolean",
-                    "example": true
-                },
-                "name": {
-                    "type": "string",
-                    "maxLength": 255,
-                    "example": "Acme Corp"
-                },
-                "state": {
-                    "type": "string",
-                    "example": "berlin"
-                }
-            }
-        },
-        "internal_handlers.OrganizationUpdateRequest": {
-            "type": "object",
-            "properties": {
-                "active": {
-                    "type": "boolean",
-                    "example": false
-                },
-                "name": {
-                    "type": "string",
-                    "maxLength": 255,
-                    "example": "Acme Corp Updated"
-                },
-                "state": {
-                    "type": "string",
-                    "example": "berlin"
                 }
             }
         }

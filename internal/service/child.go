@@ -155,8 +155,8 @@ func (s *ChildService) Update(ctx context.Context, id, orgID uint, req *models.C
 
 // Delete deletes a child, validating it belongs to the specified organization
 func (s *ChildService) Delete(ctx context.Context, id, orgID uint) error {
-	// Security: Validate child belongs to the specified organization
-	child, err := s.store.FindByID(id)
+	// Security: Validate child belongs to the specified organization (use minimal query - no preloads needed)
+	child, err := s.store.FindByIDMinimal(id)
 	if err != nil {
 		return apperror.NotFound("child")
 	}
@@ -172,8 +172,8 @@ func (s *ChildService) Delete(ctx context.Context, id, orgID uint) error {
 
 // ListContracts returns paginated contract history for a child, validating it belongs to the specified organization
 func (s *ChildService) ListContracts(ctx context.Context, childID, orgID uint, limit, offset int) ([]models.ChildContractResponse, int64, error) {
-	// Verify child exists and belongs to org
-	child, err := s.store.FindByID(childID)
+	// Verify child exists and belongs to org (use minimal query - no preloads needed)
+	child, err := s.store.FindByIDMinimal(childID)
 	if err != nil {
 		return nil, 0, apperror.NotFound("child")
 	}
@@ -196,8 +196,8 @@ func (s *ChildService) ListContracts(ctx context.Context, childID, orgID uint, l
 
 // GetCurrentContract returns the current active contract for a child, validating it belongs to the specified organization
 func (s *ChildService) GetCurrentContract(ctx context.Context, childID, orgID uint) (*models.ChildContractResponse, error) {
-	// Security: Validate child belongs to the specified organization
-	child, err := s.store.FindByID(childID)
+	// Security: Validate child belongs to the specified organization (use minimal query - no preloads needed)
+	child, err := s.store.FindByIDMinimal(childID)
 	if err != nil {
 		return nil, apperror.NotFound("child")
 	}
@@ -218,8 +218,8 @@ func (s *ChildService) GetCurrentContract(ctx context.Context, childID, orgID ui
 
 // GetContractByID returns a contract by ID, validating ownership
 func (s *ChildService) GetContractByID(ctx context.Context, contractID, childID, orgID uint) (*models.ChildContractResponse, error) {
-	// Security: Validate child belongs to the specified organization
-	child, err := s.store.FindByID(childID)
+	// Security: Validate child belongs to the specified organization (use minimal query - no preloads needed)
+	child, err := s.store.FindByIDMinimal(childID)
 	if err != nil {
 		return nil, apperror.NotFound("child")
 	}
@@ -247,8 +247,8 @@ func (s *ChildService) CreateContract(ctx context.Context, childID, orgID uint, 
 		return nil, apperror.BadRequest(err.Error())
 	}
 
-	// Verify child exists and belongs to org
-	child, err := s.store.FindByID(childID)
+	// Verify child exists and belongs to org (use minimal query - no preloads needed)
+	child, err := s.store.FindByIDMinimal(childID)
 	if err != nil {
 		return nil, apperror.NotFound("child")
 	}
@@ -284,8 +284,8 @@ func (s *ChildService) CreateContract(ctx context.Context, childID, orgID uint, 
 
 // UpdateContract updates an existing contract, validating it belongs to a child in the specified organization
 func (s *ChildService) UpdateContract(ctx context.Context, contractID, childID, orgID uint, req *models.ChildContractUpdateRequest) (*models.ChildContractResponse, error) {
-	// Security: Validate child belongs to the specified organization
-	child, err := s.store.FindByID(childID)
+	// Security: Validate child belongs to the specified organization (use minimal query - no preloads needed)
+	child, err := s.store.FindByIDMinimal(childID)
 	if err != nil {
 		return nil, apperror.NotFound("child")
 	}
@@ -336,8 +336,8 @@ func (s *ChildService) UpdateContract(ctx context.Context, contractID, childID, 
 
 // DeleteContract deletes a contract, validating it belongs to a child in the specified organization
 func (s *ChildService) DeleteContract(ctx context.Context, contractID, childID, orgID uint) error {
-	// Security: Validate child belongs to the specified organization
-	child, err := s.store.FindByID(childID)
+	// Security: Validate child belongs to the specified organization (use minimal query - no preloads needed)
+	child, err := s.store.FindByIDMinimal(childID)
 	if err != nil {
 		return apperror.NotFound("child")
 	}

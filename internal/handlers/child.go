@@ -12,11 +12,15 @@ import (
 )
 
 type ChildHandler struct {
-	service *service.ChildService
+	service      *service.ChildService
+	auditService *service.AuditService
 }
 
-func NewChildHandler(service *service.ChildService) *ChildHandler {
-	return &ChildHandler{service: service}
+func NewChildHandler(service *service.ChildService, auditService *service.AuditService) *ChildHandler {
+	return &ChildHandler{
+		service:      service,
+		auditService: auditService,
+	}
 }
 
 // List godoc
@@ -175,10 +179,21 @@ func (h *ChildHandler) Delete(c *gin.Context) {
 		return
 	}
 
+	// Get child info before deletion for audit log
+	child, err := h.service.GetByID(c.Request.Context(), id, orgID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	if err := h.service.Delete(c.Request.Context(), id, orgID); err != nil {
 		respondError(c, err)
 		return
 	}
+
+	// Audit log child deletion
+	actorID := getUserID(c)
+	h.auditService.LogResourceDelete(actorID, "child", id, child.FirstName+" "+child.LastName, c.ClientIP())
 
 	c.JSON(http.StatusNoContent, nil)
 }

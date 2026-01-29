@@ -806,6 +806,12 @@ definitions:
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.LoginResponse:
     properties:
+      expires_in:
+        example: 3600
+        type: integer
+      refresh_token:
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
       token:
         example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         type: string
@@ -839,6 +845,35 @@ definitions:
         type: string
     required:
     - name
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.OrganizationCreateRequest:
+    properties:
+      active:
+        example: true
+        type: boolean
+      name:
+        example: Acme Corp
+        maxLength: 255
+        type: string
+      state:
+        example: berlin
+        type: string
+    required:
+    - name
+    - state
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.OrganizationUpdateRequest:
+    properties:
+      active:
+        example: false
+        type: boolean
+      name:
+        example: Acme Corp Updated
+        maxLength: 255
+        type: string
+      state:
+        example: berlin
+        type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_Child:
     properties:
@@ -1025,6 +1060,14 @@ definitions:
       self:
         example: /api/v1/users?page=2&limit=20
         type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.RefreshRequest:
+    properties:
+      refresh_token:
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
+    required:
+    - refresh_token
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.Role:
     enum:
@@ -1252,35 +1295,6 @@ definitions:
       name:
         example: Administrators Updated
         maxLength: 255
-        type: string
-    type: object
-  internal_handlers.OrganizationCreateRequest:
-    properties:
-      active:
-        example: true
-        type: boolean
-      name:
-        example: Acme Corp
-        maxLength: 255
-        type: string
-      state:
-        example: berlin
-        type: string
-    required:
-    - name
-    - state
-    type: object
-  internal_handlers.OrganizationUpdateRequest:
-    properties:
-      active:
-        example: false
-        type: boolean
-      name:
-        example: Acme Corp Updated
-        maxLength: 255
-        type: string
-      state:
-        example: berlin
         type: string
     type: object
 host: localhost:8080
@@ -1913,7 +1927,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_handlers.OrganizationCreateRequest'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.OrganizationCreateRequest'
       produces:
       - application/json
       responses:
@@ -2020,7 +2034,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_handlers.OrganizationUpdateRequest'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.OrganizationUpdateRequest'
       produces:
       - application/json
       responses:
@@ -3711,6 +3725,40 @@ paths:
       summary: Readiness check
       tags:
       - health
+  /api/v1/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Exchange a valid refresh token for new access and refresh tokens
+      parameters:
+      - description: Refresh token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.RefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      summary: Refresh access token
+      tags:
+      - auth
   /api/v1/users:
     get:
       consumes:

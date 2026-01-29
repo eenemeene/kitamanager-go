@@ -43,7 +43,8 @@ func (s *ChildStore) FindByOrganization(orgID uint, limit, offset int) ([]models
 		return nil, 0, err
 	}
 
-	if err := s.db.Preload("Contracts").Where("organization_id = ?", orgID).Limit(limit).Offset(offset).Find(&children).Error; err != nil {
+	// Don't preload Contracts for list view - fetch them separately when needed
+	if err := s.db.Where("organization_id = ?", orgID).Limit(limit).Offset(offset).Find(&children).Error; err != nil {
 		return nil, 0, err
 	}
 
@@ -58,6 +59,16 @@ func (s *ChildStore) Contracts() ContractStorer[models.ChildContract] {
 func (s *ChildStore) FindByID(id uint) (*models.Child, error) {
 	var child models.Child
 	if err := s.db.Preload("Organization").Preload("Contracts").First(&child, id).Error; err != nil {
+		return nil, err
+	}
+	return &child, nil
+}
+
+// FindByIDMinimal returns a child without preloading relationships.
+// Useful for existence checks and org validation where relationships aren't needed.
+func (s *ChildStore) FindByIDMinimal(id uint) (*models.Child, error) {
+	var child models.Child
+	if err := s.db.First(&child, id).Error; err != nil {
 		return nil, err
 	}
 	return &child, nil

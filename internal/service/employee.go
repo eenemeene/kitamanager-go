@@ -165,8 +165,8 @@ func (s *EmployeeService) Delete(ctx context.Context, id, orgID uint) error {
 
 // ListContracts returns paginated contract history for an employee, validating it belongs to the specified organization
 func (s *EmployeeService) ListContracts(ctx context.Context, employeeID, orgID uint, limit, offset int) ([]models.EmployeeContractResponse, int64, error) {
-	// Verify employee exists and belongs to org
-	employee, err := s.store.FindByID(employeeID)
+	// Verify employee exists and belongs to org (use minimal query - no preloads needed)
+	employee, err := s.store.FindByIDMinimal(employeeID)
 	if err != nil {
 		return nil, 0, apperror.NotFound("employee")
 	}
@@ -189,8 +189,8 @@ func (s *EmployeeService) ListContracts(ctx context.Context, employeeID, orgID u
 
 // GetCurrentContract returns the current active contract for an employee, validating it belongs to the specified organization
 func (s *EmployeeService) GetCurrentContract(ctx context.Context, employeeID, orgID uint) (*models.EmployeeContractResponse, error) {
-	// Security: Validate employee belongs to the specified organization
-	employee, err := s.store.FindByID(employeeID)
+	// Security: Validate employee belongs to the specified organization (use minimal query - no preloads needed)
+	employee, err := s.store.FindByIDMinimal(employeeID)
 	if err != nil {
 		return nil, apperror.NotFound("employee")
 	}
@@ -227,8 +227,8 @@ func (s *EmployeeService) CreateContract(ctx context.Context, employeeID, orgID 
 		return nil, apperror.BadRequest(err.Error())
 	}
 
-	// Verify employee exists and belongs to org
-	employee, err := s.store.FindByID(employeeID)
+	// Verify employee exists and belongs to org (use minimal query - no preloads needed)
+	employee, err := s.store.FindByIDMinimal(employeeID)
 	if err != nil {
 		return nil, apperror.NotFound("employee")
 	}
@@ -266,8 +266,8 @@ func (s *EmployeeService) CreateContract(ctx context.Context, employeeID, orgID 
 
 // DeleteContract deletes a contract, validating it belongs to an employee in the specified organization
 func (s *EmployeeService) DeleteContract(ctx context.Context, contractID, employeeID, orgID uint) error {
-	// Security: Validate employee belongs to the specified organization
-	employee, err := s.store.FindByID(employeeID)
+	// Security: Validate employee belongs to the specified organization (use minimal query - no preloads needed)
+	employee, err := s.store.FindByIDMinimal(employeeID)
 	if err != nil {
 		return apperror.NotFound("employee")
 	}
@@ -292,8 +292,8 @@ func (s *EmployeeService) DeleteContract(ctx context.Context, contractID, employ
 
 // GetContractByID returns a contract by ID with properties, validating ownership
 func (s *EmployeeService) GetContractByID(ctx context.Context, contractID, employeeID, orgID uint) (*models.EmployeeContractResponse, error) {
-	// Security: Validate employee belongs to the specified organization
-	employee, err := s.store.FindByID(employeeID)
+	// Security: Validate employee belongs to the specified organization (use minimal query - no preloads needed)
+	employee, err := s.store.FindByIDMinimal(employeeID)
 	if err != nil {
 		return nil, apperror.NotFound("employee")
 	}
@@ -316,8 +316,8 @@ func (s *EmployeeService) GetContractByID(ctx context.Context, contractID, emplo
 
 // UpdateContract updates an existing contract, validating ownership
 func (s *EmployeeService) UpdateContract(ctx context.Context, contractID, employeeID, orgID uint, req *models.EmployeeContractUpdateRequest) (*models.EmployeeContractResponse, error) {
-	// Security: Validate employee belongs to the specified organization
-	employee, err := s.store.FindByID(employeeID)
+	// Security: Validate employee belongs to the specified organization (use minimal query - no preloads needed)
+	employee, err := s.store.FindByIDMinimal(employeeID)
 	if err != nil {
 		return nil, apperror.NotFound("employee")
 	}
@@ -392,8 +392,8 @@ func (s *EmployeeService) UpdateContract(ctx context.Context, contractID, employ
 
 // validateContractOwnership validates that a contract belongs to an employee in the specified organization
 func (s *EmployeeService) validateContractOwnership(employeeID, contractID, orgID uint) error {
-	// Security: Validate employee belongs to the specified organization
-	employee, err := s.store.FindByID(employeeID)
+	// Security: Validate employee belongs to the specified organization (use minimal query - no preloads needed)
+	employee, err := s.store.FindByIDMinimal(employeeID)
 	if err != nil {
 		return apperror.NotFound("employee")
 	}

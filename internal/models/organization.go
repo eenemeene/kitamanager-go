@@ -37,3 +37,17 @@ func (o *Organization) ToResponse() OrganizationResponse {
 		UpdatedAt: o.UpdatedAt,
 	}
 }
+
+// OrganizationCreateRequest represents the request body for creating an organization
+type OrganizationCreateRequest struct {
+	Name   string `json:"name" binding:"required,max=255" example:"Acme Corp"`
+	Active bool   `json:"active" example:"true"`
+	State  string `json:"state" binding:"required" example:"berlin"`
+}
+
+// OrganizationUpdateRequest represents the request body for updating an organization
+type OrganizationUpdateRequest struct {
+	Name   string  `json:"name" binding:"omitempty,max=255" example:"Acme Corp Updated"`
+	Active *bool   `json:"active" example:"false"`
+	State  *string `json:"state" binding:"omitempty" example:"berlin"`
+}

@@ -12,9 +12,16 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required" example:"secret123"`
 }
 
-// LoginResponse represents the login response
+// LoginResponse represents the login response with access and refresh tokens
 type LoginResponse struct {
-	Token string `json:"token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+	Token        string `json:"token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+	RefreshToken string `json:"refresh_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+	ExpiresIn    int64  `json:"expires_in" example:"3600"`
+}
+
+// RefreshRequest represents the token refresh request body
+type RefreshRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
 }
 
 // MessageResponse represents a success message response

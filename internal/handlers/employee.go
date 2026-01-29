@@ -11,11 +11,15 @@ import (
 )
 
 type EmployeeHandler struct {
-	service *service.EmployeeService
+	service      *service.EmployeeService
+	auditService *service.AuditService
 }
 
-func NewEmployeeHandler(service *service.EmployeeService) *EmployeeHandler {
-	return &EmployeeHandler{service: service}
+func NewEmployeeHandler(service *service.EmployeeService, auditService *service.AuditService) *EmployeeHandler {
+	return &EmployeeHandler{
+		service:      service,
+		auditService: auditService,
+	}
 }
 
 // List godoc
@@ -174,10 +178,21 @@ func (h *EmployeeHandler) Delete(c *gin.Context) {
 		return
 	}
 
+	// Get employee info before deletion for audit log
+	employee, err := h.service.GetByID(c.Request.Context(), id, orgID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	if err := h.service.Delete(c.Request.Context(), id, orgID); err != nil {
 		respondError(c, err)
 		return
 	}
+
+	// Audit log employee deletion
+	actorID := getUserID(c)
+	h.auditService.LogResourceDelete(actorID, "employee", id, employee.FirstName+" "+employee.LastName, c.ClientIP())
 
 	c.JSON(http.StatusNoContent, nil)
 }

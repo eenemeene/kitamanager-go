@@ -11,11 +11,15 @@ import (
 )
 
 type OrganizationHandler struct {
-	service *service.OrganizationService
+	service      *service.OrganizationService
+	auditService *service.AuditService
 }
 
-func NewOrganizationHandler(service *service.OrganizationService) *OrganizationHandler {
-	return &OrganizationHandler{service: service}
+func NewOrganizationHandler(service *service.OrganizationService, auditService *service.AuditService) *OrganizationHandler {
+	return &OrganizationHandler{
+		service:      service,
+		auditService: auditService,
+	}
 }
 
 // List godoc
@@ -75,13 +79,6 @@ func (h *OrganizationHandler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, organization)
 }
 
-// OrganizationCreateRequest represents the request body for creating an organization
-type OrganizationCreateRequest struct {
-	Name   string `json:"name" binding:"required,max=255" example:"Acme Corp"`
-	Active bool   `json:"active" example:"true"`
-	State  string `json:"state" binding:"required" example:"berlin"`
-}
-
 // Create godoc
 // @Summary Create a new organization
 // @Description Create a new organization
@@ -89,14 +86,14 @@ type OrganizationCreateRequest struct {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param request body OrganizationCreateRequest true "Organization data"
+// @Param request body models.OrganizationCreateRequest true "Organization data"
 // @Success 201 {object} models.Organization
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations [post]
 func (h *OrganizationHandler) Create(c *gin.Context) {
-	var req OrganizationCreateRequest
+	var req models.OrganizationCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
@@ -112,14 +109,11 @@ func (h *OrganizationHandler) Create(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, organization)
-}
+	// Audit log organization creation
+	actorID := getUserID(c)
+	h.auditService.LogOrgCreate(actorID, organization.ID, organization.Name, c.ClientIP())
 
-// OrganizationUpdateRequest represents the request body for updating an organization
-type OrganizationUpdateRequest struct {
-	Name   string  `json:"name" binding:"omitempty,max=255" example:"Acme Corp Updated"`
-	Active *bool   `json:"active" example:"false"`
-	State  *string `json:"state" binding:"omitempty" example:"berlin"`
+	c.JSON(http.StatusCreated, organization)
 }
 
 // Update godoc
@@ -130,7 +124,7 @@ type OrganizationUpdateRequest struct {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param request body OrganizationUpdateRequest true "Organization data"
+// @Param request body models.OrganizationUpdateRequest true "Organization data"
 // @Success 200 {object} models.Organization
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
@@ -144,7 +138,7 @@ func (h *OrganizationHandler) Update(c *gin.Context) {
 		return
 	}
 
-	var req OrganizationUpdateRequest
+	var req models.OrganizationUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
@@ -183,10 +177,21 @@ func (h *OrganizationHandler) Delete(c *gin.Context) {
 		return
 	}
 
+	// Get org info before deletion for audit log
+	org, err := h.service.GetByID(c.Request.Context(), id)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	if err := h.service.Delete(c.Request.Context(), id); err != nil {
 		respondError(c, err)
 		return
 	}
+
+	// Audit log organization deletion
+	actorID := getUserID(c)
+	h.auditService.LogResourceDelete(actorID, "organization", id, org.Name, c.ClientIP())
 
 	c.JSON(http.StatusNoContent, nil)
 }

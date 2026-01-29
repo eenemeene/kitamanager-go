@@ -12,7 +12,7 @@ import (
 func TestChildHandler_List(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -43,7 +43,7 @@ func TestChildHandler_List(t *testing.T) {
 func TestChildHandler_Get(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	db.Create(&models.Child{
@@ -70,7 +70,7 @@ func TestChildHandler_Get(t *testing.T) {
 func TestChildHandler_Create(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -104,7 +104,7 @@ func TestChildHandler_Create(t *testing.T) {
 func TestChildHandler_Update(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	db.Create(&models.Child{
@@ -136,7 +136,7 @@ func TestChildHandler_Update(t *testing.T) {
 func TestChildHandler_Delete(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	db.Create(&models.Child{
@@ -156,7 +156,7 @@ func TestChildHandler_Delete(t *testing.T) {
 func TestChildHandler_ListContracts(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	child := &models.Child{
@@ -189,7 +189,7 @@ func TestChildHandler_ListContracts(t *testing.T) {
 func TestChildHandler_GetCurrentContract(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	child := &models.Child{
@@ -223,7 +223,7 @@ func TestChildHandler_GetCurrentContract(t *testing.T) {
 func TestChildHandler_GetCurrentContract_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	child := &models.Child{
@@ -244,7 +244,7 @@ func TestChildHandler_GetCurrentContract_NotFound(t *testing.T) {
 func TestChildHandler_CreateContract(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	child := &models.Child{
@@ -278,7 +278,7 @@ func TestChildHandler_CreateContract(t *testing.T) {
 func TestChildHandler_CreateContract_SameDay(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	child := &models.Child{
@@ -317,7 +317,7 @@ func TestChildHandler_CreateContract_SameDay(t *testing.T) {
 func TestChildHandler_CreateContract_Overlap(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	child := &models.Child{
@@ -352,7 +352,7 @@ func TestChildHandler_CreateContract_Overlap(t *testing.T) {
 func TestChildHandler_DeleteContract(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	child := &models.Child{
@@ -381,7 +381,7 @@ func TestChildHandler_DeleteContract(t *testing.T) {
 func TestChildHandler_Get_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	_ = org
@@ -399,7 +399,7 @@ func TestChildHandler_Get_NotFound(t *testing.T) {
 func TestChildHandler_Get_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	createTestOrganization(t, db, "Test Org")
 
@@ -416,7 +416,7 @@ func TestChildHandler_Get_InvalidID(t *testing.T) {
 func TestChildHandler_Get_ZeroID(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	createTestOrganization(t, db, "Test Org")
 
@@ -433,7 +433,7 @@ func TestChildHandler_Get_ZeroID(t *testing.T) {
 func TestChildHandler_Create_MissingRequiredFields(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	createTestOrganization(t, db, "Test Org")
 
@@ -452,7 +452,7 @@ func TestChildHandler_Create_MissingRequiredFields(t *testing.T) {
 func TestChildHandler_Create_EmptyFirstName(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	createTestOrganization(t, db, "Test Org")
 
@@ -476,7 +476,7 @@ func TestChildHandler_Create_EmptyFirstName(t *testing.T) {
 func TestChildHandler_Create_EmptyLastName(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	createTestOrganization(t, db, "Test Org")
 
@@ -500,7 +500,7 @@ func TestChildHandler_Create_EmptyLastName(t *testing.T) {
 func TestChildHandler_Update_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	createTestOrganization(t, db, "Test Org")
 
@@ -522,7 +522,7 @@ func TestChildHandler_Update_NotFound(t *testing.T) {
 func TestChildHandler_Update_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	createTestOrganization(t, db, "Test Org")
 
@@ -544,7 +544,7 @@ func TestChildHandler_Update_InvalidID(t *testing.T) {
 func TestChildHandler_Delete_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	createTestOrganization(t, db, "Test Org")
 
@@ -561,7 +561,7 @@ func TestChildHandler_Delete_NotFound(t *testing.T) {
 func TestChildHandler_Delete_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	createTestOrganization(t, db, "Test Org")
 
@@ -578,7 +578,7 @@ func TestChildHandler_Delete_InvalidID(t *testing.T) {
 func TestChildHandler_List_Empty(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	createTestOrganization(t, db, "Test Org")
 
@@ -602,7 +602,7 @@ func TestChildHandler_List_Empty(t *testing.T) {
 func TestChildHandler_ListContracts_ChildNotFound(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	createTestOrganization(t, db, "Test Org")
 
@@ -619,7 +619,7 @@ func TestChildHandler_ListContracts_ChildNotFound(t *testing.T) {
 func TestChildHandler_ListContracts_Empty(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	db.Create(&models.Child{
@@ -646,7 +646,7 @@ func TestChildHandler_ListContracts_Empty(t *testing.T) {
 func TestChildHandler_CreateContract_ChildNotFound(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	createTestOrganization(t, db, "Test Org")
 
@@ -667,7 +667,7 @@ func TestChildHandler_CreateContract_ChildNotFound(t *testing.T) {
 func TestChildHandler_CreateContract_InvalidChildID(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	createTestOrganization(t, db, "Test Org")
 
@@ -690,7 +690,7 @@ func TestChildHandler_CreateContract_ContractBoundaryTouch(t *testing.T) {
 	// This is the correct way to transition between contracts.
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	child := &models.Child{
@@ -729,7 +729,7 @@ func TestChildHandler_CreateContract_SameDayTransitionRejected(t *testing.T) {
 	// both contracts are active on that day, which is not allowed.
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	child := &models.Child{
@@ -765,7 +765,7 @@ func TestChildHandler_CreateContract_SameDayTransitionRejected(t *testing.T) {
 func TestChildHandler_DeleteContract_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	db.Create(&models.Child{
@@ -785,7 +785,7 @@ func TestChildHandler_DeleteContract_NotFound(t *testing.T) {
 func TestChildHandler_DeleteContract_InvalidContractID(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	db.Create(&models.Child{
@@ -805,7 +805,7 @@ func TestChildHandler_DeleteContract_InvalidContractID(t *testing.T) {
 func TestChildHandler_GetCurrentContract_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	createTestOrganization(t, db, "Test Org")
 
@@ -824,7 +824,7 @@ func TestChildHandler_GetCurrentContract_InvalidID(t *testing.T) {
 func TestChildHandler_Create_FutureBirthdate(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	createTestOrganization(t, db, "Test Org")
 
@@ -848,7 +848,7 @@ func TestChildHandler_Create_FutureBirthdate(t *testing.T) {
 func TestChildHandler_Create_WhitespaceOnlyFirstName(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	createTestOrganization(t, db, "Test Org")
 
@@ -872,7 +872,7 @@ func TestChildHandler_Create_WhitespaceOnlyFirstName(t *testing.T) {
 func TestChildHandler_Create_WhitespaceOnlyLastName(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	createTestOrganization(t, db, "Test Org")
 
@@ -896,7 +896,7 @@ func TestChildHandler_Create_WhitespaceOnlyLastName(t *testing.T) {
 func TestChildHandler_CreateContract_FromAfterTo(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	child := &models.Child{
@@ -925,7 +925,7 @@ func TestChildHandler_CreateContract_FromAfterTo(t *testing.T) {
 func TestChildHandler_Get_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
@@ -950,7 +950,7 @@ func TestChildHandler_Get_WrongOrg(t *testing.T) {
 func TestChildHandler_Update_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
@@ -980,7 +980,7 @@ func TestChildHandler_Update_WrongOrg(t *testing.T) {
 func TestChildHandler_Delete_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
@@ -1005,7 +1005,7 @@ func TestChildHandler_Delete_WrongOrg(t *testing.T) {
 func TestChildHandler_ListContracts_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
@@ -1030,7 +1030,7 @@ func TestChildHandler_ListContracts_WrongOrg(t *testing.T) {
 func TestChildHandler_CreateContract_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
@@ -1059,7 +1059,7 @@ func TestChildHandler_CreateContract_WrongOrg(t *testing.T) {
 func TestChildHandler_DeleteContract_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
@@ -1091,7 +1091,7 @@ func TestChildHandler_DeleteContract_WrongOrg(t *testing.T) {
 func TestChildHandler_GetCurrentContract_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
@@ -1124,7 +1124,7 @@ func TestChildHandler_GetCurrentContract_WrongOrg(t *testing.T) {
 func TestChildHandler_List_Pagination(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1173,7 +1173,7 @@ func TestChildHandler_List_Pagination(t *testing.T) {
 func TestChildHandler_List_Pagination_SecondPage(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1229,7 +1229,7 @@ func TestChildHandler_List_Pagination_SecondPage(t *testing.T) {
 func TestChildHandler_List_Pagination_LastPage(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1269,7 +1269,7 @@ func TestChildHandler_List_Pagination_LastPage(t *testing.T) {
 func TestChildHandler_List_Pagination_BeyondLastPage(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1309,7 +1309,7 @@ func TestChildHandler_List_Pagination_BeyondLastPage(t *testing.T) {
 func TestChildHandler_List_Pagination_DefaultValues(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1352,7 +1352,7 @@ func TestChildHandler_List_Pagination_DefaultValues(t *testing.T) {
 func TestChildHandler_List_Pagination_InvalidNegativePage(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1369,7 +1369,7 @@ func TestChildHandler_List_Pagination_InvalidNegativePage(t *testing.T) {
 func TestChildHandler_List_Pagination_InvalidNegativeLimit(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1386,7 +1386,7 @@ func TestChildHandler_List_Pagination_InvalidNegativeLimit(t *testing.T) {
 func TestChildHandler_List_Pagination_LimitExceedsMax(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1403,7 +1403,7 @@ func TestChildHandler_List_Pagination_LimitExceedsMax(t *testing.T) {
 func TestChildHandler_List_Pagination_MaxLimit(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1444,7 +1444,7 @@ func TestChildHandler_List_Pagination_MaxLimit(t *testing.T) {
 func TestChildHandler_GetContractCountByMonth(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1493,7 +1493,7 @@ func TestChildHandler_GetContractCountByMonth(t *testing.T) {
 func TestChildHandler_GetContractCountByMonth_CustomYearRange(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1521,7 +1521,7 @@ func TestChildHandler_GetContractCountByMonth_CustomYearRange(t *testing.T) {
 func TestChildHandler_GetContractCountByMonth_InvalidMinYear(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1538,7 +1538,7 @@ func TestChildHandler_GetContractCountByMonth_InvalidMinYear(t *testing.T) {
 func TestChildHandler_GetContractCountByMonth_InvalidMaxYear(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1555,7 +1555,7 @@ func TestChildHandler_GetContractCountByMonth_InvalidMaxYear(t *testing.T) {
 func TestChildHandler_GetContractCountByMonth_MinYearGreaterThanMaxYear(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1572,7 +1572,7 @@ func TestChildHandler_GetContractCountByMonth_MinYearGreaterThanMaxYear(t *testi
 func TestChildHandler_GetContractCountByMonth_InvalidOrgID(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/children/statistics/contract-count-by-month", handler.GetContractCountByMonth)
@@ -1587,7 +1587,7 @@ func TestChildHandler_GetContractCountByMonth_InvalidOrgID(t *testing.T) {
 func TestChildHandler_GetContractCountByMonth_NoChildren(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1618,7 +1618,7 @@ func TestChildHandler_GetContractCountByMonth_NoChildren(t *testing.T) {
 func TestChildHandler_GetContractCountByMonth_ChildrenWithExpiredContracts(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1666,7 +1666,7 @@ func TestChildHandler_GetContractCountByMonth_ChildrenWithExpiredContracts(t *te
 func TestChildHandler_GetContractCountByMonth_ContractStartMidYear(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1716,7 +1716,7 @@ func TestChildHandler_GetContractCountByMonth_ContractStartMidYear(t *testing.T)
 func TestChildHandler_GetContractCountByMonth_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
@@ -1760,7 +1760,7 @@ func TestChildHandler_GetContractCountByMonth_WrongOrg(t *testing.T) {
 func TestChildHandler_GetContractCountByMonth_MultipleChildren(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1806,7 +1806,7 @@ func TestChildHandler_GetContractCountByMonth_MultipleChildren(t *testing.T) {
 func TestChildHandler_GetContractCountByMonth_SingleYear(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1834,7 +1834,7 @@ func TestChildHandler_GetContractCountByMonth_SingleYear(t *testing.T) {
 func TestChildHandler_GetContractCountByMonth_FutureYears(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1881,7 +1881,7 @@ func TestChildHandler_GetContractCountByMonth_FutureYears(t *testing.T) {
 func TestChildHandler_GetAgeDistribution(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1931,7 +1931,7 @@ func TestChildHandler_GetAgeDistribution(t *testing.T) {
 func TestChildHandler_GetAgeDistribution_DefaultDate(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1957,7 +1957,7 @@ func TestChildHandler_GetAgeDistribution_DefaultDate(t *testing.T) {
 func TestChildHandler_GetAgeDistribution_InvalidDate(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1974,7 +1974,7 @@ func TestChildHandler_GetAgeDistribution_InvalidDate(t *testing.T) {
 func TestChildHandler_GetAgeDistribution_InvalidOrgId(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/children/statistics/age-distribution", handler.GetAgeDistribution)
@@ -1989,7 +1989,7 @@ func TestChildHandler_GetAgeDistribution_InvalidOrgId(t *testing.T) {
 func TestChildHandler_GetAgeDistribution_NoChildren(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -2021,7 +2021,7 @@ func TestChildHandler_GetAgeDistribution_NoChildren(t *testing.T) {
 func TestChildHandler_GetAgeDistribution_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
@@ -2062,7 +2062,7 @@ func TestChildHandler_GetAgeDistribution_WrongOrg(t *testing.T) {
 func TestChildHandler_GetAgeDistribution_AllBuckets(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	refDate := time.Date(2025, 1, 28, 0, 0, 0, 0, time.UTC)
@@ -2123,7 +2123,7 @@ func TestChildHandler_GetAgeDistribution_AllBuckets(t *testing.T) {
 func TestChildHandler_GetAgeDistribution_ExpiredContract(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -2164,7 +2164,7 @@ func TestChildHandler_GetAgeDistribution_ExpiredContract(t *testing.T) {
 func TestChildHandler_GetAgeDistribution_FutureContract(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -2204,7 +2204,7 @@ func TestChildHandler_GetAgeDistribution_FutureContract(t *testing.T) {
 func TestChildHandler_GetAgeDistribution_HistoricalDate(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildHandler(childService)
+	handler := NewChildHandler(childService, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 

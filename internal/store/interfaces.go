@@ -67,6 +67,7 @@ type EmployeeStorer interface {
 	FindAll(limit, offset int) ([]models.Employee, int64, error)
 	FindByOrganization(orgID uint, limit, offset int) ([]models.Employee, int64, error)
 	FindByID(id uint) (*models.Employee, error)
+	FindByIDMinimal(id uint) (*models.Employee, error) // Without preloads, for org checks
 	Create(emp *models.Employee) error
 	Update(emp *models.Employee) error
 	Delete(id uint) error
@@ -93,6 +94,7 @@ type ChildStorer interface {
 	FindByOrganizationWithContractOn(orgID uint, date time.Time) ([]models.Child, error)
 	CountByOrganizationWithContractOn(orgID uint, date time.Time) (int64, error)
 	FindByID(id uint) (*models.Child, error)
+	FindByIDMinimal(id uint) (*models.Child, error) // Without preloads, for org checks
 	Create(child *models.Child) error
 	Update(child *models.Child) error
 	Delete(id uint) error

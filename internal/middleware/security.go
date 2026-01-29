@@ -1,6 +1,9 @@
 package middleware
 
 import (
+	"context"
+	"time"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -69,4 +72,21 @@ type requestTooLargeError struct{}
 
 func (e *requestTooLargeError) Error() string {
 	return "request body too large"
+}
+
+// DefaultRequestTimeout is the default timeout for request processing
+const DefaultRequestTimeout = 30 * time.Second
+
+// RequestTimeout adds a timeout context to each request.
+// This ensures long-running database queries or external calls don't hang forever.
+func RequestTimeout(timeout time.Duration) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx, cancel := context.WithTimeout(c.Request.Context(), timeout)
+		defer cancel()
+
+		// Replace request context with timeout context
+		c.Request = c.Request.WithContext(ctx)
+
+		c.Next()
+	}
 }

@@ -73,6 +73,13 @@ func getCreatedBy(c *gin.Context) string {
 	return createdBy
 }
 
+// getUserID extracts the user ID from context (set by auth middleware).
+func getUserID(c *gin.Context) uint {
+	userID, _ := c.Get("userID")
+	id, _ := userID.(uint)
+	return id
+}
+
 // parseOptionalDate parses an optional date query parameter.
 // Returns current time if param is empty, or parsed date if valid.
 // Returns (date, ok). If ok is false, error response has been sent.

@@ -13,12 +13,14 @@ import (
 type UserHandler struct {
 	service          *service.UserService
 	userGroupService *service.UserGroupService
+	auditService     *service.AuditService
 }
 
-func NewUserHandler(service *service.UserService, userGroupService *service.UserGroupService) *UserHandler {
+func NewUserHandler(service *service.UserService, userGroupService *service.UserGroupService, auditService *service.AuditService) *UserHandler {
 	return &UserHandler{
 		service:          service,
 		userGroupService: userGroupService,
+		auditService:     auditService,
 	}
 }
 
@@ -140,6 +142,10 @@ func (h *UserHandler) Create(c *gin.Context) {
 		return
 	}
 
+	// Audit log user creation
+	actorID := getUserID(c)
+	h.auditService.LogUserCreate(actorID, user.ID, user.Email, c.ClientIP())
+
 	c.JSON(http.StatusCreated, user)
 }
 
@@ -200,10 +206,21 @@ func (h *UserHandler) Delete(c *gin.Context) {
 		return
 	}
 
+	// Get user info before deletion for audit log
+	user, err := h.service.GetByID(c.Request.Context(), id)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	if err := h.service.Delete(c.Request.Context(), id); err != nil {
 		respondError(c, err)
 		return
 	}
+
+	// Audit log user deletion
+	actorID := getUserID(c)
+	h.auditService.LogUserDelete(actorID, id, user.Email, c.ClientIP())
 
 	c.JSON(http.StatusNoContent, nil)
 }
@@ -386,10 +403,21 @@ func (h *UserHandler) SetSuperAdmin(c *gin.Context) {
 		return
 	}
 
+	// Get user info before change for audit log
+	targetUser, err := h.service.GetByID(c.Request.Context(), userID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	if err := h.userGroupService.SetSuperAdmin(c.Request.Context(), userID, req.IsSuperAdmin); err != nil {
 		respondError(c, err)
 		return
 	}
+
+	// Audit log superadmin change
+	actorID := getUserID(c)
+	h.auditService.LogSuperAdminChange(actorID, userID, targetUser.Email, req.IsSuperAdmin, c.ClientIP())
 
 	// Return updated user
 	user, err := h.service.GetByID(c.Request.Context(), userID)

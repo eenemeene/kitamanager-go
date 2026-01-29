@@ -129,9 +129,9 @@ func setupRouter() *gin.Engine {
 	userGroupService := service.NewUserGroupService(userGroupStore, userStore, groupStore)
 	groupService := service.NewGroupService(groupStore)
 
-	// Setup handlers
-	orgHandler := handlers.NewOrganizationHandler(orgService)
-	userHandler := handlers.NewUserHandler(userService, userGroupService)
+	// Setup handlers (nil audit service for contract tests - audit has nil-safety)
+	orgHandler := handlers.NewOrganizationHandler(orgService, nil)
+	userHandler := handlers.NewUserHandler(userService, userGroupService, nil)
 	groupHandler := handlers.NewGroupHandler(groupService)
 
 	// Routes - matching the actual API structure

@@ -2,6 +2,7 @@ package database
 
 import (
 	"fmt"
+	"time"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -10,9 +11,17 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
+const (
+	// Connection pool settings
+	maxIdleConns    = 10
+	maxOpenConns    = 100
+	connMaxLifetime = time.Hour
+	connMaxIdleTime = 10 * time.Minute
+)
+
 func Connect(cfg *config.Config) (*gorm.DB, error) {
 	dsn := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable connect_timeout=10",
 		cfg.DBHost,
 		cfg.DBPort,
 		cfg.DBUser,
@@ -24,6 +33,16 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
+
+	// Configure connection pool
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get underlying DB: %w", err)
+	}
+	sqlDB.SetMaxIdleConns(maxIdleConns)
+	sqlDB.SetMaxOpenConns(maxOpenConns)
+	sqlDB.SetConnMaxLifetime(connMaxLifetime)
+	sqlDB.SetConnMaxIdleTime(connMaxIdleTime)
 
 	if err := db.AutoMigrate(
 		&models.GovernmentFunding{},
@@ -38,6 +57,7 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 		&models.EmployeeContractProperty{},
 		&models.Child{},
 		&models.ChildContract{},
+		&models.AuditLog{},
 	); err != nil {
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}

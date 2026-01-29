@@ -118,12 +118,12 @@ func setupRouter() *gin.Engine {
 	employeeService := service.NewEmployeeService(employeeStore)
 	childService := service.NewChildService(childStore, orgStore, fundingStore)
 
-	// Setup handlers
-	orgHandler := handlers.NewOrganizationHandler(orgService)
-	userHandler := handlers.NewUserHandler(userService, userGroupService)
+	// Setup handlers (passing nil for auditService in tests)
+	orgHandler := handlers.NewOrganizationHandler(orgService, nil)
+	userHandler := handlers.NewUserHandler(userService, userGroupService, nil)
 	groupHandler := handlers.NewGroupHandler(groupService)
-	employeeHandler := handlers.NewEmployeeHandler(employeeService)
-	childHandler := handlers.NewChildHandler(childService)
+	employeeHandler := handlers.NewEmployeeHandler(employeeService, nil)
+	childHandler := handlers.NewChildHandler(childService, nil)
 
 	// Routes - matching the actual API structure
 	api := r.Group("/api/v1")
