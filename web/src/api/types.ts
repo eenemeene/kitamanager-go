@@ -366,3 +366,67 @@ export interface AgeDistributionBucket {
   max_age?: number | null // null for open-ended (6+)
   count: number
 }
+
+// PayPlan (organization-scoped salary tables)
+export interface PayPlan {
+  id: number
+  organization_id: number
+  name: string
+  created_at: string
+  updated_at: string
+  periods?: PayPlanPeriod[]
+  total_periods?: number
+}
+
+export interface PayPlanPeriod {
+  id: number
+  payplan_id: number
+  from: string
+  to?: string | null
+  weekly_hours: number
+  created_at: string
+  updated_at: string
+  entries?: PayPlanEntry[]
+}
+
+export interface PayPlanEntry {
+  id: number
+  period_id: number
+  grade: string
+  step: number
+  monthly_amount: number // cents
+  created_at: string
+  updated_at: string
+}
+
+export interface PayPlanCreateRequest {
+  name: string
+}
+
+export interface PayPlanUpdateRequest {
+  name?: string
+}
+
+export interface PayPlanPeriodCreateRequest {
+  from: string
+  to?: string | null
+  weekly_hours: number
+}
+
+export interface PayPlanPeriodUpdateRequest {
+  from?: string
+  to?: string | null
+  weekly_hours?: number
+}
+
+export interface PayPlanEntryCreateRequest {
+  grade: string
+  step: number
+  monthly_amount: number
+}
+
+export interface PayPlanEntryUpdateRequest {
+  grade?: string
+  step?: number
+  monthly_amount?: number
+}

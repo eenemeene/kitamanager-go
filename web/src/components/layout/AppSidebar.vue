@@ -63,6 +63,11 @@ const navItems = computed(() => [
           label: t('nav.children')
         },
         {
+          to: `/organizations/${selectedOrg.value.id}/payplans`,
+          icon: 'pi-dollar',
+          label: t('nav.payPlans')
+        },
+        {
           to: `/organizations/${selectedOrg.value.id}/statistics`,
           icon: 'pi-chart-bar',
           label: t('nav.statistics')

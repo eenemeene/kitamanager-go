@@ -294,11 +294,111 @@ func SeedTestData(cfg *config.Config, db *gorm.DB, fundingStore *store.Governmen
 	}
 	slog.Info("Created test contracts", "count", contractCount)
 
+	// Create TVöD-SuE PayPlan with current rates
+	payPlan := &models.PayPlan{
+		OrganizationID: org.ID,
+		Name:           "TVöD-SuE 2024",
+	}
+	if err := db.Create(payPlan).Error; err != nil {
+		return err
+	}
+	slog.Info("Created PayPlan", "name", payPlan.Name, "id", payPlan.ID)
+
+	// Create current pay period (valid from 2024-01-01)
+	periodStart := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	payPeriod := &models.PayPlanPeriod{
+		PayPlanID:   payPlan.ID,
+		From:        periodStart,
+		To:          nil, // ongoing
+		WeeklyHours: 39.0,
+	}
+	if err := db.Create(payPeriod).Error; err != nil {
+		return err
+	}
+	slog.Info("Created PayPlan period", "from", payPeriod.From, "weeklyHours", payPeriod.WeeklyHours)
+
+	// Create pay entries for common grades (S3-S18)
+	// TVöD-SuE 2024 approximate rates
+	payEntries := []struct {
+		grade  string
+		step   int
+		amount int // cents
+	}{
+		// S8a (Erzieher)
+		{"S8a", 1, 314847}, {"S8a", 2, 329947}, {"S8a", 3, 350089},
+		{"S8a", 4, 365134}, {"S8a", 5, 385229}, {"S8a", 6, 398317},
+		// S8b (Erzieher mit schwieriger Tätigkeit)
+		{"S8b", 1, 339902}, {"S8b", 2, 354655}, {"S8b", 3, 370125},
+		{"S8b", 4, 385592}, {"S8b", 5, 401058}, {"S8b", 6, 416526},
+		// S4 (Kinderpfleger)
+		{"S4", 1, 267400}, {"S4", 2, 282700}, {"S4", 3, 298000},
+		{"S4", 4, 313300}, {"S4", 5, 328600}, {"S4", 6, 343900},
+		// S9 (Sozialarbeiter)
+		{"S9", 1, 344800}, {"S9", 2, 360100}, {"S9", 3, 385200},
+		{"S9", 4, 400500}, {"S9", 5, 420700}, {"S9", 6, 435000},
+	}
+	for _, e := range payEntries {
+		entry := &models.PayPlanEntry{
+			PeriodID:      payPeriod.ID,
+			Grade:         e.grade,
+			Step:          e.step,
+			MonthlyAmount: e.amount,
+		}
+		if err := db.Create(entry).Error; err != nil {
+			return err
+		}
+	}
+	slog.Info("Created PayPlan entries", "count", len(payEntries))
+
+	// Create employees
+	employees := createTestEmployees(org.ID, 10)
+	for i := range employees {
+		if err := db.Create(&employees[i]).Error; err != nil {
+			return err
+		}
+	}
+	slog.Info("Created test employees", "count", len(employees))
+
+	// Create employee contracts with salary based on pay plan
+	now := time.Now()
+	employeeContractCount := 0
+	grades := []string{"S4", "S8a", "S8a", "S8b", "S8a", "S9", "S8a", "S8a", "S4", "S8b"}
+	steps := []int{2, 3, 4, 2, 5, 3, 1, 6, 4, 3}
+	hours := []float64{30, 39, 39, 35, 39, 30, 39, 39, 20, 39}
+	positions := []string{"Kinderpfleger", "Erzieher", "Erzieher", "Erzieher", "Gruppenleitung", "Sozialarbeiter", "Erzieher", "Erzieher", "Kinderpfleger", "Erzieher"}
+
+	for i, emp := range employees {
+		// Calculate salary based on pay plan entry and weekly hours
+		var monthlyAmount int
+		for _, e := range payEntries {
+			if e.grade == grades[i] && e.step == steps[i] {
+				monthlyAmount = e.amount
+				break
+			}
+		}
+		salary := int(float64(monthlyAmount) * (hours[i] / 39.0))
+
+		contract := models.EmployeeContract{
+			EmployeeID:  emp.ID,
+			Period:      models.Period{From: now.AddDate(-2, -i, 0), To: nil},
+			Position:    positions[i],
+			WeeklyHours: hours[i],
+			Salary:      salary,
+		}
+		if err := db.Create(&contract).Error; err != nil {
+			return err
+		}
+		employeeContractCount++
+	}
+	slog.Info("Created employee contracts", "count", employeeContractCount)
+
 	slog.Info("Test data seeding completed",
 		"organization", org.Name,
 		"users", "superadmin@example.com, admin@example.com, manager@example.com",
 		"password", "supersecret",
 		"childrenCount", len(children),
+		"employeeCount", len(employees),
+		"payPlan", payPlan.Name,
 	)
 
 	return nil
@@ -539,4 +639,37 @@ func findJuly31stForExit(contractStart, now time.Time, birthdate time.Time) time
 	}
 
 	return exitDate
+}
+
+// createTestEmployees creates test employees with realistic German names
+func createTestEmployees(orgID uint, count int) []models.Employee {
+	employeeFirstNames := []string{
+		"Anna", "Thomas", "Maria", "Michael", "Julia",
+		"Stefan", "Sabine", "Martin", "Petra", "Andreas",
+	}
+	employeeLastNames := []string{
+		"Müller", "Schmidt", "Weber", "Fischer", "Meyer",
+		"Wagner", "Becker", "Schulz", "Hoffmann", "Koch",
+	}
+
+	employees := make([]models.Employee, count)
+	now := time.Now()
+
+	for i := 0; i < count; i++ {
+		// Employees are typically 25-55 years old
+		ageYears := 25 + randInt(30)
+		birthdate := now.AddDate(-ageYears, -randInt(12), -randInt(28))
+
+		employees[i] = models.Employee{
+			Person: models.Person{
+				OrganizationID: orgID,
+				FirstName:      employeeFirstNames[i%len(employeeFirstNames)],
+				LastName:       employeeLastNames[i%len(employeeLastNames)],
+				Gender:         randomGender(),
+				Birthdate:      birthdate,
+			},
+		}
+	}
+
+	return employees
 }

@@ -122,3 +122,53 @@ export const governmentFundingSchema = z.object({
   state: z.string({ required_error: 'validation.stateRequired' }).min(1, 'validation.stateRequired')
 })
 export type GovernmentFundingFormData = z.infer<typeof governmentFundingSchema>
+
+// PayPlan schema
+export const payPlanSchema = z.object({
+  name: z
+    .string({ required_error: 'validation.nameRequired' })
+    .trim()
+    .min(1, 'validation.nameRequired')
+    .max(255, 'validation.nameTooLong')
+})
+export type PayPlanFormData = z.infer<typeof payPlanSchema>
+
+// PayPlan period schema
+export const payPlanPeriodSchema = z
+  .object({
+    from_date: z.date({ required_error: 'validation.fromDateRequired' }),
+    to_date: z.date().nullable().optional(),
+    weekly_hours: z
+      .number({ required_error: 'payPlans.weeklyHoursRequired' })
+      .min(0.1, 'payPlans.weeklyHoursMin')
+      .max(168, 'validation.weeklyHoursMax')
+  })
+  .refine(
+    (data) => {
+      if (data.to_date && data.from_date) {
+        return data.to_date >= data.from_date
+      }
+      return true
+    },
+    {
+      message: 'validation.toDateMustBeAfterFromDate',
+      path: ['to_date']
+    }
+  )
+export type PayPlanPeriodFormData = z.infer<typeof payPlanPeriodSchema>
+
+// PayPlan entry schema
+export const payPlanEntrySchema = z.object({
+  grade: z
+    .string({ required_error: 'payPlans.gradeRequired' })
+    .trim()
+    .min(1, 'payPlans.gradeRequired'),
+  step: z
+    .number({ required_error: 'payPlans.stepRequired' })
+    .min(1, 'payPlans.stepMin')
+    .max(6, 'payPlans.stepMax'),
+  monthly_amount: z
+    .number({ required_error: 'payPlans.monthlyAmountRequired' })
+    .min(0, 'payPlans.monthlyAmountMin')
+})
+export type PayPlanEntryFormData = z.infer<typeof payPlanEntrySchema>

@@ -17,6 +17,7 @@ func Setup(
 	employeeHandler *handlers.EmployeeHandler,
 	childHandler *handlers.ChildHandler,
 	governmentFundingHandler *handlers.GovernmentFundingHandler,
+	payPlanHandler *handlers.PayPlanHandler,
 	authMiddleware *middleware.AuthMiddleware,
 	authzMiddleware *middleware.AuthorizationMiddleware,
 	loginRateLimiter *middleware.RateLimiter,
@@ -269,6 +270,56 @@ func Setup(
 					children.DELETE("/:id/contracts/:contractId",
 						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionDelete),
 						childHandler.DeleteContract)
+				}
+
+				// ============================================================
+				// Pay Plan management (org-scoped)
+				// ============================================================
+				payplans := orgScoped.Group("/payplans")
+				{
+					payplans.GET("",
+						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionRead),
+						payPlanHandler.List)
+					payplans.GET("/:id",
+						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionRead),
+						payPlanHandler.Get)
+					payplans.POST("",
+						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionCreate),
+						payPlanHandler.Create)
+					payplans.PUT("/:id",
+						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionUpdate),
+						payPlanHandler.Update)
+					payplans.DELETE("/:id",
+						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionDelete),
+						payPlanHandler.Delete)
+
+					// Period management
+					payplans.POST("/:id/periods",
+						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionCreate),
+						payPlanHandler.CreatePeriod)
+					payplans.GET("/:id/periods/:periodId",
+						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionRead),
+						payPlanHandler.GetPeriod)
+					payplans.PUT("/:id/periods/:periodId",
+						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionUpdate),
+						payPlanHandler.UpdatePeriod)
+					payplans.DELETE("/:id/periods/:periodId",
+						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionDelete),
+						payPlanHandler.DeletePeriod)
+
+					// Entry management
+					payplans.POST("/:id/periods/:periodId/entries",
+						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionCreate),
+						payPlanHandler.CreateEntry)
+					payplans.GET("/:id/periods/:periodId/entries/:entryId",
+						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionRead),
+						payPlanHandler.GetEntry)
+					payplans.PUT("/:id/periods/:periodId/entries/:entryId",
+						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionUpdate),
+						payPlanHandler.UpdateEntry)
+					payplans.DELETE("/:id/periods/:periodId/entries/:entryId",
+						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionDelete),
+						payPlanHandler.DeleteEntry)
 				}
 			}
 

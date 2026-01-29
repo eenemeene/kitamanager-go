@@ -67,6 +67,7 @@ export default {
     users: 'Benutzer',
     groups: 'Gruppen',
     governmentFundings: 'Staatliche Finanzierungen',
+    payPlans: 'Entgelttabellen',
     statistics: 'Statistiken',
     settings: 'Einstellungen'
   },
@@ -369,5 +370,70 @@ export default {
     showAllPeriods: 'Alle {count} Zeiträume anzeigen',
     // Units
     years: 'Jahre'
+  },
+  payPlans: {
+    title: 'Entgelttabellen',
+    create: 'Entgelttabelle erstellen',
+    edit: 'Entgelttabelle bearbeiten',
+    newPayPlan: 'Neue Entgelttabelle',
+    deleteConfirm: 'Möchten Sie diese Entgelttabelle wirklich löschen?',
+    deleteSuccess: 'Entgelttabelle erfolgreich gelöscht',
+    createSuccess: 'Entgelttabelle erfolgreich erstellt',
+    updateSuccess: 'Entgelttabelle erfolgreich aktualisiert',
+    // Detail view
+    viewPanels: 'Panels',
+    viewTable: 'Tabelle',
+    addPeriod: 'Zeitraum hinzufügen',
+    editPeriod: 'Zeitraum bearbeiten',
+    deletePeriod: 'Zeitraum löschen',
+    addEntry: 'Eintrag hinzufügen',
+    editEntry: 'Eintrag bearbeiten',
+    deleteEntry: 'Eintrag löschen',
+    // Table headers
+    period: 'Zeitraum',
+    grade: 'Entgeltgruppe',
+    step: 'Stufe',
+    monthlyAmount: 'Monatsbetrag',
+    weeklyHours: 'Wochenstunden',
+    entry: 'Eintrag',
+    // Form labels
+    fromDate: 'Von-Datum',
+    toDateOptional: 'Bis-Datum (leer lassen für laufend)',
+    weeklyHoursLabel: 'Wochenstunden (Basis)',
+    gradeLabel: 'Entgeltgruppe (z.B. S8a)',
+    stepLabel: 'Stufe (1-6)',
+    monthlyAmountInCents: 'Monatsbetrag (in Cent)',
+    // Messages
+    periodCreated: 'Zeitraum erstellt',
+    periodUpdated: 'Zeitraum aktualisiert',
+    periodDeleted: 'Zeitraum gelöscht',
+    failedToSavePeriod: 'Fehler beim Speichern des Zeitraums',
+    failedToDeletePeriod: 'Fehler beim Löschen des Zeitraums',
+    entryCreated: 'Eintrag erstellt',
+    entryUpdated: 'Eintrag aktualisiert',
+    entryDeleted: 'Eintrag gelöscht',
+    failedToSaveEntry: 'Fehler beim Speichern des Eintrags',
+    failedToDeleteEntry: 'Fehler beim Löschen des Eintrags',
+    failedToLoadPayPlan: 'Fehler beim Laden der Entgelttabelle',
+    // Confirmations
+    deletePeriodConfirm:
+      'Möchten Sie diesen Zeitraum wirklich löschen? Dies löscht auch alle Einträge.',
+    deleteEntryConfirm: 'Möchten Sie diesen Eintrag wirklich löschen?',
+    // Empty states
+    noDataDefined:
+      'Keine Daten definiert. Wechseln Sie zur Panels-Ansicht, um Zeiträume und Einträge hinzuzufügen.',
+    noEntriesDefined: 'Keine Einträge definiert. Klicken Sie auf +, um einen hinzuzufügen.',
+    noPeriodsDefined:
+      'Keine Zeiträume definiert. Klicken Sie auf "Zeitraum hinzufügen", um zu beginnen.',
+    showAllPeriods: 'Alle {count} Zeiträume anzeigen',
+    // Validation
+    weeklyHoursRequired: 'Wochenstunden sind erforderlich',
+    weeklyHoursMin: 'Wochenstunden müssen größer als 0 sein',
+    gradeRequired: 'Entgeltgruppe ist erforderlich',
+    stepRequired: 'Stufe ist erforderlich',
+    stepMin: 'Stufe muss mindestens 1 sein',
+    stepMax: 'Stufe kann 6 nicht überschreiten',
+    monthlyAmountRequired: 'Monatsbetrag ist erforderlich',
+    monthlyAmountMin: 'Monatsbetrag muss mindestens 0 sein'
   }
 }

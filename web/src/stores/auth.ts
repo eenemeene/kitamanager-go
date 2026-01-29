@@ -29,6 +29,8 @@ function parseJwt(token: string): JwtPayload | null {
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem('token'))
   const user = ref<Partial<User> | null>(null)
+  const userLoading = ref(false)
+  const userLoaded = ref(false)
 
   const isAuthenticated = computed(() => {
     if (!token.value) return false
@@ -86,41 +88,66 @@ export const useAuthStore = defineStore('auth', () => {
     router.push('/login')
   }
 
+  // Promise that resolves when user data is fully loaded
+  let initPromise: Promise<void> | null = null
+
   // Initialize user from token on store creation
   async function init() {
     if (token.value) {
       const payload = parseJwt(token.value)
       if (payload && payload.exp * 1000 > Date.now()) {
+        userLoading.value = true
         // Set basic info immediately
         user.value = {
           id: payload.user_id,
           email: payload.email
         }
-        // Fetch full user data in background
+        // Fetch full user data with timeout to prevent hanging
         try {
-          const userData = await apiClient.getUser(payload.user_id)
+          const timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Timeout')), 5000)
+          )
+          const userData = await Promise.race([apiClient.getUser(payload.user_id), timeoutPromise])
           user.value = userData
         } catch {
-          // Keep basic info on error
+          // Keep basic info on error or timeout
+        } finally {
+          userLoading.value = false
+          userLoaded.value = true
         }
       } else {
         // Token expired, clear it
         token.value = null
         user.value = null
         localStorage.removeItem('token')
+        userLoaded.value = true
       }
+    } else {
+      userLoaded.value = true
     }
   }
 
-  init()
+  // Wait for user data to be fully loaded
+  async function ensureUserLoaded(): Promise<void> {
+    if (userLoaded.value) return
+    if (!initPromise) {
+      initPromise = init()
+    }
+    await initPromise
+  }
+
+  initPromise = init()
 
   return {
     token,
     user,
+    userLoading,
+    userLoaded,
     isAuthenticated,
     userId,
     userEmail,
     login,
-    logout
+    logout,
+    ensureUserLoaded
   }
 })

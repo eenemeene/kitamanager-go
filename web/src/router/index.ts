@@ -63,6 +63,20 @@ const router = createRouter({
           meta: { orgScoped: true }
         },
         {
+          path: 'organizations/:orgId/payplans',
+          name: 'payplans',
+          component: () => import('@/views/payplans/PayPlansView.vue'),
+          props: true,
+          meta: { orgScoped: true }
+        },
+        {
+          path: 'organizations/:orgId/payplans/:id',
+          name: 'payplan-detail',
+          component: () => import('@/views/payplans/PayPlanDetailView.vue'),
+          props: true,
+          meta: { orgScoped: true }
+        },
+        {
           path: 'government-fundings',
           name: 'government-fundings',
           component: () => import('@/views/government-fundings/GovernmentFundingsView.vue')
@@ -101,23 +115,31 @@ router.beforeEach(async (to, _from, next) => {
     const uiStore = useUiStore()
     const orgId = Number(to.params.orgId)
 
+    // Ensure user data is fully loaded before checking permissions
+    await authStore.ensureUserLoaded()
+
     // Ensure organizations are loaded before validation
     if (uiStore.organizations.length === 0) {
       await uiStore.fetchOrganizations()
     }
 
-    // Validate org exists
+    // Validate org exists - if not found, try refreshing the list once
+    // This handles the case where a new org was just created
     if (!uiStore.isValidOrganization(orgId)) {
-      // Invalid org ID - redirect to dashboard
-      next('/')
-      return
+      await uiStore.fetchOrganizations()
+      // Still not valid after refresh - redirect to dashboard
+      if (!uiStore.isValidOrganization(orgId)) {
+        next('/')
+        return
+      }
     }
 
     // Check user permission to access this organization
     const user = authStore.user as User | null
     const isSuperAdmin = user?.is_superadmin ?? false
-    const hasOrgAccess =
-      isSuperAdmin || (user?.organizations?.some((org) => org.id === orgId) ?? false)
+    // Derive organization access from groups (each group belongs to an organization)
+    const userOrgIds = user?.groups?.map((g) => g.organization_id) ?? []
+    const hasOrgAccess = isSuperAdmin || userOrgIds.includes(orgId)
 
     if (!hasOrgAccess) {
       // User doesn't have access to this organization

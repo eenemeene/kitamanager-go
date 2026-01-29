@@ -67,6 +67,7 @@ export default {
     users: 'Users',
     groups: 'Groups',
     governmentFundings: 'Government Fundings',
+    payPlans: 'Pay Plans',
     statistics: 'Statistics',
     settings: 'Settings'
   },
@@ -367,5 +368,68 @@ export default {
     showAllPeriods: 'Show all {count} periods',
     // Units
     years: 'years'
+  },
+  payPlans: {
+    title: 'Pay Plans',
+    create: 'Create Pay Plan',
+    edit: 'Edit Pay Plan',
+    newPayPlan: 'New Pay Plan',
+    deleteConfirm: 'Are you sure you want to delete this pay plan?',
+    deleteSuccess: 'Pay plan deleted successfully',
+    createSuccess: 'Pay plan created successfully',
+    updateSuccess: 'Pay plan updated successfully',
+    // Detail view
+    viewPanels: 'Panels',
+    viewTable: 'Table',
+    addPeriod: 'Add Period',
+    editPeriod: 'Edit Period',
+    deletePeriod: 'Delete Period',
+    addEntry: 'Add Entry',
+    editEntry: 'Edit Entry',
+    deleteEntry: 'Delete Entry',
+    // Table headers
+    period: 'Period',
+    grade: 'Grade',
+    step: 'Step',
+    monthlyAmount: 'Monthly Amount',
+    weeklyHours: 'Weekly Hours',
+    entry: 'Entry',
+    // Form labels
+    fromDate: 'From Date',
+    toDateOptional: 'To Date (leave empty for ongoing)',
+    weeklyHoursLabel: 'Weekly Hours (basis)',
+    gradeLabel: 'Grade (e.g., S8a)',
+    stepLabel: 'Step (1-6)',
+    monthlyAmountInCents: 'Monthly Amount (in cents)',
+    // Messages
+    periodCreated: 'Period created',
+    periodUpdated: 'Period updated',
+    periodDeleted: 'Period deleted',
+    failedToSavePeriod: 'Failed to save period',
+    failedToDeletePeriod: 'Failed to delete period',
+    entryCreated: 'Entry created',
+    entryUpdated: 'Entry updated',
+    entryDeleted: 'Entry deleted',
+    failedToSaveEntry: 'Failed to save entry',
+    failedToDeleteEntry: 'Failed to delete entry',
+    failedToLoadPayPlan: 'Failed to load pay plan',
+    // Confirmations
+    deletePeriodConfirm:
+      'Are you sure you want to delete this period? This will also delete all entries.',
+    deleteEntryConfirm: 'Are you sure you want to delete this entry?',
+    // Empty states
+    noDataDefined: 'No data defined. Switch to Panels view to add periods and entries.',
+    noEntriesDefined: 'No entries defined. Click + to add one.',
+    noPeriodsDefined: 'No periods defined. Click "Add Period" to get started.',
+    showAllPeriods: 'Show all {count} periods',
+    // Validation
+    weeklyHoursRequired: 'Weekly hours is required',
+    weeklyHoursMin: 'Weekly hours must be greater than 0',
+    gradeRequired: 'Grade is required',
+    stepRequired: 'Step is required',
+    stepMin: 'Step must be at least 1',
+    stepMax: 'Step cannot exceed 6',
+    monthlyAmountRequired: 'Monthly amount is required',
+    monthlyAmountMin: 'Monthly amount must be at least 0'
   }
 }

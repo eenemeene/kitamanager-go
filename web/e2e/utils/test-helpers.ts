@@ -73,20 +73,34 @@ export async function logout(page: Page, currentUserEmail: string) {
  * The organization will be auto-selected when navigating to its scoped page.
  */
 export async function selectOrganizationById(page: Page, orgId: number) {
-  // Store the selected org ID in localStorage BEFORE navigating
+  // Store the selected org ID in localStorage using the correct key
   await page.evaluate((id) => {
-    localStorage.setItem('selectedOrganizationId', id.toString())
+    localStorage.setItem('selectedOrgId', id.toString())
   }, orgId)
 
-  // Navigate to the organization's children page (any org-scoped page works)
-  await page.goto(`/organizations/${orgId}/children`)
+  // Navigate directly to the org-scoped page with hard reload to force fresh state
+  // This clears the Pinia store and forces a fresh fetch of organizations
+  await page.goto(`/organizations/${orgId}/children`, { waitUntil: 'commit' })
+
+  // Wait for organizations to be fetched and page to settle
+  // The router guard fetches orgs if the list is empty (which it will be after navigation)
   await page.waitForLoadState('networkidle')
 
-  // Wait for the UI to update with the correct org
+  // Retry navigation if we got redirected to dashboard (org list not ready)
+  const currentUrl = page.url()
+  if (!currentUrl.includes(`/organizations/${orgId}/`)) {
+    // Wait a bit for organizations to be fully loaded
+    await page.waitForTimeout(1000)
+    // Try navigating again
+    await page.goto(`/organizations/${orgId}/children`)
+    await page.waitForLoadState('networkidle')
+  }
+
+  // Wait for the UI to fully update
   await page.waitForTimeout(500)
 
   // Verify the URL contains the correct org ID
-  await expect(page).toHaveURL(new RegExp(`/organizations/${orgId}/`))
+  await expect(page).toHaveURL(new RegExp(`/organizations/${orgId}/`), { timeout: 10000 })
 }
 
 /**

@@ -36,7 +36,16 @@ import type {
   GovernmentFundingPeriodUpdateRequest,
   GovernmentFundingProperty,
   GovernmentFundingPropertyCreateRequest,
-  GovernmentFundingPropertyUpdateRequest
+  GovernmentFundingPropertyUpdateRequest,
+  PayPlan,
+  PayPlanCreateRequest,
+  PayPlanUpdateRequest,
+  PayPlanPeriod,
+  PayPlanPeriodCreateRequest,
+  PayPlanPeriodUpdateRequest,
+  PayPlanEntry,
+  PayPlanEntryCreateRequest,
+  PayPlanEntryUpdateRequest
 } from './types'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
@@ -478,6 +487,125 @@ class ApiClient {
   ): Promise<void> {
     await this.client.delete(
       `/government-fundings/${governmentFundingId}/periods/${periodId}/properties/${propId}`
+    )
+  }
+
+  // PayPlans (organization-scoped)
+  async getPayPlans(orgId: number, limit: number = 100): Promise<PayPlan[]> {
+    const response = await this.client.get<{ data: PayPlan[] }>(
+      `/organizations/${orgId}/payplans?limit=${limit}`
+    )
+    return response.data.data
+  }
+
+  async getPayPlan(orgId: number, id: number): Promise<PayPlan> {
+    const response = await this.client.get<PayPlan>(`/organizations/${orgId}/payplans/${id}`)
+    return response.data
+  }
+
+  async createPayPlan(orgId: number, data: PayPlanCreateRequest): Promise<PayPlan> {
+    const response = await this.client.post<PayPlan>(`/organizations/${orgId}/payplans`, data)
+    return response.data
+  }
+
+  async updatePayPlan(orgId: number, id: number, data: PayPlanUpdateRequest): Promise<PayPlan> {
+    const response = await this.client.put<PayPlan>(`/organizations/${orgId}/payplans/${id}`, data)
+    return response.data
+  }
+
+  async deletePayPlan(orgId: number, id: number): Promise<void> {
+    await this.client.delete(`/organizations/${orgId}/payplans/${id}`)
+  }
+
+  // PayPlan Periods
+  async createPayPlanPeriod(
+    orgId: number,
+    payplanId: number,
+    data: PayPlanPeriodCreateRequest
+  ): Promise<PayPlanPeriod> {
+    const response = await this.client.post<PayPlanPeriod>(
+      `/organizations/${orgId}/payplans/${payplanId}/periods`,
+      data
+    )
+    return response.data
+  }
+
+  async getPayPlanPeriod(
+    orgId: number,
+    payplanId: number,
+    periodId: number
+  ): Promise<PayPlanPeriod> {
+    const response = await this.client.get<PayPlanPeriod>(
+      `/organizations/${orgId}/payplans/${payplanId}/periods/${periodId}`
+    )
+    return response.data
+  }
+
+  async updatePayPlanPeriod(
+    orgId: number,
+    payplanId: number,
+    periodId: number,
+    data: PayPlanPeriodUpdateRequest
+  ): Promise<PayPlanPeriod> {
+    const response = await this.client.put<PayPlanPeriod>(
+      `/organizations/${orgId}/payplans/${payplanId}/periods/${periodId}`,
+      data
+    )
+    return response.data
+  }
+
+  async deletePayPlanPeriod(orgId: number, payplanId: number, periodId: number): Promise<void> {
+    await this.client.delete(`/organizations/${orgId}/payplans/${payplanId}/periods/${periodId}`)
+  }
+
+  // PayPlan Entries
+  async createPayPlanEntry(
+    orgId: number,
+    payplanId: number,
+    periodId: number,
+    data: PayPlanEntryCreateRequest
+  ): Promise<PayPlanEntry> {
+    const response = await this.client.post<PayPlanEntry>(
+      `/organizations/${orgId}/payplans/${payplanId}/periods/${periodId}/entries`,
+      data
+    )
+    return response.data
+  }
+
+  async getPayPlanEntry(
+    orgId: number,
+    payplanId: number,
+    periodId: number,
+    entryId: number
+  ): Promise<PayPlanEntry> {
+    const response = await this.client.get<PayPlanEntry>(
+      `/organizations/${orgId}/payplans/${payplanId}/periods/${periodId}/entries/${entryId}`
+    )
+    return response.data
+  }
+
+  async updatePayPlanEntry(
+    orgId: number,
+    payplanId: number,
+    periodId: number,
+    entryId: number,
+    data: PayPlanEntryUpdateRequest
+  ): Promise<PayPlanEntry> {
+    const response = await this.client.put<PayPlanEntry>(
+      `/organizations/${orgId}/payplans/${payplanId}/periods/${periodId}/entries/${entryId}`,
+      data
+    )
+    return response.data
+  }
+
+  async deletePayPlanEntry(
+    orgId: number,
+    payplanId: number,
+    periodId: number,
+    entryId: number
+  ): Promise<void> {
+    await this.client.delete(
+      `/organizations/${orgId}/payplans/${payplanId}/periods/${periodId}/entries/${entryId}`
     )
   }
 }

@@ -1022,6 +1022,27 @@ definitions:
         example: 5
         type: integer
     type: object
+  ? github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_PayPlanResponse
+  : properties:
+      _links:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginationLinks'
+      data:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayPlanResponse'
+        type: array
+      limit:
+        example: 20
+        type: integer
+      page:
+        example: 1
+        type: integer
+      total:
+        example: 100
+        type: integer
+      total_pages:
+        example: 5
+        type: integer
+    type: object
   ? github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_UserResponse
   : properties:
       _links:
@@ -1060,6 +1081,172 @@ definitions:
       self:
         example: /api/v1/users?page=2&limit=20
         type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.PayPlanCreateRequest:
+    properties:
+      name:
+        example: TVöD-SuE
+        type: string
+    required:
+    - name
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.PayPlanDetailResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        example: 1
+        type: integer
+      name:
+        example: TVöD-SuE
+        type: string
+      organization_id:
+        example: 1
+        type: integer
+      periods:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayPlanPeriodResponse'
+        type: array
+      updated_at:
+        type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.PayPlanEntryCreateRequest:
+    properties:
+      grade:
+        example: S8a
+        type: string
+      monthly_amount:
+        example: 350000
+        minimum: 0
+        type: integer
+      step:
+        example: 3
+        minimum: 1
+        type: integer
+    required:
+    - grade
+    - monthly_amount
+    - step
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.PayPlanEntryResponse:
+    properties:
+      created_at:
+        type: string
+      grade:
+        example: S8a
+        type: string
+      id:
+        example: 1
+        type: integer
+      monthly_amount:
+        example: 350000
+        type: integer
+      period_id:
+        example: 1
+        type: integer
+      step:
+        example: 3
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.PayPlanEntryUpdateRequest:
+    properties:
+      grade:
+        example: S8a
+        type: string
+      monthly_amount:
+        example: 350000
+        minimum: 0
+        type: integer
+      step:
+        example: 3
+        minimum: 1
+        type: integer
+    required:
+    - grade
+    - monthly_amount
+    - step
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.PayPlanPeriodCreateRequest:
+    properties:
+      from:
+        example: "2024-01-01"
+        type: string
+      to:
+        example: "2024-12-31"
+        type: string
+      weekly_hours:
+        example: 39
+        type: number
+    required:
+    - from
+    - weekly_hours
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.PayPlanPeriodResponse:
+    properties:
+      created_at:
+        type: string
+      entries:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayPlanEntryResponse'
+        type: array
+      from:
+        example: "2024-01-01"
+        type: string
+      id:
+        example: 1
+        type: integer
+      payplan_id:
+        example: 1
+        type: integer
+      to:
+        example: "2024-12-31"
+        type: string
+      updated_at:
+        type: string
+      weekly_hours:
+        example: 39
+        type: number
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.PayPlanPeriodUpdateRequest:
+    properties:
+      from:
+        example: "2024-01-01"
+        type: string
+      to:
+        example: "2024-12-31"
+        type: string
+      weekly_hours:
+        example: 39
+        type: number
+    required:
+    - from
+    - weekly_hours
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.PayPlanResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        example: 1
+        type: integer
+      name:
+        example: TVöD-SuE
+        type: string
+      organization_id:
+        example: 1
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.PayPlanUpdateRequest:
+    properties:
+      name:
+        example: TVöD-SuE
+        type: string
+    required:
+    - name
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.RefreshRequest:
     properties:
@@ -3656,6 +3843,644 @@ paths:
       summary: Update a group
       tags:
       - groups
+  /api/v1/organizations/{orgId}/payplans:
+    get:
+      consumes:
+      - application/json
+      description: Get all pay plans for an organization
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        maximum: 100
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_PayPlanResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List pay plans
+      tags:
+      - payplans
+    post:
+      consumes:
+      - application/json
+      description: Create a new pay plan for an organization
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Pay plan data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayPlanCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayPlanResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create pay plan
+      tags:
+      - payplans
+  /api/v1/organizations/{orgId}/payplans/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a pay plan and all its periods and entries
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Pay Plan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete pay plan
+      tags:
+      - payplans
+    get:
+      consumes:
+      - application/json
+      description: Get a pay plan by ID with all periods and entries
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Pay Plan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayPlanDetailResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get pay plan
+      tags:
+      - payplans
+    put:
+      consumes:
+      - application/json
+      description: Update a pay plan
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Pay Plan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Pay plan data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayPlanUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayPlanResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update pay plan
+      tags:
+      - payplans
+  /api/v1/organizations/{orgId}/payplans/{id}/periods:
+    post:
+      consumes:
+      - application/json
+      description: Create a new period for a pay plan
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Pay Plan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Period data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayPlanPeriodCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayPlanPeriodResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create period
+      tags:
+      - payplans
+  /api/v1/organizations/{orgId}/payplans/{id}/periods/{periodId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a period and all its entries
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Pay Plan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Period ID
+        in: path
+        name: periodId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete period
+      tags:
+      - payplans
+    get:
+      consumes:
+      - application/json
+      description: Get a period by ID with all entries
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Pay Plan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Period ID
+        in: path
+        name: periodId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayPlanPeriodResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get period
+      tags:
+      - payplans
+    put:
+      consumes:
+      - application/json
+      description: Update a period
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Pay Plan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Period ID
+        in: path
+        name: periodId
+        required: true
+        type: integer
+      - description: Period data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayPlanPeriodUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayPlanPeriodResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update period
+      tags:
+      - payplans
+  /api/v1/organizations/{orgId}/payplans/{id}/periods/{periodId}/entries:
+    post:
+      consumes:
+      - application/json
+      description: Create a new entry for a period
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Pay Plan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Period ID
+        in: path
+        name: periodId
+        required: true
+        type: integer
+      - description: Entry data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayPlanEntryCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayPlanEntryResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create entry
+      tags:
+      - payplans
+  /api/v1/organizations/{orgId}/payplans/{id}/periods/{periodId}/entries/{entryId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete an entry
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Pay Plan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Period ID
+        in: path
+        name: periodId
+        required: true
+        type: integer
+      - description: Entry ID
+        in: path
+        name: entryId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete entry
+      tags:
+      - payplans
+    get:
+      consumes:
+      - application/json
+      description: Get an entry by ID
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Pay Plan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Period ID
+        in: path
+        name: periodId
+        required: true
+        type: integer
+      - description: Entry ID
+        in: path
+        name: entryId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayPlanEntryResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get entry
+      tags:
+      - payplans
+    put:
+      consumes:
+      - application/json
+      description: Update an entry
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Pay Plan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Period ID
+        in: path
+        name: periodId
+        required: true
+        type: integer
+      - description: Entry ID
+        in: path
+        name: entryId
+        required: true
+        type: integer
+      - description: Entry data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayPlanEntryUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayPlanEntryResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update entry
+      tags:
+      - payplans
   /api/v1/organizations/{orgId}/users:
     get:
       consumes:
