@@ -54,7 +54,8 @@ import type {
 } from '@/lib/api/types';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useForm } from 'react-hook-form';
+import { TagInput } from '@/components/ui/tag-input';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -75,7 +76,7 @@ const childSchema = z.object({
 const contractSchema = z.object({
   from: z.string().min(1),
   to: z.string().optional(),
-  attributes: z.string().optional(),
+  attributes: z.array(z.string()).default([]),
 });
 
 type ChildFormData = z.infer<typeof childSchema>;
@@ -245,13 +246,14 @@ export default function ChildrenPage() {
     handleSubmit: handleSubmitContract,
     reset: resetContract,
     watch: watchContract,
+    control: controlContract,
     formState: { errors: errorsContract },
   } = useForm<ContractFormData>({
     resolver: zodResolver(contractSchema),
     defaultValues: {
       from: '',
       to: '',
-      attributes: '',
+      attributes: [],
     },
   });
 
@@ -312,10 +314,10 @@ export default function ChildrenPage() {
       resetContract({
         from: tomorrowStr,
         to: '',
-        attributes: active.attributes?.join(', ') || '',
+        attributes: active.attributes || [],
       });
     } else {
-      resetContract({ from: '', to: '', attributes: '' });
+      resetContract({ from: '', to: '', attributes: [] });
     }
     setIsContractDialogOpen(true);
   };
@@ -342,12 +344,7 @@ export default function ChildrenPage() {
 
   const onSubmitContract = (data: ContractFormData) => {
     if (contractChild) {
-      const attributes = data.attributes
-        ? data.attributes
-            .split(',')
-            .map((a) => a.trim())
-            .filter(Boolean)
-        : [];
+      const attributes = data.attributes.filter(Boolean);
 
       // If there's an active contract and we're ending it, check if something actually changed
       if (activeContract && endCurrentContract) {
@@ -664,10 +661,17 @@ export default function ChildrenPage() {
 
             <div className="space-y-2">
               <Label htmlFor="attributes">{t('contracts.attributesLabel')}</Label>
-              <Input
-                id="attributes"
-                {...registerContract('attributes')}
-                placeholder="ganztags, ndh, integration_a"
+              <Controller
+                name="attributes"
+                control={controlContract}
+                render={({ field }) => (
+                  <TagInput
+                    id="attributes"
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder={t('contracts.attributesPlaceholder')}
+                  />
+                )}
               />
               <p className="text-xs text-muted-foreground">{t('contracts.attributesHelp')}</p>
             </div>

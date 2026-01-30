@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { TagInput } from '@/components/ui/tag-input';
 import { useToast } from '@/lib/hooks/use-toast';
 import { apiClient, getErrorMessage } from '@/lib/api/client';
 import type {
@@ -43,7 +44,7 @@ import type {
   ChildContractCreateRequest,
   ChildContractUpdateRequest,
 } from '@/lib/api/types';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { formatDate, formatDateForInput, formatDateForApi } from '@/lib/utils/formatting';
@@ -51,7 +52,7 @@ import { formatDate, formatDateForInput, formatDateForApi } from '@/lib/utils/fo
 const contractSchema = z.object({
   from: z.string().min(1),
   to: z.string().optional(),
-  attributes: z.string().optional(),
+  attributes: z.array(z.string()).default([]),
 });
 
 type ContractFormData = z.infer<typeof contractSchema>;
@@ -146,19 +147,20 @@ export default function ChildContractsPage() {
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors },
   } = useForm<ContractFormData>({
     resolver: zodResolver(contractSchema),
     defaultValues: {
       from: '',
       to: '',
-      attributes: '',
+      attributes: [],
     },
   });
 
   const handleCreate = () => {
     setEditingContract(null);
-    reset({ from: '', to: '', attributes: '' });
+    reset({ from: '', to: '', attributes: [] });
     setIsContractDialogOpen(true);
   };
 
@@ -167,7 +169,7 @@ export default function ChildContractsPage() {
     reset({
       from: formatDateForInput(contract.from),
       to: contract.to ? formatDateForInput(contract.to) : '',
-      attributes: contract.attributes?.join(', ') || '',
+      attributes: contract.attributes || [],
     });
     setIsContractDialogOpen(true);
   };
@@ -178,12 +180,7 @@ export default function ChildContractsPage() {
   };
 
   const onSubmit = (data: ContractFormData) => {
-    const attributes = data.attributes
-      ? data.attributes
-          .split(',')
-          .map((a) => a.trim())
-          .filter(Boolean)
-      : [];
+    const attributes = data.attributes.filter(Boolean);
 
     if (editingContract) {
       updateMutation.mutate({
@@ -370,10 +367,17 @@ export default function ChildContractsPage() {
 
             <div className="space-y-2">
               <Label htmlFor="attributes">{t('contracts.attributesLabel')}</Label>
-              <Input
-                id="attributes"
-                {...register('attributes')}
-                placeholder="ganztags, ndh, integration_a"
+              <Controller
+                name="attributes"
+                control={control}
+                render={({ field }) => (
+                  <TagInput
+                    id="attributes"
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder={t('contracts.attributesPlaceholder')}
+                  />
+                )}
               />
               <p className="text-xs text-muted-foreground">{t('contracts.attributesHelp')}</p>
             </div>
