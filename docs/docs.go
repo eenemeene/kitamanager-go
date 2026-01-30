@@ -1268,6 +1268,12 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
+                        "description": "Filter by section ID",
+                        "name": "section_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
                         "default": 1,
                         "description": "Page number",
                         "name": "page",
@@ -2233,6 +2239,12 @@ const docTemplate = `{
                         "name": "orgId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Filter by section ID",
+                        "name": "section_id",
+                        "in": "query"
                     },
                     {
                         "type": "integer",
@@ -4615,6 +4627,338 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/organizations/{orgId}/sections": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a paginated list of sections within a specific organization",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sections"
+                ],
+                "summary": "List sections in an organization",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_SectionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new section within an organization",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sections"
+                ],
+                "summary": "Create a new section",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Section data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.SectionCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.SectionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/organizations/{orgId}/sections/{sectionId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a single section by its ID within an organization",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sections"
+                ],
+                "summary": "Get section by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Section ID",
+                        "name": "sectionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.SectionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update an existing section by ID within an organization",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sections"
+                ],
+                "summary": "Update a section",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Section ID",
+                        "name": "sectionId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Section data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.SectionUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.SectionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a section by ID within an organization. Cannot delete sections with assigned children or employees.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sections"
+                ],
+                "summary": "Delete a section",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Section ID",
+                        "name": "sectionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Cannot delete section with assigned children/employees or default section",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/organizations/{orgId}/users": {
             "get": {
                 "security": [
@@ -5677,6 +6021,13 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 1
                 },
+                "section": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Section"
+                },
+                "section_id": {
+                    "type": "integer",
+                    "example": 1
+                },
                 "updated_at": {
                     "type": "string"
                 }
@@ -5830,6 +6181,10 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255,
                     "example": "Schmidt"
+                },
+                "section_id": {
+                    "type": "integer",
+                    "example": 1
                 }
             }
         },
@@ -5893,6 +6248,10 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255,
                     "example": "Schmidt"
+                },
+                "section_id": {
+                    "type": "integer",
+                    "example": 1
                 }
             }
         },
@@ -5990,6 +6349,13 @@ const docTemplate = `{
                     "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Organization"
                 },
                 "organization_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "section": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Section"
+                },
+                "section_id": {
                     "type": "integer",
                     "example": 1
                 },
@@ -6283,6 +6649,10 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255,
                     "example": "Mustermann"
+                },
+                "section_id": {
+                    "type": "integer",
+                    "example": 1
                 }
             }
         },
@@ -6306,6 +6676,10 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255,
                     "example": "Mustermann"
+                },
+                "section_id": {
+                    "type": "integer",
+                    "example": 1
                 }
             }
         },
@@ -7065,6 +7439,36 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_SectionResponse": {
+            "type": "object",
+            "properties": {
+                "_links": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginationLinks"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.SectionResponse"
+                    }
+                },
+                "limit": {
+                    "type": "integer",
+                    "example": 20
+                },
+                "page": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "total": {
+                    "type": "integer",
+                    "example": 100
+                },
+                "total_pages": {
+                    "type": "integer",
+                    "example": 5
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_UserResponse": {
             "type": "object",
             "properties": {
@@ -7378,6 +7782,98 @@ const docTemplate = `{
                 "RoleManager",
                 "RoleMember"
             ]
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.Section": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2024-01-15T10:30:00Z"
+                },
+                "created_by": {
+                    "type": "string",
+                    "example": "admin@example.com"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "is_default": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Krippe"
+                },
+                "organization": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Organization"
+                },
+                "organization_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2024-01-15T10:30:00Z"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.SectionCreateRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "Krippe"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.SectionResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2024-01-15T10:30:00Z"
+                },
+                "created_by": {
+                    "type": "string",
+                    "example": "admin@example.com"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "is_default": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Krippe"
+                },
+                "organization_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2024-01-15T10:30:00Z"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.SectionUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "Kita"
+                }
+            }
         },
         "github_com_eenemeene_kitamanager-go_internal_models.SetSuperAdminRequest": {
             "type": "object",

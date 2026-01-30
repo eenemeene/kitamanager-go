@@ -52,6 +52,7 @@ type ChildCreateRequest struct {
 	LastName  string    `json:"last_name" binding:"required,max=255" example:"Schmidt"`
 	Gender    string    `json:"gender" binding:"required" example:"female"`
 	Birthdate time.Time `json:"birthdate" binding:"required" example:"2020-03-10"`
+	SectionID *uint     `json:"section_id,omitempty" example:"1"`
 }
 
 // ChildUpdateRequest represents the request body for updating a child.
@@ -60,12 +61,15 @@ type ChildUpdateRequest struct {
 	LastName  *string    `json:"last_name" binding:"omitempty,max=255" example:"Schmidt"`
 	Gender    *string    `json:"gender" binding:"omitempty" example:"female"`
 	Birthdate *time.Time `json:"birthdate" example:"2020-03-10"`
+	SectionID *uint      `json:"section_id,omitempty" example:"1"`
 }
 
 // ChildResponse represents the child response
 type ChildResponse struct {
 	ID             uint                    `json:"id" example:"1"`
 	OrganizationID uint                    `json:"organization_id" example:"1"`
+	SectionID      *uint                   `json:"section_id,omitempty" example:"1"`
+	Section        *SectionResponse        `json:"section,omitempty"`
 	FirstName      string                  `json:"first_name" example:"Emma"`
 	LastName       string                  `json:"last_name" example:"Schmidt"`
 	Gender         string                  `json:"gender" example:"female"`
@@ -79,12 +83,17 @@ func (c *Child) ToResponse() ChildResponse {
 	resp := ChildResponse{
 		ID:             c.ID,
 		OrganizationID: c.OrganizationID,
+		SectionID:      c.SectionID,
 		FirstName:      c.FirstName,
 		LastName:       c.LastName,
 		Gender:         c.Gender,
 		Birthdate:      c.Birthdate,
 		CreatedAt:      c.CreatedAt,
 		UpdatedAt:      c.UpdatedAt,
+	}
+	if c.Section != nil {
+		sectionResp := c.Section.ToResponse()
+		resp.Section = &sectionResp
 	}
 	if len(c.Contracts) > 0 {
 		resp.Contracts = make([]ChildContractResponse, len(c.Contracts))

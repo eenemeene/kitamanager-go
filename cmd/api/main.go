@@ -87,6 +87,7 @@ func main() {
 	// Initialize stores
 	userStore := store.NewUserStore(db)
 	groupStore := store.NewGroupStore(db)
+	sectionStore := store.NewSectionStore(db)
 	orgStore := store.NewOrganizationStore(db)
 	employeeStore := store.NewEmployeeStore(db)
 	childStore := store.NewChildStore(db)
@@ -122,6 +123,7 @@ func main() {
 	userGroupService := service.NewUserGroupService(userGroupStore, userStore, groupStore)
 	orgService := service.NewOrganizationService(orgStore, groupStore, userStore)
 	groupService := service.NewGroupService(groupStore)
+	sectionService := service.NewSectionService(sectionStore)
 	employeeService := service.NewEmployeeService(employeeStore)
 	childService := service.NewChildService(childStore, orgStore, governmentFundingStore)
 	governmentFundingService := service.NewGovernmentFundingService(governmentFundingStore)
@@ -131,6 +133,7 @@ func main() {
 	authHandler := handlers.NewAuthHandler(userStore, cfg.JWTSecret, auditService)
 	userHandler := handlers.NewUserHandler(userService, userGroupService, auditService)
 	groupHandler := handlers.NewGroupHandler(groupService)
+	sectionHandler := handlers.NewSectionHandler(sectionService)
 	orgHandler := handlers.NewOrganizationHandler(orgService, auditService)
 	employeeHandler := handlers.NewEmployeeHandler(employeeService, auditService)
 	childHandler := handlers.NewChildHandler(childService, auditService)
@@ -171,7 +174,7 @@ func main() {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Setup API routes
-	routes.Setup(r, authHandler, userHandler, groupHandler, orgHandler, employeeHandler, childHandler, governmentFundingHandler, payPlanHandler, authMiddleware, authzMiddleware, csrfMiddleware, loginRateLimiter)
+	routes.Setup(r, authHandler, userHandler, groupHandler, sectionHandler, orgHandler, employeeHandler, childHandler, governmentFundingHandler, payPlanHandler, authMiddleware, authzMiddleware, csrfMiddleware, loginRateLimiter)
 
 	// Register embedded web UI
 	if err := web.RegisterHandlers(r); err != nil {

@@ -44,7 +44,12 @@ func (s *ChildService) List(ctx context.Context, limit, offset int) ([]models.Ch
 
 // ListByOrganization returns a paginated list of children for an organization
 func (s *ChildService) ListByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.ChildResponse, int64, error) {
-	children, total, err := s.store.FindByOrganization(orgID, limit, offset)
+	return s.ListByOrganizationAndSection(ctx, orgID, nil, limit, offset)
+}
+
+// ListByOrganizationAndSection returns a paginated list of children for an organization, optionally filtered by section
+func (s *ChildService) ListByOrganizationAndSection(ctx context.Context, orgID uint, sectionID *uint, limit, offset int) ([]models.ChildResponse, int64, error) {
+	children, total, err := s.store.FindByOrganizationAndSection(orgID, sectionID, limit, offset)
 	if err != nil {
 		return nil, 0, apperror.Internal("failed to fetch children")
 	}
@@ -92,6 +97,7 @@ func (s *ChildService) Create(ctx context.Context, orgID uint, req *models.Child
 	child := &models.Child{
 		Person: models.Person{
 			OrganizationID: orgID,
+			SectionID:      req.SectionID,
 			FirstName:      req.FirstName,
 			LastName:       req.LastName,
 			Gender:         req.Gender,
@@ -143,6 +149,9 @@ func (s *ChildService) Update(ctx context.Context, id, orgID uint, req *models.C
 			return nil, apperror.BadRequest(err.Error())
 		}
 		child.Birthdate = *req.Birthdate
+	}
+	if req.SectionID != nil {
+		child.SectionID = req.SectionID
 	}
 
 	if err := s.store.Update(child); err != nil {

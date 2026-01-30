@@ -217,6 +217,18 @@ func SeedTestData(cfg *config.Config, db *gorm.DB, fundingStore *store.Governmen
 	}
 	slog.Info("Created test group", "name", group.Name, "id", group.ID)
 
+	// Create default section for the organization
+	section := &models.Section{
+		Name:           "Unassigned",
+		OrganizationID: org.ID,
+		IsDefault:      true,
+		CreatedBy:      "seed",
+	}
+	if err := db.Create(section).Error; err != nil {
+		return err
+	}
+	slog.Info("Created default section", "name", section.Name, "id", section.ID)
+
 	// Hash password for all test users
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("supersecret"), bcrypt.DefaultCost)
 	if err != nil {
@@ -272,7 +284,7 @@ func SeedTestData(cfg *config.Config, db *gorm.DB, fundingStore *store.Governmen
 	}
 
 	// Create 200 children distributed over the last 4 years
-	children := createTestChildren(org.ID, 200)
+	children := createTestChildren(org.ID, section.ID, 200)
 	for i := range children {
 		if err := db.Create(&children[i]).Error; err != nil {
 			return err
@@ -351,7 +363,7 @@ func SeedTestData(cfg *config.Config, db *gorm.DB, fundingStore *store.Governmen
 	slog.Info("Created PayPlan entries", "count", len(payEntries))
 
 	// Create employees
-	employees := createTestEmployees(org.ID, 20)
+	employees := createTestEmployees(org.ID, section.ID, 20)
 	for i := range employees {
 		if err := db.Create(&employees[i]).Error; err != nil {
 			return err
@@ -571,7 +583,7 @@ func SeedTestData(cfg *config.Config, db *gorm.DB, fundingStore *store.Governmen
 }
 
 //nolint:gosec // G404: math/rand is fine for test data generation
-func createTestChildren(orgID uint, count int) []models.Child {
+func createTestChildren(orgID uint, sectionID uint, count int) []models.Child {
 	children := make([]models.Child, count)
 	now := time.Now()
 
@@ -605,6 +617,7 @@ func createTestChildren(orgID uint, count int) []models.Child {
 			children[idx] = models.Child{
 				Person: models.Person{
 					OrganizationID: orgID,
+					SectionID:      &sectionID,
 					FirstName:      firstNames[randInt(len(firstNames))],
 					LastName:       lastNames[randInt(len(lastNames))],
 					Gender:         randomGender(),
@@ -623,6 +636,7 @@ func createTestChildren(orgID uint, count int) []models.Child {
 		children[idx] = models.Child{
 			Person: models.Person{
 				OrganizationID: orgID,
+				SectionID:      &sectionID,
 				FirstName:      firstNames[randInt(len(firstNames))],
 				LastName:       lastNames[randInt(len(lastNames))],
 				Gender:         randomGender(),
@@ -808,7 +822,7 @@ func findJuly31stForExit(contractStart, now time.Time, birthdate time.Time) time
 }
 
 // createTestEmployees creates test employees with realistic German names
-func createTestEmployees(orgID uint, count int) []models.Employee {
+func createTestEmployees(orgID uint, sectionID uint, count int) []models.Employee {
 	employeeFirstNames := []string{
 		"Anna", "Thomas", "Maria", "Michael", "Julia",
 		"Stefan", "Sabine", "Martin", "Petra", "Andreas",
@@ -833,6 +847,7 @@ func createTestEmployees(orgID uint, count int) []models.Employee {
 		employees[i] = models.Employee{
 			Person: models.Person{
 				OrganizationID: orgID,
+				SectionID:      &sectionID,
 				FirstName:      employeeFirstNames[i%len(employeeFirstNames)],
 				LastName:       employeeLastNames[i%len(employeeLastNames)],
 				Gender:         randomGender(),

@@ -112,6 +112,23 @@ func parseOptionalInt(c *gin.Context, param string, defaultValue int) (int, bool
 	return val, true
 }
 
+// parseOptionalUint parses an optional uint query parameter.
+// Returns nil if param is empty, or pointer to parsed value if valid.
+// Returns (value, ok). If ok is false, error response has been sent.
+func parseOptionalUint(c *gin.Context, param string) (*uint, bool) {
+	str := c.Query(param)
+	if str == "" {
+		return nil, true
+	}
+	val, err := strconv.ParseUint(str, 10, 32)
+	if err != nil {
+		respondError(c, apperror.BadRequest(param+" must be a positive integer"))
+		return nil, false
+	}
+	result := uint(val)
+	return &result, true
+}
+
 // parseOrgResourceAndContractID parses orgId, a resource ID, and contractId from URL parameters.
 // Returns (orgID, resourceID, contractID, ok). If ok is false, error response has been sent.
 func parseOrgResourceAndContractID(c *gin.Context, resourceParam string) (uint, uint, uint, bool) {

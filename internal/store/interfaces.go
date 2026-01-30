@@ -66,6 +66,7 @@ type GroupStorer interface {
 type EmployeeStorer interface {
 	FindAll(limit, offset int) ([]models.Employee, int64, error)
 	FindByOrganization(orgID uint, limit, offset int) ([]models.Employee, int64, error)
+	FindByOrganizationAndSection(orgID uint, sectionID *uint, limit, offset int) ([]models.Employee, int64, error)
 	FindByID(id uint) (*models.Employee, error)
 	FindByIDMinimal(id uint) (*models.Employee, error) // Without preloads, for org checks
 	Create(emp *models.Employee) error
@@ -91,6 +92,7 @@ type EmployeeStorer interface {
 type ChildStorer interface {
 	FindAll(limit, offset int) ([]models.Child, int64, error)
 	FindByOrganization(orgID uint, limit, offset int) ([]models.Child, int64, error)
+	FindByOrganizationAndSection(orgID uint, sectionID *uint, limit, offset int) ([]models.Child, int64, error)
 	FindByOrganizationWithContractOn(orgID uint, date time.Time) ([]models.Child, error)
 	CountByOrganizationWithContractOn(orgID uint, date time.Time) (int64, error)
 	FindByID(id uint) (*models.Child, error)
@@ -114,6 +116,20 @@ type ContractStorer[T models.HasPeriod] interface {
 	HasActiveContract(personID uint, date time.Time) (bool, error)
 	ValidateNoOverlap(personID uint, from time.Time, to *time.Time, excludeID *uint) error
 	CloseCurrentContract(personID uint, endDate time.Time) error
+}
+
+// SectionStorer defines the interface for section storage operations
+type SectionStorer interface {
+	FindByID(id uint) (*models.Section, error)
+	FindByOrganization(orgID uint) ([]models.Section, error)
+	FindByOrganizationPaginated(orgID uint, limit, offset int) ([]models.Section, int64, error)
+	FindDefaultSection(orgID uint) (*models.Section, error)
+	FindByNameAndOrg(name string, orgID uint) (*models.Section, error)
+	Create(section *models.Section) error
+	Update(section *models.Section) error
+	Delete(id uint) error
+	HasChildren(id uint) (bool, error)
+	HasEmployees(id uint) (bool, error)
 }
 
 // GovernmentFundingStorer defines the interface for government funding storage operations
@@ -153,4 +169,5 @@ var (
 	_ ChildStorer             = (*ChildStore)(nil)
 	_ UserGroupStorer         = (*UserGroupStore)(nil)
 	_ GovernmentFundingStorer = (*GovernmentFundingStore)(nil)
+	_ SectionStorer           = (*SectionStore)(nil)
 )

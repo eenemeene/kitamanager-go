@@ -25,6 +25,7 @@ const (
 	ResourceChildContracts    = "child_contracts"
 	ResourceUsers             = "users"
 	ResourceGroups            = "groups"
+	ResourceSections          = "sections"
 	ResourceFundings          = "fundings"
 	ResourcePayPlans          = "payplans"
 )
@@ -195,6 +196,10 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleSuperAdmin, "*", ResourceGroups, ActionRead},
 		{RoleSuperAdmin, "*", ResourceGroups, ActionUpdate},
 		{RoleSuperAdmin, "*", ResourceGroups, ActionDelete},
+		{RoleSuperAdmin, "*", ResourceSections, ActionCreate},
+		{RoleSuperAdmin, "*", ResourceSections, ActionRead},
+		{RoleSuperAdmin, "*", ResourceSections, ActionUpdate},
+		{RoleSuperAdmin, "*", ResourceSections, ActionDelete},
 		{RoleSuperAdmin, "*", ResourceFundings, ActionCreate},
 		{RoleSuperAdmin, "*", ResourceFundings, ActionRead},
 		{RoleSuperAdmin, "*", ResourceFundings, ActionUpdate},
@@ -231,6 +236,10 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleAdmin, "*", ResourceGroups, ActionRead},
 		{RoleAdmin, "*", ResourceGroups, ActionUpdate},
 		{RoleAdmin, "*", ResourceGroups, ActionDelete},
+		{RoleAdmin, "*", ResourceSections, ActionCreate},
+		{RoleAdmin, "*", ResourceSections, ActionRead},
+		{RoleAdmin, "*", ResourceSections, ActionUpdate},
+		{RoleAdmin, "*", ResourceSections, ActionDelete},
 		{RoleAdmin, "*", ResourcePayPlans, ActionCreate},
 		{RoleAdmin, "*", ResourcePayPlans, ActionRead},
 		{RoleAdmin, "*", ResourcePayPlans, ActionUpdate},
@@ -256,6 +265,7 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleManager, "*", ResourceChildContracts, ActionDelete},
 		{RoleManager, "*", ResourceUsers, ActionRead},
 		{RoleManager, "*", ResourceGroups, ActionRead},
+		{RoleManager, "*", ResourceSections, ActionRead},
 		{RoleManager, "*", ResourcePayPlans, ActionRead},
 
 		// Member - read-only access to employees, children, contracts in their org
@@ -264,6 +274,7 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleMember, "*", ResourceChildren, ActionRead},
 		{RoleMember, "*", ResourceEmployeeContracts, ActionRead},
 		{RoleMember, "*", ResourceChildContracts, ActionRead},
+		{RoleMember, "*", ResourceSections, ActionRead},
 		{RoleMember, "*", ResourcePayPlans, ActionRead},
 	}
 

@@ -36,14 +36,28 @@ func (s *ChildStore) FindAll(limit, offset int) ([]models.Child, int64, error) {
 }
 
 func (s *ChildStore) FindByOrganization(orgID uint, limit, offset int) ([]models.Child, int64, error) {
+	return s.FindByOrganizationAndSection(orgID, nil, limit, offset)
+}
+
+func (s *ChildStore) FindByOrganizationAndSection(orgID uint, sectionID *uint, limit, offset int) ([]models.Child, int64, error) {
 	var children []models.Child
 	var total int64
 
-	if err := s.db.Model(&models.Child{}).Where("organization_id = ?", orgID).Count(&total).Error; err != nil {
+	query := s.db.Model(&models.Child{}).Where("organization_id = ?", orgID)
+	if sectionID != nil {
+		query = query.Where("section_id = ?", *sectionID)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	if err := s.db.Preload("Contracts").Where("organization_id = ?", orgID).Limit(limit).Offset(offset).Find(&children).Error; err != nil {
+	query = s.db.Preload("Contracts").Preload("Section").Where("organization_id = ?", orgID)
+	if sectionID != nil {
+		query = query.Where("section_id = ?", *sectionID)
+	}
+
+	if err := query.Limit(limit).Offset(offset).Find(&children).Error; err != nil {
 		return nil, 0, err
 	}
 
@@ -57,7 +71,7 @@ func (s *ChildStore) Contracts() ContractStorer[models.ChildContract] {
 
 func (s *ChildStore) FindByID(id uint) (*models.Child, error) {
 	var child models.Child
-	if err := s.db.Preload("Organization").Preload("Contracts").First(&child, id).Error; err != nil {
+	if err := s.db.Preload("Organization").Preload("Section").Preload("Contracts").First(&child, id).Error; err != nil {
 		return nil, err
 	}
 	return &child, nil

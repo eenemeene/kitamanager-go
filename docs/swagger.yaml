@@ -88,6 +88,11 @@ definitions:
       organization_id:
         example: 1
         type: integer
+      section:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Section'
+      section_id:
+        example: 1
+        type: integer
       updated_at:
         type: string
     type: object
@@ -195,6 +200,9 @@ definitions:
         example: Schmidt
         maxLength: 255
         type: string
+      section_id:
+        example: 1
+        type: integer
     required:
     - birthdate
     - first_name
@@ -245,6 +253,9 @@ definitions:
         example: Schmidt
         maxLength: 255
         type: string
+      section_id:
+        example: 1
+        type: integer
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildrenContractCountByMonthResponse:
     properties:
@@ -311,6 +322,11 @@ definitions:
       organization:
         $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Organization'
       organization_id:
+        example: 1
+        type: integer
+      section:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Section'
+      section_id:
         example: 1
         type: integer
       updated_at:
@@ -521,6 +537,9 @@ definitions:
         example: Mustermann
         maxLength: 255
         type: string
+      section_id:
+        example: 1
+        type: integer
     required:
     - birthdate
     - first_name
@@ -543,6 +562,9 @@ definitions:
         example: Mustermann
         maxLength: 255
         type: string
+      section_id:
+        example: 1
+        type: integer
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse:
     properties:
@@ -1086,6 +1108,27 @@ definitions:
         example: 5
         type: integer
     type: object
+  ? github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_SectionResponse
+  : properties:
+      _links:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginationLinks'
+      data:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.SectionResponse'
+        type: array
+      limit:
+        example: 20
+        type: integer
+      page:
+        example: 1
+        type: integer
+      total:
+        example: 100
+        type: integer
+      total_pages:
+        example: 5
+        type: integer
+    type: object
   ? github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_UserResponse
   : properties:
       _links:
@@ -1309,6 +1352,72 @@ definitions:
     - RoleAdmin
     - RoleManager
     - RoleMember
+  github_com_eenemeene_kitamanager-go_internal_models.Section:
+    properties:
+      created_at:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+      created_by:
+        example: admin@example.com
+        type: string
+      id:
+        example: 1
+        type: integer
+      is_default:
+        example: false
+        type: boolean
+      name:
+        example: Krippe
+        type: string
+      organization:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Organization'
+      organization_id:
+        example: 1
+        type: integer
+      updated_at:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.SectionCreateRequest:
+    properties:
+      name:
+        example: Krippe
+        maxLength: 255
+        type: string
+    required:
+    - name
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.SectionResponse:
+    properties:
+      created_at:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+      created_by:
+        example: admin@example.com
+        type: string
+      id:
+        example: 1
+        type: integer
+      is_default:
+        example: false
+        type: boolean
+      name:
+        example: Krippe
+        type: string
+      organization_id:
+        example: 1
+        type: integer
+      updated_at:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.SectionUpdateRequest:
+    properties:
+      name:
+        example: Kita
+        maxLength: 255
+        type: string
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.SetSuperAdminRequest:
     properties:
       is_superadmin:
@@ -2342,6 +2451,10 @@ paths:
         name: orgId
         required: true
         type: integer
+      - description: Filter by section ID
+        in: query
+        name: section_id
+        type: integer
       - default: 1
         description: Page number
         in: query
@@ -2985,6 +3098,10 @@ paths:
         in: path
         name: orgId
         required: true
+        type: integer
+      - description: Filter by section ID
+        in: query
+        name: section_id
         type: integer
       - default: 1
         description: Page number
@@ -4562,6 +4679,224 @@ paths:
       summary: Update entry
       tags:
       - payplans
+  /api/v1/organizations/{orgId}/sections:
+    get:
+      consumes:
+      - application/json
+      description: Get a paginated list of sections within a specific organization
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        maximum: 100
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_SectionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List sections in an organization
+      tags:
+      - sections
+    post:
+      consumes:
+      - application/json
+      description: Create a new section within an organization
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Section data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.SectionCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.SectionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new section
+      tags:
+      - sections
+  /api/v1/organizations/{orgId}/sections/{sectionId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a section by ID within an organization. Cannot delete sections
+        with assigned children or employees.
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Section ID
+        in: path
+        name: sectionId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Cannot delete section with assigned children/employees or default
+            section
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a section
+      tags:
+      - sections
+    get:
+      consumes:
+      - application/json
+      description: Get a single section by its ID within an organization
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Section ID
+        in: path
+        name: sectionId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.SectionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get section by ID
+      tags:
+      - sections
+    put:
+      consumes:
+      - application/json
+      description: Update an existing section by ID within an organization
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Section ID
+        in: path
+        name: sectionId
+        required: true
+        type: integer
+      - description: Section data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.SectionUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.SectionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a section
+      tags:
+      - sections
   /api/v1/organizations/{orgId}/users:
     get:
       consumes:

@@ -88,6 +88,7 @@ func TestMain(m *testing.M) {
 		&models.Organization{},
 		&models.User{},
 		&models.Group{},
+		&models.Section{},
 		&models.UserGroup{},
 		&models.Employee{},
 		&models.EmployeeContract{},

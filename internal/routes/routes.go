@@ -13,6 +13,7 @@ func Setup(
 	authHandler *handlers.AuthHandler,
 	userHandler *handlers.UserHandler,
 	groupHandler *handlers.GroupHandler,
+	sectionHandler *handlers.SectionHandler,
 	orgHandler *handlers.OrganizationHandler,
 	employeeHandler *handlers.EmployeeHandler,
 	childHandler *handlers.ChildHandler,
@@ -165,6 +166,28 @@ func Setup(
 					groups.DELETE("/:groupId",
 						authzMiddleware.RequirePermission(rbac.ResourceGroups, rbac.ActionDelete),
 						groupHandler.Delete)
+				}
+
+				// ============================================================
+				// Section management (org-scoped - each section belongs to one org)
+				// ============================================================
+				sections := orgScoped.Group("/sections")
+				{
+					sections.GET("",
+						authzMiddleware.RequirePermission(rbac.ResourceSections, rbac.ActionRead),
+						sectionHandler.List)
+					sections.GET("/:sectionId",
+						authzMiddleware.RequirePermission(rbac.ResourceSections, rbac.ActionRead),
+						sectionHandler.Get)
+					sections.POST("",
+						authzMiddleware.RequirePermission(rbac.ResourceSections, rbac.ActionCreate),
+						sectionHandler.Create)
+					sections.PUT("/:sectionId",
+						authzMiddleware.RequirePermission(rbac.ResourceSections, rbac.ActionUpdate),
+						sectionHandler.Update)
+					sections.DELETE("/:sectionId",
+						authzMiddleware.RequirePermission(rbac.ResourceSections, rbac.ActionDelete),
+						sectionHandler.Delete)
 				}
 
 				// ============================================================

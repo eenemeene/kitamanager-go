@@ -37,7 +37,12 @@ func (s *EmployeeService) List(ctx context.Context, limit, offset int) ([]models
 
 // ListByOrganization returns a paginated list of employees for an organization
 func (s *EmployeeService) ListByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.EmployeeResponse, int64, error) {
-	employees, total, err := s.store.FindByOrganization(orgID, limit, offset)
+	return s.ListByOrganizationAndSection(ctx, orgID, nil, limit, offset)
+}
+
+// ListByOrganizationAndSection returns a paginated list of employees for an organization, optionally filtered by section
+func (s *EmployeeService) ListByOrganizationAndSection(ctx context.Context, orgID uint, sectionID *uint, limit, offset int) ([]models.EmployeeResponse, int64, error) {
+	employees, total, err := s.store.FindByOrganizationAndSection(orgID, sectionID, limit, offset)
 	if err != nil {
 		return nil, 0, apperror.Internal("failed to fetch employees")
 	}
@@ -85,6 +90,7 @@ func (s *EmployeeService) Create(ctx context.Context, orgID uint, req *models.Em
 	employee := &models.Employee{
 		Person: models.Person{
 			OrganizationID: orgID,
+			SectionID:      req.SectionID,
 			FirstName:      req.FirstName,
 			LastName:       req.LastName,
 			Gender:         req.Gender,
@@ -136,6 +142,9 @@ func (s *EmployeeService) Update(ctx context.Context, id, orgID uint, req *model
 			return nil, apperror.BadRequest(err.Error())
 		}
 		employee.Birthdate = *req.Birthdate
+	}
+	if req.SectionID != nil {
+		employee.SectionID = req.SectionID
 	}
 
 	if err := s.store.Update(employee); err != nil {
