@@ -282,9 +282,10 @@ test.describe('Child Contract Workflow', () => {
     // 3. Historical contract (last month - ended)
     // 4. Future contract with ganztags + ndh (next month - upcoming)
 
-    // Verify we can see ganztags in at least 2 contracts
+    // Verify we can see ganztags in multiple contracts (attribute prefill may add more)
     const ganztagsTags = historyDialog.locator('.p-tag').filter({ hasText: 'ganztags' })
-    await expect(ganztagsTags).toHaveCount(2)
+    const ganztagsCount = await ganztagsTags.count()
+    expect(ganztagsCount).toBeGreaterThanOrEqual(2)
 
     // Verify ndh appears in one contract
     await expect(historyDialog.getByText('ndh')).toBeVisible()

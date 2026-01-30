@@ -193,7 +193,9 @@ test.describe('Child Contract Management', () => {
 
     // Should see both contracts in the history dialog
     const historyDialog = page.getByRole('dialog')
-    await expect(historyDialog.getByText('ganztags')).toBeVisible()
+    // ganztags appears in both contracts (old one, and prefilled in new one)
+    await expect(historyDialog.getByText('ganztags').first()).toBeVisible()
+    // halbtags was added to the new contract
     await expect(historyDialog.getByText('halbtags')).toBeVisible()
 
     // Verify we have exactly 2 contracts
@@ -211,6 +213,102 @@ test.describe('Child Contract Management', () => {
 
     // Close history dialog (click the footer Close button, not the header X)
     await historyDialog.locator('button:has-text("Close"):not(.p-dialog-close-button)').click()
+    await expect(page.locator('.p-dialog')).not.toBeVisible({ timeout: 5000 })
+  })
+
+  test('should prefill attributes from active contract when creating new contract', async ({
+    page
+  }) => {
+    // This test verifies that attributes are prefilled from the current active contract
+
+    const timestamp2 = Date.now()
+    const orgName2 = `Prefill Test Org ${timestamp2}`
+    const childName2 = `Child ${timestamp2}`
+
+    // Login
+    await login(page, SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD)
+
+    // Create org and select it
+    const orgId2 = await createOrganization(page, orgName2, 'berlin')
+    await selectOrganizationById(page, orgId2)
+
+    // Navigate to children
+    await page.getByRole('link', { name: /children/i }).click()
+
+    // Create child
+    await page.getByRole('button', { name: /new child/i }).click()
+    await page.getByLabel('First Name').fill('Test')
+    await page.getByLabel('Last Name').fill(childName2)
+    await page.locator('#gender').click()
+    await page.waitForTimeout(300)
+    await page.getByRole('option', { name: 'Male', exact: true }).click()
+    await page.locator('#birthdate').click()
+    await page.waitForTimeout(300)
+    await page
+      .locator('.p-datepicker-calendar td:not(.p-datepicker-other-month) span')
+      .first()
+      .click()
+    await page.getByRole('button', { name: 'Save' }).click()
+    await expect(page.locator('.p-dialog')).not.toBeVisible({ timeout: 10000 })
+
+    // Add first contract with multiple attributes
+    const childRow = page.getByRole('row').filter({ hasText: `Test ${childName2}` })
+    await childRow.locator('button[title="Add Contract"]').click()
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 })
+
+    // Set start date
+    await page.locator('#from').click()
+    await page.waitForTimeout(300)
+    await page.locator('.p-datepicker-calendar td.p-datepicker-today span').click()
+
+    // Add multiple attributes: ganztags, ndh, integration_a
+    const chipsInput = page.locator('#attributes input')
+    await chipsInput.fill('ganztags')
+    await chipsInput.press('Enter')
+    await page.waitForTimeout(200)
+    await chipsInput.fill('ndh')
+    await chipsInput.press('Enter')
+    await page.waitForTimeout(200)
+    await chipsInput.fill('integration_a')
+    await chipsInput.press('Enter')
+    await page.waitForTimeout(200)
+
+    // Save the first contract
+    await page.getByRole('button', { name: 'Save' }).click()
+    await expect(page.locator('.p-dialog')).not.toBeVisible({ timeout: 10000 })
+
+    // Verify attributes show in table
+    await expect(childRow.getByText('ganztags')).toBeVisible({ timeout: 5000 })
+
+    // =====================================
+    // Now open dialog to add second contract
+    // =====================================
+    await childRow.locator('button[title="Add Contract"]').click()
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 })
+
+    // Verify the warning is shown (confirms there's an active contract)
+    await expect(page.getByText(/this child has an active contract/i)).toBeVisible({
+      timeout: 5000
+    })
+
+    // =====================================
+    // Key assertion: Verify attributes are prefilled
+    // =====================================
+    // Wait a moment for the form to initialize
+    await page.waitForTimeout(500)
+
+    // The InputChips component should contain the prefilled attributes as chips
+    // PrimeVue 4 InputChips uses .p-chip class for each chip
+    const attributeChips = page.locator('#attributes .p-chip')
+    await expect(attributeChips).toHaveCount(3, { timeout: 10000 })
+
+    // Verify each attribute is present
+    await expect(page.locator('#attributes').getByText('ganztags')).toBeVisible()
+    await expect(page.locator('#attributes').getByText('ndh')).toBeVisible()
+    await expect(page.locator('#attributes').getByText('integration_a')).toBeVisible()
+
+    // Close the dialog without saving
+    await page.getByRole('button', { name: 'Cancel' }).click()
     await expect(page.locator('.p-dialog')).not.toBeVisible({ timeout: 5000 })
   })
 

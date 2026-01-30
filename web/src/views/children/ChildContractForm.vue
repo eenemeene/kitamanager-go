@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Child, ChildContract, ChildContractCreateRequest } from '@/api/types'
 import Dialog from 'primevue/dialog'
 import DatePicker from 'primevue/datepicker'
 import Button from 'primevue/button'
-import Chips from 'primevue/chips'
+import InputChips from 'primevue/inputchips'
 import Checkbox from 'primevue/checkbox'
 import Message from 'primevue/message'
 
@@ -21,6 +21,9 @@ const emit = defineEmits<{
   close: []
   save: [data: ChildContractCreateRequest, endCurrentContract: boolean]
 }>()
+
+// Form key - changes to force form reset when dialog opens
+const formKey = ref(0)
 
 const form = ref({
   from: null as Date | null,
@@ -56,19 +59,46 @@ const suggestedEndDate = computed(() => {
   return endDate.toLocaleDateString()
 })
 
+// Track if we've initialized the form for this dialog session
+const isInitialized = ref(false)
+
+// Reset initialization flag when dialog closes
 watch(
   () => props.visible,
   (visible) => {
-    if (visible) {
+    if (!visible) {
+      isInitialized.value = false
+    }
+  }
+)
+
+// Initialize form when dialog opens AND currentContract is available
+// This handles the case where props might update in different ticks
+watch(
+  [() => props.visible, () => props.currentContract],
+  async ([visible, currentContract]) => {
+    // Initialize when dialog is visible and we haven't initialized yet
+    if (visible && !isInitialized.value) {
+      // Mark as initialized to prevent re-initialization
+      isInitialized.value = true
+
+      // Prefill attributes from current contract
+      const prefillAttrs = currentContract?.attributes || []
+
       form.value = {
         from: new Date(),
         to: null,
-        attributes: []
+        attributes: [...prefillAttrs]
       }
       endCurrentContract.value = true
       errors.value = {}
+
+      // Wait for Vue to process the form update, then force InputChips re-render
+      await nextTick()
+      formKey.value++
     }
-  }
+  },
+  { immediate: true }
 )
 
 function validate(): boolean {
@@ -149,7 +179,8 @@ function handleSave() {
 
       <div class="field">
         <label for="attributes">{{ t('contracts.attributesLabel') }}</label>
-        <Chips
+        <InputChips
+          :key="formKey"
           id="attributes"
           v-model="form.attributes"
           placeholder="e.g. ganztags, ndh, integration_a"
