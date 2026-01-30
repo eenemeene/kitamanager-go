@@ -50,11 +50,12 @@ import type {
   ChildContract,
   ChildContractCreateRequest,
   ChildContractUpdateRequest,
+  ContractProperties,
   Gender,
 } from '@/lib/api/types';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
-import { TagInput } from '@/components/ui/tag-input';
+import { PropertyTagInput, type FundingAttribute } from '@/components/ui/tag-input';
 import { useFundingAttributes } from '@/lib/hooks/use-funding-attributes';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -64,6 +65,7 @@ import {
   calculateAge,
   formatDateForInput,
   formatDateForApi,
+  propertiesToValues,
 } from '@/lib/utils/formatting';
 import { Pagination } from '@/components/ui/pagination';
 
@@ -77,7 +79,7 @@ const childSchema = z.object({
 const contractSchema = z.object({
   from: z.string().min(1),
   to: z.string().optional(),
-  attributes: z.array(z.string()).default([]),
+  properties: z.record(z.string()).optional(),
 });
 
 type ChildFormData = z.infer<typeof childSchema>;
@@ -256,15 +258,15 @@ export default function ChildrenPage() {
     defaultValues: {
       from: '',
       to: '',
-      attributes: [],
+      properties: undefined,
     },
   });
 
   const contractFromDate = watchContract('from');
   const contractToDate = watchContract('to');
 
-  // Get suggested attributes from government funding
-  const { suggestedAttributes, exclusiveGroupMap } = useFundingAttributes(
+  // Get funding attributes from government funding
+  const { fundingAttributes, attributesByKey } = useFundingAttributes(
     orgId,
     contractFromDate,
     contractToDate
@@ -325,10 +327,10 @@ export default function ChildrenPage() {
       resetContract({
         from: tomorrowStr,
         to: '',
-        attributes: active.attributes || [],
+        properties: active.properties as Record<string, string> | undefined,
       });
     } else {
-      resetContract({ from: '', to: '', attributes: [] });
+      resetContract({ from: '', to: '', properties: undefined });
     }
     setIsContractDialogOpen(true);
   };
@@ -345,21 +347,26 @@ export default function ChildrenPage() {
     }
   };
 
-  // Helper to check if attributes have changed
-  const attributesChanged = (newAttrs: string[], oldAttrs: string[] | undefined): boolean => {
-    const oldSorted = [...(oldAttrs || [])].sort();
-    const newSorted = [...newAttrs].sort();
-    if (oldSorted.length !== newSorted.length) return true;
-    return oldSorted.some((attr, i) => attr !== newSorted[i]);
+  // Helper to check if properties have changed
+  const propertiesChanged = (
+    newProps: ContractProperties | undefined,
+    oldProps: ContractProperties | undefined
+  ): boolean => {
+    const newKeys = Object.keys(newProps || {}).sort();
+    const oldKeys = Object.keys(oldProps || {}).sort();
+    if (newKeys.length !== oldKeys.length) return true;
+    if (newKeys.some((key, i) => key !== oldKeys[i])) return true;
+    return newKeys.some((key) => (newProps || {})[key] !== (oldProps || {})[key]);
   };
 
   const onSubmitContract = (data: ContractFormData) => {
     if (contractChild) {
-      const attributes = data.attributes.filter(Boolean);
-
       // If there's an active contract and we're ending it, check if something actually changed
       if (activeContract && endCurrentContract) {
-        const hasChanges = attributesChanged(attributes, activeContract.attributes);
+        const hasChanges = propertiesChanged(
+          data.properties,
+          activeContract.properties as ContractProperties | undefined
+        );
         if (!hasChanges) {
           toast({
             title: t('contracts.noChangesDetected'),
@@ -375,7 +382,7 @@ export default function ChildrenPage() {
         data: {
           from: formatDateForApi(data.from) || data.from,
           to: formatDateForApi(data.to),
-          attributes: attributes.length > 0 ? attributes : undefined,
+          properties: data.properties,
         },
       });
     }
@@ -432,7 +439,7 @@ export default function ChildrenPage() {
                   <TableHead>{t('children.birthdate')}</TableHead>
                   <TableHead>{t('children.age')}</TableHead>
                   <TableHead>{t('children.currentContract')}</TableHead>
-                  <TableHead>{t('children.attributes')}</TableHead>
+                  <TableHead>{t('children.properties')}</TableHead>
                   <TableHead className="text-right">{t('common.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -470,22 +477,25 @@ export default function ChildrenPage() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {currentContract?.attributes && currentContract.attributes.length > 0 ? (
+                        {currentContract?.properties &&
+                        Object.keys(currentContract.properties).length > 0 ? (
                           <div className="flex flex-wrap gap-1">
-                            {currentContract.attributes.slice(0, 3).map((attr) => (
-                              <Badge key={attr} variant="outline" className="text-xs">
-                                {attr}
-                              </Badge>
-                            ))}
-                            {currentContract.attributes.length > 3 && (
+                            {propertiesToValues(currentContract.properties as ContractProperties)
+                              .slice(0, 3)
+                              .map((value) => (
+                                <Badge key={value} variant="outline" className="text-xs">
+                                  {value}
+                                </Badge>
+                              ))}
+                            {Object.keys(currentContract.properties).length > 3 && (
                               <Badge variant="outline" className="text-xs">
-                                +{currentContract.attributes.length - 3}
+                                +{Object.keys(currentContract.properties).length - 3}
                               </Badge>
                             )}
                           </div>
                         ) : (
                           <span className="text-sm text-muted-foreground">
-                            {t('contracts.noAttributes')}
+                            {t('contracts.noProperties')}
                           </span>
                         )}
                       </TableCell>
@@ -634,7 +644,10 @@ export default function ChildrenPage() {
                   <p className="text-sm text-muted-foreground">
                     {t('contracts.activeSince', {
                       date: formatDate(activeContract.from),
-                      attrs: activeContract.attributes?.join(', ') || t('contracts.noAttributes'),
+                      attrs:
+                        propertiesToValues(activeContract.properties as ContractProperties).join(
+                          ', '
+                        ) || t('contracts.noAttributes'),
                     })}
                   </p>
                   <div className="flex items-center space-x-2">
@@ -671,23 +684,23 @@ export default function ChildrenPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="attributes">{t('contracts.attributesLabel')}</Label>
+              <Label htmlFor="properties">{t('contracts.propertiesLabel')}</Label>
               <Controller
-                name="attributes"
+                name="properties"
                 control={controlContract}
                 render={({ field }) => (
-                  <TagInput
-                    id="attributes"
+                  <PropertyTagInput
+                    id="properties"
                     value={field.value}
                     onChange={field.onChange}
-                    placeholder={t('contracts.attributesPlaceholder')}
-                    suggestions={suggestedAttributes}
-                    suggestionsLabel={t('contracts.suggestedAttributes')}
-                    exclusiveGroupMap={exclusiveGroupMap}
+                    fundingAttributes={fundingAttributes}
+                    attributesByKey={attributesByKey}
+                    placeholder={t('contracts.propertiesPlaceholder')}
+                    suggestionsLabel={t('contracts.suggestedProperties')}
                   />
                 )}
               />
-              <p className="text-xs text-muted-foreground">{t('contracts.attributesHelp')}</p>
+              <p className="text-xs text-muted-foreground">{t('contracts.propertiesHelp')}</p>
             </div>
 
             <DialogFooter>

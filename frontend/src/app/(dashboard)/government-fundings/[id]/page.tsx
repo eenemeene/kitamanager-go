@@ -61,7 +61,8 @@ const periodSchema = z.object({
 });
 
 const propertySchema = z.object({
-  name: z.string().min(1),
+  key: z.string().min(1),
+  value: z.string().min(1),
   payment: z.number().min(0),
   requirement: z.number().min(0),
   min_age: z.number().optional().nullable(),
@@ -193,7 +194,8 @@ export default function GovernmentFundingDetailPage() {
   } = useForm<PropertyFormData>({
     resolver: zodResolver(propertySchema),
     defaultValues: {
-      name: '',
+      key: '',
+      value: '',
       payment: 0,
       requirement: 0,
       min_age: null,
@@ -210,7 +212,8 @@ export default function GovernmentFundingDetailPage() {
   const handleAddProperty = (period: GovernmentFundingPeriod) => {
     setSelectedPeriod(period);
     resetProperty({
-      name: '',
+      key: '',
+      value: '',
       payment: 0,
       requirement: 0,
       min_age: null,
@@ -321,7 +324,8 @@ export default function GovernmentFundingDetailPage() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>{t('governmentFundings.property')}</TableHead>
+                            <TableHead>{t('governmentFundings.key')}</TableHead>
+                            <TableHead>{t('governmentFundings.value')}</TableHead>
                             <TableHead>{t('governmentFundings.ageRange')}</TableHead>
                             <TableHead>{t('governmentFundings.payment')}</TableHead>
                             <TableHead>{t('governmentFundings.requirementFte')}</TableHead>
@@ -331,7 +335,8 @@ export default function GovernmentFundingDetailPage() {
                         <TableBody>
                           {period.properties?.map((property) => (
                             <TableRow key={property.id}>
-                              <TableCell className="font-medium">{property.name}</TableCell>
+                              <TableCell className="font-medium">{property.key}</TableCell>
+                              <TableCell>{property.value}</TableCell>
                               <TableCell>
                                 {formatAgeRange(property.min_age, property.max_age)}
                               </TableCell>
@@ -407,12 +412,21 @@ export default function GovernmentFundingDetailPage() {
             <DialogTitle>{t('governmentFundings.addProperty')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmitProperty(onSubmitProperty)} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">{t('common.name')}</Label>
-              <Input id="name" {...registerProperty('name')} />
-              {errorsProperty.name && (
-                <p className="text-sm text-destructive">{t('validation.nameRequired')}</p>
-              )}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="key">{t('governmentFundings.key')}</Label>
+                <Input id="key" placeholder="care_type" {...registerProperty('key')} />
+                {errorsProperty.key && (
+                  <p className="text-sm text-destructive">{t('validation.keyRequired')}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="value">{t('governmentFundings.value')}</Label>
+                <Input id="value" placeholder="ganztag" {...registerProperty('value')} />
+                {errorsProperty.value && (
+                  <p className="text-sm text-destructive">{t('validation.valueRequired')}</p>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

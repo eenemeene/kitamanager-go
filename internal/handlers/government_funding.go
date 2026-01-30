@@ -28,7 +28,7 @@ func NewGovernmentFundingHandler(service *service.GovernmentFundingService) *Gov
 // @Security BearerAuth
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(20) maximum(100)
-// @Success 200 {object} models.PaginatedResponse[models.GovernmentFunding]
+// @Success 200 {object} models.PaginatedResponse[models.GovernmentFundingResponse]
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/government-fundings [get]
@@ -98,7 +98,7 @@ func (h *GovernmentFundingHandler) Get(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param request body models.GovernmentFundingCreateRequest true "GovernmentFunding data"
-// @Success 201 {object} models.GovernmentFunding
+// @Success 201 {object} models.GovernmentFundingResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
@@ -132,7 +132,7 @@ func (h *GovernmentFundingHandler) Create(c *gin.Context) {
 // @Security BearerAuth
 // @Param id path int true "GovernmentFunding ID"
 // @Param request body models.GovernmentFundingUpdateRequest true "GovernmentFunding data"
-// @Success 200 {object} models.GovernmentFunding
+// @Success 200 {object} models.GovernmentFundingResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
@@ -203,7 +203,7 @@ func (h *GovernmentFundingHandler) Delete(c *gin.Context) {
 // @Security BearerAuth
 // @Param id path int true "GovernmentFunding ID"
 // @Param request body models.GovernmentFundingPeriodCreateRequest true "Period data"
-// @Success 201 {object} models.GovernmentFundingPeriod
+// @Success 201 {object} models.GovernmentFundingPeriodResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
@@ -242,7 +242,7 @@ func (h *GovernmentFundingHandler) CreatePeriod(c *gin.Context) {
 // @Param id path int true "GovernmentFunding ID"
 // @Param periodId path int true "Period ID"
 // @Param request body models.GovernmentFundingPeriodUpdateRequest true "Period data"
-// @Success 200 {object} models.GovernmentFundingPeriod
+// @Success 200 {object} models.GovernmentFundingPeriodResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
@@ -325,7 +325,7 @@ func (h *GovernmentFundingHandler) DeletePeriod(c *gin.Context) {
 // @Param id path int true "GovernmentFunding ID"
 // @Param periodId path int true "Period ID"
 // @Param request body models.GovernmentFundingPropertyCreateRequest true "Property data"
-// @Success 201 {object} models.GovernmentFundingProperty
+// @Success 201 {object} models.GovernmentFundingPropertyResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
@@ -371,7 +371,7 @@ func (h *GovernmentFundingHandler) CreateProperty(c *gin.Context) {
 // @Param periodId path int true "Period ID"
 // @Param propId path int true "Property ID"
 // @Param request body models.GovernmentFundingPropertyUpdateRequest true "Property data"
-// @Success 200 {object} models.GovernmentFundingProperty
+// @Success 200 {object} models.GovernmentFundingPropertyResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse

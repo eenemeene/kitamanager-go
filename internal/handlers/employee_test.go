@@ -263,8 +263,10 @@ func TestEmployeeHandler_ListContracts(t *testing.T) {
 	// Create contracts
 	db.Create(&models.EmployeeContract{
 		EmployeeID: employee.ID,
-		Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
-		Position:   "Developer",
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
+		Position: "Developer",
 	})
 
 	r := setupTestRouter()
@@ -301,8 +303,10 @@ func TestEmployeeHandler_ListContracts_WrongOrg(t *testing.T) {
 	// Create contract
 	db.Create(&models.EmployeeContract{
 		EmployeeID: employee.ID,
-		Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
-		Position:   "Developer",
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
+		Position: "Developer",
 	})
 
 	r := setupTestRouter()
@@ -330,8 +334,10 @@ func TestEmployeeHandler_GetCurrentContract(t *testing.T) {
 	// Create ongoing contract
 	db.Create(&models.EmployeeContract{
 		EmployeeID: employee.ID,
-		Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: nil},
-		Position:   "Developer",
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: nil},
+		},
+		Position: "Developer",
 	})
 
 	r := setupTestRouter()
@@ -368,8 +374,10 @@ func TestEmployeeHandler_GetCurrentContract_WrongOrg(t *testing.T) {
 	// Create ongoing contract
 	db.Create(&models.EmployeeContract{
 		EmployeeID: employee.ID,
-		Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: nil},
-		Position:   "Developer",
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: nil},
+		},
+		Position: "Developer",
 	})
 
 	r := setupTestRouter()
@@ -538,8 +546,10 @@ func TestEmployeeHandler_CreateContract_Overlap(t *testing.T) {
 	// Create existing contract
 	db.Create(&models.EmployeeContract{
 		EmployeeID: employee.ID,
-		Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: nil},
-		Position:   "Developer",
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: nil},
+		},
+		Position: "Developer",
 	})
 
 	r := setupTestRouter()
@@ -574,8 +584,10 @@ func TestEmployeeHandler_DeleteContract(t *testing.T) {
 
 	contract := &models.EmployeeContract{
 		EmployeeID: employee.ID,
-		Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
-		Position:   "Developer",
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
+		Position: "Developer",
 	}
 	db.Create(contract)
 
@@ -605,8 +617,10 @@ func TestEmployeeHandler_DeleteContract_WrongOrg(t *testing.T) {
 
 	contract := &models.EmployeeContract{
 		EmployeeID: employee.ID,
-		Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
-		Position:   "Developer",
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
+		Position: "Developer",
 	}
 	db.Create(contract)
 
@@ -648,8 +662,10 @@ func TestEmployeeHandler_DeleteContract_WrongEmployee(t *testing.T) {
 	// Create contract for employee1
 	contract := &models.EmployeeContract{
 		EmployeeID: employee1.ID,
-		Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
-		Position:   "Developer",
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
+		Position: "Developer",
 	}
 	db.Create(contract)
 
@@ -1178,8 +1194,10 @@ func TestEmployeeHandler_CreateContract_ContractBoundaryTouch(t *testing.T) {
 	endDate := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
 	db.Create(&models.EmployeeContract{
 		EmployeeID: employee.ID,
-		Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: &endDate},
-		Position:   "Developer",
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: &endDate},
+		},
+		Position: "Developer",
 	})
 
 	r := setupTestRouter()
@@ -1219,8 +1237,10 @@ func TestEmployeeHandler_CreateContract_SameDayTransitionRejected(t *testing.T) 
 	endDate := time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC)
 	db.Create(&models.EmployeeContract{
 		EmployeeID: employee.ID,
-		Period:     models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), To: &endDate},
-		Position:   "Developer",
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), To: &endDate},
+		},
+		Position: "Developer",
 	})
 
 	r := setupTestRouter()

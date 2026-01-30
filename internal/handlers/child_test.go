@@ -166,7 +166,9 @@ func TestChildHandler_ListContracts(t *testing.T) {
 
 	db.Create(&models.ChildContract{
 		ChildID: child.ID,
-		Period:  models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
 	})
 
 	r := setupTestRouter()
@@ -198,9 +200,11 @@ func TestChildHandler_GetCurrentContract(t *testing.T) {
 	db.Create(child)
 
 	db.Create(&models.ChildContract{
-		ChildID:    child.ID,
-		Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: nil},
-		Attributes: []string{"ganztags"},
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: nil},
+			Properties: models.ContractProperties{"care_type": "ganztag"},
+		},
 	})
 
 	r := setupTestRouter()
@@ -215,8 +219,8 @@ func TestChildHandler_GetCurrentContract(t *testing.T) {
 	var contract models.ChildContract
 	parseResponse(t, w, &contract)
 
-	if len(contract.Attributes) != 1 || contract.Attributes[0] != "ganztags" {
-		t.Errorf("expected attributes [ganztags], got %v", contract.Attributes)
+	if contract.Properties["care_type"] != "ganztag" {
+		t.Errorf("expected care_type ganztag, got %v", contract.Properties)
 	}
 }
 
@@ -258,7 +262,7 @@ func TestChildHandler_CreateContract(t *testing.T) {
 	body := models.ChildContractCreateRequest{
 		From:       time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		To:         nil,
-		Attributes: []string{"ganztags", "ndh"},
+		Properties: models.ContractProperties{"care_type": "ganztag", "supplements": []string{"ndh"}},
 	}
 
 	w := performRequest(r, "POST", "/organizations/1/children/1/contracts", body)
@@ -270,8 +274,8 @@ func TestChildHandler_CreateContract(t *testing.T) {
 	var contract models.ChildContract
 	parseResponse(t, w, &contract)
 
-	if len(contract.Attributes) != 2 {
-		t.Errorf("expected 2 attributes, got %d", len(contract.Attributes))
+	if contract.Properties["care_type"] != "ganztag" {
+		t.Errorf("expected care_type ganztag, got %v", contract.Properties)
 	}
 }
 
@@ -294,7 +298,7 @@ func TestChildHandler_CreateContract_SameDay(t *testing.T) {
 	body := models.ChildContractCreateRequest{
 		From:       sameDay,
 		To:         &sameDay,
-		Attributes: []string{"ganztags"},
+		Properties: models.ContractProperties{"care_type": "ganztag"},
 	}
 
 	w := performRequest(r, "POST", "/organizations/1/children/1/contracts", body)
@@ -327,9 +331,11 @@ func TestChildHandler_CreateContract_Overlap(t *testing.T) {
 
 	// Create existing contract
 	db.Create(&models.ChildContract{
-		ChildID:    child.ID,
-		Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: nil},
-		Attributes: []string{"ganztags"},
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: nil},
+			Properties: models.ContractProperties{"care_type": "ganztag"},
+		},
 	})
 
 	r := setupTestRouter()
@@ -339,7 +345,7 @@ func TestChildHandler_CreateContract_Overlap(t *testing.T) {
 	body := models.ChildContractCreateRequest{
 		From:       time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
 		To:         nil,
-		Attributes: []string{"teilzeit"},
+		Properties: models.ContractProperties{"care_type": "halbtag"},
 	}
 
 	w := performRequest(r, "POST", "/organizations/1/children/1/contracts", body)
@@ -362,7 +368,9 @@ func TestChildHandler_DeleteContract(t *testing.T) {
 
 	contract := &models.ChildContract{
 		ChildID: child.ID,
-		Period:  models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
 	}
 	db.Create(contract)
 
@@ -701,9 +709,11 @@ func TestChildHandler_CreateContract_ContractBoundaryTouch(t *testing.T) {
 	// Create contract ending on Dec 31, 2024
 	endDate := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
 	db.Create(&models.ChildContract{
-		ChildID:    child.ID,
-		Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: &endDate},
-		Attributes: []string{"ganztags"},
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: &endDate},
+			Properties: models.ContractProperties{"care_type": "ganztag"},
+		},
 	})
 
 	r := setupTestRouter()
@@ -712,7 +722,7 @@ func TestChildHandler_CreateContract_ContractBoundaryTouch(t *testing.T) {
 	// Create contract starting Jan 1, 2025 (day after previous ends) - should succeed
 	body := models.ChildContractCreateRequest{
 		From:       time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
-		Attributes: []string{"teilzeit"},
+		Properties: models.ContractProperties{"care_type": "halbtag"},
 	}
 
 	w := performRequest(r, "POST", "/organizations/1/children/1/contracts", body)
@@ -740,9 +750,11 @@ func TestChildHandler_CreateContract_SameDayTransitionRejected(t *testing.T) {
 	// Create contract ending on Jan 31, 2025
 	endDate := time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC)
 	db.Create(&models.ChildContract{
-		ChildID:    child.ID,
-		Period:     models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), To: &endDate},
-		Attributes: []string{"ganztags"},
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period:     models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), To: &endDate},
+			Properties: models.ContractProperties{"care_type": "ganztag"},
+		},
 	})
 
 	r := setupTestRouter()
@@ -751,7 +763,7 @@ func TestChildHandler_CreateContract_SameDayTransitionRejected(t *testing.T) {
 	// Try to create contract starting Jan 31, 2025 (same day as previous ends) - should fail
 	body := models.ChildContractCreateRequest{
 		From:       time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC),
-		Attributes: []string{"teilzeit"},
+		Properties: models.ContractProperties{"care_type": "halbtag"},
 	}
 
 	w := performRequest(r, "POST", "/organizations/1/children/1/contracts", body)
@@ -1073,7 +1085,9 @@ func TestChildHandler_DeleteContract_WrongOrg(t *testing.T) {
 	// Create contract for child
 	contract := &models.ChildContract{
 		ChildID: child.ID,
-		Period:  models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
 	}
 	db.Create(contract)
 
@@ -1105,7 +1119,9 @@ func TestChildHandler_GetCurrentContract_WrongOrg(t *testing.T) {
 	// Create active contract
 	db.Create(&models.ChildContract{
 		ChildID: child.ID,
-		Period:  models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
 	})
 
 	r := setupTestRouter()
@@ -1462,7 +1478,9 @@ func TestChildHandler_GetContractCountByMonth(t *testing.T) {
 	// Create active contract
 	db.Create(&models.ChildContract{
 		ChildID: child.ID,
-		Period:  models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
 	})
 
 	r := setupTestRouter()
@@ -1637,7 +1655,9 @@ func TestChildHandler_GetContractCountByMonth_ChildrenWithExpiredContracts(t *te
 	endDate := time.Date(2023, 7, 31, 0, 0, 0, 0, time.UTC)
 	db.Create(&models.ChildContract{
 		ChildID: child.ID,
-		Period:  models.Period{From: time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC), To: &endDate},
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC), To: &endDate},
+		},
 	})
 
 	r := setupTestRouter()
@@ -1683,7 +1703,9 @@ func TestChildHandler_GetContractCountByMonth_ContractStartMidYear(t *testing.T)
 
 	db.Create(&models.ChildContract{
 		ChildID: child.ID,
-		Period:  models.Period{From: time.Date(2025, 7, 1, 0, 0, 0, 0, time.UTC)}, // Starts July 2025
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: time.Date(2025, 7, 1, 0, 0, 0, 0, time.UTC)}, // Starts July 2025
+		},
 	})
 
 	r := setupTestRouter()
@@ -1733,7 +1755,9 @@ func TestChildHandler_GetContractCountByMonth_WrongOrg(t *testing.T) {
 	db.Create(child)
 	db.Create(&models.ChildContract{
 		ChildID: child.ID,
-		Period:  models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
 	})
 
 	r := setupTestRouter()
@@ -1779,7 +1803,9 @@ func TestChildHandler_GetContractCountByMonth_MultipleChildren(t *testing.T) {
 		// All have contracts starting Jan 2025
 		db.Create(&models.ChildContract{
 			ChildID: child.ID,
-			Period:  models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
+			BaseContract: models.BaseContract{
+				Period: models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
+			},
 		})
 	}
 
@@ -1850,7 +1876,9 @@ func TestChildHandler_GetContractCountByMonth_FutureYears(t *testing.T) {
 	db.Create(child)
 	db.Create(&models.ChildContract{
 		ChildID: child.ID,
-		Period:  models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)}, // No end date
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)}, // No end date
+		},
 	})
 
 	r := setupTestRouter()
@@ -1900,7 +1928,9 @@ func TestChildHandler_GetAgeDistribution(t *testing.T) {
 	db.Create(child)
 	db.Create(&models.ChildContract{
 		ChildID: child.ID,
-		Period:  models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
 	})
 
 	r := setupTestRouter()
@@ -2038,7 +2068,9 @@ func TestChildHandler_GetAgeDistribution_WrongOrg(t *testing.T) {
 	db.Create(child)
 	db.Create(&models.ChildContract{
 		ChildID: child.ID,
-		Period:  models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
 	})
 
 	r := setupTestRouter()
@@ -2081,7 +2113,9 @@ func TestChildHandler_GetAgeDistribution_AllBuckets(t *testing.T) {
 		db.Create(child)
 		db.Create(&models.ChildContract{
 			ChildID: child.ID,
-			Period:  models.Period{From: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)},
+			BaseContract: models.BaseContract{
+				Period: models.Period{From: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)},
+			},
 		})
 	}
 
@@ -2140,7 +2174,9 @@ func TestChildHandler_GetAgeDistribution_ExpiredContract(t *testing.T) {
 	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
 	db.Create(&models.ChildContract{
 		ChildID: child.ID,
-		Period:  models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: &to},
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: &to},
+		},
 	})
 
 	r := setupTestRouter()
@@ -2180,7 +2216,9 @@ func TestChildHandler_GetAgeDistribution_FutureContract(t *testing.T) {
 	db.Create(child)
 	db.Create(&models.ChildContract{
 		ChildID: child.ID,
-		Period:  models.Period{From: time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC)}, // Starts in future
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC)}, // Starts in future
+		},
 	})
 
 	r := setupTestRouter()
@@ -2221,7 +2259,9 @@ func TestChildHandler_GetAgeDistribution_HistoricalDate(t *testing.T) {
 	to := time.Date(2023, 12, 31, 0, 0, 0, 0, time.UTC)
 	db.Create(&models.ChildContract{
 		ChildID: child.ID,
-		Period:  models.Period{From: time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC), To: &to},
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC), To: &to},
+		},
 	})
 
 	r := setupTestRouter()

@@ -36,7 +36,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { TagInput } from '@/components/ui/tag-input';
+import { PropertyTagInput } from '@/components/ui/tag-input';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useFundingAttributes } from '@/lib/hooks/use-funding-attributes';
 import { apiClient, getErrorMessage } from '@/lib/api/client';
@@ -44,16 +44,22 @@ import type {
   ChildContract,
   ChildContractCreateRequest,
   ChildContractUpdateRequest,
+  ContractProperties,
 } from '@/lib/api/types';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { formatDate, formatDateForInput, formatDateForApi } from '@/lib/utils/formatting';
+import {
+  formatDate,
+  formatDateForInput,
+  formatDateForApi,
+  propertiesToValues,
+} from '@/lib/utils/formatting';
 
 const contractSchema = z.object({
   from: z.string().min(1),
   to: z.string().optional(),
-  attributes: z.array(z.string()).default([]),
+  properties: z.record(z.string()).optional(),
 });
 
 type ContractFormData = z.infer<typeof contractSchema>;
@@ -156,7 +162,7 @@ export default function ChildContractsPage() {
     defaultValues: {
       from: '',
       to: '',
-      attributes: [],
+      properties: undefined,
     },
   });
 
@@ -164,8 +170,8 @@ export default function ChildContractsPage() {
   const watchedFrom = watch('from');
   const watchedTo = watch('to');
 
-  // Get suggested attributes from government funding
-  const { suggestedAttributes, exclusiveGroupMap } = useFundingAttributes(
+  // Get funding attributes from government funding
+  const { fundingAttributes, attributesByKey } = useFundingAttributes(
     orgId,
     watchedFrom,
     watchedTo
@@ -173,7 +179,7 @@ export default function ChildContractsPage() {
 
   const handleCreate = () => {
     setEditingContract(null);
-    reset({ from: '', to: '', attributes: [] });
+    reset({ from: '', to: '', properties: undefined });
     setIsContractDialogOpen(true);
   };
 
@@ -182,7 +188,7 @@ export default function ChildContractsPage() {
     reset({
       from: formatDateForInput(contract.from),
       to: contract.to ? formatDateForInput(contract.to) : '',
-      attributes: contract.attributes || [],
+      properties: contract.properties as Record<string, string> | undefined,
     });
     setIsContractDialogOpen(true);
   };
@@ -193,22 +199,20 @@ export default function ChildContractsPage() {
   };
 
   const onSubmit = (data: ContractFormData) => {
-    const attributes = data.attributes.filter(Boolean);
-
     if (editingContract) {
       updateMutation.mutate({
         contractId: editingContract.id,
         data: {
           from: formatDateForApi(data.from) || undefined,
           to: formatDateForApi(data.to) || undefined,
-          attributes: attributes.length > 0 ? attributes : undefined,
+          properties: data.properties,
         },
       });
     } else {
       createMutation.mutate({
         from: formatDateForApi(data.from) || data.from,
         to: formatDateForApi(data.to),
-        attributes: attributes.length > 0 ? attributes : undefined,
+        properties: data.properties,
       });
     }
   };
@@ -276,7 +280,7 @@ export default function ChildContractsPage() {
                   <TableHead>{t('common.status')}</TableHead>
                   <TableHead>{t('contracts.from')}</TableHead>
                   <TableHead>{t('contracts.to')}</TableHead>
-                  <TableHead>{t('children.attributes')}</TableHead>
+                  <TableHead>{t('children.properties')}</TableHead>
                   <TableHead className="text-right">{t('common.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -307,17 +311,19 @@ export default function ChildContractsPage() {
                         {contract.to ? formatDate(contract.to) : t('common.ongoing')}
                       </TableCell>
                       <TableCell>
-                        {contract.attributes && contract.attributes.length > 0 ? (
+                        {contract.properties && Object.keys(contract.properties).length > 0 ? (
                           <div className="flex flex-wrap gap-1">
-                            {contract.attributes.map((attr) => (
-                              <Badge key={attr} variant="outline" className="text-xs">
-                                {attr}
-                              </Badge>
-                            ))}
+                            {propertiesToValues(contract.properties as ContractProperties).map(
+                              (value) => (
+                                <Badge key={value} variant="outline" className="text-xs">
+                                  {value}
+                                </Badge>
+                              )
+                            )}
                           </div>
                         ) : (
                           <span className="text-sm text-muted-foreground">
-                            {t('contracts.noAttributes')}
+                            {t('contracts.noProperties')}
                           </span>
                         )}
                       </TableCell>
@@ -379,23 +385,23 @@ export default function ChildContractsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="attributes">{t('contracts.attributesLabel')}</Label>
+              <Label htmlFor="properties">{t('contracts.propertiesLabel')}</Label>
               <Controller
-                name="attributes"
+                name="properties"
                 control={control}
                 render={({ field }) => (
-                  <TagInput
-                    id="attributes"
+                  <PropertyTagInput
+                    id="properties"
                     value={field.value}
                     onChange={field.onChange}
-                    placeholder={t('contracts.attributesPlaceholder')}
-                    suggestions={suggestedAttributes}
-                    suggestionsLabel={t('contracts.suggestedAttributes')}
-                    exclusiveGroupMap={exclusiveGroupMap}
+                    fundingAttributes={fundingAttributes}
+                    attributesByKey={attributesByKey}
+                    placeholder={t('contracts.propertiesPlaceholder')}
+                    suggestionsLabel={t('contracts.suggestedProperties')}
                   />
                 )}
               />
-              <p className="text-xs text-muted-foreground">{t('contracts.attributesHelp')}</p>
+              <p className="text-xs text-muted-foreground">{t('contracts.propertiesHelp')}</p>
             </div>
 
             <DialogFooter>

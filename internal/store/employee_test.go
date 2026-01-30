@@ -196,9 +196,11 @@ func TestEmployeeStore_CreateContract(t *testing.T) {
 
 	contract := &models.EmployeeContract{
 		EmployeeID: employee.ID,
-		Period: models.Period{
-			From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
-			To:   nil,
+		BaseContract: models.BaseContract{
+			Period: models.Period{
+				From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+				To:   nil,
+			},
 		},
 		Position:    "Developer",
 		WeeklyHours: 40,
@@ -232,8 +234,10 @@ func TestEmployeeStore_DeleteContract(t *testing.T) {
 
 	contract := &models.EmployeeContract{
 		EmployeeID: employee.ID,
-		Period: models.Period{
-			From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		BaseContract: models.BaseContract{
+			Period: models.Period{
+				From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+			},
 		},
 		Position:    "Developer",
 		WeeklyHours: 40,
@@ -269,8 +273,10 @@ func TestEmployeeStore_DeleteAlsoDeletesContracts(t *testing.T) {
 
 	contract := &models.EmployeeContract{
 		EmployeeID: employee.ID,
-		Period: models.Period{
-			From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		BaseContract: models.BaseContract{
+			Period: models.Period{
+				From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+			},
 		},
 		Position:    "Developer",
 		WeeklyHours: 40,

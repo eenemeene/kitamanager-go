@@ -276,11 +276,13 @@ func (s *ChildService) CreateContract(ctx context.Context, childID, orgID uint, 
 
 	contract := &models.ChildContract{
 		ChildID: childID,
-		Period: models.Period{
-			From: req.From,
-			To:   req.To,
+		BaseContract: models.BaseContract{
+			Period: models.Period{
+				From: req.From,
+				To:   req.To,
+			},
+			Properties: req.Properties,
 		},
-		Attributes: req.Attributes,
 	}
 
 	if err := s.store.CreateContract(contract); err != nil {
@@ -291,7 +293,7 @@ func (s *ChildService) CreateContract(ctx context.Context, childID, orgID uint, 
 	return &resp, nil
 }
 
-// UpdateContract updates an existing contract, validating it belongs to a child in the specified organization
+// UpdateContract updates an existing contract, validating it belongs to a child in the specified organization.
 func (s *ChildService) UpdateContract(ctx context.Context, contractID, childID, orgID uint, req *models.ChildContractUpdateRequest) (*models.ChildContractResponse, error) {
 	// Security: Validate child belongs to the specified organization (use minimal query - no preloads needed)
 	child, err := s.store.FindByIDMinimal(childID)
@@ -318,8 +320,9 @@ func (s *ChildService) UpdateContract(ctx context.Context, contractID, childID, 
 	if req.To != nil {
 		contract.To = req.To
 	}
-	if req.Attributes != nil {
-		contract.Attributes = req.Attributes
+	// Properties can be replaced entirely
+	if req.Properties != nil {
+		contract.Properties = req.Properties
 	}
 
 	// Validate period
@@ -402,8 +405,8 @@ func (s *ChildService) CalculateFunding(ctx context.Context, orgID uint, date ti
 				ChildName:           child.FirstName + " " + child.LastName,
 				Age:                 validation.CalculateAgeOnDate(child.Birthdate, date),
 				Funding:             0,
-				MatchedAttributes:   []string{},
-				UnmatchedAttributes: uniqueStrings(contract.Attributes),
+				MatchedProperties:   []models.ChildFundingMatchedProp{},
+				UnmatchedProperties: getAllContractKeyValues(contract.Properties),
 			})
 		}
 		return response, nil
@@ -419,7 +422,7 @@ func (s *ChildService) CalculateFunding(ctx context.Context, orgID uint, date ti
 		contract := child.Contracts[0]
 		childAge := validation.CalculateAgeOnDate(child.Birthdate, date)
 
-		childFunding := s.calculateChildFunding(childAge, contract.Attributes, period)
+		childFunding := s.calculateChildFunding(childAge, contract.Properties, period)
 		childFunding.ChildID = child.ID
 		childFunding.ChildName = child.FirstName + " " + child.LastName
 		childFunding.Age = childAge
@@ -442,39 +445,52 @@ func (s *ChildService) findPeriodForDate(periods []models.GovernmentFundingPerio
 	return nil
 }
 
-// calculateChildFunding calculates funding for a single child based on their age and contract attributes
-func (s *ChildService) calculateChildFunding(age int, attributes []string, period *models.GovernmentFundingPeriod) models.ChildFundingResponse {
+// calculateChildFunding calculates funding for a single child based on their age and contract properties.
+// It matches contract properties against government funding properties using Key/Value matching.
+func (s *ChildService) calculateChildFunding(age int, properties models.ContractProperties, period *models.GovernmentFundingPeriod) models.ChildFundingResponse {
 	result := models.ChildFundingResponse{
-		MatchedAttributes:   []string{},
-		UnmatchedAttributes: []string{},
+		MatchedProperties:   []models.ChildFundingMatchedProp{},
+		UnmatchedProperties: []models.ChildFundingMatchedProp{},
 	}
 
-	uniqueAttrs := uniqueStrings(attributes)
+	// Get all key-value pairs from contract properties
+	contractKeyValues := getAllContractKeyValues(properties)
 
 	// No period covering this date
 	if period == nil {
-		result.UnmatchedAttributes = uniqueAttrs
+		result.UnmatchedProperties = contractKeyValues
 		return result
 	}
 
-	// Build a map of attribute names to matching properties (filtered by age)
-	// A property matches if its name matches the attribute AND the age is within range
-	propertyMap := make(map[string]int)
-	for _, prop := range period.Properties {
-		if prop.MatchesAge(age) {
-			// If multiple properties with same name match, sum their payments
-			propertyMap[prop.Name] += prop.Payment
+	// Track which contract key-value pairs have been matched
+	matchedSet := make(map[string]bool) // key:value -> matched
+
+	totalFunding := 0
+	for _, fundingProp := range period.Properties {
+		// Check if age matches
+		if !fundingProp.MatchesAge(age) {
+			continue
+		}
+
+		// Check if contract has this key:value
+		if properties.HasValue(fundingProp.Key, fundingProp.Value) {
+			totalFunding += fundingProp.Payment
+			kvKey := fundingProp.Key + ":" + fundingProp.Value
+			if !matchedSet[kvKey] {
+				matchedSet[kvKey] = true
+				result.MatchedProperties = append(result.MatchedProperties, models.ChildFundingMatchedProp{
+					Key:   fundingProp.Key,
+					Value: fundingProp.Value,
+				})
+			}
 		}
 	}
 
-	// Match attributes to properties
-	totalFunding := 0
-	for _, attr := range uniqueAttrs {
-		if payment, exists := propertyMap[attr]; exists {
-			totalFunding += payment
-			result.MatchedAttributes = append(result.MatchedAttributes, attr)
-		} else {
-			result.UnmatchedAttributes = append(result.UnmatchedAttributes, attr)
+	// Find unmatched contract properties
+	for _, kv := range contractKeyValues {
+		kvKey := kv.Key + ":" + kv.Value
+		if !matchedSet[kvKey] {
+			result.UnmatchedProperties = append(result.UnmatchedProperties, kv)
 		}
 	}
 
@@ -482,14 +498,21 @@ func (s *ChildService) calculateChildFunding(age int, attributes []string, perio
 	return result
 }
 
-// uniqueStrings returns a slice with duplicate strings removed, preserving order
-func uniqueStrings(input []string) []string {
-	seen := make(map[string]bool)
-	result := make([]string, 0, len(input))
-	for _, s := range input {
-		if !seen[s] {
-			seen[s] = true
-			result = append(result, s)
+// getAllContractKeyValues extracts all key-value pairs from contract properties.
+// For scalar properties, returns one entry. For array properties, returns one entry per value.
+func getAllContractKeyValues(properties models.ContractProperties) []models.ChildFundingMatchedProp {
+	if properties == nil {
+		return []models.ChildFundingMatchedProp{}
+	}
+
+	result := []models.ChildFundingMatchedProp{}
+	for key := range properties {
+		values := properties.GetAllValues(key)
+		for _, value := range values {
+			result = append(result, models.ChildFundingMatchedProp{
+				Key:   key,
+				Value: value,
+			})
 		}
 	}
 	return result

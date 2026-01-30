@@ -98,17 +98,6 @@ definitions:
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildContract:
     properties:
-      attributes:
-        description: |-
-          Contract properties - care type and extras are stored in Attributes
-          e.g., ["ganztags", "integration_a", "ndh"]
-          Stored as JSON for database portability (works with PostgreSQL and SQLite)
-        example:
-        - ganztags
-        - ndh
-        items:
-          type: string
-        type: array
       child_id:
         example: 1
         type: integer
@@ -119,6 +108,13 @@ definitions:
       id:
         example: 1
         type: integer
+      properties:
+        allOf:
+        - $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
+        description: |-
+          Properties stores flexible key-value data as JSON.
+          For children: {"care_type": "ganztag", "supplements": ["ndh", "mss"]}
+          For employees: {"benefits": ["christmas_bonus"], "employer_type": "normal"}
       to:
         type: string
       updated_at:
@@ -126,16 +122,11 @@ definitions:
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildContractCreateRequest:
     properties:
-      attributes:
-        example:
-        - ganztags
-        - ndh
-        items:
-          type: string
-        type: array
       from:
         example: "2025-01-01"
         type: string
+      properties:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
       to:
         example: "2025-12-31"
         type: string
@@ -144,13 +135,6 @@ definitions:
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildContractResponse:
     properties:
-      attributes:
-        example:
-        - ganztags
-        - ndh
-        items:
-          type: string
-        type: array
       child_id:
         example: 1
         type: integer
@@ -162,6 +146,8 @@ definitions:
       id:
         example: 1
         type: integer
+      properties:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
       to:
         example: "2025-12-31"
         type: string
@@ -170,16 +156,11 @@ definitions:
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildContractUpdateRequest:
     properties:
-      attributes:
-        example:
-        - ganztags
-        - ndh
-        items:
-          type: string
-        type: array
       from:
         example: "2025-01-01"
         type: string
+      properties:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
       to:
         example: "2025-12-31"
         type: string
@@ -209,6 +190,15 @@ definitions:
     - gender
     - last_name
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ChildFundingMatchedProp:
+    properties:
+      key:
+        example: care_type
+        type: string
+      value:
+        example: ganztag
+        type: string
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildFundingResponse:
     properties:
       age:
@@ -223,18 +213,13 @@ definitions:
       funding:
         example: 166847
         type: integer
-      matched_attributes:
-        example:
-        - ganztags
-        - ndh
+      matched_properties:
         items:
-          type: string
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildFundingMatchedProp'
         type: array
-      unmatched_attributes:
-        example:
-        - xyz
+      unmatched_properties:
         items:
-          type: string
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildFundingMatchedProp'
         type: array
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildUpdateRequest:
@@ -296,6 +281,9 @@ definitions:
         example: "2023-01-01"
         type: string
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ContractProperties:
+    additionalProperties: true
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.Employee:
     properties:
       birthdate:
@@ -348,14 +336,16 @@ definitions:
         example: 1
         type: integer
       position:
-        description: Contract properties
+        description: Employee-specific typed fields
         example: Erzieher
         type: string
       properties:
-        description: Key-value properties for additional contract attributes
-        items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractProperty'
-        type: array
+        allOf:
+        - $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
+        description: |-
+          Properties stores flexible key-value data as JSON.
+          For children: {"care_type": "ganztag", "supplements": ["ndh", "mss"]}
+          For employees: {"benefits": ["christmas_bonus"], "employer_type": "normal"}
       step:
         example: 3
         type: integer
@@ -380,6 +370,8 @@ definitions:
         example: Erzieher
         maxLength: 255
         type: string
+      properties:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
       step:
         example: 3
         maximum: 10
@@ -397,67 +389,6 @@ definitions:
     - from
     - position
     - weekly_hours
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractProperty:
-    properties:
-      contract_id:
-        example: 1
-        type: integer
-      created_at:
-        type: string
-      id:
-        example: 1
-        type: integer
-      name:
-        example: actual_hours
-        type: string
-      updated_at:
-        type: string
-      value:
-        example: "38.5"
-        type: string
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractPropertyCreateRequest:
-    properties:
-      name:
-        example: actual_hours
-        maxLength: 255
-        type: string
-      value:
-        example: "38.5"
-        maxLength: 1024
-        type: string
-    required:
-    - name
-    - value
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractPropertyResponse:
-    properties:
-      contract_id:
-        example: 1
-        type: integer
-      created_at:
-        type: string
-      id:
-        example: 1
-        type: integer
-      name:
-        example: actual_hours
-        type: string
-      updated_at:
-        type: string
-      value:
-        example: "38.5"
-        type: string
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractPropertyUpdateRequest:
-    properties:
-      value:
-        example: "38.5"
-        maxLength: 1024
-        type: string
-    required:
-    - value
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractResponse:
     properties:
@@ -479,9 +410,7 @@ definitions:
         example: Erzieher
         type: string
       properties:
-        items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractPropertyResponse'
-        type: array
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
       step:
         example: 3
         type: integer
@@ -507,6 +436,8 @@ definitions:
         example: Erzieher
         maxLength: 255
         type: string
+      properties:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
       step:
         example: 3
         maximum: 10
@@ -575,28 +506,6 @@ definitions:
         example: resource not found
         type: string
     type: object
-  github_com_eenemeene_kitamanager-go_internal_models.GovernmentFunding:
-    properties:
-      created_at:
-        example: "2024-01-15T10:30:00Z"
-        type: string
-      id:
-        example: 1
-        type: integer
-      name:
-        example: Berlin Kita Funding
-        type: string
-      periods:
-        items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriod'
-        type: array
-      state:
-        example: berlin
-        type: string
-      updated_at:
-        example: "2024-01-15T10:30:00Z"
-        type: string
-    type: object
   github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingCreateRequest:
     properties:
       name:
@@ -650,6 +559,27 @@ definitions:
     required:
     - from
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriodResponse:
+    properties:
+      comment:
+        example: Funding period 2023/2024
+        type: string
+      created_at:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+      from:
+        example: "2023-03-01"
+        type: string
+      government_funding_id:
+        example: 1
+        type: integer
+      id:
+        example: 1
+        type: integer
+      to:
+        example: "2024-02-29"
+        type: string
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriodUpdateRequest:
     properties:
       comment:
@@ -671,22 +601,18 @@ definitions:
       created_at:
         example: "2024-01-15T10:30:00Z"
         type: string
-      exclusive_group:
-        description: UI hint only, not enforced
-        example: care_type
-        type: string
       id:
         example: 1
         type: integer
+      key:
+        example: care_type
+        type: string
       max_age:
         example: 3
         type: integer
       min_age:
         example: 0
         type: integer
-      name:
-        example: ganztag
-        type: string
       payment:
         example: 166847
         type: integer
@@ -696,6 +622,9 @@ definitions:
       requirement:
         example: 0.261
         type: number
+      value:
+        example: ganztag
+        type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPropertyCreateRequest:
     properties:
@@ -703,10 +632,9 @@ definitions:
         example: Full-day care funding for U3
         maxLength: 500
         type: string
-      exclusive_group:
-        description: UI hint for mutually exclusive properties (not enforced)
+      key:
         example: care_type
-        maxLength: 50
+        maxLength: 100
         type: string
       max_age:
         example: 3
@@ -716,10 +644,6 @@ definitions:
         example: 0
         minimum: 0
         type: integer
-      name:
-        example: ganztag
-        maxLength: 255
-        type: string
       payment:
         example: 166847
         minimum: 0
@@ -728,8 +652,46 @@ definitions:
         example: 0.261
         minimum: 0
         type: number
+      value:
+        example: ganztag
+        maxLength: 255
+        type: string
     required:
-    - name
+    - key
+    - value
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPropertyResponse:
+    properties:
+      comment:
+        example: Full-day care funding for U3
+        type: string
+      created_at:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+      id:
+        example: 1
+        type: integer
+      key:
+        example: care_type
+        type: string
+      max_age:
+        example: 3
+        type: integer
+      min_age:
+        example: 0
+        type: integer
+      payment:
+        example: 166847
+        type: integer
+      period_id:
+        example: 1
+        type: integer
+      requirement:
+        example: 0.261
+        type: number
+      value:
+        example: ganztag
+        type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPropertyUpdateRequest:
     properties:
@@ -737,10 +699,9 @@ definitions:
         example: Updated comment
         maxLength: 500
         type: string
-      exclusive_group:
-        description: UI hint for mutually exclusive properties (not enforced)
+      key:
         example: care_type
-        maxLength: 50
+        maxLength: 100
         type: string
       max_age:
         example: 3
@@ -750,10 +711,6 @@ definitions:
         example: 0
         minimum: 0
         type: integer
-      name:
-        example: ganztag
-        maxLength: 255
-        type: string
       payment:
         example: 166847
         minimum: 0
@@ -762,6 +719,28 @@ definitions:
         example: 0.261
         minimum: 0
         type: number
+      value:
+        example: ganztag
+        maxLength: 255
+        type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingResponse:
+    properties:
+      created_at:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+      id:
+        example: 1
+        type: integer
+      name:
+        example: Berlin Kita Funding
+        type: string
+      state:
+        example: berlin
+        type: string
+      updated_at:
+        example: "2024-01-15T10:30:00Z"
+        type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingUpdateRequest:
     properties:
@@ -1024,13 +1003,13 @@ definitions:
         example: 5
         type: integer
     type: object
-  ? github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_GovernmentFunding
+  ? github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_GovernmentFundingResponse
   : properties:
       _links:
         $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginationLinks'
       data:
         items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFunding'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingResponse'
         type: array
       limit:
         example: 20
@@ -1672,7 +1651,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_GovernmentFunding'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_GovernmentFundingResponse'
         "401":
           description: Unauthorized
           schema:
@@ -1703,7 +1682,7 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFunding'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingResponse'
         "400":
           description: Bad Request
           schema:
@@ -1824,7 +1803,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFunding'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingResponse'
         "400":
           description: Bad Request
           schema:
@@ -1873,7 +1852,7 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriod'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriodResponse'
         "400":
           description: Bad Request
           schema:
@@ -1968,7 +1947,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriod'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriodResponse'
         "400":
           description: Bad Request
           schema:
@@ -2022,7 +2001,7 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingProperty'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPropertyResponse'
         "400":
           description: Bad Request
           schema:
@@ -2127,7 +2106,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingProperty'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPropertyResponse'
         "400":
           description: Bad Request
           schema:
@@ -3567,222 +3546,6 @@ paths:
       security:
       - BearerAuth: []
       summary: Update employee contract
-      tags:
-      - employees
-  /api/v1/organizations/{orgId}/employees/{id}/contracts/{contractId}/properties:
-    get:
-      consumes:
-      - application/json
-      description: Get all properties for a contract
-      parameters:
-      - description: Organization ID
-        in: path
-        name: orgId
-        required: true
-        type: integer
-      - description: Employee ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Contract ID
-        in: path
-        name: contractId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractPropertyResponse'
-            type: array
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: List contract properties
-      tags:
-      - employees
-    post:
-      consumes:
-      - application/json
-      description: Create a new property for a contract
-      parameters:
-      - description: Organization ID
-        in: path
-        name: orgId
-        required: true
-        type: integer
-      - description: Employee ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Contract ID
-        in: path
-        name: contractId
-        required: true
-        type: integer
-      - description: Property data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractPropertyCreateRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractPropertyResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "409":
-          description: Property with this name already exists
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Create contract property
-      tags:
-      - employees
-  /api/v1/organizations/{orgId}/employees/{id}/contracts/{contractId}/properties/{propId}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete a property by ID
-      parameters:
-      - description: Organization ID
-        in: path
-        name: orgId
-        required: true
-        type: integer
-      - description: Employee ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Contract ID
-        in: path
-        name: contractId
-        required: true
-        type: integer
-      - description: Property ID
-        in: path
-        name: propId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Delete contract property
-      tags:
-      - employees
-    put:
-      consumes:
-      - application/json
-      description: Update an existing property by ID
-      parameters:
-      - description: Organization ID
-        in: path
-        name: orgId
-        required: true
-        type: integer
-      - description: Employee ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Contract ID
-        in: path
-        name: contractId
-        required: true
-        type: integer
-      - description: Property ID
-        in: path
-        name: propId
-        required: true
-        type: integer
-      - description: Property data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractPropertyUpdateRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractPropertyResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Update contract property
       tags:
       - employees
   /api/v1/organizations/{orgId}/employees/{id}/contracts/current:

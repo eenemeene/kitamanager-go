@@ -62,7 +62,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_GovernmentFunding"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_GovernmentFundingResponse"
                         }
                     },
                     "401": {
@@ -111,7 +111,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFunding"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingResponse"
                         }
                     },
                     "400": {
@@ -240,7 +240,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFunding"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingResponse"
                         }
                     },
                     "400": {
@@ -372,7 +372,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriod"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriodResponse"
                         }
                     },
                     "400": {
@@ -455,7 +455,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriod"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriodResponse"
                         }
                     },
                     "400": {
@@ -601,7 +601,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingProperty"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPropertyResponse"
                         }
                     },
                     "400": {
@@ -691,7 +691,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingProperty"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPropertyResponse"
                         }
                     },
                     "400": {
@@ -2980,334 +2980,6 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/organizations/{orgId}/employees/{id}/contracts/{contractId}/properties": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get all properties for a contract",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "employees"
-                ],
-                "summary": "List contract properties",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Organization ID",
-                        "name": "orgId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Employee ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Contract ID",
-                        "name": "contractId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractPropertyResponse"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Create a new property for a contract",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "employees"
-                ],
-                "summary": "Create contract property",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Organization ID",
-                        "name": "orgId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Employee ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Contract ID",
-                        "name": "contractId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Property data",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractPropertyCreateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractPropertyResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
-                        }
-                    },
-                    "409": {
-                        "description": "Property with this name already exists",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/organizations/{orgId}/employees/{id}/contracts/{contractId}/properties/{propId}": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Update an existing property by ID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "employees"
-                ],
-                "summary": "Update contract property",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Organization ID",
-                        "name": "orgId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Employee ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Contract ID",
-                        "name": "contractId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Property ID",
-                        "name": "propId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Property data",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractPropertyUpdateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractPropertyResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Delete a property by ID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "employees"
-                ],
-                "summary": "Delete contract property",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Organization ID",
-                        "name": "orgId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Employee ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Contract ID",
-                        "name": "contractId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Property ID",
-                        "name": "propId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
                         }
@@ -6036,17 +5708,6 @@ const docTemplate = `{
         "github_com_eenemeene_kitamanager-go_internal_models.ChildContract": {
             "type": "object",
             "properties": {
-                "attributes": {
-                    "description": "Contract properties - care type and extras are stored in Attributes\ne.g., [\"ganztags\", \"integration_a\", \"ndh\"]\nStored as JSON for database portability (works with PostgreSQL and SQLite)",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "ganztags",
-                        "ndh"
-                    ]
-                },
                 "child_id": {
                     "type": "integer",
                     "example": 1
@@ -6060,6 +5721,14 @@ const docTemplate = `{
                 "id": {
                     "type": "integer",
                     "example": 1
+                },
+                "properties": {
+                    "description": "Properties stores flexible key-value data as JSON.\nFor children: {\"care_type\": \"ganztag\", \"supplements\": [\"ndh\", \"mss\"]}\nFor employees: {\"benefits\": [\"christmas_bonus\"], \"employer_type\": \"normal\"}",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties"
+                        }
+                    ]
                 },
                 "to": {
                     "type": "string"
@@ -6075,19 +5744,12 @@ const docTemplate = `{
                 "from"
             ],
             "properties": {
-                "attributes": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "ganztags",
-                        "ndh"
-                    ]
-                },
                 "from": {
                     "type": "string",
                     "example": "2025-01-01"
+                },
+                "properties": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties"
                 },
                 "to": {
                     "type": "string",
@@ -6098,16 +5760,6 @@ const docTemplate = `{
         "github_com_eenemeene_kitamanager-go_internal_models.ChildContractResponse": {
             "type": "object",
             "properties": {
-                "attributes": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "ganztags",
-                        "ndh"
-                    ]
-                },
                 "child_id": {
                     "type": "integer",
                     "example": 1
@@ -6123,6 +5775,9 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 1
                 },
+                "properties": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties"
+                },
                 "to": {
                     "type": "string",
                     "example": "2025-12-31"
@@ -6135,19 +5790,12 @@ const docTemplate = `{
         "github_com_eenemeene_kitamanager-go_internal_models.ChildContractUpdateRequest": {
             "type": "object",
             "properties": {
-                "attributes": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "ganztags",
-                        "ndh"
-                    ]
-                },
                 "from": {
                     "type": "string",
                     "example": "2025-01-01"
+                },
+                "properties": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties"
                 },
                 "to": {
                     "type": "string",
@@ -6188,6 +5836,19 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.ChildFundingMatchedProp": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string",
+                    "example": "care_type"
+                },
+                "value": {
+                    "type": "string",
+                    "example": "ganztag"
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.ChildFundingResponse": {
             "type": "object",
             "properties": {
@@ -6207,24 +5868,17 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 166847
                 },
-                "matched_attributes": {
+                "matched_properties": {
                     "type": "array",
                     "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "ganztags",
-                        "ndh"
-                    ]
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildFundingMatchedProp"
+                    }
                 },
-                "unmatched_attributes": {
+                "unmatched_properties": {
                     "type": "array",
                     "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "xyz"
-                    ]
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildFundingMatchedProp"
+                    }
                 }
             }
         },
@@ -6313,6 +5967,10 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.ContractProperties": {
+            "type": "object",
+            "additionalProperties": true
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.Employee": {
             "type": "object",
             "properties": {
@@ -6386,16 +6044,17 @@ const docTemplate = `{
                     "example": 1
                 },
                 "position": {
-                    "description": "Contract properties",
+                    "description": "Employee-specific typed fields",
                     "type": "string",
                     "example": "Erzieher"
                 },
                 "properties": {
-                    "description": "Key-value properties for additional contract attributes",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractProperty"
-                    }
+                    "description": "Properties stores flexible key-value data as JSON.\nFor children: {\"care_type\": \"ganztag\", \"supplements\": [\"ndh\", \"mss\"]}\nFor employees: {\"benefits\": [\"christmas_bonus\"], \"employer_type\": \"normal\"}",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties"
+                        }
+                    ]
                 },
                 "step": {
                     "type": "integer",
@@ -6435,6 +6094,9 @@ const docTemplate = `{
                     "maxLength": 255,
                     "example": "Erzieher"
                 },
+                "properties": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties"
+                },
                 "step": {
                     "type": "integer",
                     "maximum": 10,
@@ -6450,92 +6112,6 @@ const docTemplate = `{
                     "maximum": 168,
                     "minimum": 0,
                     "example": 40
-                }
-            }
-        },
-        "github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractProperty": {
-            "type": "object",
-            "properties": {
-                "contract_id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "name": {
-                    "type": "string",
-                    "example": "actual_hours"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "value": {
-                    "type": "string",
-                    "example": "38.5"
-                }
-            }
-        },
-        "github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractPropertyCreateRequest": {
-            "type": "object",
-            "required": [
-                "name",
-                "value"
-            ],
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "maxLength": 255,
-                    "example": "actual_hours"
-                },
-                "value": {
-                    "type": "string",
-                    "maxLength": 1024,
-                    "example": "38.5"
-                }
-            }
-        },
-        "github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractPropertyResponse": {
-            "type": "object",
-            "properties": {
-                "contract_id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "name": {
-                    "type": "string",
-                    "example": "actual_hours"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "value": {
-                    "type": "string",
-                    "example": "38.5"
-                }
-            }
-        },
-        "github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractPropertyUpdateRequest": {
-            "type": "object",
-            "required": [
-                "value"
-            ],
-            "properties": {
-                "value": {
-                    "type": "string",
-                    "maxLength": 1024,
-                    "example": "38.5"
                 }
             }
         },
@@ -6566,10 +6142,7 @@ const docTemplate = `{
                     "example": "Erzieher"
                 },
                 "properties": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractPropertyResponse"
-                    }
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties"
                 },
                 "step": {
                     "type": "integer",
@@ -6604,6 +6177,9 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255,
                     "example": "Erzieher"
+                },
+                "properties": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties"
                 },
                 "step": {
                     "type": "integer",
@@ -6696,37 +6272,6 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_eenemeene_kitamanager-go_internal_models.GovernmentFunding": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string",
-                    "example": "2024-01-15T10:30:00Z"
-                },
-                "id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "name": {
-                    "type": "string",
-                    "example": "Berlin Kita Funding"
-                },
-                "periods": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriod"
-                    }
-                },
-                "state": {
-                    "type": "string",
-                    "example": "berlin"
-                },
-                "updated_at": {
-                    "type": "string",
-                    "example": "2024-01-15T10:30:00Z"
-                }
-            }
-        },
         "github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingCreateRequest": {
             "type": "object",
             "required": [
@@ -6801,6 +6346,35 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriodResponse": {
+            "type": "object",
+            "properties": {
+                "comment": {
+                    "type": "string",
+                    "example": "Funding period 2023/2024"
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2024-01-15T10:30:00Z"
+                },
+                "from": {
+                    "type": "string",
+                    "example": "2023-03-01"
+                },
+                "government_funding_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "to": {
+                    "type": "string",
+                    "example": "2024-02-29"
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriodUpdateRequest": {
             "type": "object",
             "properties": {
@@ -6830,14 +6404,13 @@ const docTemplate = `{
                     "type": "string",
                     "example": "2024-01-15T10:30:00Z"
                 },
-                "exclusive_group": {
-                    "description": "UI hint only, not enforced",
-                    "type": "string",
-                    "example": "care_type"
-                },
                 "id": {
                     "type": "integer",
                     "example": 1
+                },
+                "key": {
+                    "type": "string",
+                    "example": "care_type"
                 },
                 "max_age": {
                     "type": "integer",
@@ -6846,10 +6419,6 @@ const docTemplate = `{
                 "min_age": {
                     "type": "integer",
                     "example": 0
-                },
-                "name": {
-                    "type": "string",
-                    "example": "ganztag"
                 },
                 "payment": {
                     "type": "integer",
@@ -6862,13 +6431,18 @@ const docTemplate = `{
                 "requirement": {
                     "type": "number",
                     "example": 0.261
+                },
+                "value": {
+                    "type": "string",
+                    "example": "ganztag"
                 }
             }
         },
         "github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPropertyCreateRequest": {
             "type": "object",
             "required": [
-                "name"
+                "key",
+                "value"
             ],
             "properties": {
                 "comment": {
@@ -6876,10 +6450,9 @@ const docTemplate = `{
                     "maxLength": 500,
                     "example": "Full-day care funding for U3"
                 },
-                "exclusive_group": {
-                    "description": "UI hint for mutually exclusive properties (not enforced)",
+                "key": {
                     "type": "string",
-                    "maxLength": 50,
+                    "maxLength": 100,
                     "example": "care_type"
                 },
                 "max_age": {
@@ -6892,11 +6465,6 @@ const docTemplate = `{
                     "minimum": 0,
                     "example": 0
                 },
-                "name": {
-                    "type": "string",
-                    "maxLength": 255,
-                    "example": "ganztag"
-                },
                 "payment": {
                     "type": "integer",
                     "minimum": 0,
@@ -6906,6 +6474,56 @@ const docTemplate = `{
                     "type": "number",
                     "minimum": 0,
                     "example": 0.261
+                },
+                "value": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "ganztag"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPropertyResponse": {
+            "type": "object",
+            "properties": {
+                "comment": {
+                    "type": "string",
+                    "example": "Full-day care funding for U3"
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2024-01-15T10:30:00Z"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "key": {
+                    "type": "string",
+                    "example": "care_type"
+                },
+                "max_age": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "min_age": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "payment": {
+                    "type": "integer",
+                    "example": 166847
+                },
+                "period_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "requirement": {
+                    "type": "number",
+                    "example": 0.261
+                },
+                "value": {
+                    "type": "string",
+                    "example": "ganztag"
                 }
             }
         },
@@ -6917,10 +6535,9 @@ const docTemplate = `{
                     "maxLength": 500,
                     "example": "Updated comment"
                 },
-                "exclusive_group": {
-                    "description": "UI hint for mutually exclusive properties (not enforced)",
+                "key": {
                     "type": "string",
-                    "maxLength": 50,
+                    "maxLength": 100,
                     "example": "care_type"
                 },
                 "max_age": {
@@ -6933,11 +6550,6 @@ const docTemplate = `{
                     "minimum": 0,
                     "example": 0
                 },
-                "name": {
-                    "type": "string",
-                    "maxLength": 255,
-                    "example": "ganztag"
-                },
                 "payment": {
                     "type": "integer",
                     "minimum": 0,
@@ -6947,6 +6559,36 @@ const docTemplate = `{
                     "type": "number",
                     "minimum": 0,
                     "example": 0.261
+                },
+                "value": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "ganztag"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2024-01-15T10:30:00Z"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Berlin Kita Funding"
+                },
+                "state": {
+                    "type": "string",
+                    "example": "berlin"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2024-01-15T10:30:00Z"
                 }
             }
         },
@@ -7319,7 +6961,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_GovernmentFunding": {
+        "github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_GovernmentFundingResponse": {
             "type": "object",
             "properties": {
                 "_links": {
@@ -7328,7 +6970,7 @@ const docTemplate = `{
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFunding"
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingResponse"
                     }
                 },
                 "limit": {

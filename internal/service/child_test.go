@@ -349,7 +349,7 @@ func TestChildService_CreateContract(t *testing.T) {
 	req := &models.ChildContractCreateRequest{
 		From:       from,
 		To:         &to,
-		Attributes: []string{"ganztags", "ndh"},
+		Properties: models.ContractProperties{"care_type": "ganztag", "supplements": []string{"ndh"}},
 	}
 
 	contract, err := svc.CreateContract(ctx, child.ID, org.ID, req)
@@ -363,8 +363,8 @@ func TestChildService_CreateContract(t *testing.T) {
 	if contract.ChildID != child.ID {
 		t.Errorf("ChildID = %d, want %d", contract.ChildID, child.ID)
 	}
-	if len(contract.Attributes) != 2 {
-		t.Errorf("Attributes = %v, want 2 elements", contract.Attributes)
+	if contract.Properties["care_type"] != "ganztag" {
+		t.Errorf("Properties = %v, want care_type=ganztag", contract.Properties)
 	}
 }
 
@@ -456,7 +456,7 @@ func TestChildService_CreateContract_OverlappingContract(t *testing.T) {
 	req1 := &models.ChildContractCreateRequest{
 		From:       from1,
 		To:         &to1,
-		Attributes: []string{"ganztags"},
+		Properties: models.ContractProperties{"care_type": "ganztag"},
 	}
 	_, err := svc.CreateContract(ctx, child.ID, org.ID, req1)
 	if err != nil {
@@ -469,7 +469,7 @@ func TestChildService_CreateContract_OverlappingContract(t *testing.T) {
 	req2 := &models.ChildContractCreateRequest{
 		From:       from2,
 		To:         &to2,
-		Attributes: []string{"teilzeit"},
+		Properties: models.ContractProperties{"care_type": "halbtag"},
 	}
 
 	_, err = svc.CreateContract(ctx, child.ID, org.ID, req2)
@@ -518,11 +518,11 @@ func TestChildService_ListContracts(t *testing.T) {
 	// Create two contracts
 	from1 := time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)
 	to1 := time.Date(2022, 12, 31, 0, 0, 0, 0, time.UTC)
-	req1 := &models.ChildContractCreateRequest{From: from1, To: &to1, Attributes: []string{"teilzeit"}}
+	req1 := &models.ChildContractCreateRequest{From: from1, To: &to1, Properties: models.ContractProperties{"care_type": "halbtag"}}
 	_, _ = svc.CreateContract(ctx, child.ID, org.ID, req1)
 
 	from2 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	req2 := &models.ChildContractCreateRequest{From: from2, Attributes: []string{"ganztags"}}
+	req2 := &models.ChildContractCreateRequest{From: from2, Properties: models.ContractProperties{"care_type": "ganztag"}}
 	_, _ = svc.CreateContract(ctx, child.ID, org.ID, req2)
 
 	contracts, _, err := svc.ListContracts(ctx, child.ID, org.ID, 100, 0)
@@ -564,7 +564,7 @@ func TestChildService_ListContracts_WrongOrg(t *testing.T) {
 
 	// Create a contract for child in org1
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	req := &models.ChildContractCreateRequest{From: from, Attributes: []string{"ganztags"}}
+	req := &models.ChildContractCreateRequest{From: from, Properties: models.ContractProperties{"care_type": "ganztag"}}
 	_, _ = svc.CreateContract(ctx, child.ID, org1.ID, req)
 
 	// Try to list contracts from wrong organization
@@ -645,7 +645,7 @@ func TestChildService_DeleteContract_WrongOrg(t *testing.T) {
 
 	// Create a contract
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	req := &models.ChildContractCreateRequest{From: from, Attributes: []string{"ganztags"}}
+	req := &models.ChildContractCreateRequest{From: from, Properties: models.ContractProperties{"care_type": "ganztag"}}
 	contract, _ := svc.CreateContract(ctx, child.ID, org1.ID, req)
 
 	// Try to delete contract from wrong organization
@@ -677,7 +677,7 @@ func TestChildService_GetCurrentContract_WrongOrg(t *testing.T) {
 
 	// Create an ongoing contract
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	req := &models.ChildContractCreateRequest{From: from, Attributes: []string{"ganztags"}}
+	req := &models.ChildContractCreateRequest{From: from, Properties: models.ContractProperties{"care_type": "ganztag"}}
 	_, _ = svc.CreateContract(ctx, child.ID, org1.ID, req)
 
 	// Try to get current contract from wrong organization
@@ -711,8 +711,8 @@ func TestChildService_CalculateFunding_BasicCalculation(t *testing.T) {
 	period := createTestFundingPeriod(t, db, funding.ID, time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), nil)
 
 	// Create properties with age filter (ages 3-6)
-	createTestFundingProperty(t, db, period.ID, "ganztags", 100000, 3, 7) // 1000.00 EUR
-	createTestFundingProperty(t, db, period.ID, "ndh", 50000, 3, 7)       // 500.00 EUR
+	createTestFundingProperty(t, db, period.ID, "care_type", "ganztag", 100000, 3, 7) // 1000.00 EUR
+	createTestFundingProperty(t, db, period.ID, "supplements", "ndh", 50000, 3, 7)    // 500.00 EUR
 
 	// Create child (born 2022-01-15, age 3 on 2025-01-27)
 	child := createTestChild(t, db, "Max", "Mustermann", org.ID)
@@ -723,7 +723,7 @@ func TestChildService_CalculateFunding_BasicCalculation(t *testing.T) {
 	fromDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	_, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		From:       fromDate,
-		Attributes: []string{"ganztags", "ndh"},
+		Properties: models.ContractProperties{"care_type": "ganztag", "supplements": []string{"ndh"}},
 	})
 	if err != nil {
 		t.Fatalf("failed to create contract: %v", err)
@@ -747,11 +747,11 @@ func TestChildService_CalculateFunding_BasicCalculation(t *testing.T) {
 	if cf.Funding != 150000 { // 1000.00 + 500.00 = 1500.00 EUR = 150000 cents
 		t.Errorf("Funding = %d, want 150000 (cents)", cf.Funding)
 	}
-	if len(cf.MatchedAttributes) != 2 {
-		t.Errorf("MatchedAttributes = %v, want 2 items", cf.MatchedAttributes)
+	if len(cf.MatchedProperties) != 2 {
+		t.Errorf("MatchedProperties = %v, want 2 items", cf.MatchedProperties)
 	}
-	if len(cf.UnmatchedAttributes) != 0 {
-		t.Errorf("UnmatchedAttributes = %v, want 0 items", cf.UnmatchedAttributes)
+	if len(cf.UnmatchedProperties) != 0 {
+		t.Errorf("UnmatchedProperties = %v, want 0 items", cf.UnmatchedProperties)
 	}
 }
 
@@ -771,7 +771,7 @@ func TestChildService_CalculateFunding_NoFundingAssigned(t *testing.T) {
 	fromDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	_, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		From:       fromDate,
-		Attributes: []string{"ganztags", "ndh"},
+		Properties: models.ContractProperties{"care_type": "ganztag", "supplements": []string{"ndh"}},
 	})
 	if err != nil {
 		t.Fatalf("failed to create contract: %v", err)
@@ -792,8 +792,8 @@ func TestChildService_CalculateFunding_NoFundingAssigned(t *testing.T) {
 	if cf.Funding != 0 {
 		t.Errorf("Funding = %d, want 0 (no funding assigned)", cf.Funding)
 	}
-	if len(cf.UnmatchedAttributes) != 2 {
-		t.Errorf("UnmatchedAttributes = %v, want 2 items", cf.UnmatchedAttributes)
+	if len(cf.UnmatchedProperties) != 2 {
+		t.Errorf("UnmatchedProperties = %v, want 2 items", cf.UnmatchedProperties)
 	}
 }
 
@@ -819,7 +819,7 @@ func TestChildService_CalculateFunding_NoMatchingPeriod(t *testing.T) {
 	fromDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	_, _ = svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		From:       fromDate,
-		Attributes: []string{"ganztags"},
+		Properties: models.ContractProperties{"care_type": "ganztag"},
 	})
 
 	// Calculate funding for date outside period
@@ -849,7 +849,7 @@ func TestChildService_CalculateFunding_NoMatchingAgeProperty(t *testing.T) {
 	period := createTestFundingPeriod(t, db, funding.ID, time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), nil)
 
 	// Create property for ages 0-2 only
-	createTestFundingProperty(t, db, period.ID, "ganztags", 100000, 0, 2)
+	createTestFundingProperty(t, db, period.ID, "care_type", "ganztag", 100000, 0, 2)
 
 	// Create child age 3 (doesn't match 0-2 property)
 	child := createTestChild(t, db, "Max", "Mustermann", org.ID)
@@ -859,7 +859,7 @@ func TestChildService_CalculateFunding_NoMatchingAgeProperty(t *testing.T) {
 	fromDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	_, _ = svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		From:       fromDate,
-		Attributes: []string{"ganztags"},
+		Properties: models.ContractProperties{"care_type": "ganztag"},
 	})
 
 	refDate := time.Date(2025, 1, 27, 0, 0, 0, 0, time.UTC)
@@ -872,8 +872,8 @@ func TestChildService_CalculateFunding_NoMatchingAgeProperty(t *testing.T) {
 	if cf.Funding != 0 {
 		t.Errorf("Funding = %d, want 0 (no matching age property)", cf.Funding)
 	}
-	if len(cf.UnmatchedAttributes) != 1 {
-		t.Errorf("UnmatchedAttributes = %v, want [ganztags]", cf.UnmatchedAttributes)
+	if len(cf.UnmatchedProperties) != 1 {
+		t.Errorf("UnmatchedProperties = %v, want 1 item (care_type:ganztag)", cf.UnmatchedProperties)
 	}
 }
 
@@ -888,8 +888,8 @@ func TestChildService_CalculateFunding_PartialAttributeMatch(t *testing.T) {
 	// Funding is now automatically looked up by org.State ("berlin")
 
 	period := createTestFundingPeriod(t, db, funding.ID, time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), nil)
-	createTestFundingProperty(t, db, period.ID, "ganztags", 100000, 3, 7)
-	// "xyz" property does NOT exist
+	createTestFundingProperty(t, db, period.ID, "care_type", "ganztag", 100000, 3, 7)
+	// "unknown_key" property does NOT exist
 
 	child := createTestChild(t, db, "Max", "Mustermann", org.ID)
 	child.Birthdate = time.Date(2022, 1, 15, 0, 0, 0, 0, time.UTC)
@@ -898,7 +898,7 @@ func TestChildService_CalculateFunding_PartialAttributeMatch(t *testing.T) {
 	fromDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	_, _ = svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		From:       fromDate,
-		Attributes: []string{"ganztags", "xyz"}, // xyz doesn't match any property
+		Properties: models.ContractProperties{"care_type": "ganztag", "unknown_key": "xyz"}, // unknown_key doesn't match any funding property
 	})
 
 	refDate := time.Date(2025, 1, 27, 0, 0, 0, 0, time.UTC)
@@ -911,15 +911,15 @@ func TestChildService_CalculateFunding_PartialAttributeMatch(t *testing.T) {
 	if cf.Funding != 100000 {
 		t.Errorf("Funding = %d, want 100000", cf.Funding)
 	}
-	if len(cf.MatchedAttributes) != 1 || cf.MatchedAttributes[0] != "ganztags" {
-		t.Errorf("MatchedAttributes = %v, want [ganztags]", cf.MatchedAttributes)
+	if len(cf.MatchedProperties) != 1 {
+		t.Errorf("MatchedProperties = %v, want 1 item", cf.MatchedProperties)
 	}
-	if len(cf.UnmatchedAttributes) != 1 || cf.UnmatchedAttributes[0] != "xyz" {
-		t.Errorf("UnmatchedAttributes = %v, want [xyz]", cf.UnmatchedAttributes)
+	if len(cf.UnmatchedProperties) != 1 {
+		t.Errorf("UnmatchedProperties = %v, want 1 item", cf.UnmatchedProperties)
 	}
 }
 
-func TestChildService_CalculateFunding_DuplicateAttributes(t *testing.T) {
+func TestChildService_CalculateFunding_SingleProperty(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
 	ctx := context.Background()
@@ -929,7 +929,7 @@ func TestChildService_CalculateFunding_DuplicateAttributes(t *testing.T) {
 	// Funding is now automatically looked up by org.State ("berlin")
 
 	period := createTestFundingPeriod(t, db, funding.ID, time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), nil)
-	createTestFundingProperty(t, db, period.ID, "ganztags", 100000, 3, 7)
+	createTestFundingProperty(t, db, period.ID, "care_type", "ganztag", 100000, 3, 7)
 
 	child := createTestChild(t, db, "Max", "Mustermann", org.ID)
 	child.Birthdate = time.Date(2022, 1, 15, 0, 0, 0, 0, time.UTC)
@@ -938,7 +938,7 @@ func TestChildService_CalculateFunding_DuplicateAttributes(t *testing.T) {
 	fromDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	_, _ = svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		From:       fromDate,
-		Attributes: []string{"ganztags", "ganztags", "ganztags"}, // Duplicates
+		Properties: models.ContractProperties{"care_type": "ganztag"},
 	})
 
 	refDate := time.Date(2025, 1, 27, 0, 0, 0, 0, time.UTC)
@@ -948,12 +948,11 @@ func TestChildService_CalculateFunding_DuplicateAttributes(t *testing.T) {
 	}
 
 	cf := result.Children[0]
-	// Should only count once even with duplicates
 	if cf.Funding != 100000 {
-		t.Errorf("Funding = %d, want 100000 (counted once despite duplicates)", cf.Funding)
+		t.Errorf("Funding = %d, want 100000", cf.Funding)
 	}
-	if len(cf.MatchedAttributes) != 1 {
-		t.Errorf("MatchedAttributes = %v, want 1 item (deduplicated)", cf.MatchedAttributes)
+	if len(cf.MatchedProperties) != 1 {
+		t.Errorf("MatchedProperties = %v, want 1 item", cf.MatchedProperties)
 	}
 }
 
@@ -967,7 +966,7 @@ func TestChildService_CalculateFunding_ChildNoContractOnDate(t *testing.T) {
 	// Funding is now automatically looked up by org.State ("berlin")
 
 	period := createTestFundingPeriod(t, db, funding.ID, time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), nil)
-	createTestFundingProperty(t, db, period.ID, "ganztags", 100000, 3, 7)
+	createTestFundingProperty(t, db, period.ID, "care_type", "ganztag", 100000, 3, 7)
 
 	// Child with active contract
 	childActive := createTestChild(t, db, "Active", "Child", org.ID)
@@ -976,7 +975,7 @@ func TestChildService_CalculateFunding_ChildNoContractOnDate(t *testing.T) {
 	fromDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	_, _ = svc.CreateContract(ctx, childActive.ID, org.ID, &models.ChildContractCreateRequest{
 		From:       fromDate,
-		Attributes: []string{"ganztags"},
+		Properties: models.ContractProperties{"care_type": "ganztag"},
 	})
 
 	// Child with NO contract (should not appear in results)
@@ -1012,7 +1011,7 @@ func TestChildService_CalculateFunding_WrongOrg(t *testing.T) {
 	funding := createTestGovernmentFunding(t, db, "Funding")
 
 	period := createTestFundingPeriod(t, db, funding.ID, time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), nil)
-	createTestFundingProperty(t, db, period.ID, "ganztags", 100000, 3, 7)
+	createTestFundingProperty(t, db, period.ID, "care_type", "ganztag", 100000, 3, 7)
 
 	// Child in org1
 	child1 := createTestChild(t, db, "Org1", "Child", org1.ID)
@@ -1021,7 +1020,7 @@ func TestChildService_CalculateFunding_WrongOrg(t *testing.T) {
 	fromDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	_, _ = svc.CreateContract(ctx, child1.ID, org1.ID, &models.ChildContractCreateRequest{
 		From:       fromDate,
-		Attributes: []string{"ganztags"},
+		Properties: models.ContractProperties{"care_type": "ganztag"},
 	})
 
 	// Child in org2
@@ -1030,7 +1029,7 @@ func TestChildService_CalculateFunding_WrongOrg(t *testing.T) {
 	db.Save(child2)
 	_, _ = svc.CreateContract(ctx, child2.ID, org2.ID, &models.ChildContractCreateRequest{
 		From:       fromDate,
-		Attributes: []string{"ganztags"},
+		Properties: models.ContractProperties{"care_type": "ganztag"},
 	})
 
 	// Calculate funding for org1 - should NOT include org2's child

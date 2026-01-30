@@ -423,6 +423,10 @@ func (h *ChildHandler) DeleteContract(c *gin.Context) {
 	c.JSON(http.StatusNoContent, nil)
 }
 
+// =============================================================================
+// Contract Property Endpoints
+// =============================================================================
+
 // GetAgeDistribution godoc
 // @Summary Get children age distribution
 // @Description Get age distribution of children with active contracts on the specified date

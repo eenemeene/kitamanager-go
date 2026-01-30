@@ -8,9 +8,7 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
-func datePtr(t time.Time) *time.Time {
-	return &t
-}
+// datePtr is defined in testutil_test.go
 
 func TestPeriodStore_GetCurrentContract(t *testing.T) {
 	db := setupTestDB(t)
@@ -31,9 +29,11 @@ func TestPeriodStore_GetCurrentContract(t *testing.T) {
 	// Create an ongoing contract (no end date)
 	contract := &models.EmployeeContract{
 		EmployeeID: employee.ID,
-		Period: models.Period{
-			From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-			To:   nil,
+		BaseContract: models.BaseContract{
+			Period: models.Period{
+				From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+				To:   nil,
+			},
 		},
 		Position:    "Developer",
 		WeeklyHours: 40,
@@ -100,9 +100,11 @@ func TestPeriodStore_GetContractOn(t *testing.T) {
 	// Create a contract from Jan 1 to Dec 31, 2024
 	contract := &models.EmployeeContract{
 		EmployeeID: employee.ID,
-		Period: models.Period{
-			From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-			To:   datePtr(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)),
+		BaseContract: models.BaseContract{
+			Period: models.Period{
+				From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+				To:   datePtr(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)),
+			},
 		},
 		Position:    "Developer",
 		WeeklyHours: 40,
@@ -184,9 +186,11 @@ func TestPeriodStore_GetHistory(t *testing.T) {
 	// Create contracts in non-chronological order to test sorting
 	contract2 := &models.EmployeeContract{
 		EmployeeID: employee.ID,
-		Period: models.Period{
-			From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
-			To:   nil,
+		BaseContract: models.BaseContract{
+			Period: models.Period{
+				From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+				To:   nil,
+			},
 		},
 		Position: "Senior Developer",
 	}
@@ -194,9 +198,11 @@ func TestPeriodStore_GetHistory(t *testing.T) {
 
 	contract1 := &models.EmployeeContract{
 		EmployeeID: employee.ID,
-		Period: models.Period{
-			From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-			To:   datePtr(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)),
+		BaseContract: models.BaseContract{
+			Period: models.Period{
+				From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+				To:   datePtr(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)),
+			},
 		},
 		Position: "Junior Developer",
 	}
@@ -265,9 +271,11 @@ func TestPeriodStore_ValidateNoOverlap_Overlapping(t *testing.T) {
 	// Create existing contract: 2024-01-01 to 2024-12-31
 	existing := &models.EmployeeContract{
 		EmployeeID: employee.ID,
-		Period: models.Period{
-			From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-			To:   datePtr(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)),
+		BaseContract: models.BaseContract{
+			Period: models.Period{
+				From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+				To:   datePtr(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)),
+			},
 		},
 		Position: "Existing",
 	}
@@ -377,9 +385,11 @@ func TestPeriodStore_ValidateNoOverlap_ExcludeID(t *testing.T) {
 	// Create existing contract
 	existing := &models.EmployeeContract{
 		EmployeeID: employee.ID,
-		Period: models.Period{
-			From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-			To:   datePtr(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)),
+		BaseContract: models.BaseContract{
+			Period: models.Period{
+				From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+				To:   datePtr(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)),
+			},
 		},
 		Position: "Existing",
 	}
@@ -417,9 +427,11 @@ func TestPeriodStore_ValidateNoOverlap_OngoingContracts(t *testing.T) {
 	// Create existing ongoing contract (no end date)
 	existing := &models.EmployeeContract{
 		EmployeeID: employee.ID,
-		Period: models.Period{
-			From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-			To:   nil, // ongoing
+		BaseContract: models.BaseContract{
+			Period: models.Period{
+				From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+				To:   nil, // ongoing
+			},
 		},
 		Position: "Existing Ongoing",
 	}
@@ -490,9 +502,11 @@ func TestPeriodStore_HasActiveContract(t *testing.T) {
 	// Create contract: 2024-01-01 to 2024-12-31
 	contract := &models.EmployeeContract{
 		EmployeeID: employee.ID,
-		Period: models.Period{
-			From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-			To:   datePtr(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)),
+		BaseContract: models.BaseContract{
+			Period: models.Period{
+				From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+				To:   datePtr(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)),
+			},
 		},
 		Position: "Developer",
 	}
@@ -553,9 +567,11 @@ func TestPeriodStore_CloseCurrentContract(t *testing.T) {
 	// Create ongoing contract
 	contract := &models.EmployeeContract{
 		EmployeeID: employee.ID,
-		Period: models.Period{
-			From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-			To:   nil, // ongoing
+		BaseContract: models.BaseContract{
+			Period: models.Period{
+				From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+				To:   nil, // ongoing
+			},
 		},
 		Position: "Developer",
 	}

@@ -379,7 +379,8 @@ func TestGovernmentFundingHandler_Property_AgeRange(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			body := map[string]interface{}{
-				"name":        "test-property",
+				"key":         "care_type",
+				"value":       "ganztag",
 				"payment":     100000,
 				"requirement": 0.1,
 			}
@@ -494,6 +495,444 @@ func TestGovernmentFundingHandler_Get_PeriodsLimit(t *testing.T) {
 		if w.Code != http.StatusBadRequest {
 			t.Errorf("expected status %d for invalid limit, got %d: %s",
 				http.StatusBadRequest, w.Code, w.Body.String())
+		}
+	})
+}
+
+// Additional error case tests
+
+func TestGovernmentFundingHandler_List_Pagination(t *testing.T) {
+	db := setupTestDB(t)
+	fundingStore := store.NewGovernmentFundingStore(db)
+	svc := service.NewGovernmentFundingService(fundingStore)
+	handler := NewGovernmentFundingHandler(svc)
+
+	// Create test fundings
+	for i := 0; i < 5; i++ {
+		funding := &models.GovernmentFunding{Name: fmt.Sprintf("Funding %d", i), State: "berlin"}
+		// Note: State is unique, so we need to handle this differently
+		// For this test, we'll just create one
+		if i == 0 {
+			db.Create(funding)
+		}
+	}
+
+	r := setupTestRouter()
+	r.GET("/fundings", handler.List)
+
+	t.Run("default pagination", func(t *testing.T) {
+		w := performRequest(r, "GET", "/fundings", nil)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
+		}
+
+		var response models.PaginatedResponse[models.GovernmentFunding]
+		parseResponse(t, w, &response)
+		if response.Page != 1 {
+			t.Errorf("expected page 1, got %d", response.Page)
+		}
+		if response.Limit != 20 {
+			t.Errorf("expected limit 20, got %d", response.Limit)
+		}
+	})
+
+	t.Run("custom page and limit", func(t *testing.T) {
+		w := performRequest(r, "GET", "/fundings?page=1&limit=10", nil)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
+		}
+
+		var response models.PaginatedResponse[models.GovernmentFunding]
+		parseResponse(t, w, &response)
+		if response.Limit != 10 {
+			t.Errorf("expected limit 10, got %d", response.Limit)
+		}
+	})
+
+	t.Run("invalid negative page", func(t *testing.T) {
+		w := performRequest(r, "GET", "/fundings?page=-1", nil)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("invalid negative limit", func(t *testing.T) {
+		w := performRequest(r, "GET", "/fundings?limit=-1", nil)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("limit exceeds max", func(t *testing.T) {
+		w := performRequest(r, "GET", "/fundings?limit=200", nil)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+	})
+}
+
+func TestGovernmentFundingHandler_Get_NotFound(t *testing.T) {
+	db := setupTestDB(t)
+	fundingStore := store.NewGovernmentFundingStore(db)
+	svc := service.NewGovernmentFundingService(fundingStore)
+	handler := NewGovernmentFundingHandler(svc)
+
+	r := setupTestRouter()
+	r.GET("/fundings/:id", handler.Get)
+
+	t.Run("non-existent ID", func(t *testing.T) {
+		w := performRequest(r, "GET", "/fundings/999", nil)
+
+		if w.Code != http.StatusNotFound {
+			t.Errorf("expected status %d, got %d: %s", http.StatusNotFound, w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("invalid ID", func(t *testing.T) {
+		w := performRequest(r, "GET", "/fundings/abc", nil)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("zero ID", func(t *testing.T) {
+		w := performRequest(r, "GET", "/fundings/0", nil)
+
+		if w.Code != http.StatusNotFound {
+			t.Errorf("expected status %d, got %d: %s", http.StatusNotFound, w.Code, w.Body.String())
+		}
+	})
+}
+
+func TestGovernmentFundingHandler_Create_Validation(t *testing.T) {
+	db := setupTestDB(t)
+	fundingStore := store.NewGovernmentFundingStore(db)
+	svc := service.NewGovernmentFundingService(fundingStore)
+	handler := NewGovernmentFundingHandler(svc)
+
+	r := setupTestRouter()
+	r.POST("/fundings", handler.Create)
+
+	t.Run("invalid state", func(t *testing.T) {
+		body := models.GovernmentFundingCreateRequest{Name: "Test Funding", State: "invalid"}
+		w := performRequest(r, "POST", "/fundings", body)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("empty name", func(t *testing.T) {
+		body := models.GovernmentFundingCreateRequest{Name: "", State: "berlin"}
+		w := performRequest(r, "POST", "/fundings", body)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("whitespace only name", func(t *testing.T) {
+		body := models.GovernmentFundingCreateRequest{Name: "   ", State: "berlin"}
+		w := performRequest(r, "POST", "/fundings", body)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("missing required fields", func(t *testing.T) {
+		body := map[string]interface{}{}
+		w := performRequest(r, "POST", "/fundings", body)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+	})
+}
+
+func TestGovernmentFundingHandler_Update_NotFound(t *testing.T) {
+	db := setupTestDB(t)
+	fundingStore := store.NewGovernmentFundingStore(db)
+	svc := service.NewGovernmentFundingService(fundingStore)
+	handler := NewGovernmentFundingHandler(svc)
+
+	r := setupTestRouter()
+	r.PUT("/fundings/:id", handler.Update)
+
+	t.Run("non-existent ID", func(t *testing.T) {
+		name := "Updated Name"
+		body := models.GovernmentFundingUpdateRequest{Name: &name}
+		w := performRequest(r, "PUT", "/fundings/999", body)
+
+		if w.Code != http.StatusNotFound {
+			t.Errorf("expected status %d, got %d: %s", http.StatusNotFound, w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("invalid ID", func(t *testing.T) {
+		name := "Updated Name"
+		body := models.GovernmentFundingUpdateRequest{Name: &name}
+		w := performRequest(r, "PUT", "/fundings/abc", body)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+	})
+}
+
+func TestGovernmentFundingHandler_Update_Validation(t *testing.T) {
+	db := setupTestDB(t)
+	fundingStore := store.NewGovernmentFundingStore(db)
+	svc := service.NewGovernmentFundingService(fundingStore)
+	handler := NewGovernmentFundingHandler(svc)
+
+	// Create test funding
+	funding := &models.GovernmentFunding{Name: "Test Funding", State: "berlin"}
+	db.Create(funding)
+
+	r := setupTestRouter()
+	r.PUT("/fundings/:id", handler.Update)
+
+	t.Run("whitespace only name", func(t *testing.T) {
+		name := "   "
+		body := models.GovernmentFundingUpdateRequest{Name: &name}
+		w := performRequest(r, "PUT", fmt.Sprintf("/fundings/%d", funding.ID), body)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+	})
+}
+
+func TestGovernmentFundingHandler_Delete_NotFound(t *testing.T) {
+	db := setupTestDB(t)
+	fundingStore := store.NewGovernmentFundingStore(db)
+	svc := service.NewGovernmentFundingService(fundingStore)
+	handler := NewGovernmentFundingHandler(svc)
+
+	r := setupTestRouter()
+	r.DELETE("/fundings/:id", handler.Delete)
+
+	t.Run("non-existent ID", func(t *testing.T) {
+		w := performRequest(r, "DELETE", "/fundings/999", nil)
+
+		// Delete may return 204 or error depending on store implementation
+		// Check if it's either 204 (idempotent) or 404/500
+		if w.Code != http.StatusNoContent && w.Code != http.StatusNotFound && w.Code != http.StatusInternalServerError {
+			t.Errorf("unexpected status %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("invalid ID", func(t *testing.T) {
+		w := performRequest(r, "DELETE", "/fundings/abc", nil)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+	})
+}
+
+func TestGovernmentFundingHandler_CreatePeriod_Validation(t *testing.T) {
+	db := setupTestDB(t)
+	fundingStore := store.NewGovernmentFundingStore(db)
+	svc := service.NewGovernmentFundingService(fundingStore)
+	handler := NewGovernmentFundingHandler(svc)
+
+	r := setupTestRouter()
+	r.POST("/fundings/:id/periods", handler.CreatePeriod)
+
+	t.Run("non-existent funding ID", func(t *testing.T) {
+		body := map[string]interface{}{
+			"from": "2024-01-01T00:00:00Z",
+		}
+		w := performRequest(r, "POST", "/fundings/999/periods", body)
+
+		if w.Code != http.StatusNotFound {
+			t.Errorf("expected status %d, got %d: %s", http.StatusNotFound, w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("invalid funding ID", func(t *testing.T) {
+		body := map[string]interface{}{
+			"from": "2024-01-01T00:00:00Z",
+		}
+		w := performRequest(r, "POST", "/fundings/abc/periods", body)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("missing from date", func(t *testing.T) {
+		// First create a funding
+		funding := &models.GovernmentFunding{Name: "Test Funding", State: "berlin"}
+		db.Create(funding)
+
+		body := map[string]interface{}{}
+		w := performRequest(r, "POST", fmt.Sprintf("/fundings/%d/periods", funding.ID), body)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+	})
+}
+
+func TestGovernmentFundingHandler_DeletePeriod_Validation(t *testing.T) {
+	db := setupTestDB(t)
+	fundingStore := store.NewGovernmentFundingStore(db)
+	svc := service.NewGovernmentFundingService(fundingStore)
+	handler := NewGovernmentFundingHandler(svc)
+
+	// Create test funding
+	funding := &models.GovernmentFunding{Name: "Test Funding", State: "berlin"}
+	db.Create(funding)
+
+	r := setupTestRouter()
+	r.DELETE("/fundings/:id/periods/:periodId", handler.DeletePeriod)
+
+	t.Run("invalid period ID", func(t *testing.T) {
+		w := performRequest(r, "DELETE", fmt.Sprintf("/fundings/%d/periods/abc", funding.ID), nil)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+	})
+}
+
+func TestGovernmentFundingHandler_CreateProperty_Validation(t *testing.T) {
+	db := setupTestDB(t)
+	fundingStore := store.NewGovernmentFundingStore(db)
+	svc := service.NewGovernmentFundingService(fundingStore)
+	handler := NewGovernmentFundingHandler(svc)
+
+	// Create test funding and period
+	funding := &models.GovernmentFunding{Name: "Test Funding", State: "berlin"}
+	db.Create(funding)
+	period := &models.GovernmentFundingPeriod{
+		GovernmentFundingID: funding.ID,
+		From:                time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+	db.Create(period)
+
+	r := setupTestRouter()
+	r.POST("/fundings/:id/periods/:periodId/properties", handler.CreateProperty)
+
+	t.Run("empty key", func(t *testing.T) {
+		body := map[string]interface{}{
+			"key":         "",
+			"value":       "ganztag",
+			"payment":     100000,
+			"requirement": 0.1,
+		}
+		w := performRequest(r, "POST", fmt.Sprintf("/fundings/%d/periods/%d/properties", funding.ID, period.ID), body)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("whitespace only key", func(t *testing.T) {
+		body := map[string]interface{}{
+			"key":         "   ",
+			"value":       "ganztag",
+			"payment":     100000,
+			"requirement": 0.1,
+		}
+		w := performRequest(r, "POST", fmt.Sprintf("/fundings/%d/periods/%d/properties", funding.ID, period.ID), body)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("empty value", func(t *testing.T) {
+		body := map[string]interface{}{
+			"key":         "care_type",
+			"value":       "",
+			"payment":     100000,
+			"requirement": 0.1,
+		}
+		w := performRequest(r, "POST", fmt.Sprintf("/fundings/%d/periods/%d/properties", funding.ID, period.ID), body)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("non-existent period ID", func(t *testing.T) {
+		body := map[string]interface{}{
+			"key":         "care_type",
+			"value":       "ganztag",
+			"payment":     100000,
+			"requirement": 0.1,
+		}
+		w := performRequest(r, "POST", fmt.Sprintf("/fundings/%d/periods/999/properties", funding.ID), body)
+
+		if w.Code != http.StatusNotFound {
+			t.Errorf("expected status %d, got %d: %s", http.StatusNotFound, w.Code, w.Body.String())
+		}
+	})
+}
+
+func TestGovernmentFundingHandler_UpdateProperty_Validation(t *testing.T) {
+	db := setupTestDB(t)
+	fundingStore := store.NewGovernmentFundingStore(db)
+	svc := service.NewGovernmentFundingService(fundingStore)
+	handler := NewGovernmentFundingHandler(svc)
+
+	// Create test funding, period, and property
+	funding := &models.GovernmentFunding{Name: "Test Funding", State: "berlin"}
+	db.Create(funding)
+	period := &models.GovernmentFundingPeriod{
+		GovernmentFundingID: funding.ID,
+		From:                time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+	db.Create(period)
+	property := &models.GovernmentFundingProperty{
+		PeriodID:    period.ID,
+		Key:         "care_type",
+		Value:       "ganztag",
+		Payment:     100000,
+		Requirement: 0.1,
+	}
+	db.Create(property)
+
+	r := setupTestRouter()
+	r.PUT("/fundings/:id/periods/:periodId/properties/:propId", handler.UpdateProperty)
+
+	t.Run("non-existent property ID", func(t *testing.T) {
+		key := "new_key"
+		body := models.GovernmentFundingPropertyUpdateRequest{Key: &key}
+		w := performRequest(r, "PUT", fmt.Sprintf("/fundings/%d/periods/%d/properties/999", funding.ID, period.ID), body)
+
+		if w.Code != http.StatusNotFound {
+			t.Errorf("expected status %d, got %d: %s", http.StatusNotFound, w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("whitespace only key", func(t *testing.T) {
+		key := "   "
+		body := models.GovernmentFundingPropertyUpdateRequest{Key: &key}
+		w := performRequest(r, "PUT", fmt.Sprintf("/fundings/%d/periods/%d/properties/%d", funding.ID, period.ID, property.ID), body)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("whitespace only value", func(t *testing.T) {
+		value := "   "
+		body := models.GovernmentFundingPropertyUpdateRequest{Value: &value}
+		w := performRequest(r, "PUT", fmt.Sprintf("/fundings/%d/periods/%d/properties/%d", funding.ID, period.ID, property.ID), body)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 		}
 	})
 }

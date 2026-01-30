@@ -3,11 +3,8 @@ package validation
 import (
 	"fmt"
 	"html"
-	"strconv"
 	"strings"
 	"time"
-
-	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
 // IsWhitespaceOnly returns true if string is empty or contains only whitespace
@@ -75,56 +72,3 @@ func CalculateAgeOnDate(birthdate, referenceDate time.Time) int {
 	return years
 }
 
-// ValidateEmployeeContractProperty validates a property value against its schema.
-// Returns nil for unknown property names (allows extensibility).
-func ValidateEmployeeContractProperty(name, value string) error {
-	schema, known := models.PropertySchemas[name]
-	if !known {
-		// Allow unknown properties for extensibility
-		return nil
-	}
-
-	switch schema.Type {
-	case models.PropertyTypeFloat:
-		f, err := strconv.ParseFloat(value, 64)
-		if err != nil {
-			return fmt.Errorf("property %s must be a valid number", name)
-		}
-		if schema.MinFloat != nil && f < *schema.MinFloat {
-			return fmt.Errorf("property %s must be at least %v", name, *schema.MinFloat)
-		}
-		if schema.MaxFloat != nil && f > *schema.MaxFloat {
-			return fmt.Errorf("property %s must be at most %v", name, *schema.MaxFloat)
-		}
-
-	case models.PropertyTypeInt:
-		i, err := strconv.Atoi(value)
-		if err != nil {
-			return fmt.Errorf("property %s must be a valid integer", name)
-		}
-		if schema.MinInt != nil && i < *schema.MinInt {
-			return fmt.Errorf("property %s must be at least %d", name, *schema.MinInt)
-		}
-
-	case models.PropertyTypeBool:
-		if value != "true" && value != "false" {
-			return fmt.Errorf("property %s must be 'true' or 'false'", name)
-		}
-
-	case models.PropertyTypeString:
-		if len(schema.AllowedValues) > 0 {
-			valid := false
-			for _, allowed := range schema.AllowedValues {
-				if value == allowed {
-					valid = true
-					break
-				}
-			}
-			if !valid {
-				return fmt.Errorf("property %s must be one of: %v", name, schema.AllowedValues)
-			}
-		}
-	}
-
-	return nil
-}

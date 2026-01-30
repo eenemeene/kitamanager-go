@@ -15,15 +15,7 @@ type Child struct {
 type ChildContract struct {
 	ID      uint `gorm:"primaryKey" json:"id" example:"1"`
 	ChildID uint `gorm:"not null;index" json:"child_id" example:"1"`
-	Period
-
-	// Contract properties - care type and extras are stored in Attributes
-	// e.g., ["ganztags", "integration_a", "ndh"]
-	// Stored as JSON for database portability (works with PostgreSQL and SQLite)
-	Attributes []string `gorm:"serializer:json" json:"attributes" example:"ganztags,ndh"`
-
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	BaseContract
 }
 
 // GetPersonID returns the child ID for the HasPeriod interface.
@@ -33,16 +25,16 @@ func (c ChildContract) GetPersonID() uint {
 
 // ChildContractCreateRequest represents the request body for creating a child contract.
 type ChildContractCreateRequest struct {
-	From       time.Time  `json:"from" binding:"required" example:"2025-01-01"`
-	To         *time.Time `json:"to" example:"2025-12-31"`
-	Attributes []string   `json:"attributes" example:"ganztags,ndh"`
+	From       time.Time          `json:"from" binding:"required" example:"2025-01-01"`
+	To         *time.Time         `json:"to" example:"2025-12-31"`
+	Properties ContractProperties `json:"properties,omitempty"`
 }
 
 // ChildContractUpdateRequest represents the request body for updating a child contract.
 type ChildContractUpdateRequest struct {
-	From       *time.Time `json:"from" example:"2025-01-01"`
-	To         *time.Time `json:"to" example:"2025-12-31"`
-	Attributes []string   `json:"attributes" example:"ganztags,ndh"`
+	From       *time.Time         `json:"from" example:"2025-01-01"`
+	To         *time.Time         `json:"to" example:"2025-12-31"`
+	Properties ContractProperties `json:"properties,omitempty"`
 }
 
 // ChildCreateRequest represents the request body for creating a child.
@@ -106,13 +98,13 @@ func (c *Child) ToResponse() ChildResponse {
 
 // ChildContractResponse represents the child contract response
 type ChildContractResponse struct {
-	ID         uint       `json:"id" example:"1"`
-	ChildID    uint       `json:"child_id" example:"1"`
-	From       time.Time  `json:"from" example:"2025-01-01"`
-	To         *time.Time `json:"to" example:"2025-12-31"`
-	Attributes []string   `json:"attributes" example:"ganztags,ndh"`
-	CreatedAt  time.Time  `json:"created_at"`
-	UpdatedAt  time.Time  `json:"updated_at"`
+	ID         uint               `json:"id" example:"1"`
+	ChildID    uint               `json:"child_id" example:"1"`
+	From       time.Time          `json:"from" example:"2025-01-01"`
+	To         *time.Time         `json:"to" example:"2025-12-31"`
+	Properties ContractProperties `json:"properties,omitempty"`
+	CreatedAt  time.Time          `json:"created_at"`
+	UpdatedAt  time.Time          `json:"updated_at"`
 }
 
 func (c *ChildContract) ToResponse() ChildContractResponse {
@@ -121,7 +113,7 @@ func (c *ChildContract) ToResponse() ChildContractResponse {
 		ChildID:    c.ChildID,
 		From:       c.From,
 		To:         c.To,
-		Attributes: c.Attributes,
+		Properties: c.Properties,
 		CreatedAt:  c.CreatedAt,
 		UpdatedAt:  c.UpdatedAt,
 	}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -151,9 +151,12 @@ export default function UsersPage() {
     }
   };
 
-  const handleSuperadminToggle = (user: User, checked: boolean) => {
-    superadminMutation.mutate({ userId: user.id, isSuperadmin: checked });
-  };
+  const handleSuperadminToggle = useCallback(
+    (user: User, checked: boolean) => {
+      superadminMutation.mutate({ userId: user.id, isSuperadmin: checked });
+    },
+    [superadminMutation]
+  );
 
   const isSuperadmin = currentUser?.is_superadmin;
 
@@ -194,7 +197,7 @@ export default function UsersPage() {
     });
 
     return baseColumns;
-  }, [t, isSuperadmin, currentUser?.id]);
+  }, [t, isSuperadmin, currentUser?.id, handleSuperadminToggle]);
 
   const renderActions = (user: User) => (
     <>

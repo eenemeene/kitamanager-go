@@ -99,12 +99,14 @@ func TestImportGovernmentFundingFromFile(t *testing.T) {
   entries:
     - age: [0,2]
       properties:
-        'ganztag':
-          'payment': 1668.47
-          'requirement': 0.261
-        'halbtag':
-          'payment': 1066.64
-          'requirement': 0.14
+        - key: care_type
+          value: ganztag
+          payment: 1668.47
+          requirement: 0.261
+        - key: care_type
+          value: halbtag
+          payment: 1066.64
+          requirement: 0.14
 -
   from: '2022-01-01'
   to: '2023-03-01'
@@ -113,9 +115,10 @@ func TestImportGovernmentFundingFromFile(t *testing.T) {
   entries:
     - age: [0,2]
       properties:
-        'ganztag':
-          'payment': 1640.43
-          'requirement': 0.261
+        - key: care_type
+          value: ganztag
+          payment: 1640.43
+          requirement: 0.261
 `
 
 	db := setupTestDB(t)
@@ -144,7 +147,7 @@ func TestImportGovernmentFundingFromFile(t *testing.T) {
 	// Check ganztag property has correct cents conversion and age range
 	var ganztag *models.GovernmentFundingProperty
 	for i := range period1.Properties {
-		if period1.Properties[i].Name == "ganztag" {
+		if period1.Properties[i].Key == "care_type" && period1.Properties[i].Value == "ganztag" {
 			ganztag = &period1.Properties[i]
 			break
 		}
@@ -173,9 +176,10 @@ func TestImportGovernmentFundingFromFile_Idempotency(t *testing.T) {
   entries:
     - age: [0,2]
       properties:
-        'ganztag':
-          'payment': 1668.47
-          'requirement': 0.261
+        - key: care_type
+          value: ganztag
+          payment: 1668.47
+          requirement: 0.261
 `
 
 	db := setupTestDB(t)
@@ -208,9 +212,10 @@ func TestImportGovernmentFundingFromFile_FarFutureDateTreatedAsOngoing(t *testin
   entries:
     - age: [0,2]
       properties:
-        'ganztag':
-          'payment': 1668.47
-          'requirement': 0.261
+        - key: care_type
+          value: ganztag
+          payment: 1668.47
+          requirement: 0.261
 `
 
 	db := setupTestDB(t)

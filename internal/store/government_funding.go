@@ -66,7 +66,7 @@ func (s *GovernmentFundingStore) FindByStateWithDetails(state string, periodsLim
 			return q
 		}).
 		Preload("Periods.Properties", func(db *gorm.DB) *gorm.DB {
-			return db.Order("name ASC, min_age ASC NULLS LAST")
+			return db.Order("key ASC, value ASC, min_age ASC NULLS LAST")
 		}).
 		Where("state = ?", state).
 		First(&funding).Error; err != nil {
@@ -86,7 +86,7 @@ func (s *GovernmentFundingStore) FindByIDWithDetails(id uint, periodsLimit int) 
 			return q
 		}).
 		Preload("Periods.Properties", func(db *gorm.DB) *gorm.DB {
-			return db.Order("name ASC, min_age ASC NULLS LAST")
+			return db.Order("key ASC, value ASC, min_age ASC NULLS LAST")
 		}).
 		First(&funding, id).Error; err != nil {
 		return nil, err
@@ -120,7 +120,7 @@ func (s *GovernmentFundingStore) FindPeriodByID(id uint) (*models.GovernmentFund
 	var period models.GovernmentFundingPeriod
 	if err := s.db.
 		Preload("Properties", func(db *gorm.DB) *gorm.DB {
-			return db.Order("name ASC, min_age ASC NULLS LAST")
+			return db.Order("key ASC, value ASC, min_age ASC NULLS LAST")
 		}).
 		First(&period, id).Error; err != nil {
 		return nil, err

@@ -281,7 +281,8 @@ func (s *GovernmentFundingService) CreateProperty(ctx context.Context, periodID 
 
 	property := &models.GovernmentFundingProperty{
 		PeriodID:    periodID,
-		Name:        strings.TrimSpace(req.Name),
+		Key:         strings.TrimSpace(req.Key),
+		Value:       strings.TrimSpace(req.Value),
 		Payment:     req.Payment,
 		Requirement: req.Requirement,
 		MinAge:      req.MinAge,
@@ -289,8 +290,11 @@ func (s *GovernmentFundingService) CreateProperty(ctx context.Context, periodID 
 		Comment:     strings.TrimSpace(req.Comment),
 	}
 
-	if validation.IsWhitespaceOnly(property.Name) {
-		return nil, apperror.BadRequest("name cannot be empty or whitespace only")
+	if validation.IsWhitespaceOnly(property.Key) {
+		return nil, apperror.BadRequest("key cannot be empty or whitespace only")
+	}
+	if validation.IsWhitespaceOnly(property.Value) {
+		return nil, apperror.BadRequest("value cannot be empty or whitespace only")
 	}
 
 	if err := s.store.CreateProperty(property); err != nil {
@@ -318,12 +322,19 @@ func (s *GovernmentFundingService) UpdateProperty(ctx context.Context, propertyI
 		return nil, apperror.NotFound("property")
 	}
 
-	if req.Name != nil {
-		name := strings.TrimSpace(*req.Name)
-		if validation.IsWhitespaceOnly(name) {
-			return nil, apperror.BadRequest("name cannot be empty or whitespace only")
+	if req.Key != nil {
+		key := strings.TrimSpace(*req.Key)
+		if validation.IsWhitespaceOnly(key) {
+			return nil, apperror.BadRequest("key cannot be empty or whitespace only")
 		}
-		property.Name = name
+		property.Key = key
+	}
+	if req.Value != nil {
+		value := strings.TrimSpace(*req.Value)
+		if validation.IsWhitespaceOnly(value) {
+			return nil, apperror.BadRequest("value cannot be empty or whitespace only")
+		}
+		property.Value = value
 	}
 	if req.Payment != nil {
 		property.Payment = *req.Payment

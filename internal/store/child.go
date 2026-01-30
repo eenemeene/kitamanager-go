@@ -97,6 +97,7 @@ func (s *ChildStore) Update(child *models.Child) error {
 
 func (s *ChildStore) Delete(id uint) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
+		// Delete all contracts
 		if err := tx.Where("child_id = ?", id).Delete(&models.ChildContract{}).Error; err != nil {
 			return err
 		}

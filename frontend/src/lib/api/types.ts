@@ -55,12 +55,12 @@ export interface GovernmentFundingPeriod {
 export interface GovernmentFundingProperty {
   id: number;
   period_id: number;
-  name: string;
+  key: string;
+  value: string;
   payment: number;
   requirement: number;
   min_age?: number | null;
   max_age?: number | null;
-  exclusive_group?: string | null;
   comment?: string;
   created_at: string;
 }
@@ -87,22 +87,22 @@ export interface GovernmentFundingPeriodUpdateRequest {
 }
 
 export interface GovernmentFundingPropertyCreateRequest {
-  name: string;
+  key: string;
+  value: string;
   payment: number;
   requirement: number;
   min_age?: number | null;
   max_age?: number | null;
-  exclusive_group?: string | null;
   comment?: string;
 }
 
 export interface GovernmentFundingPropertyUpdateRequest {
-  name?: string;
+  key?: string;
+  value?: string;
   payment?: number;
   requirement?: number;
   min_age?: number | null;
   max_age?: number | null;
-  exclusive_group?: string | null;
   comment?: string;
 }
 
@@ -251,12 +251,17 @@ export interface Child extends Person {
   contracts?: ChildContract[];
 }
 
+// ContractProperties is a map of property keys to values.
+// Values can be strings (scalar) or string arrays.
+// Example: {"care_type": "ganztag", "supplements": ["ndh", "mss"]}
+export type ContractProperties = Record<string, string | string[]>;
+
 export interface ChildContract {
   id: number;
   child_id: number;
   from: string;
   to?: string | null;
-  attributes?: string[];
+  properties?: ContractProperties;
   created_at: string;
   updated_at: string;
 }
@@ -279,13 +284,13 @@ export interface ChildUpdateRequest {
 export interface ChildContractCreateRequest {
   from: string;
   to?: string | null;
-  attributes?: string[];
+  properties?: ContractProperties;
 }
 
 export interface ChildContractUpdateRequest {
   from?: string;
   to?: string | null;
-  attributes?: string[];
+  properties?: ContractProperties;
 }
 
 // Pagination response wrapper

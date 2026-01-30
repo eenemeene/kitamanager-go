@@ -428,7 +428,7 @@ export async function createChildContractViaApi(
   data: {
     from: string;
     to?: string | null;
-    attributes?: string[];
+    properties?: Record<string, string>;
   }
 ): Promise<{ id: number }> {
   return page.evaluate(

@@ -254,9 +254,12 @@ func (s *EmployeeService) CreateContract(ctx context.Context, employeeID, orgID 
 
 	contract := &models.EmployeeContract{
 		EmployeeID: employeeID,
-		Period: models.Period{
-			From: req.From,
-			To:   req.To,
+		BaseContract: models.BaseContract{
+			Period: models.Period{
+				From: req.From,
+				To:   req.To,
+			},
+			Properties: req.Properties,
 		},
 		Position:    req.Position,
 		Grade:       req.Grade,
@@ -298,7 +301,7 @@ func (s *EmployeeService) DeleteContract(ctx context.Context, contractID, employ
 	return nil
 }
 
-// GetContractByID returns a contract by ID with properties, validating ownership
+// GetContractByID returns a contract by ID, validating ownership
 func (s *EmployeeService) GetContractByID(ctx context.Context, contractID, employeeID, orgID uint) (*models.EmployeeContractResponse, error) {
 	// Security: Validate employee belongs to the specified organization (use minimal query - no preloads needed)
 	employee, err := s.store.FindByIDMinimal(employeeID)
@@ -309,8 +312,8 @@ func (s *EmployeeService) GetContractByID(ctx context.Context, contractID, emplo
 		return nil, apperror.NotFound("employee")
 	}
 
-	// Get contract with properties
-	contract, err := s.store.FindContractByIDWithProperties(contractID)
+	// Get contract
+	contract, err := s.store.FindContractByID(contractID)
 	if err != nil {
 		return nil, apperror.NotFound("contract")
 	}
@@ -362,6 +365,10 @@ func (s *EmployeeService) UpdateContract(ctx context.Context, contractID, employ
 	if req.Step != nil {
 		contract.Step = *req.Step
 	}
+	// Properties can be replaced entirely
+	if req.Properties != nil {
+		contract.Properties = req.Properties
+	}
 
 	// Handle date changes
 	newFrom := contract.From
@@ -398,145 +405,3 @@ func (s *EmployeeService) UpdateContract(ctx context.Context, contractID, employ
 	return &resp, nil
 }
 
-// validateContractOwnership validates that a contract belongs to an employee in the specified organization
-func (s *EmployeeService) validateContractOwnership(employeeID, contractID, orgID uint) error {
-	// Security: Validate employee belongs to the specified organization (use minimal query - no preloads needed)
-	employee, err := s.store.FindByIDMinimal(employeeID)
-	if err != nil {
-		return apperror.NotFound("employee")
-	}
-	if employee.OrganizationID != orgID {
-		return apperror.NotFound("employee")
-	}
-
-	// Validate contract belongs to the employee
-	contract, err := s.store.FindContractByID(contractID)
-	if err != nil {
-		return apperror.NotFound("contract")
-	}
-	if contract.EmployeeID != employeeID {
-		return apperror.NotFound("contract")
-	}
-
-	return nil
-}
-
-// ListContractProperties returns all properties for a contract
-func (s *EmployeeService) ListContractProperties(ctx context.Context, contractID, employeeID, orgID uint) ([]models.EmployeeContractPropertyResponse, error) {
-	if err := s.validateContractOwnership(employeeID, contractID, orgID); err != nil {
-		return nil, err
-	}
-
-	properties, err := s.store.FindPropertiesByContractID(contractID)
-	if err != nil {
-		return nil, apperror.Internal("failed to fetch properties")
-	}
-
-	responses := make([]models.EmployeeContractPropertyResponse, len(properties))
-	for i, p := range properties {
-		responses[i] = p.ToResponse()
-	}
-	return responses, nil
-}
-
-// CreateContractProperty creates a new property for a contract
-func (s *EmployeeService) CreateContractProperty(ctx context.Context, contractID, employeeID, orgID uint, req *models.EmployeeContractPropertyCreateRequest) (*models.EmployeeContractPropertyResponse, error) {
-	if err := s.validateContractOwnership(employeeID, contractID, orgID); err != nil {
-		return nil, err
-	}
-
-	// Trim and validate input
-	req.Name = strings.TrimSpace(req.Name)
-	req.Value = strings.TrimSpace(req.Value)
-
-	if validation.IsWhitespaceOnly(req.Name) {
-		return nil, apperror.BadRequest("name cannot be empty or whitespace only")
-	}
-	if validation.IsWhitespaceOnly(req.Value) {
-		return nil, apperror.BadRequest("value cannot be empty or whitespace only")
-	}
-
-	// Validate against schema
-	if err := validation.ValidateEmployeeContractProperty(req.Name, req.Value); err != nil {
-		return nil, apperror.BadRequest(err.Error())
-	}
-
-	// Check for duplicate name
-	exists, err := s.store.PropertyExistsByName(contractID, req.Name)
-	if err != nil {
-		return nil, apperror.Internal("failed to check property existence")
-	}
-	if exists {
-		return nil, apperror.Conflict("property with this name already exists")
-	}
-
-	property := &models.EmployeeContractProperty{
-		ContractID: contractID,
-		Name:       req.Name,
-		Value:      req.Value,
-	}
-
-	if err := s.store.CreateProperty(property); err != nil {
-		return nil, apperror.Internal("failed to create property")
-	}
-
-	resp := property.ToResponse()
-	return &resp, nil
-}
-
-// UpdateContractProperty updates an existing property
-func (s *EmployeeService) UpdateContractProperty(ctx context.Context, propertyID, contractID, employeeID, orgID uint, req *models.EmployeeContractPropertyUpdateRequest) (*models.EmployeeContractPropertyResponse, error) {
-	if err := s.validateContractOwnership(employeeID, contractID, orgID); err != nil {
-		return nil, err
-	}
-
-	// Get property
-	property, err := s.store.FindPropertyByID(propertyID)
-	if err != nil {
-		return nil, apperror.NotFound("property")
-	}
-	if property.ContractID != contractID {
-		return nil, apperror.NotFound("property")
-	}
-
-	// Trim and validate input
-	req.Value = strings.TrimSpace(req.Value)
-	if validation.IsWhitespaceOnly(req.Value) {
-		return nil, apperror.BadRequest("value cannot be empty or whitespace only")
-	}
-
-	// Validate against schema
-	if err := validation.ValidateEmployeeContractProperty(property.Name, req.Value); err != nil {
-		return nil, apperror.BadRequest(err.Error())
-	}
-
-	property.Value = req.Value
-
-	if err := s.store.UpdateProperty(property); err != nil {
-		return nil, apperror.Internal("failed to update property")
-	}
-
-	resp := property.ToResponse()
-	return &resp, nil
-}
-
-// DeleteContractProperty deletes a property
-func (s *EmployeeService) DeleteContractProperty(ctx context.Context, propertyID, contractID, employeeID, orgID uint) error {
-	if err := s.validateContractOwnership(employeeID, contractID, orgID); err != nil {
-		return err
-	}
-
-	// Get property to validate ownership
-	property, err := s.store.FindPropertyByID(propertyID)
-	if err != nil {
-		return apperror.NotFound("property")
-	}
-	if property.ContractID != contractID {
-		return apperror.NotFound("property")
-	}
-
-	if err := s.store.DeleteProperty(propertyID); err != nil {
-		return apperror.Internal("failed to delete property")
-	}
-	return nil
-}

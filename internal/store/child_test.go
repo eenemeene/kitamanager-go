@@ -183,11 +183,13 @@ func TestChildStore_CreateContract(t *testing.T) {
 
 	contract := &models.ChildContract{
 		ChildID: child.ID,
-		Period: models.Period{
-			From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
-			To:   nil,
+		BaseContract: models.BaseContract{
+			Period: models.Period{
+				From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+				To:   nil,
+			},
+			Properties: models.ContractProperties{"care_type": "ganztag"},
 		},
-		Attributes: []string{"ganztags"},
 	}
 
 	err := store.CreateContract(contract)
@@ -217,8 +219,10 @@ func TestChildStore_DeleteContract(t *testing.T) {
 
 	contract := &models.ChildContract{
 		ChildID: child.ID,
-		Period: models.Period{
-			From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		BaseContract: models.BaseContract{
+			Period: models.Period{
+				From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+			},
 		},
 	}
 	db.Create(contract)
@@ -251,8 +255,10 @@ func TestChildStore_DeleteAlsoDeletesContracts(t *testing.T) {
 
 	contract := &models.ChildContract{
 		ChildID: child.ID,
-		Period: models.Period{
-			From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		BaseContract: models.BaseContract{
+			Period: models.Period{
+				From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+			},
 		},
 	}
 	db.Create(contract)
@@ -288,9 +294,11 @@ func TestChildStore_ContractOverlapValidation(t *testing.T) {
 	// Create existing contract
 	existing := &models.ChildContract{
 		ChildID: child.ID,
-		Period: models.Period{
-			From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-			To:   datePtr(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)),
+		BaseContract: models.BaseContract{
+			Period: models.Period{
+				From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+				To:   datePtr(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)),
+			},
 		},
 	}
 	db.Create(existing)
@@ -339,9 +347,11 @@ func TestChildStore_FindByOrganizationWithContractOn(t *testing.T) {
 	}
 	db.Create(childActive)
 	db.Create(&models.ChildContract{
-		ChildID:    childActive.ID,
-		Period:     models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
-		Attributes: []string{"ganztags"},
+		ChildID: childActive.ID,
+		BaseContract: models.BaseContract{
+			Period:     models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
+			Properties: models.ContractProperties{"care_type": "ganztag"},
+		},
 	})
 
 	// Child with ongoing contract (no end date)
@@ -355,9 +365,11 @@ func TestChildStore_FindByOrganizationWithContractOn(t *testing.T) {
 	}
 	db.Create(childOngoing)
 	db.Create(&models.ChildContract{
-		ChildID:    childOngoing.ID,
-		Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
-		Attributes: []string{"halbtags", "ndh"},
+		ChildID: childOngoing.ID,
+		BaseContract: models.BaseContract{
+			Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+			Properties: models.ContractProperties{"care_type": "halbtag", "supplements": []string{"ndh"}},
+		},
 	})
 
 	// Child with expired contract (before refDate)
@@ -372,9 +384,11 @@ func TestChildStore_FindByOrganizationWithContractOn(t *testing.T) {
 	db.Create(childExpired)
 	db.Create(&models.ChildContract{
 		ChildID: childExpired.ID,
-		Period: models.Period{
-			From: time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC),
-			To:   datePtr(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)),
+		BaseContract: models.BaseContract{
+			Period: models.Period{
+				From: time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC),
+				To:   datePtr(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)),
+			},
 		},
 	})
 
@@ -390,7 +404,9 @@ func TestChildStore_FindByOrganizationWithContractOn(t *testing.T) {
 	db.Create(childFuture)
 	db.Create(&models.ChildContract{
 		ChildID: childFuture.ID,
-		Period:  models.Period{From: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)},
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)},
+		},
 	})
 
 	// Child with no contract
@@ -416,7 +432,9 @@ func TestChildStore_FindByOrganizationWithContractOn(t *testing.T) {
 	db.Create(childOtherOrg)
 	db.Create(&models.ChildContract{
 		ChildID: childOtherOrg.ID,
-		Period:  models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
 	})
 
 	// Query for children with active contracts on refDate
@@ -450,7 +468,7 @@ func TestChildStore_FindByOrganizationWithContractOn(t *testing.T) {
 	}
 }
 
-func TestChildStore_ContractAttributes_JSONSerialization(t *testing.T) {
+func TestChildStore_ContractProperties_JSONSerialization(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewChildStore(db)
 	org := createTestOrganization(t, db, "Test Org")
@@ -467,23 +485,27 @@ func TestChildStore_ContractAttributes_JSONSerialization(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		attributes []string
+		properties models.ContractProperties
 	}{
 		{
-			name:       "empty attributes",
-			attributes: []string{},
+			name:       "nil properties",
+			properties: nil,
 		},
 		{
-			name:       "single attribute",
-			attributes: []string{"ganztags"},
+			name:       "empty properties",
+			properties: models.ContractProperties{},
 		},
 		{
-			name:       "multiple attributes",
-			attributes: []string{"ganztags", "ndh", "integration_a"},
+			name:       "scalar property",
+			properties: models.ContractProperties{"care_type": "ganztag"},
 		},
 		{
-			name:       "attribute with special chars",
-			attributes: []string{"type-a", "type_b", "type.c"},
+			name:       "array property",
+			properties: models.ContractProperties{"supplements": []string{"ndh", "mss"}},
+		},
+		{
+			name:       "mixed properties",
+			properties: models.ContractProperties{"care_type": "ganztag", "supplements": []string{"ndh"}},
 		},
 	}
 
@@ -491,10 +513,12 @@ func TestChildStore_ContractAttributes_JSONSerialization(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			contract := &models.ChildContract{
 				ChildID: child.ID,
-				Period: models.Period{
-					From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+				BaseContract: models.BaseContract{
+					Period: models.Period{
+						From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+					},
+					Properties: tt.properties,
 				},
-				Attributes: tt.attributes,
 			}
 
 			err := store.CreateContract(contract)
@@ -508,17 +532,17 @@ func TestChildStore_ContractAttributes_JSONSerialization(t *testing.T) {
 				t.Fatalf("failed to retrieve contract: %v", err)
 			}
 
-			// Verify attributes round-trip correctly
-			if len(retrieved.Attributes) != len(tt.attributes) {
-				t.Errorf("expected %d attributes, got %d", len(tt.attributes), len(retrieved.Attributes))
-			}
-
-			for i, attr := range tt.attributes {
-				if i >= len(retrieved.Attributes) {
-					break
+			// Verify properties round-trip correctly
+			if tt.properties == nil {
+				if len(retrieved.Properties) != 0 {
+					t.Errorf("expected nil or empty properties, got %v", retrieved.Properties)
 				}
-				if retrieved.Attributes[i] != attr {
-					t.Errorf("attribute[%d]: expected %q, got %q", i, attr, retrieved.Attributes[i])
+			} else {
+				// Check scalar property
+				if careType := tt.properties.GetScalarProperty("care_type"); careType != "" {
+					if retrieved.Properties.GetScalarProperty("care_type") != careType {
+						t.Errorf("care_type mismatch: expected %q, got %q", careType, retrieved.Properties.GetScalarProperty("care_type"))
+					}
 				}
 			}
 
@@ -528,43 +552,7 @@ func TestChildStore_ContractAttributes_JSONSerialization(t *testing.T) {
 	}
 }
 
-func TestChildStore_ContractAttributes_NilHandling(t *testing.T) {
-	db := setupTestDB(t)
-	store := NewChildStore(db)
-	org := createTestOrganization(t, db, "Test Org")
-
-	child := &models.Child{
-		Person: models.Person{
-			OrganizationID: org.ID,
-			FirstName:      "Test",
-			LastName:       "Child",
-			Birthdate:      time.Now(),
-		},
-	}
-	db.Create(child)
-
-	// Create contract with nil attributes
-	contract := &models.ChildContract{
-		ChildID: child.ID,
-		Period: models.Period{
-			From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
-		},
-		Attributes: nil,
-	}
-
-	err := store.CreateContract(contract)
-	if err != nil {
-		t.Fatalf("failed to create contract with nil attributes: %v", err)
-	}
-
-	// Retrieve and verify
-	retrieved, err := store.FindContractByID(contract.ID)
-	if err != nil {
-		t.Fatalf("failed to retrieve contract: %v", err)
-	}
-
-	// nil or empty slice should be acceptable
-	if len(retrieved.Attributes) != 0 {
-		t.Errorf("expected nil or empty attributes, got %v", retrieved.Attributes)
-	}
+// datePtr returns a pointer to a time.Time
+func datePtr(t time.Time) *time.Time {
+	return &t
 }

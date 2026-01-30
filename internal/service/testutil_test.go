@@ -28,7 +28,6 @@ func setupTestDB(t *testing.T) *gorm.DB {
 		&models.UserGroup{},
 		&models.Employee{},
 		&models.EmployeeContract{},
-		&models.EmployeeContractProperty{},
 		&models.Child{},
 		&models.ChildContract{},
 		&models.GovernmentFunding{},
@@ -244,7 +243,7 @@ func createTestFundingPeriod(t *testing.T, db *gorm.DB, fundingID uint, from tim
 
 // createTestFundingProperty creates a funding property for testing.
 // If minAge or maxAge is negative, nil is used (no age filter).
-func createTestFundingProperty(t *testing.T, db *gorm.DB, periodID uint, name string, payment int, minAge, maxAge int) *models.GovernmentFundingProperty {
+func createTestFundingProperty(t *testing.T, db *gorm.DB, periodID uint, key, value string, payment int, minAge, maxAge int) *models.GovernmentFundingProperty {
 	t.Helper()
 
 	var minAgePtr, maxAgePtr *int
@@ -257,7 +256,8 @@ func createTestFundingProperty(t *testing.T, db *gorm.DB, periodID uint, name st
 
 	prop := &models.GovernmentFundingProperty{
 		PeriodID:    periodID,
-		Name:        name,
+		Key:         key,
+		Value:       value,
 		Payment:     payment,
 		Requirement: 0.1,
 		MinAge:      minAgePtr,

@@ -142,17 +142,17 @@ var lastNames = []string{
 	"Braun", "Krüger", "Hofmann", "Hartmann", "Lange", "Schmitt", "Werner", "Schmitz", "Krause", "Meier",
 }
 
-// Contract attribute combinations
-// These must match the property names in the Berlin government funding YAML
-var attributeCombinations = [][]string{
-	{"ganztag"},
-	{"ganztag", "ndh"},
-	{"ganztag", "integration a"},
-	{"ganztag", "ndh", "integration a"},
-	{"halbtag"},
-	{"halbtag", "ndh"},
-	{"teilzeit"},
-	{"teilzeit", "ndh"},
+// Contract property combinations
+// These must match the Key/Value structure in the Berlin government funding YAML
+var propertyCombinations = []models.ContractProperties{
+	{"care_type": "ganztag"},
+	{"care_type": "ganztag", "supplements": []string{"ndh"}},
+	{"care_type": "ganztag", "supplements": []string{"integration a"}},
+	{"care_type": "ganztag", "supplements": []string{"ndh", "integration a"}},
+	{"care_type": "halbtag"},
+	{"care_type": "halbtag", "supplements": []string{"ndh"}},
+	{"care_type": "teilzeit"},
+	{"care_type": "teilzeit", "supplements": []string{"ndh"}},
 }
 
 // SeedTestData creates test data for development:
@@ -649,6 +649,20 @@ func createTestChildren(orgID uint, sectionID uint, count int) []models.Child {
 	return children
 }
 
+// makeChildContract creates a ChildContract with the new BaseContract structure
+func makeChildContract(childID uint, from time.Time, to *time.Time) models.ChildContract {
+	return models.ChildContract{
+		ChildID: childID,
+		BaseContract: models.BaseContract{
+			Period: models.Period{
+				From: from,
+				To:   to,
+			},
+			Properties: propertyCombinations[randInt(len(propertyCombinations))],
+		},
+	}
+}
+
 // createTestContractsDistributed creates contracts for children distributed over the last 4 years.
 // - Some children started years ago and have left (ended contracts on July 31st - typical Kita exit)
 // - Some children are currently enrolled (ongoing contracts)
@@ -702,25 +716,11 @@ func createTestContractsDistributed(childID uint, birthdate time.Time, childInde
 				}
 			}
 
-			return []models.ChildContract{{
-				ChildID: childID,
-				Period: models.Period{
-					From: contractStart,
-					To:   &contractEnd,
-				},
-				Attributes: attributeCombinations[randInt(len(attributeCombinations))],
-			}}
+			return []models.ChildContract{makeChildContract(childID, contractStart, &contractEnd)}
 		}
 
 		// Active contract (open-ended)
-		return []models.ChildContract{{
-			ChildID: childID,
-			Period: models.Period{
-				From: contractStart,
-				To:   nil,
-			},
-			Attributes: attributeCombinations[randInt(len(attributeCombinations))],
-		}}
+		return []models.ChildContract{makeChildContract(childID, contractStart, nil)}
 	}
 
 	// Create 2-3 contracts with history
@@ -738,24 +738,10 @@ func createTestContractsDistributed(childID uint, birthdate time.Time, childInde
 				if !contractEnd.After(currentStart) {
 					contractEnd = time.Date(currentStart.Year()+1, time.July, 31, 0, 0, 0, 0, time.UTC)
 				}
-				contracts = append(contracts, models.ChildContract{
-					ChildID: childID,
-					Period: models.Period{
-						From: currentStart,
-						To:   &contractEnd,
-					},
-					Attributes: attributeCombinations[randInt(len(attributeCombinations))],
-				})
+				contracts = append(contracts, makeChildContract(childID, currentStart, &contractEnd))
 			} else {
 				// Last contract is open-ended (still enrolled)
-				contracts = append(contracts, models.ChildContract{
-					ChildID: childID,
-					Period: models.Period{
-						From: currentStart,
-						To:   nil,
-					},
-					Attributes: attributeCombinations[randInt(len(attributeCombinations))],
-				})
+				contracts = append(contracts, makeChildContract(childID, currentStart, nil))
 			}
 			break
 		}
@@ -768,25 +754,11 @@ func createTestContractsDistributed(childID uint, birthdate time.Time, childInde
 
 		if contractEnd.After(now) {
 			// Would end in future, just make it open-ended
-			contracts = append(contracts, models.ChildContract{
-				ChildID: childID,
-				Period: models.Period{
-					From: currentStart,
-					To:   nil,
-				},
-				Attributes: attributeCombinations[randInt(len(attributeCombinations))],
-			})
+			contracts = append(contracts, makeChildContract(childID, currentStart, nil))
 			break
 		}
 
-		contracts = append(contracts, models.ChildContract{
-			ChildID: childID,
-			Period: models.Period{
-				From: currentStart,
-				To:   &contractEnd,
-			},
-			Attributes: attributeCombinations[randInt(len(attributeCombinations))],
-		})
+		contracts = append(contracts, makeChildContract(childID, currentStart, &contractEnd))
 
 		// Next contract starts August 1st
 		currentStart = time.Date(contractEnd.Year(), time.August, 1, 0, 0, 0, 0, time.UTC)
@@ -862,8 +834,10 @@ func createTestEmployees(orgID uint, sectionID uint, count int) []models.Employe
 // createEmployeeContract is a helper to create an employee contract
 func createEmployeeContract(db *gorm.DB, employeeID uint, position, grade string, step int, weeklyHours float64, from time.Time, to *time.Time) error {
 	contract := models.EmployeeContract{
-		EmployeeID:  employeeID,
-		Period:      models.Period{From: from, To: to},
+		EmployeeID: employeeID,
+		BaseContract: models.BaseContract{
+			Period: models.Period{From: from, To: to},
+		},
 		Position:    position,
 		Grade:       grade,
 		Step:        step,

@@ -74,18 +74,9 @@ type EmployeeStorer interface {
 	Delete(id uint) error
 	CreateContract(contract *models.EmployeeContract) error
 	FindContractByID(id uint) (*models.EmployeeContract, error)
-	FindContractByIDWithProperties(id uint) (*models.EmployeeContract, error)
 	UpdateContract(contract *models.EmployeeContract) error
 	DeleteContract(id uint) error
 	Contracts() ContractStorer[models.EmployeeContract]
-
-	// Property operations
-	FindPropertyByID(id uint) (*models.EmployeeContractProperty, error)
-	FindPropertiesByContractID(contractID uint) ([]models.EmployeeContractProperty, error)
-	PropertyExistsByName(contractID uint, name string) (bool, error)
-	CreateProperty(property *models.EmployeeContractProperty) error
-	UpdateProperty(property *models.EmployeeContractProperty) error
-	DeleteProperty(id uint) error
 }
 
 // ChildStorer defines the interface for child storage operations

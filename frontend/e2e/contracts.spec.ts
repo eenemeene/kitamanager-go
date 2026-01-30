@@ -62,7 +62,23 @@ test.describe('Child Contracts - CRUD Operations', () => {
 
       // Fill the form - use a past date to ensure Active status
       await page.getByLabel(/Start Date/i).fill('2024-01-01');
-      await page.getByLabel(/Attributes/i).fill('fulltime, ndh');
+
+      // Wait for property suggestions to load and click on them
+      // The PropertyTagInput shows clickable suggestion buttons
+      await expect(page.getByText(/Available:/i)).toBeVisible({ timeout: 10000 });
+      const suggestionsArea = page.locator('text=Available:').locator('..');
+
+      // Click on ganztag suggestion (or first available suggestion)
+      const gantzagSuggestion = suggestionsArea.locator('button', { hasText: 'ganztag' }).first();
+      if (await gantzagSuggestion.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await gantzagSuggestion.click();
+      }
+
+      // Click on ndh suggestion
+      const ndhSuggestion = suggestionsArea.locator('button', { hasText: 'ndh' }).first();
+      if (await ndhSuggestion.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await ndhSuggestion.click();
+      }
 
       // Submit
       await page.getByRole('button', { name: /Save/i }).click();
@@ -70,15 +86,14 @@ test.describe('Child Contracts - CRUD Operations', () => {
       // Dialog should close
       await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10000 });
 
-      // Contract should appear in table with attributes
-      await expect(page.getByText(/fulltime/i)).toBeVisible({ timeout: 10000 });
-      await expect(page.getByText(/ndh/i)).toBeVisible();
+      // Contract should appear in table with selected properties
+      await expect(page.getByText(/ganztag/i)).toBeVisible({ timeout: 10000 });
     } finally {
       await deleteChildViaApi(page, token, orgId, child.id);
     }
   });
 
-  test('should show suggested attributes from government funding', async ({ page }) => {
+  test('should show suggested properties from government funding', async ({ page }) => {
     // Create a child without contracts
     const childName = uniqueName('SuggestAttr');
     const child = await createChildViaApi(page, token, orgId, {
@@ -99,13 +114,13 @@ test.describe('Child Contracts - CRUD Operations', () => {
       // Fill a date that overlaps with Berlin funding period (2025-02-01 onwards)
       await page.getByLabel(/Start Date/i).fill('2025-03-01');
 
-      // Wait for suggestions to appear (Berlin funding has these attributes)
-      // The suggestions should show property names from the government funding
-      await expect(page.getByText(/Suggested:/i)).toBeVisible({ timeout: 10000 });
+      // Wait for suggestions to appear (Berlin funding has these properties)
+      // The suggestions should show property values from the government funding
+      await expect(page.getByText(/Available:/i)).toBeVisible({ timeout: 10000 });
 
-      // Click on a suggested attribute - suggestions are buttons with icon + text
-      // Look within the suggestions area (after "Suggested:" label)
-      const suggestionsArea = page.locator('text=Suggested:').locator('..');
+      // Click on a suggested property - suggestions are buttons with icon + text
+      // Look within the suggestions area (after "Available:" label)
+      const suggestionsArea = page.locator('text=Available:').locator('..');
       const gantzagSuggestion = suggestionsArea.locator('button', { hasText: 'ganztag' }).first();
       await expect(gantzagSuggestion).toBeVisible({ timeout: 5000 });
       await gantzagSuggestion.click();
@@ -146,7 +161,7 @@ test.describe('Child Contracts - CRUD Operations', () => {
 
     await createChildContractViaApi(page, token, orgId, child.id, {
       from: formatDateForApi('2024-01-01'),
-      attributes: ['fulltime'],
+      properties: { care_type: 'ganztag' },
     });
 
     try {
@@ -156,17 +171,19 @@ test.describe('Child Contracts - CRUD Operations', () => {
       // Find the contract row and click edit
       const contractRow = page.locator('tbody tr').first();
       await expect(contractRow).toBeVisible({ timeout: 10000 });
-      await expect(contractRow.getByText(/fulltime/i)).toBeVisible();
+      await expect(contractRow.getByText(/ganztag/i)).toBeVisible();
 
       await contractRow.getByRole('button', { name: /Edit/i }).click();
 
       // Dialog should open
       await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
 
-      // Update attributes
-      const attrInput = page.getByLabel(/Attributes/i);
-      await attrInput.clear();
-      await attrInput.fill('fulltime, integration_a');
+      // Add a property by clicking on suggestion
+      const suggestionsArea = page.locator('text=Available:').locator('..');
+      const ndhSuggestion = suggestionsArea.locator('button', { hasText: 'ndh' }).first();
+      if (await ndhSuggestion.isVisible({ timeout: 5000 }).catch(() => false)) {
+        await ndhSuggestion.click();
+      }
 
       // Submit
       await page.getByRole('button', { name: /Save/i }).click();
@@ -174,8 +191,8 @@ test.describe('Child Contracts - CRUD Operations', () => {
       // Dialog should close
       await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10000 });
 
-      // Should show updated attribute
-      await expect(page.getByText(/integration_a/i)).toBeVisible({ timeout: 10000 });
+      // Should show updated property
+      await expect(page.getByText(/ndh/i)).toBeVisible({ timeout: 10000 });
     } finally {
       await deleteChildViaApi(page, token, orgId, child.id);
     }
@@ -193,7 +210,7 @@ test.describe('Child Contracts - CRUD Operations', () => {
 
     await createChildContractViaApi(page, token, orgId, child.id, {
       from: formatDateForApi('2024-01-01'),
-      attributes: ['parttime'],
+      properties: { care_type: 'halbtag' },
     });
 
     try {
@@ -201,7 +218,7 @@ test.describe('Child Contracts - CRUD Operations', () => {
       await page.waitForLoadState('networkidle');
 
       // Verify contract exists
-      await expect(page.getByText(/parttime/i)).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(/halbtag/i)).toBeVisible({ timeout: 10000 });
 
       // Find the contract row and click delete
       const contractRow = page.locator('tbody tr').first();
@@ -214,7 +231,7 @@ test.describe('Child Contracts - CRUD Operations', () => {
       await page.getByRole('alertdialog').getByRole('button', { name: /Delete|Confirm|Yes/i }).click();
 
       // Contract should be removed
-      await expect(page.getByText(/parttime/i)).not.toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(/halbtag/i)).not.toBeVisible({ timeout: 10000 });
       await expect(page.getByText(/No contracts found/i).first()).toBeVisible();
     } finally {
       await deleteChildViaApi(page, token, orgId, child.id);
