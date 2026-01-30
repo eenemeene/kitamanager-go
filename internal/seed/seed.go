@@ -144,15 +144,16 @@ var lastNames = []string{
 
 // Contract property combinations
 // These must match the Key/Value structure in the Berlin government funding YAML
+// Keys are property categories (care_type, ndh, integration), values are specific options
 var propertyCombinations = []models.ContractProperties{
 	{"care_type": "ganztag"},
-	{"care_type": "ganztag", "supplements": []string{"ndh"}},
-	{"care_type": "ganztag", "supplements": []string{"integration a"}},
-	{"care_type": "ganztag", "supplements": []string{"ndh", "integration a"}},
+	{"care_type": "ganztag", "ndh": "ndh"},
+	{"care_type": "ganztag", "integration": "integration a"},
+	{"care_type": "ganztag", "ndh": "ndh", "integration": "integration a"},
 	{"care_type": "halbtag"},
-	{"care_type": "halbtag", "supplements": []string{"ndh"}},
+	{"care_type": "halbtag", "ndh": "ndh"},
 	{"care_type": "teilzeit"},
-	{"care_type": "teilzeit", "supplements": []string{"ndh"}},
+	{"care_type": "teilzeit", "ndh": "ndh"},
 }
 
 // SeedTestData creates test data for development:
