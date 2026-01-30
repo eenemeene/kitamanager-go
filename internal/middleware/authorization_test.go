@@ -1147,3 +1147,173 @@ func TestAuthorizationMiddleware_GovernmentFunding_AdminCannotAssignToOrg(t *tes
 		t.Errorf("expected status %d for admin assigning funding to org, got %d", http.StatusForbidden, w.Code)
 	}
 }
+
+// Tests for Organization List endpoint authorization
+// The list endpoint uses RequireGlobalPermission to check if user has read access in ANY org
+
+func TestAuthorizationMiddleware_OrganizationList_SuperAdminCanList(t *testing.T) {
+	db := setupTestDB(t)
+	enforcer := setupTestEnforcer(t)
+	assignSuperAdmin(t, db, 1)
+	permissionService := setupTestPermissionService(t, db, enforcer)
+
+	middleware := NewAuthorizationMiddleware(permissionService)
+
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", uint(1))
+		c.Next()
+	})
+	r.GET("/organizations",
+		middleware.RequireGlobalPermission(rbac.ResourceOrganizations, rbac.ActionRead),
+		func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+		})
+
+	req, _ := http.NewRequest("GET", "/organizations", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d for superadmin listing organizations, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+}
+
+func TestAuthorizationMiddleware_OrganizationList_AdminCanList(t *testing.T) {
+	db := setupTestDB(t)
+	enforcer := setupTestEnforcer(t)
+	assignRole(t, db, 1, models.RoleAdmin, 1) // Admin in org 1
+	permissionService := setupTestPermissionService(t, db, enforcer)
+
+	middleware := NewAuthorizationMiddleware(permissionService)
+
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", uint(1))
+		c.Next()
+	})
+	r.GET("/organizations",
+		middleware.RequireGlobalPermission(rbac.ResourceOrganizations, rbac.ActionRead),
+		func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+		})
+
+	req, _ := http.NewRequest("GET", "/organizations", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d for admin listing organizations, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+}
+
+func TestAuthorizationMiddleware_OrganizationList_ManagerCanList(t *testing.T) {
+	db := setupTestDB(t)
+	enforcer := setupTestEnforcer(t)
+	assignRole(t, db, 1, models.RoleManager, 1) // Manager in org 1
+	permissionService := setupTestPermissionService(t, db, enforcer)
+
+	middleware := NewAuthorizationMiddleware(permissionService)
+
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", uint(1))
+		c.Next()
+	})
+	r.GET("/organizations",
+		middleware.RequireGlobalPermission(rbac.ResourceOrganizations, rbac.ActionRead),
+		func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+		})
+
+	req, _ := http.NewRequest("GET", "/organizations", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d for manager listing organizations, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+}
+
+func TestAuthorizationMiddleware_OrganizationList_MemberCanList(t *testing.T) {
+	db := setupTestDB(t)
+	enforcer := setupTestEnforcer(t)
+	assignRole(t, db, 1, models.RoleMember, 1) // Member in org 1
+	permissionService := setupTestPermissionService(t, db, enforcer)
+
+	middleware := NewAuthorizationMiddleware(permissionService)
+
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", uint(1))
+		c.Next()
+	})
+	r.GET("/organizations",
+		middleware.RequireGlobalPermission(rbac.ResourceOrganizations, rbac.ActionRead),
+		func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+		})
+
+	req, _ := http.NewRequest("GET", "/organizations", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d for member listing organizations, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+}
+
+func TestAuthorizationMiddleware_OrganizationList_NoRoleCannotList(t *testing.T) {
+	db := setupTestDB(t)
+	enforcer := setupTestEnforcer(t)
+	// User 99 has no role - create the user but don't assign any role
+	user := models.User{Name: "No Role User", Email: "norole@example.com", Password: "password", Active: true}
+	user.ID = 99
+	db.Create(&user)
+	permissionService := setupTestPermissionService(t, db, enforcer)
+
+	middleware := NewAuthorizationMiddleware(permissionService)
+
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", uint(99)) // User with no roles
+		c.Next()
+	})
+	r.GET("/organizations",
+		middleware.RequireGlobalPermission(rbac.ResourceOrganizations, rbac.ActionRead),
+		func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+		})
+
+	req, _ := http.NewRequest("GET", "/organizations", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("expected status %d for user with no role listing organizations, got %d", http.StatusForbidden, w.Code)
+	}
+}
+
+func TestAuthorizationMiddleware_OrganizationList_UnauthenticatedCannotList(t *testing.T) {
+	db := setupTestDB(t)
+	enforcer := setupTestEnforcer(t)
+	permissionService := setupTestPermissionService(t, db, enforcer)
+
+	middleware := NewAuthorizationMiddleware(permissionService)
+
+	r := gin.New()
+	// No userID set - simulates unauthenticated request
+	r.GET("/organizations",
+		middleware.RequireGlobalPermission(rbac.ResourceOrganizations, rbac.ActionRead),
+		func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+		})
+
+	req, _ := http.NewRequest("GET", "/organizations", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected status %d for unauthenticated access to organization list, got %d", http.StatusUnauthorized, w.Code)
+	}
+}

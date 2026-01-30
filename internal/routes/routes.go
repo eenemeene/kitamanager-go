@@ -57,8 +57,10 @@ func Setup(
 				orgs.POST("", authzMiddleware.RequireSuperAdmin(), orgHandler.Create)
 				orgs.DELETE("/:orgId", authzMiddleware.RequireSuperAdmin(), orgHandler.Delete)
 
-				// List: requires any role (filtered by access in handler/service)
-				orgs.GET("", orgHandler.List)
+				// List: requires read permission in any org (results filtered in service)
+				orgs.GET("",
+					authzMiddleware.RequireGlobalPermission(rbac.ResourceOrganizations, rbac.ActionRead),
+					orgHandler.List)
 
 				// Get specific org: requires read permission for that org
 				orgs.GET("/:orgId",
