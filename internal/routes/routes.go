@@ -20,6 +20,7 @@ func Setup(
 	payPlanHandler *handlers.PayPlanHandler,
 	authMiddleware *middleware.AuthMiddleware,
 	authzMiddleware *middleware.AuthorizationMiddleware,
+	csrfMiddleware *middleware.CSRFMiddleware,
 	loginRateLimiter *middleware.RateLimiter,
 ) {
 	api := r.Group("/api/v1")
@@ -33,9 +34,16 @@ func Setup(
 			api.POST("/refresh", authHandler.Refresh)
 		}
 
-		// Protected endpoints (require authentication)
+		// Logout endpoint (no auth required - just clears cookies)
+		api.POST("/logout", authHandler.Logout)
+
+		// Protected endpoints (require authentication and CSRF for cookie-based auth)
 		protected := api.Group("")
 		protected.Use(authMiddleware.RequireAuth())
+		protected.Use(csrfMiddleware.ValidateCSRF())
+
+		// Current user endpoint (auth required, but no CSRF needed for GET)
+		protected.GET("/me", authHandler.Me)
 		{
 			// ============================================================
 			// Organization management

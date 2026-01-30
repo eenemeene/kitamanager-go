@@ -4,7 +4,7 @@ import { apiClient } from '@/lib/api/client';
 // Mock the API client
 jest.mock('@/lib/api/client', () => ({
   apiClient: {
-    getOrganizations: jest.fn(),
+    getOrganizationsAll: jest.fn(),
   },
 }));
 
@@ -148,7 +148,7 @@ describe('useUiStore', () => {
 
   describe('fetchOrganizations', () => {
     it('fetches and stores organizations', async () => {
-      (apiClient.getOrganizations as jest.Mock).mockResolvedValue(mockOrganizations);
+      (apiClient.getOrganizationsAll as jest.Mock).mockResolvedValue(mockOrganizations);
 
       await useUiStore.getState().fetchOrganizations();
 
@@ -157,7 +157,7 @@ describe('useUiStore', () => {
     });
 
     it('auto-selects first org when none selected', async () => {
-      (apiClient.getOrganizations as jest.Mock).mockResolvedValue(mockOrganizations);
+      (apiClient.getOrganizationsAll as jest.Mock).mockResolvedValue(mockOrganizations);
       useUiStore.setState({ selectedOrganizationId: null });
 
       await useUiStore.getState().fetchOrganizations();
@@ -166,7 +166,7 @@ describe('useUiStore', () => {
     });
 
     it('keeps selected org if still valid', async () => {
-      (apiClient.getOrganizations as jest.Mock).mockResolvedValue(mockOrganizations);
+      (apiClient.getOrganizationsAll as jest.Mock).mockResolvedValue(mockOrganizations);
       useUiStore.setState({ selectedOrganizationId: 2 });
 
       await useUiStore.getState().fetchOrganizations();
@@ -175,7 +175,7 @@ describe('useUiStore', () => {
     });
 
     it('resets to first org if selected org no longer valid', async () => {
-      (apiClient.getOrganizations as jest.Mock).mockResolvedValue(mockOrganizations);
+      (apiClient.getOrganizationsAll as jest.Mock).mockResolvedValue(mockOrganizations);
       useUiStore.setState({ selectedOrganizationId: 999 });
 
       await useUiStore.getState().fetchOrganizations();
@@ -184,7 +184,7 @@ describe('useUiStore', () => {
     });
 
     it('sets selectedOrganizationId to null when no organizations', async () => {
-      (apiClient.getOrganizations as jest.Mock).mockResolvedValue([]);
+      (apiClient.getOrganizationsAll as jest.Mock).mockResolvedValue([]);
       useUiStore.setState({ selectedOrganizationId: 1 });
 
       await useUiStore.getState().fetchOrganizations();
@@ -194,7 +194,7 @@ describe('useUiStore', () => {
 
     it('handles API error gracefully', async () => {
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-      (apiClient.getOrganizations as jest.Mock).mockRejectedValue(new Error('Network error'));
+      (apiClient.getOrganizationsAll as jest.Mock).mockRejectedValue(new Error('Network error'));
 
       await useUiStore.getState().fetchOrganizations();
 
@@ -208,7 +208,7 @@ describe('useUiStore', () => {
       const promise = new Promise((resolve) => {
         resolvePromise = resolve;
       });
-      (apiClient.getOrganizations as jest.Mock).mockReturnValue(promise);
+      (apiClient.getOrganizationsAll as jest.Mock).mockReturnValue(promise);
 
       const fetchPromise = useUiStore.getState().fetchOrganizations();
 

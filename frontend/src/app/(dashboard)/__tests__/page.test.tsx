@@ -12,15 +12,20 @@ jest.mock('@/stores/auth-store', () => ({
   useAuthStore: jest.fn(),
 }));
 
+const mockGetSelectedOrganization = jest.fn();
+
 describe('DashboardPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetSelectedOrganization.mockReturnValue(null);
   });
 
   it('renders dashboard title', () => {
     (useUiStore as unknown as jest.Mock).mockReturnValue({
       organizations: [],
       organizationsLoading: false,
+      selectedOrganizationId: null,
+      getSelectedOrganization: mockGetSelectedOrganization,
     });
     (useAuthStore as unknown as jest.Mock).mockReturnValue({
       user: null,
@@ -36,6 +41,8 @@ describe('DashboardPage', () => {
     (useUiStore as unknown as jest.Mock).mockReturnValue({
       organizations: [],
       organizationsLoading: false,
+      selectedOrganizationId: null,
+      getSelectedOrganization: mockGetSelectedOrganization,
     });
     (useAuthStore as unknown as jest.Mock).mockReturnValue({
       user: { name: 'John Doe' },
@@ -50,6 +57,8 @@ describe('DashboardPage', () => {
     (useUiStore as unknown as jest.Mock).mockReturnValue({
       organizations: [{ id: 1 }, { id: 2 }],
       organizationsLoading: false,
+      selectedOrganizationId: null,
+      getSelectedOrganization: mockGetSelectedOrganization,
     });
     (useAuthStore as unknown as jest.Mock).mockReturnValue({
       user: null,
@@ -67,6 +76,8 @@ describe('DashboardPage', () => {
     (useUiStore as unknown as jest.Mock).mockReturnValue({
       organizations: [{ id: 1 }, { id: 2 }, { id: 3 }],
       organizationsLoading: false,
+      selectedOrganizationId: null,
+      getSelectedOrganization: mockGetSelectedOrganization,
     });
     (useAuthStore as unknown as jest.Mock).mockReturnValue({
       user: null,
@@ -81,6 +92,8 @@ describe('DashboardPage', () => {
     (useUiStore as unknown as jest.Mock).mockReturnValue({
       organizations: [],
       organizationsLoading: true,
+      selectedOrganizationId: null,
+      getSelectedOrganization: mockGetSelectedOrganization,
     });
     (useAuthStore as unknown as jest.Mock).mockReturnValue({
       user: null,
@@ -97,6 +110,8 @@ describe('DashboardPage', () => {
     (useUiStore as unknown as jest.Mock).mockReturnValue({
       organizations: [],
       organizationsLoading: false,
+      selectedOrganizationId: null,
+      getSelectedOrganization: mockGetSelectedOrganization,
     });
     (useAuthStore as unknown as jest.Mock).mockReturnValue({
       user: null,

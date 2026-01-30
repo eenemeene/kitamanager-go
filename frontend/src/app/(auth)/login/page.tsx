@@ -20,6 +20,22 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
+/**
+ * Validate that a path is safe for redirect (prevents open redirect attacks).
+ * Only allows relative paths that start with / and don't contain protocol schemes.
+ */
+function isValidRedirectPath(path: string): boolean {
+  // Must start with a single slash
+  if (!path.startsWith('/')) return false;
+  // Reject protocol-relative URLs (//example.com)
+  if (path.startsWith('//')) return false;
+  // Reject URLs with protocol schemes
+  if (path.includes('://')) return false;
+  // Reject paths that could be interpreted as absolute URLs
+  if (path.includes('\\')) return false;
+  return true;
+}
+
 export default function LoginPage() {
   const t = useTranslations();
   const router = useRouter();
@@ -43,12 +59,11 @@ export default function LoginPage() {
     try {
       await login(data);
 
-      // Set token cookie for middleware
-      document.cookie = `token=${useAuthStore.getState().token}; path=/; max-age=86400; SameSite=Strict`;
-
       // Redirect to the original page or dashboard
-      const from = searchParams.get('from') || '/';
-      router.push(from);
+      // Validate the 'from' parameter to prevent open redirect attacks
+      const from = searchParams.get('from');
+      const redirectTo = from && isValidRedirectPath(from) ? from : '/';
+      router.push(redirectTo);
     } catch (err) {
       setError(getErrorMessage(err, t('auth.loginError')));
     } finally {

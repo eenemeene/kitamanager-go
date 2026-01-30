@@ -52,6 +52,7 @@ import type {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { Pagination } from '@/components/ui/pagination';
 
 const fundingSchema = z.object({
   name: z.string().min(1).max(255),
@@ -71,11 +72,14 @@ export default function GovernmentFundingsPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingFunding, setEditingFunding] = useState<GovernmentFunding | null>(null);
   const [deletingFunding, setDeletingFunding] = useState<GovernmentFunding | null>(null);
+  const [page, setPage] = useState(1);
 
-  const { data: fundings, isLoading } = useQuery({
-    queryKey: ['government-fundings'],
-    queryFn: () => apiClient.getGovernmentFundings(),
+  const { data: paginatedData, isLoading } = useQuery({
+    queryKey: ['government-fundings', page],
+    queryFn: () => apiClient.getGovernmentFundings({ page }),
   });
+
+  const fundings = paginatedData?.data;
 
   const createMutation = useMutation({
     mutationFn: (data: GovernmentFundingCreateRequest) => apiClient.createGovernmentFunding(data),
@@ -237,6 +241,16 @@ export default function GovernmentFundingsPage() {
                 )}
               </TableBody>
             </Table>
+          )}
+          {paginatedData && (
+            <Pagination
+              page={paginatedData.page}
+              totalPages={paginatedData.total_pages}
+              total={paginatedData.total}
+              limit={paginatedData.limit}
+              onPageChange={setPage}
+              isLoading={isLoading}
+            />
           )}
         </CardContent>
       </Card>

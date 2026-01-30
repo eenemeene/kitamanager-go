@@ -1,21 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
   DialogContent,
@@ -24,27 +12,18 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useToast } from '@/lib/hooks/use-toast';
-import { apiClient, getErrorMessage } from '@/lib/api/client';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { apiClient } from '@/lib/api/client';
 import type {
   Organization,
   OrganizationCreateRequest,
@@ -53,6 +32,11 @@ import type {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useCrudMutations } from '@/lib/hooks/use-crud-mutations';
+import { useCrudDialogs } from '@/lib/hooks/use-crud-dialogs';
+import { CrudPageHeader, ResourceTable, DeleteConfirmDialog, Column } from '@/components/crud';
+import { Pagination } from '@/components/ui/pagination';
+import { DEFAULT_PAGE_SIZE } from '@/lib/api/types';
 
 const organizationSchema = z.object({
   name: z.string().min(1).max(255),
@@ -64,78 +48,15 @@ type OrganizationFormData = z.infer<typeof organizationSchema>;
 
 const states = [{ value: 'berlin', label: 'Berlin' }];
 
+const defaultValues: OrganizationFormData = {
+  name: '',
+  state: 'berlin',
+  active: true,
+};
+
 export default function OrganizationsPage() {
   const t = useTranslations();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
-  const [deletingOrg, setDeletingOrg] = useState<Organization | null>(null);
-
-  const { data: organizations, isLoading } = useQuery({
-    queryKey: ['organizations'],
-    queryFn: () => apiClient.getOrganizations(),
-  });
-
-  const createMutation = useMutation({
-    mutationFn: (data: OrganizationCreateRequest) => apiClient.createOrganization(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['organizations'] });
-      toast({ title: t('organizations.createSuccess') });
-      setIsDialogOpen(false);
-      reset();
-    },
-    onError: (error) => {
-      toast({
-        title: t('common.error'),
-        description: getErrorMessage(
-          error,
-          t('common.failedToCreate', { resource: 'organization' })
-        ),
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: OrganizationUpdateRequest }) =>
-      apiClient.updateOrganization(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['organizations'] });
-      toast({ title: t('organizations.updateSuccess') });
-      setIsDialogOpen(false);
-      setEditingOrg(null);
-      reset();
-    },
-    onError: (error) => {
-      toast({
-        title: t('common.error'),
-        description: getErrorMessage(error, t('common.failedToSave', { resource: 'organization' })),
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiClient.deleteOrganization(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['organizations'] });
-      toast({ title: t('organizations.deleteSuccess') });
-      setIsDeleteDialogOpen(false);
-      setDeletingOrg(null);
-    },
-    onError: (error) => {
-      toast({
-        title: t('common.error'),
-        description: getErrorMessage(
-          error,
-          t('common.failedToDelete', { resource: 'organization' })
-        ),
-        variant: 'destructive',
-      });
-    },
-  });
+  const [page, setPage] = useState(1);
 
   const {
     register,
@@ -146,114 +67,103 @@ export default function OrganizationsPage() {
     formState: { errors },
   } = useForm<OrganizationFormData>({
     resolver: zodResolver(organizationSchema),
-    defaultValues: {
-      name: '',
-      state: 'berlin',
-      active: true,
-    },
+    defaultValues,
   });
 
-  const handleCreate = () => {
-    setEditingOrg(null);
-    reset({ name: '', state: 'berlin', active: true });
-    setIsDialogOpen(true);
-  };
+  const { data: paginatedData, isLoading } = useQuery({
+    queryKey: ['organizations', page],
+    queryFn: () => apiClient.getOrganizations({ page, limit: DEFAULT_PAGE_SIZE }),
+  });
 
-  const handleEdit = (org: Organization) => {
-    setEditingOrg(org);
-    reset({ name: org.name, state: org.state, active: org.active });
-    setIsDialogOpen(true);
-  };
+  const organizations = paginatedData?.data;
 
-  const handleDelete = (org: Organization) => {
-    setDeletingOrg(org);
-    setIsDeleteDialogOpen(true);
-  };
+  const dialogs = useCrudDialogs<Organization, OrganizationFormData>({
+    reset,
+    itemToFormData: (org) => ({ name: org.name, state: org.state, active: org.active }),
+    defaultValues,
+  });
+
+  const mutations = useCrudMutations<
+    Organization,
+    OrganizationCreateRequest,
+    OrganizationUpdateRequest
+  >({
+    resourceName: 'organizations',
+    queryKey: ['organizations'],
+    createFn: (data) => apiClient.createOrganization(data),
+    updateFn: (id, data) => apiClient.updateOrganization(id, data),
+    deleteFn: (id) => apiClient.deleteOrganization(id),
+    onSuccess: dialogs.closeDialog,
+    onDeleteSuccess: dialogs.closeDeleteDialog,
+  });
 
   const onSubmit = (data: OrganizationFormData) => {
-    if (editingOrg) {
-      updateMutation.mutate({ id: editingOrg.id, data });
+    if (dialogs.editingItem) {
+      mutations.updateMutation.mutate({ id: dialogs.editingItem.id, data });
     } else {
-      createMutation.mutate(data);
+      mutations.createMutation.mutate(data);
     }
   };
+
+  const columns = useMemo<Column<Organization>[]>(
+    () => [
+      { key: 'id', header: 'common.id', render: (org) => org.id },
+      { key: 'name', header: 'common.name', render: (org) => org.name, className: 'font-medium' },
+      { key: 'state', header: 'states.state', render: (org) => t(`states.${org.state}`) },
+      {
+        key: 'status',
+        header: 'common.status',
+        render: (org) => (
+          <Badge variant={org.active ? 'success' : 'secondary'}>
+            {org.active ? t('common.active') : t('common.inactive')}
+          </Badge>
+        ),
+      },
+    ],
+    [t]
+  );
 
   const activeValue = watch('active');
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t('organizations.title')}</h1>
-        </div>
-        <Button onClick={handleCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          {t('organizations.newOrganization')}
-        </Button>
-      </div>
+      <CrudPageHeader
+        title="organizations.title"
+        onNew={dialogs.handleCreate}
+        newButtonText="organizations.newOrganization"
+      />
 
       <Card>
         <CardHeader>
           <CardTitle>{t('organizations.title')}</CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="space-y-2">
-              {[...Array(3)].map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('common.id')}</TableHead>
-                  <TableHead>{t('common.name')}</TableHead>
-                  <TableHead>{t('states.state')}</TableHead>
-                  <TableHead>{t('common.status')}</TableHead>
-                  <TableHead className="text-right">{t('common.actions')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {organizations?.map((org) => (
-                  <TableRow key={org.id}>
-                    <TableCell>{org.id}</TableCell>
-                    <TableCell className="font-medium">{org.name}</TableCell>
-                    <TableCell>{t(`states.${org.state}`)}</TableCell>
-                    <TableCell>
-                      <Badge variant={org.active ? 'success' : 'secondary'}>
-                        {org.active ? t('common.active') : t('common.inactive')}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(org)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(org)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {organizations?.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
-                      {t('common.noResults')}
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+          <ResourceTable
+            items={organizations}
+            columns={columns}
+            getItemKey={(org) => org.id}
+            isLoading={isLoading}
+            onEdit={dialogs.handleEdit}
+            onDelete={dialogs.handleDelete}
+          />
+          {paginatedData && (
+            <Pagination
+              page={paginatedData.page}
+              totalPages={paginatedData.total_pages}
+              total={paginatedData.total}
+              limit={paginatedData.limit}
+              onPageChange={setPage}
+              isLoading={isLoading}
+            />
           )}
         </CardContent>
       </Card>
 
-      {/* Create/Edit Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={dialogs.isDialogOpen} onOpenChange={dialogs.setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingOrg ? t('organizations.edit') : t('organizations.create')}
+              {dialogs.isEditing ? t('organizations.edit') : t('organizations.create')}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -294,10 +204,14 @@ export default function OrganizationsPage() {
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => dialogs.setIsDialogOpen(false)}
+              >
                 {t('common.cancel')}
               </Button>
-              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+              <Button type="submit" disabled={mutations.isMutating}>
                 {t('common.save')}
               </Button>
             </DialogFooter>
@@ -305,24 +219,15 @@ export default function OrganizationsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('common.confirmDelete')}</AlertDialogTitle>
-            <AlertDialogDescription>{t('organizations.deleteConfirm')}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deletingOrg && deleteMutation.mutate(deletingOrg.id)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {t('common.delete')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteConfirmDialog
+        open={dialogs.isDeleteDialogOpen}
+        onOpenChange={dialogs.setIsDeleteDialogOpen}
+        onConfirm={() =>
+          dialogs.deletingItem && mutations.deleteMutation.mutate(dialogs.deletingItem.id)
+        }
+        isLoading={mutations.deleteMutation.isPending}
+        resourceName="organizations"
+      />
     </div>
   );
 }

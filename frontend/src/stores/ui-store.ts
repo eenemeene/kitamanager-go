@@ -52,7 +52,7 @@ export const useUiStore = create<UiState>()(
       fetchOrganizations: async () => {
         set({ organizationsLoading: true });
         try {
-          const organizations = await apiClient.getOrganizations();
+          const organizations = await apiClient.getOrganizationsAll();
           const { selectedOrganizationId } = get();
 
           // Auto-select first org if none selected and orgs exist

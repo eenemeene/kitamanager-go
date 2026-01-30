@@ -27,6 +27,22 @@ const mockOrganizations = [
   { id: 2, name: 'Kita Regenbogen', state: 'berlin', active: false },
 ];
 
+const mockPaginatedResponse = {
+  data: mockOrganizations,
+  total: 2,
+  page: 1,
+  limit: 30,
+  total_pages: 1,
+};
+
+const mockEmptyResponse = {
+  data: [],
+  total: 0,
+  page: 1,
+  limit: 30,
+  total_pages: 0,
+};
+
 function renderWithProviders(ui: React.ReactNode) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -44,7 +60,7 @@ describe('OrganizationsPage', () => {
   });
 
   it('renders page title', async () => {
-    (apiClient.getOrganizations as jest.Mock).mockResolvedValue([]);
+    (apiClient.getOrganizations as jest.Mock).mockResolvedValue(mockEmptyResponse);
 
     renderWithProviders(<OrganizationsPage />);
 
@@ -54,7 +70,7 @@ describe('OrganizationsPage', () => {
   });
 
   it('renders new organization button', async () => {
-    (apiClient.getOrganizations as jest.Mock).mockResolvedValue([]);
+    (apiClient.getOrganizations as jest.Mock).mockResolvedValue(mockEmptyResponse);
 
     renderWithProviders(<OrganizationsPage />);
 
@@ -74,7 +90,7 @@ describe('OrganizationsPage', () => {
   });
 
   it('displays organizations in table', async () => {
-    (apiClient.getOrganizations as jest.Mock).mockResolvedValue(mockOrganizations);
+    (apiClient.getOrganizations as jest.Mock).mockResolvedValue(mockPaginatedResponse);
 
     renderWithProviders(<OrganizationsPage />);
 
@@ -86,7 +102,7 @@ describe('OrganizationsPage', () => {
   });
 
   it('displays active badge for active organizations', async () => {
-    (apiClient.getOrganizations as jest.Mock).mockResolvedValue(mockOrganizations);
+    (apiClient.getOrganizations as jest.Mock).mockResolvedValue(mockPaginatedResponse);
 
     renderWithProviders(<OrganizationsPage />);
 
@@ -100,7 +116,7 @@ describe('OrganizationsPage', () => {
   });
 
   it('shows no results message when empty', async () => {
-    (apiClient.getOrganizations as jest.Mock).mockResolvedValue([]);
+    (apiClient.getOrganizations as jest.Mock).mockResolvedValue(mockEmptyResponse);
 
     renderWithProviders(<OrganizationsPage />);
 
@@ -110,7 +126,7 @@ describe('OrganizationsPage', () => {
   });
 
   it('renders table headers', async () => {
-    (apiClient.getOrganizations as jest.Mock).mockResolvedValue([]);
+    (apiClient.getOrganizations as jest.Mock).mockResolvedValue(mockEmptyResponse);
 
     renderWithProviders(<OrganizationsPage />);
 
@@ -126,7 +142,7 @@ describe('OrganizationsPage', () => {
   });
 
   it('has new organization button that is clickable', async () => {
-    (apiClient.getOrganizations as jest.Mock).mockResolvedValue([]);
+    (apiClient.getOrganizations as jest.Mock).mockResolvedValue(mockEmptyResponse);
 
     renderWithProviders(<OrganizationsPage />);
 
@@ -140,7 +156,7 @@ describe('OrganizationsPage', () => {
   });
 
   it('renders edit and delete buttons for each organization', async () => {
-    (apiClient.getOrganizations as jest.Mock).mockResolvedValue(mockOrganizations);
+    (apiClient.getOrganizations as jest.Mock).mockResolvedValue(mockPaginatedResponse);
 
     renderWithProviders(<OrganizationsPage />);
 

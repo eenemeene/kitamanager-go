@@ -37,8 +37,10 @@ function StatCard({
 
 export default function DashboardPage() {
   const t = useTranslations();
-  const { organizations, organizationsLoading } = useUiStore();
+  const { organizations, organizationsLoading, selectedOrganizationId, getSelectedOrganization } =
+    useUiStore();
   const { user } = useAuthStore();
+  const selectedOrg = getSelectedOrganization();
 
   return (
     <div className="space-y-6">
@@ -67,7 +69,13 @@ export default function DashboardPage() {
           <CardTitle>{t('dashboard.quickStats')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">{t('statistics.selectOrgForStats')}</p>
+          {selectedOrganizationId && selectedOrg ? (
+            <p className="text-muted-foreground">
+              {t('dashboard.statsForOrg', { name: selectedOrg.name })}
+            </p>
+          ) : (
+            <p className="text-muted-foreground">{t('statistics.selectOrgForStats')}</p>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -50,6 +50,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { formatDate, calculateAge, formatDateForInput } from '@/lib/utils/formatting';
+import { Pagination } from '@/components/ui/pagination';
 
 const childSchema = z.object({
   first_name: z.string().min(1),
@@ -80,12 +81,15 @@ export default function ChildrenPage() {
   const [editingChild, setEditingChild] = useState<Child | null>(null);
   const [deletingChild, setDeletingChild] = useState<Child | null>(null);
   const [contractChild, setContractChild] = useState<Child | null>(null);
+  const [page, setPage] = useState(1);
 
-  const { data: children, isLoading } = useQuery({
-    queryKey: ['children', orgId],
-    queryFn: () => apiClient.getChildren(orgId),
+  const { data: paginatedData, isLoading } = useQuery({
+    queryKey: ['children', orgId, page],
+    queryFn: () => apiClient.getChildren(orgId, { page }),
     enabled: !!orgId,
   });
+
+  const children = paginatedData?.data;
 
   const createMutation = useMutation({
     mutationFn: (data: Omit<ChildFormData, 'organization_id'>) =>
@@ -386,6 +390,16 @@ export default function ChildrenPage() {
                 )}
               </TableBody>
             </Table>
+          )}
+          {paginatedData && (
+            <Pagination
+              page={paginatedData.page}
+              totalPages={paginatedData.total_pages}
+              total={paginatedData.total}
+              limit={paginatedData.limit}
+              onPageChange={setPage}
+              isLoading={isLoading}
+            />
           )}
         </CardContent>
       </Card>

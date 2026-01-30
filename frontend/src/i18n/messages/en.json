@@ -49,6 +49,14 @@
     "createSuccess": "{resource} created successfully",
     "deleteSuccess": "{resource} deleted successfully"
   },
+  "pagination": {
+    "showing": "Showing {start} to {end} of {total}",
+    "pageOf": "Page {page} of {totalPages}",
+    "firstPage": "First page",
+    "previousPage": "Previous page",
+    "nextPage": "Next page",
+    "lastPage": "Last page"
+  },
   "auth": {
     "login": "Login",
     "logout": "Logout",
@@ -75,6 +83,7 @@
     "title": "Dashboard",
     "welcome": "Welcome to KitaManager",
     "quickStats": "Quick Stats",
+    "statsForOrg": "Statistics for {name}",
     "totalOrganizations": "Total Organizations",
     "totalEmployees": "Total Employees",
     "totalChildren": "Total Children",

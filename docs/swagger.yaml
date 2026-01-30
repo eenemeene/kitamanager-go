@@ -839,6 +839,12 @@ definitions:
         example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         type: string
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.MessageResponse:
+    properties:
+      message:
+        example: operation successful
+        type: string
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.Organization:
     properties:
       active:
@@ -2088,6 +2094,42 @@ paths:
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       summary: Login user
+      tags:
+      - auth
+  /api/v1/logout:
+    post:
+      description: Clear authentication cookies to log out the user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.MessageResponse'
+      summary: Logout user
+      tags:
+      - auth
+  /api/v1/me:
+    get:
+      description: Returns the currently authenticated user based on the JWT token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current user
       tags:
       - auth
   /api/v1/organizations:

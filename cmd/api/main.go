@@ -141,6 +141,7 @@ func main() {
 	// Initialize middleware
 	authMiddleware := middleware.NewAuthMiddleware(cfg.JWTSecret)
 	authzMiddleware := middleware.NewAuthorizationMiddleware(permissionService)
+	csrfMiddleware := middleware.NewCSRFMiddleware()
 	loginRateLimiter := middleware.LoginRateLimiter(cfg.LoginRateLimitPerMinute)
 
 	// Create Gin router
@@ -155,7 +156,7 @@ func main() {
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     cfg.CORSAllowOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-CSRF-Token"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: cfg.CORSAllowCredentials,
 		MaxAge:           12 * time.Hour,
@@ -170,7 +171,7 @@ func main() {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Setup API routes
-	routes.Setup(r, authHandler, userHandler, groupHandler, orgHandler, employeeHandler, childHandler, governmentFundingHandler, payPlanHandler, authMiddleware, authzMiddleware, loginRateLimiter)
+	routes.Setup(r, authHandler, userHandler, groupHandler, orgHandler, employeeHandler, childHandler, governmentFundingHandler, payPlanHandler, authMiddleware, authzMiddleware, csrfMiddleware, loginRateLimiter)
 
 	// Register embedded web UI
 	if err := web.RegisterHandlers(r); err != nil {

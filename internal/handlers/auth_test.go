@@ -362,3 +362,85 @@ func TestAuthHandler_Refresh_MissingToken(t *testing.T) {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
 	}
 }
+
+func TestAuthHandler_Login_SetsCookies(t *testing.T) {
+	db := setupTestDB(t)
+	userStore := store.NewUserStore(db)
+
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+	createTestUser(t, db, "Test User", "test@example.com", string(hashedPassword))
+
+	handler := NewAuthHandler(userStore, "test-jwt-secret", nil)
+
+	r := gin.New()
+	r.POST("/login", handler.Login)
+
+	body := models.LoginRequest{
+		Email:    "test@example.com",
+		Password: "password123",
+	}
+
+	w := performRequest(r, "POST", "/login", body)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	// Check that cookies are set
+	cookies := w.Result().Cookies()
+	cookieNames := make(map[string]bool)
+	for _, cookie := range cookies {
+		cookieNames[cookie.Name] = true
+		// Verify HttpOnly flag on access_token
+		if cookie.Name == "access_token" && !cookie.HttpOnly {
+			t.Error("access_token cookie should be HttpOnly")
+		}
+		// CSRF token should NOT be HttpOnly
+		if cookie.Name == "csrf_token" && cookie.HttpOnly {
+			t.Error("csrf_token cookie should NOT be HttpOnly")
+		}
+	}
+
+	if !cookieNames["access_token"] {
+		t.Error("expected access_token cookie to be set")
+	}
+	if !cookieNames["refresh_token"] {
+		t.Error("expected refresh_token cookie to be set")
+	}
+	if !cookieNames["csrf_token"] {
+		t.Error("expected csrf_token cookie to be set")
+	}
+}
+
+func TestAuthHandler_Logout_ClearsCookies(t *testing.T) {
+	db := setupTestDB(t)
+	userStore := store.NewUserStore(db)
+	handler := NewAuthHandler(userStore, "test-jwt-secret", nil)
+
+	r := gin.New()
+	r.POST("/logout", handler.Logout)
+
+	w := performRequest(r, "POST", "/logout", nil)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	// Check that cookies are cleared (MaxAge <= 0)
+	cookies := w.Result().Cookies()
+	for _, cookie := range cookies {
+		if cookie.Name == "access_token" || cookie.Name == "refresh_token" || cookie.Name == "csrf_token" {
+			if cookie.MaxAge > 0 {
+				t.Errorf("%s cookie should have MaxAge <= 0 to clear it, got %d", cookie.Name, cookie.MaxAge)
+			}
+		}
+	}
+
+	// Check response message
+	var result models.MessageResponse
+	parseResponse(t, w, &result)
+
+	if result.Message == "" {
+		t.Error("expected message in logout response")
+	}
+}

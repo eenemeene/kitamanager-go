@@ -49,6 +49,14 @@
     "createSuccess": "{resource} erfolgreich erstellt",
     "deleteSuccess": "{resource} erfolgreich gelöscht"
   },
+  "pagination": {
+    "showing": "{start} bis {end} von {total}",
+    "pageOf": "Seite {page} von {totalPages}",
+    "firstPage": "Erste Seite",
+    "previousPage": "Vorherige Seite",
+    "nextPage": "Nächste Seite",
+    "lastPage": "Letzte Seite"
+  },
   "auth": {
     "login": "Anmelden",
     "logout": "Abmelden",
@@ -75,6 +83,7 @@
     "title": "Übersicht",
     "welcome": "Willkommen bei KitaManager",
     "quickStats": "Schnellstatistik",
+    "statsForOrg": "Statistiken für {name}",
     "totalOrganizations": "Organisationen gesamt",
     "totalEmployees": "Mitarbeiter gesamt",
     "totalChildren": "Kinder gesamt",

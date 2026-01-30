@@ -46,11 +46,21 @@ import type {
   PayPlanEntry,
   PayPlanEntryCreateRequest,
   PayPlanEntryUpdateRequest,
+  PaginatedResponse,
+  PaginationParams,
 } from './types';
+import { DEFAULT_PAGE_SIZE } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
   ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1`
   : '/api/v1';
+
+// Helper to get CSRF token from cookie
+function getCSRFToken(): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(/csrf_token=([^;]+)/);
+  return match ? match[1] : null;
+}
 
 class ApiClient {
   private client: AxiosInstance;
@@ -62,15 +72,19 @@ class ApiClient {
       headers: {
         'Content-Type': 'application/json',
       },
+      // Enable sending cookies with requests (for HttpOnly auth cookies)
+      withCredentials: true,
     });
 
-    // Request interceptor to add auth token
+    // Request interceptor to add CSRF token for state-changing requests
     this.client.interceptors.request.use(
       (config) => {
-        if (typeof window !== 'undefined') {
-          const token = localStorage.getItem('token');
-          if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
+        // Add CSRF token header for non-GET requests (POST, PUT, DELETE, PATCH)
+        const method = config.method?.toLowerCase();
+        if (method && !['get', 'head', 'options'].includes(method)) {
+          const csrfToken = getCSRFToken();
+          if (csrfToken) {
+            config.headers['X-CSRF-Token'] = csrfToken;
           }
         }
         return config;
@@ -83,9 +97,6 @@ class ApiClient {
       (response) => response,
       (error: AxiosError) => {
         if (error.response?.status === 401) {
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('token');
-          }
           if (this.onUnauthorized) {
             this.onUnauthorized();
           }
@@ -105,9 +116,29 @@ class ApiClient {
     return response.data;
   }
 
+  async logout(): Promise<void> {
+    await this.client.post('/logout');
+  }
+
+  async getCurrentUser(): Promise<User> {
+    const response = await this.client.get<User>('/me');
+    return response.data;
+  }
+
   // Organizations
-  async getOrganizations(): Promise<Organization[]> {
-    const response = await this.client.get<{ data: Organization[] }>('/organizations?limit=100');
+  async getOrganizations(params: PaginationParams = {}): Promise<PaginatedResponse<Organization>> {
+    const { page = 1, limit = DEFAULT_PAGE_SIZE } = params;
+    const response = await this.client.get<PaginatedResponse<Organization>>(
+      `/organizations?page=${page}&limit=${limit}`
+    );
+    return response.data;
+  }
+
+  async getOrganizationsAll(): Promise<Organization[]> {
+    // Backend max limit is 100
+    const response = await this.client.get<PaginatedResponse<Organization>>(
+      '/organizations?limit=100'
+    );
     return response.data.data;
   }
 
@@ -131,9 +162,12 @@ class ApiClient {
   }
 
   // Users
-  async getUsers(): Promise<User[]> {
-    const response = await this.client.get<{ data: User[] }>('/users');
-    return response.data.data;
+  async getUsers(params: PaginationParams = {}): Promise<PaginatedResponse<User>> {
+    const { page = 1, limit = DEFAULT_PAGE_SIZE } = params;
+    const response = await this.client.get<PaginatedResponse<User>>(
+      `/users?page=${page}&limit=${limit}`
+    );
+    return response.data;
   }
 
   async getUser(id: number): Promise<User> {
@@ -202,9 +236,12 @@ class ApiClient {
   }
 
   // Groups (organization-scoped)
-  async getGroups(orgId: number): Promise<Group[]> {
-    const response = await this.client.get<{ data: Group[] }>(`/organizations/${orgId}/groups`);
-    return response.data.data;
+  async getGroups(orgId: number, params: PaginationParams = {}): Promise<PaginatedResponse<Group>> {
+    const { page = 1, limit = DEFAULT_PAGE_SIZE } = params;
+    const response = await this.client.get<PaginatedResponse<Group>>(
+      `/organizations/${orgId}/groups?page=${page}&limit=${limit}`
+    );
+    return response.data;
   }
 
   async getGroup(orgId: number, groupId: number): Promise<Group> {
@@ -230,17 +267,27 @@ class ApiClient {
   }
 
   // Organization users
-  async getOrganizationUsers(orgId: number): Promise<User[]> {
-    const response = await this.client.get<{ data: User[] }>(`/organizations/${orgId}/users`);
-    return response.data.data;
+  async getOrganizationUsers(
+    orgId: number,
+    params: PaginationParams = {}
+  ): Promise<PaginatedResponse<User>> {
+    const { page = 1, limit = DEFAULT_PAGE_SIZE } = params;
+    const response = await this.client.get<PaginatedResponse<User>>(
+      `/organizations/${orgId}/users?page=${page}&limit=${limit}`
+    );
+    return response.data;
   }
 
   // Employees (organization-scoped)
-  async getEmployees(orgId: number, limit: number = 100): Promise<Employee[]> {
-    const response = await this.client.get<{ data: Employee[] }>(
-      `/organizations/${orgId}/employees?limit=${limit}`
+  async getEmployees(
+    orgId: number,
+    params: PaginationParams = {}
+  ): Promise<PaginatedResponse<Employee>> {
+    const { page = 1, limit = DEFAULT_PAGE_SIZE } = params;
+    const response = await this.client.get<PaginatedResponse<Employee>>(
+      `/organizations/${orgId}/employees?page=${page}&limit=${limit}`
     );
-    return response.data.data;
+    return response.data;
   }
 
   async getEmployee(orgId: number, id: number): Promise<Employee> {
@@ -299,11 +346,15 @@ class ApiClient {
   }
 
   // Children (organization-scoped)
-  async getChildren(orgId: number, limit: number = 100): Promise<Child[]> {
-    const response = await this.client.get<{ data: Child[] }>(
-      `/organizations/${orgId}/children?limit=${limit}`
+  async getChildren(
+    orgId: number,
+    params: PaginationParams = {}
+  ): Promise<PaginatedResponse<Child>> {
+    const { page = 1, limit = DEFAULT_PAGE_SIZE } = params;
+    const response = await this.client.get<PaginatedResponse<Child>>(
+      `/organizations/${orgId}/children?page=${page}&limit=${limit}`
     );
-    return response.data.data;
+    return response.data;
   }
 
   async getChild(orgId: number, id: number): Promise<Child> {
@@ -399,9 +450,14 @@ class ApiClient {
   }
 
   // GovernmentFundings
-  async getGovernmentFundings(): Promise<GovernmentFunding[]> {
-    const response = await this.client.get<{ data: GovernmentFunding[] }>('/government-fundings');
-    return response.data.data;
+  async getGovernmentFundings(
+    params: PaginationParams = {}
+  ): Promise<PaginatedResponse<GovernmentFunding>> {
+    const { page = 1, limit = DEFAULT_PAGE_SIZE } = params;
+    const response = await this.client.get<PaginatedResponse<GovernmentFunding>>(
+      `/government-fundings?page=${page}&limit=${limit}`
+    );
+    return response.data;
   }
 
   async getGovernmentFunding(id: number, periodsLimit?: number): Promise<GovernmentFunding> {
@@ -497,11 +553,15 @@ class ApiClient {
   }
 
   // PayPlans (organization-scoped)
-  async getPayPlans(orgId: number, limit: number = 100): Promise<PayPlan[]> {
-    const response = await this.client.get<{ data: PayPlan[] }>(
-      `/organizations/${orgId}/payplans?limit=${limit}`
+  async getPayPlans(
+    orgId: number,
+    params: PaginationParams = {}
+  ): Promise<PaginatedResponse<PayPlan>> {
+    const { page = 1, limit = DEFAULT_PAGE_SIZE } = params;
+    const response = await this.client.get<PaginatedResponse<PayPlan>>(
+      `/organizations/${orgId}/payplans?page=${page}&limit=${limit}`
     );
-    return response.data.data;
+    return response.data;
   }
 
   async getPayPlan(orgId: number, id: number): Promise<PayPlan> {

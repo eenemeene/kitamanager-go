@@ -1,22 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, Users as UsersIcon, Shield } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
   DialogContent,
@@ -24,27 +15,21 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/lib/hooks/use-toast';
 import { apiClient, getErrorMessage } from '@/lib/api/client';
 import type { User, UserCreateRequest, UserUpdateRequest } from '@/lib/api/types';
+import { Pagination } from '@/components/ui/pagination';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { formatDate } from '@/lib/utils/formatting';
 import { useAuthStore } from '@/stores/auth-store';
+import { useCrudMutations } from '@/lib/hooks/use-crud-mutations';
+import { useCrudDialogs } from '@/lib/hooks/use-crud-dialogs';
+import { CrudPageHeader, ResourceTable, DeleteConfirmDialog, Column } from '@/components/crud';
 
 const userCreateSchema = z.object({
   name: z.string().min(1).max(255),
@@ -62,6 +47,19 @@ const userUpdateSchema = z.object({
 type UserCreateFormData = z.infer<typeof userCreateSchema>;
 type UserUpdateFormData = z.infer<typeof userUpdateSchema>;
 
+const createDefaultValues: UserCreateFormData = {
+  name: '',
+  email: '',
+  password: '',
+  active: true,
+};
+
+const updateDefaultValues: UserUpdateFormData = {
+  name: '',
+  email: '',
+  active: true,
+};
+
 export default function UsersPage() {
   const params = useParams();
   const orgId = Number(params.orgId);
@@ -69,66 +67,57 @@ export default function UsersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuthStore();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [deletingUser, setDeletingUser] = useState<User | null>(null);
+  const [page, setPage] = useState(1);
 
-  const { data: users, isLoading } = useQuery({
+  const {
+    register: registerCreate,
+    handleSubmit: handleSubmitCreate,
+    reset: resetCreate,
+    setValue: setValueCreate,
+    watch: watchCreate,
+    formState: { errors: errorsCreate },
+  } = useForm<UserCreateFormData>({
+    resolver: zodResolver(userCreateSchema),
+    defaultValues: createDefaultValues,
+  });
+
+  const {
+    register: registerUpdate,
+    handleSubmit: handleSubmitUpdate,
+    reset: resetUpdate,
+    setValue: setValueUpdate,
+    watch: watchUpdate,
+    formState: { errors: errorsUpdate },
+  } = useForm<UserUpdateFormData>({
+    resolver: zodResolver(userUpdateSchema),
+    defaultValues: updateDefaultValues,
+  });
+
+  const { data: paginatedData, isLoading } = useQuery({
+    queryKey: ['users', page],
+    queryFn: () => apiClient.getUsers({ page }),
+  });
+
+  const users = paginatedData?.data;
+
+  // Use separate dialog hooks for create (no edit item) and general dialogs
+  const dialogs = useCrudDialogs<User, UserUpdateFormData>({
+    reset: resetUpdate,
+    itemToFormData: (user) => ({ name: user.name, email: user.email, active: user.active }),
+    defaultValues: updateDefaultValues,
+  });
+
+  const mutations = useCrudMutations<User, UserCreateRequest, UserUpdateRequest>({
+    resourceName: 'users',
     queryKey: ['users'],
-    queryFn: () => apiClient.getUsers(),
-  });
-
-  const createMutation = useMutation({
-    mutationFn: (data: UserCreateRequest) => apiClient.createUser(data),
+    createFn: (data) => apiClient.createUser(data),
+    updateFn: (id, data) => apiClient.updateUser(id, data),
+    deleteFn: (id) => apiClient.deleteUser(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      toast({ title: t('users.createSuccess') });
-      setIsDialogOpen(false);
-      resetCreate();
+      dialogs.closeDialog();
+      resetCreate(createDefaultValues);
     },
-    onError: (error) => {
-      toast({
-        title: t('common.error'),
-        description: getErrorMessage(error, t('common.failedToCreate', { resource: 'user' })),
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UserUpdateRequest }) =>
-      apiClient.updateUser(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      toast({ title: t('users.updateSuccess') });
-      setIsDialogOpen(false);
-      setEditingUser(null);
-    },
-    onError: (error) => {
-      toast({
-        title: t('common.error'),
-        description: getErrorMessage(error, t('common.failedToSave', { resource: 'user' })),
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiClient.deleteUser(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      toast({ title: t('users.deleteSuccess') });
-      setIsDeleteDialogOpen(false);
-      setDeletingUser(null);
-    },
-    onError: (error) => {
-      toast({
-        title: t('common.error'),
-        description: getErrorMessage(error, t('common.failedToDelete', { resource: 'user' })),
-        variant: 'destructive',
-      });
-    },
+    onDeleteSuccess: dialogs.closeDeleteDialog,
   });
 
   const superadminMutation = useMutation({
@@ -147,63 +136,18 @@ export default function UsersPage() {
     },
   });
 
-  const {
-    register: registerCreate,
-    handleSubmit: handleSubmitCreate,
-    reset: resetCreate,
-    setValue: setValueCreate,
-    watch: watchCreate,
-    formState: { errors: errorsCreate },
-  } = useForm<UserCreateFormData>({
-    resolver: zodResolver(userCreateSchema),
-    defaultValues: {
-      name: '',
-      email: '',
-      password: '',
-      active: true,
-    },
-  });
-
-  const {
-    register: registerUpdate,
-    handleSubmit: handleSubmitUpdate,
-    reset: resetUpdate,
-    setValue: setValueUpdate,
-    watch: watchUpdate,
-    formState: { errors: errorsUpdate },
-  } = useForm<UserUpdateFormData>({
-    resolver: zodResolver(userUpdateSchema),
-    defaultValues: {
-      name: '',
-      email: '',
-      active: true,
-    },
-  });
-
   const handleCreate = () => {
-    setEditingUser(null);
-    resetCreate({ name: '', email: '', password: '', active: true });
-    setIsDialogOpen(true);
-  };
-
-  const handleEdit = (user: User) => {
-    setEditingUser(user);
-    resetUpdate({ name: user.name, email: user.email, active: user.active });
-    setIsDialogOpen(true);
-  };
-
-  const handleDelete = (user: User) => {
-    setDeletingUser(user);
-    setIsDeleteDialogOpen(true);
+    dialogs.setIsDialogOpen(true);
+    resetCreate(createDefaultValues);
   };
 
   const onSubmitCreate = (data: UserCreateFormData) => {
-    createMutation.mutate(data);
+    mutations.createMutation.mutate(data);
   };
 
   const onSubmitUpdate = (data: UserUpdateFormData) => {
-    if (editingUser) {
-      updateMutation.mutate({ id: editingUser.id, data });
+    if (dialogs.editingItem) {
+      mutations.updateMutation.mutate({ id: dialogs.editingItem.id, data });
     }
   };
 
@@ -213,101 +157,96 @@ export default function UsersPage() {
 
   const isSuperadmin = currentUser?.is_superadmin;
 
+  const columns = useMemo<Column<User>[]>(() => {
+    const baseColumns: Column<User>[] = [
+      { key: 'id', header: 'common.id', render: (user) => user.id },
+      { key: 'name', header: 'common.name', render: (user) => user.name, className: 'font-medium' },
+      { key: 'email', header: 'common.email', render: (user) => user.email },
+      {
+        key: 'status',
+        header: 'common.status',
+        render: (user) => (
+          <Badge variant={user.active ? 'success' : 'secondary'}>
+            {user.active ? t('common.active') : t('common.inactive')}
+          </Badge>
+        ),
+      },
+    ];
+
+    if (isSuperadmin) {
+      baseColumns.push({
+        key: 'superadmin',
+        header: 'users.superadmin',
+        render: (user) => (
+          <Switch
+            checked={user.is_superadmin}
+            onCheckedChange={(checked) => handleSuperadminToggle(user, checked)}
+            disabled={user.id === currentUser?.id}
+          />
+        ),
+      });
+    }
+
+    baseColumns.push({
+      key: 'lastLogin',
+      header: 'users.lastLogin',
+      render: (user) => formatDate(user.last_login),
+    });
+
+    return baseColumns;
+  }, [t, isSuperadmin, currentUser?.id]);
+
+  const renderActions = (user: User) => (
+    <>
+      <Button variant="ghost" size="icon" onClick={() => dialogs.handleEdit(user)}>
+        <Pencil className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => dialogs.handleDelete(user)}
+        disabled={user.id === currentUser?.id}
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+    </>
+  );
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t('users.title')}</h1>
-        </div>
-        <Button onClick={handleCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          {t('users.newUser')}
-        </Button>
-      </div>
+      <CrudPageHeader title="users.title" onNew={handleCreate} newButtonText="users.newUser" />
 
       <Card>
         <CardHeader>
           <CardTitle>{t('users.title')}</CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="space-y-2">
-              {[...Array(3)].map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('common.id')}</TableHead>
-                  <TableHead>{t('common.name')}</TableHead>
-                  <TableHead>{t('common.email')}</TableHead>
-                  <TableHead>{t('common.status')}</TableHead>
-                  {isSuperadmin && <TableHead>{t('users.superadmin')}</TableHead>}
-                  <TableHead>{t('users.lastLogin')}</TableHead>
-                  <TableHead className="text-right">{t('common.actions')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users?.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>{user.id}</TableCell>
-                    <TableCell className="font-medium">{user.name}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>
-                      <Badge variant={user.active ? 'success' : 'secondary'}>
-                        {user.active ? t('common.active') : t('common.inactive')}
-                      </Badge>
-                    </TableCell>
-                    {isSuperadmin && (
-                      <TableCell>
-                        <Switch
-                          checked={user.is_superadmin}
-                          onCheckedChange={(checked) => handleSuperadminToggle(user, checked)}
-                          disabled={user.id === currentUser?.id}
-                        />
-                      </TableCell>
-                    )}
-                    <TableCell>{formatDate(user.last_login)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(user)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(user)}
-                        disabled={user.id === currentUser?.id}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {users?.length === 0 && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={isSuperadmin ? 7 : 6}
-                      className="text-center text-muted-foreground"
-                    >
-                      {t('common.noResults')}
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+          <ResourceTable
+            items={users}
+            columns={columns}
+            getItemKey={(user) => user.id}
+            isLoading={isLoading}
+            renderActions={renderActions}
+          />
+          {paginatedData && (
+            <Pagination
+              page={paginatedData.page}
+              totalPages={paginatedData.total_pages}
+              total={paginatedData.total}
+              limit={paginatedData.limit}
+              onPageChange={setPage}
+              isLoading={isLoading}
+            />
           )}
         </CardContent>
       </Card>
 
-      {/* Create/Edit Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={dialogs.isDialogOpen} onOpenChange={dialogs.setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingUser ? t('users.edit') : t('users.create')}</DialogTitle>
+            <DialogTitle>{dialogs.isEditing ? t('users.edit') : t('users.create')}</DialogTitle>
           </DialogHeader>
-          {editingUser ? (
+          {dialogs.isEditing ? (
             <form onSubmit={handleSubmitUpdate(onSubmitUpdate)} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">{t('common.name')}</Label>
@@ -335,10 +274,14 @@ export default function UsersPage() {
               </div>
 
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => dialogs.setIsDialogOpen(false)}
+                >
                   {t('common.cancel')}
                 </Button>
-                <Button type="submit" disabled={updateMutation.isPending}>
+                <Button type="submit" disabled={mutations.updateMutation.isPending}>
                   {t('common.save')}
                 </Button>
               </DialogFooter>
@@ -379,10 +322,14 @@ export default function UsersPage() {
               </div>
 
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => dialogs.setIsDialogOpen(false)}
+                >
                   {t('common.cancel')}
                 </Button>
-                <Button type="submit" disabled={createMutation.isPending}>
+                <Button type="submit" disabled={mutations.createMutation.isPending}>
                   {t('common.save')}
                 </Button>
               </DialogFooter>
@@ -391,24 +338,15 @@ export default function UsersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('common.confirmDelete')}</AlertDialogTitle>
-            <AlertDialogDescription>{t('users.deleteConfirm')}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deletingUser && deleteMutation.mutate(deletingUser.id)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {t('common.delete')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteConfirmDialog
+        open={dialogs.isDeleteDialogOpen}
+        onOpenChange={dialogs.setIsDeleteDialogOpen}
+        onConfirm={() =>
+          dialogs.deletingItem && mutations.deleteMutation.mutate(dialogs.deletingItem.id)
+        }
+        isLoading={mutations.deleteMutation.isPending}
+        resourceName="users"
+      />
     </div>
   );
 }

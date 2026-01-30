@@ -258,3 +258,152 @@ func TestAuthMiddleware_RequireAuth_AcceptsLegacyTokenWithoutType(t *testing.T) 
 		t.Errorf("expected status %d for legacy token without type, got %d", http.StatusOK, w.Code)
 	}
 }
+
+func TestAuthMiddleware_RequireAuth_AcceptsCookieToken(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	jwtSecret := "test-secret"
+	middleware := NewAuthMiddleware(jwtSecret)
+
+	// Create a valid access token
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": 42,
+		"email":   "test@example.com",
+		"type":    "access",
+		"exp":     time.Now().Add(time.Hour).Unix(),
+	})
+	tokenString, err := token.SignedString([]byte(jwtSecret))
+	if err != nil {
+		t.Fatalf("failed to sign token: %v", err)
+	}
+
+	var capturedUserID interface{}
+	router := gin.New()
+	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
+		capturedUserID, _ = c.Get("userID")
+		c.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	// Use cookie instead of header
+	req.AddCookie(&http.Cookie{Name: "access_token", Value: tokenString})
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d for cookie auth, got %d", http.StatusOK, w.Code)
+	}
+
+	userIDUint, ok := capturedUserID.(uint)
+	if !ok || userIDUint != 42 {
+		t.Errorf("expected userID 42, got %v", capturedUserID)
+	}
+}
+
+func TestAuthMiddleware_RequireAuth_PrefersCookieOverHeader(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	jwtSecret := "test-secret"
+	middleware := NewAuthMiddleware(jwtSecret)
+
+	// Create two valid tokens with different user IDs
+	cookieToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": 100, // Cookie has user 100
+		"email":   "cookie@example.com",
+		"type":    "access",
+		"exp":     time.Now().Add(time.Hour).Unix(),
+	})
+	cookieTokenString, _ := cookieToken.SignedString([]byte(jwtSecret))
+
+	headerToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": 200, // Header has user 200
+		"email":   "header@example.com",
+		"type":    "access",
+		"exp":     time.Now().Add(time.Hour).Unix(),
+	})
+	headerTokenString, _ := headerToken.SignedString([]byte(jwtSecret))
+
+	var capturedUserID interface{}
+	router := gin.New()
+	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
+		capturedUserID, _ = c.Get("userID")
+		c.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.AddCookie(&http.Cookie{Name: "access_token", Value: cookieTokenString})
+	req.Header.Set("Authorization", "Bearer "+headerTokenString)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	// Should use cookie token (user 100), not header token (user 200)
+	userIDUint, ok := capturedUserID.(uint)
+	if !ok || userIDUint != 100 {
+		t.Errorf("expected cookie userID 100, got %v (cookie should take precedence)", capturedUserID)
+	}
+}
+
+func TestAuthMiddleware_RequireAuth_FallsBackToHeader(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	jwtSecret := "test-secret"
+	middleware := NewAuthMiddleware(jwtSecret)
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": 42,
+		"email":   "test@example.com",
+		"type":    "access",
+		"exp":     time.Now().Add(time.Hour).Unix(),
+	})
+	tokenString, _ := token.SignedString([]byte(jwtSecret))
+
+	var capturedUserID interface{}
+	router := gin.New()
+	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
+		capturedUserID, _ = c.Get("userID")
+		c.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	// No cookie, only header
+	req.Header.Set("Authorization", "Bearer "+tokenString)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d for header auth fallback, got %d", http.StatusOK, w.Code)
+	}
+
+	userIDUint, ok := capturedUserID.(uint)
+	if !ok || userIDUint != 42 {
+		t.Errorf("expected userID 42, got %v", capturedUserID)
+	}
+}
+
+func TestAuthMiddleware_RequireAuth_InvalidCookieToken(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	middleware := NewAuthMiddleware("test-secret")
+
+	router := gin.New()
+	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.AddCookie(&http.Cookie{Name: "access_token", Value: "invalid-token"})
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected status %d for invalid cookie token, got %d", http.StatusUnauthorized, w.Code)
+	}
+}

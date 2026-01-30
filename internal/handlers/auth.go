@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"net/http"
 	"time"
 
@@ -18,6 +20,13 @@ import (
 const (
 	accessTokenExpiry  = 1 * time.Hour      // Access tokens expire in 1 hour
 	refreshTokenExpiry = 7 * 24 * time.Hour // Refresh tokens expire in 7 days
+)
+
+// Cookie names
+const (
+	accessTokenCookie  = "access_token"
+	refreshTokenCookie = "refresh_token"
+	csrfTokenCookie    = "csrf_token"
 )
 
 type AuthHandler struct {
@@ -100,6 +109,16 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	// Log successful login
 	h.auditService.LogLogin(user.ID, user.Email, ipAddress, userAgent)
+
+	// Generate CSRF token
+	csrfToken, err := generateCSRFToken()
+	if err != nil {
+		respondError(c, apperror.Internal("failed to generate CSRF token"))
+		return
+	}
+
+	// Set HttpOnly cookies for tokens
+	h.setAuthCookies(c, accessToken, refreshToken, csrfToken)
 
 	c.JSON(http.StatusOK, models.LoginResponse{
 		Token:        accessToken,
@@ -209,9 +228,143 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
+	// Generate new CSRF token
+	csrfToken, err := generateCSRFToken()
+	if err != nil {
+		respondError(c, apperror.Internal("failed to generate CSRF token"))
+		return
+	}
+
+	// Set HttpOnly cookies for tokens
+	h.setAuthCookies(c, accessToken, refreshToken, csrfToken)
+
 	c.JSON(http.StatusOK, models.LoginResponse{
 		Token:        accessToken,
 		RefreshToken: refreshToken,
 		ExpiresIn:    int64(accessTokenExpiry.Seconds()),
+	})
+}
+
+// Logout godoc
+// @Summary Logout user
+// @Description Clear authentication cookies to log out the user
+// @Tags auth
+// @Produce json
+// @Success 200 {object} models.MessageResponse
+// @Router /api/v1/logout [post]
+func (h *AuthHandler) Logout(c *gin.Context) {
+	// Clear all auth cookies by setting them with empty values and expired time
+	h.clearAuthCookies(c)
+
+	c.JSON(http.StatusOK, models.MessageResponse{
+		Message: "logged out successfully",
+	})
+}
+
+// setAuthCookies sets the authentication cookies (access token, refresh token, CSRF token)
+func (h *AuthHandler) setAuthCookies(c *gin.Context, accessToken, refreshToken, csrfToken string) {
+	// Determine if we should use secure cookies (HTTPS)
+	secure := c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https"
+
+	// Access token cookie - HttpOnly (not accessible from JavaScript)
+	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetCookie(
+		accessTokenCookie,
+		accessToken,
+		int(accessTokenExpiry.Seconds()),
+		"/",
+		"",     // domain - empty uses request host
+		secure, // secure
+		true,   // httpOnly
+	)
+
+	// Refresh token cookie - HttpOnly (not accessible from JavaScript)
+	c.SetCookie(
+		refreshTokenCookie,
+		refreshToken,
+		int(refreshTokenExpiry.Seconds()),
+		"/",
+		"",
+		secure,
+		true, // httpOnly
+	)
+
+	// CSRF token cookie - NOT HttpOnly (must be readable by JavaScript)
+	c.SetCookie(
+		csrfTokenCookie,
+		csrfToken,
+		int(accessTokenExpiry.Seconds()),
+		"/",
+		"",
+		secure,
+		false, // NOT httpOnly - JS needs to read this
+	)
+}
+
+// clearAuthCookies clears all authentication cookies
+func (h *AuthHandler) clearAuthCookies(c *gin.Context) {
+	secure := c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https"
+
+	c.SetSameSite(http.SameSiteStrictMode)
+
+	// Clear access token
+	c.SetCookie(accessTokenCookie, "", -1, "/", "", secure, true)
+
+	// Clear refresh token
+	c.SetCookie(refreshTokenCookie, "", -1, "/", "", secure, true)
+
+	// Clear CSRF token
+	c.SetCookie(csrfTokenCookie, "", -1, "/", "", secure, false)
+}
+
+// generateCSRFToken generates a cryptographically secure random token
+func generateCSRFToken() (string, error) {
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
+}
+
+// Me godoc
+// @Summary Get current user
+// @Description Returns the currently authenticated user based on the JWT token
+// @Tags auth
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} models.UserResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/me [get]
+func (h *AuthHandler) Me(c *gin.Context) {
+	// Get user ID from context (set by auth middleware)
+	userIDValue, exists := c.Get("userID")
+	if !exists {
+		respondError(c, apperror.Unauthorized("not authenticated"))
+		return
+	}
+
+	userID, ok := userIDValue.(uint)
+	if !ok {
+		respondError(c, apperror.Internal("invalid user ID type"))
+		return
+	}
+
+	user, err := h.userStore.FindByID(userID)
+	if err != nil {
+		respondError(c, apperror.NotFound("user not found"))
+		return
+	}
+
+	c.JSON(http.StatusOK, models.UserResponse{
+		ID:           user.ID,
+		Name:         user.Name,
+		Email:        user.Email,
+		Active:       user.Active,
+		IsSuperAdmin: user.IsSuperAdmin,
+		LastLogin:    user.LastLogin,
+		CreatedAt:    user.CreatedAt,
+		CreatedBy:    user.CreatedBy,
+		UpdatedAt:    user.UpdatedAt,
 	})
 }

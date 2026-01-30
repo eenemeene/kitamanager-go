@@ -14,6 +14,12 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   token: string;
+  refresh_token?: string;
+  expires_in?: number;
+  user?: {
+    id: number;
+    email: string;
+  };
 }
 
 export interface ErrorResponse {
@@ -275,8 +281,17 @@ export interface PaginatedResponse<T> {
   data: T[];
   total: number;
   page: number;
-  page_size: number;
+  limit: number;
+  total_pages: number;
 }
+
+// Pagination params for API calls
+export interface PaginationParams {
+  page?: number;
+  limit?: number;
+}
+
+export const DEFAULT_PAGE_SIZE = 30;
 
 // Dashboard stats
 export interface DashboardStats {

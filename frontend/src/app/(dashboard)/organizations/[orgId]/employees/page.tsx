@@ -55,6 +55,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { formatDate, calculateAge, formatDateForInput } from '@/lib/utils/formatting';
+import { Pagination } from '@/components/ui/pagination';
 
 const employeeSchema = z.object({
   first_name: z.string().min(1),
@@ -88,12 +89,15 @@ export default function EmployeesPage() {
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(null);
   const [contractEmployee, setContractEmployee] = useState<Employee | null>(null);
+  const [page, setPage] = useState(1);
 
-  const { data: employees, isLoading } = useQuery({
-    queryKey: ['employees', orgId],
-    queryFn: () => apiClient.getEmployees(orgId),
+  const { data: paginatedData, isLoading } = useQuery({
+    queryKey: ['employees', orgId, page],
+    queryFn: () => apiClient.getEmployees(orgId, { page }),
     enabled: !!orgId,
   });
+
+  const employees = paginatedData?.data;
 
   const createMutation = useMutation({
     mutationFn: (data: Omit<EmployeeFormData, 'organization_id'>) =>
@@ -361,6 +365,16 @@ export default function EmployeesPage() {
                 )}
               </TableBody>
             </Table>
+          )}
+          {paginatedData && (
+            <Pagination
+              page={paginatedData.page}
+              totalPages={paginatedData.total_pages}
+              total={paginatedData.total}
+              limit={paginatedData.limit}
+              onPageChange={setPage}
+              isLoading={isLoading}
+            />
           )}
         </CardContent>
       </Card>
