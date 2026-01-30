@@ -1,0 +1,437 @@
+// API Types - matching the Go backend models
+
+// Gender type
+export type Gender = 'male' | 'female' | 'diverse';
+
+// Roles for user-group membership
+export type Role = 'admin' | 'manager' | 'member';
+
+// Auth
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  token: string;
+}
+
+export interface ErrorResponse {
+  code: string;
+  message: string;
+}
+
+export interface MessageResponse {
+  message: string;
+}
+
+// GovernmentFunding
+export interface GovernmentFunding {
+  id: number;
+  name: string;
+  state: string;
+  created_at: string;
+  updated_at: string;
+  periods?: GovernmentFundingPeriod[];
+  total_periods?: number;
+}
+
+export interface GovernmentFundingPeriod {
+  id: number;
+  government_funding_id: number;
+  from: string;
+  to?: string | null;
+  comment?: string;
+  created_at: string;
+  properties?: GovernmentFundingProperty[];
+}
+
+export interface GovernmentFundingProperty {
+  id: number;
+  period_id: number;
+  name: string;
+  payment: number;
+  requirement: number;
+  min_age?: number | null;
+  max_age?: number | null;
+  comment?: string;
+  created_at: string;
+}
+
+export interface GovernmentFundingCreateRequest {
+  name: string;
+  state: string;
+}
+
+export interface GovernmentFundingUpdateRequest {
+  name?: string;
+}
+
+export interface GovernmentFundingPeriodCreateRequest {
+  from: string;
+  to?: string | null;
+  comment?: string;
+}
+
+export interface GovernmentFundingPeriodUpdateRequest {
+  from?: string;
+  to?: string | null;
+  comment?: string;
+}
+
+export interface GovernmentFundingPropertyCreateRequest {
+  name: string;
+  payment: number;
+  requirement: number;
+  min_age?: number | null;
+  max_age?: number | null;
+  comment?: string;
+}
+
+export interface GovernmentFundingPropertyUpdateRequest {
+  name?: string;
+  payment?: number;
+  requirement?: number;
+  min_age?: number | null;
+  max_age?: number | null;
+  comment?: string;
+}
+
+// Organization
+export interface Organization {
+  id: number;
+  name: string;
+  active: boolean;
+  state: string;
+  created_at: string;
+  created_by: string;
+  updated_at: string;
+  users?: User[];
+  groups?: Group[];
+}
+
+export interface OrganizationCreateRequest {
+  name: string;
+  active?: boolean;
+  state: string;
+}
+
+export interface OrganizationUpdateRequest {
+  name?: string;
+  active?: boolean;
+  state?: string;
+}
+
+// User
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+  active: boolean;
+  is_superadmin: boolean;
+  last_login?: string | null;
+  created_at: string;
+  created_by: string;
+  updated_at: string;
+  organizations?: Organization[];
+  groups?: Group[];
+}
+
+export interface UserCreateRequest {
+  name: string;
+  email: string;
+  password: string;
+  active?: boolean;
+}
+
+export interface UserUpdateRequest {
+  name?: string;
+  email?: string;
+  active?: boolean;
+}
+
+// Group (each group belongs to exactly one organization)
+export interface Group {
+  id: number;
+  name: string;
+  organization_id: number;
+  organization?: Organization;
+  active: boolean;
+  created_at: string;
+  created_by: string;
+  updated_at: string;
+  users?: User[];
+}
+
+export interface GroupCreateRequest {
+  name: string;
+  active?: boolean;
+}
+
+export interface GroupUpdateRequest {
+  name?: string;
+  active?: boolean;
+}
+
+// Person (base for Employee and Child)
+export interface Person {
+  id: number;
+  organization_id: number;
+  organization?: Organization;
+  first_name: string;
+  last_name: string;
+  gender: Gender;
+  birthdate: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Employee
+export interface Employee extends Person {
+  contracts?: EmployeeContract[];
+}
+
+export interface EmployeeContract {
+  id: number;
+  employee_id: number;
+  from: string;
+  to?: string | null;
+  position: string;
+  grade: string;
+  step: number;
+  weekly_hours: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EmployeeCreateRequest {
+  organization_id: number;
+  first_name: string;
+  last_name: string;
+  gender: Gender;
+  birthdate: string;
+}
+
+export interface EmployeeUpdateRequest {
+  first_name?: string;
+  last_name?: string;
+  gender?: Gender;
+  birthdate?: string;
+}
+
+export interface EmployeeContractCreateRequest {
+  from: string;
+  to?: string | null;
+  position: string;
+  grade: string;
+  step: number;
+  weekly_hours: number;
+}
+
+// Child
+export interface Child extends Person {
+  contracts?: ChildContract[];
+}
+
+export interface ChildContract {
+  id: number;
+  child_id: number;
+  from: string;
+  to?: string | null;
+  attributes?: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChildCreateRequest {
+  organization_id: number;
+  first_name: string;
+  last_name: string;
+  gender: Gender;
+  birthdate: string;
+}
+
+export interface ChildUpdateRequest {
+  first_name?: string;
+  last_name?: string;
+  gender?: Gender;
+  birthdate?: string;
+}
+
+export interface ChildContractCreateRequest {
+  from: string;
+  to?: string | null;
+  attributes?: string[];
+}
+
+export interface ChildContractUpdateRequest {
+  from?: string;
+  to?: string | null;
+  attributes?: string[];
+}
+
+// Pagination response wrapper
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+// Dashboard stats
+export interface DashboardStats {
+  total_organizations: number;
+  total_employees: number;
+  total_children: number;
+  total_users: number;
+}
+
+// User-Group membership with role
+export interface UserGroupResponse {
+  user_id: number;
+  group_id: number;
+  role: Role;
+  created_at: string;
+  created_by: string;
+  group?: Group;
+}
+
+// User membership for memberships endpoint
+export interface UserMembership {
+  user_id: number;
+  group_id: number;
+  role: Role;
+  group: Group;
+  effective_org_role: Role;
+}
+
+// Response for user memberships
+export interface UserMembershipsResponse {
+  memberships: UserMembership[];
+}
+
+// Request to add user to group
+export interface AddUserToGroupRequest {
+  group_id: number;
+  role: Role;
+}
+
+// Request to update user's role in a group
+export interface UpdateUserGroupRoleRequest {
+  role: Role;
+}
+
+// Request to set superadmin status
+export interface SetSuperAdminRequest {
+  is_superadmin: boolean;
+}
+
+// Child funding calculation
+export interface ChildFundingResponse {
+  child_id: number;
+  child_name: string;
+  age: number;
+  funding: number;
+  matched_attributes: string[];
+  unmatched_attributes: string[];
+}
+
+export interface ChildrenFundingResponse {
+  date: string;
+  children: ChildFundingResponse[];
+}
+
+// Children contract count by month
+export interface ChildrenContractCountByMonthResponse {
+  period: {
+    start: string;
+    end: string;
+  };
+  years: ContractCountByMonthYear[];
+}
+
+export interface ContractCountByMonthYear {
+  year: number;
+  counts: number[]; // 12 values, one per month (Jan=0, Dec=11)
+}
+
+// Age distribution
+export interface AgeDistributionResponse {
+  date: string;
+  total_count: number;
+  distribution: AgeDistributionBucket[];
+}
+
+export interface AgeDistributionBucket {
+  age_label: string; // e.g., "0", "1", "2", "3", "4", "5", "6+"
+  min_age: number;
+  max_age?: number | null; // null for open-ended (6+)
+  count: number;
+  male_count: number;
+  female_count: number;
+  diverse_count: number;
+}
+
+// PayPlan (organization-scoped salary tables)
+export interface PayPlan {
+  id: number;
+  organization_id: number;
+  name: string;
+  created_at: string;
+  updated_at: string;
+  periods?: PayPlanPeriod[];
+  total_periods?: number;
+}
+
+export interface PayPlanPeriod {
+  id: number;
+  payplan_id: number;
+  from: string;
+  to?: string | null;
+  weekly_hours: number;
+  created_at: string;
+  updated_at: string;
+  entries?: PayPlanEntry[];
+}
+
+export interface PayPlanEntry {
+  id: number;
+  period_id: number;
+  grade: string;
+  step: number;
+  monthly_amount: number; // cents
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PayPlanCreateRequest {
+  name: string;
+}
+
+export interface PayPlanUpdateRequest {
+  name?: string;
+}
+
+export interface PayPlanPeriodCreateRequest {
+  from: string;
+  to?: string | null;
+  weekly_hours: number;
+}
+
+export interface PayPlanPeriodUpdateRequest {
+  from?: string;
+  to?: string | null;
+  weekly_hours?: number;
+}
+
+export interface PayPlanEntryCreateRequest {
+  grade: string;
+  step: number;
+  monthly_amount: number;
+}
+
+export interface PayPlanEntryUpdateRequest {
+  grade?: string;
+  step?: number;
+  monthly_amount?: number;
+}

@@ -38,16 +38,13 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install web dependencies
         run: make web-install
 
       - name: Lint web
         run: make web-lint
-
-      - name: Lint web styles
-        run: make web-lint-style
 
       - name: Check web formatting
         run: make web-format-check
@@ -93,7 +90,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install web dependencies
         run: make web-install
@@ -159,19 +156,7 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: web/package-lock.json
-
-      - name: Install web dependencies
-        run: make web-install
-
-      - name: Build web
-        run: make web-build
-
-      - name: Build API (with embedded web)
+      - name: Build API
         run: make api-build
 
       - name: Verify go.mod is tidy
@@ -189,7 +174,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install web dependencies
         run: make web-install
@@ -311,13 +296,13 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install web dependencies
         run: make web-install
 
       - name: Install Playwright browsers
-        run: cd web && npx playwright install firefox --with-deps
+        run: make web-playwright-install
 
       - name: Build web
         run: make web-build
@@ -334,6 +319,7 @@ jobs:
           SEED_RBAC_POLICIES=true \
           SEED_TEST_DATA=true \
           LOGIN_RATE_LIMIT_PER_MINUTE=0 \
+          CORS_ALLOW_ORIGINS="http://localhost:3000" \
           GOVERNMENT_FUNDING_SEED_PATH=configs/government-fundings/berlin.yaml \
           GOVERNMENT_FUNDING_SEED_NAME=Berlin \
           ./bin/kitamanager-api &
@@ -359,10 +345,23 @@ jobs:
           ps aux | grep kitamanager || echo "No kitamanager process"
           exit 1
 
+      - name: Start Next.js server
+        run: |
+          cd frontend && npm run build && npm run start &
+          # Wait for Next.js to be ready
+          for i in {1..30}; do
+            if curl -sf http://localhost:3000 > /dev/null 2>&1; then
+              echo "Next.js is ready"
+              break
+            fi
+            echo "Waiting for Next.js... ($i/30)"
+            sleep 1
+          done
+
       - name: Run E2E tests
-        run: cd web && npx playwright test --project=firefox
+        run: cd frontend && npx playwright test --project=chromium
         env:
-          BASE_URL: http://localhost:8080
+          BASE_URL: http://localhost:3000
           CI: true
 
       - name: Upload Playwright report
@@ -370,5 +369,5 @@ jobs:
         if: failure()
         with:
           name: playwright-report
-          path: web/test-results/
+          path: frontend/test-results/
           retention-days: 7

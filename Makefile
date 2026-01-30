@@ -1,6 +1,6 @@
 .PHONY: build lint test clean ci dev \
 	api-build api-run api-lint api-test-all api-test-unit api-test-integration api-test-contract api-test-fuzz api-test-coverage \
-	web-install web-dev web-build web-lint web-lint-style web-format web-format-check web-type-check web-test web-test-coverage web-test-e2e web-test-e2e-fresh web-test-e2e-demo web-check-all \
+	web-install web-dev web-build web-lint web-format web-format-check web-type-check web-test web-test-coverage web-test-e2e web-test-e2e-fresh web-test-e2e-demo \
 	docs schema-docs swagger-docs docker-up docker-down docker-rebuild docker-reset install-hooks uninstall-hooks pre-commit
 
 # =============================================================================
@@ -18,7 +18,7 @@ test: web-test api-test-unit
 
 # Clean build artifacts
 clean:
-	rm -rf bin/ coverage.out coverage.html internal/web/dist
+	rm -rf bin/ coverage.out coverage.html
 
 # Run all CI checks locally
 ci: lint test build
@@ -26,7 +26,7 @@ ci: lint test build
 
 # Start full development environment (database + API + web with hot reload)
 # Prerequisites: Docker for database, Go and Node.js installed
-# Web UI will be available at http://localhost:5173 with hot reload
+# Web UI will be available at http://localhost:3000 with hot reload
 # API will be available at http://localhost:8080
 dev:
 	@echo "Starting development environment..."
@@ -47,8 +47,9 @@ dev:
 		SEED_TEST_DATA=true \
 		GOVERNMENT_FUNDING_SEED_PATH=configs/government-fundings/berlin.yaml \
 		GOVERNMENT_FUNDING_SEED_NAME=Berlin \
-		CORS_ALLOW_ORIGINS="http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:8080" \
+		CORS_ALLOW_ORIGINS="http://localhost:3000,http://localhost:3001,http://localhost:8080" \
 		CORS_ALLOW_CREDENTIALS=true \
+		LOGIN_RATE_LIMIT_PER_MINUTE=0 \
 		./bin/kitamanager-api > /tmp/kitamanager-api.log 2>&1 & echo $$! > /tmp/kitamanager-api.pid
 	@echo "   Waiting for API to be healthy..."
 	@until curl -sf http://localhost:8080/api/v1/health > /dev/null 2>&1; do \
@@ -58,25 +59,20 @@ dev:
 	@echo "4. Starting web dev server (Ctrl+C to stop all)..."
 	@echo ""
 	@echo "================================================"
-	@echo "  Web UI: http://localhost:5173 (hot reload)"
+	@echo "  Web UI: http://localhost:3000 (hot reload)"
 	@echo "  API:    http://localhost:8080"
 	@echo "  Login:  admin@example.com / supersecret"
 	@echo "================================================"
 	@echo ""
 	@trap 'kill $$(cat /tmp/kitamanager-api.pid) 2>/dev/null; docker compose stop db' EXIT; \
-		cd web && npm run dev
+		cd frontend && npm run dev
 
 # =============================================================================
 # API targets
 # =============================================================================
 
-# Build the API application (with embedded web assets)
-# Requires web-build to be run first
+# Build the API application
 api-build:
-	go build -tags=embed_web -o bin/kitamanager-api ./cmd/api
-
-# Build the API application without embedded web assets (for testing)
-api-build-noweb:
 	go build -o bin/kitamanager-api ./cmd/api
 
 # Run the API application locally
@@ -114,52 +110,48 @@ api-test-coverage:
 	@echo "Coverage report generated: coverage.html"
 
 # =============================================================================
-# Web targets
+# Web targets (Next.js frontend)
 # =============================================================================
 
 # Install web dependencies
 web-install:
-	cd web && npm install
+	cd frontend && npm install
 
 # Start web dev server
 web-dev:
-	cd web && npm run dev
+	cd frontend && npm run dev
 
 # Build web for production
 web-build:
-	cd web && npm run build
+	cd frontend && npm run build
 
-# Lint web code (ESLint with accessibility checks)
+# Lint web code
 web-lint:
-	cd web && npm run lint
-
-# Lint web styles (Stylelint)
-web-lint-style:
-	cd web && npm run lint:style
+	cd frontend && npm run lint
 
 # Format web code (Prettier)
 web-format:
-	cd web && npm run format
+	cd frontend && npm run format
 
 # Check formatting without writing
 web-format-check:
-	cd web && npm run format:check
+	cd frontend && npm run format:check
 
 # Type-check web code
 web-type-check:
-	cd web && npm run type-check
+	cd frontend && npm run type-check
 
 # Run web unit tests
 web-test:
-	cd web && npm run test:run
+	cd frontend && npm run test
 
 # Run web tests with coverage
 web-test-coverage:
-	cd web && npm run test:coverage
+	cd frontend && npm run test:coverage
 
 # Run web E2E tests (requires dev server running or will start it)
 web-test-e2e:
-	cd web && npm run test:e2e
+	cd frontend && npm run test:e2e
 
 # Run web E2E tests with a fresh database (resets all data first)
 web-test-e2e-fresh:
@@ -168,24 +160,20 @@ web-test-e2e-fresh:
 	@rm -f /tmp/kitamanager-api.pid
 	docker compose down -v
 	@echo "Database reset. Starting E2E tests with fresh database..."
-	cd web && npm run test:e2e
+	cd frontend && npm run test:e2e
 
 # Run web E2E tests with browser visible
 web-test-e2e-headed:
-	cd web && npm run test:e2e:headed
+	cd frontend && npm run test:e2e:headed
 
 # Run web E2E tests with browser visible and slow motion (for human watching)
 # Uses Chromium for better video recording support
 web-test-e2e-demo:
-	cd web && SLOWMO=500 VIDEO=1 npx playwright test --headed --project=chromium
+	cd frontend && SLOWMO=500 VIDEO=1 npx playwright test --headed --project=chromium
 
 # Install Playwright browsers
 web-playwright-install:
-	cd web && npx playwright install firefox --with-deps
-
-# Run all web checks (type-check, lint, stylelint, format, tests)
-web-check-all:
-	cd web && npm run check-all
+	cd frontend && npx playwright install --with-deps
 
 # =============================================================================
 # Documentation targets

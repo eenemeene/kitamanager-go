@@ -68,37 +68,30 @@ repos:
         types: [go]
         pass_filenames: false
 
-      - id: vue-type-check
-        name: vue type check
-        entry: bash -c 'cd web && npm run type-check'
+      - id: web-type-check
+        name: web type check
+        entry: bash -c 'cd frontend && npm run type-check'
         language: system
-        files: ^web/.*\.(vue|ts)$
+        files: ^frontend/.*\.(tsx?|jsx?)$
         pass_filenames: false
 
-      - id: vue-lint
-        name: vue eslint
-        entry: bash -c 'cd web && npm run lint'
+      - id: web-lint
+        name: web eslint
+        entry: bash -c 'cd frontend && npm run lint'
         language: system
-        files: ^web/.*\.(vue|ts|js)$
+        files: ^frontend/.*\.(tsx?|jsx?)$
         pass_filenames: false
 
-      - id: vue-stylelint
-        name: vue stylelint
-        entry: bash -c 'cd web && npm run lint:style'
+      - id: web-format-check
+        name: web prettier check
+        entry: bash -c 'cd frontend && npm run format:check'
         language: system
-        files: ^web/.*\.(vue|css)$
+        files: ^frontend/.*\.(tsx?|jsx?|css|json)$
         pass_filenames: false
 
-      - id: vue-format-check
-        name: vue prettier check
-        entry: bash -c 'cd web && npm run format:check'
+      - id: web-test
+        name: web unit tests
+        entry: bash -c 'cd frontend && npm run test'
         language: system
-        files: ^web/.*\.(vue|ts|js|css|json)$
-        pass_filenames: false
-
-      - id: vue-test
-        name: vue unit tests
-        entry: bash -c 'cd web && npm run test:run'
-        language: system
-        files: ^web/.*\.(vue|ts|js)$
+        files: ^frontend/.*\.(tsx?|jsx?)$
         pass_filenames: false

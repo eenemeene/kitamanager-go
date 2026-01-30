@@ -21,7 +21,7 @@ make dev
 ```
 
 This starts:
-- **Web UI** at http://localhost:5173 (with hot reload)
+- **Web UI** at http://localhost:3000 (with hot reload)
 - **API** at http://localhost:8080
 - **PostgreSQL** via Docker
 
@@ -75,20 +75,20 @@ See [RBAC documentation](docs/RBAC.md) for detailed permission matrix.
 | `make api-test-coverage` | Run tests with coverage report |
 | `make api-lint` | Run Go linter |
 
-### Web
+### Web (Next.js Frontend)
 
 | Target | Description |
 |--------|-------------|
 | `make web-install` | Install npm dependencies |
-| `make web-dev` | Start Vite dev server only |
+| `make web-dev` | Start Next.js dev server only |
 | `make web-build` | Build for production |
-| `make web-test` | Run Vitest tests |
+| `make web-test` | Run Jest tests |
 | `make web-test-coverage` | Run tests with coverage |
+| `make web-test-e2e` | Run Playwright E2E tests |
+| `make web-test-e2e-headed` | Run E2E tests with browser visible |
 | `make web-lint` | Run ESLint |
-| `make web-lint-style` | Run Stylelint |
 | `make web-format` | Format code with Prettier |
 | `make web-type-check` | TypeScript type checking |
-| `make web-check-all` | Run all web checks |
 
 ### Docker
 
@@ -126,19 +126,16 @@ See [RBAC documentation](docs/RBAC.md) for detailed permission matrix.
 │   ├── models/         # Database models
 │   ├── rbac/           # Role-based access control
 │   ├── store/          # Database stores
-│   ├── web/            # Embedded web UI
 │   ├── integration/    # Integration tests
 │   └── contract/       # API contract tests
-├── web/                # Vue.js frontend
+├── frontend/           # Next.js frontend
 │   ├── src/
-│   │   ├── api/        # API client
-│   │   ├── components/ # Vue components
-│   │   ├── composables/# Vue composables
+│   │   ├── app/        # Next.js App Router pages
+│   │   ├── components/ # React components
+│   │   ├── lib/        # API client, hooks, utilities
 │   │   ├── i18n/       # Internationalization
-│   │   ├── router/     # Vue Router
-│   │   ├── stores/     # Pinia stores
-│   │   └── views/      # Page components
-│   └── ...
+│   │   └── stores/     # Zustand stores
+│   └── e2e/            # Playwright E2E tests
 ├── docs/               # Documentation
 └── configs/            # Configuration files
 ```
@@ -157,6 +154,9 @@ make api-test-unit
 # Run only web tests
 make web-test
 
+# Run E2E tests
+make web-test-e2e
+
 # Run with coverage
 make api-test-coverage
 make web-test-coverage
@@ -171,7 +171,7 @@ make web-test-coverage
 ## Code Style
 
 - **Go**: Uses `golangci-lint` with project configuration
-- **TypeScript/Vue**: Uses ESLint, Prettier, and Stylelint
+- **TypeScript/React**: Uses ESLint and Prettier
 - **Commits**: Follow [Conventional Commits](https://www.conventionalcommits.org/)
 
 Pre-commit hooks enforce these standards automatically.
