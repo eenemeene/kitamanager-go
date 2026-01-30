@@ -38,7 +38,14 @@ const (
 	ActionDelete = "delete"
 )
 
-// Enforcer wraps casbin.Enforcer with convenience methods.
+// Enforcer wraps casbin.Enforcer for role-permission policy management.
+//
+// This enforcer is used for:
+// - Storing role -> permission mappings (e.g., "admin can create employees")
+// - Storing superadmin assignments (user -> superadmin role)
+//
+// Note: Regular user -> role assignments are stored in the database (UserGroup table),
+// not in Casbin. See PermissionService for the complete authorization flow.
 type Enforcer struct {
 	*casbin.Enforcer
 }
@@ -73,50 +80,15 @@ func NewEnforcerWithAdapter(adapter interface{}, modelPath string) (*Enforcer, e
 	return &Enforcer{Enforcer: e}, nil
 }
 
-// CheckPermission checks if a user has permission to perform an action on a resource in an organization.
-func (e *Enforcer) CheckPermission(userID uint, orgID uint, resource, action string) (bool, error) {
-	sub := fmt.Sprintf("user:%d", userID)
-	dom := fmt.Sprintf("org:%d", orgID)
-	return e.Enforce(sub, dom, resource, action)
-}
-
-// CheckPermissionAnyOrg checks if a user has permission in any organization (for superadmin).
-func (e *Enforcer) CheckPermissionAnyOrg(userID uint, resource, action string) (bool, error) {
-	sub := fmt.Sprintf("user:%d", userID)
-	return e.Enforce(sub, "*", resource, action)
-}
-
-// AssignRole assigns a role to a user in a specific organization.
-func (e *Enforcer) AssignRole(userID uint, role string, orgID uint) error {
-	sub := fmt.Sprintf("user:%d", userID)
-	dom := fmt.Sprintf("org:%d", orgID)
-
-	_, err := e.AddGroupingPolicy(sub, role, dom)
-	if err != nil {
-		return fmt.Errorf("failed to assign role: %w", err)
-	}
-	return nil
-}
-
 // AssignSuperAdmin assigns the superadmin role to a user (global, not org-scoped).
+// This is stored in Casbin because superadmin is a special case that bypasses
+// the normal database-based role assignment.
 func (e *Enforcer) AssignSuperAdmin(userID uint) error {
 	sub := fmt.Sprintf("user:%d", userID)
 
 	_, err := e.AddGroupingPolicy(sub, RoleSuperAdmin, "*")
 	if err != nil {
 		return fmt.Errorf("failed to assign superadmin role: %w", err)
-	}
-	return nil
-}
-
-// RemoveRole removes a role from a user in a specific organization.
-func (e *Enforcer) RemoveRole(userID uint, role string, orgID uint) error {
-	sub := fmt.Sprintf("user:%d", userID)
-	dom := fmt.Sprintf("org:%d", orgID)
-
-	_, err := e.RemoveGroupingPolicy(sub, role, dom)
-	if err != nil {
-		return fmt.Errorf("failed to remove role: %w", err)
 	}
 	return nil
 }
@@ -132,39 +104,11 @@ func (e *Enforcer) RemoveSuperAdmin(userID uint) error {
 	return nil
 }
 
-// GetUserRoles returns all roles a user has in a specific organization.
-func (e *Enforcer) GetUserRoles(userID uint, orgID uint) ([]string, error) {
-	sub := fmt.Sprintf("user:%d", userID)
-	dom := fmt.Sprintf("org:%d", orgID)
-
-	roles := e.GetRolesForUserInDomain(sub, dom)
-	return roles, nil
-}
-
-// GetUserRolesAllOrgs returns all role assignments for a user across all organizations.
-func (e *Enforcer) GetUserRolesAllOrgs(userID uint) ([][]string, error) {
-	sub := fmt.Sprintf("user:%d", userID)
-
-	// Get all grouping policies for this user
-	policies, _ := e.GetFilteredGroupingPolicy(0, sub)
-	return policies, nil
-}
-
-// IsSuperAdmin checks if a user is a superadmin.
-func (e *Enforcer) IsSuperAdmin(userID uint) (bool, error) {
-	sub := fmt.Sprintf("user:%d", userID)
-	roles := e.GetRolesForUserInDomain(sub, "*")
-
-	for _, role := range roles {
-		if role == RoleSuperAdmin {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 // SeedDefaultPolicies adds the default role-permission policies.
 // This should be called once during initial setup.
+//
+// These policies define what each role can do. The actual user -> role
+// assignments are managed separately (superadmin in Casbin, others in database).
 func (e *Enforcer) SeedDefaultPolicies() error {
 	policies := [][]string{
 		// Superadmin - full access to everything (domain "*" = all orgs)
@@ -292,8 +236,91 @@ func (e *Enforcer) ClearAllPolicies() error {
 	return e.SavePolicy()
 }
 
-// HasPermissionInAnyOrg checks if a user has permission to perform an action on a resource
-// in any of their assigned organizations. This is used for global resources like users and groups.
+// =============================================================================
+// Testing and Policy Verification Methods
+// =============================================================================
+//
+// The following methods are used for:
+// - Unit testing Casbin policy definitions
+// - Verifying role-permission mappings work correctly
+// - Integration tests that need direct Casbin access
+//
+// IMPORTANT: These methods are NOT used in production. The production
+// authorization flow uses PermissionService, which:
+// 1. Gets user roles from the database (UserGroup table)
+// 2. Uses Casbin only for role -> permission checks
+//
+// See PermissionService.CheckPermission() for the production implementation.
+// =============================================================================
+
+// IsSuperAdmin checks if a user has the superadmin role in Casbin.
+// Used for testing. Production code uses PermissionService.IsSuperAdmin().
+func (e *Enforcer) IsSuperAdmin(userID uint) (bool, error) {
+	sub := fmt.Sprintf("user:%d", userID)
+	roles := e.GetRolesForUserInDomain(sub, "*")
+
+	for _, role := range roles {
+		if role == RoleSuperAdmin {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// CheckPermission checks if a user has permission via Casbin grouping policies.
+// Used for testing. Production code uses PermissionService.CheckPermission().
+func (e *Enforcer) CheckPermission(userID uint, orgID uint, resource, action string) (bool, error) {
+	sub := fmt.Sprintf("user:%d", userID)
+	dom := fmt.Sprintf("org:%d", orgID)
+	return e.Enforce(sub, dom, resource, action)
+}
+
+// AssignRole assigns a role to a user in Casbin (for testing).
+// Production code assigns roles via the UserGroup database table.
+func (e *Enforcer) AssignRole(userID uint, role string, orgID uint) error {
+	sub := fmt.Sprintf("user:%d", userID)
+	dom := fmt.Sprintf("org:%d", orgID)
+
+	_, err := e.AddGroupingPolicy(sub, role, dom)
+	if err != nil {
+		return fmt.Errorf("failed to assign role: %w", err)
+	}
+	return nil
+}
+
+// RemoveRole removes a role from a user in Casbin (for testing).
+// Production code removes roles via the UserGroup database table.
+func (e *Enforcer) RemoveRole(userID uint, role string, orgID uint) error {
+	sub := fmt.Sprintf("user:%d", userID)
+	dom := fmt.Sprintf("org:%d", orgID)
+
+	_, err := e.RemoveGroupingPolicy(sub, role, dom)
+	if err != nil {
+		return fmt.Errorf("failed to remove role: %w", err)
+	}
+	return nil
+}
+
+// GetUserRoles returns all roles a user has in a specific organization (for testing).
+// Production code uses PermissionService.GetUserRoles().
+func (e *Enforcer) GetUserRoles(userID uint, orgID uint) ([]string, error) {
+	sub := fmt.Sprintf("user:%d", userID)
+	dom := fmt.Sprintf("org:%d", orgID)
+
+	roles := e.GetRolesForUserInDomain(sub, dom)
+	return roles, nil
+}
+
+// GetUserRolesAllOrgs returns all role assignments for a user across all organizations (for testing).
+func (e *Enforcer) GetUserRolesAllOrgs(userID uint) ([][]string, error) {
+	sub := fmt.Sprintf("user:%d", userID)
+
+	policies, _ := e.GetFilteredGroupingPolicy(0, sub)
+	return policies, nil
+}
+
+// HasPermissionInAnyOrg checks if a user has permission in any of their Casbin-assigned organizations.
+// Used for testing. Production code uses PermissionService.HasPermissionInAnyOrg().
 func (e *Enforcer) HasPermissionInAnyOrg(userID uint, resource, action string) (bool, error) {
 	// First check if superadmin
 	isSuperAdmin, err := e.IsSuperAdmin(userID)
@@ -313,13 +340,11 @@ func (e *Enforcer) HasPermissionInAnyOrg(userID uint, resource, action string) (
 	// Check permission in each org the user has a role in
 	for _, policy := range policies {
 		if len(policy) >= 3 {
-			// policy[2] is the domain (e.g., "org:1")
 			dom := policy[2]
 			if dom == "*" {
-				continue // Skip global assignments, already handled by superadmin check
+				continue
 			}
 
-			// Extract org ID from domain string
 			var orgID uint
 			_, err := fmt.Sscanf(dom, "org:%d", &orgID)
 			if err != nil {
@@ -339,9 +364,9 @@ func (e *Enforcer) HasPermissionInAnyOrg(userID uint, resource, action string) (
 	return false, nil
 }
 
-// HasAnyRole checks if a user has any role (admin or manager) in any organization.
+// HasAnyRole checks if a user has any role in any organization (for testing).
+// Production code uses PermissionService.HasAnyRole().
 func (e *Enforcer) HasAnyRole(userID uint) (bool, error) {
-	// Check if superadmin
 	isSuperAdmin, err := e.IsSuperAdmin(userID)
 	if err != nil {
 		return false, err
@@ -350,7 +375,6 @@ func (e *Enforcer) HasAnyRole(userID uint) (bool, error) {
 		return true, nil
 	}
 
-	// Get all role assignments
 	policies, err := e.GetUserRolesAllOrgs(userID)
 	if err != nil {
 		return false, err
