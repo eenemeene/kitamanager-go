@@ -151,6 +151,18 @@ type GovernmentFundingStorer interface {
 	DeleteProperty(id uint) error
 }
 
+// AttendanceStorer defines the interface for attendance storage operations
+type AttendanceStorer interface {
+	FindByID(id uint) (*models.Attendance, error)
+	FindByOrganizationAndDate(orgID uint, date time.Time, limit, offset int) ([]models.Attendance, int64, error)
+	FindByChildAndDate(childID uint, date time.Time) (*models.Attendance, error)
+	FindByChildAndDateRange(childID uint, from, to time.Time, limit, offset int) ([]models.Attendance, int64, error)
+	Create(attendance *models.Attendance) error
+	Update(attendance *models.Attendance) error
+	Delete(id uint) error
+	GetDailySummary(orgID uint, date time.Time) (*models.DailyAttendanceSummaryResponse, error)
+}
+
 // Compile-time interface compliance checks
 var (
 	_ UserStorer              = (*UserStore)(nil)
@@ -161,4 +173,5 @@ var (
 	_ UserGroupStorer         = (*UserGroupStore)(nil)
 	_ GovernmentFundingStorer = (*GovernmentFundingStore)(nil)
 	_ SectionStorer           = (*SectionStore)(nil)
+	_ AttendanceStorer        = (*AttendanceStore)(nil)
 )

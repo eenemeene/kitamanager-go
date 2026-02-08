@@ -19,6 +19,7 @@ func Setup(
 	childHandler *handlers.ChildHandler,
 	governmentFundingHandler *handlers.GovernmentFundingHandler,
 	payPlanHandler *handlers.PayPlanHandler,
+	attendanceHandler *handlers.AttendanceHandler,
 	authMiddleware *middleware.AuthMiddleware,
 	authzMiddleware *middleware.AuthorizationMiddleware,
 	csrfMiddleware *middleware.CSRFMiddleware,
@@ -339,6 +340,46 @@ func Setup(
 					payplans.DELETE("/:id/periods/:periodId/entries/:entryId",
 						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionDelete),
 						payPlanHandler.DeleteEntry)
+				}
+
+				// ============================================================
+				// Attendance tracking (org-scoped)
+				// ============================================================
+				attendance := orgScoped.Group("/attendance")
+				{
+					// Summary must come before /:id to avoid conflict
+					attendance.GET("/summary",
+						authzMiddleware.RequirePermission(rbac.ResourceAttendance, rbac.ActionRead),
+						attendanceHandler.GetDailySummary)
+
+					// Check-in and absence must come before /:id to avoid conflict
+					attendance.POST("/check-in",
+						authzMiddleware.RequirePermission(rbac.ResourceAttendance, rbac.ActionCreate),
+						attendanceHandler.CheckIn)
+					attendance.POST("/absent",
+						authzMiddleware.RequirePermission(rbac.ResourceAttendance, rbac.ActionCreate),
+						attendanceHandler.MarkAbsent)
+
+					// Child-specific attendance
+					attendance.GET("/child/:childId",
+						authzMiddleware.RequirePermission(rbac.ResourceAttendance, rbac.ActionRead),
+						attendanceHandler.ListByChild)
+
+					attendance.GET("",
+						authzMiddleware.RequirePermission(rbac.ResourceAttendance, rbac.ActionRead),
+						attendanceHandler.ListByDate)
+					attendance.GET("/:id",
+						authzMiddleware.RequirePermission(rbac.ResourceAttendance, rbac.ActionRead),
+						attendanceHandler.Get)
+					attendance.PUT("/:id",
+						authzMiddleware.RequirePermission(rbac.ResourceAttendance, rbac.ActionUpdate),
+						attendanceHandler.Update)
+					attendance.PUT("/:id/check-out",
+						authzMiddleware.RequirePermission(rbac.ResourceAttendance, rbac.ActionUpdate),
+						attendanceHandler.CheckOut)
+					attendance.DELETE("/:id",
+						authzMiddleware.RequirePermission(rbac.ResourceAttendance, rbac.ActionDelete),
+						attendanceHandler.Delete)
 				}
 			}
 
