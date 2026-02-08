@@ -19,6 +19,7 @@ func Setup(
 	childHandler *handlers.ChildHandler,
 	governmentFundingHandler *handlers.GovernmentFundingHandler,
 	payPlanHandler *handlers.PayPlanHandler,
+	waitlistHandler *handlers.WaitlistHandler,
 	authMiddleware *middleware.AuthMiddleware,
 	authzMiddleware *middleware.AuthorizationMiddleware,
 	csrfMiddleware *middleware.CSRFMiddleware,
@@ -339,6 +340,29 @@ func Setup(
 					payplans.DELETE("/:id/periods/:periodId/entries/:entryId",
 						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionDelete),
 						payPlanHandler.DeleteEntry)
+				}
+			}
+
+				// ============================================================
+				// Waitlist management (org-scoped)
+				// ============================================================
+				waitlist := orgScoped.Group("/waitlist")
+				{
+					waitlist.GET("",
+						authzMiddleware.RequirePermission(rbac.ResourceWaitlist, rbac.ActionRead),
+						waitlistHandler.List)
+					waitlist.GET("/:id",
+						authzMiddleware.RequirePermission(rbac.ResourceWaitlist, rbac.ActionRead),
+						waitlistHandler.Get)
+					waitlist.POST("",
+						authzMiddleware.RequirePermission(rbac.ResourceWaitlist, rbac.ActionCreate),
+						waitlistHandler.Create)
+					waitlist.PUT("/:id",
+						authzMiddleware.RequirePermission(rbac.ResourceWaitlist, rbac.ActionUpdate),
+						waitlistHandler.Update)
+					waitlist.DELETE("/:id",
+						authzMiddleware.RequirePermission(rbac.ResourceWaitlist, rbac.ActionDelete),
+						waitlistHandler.Delete)
 				}
 			}
 

@@ -94,6 +94,7 @@ func main() {
 	userGroupStore := store.NewUserGroupStore(db)
 	governmentFundingStore := store.NewGovernmentFundingStore(db)
 	payPlanStore := store.NewPayPlanStore(db)
+	waitlistStore := store.NewWaitlistStore(db)
 	auditStore := store.NewAuditStore(db)
 
 	// Seed admin user if configured
@@ -128,6 +129,7 @@ func main() {
 	childService := service.NewChildService(childStore, orgStore, governmentFundingStore)
 	governmentFundingService := service.NewGovernmentFundingService(governmentFundingStore)
 	payPlanService := service.NewPayPlanService(payPlanStore)
+	waitlistService := service.NewWaitlistService(waitlistStore)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(userStore, cfg.JWTSecret, auditService)
@@ -139,6 +141,7 @@ func main() {
 	childHandler := handlers.NewChildHandler(childService, auditService)
 	governmentFundingHandler := handlers.NewGovernmentFundingHandler(governmentFundingService)
 	payPlanHandler := handlers.NewPayPlanHandler(payPlanService)
+	waitlistHandler := handlers.NewWaitlistHandler(waitlistService)
 	healthHandler := handlers.NewHealthHandler(db)
 
 	// Initialize middleware
@@ -174,7 +177,7 @@ func main() {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Setup API routes
-	routes.Setup(r, authHandler, userHandler, groupHandler, sectionHandler, orgHandler, employeeHandler, childHandler, governmentFundingHandler, payPlanHandler, authMiddleware, authzMiddleware, csrfMiddleware, loginRateLimiter)
+	routes.Setup(r, authHandler, userHandler, groupHandler, sectionHandler, orgHandler, employeeHandler, childHandler, governmentFundingHandler, payPlanHandler, waitlistHandler, authMiddleware, authzMiddleware, csrfMiddleware, loginRateLimiter)
 
 	// Register embedded web UI
 	if err := web.RegisterHandlers(r); err != nil {

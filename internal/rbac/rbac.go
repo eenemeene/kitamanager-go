@@ -28,6 +28,7 @@ const (
 	ResourceSections          = "sections"
 	ResourceFundings          = "fundings"
 	ResourcePayPlans          = "payplans"
+	ResourceWaitlist          = "waitlist"
 )
 
 // Actions
@@ -152,6 +153,10 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleSuperAdmin, "*", ResourcePayPlans, ActionRead},
 		{RoleSuperAdmin, "*", ResourcePayPlans, ActionUpdate},
 		{RoleSuperAdmin, "*", ResourcePayPlans, ActionDelete},
+		{RoleSuperAdmin, "*", ResourceWaitlist, ActionCreate},
+		{RoleSuperAdmin, "*", ResourceWaitlist, ActionRead},
+		{RoleSuperAdmin, "*", ResourceWaitlist, ActionUpdate},
+		{RoleSuperAdmin, "*", ResourceWaitlist, ActionDelete},
 
 		// Admin - full access within their organization (domain is checked at runtime)
 		{RoleAdmin, "*", ResourceOrganizations, ActionRead},
@@ -188,6 +193,10 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleAdmin, "*", ResourcePayPlans, ActionRead},
 		{RoleAdmin, "*", ResourcePayPlans, ActionUpdate},
 		{RoleAdmin, "*", ResourcePayPlans, ActionDelete},
+		{RoleAdmin, "*", ResourceWaitlist, ActionCreate},
+		{RoleAdmin, "*", ResourceWaitlist, ActionRead},
+		{RoleAdmin, "*", ResourceWaitlist, ActionUpdate},
+		{RoleAdmin, "*", ResourceWaitlist, ActionDelete},
 
 		// Manager - manage employees, children, contracts; read-only for users/groups
 		{RoleManager, "*", ResourceOrganizations, ActionRead},
@@ -211,6 +220,10 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleManager, "*", ResourceGroups, ActionRead},
 		{RoleManager, "*", ResourceSections, ActionRead},
 		{RoleManager, "*", ResourcePayPlans, ActionRead},
+		{RoleManager, "*", ResourceWaitlist, ActionCreate},
+		{RoleManager, "*", ResourceWaitlist, ActionRead},
+		{RoleManager, "*", ResourceWaitlist, ActionUpdate},
+		{RoleManager, "*", ResourceWaitlist, ActionDelete},
 
 		// Member - read-only access to employees, children, contracts in their org
 		{RoleMember, "*", ResourceOrganizations, ActionRead},
@@ -220,6 +233,7 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleMember, "*", ResourceChildContracts, ActionRead},
 		{RoleMember, "*", ResourceSections, ActionRead},
 		{RoleMember, "*", ResourcePayPlans, ActionRead},
+		{RoleMember, "*", ResourceWaitlist, ActionRead},
 	}
 
 	_, err := e.AddPolicies(policies)

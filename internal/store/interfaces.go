@@ -151,6 +151,17 @@ type GovernmentFundingStorer interface {
 	DeleteProperty(id uint) error
 }
 
+// WaitlistStorer defines the interface for waitlist storage operations
+type WaitlistStorer interface {
+	FindByID(id uint) (*models.WaitlistEntry, error)
+	FindByOrganization(orgID uint, limit, offset int) ([]models.WaitlistEntry, int64, error)
+	FindByOrganizationAndStatus(orgID uint, status string, limit, offset int) ([]models.WaitlistEntry, int64, error)
+	Create(entry *models.WaitlistEntry) error
+	Update(entry *models.WaitlistEntry) error
+	Delete(id uint) error
+	CountByOrganizationAndStatus(orgID uint, status string) (int64, error)
+}
+
 // Compile-time interface compliance checks
 var (
 	_ UserStorer              = (*UserStore)(nil)
@@ -161,4 +172,5 @@ var (
 	_ UserGroupStorer         = (*UserGroupStore)(nil)
 	_ GovernmentFundingStorer = (*GovernmentFundingStore)(nil)
 	_ SectionStorer           = (*SectionStore)(nil)
+	_ WaitlistStorer          = (*WaitlistStore)(nil)
 )
