@@ -151,6 +151,16 @@ type GovernmentFundingStorer interface {
 	DeleteProperty(id uint) error
 }
 
+// ChildNoteStorer defines the interface for child note storage operations
+type ChildNoteStorer interface {
+	FindByID(id uint) (*models.ChildNote, error)
+	FindByChild(childID uint, limit, offset int) ([]models.ChildNote, int64, error)
+	FindByChildAndCategory(childID uint, category string, limit, offset int) ([]models.ChildNote, int64, error)
+	Create(note *models.ChildNote) error
+	Update(note *models.ChildNote) error
+	Delete(id uint) error
+}
+
 // Compile-time interface compliance checks
 var (
 	_ UserStorer              = (*UserStore)(nil)
@@ -161,4 +171,5 @@ var (
 	_ UserGroupStorer         = (*UserGroupStore)(nil)
 	_ GovernmentFundingStorer = (*GovernmentFundingStore)(nil)
 	_ SectionStorer           = (*SectionStore)(nil)
+	_ ChildNoteStorer         = (*ChildNoteStore)(nil)
 )

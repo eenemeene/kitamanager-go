@@ -19,6 +19,7 @@ func Setup(
 	childHandler *handlers.ChildHandler,
 	governmentFundingHandler *handlers.GovernmentFundingHandler,
 	payPlanHandler *handlers.PayPlanHandler,
+	childNoteHandler *handlers.ChildNoteHandler,
 	authMiddleware *middleware.AuthMiddleware,
 	authzMiddleware *middleware.AuthorizationMiddleware,
 	csrfMiddleware *middleware.CSRFMiddleware,
@@ -289,6 +290,23 @@ func Setup(
 					children.DELETE("/:id/contracts/:contractId",
 						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionDelete),
 						childHandler.DeleteContract)
+
+					// Child notes
+					children.GET("/:id/notes",
+						authzMiddleware.RequirePermission(rbac.ResourceChildNotes, rbac.ActionRead),
+						childNoteHandler.List)
+					children.GET("/:id/notes/:noteId",
+						authzMiddleware.RequirePermission(rbac.ResourceChildNotes, rbac.ActionRead),
+						childNoteHandler.Get)
+					children.POST("/:id/notes",
+						authzMiddleware.RequirePermission(rbac.ResourceChildNotes, rbac.ActionCreate),
+						childNoteHandler.Create)
+					children.PUT("/:id/notes/:noteId",
+						authzMiddleware.RequirePermission(rbac.ResourceChildNotes, rbac.ActionUpdate),
+						childNoteHandler.Update)
+					children.DELETE("/:id/notes/:noteId",
+						authzMiddleware.RequirePermission(rbac.ResourceChildNotes, rbac.ActionDelete),
+						childNoteHandler.Delete)
 				}
 
 				// ============================================================

@@ -28,6 +28,7 @@ const (
 	ResourceSections          = "sections"
 	ResourceFundings          = "fundings"
 	ResourcePayPlans          = "payplans"
+	ResourceChildNotes        = "child_notes"
 )
 
 // Actions
@@ -152,6 +153,10 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleSuperAdmin, "*", ResourcePayPlans, ActionRead},
 		{RoleSuperAdmin, "*", ResourcePayPlans, ActionUpdate},
 		{RoleSuperAdmin, "*", ResourcePayPlans, ActionDelete},
+		{RoleSuperAdmin, "*", ResourceChildNotes, ActionCreate},
+		{RoleSuperAdmin, "*", ResourceChildNotes, ActionRead},
+		{RoleSuperAdmin, "*", ResourceChildNotes, ActionUpdate},
+		{RoleSuperAdmin, "*", ResourceChildNotes, ActionDelete},
 
 		// Admin - full access within their organization (domain is checked at runtime)
 		{RoleAdmin, "*", ResourceOrganizations, ActionRead},
@@ -188,6 +193,10 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleAdmin, "*", ResourcePayPlans, ActionRead},
 		{RoleAdmin, "*", ResourcePayPlans, ActionUpdate},
 		{RoleAdmin, "*", ResourcePayPlans, ActionDelete},
+		{RoleAdmin, "*", ResourceChildNotes, ActionCreate},
+		{RoleAdmin, "*", ResourceChildNotes, ActionRead},
+		{RoleAdmin, "*", ResourceChildNotes, ActionUpdate},
+		{RoleAdmin, "*", ResourceChildNotes, ActionDelete},
 
 		// Manager - manage employees, children, contracts; read-only for users/groups
 		{RoleManager, "*", ResourceOrganizations, ActionRead},
@@ -211,6 +220,10 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleManager, "*", ResourceGroups, ActionRead},
 		{RoleManager, "*", ResourceSections, ActionRead},
 		{RoleManager, "*", ResourcePayPlans, ActionRead},
+		{RoleManager, "*", ResourceChildNotes, ActionCreate},
+		{RoleManager, "*", ResourceChildNotes, ActionRead},
+		{RoleManager, "*", ResourceChildNotes, ActionUpdate},
+		{RoleManager, "*", ResourceChildNotes, ActionDelete},
 
 		// Member - read-only access to employees, children, contracts in their org
 		{RoleMember, "*", ResourceOrganizations, ActionRead},
@@ -220,6 +233,7 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleMember, "*", ResourceChildContracts, ActionRead},
 		{RoleMember, "*", ResourceSections, ActionRead},
 		{RoleMember, "*", ResourcePayPlans, ActionRead},
+		{RoleMember, "*", ResourceChildNotes, ActionRead},
 	}
 
 	_, err := e.AddPolicies(policies)
