@@ -25,10 +25,6 @@ languages:
           name: Features
           pageRef: /features
           weight: 2
-        - identifier: screenshots
-          name: Screenshots
-          pageRef: /screenshots
-          weight: 3
         - identifier: github
           name: GitHub
           url: https://github.com/toabctl/kitamanager-go
@@ -50,10 +46,6 @@ languages:
           name: Funktionen
           pageRef: /features
           weight: 2
-        - identifier: screenshots
-          name: Bildschirmfotos
-          pageRef: /screenshots
-          weight: 3
         - identifier: github
           name: GitHub
           url: https://github.com/toabctl/kitamanager-go

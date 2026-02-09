@@ -1,0 +1,4 @@
+no_progress = true
+exclude = [
+  "https://github.com/toabctl/kitamanager-go/edit/.*",
+]
