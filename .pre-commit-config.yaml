@@ -95,3 +95,10 @@ repos:
         language: system
         files: ^frontend/.*\.(tsx?|jsx?)$
         pass_filenames: false
+
+      - id: website-build
+        name: website hugo build
+        entry: bash -c 'cd website && hugo --minify'
+        language: system
+        files: ^website/
+        pass_filenames: false
