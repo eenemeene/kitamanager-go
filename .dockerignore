@@ -1,0 +1,26 @@
+# Website (Hugo static site)
+website
+
+# Git
+.git
+.gitmodules
+.gitignore
+
+# IDE
+.vscode
+.idea
+
+# Test artifacts
+coverage.out
+coverage.html
+
+# Frontend build artifacts
+frontend/node_modules
+frontend/.next
+frontend/out
+
+# Misc
+.env
+.env.*
+*.log
+tmp
