@@ -11,7 +11,7 @@
  * Or from the repo root:
  *   cd frontend && npx tsx ../website/scripts/capture-screenshots.ts
  */
-import { chromium, type Browser, type Page, type BrowserContext } from 'playwright';
+import { chromium, type Browser, type Page, type BrowserContext } from 'playwright-core';
 import * as path from 'path';
 import * as fs from 'fs';
 
