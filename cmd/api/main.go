@@ -25,6 +25,7 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/seed"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 	"github.com/eenemeene/kitamanager-go/internal/store"
+	"github.com/eenemeene/kitamanager-go/internal/version"
 	"github.com/eenemeene/kitamanager-go/internal/web"
 )
 
@@ -58,7 +59,12 @@ func main() {
 	// Setup structured logging
 	setupLogging(cfg)
 
-	slog.Info("Starting KitaManager API", "port", cfg.ServerPort)
+	slog.Info("Starting KitaManager API",
+		"version", version.Version(),
+		"commit", version.GitCommit,
+		"built", version.BuildTime,
+		"port", cfg.ServerPort,
+	)
 
 	// Connect to database
 	db, err := database.Connect(cfg)

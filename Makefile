@@ -4,6 +4,14 @@
 	docs schema-docs swagger-docs docker-up docker-down docker-rebuild docker-reset install-hooks uninstall-hooks pre-commit
 
 # =============================================================================
+# Version info
+# =============================================================================
+GIT_COMMIT := $(shell git rev-parse HEAD 2>/dev/null || echo "unknown")
+BUILD_TIME := $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
+VERSION_PKG := github.com/eenemeene/kitamanager-go/internal/version
+LDFLAGS := -ldflags "-X $(VERSION_PKG).GitCommit=$(GIT_COMMIT) -X $(VERSION_PKG).BuildTime=$(BUILD_TIME)"
+
+# =============================================================================
 # Combined targets (web + api)
 # =============================================================================
 
@@ -73,7 +81,7 @@ dev:
 
 # Build the API application
 api-build:
-	go build -o bin/kitamanager-api ./cmd/api
+	go build $(LDFLAGS) -o bin/kitamanager-api ./cmd/api
 
 # Run the API application locally
 api-run:

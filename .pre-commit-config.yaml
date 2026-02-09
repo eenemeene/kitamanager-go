@@ -49,9 +49,16 @@ repos:
 
       - id: go-build
         name: go build
-        entry: go build -o /dev/null ./cmd/api
+        entry: make api-build
         language: system
         types: [go]
+        pass_filenames: false
+
+      - id: goreleaser-check
+        name: goreleaser check
+        entry: bash -c 'if command -v goreleaser >/dev/null 2>&1; then goreleaser check; else echo "goreleaser not installed, skipping (validated in CI)"; fi'
+        language: system
+        files: (\.goreleaser\.yaml|go\.mod|cmd/|internal/)
         pass_filenames: false
 
       - id: govulncheck

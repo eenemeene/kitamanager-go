@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/eenemeene/kitamanager-go/internal/models"
+	"github.com/eenemeene/kitamanager-go/internal/version"
 )
 
 // HealthHandler handles health check requests.
@@ -52,7 +53,7 @@ func (h *HealthHandler) Check(c *gin.Context) {
 
 	c.JSON(statusCode, models.HealthResponse{
 		Status:   status,
-		Version:  "1.0.0",
+		Version:  version.Version(),
 		Services: services,
 	})
 }

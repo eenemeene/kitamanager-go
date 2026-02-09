@@ -32,8 +32,8 @@ func TestHealthHandler_Check(t *testing.T) {
 		if response.Services["database"] != "healthy" {
 			t.Errorf("expected database service 'healthy', got '%s'", response.Services["database"])
 		}
-		if response.Version != "1.0.0" {
-			t.Errorf("expected version '1.0.0', got '%s'", response.Version)
+		if response.Version == "" {
+			t.Error("expected version to be non-empty")
 		}
 	})
 }
