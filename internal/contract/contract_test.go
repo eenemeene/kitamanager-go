@@ -196,6 +196,8 @@ func cleanupBetweenTests() {
 	}
 	user.ID = 1
 	testDB.Create(user)
+	// Reset the sequence so the next auto-generated ID is 2, not 1
+	testDB.Exec("SELECT setval(pg_get_serial_sequence('users', 'id'), (SELECT MAX(id) FROM users))")
 }
 
 // validateResponse validates an HTTP response against the OpenAPI spec

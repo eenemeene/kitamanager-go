@@ -404,4 +404,3 @@ func (s *EmployeeService) UpdateContract(ctx context.Context, contractID, employ
 	resp := contract.ToResponse()
 	return &resp, nil
 }
-

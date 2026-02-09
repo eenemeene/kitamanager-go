@@ -153,23 +153,6 @@ func parseOrgResourceAndContractID(c *gin.Context, resourceParam string) (uint, 
 	return orgID, resourceID, contractID, true
 }
 
-// parseOrgResourceContractAndPropertyID parses orgId, resource ID, contractId, and propId from URL parameters.
-// Returns (orgID, resourceID, contractID, propID, ok). If ok is false, error response has been sent.
-func parseOrgResourceContractAndPropertyID(c *gin.Context, resourceParam string) (uint, uint, uint, uint, bool) {
-	orgID, resourceID, contractID, ok := parseOrgResourceAndContractID(c, resourceParam)
-	if !ok {
-		return 0, 0, 0, 0, false
-	}
-
-	propID, err := parseID(c, "propId")
-	if err != nil {
-		respondError(c, err)
-		return 0, 0, 0, 0, false
-	}
-
-	return orgID, resourceID, contractID, propID, true
-}
-
 // respondError sends consistent structured error response
 func respondError(c *gin.Context, err error) {
 	httpCode := apperror.HTTPStatus(err)

@@ -71,4 +71,3 @@ func CalculateAgeOnDate(birthdate, referenceDate time.Time) int {
 	}
 	return years
 }
-
