@@ -1,0 +1,81 @@
+baseURL: https://kitamanager.example.org/
+title: KitaManager Go
+theme: hextra
+
+defaultContentLanguage: en
+defaultContentLanguageInSubdir: true
+
+enableRobotsTXT: true
+enableGitInfo: true
+
+languages:
+  en:
+    languageName: English
+    weight: 1
+    params:
+      description: Modern kindergarten management software built with Go and Next.js
+    menu:
+      main:
+        - identifier: documentation
+          name: Documentation
+          pageRef: /docs
+          weight: 1
+        - identifier: features
+          name: Features
+          pageRef: /features
+          weight: 2
+        - identifier: screenshots
+          name: Screenshots
+          pageRef: /screenshots
+          weight: 3
+        - identifier: github
+          name: GitHub
+          url: https://github.com/toabctl/kitamanager-go
+          weight: 4
+
+  de:
+    languageName: Deutsch
+    weight: 2
+    params:
+      description: Moderne Kita-Verwaltungssoftware mit Go und Next.js
+    menu:
+      main:
+        - identifier: documentation
+          name: Dokumentation
+          pageRef: /docs
+          weight: 1
+        - identifier: features
+          name: Funktionen
+          pageRef: /features
+          weight: 2
+        - identifier: screenshots
+          name: Bildschirmfotos
+          pageRef: /screenshots
+          weight: 3
+        - identifier: github
+          name: GitHub
+          url: https://github.com/toabctl/kitamanager-go
+          weight: 4
+
+params:
+  navbar:
+    displayTitle: true
+    displayLogo: false
+
+  page:
+    width: wide
+
+  footer:
+    displayCopyright: true
+    displayPoweredBy: true
+
+  editURL:
+    enable: true
+    base: https://github.com/toabctl/kitamanager-go/edit/main/website/content
+
+markup:
+  goldmark:
+    renderer:
+      unsafe: true
+  highlight:
+    noClasses: false
