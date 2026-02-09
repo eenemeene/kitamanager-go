@@ -12,6 +12,7 @@ languages:
   en:
     languageName: English
     weight: 1
+    contentDir: content/en
     params:
       description: Modern kindergarten management software built with Go and Next.js
     menu:
@@ -36,6 +37,7 @@ languages:
   de:
     languageName: Deutsch
     weight: 2
+    contentDir: content/de
     params:
       description: Moderne Kita-Verwaltungssoftware mit Go und Next.js
     menu:
