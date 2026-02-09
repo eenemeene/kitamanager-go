@@ -28,7 +28,7 @@ func randInt(n int) int {
 //
 //nolint:gosec // G404: math/rand is fine for test data generation
 func randomGender() string {
-	r := rand.Intn(100)
+	r := rand.Intn(100) // #nosec G404
 	if r < 49 {
 		return string(models.GenderMale)
 	} else if r < 98 {

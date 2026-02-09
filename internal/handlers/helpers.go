@@ -129,16 +129,16 @@ func parseOptionalUint(c *gin.Context, param string) (*uint, bool) {
 	return &result, true
 }
 
-// parseOrgResourceAndContractID parses orgId, a resource ID, and contractId from URL parameters.
+// parseOrgResourceAndContractID parses orgId, resource "id", and contractId from URL parameters.
 // Returns (orgID, resourceID, contractID, ok). If ok is false, error response has been sent.
-func parseOrgResourceAndContractID(c *gin.Context, resourceParam string) (uint, uint, uint, bool) {
+func parseOrgResourceAndContractID(c *gin.Context) (uint, uint, uint, bool) {
 	orgID, err := parseID(c, "orgId")
 	if err != nil {
 		respondError(c, err)
 		return 0, 0, 0, false
 	}
 
-	resourceID, err := parseID(c, resourceParam)
+	resourceID, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
 		return 0, 0, 0, false

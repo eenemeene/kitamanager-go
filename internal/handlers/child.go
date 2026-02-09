@@ -293,7 +293,7 @@ func (h *ChildHandler) GetCurrentContract(c *gin.Context) {
 // @Failure 404 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/children/{id}/contracts/{contractId} [get]
 func (h *ChildHandler) GetContract(c *gin.Context) {
-	orgID, childID, contractID, ok := parseOrgResourceAndContractID(c, "id")
+	orgID, childID, contractID, ok := parseOrgResourceAndContractID(c)
 	if !ok {
 		return
 	}
@@ -374,7 +374,7 @@ func (h *ChildHandler) CreateContract(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/children/{id}/contracts/{contractId} [put]
 func (h *ChildHandler) UpdateContract(c *gin.Context) {
-	orgID, childID, contractID, ok := parseOrgResourceAndContractID(c, "id")
+	orgID, childID, contractID, ok := parseOrgResourceAndContractID(c)
 	if !ok {
 		return
 	}
@@ -410,7 +410,7 @@ func (h *ChildHandler) UpdateContract(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/children/{id}/contracts/{contractId} [delete]
 func (h *ChildHandler) DeleteContract(c *gin.Context) {
-	orgID, childID, contractID, ok := parseOrgResourceAndContractID(c, "id")
+	orgID, childID, contractID, ok := parseOrgResourceAndContractID(c)
 	if !ok {
 		return
 	}

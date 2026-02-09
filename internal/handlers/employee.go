@@ -339,7 +339,7 @@ func (h *EmployeeHandler) CreateContract(c *gin.Context) {
 // @Failure 404 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id}/contracts/{contractId} [get]
 func (h *EmployeeHandler) GetContract(c *gin.Context) {
-	orgID, employeeID, contractID, ok := parseOrgResourceAndContractID(c, "id")
+	orgID, employeeID, contractID, ok := parseOrgResourceAndContractID(c)
 	if !ok {
 		return
 	}
@@ -373,7 +373,7 @@ func (h *EmployeeHandler) GetContract(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id}/contracts/{contractId} [put]
 func (h *EmployeeHandler) UpdateContract(c *gin.Context) {
-	orgID, employeeID, contractID, ok := parseOrgResourceAndContractID(c, "id")
+	orgID, employeeID, contractID, ok := parseOrgResourceAndContractID(c)
 	if !ok {
 		return
 	}
@@ -409,7 +409,7 @@ func (h *EmployeeHandler) UpdateContract(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id}/contracts/{contractId} [delete]
 func (h *EmployeeHandler) DeleteContract(c *gin.Context) {
-	orgID, employeeID, contractID, ok := parseOrgResourceAndContractID(c, "id")
+	orgID, employeeID, contractID, ok := parseOrgResourceAndContractID(c)
 	if !ok {
 		return
 	}
