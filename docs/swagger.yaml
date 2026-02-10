@@ -96,6 +96,96 @@ definitions:
       updated_at:
         type: string
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ChildAttendanceCreateRequest:
+    properties:
+      check_in_time:
+        example: "2025-06-15T08:00:00Z"
+        type: string
+      date:
+        example: "2025-06-15"
+        type: string
+      note:
+        example: Arrived with father
+        type: string
+      status:
+        example: present
+        type: string
+    required:
+    - status
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ChildAttendanceDailySummaryResponse:
+    properties:
+      absent:
+        example: 2
+        type: integer
+      date:
+        example: "2025-06-15"
+        type: string
+      present:
+        example: 20
+        type: integer
+      sick:
+        example: 2
+        type: integer
+      total_children:
+        example: 25
+        type: integer
+      vacation:
+        example: 1
+        type: integer
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ChildAttendanceResponse:
+    properties:
+      check_in_time:
+        example: "2025-06-15T08:00:00Z"
+        type: string
+      check_out_time:
+        example: "2025-06-15T16:00:00Z"
+        type: string
+      child_id:
+        example: 1
+        type: integer
+      child_name:
+        example: Emma Schmidt
+        type: string
+      created_at:
+        type: string
+      date:
+        example: "2025-06-15"
+        type: string
+      id:
+        example: 1
+        type: integer
+      note:
+        example: Picked up early
+        type: string
+      organization_id:
+        example: 1
+        type: integer
+      recorded_by:
+        example: 1
+        type: integer
+      status:
+        example: present
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ChildAttendanceUpdateRequest:
+    properties:
+      check_in_time:
+        example: "2025-06-15T08:00:00Z"
+        type: string
+      check_out_time:
+        example: "2025-06-15T16:00:00Z"
+        type: string
+      note:
+        example: Updated note
+        type: string
+      status:
+        example: present
+        type: string
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildContract:
     properties:
       child_id:
@@ -926,6 +1016,27 @@ definitions:
       data:
         items:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Child'
+        type: array
+      limit:
+        example: 20
+        type: integer
+      page:
+        example: 1
+        type: integer
+      total:
+        example: 100
+        type: integer
+      total_pages:
+        example: 5
+        type: integer
+    type: object
+  ? github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_ChildAttendanceResponse
+  : properties:
+      _links:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginationLinks'
+      data:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildAttendanceResponse'
         type: array
       limit:
         example: 20
@@ -2635,6 +2746,270 @@ paths:
       summary: Update a child
       tags:
       - children
+  /api/v1/organizations/{orgId}/children/{id}/attendance:
+    get:
+      consumes:
+      - application/json
+      description: Get attendance records for a specific child in a date range
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Child ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: from
+        required: true
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: to
+        required: true
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        maximum: 100
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_ChildAttendanceResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List attendance records for a child
+      tags:
+      - child-attendance
+    post:
+      consumes:
+      - application/json
+      description: Create a new attendance record for a child (present, absent, sick,
+        or vacation)
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Child ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Attendance data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildAttendanceCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildAttendanceResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Child not found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "409":
+          description: Record already exists for this date
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create an attendance record
+      tags:
+      - child-attendance
+  /api/v1/organizations/{orgId}/children/{id}/attendance/{attendanceId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete an attendance record by ID for a specific child
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Child ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Attendance record ID
+        in: path
+        name: attendanceId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete an attendance record
+      tags:
+      - child-attendance
+    get:
+      consumes:
+      - application/json
+      description: Get a single attendance record by ID for a specific child
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Child ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Attendance record ID
+        in: path
+        name: attendanceId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildAttendanceResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get attendance record by ID
+      tags:
+      - child-attendance
+    put:
+      consumes:
+      - application/json
+      description: Update an existing attendance record for a specific child
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Child ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Attendance record ID
+        in: path
+        name: attendanceId
+        required: true
+        type: integer
+      - description: Update data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildAttendanceUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildAttendanceResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update an attendance record
+      tags:
+      - child-attendance
   /api/v1/organizations/{orgId}/children/{id}/contracts:
     get:
       consumes:
@@ -2940,6 +3315,96 @@ paths:
       summary: Get current child contract
       tags:
       - children
+  /api/v1/organizations/{orgId}/children/attendance:
+    get:
+      consumes:
+      - application/json
+      description: Get all attendance records for an organization on a given date
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Date (YYYY-MM-DD format, defaults to today)
+        in: query
+        name: date
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        maximum: 100
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_ChildAttendanceResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List attendance records by date
+      tags:
+      - child-attendance
+  /api/v1/organizations/{orgId}/children/attendance/summary:
+    get:
+      consumes:
+      - application/json
+      description: Get attendance summary (present, absent, sick, vacation counts)
+        for a date
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Date (YYYY-MM-DD format, defaults to today)
+        in: query
+        name: date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildAttendanceDailySummaryResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get daily attendance summary
+      tags:
+      - child-attendance
   /api/v1/organizations/{orgId}/children/funding:
     get:
       consumes:

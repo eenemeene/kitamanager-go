@@ -80,6 +80,23 @@ func getUserID(c *gin.Context) uint {
 	return id
 }
 
+// parseRequiredDate parses a required date query parameter.
+// Returns error if param is empty or invalid.
+// Returns (date, ok). If ok is false, error response has been sent.
+func parseRequiredDate(c *gin.Context, param string) (time.Time, bool) {
+	dateStr := c.Query(param)
+	if dateStr == "" {
+		respondError(c, apperror.BadRequest(param+" is required"))
+		return time.Time{}, false
+	}
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		respondError(c, apperror.BadRequest("invalid date format for "+param+", expected YYYY-MM-DD"))
+		return time.Time{}, false
+	}
+	return date, true
+}
+
 // parseOptionalDate parses an optional date query parameter.
 // Returns current time if param is empty, or parsed date if valid.
 // Returns (date, ok). If ok is false, error response has been sent.

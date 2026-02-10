@@ -224,3 +224,66 @@ await expect(page.getByText('Upcoming')).toBeVisible();
 await page.getByLabel(/Start Date/i).fill('2024-01-01');
 await expect(page.getByText(/fulltime/i)).toBeVisible();
 ```
+
+## REST API Conventions
+
+### Resource-Oriented Endpoints
+
+Use resource-oriented URLs. **Do NOT use RPC-style action verbs** in endpoint paths.
+
+```
+# GOOD - resource-oriented
+POST   /children/:id/attendance          (create)
+PUT    /children/:id/attendance/:attendanceId  (update)
+
+# BAD - RPC-style action verbs
+POST   /children/:id/attendance/check-in
+PUT    /children/:id/attendance/:id/check-out
+POST   /children/:id/attendance/absent
+```
+
+### URL Parameter Naming
+
+For nested resources, use `:id` for the parent resource and a named param (`:contractId`, `:attendanceId`, `:periodId`) for the sub-resource. This matches how Gin resolves route parameters.
+
+```
+/organizations/:orgId/employees/:id/contracts/:contractId
+/organizations/:orgId/children/:id/attendance/:attendanceId
+/organizations/:orgId/children/:id/contracts/:contractId
+```
+
+### HTTP 204 No Content
+
+When returning `204 No Content`, do NOT include a response body. Use `c.Status()` instead of `c.JSON()`:
+
+```go
+// CORRECT
+c.Status(http.StatusNoContent)
+
+// WRONG - sends a body with 204
+c.JSON(http.StatusNoContent, nil)
+```
+
+### Required Query Parameters
+
+Required query parameters MUST be validated and return an error when missing. Do NOT silently default them.
+
+```go
+// CORRECT - validates required params
+from, ok := parseRequiredDate(c, "from")
+
+// WRONG - silently defaults to today when param is required
+from, ok := parseOptionalDate(c, "from")
+```
+
+### Audit Logging
+
+All mutating handlers MUST include audit logging, at minimum for delete operations. Follow the existing pattern:
+
+```go
+// Get resource info before deletion for audit log
+resource, err := h.service.GetByID(ctx, id, orgID, parentID)
+// ... perform delete ...
+// Log the deletion
+h.auditService.LogResourceDelete(actorID, "resource_type", id, resourceName, c.ClientIP())
+```

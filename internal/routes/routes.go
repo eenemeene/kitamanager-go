@@ -19,6 +19,7 @@ func Setup(
 	childHandler *handlers.ChildHandler,
 	governmentFundingHandler *handlers.GovernmentFundingHandler,
 	payPlanHandler *handlers.PayPlanHandler,
+	childAttendanceHandler *handlers.ChildAttendanceHandler,
 	authMiddleware *middleware.AuthMiddleware,
 	authzMiddleware *middleware.AuthorizationMiddleware,
 	csrfMiddleware *middleware.CSRFMiddleware,
@@ -240,6 +241,16 @@ func Setup(
 				// Children
 				children := orgScoped.Group("/children")
 				{
+					// ============================================================
+					// Org-wide child attendance endpoints (must come before /:id)
+					// ============================================================
+					children.GET("/attendance",
+						authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionRead),
+						childAttendanceHandler.ListByDate)
+					children.GET("/attendance/summary",
+						authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionRead),
+						childAttendanceHandler.GetDailySummary)
+
 					// Statistics endpoint (must be before /:id to avoid conflict)
 					children.GET("/statistics/contract-count-by-month",
 						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
@@ -289,6 +300,31 @@ func Setup(
 					children.DELETE("/:id/contracts/:contractId",
 						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionDelete),
 						childHandler.DeleteContract)
+
+					// ============================================================
+					// Per-child attendance tracking
+					// Routes: /children/:id/attendance/...
+					// Uses same :id param as children resource (Gin resolves
+					// based on route structure). Sub-resource uses :attendanceId.
+					// ============================================================
+					childAttendance := children.Group("/:id/attendance")
+					{
+						childAttendance.POST("",
+							authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionCreate),
+							childAttendanceHandler.Create)
+						childAttendance.GET("",
+							authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionRead),
+							childAttendanceHandler.ListByChild)
+						childAttendance.GET("/:attendanceId",
+							authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionRead),
+							childAttendanceHandler.Get)
+						childAttendance.PUT("/:attendanceId",
+							authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionUpdate),
+							childAttendanceHandler.Update)
+						childAttendance.DELETE("/:attendanceId",
+							authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionDelete),
+							childAttendanceHandler.Delete)
+					}
 				}
 
 				// ============================================================
