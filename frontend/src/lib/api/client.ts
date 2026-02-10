@@ -47,6 +47,9 @@ import type {
   PayPlanEntry,
   PayPlanEntryCreateRequest,
   PayPlanEntryUpdateRequest,
+  Section,
+  SectionCreateRequest,
+  SectionUpdateRequest,
   PaginatedResponse,
   PaginationParams,
 } from './types';
@@ -687,6 +690,54 @@ class ApiClient {
     await this.client.delete(
       `/organizations/${orgId}/payplans/${payplanId}/periods/${periodId}/entries/${entryId}`
     );
+  }
+
+  // Sections (organization-scoped)
+  async getSections(
+    orgId: number,
+    params: PaginationParams = {}
+  ): Promise<PaginatedResponse<Section>> {
+    const { page = 1, limit = DEFAULT_PAGE_SIZE } = params;
+    const response = await this.client.get<PaginatedResponse<Section>>(
+      `/organizations/${orgId}/sections?page=${page}&limit=${limit}`
+    );
+    return response.data;
+  }
+
+  async getSection(orgId: number, sectionId: number): Promise<Section> {
+    const response = await this.client.get<Section>(
+      `/organizations/${orgId}/sections/${sectionId}`
+    );
+    return response.data;
+  }
+
+  async createSection(orgId: number, data: SectionCreateRequest): Promise<Section> {
+    const response = await this.client.post<Section>(`/organizations/${orgId}/sections`, data);
+    return response.data;
+  }
+
+  async updateSection(
+    orgId: number,
+    sectionId: number,
+    data: SectionUpdateRequest
+  ): Promise<Section> {
+    const response = await this.client.put<Section>(
+      `/organizations/${orgId}/sections/${sectionId}`,
+      data
+    );
+    return response.data;
+  }
+
+  async deleteSection(orgId: number, sectionId: number): Promise<void> {
+    await this.client.delete(`/organizations/${orgId}/sections/${sectionId}`);
+  }
+
+  // Children - fetch all (for kanban board view)
+  async getChildrenAll(orgId: number): Promise<Child[]> {
+    const response = await this.client.get<PaginatedResponse<Child>>(
+      `/organizations/${orgId}/children?limit=500`
+    );
+    return response.data.data;
   }
 }
 

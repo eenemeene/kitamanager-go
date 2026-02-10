@@ -502,3 +502,121 @@ export function getFutureDateStr(daysFromNow: number): string {
   date.setDate(date.getDate() + daysFromNow);
   return date.toISOString().split('T')[0];
 }
+
+/**
+ * Create a section via the API
+ */
+export async function createSectionViaApi(
+  page: Page,
+  token: string,
+  orgId: number,
+  name: string
+): Promise<{ id: number; name: string }> {
+  return page.evaluate(
+    async ({ token, orgId, name }) => {
+      const csrfMatch = document.cookie.match(/csrf_token=([^;]+)/);
+      const csrfToken = csrfMatch ? csrfMatch[1] : null;
+
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      };
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+
+      const response = await fetch(`/api/v1/organizations/${orgId}/sections`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ name }),
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Failed to create section: ${response.status} - ${text}`);
+      }
+      return response.json();
+    },
+    { token, orgId, name }
+  );
+}
+
+/**
+ * Delete a section via the API
+ */
+export async function deleteSectionViaApi(
+  page: Page,
+  token: string,
+  orgId: number,
+  sectionId: number
+): Promise<void> {
+  await page.evaluate(
+    async ({ token, orgId, sectionId }) => {
+      const csrfMatch = document.cookie.match(/csrf_token=([^;]+)/);
+      const csrfToken = csrfMatch ? csrfMatch[1] : null;
+
+      const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+
+      await fetch(`/api/v1/organizations/${orgId}/sections/${sectionId}`, {
+        method: 'DELETE',
+        headers,
+      });
+    },
+    { token, orgId, sectionId }
+  );
+}
+
+/**
+ * Get sections via the API
+ */
+export async function getSectionsViaApi(
+  page: Page,
+  token: string,
+  orgId: number
+): Promise<Array<{ id: number; name: string }>> {
+  return page.evaluate(
+    async ({ token, orgId }) => {
+      const response = await fetch(`/api/v1/organizations/${orgId}/sections?limit=100`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      return data.data || [];
+    },
+    { token, orgId }
+  );
+}
+
+/**
+ * Update a child's section via the API
+ */
+export async function updateChildSectionViaApi(
+  page: Page,
+  token: string,
+  orgId: number,
+  childId: number,
+  sectionId: number | null
+): Promise<void> {
+  await page.evaluate(
+    async ({ token, orgId, childId, sectionId }) => {
+      const csrfMatch = document.cookie.match(/csrf_token=([^;]+)/);
+      const csrfToken = csrfMatch ? csrfMatch[1] : null;
+
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      };
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+
+      await fetch(`/api/v1/organizations/${orgId}/children/${childId}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ section_id: sectionId }),
+      });
+    },
+    { token, orgId, childId, sectionId }
+  );
+}

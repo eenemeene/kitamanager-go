@@ -76,6 +76,7 @@
     "groups": "Groups",
     "governmentFundings": "Government Fundings",
     "payPlans": "Pay Plans",
+    "sections": "Sections",
     "statistics": "Statistics",
     "settings": "Settings"
   },
@@ -384,6 +385,24 @@
     "noPeriodsDefined": "No periods defined. Click \"Add Period\" to get started.",
     "showAllPeriods": "Show all {count} periods",
     "years": "years"
+  },
+  "sections": {
+    "title": "Sections",
+    "board": "Board",
+    "manage": "Manage",
+    "newSection": "New Section",
+    "create": "Create Section",
+    "edit": "Edit Section",
+    "deleteConfirm": "Are you sure you want to delete this section? Children in this section will become unassigned.",
+    "deleteSuccess": "Section deleted successfully",
+    "createSuccess": "Section created successfully",
+    "updateSuccess": "Section updated successfully",
+    "unassigned": "Unassigned",
+    "childCount": "{count} children",
+    "dragHint": "Drag children between columns to reassign them to sections",
+    "movedSuccess": "Child moved successfully",
+    "movedFailed": "Failed to move child",
+    "defaultSection": "Default"
   },
   "payPlans": {
     "title": "Pay Plans",

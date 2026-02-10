@@ -246,8 +246,29 @@ export interface EmployeeContractUpdateRequest {
   weekly_hours?: number;
 }
 
+// Section
+export interface Section {
+  id: number;
+  organization_id: number;
+  name: string;
+  is_default: boolean;
+  created_at: string;
+  created_by: string;
+  updated_at: string;
+}
+
+export interface SectionCreateRequest {
+  name: string;
+}
+
+export interface SectionUpdateRequest {
+  name?: string;
+}
+
 // Child
 export interface Child extends Person {
+  section_id?: number | null;
+  section?: Section | null;
   contracts?: ChildContract[];
 }
 
@@ -272,6 +293,7 @@ export interface ChildCreateRequest {
   last_name: string;
   gender: Gender;
   birthdate: string;
+  section_id?: number | null;
 }
 
 export interface ChildUpdateRequest {
@@ -279,6 +301,7 @@ export interface ChildUpdateRequest {
   last_name?: string;
   gender?: Gender;
   birthdate?: string;
+  section_id?: number | null;
 }
 
 export interface ChildContractCreateRequest {

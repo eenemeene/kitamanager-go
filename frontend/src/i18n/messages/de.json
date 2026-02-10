@@ -76,6 +76,7 @@
     "groups": "Gruppen",
     "governmentFundings": "Staatliche Finanzierungen",
     "payPlans": "Entgelttabellen",
+    "sections": "Bereiche",
     "statistics": "Statistiken",
     "settings": "Einstellungen"
   },
@@ -384,6 +385,24 @@
     "noPeriodsDefined": "Keine Zeiträume definiert. Klicken Sie auf \"Zeitraum hinzufügen\", um zu beginnen.",
     "showAllPeriods": "Alle {count} Zeiträume anzeigen",
     "years": "Jahre"
+  },
+  "sections": {
+    "title": "Bereiche",
+    "board": "Board",
+    "manage": "Verwalten",
+    "newSection": "Neuer Bereich",
+    "create": "Bereich erstellen",
+    "edit": "Bereich bearbeiten",
+    "deleteConfirm": "Möchten Sie diesen Bereich wirklich löschen? Kinder in diesem Bereich werden nicht zugeordnet.",
+    "deleteSuccess": "Bereich erfolgreich gelöscht",
+    "createSuccess": "Bereich erfolgreich erstellt",
+    "updateSuccess": "Bereich erfolgreich aktualisiert",
+    "unassigned": "Nicht zugeordnet",
+    "childCount": "{count} Kinder",
+    "dragHint": "Kinder zwischen Spalten ziehen, um sie Bereichen zuzuordnen",
+    "movedSuccess": "Kind erfolgreich verschoben",
+    "movedFailed": "Kind konnte nicht verschoben werden",
+    "defaultSection": "Standard"
   },
   "payPlans": {
     "title": "Entgelttabellen",

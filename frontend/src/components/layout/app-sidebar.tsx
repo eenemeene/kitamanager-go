@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   LayoutDashboard,
+  LayoutGrid,
   Building2,
   Users,
   Baby,
@@ -37,6 +38,7 @@ const orgNavigation = [
   { name: 'nav.groups', href: '/groups', icon: UsersRound },
   { name: 'nav.employees', href: '/employees', icon: Users },
   { name: 'nav.children', href: '/children', icon: Baby },
+  { name: 'nav.sections', href: '/sections', icon: LayoutGrid },
   { name: 'nav.statistics', href: '/statistics', icon: BarChart3 },
   { name: 'nav.payPlans', href: '/payplans', icon: CircleDollarSign },
 ];
