@@ -4,8 +4,8 @@ import (
 	"time"
 )
 
-// Attendance represents a check-in/check-out record for a child on a given day.
-type Attendance struct {
+// ChildAttendance represents a check-in/check-out record for a child on a given day.
+type ChildAttendance struct {
 	ID             uint          `gorm:"primaryKey" json:"id" example:"1"`
 	ChildID        uint          `gorm:"not null;index" json:"child_id" example:"1"`
 	Child          *Child        `gorm:"foreignKey:ChildID;constraint:OnDelete:CASCADE" json:"child,omitempty"`
@@ -21,54 +21,52 @@ type Attendance struct {
 	UpdatedAt      time.Time     `json:"updated_at"`
 }
 
-// Attendance statuses
+// Child attendance statuses
 const (
-	AttendanceStatusPresent  = "present"
-	AttendanceStatusAbsent   = "absent"
-	AttendanceStatusSick     = "sick"
-	AttendanceStatusVacation = "vacation"
+	ChildAttendanceStatusPresent  = "present"
+	ChildAttendanceStatusAbsent   = "absent"
+	ChildAttendanceStatusSick     = "sick"
+	ChildAttendanceStatusVacation = "vacation"
 )
 
-// IsValidAttendanceStatus checks if a status string is valid.
-func IsValidAttendanceStatus(status string) bool {
+// IsValidChildAttendanceStatus checks if a status string is valid.
+func IsValidChildAttendanceStatus(status string) bool {
 	switch status {
-	case AttendanceStatusPresent, AttendanceStatusAbsent, AttendanceStatusSick, AttendanceStatusVacation:
+	case ChildAttendanceStatusPresent, ChildAttendanceStatusAbsent, ChildAttendanceStatusSick, ChildAttendanceStatusVacation:
 		return true
 	}
 	return false
 }
 
-// AttendanceCheckInRequest represents the request body for checking in a child.
-type AttendanceCheckInRequest struct {
-	ChildID     uint       `json:"child_id" binding:"required" example:"1"`
+// ChildAttendanceCheckInRequest represents the request body for checking in a child.
+type ChildAttendanceCheckInRequest struct {
 	CheckInTime *time.Time `json:"check_in_time" example:"2025-06-15T08:00:00Z"`
 	Note        string     `json:"note,omitempty" example:"Arrived with father"`
 }
 
-// AttendanceCheckOutRequest represents the request body for checking out a child.
-type AttendanceCheckOutRequest struct {
+// ChildAttendanceCheckOutRequest represents the request body for checking out a child.
+type ChildAttendanceCheckOutRequest struct {
 	CheckOutTime *time.Time `json:"check_out_time" example:"2025-06-15T16:00:00Z"`
 	Note         string     `json:"note,omitempty" example:"Picked up by grandparent"`
 }
 
-// AttendanceUpdateRequest represents the request body for updating an attendance record.
-type AttendanceUpdateRequest struct {
+// ChildAttendanceUpdateRequest represents the request body for updating an attendance record.
+type ChildAttendanceUpdateRequest struct {
 	CheckInTime  *time.Time `json:"check_in_time" example:"2025-06-15T08:00:00Z"`
 	CheckOutTime *time.Time `json:"check_out_time" example:"2025-06-15T16:00:00Z"`
 	Status       *string    `json:"status" example:"present"`
 	Note         *string    `json:"note" example:"Updated note"`
 }
 
-// AttendanceMarkAbsentRequest represents the request body for marking a child absent.
-type AttendanceMarkAbsentRequest struct {
-	ChildID uint   `json:"child_id" binding:"required" example:"1"`
-	Date    string `json:"date" binding:"required" example:"2025-06-15"`
-	Status  string `json:"status" binding:"required" example:"sick"`
-	Note    string `json:"note,omitempty" example:"Has a cold"`
+// ChildAttendanceMarkAbsentRequest represents the request body for marking a child absent.
+type ChildAttendanceMarkAbsentRequest struct {
+	Date   string `json:"date" binding:"required" example:"2025-06-15"`
+	Status string `json:"status" binding:"required" example:"sick"`
+	Note   string `json:"note,omitempty" example:"Has a cold"`
 }
 
-// AttendanceResponse represents the attendance response.
-type AttendanceResponse struct {
+// ChildAttendanceResponse represents the attendance response.
+type ChildAttendanceResponse struct {
 	ID             uint       `json:"id" example:"1"`
 	ChildID        uint       `json:"child_id" example:"1"`
 	ChildName      string     `json:"child_name,omitempty" example:"Emma Schmidt"`
@@ -83,9 +81,9 @@ type AttendanceResponse struct {
 	UpdatedAt      time.Time  `json:"updated_at"`
 }
 
-// ToResponse converts an Attendance to an AttendanceResponse.
-func (a *Attendance) ToResponse() AttendanceResponse {
-	resp := AttendanceResponse{
+// ToResponse converts a ChildAttendance to a ChildAttendanceResponse.
+func (a *ChildAttendance) ToResponse() ChildAttendanceResponse {
+	resp := ChildAttendanceResponse{
 		ID:             a.ID,
 		ChildID:        a.ChildID,
 		OrganizationID: a.OrganizationID,
@@ -104,8 +102,8 @@ func (a *Attendance) ToResponse() AttendanceResponse {
 	return resp
 }
 
-// DailyAttendanceSummaryResponse represents a summary of attendance for a day.
-type DailyAttendanceSummaryResponse struct {
+// ChildAttendanceDailySummaryResponse represents a summary of attendance for a day.
+type ChildAttendanceDailySummaryResponse struct {
 	Date          string `json:"date" example:"2025-06-15"`
 	TotalChildren int    `json:"total_children" example:"25"`
 	Present       int    `json:"present" example:"20"`

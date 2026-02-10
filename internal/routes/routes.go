@@ -19,7 +19,7 @@ func Setup(
 	childHandler *handlers.ChildHandler,
 	governmentFundingHandler *handlers.GovernmentFundingHandler,
 	payPlanHandler *handlers.PayPlanHandler,
-	attendanceHandler *handlers.AttendanceHandler,
+	childAttendanceHandler *handlers.ChildAttendanceHandler,
 	authMiddleware *middleware.AuthMiddleware,
 	authzMiddleware *middleware.AuthorizationMiddleware,
 	csrfMiddleware *middleware.CSRFMiddleware,
@@ -241,6 +241,16 @@ func Setup(
 				// Children
 				children := orgScoped.Group("/children")
 				{
+					// ============================================================
+					// Org-wide child attendance endpoints (must come before /:id)
+					// ============================================================
+					children.GET("/attendance",
+						authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionRead),
+						childAttendanceHandler.ListByDate)
+					children.GET("/attendance/summary",
+						authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionRead),
+						childAttendanceHandler.GetDailySummary)
+
 					// Statistics endpoint (must be before /:id to avoid conflict)
 					children.GET("/statistics/contract-count-by-month",
 						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
@@ -290,6 +300,38 @@ func Setup(
 					children.DELETE("/:id/contracts/:contractId",
 						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionDelete),
 						childHandler.DeleteContract)
+
+					// ============================================================
+					// Per-child attendance tracking
+					// Routes: /children/:childId/attendance/...
+					// Note: uses "childId" param (not "id") since "id" is used by
+					// the children resource above. Gin uses ":id" for children and
+					// ":childId" for attendance to avoid param conflicts.
+					// ============================================================
+					childAttendance := children.Group("/:childId/attendance")
+					{
+						childAttendance.POST("/check-in",
+							authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionCreate),
+							childAttendanceHandler.CheckIn)
+						childAttendance.POST("/absent",
+							authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionCreate),
+							childAttendanceHandler.MarkAbsent)
+						childAttendance.GET("",
+							authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionRead),
+							childAttendanceHandler.ListByChild)
+						childAttendance.GET("/:id",
+							authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionRead),
+							childAttendanceHandler.Get)
+						childAttendance.PUT("/:id",
+							authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionUpdate),
+							childAttendanceHandler.Update)
+						childAttendance.PUT("/:id/check-out",
+							authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionUpdate),
+							childAttendanceHandler.CheckOut)
+						childAttendance.DELETE("/:id",
+							authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionDelete),
+							childAttendanceHandler.Delete)
+					}
 				}
 
 				// ============================================================
@@ -340,46 +382,6 @@ func Setup(
 					payplans.DELETE("/:id/periods/:periodId/entries/:entryId",
 						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionDelete),
 						payPlanHandler.DeleteEntry)
-				}
-
-				// ============================================================
-				// Attendance tracking (org-scoped)
-				// ============================================================
-				attendance := orgScoped.Group("/attendance")
-				{
-					// Summary must come before /:id to avoid conflict
-					attendance.GET("/summary",
-						authzMiddleware.RequirePermission(rbac.ResourceAttendance, rbac.ActionRead),
-						attendanceHandler.GetDailySummary)
-
-					// Check-in and absence must come before /:id to avoid conflict
-					attendance.POST("/check-in",
-						authzMiddleware.RequirePermission(rbac.ResourceAttendance, rbac.ActionCreate),
-						attendanceHandler.CheckIn)
-					attendance.POST("/absent",
-						authzMiddleware.RequirePermission(rbac.ResourceAttendance, rbac.ActionCreate),
-						attendanceHandler.MarkAbsent)
-
-					// Child-specific attendance
-					attendance.GET("/child/:childId",
-						authzMiddleware.RequirePermission(rbac.ResourceAttendance, rbac.ActionRead),
-						attendanceHandler.ListByChild)
-
-					attendance.GET("",
-						authzMiddleware.RequirePermission(rbac.ResourceAttendance, rbac.ActionRead),
-						attendanceHandler.ListByDate)
-					attendance.GET("/:id",
-						authzMiddleware.RequirePermission(rbac.ResourceAttendance, rbac.ActionRead),
-						attendanceHandler.Get)
-					attendance.PUT("/:id",
-						authzMiddleware.RequirePermission(rbac.ResourceAttendance, rbac.ActionUpdate),
-						attendanceHandler.Update)
-					attendance.PUT("/:id/check-out",
-						authzMiddleware.RequirePermission(rbac.ResourceAttendance, rbac.ActionUpdate),
-						attendanceHandler.CheckOut)
-					attendance.DELETE("/:id",
-						authzMiddleware.RequirePermission(rbac.ResourceAttendance, rbac.ActionDelete),
-						attendanceHandler.Delete)
 				}
 			}
 

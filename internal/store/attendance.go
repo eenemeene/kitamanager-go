@@ -8,29 +8,29 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
-// AttendanceStore implements AttendanceStorer using GORM.
-type AttendanceStore struct {
+// ChildAttendanceStore implements ChildAttendanceStorer using GORM.
+type ChildAttendanceStore struct {
 	db *gorm.DB
 }
 
-// NewAttendanceStore creates a new AttendanceStore.
-func NewAttendanceStore(db *gorm.DB) *AttendanceStore {
-	return &AttendanceStore{db: db}
+// NewChildAttendanceStore creates a new ChildAttendanceStore.
+func NewChildAttendanceStore(db *gorm.DB) *ChildAttendanceStore {
+	return &ChildAttendanceStore{db: db}
 }
 
-func (s *AttendanceStore) FindByID(id uint) (*models.Attendance, error) {
-	var attendance models.Attendance
+func (s *ChildAttendanceStore) FindByID(id uint) (*models.ChildAttendance, error) {
+	var attendance models.ChildAttendance
 	if err := s.db.Preload("Child").First(&attendance, id).Error; err != nil {
 		return nil, err
 	}
 	return &attendance, nil
 }
 
-func (s *AttendanceStore) FindByOrganizationAndDate(orgID uint, date time.Time, limit, offset int) ([]models.Attendance, int64, error) {
-	var records []models.Attendance
+func (s *ChildAttendanceStore) FindByOrganizationAndDate(orgID uint, date time.Time, limit, offset int) ([]models.ChildAttendance, int64, error) {
+	var records []models.ChildAttendance
 	var total int64
 
-	query := s.db.Model(&models.Attendance{}).
+	query := s.db.Model(&models.ChildAttendance{}).
 		Where("organization_id = ? AND date = ?", orgID, date)
 
 	if err := query.Count(&total).Error; err != nil {
@@ -48,8 +48,8 @@ func (s *AttendanceStore) FindByOrganizationAndDate(orgID uint, date time.Time, 
 	return records, total, nil
 }
 
-func (s *AttendanceStore) FindByChildAndDate(childID uint, date time.Time) (*models.Attendance, error) {
-	var attendance models.Attendance
+func (s *ChildAttendanceStore) FindByChildAndDate(childID uint, date time.Time) (*models.ChildAttendance, error) {
+	var attendance models.ChildAttendance
 	if err := s.db.Preload("Child").
 		Where("child_id = ? AND date = ?", childID, date).
 		First(&attendance).Error; err != nil {
@@ -58,11 +58,11 @@ func (s *AttendanceStore) FindByChildAndDate(childID uint, date time.Time) (*mod
 	return &attendance, nil
 }
 
-func (s *AttendanceStore) FindByChildAndDateRange(childID uint, from, to time.Time, limit, offset int) ([]models.Attendance, int64, error) {
-	var records []models.Attendance
+func (s *ChildAttendanceStore) FindByChildAndDateRange(childID uint, from, to time.Time, limit, offset int) ([]models.ChildAttendance, int64, error) {
+	var records []models.ChildAttendance
 	var total int64
 
-	query := s.db.Model(&models.Attendance{}).
+	query := s.db.Model(&models.ChildAttendance{}).
 		Where("child_id = ? AND date >= ? AND date <= ?", childID, from, to)
 
 	if err := query.Count(&total).Error; err != nil {
@@ -80,40 +80,40 @@ func (s *AttendanceStore) FindByChildAndDateRange(childID uint, from, to time.Ti
 	return records, total, nil
 }
 
-func (s *AttendanceStore) Create(attendance *models.Attendance) error {
+func (s *ChildAttendanceStore) Create(attendance *models.ChildAttendance) error {
 	return s.db.Create(attendance).Error
 }
 
-func (s *AttendanceStore) Update(attendance *models.Attendance) error {
+func (s *ChildAttendanceStore) Update(attendance *models.ChildAttendance) error {
 	return s.db.Save(attendance).Error
 }
 
-func (s *AttendanceStore) Delete(id uint) error {
-	return s.db.Delete(&models.Attendance{}, id).Error
+func (s *ChildAttendanceStore) Delete(id uint) error {
+	return s.db.Delete(&models.ChildAttendance{}, id).Error
 }
 
 // GetDailySummary returns attendance summary for a given date and organization.
-func (s *AttendanceStore) GetDailySummary(orgID uint, date time.Time) (*models.DailyAttendanceSummaryResponse, error) {
-	var records []models.Attendance
+func (s *ChildAttendanceStore) GetDailySummary(orgID uint, date time.Time) (*models.ChildAttendanceDailySummaryResponse, error) {
+	var records []models.ChildAttendance
 	if err := s.db.Where("organization_id = ? AND date = ?", orgID, date).
 		Find(&records).Error; err != nil {
 		return nil, err
 	}
 
-	summary := &models.DailyAttendanceSummaryResponse{
+	summary := &models.ChildAttendanceDailySummaryResponse{
 		Date:          date.Format("2006-01-02"),
 		TotalChildren: len(records),
 	}
 
 	for _, r := range records {
 		switch r.Status {
-		case models.AttendanceStatusPresent:
+		case models.ChildAttendanceStatusPresent:
 			summary.Present++
-		case models.AttendanceStatusAbsent:
+		case models.ChildAttendanceStatusAbsent:
 			summary.Absent++
-		case models.AttendanceStatusSick:
+		case models.ChildAttendanceStatusSick:
 			summary.Sick++
-		case models.AttendanceStatusVacation:
+		case models.ChildAttendanceStatusVacation:
 			summary.Vacation++
 		}
 	}

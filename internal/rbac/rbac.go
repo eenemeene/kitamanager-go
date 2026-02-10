@@ -28,7 +28,7 @@ const (
 	ResourceSections          = "sections"
 	ResourceFundings          = "fundings"
 	ResourcePayPlans          = "payplans"
-	ResourceAttendance        = "attendance"
+	ResourceChildAttendance   = "child_attendance"
 )
 
 // Actions
@@ -153,10 +153,10 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleSuperAdmin, "*", ResourcePayPlans, ActionRead},
 		{RoleSuperAdmin, "*", ResourcePayPlans, ActionUpdate},
 		{RoleSuperAdmin, "*", ResourcePayPlans, ActionDelete},
-		{RoleSuperAdmin, "*", ResourceAttendance, ActionCreate},
-		{RoleSuperAdmin, "*", ResourceAttendance, ActionRead},
-		{RoleSuperAdmin, "*", ResourceAttendance, ActionUpdate},
-		{RoleSuperAdmin, "*", ResourceAttendance, ActionDelete},
+		{RoleSuperAdmin, "*", ResourceChildAttendance, ActionCreate},
+		{RoleSuperAdmin, "*", ResourceChildAttendance, ActionRead},
+		{RoleSuperAdmin, "*", ResourceChildAttendance, ActionUpdate},
+		{RoleSuperAdmin, "*", ResourceChildAttendance, ActionDelete},
 
 		// Admin - full access within their organization (domain is checked at runtime)
 		{RoleAdmin, "*", ResourceOrganizations, ActionRead},
@@ -193,10 +193,10 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleAdmin, "*", ResourcePayPlans, ActionRead},
 		{RoleAdmin, "*", ResourcePayPlans, ActionUpdate},
 		{RoleAdmin, "*", ResourcePayPlans, ActionDelete},
-		{RoleAdmin, "*", ResourceAttendance, ActionCreate},
-		{RoleAdmin, "*", ResourceAttendance, ActionRead},
-		{RoleAdmin, "*", ResourceAttendance, ActionUpdate},
-		{RoleAdmin, "*", ResourceAttendance, ActionDelete},
+		{RoleAdmin, "*", ResourceChildAttendance, ActionCreate},
+		{RoleAdmin, "*", ResourceChildAttendance, ActionRead},
+		{RoleAdmin, "*", ResourceChildAttendance, ActionUpdate},
+		{RoleAdmin, "*", ResourceChildAttendance, ActionDelete},
 
 		// Manager - manage employees, children, contracts; read-only for users/groups
 		{RoleManager, "*", ResourceOrganizations, ActionRead},
@@ -220,10 +220,10 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleManager, "*", ResourceGroups, ActionRead},
 		{RoleManager, "*", ResourceSections, ActionRead},
 		{RoleManager, "*", ResourcePayPlans, ActionRead},
-		{RoleManager, "*", ResourceAttendance, ActionCreate},
-		{RoleManager, "*", ResourceAttendance, ActionRead},
-		{RoleManager, "*", ResourceAttendance, ActionUpdate},
-		{RoleManager, "*", ResourceAttendance, ActionDelete},
+		{RoleManager, "*", ResourceChildAttendance, ActionCreate},
+		{RoleManager, "*", ResourceChildAttendance, ActionRead},
+		{RoleManager, "*", ResourceChildAttendance, ActionUpdate},
+		{RoleManager, "*", ResourceChildAttendance, ActionDelete},
 
 		// Member - read-only access to employees, children, contracts in their org
 		{RoleMember, "*", ResourceOrganizations, ActionRead},
@@ -233,7 +233,7 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleMember, "*", ResourceChildContracts, ActionRead},
 		{RoleMember, "*", ResourceSections, ActionRead},
 		{RoleMember, "*", ResourcePayPlans, ActionRead},
-		{RoleMember, "*", ResourceAttendance, ActionRead},
+		{RoleMember, "*", ResourceChildAttendance, ActionRead},
 	}
 
 	_, err := e.AddPolicies(policies)

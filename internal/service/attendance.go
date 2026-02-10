@@ -10,24 +10,24 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/store"
 )
 
-// AttendanceService handles business logic for attendance operations
-type AttendanceService struct {
-	store      store.AttendanceStorer
+// ChildAttendanceService handles business logic for child attendance operations
+type ChildAttendanceService struct {
+	store      store.ChildAttendanceStorer
 	childStore store.ChildStorer
 }
 
-// NewAttendanceService creates a new attendance service
-func NewAttendanceService(store store.AttendanceStorer, childStore store.ChildStorer) *AttendanceService {
-	return &AttendanceService{
+// NewChildAttendanceService creates a new child attendance service
+func NewChildAttendanceService(store store.ChildAttendanceStorer, childStore store.ChildStorer) *ChildAttendanceService {
+	return &ChildAttendanceService{
 		store:      store,
 		childStore: childStore,
 	}
 }
 
 // CheckIn creates an attendance record for a child (check-in).
-func (s *AttendanceService) CheckIn(ctx context.Context, orgID uint, req *models.AttendanceCheckInRequest, recordedBy uint) (*models.AttendanceResponse, error) {
+func (s *ChildAttendanceService) CheckIn(ctx context.Context, orgID, childID uint, req *models.ChildAttendanceCheckInRequest, recordedBy uint) (*models.ChildAttendanceResponse, error) {
 	// Verify child exists and belongs to org
-	child, err := s.childStore.FindByIDMinimal(req.ChildID)
+	child, err := s.childStore.FindByIDMinimal(childID)
 	if err != nil {
 		return nil, apperror.NotFound("child")
 	}
@@ -39,7 +39,7 @@ func (s *AttendanceService) CheckIn(ctx context.Context, orgID uint, req *models
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 
 	// Check if attendance record already exists for today
-	existing, err := s.store.FindByChildAndDate(req.ChildID, today)
+	existing, err := s.store.FindByChildAndDate(childID, today)
 	if err == nil && existing != nil {
 		return nil, apperror.Conflict("attendance record already exists for this child today")
 	}
@@ -49,12 +49,12 @@ func (s *AttendanceService) CheckIn(ctx context.Context, orgID uint, req *models
 		checkInTime = req.CheckInTime
 	}
 
-	attendance := &models.Attendance{
-		ChildID:        req.ChildID,
+	attendance := &models.ChildAttendance{
+		ChildID:        childID,
 		OrganizationID: orgID,
 		Date:           today,
 		CheckInTime:    checkInTime,
-		Status:         models.AttendanceStatusPresent,
+		Status:         models.ChildAttendanceStatusPresent,
 		Note:           strings.TrimSpace(req.Note),
 		RecordedBy:     recordedBy,
 	}
@@ -74,12 +74,15 @@ func (s *AttendanceService) CheckIn(ctx context.Context, orgID uint, req *models
 }
 
 // CheckOut updates an attendance record with check-out time.
-func (s *AttendanceService) CheckOut(ctx context.Context, id, orgID uint, req *models.AttendanceCheckOutRequest) (*models.AttendanceResponse, error) {
+func (s *ChildAttendanceService) CheckOut(ctx context.Context, id, orgID, childID uint, req *models.ChildAttendanceCheckOutRequest) (*models.ChildAttendanceResponse, error) {
 	attendance, err := s.store.FindByID(id)
 	if err != nil {
 		return nil, apperror.NotFound("attendance record")
 	}
 	if attendance.OrganizationID != orgID {
+		return nil, apperror.NotFound("attendance record")
+	}
+	if attendance.ChildID != childID {
 		return nil, apperror.NotFound("attendance record")
 	}
 
@@ -111,9 +114,9 @@ func (s *AttendanceService) CheckOut(ctx context.Context, id, orgID uint, req *m
 }
 
 // MarkAbsent creates an attendance record marking a child absent.
-func (s *AttendanceService) MarkAbsent(ctx context.Context, orgID uint, req *models.AttendanceMarkAbsentRequest, recordedBy uint) (*models.AttendanceResponse, error) {
+func (s *ChildAttendanceService) MarkAbsent(ctx context.Context, orgID, childID uint, req *models.ChildAttendanceMarkAbsentRequest, recordedBy uint) (*models.ChildAttendanceResponse, error) {
 	// Verify child exists and belongs to org
-	child, err := s.childStore.FindByIDMinimal(req.ChildID)
+	child, err := s.childStore.FindByIDMinimal(childID)
 	if err != nil {
 		return nil, apperror.NotFound("child")
 	}
@@ -121,10 +124,10 @@ func (s *AttendanceService) MarkAbsent(ctx context.Context, orgID uint, req *mod
 		return nil, apperror.NotFound("child")
 	}
 
-	if !models.IsValidAttendanceStatus(req.Status) {
+	if !models.IsValidChildAttendanceStatus(req.Status) {
 		return nil, apperror.BadRequest("invalid status, must be one of: absent, sick, vacation")
 	}
-	if req.Status == models.AttendanceStatusPresent {
+	if req.Status == models.ChildAttendanceStatusPresent {
 		return nil, apperror.BadRequest("use check-in endpoint for marking present")
 	}
 
@@ -134,13 +137,13 @@ func (s *AttendanceService) MarkAbsent(ctx context.Context, orgID uint, req *mod
 	}
 
 	// Check if attendance record already exists
-	existing, findErr := s.store.FindByChildAndDate(req.ChildID, date)
+	existing, findErr := s.store.FindByChildAndDate(childID, date)
 	if findErr == nil && existing != nil {
 		return nil, apperror.Conflict("attendance record already exists for this child on this date")
 	}
 
-	attendance := &models.Attendance{
-		ChildID:        req.ChildID,
+	attendance := &models.ChildAttendance{
+		ChildID:        childID,
 		OrganizationID: orgID,
 		Date:           date,
 		Status:         req.Status,
@@ -162,13 +165,16 @@ func (s *AttendanceService) MarkAbsent(ctx context.Context, orgID uint, req *mod
 	return &resp, nil
 }
 
-// GetByID returns an attendance record by ID, validating it belongs to the organization.
-func (s *AttendanceService) GetByID(ctx context.Context, id, orgID uint) (*models.AttendanceResponse, error) {
+// GetByID returns an attendance record by ID, validating it belongs to the organization and child.
+func (s *ChildAttendanceService) GetByID(ctx context.Context, id, orgID, childID uint) (*models.ChildAttendanceResponse, error) {
 	attendance, err := s.store.FindByID(id)
 	if err != nil {
 		return nil, apperror.NotFound("attendance record")
 	}
 	if attendance.OrganizationID != orgID {
+		return nil, apperror.NotFound("attendance record")
+	}
+	if attendance.ChildID != childID {
 		return nil, apperror.NotFound("attendance record")
 	}
 
@@ -177,12 +183,15 @@ func (s *AttendanceService) GetByID(ctx context.Context, id, orgID uint) (*model
 }
 
 // Update updates an existing attendance record.
-func (s *AttendanceService) Update(ctx context.Context, id, orgID uint, req *models.AttendanceUpdateRequest) (*models.AttendanceResponse, error) {
+func (s *ChildAttendanceService) Update(ctx context.Context, id, orgID, childID uint, req *models.ChildAttendanceUpdateRequest) (*models.ChildAttendanceResponse, error) {
 	attendance, err := s.store.FindByID(id)
 	if err != nil {
 		return nil, apperror.NotFound("attendance record")
 	}
 	if attendance.OrganizationID != orgID {
+		return nil, apperror.NotFound("attendance record")
+	}
+	if attendance.ChildID != childID {
 		return nil, apperror.NotFound("attendance record")
 	}
 
@@ -193,7 +202,7 @@ func (s *AttendanceService) Update(ctx context.Context, id, orgID uint, req *mod
 		attendance.CheckOutTime = req.CheckOutTime
 	}
 	if req.Status != nil {
-		if !models.IsValidAttendanceStatus(*req.Status) {
+		if !models.IsValidChildAttendanceStatus(*req.Status) {
 			return nil, apperror.BadRequest("invalid status")
 		}
 		attendance.Status = *req.Status
@@ -211,12 +220,15 @@ func (s *AttendanceService) Update(ctx context.Context, id, orgID uint, req *mod
 }
 
 // Delete deletes an attendance record.
-func (s *AttendanceService) Delete(ctx context.Context, id, orgID uint) error {
+func (s *ChildAttendanceService) Delete(ctx context.Context, id, orgID, childID uint) error {
 	attendance, err := s.store.FindByID(id)
 	if err != nil {
 		return apperror.NotFound("attendance record")
 	}
 	if attendance.OrganizationID != orgID {
+		return apperror.NotFound("attendance record")
+	}
+	if attendance.ChildID != childID {
 		return apperror.NotFound("attendance record")
 	}
 
@@ -226,22 +238,8 @@ func (s *AttendanceService) Delete(ctx context.Context, id, orgID uint) error {
 	return nil
 }
 
-// ListByDate returns attendance records for an organization on a given date.
-func (s *AttendanceService) ListByDate(ctx context.Context, orgID uint, date time.Time, limit, offset int) ([]models.AttendanceResponse, int64, error) {
-	records, total, err := s.store.FindByOrganizationAndDate(orgID, date, limit, offset)
-	if err != nil {
-		return nil, 0, apperror.Internal("failed to fetch attendance records")
-	}
-
-	responses := make([]models.AttendanceResponse, len(records))
-	for i, r := range records {
-		responses[i] = r.ToResponse()
-	}
-	return responses, total, nil
-}
-
 // ListByChild returns attendance records for a specific child in a date range.
-func (s *AttendanceService) ListByChild(ctx context.Context, childID, orgID uint, from, to time.Time, limit, offset int) ([]models.AttendanceResponse, int64, error) {
+func (s *ChildAttendanceService) ListByChild(ctx context.Context, childID, orgID uint, from, to time.Time, limit, offset int) ([]models.ChildAttendanceResponse, int64, error) {
 	// Verify child belongs to org
 	child, err := s.childStore.FindByIDMinimal(childID)
 	if err != nil {
@@ -256,7 +254,21 @@ func (s *AttendanceService) ListByChild(ctx context.Context, childID, orgID uint
 		return nil, 0, apperror.Internal("failed to fetch attendance records")
 	}
 
-	responses := make([]models.AttendanceResponse, len(records))
+	responses := make([]models.ChildAttendanceResponse, len(records))
+	for i, r := range records {
+		responses[i] = r.ToResponse()
+	}
+	return responses, total, nil
+}
+
+// ListByDate returns attendance records for an organization on a given date.
+func (s *ChildAttendanceService) ListByDate(ctx context.Context, orgID uint, date time.Time, limit, offset int) ([]models.ChildAttendanceResponse, int64, error) {
+	records, total, err := s.store.FindByOrganizationAndDate(orgID, date, limit, offset)
+	if err != nil {
+		return nil, 0, apperror.Internal("failed to fetch attendance records")
+	}
+
+	responses := make([]models.ChildAttendanceResponse, len(records))
 	for i, r := range records {
 		responses[i] = r.ToResponse()
 	}
@@ -264,7 +276,7 @@ func (s *AttendanceService) ListByChild(ctx context.Context, childID, orgID uint
 }
 
 // GetDailySummary returns attendance summary for a given date.
-func (s *AttendanceService) GetDailySummary(ctx context.Context, orgID uint, date time.Time) (*models.DailyAttendanceSummaryResponse, error) {
+func (s *ChildAttendanceService) GetDailySummary(ctx context.Context, orgID uint, date time.Time) (*models.ChildAttendanceDailySummaryResponse, error) {
 	summary, err := s.store.GetDailySummary(orgID, date)
 	if err != nil {
 		return nil, apperror.Internal("failed to get daily summary")
