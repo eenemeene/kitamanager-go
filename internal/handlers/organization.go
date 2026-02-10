@@ -195,5 +195,5 @@ func (h *OrganizationHandler) Delete(c *gin.Context) {
 	actorID := getUserID(c)
 	h.auditService.LogResourceDelete(actorID, "organization", id, org.Name, c.ClientIP())
 
-	c.JSON(http.StatusNoContent, nil)
+	c.Status(http.StatusNoContent)
 }

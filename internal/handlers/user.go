@@ -222,7 +222,7 @@ func (h *UserHandler) Delete(c *gin.Context) {
 	actorID := getUserID(c)
 	h.auditService.LogUserDelete(actorID, id, user.Email, c.ClientIP())
 
-	c.JSON(http.StatusNoContent, nil)
+	c.Status(http.StatusNoContent)
 }
 
 // AddToGroup godoc
@@ -341,7 +341,7 @@ func (h *UserHandler) RemoveFromGroup(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusNoContent, nil)
+	c.Status(http.StatusNoContent)
 }
 
 // GetMemberships godoc
@@ -499,5 +499,5 @@ func (h *UserHandler) RemoveFromOrganization(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusNoContent, nil)
+	c.Status(http.StatusNoContent)
 }
