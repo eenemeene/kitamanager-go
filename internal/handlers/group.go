@@ -199,5 +199,5 @@ func (h *GroupHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusNoContent, nil)
+	c.Status(http.StatusNoContent)
 }

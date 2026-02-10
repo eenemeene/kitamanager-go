@@ -208,7 +208,7 @@ func (h *ChildHandler) Delete(c *gin.Context) {
 	actorID := getUserID(c)
 	h.auditService.LogResourceDelete(actorID, "child", id, child.FirstName+" "+child.LastName, c.ClientIP())
 
-	c.JSON(http.StatusNoContent, nil)
+	c.Status(http.StatusNoContent)
 }
 
 // ListContracts godoc
@@ -420,7 +420,7 @@ func (h *ChildHandler) DeleteContract(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusNoContent, nil)
+	c.Status(http.StatusNoContent)
 }
 
 // =============================================================================

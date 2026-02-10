@@ -1,12 +1,17 @@
 version: "2"
 linters:
   enable:
+    - forbidigo
     - gosec
     - misspell
     - prealloc
     - unconvert
     - unparam
   settings:
+    forbidigo:
+      forbid:
+        - pattern: 'c\.JSON\(http\.StatusNoContent'
+          msg: "Use c.Status(http.StatusNoContent) instead of c.JSON(http.StatusNoContent, ...) — 204 must not have a body"
     gosec:
       excludes:
         - G104

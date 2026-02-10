@@ -189,7 +189,7 @@ func (h *GovernmentFundingHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusNoContent, nil)
+	c.Status(http.StatusNoContent)
 }
 
 // Period handlers
@@ -310,7 +310,7 @@ func (h *GovernmentFundingHandler) DeletePeriod(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusNoContent, nil)
+	c.Status(http.StatusNoContent)
 }
 
 // Property handlers
@@ -452,5 +452,5 @@ func (h *GovernmentFundingHandler) DeleteProperty(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusNoContent, nil)
+	c.Status(http.StatusNoContent)
 }

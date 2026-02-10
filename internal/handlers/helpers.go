@@ -100,7 +100,7 @@ func parseRequiredDate(c *gin.Context, param string) (time.Time, bool) {
 // parseOptionalDate parses an optional date query parameter.
 // Returns current time if param is empty, or parsed date if valid.
 // Returns (date, ok). If ok is false, error response has been sent.
-func parseOptionalDate(c *gin.Context, param string) (time.Time, bool) {
+func parseOptionalDate(c *gin.Context, param string) (time.Time, bool) { //nolint:unparam // param kept generic for consistency with parseRequiredDate
 	dateStr := c.Query(param)
 	if dateStr == "" {
 		return time.Now(), true
