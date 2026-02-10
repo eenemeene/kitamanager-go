@@ -303,32 +303,25 @@ func Setup(
 
 					// ============================================================
 					// Per-child attendance tracking
-					// Routes: /children/:childId/attendance/...
-					// Note: uses "childId" param (not "id") since "id" is used by
-					// the children resource above. Gin uses ":id" for children and
-					// ":childId" for attendance to avoid param conflicts.
+					// Routes: /children/:id/attendance/...
+					// Uses same :id param as children resource (Gin resolves
+					// based on route structure). Sub-resource uses :attendanceId.
 					// ============================================================
-					childAttendance := children.Group("/:childId/attendance")
+					childAttendance := children.Group("/:id/attendance")
 					{
-						childAttendance.POST("/check-in",
+						childAttendance.POST("",
 							authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionCreate),
-							childAttendanceHandler.CheckIn)
-						childAttendance.POST("/absent",
-							authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionCreate),
-							childAttendanceHandler.MarkAbsent)
+							childAttendanceHandler.Create)
 						childAttendance.GET("",
 							authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionRead),
 							childAttendanceHandler.ListByChild)
-						childAttendance.GET("/:id",
+						childAttendance.GET("/:attendanceId",
 							authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionRead),
 							childAttendanceHandler.Get)
-						childAttendance.PUT("/:id",
+						childAttendance.PUT("/:attendanceId",
 							authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionUpdate),
 							childAttendanceHandler.Update)
-						childAttendance.PUT("/:id/check-out",
-							authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionUpdate),
-							childAttendanceHandler.CheckOut)
-						childAttendance.DELETE("/:id",
+						childAttendance.DELETE("/:attendanceId",
 							authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionDelete),
 							childAttendanceHandler.Delete)
 					}

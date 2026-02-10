@@ -147,7 +147,7 @@ func main() {
 	childHandler := handlers.NewChildHandler(childService, auditService)
 	governmentFundingHandler := handlers.NewGovernmentFundingHandler(governmentFundingService)
 	payPlanHandler := handlers.NewPayPlanHandler(payPlanService)
-	childAttendanceHandler := handlers.NewChildAttendanceHandler(childAttendanceService)
+	childAttendanceHandler := handlers.NewChildAttendanceHandler(childAttendanceService, auditService)
 	healthHandler := handlers.NewHealthHandler(db)
 
 	// Initialize middleware

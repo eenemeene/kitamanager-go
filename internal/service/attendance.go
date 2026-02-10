@@ -24,97 +24,10 @@ func NewChildAttendanceService(store store.ChildAttendanceStorer, childStore sto
 	}
 }
 
-// CheckIn creates an attendance record for a child (check-in).
-func (s *ChildAttendanceService) CheckIn(ctx context.Context, orgID, childID uint, req *models.ChildAttendanceCheckInRequest, recordedBy uint) (*models.ChildAttendanceResponse, error) {
-	// Verify child exists and belongs to org
-	child, err := s.childStore.FindByIDMinimal(childID)
-	if err != nil {
-		return nil, apperror.NotFound("child")
-	}
-	if child.OrganizationID != orgID {
-		return nil, apperror.NotFound("child")
-	}
-
-	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-
-	// Check if attendance record already exists for today
-	existing, err := s.store.FindByChildAndDate(childID, today)
-	if err == nil && existing != nil {
-		return nil, apperror.Conflict("attendance record already exists for this child today")
-	}
-
-	checkInTime := &now
-	if req.CheckInTime != nil {
-		checkInTime = req.CheckInTime
-	}
-
-	attendance := &models.ChildAttendance{
-		ChildID:        childID,
-		OrganizationID: orgID,
-		Date:           today,
-		CheckInTime:    checkInTime,
-		Status:         models.ChildAttendanceStatusPresent,
-		Note:           strings.TrimSpace(req.Note),
-		RecordedBy:     recordedBy,
-	}
-
-	if err := s.store.Create(attendance); err != nil {
-		return nil, apperror.Internal("failed to create attendance record")
-	}
-
-	// Reload with child info
-	attendance, err = s.store.FindByID(attendance.ID)
-	if err != nil {
-		return nil, apperror.Internal("failed to reload attendance record")
-	}
-
-	resp := attendance.ToResponse()
-	return &resp, nil
-}
-
-// CheckOut updates an attendance record with check-out time.
-func (s *ChildAttendanceService) CheckOut(ctx context.Context, id, orgID, childID uint, req *models.ChildAttendanceCheckOutRequest) (*models.ChildAttendanceResponse, error) {
-	attendance, err := s.store.FindByID(id)
-	if err != nil {
-		return nil, apperror.NotFound("attendance record")
-	}
-	if attendance.OrganizationID != orgID {
-		return nil, apperror.NotFound("attendance record")
-	}
-	if attendance.ChildID != childID {
-		return nil, apperror.NotFound("attendance record")
-	}
-
-	if attendance.CheckOutTime != nil {
-		return nil, apperror.BadRequest("child is already checked out")
-	}
-
-	now := time.Now()
-	checkOutTime := &now
-	if req.CheckOutTime != nil {
-		checkOutTime = req.CheckOutTime
-	}
-
-	attendance.CheckOutTime = checkOutTime
-	if req.Note != "" {
-		if attendance.Note != "" {
-			attendance.Note = attendance.Note + "; " + strings.TrimSpace(req.Note)
-		} else {
-			attendance.Note = strings.TrimSpace(req.Note)
-		}
-	}
-
-	if err := s.store.Update(attendance); err != nil {
-		return nil, apperror.Internal("failed to update attendance record")
-	}
-
-	resp := attendance.ToResponse()
-	return &resp, nil
-}
-
-// MarkAbsent creates an attendance record marking a child absent.
-func (s *ChildAttendanceService) MarkAbsent(ctx context.Context, orgID, childID uint, req *models.ChildAttendanceMarkAbsentRequest, recordedBy uint) (*models.ChildAttendanceResponse, error) {
+// Create creates an attendance record for a child.
+// For status "present": date defaults to today, check_in_time defaults to now.
+// For status "absent", "sick", "vacation": date is required, check_in_time is ignored.
+func (s *ChildAttendanceService) Create(ctx context.Context, orgID, childID uint, req *models.ChildAttendanceCreateRequest, recordedBy uint) (*models.ChildAttendanceResponse, error) {
 	// Verify child exists and belongs to org
 	child, err := s.childStore.FindByIDMinimal(childID)
 	if err != nil {
@@ -125,18 +38,40 @@ func (s *ChildAttendanceService) MarkAbsent(ctx context.Context, orgID, childID 
 	}
 
 	if !models.IsValidChildAttendanceStatus(req.Status) {
-		return nil, apperror.BadRequest("invalid status, must be one of: absent, sick, vacation")
+		return nil, apperror.BadRequest("invalid status, must be one of: present, absent, sick, vacation")
 	}
+
+	now := time.Now()
+	var date time.Time
+	var checkInTime *time.Time
+
 	if req.Status == models.ChildAttendanceStatusPresent {
-		return nil, apperror.BadRequest("use check-in endpoint for marking present")
+		// For present: date defaults to today, check_in_time defaults to now
+		if req.Date != "" {
+			date, err = time.Parse("2006-01-02", req.Date)
+			if err != nil {
+				return nil, apperror.BadRequest("invalid date format, expected YYYY-MM-DD")
+			}
+		} else {
+			date = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+		}
+		if req.CheckInTime != nil {
+			checkInTime = req.CheckInTime
+		} else {
+			checkInTime = &now
+		}
+	} else {
+		// For absent/sick/vacation: date is required, check_in_time is ignored
+		if req.Date == "" {
+			return nil, apperror.BadRequest("date is required for non-present status")
+		}
+		date, err = time.Parse("2006-01-02", req.Date)
+		if err != nil {
+			return nil, apperror.BadRequest("invalid date format, expected YYYY-MM-DD")
+		}
 	}
 
-	date, err := time.Parse("2006-01-02", req.Date)
-	if err != nil {
-		return nil, apperror.BadRequest("invalid date format, expected YYYY-MM-DD")
-	}
-
-	// Check if attendance record already exists
+	// Check if attendance record already exists for this child on this date
 	existing, findErr := s.store.FindByChildAndDate(childID, date)
 	if findErr == nil && existing != nil {
 		return nil, apperror.Conflict("attendance record already exists for this child on this date")
@@ -146,6 +81,7 @@ func (s *ChildAttendanceService) MarkAbsent(ctx context.Context, orgID, childID 
 		ChildID:        childID,
 		OrganizationID: orgID,
 		Date:           date,
+		CheckInTime:    checkInTime,
 		Status:         req.Status,
 		Note:           strings.TrimSpace(req.Note),
 		RecordedBy:     recordedBy,

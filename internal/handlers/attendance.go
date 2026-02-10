@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -12,133 +13,46 @@ import (
 
 // ChildAttendanceHandler handles HTTP requests for child attendance operations.
 type ChildAttendanceHandler struct {
-	service *service.ChildAttendanceService
+	service      *service.ChildAttendanceService
+	auditService *service.AuditService
 }
 
 // NewChildAttendanceHandler creates a new ChildAttendanceHandler.
-func NewChildAttendanceHandler(service *service.ChildAttendanceService) *ChildAttendanceHandler {
-	return &ChildAttendanceHandler{service: service}
+func NewChildAttendanceHandler(service *service.ChildAttendanceService, auditService *service.AuditService) *ChildAttendanceHandler {
+	return &ChildAttendanceHandler{service: service, auditService: auditService}
 }
 
-// CheckIn godoc
-// @Summary Check in a child
-// @Description Record a child's check-in for the current day
+// Create godoc
+// @Summary Create an attendance record
+// @Description Create a new attendance record for a child (present, absent, sick, or vacation)
 // @Tags child-attendance
 // @Accept json
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param childId path int true "Child ID"
-// @Param request body models.ChildAttendanceCheckInRequest true "Check-in data"
+// @Param id path int true "Child ID"
+// @Param request body models.ChildAttendanceCreateRequest true "Attendance data"
 // @Success 201 {object} models.ChildAttendanceResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse "Child not found"
-// @Failure 409 {object} models.ErrorResponse "Already checked in today"
+// @Failure 409 {object} models.ErrorResponse "Record already exists for this date"
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/{childId}/attendance/check-in [post]
-func (h *ChildAttendanceHandler) CheckIn(c *gin.Context) {
-	orgID, childID, ok := parseOrgAndResourceID(c, "childId")
+// @Router /api/v1/organizations/{orgId}/children/{id}/attendance [post]
+func (h *ChildAttendanceHandler) Create(c *gin.Context) {
+	orgID, childID, ok := parseOrgAndResourceID(c, "id")
 	if !ok {
 		return
 	}
 
-	var req models.ChildAttendanceCheckInRequest
+	var req models.ChildAttendanceCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
 	}
 
 	recordedBy := getUserID(c)
-	attendance, err := h.service.CheckIn(c.Request.Context(), orgID, childID, &req, recordedBy)
-	if err != nil {
-		respondError(c, err)
-		return
-	}
-
-	c.JSON(http.StatusCreated, attendance)
-}
-
-// CheckOut godoc
-// @Summary Check out a child
-// @Description Record a child's check-out time
-// @Tags child-attendance
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param orgId path int true "Organization ID"
-// @Param childId path int true "Child ID"
-// @Param id path int true "Attendance record ID"
-// @Param request body models.ChildAttendanceCheckOutRequest true "Check-out data"
-// @Success 200 {object} models.ChildAttendanceResponse
-// @Failure 400 {object} models.ErrorResponse
-// @Failure 401 {object} models.ErrorResponse
-// @Failure 404 {object} models.ErrorResponse
-// @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/{childId}/attendance/{id}/check-out [put]
-func (h *ChildAttendanceHandler) CheckOut(c *gin.Context) {
-	orgID, err := parseID(c, "orgId")
-	if err != nil {
-		respondError(c, err)
-		return
-	}
-	childID, err := parseID(c, "childId")
-	if err != nil {
-		respondError(c, err)
-		return
-	}
-	id, err := parseID(c, "id")
-	if err != nil {
-		respondError(c, err)
-		return
-	}
-
-	var req models.ChildAttendanceCheckOutRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
-		return
-	}
-
-	attendance, svcErr := h.service.CheckOut(c.Request.Context(), id, orgID, childID, &req)
-	if svcErr != nil {
-		respondError(c, svcErr)
-		return
-	}
-
-	c.JSON(http.StatusOK, attendance)
-}
-
-// MarkAbsent godoc
-// @Summary Mark a child absent
-// @Description Record a child as absent, sick, or on vacation
-// @Tags child-attendance
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param orgId path int true "Organization ID"
-// @Param childId path int true "Child ID"
-// @Param request body models.ChildAttendanceMarkAbsentRequest true "Absence data"
-// @Success 201 {object} models.ChildAttendanceResponse
-// @Failure 400 {object} models.ErrorResponse
-// @Failure 401 {object} models.ErrorResponse
-// @Failure 404 {object} models.ErrorResponse
-// @Failure 409 {object} models.ErrorResponse "Record already exists"
-// @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/{childId}/attendance/absent [post]
-func (h *ChildAttendanceHandler) MarkAbsent(c *gin.Context) {
-	orgID, childID, ok := parseOrgAndResourceID(c, "childId")
-	if !ok {
-		return
-	}
-
-	var req models.ChildAttendanceMarkAbsentRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
-		return
-	}
-
-	recordedBy := getUserID(c)
-	attendance, err := h.service.MarkAbsent(c.Request.Context(), orgID, childID, &req, recordedBy)
+	attendance, err := h.service.Create(c.Request.Context(), orgID, childID, &req, recordedBy)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -155,31 +69,31 @@ func (h *ChildAttendanceHandler) MarkAbsent(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param childId path int true "Child ID"
-// @Param id path int true "Attendance record ID"
+// @Param id path int true "Child ID"
+// @Param attendanceId path int true "Attendance record ID"
 // @Success 200 {object} models.ChildAttendanceResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/{childId}/attendance/{id} [get]
+// @Router /api/v1/organizations/{orgId}/children/{id}/attendance/{attendanceId} [get]
 func (h *ChildAttendanceHandler) Get(c *gin.Context) {
 	orgID, err := parseID(c, "orgId")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
-	childID, err := parseID(c, "childId")
+	childID, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
-	id, err := parseID(c, "id")
+	attendanceID, err := parseID(c, "attendanceId")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	attendance, svcErr := h.service.GetByID(c.Request.Context(), id, orgID, childID)
+	attendance, svcErr := h.service.GetByID(c.Request.Context(), attendanceID, orgID, childID)
 	if svcErr != nil {
 		respondError(c, svcErr)
 		return
@@ -196,27 +110,27 @@ func (h *ChildAttendanceHandler) Get(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param childId path int true "Child ID"
-// @Param id path int true "Attendance record ID"
+// @Param id path int true "Child ID"
+// @Param attendanceId path int true "Attendance record ID"
 // @Param request body models.ChildAttendanceUpdateRequest true "Update data"
 // @Success 200 {object} models.ChildAttendanceResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/{childId}/attendance/{id} [put]
+// @Router /api/v1/organizations/{orgId}/children/{id}/attendance/{attendanceId} [put]
 func (h *ChildAttendanceHandler) Update(c *gin.Context) {
 	orgID, err := parseID(c, "orgId")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
-	childID, err := parseID(c, "childId")
+	childID, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
-	id, err := parseID(c, "id")
+	attendanceID, err := parseID(c, "attendanceId")
 	if err != nil {
 		respondError(c, err)
 		return
@@ -228,7 +142,7 @@ func (h *ChildAttendanceHandler) Update(c *gin.Context) {
 		return
 	}
 
-	attendance, svcErr := h.service.Update(c.Request.Context(), id, orgID, childID, &req)
+	attendance, svcErr := h.service.Update(c.Request.Context(), attendanceID, orgID, childID, &req)
 	if svcErr != nil {
 		respondError(c, svcErr)
 		return
@@ -245,37 +159,48 @@ func (h *ChildAttendanceHandler) Update(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param childId path int true "Child ID"
-// @Param id path int true "Attendance record ID"
+// @Param id path int true "Child ID"
+// @Param attendanceId path int true "Attendance record ID"
 // @Success 204 "No Content"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/{childId}/attendance/{id} [delete]
+// @Router /api/v1/organizations/{orgId}/children/{id}/attendance/{attendanceId} [delete]
 func (h *ChildAttendanceHandler) Delete(c *gin.Context) {
 	orgID, err := parseID(c, "orgId")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
-	childID, err := parseID(c, "childId")
+	childID, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
-	id, err := parseID(c, "id")
+	attendanceID, err := parseID(c, "attendanceId")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	if svcErr := h.service.Delete(c.Request.Context(), id, orgID, childID); svcErr != nil {
+	// Get attendance info before deletion for audit log
+	attendance, svcErr := h.service.GetByID(c.Request.Context(), attendanceID, orgID, childID)
+	if svcErr != nil {
 		respondError(c, svcErr)
 		return
 	}
 
-	c.JSON(http.StatusNoContent, nil)
+	if svcErr := h.service.Delete(c.Request.Context(), attendanceID, orgID, childID); svcErr != nil {
+		respondError(c, svcErr)
+		return
+	}
+
+	// Audit log attendance deletion
+	actorID := getUserID(c)
+	h.auditService.LogResourceDelete(actorID, "child_attendance", attendanceID, fmt.Sprintf("child=%d date=%s", attendance.ChildID, attendance.Date), c.ClientIP())
+
+	c.Status(http.StatusNoContent)
 }
 
 // ListByChild godoc
@@ -286,7 +211,7 @@ func (h *ChildAttendanceHandler) Delete(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param childId path int true "Child ID"
+// @Param id path int true "Child ID"
 // @Param from query string true "Start date (YYYY-MM-DD)"
 // @Param to query string true "End date (YYYY-MM-DD)"
 // @Param page query int false "Page number" default(1)
@@ -296,18 +221,18 @@ func (h *ChildAttendanceHandler) Delete(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/{childId}/attendance [get]
+// @Router /api/v1/organizations/{orgId}/children/{id}/attendance [get]
 func (h *ChildAttendanceHandler) ListByChild(c *gin.Context) {
-	orgID, childID, ok := parseOrgAndResourceID(c, "childId")
+	orgID, childID, ok := parseOrgAndResourceID(c, "id")
 	if !ok {
 		return
 	}
 
-	from, ok := parseOptionalDate(c, "from")
+	from, ok := parseRequiredDate(c, "from")
 	if !ok {
 		return
 	}
-	to, ok := parseOptionalDate(c, "to")
+	to, ok := parseRequiredDate(c, "to")
 	if !ok {
 		return
 	}

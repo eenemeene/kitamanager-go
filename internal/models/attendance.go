@@ -38,16 +38,12 @@ func IsValidChildAttendanceStatus(status string) bool {
 	return false
 }
 
-// ChildAttendanceCheckInRequest represents the request body for checking in a child.
-type ChildAttendanceCheckInRequest struct {
+// ChildAttendanceCreateRequest represents the request body for creating an attendance record.
+type ChildAttendanceCreateRequest struct {
+	Date        string     `json:"date" example:"2025-06-15"`
+	Status      string     `json:"status" binding:"required" example:"present"`
 	CheckInTime *time.Time `json:"check_in_time" example:"2025-06-15T08:00:00Z"`
 	Note        string     `json:"note,omitempty" example:"Arrived with father"`
-}
-
-// ChildAttendanceCheckOutRequest represents the request body for checking out a child.
-type ChildAttendanceCheckOutRequest struct {
-	CheckOutTime *time.Time `json:"check_out_time" example:"2025-06-15T16:00:00Z"`
-	Note         string     `json:"note,omitempty" example:"Picked up by grandparent"`
 }
 
 // ChildAttendanceUpdateRequest represents the request body for updating an attendance record.
@@ -56,13 +52,6 @@ type ChildAttendanceUpdateRequest struct {
 	CheckOutTime *time.Time `json:"check_out_time" example:"2025-06-15T16:00:00Z"`
 	Status       *string    `json:"status" example:"present"`
 	Note         *string    `json:"note" example:"Updated note"`
-}
-
-// ChildAttendanceMarkAbsentRequest represents the request body for marking a child absent.
-type ChildAttendanceMarkAbsentRequest struct {
-	Date   string `json:"date" binding:"required" example:"2025-06-15"`
-	Status string `json:"status" binding:"required" example:"sick"`
-	Note   string `json:"note,omitempty" example:"Has a cold"`
 }
 
 // ChildAttendanceResponse represents the attendance response.
