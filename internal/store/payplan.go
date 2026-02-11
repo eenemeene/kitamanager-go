@@ -35,11 +35,16 @@ func (s *PayPlanStore) GetByID(ctx context.Context, id uint) (*models.PayPlan, e
 }
 
 // GetByIDWithPeriods retrieves a pay plan with all periods and entries.
-func (s *PayPlanStore) GetByIDWithPeriods(ctx context.Context, id uint) (*models.PayPlan, error) {
+// If activeOn is non-nil, only periods active on that date are returned.
+func (s *PayPlanStore) GetByIDWithPeriods(ctx context.Context, id uint, activeOn *time.Time) (*models.PayPlan, error) {
 	var payplan models.PayPlan
 	err := s.db.WithContext(ctx).
 		Preload("Periods", func(db *gorm.DB) *gorm.DB {
-			return db.Order("pay_plan_periods.\"from\" DESC")
+			q := db.Order("pay_plan_periods.\"from\" DESC")
+			if activeOn != nil {
+				q = q.Scopes(PeriodActiveOn(`"from"`, `"to"`, *activeOn))
+			}
+			return q
 		}).
 		Preload("Periods.Entries", func(db *gorm.DB) *gorm.DB {
 			return db.Order("pay_plan_entries.grade ASC, pay_plan_entries.step ASC")
@@ -149,7 +154,8 @@ func (s *PayPlanStore) GetActivePeriod(ctx context.Context, payplanID uint, date
 	var period models.PayPlanPeriod
 	err := s.db.WithContext(ctx).
 		Preload("Entries").
-		Where("pay_plan_id = ? AND \"from\" <= ? AND (\"to\" IS NULL OR \"to\" >= ?)", payplanID, date, date).
+		Where("pay_plan_id = ?", payplanID).
+		Scopes(PeriodActiveOn(`"from"`, `"to"`, date)).
 		Order("\"from\" DESC").
 		First(&period).Error
 	if err != nil {

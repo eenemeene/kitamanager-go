@@ -38,8 +38,9 @@ func (s *PayPlanService) Create(ctx context.Context, orgID uint, req models.PayP
 }
 
 // GetByID retrieves a pay plan by ID.
-func (s *PayPlanService) GetByID(ctx context.Context, id, orgID uint) (*models.PayPlanDetailResponse, error) {
-	payplan, err := s.store.GetByIDWithPeriods(ctx, id)
+// activeOn filters periods to those active on the given date (nil = no filter).
+func (s *PayPlanService) GetByID(ctx context.Context, id, orgID uint, activeOn *time.Time) (*models.PayPlanDetailResponse, error) {
+	payplan, err := s.store.GetByIDWithPeriods(ctx, id, activeOn)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, apperror.NotFound("pay plan")

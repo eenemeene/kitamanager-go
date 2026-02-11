@@ -32,6 +32,7 @@ func NewChildHandler(service *service.ChildService, auditService *service.AuditS
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
 // @Param section_id query int false "Filter by section ID"
+// @Param active_on query string false "Filter by active contract date (YYYY-MM-DD, defaults to today)"
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(20) maximum(100)
 // @Success 200 {object} models.PaginatedResponse[models.Child]
@@ -62,7 +63,14 @@ func (h *ChildHandler) List(c *gin.Context) {
 		}
 	}
 
-	children, total, err := h.service.ListByOrganizationAndSection(c.Request.Context(), orgID, sectionID, params.Limit, params.Offset())
+	// Parse optional active_on filter (defaults to today)
+	activeOnDate, ok := parseOptionalDate(c, "active_on")
+	if !ok {
+		return
+	}
+	activeOn := &activeOnDate
+
+	children, total, err := h.service.ListByOrganizationAndSection(c.Request.Context(), orgID, sectionID, activeOn, params.Limit, params.Offset())
 	if err != nil {
 		respondError(c, err)
 		return

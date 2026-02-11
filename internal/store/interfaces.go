@@ -66,7 +66,7 @@ type GroupStorer interface {
 type EmployeeStorer interface {
 	FindAll(limit, offset int) ([]models.Employee, int64, error)
 	FindByOrganization(orgID uint, limit, offset int) ([]models.Employee, int64, error)
-	FindByOrganizationAndSection(orgID uint, sectionID *uint, limit, offset int) ([]models.Employee, int64, error)
+	FindByOrganizationAndSection(orgID uint, sectionID *uint, activeOn *time.Time, limit, offset int) ([]models.Employee, int64, error)
 	FindByID(id uint) (*models.Employee, error)
 	FindByIDMinimal(id uint) (*models.Employee, error) // Without preloads, for org checks
 	Create(emp *models.Employee) error
@@ -83,9 +83,9 @@ type EmployeeStorer interface {
 type ChildStorer interface {
 	FindAll(limit, offset int) ([]models.Child, int64, error)
 	FindByOrganization(orgID uint, limit, offset int) ([]models.Child, int64, error)
-	FindByOrganizationAndSection(orgID uint, sectionID *uint, limit, offset int) ([]models.Child, int64, error)
-	FindByOrganizationWithContractOn(orgID uint, date time.Time) ([]models.Child, error)
-	CountByOrganizationWithContractOn(orgID uint, date time.Time) (int64, error)
+	FindByOrganizationAndSection(orgID uint, sectionID *uint, activeOn *time.Time, limit, offset int) ([]models.Child, int64, error)
+	FindByOrganizationWithActiveOn(orgID uint, date time.Time) ([]models.Child, error)
+	CountByOrganizationWithActiveOn(orgID uint, date time.Time) (int64, error)
 	FindByID(id uint) (*models.Child, error)
 	FindByIDMinimal(id uint) (*models.Child, error) // Without preloads, for org checks
 	Create(child *models.Child) error
@@ -128,9 +128,9 @@ type GovernmentFundingStorer interface {
 	// GovernmentFunding CRUD
 	FindAll(limit, offset int) ([]models.GovernmentFunding, int64, error)
 	FindByID(id uint) (*models.GovernmentFunding, error)
-	FindByIDWithDetails(id uint, periodsLimit int) (*models.GovernmentFunding, error)
+	FindByIDWithDetails(id uint, periodsLimit int, activeOn *time.Time) (*models.GovernmentFunding, error)
 	FindByState(state string) (*models.GovernmentFunding, error)
-	FindByStateWithDetails(state string, periodsLimit int) (*models.GovernmentFunding, error)
+	FindByStateWithDetails(state string, periodsLimit int, activeOn *time.Time) (*models.GovernmentFunding, error)
 	CountPeriods(fundingID uint) (int64, error)
 	FindByName(name string) (*models.GovernmentFunding, error)
 	Create(funding *models.GovernmentFunding) error

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -37,12 +38,12 @@ func (s *EmployeeService) List(ctx context.Context, limit, offset int) ([]models
 
 // ListByOrganization returns a paginated list of employees for an organization
 func (s *EmployeeService) ListByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.EmployeeResponse, int64, error) {
-	return s.ListByOrganizationAndSection(ctx, orgID, nil, limit, offset)
+	return s.ListByOrganizationAndSection(ctx, orgID, nil, nil, limit, offset)
 }
 
-// ListByOrganizationAndSection returns a paginated list of employees for an organization, optionally filtered by section
-func (s *EmployeeService) ListByOrganizationAndSection(ctx context.Context, orgID uint, sectionID *uint, limit, offset int) ([]models.EmployeeResponse, int64, error) {
-	employees, total, err := s.store.FindByOrganizationAndSection(orgID, sectionID, limit, offset)
+// ListByOrganizationAndSection returns a paginated list of employees for an organization, optionally filtered by section and/or active contract date
+func (s *EmployeeService) ListByOrganizationAndSection(ctx context.Context, orgID uint, sectionID *uint, activeOn *time.Time, limit, offset int) ([]models.EmployeeResponse, int64, error) {
+	employees, total, err := s.store.FindByOrganizationAndSection(orgID, sectionID, activeOn, limit, offset)
 	if err != nil {
 		return nil, 0, apperror.Internal("failed to fetch employees")
 	}
@@ -145,10 +146,18 @@ func (s *EmployeeService) Update(ctx context.Context, id, orgID uint, req *model
 	}
 	if req.SectionID != nil {
 		employee.SectionID = req.SectionID
+		// Clear preloaded association so GORM Save doesn't override the foreign key
+		employee.Section = nil
 	}
 
 	if err := s.store.Update(employee); err != nil {
 		return nil, apperror.Internal("failed to update employee")
+	}
+
+	// Reload to get fresh associations (e.g., new Section after section_id change)
+	employee, err = s.store.FindByID(id)
+	if err != nil {
+		return nil, apperror.Internal("failed to reload employee after update")
 	}
 
 	resp := employee.ToResponse()

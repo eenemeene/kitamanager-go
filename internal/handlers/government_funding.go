@@ -56,6 +56,7 @@ func (h *GovernmentFundingHandler) List(c *gin.Context) {
 // @Security BearerAuth
 // @Param id path int true "GovernmentFunding ID"
 // @Param periods_limit query int false "Limit number of periods returned (0 = all, default 1 for latest only)"
+// @Param active_on query string false "Filter periods active on date (YYYY-MM-DD, defaults to today)"
 // @Success 200 {object} service.GovernmentFundingWithDetailsResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
@@ -81,7 +82,13 @@ func (h *GovernmentFundingHandler) Get(c *gin.Context) {
 		}
 	}
 
-	funding, err := h.service.GetByIDWithDetails(c.Request.Context(), id, periodsLimit)
+	activeOnDate, ok := parseOptionalDate(c, "active_on")
+	if !ok {
+		return
+	}
+	activeOn := &activeOnDate
+
+	funding, err := h.service.GetByIDWithDetails(c.Request.Context(), id, periodsLimit, activeOn)
 	if err != nil {
 		respondError(c, err)
 		return

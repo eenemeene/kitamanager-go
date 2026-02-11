@@ -1,6 +1,8 @@
 package store
 
 import (
+	"time"
+
 	"gorm.io/gorm"
 
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -34,28 +36,40 @@ func (s *EmployeeStore) FindAll(limit, offset int) ([]models.Employee, int64, er
 }
 
 func (s *EmployeeStore) FindByOrganization(orgID uint, limit, offset int) ([]models.Employee, int64, error) {
-	return s.FindByOrganizationAndSection(orgID, nil, limit, offset)
+	return s.FindByOrganizationAndSection(orgID, nil, nil, limit, offset)
 }
 
-func (s *EmployeeStore) FindByOrganizationAndSection(orgID uint, sectionID *uint, limit, offset int) ([]models.Employee, int64, error) {
+func (s *EmployeeStore) FindByOrganizationAndSection(orgID uint, sectionID *uint, activeOn *time.Time, limit, offset int) ([]models.Employee, int64, error) {
 	var employees []models.Employee
 	var total int64
 
-	query := s.db.Model(&models.Employee{}).Where("organization_id = ?", orgID)
+	// Count query
+	countQuery := s.db.Model(&models.Employee{}).Where("employees.organization_id = ?", orgID)
 	if sectionID != nil {
-		query = query.Where("section_id = ?", *sectionID)
+		countQuery = countQuery.Where("employees.section_id = ?", *sectionID)
 	}
-
-	if err := query.Count(&total).Error; err != nil {
+	if activeOn != nil {
+		countQuery = countQuery.
+			Joins("JOIN employee_contracts ON employee_contracts.employee_id = employees.id").
+			Scopes(PeriodActiveOn("employee_contracts.from_date", "employee_contracts.to_date", *activeOn)).
+			Distinct("employees.id")
+	}
+	if err := countQuery.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	query = s.db.Preload("Contracts").Preload("Section").Where("organization_id = ?", orgID)
+	// Data query
+	dataQuery := s.db.Preload("Contracts").Preload("Section").Where("employees.organization_id = ?", orgID)
 	if sectionID != nil {
-		query = query.Where("section_id = ?", *sectionID)
+		dataQuery = dataQuery.Where("employees.section_id = ?", *sectionID)
 	}
-
-	if err := query.Limit(limit).Offset(offset).Find(&employees).Error; err != nil {
+	if activeOn != nil {
+		dataQuery = dataQuery.
+			Joins("JOIN employee_contracts ON employee_contracts.employee_id = employees.id").
+			Scopes(PeriodActiveOn("employee_contracts.from_date", "employee_contracts.to_date", *activeOn)).
+			Distinct()
+	}
+	if err := dataQuery.Limit(limit).Offset(offset).Find(&employees).Error; err != nil {
 		return nil, 0, err
 	}
 

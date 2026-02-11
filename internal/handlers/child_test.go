@@ -16,17 +16,21 @@ func TestChildHandler_List(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 
-	db.Create(&models.Child{
+	child1 := &models.Child{
 		Person: models.Person{OrganizationID: org.ID, FirstName: "Child1", LastName: "Last", Gender: "female", Birthdate: time.Now()},
-	})
-	db.Create(&models.Child{
+	}
+	db.Create(child1)
+	createActiveChildContract(t, db, child1.ID)
+	child2 := &models.Child{
 		Person: models.Person{OrganizationID: org.ID, FirstName: "Child2", LastName: "Last", Gender: "male", Birthdate: time.Now()},
-	})
+	}
+	db.Create(child2)
+	createActiveChildContract(t, db, child2.ID)
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/children", handler.List)
 
-	w := performRequest(r, "GET", "/organizations/1/children", nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children", org.ID), nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -1144,16 +1148,18 @@ func TestChildHandler_List_Pagination(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 
-	// Create 15 children
+	// Create 15 children with active contracts
 	for i := 1; i <= 15; i++ {
-		db.Create(&models.Child{
+		child := &models.Child{
 			Person: models.Person{
 				OrganizationID: org.ID,
 				FirstName:      fmt.Sprintf("Child%02d", i),
 				LastName:       "Last",
 				Birthdate:      time.Now(),
 			},
-		})
+		}
+		db.Create(child)
+		createActiveChildContract(t, db, child.ID)
 	}
 
 	r := setupTestRouter()
@@ -1193,16 +1199,18 @@ func TestChildHandler_List_Pagination_SecondPage(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 
-	// Create 15 children
+	// Create 15 children with active contracts
 	for i := 1; i <= 15; i++ {
-		db.Create(&models.Child{
+		child := &models.Child{
 			Person: models.Person{
 				OrganizationID: org.ID,
 				FirstName:      fmt.Sprintf("Child%02d", i),
 				LastName:       "Last",
 				Birthdate:      time.Now(),
 			},
-		})
+		}
+		db.Create(child)
+		createActiveChildContract(t, db, child.ID)
 	}
 
 	r := setupTestRouter()
@@ -1249,16 +1257,18 @@ func TestChildHandler_List_Pagination_LastPage(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 
-	// Create 12 children (3 pages of 5, last page has 2)
+	// Create 12 children with active contracts (3 pages of 5, last page has 2)
 	for i := 1; i <= 12; i++ {
-		db.Create(&models.Child{
+		child := &models.Child{
 			Person: models.Person{
 				OrganizationID: org.ID,
 				FirstName:      fmt.Sprintf("Child%02d", i),
 				LastName:       "Last",
 				Birthdate:      time.Now(),
 			},
-		})
+		}
+		db.Create(child)
+		createActiveChildContract(t, db, child.ID)
 	}
 
 	r := setupTestRouter()
@@ -1289,16 +1299,18 @@ func TestChildHandler_List_Pagination_BeyondLastPage(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 
-	// Create 5 children
+	// Create 5 children with active contracts
 	for i := 1; i <= 5; i++ {
-		db.Create(&models.Child{
+		child := &models.Child{
 			Person: models.Person{
 				OrganizationID: org.ID,
 				FirstName:      fmt.Sprintf("Child%02d", i),
 				LastName:       "Last",
 				Birthdate:      time.Now(),
 			},
-		})
+		}
+		db.Create(child)
+		createActiveChildContract(t, db, child.ID)
 	}
 
 	r := setupTestRouter()
@@ -1329,16 +1341,18 @@ func TestChildHandler_List_Pagination_DefaultValues(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 
-	// Create 25 children
+	// Create 25 children with active contracts
 	for i := 1; i <= 25; i++ {
-		db.Create(&models.Child{
+		child := &models.Child{
 			Person: models.Person{
 				OrganizationID: org.ID,
 				FirstName:      fmt.Sprintf("Child%02d", i),
 				LastName:       "Last",
 				Birthdate:      time.Now(),
 			},
-		})
+		}
+		db.Create(child)
+		createActiveChildContract(t, db, child.ID)
 	}
 
 	r := setupTestRouter()
@@ -1423,16 +1437,18 @@ func TestChildHandler_List_Pagination_MaxLimit(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 
-	// Create 5 children
+	// Create 5 children with active contracts
 	for i := 1; i <= 5; i++ {
-		db.Create(&models.Child{
+		child := &models.Child{
 			Person: models.Person{
 				OrganizationID: org.ID,
 				FirstName:      fmt.Sprintf("Child%02d", i),
 				LastName:       "Last",
 				Birthdate:      time.Now(),
 			},
-		})
+		}
+		db.Create(child)
+		createActiveChildContract(t, db, child.ID)
 	}
 
 	r := setupTestRouter()

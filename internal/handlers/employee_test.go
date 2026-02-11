@@ -16,12 +16,16 @@ func TestEmployeeHandler_List(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 
-	db.Create(&models.Employee{
+	emp1 := &models.Employee{
 		Person: models.Person{OrganizationID: org.ID, FirstName: "Emp1", LastName: "Last", Gender: "male", Birthdate: time.Now()},
-	})
-	db.Create(&models.Employee{
+	}
+	db.Create(emp1)
+	createActiveEmployeeContract(t, db, emp1.ID)
+	emp2 := &models.Employee{
 		Person: models.Person{OrganizationID: org.ID, FirstName: "Emp2", LastName: "Last", Gender: "female", Birthdate: time.Now()},
-	})
+	}
+	db.Create(emp2)
+	createActiveEmployeeContract(t, db, emp2.ID)
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/employees", handler.List)
@@ -979,16 +983,22 @@ func TestEmployeeHandler_List_IsolatesOrganizations(t *testing.T) {
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
 
-	// Create employees in different orgs
-	db.Create(&models.Employee{
+	// Create employees in different orgs with active contracts
+	emp1 := &models.Employee{
 		Person: models.Person{OrganizationID: org1.ID, FirstName: "Emp1", LastName: "Org1", Gender: "male", Birthdate: time.Now()},
-	})
-	db.Create(&models.Employee{
+	}
+	db.Create(emp1)
+	createActiveEmployeeContract(t, db, emp1.ID)
+	emp2 := &models.Employee{
 		Person: models.Person{OrganizationID: org1.ID, FirstName: "Emp2", LastName: "Org1", Gender: "female", Birthdate: time.Now()},
-	})
-	db.Create(&models.Employee{
+	}
+	db.Create(emp2)
+	createActiveEmployeeContract(t, db, emp2.ID)
+	emp3 := &models.Employee{
 		Person: models.Person{OrganizationID: org2.ID, FirstName: "Emp1", LastName: "Org2", Gender: "male", Birthdate: time.Now()},
-	})
+	}
+	db.Create(emp3)
+	createActiveEmployeeContract(t, db, emp3.ID)
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/employees", handler.List)

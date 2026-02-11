@@ -53,8 +53,9 @@ type GovernmentFundingWithDetailsResponse struct {
 
 // GetByIDWithDetails returns a government funding by ID with nested periods and properties
 // periodsLimit controls how many periods are returned (0 = all)
-func (s *GovernmentFundingService) GetByIDWithDetails(ctx context.Context, id uint, periodsLimit int) (*GovernmentFundingWithDetailsResponse, error) {
-	funding, err := s.store.FindByIDWithDetails(id, periodsLimit)
+// activeOn filters periods to those active on the given date (nil = no filter)
+func (s *GovernmentFundingService) GetByIDWithDetails(ctx context.Context, id uint, periodsLimit int, activeOn *time.Time) (*GovernmentFundingWithDetailsResponse, error) {
+	funding, err := s.store.FindByIDWithDetails(id, periodsLimit, activeOn)
 	if err != nil {
 		return nil, apperror.NotFound("government funding")
 	}

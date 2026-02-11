@@ -133,7 +133,7 @@ func TestImportGovernmentFundingFromFile(t *testing.T) {
 	assert.NotZero(t, fundingID)
 
 	// Verify government funding was created
-	funding, err := fundingStore.FindByIDWithDetails(fundingID, 0)
+	funding, err := fundingStore.FindByIDWithDetails(fundingID, 0, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "Berlin Kita-Förderung", funding.Name)
 	assert.Equal(t, "berlin", funding.State)
@@ -227,7 +227,7 @@ func TestImportGovernmentFundingFromFile_FarFutureDateTreatedAsOngoing(t *testin
 	fundingID, err := importer.ImportGovernmentFundingFromFile(filePath, "berlin")
 	require.NoError(t, err)
 
-	funding, err := fundingStore.FindByIDWithDetails(fundingID, 0)
+	funding, err := fundingStore.FindByIDWithDetails(fundingID, 0, nil)
 	require.NoError(t, err)
 	require.Len(t, funding.Periods, 1)
 

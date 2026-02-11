@@ -118,7 +118,7 @@ func TestGovernmentFundingService_GetByIDWithDetails(t *testing.T) {
 	db.Create(period2)
 
 	// Test with limit 1 (default)
-	found, err := svc.GetByIDWithDetails(ctx, funding.ID, 1)
+	found, err := svc.GetByIDWithDetails(ctx, funding.ID, 1, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -131,7 +131,7 @@ func TestGovernmentFundingService_GetByIDWithDetails(t *testing.T) {
 	}
 
 	// Test with limit 0 (all)
-	found, err = svc.GetByIDWithDetails(ctx, funding.ID, 0)
+	found, err = svc.GetByIDWithDetails(ctx, funding.ID, 0, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}

@@ -64,6 +64,7 @@ func (h *PayPlanHandler) List(c *gin.Context) {
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
 // @Param id path int true "Pay Plan ID"
+// @Param active_on query string false "Filter periods active on date (YYYY-MM-DD, defaults to today)"
 // @Success 200 {object} models.PayPlanDetailResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
@@ -76,7 +77,13 @@ func (h *PayPlanHandler) Get(c *gin.Context) {
 		return
 	}
 
-	payplan, err := h.service.GetByID(c.Request.Context(), id, orgID)
+	activeOnDate, ok := parseOptionalDate(c, "active_on")
+	if !ok {
+		return
+	}
+	activeOn := &activeOnDate
+
+	payplan, err := h.service.GetByID(c.Request.Context(), id, orgID, activeOn)
 	if err != nil {
 		respondError(c, err)
 		return

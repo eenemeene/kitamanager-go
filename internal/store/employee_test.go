@@ -256,6 +256,85 @@ func TestEmployeeStore_DeleteContract(t *testing.T) {
 	}
 }
 
+func TestEmployeeStore_FindByOrganizationAndSection_ActiveOn(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewEmployeeStore(db)
+	org := createTestOrganization(t, db, "Test Org")
+
+	refDate := time.Date(2025, 1, 27, 0, 0, 0, 0, time.UTC)
+
+	// Employee with active contract on refDate
+	empActive := &models.Employee{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Active", LastName: "Employee", Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(empActive)
+	db.Create(&models.EmployeeContract{
+		EmployeeID:   empActive.ID,
+		BaseContract: models.BaseContract{Period: models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)}},
+		Position:     "Teacher",
+		WeeklyHours:  40,
+	})
+
+	// Employee with expired contract
+	empExpired := &models.Employee{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Expired", LastName: "Employee", Birthdate: time.Date(1985, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(empExpired)
+	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	db.Create(&models.EmployeeContract{
+		EmployeeID:   empExpired.ID,
+		BaseContract: models.BaseContract{Period: models.Period{From: time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), To: &to}},
+		Position:     "Teacher",
+		WeeklyHours:  40,
+	})
+
+	// Employee with future contract
+	empFuture := &models.Employee{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Future", LastName: "Employee", Birthdate: time.Date(1995, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(empFuture)
+	db.Create(&models.EmployeeContract{
+		EmployeeID:   empFuture.ID,
+		BaseContract: models.BaseContract{Period: models.Period{From: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)}},
+		Position:     "Teacher",
+		WeeklyHours:  40,
+	})
+
+	// Employee with no contract
+	empNoContract := &models.Employee{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "NoContract", LastName: "Employee", Birthdate: time.Date(1992, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(empNoContract)
+
+	// Query with activeOn filter
+	employees, total, err := store.FindByOrganizationAndSection(org.ID, nil, &refDate, 100, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(employees) != 1 {
+		t.Errorf("expected 1 employee with active contract, got %d", len(employees))
+	}
+	if total != 1 {
+		t.Errorf("expected total 1, got %d", total)
+	}
+	if len(employees) == 1 && employees[0].FirstName != "Active" {
+		t.Errorf("expected Active employee, got %s", employees[0].FirstName)
+	}
+
+	// Query without activeOn (should return all 4 employees)
+	allEmployees, allTotal, err := store.FindByOrganizationAndSection(org.ID, nil, nil, 100, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(allEmployees) != 4 {
+		t.Errorf("expected 4 employees without filter, got %d", len(allEmployees))
+	}
+	if allTotal != 4 {
+		t.Errorf("expected total 4, got %d", allTotal)
+	}
+}
+
 func TestEmployeeStore_DeleteAlsoDeletesContracts(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewEmployeeStore(db)

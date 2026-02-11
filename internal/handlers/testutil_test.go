@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/sqlite"
@@ -187,6 +188,26 @@ func createTestGroupWithOrgAndDefault(t *testing.T, db *gorm.DB, name string, or
 		t.Fatalf("failed to create test group: %v", err)
 	}
 	return group
+}
+
+// createActiveChildContract creates an open-ended contract for a child (active today).
+func createActiveChildContract(t *testing.T, db *gorm.DB, childID uint) {
+	t.Helper()
+	db.Create(&models.ChildContract{
+		ChildID:      childID,
+		BaseContract: models.BaseContract{Period: models.Period{From: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)}},
+	})
+}
+
+// createActiveEmployeeContract creates an open-ended contract for an employee (active today).
+func createActiveEmployeeContract(t *testing.T, db *gorm.DB, employeeID uint) {
+	t.Helper()
+	db.Create(&models.EmployeeContract{
+		EmployeeID:   employeeID,
+		BaseContract: models.BaseContract{Period: models.Period{From: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)}},
+		Position:     "Teacher",
+		WeeklyHours:  40,
+	})
 }
 
 // createUserService creates a user service for testing.

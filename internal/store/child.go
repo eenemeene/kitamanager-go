@@ -36,28 +36,40 @@ func (s *ChildStore) FindAll(limit, offset int) ([]models.Child, int64, error) {
 }
 
 func (s *ChildStore) FindByOrganization(orgID uint, limit, offset int) ([]models.Child, int64, error) {
-	return s.FindByOrganizationAndSection(orgID, nil, limit, offset)
+	return s.FindByOrganizationAndSection(orgID, nil, nil, limit, offset)
 }
 
-func (s *ChildStore) FindByOrganizationAndSection(orgID uint, sectionID *uint, limit, offset int) ([]models.Child, int64, error) {
+func (s *ChildStore) FindByOrganizationAndSection(orgID uint, sectionID *uint, activeOn *time.Time, limit, offset int) ([]models.Child, int64, error) {
 	var children []models.Child
 	var total int64
 
-	query := s.db.Model(&models.Child{}).Where("organization_id = ?", orgID)
+	// Count query
+	countQuery := s.db.Model(&models.Child{}).Where("children.organization_id = ?", orgID)
 	if sectionID != nil {
-		query = query.Where("section_id = ?", *sectionID)
+		countQuery = countQuery.Where("children.section_id = ?", *sectionID)
 	}
-
-	if err := query.Count(&total).Error; err != nil {
+	if activeOn != nil {
+		countQuery = countQuery.
+			Joins("JOIN child_contracts ON child_contracts.child_id = children.id").
+			Scopes(PeriodActiveOn("child_contracts.from_date", "child_contracts.to_date", *activeOn)).
+			Distinct("children.id")
+	}
+	if err := countQuery.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	query = s.db.Preload("Contracts").Preload("Section").Where("organization_id = ?", orgID)
+	// Data query
+	dataQuery := s.db.Preload("Contracts").Preload("Section").Where("children.organization_id = ?", orgID)
 	if sectionID != nil {
-		query = query.Where("section_id = ?", *sectionID)
+		dataQuery = dataQuery.Where("children.section_id = ?", *sectionID)
 	}
-
-	if err := query.Limit(limit).Offset(offset).Find(&children).Error; err != nil {
+	if activeOn != nil {
+		dataQuery = dataQuery.
+			Joins("JOIN child_contracts ON child_contracts.child_id = children.id").
+			Scopes(PeriodActiveOn("child_contracts.from_date", "child_contracts.to_date", *activeOn)).
+			Distinct()
+	}
+	if err := dataQuery.Limit(limit).Offset(offset).Find(&children).Error; err != nil {
 		return nil, 0, err
 	}
 
@@ -125,9 +137,9 @@ func (s *ChildStore) DeleteContract(id uint) error {
 	return s.db.Delete(&models.ChildContract{}, id).Error
 }
 
-// FindByOrganizationWithContractOn returns children that have an active contract on the given date.
+// FindByOrganizationWithActiveOn returns children that have an active contract on the given date.
 // A contract is active if: from_date <= date AND (to_date IS NULL OR to_date >= date)
-func (s *ChildStore) FindByOrganizationWithContractOn(orgID uint, date time.Time) ([]models.Child, error) {
+func (s *ChildStore) FindByOrganizationWithActiveOn(orgID uint, date time.Time) ([]models.Child, error) {
 	var children []models.Child
 
 	// Find children with contracts active on the given date
@@ -135,8 +147,7 @@ func (s *ChildStore) FindByOrganizationWithContractOn(orgID uint, date time.Time
 		Preload("Contracts", "from_date <= ? AND (to_date IS NULL OR to_date >= ?)", date, date).
 		Joins("JOIN child_contracts ON child_contracts.child_id = children.id").
 		Where("children.organization_id = ?", orgID).
-		Where("child_contracts.from_date <= ?", date).
-		Where("child_contracts.to_date IS NULL OR child_contracts.to_date >= ?", date).
+		Scopes(PeriodActiveOn("child_contracts.from_date", "child_contracts.to_date", date)).
 		Distinct().
 		Find(&children).Error; err != nil {
 		return nil, err
@@ -145,15 +156,14 @@ func (s *ChildStore) FindByOrganizationWithContractOn(orgID uint, date time.Time
 	return children, nil
 }
 
-// CountByOrganizationWithContractOn counts children with active contracts on the given date.
+// CountByOrganizationWithActiveOn counts children with active contracts on the given date.
 // A contract is active if: from_date <= date AND (to_date IS NULL OR to_date >= date)
-func (s *ChildStore) CountByOrganizationWithContractOn(orgID uint, date time.Time) (int64, error) {
+func (s *ChildStore) CountByOrganizationWithActiveOn(orgID uint, date time.Time) (int64, error) {
 	var count int64
 	if err := s.db.Model(&models.Child{}).
 		Joins("JOIN child_contracts ON child_contracts.child_id = children.id").
 		Where("children.organization_id = ?", orgID).
-		Where("child_contracts.from_date <= ?", date).
-		Where("child_contracts.to_date IS NULL OR child_contracts.to_date >= ?", date).
+		Scopes(PeriodActiveOn("child_contracts.from_date", "child_contracts.to_date", date)).
 		Distinct("children.id").
 		Count(&count).Error; err != nil {
 		return 0, err

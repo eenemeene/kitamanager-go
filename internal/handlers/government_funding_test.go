@@ -411,13 +411,20 @@ func TestGovernmentFundingHandler_Get_PeriodsLimit(t *testing.T) {
 	funding := &models.GovernmentFunding{Name: "Test Funding", State: "berlin"}
 	db.Create(funding)
 
-	// Create 3 periods (oldest to newest)
-	for i := 0; i < 3; i++ {
-		from := time.Date(2024, time.Month(i*4+1), 1, 0, 0, 0, 0, time.UTC)
-		to := time.Date(2024, time.Month(i*4+4), 1, 0, 0, 0, 0, time.UTC)
+	// Create 3 overlapping periods that are all active today
+	periods := []struct {
+		from time.Time
+		to   time.Time
+	}{
+		{time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)},
+		{time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC), time.Date(2027, 6, 1, 0, 0, 0, 0, time.UTC)},
+		{time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2028, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	for _, p := range periods {
+		to := p.to
 		period := &models.GovernmentFundingPeriod{
 			GovernmentFundingID: funding.ID,
-			From:                from,
+			From:                p.from,
 			To:                  &to,
 		}
 		db.Create(period)

@@ -172,6 +172,42 @@ func createTestEmployee(t *testing.T, db *gorm.DB, firstName, lastName string, o
 	return employee
 }
 
+// createTestSection creates a section for testing.
+func createTestSection(t *testing.T, db *gorm.DB, name string, orgID uint, isDefault bool) *models.Section {
+	t.Helper()
+
+	section := &models.Section{
+		OrganizationID: orgID,
+		Name:           name,
+		IsDefault:      isDefault,
+		CreatedBy:      "test",
+	}
+	if err := db.Create(section).Error; err != nil {
+		t.Fatalf("failed to create test section: %v", err)
+	}
+	return section
+}
+
+// createTestChildInSection creates a child assigned to a specific section.
+func createTestChildInSection(t *testing.T, db *gorm.DB, firstName, lastName string, orgID, sectionID uint) *models.Child {
+	t.Helper()
+
+	sid := sectionID
+	child := &models.Child{
+		Person: models.Person{
+			OrganizationID: orgID,
+			FirstName:      firstName,
+			LastName:       lastName,
+			Birthdate:      time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+			SectionID:      &sid,
+		},
+	}
+	if err := db.Create(child).Error; err != nil {
+		t.Fatalf("failed to create test child: %v", err)
+	}
+	return child
+}
+
 // Service creation helpers
 
 func createOrganizationService(db *gorm.DB) *OrganizationService {

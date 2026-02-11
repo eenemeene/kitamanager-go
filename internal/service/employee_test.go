@@ -247,6 +247,54 @@ func TestEmployeeService_Update(t *testing.T) {
 	}
 }
 
+// REGRESSION TEST: Updating section_id must persist when employee has a preloaded section association.
+// Previously, GORM's Save() would override section_id from the preloaded Section association,
+// causing the update to silently fail.
+func TestEmployeeService_Update_SectionID(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section1 := createTestSection(t, db, "Section A", org.ID, false)
+	section2 := createTestSection(t, db, "Section B", org.ID, false)
+
+	// Create employee in section1
+	sid1 := section1.ID
+	employee := &models.Employee{
+		Person: models.Person{
+			OrganizationID: org.ID,
+			FirstName:      "Maria",
+			LastName:       "Weber",
+			Birthdate:      time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC),
+			SectionID:      &sid1,
+		},
+	}
+	if err := db.Create(employee).Error; err != nil {
+		t.Fatalf("failed to create test employee: %v", err)
+	}
+
+	// Update section_id to section2
+	newSectionID := section2.ID
+	updated, err := svc.Update(ctx, employee.ID, org.ID, &models.EmployeeUpdateRequest{SectionID: &newSectionID})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if updated.SectionID == nil || *updated.SectionID != section2.ID {
+		t.Errorf("response SectionID = %v, want %d", updated.SectionID, section2.ID)
+	}
+
+	// Verify it persisted
+	refetched, err := svc.GetByID(ctx, employee.ID, org.ID)
+	if err != nil {
+		t.Fatalf("expected no error on re-fetch, got %v", err)
+	}
+	if refetched.SectionID == nil || *refetched.SectionID != section2.ID {
+		t.Errorf("persisted SectionID = %v, want %d", refetched.SectionID, section2.ID)
+	}
+}
+
 func TestEmployeeService_Update_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createEmployeeService(db)
@@ -746,6 +794,68 @@ func TestEmployeeService_ListContracts_WrongOrg(t *testing.T) {
 	}
 	if !errors.Is(err, apperror.ErrNotFound) {
 		t.Errorf("SECURITY: expected ErrNotFound (not ErrForbidden to prevent info leak), got %v", err)
+	}
+}
+
+func TestEmployeeService_ListByOrganizationAndSection_ActiveOn(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	// Employee with active contract
+	empActive := createTestEmployee(t, db, "Active", "Employee", org.ID)
+	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	_, err := svc.CreateContract(ctx, empActive.ID, org.ID, &models.EmployeeContractCreateRequest{
+		From: from, Position: "Teacher", WeeklyHours: 40, Grade: "S8a", Step: 3,
+	})
+	if err != nil {
+		t.Fatalf("failed to create contract: %v", err)
+	}
+
+	// Employee with expired contract
+	empExpired := createTestEmployee(t, db, "Expired", "Employee", org.ID)
+	fromExpired := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
+	toExpired := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	_, err = svc.CreateContract(ctx, empExpired.ID, org.ID, &models.EmployeeContractCreateRequest{
+		From: fromExpired, To: &toExpired, Position: "Teacher", WeeklyHours: 40, Grade: "S8a", Step: 3,
+	})
+	if err != nil {
+		t.Fatalf("failed to create contract: %v", err)
+	}
+
+	// Employee with no contract
+	createTestEmployee(t, db, "NoContract", "Employee", org.ID)
+
+	refDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
+
+	// With activeOn filter: only the active employee should be returned
+	employees, total, err := svc.ListByOrganizationAndSection(ctx, org.ID, nil, &refDate, 100, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(employees) != 1 {
+		t.Errorf("expected 1 employee with active_on filter, got %d", len(employees))
+	}
+	if total != 1 {
+		t.Errorf("expected total 1, got %d", total)
+	}
+	if len(employees) == 1 && employees[0].FirstName != "Active" {
+		t.Errorf("expected Active employee, got %s", employees[0].FirstName)
+	}
+
+	// Without activeOn filter: all 3 employees should be returned
+	allEmployees, allTotal, err := svc.ListByOrganizationAndSection(ctx, org.ID, nil, nil, 100, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(allEmployees) != 3 {
+		t.Errorf("expected 3 employees without filter, got %d", len(allEmployees))
+	}
+	if allTotal != 3 {
+		t.Errorf("expected total 3, got %d", allTotal)
 	}
 }
 

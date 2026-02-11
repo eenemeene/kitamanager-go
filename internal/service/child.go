@@ -44,12 +44,12 @@ func (s *ChildService) List(ctx context.Context, limit, offset int) ([]models.Ch
 
 // ListByOrganization returns a paginated list of children for an organization
 func (s *ChildService) ListByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.ChildResponse, int64, error) {
-	return s.ListByOrganizationAndSection(ctx, orgID, nil, limit, offset)
+	return s.ListByOrganizationAndSection(ctx, orgID, nil, nil, limit, offset)
 }
 
-// ListByOrganizationAndSection returns a paginated list of children for an organization, optionally filtered by section
-func (s *ChildService) ListByOrganizationAndSection(ctx context.Context, orgID uint, sectionID *uint, limit, offset int) ([]models.ChildResponse, int64, error) {
-	children, total, err := s.store.FindByOrganizationAndSection(orgID, sectionID, limit, offset)
+// ListByOrganizationAndSection returns a paginated list of children for an organization, optionally filtered by section and/or active contract date
+func (s *ChildService) ListByOrganizationAndSection(ctx context.Context, orgID uint, sectionID *uint, activeOn *time.Time, limit, offset int) ([]models.ChildResponse, int64, error) {
+	children, total, err := s.store.FindByOrganizationAndSection(orgID, sectionID, activeOn, limit, offset)
 	if err != nil {
 		return nil, 0, apperror.Internal("failed to fetch children")
 	}
@@ -152,10 +152,18 @@ func (s *ChildService) Update(ctx context.Context, id, orgID uint, req *models.C
 	}
 	if req.SectionID != nil {
 		child.SectionID = req.SectionID
+		// Clear preloaded association so GORM Save doesn't override the foreign key
+		child.Section = nil
 	}
 
 	if err := s.store.Update(child); err != nil {
 		return nil, apperror.Internal("failed to update child")
+	}
+
+	// Reload to get fresh associations (e.g., new Section after section_id change)
+	child, err = s.store.FindByID(id)
+	if err != nil {
+		return nil, apperror.Internal("failed to reload child after update")
 	}
 
 	resp := child.ToResponse()
@@ -381,7 +389,7 @@ func (s *ChildService) CalculateFunding(ctx context.Context, orgID uint, date ti
 	}
 
 	// Get children with active contracts on this date
-	children, err := s.store.FindByOrganizationWithContractOn(orgID, date)
+	children, err := s.store.FindByOrganizationWithActiveOn(orgID, date)
 	if err != nil {
 		return nil, apperror.Internal("failed to fetch children")
 	}
@@ -392,7 +400,7 @@ func (s *ChildService) CalculateFunding(ctx context.Context, orgID uint, date ti
 	}
 
 	// Look up funding by organization's state (0 = all periods, needed to find matching period for date)
-	funding, err := s.fundingStore.FindByStateWithDetails(org.State, 0)
+	funding, err := s.fundingStore.FindByStateWithDetails(org.State, 0, nil)
 	if err != nil {
 		// No funding defined for this state - return 0 funding for all children
 		for _, child := range children {
@@ -521,7 +529,7 @@ func getAllContractKeyValues(properties models.ContractProperties) []models.Chil
 // GetAgeDistribution returns age distribution of children with active contracts on the given date
 func (s *ChildService) GetAgeDistribution(ctx context.Context, orgID uint, date time.Time) (*models.AgeDistributionResponse, error) {
 	// Get children with active contracts on this date
-	children, err := s.store.FindByOrganizationWithContractOn(orgID, date)
+	children, err := s.store.FindByOrganizationWithActiveOn(orgID, date)
 	if err != nil {
 		return nil, apperror.Internal("failed to fetch children")
 	}
@@ -612,7 +620,7 @@ func (s *ChildService) GetContractCountByMonth(ctx context.Context, orgID uint, 
 		for month := 1; month <= 12; month++ {
 			// Use 15th of the month as sample date
 			sampleDate := time.Date(year, time.Month(month), 15, 0, 0, 0, 0, time.UTC)
-			count, err := s.store.CountByOrganizationWithContractOn(orgID, sampleDate)
+			count, err := s.store.CountByOrganizationWithActiveOn(orgID, sampleDate)
 			if err != nil {
 				return nil, apperror.Internal("failed to count children for month")
 			}

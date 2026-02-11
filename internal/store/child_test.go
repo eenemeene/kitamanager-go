@@ -328,7 +328,7 @@ func TestChildStore_ContractOverlapValidation(t *testing.T) {
 	}
 }
 
-func TestChildStore_FindByOrganizationWithContractOn(t *testing.T) {
+func TestChildStore_FindByOrganizationWithActiveOn(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewChildStore(db)
 	org := createTestOrganization(t, db, "Test Org")
@@ -438,7 +438,7 @@ func TestChildStore_FindByOrganizationWithContractOn(t *testing.T) {
 	})
 
 	// Query for children with active contracts on refDate
-	children, err := store.FindByOrganizationWithContractOn(org.ID, refDate)
+	children, err := store.FindByOrganizationWithActiveOn(org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -465,6 +465,132 @@ func TestChildStore_FindByOrganizationWithContractOn(t *testing.T) {
 	}
 	if !names["Active"] || !names["Ongoing"] {
 		t.Errorf("expected Active and Ongoing children, got names: %v", names)
+	}
+}
+
+func TestChildStore_FindByOrganizationAndSection_ActiveOn(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewChildStore(db)
+	org := createTestOrganization(t, db, "Test Org")
+
+	refDate := time.Date(2025, 1, 27, 0, 0, 0, 0, time.UTC)
+
+	// Child with active contract on refDate
+	childActive := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Active", LastName: "Child", Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(childActive)
+	db.Create(&models.ChildContract{
+		ChildID:      childActive.ID,
+		BaseContract: models.BaseContract{Period: models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)}},
+	})
+
+	// Child with expired contract (before refDate)
+	childExpired := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Expired", LastName: "Child", Birthdate: time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(childExpired)
+	db.Create(&models.ChildContract{
+		ChildID:      childExpired.ID,
+		BaseContract: models.BaseContract{Period: models.Period{From: time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), To: datePtr(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC))}},
+	})
+
+	// Child with future contract (after refDate)
+	childFuture := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Future", LastName: "Child", Birthdate: time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(childFuture)
+	db.Create(&models.ChildContract{
+		ChildID:      childFuture.ID,
+		BaseContract: models.BaseContract{Period: models.Period{From: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)}},
+	})
+
+	// Child with no contract
+	childNoContract := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "NoContract", LastName: "Child", Birthdate: time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(childNoContract)
+
+	// Query with activeOn filter
+	children, total, err := store.FindByOrganizationAndSection(org.ID, nil, &refDate, 100, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(children) != 1 {
+		t.Errorf("expected 1 child with active contract, got %d", len(children))
+		for _, c := range children {
+			t.Logf("  - %s %s (ID: %d)", c.FirstName, c.LastName, c.ID)
+		}
+	}
+
+	if total != 1 {
+		t.Errorf("expected total 1, got %d", total)
+	}
+
+	if len(children) == 1 && children[0].FirstName != "Active" {
+		t.Errorf("expected Active child, got %s", children[0].FirstName)
+	}
+
+	// Query without activeOn (should return all 4 children)
+	allChildren, allTotal, err := store.FindByOrganizationAndSection(org.ID, nil, nil, 100, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(allChildren) != 4 {
+		t.Errorf("expected 4 children without filter, got %d", len(allChildren))
+	}
+	if allTotal != 4 {
+		t.Errorf("expected total 4, got %d", allTotal)
+	}
+}
+
+func TestChildStore_FindByOrganizationAndSection_ActiveOn_Pagination(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewChildStore(db)
+	org := createTestOrganization(t, db, "Test Org")
+
+	refDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
+
+	// Create 3 children with active contracts
+	for i := 0; i < 3; i++ {
+		child := &models.Child{
+			Person: models.Person{OrganizationID: org.ID, FirstName: "Active", LastName: "Child", Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)},
+		}
+		db.Create(child)
+		db.Create(&models.ChildContract{
+			ChildID:      child.ID,
+			BaseContract: models.BaseContract{Period: models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)}},
+		})
+	}
+
+	// Create 1 child without contract
+	noContract := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "NoContract", LastName: "Child", Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(noContract)
+
+	// Paginate: limit=2, offset=0 should return 2 of 3 total
+	children, total, err := store.FindByOrganizationAndSection(org.ID, nil, &refDate, 2, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(children) != 2 {
+		t.Errorf("expected 2 children (page 1), got %d", len(children))
+	}
+	if total != 3 {
+		t.Errorf("expected total 3, got %d", total)
+	}
+
+	// Page 2: limit=2, offset=2 should return 1 remaining
+	children2, _, err := store.FindByOrganizationAndSection(org.ID, nil, &refDate, 2, 2)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(children2) != 1 {
+		t.Errorf("expected 1 child (page 2), got %d", len(children2))
 	}
 }
 

@@ -285,6 +285,93 @@ func TestChildService_Update_WrongOrg(t *testing.T) {
 	}
 }
 
+// REGRESSION TEST: Updating section_id must persist when child has a preloaded section association.
+// Previously, GORM's Save() would override section_id from the preloaded Section association,
+// causing the update to silently fail.
+func TestChildService_Update_SectionID(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section1 := createTestSection(t, db, "Section A", org.ID, false)
+	section2 := createTestSection(t, db, "Section B", org.ID, false)
+
+	child := createTestChildInSection(t, db, "John", "Doe", org.ID, section1.ID)
+
+	// Verify initial state
+	found, err := svc.GetByID(ctx, child.ID, org.ID)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if found.SectionID == nil || *found.SectionID != section1.ID {
+		t.Fatalf("expected initial section_id=%d, got %v", section1.ID, found.SectionID)
+	}
+
+	// Update section_id to section2
+	newSectionID := section2.ID
+	req := &models.ChildUpdateRequest{
+		SectionID: &newSectionID,
+	}
+
+	updated, err := svc.Update(ctx, child.ID, org.ID, req)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	// Verify the response has the new section_id
+	if updated.SectionID == nil || *updated.SectionID != section2.ID {
+		t.Errorf("response SectionID = %v, want %d", updated.SectionID, section2.ID)
+	}
+
+	// Verify the section association is updated in response
+	if updated.Section == nil || updated.Section.Name != "Section B" {
+		t.Errorf("response Section.Name = %v, want Section B", updated.Section)
+	}
+
+	// Verify it actually persisted in the database (re-fetch)
+	refetched, err := svc.GetByID(ctx, child.ID, org.ID)
+	if err != nil {
+		t.Fatalf("expected no error on re-fetch, got %v", err)
+	}
+	if refetched.SectionID == nil || *refetched.SectionID != section2.ID {
+		t.Errorf("persisted SectionID = %v, want %d", refetched.SectionID, section2.ID)
+	}
+}
+
+// REGRESSION TEST: Updating section_id back and forth should work correctly.
+func TestChildService_Update_SectionID_BackAndForth(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section1 := createTestSection(t, db, "Section A", org.ID, false)
+	section2 := createTestSection(t, db, "Section B", org.ID, false)
+
+	child := createTestChildInSection(t, db, "Anna", "Schmidt", org.ID, section1.ID)
+
+	// Move to section2
+	sid2 := section2.ID
+	updated, err := svc.Update(ctx, child.ID, org.ID, &models.ChildUpdateRequest{SectionID: &sid2})
+	if err != nil {
+		t.Fatalf("move to section2: %v", err)
+	}
+	if updated.SectionID == nil || *updated.SectionID != section2.ID {
+		t.Errorf("after move to section2: SectionID = %v, want %d", updated.SectionID, section2.ID)
+	}
+
+	// Move back to section1
+	sid1 := section1.ID
+	updated, err = svc.Update(ctx, child.ID, org.ID, &models.ChildUpdateRequest{SectionID: &sid1})
+	if err != nil {
+		t.Fatalf("move back to section1: %v", err)
+	}
+	if updated.SectionID == nil || *updated.SectionID != section1.ID {
+		t.Errorf("after move back to section1: SectionID = %v, want %d", updated.SectionID, section1.ID)
+	}
+}
+
 func TestChildService_Delete(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
@@ -575,6 +662,64 @@ func TestChildService_ListContracts_WrongOrg(t *testing.T) {
 
 	if !errors.Is(err, apperror.ErrNotFound) {
 		t.Errorf("expected ErrNotFound (not forbidden - security), got %v", err)
+	}
+}
+
+func TestChildService_ListByOrganizationAndSection_ActiveOn(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	// Child with active contract
+	childActive := createTestChild(t, db, "Active", "Child", org.ID)
+	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	_, err := svc.CreateContract(ctx, childActive.ID, org.ID, &models.ChildContractCreateRequest{From: from})
+	if err != nil {
+		t.Fatalf("failed to create contract: %v", err)
+	}
+
+	// Child with expired contract
+	childExpired := createTestChild(t, db, "Expired", "Child", org.ID)
+	fromExpired := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
+	toExpired := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	_, err = svc.CreateContract(ctx, childExpired.ID, org.ID, &models.ChildContractCreateRequest{From: fromExpired, To: &toExpired})
+	if err != nil {
+		t.Fatalf("failed to create contract: %v", err)
+	}
+
+	// Child with no contract
+	createTestChild(t, db, "NoContract", "Child", org.ID)
+
+	refDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
+
+	// With activeOn filter: only the active child should be returned
+	children, total, err := svc.ListByOrganizationAndSection(ctx, org.ID, nil, &refDate, 100, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(children) != 1 {
+		t.Errorf("expected 1 child with active_on filter, got %d", len(children))
+	}
+	if total != 1 {
+		t.Errorf("expected total 1, got %d", total)
+	}
+	if len(children) == 1 && children[0].FirstName != "Active" {
+		t.Errorf("expected Active child, got %s", children[0].FirstName)
+	}
+
+	// Without activeOn filter: all 3 children should be returned
+	allChildren, allTotal, err := svc.ListByOrganizationAndSection(ctx, org.ID, nil, nil, 100, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(allChildren) != 3 {
+		t.Errorf("expected 3 children without filter, got %d", len(allChildren))
+	}
+	if allTotal != 3 {
+		t.Errorf("expected total 3, got %d", allTotal)
 	}
 }
 
@@ -956,7 +1101,7 @@ func TestChildService_CalculateFunding_SingleProperty(t *testing.T) {
 	}
 }
 
-func TestChildService_CalculateFunding_ChildNoContractOnDate(t *testing.T) {
+func TestChildService_CalculateFunding_ChildNoActiveOnDate(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
 	ctx := context.Background()

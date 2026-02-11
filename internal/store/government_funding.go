@@ -1,6 +1,8 @@
 package store
 
 import (
+	"time"
+
 	"gorm.io/gorm"
 
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -55,11 +57,14 @@ func (s *GovernmentFundingStore) FindByState(state string) (*models.GovernmentFu
 	return &funding, nil
 }
 
-func (s *GovernmentFundingStore) FindByStateWithDetails(state string, periodsLimit int) (*models.GovernmentFunding, error) {
+func (s *GovernmentFundingStore) FindByStateWithDetails(state string, periodsLimit int, activeOn *time.Time) (*models.GovernmentFunding, error) {
 	var funding models.GovernmentFunding
 	if err := s.db.
 		Preload("Periods", func(db *gorm.DB) *gorm.DB {
 			q := db.Order("from_date DESC")
+			if activeOn != nil {
+				q = q.Scopes(PeriodActiveOn("from_date", "to_date", *activeOn))
+			}
 			if periodsLimit > 0 {
 				q = q.Limit(periodsLimit)
 			}
@@ -75,11 +80,14 @@ func (s *GovernmentFundingStore) FindByStateWithDetails(state string, periodsLim
 	return &funding, nil
 }
 
-func (s *GovernmentFundingStore) FindByIDWithDetails(id uint, periodsLimit int) (*models.GovernmentFunding, error) {
+func (s *GovernmentFundingStore) FindByIDWithDetails(id uint, periodsLimit int, activeOn *time.Time) (*models.GovernmentFunding, error) {
 	var funding models.GovernmentFunding
 	if err := s.db.
 		Preload("Periods", func(db *gorm.DB) *gorm.DB {
 			q := db.Order("from_date DESC")
+			if activeOn != nil {
+				q = q.Scopes(PeriodActiveOn("from_date", "to_date", *activeOn))
+			}
 			if periodsLimit > 0 {
 				q = q.Limit(periodsLimit)
 			}
