@@ -58,7 +58,7 @@ dev: api-build web-install
 		SEED_TEST_DATA=true \
 		GOVERNMENT_FUNDING_SEED_PATH=configs/government-fundings/berlin.yaml \
 		GOVERNMENT_FUNDING_SEED_NAME=Berlin \
-		CORS_ALLOW_ORIGINS="*" \
+		CORS_ALLOW_ORIGINS="http://localhost:3000,http://localhost:3001,http://localhost:8080,http://10.149.53.39:3000,http://10.149.53.39:8080" \
 		CORS_ALLOW_CREDENTIALS=true \
 		LOGIN_RATE_LIMIT_PER_MINUTE=0 \
 		./bin/kitamanager-api > /tmp/kitamanager-api.log 2>&1 & echo $$! > /tmp/kitamanager-api.pid
@@ -76,7 +76,7 @@ dev: api-build web-install
 	@echo "================================================"
 	@echo ""
 	@trap 'kill $$(cat /tmp/kitamanager-api.pid) 2>/dev/null; docker compose stop db' EXIT; \
-		cd frontend && npm run dev
+		cd frontend && npx next dev -H 0.0.0.0
 
 # =============================================================================
 # API targets
