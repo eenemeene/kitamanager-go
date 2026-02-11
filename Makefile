@@ -1,4 +1,4 @@
-.PHONY: build lint test clean ci dev \
+.PHONY: build lint test clean ci dev dev-fresh \
 	api-build api-run api-lint api-test-all api-test-unit api-test-integration api-test-contract api-test-fuzz api-test-coverage \
 	web-install web-dev web-build web-lint web-format web-format-check web-type-check web-test web-test-coverage web-test-e2e web-test-e2e-fresh web-test-e2e-demo \
 	docs schema-docs swagger-docs docker-up docker-down docker-rebuild docker-reset install-hooks uninstall-hooks pre-commit
@@ -31,6 +31,9 @@ clean:
 # Run all CI checks locally
 ci: lint test build
 	@echo "All CI checks passed!"
+
+# Reset everything and start fresh development environment
+dev-fresh: docker-reset clean dev
 
 # Start full development environment (database + API + web with hot reload)
 # Prerequisites: Docker for database, Go and Node.js installed
