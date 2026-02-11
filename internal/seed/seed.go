@@ -694,9 +694,12 @@ func createTestContractsDistributed(childID uint, birthdate time.Time, childInde
 	childAgeMonths := int(now.Sub(birthdate).Hours() / 24 / 30)
 
 	// Determine if child has left (contract ended) or is still enrolled
+	// Children over 8 years old (96 months) have always left (beyond max funding age)
 	// Children over 6 years old (72 months) have typically left for school
 	hasLeft := false
-	if childAgeMonths > 72 {
+	if childAgeMonths > 96 {
+		hasLeft = true // All children over 8 have left
+	} else if childAgeMonths > 72 {
 		hasLeft = randInt(100) < 90 // 90% of school-age children have left
 	} else if childAgeMonths > 60 {
 		hasLeft = randInt(100) < 30 // 30% of 5-6 year olds have left
