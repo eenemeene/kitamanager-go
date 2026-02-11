@@ -12,11 +12,12 @@ import (
 )
 
 type GovernmentFundingHandler struct {
-	service *service.GovernmentFundingService
+	service      *service.GovernmentFundingService
+	auditService *service.AuditService
 }
 
-func NewGovernmentFundingHandler(service *service.GovernmentFundingService) *GovernmentFundingHandler {
-	return &GovernmentFundingHandler{service: service}
+func NewGovernmentFundingHandler(service *service.GovernmentFundingService, auditService *service.AuditService) *GovernmentFundingHandler {
+	return &GovernmentFundingHandler{service: service, auditService: auditService}
 }
 
 // List godoc
@@ -61,6 +62,7 @@ func (h *GovernmentFundingHandler) List(c *gin.Context) {
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/government-fundings/{id} [get]
 func (h *GovernmentFundingHandler) Get(c *gin.Context) {
 	id, err := parseID(c, "id")
@@ -191,10 +193,21 @@ func (h *GovernmentFundingHandler) Delete(c *gin.Context) {
 		return
 	}
 
+	// Get funding info before deletion for audit log
+	funding, err := h.service.GetByID(c.Request.Context(), id)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	if err := h.service.Delete(c.Request.Context(), id); err != nil {
 		respondError(c, err)
 		return
 	}
+
+	// Audit log government funding deletion
+	actorID := getUserID(c)
+	h.auditService.LogResourceDelete(actorID, "government_funding", id, funding.Name, c.ClientIP())
 
 	c.Status(http.StatusNoContent)
 }
@@ -300,7 +313,7 @@ func (h *GovernmentFundingHandler) UpdatePeriod(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/government-fundings/{id}/periods/{periodId} [delete]
 func (h *GovernmentFundingHandler) DeletePeriod(c *gin.Context) {
-	_, err := parseID(c, "id")
+	fundingID, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
 		return
@@ -316,6 +329,10 @@ func (h *GovernmentFundingHandler) DeletePeriod(c *gin.Context) {
 		respondError(c, err)
 		return
 	}
+
+	// Audit log period deletion
+	actorID := getUserID(c)
+	h.auditService.LogResourceDelete(actorID, "government_funding_period", periodID, fmt.Sprintf("funding=%d", fundingID), c.ClientIP())
 
 	c.Status(http.StatusNoContent)
 }
@@ -442,7 +459,7 @@ func (h *GovernmentFundingHandler) DeleteProperty(c *gin.Context) {
 		return
 	}
 
-	_, err = parseID(c, "periodId")
+	periodID, err := parseID(c, "periodId")
 	if err != nil {
 		respondError(c, err)
 		return
@@ -458,6 +475,10 @@ func (h *GovernmentFundingHandler) DeleteProperty(c *gin.Context) {
 		respondError(c, err)
 		return
 	}
+
+	// Audit log property deletion
+	actorID := getUserID(c)
+	h.auditService.LogResourceDelete(actorID, "government_funding_property", propID, fmt.Sprintf("period=%d", periodID), c.ClientIP())
 
 	c.Status(http.StatusNoContent)
 }

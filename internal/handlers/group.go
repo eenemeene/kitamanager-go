@@ -70,6 +70,7 @@ func (h *GroupHandler) List(c *gin.Context) {
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/groups/{groupId} [get]
 func (h *GroupHandler) Get(c *gin.Context) {
 	orgID, groupID, ok := parseOrgAndResourceID(c, "groupId")

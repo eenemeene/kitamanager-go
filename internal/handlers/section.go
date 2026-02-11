@@ -70,6 +70,7 @@ func (h *SectionHandler) List(c *gin.Context) {
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/sections/{sectionId} [get]
 func (h *SectionHandler) Get(c *gin.Context) {
 	orgID, sectionID, ok := parseOrgAndResourceID(c, "sectionId")

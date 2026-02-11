@@ -96,6 +96,7 @@ func (h *ChildHandler) List(c *gin.Context) {
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/children/{id} [get]
 func (h *ChildHandler) Get(c *gin.Context) {
 	orgID, id, ok := parseOrgAndResourceID(c, "id")
@@ -269,10 +270,11 @@ func (h *ChildHandler) ListContracts(c *gin.Context) {
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
 // @Param id path int true "Child ID"
-// @Success 200 {object} models.ChildContract
+// @Success 200 {object} models.ChildContractResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/children/{id}/contracts/current [get]
 func (h *ChildHandler) GetCurrentContract(c *gin.Context) {
 	orgID, id, ok := parseOrgAndResourceID(c, "id")
@@ -303,6 +305,7 @@ func (h *ChildHandler) GetCurrentContract(c *gin.Context) {
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/children/{id}/contracts/{contractId} [get]
 func (h *ChildHandler) GetContract(c *gin.Context) {
 	orgID, childID, contractID, ok := parseOrgResourceAndContractID(c)
@@ -338,7 +341,7 @@ func (h *ChildHandler) GetContract(c *gin.Context) {
 // @Param orgId path int true "Organization ID"
 // @Param id path int true "Child ID"
 // @Param request body models.ChildContractCreateRequest true "Contract data"
-// @Success 201 {object} models.ChildContract
+// @Success 201 {object} models.ChildContractResponse
 // @Failure 400 {object} models.ErrorResponse "Invalid request (e.g., from date after to date)"
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse "Child not found"
@@ -378,7 +381,7 @@ func (h *ChildHandler) CreateContract(c *gin.Context) {
 // @Param id path int true "Child ID"
 // @Param contractId path int true "Contract ID"
 // @Param request body models.ChildContractUpdateRequest true "Contract data"
-// @Success 200 {object} models.ChildContract
+// @Success 200 {object} models.ChildContractResponse
 // @Failure 400 {object} models.ErrorResponse "Invalid request (e.g., from date after to date)"
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse "Contract not found"

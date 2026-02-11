@@ -95,6 +95,7 @@ func (h *EmployeeHandler) List(c *gin.Context) {
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id} [get]
 func (h *EmployeeHandler) Get(c *gin.Context) {
 	orgID, id, ok := parseOrgAndResourceID(c, "id")
@@ -268,10 +269,11 @@ func (h *EmployeeHandler) ListContracts(c *gin.Context) {
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
 // @Param id path int true "Employee ID"
-// @Success 200 {object} models.EmployeeContract
+// @Success 200 {object} models.EmployeeContractResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id}/contracts/current [get]
 func (h *EmployeeHandler) GetCurrentContract(c *gin.Context) {
 	orgID, id, ok := parseOrgAndResourceID(c, "id")
@@ -307,7 +309,7 @@ func (h *EmployeeHandler) GetCurrentContract(c *gin.Context) {
 // @Param orgId path int true "Organization ID"
 // @Param id path int true "Employee ID"
 // @Param request body models.EmployeeContractCreateRequest true "Contract data"
-// @Success 201 {object} models.EmployeeContract
+// @Success 201 {object} models.EmployeeContractResponse
 // @Failure 400 {object} models.ErrorResponse "Invalid request (e.g., from date after to date)"
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse "Employee not found"
@@ -349,6 +351,7 @@ func (h *EmployeeHandler) CreateContract(c *gin.Context) {
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id}/contracts/{contractId} [get]
 func (h *EmployeeHandler) GetContract(c *gin.Context) {
 	orgID, employeeID, contractID, ok := parseOrgResourceAndContractID(c)

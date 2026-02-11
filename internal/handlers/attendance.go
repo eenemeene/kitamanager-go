@@ -75,6 +75,7 @@ func (h *ChildAttendanceHandler) Create(c *gin.Context) {
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/children/{id}/attendance/{attendanceId} [get]
 func (h *ChildAttendanceHandler) Get(c *gin.Context) {
 	orgID, err := parseID(c, "orgId")

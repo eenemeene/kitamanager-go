@@ -105,6 +105,7 @@ func (h *UserHandler) ListByOrganization(c *gin.Context) {
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/users/{userId} [get]
 func (h *UserHandler) Get(c *gin.Context) {
 	id, err := parseID(c, "userId")

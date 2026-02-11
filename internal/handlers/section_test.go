@@ -297,7 +297,7 @@ func TestSectionHandler_Update_NotFound(t *testing.T) {
 func TestSectionHandler_Delete(t *testing.T) {
 	db := setupTestDB(t)
 	sectionService := createSectionService(db)
-	handler := NewSectionHandler(sectionService, nil)
+	handler := NewSectionHandler(sectionService, createAuditService(db))
 
 	org := createTestOrganization(t, db, "Test Org")
 	section := createTestSectionWithOrg(t, db, "To Delete", org.ID)
@@ -322,7 +322,7 @@ func TestSectionHandler_Delete(t *testing.T) {
 func TestSectionHandler_Delete_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	sectionService := createSectionService(db)
-	handler := NewSectionHandler(sectionService, nil)
+	handler := NewSectionHandler(sectionService, createAuditService(db))
 
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
@@ -349,7 +349,7 @@ func TestSectionHandler_Delete_WrongOrg(t *testing.T) {
 func TestSectionHandler_Delete_WithChildren(t *testing.T) {
 	db := setupTestDB(t)
 	sectionService := createSectionService(db)
-	handler := NewSectionHandler(sectionService, nil)
+	handler := NewSectionHandler(sectionService, createAuditService(db))
 
 	org := createTestOrganization(t, db, "Test Org")
 	section := createTestSectionWithOrg(t, db, "Section With Children", org.ID)
@@ -387,7 +387,7 @@ func TestSectionHandler_Delete_WithChildren(t *testing.T) {
 func TestSectionHandler_Delete_WithEmployees(t *testing.T) {
 	db := setupTestDB(t)
 	sectionService := createSectionService(db)
-	handler := NewSectionHandler(sectionService, nil)
+	handler := NewSectionHandler(sectionService, createAuditService(db))
 
 	org := createTestOrganization(t, db, "Test Org")
 	section := createTestSectionWithOrg(t, db, "Section With Employees", org.ID)
@@ -442,7 +442,7 @@ func TestSectionHandler_Get_InvalidID(t *testing.T) {
 func TestSectionHandler_Delete_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	sectionService := createSectionService(db)
-	handler := NewSectionHandler(sectionService, nil)
+	handler := NewSectionHandler(sectionService, createAuditService(db))
 
 	org := createTestOrganization(t, db, "Test Org")
 

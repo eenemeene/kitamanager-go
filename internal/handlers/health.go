@@ -26,6 +26,7 @@ func NewHealthHandler(db *gorm.DB) *HealthHandler {
 // @Tags health
 // @Produce json
 // @Success 200 {object} models.HealthResponse
+// @Failure 500 {object} models.HealthResponse
 // @Failure 503 {object} models.HealthResponse
 // @Router /api/v1/health [get]
 func (h *HealthHandler) Check(c *gin.Context) {
@@ -64,6 +65,7 @@ func (h *HealthHandler) Check(c *gin.Context) {
 // @Tags health
 // @Produce json
 // @Success 200 {object} map[string]string
+// @Failure 500 {object} map[string]string
 // @Failure 503 {object} map[string]string
 // @Router /api/v1/ready [get]
 func (h *HealthHandler) Ready(c *gin.Context) {

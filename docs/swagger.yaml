@@ -1868,6 +1868,10 @@ paths:
         in: query
         name: periods_limit
         type: integer
+      - description: Filter periods active on date (YYYY-MM-DD, defaults to today)
+        in: query
+        name: active_on
+        type: string
       produces:
       - application/json
       responses:
@@ -1885,6 +1889,10 @@ paths:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:
@@ -2253,6 +2261,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.HealthResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.HealthResponse'
         "503":
           description: Service Unavailable
           schema:
@@ -2319,6 +2331,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.MessageResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       summary: Logout user
       tags:
       - auth
@@ -2353,6 +2369,10 @@ paths:
         Get a paginated list of organizations the user has access to.
         Superadmins see all organizations; other users see only organizations they belong to via group membership.
       parameters:
+      - description: Search by name
+        in: query
+        name: search
+        type: string
       - default: 1
         description: Page number
         in: query
@@ -2481,6 +2501,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get organization by ID
@@ -2545,6 +2569,14 @@ paths:
         in: query
         name: section_id
         type: integer
+      - description: Filter by active contract date (YYYY-MM-DD, defaults to today)
+        in: query
+        name: active_on
+        type: string
+      - description: Search by first or last name (case-insensitive)
+        in: query
+        name: search
+        type: string
       - default: 1
         description: Page number
         in: query
@@ -2690,6 +2722,10 @@ paths:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:
@@ -2951,6 +2987,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get attendance record by ID
@@ -3102,7 +3142,7 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContract'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractResponse'
         "400":
           description: Invalid request (e.g., from date after to date)
           schema:
@@ -3210,6 +3250,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get child contract by ID
@@ -3249,7 +3293,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContract'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractResponse'
         "400":
           description: Invalid request (e.g., from date after to date)
           schema:
@@ -3297,7 +3341,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContract'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractResponse'
         "400":
           description: Bad Request
           schema:
@@ -3308,6 +3352,10 @@ paths:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:
@@ -3547,6 +3595,14 @@ paths:
         in: query
         name: section_id
         type: integer
+      - description: Filter by active contract date (YYYY-MM-DD, defaults to today)
+        in: query
+        name: active_on
+        type: string
+      - description: Search by first or last name (case-insensitive)
+        in: query
+        name: search
+        type: string
       - default: 1
         description: Page number
         in: query
@@ -3692,6 +3748,10 @@ paths:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:
@@ -3840,7 +3900,7 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContract'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractResponse'
         "400":
           description: Invalid request (e.g., from date after to date)
           schema:
@@ -3948,6 +4008,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get employee contract by ID
@@ -4035,7 +4099,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContract'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractResponse'
         "400":
           description: Bad Request
           schema:
@@ -4046,6 +4110,10 @@ paths:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:
@@ -4064,6 +4132,10 @@ paths:
         name: orgId
         required: true
         type: integer
+      - description: Search by name (case-insensitive)
+        in: query
+        name: search
+        type: string
       - default: 1
         description: Page number
         in: query
@@ -4215,6 +4287,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get group by ID
@@ -4310,6 +4386,10 @@ paths:
           description: Forbidden
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List pay plans
@@ -4348,6 +4428,10 @@ paths:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "403":
           description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:
@@ -4392,6 +4476,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete pay plan
@@ -4412,6 +4500,10 @@ paths:
         name: id
         required: true
         type: integer
+      - description: Filter periods active on date (YYYY-MM-DD, defaults to today)
+        in: query
+        name: active_on
+        type: string
       produces:
       - application/json
       responses:
@@ -4433,6 +4525,10 @@ paths:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:
@@ -4482,6 +4578,10 @@ paths:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:
@@ -4534,6 +4634,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create period
@@ -4579,6 +4683,10 @@ paths:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:
@@ -4627,6 +4735,10 @@ paths:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:
@@ -4681,6 +4793,10 @@ paths:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:
@@ -4738,6 +4854,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create entry
@@ -4788,6 +4908,10 @@ paths:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:
@@ -4841,6 +4965,10 @@ paths:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:
@@ -4902,6 +5030,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update entry
@@ -4918,6 +5050,10 @@ paths:
         name: orgId
         required: true
         type: integer
+      - description: Search by name (case-insensitive)
+        in: query
+        name: search
+        type: string
       - default: 1
         description: Page number
         in: query
@@ -5071,6 +5207,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get section by ID
@@ -5137,6 +5277,10 @@ paths:
         name: orgId
         required: true
         type: integer
+      - description: Search by name or email (case-insensitive)
+        in: query
+        name: search
+        type: string
       - default: 1
         description: Page number
         in: query
@@ -5181,6 +5325,12 @@ paths:
       responses:
         "200":
           description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
           schema:
             additionalProperties:
               type: string
@@ -5234,6 +5384,10 @@ paths:
       - application/json
       description: Get a paginated list of all users
       parameters:
+      - description: Search by name or email (case-insensitive)
+        in: query
+        name: search
+        type: string
       - default: 1
         description: Page number
         in: query
@@ -5360,6 +5514,10 @@ paths:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:

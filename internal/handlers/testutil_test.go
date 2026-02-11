@@ -46,6 +46,8 @@ func setupTestDB(t *testing.T) *gorm.DB {
 		&models.PayPlan{},
 		&models.PayPlanPeriod{},
 		&models.PayPlanEntry{},
+		&models.AuditLog{},
+		&models.ChildAttendance{},
 	)
 	if err != nil {
 		t.Fatalf("failed to migrate test database: %v", err)
@@ -65,6 +67,15 @@ func performRequest(r *gin.Engine, method, path string, body interface{}) *httpt
 		req, _ = http.NewRequest(method, path, nil)
 	}
 
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	return w
+}
+
+// performRequestRaw executes an HTTP request with a raw string body.
+func performRequestRaw(r *gin.Engine, method, path string, body string) *httptest.ResponseRecorder {
+	req, _ := http.NewRequest(method, path, bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 	return w
@@ -251,4 +262,17 @@ func createChildService(db *gorm.DB) *service.ChildService {
 	orgStore := store.NewOrganizationStore(db)
 	fundingStore := store.NewGovernmentFundingStore(db)
 	return service.NewChildService(childStore, orgStore, fundingStore)
+}
+
+// createAuditService creates an audit service for testing.
+func createAuditService(db *gorm.DB) *service.AuditService {
+	auditStore := store.NewAuditStore(db)
+	return service.NewAuditService(auditStore)
+}
+
+// createAttendanceService creates a child attendance service for testing.
+func createAttendanceService(db *gorm.DB) *service.ChildAttendanceService {
+	attendanceStore := store.NewChildAttendanceStore(db)
+	childStore := store.NewChildStore(db)
+	return service.NewChildAttendanceService(attendanceStore, childStore)
 }

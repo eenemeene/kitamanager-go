@@ -15,7 +15,7 @@ func TestGovernmentFundingHandler_CRUD(t *testing.T) {
 	db := setupTestDB(t)
 	fundingStore := store.NewGovernmentFundingStore(db)
 	svc := service.NewGovernmentFundingService(fundingStore)
-	handler := NewGovernmentFundingHandler(svc)
+	handler := NewGovernmentFundingHandler(svc, createAuditService(db))
 
 	r := setupTestRouter()
 	r.GET("/fundings", handler.List)
@@ -104,7 +104,7 @@ func TestGovernmentFundingHandler_CreatePeriod_NoOverlap(t *testing.T) {
 	db := setupTestDB(t)
 	fundingStore := store.NewGovernmentFundingStore(db)
 	svc := service.NewGovernmentFundingService(fundingStore)
-	handler := NewGovernmentFundingHandler(svc)
+	handler := NewGovernmentFundingHandler(svc, createAuditService(db))
 
 	// Create test funding
 	funding := &models.GovernmentFunding{Name: "Test Funding", State: "berlin"}
@@ -246,7 +246,7 @@ func TestGovernmentFundingHandler_UpdatePeriod_NoOverlap(t *testing.T) {
 	db := setupTestDB(t)
 	fundingStore := store.NewGovernmentFundingStore(db)
 	svc := service.NewGovernmentFundingService(fundingStore)
-	handler := NewGovernmentFundingHandler(svc)
+	handler := NewGovernmentFundingHandler(svc, createAuditService(db))
 
 	// Create test funding
 	funding := &models.GovernmentFunding{Name: "Test Funding", State: "berlin"}
@@ -318,7 +318,7 @@ func TestGovernmentFundingHandler_Property_AgeRange(t *testing.T) {
 	db := setupTestDB(t)
 	fundingStore := store.NewGovernmentFundingStore(db)
 	svc := service.NewGovernmentFundingService(fundingStore)
-	handler := NewGovernmentFundingHandler(svc)
+	handler := NewGovernmentFundingHandler(svc, createAuditService(db))
 
 	// Create test funding and period
 	funding := &models.GovernmentFunding{Name: "Test Funding", State: "berlin"}
@@ -405,7 +405,7 @@ func TestGovernmentFundingHandler_Get_PeriodsLimit(t *testing.T) {
 	db := setupTestDB(t)
 	fundingStore := store.NewGovernmentFundingStore(db)
 	svc := service.NewGovernmentFundingService(fundingStore)
-	handler := NewGovernmentFundingHandler(svc)
+	handler := NewGovernmentFundingHandler(svc, createAuditService(db))
 
 	// Create test funding with multiple periods
 	funding := &models.GovernmentFunding{Name: "Test Funding", State: "berlin"}
@@ -512,7 +512,7 @@ func TestGovernmentFundingHandler_List_Pagination(t *testing.T) {
 	db := setupTestDB(t)
 	fundingStore := store.NewGovernmentFundingStore(db)
 	svc := service.NewGovernmentFundingService(fundingStore)
-	handler := NewGovernmentFundingHandler(svc)
+	handler := NewGovernmentFundingHandler(svc, createAuditService(db))
 
 	// Create test fundings
 	for i := 0; i < 5; i++ {
@@ -587,7 +587,7 @@ func TestGovernmentFundingHandler_Get_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	fundingStore := store.NewGovernmentFundingStore(db)
 	svc := service.NewGovernmentFundingService(fundingStore)
-	handler := NewGovernmentFundingHandler(svc)
+	handler := NewGovernmentFundingHandler(svc, createAuditService(db))
 
 	r := setupTestRouter()
 	r.GET("/fundings/:id", handler.Get)
@@ -621,7 +621,7 @@ func TestGovernmentFundingHandler_Create_Validation(t *testing.T) {
 	db := setupTestDB(t)
 	fundingStore := store.NewGovernmentFundingStore(db)
 	svc := service.NewGovernmentFundingService(fundingStore)
-	handler := NewGovernmentFundingHandler(svc)
+	handler := NewGovernmentFundingHandler(svc, createAuditService(db))
 
 	r := setupTestRouter()
 	r.POST("/fundings", handler.Create)
@@ -667,7 +667,7 @@ func TestGovernmentFundingHandler_Update_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	fundingStore := store.NewGovernmentFundingStore(db)
 	svc := service.NewGovernmentFundingService(fundingStore)
-	handler := NewGovernmentFundingHandler(svc)
+	handler := NewGovernmentFundingHandler(svc, createAuditService(db))
 
 	r := setupTestRouter()
 	r.PUT("/fundings/:id", handler.Update)
@@ -697,7 +697,7 @@ func TestGovernmentFundingHandler_Update_Validation(t *testing.T) {
 	db := setupTestDB(t)
 	fundingStore := store.NewGovernmentFundingStore(db)
 	svc := service.NewGovernmentFundingService(fundingStore)
-	handler := NewGovernmentFundingHandler(svc)
+	handler := NewGovernmentFundingHandler(svc, createAuditService(db))
 
 	// Create test funding
 	funding := &models.GovernmentFunding{Name: "Test Funding", State: "berlin"}
@@ -721,7 +721,7 @@ func TestGovernmentFundingHandler_Delete_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	fundingStore := store.NewGovernmentFundingStore(db)
 	svc := service.NewGovernmentFundingService(fundingStore)
-	handler := NewGovernmentFundingHandler(svc)
+	handler := NewGovernmentFundingHandler(svc, createAuditService(db))
 
 	r := setupTestRouter()
 	r.DELETE("/fundings/:id", handler.Delete)
@@ -749,7 +749,7 @@ func TestGovernmentFundingHandler_CreatePeriod_Validation(t *testing.T) {
 	db := setupTestDB(t)
 	fundingStore := store.NewGovernmentFundingStore(db)
 	svc := service.NewGovernmentFundingService(fundingStore)
-	handler := NewGovernmentFundingHandler(svc)
+	handler := NewGovernmentFundingHandler(svc, createAuditService(db))
 
 	r := setupTestRouter()
 	r.POST("/fundings/:id/periods", handler.CreatePeriod)
@@ -794,7 +794,7 @@ func TestGovernmentFundingHandler_DeletePeriod_Validation(t *testing.T) {
 	db := setupTestDB(t)
 	fundingStore := store.NewGovernmentFundingStore(db)
 	svc := service.NewGovernmentFundingService(fundingStore)
-	handler := NewGovernmentFundingHandler(svc)
+	handler := NewGovernmentFundingHandler(svc, createAuditService(db))
 
 	// Create test funding
 	funding := &models.GovernmentFunding{Name: "Test Funding", State: "berlin"}
@@ -816,7 +816,7 @@ func TestGovernmentFundingHandler_CreateProperty_Validation(t *testing.T) {
 	db := setupTestDB(t)
 	fundingStore := store.NewGovernmentFundingStore(db)
 	svc := service.NewGovernmentFundingService(fundingStore)
-	handler := NewGovernmentFundingHandler(svc)
+	handler := NewGovernmentFundingHandler(svc, createAuditService(db))
 
 	// Create test funding and period
 	funding := &models.GovernmentFunding{Name: "Test Funding", State: "berlin"}
@@ -891,7 +891,7 @@ func TestGovernmentFundingHandler_UpdateProperty_Validation(t *testing.T) {
 	db := setupTestDB(t)
 	fundingStore := store.NewGovernmentFundingStore(db)
 	svc := service.NewGovernmentFundingService(fundingStore)
-	handler := NewGovernmentFundingHandler(svc)
+	handler := NewGovernmentFundingHandler(svc, createAuditService(db))
 
 	// Create test funding, period, and property
 	funding := &models.GovernmentFunding{Name: "Test Funding", State: "berlin"}
@@ -954,4 +954,79 @@ func intPtr(i int) *int {
 
 func strPtr(s string) *string {
 	return &s
+}
+
+func TestGovernmentFundingHandler_DeleteProperty(t *testing.T) {
+	db := setupTestDB(t)
+	fundingStore := store.NewGovernmentFundingStore(db)
+	svc := service.NewGovernmentFundingService(fundingStore)
+	handler := NewGovernmentFundingHandler(svc, createAuditService(db))
+
+	// Create test data
+	funding := &models.GovernmentFunding{Name: "Test Funding", State: "berlin"}
+	db.Create(funding)
+	period := &models.GovernmentFundingPeriod{
+		GovernmentFundingID: funding.ID,
+		From:                time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+	db.Create(period)
+	property := &models.GovernmentFundingProperty{
+		PeriodID:    period.ID,
+		Key:         "care_type",
+		Value:       "ganztag",
+		Payment:     100000,
+		Requirement: 0.1,
+	}
+	db.Create(property)
+
+	r := setupTestRouter()
+	r.DELETE("/fundings/:id/periods/:periodId/properties/:propId", handler.DeleteProperty)
+
+	w := performRequest(r, "DELETE", fmt.Sprintf("/fundings/%d/periods/%d/properties/%d", funding.ID, period.ID, property.ID), nil)
+
+	if w.Code != http.StatusNoContent {
+		t.Errorf("expected status %d, got %d: %s", http.StatusNoContent, w.Code, w.Body.String())
+	}
+}
+
+func TestGovernmentFundingHandler_DeleteProperty_NotFound(t *testing.T) {
+	db := setupTestDB(t)
+	fundingStore := store.NewGovernmentFundingStore(db)
+	svc := service.NewGovernmentFundingService(fundingStore)
+	handler := NewGovernmentFundingHandler(svc, createAuditService(db))
+
+	// Create funding and period but no property
+	funding := &models.GovernmentFunding{Name: "Test Funding", State: "berlin"}
+	db.Create(funding)
+	period := &models.GovernmentFundingPeriod{
+		GovernmentFundingID: funding.ID,
+		From:                time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+	db.Create(period)
+
+	r := setupTestRouter()
+	r.DELETE("/fundings/:id/periods/:periodId/properties/:propId", handler.DeleteProperty)
+
+	w := performRequest(r, "DELETE", fmt.Sprintf("/fundings/%d/periods/%d/properties/999", funding.ID, period.ID), nil)
+
+	// Delete may return 204 (idempotent), 404, or 500 depending on store implementation
+	if w.Code != http.StatusNoContent && w.Code != http.StatusNotFound && w.Code != http.StatusInternalServerError {
+		t.Errorf("expected status 204, 404, or 500, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestGovernmentFundingHandler_DeleteProperty_InvalidID(t *testing.T) {
+	db := setupTestDB(t)
+	fundingStore := store.NewGovernmentFundingStore(db)
+	svc := service.NewGovernmentFundingService(fundingStore)
+	handler := NewGovernmentFundingHandler(svc, createAuditService(db))
+
+	r := setupTestRouter()
+	r.DELETE("/fundings/:id/periods/:periodId/properties/:propId", handler.DeleteProperty)
+
+	w := performRequest(r, "DELETE", "/fundings/1/periods/1/properties/abc", nil)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
 }

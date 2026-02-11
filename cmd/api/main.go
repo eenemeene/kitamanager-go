@@ -145,8 +145,8 @@ func main() {
 	orgHandler := handlers.NewOrganizationHandler(orgService, auditService)
 	employeeHandler := handlers.NewEmployeeHandler(employeeService, auditService)
 	childHandler := handlers.NewChildHandler(childService, auditService)
-	governmentFundingHandler := handlers.NewGovernmentFundingHandler(governmentFundingService)
-	payPlanHandler := handlers.NewPayPlanHandler(payPlanService)
+	governmentFundingHandler := handlers.NewGovernmentFundingHandler(governmentFundingService, auditService)
+	payPlanHandler := handlers.NewPayPlanHandler(payPlanService, auditService)
 	childAttendanceHandler := handlers.NewChildAttendanceHandler(childAttendanceService, auditService)
 	healthHandler := handlers.NewHealthHandler(db)
 

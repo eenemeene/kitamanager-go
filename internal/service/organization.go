@@ -24,7 +24,7 @@ func NewOrganizationService(store store.OrganizationStorer, groupStore store.Gro
 
 // ListForUser returns a paginated list of organizations the user has access to.
 // Superadmins see all organizations; other users see only organizations they belong to.
-func (s *OrganizationService) ListForUser(ctx context.Context, userID uint, limit, offset int) ([]models.OrganizationResponse, int64, error) {
+func (s *OrganizationService) ListForUser(ctx context.Context, userID uint, search string, limit, offset int) ([]models.OrganizationResponse, int64, error) {
 	// Check if user is superadmin
 	user, err := s.userStore.FindByID(userID)
 	if err != nil {
@@ -33,13 +33,25 @@ func (s *OrganizationService) ListForUser(ctx context.Context, userID uint, limi
 
 	if user.IsSuperAdmin {
 		// Superadmins see all organizations
-		return s.List(ctx, limit, offset)
+		return s.List(ctx, search, limit, offset)
 	}
 
 	// Regular users only see organizations they belong to via group membership
 	orgs, err := s.userStore.GetUserOrganizations(userID)
 	if err != nil {
 		return nil, 0, apperror.Internal("failed to fetch user organizations")
+	}
+
+	// Apply search filter in memory (users typically belong to 1-3 orgs)
+	if search != "" {
+		searchLower := strings.ToLower(search)
+		filtered := orgs[:0]
+		for _, org := range orgs {
+			if strings.Contains(strings.ToLower(org.Name), searchLower) {
+				filtered = append(filtered, org)
+			}
+		}
+		orgs = filtered
 	}
 
 	total := int64(len(orgs))
@@ -63,8 +75,8 @@ func (s *OrganizationService) ListForUser(ctx context.Context, userID uint, limi
 }
 
 // List returns a paginated list of all organizations (for internal use)
-func (s *OrganizationService) List(ctx context.Context, limit, offset int) ([]models.OrganizationResponse, int64, error) {
-	orgs, total, err := s.store.FindAll(limit, offset)
+func (s *OrganizationService) List(ctx context.Context, search string, limit, offset int) ([]models.OrganizationResponse, int64, error) {
+	orgs, total, err := s.store.FindAll(search, limit, offset)
 	if err != nil {
 		return nil, 0, apperror.Internal("failed to fetch organizations")
 	}

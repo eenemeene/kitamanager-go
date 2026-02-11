@@ -251,6 +251,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 // @Tags auth
 // @Produce json
 // @Success 200 {object} models.MessageResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
 	// Clear all auth cookies by setting them with empty values and expired time

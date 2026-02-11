@@ -42,7 +42,7 @@ type UserStorer interface {
 
 // OrganizationStorer defines the interface for organization storage operations
 type OrganizationStorer interface {
-	FindAll(limit, offset int) ([]models.Organization, int64, error)
+	FindAll(search string, limit, offset int) ([]models.Organization, int64, error)
 	FindByID(id uint) (*models.Organization, error)
 	Create(org *models.Organization) error
 	CreateWithDefaultGroup(org *models.Organization, defaultGroup *models.Group) error

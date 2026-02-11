@@ -209,7 +209,7 @@ func TestGroupHandler_Update_WrongOrg(t *testing.T) {
 func TestGroupHandler_Delete(t *testing.T) {
 	db := setupTestDB(t)
 	groupService := createGroupService(db)
-	handler := NewGroupHandler(groupService, nil)
+	handler := NewGroupHandler(groupService, createAuditService(db))
 
 	org := createTestOrganization(t, db, "Test Org")
 	group := createTestGroupWithOrg(t, db, "To Delete", org.ID)
@@ -234,7 +234,7 @@ func TestGroupHandler_Delete(t *testing.T) {
 func TestGroupHandler_Delete_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	groupService := createGroupService(db)
-	handler := NewGroupHandler(groupService, nil)
+	handler := NewGroupHandler(groupService, createAuditService(db))
 
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
@@ -350,7 +350,7 @@ func TestGroupHandler_Update_ActiveFlag(t *testing.T) {
 func TestGroupHandler_Delete_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	groupService := createGroupService(db)
-	handler := NewGroupHandler(groupService, nil)
+	handler := NewGroupHandler(groupService, createAuditService(db))
 
 	org := createTestOrganization(t, db, "Test Org")
 

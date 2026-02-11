@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -12,12 +13,13 @@ import (
 
 // PayPlanHandler handles HTTP requests for pay plans.
 type PayPlanHandler struct {
-	service *service.PayPlanService
+	service      *service.PayPlanService
+	auditService *service.AuditService
 }
 
 // NewPayPlanHandler creates a new PayPlanHandler.
-func NewPayPlanHandler(service *service.PayPlanService) *PayPlanHandler {
-	return &PayPlanHandler{service: service}
+func NewPayPlanHandler(service *service.PayPlanService, auditService *service.AuditService) *PayPlanHandler {
+	return &PayPlanHandler{service: service, auditService: auditService}
 }
 
 // List godoc
@@ -34,6 +36,7 @@ func NewPayPlanHandler(service *service.PayPlanService) *PayPlanHandler {
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/payplans [get]
 func (h *PayPlanHandler) List(c *gin.Context) {
 	orgID, ok := parseOrgID(c)
@@ -70,6 +73,7 @@ func (h *PayPlanHandler) List(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/payplans/{id} [get]
 func (h *PayPlanHandler) Get(c *gin.Context) {
 	orgID, id, ok := parseOrgAndResourceID(c, "id")
@@ -105,6 +109,7 @@ func (h *PayPlanHandler) Get(c *gin.Context) {
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/payplans [post]
 func (h *PayPlanHandler) Create(c *gin.Context) {
 	orgID, ok := parseOrgID(c)
@@ -142,6 +147,7 @@ func (h *PayPlanHandler) Create(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/payplans/{id} [put]
 func (h *PayPlanHandler) Update(c *gin.Context) {
 	orgID, id, ok := parseOrgAndResourceID(c, "id")
@@ -178,6 +184,7 @@ func (h *PayPlanHandler) Update(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/payplans/{id} [delete]
 func (h *PayPlanHandler) Delete(c *gin.Context) {
 	orgID, id, ok := parseOrgAndResourceID(c, "id")
@@ -185,11 +192,22 @@ func (h *PayPlanHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	err := h.service.Delete(c.Request.Context(), id, orgID)
+	// Get pay plan info before deletion for audit log
+	payplan, err := h.service.GetByID(c.Request.Context(), id, orgID, nil)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
+
+	err = h.service.Delete(c.Request.Context(), id, orgID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	// Audit log pay plan deletion
+	actorID := getUserID(c)
+	h.auditService.LogResourceDelete(actorID, "payplan", id, payplan.Name, c.ClientIP())
 
 	c.Status(http.StatusNoContent)
 }
@@ -211,6 +229,7 @@ func (h *PayPlanHandler) Delete(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/payplans/{id}/periods [post]
 func (h *PayPlanHandler) CreatePeriod(c *gin.Context) {
 	orgID, payplanID, ok := parseOrgAndResourceID(c, "id")
@@ -248,6 +267,7 @@ func (h *PayPlanHandler) CreatePeriod(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/payplans/{id}/periods/{periodId} [get]
 func (h *PayPlanHandler) GetPeriod(c *gin.Context) {
 	orgID, payplanID, ok := parseOrgAndResourceID(c, "id")
@@ -286,6 +306,7 @@ func (h *PayPlanHandler) GetPeriod(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/payplans/{id}/periods/{periodId} [put]
 func (h *PayPlanHandler) UpdatePeriod(c *gin.Context) {
 	orgID, payplanID, ok := parseOrgAndResourceID(c, "id")
@@ -329,6 +350,7 @@ func (h *PayPlanHandler) UpdatePeriod(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/payplans/{id}/periods/{periodId} [delete]
 func (h *PayPlanHandler) DeletePeriod(c *gin.Context) {
 	orgID, payplanID, ok := parseOrgAndResourceID(c, "id")
@@ -347,6 +369,10 @@ func (h *PayPlanHandler) DeletePeriod(c *gin.Context) {
 		respondError(c, err)
 		return
 	}
+
+	// Audit log period deletion
+	actorID := getUserID(c)
+	h.auditService.LogResourceDelete(actorID, "payplan_period", periodID, fmt.Sprintf("payplan=%d", payplanID), c.ClientIP())
 
 	c.Status(http.StatusNoContent)
 }
@@ -369,6 +395,7 @@ func (h *PayPlanHandler) DeletePeriod(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/payplans/{id}/periods/{periodId}/entries [post]
 func (h *PayPlanHandler) CreateEntry(c *gin.Context) {
 	orgID, payplanID, ok := parseOrgAndResourceID(c, "id")
@@ -413,6 +440,7 @@ func (h *PayPlanHandler) CreateEntry(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/payplans/{id}/periods/{periodId}/entries/{entryId} [get]
 func (h *PayPlanHandler) GetEntry(c *gin.Context) {
 	orgID, payplanID, ok := parseOrgAndResourceID(c, "id")
@@ -458,6 +486,7 @@ func (h *PayPlanHandler) GetEntry(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/payplans/{id}/periods/{periodId}/entries/{entryId} [put]
 func (h *PayPlanHandler) UpdateEntry(c *gin.Context) {
 	orgID, payplanID, ok := parseOrgAndResourceID(c, "id")
@@ -508,6 +537,7 @@ func (h *PayPlanHandler) UpdateEntry(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/payplans/{id}/periods/{periodId}/entries/{entryId} [delete]
 func (h *PayPlanHandler) DeleteEntry(c *gin.Context) {
 	orgID, payplanID, ok := parseOrgAndResourceID(c, "id")
@@ -532,6 +562,10 @@ func (h *PayPlanHandler) DeleteEntry(c *gin.Context) {
 		respondError(c, err)
 		return
 	}
+
+	// Audit log entry deletion
+	actorID := getUserID(c)
+	h.auditService.LogResourceDelete(actorID, "payplan_entry", entryID, fmt.Sprintf("period=%d", periodID), c.ClientIP())
 
 	c.Status(http.StatusNoContent)
 }

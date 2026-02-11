@@ -18,7 +18,7 @@ func TestOrganizationService_List(t *testing.T) {
 	createTestOrganization(t, db, "Org 2")
 	createTestOrganization(t, db, "Org 3")
 
-	orgs, total, err := svc.List(ctx, 10, 0)
+	orgs, total, err := svc.List(ctx, "", 10, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -36,7 +36,7 @@ func TestOrganizationService_List_Empty(t *testing.T) {
 	svc := createOrganizationService(db)
 	ctx := context.Background()
 
-	orgs, total, err := svc.List(ctx, 10, 0)
+	orgs, total, err := svc.List(ctx, "", 10, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -59,7 +59,7 @@ func TestOrganizationService_List_Pagination(t *testing.T) {
 	}
 
 	// First page
-	orgs, total, _ := svc.List(ctx, 2, 0)
+	orgs, total, _ := svc.List(ctx, "", 2, 0)
 	if len(orgs) != 2 {
 		t.Errorf("page 1: expected 2 orgs, got %d", len(orgs))
 	}
@@ -68,13 +68,13 @@ func TestOrganizationService_List_Pagination(t *testing.T) {
 	}
 
 	// Second page
-	orgs, _, _ = svc.List(ctx, 2, 2)
+	orgs, _, _ = svc.List(ctx, "", 2, 2)
 	if len(orgs) != 2 {
 		t.Errorf("page 2: expected 2 orgs, got %d", len(orgs))
 	}
 
 	// Last page
-	orgs, _, _ = svc.List(ctx, 2, 4)
+	orgs, _, _ = svc.List(ctx, "", 2, 4)
 	if len(orgs) != 1 {
 		t.Errorf("page 3: expected 1 org, got %d", len(orgs))
 	}
