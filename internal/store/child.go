@@ -36,10 +36,10 @@ func (s *ChildStore) FindAll(limit, offset int) ([]models.Child, int64, error) {
 }
 
 func (s *ChildStore) FindByOrganization(orgID uint, limit, offset int) ([]models.Child, int64, error) {
-	return s.FindByOrganizationAndSection(orgID, nil, nil, limit, offset)
+	return s.FindByOrganizationAndSection(orgID, nil, nil, "", limit, offset)
 }
 
-func (s *ChildStore) FindByOrganizationAndSection(orgID uint, sectionID *uint, activeOn *time.Time, limit, offset int) ([]models.Child, int64, error) {
+func (s *ChildStore) FindByOrganizationAndSection(orgID uint, sectionID *uint, activeOn *time.Time, search string, limit, offset int) ([]models.Child, int64, error) {
 	var children []models.Child
 	var total int64
 
@@ -47,6 +47,9 @@ func (s *ChildStore) FindByOrganizationAndSection(orgID uint, sectionID *uint, a
 	countQuery := s.db.Model(&models.Child{}).Where("children.organization_id = ?", orgID)
 	if sectionID != nil {
 		countQuery = countQuery.Where("children.section_id = ?", *sectionID)
+	}
+	if search != "" {
+		countQuery = countQuery.Scopes(PersonNameSearch("children", search))
 	}
 	if activeOn != nil {
 		countQuery = countQuery.
@@ -62,6 +65,9 @@ func (s *ChildStore) FindByOrganizationAndSection(orgID uint, sectionID *uint, a
 	dataQuery := s.db.Preload("Contracts").Preload("Section").Where("children.organization_id = ?", orgID)
 	if sectionID != nil {
 		dataQuery = dataQuery.Where("children.section_id = ?", *sectionID)
+	}
+	if search != "" {
+		dataQuery = dataQuery.Scopes(PersonNameSearch("children", search))
 	}
 	if activeOn != nil {
 		dataQuery = dataQuery.

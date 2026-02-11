@@ -44,12 +44,12 @@ func (s *ChildService) List(ctx context.Context, limit, offset int) ([]models.Ch
 
 // ListByOrganization returns a paginated list of children for an organization
 func (s *ChildService) ListByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.ChildResponse, int64, error) {
-	return s.ListByOrganizationAndSection(ctx, orgID, nil, nil, limit, offset)
+	return s.ListByOrganizationAndSection(ctx, orgID, nil, nil, "", limit, offset)
 }
 
-// ListByOrganizationAndSection returns a paginated list of children for an organization, optionally filtered by section and/or active contract date
-func (s *ChildService) ListByOrganizationAndSection(ctx context.Context, orgID uint, sectionID *uint, activeOn *time.Time, limit, offset int) ([]models.ChildResponse, int64, error) {
-	children, total, err := s.store.FindByOrganizationAndSection(orgID, sectionID, activeOn, limit, offset)
+// ListByOrganizationAndSection returns a paginated list of children for an organization, optionally filtered by section, active contract date, and/or name search
+func (s *ChildService) ListByOrganizationAndSection(ctx context.Context, orgID uint, sectionID *uint, activeOn *time.Time, search string, limit, offset int) ([]models.ChildResponse, int64, error) {
+	children, total, err := s.store.FindByOrganizationAndSection(orgID, sectionID, activeOn, search, limit, offset)
 	if err != nil {
 		return nil, 0, apperror.Internal("failed to fetch children")
 	}

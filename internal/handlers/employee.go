@@ -32,6 +32,7 @@ func NewEmployeeHandler(service *service.EmployeeService, auditService *service.
 // @Param orgId path int true "Organization ID"
 // @Param section_id query int false "Filter by section ID"
 // @Param active_on query string false "Filter by active contract date (YYYY-MM-DD, defaults to today)"
+// @Param search query string false "Search by first or last name (case-insensitive)"
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(20) maximum(100)
 // @Success 200 {object} models.PaginatedResponse[models.Employee]
@@ -69,7 +70,10 @@ func (h *EmployeeHandler) List(c *gin.Context) {
 	}
 	activeOn := &activeOnDate
 
-	employees, total, err := h.service.ListByOrganizationAndSection(c.Request.Context(), orgID, sectionID, activeOn, params.Limit, params.Offset())
+	// Parse optional search filter
+	search := c.Query("search")
+
+	employees, total, err := h.service.ListByOrganizationAndSection(c.Request.Context(), orgID, sectionID, activeOn, search, params.Limit, params.Offset())
 	if err != nil {
 		respondError(c, err)
 		return

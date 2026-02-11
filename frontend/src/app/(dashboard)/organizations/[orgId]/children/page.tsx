@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, FileText, History } from 'lucide-react';
+import { Plus, Pencil, Trash2, FileText, History, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -70,6 +70,7 @@ import {
   propertiesToValues,
 } from '@/lib/utils/formatting';
 import { Pagination } from '@/components/ui/pagination';
+import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
 
 const childSchema = z.object({
   first_name: z.string().min(1),
@@ -103,10 +104,12 @@ export default function ChildrenPage() {
   const [contractChild, setContractChild] = useState<Child | null>(null);
   const [endCurrentContract, setEndCurrentContract] = useState(true);
   const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState('');
+  const search = useDebouncedValue(searchInput, 300);
 
   const { data: paginatedData, isLoading } = useQuery({
-    queryKey: ['children', orgId, page],
-    queryFn: () => apiClient.getChildren(orgId, { page }),
+    queryKey: ['children', orgId, page, search],
+    queryFn: () => apiClient.getChildren(orgId, { page, search: search || undefined }),
     enabled: !!orgId,
   });
 
@@ -434,6 +437,19 @@ export default function ChildrenPage() {
         </Button>
       </div>
 
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder={t('common.search')}
+          value={searchInput}
+          onChange={(e) => {
+            setSearchInput(e.target.value);
+            setPage(1);
+          }}
+          className="pl-9"
+        />
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle>{t('children.title')}</CardTitle>
@@ -453,6 +469,7 @@ export default function ChildrenPage() {
                   <TableHead>{t('gender.label')}</TableHead>
                   <TableHead>{t('children.birthdate')}</TableHead>
                   <TableHead>{t('children.age')}</TableHead>
+                  <TableHead>{t('sections.title')}</TableHead>
                   <TableHead>{t('children.currentContract')}</TableHead>
                   <TableHead>{t('children.properties')}</TableHead>
                   <TableHead className="text-right">{t('children.funding')}</TableHead>
@@ -471,6 +488,13 @@ export default function ChildrenPage() {
                       <TableCell>{t(`gender.${child.gender}`)}</TableCell>
                       <TableCell>{formatDate(child.birthdate)}</TableCell>
                       <TableCell>{calculateAge(child.birthdate)}</TableCell>
+                      <TableCell>
+                        {child.section ? (
+                          <span>{child.section.name}</span>
+                        ) : (
+                          <span className="text-muted-foreground">{t('sections.unassigned')}</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         {currentContract ? (
                           <Badge
@@ -567,7 +591,7 @@ export default function ChildrenPage() {
                 })}
                 {children?.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center text-muted-foreground">
                       {t('common.noResults')}
                     </TableCell>
                   </TableRow>

@@ -1,6 +1,7 @@
 package store
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -307,7 +308,7 @@ func TestEmployeeStore_FindByOrganizationAndSection_ActiveOn(t *testing.T) {
 	db.Create(empNoContract)
 
 	// Query with activeOn filter
-	employees, total, err := store.FindByOrganizationAndSection(org.ID, nil, &refDate, 100, 0)
+	employees, total, err := store.FindByOrganizationAndSection(org.ID, nil, &refDate, "", 100, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -323,7 +324,7 @@ func TestEmployeeStore_FindByOrganizationAndSection_ActiveOn(t *testing.T) {
 	}
 
 	// Query without activeOn (should return all 4 employees)
-	allEmployees, allTotal, err := store.FindByOrganizationAndSection(org.ID, nil, nil, 100, 0)
+	allEmployees, allTotal, err := store.FindByOrganizationAndSection(org.ID, nil, nil, "", 100, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -332,6 +333,131 @@ func TestEmployeeStore_FindByOrganizationAndSection_ActiveOn(t *testing.T) {
 	}
 	if allTotal != 4 {
 		t.Errorf("expected total 4, got %d", allTotal)
+	}
+}
+
+func TestEmployeeStore_FindByOrganizationAndSection_Search(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewEmployeeStore(db)
+	org := createTestOrganization(t, db, "Test Org")
+
+	// Create employees with distinct names
+	db.Create(&models.Employee{Person: models.Person{OrganizationID: org.ID, FirstName: "Max", LastName: "Mustermann", Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC)}})
+	db.Create(&models.Employee{Person: models.Person{OrganizationID: org.ID, FirstName: "Maria", LastName: "Mueller", Birthdate: time.Date(1985, 1, 1, 0, 0, 0, 0, time.UTC)}})
+	db.Create(&models.Employee{Person: models.Person{OrganizationID: org.ID, FirstName: "Lisa", LastName: "Maier", Birthdate: time.Date(1995, 1, 1, 0, 0, 0, 0, time.UTC)}})
+
+	// Search by first name prefix (case-insensitive)
+	_, total, err := store.FindByOrganizationAndSection(org.ID, nil, nil, "ma", 100, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	// "Ma" matches Max (first), Maria (first), and Lisa Maier (last)
+	if total != 3 {
+		t.Errorf("expected total 3 for search 'ma', got %d", total)
+	}
+
+	// Search by last name
+	employees, total, err := store.FindByOrganizationAndSection(org.ID, nil, nil, "mustermann", 100, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if total != 1 {
+		t.Errorf("expected total 1 for search 'mustermann', got %d", total)
+	}
+	if len(employees) == 1 && employees[0].FirstName != "Max" {
+		t.Errorf("expected Max, got %s", employees[0].FirstName)
+	}
+
+	// Search with no results
+	employees, total, err = store.FindByOrganizationAndSection(org.ID, nil, nil, "zzz", 100, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if total != 0 {
+		t.Errorf("expected total 0 for search 'zzz', got %d", total)
+	}
+	if len(employees) != 0 {
+		t.Errorf("expected 0 employees for search 'zzz', got %d", len(employees))
+	}
+
+	// Empty search returns all
+	_, total, err = store.FindByOrganizationAndSection(org.ID, nil, nil, "", 100, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if total != 3 {
+		t.Errorf("expected total 3 for empty search, got %d", total)
+	}
+}
+
+func TestEmployeeStore_FindByOrganizationAndSection_SearchWithPagination(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewEmployeeStore(db)
+	org := createTestOrganization(t, db, "Test Org")
+
+	// Create 5 employees with "Ma" prefix and 2 without
+	for i := 1; i <= 5; i++ {
+		db.Create(&models.Employee{Person: models.Person{OrganizationID: org.ID, FirstName: fmt.Sprintf("Max%d", i), LastName: "Mustermann", Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC)}})
+	}
+	db.Create(&models.Employee{Person: models.Person{OrganizationID: org.ID, FirstName: "Lisa", LastName: "Fischer", Birthdate: time.Date(1985, 1, 1, 0, 0, 0, 0, time.UTC)}})
+	db.Create(&models.Employee{Person: models.Person{OrganizationID: org.ID, FirstName: "Anna", LastName: "Weber", Birthdate: time.Date(1995, 1, 1, 0, 0, 0, 0, time.UTC)}})
+
+	// Page 1 of search results (limit=2)
+	employees, total, err := store.FindByOrganizationAndSection(org.ID, nil, nil, "max", 2, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if total != 5 {
+		t.Errorf("expected total 5 for search 'max', got %d", total)
+	}
+	if len(employees) != 2 {
+		t.Errorf("expected 2 employees on page 1, got %d", len(employees))
+	}
+
+	// Page 2
+	employees, _, err = store.FindByOrganizationAndSection(org.ID, nil, nil, "max", 2, 2)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(employees) != 2 {
+		t.Errorf("expected 2 employees on page 2, got %d", len(employees))
+	}
+
+	// Page 3 (last)
+	employees, _, err = store.FindByOrganizationAndSection(org.ID, nil, nil, "max", 2, 4)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(employees) != 1 {
+		t.Errorf("expected 1 employee on page 3, got %d", len(employees))
+	}
+}
+
+func TestEmployeeStore_FindByOrganizationAndSection_SearchWithActiveOn(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewEmployeeStore(db)
+	org := createTestOrganization(t, db, "Test Org")
+
+	refDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
+
+	// Max with active contract
+	max := &models.Employee{Person: models.Person{OrganizationID: org.ID, FirstName: "Max", LastName: "Mustermann", Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC)}}
+	db.Create(max)
+	db.Create(&models.EmployeeContract{EmployeeID: max.ID, BaseContract: models.BaseContract{Period: models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)}}, Position: "Teacher", WeeklyHours: 40})
+
+	// Maria without contract
+	db.Create(&models.Employee{Person: models.Person{OrganizationID: org.ID, FirstName: "Maria", LastName: "Mueller", Birthdate: time.Date(1985, 1, 1, 0, 0, 0, 0, time.UTC)}})
+
+	// Search "m" + activeOn: only Max has an active contract
+	employees, total, err := store.FindByOrganizationAndSection(org.ID, nil, &refDate, "m", 100, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if total != 1 {
+		t.Errorf("expected total 1 for search 'm' with activeOn, got %d", total)
+	}
+	if len(employees) == 1 && employees[0].FirstName != "Max" {
+		t.Errorf("expected Max, got %s", employees[0].FirstName)
 	}
 }
 

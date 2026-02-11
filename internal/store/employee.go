@@ -36,10 +36,10 @@ func (s *EmployeeStore) FindAll(limit, offset int) ([]models.Employee, int64, er
 }
 
 func (s *EmployeeStore) FindByOrganization(orgID uint, limit, offset int) ([]models.Employee, int64, error) {
-	return s.FindByOrganizationAndSection(orgID, nil, nil, limit, offset)
+	return s.FindByOrganizationAndSection(orgID, nil, nil, "", limit, offset)
 }
 
-func (s *EmployeeStore) FindByOrganizationAndSection(orgID uint, sectionID *uint, activeOn *time.Time, limit, offset int) ([]models.Employee, int64, error) {
+func (s *EmployeeStore) FindByOrganizationAndSection(orgID uint, sectionID *uint, activeOn *time.Time, search string, limit, offset int) ([]models.Employee, int64, error) {
 	var employees []models.Employee
 	var total int64
 
@@ -47,6 +47,9 @@ func (s *EmployeeStore) FindByOrganizationAndSection(orgID uint, sectionID *uint
 	countQuery := s.db.Model(&models.Employee{}).Where("employees.organization_id = ?", orgID)
 	if sectionID != nil {
 		countQuery = countQuery.Where("employees.section_id = ?", *sectionID)
+	}
+	if search != "" {
+		countQuery = countQuery.Scopes(PersonNameSearch("employees", search))
 	}
 	if activeOn != nil {
 		countQuery = countQuery.
@@ -62,6 +65,9 @@ func (s *EmployeeStore) FindByOrganizationAndSection(orgID uint, sectionID *uint
 	dataQuery := s.db.Preload("Contracts").Preload("Section").Where("employees.organization_id = ?", orgID)
 	if sectionID != nil {
 		dataQuery = dataQuery.Where("employees.section_id = ?", *sectionID)
+	}
+	if search != "" {
+		dataQuery = dataQuery.Scopes(PersonNameSearch("employees", search))
 	}
 	if activeOn != nil {
 		dataQuery = dataQuery.

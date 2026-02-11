@@ -1519,3 +1519,117 @@ func TestEmployeeHandler_CreateContract_WhitespacePosition(t *testing.T) {
 		t.Errorf("expected status %d for whitespace-only position, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}
 }
+
+// =========================================
+// Search Tests
+// =========================================
+
+func TestEmployeeHandler_List_Search(t *testing.T) {
+	db := setupTestDB(t)
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService, nil)
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	// Create employees with distinct names
+	for _, name := range []struct{ first, last string }{
+		{"Max", "Mustermann"},
+		{"Maria", "Mueller"},
+		{"Lisa", "Fischer"},
+	} {
+		emp := &models.Employee{
+			Person: models.Person{OrganizationID: org.ID, FirstName: name.first, LastName: name.last, Gender: "male", Birthdate: time.Now()},
+		}
+		db.Create(emp)
+		createActiveEmployeeContract(t, db, emp.ID)
+	}
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/employees", handler.List)
+
+	// Search by first name prefix
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees?search=ma", org.ID), nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var response models.PaginatedResponse[models.Employee]
+	parseResponse(t, w, &response)
+
+	// "ma" matches Max (first), Maria (first), and Lisa Maier would match (last) but here it's Mueller, Fischer
+	// So only Max and Maria match
+	if response.Total != 2 {
+		t.Errorf("expected total 2 for search 'ma', got %d", response.Total)
+	}
+	if len(response.Data) != 2 {
+		t.Errorf("expected 2 employees, got %d", len(response.Data))
+	}
+
+	// Search by last name
+	w = performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees?search=fischer", org.ID), nil)
+	parseResponse(t, w, &response)
+	if response.Total != 1 {
+		t.Errorf("expected total 1 for search 'fischer', got %d", response.Total)
+	}
+
+	// Search with no results
+	w = performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees?search=zzz", org.ID), nil)
+	parseResponse(t, w, &response)
+	if response.Total != 0 {
+		t.Errorf("expected total 0 for search 'zzz', got %d", response.Total)
+	}
+}
+
+func TestEmployeeHandler_List_SearchWithPagination(t *testing.T) {
+	db := setupTestDB(t)
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService, nil)
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	// Create 5 matching employees and 2 non-matching
+	for i := 1; i <= 5; i++ {
+		emp := &models.Employee{
+			Person: models.Person{OrganizationID: org.ID, FirstName: fmt.Sprintf("Max%d", i), LastName: "Mustermann", Gender: "male", Birthdate: time.Now()},
+		}
+		db.Create(emp)
+		createActiveEmployeeContract(t, db, emp.ID)
+	}
+	for _, name := range []string{"Lisa", "Anna"} {
+		emp := &models.Employee{
+			Person: models.Person{OrganizationID: org.ID, FirstName: name, LastName: "Other", Gender: "female", Birthdate: time.Now()},
+		}
+		db.Create(emp)
+		createActiveEmployeeContract(t, db, emp.ID)
+	}
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/employees", handler.List)
+
+	// Page 1: search + pagination
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees?search=max&page=1&limit=2", org.ID), nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var response models.PaginatedResponse[models.Employee]
+	parseResponse(t, w, &response)
+
+	if response.Total != 5 {
+		t.Errorf("expected total 5, got %d", response.Total)
+	}
+	if len(response.Data) != 2 {
+		t.Errorf("expected 2 employees on page 1, got %d", len(response.Data))
+	}
+	if response.TotalPages != 3 {
+		t.Errorf("expected 3 total pages, got %d", response.TotalPages)
+	}
+
+	// Page 3: last page should have 1 result
+	w = performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees?search=max&page=3&limit=2", org.ID), nil)
+	parseResponse(t, w, &response)
+
+	if len(response.Data) != 1 {
+		t.Errorf("expected 1 employee on page 3, got %d", len(response.Data))
+	}
+}

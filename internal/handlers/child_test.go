@@ -1470,6 +1470,118 @@ func TestChildHandler_List_Pagination_MaxLimit(t *testing.T) {
 }
 
 // =========================================
+// Search Tests
+// =========================================
+
+func TestChildHandler_List_Search(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService, nil)
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	// Create children with distinct names
+	for _, name := range []struct{ first, last string }{
+		{"Emma", "Schmidt"},
+		{"Emilia", "Fischer"},
+		{"Liam", "Mueller"},
+	} {
+		child := &models.Child{
+			Person: models.Person{OrganizationID: org.ID, FirstName: name.first, LastName: name.last, Gender: "female", Birthdate: time.Now()},
+		}
+		db.Create(child)
+		createActiveChildContract(t, db, child.ID)
+	}
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/children", handler.List)
+
+	// Search by first name prefix
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children?search=em", org.ID), nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var response models.PaginatedResponse[models.Child]
+	parseResponse(t, w, &response)
+
+	if response.Total != 2 {
+		t.Errorf("expected total 2 for search 'em', got %d", response.Total)
+	}
+	if len(response.Data) != 2 {
+		t.Errorf("expected 2 children, got %d", len(response.Data))
+	}
+
+	// Search by last name
+	w = performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children?search=mueller", org.ID), nil)
+	parseResponse(t, w, &response)
+	if response.Total != 1 {
+		t.Errorf("expected total 1 for search 'mueller', got %d", response.Total)
+	}
+
+	// Search with no results
+	w = performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children?search=zzz", org.ID), nil)
+	parseResponse(t, w, &response)
+	if response.Total != 0 {
+		t.Errorf("expected total 0 for search 'zzz', got %d", response.Total)
+	}
+}
+
+func TestChildHandler_List_SearchWithPagination(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService, nil)
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	// Create 5 matching children and 2 non-matching
+	for i := 1; i <= 5; i++ {
+		child := &models.Child{
+			Person: models.Person{OrganizationID: org.ID, FirstName: fmt.Sprintf("Emma%d", i), LastName: "Schmidt", Gender: "female", Birthdate: time.Now()},
+		}
+		db.Create(child)
+		createActiveChildContract(t, db, child.ID)
+	}
+	for _, name := range []string{"Liam", "Noah"} {
+		child := &models.Child{
+			Person: models.Person{OrganizationID: org.ID, FirstName: name, LastName: "Other", Gender: "male", Birthdate: time.Now()},
+		}
+		db.Create(child)
+		createActiveChildContract(t, db, child.ID)
+	}
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/children", handler.List)
+
+	// Page 1: search + pagination
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children?search=emma&page=1&limit=2", org.ID), nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var response models.PaginatedResponse[models.Child]
+	parseResponse(t, w, &response)
+
+	if response.Total != 5 {
+		t.Errorf("expected total 5, got %d", response.Total)
+	}
+	if len(response.Data) != 2 {
+		t.Errorf("expected 2 children on page 1, got %d", len(response.Data))
+	}
+	if response.TotalPages != 3 {
+		t.Errorf("expected 3 total pages, got %d", response.TotalPages)
+	}
+
+	// Page 3: last page should have 1 result
+	w = performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children?search=emma&page=3&limit=2", org.ID), nil)
+	parseResponse(t, w, &response)
+
+	if len(response.Data) != 1 {
+		t.Errorf("expected 1 child on page 3, got %d", len(response.Data))
+	}
+}
+
+// =========================================
 // Monthly Statistics Tests
 // =========================================
 

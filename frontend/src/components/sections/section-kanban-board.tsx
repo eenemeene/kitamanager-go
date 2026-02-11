@@ -48,7 +48,9 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
     enabled: !!orgId,
   });
 
-  const sections = useMemo(() => sectionsData?.data ?? [], [sectionsData]);
+  const allSections = useMemo(() => sectionsData?.data ?? [], [sectionsData]);
+  const defaultSection = useMemo(() => allSections.find((s) => s.is_default), [allSections]);
+  const sections = useMemo(() => allSections.filter((s) => !s.is_default), [allSections]);
   const isLoading = sectionsLoading || childrenLoading;
 
   const childrenBySection = useMemo(() => {
@@ -58,7 +60,9 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
       map.set(String(section.id), []);
     }
     for (const child of children ?? []) {
-      const key = child.section_id ? String(child.section_id) : 'unassigned';
+      const sectionId = child.section_id ?? null;
+      const isUnassigned = !sectionId || (defaultSection && sectionId === defaultSection.id);
+      const key = isUnassigned ? 'unassigned' : String(sectionId);
       const list = map.get(key);
       if (list) {
         list.push(child);
@@ -67,7 +71,7 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
       }
     }
     return map;
-  }, [sections, children]);
+  }, [sections, defaultSection, children]);
 
   const moveMutation = useMutation({
     mutationFn: ({ childId, sectionId }: { childId: number; sectionId: number | null }) =>
@@ -91,6 +95,7 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['children-all', orgId] });
+      queryClient.invalidateQueries({ queryKey: ['children', orgId] });
     },
   });
 
@@ -108,7 +113,8 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
     if (!child) return;
 
     const targetColumnId = String(over.id);
-    const newSectionId = targetColumnId === 'unassigned' ? null : Number(targetColumnId);
+    const newSectionId =
+      targetColumnId === 'unassigned' ? (defaultSection?.id ?? null) : Number(targetColumnId);
     const currentSectionId = child.section_id ?? null;
 
     if (newSectionId === currentSectionId) return;

@@ -285,11 +285,13 @@ class ApiClient {
   // Employees (organization-scoped)
   async getEmployees(
     orgId: number,
-    params: PaginationParams = {}
+    params: PaginationParams & { search?: string } = {}
   ): Promise<PaginatedResponse<Employee>> {
-    const { page = 1, limit = DEFAULT_PAGE_SIZE } = params;
+    const { page = 1, limit = DEFAULT_PAGE_SIZE, search } = params;
+    const queryParams = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (search) queryParams.set('search', search);
     const response = await this.client.get<PaginatedResponse<Employee>>(
-      `/organizations/${orgId}/employees?page=${page}&limit=${limit}`
+      `/organizations/${orgId}/employees?${queryParams}`
     );
     return response.data;
   }
@@ -365,11 +367,13 @@ class ApiClient {
   // Children (organization-scoped)
   async getChildren(
     orgId: number,
-    params: PaginationParams = {}
+    params: PaginationParams & { search?: string } = {}
   ): Promise<PaginatedResponse<Child>> {
-    const { page = 1, limit = DEFAULT_PAGE_SIZE } = params;
+    const { page = 1, limit = DEFAULT_PAGE_SIZE, search } = params;
+    const queryParams = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (search) queryParams.set('search', search);
     const response = await this.client.get<PaginatedResponse<Child>>(
-      `/organizations/${orgId}/children?page=${page}&limit=${limit}`
+      `/organizations/${orgId}/children?${queryParams}`
     );
     return response.data;
   }
@@ -732,10 +736,11 @@ class ApiClient {
     await this.client.delete(`/organizations/${orgId}/sections/${sectionId}`);
   }
 
-  // Children - fetch all (for kanban board view)
+  // Children - fetch all with active contracts (for kanban board view)
   async getChildrenAll(orgId: number): Promise<Child[]> {
+    const today = new Date().toISOString().slice(0, 10);
     const response = await this.client.get<PaginatedResponse<Child>>(
-      `/organizations/${orgId}/children?limit=500`
+      `/organizations/${orgId}/children?limit=100&contract_on=${today}`
     );
     return response.data.data;
   }

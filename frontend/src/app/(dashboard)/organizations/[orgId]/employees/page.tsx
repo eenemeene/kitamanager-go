@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, FileText, History } from 'lucide-react';
+import { Plus, Pencil, Trash2, FileText, History, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -64,6 +64,7 @@ import {
   formatDateForApi,
 } from '@/lib/utils/formatting';
 import { Pagination } from '@/components/ui/pagination';
+import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
 
 const employeeSchema = z.object({
   first_name: z.string().min(1),
@@ -100,10 +101,12 @@ export default function EmployeesPage() {
   const [contractEmployee, setContractEmployee] = useState<Employee | null>(null);
   const [endCurrentContract, setEndCurrentContract] = useState(true);
   const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState('');
+  const search = useDebouncedValue(searchInput, 300);
 
   const { data: paginatedData, isLoading } = useQuery({
-    queryKey: ['employees', orgId, page],
-    queryFn: () => apiClient.getEmployees(orgId, { page }),
+    queryKey: ['employees', orgId, page, search],
+    queryFn: () => apiClient.getEmployees(orgId, { page, search: search || undefined }),
     enabled: !!orgId,
   });
 
@@ -389,6 +392,19 @@ export default function EmployeesPage() {
           <Plus className="mr-2 h-4 w-4" />
           {t('employees.newEmployee')}
         </Button>
+      </div>
+
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder={t('common.search')}
+          value={searchInput}
+          onChange={(e) => {
+            setSearchInput(e.target.value);
+            setPage(1);
+          }}
+          className="pl-9"
+        />
       </div>
 
       <Card>
