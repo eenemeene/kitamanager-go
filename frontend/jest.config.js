@@ -30,4 +30,13 @@ const customJestConfig = {
   },
 };
 
-module.exports = createJestConfig(customJestConfig);
+// Override next/jest's transformIgnorePatterns to allow MSW ESM dependencies
+const jestConfig = createJestConfig(customJestConfig);
+module.exports = async () => {
+  const config = await jestConfig();
+  config.transformIgnorePatterns = [
+    'node_modules/(?!(msw|@mswjs|until-async|@bundled-es-modules)/)',
+    '^.+\\.module\\.(css|sass|scss)$',
+  ];
+  return config;
+};
