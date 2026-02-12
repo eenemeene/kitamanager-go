@@ -25,7 +25,16 @@ import { sectionSchema, type SectionFormData } from '@/lib/schemas';
 
 const defaultValues: SectionFormData = {
   name: '',
+  min_age_months: null,
+  max_age_months: null,
 };
+
+function formatAgeRange(min?: number | null, max?: number | null): string | null {
+  if (min == null && max == null) return null;
+  if (min != null && max != null) return `${min}–${max}`;
+  if (min != null) return `${min}+`;
+  return `0–${max}`;
+}
 
 export default function SectionsPage() {
   const t = useTranslations();
@@ -33,7 +42,11 @@ export default function SectionsPage() {
     resourceName: 'sections',
     schema: sectionSchema,
     defaultValues,
-    itemToFormData: (section) => ({ name: section.name }),
+    itemToFormData: (section) => ({
+      name: section.name,
+      min_age_months: section.min_age_months ?? null,
+      max_age_months: section.max_age_months ?? null,
+    }),
     listFn: (orgId, params) => apiClient.getSections(orgId, params),
     createFn: (orgId, data) => apiClient.createSection(orgId, data),
     updateFn: (orgId, id, data) => apiClient.updateSection(orgId, id, data),
@@ -56,6 +69,20 @@ export default function SectionsPage() {
             )}
           </div>
         ),
+      },
+      {
+        key: 'ageRange',
+        header: 'sections.ageRange',
+        render: (section) => {
+          const range = formatAgeRange(section.min_age_months, section.max_age_months);
+          return range ? (
+            <span className="text-muted-foreground">
+              {range} {t('sections.months')}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          );
+        },
       },
     ],
     [t]
@@ -122,6 +149,40 @@ export default function SectionsPage() {
                   {crud.errors.name && (
                     <p className="text-sm text-destructive">{t('validation.nameRequired')}</p>
                   )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="min_age_months">
+                      {t('sections.minAgeMonths')}{' '}
+                      <span className="text-muted-foreground">({t('sections.optional')})</span>
+                    </Label>
+                    <Input
+                      id="min_age_months"
+                      type="number"
+                      min={0}
+                      {...crud.register('min_age_months', {
+                        setValueAs: (v: string) => (v === '' ? null : Number(v)),
+                      })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="max_age_months">
+                      {t('sections.maxAgeMonths')}{' '}
+                      <span className="text-muted-foreground">({t('sections.optional')})</span>
+                    </Label>
+                    <Input
+                      id="max_age_months"
+                      type="number"
+                      min={0}
+                      {...crud.register('max_age_months', {
+                        setValueAs: (v: string) => (v === '' ? null : Number(v)),
+                      })}
+                    />
+                    {crud.errors.max_age_months && (
+                      <p className="text-sm text-destructive">{t('sections.ageRangeError')}</p>
+                    )}
+                  </div>
                 </div>
 
                 <DialogFooter>

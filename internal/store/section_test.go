@@ -381,6 +381,57 @@ func TestSection_IsDefaultField(t *testing.T) {
 	}
 }
 
+func TestSectionStore_AgeRangeFields(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewSectionStore(db)
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	minAge := 0
+	maxAge := 36
+	section := &models.Section{
+		Name:           "Krippe",
+		OrganizationID: org.ID,
+		MinAgeMonths:   &minAge,
+		MaxAgeMonths:   &maxAge,
+	}
+	if err := db.Create(section).Error; err != nil {
+		t.Fatalf("failed to create section with age range: %v", err)
+	}
+
+	// Reload and verify
+	found, err := store.FindByID(context.Background(), section.ID)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if found.MinAgeMonths == nil || *found.MinAgeMonths != 0 {
+		t.Errorf("expected min_age_months 0, got %v", found.MinAgeMonths)
+	}
+	if found.MaxAgeMonths == nil || *found.MaxAgeMonths != 36 {
+		t.Errorf("expected max_age_months 36, got %v", found.MaxAgeMonths)
+	}
+
+	// Test section without age range (nullable)
+	sectionNoAge := &models.Section{
+		Name:           "Mixed",
+		OrganizationID: org.ID,
+	}
+	if err := db.Create(sectionNoAge).Error; err != nil {
+		t.Fatalf("failed to create section without age range: %v", err)
+	}
+
+	foundNoAge, err := store.FindByID(context.Background(), sectionNoAge.ID)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if foundNoAge.MinAgeMonths != nil {
+		t.Errorf("expected nil min_age_months, got %v", foundNoAge.MinAgeMonths)
+	}
+	if foundNoAge.MaxAgeMonths != nil {
+		t.Errorf("expected nil max_age_months, got %v", foundNoAge.MaxAgeMonths)
+	}
+}
+
 func TestSectionStore_FindByNameAndOrg(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewSectionStore(db)

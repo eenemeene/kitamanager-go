@@ -14,13 +14,31 @@ export interface SectionColumnProps {
   items: Child[];
   employees: Employee[];
   isDefault?: boolean;
+  minAgeMonths?: number | null;
+  maxAgeMonths?: number | null;
 }
 
-export function SectionColumn({ id, title, items, employees, isDefault }: SectionColumnProps) {
+function formatAgeRange(min?: number | null, max?: number | null): string | null {
+  if (min == null && max == null) return null;
+  if (min != null && max != null) return `${min}–${max}`;
+  if (min != null) return `${min}+`;
+  return `0–${max}`;
+}
+
+export function SectionColumn({
+  id,
+  title,
+  items,
+  employees,
+  isDefault,
+  minAgeMonths,
+  maxAgeMonths,
+}: SectionColumnProps) {
   const t = useTranslations();
   const { setNodeRef, isOver } = useDroppable({ id });
 
   const totalCount = employees.length + items.length;
+  const ageRange = formatAgeRange(minAgeMonths, maxAgeMonths);
 
   return (
     <div
@@ -31,12 +49,19 @@ export function SectionColumn({ id, title, items, employees, isDefault }: Sectio
       )}
     >
       <div className="flex items-center justify-between border-b p-3">
-        <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold">{title}</h3>
-          {isDefault && (
-            <Badge variant="secondary" className="text-xs">
-              {t('sections.defaultSection')}
-            </Badge>
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold">{title}</h3>
+            {isDefault && (
+              <Badge variant="secondary" className="text-xs">
+                {t('sections.defaultSection')}
+              </Badge>
+            )}
+          </div>
+          {ageRange && (
+            <span className="text-xs text-muted-foreground">
+              {ageRange} {t('sections.months')}
+            </span>
           )}
         </div>
         <Badge variant="outline" className="text-xs">

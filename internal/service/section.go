@@ -13,6 +13,24 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/validation"
 )
 
+// validateAgeRange validates the age range fields.
+// Both nil is ok, but if either is set: values must be non-negative and min < max.
+func validateAgeRange(min, max *int) error {
+	if min == nil && max == nil {
+		return nil
+	}
+	if min != nil && *min < 0 {
+		return apperror.BadRequest("min_age_months cannot be negative")
+	}
+	if max != nil && *max < 0 {
+		return apperror.BadRequest("max_age_months cannot be negative")
+	}
+	if min != nil && max != nil && *min >= *max {
+		return apperror.BadRequest("min_age_months must be less than max_age_months")
+	}
+	return nil
+}
+
 // SectionService handles business logic for section operations
 type SectionService struct {
 	store store.SectionStorer
@@ -59,6 +77,11 @@ func (s *SectionService) Create(ctx context.Context, orgID uint, req *models.Sec
 		return nil, apperror.BadRequest("name cannot be empty or whitespace only")
 	}
 
+	// Validate age range
+	if err := validateAgeRange(req.MinAgeMonths, req.MaxAgeMonths); err != nil {
+		return nil, err
+	}
+
 	// Check for duplicate name in organization
 	existing, err := s.store.FindByNameAndOrg(ctx, name, orgID)
 	if err == nil && existing != nil {
@@ -69,6 +92,8 @@ func (s *SectionService) Create(ctx context.Context, orgID uint, req *models.Sec
 		Name:           name,
 		OrganizationID: orgID,
 		CreatedBy:      createdBy,
+		MinAgeMonths:   req.MinAgeMonths,
+		MaxAgeMonths:   req.MaxAgeMonths,
 	}
 
 	if err := s.store.Create(ctx, section); err != nil {
@@ -103,6 +128,18 @@ func (s *SectionService) UpdateByIDAndOrg(ctx context.Context, id, orgID uint, r
 		}
 
 		section.Name = name
+	}
+
+	if req.MinAgeMonths != nil {
+		section.MinAgeMonths = req.MinAgeMonths
+	}
+	if req.MaxAgeMonths != nil {
+		section.MaxAgeMonths = req.MaxAgeMonths
+	}
+
+	// Validate the resulting age range
+	if err := validateAgeRange(section.MinAgeMonths, section.MaxAgeMonths); err != nil {
+		return nil, err
 	}
 
 	if err := s.store.Update(ctx, section); err != nil {

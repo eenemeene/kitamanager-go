@@ -189,6 +189,26 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
       const child = currentItem.item;
       const currentSectionId = child.section_id ?? null;
       if (newSectionId === currentSectionId) return;
+
+      // Warn if child's age is outside target section's age range
+      const targetSection = allSections.find((s) => s.id === newSectionId);
+      if (targetSection && child.birthdate) {
+        const ageMonths = Math.floor(
+          (Date.now() - new Date(child.birthdate).getTime()) / (1000 * 60 * 60 * 24 * 30.44)
+        );
+        const minAge = targetSection.min_age_months;
+        const maxAge = targetSection.max_age_months;
+        const outsideRange =
+          (minAge != null && ageMonths < minAge) || (maxAge != null && ageMonths >= maxAge);
+        if (outsideRange) {
+          toast({
+            title: t('sections.ageMismatchWarning'),
+            description: t('sections.ageMismatchDescription'),
+            variant: 'destructive',
+          });
+        }
+      }
+
       moveChildMutation.mutate({ childId: child.id, sectionId: newSectionId });
     } else {
       const employee = currentItem.item;
@@ -230,6 +250,8 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
               items={childrenBySection.get(String(section.id)) ?? []}
               employees={employeesBySection.get(String(section.id)) ?? []}
               isDefault={section.is_default}
+              minAgeMonths={section.min_age_months}
+              maxAgeMonths={section.max_age_months}
             />
           ))}
         </div>

@@ -258,6 +258,8 @@ export interface Section {
   organization_id: number;
   name: string;
   is_default: boolean;
+  min_age_months?: number | null;
+  max_age_months?: number | null;
   created_at: string;
   created_by: string;
   updated_at: string;
@@ -265,10 +267,14 @@ export interface Section {
 
 export interface SectionCreateRequest {
   name: string;
+  min_age_months?: number | null;
+  max_age_months?: number | null;
 }
 
 export interface SectionUpdateRequest {
   name?: string;
+  min_age_months?: number | null;
+  max_age_months?: number | null;
 }
 
 // Child
@@ -405,6 +411,7 @@ export interface ChildFundingResponse {
 
 export interface ChildrenFundingResponse {
   date: string;
+  weekly_hours_basis: number;
   children: ChildFundingResponse[];
 }
 

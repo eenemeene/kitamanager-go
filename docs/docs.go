@@ -8466,6 +8466,14 @@ const docTemplate = `{
                     "type": "boolean",
                     "example": false
                 },
+                "max_age_months": {
+                    "type": "integer",
+                    "example": 36
+                },
+                "min_age_months": {
+                    "type": "integer",
+                    "example": 0
+                },
                 "name": {
                     "type": "string",
                     "example": "Krippe"
@@ -8489,6 +8497,14 @@ const docTemplate = `{
                 "name"
             ],
             "properties": {
+                "max_age_months": {
+                    "type": "integer",
+                    "example": 36
+                },
+                "min_age_months": {
+                    "type": "integer",
+                    "example": 0
+                },
                 "name": {
                     "type": "string",
                     "maxLength": 255,
@@ -8515,6 +8531,14 @@ const docTemplate = `{
                     "type": "boolean",
                     "example": false
                 },
+                "max_age_months": {
+                    "type": "integer",
+                    "example": 36
+                },
+                "min_age_months": {
+                    "type": "integer",
+                    "example": 0
+                },
                 "name": {
                     "type": "string",
                     "example": "Krippe"
@@ -8532,6 +8556,12 @@ const docTemplate = `{
         "github_com_eenemeene_kitamanager-go_internal_models.SectionUpdateRequest": {
             "type": "object",
             "properties": {
+                "max_age_months": {
+                    "type": "integer"
+                },
+                "min_age_months": {
+                    "type": "integer"
+                },
                 "name": {
                     "type": "string",
                     "maxLength": 255,

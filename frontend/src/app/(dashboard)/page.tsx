@@ -5,6 +5,8 @@ import { Building2, Users, Baby, UserCog } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StepPromotionsWidget } from '@/components/dashboard/step-promotions-widget';
+import { UpcomingChildrenWidget } from '@/components/dashboard/upcoming-children-widget';
+import { SectionAgeAlertsWidget } from '@/components/dashboard/section-age-alerts-widget';
 import { useUiStore } from '@/stores/ui-store';
 import { useAuthStore } from '@/stores/auth-store';
 
@@ -81,6 +83,8 @@ export default function DashboardPage() {
       </Card>
 
       {selectedOrganizationId && <StepPromotionsWidget orgId={selectedOrganizationId} />}
+      {selectedOrganizationId && <UpcomingChildrenWidget orgId={selectedOrganizationId} />}
+      {selectedOrganizationId && <SectionAgeAlertsWidget orgId={selectedOrganizationId} />}
     </div>
   );
 }

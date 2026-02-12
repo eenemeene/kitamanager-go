@@ -619,6 +619,15 @@ class ApiClient {
     return response.data;
   }
 
+  // Children - fetch upcoming (contracts starting after today)
+  async getUpcomingChildren(orgId: number): Promise<Child[]> {
+    const today = new Date().toISOString().slice(0, 10);
+    const response = await this.client.get<PaginatedResponse<Child>>(
+      `/organizations/${orgId}/children?limit=100&contract_after=${today}`
+    );
+    return response.data.data;
+  }
+
   // Children - fetch all with active contracts (for kanban board view)
   async getChildrenAll(orgId: number): Promise<Child[]> {
     const today = new Date().toISOString().slice(0, 10);

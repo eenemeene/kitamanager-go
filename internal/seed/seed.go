@@ -235,20 +235,27 @@ func SeedTestData(cfg *config.Config, db *gorm.DB, fundingStore *store.Governmen
 	slog.Info("Created default section", "name", section.Name, "id", section.ID)
 
 	// Create named sections for typical German Kita age groups
-	namedSections := []string{
-		"Marienkäfer (Krippe)",
-		"Schmetterlinge (Kindergarten)",
-		"Sonnenkäfer (Hort)",
+	type namedSectionDef struct {
+		name         string
+		minAgeMonths *int
+		maxAgeMonths *int
+	}
+	namedSectionDefs := []namedSectionDef{
+		{"Marienkäfer (Krippe)", intPtr(0), intPtr(36)},
+		{"Schmetterlinge (Kindergarten)", intPtr(36), intPtr(72)},
+		{"Sonnenkäfer (Hort)", intPtr(72), nil},
 	}
 	// allSections includes default + named sections; used for employee distribution
 	allSections := []*models.Section{section}
 	// namedSectionList is used for child assignment by age bracket
 	var namedSectionList []*models.Section
-	for _, name := range namedSections {
+	for _, def := range namedSectionDefs {
 		sec := &models.Section{
-			Name:           name,
+			Name:           def.name,
 			OrganizationID: org.ID,
 			CreatedBy:      "seed",
+			MinAgeMonths:   def.minAgeMonths,
+			MaxAgeMonths:   def.maxAgeMonths,
 		}
 		if err := db.Create(sec).Error; err != nil {
 			return err

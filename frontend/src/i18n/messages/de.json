@@ -206,7 +206,9 @@
     "noContractsFound": "Keine Verträge für dieses Kind gefunden.",
     "funding": "Finanzierung",
     "requirement": "VZÄ",
-    "fundingDataUnavailable": "Finanzierungsdaten konnten nicht geladen werden"
+    "fundingDataUnavailable": "Finanzierungsdaten konnten nicht geladen werden",
+    "initialContract": "Erstvertrag",
+    "contractEndHint": "Automatisch berechnet anhand Geburtsdatum und Einschulungsregeln"
   },
   "users": {
     "title": "Benutzer",
@@ -328,6 +330,7 @@
     "passwordTooShort": "Passwort muss mindestens 6 Zeichen lang sein",
     "stateRequired": "Bundesland ist erforderlich",
     "toDateMustBeAfterFromDate": "Enddatum muss nach Startdatum liegen",
+    "contractBeforeBirthdate": "Vertragsbeginn kann nicht vor dem Geburtsdatum liegen",
     "staffCategoryRequired": "Personalkategorie ist erforderlich",
     "weeklyHoursRequired": "Wochenstunden sind erforderlich",
     "weeklyHoursMin": "Wochenstunden müssen mindestens 0 sein",
@@ -417,7 +420,15 @@
     "movedFailed": "Kind konnte nicht verschoben werden",
     "employeeMovedSuccess": "Mitarbeiter erfolgreich verschoben",
     "employeeMovedFailed": "Mitarbeiter konnte nicht verschoben werden",
-    "defaultSection": "Standard"
+    "defaultSection": "Standard",
+    "ageRange": "Altersbereich",
+    "minAgeMonths": "Mindestalter (Monate)",
+    "maxAgeMonths": "Höchstalter (Monate)",
+    "months": "Monate",
+    "optional": "optional",
+    "ageRangeError": "Höchstalter muss größer als Mindestalter sein",
+    "ageMismatchWarning": "Altersabweichung",
+    "ageMismatchDescription": "Das Alter dieses Kindes liegt außerhalb des Altersbereichs des Zielbereichs."
   },
   "payPlans": {
     "title": "Entgelttabellen",
@@ -476,6 +487,13 @@
     "stepMinYears": "Mind. Jahre",
     "stepMinYearsLabel": "Mind. Dienstjahre (optional)"
   },
+  "upcomingChildren": {
+    "title": "Bevorstehende Aufnahmen",
+    "name": "Name",
+    "section": "Bereich",
+    "startDate": "Startdatum",
+    "noUpcoming": "Keine bevorstehenden Aufnahmen"
+  },
   "stepPromotions": {
     "title": "Ausstehende Stufensteigerungen",
     "employee": "Mitarbeiter/in",
@@ -486,5 +504,16 @@
     "yearsOfService": "Dienstjahre",
     "monthlyCostDelta": "Monatliche Differenz",
     "totalCost": "Gesamt-Mehrkosten: {amount}/Monat"
+  },
+  "sectionAgeAlerts": {
+    "title": "Kinder am Altersgrenze des Bereichs",
+    "count": "{count, plural, one {# Kind} other {# Kinder}}",
+    "child": "Kind",
+    "section": "Bereich",
+    "ageMonths": "Alter (Mo)",
+    "maxAge": "Max (Mo)",
+    "remaining": "Verbleibend",
+    "overdue": "Überfällig",
+    "monthsLeft": "{count} Mo verbl."
   }
 }

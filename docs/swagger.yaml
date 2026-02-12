@@ -1481,6 +1481,12 @@ definitions:
       is_default:
         example: false
         type: boolean
+      max_age_months:
+        example: 36
+        type: integer
+      min_age_months:
+        example: 0
+        type: integer
       name:
         example: Krippe
         type: string
@@ -1495,6 +1501,12 @@ definitions:
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.SectionCreateRequest:
     properties:
+      max_age_months:
+        example: 36
+        type: integer
+      min_age_months:
+        example: 0
+        type: integer
       name:
         example: Krippe
         maxLength: 255
@@ -1516,6 +1528,12 @@ definitions:
       is_default:
         example: false
         type: boolean
+      max_age_months:
+        example: 36
+        type: integer
+      min_age_months:
+        example: 0
+        type: integer
       name:
         example: Krippe
         type: string
@@ -1528,6 +1546,10 @@ definitions:
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.SectionUpdateRequest:
     properties:
+      max_age_months:
+        type: integer
+      min_age_months:
+        type: integer
       name:
         example: Kita
         maxLength: 255

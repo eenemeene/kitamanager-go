@@ -494,6 +494,100 @@ func TestSectionHandler_List_OnlyShowsOrgSections(t *testing.T) {
 	}
 }
 
+func TestSectionHandler_Create_WithAgeRange(t *testing.T) {
+	db := setupTestDB(t)
+	sectionService := createSectionService(db)
+	handler := NewSectionHandler(sectionService, nil)
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	r := setupTestRouter()
+	r.POST("/organizations/:orgId/sections", handler.Create)
+
+	minAge := 0
+	maxAge := 36
+	body := map[string]interface{}{
+		"name":           "Krippe",
+		"min_age_months": minAge,
+		"max_age_months": maxAge,
+	}
+
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/sections", org.ID), body)
+
+	if w.Code != http.StatusCreated {
+		t.Errorf("expected status %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
+	}
+
+	var result models.SectionResponse
+	parseResponse(t, w, &result)
+
+	if result.MinAgeMonths == nil || *result.MinAgeMonths != 0 {
+		t.Errorf("expected min_age_months 0, got %v", result.MinAgeMonths)
+	}
+	if result.MaxAgeMonths == nil || *result.MaxAgeMonths != 36 {
+		t.Errorf("expected max_age_months 36, got %v", result.MaxAgeMonths)
+	}
+}
+
+func TestSectionHandler_Create_InvalidAgeRange(t *testing.T) {
+	db := setupTestDB(t)
+	sectionService := createSectionService(db)
+	handler := NewSectionHandler(sectionService, nil)
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	r := setupTestRouter()
+	r.POST("/organizations/:orgId/sections", handler.Create)
+
+	// min >= max should fail
+	body := map[string]interface{}{
+		"name":           "Bad Range",
+		"min_age_months": 36,
+		"max_age_months": 36,
+	}
+
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/sections", org.ID), body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for equal min/max, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestSectionHandler_Update_WithAgeRange(t *testing.T) {
+	db := setupTestDB(t)
+	sectionService := createSectionService(db)
+	handler := NewSectionHandler(sectionService, nil)
+
+	org := createTestOrganization(t, db, "Test Org")
+	section := createTestSectionWithOrg(t, db, "Test Section", org.ID)
+
+	r := setupTestRouter()
+	r.PUT("/organizations/:orgId/sections/:sectionId", handler.Update)
+
+	minAge := 12
+	maxAge := 48
+	body := map[string]interface{}{
+		"min_age_months": minAge,
+		"max_age_months": maxAge,
+	}
+
+	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/sections/%d", org.ID, section.ID), body)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var result models.SectionResponse
+	parseResponse(t, w, &result)
+
+	if result.MinAgeMonths == nil || *result.MinAgeMonths != 12 {
+		t.Errorf("expected min_age_months 12, got %v", result.MinAgeMonths)
+	}
+	if result.MaxAgeMonths == nil || *result.MaxAgeMonths != 48 {
+		t.Errorf("expected max_age_months 48, got %v", result.MaxAgeMonths)
+	}
+}
+
 func TestSectionHandler_List_Search(t *testing.T) {
 	db := setupTestDB(t)
 	sectionService := createSectionService(db)

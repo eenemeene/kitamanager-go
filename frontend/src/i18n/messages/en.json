@@ -206,7 +206,9 @@
     "noContractsFound": "No contracts found for this child.",
     "funding": "Funding",
     "requirement": "FTE",
-    "fundingDataUnavailable": "Funding data could not be loaded"
+    "fundingDataUnavailable": "Funding data could not be loaded",
+    "initialContract": "Initial Contract",
+    "contractEndHint": "Auto-filled based on birthdate and school enrollment rules"
   },
   "users": {
     "title": "Users",
@@ -328,6 +330,7 @@
     "passwordTooShort": "Password must be at least 6 characters",
     "stateRequired": "State is required",
     "toDateMustBeAfterFromDate": "End date must be after start date",
+    "contractBeforeBirthdate": "Contract start date cannot be before birthdate",
     "staffCategoryRequired": "Staff category is required",
     "weeklyHoursRequired": "Weekly hours is required",
     "weeklyHoursMin": "Weekly hours must be at least 0",
@@ -417,7 +420,15 @@
     "movedFailed": "Failed to move child",
     "employeeMovedSuccess": "Employee moved successfully",
     "employeeMovedFailed": "Failed to move employee",
-    "defaultSection": "Default"
+    "defaultSection": "Default",
+    "ageRange": "Age Range",
+    "minAgeMonths": "Min Age (months)",
+    "maxAgeMonths": "Max Age (months)",
+    "months": "months",
+    "optional": "optional",
+    "ageRangeError": "Max age must be greater than min age",
+    "ageMismatchWarning": "Age mismatch",
+    "ageMismatchDescription": "This child's age is outside the target section's age range."
   },
   "payPlans": {
     "title": "Pay Plans",
@@ -476,6 +487,13 @@
     "stepMinYears": "Min. Years",
     "stepMinYearsLabel": "Min. years of service (optional)"
   },
+  "upcomingChildren": {
+    "title": "Upcoming Children",
+    "name": "Name",
+    "section": "Section",
+    "startDate": "Start Date",
+    "noUpcoming": "No upcoming children"
+  },
   "stepPromotions": {
     "title": "Pending Step Promotions",
     "employee": "Employee",
@@ -486,5 +504,16 @@
     "yearsOfService": "Years of Service",
     "monthlyCostDelta": "Monthly Delta",
     "totalCost": "Total extra: {amount}/mo"
+  },
+  "sectionAgeAlerts": {
+    "title": "Children Aging Out of Section",
+    "count": "{count, plural, one {# child} other {# children}}",
+    "child": "Child",
+    "section": "Section",
+    "ageMonths": "Age (mo)",
+    "maxAge": "Max (mo)",
+    "remaining": "Remaining",
+    "overdue": "Overdue",
+    "monthsLeft": "{count} mo left"
   }
 }
