@@ -119,6 +119,9 @@ func (h *GroupHandler) Create(c *gin.Context) {
 		return
 	}
 
+	actorID := getUserID(c)
+	h.auditService.LogResourceCreate(actorID, "group", group.ID, group.Name, c.ClientIP())
+
 	c.JSON(http.StatusCreated, group)
 }
 
@@ -155,6 +158,9 @@ func (h *GroupHandler) Update(c *gin.Context) {
 		respondError(c, err)
 		return
 	}
+
+	actorID := getUserID(c)
+	h.auditService.LogResourceUpdate(actorID, "group", group.ID, group.Name, c.ClientIP())
 
 	c.JSON(http.StatusOK, group)
 }

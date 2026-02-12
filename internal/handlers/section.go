@@ -119,6 +119,9 @@ func (h *SectionHandler) Create(c *gin.Context) {
 		return
 	}
 
+	actorID := getUserID(c)
+	h.auditService.LogResourceCreate(actorID, "section", section.ID, section.Name, c.ClientIP())
+
 	c.JSON(http.StatusCreated, section)
 }
 
@@ -155,6 +158,9 @@ func (h *SectionHandler) Update(c *gin.Context) {
 		respondError(c, err)
 		return
 	}
+
+	actorID := getUserID(c)
+	h.auditService.LogResourceUpdate(actorID, "section", section.ID, section.Name, c.ClientIP())
 
 	c.JSON(http.StatusOK, section)
 }

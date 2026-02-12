@@ -190,6 +190,9 @@ func (h *UserHandler) Update(c *gin.Context) {
 		return
 	}
 
+	actorID := getUserID(c)
+	h.auditService.LogResourceUpdate(actorID, "user", user.ID, user.Email, c.ClientIP())
+
 	c.JSON(http.StatusOK, user)
 }
 

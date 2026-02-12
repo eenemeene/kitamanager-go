@@ -129,6 +129,9 @@ func (h *GovernmentFundingHandler) Create(c *gin.Context) {
 		return
 	}
 
+	actorID := getUserID(c)
+	h.auditService.LogResourceCreate(actorID, "government_funding", funding.ID, funding.Name, c.ClientIP())
+
 	c.JSON(http.StatusCreated, funding)
 }
 
@@ -168,6 +171,9 @@ func (h *GovernmentFundingHandler) Update(c *gin.Context) {
 		respondError(c, err)
 		return
 	}
+
+	actorID := getUserID(c)
+	h.auditService.LogResourceUpdate(actorID, "government_funding", funding.ID, funding.Name, c.ClientIP())
 
 	c.JSON(http.StatusOK, funding)
 }
@@ -249,6 +255,9 @@ func (h *GovernmentFundingHandler) CreatePeriod(c *gin.Context) {
 		return
 	}
 
+	actorID := getUserID(c)
+	h.auditService.LogResourceCreate(actorID, "gov_funding_period", period.ID, fmt.Sprintf("funding=%d", fundingID), c.ClientIP())
+
 	c.JSON(http.StatusCreated, period)
 }
 
@@ -293,6 +302,9 @@ func (h *GovernmentFundingHandler) UpdatePeriod(c *gin.Context) {
 		respondError(c, err)
 		return
 	}
+
+	actorID := getUserID(c)
+	h.auditService.LogResourceUpdate(actorID, "gov_funding_period", period.ID, fmt.Sprintf("funding=%d", period.GovernmentFundingID), c.ClientIP())
 
 	c.JSON(http.StatusOK, period)
 }
@@ -381,6 +393,9 @@ func (h *GovernmentFundingHandler) CreateProperty(c *gin.Context) {
 		return
 	}
 
+	actorID := getUserID(c)
+	h.auditService.LogResourceCreate(actorID, "gov_funding_property", property.ID, fmt.Sprintf("period=%d", periodID), c.ClientIP())
+
 	c.JSON(http.StatusCreated, property)
 }
 
@@ -432,6 +447,9 @@ func (h *GovernmentFundingHandler) UpdateProperty(c *gin.Context) {
 		respondError(c, err)
 		return
 	}
+
+	actorID := getUserID(c)
+	h.auditService.LogResourceUpdate(actorID, "gov_funding_property", property.ID, fmt.Sprintf("period=%d", property.PeriodID), c.ClientIP())
 
 	c.JSON(http.StatusOK, property)
 }

@@ -129,6 +129,9 @@ func (h *PayPlanHandler) Create(c *gin.Context) {
 		return
 	}
 
+	actorID := getUserID(c)
+	h.auditService.LogResourceCreate(actorID, "pay_plan", payplan.ID, payplan.Name, c.ClientIP())
+
 	c.JSON(http.StatusCreated, payplan)
 }
 
@@ -166,6 +169,9 @@ func (h *PayPlanHandler) Update(c *gin.Context) {
 		respondError(c, err)
 		return
 	}
+
+	actorID := getUserID(c)
+	h.auditService.LogResourceUpdate(actorID, "pay_plan", payplan.ID, payplan.Name, c.ClientIP())
 
 	c.JSON(http.StatusOK, payplan)
 }
@@ -249,6 +255,9 @@ func (h *PayPlanHandler) CreatePeriod(c *gin.Context) {
 		return
 	}
 
+	actorID := getUserID(c)
+	h.auditService.LogResourceCreate(actorID, "pay_plan_period", period.ID, fmt.Sprintf("payplan=%d", payplanID), c.ClientIP())
+
 	c.JSON(http.StatusCreated, period)
 }
 
@@ -331,6 +340,9 @@ func (h *PayPlanHandler) UpdatePeriod(c *gin.Context) {
 		respondError(c, err)
 		return
 	}
+
+	actorID := getUserID(c)
+	h.auditService.LogResourceUpdate(actorID, "pay_plan_period", period.ID, fmt.Sprintf("payplan=%d", payplanID), c.ClientIP())
 
 	c.JSON(http.StatusOK, period)
 }
@@ -420,6 +432,9 @@ func (h *PayPlanHandler) CreateEntry(c *gin.Context) {
 		respondError(c, err)
 		return
 	}
+
+	actorID := getUserID(c)
+	h.auditService.LogResourceCreate(actorID, "pay_plan_entry", entry.ID, fmt.Sprintf("period=%d", periodID), c.ClientIP())
 
 	c.JSON(http.StatusCreated, entry)
 }
@@ -517,6 +532,9 @@ func (h *PayPlanHandler) UpdateEntry(c *gin.Context) {
 		respondError(c, err)
 		return
 	}
+
+	actorID := getUserID(c)
+	h.auditService.LogResourceUpdate(actorID, "pay_plan_entry", entry.ID, fmt.Sprintf("period=%d", periodID), c.ClientIP())
 
 	c.JSON(http.StatusOK, entry)
 }

@@ -58,6 +58,8 @@ func (h *ChildAttendanceHandler) Create(c *gin.Context) {
 		return
 	}
 
+	h.auditService.LogResourceCreate(recordedBy, "attendance", attendance.ID, fmt.Sprintf("child=%d date=%s", attendance.ChildID, attendance.Date), c.ClientIP())
+
 	c.JSON(http.StatusCreated, attendance)
 }
 
@@ -148,6 +150,9 @@ func (h *ChildAttendanceHandler) Update(c *gin.Context) {
 		respondError(c, svcErr)
 		return
 	}
+
+	actorID := getUserID(c)
+	h.auditService.LogResourceUpdate(actorID, "attendance", attendance.ID, fmt.Sprintf("child=%d date=%s", attendance.ChildID, attendance.Date), c.ClientIP())
 
 	c.JSON(http.StatusOK, attendance)
 }

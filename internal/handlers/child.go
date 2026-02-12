@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -166,6 +167,9 @@ func (h *ChildHandler) Create(c *gin.Context) {
 		return
 	}
 
+	actorID := getUserID(c)
+	h.auditService.LogResourceCreate(actorID, "child", child.ID, child.FullName(), c.ClientIP())
+
 	c.JSON(http.StatusCreated, child)
 }
 
@@ -204,6 +208,9 @@ func (h *ChildHandler) Update(c *gin.Context) {
 		respondError(c, err)
 		return
 	}
+
+	actorID := getUserID(c)
+	h.auditService.LogResourceUpdate(actorID, "child", child.ID, child.FullName(), c.ClientIP())
 
 	c.JSON(http.StatusOK, child)
 }
@@ -390,6 +397,9 @@ func (h *ChildHandler) CreateContract(c *gin.Context) {
 		return
 	}
 
+	actorID := getUserID(c)
+	h.auditService.LogResourceCreate(actorID, "child_contract", contract.ID, fmt.Sprintf("child=%d", contract.ChildID), c.ClientIP())
+
 	c.JSON(http.StatusCreated, contract)
 }
 
@@ -430,6 +440,9 @@ func (h *ChildHandler) UpdateContract(c *gin.Context) {
 		return
 	}
 
+	actorID := getUserID(c)
+	h.auditService.LogResourceUpdate(actorID, "child_contract", contract.ID, fmt.Sprintf("child=%d", contract.ChildID), c.ClientIP())
+
 	c.JSON(http.StatusOK, contract)
 }
 
@@ -459,6 +472,9 @@ func (h *ChildHandler) DeleteContract(c *gin.Context) {
 		respondError(c, err)
 		return
 	}
+
+	actorID := getUserID(c)
+	h.auditService.LogResourceDelete(actorID, "child_contract", contractID, fmt.Sprintf("child=%d", childID), c.ClientIP())
 
 	c.Status(http.StatusNoContent)
 }

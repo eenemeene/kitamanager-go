@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -155,6 +156,9 @@ func (h *EmployeeHandler) Create(c *gin.Context) {
 		return
 	}
 
+	actorID := getUserID(c)
+	h.auditService.LogResourceCreate(actorID, "employee", employee.ID, employee.FullName(), c.ClientIP())
+
 	c.JSON(http.StatusCreated, employee)
 }
 
@@ -193,6 +197,9 @@ func (h *EmployeeHandler) Update(c *gin.Context) {
 		respondError(c, err)
 		return
 	}
+
+	actorID := getUserID(c)
+	h.auditService.LogResourceUpdate(actorID, "employee", employee.ID, employee.FullName(), c.ClientIP())
 
 	c.JSON(http.StatusOK, employee)
 }
@@ -348,6 +355,9 @@ func (h *EmployeeHandler) CreateContract(c *gin.Context) {
 		return
 	}
 
+	actorID := getUserID(c)
+	h.auditService.LogResourceCreate(actorID, "employee_contract", contract.ID, fmt.Sprintf("employee=%d", contract.EmployeeID), c.ClientIP())
+
 	c.JSON(http.StatusCreated, contract)
 }
 
@@ -419,6 +429,9 @@ func (h *EmployeeHandler) UpdateContract(c *gin.Context) {
 		return
 	}
 
+	actorID := getUserID(c)
+	h.auditService.LogResourceUpdate(actorID, "employee_contract", contract.ID, fmt.Sprintf("employee=%d", contract.EmployeeID), c.ClientIP())
+
 	c.JSON(http.StatusOK, contract)
 }
 
@@ -448,6 +461,9 @@ func (h *EmployeeHandler) DeleteContract(c *gin.Context) {
 		respondError(c, err)
 		return
 	}
+
+	actorID := getUserID(c)
+	h.auditService.LogResourceDelete(actorID, "employee_contract", contractID, fmt.Sprintf("employee=%d", employeeID), c.ClientIP())
 
 	c.Status(http.StatusNoContent)
 }

@@ -152,6 +152,9 @@ func (h *OrganizationHandler) Update(c *gin.Context) {
 		return
 	}
 
+	actorID := getUserID(c)
+	h.auditService.LogResourceUpdate(actorID, "organization", organization.ID, organization.Name, c.ClientIP())
+
 	c.JSON(http.StatusOK, organization)
 }
 
