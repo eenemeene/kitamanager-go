@@ -279,6 +279,7 @@ export default function EmployeeContractsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>{t('common.status')}</TableHead>
+                  <TableHead>{t('sections.title')}</TableHead>
                   <TableHead>{t('contracts.from')}</TableHead>
                   <TableHead>{t('contracts.to')}</TableHead>
                   <TableHead>{t('employees.staffCategory.label')}</TableHead>
@@ -308,6 +309,15 @@ export default function EmployeeContractsPage() {
                               ? t('common.upcoming')
                               : t('common.ended')}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {contract.section_name ? (
+                          <Badge variant="outline">{contract.section_name}</Badge>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">
+                            {t('sections.unassigned')}
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell>{formatDate(contract.from)}</TableCell>
                       <TableCell>
@@ -343,7 +353,7 @@ export default function EmployeeContractsPage() {
                 })}
                 {sortedContracts.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground">
                       {t('employees.noContractsFound')}
                     </TableCell>
                   </TableRow>

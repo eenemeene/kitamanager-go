@@ -205,6 +205,10 @@ definitions:
           Properties stores flexible key-value data as JSON.
           For children: {"care_type": "ganztag", "supplements": ["ndh", "mss"]}
           For employees: {"benefits": ["christmas_bonus"], "employer_type": "normal"}
+      section:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Section'
+      section_id:
+        type: integer
       to:
         type: string
       updated_at:
@@ -217,6 +221,9 @@ definitions:
         type: string
       properties:
         $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
+      section_id:
+        example: 2
+        type: integer
       to:
         example: "2025-12-31"
         type: string
@@ -238,6 +245,12 @@ definitions:
         type: integer
       properties:
         $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
+      section_id:
+        example: 2
+        type: integer
+      section_name:
+        example: Krippe
+        type: string
       to:
         example: "2025-12-31"
         type: string
@@ -441,6 +454,10 @@ definitions:
           Properties stores flexible key-value data as JSON.
           For children: {"care_type": "ganztag", "supplements": ["ndh", "mss"]}
           For employees: {"benefits": ["christmas_bonus"], "employer_type": "normal"}
+      section:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Section'
+      section_id:
+        type: integer
       staff_category:
         description: Employee-specific typed fields
         example: qualified
@@ -470,6 +487,9 @@ definitions:
         type: integer
       properties:
         $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
+      section_id:
+        example: 2
+        type: integer
       staff_category:
         example: qualified
         type: string
@@ -513,6 +533,12 @@ definitions:
         type: integer
       properties:
         $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
+      section_id:
+        example: 2
+        type: integer
+      section_name:
+        example: Krippe
+        type: string
       staff_category:
         example: qualified
         type: string
@@ -2844,7 +2870,10 @@ paths:
     put:
       consumes:
       - application/json
-      description: Update an existing child by ID
+      description: |-
+        Update an existing child by ID.
+        When section_id changes and the child has an active contract, the system automatically creates a contract transition:
+        if the current contract started today, its section is updated in place; otherwise the current contract is closed (end date = yesterday) and a new contract is created starting today with the new section.
       parameters:
       - description: Organization ID
         in: path
@@ -3217,7 +3246,7 @@ paths:
       consumes:
       - application/json
       description: |-
-        Create a new contract for a child.
+        Create a new contract for a child. If section_id is not provided, it defaults to the child's current section.
 
         **Contract Date Rules:**
         - Both `from` and `to` dates are inclusive (the contract is active on both dates)
@@ -3874,7 +3903,10 @@ paths:
     put:
       consumes:
       - application/json
-      description: Update an existing employee by ID
+      description: |-
+        Update an existing employee by ID.
+        When section_id changes and the employee has an active contract, the system automatically creates a contract transition:
+        if the current contract started today, its section is updated in place; otherwise the current contract is closed (end date = yesterday) and a new contract is created starting today with the new section (copying all contract fields).
       parameters:
       - description: Organization ID
         in: path
@@ -3979,7 +4011,7 @@ paths:
       consumes:
       - application/json
       description: |-
-        Create a new contract for an employee.
+        Create a new contract for an employee. If section_id is not provided, it defaults to the employee's current section.
 
         **Contract Date Rules:**
         - Both `from` and `to` dates are inclusive (the contract is active on both dates)

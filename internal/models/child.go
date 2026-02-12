@@ -27,6 +27,7 @@ func (c ChildContract) GetPersonID() uint {
 type ChildContractCreateRequest struct {
 	From       time.Time          `json:"from" binding:"required" example:"2025-01-01"`
 	To         *time.Time         `json:"to" example:"2025-12-31"`
+	SectionID  *uint              `json:"section_id,omitempty" example:"2"`
 	Properties ContractProperties `json:"properties,omitempty"`
 }
 
@@ -103,25 +104,32 @@ func (c *Child) ToResponse() ChildResponse {
 
 // ChildContractResponse represents the child contract response
 type ChildContractResponse struct {
-	ID         uint               `json:"id" example:"1"`
-	ChildID    uint               `json:"child_id" example:"1"`
-	From       time.Time          `json:"from" example:"2025-01-01"`
-	To         *time.Time         `json:"to" example:"2025-12-31"`
-	Properties ContractProperties `json:"properties,omitempty"`
-	CreatedAt  time.Time          `json:"created_at"`
-	UpdatedAt  time.Time          `json:"updated_at"`
+	ID          uint               `json:"id" example:"1"`
+	ChildID     uint               `json:"child_id" example:"1"`
+	From        time.Time          `json:"from" example:"2025-01-01"`
+	To          *time.Time         `json:"to" example:"2025-12-31"`
+	SectionID   *uint              `json:"section_id,omitempty" example:"2"`
+	SectionName *string            `json:"section_name,omitempty" example:"Krippe"`
+	Properties  ContractProperties `json:"properties,omitempty"`
+	CreatedAt   time.Time          `json:"created_at"`
+	UpdatedAt   time.Time          `json:"updated_at"`
 }
 
 func (c *ChildContract) ToResponse() ChildContractResponse {
-	return ChildContractResponse{
+	resp := ChildContractResponse{
 		ID:         c.ID,
 		ChildID:    c.ChildID,
 		From:       c.From,
 		To:         c.To,
+		SectionID:  c.SectionID,
 		Properties: c.Properties,
 		CreatedAt:  c.CreatedAt,
 		UpdatedAt:  c.UpdatedAt,
 	}
+	if c.Section != nil {
+		resp.SectionName = &c.Section.Name
+	}
+	return resp
 }
 
 // ChildrenContractCountByMonthResponse represents contract counts per month over multiple years

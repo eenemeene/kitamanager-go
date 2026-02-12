@@ -106,7 +106,7 @@ func (s *EmployeeStore) Contracts() ContractStorer[models.EmployeeContract] {
 
 func (s *EmployeeStore) FindByID(ctx context.Context, id uint) (*models.Employee, error) {
 	var employee models.Employee
-	if err := DBFromContext(ctx, s.db).Preload("Organization").Preload("Section").Preload("Contracts").First(&employee, id).Error; err != nil {
+	if err := DBFromContext(ctx, s.db).Preload("Organization").Preload("Section").Preload("Contracts.Section").Preload("Contracts").First(&employee, id).Error; err != nil {
 		return nil, err
 	}
 	return &employee, nil
@@ -144,10 +144,28 @@ func (s *EmployeeStore) CreateContract(ctx context.Context, contract *models.Emp
 
 func (s *EmployeeStore) FindContractByID(ctx context.Context, id uint) (*models.EmployeeContract, error) {
 	var contract models.EmployeeContract
-	if err := DBFromContext(ctx, s.db).First(&contract, id).Error; err != nil {
+	if err := DBFromContext(ctx, s.db).Preload("Section").First(&contract, id).Error; err != nil {
 		return nil, err
 	}
 	return &contract, nil
+}
+
+// FindContractsByEmployeePaginated returns paginated contracts for an employee with Section preloaded.
+func (s *EmployeeStore) FindContractsByEmployeePaginated(ctx context.Context, employeeID uint, limit, offset int) ([]models.EmployeeContract, int64, error) {
+	var contracts []models.EmployeeContract
+	var total int64
+
+	db := DBFromContext(ctx, s.db)
+	if err := db.Model(&models.EmployeeContract{}).Where("employee_id = ?", employeeID).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	err := db.Preload("Section").Where("employee_id = ?", employeeID).
+		Order("from_date DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&contracts).Error
+	return contracts, total, err
 }
 
 func (s *EmployeeStore) UpdateContract(ctx context.Context, contract *models.EmployeeContract) error {

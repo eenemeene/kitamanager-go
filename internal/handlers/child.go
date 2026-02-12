@@ -171,7 +171,9 @@ func (h *ChildHandler) Create(c *gin.Context) {
 
 // Update godoc
 // @Summary Update a child
-// @Description Update an existing child by ID
+// @Description Update an existing child by ID.
+// @Description When section_id changes and the child has an active contract, the system automatically creates a contract transition:
+// @Description if the current contract started today, its section is updated in place; otherwise the current contract is closed (end date = yesterday) and a new contract is created starting today with the new section.
 // @Tags children
 // @Accept json
 // @Produce json
@@ -345,7 +347,7 @@ func (h *ChildHandler) GetContract(c *gin.Context) {
 
 // CreateContract godoc
 // @Summary Create child contract
-// @Description Create a new contract for a child.
+// @Description Create a new contract for a child. If section_id is not provided, it defaults to the child's current section.
 // @Description
 // @Description **Contract Date Rules:**
 // @Description - Both `from` and `to` dates are inclusive (the contract is active on both dates)

@@ -139,14 +139,29 @@ func (s *EmployeeService) Update(ctx context.Context, id, orgID uint, req *model
 		}
 		employee.Birthdate = bd
 	}
+
+	sectionChanged := req.SectionID != nil && !sameSectionID(req.SectionID, employee.SectionID)
+
 	if req.SectionID != nil {
 		employee.SectionID = req.SectionID
 		// Clear preloaded association so GORM Save doesn't override the foreign key
 		employee.Section = nil
 	}
 
-	if err := s.store.Update(ctx, employee); err != nil {
-		return nil, apperror.InternalWrap(err, "failed to update employee")
+	if sectionChanged {
+		// Wrap employee update + contract transition in a single transaction
+		if err := s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
+			if err := s.store.Update(txCtx, employee); err != nil {
+				return apperror.InternalWrap(err, "failed to update employee")
+			}
+			return s.handleEmployeeSectionTransfer(txCtx, id, req.SectionID)
+		}); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := s.store.Update(ctx, employee); err != nil {
+			return nil, apperror.InternalWrap(err, "failed to update employee")
+		}
 	}
 
 	// Reload to get fresh associations (e.g., new Section after section_id change)
@@ -157,6 +172,59 @@ func (s *EmployeeService) Update(ctx context.Context, id, orgID uint, req *model
 
 	resp := employee.ToResponse()
 	return &resp, nil
+}
+
+// handleEmployeeSectionTransfer creates a contract transition when an employee moves between sections.
+func (s *EmployeeService) handleEmployeeSectionTransfer(ctx context.Context, employeeID uint, newSectionID *uint) error {
+	contract, err := s.store.Contracts().GetCurrentContract(ctx, employeeID)
+	if err != nil {
+		return apperror.InternalWrap(err, "failed to fetch current contract")
+	}
+	if contract == nil {
+		return nil // no active contract, nothing to transition
+	}
+
+	// If the contract already has the same section, nothing to do
+	if sameSectionID(contract.SectionID, newSectionID) {
+		return nil
+	}
+
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+
+	switch decideSectionTransfer(contract.From) {
+	case transferUpdate:
+		// Same-day: just update the section on the existing contract
+		contract.SectionID = newSectionID
+		contract.Section = nil
+		return s.store.UpdateContract(ctx, contract)
+	case transferReplace:
+		// Close old contract (end = yesterday) and create a new one starting today
+		yesterday := today.AddDate(0, 0, -1)
+		contract.To = &yesterday
+		contract.Section = nil
+		if err := s.store.UpdateContract(ctx, contract); err != nil {
+			return apperror.InternalWrap(err, "failed to close existing contract")
+		}
+
+		newContract := &models.EmployeeContract{
+			EmployeeID: employeeID,
+			BaseContract: models.BaseContract{
+				Period: models.Period{
+					From: today,
+					To:   nil,
+				},
+				SectionID:  newSectionID,
+				Properties: contract.Properties,
+			},
+			StaffCategory: contract.StaffCategory,
+			Grade:         contract.Grade,
+			Step:          contract.Step,
+			WeeklyHours:   contract.WeeklyHours,
+			PayPlanID:     contract.PayPlanID,
+		}
+		return s.store.CreateContract(ctx, newContract)
+	}
+	return nil
 }
 
 // Delete deletes an employee and its contracts, validating it belongs to the specified organization.
@@ -190,7 +258,7 @@ func (s *EmployeeService) ListContracts(ctx context.Context, employeeID, orgID u
 		return nil, 0, err
 	}
 
-	contracts, total, err := s.store.Contracts().GetHistoryPaginated(ctx, employeeID, limit, offset)
+	contracts, total, err := s.store.FindContractsByEmployeePaginated(ctx, employeeID, limit, offset)
 	if err != nil {
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch contracts")
 	}
@@ -256,6 +324,12 @@ func (s *EmployeeService) CreateContract(ctx context.Context, employeeID, orgID 
 		return nil, apperror.BadRequest("payplan does not belong to this organization")
 	}
 
+	// Auto-set section from employee when not specified in request
+	sectionID := req.SectionID
+	if sectionID == nil {
+		sectionID = employee.SectionID
+	}
+
 	contract := &models.EmployeeContract{
 		EmployeeID: employeeID,
 		BaseContract: models.BaseContract{
@@ -263,6 +337,7 @@ func (s *EmployeeService) CreateContract(ctx context.Context, employeeID, orgID 
 				From: req.From,
 				To:   req.To,
 			},
+			SectionID:  sectionID,
 			Properties: req.Properties,
 		},
 		StaffCategory: req.StaffCategory,

@@ -9,6 +9,9 @@ import {
   deleteEmployeeViaApi,
   createChildContractViaApi,
   createEmployeeContractViaApi,
+  createSectionViaApi,
+  deleteSectionViaApi,
+  updateChildSectionViaApi,
   uniqueName,
   formatDateForApi,
   getTodayStr,
@@ -228,13 +231,123 @@ test.describe('Child Contracts - CRUD Operations', () => {
       await expect(page.getByRole('alertdialog')).toBeVisible({ timeout: 5000 });
 
       // Click the confirm/continue button in the alert dialog
-      await page.getByRole('alertdialog').getByRole('button', { name: /Delete|Confirm|Yes/i }).click();
+      await page
+        .getByRole('alertdialog')
+        .getByRole('button', { name: /Delete|Confirm|Yes/i })
+        .click();
 
       // Contract should be removed
       await expect(page.getByText(/halbtag/i)).not.toBeVisible({ timeout: 10000 });
       await expect(page.getByText(/No contracts found/i).first()).toBeVisible();
     } finally {
       await deleteChildViaApi(page, token, orgId, child.id);
+    }
+  });
+});
+
+test.describe('Child Contract Workflow - create child, add contract, move section', () => {
+  let token: string;
+  let orgId: number;
+
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    await login(page);
+    token = await getApiToken(page);
+    const org = await getFirstOrganization(page, token);
+    orgId = org.id;
+    await page.close();
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+  });
+
+  test('should create child, add new contract (ending previous), move section, and verify', async ({
+    page,
+  }) => {
+    // 1. Create child with initial contract via API
+    const childName = uniqueName('Workflow');
+    const child = await createChildViaApi(page, token, orgId, {
+      first_name: childName,
+      last_name: 'Test',
+      birthdate: formatDateForApi('2021-03-15'),
+      gender: 'female',
+    });
+
+    await createChildContractViaApi(page, token, orgId, child.id, {
+      from: formatDateForApi('2024-01-01'),
+      properties: { care_type: 'ganztag' },
+    });
+
+    // Create a section to move the child to later
+    const sectionName = uniqueName('TargetSection');
+    const section = await createSectionViaApi(page, token, orgId, sectionName);
+
+    try {
+      // 2. Navigate to children list and add a new contract via the UI
+      await page.goto(`/organizations/${orgId}/children`);
+      await page.waitForLoadState('networkidle');
+
+      // Find the child row
+      await expect(page.getByText(childName)).toBeVisible({ timeout: 10000 });
+
+      // Click the add-contract button (FileText icon)
+      const childRow = page.getByRole('row').filter({ hasText: childName });
+      await childRow.getByRole('button', { name: /Add Contract/i }).click();
+
+      // Dialog should open showing active contract info
+      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
+      await expect(page.getByText(/has an active contract/i)).toBeVisible({ timeout: 5000 });
+
+      // The "End current contract" checkbox should be checked by default
+      const endContractCheckbox = page.locator('#endCurrentContract');
+      await expect(endContractCheckbox).toBeChecked();
+
+      // Fill the start date for the new contract
+      await page.getByLabel(/Start Date/i).fill('2025-01-01');
+
+      // Click on a different property suggestion to make the contract different
+      await expect(page.getByText(/Available:/i)).toBeVisible({ timeout: 10000 });
+      const suggestionsArea = page.locator('text=Available:').locator('..');
+      const halbtagSuggestion = suggestionsArea.locator('button', { hasText: 'halbtag' }).first();
+      if (await halbtagSuggestion.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await halbtagSuggestion.click();
+      }
+
+      // Submit - this should end the old contract and create the new one
+      await page.getByRole('button', { name: /Save/i }).click();
+      await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10000 });
+
+      // Verify the toast indicates the previous contract was ended
+      await expect(page.getByText(/previous contract.*ended|contract.*ended/i).first()).toBeVisible(
+        { timeout: 5000 }
+      );
+
+      // 3. Move the child to the target section via API
+      await updateChildSectionViaApi(page, token, orgId, child.id, section.id);
+
+      // 4. Verify contract history shows both contracts
+      await page.goto(`/organizations/${orgId}/children/${child.id}/contracts`);
+      await page.waitForLoadState('networkidle');
+
+      // Should have 2 contracts in the table
+      const contractRows = page.locator('tbody tr');
+      await expect(contractRows).toHaveCount(2, { timeout: 10000 });
+
+      // The old contract should be ended (has a to date), the new one should be active
+      await expect(page.getByText(/Ended/i).first()).toBeVisible();
+      await expect(page.getByText(/Active/i).first()).toBeVisible();
+
+      // 5. Verify the child appears in the correct section on the board
+      await page.goto(`/organizations/${orgId}/sections`);
+      await page.waitForLoadState('networkidle');
+
+      // The section column should contain the child
+      await expect(page.getByText(sectionName)).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(childName)).toBeVisible({ timeout: 10000 });
+    } finally {
+      await deleteChildViaApi(page, token, orgId, child.id);
+      await deleteSectionViaApi(page, token, orgId, section.id);
     }
   });
 });
@@ -388,7 +501,10 @@ test.describe('Employee Contracts - CRUD Operations', () => {
       await expect(page.getByRole('alertdialog')).toBeVisible({ timeout: 5000 });
 
       // Click the confirm button
-      await page.getByRole('alertdialog').getByRole('button', { name: /Delete|Confirm|Yes/i }).click();
+      await page
+        .getByRole('alertdialog')
+        .getByRole('button', { name: /Delete|Confirm|Yes/i })
+        .click();
 
       // Contract should be removed
       await expect(page.getByText(/Supplementary Staff/i)).not.toBeVisible({ timeout: 10000 });

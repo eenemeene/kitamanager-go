@@ -102,7 +102,7 @@ func (s *ChildStore) Contracts() ContractStorer[models.ChildContract] {
 
 func (s *ChildStore) FindByID(ctx context.Context, id uint) (*models.Child, error) {
 	var child models.Child
-	if err := DBFromContext(ctx, s.db).Preload("Organization").Preload("Section").Preload("Contracts").First(&child, id).Error; err != nil {
+	if err := DBFromContext(ctx, s.db).Preload("Organization").Preload("Section").Preload("Contracts.Section").Preload("Contracts").First(&child, id).Error; err != nil {
 		return nil, err
 	}
 	return &child, nil
@@ -141,10 +141,28 @@ func (s *ChildStore) CreateContract(ctx context.Context, contract *models.ChildC
 
 func (s *ChildStore) FindContractByID(ctx context.Context, id uint) (*models.ChildContract, error) {
 	var contract models.ChildContract
-	if err := DBFromContext(ctx, s.db).First(&contract, id).Error; err != nil {
+	if err := DBFromContext(ctx, s.db).Preload("Section").First(&contract, id).Error; err != nil {
 		return nil, err
 	}
 	return &contract, nil
+}
+
+// FindContractsByChildPaginated returns paginated contracts for a child with Section preloaded.
+func (s *ChildStore) FindContractsByChildPaginated(ctx context.Context, childID uint, limit, offset int) ([]models.ChildContract, int64, error) {
+	var contracts []models.ChildContract
+	var total int64
+
+	db := DBFromContext(ctx, s.db)
+	if err := db.Model(&models.ChildContract{}).Where("child_id = ?", childID).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	err := db.Preload("Section").Where("child_id = ?", childID).
+		Order("from_date DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&contracts).Error
+	return contracts, total, err
 }
 
 func (s *ChildStore) UpdateContract(ctx context.Context, contract *models.ChildContract) error {

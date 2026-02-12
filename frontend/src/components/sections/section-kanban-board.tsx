@@ -132,9 +132,15 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
       }
       toast({ title: t('sections.movedFailed'), variant: 'destructive' });
     },
-    onSettled: () => {
+    onSettled: (_data, _error, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.children.allUnpaginated(orgId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.children.all(orgId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.children.contracts(orgId, variables.childId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.children.detail(orgId, variables.childId),
+      });
     },
   });
 
@@ -160,9 +166,15 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
       }
       toast({ title: t('sections.employeeMovedFailed'), variant: 'destructive' });
     },
-    onSettled: () => {
+    onSettled: (_data, _error, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.employees.allUnpaginated(orgId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.employees.all(orgId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.employees.contracts(orgId, variables.employeeId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.employees.detail(orgId, variables.employeeId),
+      });
     },
   });
 

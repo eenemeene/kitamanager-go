@@ -284,6 +284,7 @@ export default function ChildContractsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>{t('common.status')}</TableHead>
+                  <TableHead>{t('sections.title')}</TableHead>
                   <TableHead>{t('contracts.from')}</TableHead>
                   <TableHead>{t('contracts.to')}</TableHead>
                   <TableHead>{t('children.properties')}</TableHead>
@@ -311,6 +312,15 @@ export default function ChildContractsPage() {
                               ? t('common.upcoming')
                               : t('common.ended')}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {contract.section_name ? (
+                          <Badge variant="outline">{contract.section_name}</Badge>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">
+                            {t('sections.unassigned')}
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell>{formatDate(contract.from)}</TableCell>
                       <TableCell>
@@ -356,7 +366,7 @@ export default function ChildContractsPage() {
                 })}
                 {sortedContracts.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center text-muted-foreground">
                       {t('children.noContractsFound')}
                     </TableCell>
                   </TableRow>

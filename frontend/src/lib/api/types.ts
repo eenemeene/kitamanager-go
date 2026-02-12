@@ -207,11 +207,14 @@ export interface EmployeeContract {
   employee_id: number;
   from: string;
   to?: string | null;
+  section_id?: number | null;
+  section_name?: string | null;
   staff_category: string;
   grade: string;
   step: number;
   weekly_hours: number;
   payplan_id: number;
+  properties?: ContractProperties;
   created_at: string;
   updated_at: string;
 }
@@ -235,11 +238,13 @@ export interface EmployeeUpdateRequest {
 export interface EmployeeContractCreateRequest {
   from: string;
   to?: string | null;
+  section_id?: number | null;
   staff_category: string;
   grade: string;
   step: number;
   weekly_hours: number;
   payplan_id: number;
+  properties?: ContractProperties;
 }
 
 export interface EmployeeContractUpdateRequest {
@@ -294,6 +299,8 @@ export interface ChildContract {
   child_id: number;
   from: string;
   to?: string | null;
+  section_id?: number | null;
+  section_name?: string | null;
   properties?: ContractProperties;
   created_at: string;
   updated_at: string;
@@ -319,6 +326,7 @@ export interface ChildUpdateRequest {
 export interface ChildContractCreateRequest {
   from: string;
   to?: string | null;
+  section_id?: number | null;
   properties?: ContractProperties;
 }
 

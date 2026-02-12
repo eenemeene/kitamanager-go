@@ -147,14 +147,29 @@ func (s *ChildService) Update(ctx context.Context, id, orgID uint, req *models.C
 		}
 		child.Birthdate = bd
 	}
+
+	sectionChanged := req.SectionID != nil && !sameSectionID(req.SectionID, child.SectionID)
+
 	if req.SectionID != nil {
 		child.SectionID = req.SectionID
 		// Clear preloaded association so GORM Save doesn't override the foreign key
 		child.Section = nil
 	}
 
-	if err := s.store.Update(ctx, child); err != nil {
-		return nil, apperror.InternalWrap(err, "failed to update child")
+	if sectionChanged {
+		// Wrap child update + contract transition in a single transaction
+		if err := s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
+			if err := s.store.Update(txCtx, child); err != nil {
+				return apperror.InternalWrap(err, "failed to update child")
+			}
+			return s.handleChildSectionTransfer(txCtx, id, req.SectionID)
+		}); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := s.store.Update(ctx, child); err != nil {
+			return nil, apperror.InternalWrap(err, "failed to update child")
+		}
 	}
 
 	// Reload to get fresh associations (e.g., new Section after section_id change)
@@ -165,6 +180,54 @@ func (s *ChildService) Update(ctx context.Context, id, orgID uint, req *models.C
 
 	resp := child.ToResponse()
 	return &resp, nil
+}
+
+// handleChildSectionTransfer creates a contract transition when a child moves between sections.
+func (s *ChildService) handleChildSectionTransfer(ctx context.Context, childID uint, newSectionID *uint) error {
+	contract, err := s.store.Contracts().GetCurrentContract(ctx, childID)
+	if err != nil {
+		return apperror.InternalWrap(err, "failed to fetch current contract")
+	}
+	if contract == nil {
+		return nil // no active contract, nothing to transition
+	}
+
+	// If the contract already has the same section, nothing to do
+	if sameSectionID(contract.SectionID, newSectionID) {
+		return nil
+	}
+
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+
+	switch decideSectionTransfer(contract.From) {
+	case transferUpdate:
+		// Same-day: just update the section on the existing contract
+		contract.SectionID = newSectionID
+		contract.Section = nil
+		return s.store.UpdateContract(ctx, contract)
+	case transferReplace:
+		// Close old contract (end = yesterday) and create a new one starting today
+		yesterday := today.AddDate(0, 0, -1)
+		contract.To = &yesterday
+		contract.Section = nil
+		if err := s.store.UpdateContract(ctx, contract); err != nil {
+			return apperror.InternalWrap(err, "failed to close existing contract")
+		}
+
+		newContract := &models.ChildContract{
+			ChildID: childID,
+			BaseContract: models.BaseContract{
+				Period: models.Period{
+					From: today,
+					To:   nil,
+				},
+				SectionID:  newSectionID,
+				Properties: contract.Properties,
+			},
+		}
+		return s.store.CreateContract(ctx, newContract)
+	}
+	return nil
 }
 
 // Delete deletes a child and its contracts, validating it belongs to the specified organization.
@@ -198,7 +261,7 @@ func (s *ChildService) ListContracts(ctx context.Context, childID, orgID uint, l
 		return nil, 0, err
 	}
 
-	contracts, total, err := s.store.Contracts().GetHistoryPaginated(ctx, childID, limit, offset)
+	contracts, total, err := s.store.FindContractsByChildPaginated(ctx, childID, limit, offset)
 	if err != nil {
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch contracts")
 	}
@@ -281,6 +344,12 @@ func (s *ChildService) CreateContract(ctx context.Context, childID, orgID uint, 
 		return nil, apperror.BadRequest("contract end date cannot be before child's birthdate")
 	}
 
+	// Auto-set section from child when not specified in request
+	sectionID := req.SectionID
+	if sectionID == nil {
+		sectionID = child.SectionID
+	}
+
 	contract := &models.ChildContract{
 		ChildID: childID,
 		BaseContract: models.BaseContract{
@@ -288,6 +357,7 @@ func (s *ChildService) CreateContract(ctx context.Context, childID, orgID uint, 
 				From: req.From,
 				To:   req.To,
 			},
+			SectionID:  sectionID,
 			Properties: req.Properties,
 		},
 	}

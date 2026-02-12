@@ -79,6 +79,7 @@ type EmployeeStorer interface {
 	DeleteContract(ctx context.Context, id uint) error
 	Contracts() ContractStorer[models.EmployeeContract]
 	FindByOrganizationWithContracts(ctx context.Context, orgID uint, date time.Time) ([]models.Employee, error)
+	FindContractsByEmployeePaginated(ctx context.Context, employeeID uint, limit, offset int) ([]models.EmployeeContract, int64, error)
 }
 
 // ChildStorer defines the interface for child storage operations
@@ -98,6 +99,7 @@ type ChildStorer interface {
 	UpdateContract(ctx context.Context, contract *models.ChildContract) error
 	DeleteContract(ctx context.Context, id uint) error
 	Contracts() ContractStorer[models.ChildContract]
+	FindContractsByChildPaginated(ctx context.Context, childID uint, limit, offset int) ([]models.ChildContract, int64, error)
 }
 
 // ContractStorer defines the interface for contract storage operations
