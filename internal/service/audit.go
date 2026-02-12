@@ -13,11 +13,38 @@ import (
 // AuditService handles audit logging operations
 type AuditService struct {
 	store store.AuditStorer
+	logCh chan *models.AuditLog
+	done  chan struct{}
 }
 
 // NewAuditService creates a new AuditService
 func NewAuditService(store store.AuditStorer) *AuditService {
-	return &AuditService{store: store}
+	s := &AuditService{
+		store: store,
+		logCh: make(chan *models.AuditLog, 256),
+		done:  make(chan struct{}),
+	}
+	go s.processLogs()
+	return s
+}
+
+// processLogs drains the audit log channel and persists entries
+func (s *AuditService) processLogs() {
+	defer close(s.done)
+	for entry := range s.logCh {
+		if err := s.store.Create(context.Background(), entry); err != nil {
+			slog.Error("Failed to create audit log", "action", entry.Action, "error", err)
+		}
+	}
+}
+
+// Shutdown closes the log channel and waits for the worker to drain
+func (s *AuditService) Shutdown() {
+	if s == nil || s.logCh == nil {
+		return
+	}
+	close(s.logCh)
+	<-s.done
 }
 
 // LogLogin logs a successful login attempt
@@ -34,7 +61,10 @@ func (s *AuditService) LogLogin(userID uint, email, ipAddress, userAgent string)
 
 // LogLoginFailed logs a failed login attempt
 func (s *AuditService) LogLoginFailed(email, ipAddress, userAgent, reason string) {
-	details, _ := json.Marshal(map[string]string{"reason": reason})
+	details, err := json.Marshal(map[string]string{"reason": reason})
+	if err != nil {
+		slog.Error("Failed to marshal audit details", "error", err)
+	}
 	s.log(&models.AuditLog{
 		UserEmail: email,
 		Action:    models.AuditActionLoginFailed,
@@ -52,11 +82,14 @@ func (s *AuditService) LogSuperAdminChange(actorID, targetUserID uint, targetEma
 		action = models.AuditActionSuperAdminRevoke
 	}
 
-	details, _ := json.Marshal(map[string]interface{}{
+	details, err := json.Marshal(map[string]interface{}{
 		"target_user_id":    targetUserID,
 		"target_user_email": targetEmail,
 		"granted":           granted,
 	})
+	if err != nil {
+		slog.Error("Failed to marshal audit details", "error", err)
+	}
 
 	s.log(&models.AuditLog{
 		UserID:       &actorID,
@@ -71,9 +104,12 @@ func (s *AuditService) LogSuperAdminChange(actorID, targetUserID uint, targetEma
 
 // LogUserCreate logs a user creation
 func (s *AuditService) LogUserCreate(actorID, newUserID uint, newUserEmail, ipAddress string) {
-	details, _ := json.Marshal(map[string]interface{}{
+	details, err := json.Marshal(map[string]interface{}{
 		"new_user_email": newUserEmail,
 	})
+	if err != nil {
+		slog.Error("Failed to marshal audit details", "error", err)
+	}
 
 	s.log(&models.AuditLog{
 		UserID:       &actorID,
@@ -88,9 +124,12 @@ func (s *AuditService) LogUserCreate(actorID, newUserID uint, newUserEmail, ipAd
 
 // LogUserDelete logs a user deletion
 func (s *AuditService) LogUserDelete(actorID, deletedUserID uint, deletedUserEmail, ipAddress string) {
-	details, _ := json.Marshal(map[string]interface{}{
+	details, err := json.Marshal(map[string]interface{}{
 		"deleted_user_email": deletedUserEmail,
 	})
+	if err != nil {
+		slog.Error("Failed to marshal audit details", "error", err)
+	}
 
 	s.log(&models.AuditLog{
 		UserID:       &actorID,
@@ -105,10 +144,13 @@ func (s *AuditService) LogUserDelete(actorID, deletedUserID uint, deletedUserEma
 
 // LogUserAddToGroup logs adding a user to a group
 func (s *AuditService) LogUserAddToGroup(actorID, userID, groupID uint, role string, ipAddress string) {
-	details, _ := json.Marshal(map[string]interface{}{
+	details, err := json.Marshal(map[string]interface{}{
 		"group_id": groupID,
 		"role":     role,
 	})
+	if err != nil {
+		slog.Error("Failed to marshal audit details", "error", err)
+	}
 
 	s.log(&models.AuditLog{
 		UserID:       &actorID,
@@ -123,9 +165,12 @@ func (s *AuditService) LogUserAddToGroup(actorID, userID, groupID uint, role str
 
 // LogUserRemoveFromGroup logs removing a user from a group
 func (s *AuditService) LogUserRemoveFromGroup(actorID, userID, groupID uint, ipAddress string) {
-	details, _ := json.Marshal(map[string]interface{}{
+	details, err := json.Marshal(map[string]interface{}{
 		"group_id": groupID,
 	})
+	if err != nil {
+		slog.Error("Failed to marshal audit details", "error", err)
+	}
 
 	s.log(&models.AuditLog{
 		UserID:       &actorID,
@@ -140,11 +185,14 @@ func (s *AuditService) LogUserRemoveFromGroup(actorID, userID, groupID uint, ipA
 
 // LogRoleChange logs a role change for a user in a group
 func (s *AuditService) LogRoleChange(actorID, userID, groupID uint, oldRole, newRole string, ipAddress string) {
-	details, _ := json.Marshal(map[string]interface{}{
+	details, err := json.Marshal(map[string]interface{}{
 		"group_id": groupID,
 		"old_role": oldRole,
 		"new_role": newRole,
 	})
+	if err != nil {
+		slog.Error("Failed to marshal audit details", "error", err)
+	}
 
 	s.log(&models.AuditLog{
 		UserID:       &actorID,
@@ -159,9 +207,12 @@ func (s *AuditService) LogRoleChange(actorID, userID, groupID uint, oldRole, new
 
 // LogResourceDelete logs deletion of a resource (employee, child, org, etc.)
 func (s *AuditService) LogResourceDelete(actorID uint, resourceType string, resourceID uint, resourceName, ipAddress string) {
-	details, _ := json.Marshal(map[string]interface{}{
+	details, err := json.Marshal(map[string]interface{}{
 		"resource_name": resourceName,
 	})
+	if err != nil {
+		slog.Error("Failed to marshal audit details", "error", err)
+	}
 
 	var action models.AuditAction
 	switch resourceType {
@@ -188,15 +239,56 @@ func (s *AuditService) LogResourceDelete(actorID uint, resourceType string, reso
 
 // LogOrgCreate logs organization creation
 func (s *AuditService) LogOrgCreate(actorID, orgID uint, orgName, ipAddress string) {
-	details, _ := json.Marshal(map[string]interface{}{
+	details, err := json.Marshal(map[string]interface{}{
 		"org_name": orgName,
 	})
+	if err != nil {
+		slog.Error("Failed to marshal audit details", "error", err)
+	}
 
 	s.log(&models.AuditLog{
 		UserID:       &actorID,
 		Action:       models.AuditActionOrgCreate,
 		ResourceType: "organization",
 		ResourceID:   &orgID,
+		IPAddress:    ipAddress,
+		Details:      string(details),
+		Success:      true,
+	})
+}
+
+// LogResourceCreate logs creation of a resource
+func (s *AuditService) LogResourceCreate(actorID uint, resourceType string, resourceID uint, resourceName, ipAddress string) {
+	details, err := json.Marshal(map[string]interface{}{
+		"resource_name": resourceName,
+	})
+	if err != nil {
+		slog.Error("Failed to marshal audit details", "error", err)
+	}
+	s.log(&models.AuditLog{
+		UserID:       &actorID,
+		Action:       models.AuditAction(resourceType + "_create"),
+		ResourceType: resourceType,
+		ResourceID:   &resourceID,
+		IPAddress:    ipAddress,
+		Details:      string(details),
+		Success:      true,
+	})
+}
+
+// LogResourceUpdate logs update of a resource
+func (s *AuditService) LogResourceUpdate(actorID uint, resourceType string, resourceID uint, resourceName, ipAddress string) {
+	details, err := json.Marshal(map[string]interface{}{
+		"resource_name": resourceName,
+	})
+	if err != nil {
+		slog.Error("Failed to marshal audit details", "error", err)
+	}
+	s.log(&models.AuditLog{
+		UserID:       &actorID,
+		Action:       models.AuditAction(resourceType + "_update"),
+		ResourceType: resourceType,
+		ResourceID:   &resourceID,
 		IPAddress:    ipAddress,
 		Details:      string(details),
 		Success:      true,
@@ -251,21 +343,17 @@ func (s *AuditService) CountRecentFailedLogins(ctx context.Context, email string
 	return s.store.CountFailedLoginsSince(ctx, email, since)
 }
 
-// log creates an audit log entry asynchronously to not block the main request
+// log sends an audit log entry to the worker channel
 func (s *AuditService) log(entry *models.AuditLog) {
-	// Handle nil receiver gracefully (e.g., in tests)
-	if s == nil || s.store == nil {
+	if s == nil || s.logCh == nil {
 		return
 	}
 
 	entry.Timestamp = time.Now()
 
-	// Log asynchronously to not block the request
-	go func() {
-		if err := s.store.Create(context.Background(), entry); err != nil {
-			slog.Error("Failed to create audit log",
-				"action", entry.Action,
-				"error", err)
-		}
-	}()
+	select {
+	case s.logCh <- entry:
+	default:
+		slog.Warn("Audit log channel full, dropping entry", "action", entry.Action)
+	}
 }

@@ -232,6 +232,9 @@ func main() {
 		os.Exit(1)
 	}
 
+	slog.Info("Draining audit logs...")
+	auditService.Shutdown()
+
 	// Close database connection
 	sqlDB, err := db.DB()
 	if err == nil {
