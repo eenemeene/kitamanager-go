@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { apiClient } from '@/lib/api/client';
 import type { User, LoginRequest } from '@/lib/api/types';
+import { getCookie } from '@/lib/utils';
 
 /**
  * Check if CSRF cookie is present (indicates authenticated session).
@@ -8,8 +9,7 @@ import type { User, LoginRequest } from '@/lib/api/types';
  * but the csrf_token is JS-readable and set alongside it.
  */
 function hasAuthCookie(): boolean {
-  if (typeof document === 'undefined') return false;
-  return document.cookie.includes('csrf_token=');
+  return getCookie('csrf_token') !== null;
 }
 
 interface AuthState {

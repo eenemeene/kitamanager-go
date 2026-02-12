@@ -60,11 +60,11 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
   ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1`
   : '/api/v1';
 
+import { getCookie } from '@/lib/utils';
+
 // Helper to get CSRF token from cookie
 function getCSRFToken(): string | null {
-  if (typeof document === 'undefined') return null;
-  const match = document.cookie.match(/csrf_token=([^;]+)/);
-  return match ? match[1] : null;
+  return getCookie('csrf_token');
 }
 
 class ApiClient {
