@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"gorm.io/gorm"
@@ -29,6 +30,9 @@ func (s *PayPlanStore) GetByID(ctx context.Context, id uint) (*models.PayPlan, e
 	var payplan models.PayPlan
 	err := DBFromContext(ctx, s.db).First(&payplan, id).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 	return &payplan, nil
@@ -51,6 +55,9 @@ func (s *PayPlanStore) GetByIDWithPeriods(ctx context.Context, id uint, activeOn
 		}).
 		First(&payplan, id).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 	return &payplan, nil
@@ -117,6 +124,9 @@ func (s *PayPlanStore) GetPeriodByID(ctx context.Context, id uint) (*models.PayP
 	var period models.PayPlanPeriod
 	err := DBFromContext(ctx, s.db).First(&period, id).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 	return &period, nil
@@ -131,6 +141,9 @@ func (s *PayPlanStore) GetPeriodByIDWithEntries(ctx context.Context, id uint) (*
 		}).
 		First(&period, id).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 	return &period, nil
@@ -159,6 +172,9 @@ func (s *PayPlanStore) GetActivePeriod(ctx context.Context, payplanID uint, date
 		Order("\"from\" DESC").
 		First(&period).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 	return &period, nil
@@ -192,6 +208,9 @@ func (s *PayPlanStore) GetEntryByID(ctx context.Context, id uint) (*models.PayPl
 	var entry models.PayPlanEntry
 	err := DBFromContext(ctx, s.db).First(&entry, id).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 	return &entry, nil
@@ -217,6 +236,9 @@ func (s *PayPlanStore) GetEntry(ctx context.Context, periodID uint, grade string
 		Where("period_id = ? AND grade = ? AND step = ?", periodID, grade, step).
 		First(&entry).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 	return &entry, nil
