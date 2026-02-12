@@ -8,7 +8,7 @@ export const payPlanPeriodSchema = z
   .object({
     from: z.string().min(1),
     to: z.string().optional(),
-    weekly_hours: z.number().min(0).max(168),
+    weekly_hours: z.number().gt(0).max(168),
   })
   .refine((data) => !data.to || data.to >= data.from, {
     path: ['to'],
@@ -17,7 +17,7 @@ export const payPlanPeriodSchema = z
 
 export const payPlanEntrySchema = z.object({
   grade: z.string().min(1),
-  step: z.number().min(1).max(6),
+  step: z.number().min(1).max(10),
   monthly_amount: z.number().min(0),
   step_min_years: z.number().min(0).optional(),
 });

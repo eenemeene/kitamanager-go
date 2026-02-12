@@ -9,7 +9,7 @@ export const governmentFundingPeriodSchema = z
   .object({
     from: z.string().min(1),
     to: z.string().optional(),
-    comment: z.string().optional(),
+    comment: z.string().max(1000).optional(),
   })
   .refine((data) => !data.to || data.to >= data.from, {
     path: ['to'],
@@ -17,13 +17,13 @@ export const governmentFundingPeriodSchema = z
   });
 
 export const governmentFundingPropertySchema = z.object({
-  key: z.string().min(1),
-  value: z.string().min(1),
+  key: z.string().min(1).max(100),
+  value: z.string().min(1).max(255),
   payment: z.number().min(0),
   requirement: z.number().min(0),
-  min_age: z.number().optional().nullable(),
-  max_age: z.number().optional().nullable(),
-  comment: z.string().optional(),
+  min_age: z.number().min(0).optional().nullable(),
+  max_age: z.number().min(0).optional().nullable(),
+  comment: z.string().max(500).optional(),
 });
 
 export type GovernmentFundingFormData = z.infer<typeof governmentFundingSchema>;
