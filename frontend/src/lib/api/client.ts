@@ -114,6 +114,18 @@ class ApiClient {
         const isAuthEndpoint =
           url.includes('/login') || url.includes('/refresh') || url.includes('/logout');
 
+        // Enrich 429 responses with a user-friendly message
+        if (error.response?.status === 429) {
+          const retryAfter = error.response.headers['retry-after'];
+          const data = error.response.data as Record<string, unknown> | undefined;
+          if (data && !data.message) {
+            data.message = retryAfter
+              ? `Rate limit exceeded. Please try again in ${retryAfter} seconds.`
+              : 'Rate limit exceeded. Please try again later.';
+          }
+          return Promise.reject(error);
+        }
+
         if (error.response?.status === 401 && !isAuthEndpoint && !originalRequest?._retry) {
           if (this.refreshToken) {
             if (this.isRefreshing) {
