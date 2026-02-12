@@ -15,8 +15,10 @@ export {
 export {
   childSchema,
   childContractSchema,
+  childWithContractSchema,
   type ChildFormData,
   type ChildContractFormData,
+  type ChildWithContractFormData,
 } from './child';
 export { sectionSchema, type SectionFormData } from './section';
 export { groupSchema, type GroupFormData } from './group';

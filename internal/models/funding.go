@@ -223,6 +223,7 @@ type ChildFundingMatchedProp struct {
 
 // ChildrenFundingResponse represents the funding calculation response for all children
 type ChildrenFundingResponse struct {
-	Date     time.Time              `json:"date" example:"2025-01-27"`
-	Children []ChildFundingResponse `json:"children"`
+	Date             time.Time              `json:"date" example:"2025-01-27"`
+	WeeklyHoursBasis float64                `json:"weekly_hours_basis" example:"39.0"`
+	Children         []ChildFundingResponse `json:"children"`
 }

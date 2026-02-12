@@ -516,7 +516,7 @@ func TestChildStore_FindByOrganizationAndSection_ActiveOn(t *testing.T) {
 	db.Create(childNoContract)
 
 	// Query with activeOn filter
-	children, total, err := store.FindByOrganizationAndSection(ctx, org.ID, nil, &refDate, "", 100, 0)
+	children, total, err := store.FindByOrganizationAndSection(ctx, org.ID, nil, &refDate, nil, "", 100, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -537,7 +537,7 @@ func TestChildStore_FindByOrganizationAndSection_ActiveOn(t *testing.T) {
 	}
 
 	// Query without activeOn (should return all 4 children)
-	allChildren, allTotal, err := store.FindByOrganizationAndSection(ctx, org.ID, nil, nil, "", 100, 0)
+	allChildren, allTotal, err := store.FindByOrganizationAndSection(ctx, org.ID, nil, nil, nil, "", 100, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -576,7 +576,7 @@ func TestChildStore_FindByOrganizationAndSection_ActiveOn_Pagination(t *testing.
 	db.Create(noContract)
 
 	// Paginate: limit=2, offset=0 should return 2 of 3 total
-	children, total, err := store.FindByOrganizationAndSection(ctx, org.ID, nil, &refDate, "", 2, 0)
+	children, total, err := store.FindByOrganizationAndSection(ctx, org.ID, nil, &refDate, nil, "", 2, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -589,7 +589,7 @@ func TestChildStore_FindByOrganizationAndSection_ActiveOn_Pagination(t *testing.
 	}
 
 	// Page 2: limit=2, offset=2 should return 1 remaining
-	children2, _, err := store.FindByOrganizationAndSection(ctx, org.ID, nil, &refDate, "", 2, 2)
+	children2, _, err := store.FindByOrganizationAndSection(ctx, org.ID, nil, &refDate, nil, "", 2, 2)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -609,7 +609,7 @@ func TestChildStore_FindByOrganizationAndSection_Search(t *testing.T) {
 	db.Create(&models.Child{Person: models.Person{OrganizationID: org.ID, FirstName: "Emilia", LastName: "Fischer", Birthdate: time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)}})
 
 	// Search by first name prefix (case-insensitive)
-	children, total, err := store.FindByOrganizationAndSection(ctx, org.ID, nil, nil, "em", 100, 0)
+	children, total, err := store.FindByOrganizationAndSection(ctx, org.ID, nil, nil, nil, "em", 100, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -621,7 +621,7 @@ func TestChildStore_FindByOrganizationAndSection_Search(t *testing.T) {
 	}
 
 	// Search by last name
-	children, total, err = store.FindByOrganizationAndSection(ctx, org.ID, nil, nil, "schmidt", 100, 0)
+	children, total, err = store.FindByOrganizationAndSection(ctx, org.ID, nil, nil, nil, "schmidt", 100, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -633,7 +633,7 @@ func TestChildStore_FindByOrganizationAndSection_Search(t *testing.T) {
 	}
 
 	// Search with no results
-	children, total, err = store.FindByOrganizationAndSection(ctx, org.ID, nil, nil, "zzz", 100, 0)
+	children, total, err = store.FindByOrganizationAndSection(ctx, org.ID, nil, nil, nil, "zzz", 100, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -645,7 +645,7 @@ func TestChildStore_FindByOrganizationAndSection_Search(t *testing.T) {
 	}
 
 	// Empty search returns all
-	_, total, err = store.FindByOrganizationAndSection(ctx, org.ID, nil, nil, "", 100, 0)
+	_, total, err = store.FindByOrganizationAndSection(ctx, org.ID, nil, nil, nil, "", 100, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -667,7 +667,7 @@ func TestChildStore_FindByOrganizationAndSection_SearchWithPagination(t *testing
 	db.Create(&models.Child{Person: models.Person{OrganizationID: org.ID, FirstName: "Noah", LastName: "Fischer", Birthdate: time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)}})
 
 	// Page 1 of search results (limit=2)
-	children, total, err := store.FindByOrganizationAndSection(ctx, org.ID, nil, nil, "emma", 2, 0)
+	children, total, err := store.FindByOrganizationAndSection(ctx, org.ID, nil, nil, nil, "emma", 2, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -679,7 +679,7 @@ func TestChildStore_FindByOrganizationAndSection_SearchWithPagination(t *testing
 	}
 
 	// Page 2
-	children, _, err = store.FindByOrganizationAndSection(ctx, org.ID, nil, nil, "emma", 2, 2)
+	children, _, err = store.FindByOrganizationAndSection(ctx, org.ID, nil, nil, nil, "emma", 2, 2)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -688,7 +688,7 @@ func TestChildStore_FindByOrganizationAndSection_SearchWithPagination(t *testing
 	}
 
 	// Page 3 (last)
-	children, _, err = store.FindByOrganizationAndSection(ctx, org.ID, nil, nil, "emma", 2, 4)
+	children, _, err = store.FindByOrganizationAndSection(ctx, org.ID, nil, nil, nil, "emma", 2, 4)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -713,7 +713,7 @@ func TestChildStore_FindByOrganizationAndSection_SearchWithActiveOn(t *testing.T
 	db.Create(&models.Child{Person: models.Person{OrganizationID: org.ID, FirstName: "Emilia", LastName: "Fischer", Birthdate: time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)}})
 
 	// Search "em" + activeOn: only Emma has an active contract
-	children, total, err := store.FindByOrganizationAndSection(ctx, org.ID, nil, &refDate, "em", 100, 0)
+	children, total, err := store.FindByOrganizationAndSection(ctx, org.ID, nil, &refDate, nil, "em", 100, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}

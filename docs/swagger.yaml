@@ -353,6 +353,9 @@ definitions:
       date:
         example: "2025-01-27"
         type: string
+      weekly_hours_basis:
+        example: 39
+        type: number
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ContractCountByMonthYear:
     properties:
@@ -2668,9 +2671,15 @@ paths:
         in: query
         name: section_id
         type: integer
-      - description: Filter by active contract date (YYYY-MM-DD, defaults to today)
+      - description: Filter by active contract date (YYYY-MM-DD, defaults to today).
+          Mutually exclusive with contract_after.
         in: query
         name: active_on
+        type: string
+      - description: Filter children with contracts starting after this date (YYYY-MM-DD).
+          Mutually exclusive with active_on.
+        in: query
+        name: contract_after
         type: string
       - description: Search by first or last name (case-insensitive)
         in: query

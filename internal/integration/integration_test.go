@@ -126,7 +126,7 @@ func setupRouter() *gin.Engine {
 	payPlanStore := store.NewPayPlanStore(testDB)
 	transactor := store.NewTransactor(testDB)
 	employeeService := service.NewEmployeeService(employeeStore, payPlanStore, transactor)
-	childService := service.NewChildService(childStore, orgStore, fundingStore, transactor)
+	childService := service.NewChildService(childStore, orgStore, fundingStore, payPlanStore, transactor)
 
 	// Setup handlers (passing nil for auditService in tests)
 	orgHandler := handlers.NewOrganizationHandler(orgService, nil)

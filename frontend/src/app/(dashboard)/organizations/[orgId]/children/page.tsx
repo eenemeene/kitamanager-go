@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -26,11 +26,19 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useToast } from '@/lib/hooks/use-toast';
 import { apiClient, getErrorMessage } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import type {
   Child,
+  Gender,
   ChildContractCreateRequest,
   ChildContractUpdateRequest,
   ChildFundingResponse,
@@ -57,15 +65,19 @@ import {
   getDayBefore,
   getContractStatus,
 } from '@/lib/utils/contracts';
+import { calculateContractEndDate } from '@/lib/utils/school-enrollment';
 import { Pagination } from '@/components/ui/pagination';
 import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
 import { DeleteConfirmDialog } from '@/components/crud/delete-confirm-dialog';
 import { PersonFormDialog } from '@/components/crud/person-form-dialog';
+import { useUiStore } from '@/stores/ui-store';
 import {
   childSchema,
   childContractSchema,
+  childWithContractSchema,
   type ChildFormData,
   type ChildContractFormData,
+  type ChildWithContractFormData,
 } from '@/lib/schemas';
 
 export default function ChildrenPage() {
@@ -108,14 +120,29 @@ export default function ChildrenPage() {
     fundingData?.children?.map((f) => [f.child_id, f]) ?? []
   );
 
-  const createMutation = useMutation({
-    mutationFn: (data: Omit<ChildFormData, 'organization_id'>) =>
-      apiClient.createChild(orgId, data),
+  // Get org state for school enrollment date calculation
+  const orgState = useUiStore((state) => state.organizations.find((o) => o.id === orgId)?.state);
+
+  const createWithContractMutation = useMutation({
+    mutationFn: async (data: ChildWithContractFormData) => {
+      const child = await apiClient.createChild(orgId, {
+        first_name: data.first_name,
+        last_name: data.last_name,
+        gender: data.gender as Gender,
+        birthdate: data.birthdate,
+      });
+      await apiClient.createChildContract(orgId, child.id, {
+        from: formatDateForApi(data.contract_from) || data.contract_from,
+        to: formatDateForApi(data.contract_to),
+        properties: data.properties,
+      });
+      return child;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.children.all(orgId) });
       toast({ title: t('children.createSuccess') });
       setIsChildDialogOpen(false);
-      resetChild();
+      resetCreate();
     },
     onError: (error) => {
       toast({
@@ -264,10 +291,50 @@ export default function ChildrenPage() {
     },
   });
 
+  // Combined child + contract form (for creating new children)
+  const {
+    register: registerCreate,
+    handleSubmit: handleSubmitCreate,
+    reset: resetCreate,
+    setValue: setValueCreate,
+    watch: watchCreate,
+    control: controlCreate,
+    formState: { errors: errorsCreate },
+  } = useForm<ChildWithContractFormData>({
+    resolver: zodResolver(childWithContractSchema),
+    defaultValues: {
+      first_name: '',
+      last_name: '',
+      gender: 'male',
+      birthdate: '',
+      contract_from: '',
+      contract_to: '',
+      properties: undefined,
+    },
+  });
+
+  const createBirthdate = watchCreate('birthdate');
+  const createContractFrom = watchCreate('contract_from');
+  const createContractTo = watchCreate('contract_to');
+
+  // Auto-fill contract end date based on birthdate + org state
+  useEffect(() => {
+    if (createBirthdate && orgState) {
+      const suggestedEnd = calculateContractEndDate(createBirthdate, orgState);
+      if (suggestedEnd) {
+        setValueCreate('contract_to', suggestedEnd);
+      }
+    }
+  }, [createBirthdate, orgState, setValueCreate]);
+
+  // Funding attributes for the create dialog
+  const { fundingAttributes: createFundingAttributes, attributesByKey: createAttributesByKey } =
+    useFundingAttributes(orgId, createContractFrom, createContractTo);
+
   const contractFromDate = watchContract('from');
   const contractToDate = watchContract('to');
 
-  // Get funding attributes from government funding
+  // Get funding attributes from government funding (for the add-contract dialog)
   const { fundingAttributes, attributesByKey } = useFundingAttributes(
     orgId,
     contractFromDate,
@@ -280,9 +347,17 @@ export default function ChildrenPage() {
 
   const handleCreateChild = useCallback(() => {
     setEditingChild(null);
-    resetChild({ first_name: '', last_name: '', gender: 'male', birthdate: '' });
+    resetCreate({
+      first_name: '',
+      last_name: '',
+      gender: 'male',
+      birthdate: '',
+      contract_from: '',
+      contract_to: '',
+      properties: undefined,
+    });
     setIsChildDialogOpen(true);
-  }, [resetChild]);
+  }, [resetCreate]);
 
   const handleEditChild = useCallback(
     (child: Child) => {
@@ -340,11 +415,16 @@ export default function ChildrenPage() {
     (data: ChildFormData) => {
       if (editingChild) {
         updateMutation.mutate({ id: editingChild.id, data });
-      } else {
-        createMutation.mutate(data);
       }
     },
-    [editingChild, updateMutation, createMutation]
+    [editingChild, updateMutation]
+  );
+
+  const onSubmitCreate = useCallback(
+    (data: ChildWithContractFormData) => {
+      createWithContractMutation.mutate(data);
+    },
+    [createWithContractMutation]
   );
 
   // Helper to check if properties have changed
@@ -362,6 +442,17 @@ export default function ChildrenPage() {
   const onSubmitContract = useCallback(
     (data: ChildContractFormData) => {
       if (contractChild) {
+        // Validate contract start date is not before birthdate
+        const childBirthdate = formatDateForInput(contractChild.birthdate);
+        if (childBirthdate && data.from && data.from < childBirthdate) {
+          toast({
+            title: t('common.error'),
+            description: t('validation.contractBeforeBirthdate'),
+            variant: 'destructive',
+          });
+          return;
+        }
+
         // If there's an active contract and we're ending it, check if something actually changed
         if (activeContract && endCurrentContract) {
           const hasChanges = propertiesChanged(
@@ -443,7 +534,10 @@ export default function ChildrenPage() {
                   <TableHead>{t('children.currentContract')}</TableHead>
                   <TableHead>{t('children.properties')}</TableHead>
                   <TableHead className="text-right">{t('children.funding')}</TableHead>
-                  <TableHead className="text-right">{t('children.requirement')}</TableHead>
+                  <TableHead className="text-right">
+                    {t('children.requirement')}
+                    {fundingData?.weekly_hours_basis ? ` (${fundingData.weekly_hours_basis}h)` : ''}
+                  </TableHead>
                   <TableHead className="text-right">{t('common.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -594,19 +688,134 @@ export default function ChildrenPage() {
         </CardContent>
       </Card>
 
-      {/* Child Create/Edit Dialog */}
-      <PersonFormDialog
-        open={isChildDialogOpen}
-        onOpenChange={setIsChildDialogOpen}
-        isEditing={!!editingChild}
-        register={registerChild}
-        onSubmit={handleSubmitChild(onSubmitChild)}
-        errors={errorsChild}
-        watch={watchChild}
-        setValue={setValueChild}
-        isSaving={createMutation.isPending || updateMutation.isPending}
-        translationPrefix="children"
-      />
+      {/* Child Edit Dialog (uses PersonFormDialog) */}
+      {editingChild && (
+        <PersonFormDialog
+          open={isChildDialogOpen}
+          onOpenChange={setIsChildDialogOpen}
+          isEditing={true}
+          register={registerChild}
+          onSubmit={handleSubmitChild(onSubmitChild)}
+          errors={errorsChild}
+          watch={watchChild}
+          setValue={setValueChild}
+          isSaving={updateMutation.isPending}
+          translationPrefix="children"
+        />
+      )}
+
+      {/* Child Create Dialog (with initial contract) */}
+      <Dialog open={isChildDialogOpen && !editingChild} onOpenChange={setIsChildDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t('children.create')}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmitCreate(onSubmitCreate)} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="create_first_name">{t('children.firstName')}</Label>
+                <Input id="create_first_name" {...registerCreate('first_name')} />
+                {errorsCreate.first_name && (
+                  <p className="text-sm text-destructive">{t('validation.firstNameRequired')}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="create_last_name">{t('children.lastName')}</Label>
+                <Input id="create_last_name" {...registerCreate('last_name')} />
+                {errorsCreate.last_name && (
+                  <p className="text-sm text-destructive">{t('validation.lastNameRequired')}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="create_gender">{t('gender.label')}</Label>
+              <Select
+                value={watchCreate('gender')}
+                onValueChange={(value: Gender) => setValueCreate('gender', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t('gender.selectGender')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="male">{t('gender.male')}</SelectItem>
+                  <SelectItem value="female">{t('gender.female')}</SelectItem>
+                  <SelectItem value="diverse">{t('gender.diverse')}</SelectItem>
+                </SelectContent>
+              </Select>
+              {errorsCreate.gender && (
+                <p className="text-sm text-destructive">{t('validation.genderRequired')}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="create_birthdate">{t('children.birthdate')}</Label>
+              <Input id="create_birthdate" type="date" {...registerCreate('birthdate')} />
+              {errorsCreate.birthdate && (
+                <p className="text-sm text-destructive">{t('validation.birthdateRequired')}</p>
+              )}
+            </div>
+
+            <div className="border-t pt-4">
+              <h4 className="mb-3 text-sm font-medium">{t('children.initialContract')}</h4>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="create_contract_from">{t('contracts.startDate')}</Label>
+                  <Input
+                    id="create_contract_from"
+                    type="date"
+                    {...registerCreate('contract_from')}
+                  />
+                  {errorsCreate.contract_from && (
+                    <p className="text-sm text-destructive">
+                      {errorsCreate.contract_from.type === 'custom'
+                        ? t('validation.contractBeforeBirthdate')
+                        : t('contracts.startDateRequired')}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="create_contract_to">{t('contracts.endDateOptional')}</Label>
+                  <Input id="create_contract_to" type="date" {...registerCreate('contract_to')} />
+                  {createBirthdate && orgState && (
+                    <p className="text-xs text-muted-foreground">{t('children.contractEndHint')}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                <Label htmlFor="create_properties">{t('contracts.propertiesLabel')}</Label>
+                <Controller
+                  name="properties"
+                  control={controlCreate}
+                  render={({ field }) => (
+                    <PropertyTagInput
+                      id="create_properties"
+                      value={field.value}
+                      onChange={field.onChange}
+                      fundingAttributes={createFundingAttributes}
+                      attributesByKey={createAttributesByKey}
+                      placeholder={t('contracts.propertiesPlaceholder')}
+                      suggestionsLabel={t('contracts.suggestedProperties')}
+                    />
+                  )}
+                />
+                <p className="text-xs text-muted-foreground">{t('contracts.propertiesHelp')}</p>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsChildDialogOpen(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button type="submit" disabled={createWithContractMutation.isPending}>
+                {t('common.save')}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Contract Create Dialog */}
       <Dialog open={isContractDialogOpen} onOpenChange={setIsContractDialogOpen}>

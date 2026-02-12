@@ -85,7 +85,7 @@ type EmployeeStorer interface {
 type ChildStorer interface {
 	FindAll(ctx context.Context, limit, offset int) ([]models.Child, int64, error)
 	FindByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.Child, int64, error)
-	FindByOrganizationAndSection(ctx context.Context, orgID uint, sectionID *uint, activeOn *time.Time, search string, limit, offset int) ([]models.Child, int64, error)
+	FindByOrganizationAndSection(ctx context.Context, orgID uint, sectionID *uint, activeOn *time.Time, contractAfter *time.Time, search string, limit, offset int) ([]models.Child, int64, error)
 	FindByOrganizationWithActiveOn(ctx context.Context, orgID uint, date time.Time) ([]models.Child, error)
 	CountByOrganizationWithActiveOn(ctx context.Context, orgID uint, date time.Time) (int64, error)
 	FindByID(ctx context.Context, id uint) (*models.Child, error)

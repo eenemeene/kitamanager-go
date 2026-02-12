@@ -16,15 +16,17 @@ type ChildService struct {
 	store        store.ChildStorer
 	orgStore     store.OrganizationStorer
 	fundingStore store.GovernmentFundingStorer
+	payPlanStore store.PayPlanStorer
 	transactor   store.Transactor
 }
 
 // NewChildService creates a new child service
-func NewChildService(store store.ChildStorer, orgStore store.OrganizationStorer, fundingStore store.GovernmentFundingStorer, transactor store.Transactor) *ChildService {
+func NewChildService(store store.ChildStorer, orgStore store.OrganizationStorer, fundingStore store.GovernmentFundingStorer, payPlanStore store.PayPlanStorer, transactor store.Transactor) *ChildService {
 	return &ChildService{
 		store:        store,
 		orgStore:     orgStore,
 		fundingStore: fundingStore,
+		payPlanStore: payPlanStore,
 		transactor:   transactor,
 	}
 }
@@ -45,12 +47,13 @@ func (s *ChildService) List(ctx context.Context, limit, offset int) ([]models.Ch
 
 // ListByOrganization returns a paginated list of children for an organization
 func (s *ChildService) ListByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.ChildResponse, int64, error) {
-	return s.ListByOrganizationAndSection(ctx, orgID, nil, nil, "", limit, offset)
+	return s.ListByOrganizationAndSection(ctx, orgID, nil, nil, nil, "", limit, offset)
 }
 
-// ListByOrganizationAndSection returns a paginated list of children for an organization, optionally filtered by section, active contract date, and/or name search
-func (s *ChildService) ListByOrganizationAndSection(ctx context.Context, orgID uint, sectionID *uint, activeOn *time.Time, search string, limit, offset int) ([]models.ChildResponse, int64, error) {
-	children, total, err := s.store.FindByOrganizationAndSection(ctx, orgID, sectionID, activeOn, search, limit, offset)
+// ListByOrganizationAndSection returns a paginated list of children for an organization, optionally filtered by section, active contract date, contract-after date, and/or name search.
+// activeOn and contractAfter are mutually exclusive.
+func (s *ChildService) ListByOrganizationAndSection(ctx context.Context, orgID uint, sectionID *uint, activeOn *time.Time, contractAfter *time.Time, search string, limit, offset int) ([]models.ChildResponse, int64, error) {
+	children, total, err := s.store.FindByOrganizationAndSection(ctx, orgID, sectionID, activeOn, contractAfter, search, limit, offset)
 	if err != nil {
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch children")
 	}
@@ -270,6 +273,14 @@ func (s *ChildService) CreateContract(ctx context.Context, childID, orgID uint, 
 		return nil, err
 	}
 
+	// Validate contract dates are not before child's birthdate
+	if req.From.Before(child.Birthdate) {
+		return nil, apperror.BadRequest("contract start date cannot be before child's birthdate")
+	}
+	if req.To != nil && req.To.Before(child.Birthdate) {
+		return nil, apperror.BadRequest("contract end date cannot be before child's birthdate")
+	}
+
 	contract := &models.ChildContract{
 		ChildID: childID,
 		BaseContract: models.BaseContract{
@@ -395,6 +406,13 @@ func (s *ChildService) CalculateFunding(ctx context.Context, orgID uint, date ti
 	response := &models.ChildrenFundingResponse{
 		Date:     date,
 		Children: make([]models.ChildFundingResponse, 0, len(children)),
+	}
+
+	// Look up org's pay plan to get weekly hours basis
+	if payPlans, _, err := s.payPlanStore.GetByOrganization(ctx, orgID, 1, 0); err == nil && len(payPlans) > 0 {
+		if period, err := s.payPlanStore.GetActivePeriod(ctx, payPlans[0].ID, date); err == nil && period != nil {
+			response.WeeklyHoursBasis = period.WeeklyHours
+		}
 	}
 
 	// Look up funding by organization's state (0 = all periods, needed to find matching period for date)

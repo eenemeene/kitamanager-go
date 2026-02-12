@@ -32,7 +32,8 @@ func NewChildHandler(service *service.ChildService, auditService *service.AuditS
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
 // @Param section_id query int false "Filter by section ID"
-// @Param active_on query string false "Filter by active contract date (YYYY-MM-DD, defaults to today)"
+// @Param active_on query string false "Filter by active contract date (YYYY-MM-DD, defaults to today). Mutually exclusive with contract_after."
+// @Param contract_after query string false "Filter children with contracts starting after this date (YYYY-MM-DD). Mutually exclusive with active_on."
 // @Param search query string false "Search by first or last name (case-insensitive)"
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(20) maximum(100)
@@ -64,17 +65,37 @@ func (h *ChildHandler) List(c *gin.Context) {
 		}
 	}
 
-	// Parse optional active_on filter (defaults to today)
-	activeOnDate, ok := parseOptionalDate(c, "active_on")
-	if !ok {
+	// active_on and contract_after are mutually exclusive
+	activeOnStr := c.Query("active_on")
+	contractAfterStr := c.Query("contract_after")
+	if activeOnStr != "" && contractAfterStr != "" {
+		respondError(c, apperror.BadRequest("active_on and contract_after are mutually exclusive"))
 		return
 	}
-	activeOn := &activeOnDate
+
+	var activeOn *time.Time
+	var contractAfter *time.Time
+
+	if contractAfterStr != "" {
+		date, err := time.Parse("2006-01-02", contractAfterStr)
+		if err != nil {
+			respondError(c, apperror.BadRequest("invalid contract_after date format, expected YYYY-MM-DD"))
+			return
+		}
+		contractAfter = &date
+	} else {
+		// Default: filter by active_on (defaults to today)
+		activeOnDate, ok := parseOptionalDate(c, "active_on")
+		if !ok {
+			return
+		}
+		activeOn = &activeOnDate
+	}
 
 	// Parse optional search filter
 	search := c.Query("search")
 
-	children, total, err := h.service.ListByOrganizationAndSection(c.Request.Context(), orgID, sectionID, activeOn, search, params.Limit, params.Offset())
+	children, total, err := h.service.ListByOrganizationAndSection(c.Request.Context(), orgID, sectionID, activeOn, contractAfter, search, params.Limit, params.Offset())
 	if err != nil {
 		respondError(c, err)
 		return

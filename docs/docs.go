@@ -1310,8 +1310,14 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Filter by active contract date (YYYY-MM-DD, defaults to today)",
+                        "description": "Filter by active contract date (YYYY-MM-DD, defaults to today). Mutually exclusive with contract_after.",
                         "name": "active_on",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter children with contracts starting after this date (YYYY-MM-DD). Mutually exclusive with active_on.",
+                        "name": "contract_after",
                         "in": "query"
                     },
                     {
@@ -6898,6 +6904,10 @@ const docTemplate = `{
                 "date": {
                     "type": "string",
                     "example": "2025-01-27"
+                },
+                "weekly_hours_basis": {
+                    "type": "number",
+                    "example": 39
                 }
             }
         },

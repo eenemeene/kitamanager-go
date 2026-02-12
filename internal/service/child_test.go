@@ -594,6 +594,42 @@ func TestChildService_CreateContract_OngoingContract(t *testing.T) {
 	}
 }
 
+func TestChildService_CreateContract_BeforeBirthdate(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := createTestChild(t, db, "John", "Doe", org.ID)
+	// Child birthdate is set by createTestChild; update it to a known date
+	child.Birthdate = time.Date(2022, 6, 15, 0, 0, 0, 0, time.UTC)
+	db.Save(child)
+
+	// Contract start date before birthdate should fail
+	fromBeforeBirth := time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)
+	_, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		From: fromBeforeBirth,
+	})
+	if err == nil {
+		t.Fatal("expected error for contract start before birthdate, got nil")
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+
+	// Contract start date on birthdate should succeed
+	fromOnBirth := time.Date(2022, 6, 15, 0, 0, 0, 0, time.UTC)
+	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		From: fromOnBirth,
+	})
+	if err != nil {
+		t.Fatalf("expected no error for contract on birthdate, got %v", err)
+	}
+	if contract == nil {
+		t.Fatal("expected contract, got nil")
+	}
+}
+
 func TestChildService_ListContracts(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
@@ -695,7 +731,7 @@ func TestChildService_ListByOrganizationAndSection_ActiveOn(t *testing.T) {
 	refDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
 
 	// With activeOn filter: only the active child should be returned
-	children, total, err := svc.ListByOrganizationAndSection(ctx, org.ID, nil, &refDate, "", 100, 0)
+	children, total, err := svc.ListByOrganizationAndSection(ctx, org.ID, nil, &refDate, nil, "", 100, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -711,7 +747,7 @@ func TestChildService_ListByOrganizationAndSection_ActiveOn(t *testing.T) {
 	}
 
 	// Without activeOn filter: all 3 children should be returned
-	allChildren, allTotal, err := svc.ListByOrganizationAndSection(ctx, org.ID, nil, nil, "", 100, 0)
+	allChildren, allTotal, err := svc.ListByOrganizationAndSection(ctx, org.ID, nil, nil, nil, "", 100, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -859,6 +895,10 @@ func TestChildService_CalculateFunding_BasicCalculation(t *testing.T) {
 	createTestFundingProperty(t, db, period.ID, "care_type", "ganztag", 100000, 3, 7) // 1000.00 EUR
 	createTestFundingProperty(t, db, period.ID, "supplements", "ndh", 50000, 3, 7)    // 500.00 EUR
 
+	// Create pay plan with weekly hours for the org
+	payPlan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
+	createTestPayPlanPeriod(t, db, payPlan.ID, time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0)
+
 	// Create child (born 2022-01-15, age 3 on 2025-01-27)
 	child := createTestChild(t, db, "Max", "Mustermann", org.ID)
 	child.Birthdate = time.Date(2022, 1, 15, 0, 0, 0, 0, time.UTC)
@@ -879,6 +919,11 @@ func TestChildService_CalculateFunding_BasicCalculation(t *testing.T) {
 	result, err := svc.CalculateFunding(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
+	}
+
+	// Verify weekly hours basis is set from pay plan
+	if result.WeeklyHoursBasis != 39.0 {
+		t.Errorf("WeeklyHoursBasis = %f, want 39.0", result.WeeklyHoursBasis)
 	}
 
 	if len(result.Children) != 1 {
@@ -1768,7 +1813,7 @@ func TestChildService_GetAgeDistribution_BirthdayEdgeCase(t *testing.T) {
 	child.Birthdate = time.Date(2022, 1, 28, 0, 0, 0, 0, time.UTC)
 	db.Save(child)
 
-	from := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	from := time.Date(2022, 2, 1, 0, 0, 0, 0, time.UTC)
 	_, _ = svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		From: from,
 	})

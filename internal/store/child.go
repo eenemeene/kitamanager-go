@@ -37,10 +37,10 @@ func (s *ChildStore) FindAll(ctx context.Context, limit, offset int) ([]models.C
 }
 
 func (s *ChildStore) FindByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.Child, int64, error) {
-	return s.FindByOrganizationAndSection(ctx, orgID, nil, nil, "", limit, offset)
+	return s.FindByOrganizationAndSection(ctx, orgID, nil, nil, nil, "", limit, offset)
 }
 
-func (s *ChildStore) FindByOrganizationAndSection(ctx context.Context, orgID uint, sectionID *uint, activeOn *time.Time, search string, limit, offset int) ([]models.Child, int64, error) {
+func (s *ChildStore) FindByOrganizationAndSection(ctx context.Context, orgID uint, sectionID *uint, activeOn *time.Time, contractAfter *time.Time, search string, limit, offset int) ([]models.Child, int64, error) {
 	var children []models.Child
 	var total int64
 
@@ -56,6 +56,12 @@ func (s *ChildStore) FindByOrganizationAndSection(ctx context.Context, orgID uin
 		countQuery = countQuery.
 			Joins("JOIN child_contracts ON child_contracts.child_id = children.id").
 			Scopes(PeriodActiveOn("child_contracts.from_date", "child_contracts.to_date", *activeOn)).
+			Distinct("children.id")
+	}
+	if contractAfter != nil {
+		countQuery = countQuery.
+			Joins("JOIN child_contracts ON child_contracts.child_id = children.id").
+			Where("child_contracts.from_date > ?", *contractAfter).
 			Distinct("children.id")
 	}
 	if err := countQuery.Count(&total).Error; err != nil {
@@ -74,6 +80,12 @@ func (s *ChildStore) FindByOrganizationAndSection(ctx context.Context, orgID uin
 		dataQuery = dataQuery.
 			Joins("JOIN child_contracts ON child_contracts.child_id = children.id").
 			Scopes(PeriodActiveOn("child_contracts.from_date", "child_contracts.to_date", *activeOn)).
+			Distinct()
+	}
+	if contractAfter != nil {
+		dataQuery = dataQuery.
+			Joins("JOIN child_contracts ON child_contracts.child_id = children.id").
+			Where("child_contracts.from_date > ?", *contractAfter).
 			Distinct()
 	}
 	if err := dataQuery.Limit(limit).Offset(offset).Find(&children).Error; err != nil {

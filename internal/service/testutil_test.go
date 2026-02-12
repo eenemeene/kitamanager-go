@@ -122,8 +122,9 @@ func createChildService(db *gorm.DB) *ChildService {
 	childStore := store.NewChildStore(db)
 	orgStore := store.NewOrganizationStore(db)
 	fundingStore := store.NewGovernmentFundingStore(db)
+	payPlanStore := store.NewPayPlanStore(db)
 	transactor := store.NewTransactor(db)
-	return NewChildService(childStore, orgStore, fundingStore, transactor)
+	return NewChildService(childStore, orgStore, fundingStore, payPlanStore, transactor)
 }
 
 func createEmployeeService(db *gorm.DB) *EmployeeService {
