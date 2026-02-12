@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
+	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
 func TestGroupService_List(t *testing.T) {
@@ -138,13 +139,12 @@ func TestGroupService_Create(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 
-	req := &GroupCreateRequest{
-		Name:           "New Group",
-		OrganizationID: org.ID,
-		Active:         true,
+	req := &models.GroupCreateRequest{
+		Name:   "New Group",
+		Active: true,
 	}
 
-	group, err := svc.Create(ctx, req, "creator@example.com")
+	group, err := svc.Create(ctx, org.ID, req, "creator@example.com")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -167,13 +167,12 @@ func TestGroupService_Create_EmptyName(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 
-	req := &GroupCreateRequest{
-		Name:           "",
-		OrganizationID: org.ID,
-		Active:         true,
+	req := &models.GroupCreateRequest{
+		Name:   "",
+		Active: true,
 	}
 
-	_, err := svc.Create(ctx, req, "test@example.com")
+	_, err := svc.Create(ctx, org.ID, req, "test@example.com")
 	if err == nil {
 		t.Fatal("expected error for empty name, got nil")
 	}
@@ -194,13 +193,12 @@ func TestGroupService_Create_WhitespaceOnlyName(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 
-	req := &GroupCreateRequest{
-		Name:           "   ",
-		OrganizationID: org.ID,
-		Active:         true,
+	req := &models.GroupCreateRequest{
+		Name:   "   ",
+		Active: true,
 	}
 
-	_, err := svc.Create(ctx, req, "test@example.com")
+	_, err := svc.Create(ctx, org.ID, req, "test@example.com")
 	if err == nil {
 		t.Fatal("expected error for whitespace-only name, got nil")
 	}
@@ -221,13 +219,12 @@ func TestGroupService_Create_TrimmedName(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 
-	req := &GroupCreateRequest{
-		Name:           "  Trimmed Name  ",
-		OrganizationID: org.ID,
-		Active:         true,
+	req := &models.GroupCreateRequest{
+		Name:   "  Trimmed Name  ",
+		Active: true,
 	}
 
-	group, err := svc.Create(ctx, req, "test@example.com")
+	group, err := svc.Create(ctx, org.ID, req, "test@example.com")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -244,7 +241,7 @@ func TestGroupService_Update(t *testing.T) {
 
 	group := createTestGroup(t, db, "Original Name")
 
-	req := &GroupUpdateRequest{
+	req := &models.GroupUpdateRequest{
 		Name: "Updated Name",
 	}
 
@@ -266,7 +263,7 @@ func TestGroupService_Update_ActiveOnly(t *testing.T) {
 	group := createTestGroup(t, db, "Test Group")
 
 	active := false
-	req := &GroupUpdateRequest{
+	req := &models.GroupUpdateRequest{
 		Active: &active,
 	}
 
@@ -288,7 +285,7 @@ func TestGroupService_Update_NotFound(t *testing.T) {
 	svc := createGroupService(db)
 	ctx := context.Background()
 
-	req := &GroupUpdateRequest{
+	req := &models.GroupUpdateRequest{
 		Name: "New Name",
 	}
 
@@ -358,7 +355,7 @@ func TestGroupService_UpdateByIDAndOrg(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 	group := createTestGroupWithOrg(t, db, "Original Name", org.ID)
 
-	req := &GroupUpdateRequest{
+	req := &models.GroupUpdateRequest{
 		Name: "Updated Name",
 	}
 
@@ -381,7 +378,7 @@ func TestGroupService_UpdateByIDAndOrg_WrongOrg(t *testing.T) {
 	org2 := createTestOrganization(t, db, "Org 2")
 	group := createTestGroupWithOrg(t, db, "Test Group", org1.ID)
 
-	req := &GroupUpdateRequest{
+	req := &models.GroupUpdateRequest{
 		Name: "Hacked Name",
 	}
 
@@ -416,7 +413,7 @@ func TestGroupService_UpdateByIDAndOrg_NotFound(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 
-	req := &GroupUpdateRequest{
+	req := &models.GroupUpdateRequest{
 		Name: "New Name",
 	}
 

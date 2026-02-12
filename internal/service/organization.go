@@ -98,15 +98,8 @@ func (s *OrganizationService) GetByID(ctx context.Context, id uint) (*models.Org
 	return &resp, nil
 }
 
-// OrganizationCreateRequest represents the request for creating an organization
-type OrganizationCreateRequest struct {
-	Name   string
-	Active bool
-	State  string
-}
-
 // Create creates a new organization with a default group (transactional)
-func (s *OrganizationService) Create(ctx context.Context, req *OrganizationCreateRequest, createdBy string) (*models.OrganizationResponse, error) {
+func (s *OrganizationService) Create(ctx context.Context, req *models.OrganizationCreateRequest, createdBy string) (*models.OrganizationResponse, error) {
 	// Trim and validate input
 	req.Name = strings.TrimSpace(req.Name)
 
@@ -142,15 +135,8 @@ func (s *OrganizationService) Create(ctx context.Context, req *OrganizationCreat
 	return &resp, nil
 }
 
-// OrganizationUpdateRequest represents the request for updating an organization
-type OrganizationUpdateRequest struct {
-	Name   string
-	Active *bool
-	State  *string
-}
-
 // Update updates an existing organization
-func (s *OrganizationService) Update(ctx context.Context, id uint, req *OrganizationUpdateRequest) (*models.OrganizationResponse, error) {
+func (s *OrganizationService) Update(ctx context.Context, id uint, req *models.OrganizationUpdateRequest) (*models.OrganizationResponse, error) {
 	org, err := s.store.FindByID(ctx, id)
 	if err != nil {
 		return nil, apperror.NotFound("organization")

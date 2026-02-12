@@ -4,191 +4,71 @@ import (
 	"testing"
 	"time"
 
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/store"
+	"github.com/eenemeene/kitamanager-go/internal/testutil"
 )
 
 // setupTestDB creates an in-memory SQLite database for testing.
 func setupTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("failed to connect to test database: %v", err)
-	}
-
-	err = db.AutoMigrate(
-		&models.Organization{},
-		&models.User{},
-		&models.Group{},
-		&models.Section{},
-		&models.UserGroup{},
-		&models.Employee{},
-		&models.EmployeeContract{},
-		&models.Child{},
-		&models.ChildContract{},
-		&models.GovernmentFunding{},
-		&models.GovernmentFundingPeriod{},
-		&models.GovernmentFundingProperty{},
-		&models.PayPlan{},
-		&models.PayPlanPeriod{},
-		&models.PayPlanEntry{},
-	)
-	if err != nil {
-		t.Fatalf("failed to migrate test database: %v", err)
-	}
-
-	return db
+	return testutil.SetupTestDB(t)
 }
 
 // createTestOrganization creates an organization for testing.
 func createTestOrganization(t *testing.T, db *gorm.DB, name string) *models.Organization {
 	t.Helper()
-
-	org := &models.Organization{
-		Name:   name,
-		Active: true,
-		State:  string(models.StateBerlin),
-	}
-	if err := db.Create(org).Error; err != nil {
-		t.Fatalf("failed to create test organization: %v", err)
-	}
-	return org
+	return testutil.CreateTestOrganization(t, db, name)
 }
 
 // createTestUser creates a user for testing.
 func createTestUser(t *testing.T, db *gorm.DB, name, email, password string) *models.User {
 	t.Helper()
-
-	user := &models.User{
-		Name:     name,
-		Email:    email,
-		Password: password,
-		Active:   true,
-	}
-	if err := db.Create(user).Error; err != nil {
-		t.Fatalf("failed to create test user: %v", err)
-	}
-	return user
+	return testutil.CreateTestUser(t, db, name, email, password)
 }
 
 // createTestGroup creates a group for testing.
 func createTestGroup(t *testing.T, db *gorm.DB, name string) *models.Group {
 	t.Helper()
-
-	org := createTestOrganization(t, db, name+" Org")
-
-	group := &models.Group{
-		Name:           name,
-		OrganizationID: org.ID,
-		Active:         true,
-	}
-	if err := db.Create(group).Error; err != nil {
-		t.Fatalf("failed to create test group: %v", err)
-	}
-	return group
+	return testutil.CreateTestGroup(t, db, name)
 }
 
 // createTestGroupWithOrg creates a group for testing with a specific organization.
 func createTestGroupWithOrg(t *testing.T, db *gorm.DB, name string, orgID uint) *models.Group {
 	t.Helper()
-
-	group := &models.Group{
-		Name:           name,
-		OrganizationID: orgID,
-		Active:         true,
-	}
-	if err := db.Create(group).Error; err != nil {
-		t.Fatalf("failed to create test group: %v", err)
-	}
-	return group
+	return testutil.CreateTestGroupWithOrg(t, db, name, orgID)
 }
 
 // createTestGroupWithOrgAndDefault creates a group with specific organization and default flag.
 func createTestGroupWithOrgAndDefault(t *testing.T, db *gorm.DB, name string, orgID uint, isDefault bool) *models.Group {
 	t.Helper()
-
-	group := &models.Group{
-		Name:           name,
-		OrganizationID: orgID,
-		IsDefault:      isDefault,
-		Active:         true,
-	}
-	if err := db.Create(group).Error; err != nil {
-		t.Fatalf("failed to create test group: %v", err)
-	}
-	return group
+	return testutil.CreateTestGroupWithOrgAndDefault(t, db, name, orgID, isDefault)
 }
 
 // createTestUserGroup creates a user-group relationship for testing.
 func createTestUserGroup(t *testing.T, db *gorm.DB, userID, groupID uint, role models.Role) *models.UserGroup {
 	t.Helper()
-
-	ug := &models.UserGroup{
-		UserID:    userID,
-		GroupID:   groupID,
-		Role:      role,
-		CreatedBy: "test@example.com",
-	}
-	if err := db.Create(ug).Error; err != nil {
-		t.Fatalf("failed to create test user group: %v", err)
-	}
-	return ug
+	return testutil.CreateTestUserGroup(t, db, userID, groupID, role)
 }
 
 // createTestChild creates a child for testing.
 func createTestChild(t *testing.T, db *gorm.DB, firstName, lastName string, orgID uint) *models.Child {
 	t.Helper()
-
-	child := &models.Child{
-		Person: models.Person{
-			OrganizationID: orgID,
-			FirstName:      firstName,
-			LastName:       lastName,
-			Birthdate:      time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
-		},
-	}
-	if err := db.Create(child).Error; err != nil {
-		t.Fatalf("failed to create test child: %v", err)
-	}
-	return child
+	return testutil.CreateTestChild(t, db, firstName, lastName, orgID)
 }
 
 // createTestEmployee creates an employee for testing.
 func createTestEmployee(t *testing.T, db *gorm.DB, firstName, lastName string, orgID uint) *models.Employee {
 	t.Helper()
-
-	employee := &models.Employee{
-		Person: models.Person{
-			OrganizationID: orgID,
-			FirstName:      firstName,
-			LastName:       lastName,
-			Birthdate:      time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC),
-		},
-	}
-	if err := db.Create(employee).Error; err != nil {
-		t.Fatalf("failed to create test employee: %v", err)
-	}
-	return employee
+	return testutil.CreateTestEmployee(t, db, firstName, lastName, orgID)
 }
 
 // createTestSection creates a section for testing.
 func createTestSection(t *testing.T, db *gorm.DB, name string, orgID uint, isDefault bool) *models.Section {
 	t.Helper()
-
-	section := &models.Section{
-		OrganizationID: orgID,
-		Name:           name,
-		IsDefault:      isDefault,
-		CreatedBy:      "test",
-	}
-	if err := db.Create(section).Error; err != nil {
-		t.Fatalf("failed to create test section: %v", err)
-	}
-	return section
+	return testutil.CreateTestSection(t, db, name, orgID, isDefault)
 }
 
 // createTestChildInSection creates a child assigned to a specific section.
@@ -256,15 +136,7 @@ func createEmployeeService(db *gorm.DB) *EmployeeService {
 // createTestPayPlan creates a pay plan for testing.
 func createTestPayPlan(t *testing.T, db *gorm.DB, name string, orgID uint) *models.PayPlan {
 	t.Helper()
-
-	payPlan := &models.PayPlan{
-		OrganizationID: orgID,
-		Name:           name,
-	}
-	if err := db.Create(payPlan).Error; err != nil {
-		t.Fatalf("failed to create test pay plan: %v", err)
-	}
-	return payPlan
+	return testutil.CreateTestPayPlan(t, db, name, orgID)
 }
 
 // createTestPayPlanPeriod creates a pay plan period for testing.
@@ -328,8 +200,7 @@ func createStepPromotionService(db *gorm.DB) *StepPromotionService {
 	return NewStepPromotionService(payPlanStore, employeeStore)
 }
 
-// createTestGovernmentFunding creates a government funding plan with periods, entries, and properties for testing.
-// The funding is created with state="berlin" to match test organizations.
+// createTestGovernmentFunding creates a government funding plan for testing.
 func createTestGovernmentFunding(t *testing.T, db *gorm.DB, name string) *models.GovernmentFunding {
 	t.Helper()
 
@@ -359,7 +230,6 @@ func createTestFundingPeriod(t *testing.T, db *gorm.DB, fundingID uint, from tim
 }
 
 // createTestFundingProperty creates a funding property for testing.
-// If minAge or maxAge is negative, nil is used (no age filter).
 func createTestFundingProperty(t *testing.T, db *gorm.DB, periodID uint, key, value string, payment int, minAge, maxAge int) *models.GovernmentFundingProperty {
 	t.Helper()
 

@@ -229,7 +229,7 @@ func (h *EmployeeHandler) Delete(c *gin.Context) {
 
 	// Audit log employee deletion
 	actorID := getUserID(c)
-	h.auditService.LogResourceDelete(actorID, "employee", id, employee.FirstName+" "+employee.LastName, c.ClientIP())
+	h.auditService.LogResourceDelete(actorID, "employee", id, employee.FullName(), c.ClientIP())
 
 	c.Status(http.StatusNoContent)
 }

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
+	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
 func TestOrganizationService_List(t *testing.T) {
@@ -124,7 +125,7 @@ func TestOrganizationService_Create(t *testing.T) {
 	svc := createOrganizationService(db)
 	ctx := context.Background()
 
-	req := &OrganizationCreateRequest{
+	req := &models.OrganizationCreateRequest{
 		Name:   "New Organization",
 		Active: true,
 		State:  "berlin",
@@ -155,7 +156,7 @@ func TestOrganizationService_Create_CreatesDefaultGroup(t *testing.T) {
 	groupSvc := createGroupService(db)
 	ctx := context.Background()
 
-	req := &OrganizationCreateRequest{
+	req := &models.OrganizationCreateRequest{
 		Name:   "New Organization",
 		Active: true,
 		State:  "berlin",
@@ -186,12 +187,12 @@ func TestOrganizationService_Create_WhitespaceOnlyName(t *testing.T) {
 
 	tests := []struct {
 		name string
-		req  *OrganizationCreateRequest
+		req  *models.OrganizationCreateRequest
 	}{
-		{"empty string", &OrganizationCreateRequest{Name: ""}},
-		{"whitespace only", &OrganizationCreateRequest{Name: "   "}},
-		{"tabs only", &OrganizationCreateRequest{Name: "\t\t"}},
-		{"newlines only", &OrganizationCreateRequest{Name: "\n\n"}},
+		{"empty string", &models.OrganizationCreateRequest{Name: ""}},
+		{"whitespace only", &models.OrganizationCreateRequest{Name: "   "}},
+		{"tabs only", &models.OrganizationCreateRequest{Name: "\t\t"}},
+		{"newlines only", &models.OrganizationCreateRequest{Name: "\n\n"}},
 	}
 
 	for _, tt := range tests {
@@ -217,7 +218,7 @@ func TestOrganizationService_Create_TrimmedName(t *testing.T) {
 	svc := createOrganizationService(db)
 	ctx := context.Background()
 
-	req := &OrganizationCreateRequest{
+	req := &models.OrganizationCreateRequest{
 		Name:   "  Trimmed Name  ",
 		Active: true,
 		State:  "berlin",
@@ -240,7 +241,7 @@ func TestOrganizationService_Update(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Original Name")
 
-	req := &OrganizationUpdateRequest{
+	req := &models.OrganizationUpdateRequest{
 		Name: "Updated Name",
 	}
 
@@ -262,7 +263,7 @@ func TestOrganizationService_Update_ActiveOnly(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	active := false
-	req := &OrganizationUpdateRequest{
+	req := &models.OrganizationUpdateRequest{
 		Active: &active,
 	}
 
@@ -287,7 +288,7 @@ func TestOrganizationService_Update_Both(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	active := false
-	req := &OrganizationUpdateRequest{
+	req := &models.OrganizationUpdateRequest{
 		Name:   "New Name",
 		Active: &active,
 	}
@@ -312,7 +313,7 @@ func TestOrganizationService_Update_EmptyNameKeepsOriginal(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Original Name")
 
-	req := &OrganizationUpdateRequest{
+	req := &models.OrganizationUpdateRequest{
 		Name: "", // Empty, should keep original
 	}
 
@@ -335,7 +336,7 @@ func TestOrganizationService_Update_WhitespaceOnlyName(t *testing.T) {
 
 	// Note: After trimming, whitespace becomes empty string which keeps original
 	// Let's test a scenario where name is explicitly whitespace
-	req := &OrganizationUpdateRequest{
+	req := &models.OrganizationUpdateRequest{
 		Name: "   ", // Whitespace only - after trim becomes empty, keeps original
 	}
 
@@ -355,7 +356,7 @@ func TestOrganizationService_Update_NotFound(t *testing.T) {
 	svc := createOrganizationService(db)
 	ctx := context.Background()
 
-	req := &OrganizationUpdateRequest{
+	req := &models.OrganizationUpdateRequest{
 		Name: "New Name",
 	}
 
@@ -407,7 +408,7 @@ func TestOrganizationService_Create_InvalidState(t *testing.T) {
 	svc := createOrganizationService(db)
 	ctx := context.Background()
 
-	req := &OrganizationCreateRequest{
+	req := &models.OrganizationCreateRequest{
 		Name:   "Test Org",
 		Active: true,
 		State:  "invalid_state",
@@ -432,7 +433,7 @@ func TestOrganizationService_Create_EmptyState(t *testing.T) {
 	svc := createOrganizationService(db)
 	ctx := context.Background()
 
-	req := &OrganizationCreateRequest{
+	req := &models.OrganizationCreateRequest{
 		Name:   "Test Org",
 		Active: true,
 		State:  "",
@@ -460,7 +461,7 @@ func TestOrganizationService_Update_State(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	state := "berlin"
-	req := &OrganizationUpdateRequest{
+	req := &models.OrganizationUpdateRequest{
 		State: &state,
 	}
 
@@ -482,7 +483,7 @@ func TestOrganizationService_Update_InvalidState(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	state := "invalid_state"
-	req := &OrganizationUpdateRequest{
+	req := &models.OrganizationUpdateRequest{
 		State: &state,
 	}
 

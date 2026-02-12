@@ -105,11 +105,7 @@ func (h *OrganizationHandler) Create(c *gin.Context) {
 		return
 	}
 
-	organization, err := h.service.Create(c.Request.Context(), &service.OrganizationCreateRequest{
-		Name:   req.Name,
-		Active: req.Active,
-		State:  req.State,
-	}, getCreatedBy(c))
+	organization, err := h.service.Create(c.Request.Context(), &req, getCreatedBy(c))
 	if err != nil {
 		respondError(c, err)
 		return
@@ -150,11 +146,7 @@ func (h *OrganizationHandler) Update(c *gin.Context) {
 		return
 	}
 
-	organization, err := h.service.Update(c.Request.Context(), id, &service.OrganizationUpdateRequest{
-		Name:   req.Name,
-		Active: req.Active,
-		State:  req.State,
-	})
+	organization, err := h.service.Update(c.Request.Context(), id, &req)
 	if err != nil {
 		respondError(c, err)
 		return

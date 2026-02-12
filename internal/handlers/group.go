@@ -87,12 +87,6 @@ func (h *GroupHandler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, group)
 }
 
-// GroupCreateRequest represents the request body for creating a group
-type GroupCreateRequest struct {
-	Name   string `json:"name" binding:"required,max=255" example:"Administrators"`
-	Active bool   `json:"active" example:"true"`
-}
-
 // Create godoc
 // @Summary Create a new group
 // @Description Create a new group within an organization
@@ -101,7 +95,7 @@ type GroupCreateRequest struct {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param request body GroupCreateRequest true "Group data"
+// @Param request body models.GroupCreateRequest true "Group data"
 // @Success 201 {object} models.GroupResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
@@ -113,29 +107,19 @@ func (h *GroupHandler) Create(c *gin.Context) {
 		return
 	}
 
-	var req GroupCreateRequest
+	var req models.GroupCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
 	}
 
-	group, err := h.service.Create(c.Request.Context(), &service.GroupCreateRequest{
-		Name:           req.Name,
-		OrganizationID: orgID,
-		Active:         req.Active,
-	}, getCreatedBy(c))
+	group, err := h.service.Create(c.Request.Context(), orgID, &req, getCreatedBy(c))
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
 	c.JSON(http.StatusCreated, group)
-}
-
-// GroupUpdateRequest represents the request body for updating a group
-type GroupUpdateRequest struct {
-	Name   string `json:"name" binding:"omitempty,max=255" example:"Administrators Updated"`
-	Active *bool  `json:"active" example:"false"`
 }
 
 // Update godoc
@@ -147,7 +131,7 @@ type GroupUpdateRequest struct {
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
 // @Param groupId path int true "Group ID"
-// @Param request body GroupUpdateRequest true "Group data"
+// @Param request body models.GroupUpdateRequest true "Group data"
 // @Success 200 {object} models.GroupResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
@@ -160,16 +144,13 @@ func (h *GroupHandler) Update(c *gin.Context) {
 		return
 	}
 
-	var req GroupUpdateRequest
+	var req models.GroupUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
 	}
 
-	group, err := h.service.UpdateByIDAndOrg(c.Request.Context(), groupID, orgID, &service.GroupUpdateRequest{
-		Name:   req.Name,
-		Active: req.Active,
-	})
+	group, err := h.service.UpdateByIDAndOrg(c.Request.Context(), groupID, orgID, &req)
 	if err != nil {
 		respondError(c, err)
 		return

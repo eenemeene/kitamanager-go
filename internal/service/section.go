@@ -61,8 +61,8 @@ func (s *SectionService) GetByIDAndOrg(ctx context.Context, id, orgID uint) (*mo
 	if err != nil {
 		return nil, apperror.NotFound("section")
 	}
-	if section.OrganizationID != orgID {
-		return nil, apperror.NotFound("section")
+	if err := verifyOrgOwnership(section, orgID, "section"); err != nil {
+		return nil, err
 	}
 	resp := section.ToResponse()
 	return &resp, nil
@@ -110,9 +110,8 @@ func (s *SectionService) UpdateByIDAndOrg(ctx context.Context, id, orgID uint, r
 	if err != nil {
 		return nil, apperror.NotFound("section")
 	}
-	// Security: Validate section belongs to the specified organization
-	if section.OrganizationID != orgID {
-		return nil, apperror.NotFound("section")
+	if err := verifyOrgOwnership(section, orgID, "section"); err != nil {
+		return nil, err
 	}
 
 	if req.Name != nil {
@@ -156,9 +155,8 @@ func (s *SectionService) DeleteByIDAndOrg(ctx context.Context, id, orgID uint) e
 	if err != nil {
 		return apperror.NotFound("section")
 	}
-	// Security: Validate section belongs to the specified organization
-	if section.OrganizationID != orgID {
-		return apperror.NotFound("section")
+	if err := verifyOrgOwnership(section, orgID, "section"); err != nil {
+		return err
 	}
 
 	// Prevent deletion of default section

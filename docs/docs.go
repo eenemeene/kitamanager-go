@@ -3798,7 +3798,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers.GroupCreateRequest"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GroupCreateRequest"
                         }
                     }
                 ],
@@ -3935,7 +3935,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers.GroupUpdateRequest"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GroupUpdateRequest"
                         }
                     }
                 ],
@@ -7629,6 +7629,23 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.GroupCreateRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "active": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "Administrators"
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.GroupResponse": {
             "type": "object",
             "properties": {
@@ -7672,6 +7689,20 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.User"
                     }
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.GroupUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "Administrators Updated"
                 }
             }
         },
@@ -8922,37 +8953,6 @@ const docTemplate = `{
                 "updated_at": {
                     "type": "string",
                     "example": "2024-01-15T10:30:00Z"
-                }
-            }
-        },
-        "internal_handlers.GroupCreateRequest": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "active": {
-                    "type": "boolean",
-                    "example": true
-                },
-                "name": {
-                    "type": "string",
-                    "maxLength": 255,
-                    "example": "Administrators"
-                }
-            }
-        },
-        "internal_handlers.GroupUpdateRequest": {
-            "type": "object",
-            "properties": {
-                "active": {
-                    "type": "boolean",
-                    "example": false
-                },
-                "name": {
-                    "type": "string",
-                    "maxLength": 255,
-                    "example": "Administrators Updated"
                 }
             }
         }

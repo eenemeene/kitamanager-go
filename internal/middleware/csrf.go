@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
 const (
@@ -46,9 +48,9 @@ func (m *CSRFMiddleware) ValidateCSRF() gin.HandlerFunc {
 		// For cookie-based auth, require CSRF token
 		csrfCookie, err := c.Cookie(CSRFCookieName)
 		if err != nil || csrfCookie == "" {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error": "CSRF token cookie missing",
-				"code":  "CSRF_COOKIE_MISSING",
+			c.JSON(http.StatusForbidden, models.ErrorResponse{
+				Code:    "csrf_error",
+				Message: "CSRF token cookie missing",
 			})
 			c.Abort()
 			return
@@ -56,9 +58,9 @@ func (m *CSRFMiddleware) ValidateCSRF() gin.HandlerFunc {
 
 		csrfHeader := c.GetHeader(CSRFHeaderName)
 		if csrfHeader == "" {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error": "CSRF token header missing",
-				"code":  "CSRF_HEADER_MISSING",
+			c.JSON(http.StatusForbidden, models.ErrorResponse{
+				Code:    "csrf_error",
+				Message: "CSRF token header missing",
 			})
 			c.Abort()
 			return
@@ -66,9 +68,9 @@ func (m *CSRFMiddleware) ValidateCSRF() gin.HandlerFunc {
 
 		// Constant-time comparison to prevent timing attacks
 		if !secureCompare(csrfHeader, csrfCookie) {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error": "CSRF token validation failed",
-				"code":  "CSRF_VALIDATION_FAILED",
+			c.JSON(http.StatusForbidden, models.ErrorResponse{
+				Code:    "csrf_error",
+				Message: "CSRF token validation failed",
 			})
 			c.Abort()
 			return

@@ -17,6 +17,11 @@ type Group struct {
 	Users          []User        `gorm:"many2many:user_groups;" json:"users,omitempty"`
 }
 
+// GetOrganizationID returns the organization ID for the OrgOwned interface.
+func (g Group) GetOrganizationID() uint {
+	return g.OrganizationID
+}
+
 // GroupResponse represents the group response
 type GroupResponse struct {
 	ID             uint          `json:"id" example:"1"`
@@ -29,6 +34,19 @@ type GroupResponse struct {
 	CreatedBy      string        `json:"created_by" example:"admin@example.com"`
 	UpdatedAt      time.Time     `json:"updated_at" example:"2024-01-15T10:30:00Z"`
 	Users          []User        `json:"users,omitempty"`
+}
+
+// GroupCreateRequest represents the request body for creating a group.
+// OrganizationID is derived from the URL path parameter.
+type GroupCreateRequest struct {
+	Name   string `json:"name" binding:"required,max=255" example:"Administrators"`
+	Active bool   `json:"active" example:"true"`
+}
+
+// GroupUpdateRequest represents the request body for updating a group.
+type GroupUpdateRequest struct {
+	Name   string `json:"name" binding:"omitempty,max=255" example:"Administrators Updated"`
+	Active *bool  `json:"active" example:"false"`
 }
 
 func (g *Group) ToResponse() GroupResponse {

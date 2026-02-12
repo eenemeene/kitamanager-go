@@ -6,6 +6,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+
+	"github.com/eenemeene/kitamanager-go/internal/apperror"
+	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
 type AuthMiddleware struct {
@@ -27,14 +30,20 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 			// Fall back to Authorization header for backwards compatibility and API clients
 			authHeader := c.GetHeader("Authorization")
 			if authHeader == "" {
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "authorization required"})
+				c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+					Code:    apperror.CodeUnauthorized,
+					Message: "authorization required",
+				})
 				c.Abort()
 				return
 			}
 
 			parts := strings.Split(authHeader, " ")
 			if len(parts) != 2 || parts[0] != "Bearer" {
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization header format"})
+				c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+					Code:    apperror.CodeUnauthorized,
+					Message: "invalid authorization header format",
+				})
 				c.Abort()
 				return
 			}
@@ -48,14 +57,20 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 		})
 
 		if err != nil || !token.Valid {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+				Code:    apperror.CodeUnauthorized,
+				Message: "invalid token",
+			})
 			c.Abort()
 			return
 		}
 
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token claims"})
+			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+				Code:    apperror.CodeUnauthorized,
+				Message: "invalid token claims",
+			})
 			c.Abort()
 			return
 		}
@@ -64,7 +79,10 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 		// For backwards compatibility, accept tokens without type claim
 		if tokenType, exists := claims["type"]; exists {
 			if tokenType != "access" {
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token type"})
+				c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+					Code:    apperror.CodeUnauthorized,
+					Message: "invalid token type",
+				})
 				c.Abort()
 				return
 			}
@@ -73,7 +91,10 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 		// JWT numbers are parsed as float64, convert to uint
 		userIDFloat, ok := claims["user_id"].(float64)
 		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user id in token"})
+			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+				Code:    apperror.CodeUnauthorized,
+				Message: "invalid user id in token",
+			})
 			c.Abort()
 			return
 		}

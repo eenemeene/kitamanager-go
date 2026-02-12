@@ -17,6 +17,11 @@ type Person struct {
 	UpdatedAt      time.Time     `json:"updated_at"`
 }
 
+// GetOrganizationID returns the organization ID for the OrgOwned interface.
+func (p Person) GetOrganizationID() uint {
+	return p.OrganizationID
+}
+
 // FullName returns the person's full name.
 func (p Person) FullName() string {
 	return p.FirstName + " " + p.LastName

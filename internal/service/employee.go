@@ -63,9 +63,8 @@ func (s *EmployeeService) GetByID(ctx context.Context, id, orgID uint) (*models.
 	if err != nil {
 		return nil, apperror.NotFound("employee")
 	}
-	// Security: Validate employee belongs to the specified organization
-	if employee.OrganizationID != orgID {
-		return nil, apperror.NotFound("employee")
+	if err := verifyOrgOwnership(employee, orgID, "employee"); err != nil {
+		return nil, err
 	}
 	resp := employee.ToResponse()
 	return &resp, nil
@@ -109,9 +108,8 @@ func (s *EmployeeService) Update(ctx context.Context, id, orgID uint, req *model
 	if err != nil {
 		return nil, apperror.NotFound("employee")
 	}
-	// Security: Validate employee belongs to the specified organization
-	if employee.OrganizationID != orgID {
-		return nil, apperror.NotFound("employee")
+	if err := verifyOrgOwnership(employee, orgID, "employee"); err != nil {
+		return nil, err
 	}
 
 	if req.FirstName != nil {
@@ -170,8 +168,8 @@ func (s *EmployeeService) Delete(ctx context.Context, id, orgID uint) error {
 		if err != nil {
 			return apperror.NotFound("employee")
 		}
-		if employee.OrganizationID != orgID {
-			return apperror.NotFound("employee")
+		if err := verifyOrgOwnership(employee, orgID, "employee"); err != nil {
+			return err
 		}
 
 		if err := s.store.Delete(txCtx, id); err != nil {
@@ -188,9 +186,8 @@ func (s *EmployeeService) ListContracts(ctx context.Context, employeeID, orgID u
 	if err != nil {
 		return nil, 0, apperror.NotFound("employee")
 	}
-	// Security: Validate employee belongs to the specified organization
-	if employee.OrganizationID != orgID {
-		return nil, 0, apperror.NotFound("employee")
+	if err := verifyOrgOwnership(employee, orgID, "employee"); err != nil {
+		return nil, 0, err
 	}
 
 	contracts, total, err := s.store.Contracts().GetHistoryPaginated(ctx, employeeID, limit, offset)
@@ -212,8 +209,8 @@ func (s *EmployeeService) GetCurrentContract(ctx context.Context, employeeID, or
 	if err != nil {
 		return nil, apperror.NotFound("employee")
 	}
-	if employee.OrganizationID != orgID {
-		return nil, apperror.NotFound("employee")
+	if err := verifyOrgOwnership(employee, orgID, "employee"); err != nil {
+		return nil, err
 	}
 
 	contract, err := s.store.Contracts().GetCurrentContract(ctx, employeeID)
@@ -246,9 +243,8 @@ func (s *EmployeeService) CreateContract(ctx context.Context, employeeID, orgID 
 	if err != nil {
 		return nil, apperror.NotFound("employee")
 	}
-	// Security: Validate employee belongs to the specified organization
-	if employee.OrganizationID != orgID {
-		return nil, apperror.NotFound("employee")
+	if err := verifyOrgOwnership(employee, orgID, "employee"); err != nil {
+		return nil, err
 	}
 
 	// Validate pay plan exists and belongs to same organization
@@ -300,8 +296,8 @@ func (s *EmployeeService) DeleteContract(ctx context.Context, contractID, employ
 	if err != nil {
 		return apperror.NotFound("employee")
 	}
-	if employee.OrganizationID != orgID {
-		return apperror.NotFound("employee")
+	if err := verifyOrgOwnership(employee, orgID, "employee"); err != nil {
+		return err
 	}
 
 	// Validate contract belongs to the employee
@@ -309,8 +305,8 @@ func (s *EmployeeService) DeleteContract(ctx context.Context, contractID, employ
 	if err != nil {
 		return apperror.NotFound("contract")
 	}
-	if contract.EmployeeID != employeeID {
-		return apperror.NotFound("contract")
+	if err := verifyContractOwnership(contract, employeeID); err != nil {
+		return err
 	}
 
 	if err := s.store.DeleteContract(ctx, contractID); err != nil {
@@ -326,8 +322,8 @@ func (s *EmployeeService) GetContractByID(ctx context.Context, contractID, emplo
 	if err != nil {
 		return nil, apperror.NotFound("employee")
 	}
-	if employee.OrganizationID != orgID {
-		return nil, apperror.NotFound("employee")
+	if err := verifyOrgOwnership(employee, orgID, "employee"); err != nil {
+		return nil, err
 	}
 
 	// Get contract
@@ -335,8 +331,8 @@ func (s *EmployeeService) GetContractByID(ctx context.Context, contractID, emplo
 	if err != nil {
 		return nil, apperror.NotFound("contract")
 	}
-	if contract.EmployeeID != employeeID {
-		return nil, apperror.NotFound("contract")
+	if err := verifyContractOwnership(contract, employeeID); err != nil {
+		return nil, err
 	}
 
 	resp := contract.ToResponse()
@@ -350,8 +346,8 @@ func (s *EmployeeService) UpdateContract(ctx context.Context, contractID, employ
 	if err != nil {
 		return nil, apperror.NotFound("employee")
 	}
-	if employee.OrganizationID != orgID {
-		return nil, apperror.NotFound("employee")
+	if err := verifyOrgOwnership(employee, orgID, "employee"); err != nil {
+		return nil, err
 	}
 
 	// Get contract
@@ -359,8 +355,8 @@ func (s *EmployeeService) UpdateContract(ctx context.Context, contractID, employ
 	if err != nil {
 		return nil, apperror.NotFound("contract")
 	}
-	if contract.EmployeeID != employeeID {
-		return nil, apperror.NotFound("contract")
+	if err := verifyContractOwnership(contract, employeeID); err != nil {
+		return nil, err
 	}
 
 	// Validate and update pay plan if provided

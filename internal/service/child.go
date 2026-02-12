@@ -68,9 +68,8 @@ func (s *ChildService) GetByID(ctx context.Context, id, orgID uint) (*models.Chi
 	if err != nil {
 		return nil, apperror.NotFound("child")
 	}
-	// Security: Validate child belongs to the specified organization
-	if child.OrganizationID != orgID {
-		return nil, apperror.NotFound("child")
+	if err := verifyOrgOwnership(child, orgID, "child"); err != nil {
+		return nil, err
 	}
 	resp := child.ToResponse()
 	return &resp, nil
@@ -114,9 +113,8 @@ func (s *ChildService) Update(ctx context.Context, id, orgID uint, req *models.C
 	if err != nil {
 		return nil, apperror.NotFound("child")
 	}
-	// Security: Validate child belongs to the specified organization
-	if child.OrganizationID != orgID {
-		return nil, apperror.NotFound("child")
+	if err := verifyOrgOwnership(child, orgID, "child"); err != nil {
+		return nil, err
 	}
 
 	if req.FirstName != nil {
@@ -175,8 +173,8 @@ func (s *ChildService) Delete(ctx context.Context, id, orgID uint) error {
 		if err != nil {
 			return apperror.NotFound("child")
 		}
-		if child.OrganizationID != orgID {
-			return apperror.NotFound("child")
+		if err := verifyOrgOwnership(child, orgID, "child"); err != nil {
+			return err
 		}
 
 		if err := s.store.Delete(txCtx, id); err != nil {
@@ -193,9 +191,8 @@ func (s *ChildService) ListContracts(ctx context.Context, childID, orgID uint, l
 	if err != nil {
 		return nil, 0, apperror.NotFound("child")
 	}
-	// Security: Validate child belongs to the specified organization
-	if child.OrganizationID != orgID {
-		return nil, 0, apperror.NotFound("child")
+	if err := verifyOrgOwnership(child, orgID, "child"); err != nil {
+		return nil, 0, err
 	}
 
 	contracts, total, err := s.store.Contracts().GetHistoryPaginated(ctx, childID, limit, offset)
@@ -217,8 +214,8 @@ func (s *ChildService) GetCurrentContract(ctx context.Context, childID, orgID ui
 	if err != nil {
 		return nil, apperror.NotFound("child")
 	}
-	if child.OrganizationID != orgID {
-		return nil, apperror.NotFound("child")
+	if err := verifyOrgOwnership(child, orgID, "child"); err != nil {
+		return nil, err
 	}
 
 	contract, err := s.store.Contracts().GetCurrentContract(ctx, childID)
@@ -239,8 +236,8 @@ func (s *ChildService) GetContractByID(ctx context.Context, contractID, childID,
 	if err != nil {
 		return nil, apperror.NotFound("child")
 	}
-	if child.OrganizationID != orgID {
-		return nil, apperror.NotFound("child")
+	if err := verifyOrgOwnership(child, orgID, "child"); err != nil {
+		return nil, err
 	}
 
 	// Get contract
@@ -248,8 +245,8 @@ func (s *ChildService) GetContractByID(ctx context.Context, contractID, childID,
 	if err != nil {
 		return nil, apperror.NotFound("contract")
 	}
-	if contract.ChildID != childID {
-		return nil, apperror.NotFound("contract")
+	if err := verifyContractOwnership(contract, childID); err != nil {
+		return nil, err
 	}
 
 	resp := contract.ToResponse()
@@ -269,9 +266,8 @@ func (s *ChildService) CreateContract(ctx context.Context, childID, orgID uint, 
 	if err != nil {
 		return nil, apperror.NotFound("child")
 	}
-	// Security: Validate child belongs to the specified organization
-	if child.OrganizationID != orgID {
-		return nil, apperror.NotFound("child")
+	if err := verifyOrgOwnership(child, orgID, "child"); err != nil {
+		return nil, err
 	}
 
 	contract := &models.ChildContract{
@@ -309,8 +305,8 @@ func (s *ChildService) UpdateContract(ctx context.Context, contractID, childID, 
 	if err != nil {
 		return nil, apperror.NotFound("child")
 	}
-	if child.OrganizationID != orgID {
-		return nil, apperror.NotFound("child")
+	if err := verifyOrgOwnership(child, orgID, "child"); err != nil {
+		return nil, err
 	}
 
 	// Validate contract belongs to the child
@@ -318,8 +314,8 @@ func (s *ChildService) UpdateContract(ctx context.Context, contractID, childID, 
 	if err != nil {
 		return nil, apperror.NotFound("contract")
 	}
-	if contract.ChildID != childID {
-		return nil, apperror.NotFound("contract")
+	if err := verifyContractOwnership(contract, childID); err != nil {
+		return nil, err
 	}
 
 	// Update fields if provided
@@ -363,8 +359,8 @@ func (s *ChildService) DeleteContract(ctx context.Context, contractID, childID, 
 	if err != nil {
 		return apperror.NotFound("child")
 	}
-	if child.OrganizationID != orgID {
-		return apperror.NotFound("child")
+	if err := verifyOrgOwnership(child, orgID, "child"); err != nil {
+		return err
 	}
 
 	// Validate contract belongs to the child
@@ -372,8 +368,8 @@ func (s *ChildService) DeleteContract(ctx context.Context, contractID, childID, 
 	if err != nil {
 		return apperror.NotFound("contract")
 	}
-	if contract.ChildID != childID {
-		return apperror.NotFound("contract")
+	if err := verifyContractOwnership(contract, childID); err != nil {
+		return err
 	}
 
 	if err := s.store.DeleteContract(ctx, contractID); err != nil {

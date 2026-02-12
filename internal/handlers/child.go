@@ -219,7 +219,7 @@ func (h *ChildHandler) Delete(c *gin.Context) {
 
 	// Audit log child deletion
 	actorID := getUserID(c)
-	h.auditService.LogResourceDelete(actorID, "child", id, child.FirstName+" "+child.LastName, c.ClientIP())
+	h.auditService.LogResourceDelete(actorID, "child", id, child.FullName(), c.ClientIP())
 
 	c.Status(http.StatusNoContent)
 }

@@ -64,22 +64,15 @@ func (s *GroupService) GetByIDAndOrg(ctx context.Context, id, orgID uint) (*mode
 	if err != nil {
 		return nil, apperror.NotFound("group")
 	}
-	if group.OrganizationID != orgID {
-		return nil, apperror.NotFound("group")
+	if err := verifyOrgOwnership(group, orgID, "group"); err != nil {
+		return nil, err
 	}
 	resp := group.ToResponse()
 	return &resp, nil
 }
 
-// GroupCreateRequest represents the request for creating a group
-type GroupCreateRequest struct {
-	Name           string
-	OrganizationID uint
-	Active         bool
-}
-
 // Create creates a new group
-func (s *GroupService) Create(ctx context.Context, req *GroupCreateRequest, createdBy string) (*models.GroupResponse, error) {
+func (s *GroupService) Create(ctx context.Context, orgID uint, req *models.GroupCreateRequest, createdBy string) (*models.GroupResponse, error) {
 	// Trim and validate input
 	req.Name = strings.TrimSpace(req.Name)
 
@@ -89,7 +82,7 @@ func (s *GroupService) Create(ctx context.Context, req *GroupCreateRequest, crea
 
 	group := &models.Group{
 		Name:           req.Name,
-		OrganizationID: req.OrganizationID,
+		OrganizationID: orgID,
 		Active:         req.Active,
 		CreatedBy:      createdBy,
 	}
@@ -102,14 +95,8 @@ func (s *GroupService) Create(ctx context.Context, req *GroupCreateRequest, crea
 	return &resp, nil
 }
 
-// GroupUpdateRequest represents the request for updating a group
-type GroupUpdateRequest struct {
-	Name   string
-	Active *bool
-}
-
 // Update updates an existing group
-func (s *GroupService) Update(ctx context.Context, id uint, req *GroupUpdateRequest) (*models.GroupResponse, error) {
+func (s *GroupService) Update(ctx context.Context, id uint, req *models.GroupUpdateRequest) (*models.GroupResponse, error) {
 	group, err := s.store.FindByID(ctx, id)
 	if err != nil {
 		return nil, apperror.NotFound("group")
@@ -137,14 +124,13 @@ func (s *GroupService) Update(ctx context.Context, id uint, req *GroupUpdateRequ
 }
 
 // UpdateByIDAndOrg updates a group if it belongs to the specified organization
-func (s *GroupService) UpdateByIDAndOrg(ctx context.Context, id, orgID uint, req *GroupUpdateRequest) (*models.GroupResponse, error) {
+func (s *GroupService) UpdateByIDAndOrg(ctx context.Context, id, orgID uint, req *models.GroupUpdateRequest) (*models.GroupResponse, error) {
 	group, err := s.store.FindByID(ctx, id)
 	if err != nil {
 		return nil, apperror.NotFound("group")
 	}
-	// Security: Validate group belongs to the specified organization
-	if group.OrganizationID != orgID {
-		return nil, apperror.NotFound("group")
+	if err := verifyOrgOwnership(group, orgID, "group"); err != nil {
+		return nil, err
 	}
 
 	// Trim and validate input
@@ -182,9 +168,8 @@ func (s *GroupService) DeleteByIDAndOrg(ctx context.Context, id, orgID uint) err
 	if err != nil {
 		return apperror.NotFound("group")
 	}
-	// Security: Validate group belongs to the specified organization
-	if group.OrganizationID != orgID {
-		return apperror.NotFound("group")
+	if err := verifyOrgOwnership(group, orgID, "group"); err != nil {
+		return err
 	}
 
 	if err := s.store.Delete(ctx, id); err != nil {

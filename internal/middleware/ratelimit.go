@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
 // TODO: This in-memory rate limiter is only suitable for single-instance deployments.
@@ -118,8 +120,9 @@ func (rl *RateLimiter) RateLimit() gin.HandlerFunc {
 		ip := c.ClientIP()
 
 		if !rl.Allow(ip) {
-			c.JSON(http.StatusTooManyRequests, gin.H{
-				"error": "rate limit exceeded, please try again later",
+			c.JSON(http.StatusTooManyRequests, models.ErrorResponse{
+				Code:    "rate_limit_exceeded",
+				Message: "rate limit exceeded, please try again later",
 			})
 			c.Abort()
 			return

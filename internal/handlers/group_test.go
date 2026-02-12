@@ -106,7 +106,7 @@ func TestGroupHandler_Create(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/organizations/:orgId/groups", handler.Create)
 
-	body := GroupCreateRequest{
+	body := models.GroupCreateRequest{
 		Name:   "New Group",
 		Active: true,
 	}
@@ -164,7 +164,7 @@ func TestGroupHandler_Update(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/organizations/:orgId/groups/:groupId", handler.Update)
 
-	body := GroupUpdateRequest{
+	body := models.GroupUpdateRequest{
 		Name: "Updated Name",
 	}
 
@@ -194,7 +194,7 @@ func TestGroupHandler_Update_WrongOrg(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/organizations/:orgId/groups/:groupId", handler.Update)
 
-	body := GroupUpdateRequest{
+	body := models.GroupUpdateRequest{
 		Name: "Updated Name",
 	}
 
@@ -285,7 +285,7 @@ func TestGroupHandler_Update_InvalidID(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/organizations/:orgId/groups/:groupId", handler.Update)
 
-	body := GroupUpdateRequest{
+	body := models.GroupUpdateRequest{
 		Name: "Updated Name",
 	}
 
@@ -306,7 +306,7 @@ func TestGroupHandler_Update_NotFound(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/organizations/:orgId/groups/:groupId", handler.Update)
 
-	body := GroupUpdateRequest{
+	body := models.GroupUpdateRequest{
 		Name: "Updated Name",
 	}
 
@@ -329,7 +329,7 @@ func TestGroupHandler_Update_ActiveFlag(t *testing.T) {
 	r.PUT("/organizations/:orgId/groups/:groupId", handler.Update)
 
 	active := false
-	body := GroupUpdateRequest{
+	body := models.GroupUpdateRequest{
 		Active: &active,
 	}
 
@@ -438,7 +438,7 @@ func TestGroupHandler_Create_WhitespaceOnlyName(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/organizations/:orgId/groups", handler.Create)
 
-	body := GroupCreateRequest{
+	body := models.GroupCreateRequest{
 		Name:   "   ",
 		Active: true,
 	}
@@ -466,7 +466,7 @@ func TestGroupHandler_Create_NameTooLong(t *testing.T) {
 		longName += "a"
 	}
 
-	body := GroupCreateRequest{
+	body := models.GroupCreateRequest{
 		Name:   longName,
 		Active: true,
 	}

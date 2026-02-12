@@ -18,6 +18,11 @@ type Section struct {
 	UpdatedAt      time.Time     `json:"updated_at" example:"2024-01-15T10:30:00Z"`
 }
 
+// GetOrganizationID returns the organization ID for the OrgOwned interface.
+func (s Section) GetOrganizationID() uint {
+	return s.OrganizationID
+}
+
 // SectionResponse represents the section response
 type SectionResponse struct {
 	ID             uint      `json:"id" example:"1"`

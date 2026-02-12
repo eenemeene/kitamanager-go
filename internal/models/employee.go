@@ -89,6 +89,11 @@ type EmployeeResponse struct {
 	UpdatedAt      time.Time                  `json:"updated_at"`
 }
 
+// FullName returns the full name.
+func (r EmployeeResponse) FullName() string {
+	return r.FirstName + " " + r.LastName
+}
+
 func (e *Employee) ToResponse() EmployeeResponse {
 	resp := EmployeeResponse{
 		ID:             e.ID,

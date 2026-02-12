@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 	"github.com/eenemeene/kitamanager-go/internal/store"
+	"github.com/eenemeene/kitamanager-go/internal/testutil"
 )
 
 func init() {
@@ -24,36 +24,7 @@ func init() {
 // setupTestDB creates an in-memory SQLite database for testing.
 func setupTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("failed to connect to test database: %v", err)
-	}
-
-	err = db.AutoMigrate(
-		&models.Organization{},
-		&models.User{},
-		&models.Group{},
-		&models.Section{},
-		&models.UserGroup{},
-		&models.Employee{},
-		&models.EmployeeContract{},
-		&models.Child{},
-		&models.ChildContract{},
-		&models.GovernmentFunding{},
-		&models.GovernmentFundingPeriod{},
-		&models.GovernmentFundingProperty{},
-		&models.PayPlan{},
-		&models.PayPlanPeriod{},
-		&models.PayPlanEntry{},
-		&models.AuditLog{},
-		&models.ChildAttendance{},
-	)
-	if err != nil {
-		t.Fatalf("failed to migrate test database: %v", err)
-	}
-
-	return db
+	return testutil.SetupTestDB(t)
 }
 
 // performRequest executes an HTTP request against the router.
@@ -104,32 +75,13 @@ func setupTestRouter() *gin.Engine {
 // createTestOrganization creates an organization for testing.
 func createTestOrganization(t *testing.T, db *gorm.DB, name string) *models.Organization {
 	t.Helper()
-
-	org := &models.Organization{
-		Name:   name,
-		Active: true,
-		State:  string(models.StateBerlin),
-	}
-	if err := db.Create(org).Error; err != nil {
-		t.Fatalf("failed to create test organization: %v", err)
-	}
-	return org
+	return testutil.CreateTestOrganization(t, db, name)
 }
 
 // createTestUser creates a user for testing.
 func createTestUser(t *testing.T, db *gorm.DB, name, email, password string) *models.User {
 	t.Helper()
-
-	user := &models.User{
-		Name:     name,
-		Email:    email,
-		Password: password,
-		Active:   true,
-	}
-	if err := db.Create(user).Error; err != nil {
-		t.Fatalf("failed to create test user: %v", err)
-	}
-	return user
+	return testutil.CreateTestUser(t, db, name, email, password)
 }
 
 // createTestSuperAdmin creates a superadmin user with ID 1 for testing.
@@ -152,53 +104,21 @@ func createTestSuperAdmin(t *testing.T, db *gorm.DB) *models.User {
 }
 
 // createTestGroup creates a group for testing.
-// If orgID is 0, it will create a test organization first.
 func createTestGroup(t *testing.T, db *gorm.DB, name string) *models.Group {
 	t.Helper()
-
-	// Create a default organization for the group
-	org := createTestOrganization(t, db, name+" Org")
-
-	group := &models.Group{
-		Name:           name,
-		OrganizationID: org.ID,
-		Active:         true,
-	}
-	if err := db.Create(group).Error; err != nil {
-		t.Fatalf("failed to create test group: %v", err)
-	}
-	return group
+	return testutil.CreateTestGroup(t, db, name)
 }
 
 // createTestGroupWithOrg creates a group for testing with a specific organization.
 func createTestGroupWithOrg(t *testing.T, db *gorm.DB, name string, orgID uint) *models.Group {
 	t.Helper()
-
-	group := &models.Group{
-		Name:           name,
-		OrganizationID: orgID,
-		Active:         true,
-	}
-	if err := db.Create(group).Error; err != nil {
-		t.Fatalf("failed to create test group: %v", err)
-	}
-	return group
+	return testutil.CreateTestGroupWithOrg(t, db, name, orgID)
 }
 
 // createTestGroupWithOrgAndDefault creates a group for testing with a specific organization and default flag.
 func createTestGroupWithOrgAndDefault(t *testing.T, db *gorm.DB, name string, orgID uint, isDefault bool) *models.Group {
 	t.Helper()
-
-	group := &models.Group{
-		Name:           name,
-		OrganizationID: orgID,
-		IsDefault:      isDefault,
-		Active:         true,
-	}
-	if err := db.Create(group).Error; err != nil {
-		t.Fatalf("failed to create test group: %v", err)
-	}
-	return group
+	return testutil.CreateTestGroupWithOrgAndDefault(t, db, name, orgID, isDefault)
 }
 
 // createActiveChildContract creates an open-ended contract for a child (active today).
@@ -283,13 +203,5 @@ func createAttendanceService(db *gorm.DB) *service.ChildAttendanceService {
 // createTestPayPlan creates a pay plan for testing.
 func createTestPayPlan(t *testing.T, db *gorm.DB, name string, orgID uint) *models.PayPlan {
 	t.Helper()
-
-	payPlan := &models.PayPlan{
-		OrganizationID: orgID,
-		Name:           name,
-	}
-	if err := db.Create(payPlan).Error; err != nil {
-		t.Fatalf("failed to create test pay plan: %v", err)
-	}
-	return payPlan
+	return testutil.CreateTestPayPlan(t, db, name, orgID)
 }

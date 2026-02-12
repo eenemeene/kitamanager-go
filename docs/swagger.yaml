@@ -888,6 +888,18 @@ definitions:
     required:
     - name
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.GroupCreateRequest:
+    properties:
+      active:
+        example: true
+        type: boolean
+      name:
+        example: Administrators
+        maxLength: 255
+        type: string
+    required:
+    - name
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.GroupResponse:
     properties:
       active:
@@ -920,6 +932,16 @@ definitions:
         items:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.User'
         type: array
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.GroupUpdateRequest:
+    properties:
+      active:
+        example: false
+        type: boolean
+      name:
+        example: Administrators Updated
+        maxLength: 255
+        type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.HealthResponse:
     properties:
@@ -1801,28 +1823,6 @@ definitions:
         type: integer
       updated_at:
         example: "2024-01-15T10:30:00Z"
-        type: string
-    type: object
-  internal_handlers.GroupCreateRequest:
-    properties:
-      active:
-        example: true
-        type: boolean
-      name:
-        example: Administrators
-        maxLength: 255
-        type: string
-    required:
-    - name
-    type: object
-  internal_handlers.GroupUpdateRequest:
-    properties:
-      active:
-        example: false
-        type: boolean
-      name:
-        example: Administrators Updated
-        maxLength: 255
         type: string
     type: object
 host: localhost:8080
@@ -4325,7 +4325,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_handlers.GroupCreateRequest'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GroupCreateRequest'
       produces:
       - application/json
       responses:
@@ -4455,7 +4455,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_handlers.GroupUpdateRequest'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GroupUpdateRequest'
       produces:
       - application/json
       responses:
