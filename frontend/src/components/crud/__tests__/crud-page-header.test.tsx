@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { axe } from 'jest-axe';
 import { CrudPageHeader } from '../crud-page-header';
 
 describe('CrudPageHeader', () => {
@@ -64,5 +65,15 @@ describe('CrudPageHeader', () => {
     // Check the button contains an SVG (the Plus icon)
     const button = screen.getByText('items.newItem').closest('button');
     expect(button?.querySelector('svg')).toBeInTheDocument();
+  });
+
+  it('has no accessibility violations', async () => {
+    const { container } = render(<CrudPageHeader {...defaultProps} />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('has no accessibility violations when button is disabled', async () => {
+    const { container } = render(<CrudPageHeader {...defaultProps} newButtonDisabled={true} />);
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

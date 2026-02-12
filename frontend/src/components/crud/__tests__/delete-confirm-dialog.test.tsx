@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { axe } from 'jest-axe';
 import { DeleteConfirmDialog } from '../delete-confirm-dialog';
 
 describe('DeleteConfirmDialog', () => {
@@ -66,5 +67,10 @@ describe('DeleteConfirmDialog', () => {
 
     const deleteButton = screen.getByText('common.delete');
     expect(deleteButton).toHaveClass('bg-destructive');
+  });
+
+  it('has no accessibility violations when open', async () => {
+    const { container } = render(<DeleteConfirmDialog {...defaultProps} />);
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

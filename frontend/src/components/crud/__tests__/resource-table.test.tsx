@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { axe } from 'jest-axe';
 import { ResourceTable, Column } from '../resource-table';
 
 interface TestItem {
@@ -212,5 +213,19 @@ describe('ResourceTable', () => {
     nameCells.forEach((cell) => {
       expect(cell.closest('td')).toHaveClass('font-medium');
     });
+  });
+
+  it('has no accessibility violations with data', async () => {
+    const { container } = render(
+      <ResourceTable items={testItems} columns={columns} getItemKey={getItemKey} />
+    );
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('has no accessibility violations when empty', async () => {
+    const { container } = render(
+      <ResourceTable items={[]} columns={columns} getItemKey={getItemKey} />
+    );
+    expect(await axe(container)).toHaveNoViolations();
   });
 });
