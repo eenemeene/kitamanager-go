@@ -209,6 +209,7 @@ func (h *EmployeeHandler) Update(c *gin.Context) {
 // @Success 204 "No Content"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id} [delete]
 func (h *EmployeeHandler) Delete(c *gin.Context) {
@@ -434,6 +435,7 @@ func (h *EmployeeHandler) UpdateContract(c *gin.Context) {
 // @Success 204 "No Content"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id}/contracts/{contractId} [delete]
 func (h *EmployeeHandler) DeleteContract(c *gin.Context) {

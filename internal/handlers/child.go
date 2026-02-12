@@ -220,6 +220,7 @@ func (h *ChildHandler) Update(c *gin.Context) {
 // @Success 204 "No Content"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/children/{id} [delete]
 func (h *ChildHandler) Delete(c *gin.Context) {
@@ -445,6 +446,7 @@ func (h *ChildHandler) UpdateContract(c *gin.Context) {
 // @Success 204 "No Content"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/children/{id}/contracts/{contractId} [delete]
 func (h *ChildHandler) DeleteContract(c *gin.Context) {

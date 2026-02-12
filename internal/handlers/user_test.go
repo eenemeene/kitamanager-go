@@ -323,7 +323,7 @@ func TestUserHandler_AddToGroup(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/users/:userId/groups", handler.AddToGroup)
 
-	body := models.AddUserToGroupRequest{
+	body := models.UserGroupAddRequest{
 		GroupID: group.ID,
 		Role:    models.RoleMember,
 	}
@@ -390,7 +390,7 @@ func TestUserHandler_AddToOrganization(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/users/:userId/organizations", handler.AddToOrganization)
 
-	body := models.AddToOrganizationRequest{
+	body := models.UserOrganizationAddRequest{
 		OrganizationID: org.ID,
 	}
 
@@ -676,7 +676,7 @@ func TestUserHandler_AddToGroup_InvalidUserID(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/users/:userId/groups", handler.AddToGroup)
 
-	body := models.AddUserToGroupRequest{
+	body := models.UserGroupAddRequest{
 		GroupID: 1,
 		Role:    models.RoleMember,
 	}
@@ -699,7 +699,7 @@ func TestUserHandler_AddToGroup_UserNotFound(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/users/:userId/groups", handler.AddToGroup)
 
-	body := models.AddUserToGroupRequest{
+	body := models.UserGroupAddRequest{
 		GroupID: group.ID,
 		Role:    models.RoleMember,
 	}
@@ -722,7 +722,7 @@ func TestUserHandler_AddToGroup_GroupNotFound(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/users/:userId/groups", handler.AddToGroup)
 
-	body := models.AddUserToGroupRequest{
+	body := models.UserGroupAddRequest{
 		GroupID: 999, // Non-existent group
 		Role:    models.RoleMember,
 	}
@@ -777,7 +777,7 @@ func TestUserHandler_AddToOrganization_InvalidUserID(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/users/:userId/organizations", handler.AddToOrganization)
 
-	body := models.AddToOrganizationRequest{
+	body := models.UserOrganizationAddRequest{
 		OrganizationID: 1,
 	}
 
@@ -799,7 +799,7 @@ func TestUserHandler_AddToOrganization_UserNotFound(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/users/:userId/organizations", handler.AddToOrganization)
 
-	body := models.AddToOrganizationRequest{
+	body := models.UserOrganizationAddRequest{
 		OrganizationID: org.ID,
 	}
 
@@ -974,7 +974,7 @@ func TestUserHandler_UpdateGroupRole(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/users/:userId/groups/:groupId", handler.UpdateGroupRole)
 
-	body := models.UpdateUserGroupRoleRequest{
+	body := models.UserGroupRoleUpdateRequest{
 		Role: models.RoleAdmin,
 	}
 
@@ -1036,7 +1036,7 @@ func TestUserHandler_UpdateGroupRole_UserNotFound(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/users/:userId/groups/:groupId", handler.UpdateGroupRole)
 
-	body := models.UpdateUserGroupRoleRequest{
+	body := models.UserGroupRoleUpdateRequest{
 		Role: models.RoleAdmin,
 	}
 
@@ -1061,7 +1061,7 @@ func TestUserHandler_UpdateGroupRole_UserNotInGroup(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/users/:userId/groups/:groupId", handler.UpdateGroupRole)
 
-	body := models.UpdateUserGroupRoleRequest{
+	body := models.UserGroupRoleUpdateRequest{
 		Role: models.RoleAdmin,
 	}
 
@@ -1081,7 +1081,7 @@ func TestUserHandler_UpdateGroupRole_InvalidUserID(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/users/:userId/groups/:groupId", handler.UpdateGroupRole)
 
-	body := models.UpdateUserGroupRoleRequest{
+	body := models.UserGroupRoleUpdateRequest{
 		Role: models.RoleAdmin,
 	}
 
@@ -1103,7 +1103,7 @@ func TestUserHandler_UpdateGroupRole_InvalidGroupID(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/users/:userId/groups/:groupId", handler.UpdateGroupRole)
 
-	body := models.UpdateUserGroupRoleRequest{
+	body := models.UserGroupRoleUpdateRequest{
 		Role: models.RoleAdmin,
 	}
 
@@ -1253,7 +1253,7 @@ func TestUserHandler_SetSuperAdmin_True(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/users/:userId/superadmin", handler.SetSuperAdmin)
 
-	body := models.SetSuperAdminRequest{
+	body := models.UserSetSuperAdminRequest{
 		IsSuperAdmin: true,
 	}
 
@@ -1284,7 +1284,7 @@ func TestUserHandler_SetSuperAdmin_False(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/users/:userId/superadmin", handler.SetSuperAdmin)
 
-	body := models.SetSuperAdminRequest{
+	body := models.UserSetSuperAdminRequest{
 		IsSuperAdmin: false,
 	}
 
@@ -1311,7 +1311,7 @@ func TestUserHandler_SetSuperAdmin_UserNotFound(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/users/:userId/superadmin", handler.SetSuperAdmin)
 
-	body := models.SetSuperAdminRequest{
+	body := models.UserSetSuperAdminRequest{
 		IsSuperAdmin: true,
 	}
 
@@ -1331,7 +1331,7 @@ func TestUserHandler_SetSuperAdmin_InvalidUserID(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/users/:userId/superadmin", handler.SetSuperAdmin)
 
-	body := models.SetSuperAdminRequest{
+	body := models.UserSetSuperAdminRequest{
 		IsSuperAdmin: true,
 	}
 
@@ -1374,7 +1374,7 @@ func TestUserHandler_AddToOrganization_OrgNotFound(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/users/:userId/organizations", handler.AddToOrganization)
 
-	body := models.AddToOrganizationRequest{
+	body := models.UserOrganizationAddRequest{
 		OrganizationID: 999, // Non-existent
 	}
 

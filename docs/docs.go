@@ -1955,6 +1955,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
                         }
                     },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -2819,6 +2825,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
                         }
                     },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -3226,6 +3238,12 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
                         }
@@ -3685,6 +3703,12 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
                         }
@@ -5902,6 +5926,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
                         }
                     },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -5943,7 +5973,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.AddUserToGroupRequest"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserGroupAddRequest"
                         }
                     }
                 ],
@@ -6026,7 +6056,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UpdateUserGroupRoleRequest"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserGroupRoleUpdateRequest"
                         }
                     }
                 ],
@@ -6226,7 +6256,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.AddToOrganizationRequest"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserOrganizationAddRequest"
                         }
                     }
                 ],
@@ -6361,7 +6391,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.SetSuperAdminRequest"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserSetSuperAdminRequest"
                         }
                     }
                 ],
@@ -6407,39 +6437,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "github_com_eenemeene_kitamanager-go_internal_models.AddToOrganizationRequest": {
-            "type": "object",
-            "required": [
-                "organization_id"
-            ],
-            "properties": {
-                "organization_id": {
-                    "type": "integer",
-                    "example": 1
-                }
-            }
-        },
-        "github_com_eenemeene_kitamanager-go_internal_models.AddUserToGroupRequest": {
-            "type": "object",
-            "required": [
-                "group_id",
-                "role"
-            ],
-            "properties": {
-                "group_id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "role": {
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Role"
-                        }
-                    ],
-                    "example": "member"
-                }
-            }
-        },
         "github_com_eenemeene_kitamanager-go_internal_models.AgeDistributionBucket": {
             "type": "object",
             "properties": {
@@ -8646,15 +8643,6 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_eenemeene_kitamanager-go_internal_models.SetSuperAdminRequest": {
-            "type": "object",
-            "properties": {
-                "is_superadmin": {
-                    "type": "boolean",
-                    "example": true
-                }
-            }
-        },
         "github_com_eenemeene_kitamanager-go_internal_models.StepPromotionResponse": {
             "type": "object",
             "properties": {
@@ -8724,22 +8712,6 @@ const docTemplate = `{
                 "total_monthly_cost_delta": {
                     "type": "integer",
                     "example": 40284
-                }
-            }
-        },
-        "github_com_eenemeene_kitamanager-go_internal_models.UpdateUserGroupRoleRequest": {
-            "type": "object",
-            "required": [
-                "role"
-            ],
-            "properties": {
-                "role": {
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Role"
-                        }
-                    ],
-                    "example": "admin"
                 }
             }
         },
@@ -8824,6 +8796,27 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.UserGroupAddRequest": {
+            "type": "object",
+            "required": [
+                "group_id",
+                "role"
+            ],
+            "properties": {
+                "group_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "role": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Role"
+                        }
+                    ],
+                    "example": "member"
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.UserGroupResponse": {
             "type": "object",
             "properties": {
@@ -8853,6 +8846,22 @@ const docTemplate = `{
                 "user_id": {
                     "type": "integer",
                     "example": 1
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.UserGroupRoleUpdateRequest": {
+            "type": "object",
+            "required": [
+                "role"
+            ],
+            "properties": {
+                "role": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Role"
+                        }
+                    ],
+                    "example": "admin"
                 }
             }
         },
@@ -8902,6 +8911,18 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.UserOrganizationAddRequest": {
+            "type": "object",
+            "required": [
+                "organization_id"
+            ],
+            "properties": {
+                "organization_id": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.UserResponse": {
             "type": "object",
             "properties": {
@@ -8946,6 +8967,15 @@ const docTemplate = `{
                 "updated_at": {
                     "type": "string",
                     "example": "2024-01-15T10:30:00Z"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.UserSetSuperAdminRequest": {
+            "type": "object",
+            "properties": {
+                "is_superadmin": {
+                    "type": "boolean",
+                    "example": true
                 }
             }
         },

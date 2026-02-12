@@ -204,6 +204,7 @@ func (h *UserHandler) Update(c *gin.Context) {
 // @Success 204 "No Content"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/users/{userId} [delete]
 func (h *UserHandler) Delete(c *gin.Context) {
@@ -240,7 +241,7 @@ func (h *UserHandler) Delete(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param userId path int true "User ID"
-// @Param request body models.AddUserToGroupRequest true "Group ID and role"
+// @Param request body models.UserGroupAddRequest true "Group ID and role"
 // @Success 201 {object} models.UserGroupResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
@@ -255,7 +256,7 @@ func (h *UserHandler) AddToGroup(c *gin.Context) {
 		return
 	}
 
-	var req models.AddUserToGroupRequest
+	var req models.UserGroupAddRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
@@ -279,7 +280,7 @@ func (h *UserHandler) AddToGroup(c *gin.Context) {
 // @Security BearerAuth
 // @Param userId path int true "User ID"
 // @Param groupId path int true "Group ID"
-// @Param request body models.UpdateUserGroupRoleRequest true "New role"
+// @Param request body models.UserGroupRoleUpdateRequest true "New role"
 // @Success 200 {object} models.UserGroupResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
@@ -300,7 +301,7 @@ func (h *UserHandler) UpdateGroupRole(c *gin.Context) {
 		return
 	}
 
-	var req models.UpdateUserGroupRoleRequest
+	var req models.UserGroupRoleUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
@@ -389,7 +390,7 @@ func (h *UserHandler) GetMemberships(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param userId path int true "User ID"
-// @Param request body models.SetSuperAdminRequest true "Superadmin status"
+// @Param request body models.UserSetSuperAdminRequest true "Superadmin status"
 // @Success 200 {object} models.UserResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
@@ -404,7 +405,7 @@ func (h *UserHandler) SetSuperAdmin(c *gin.Context) {
 		return
 	}
 
-	var req models.SetSuperAdminRequest
+	var req models.UserSetSuperAdminRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return
@@ -444,7 +445,7 @@ func (h *UserHandler) SetSuperAdmin(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param userId path int true "User ID"
-// @Param request body models.AddToOrganizationRequest true "Organization ID"
+// @Param request body models.UserOrganizationAddRequest true "Organization ID"
 // @Success 201 {object} models.UserGroupResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
@@ -458,7 +459,7 @@ func (h *UserHandler) AddToOrganization(c *gin.Context) {
 		return
 	}
 
-	var req models.AddToOrganizationRequest
+	var req models.UserOrganizationAddRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, apperror.BadRequest(err.Error()))
 		return

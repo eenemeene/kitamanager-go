@@ -36,7 +36,7 @@ type HealthResponse struct {
 	Services map[string]string `json:"services"`
 }
 
-// AddToOrganizationRequest represents the request body for adding a user to an organization
-type AddToOrganizationRequest struct {
+// UserOrganizationAddRequest represents the request body for adding a user to an organization
+type UserOrganizationAddRequest struct {
 	OrganizationID uint `json:"organization_id" binding:"required" example:"1"`
 }

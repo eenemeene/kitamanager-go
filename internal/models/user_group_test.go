@@ -153,8 +153,8 @@ func TestUserGroup_TableName(t *testing.T) {
 	}
 }
 
-func TestAddUserToGroupRequest(t *testing.T) {
-	req := AddUserToGroupRequest{
+func TestUserGroupAddRequest(t *testing.T) {
+	req := UserGroupAddRequest{
 		GroupID: 5,
 		Role:    RoleManager,
 	}
@@ -167,8 +167,8 @@ func TestAddUserToGroupRequest(t *testing.T) {
 	}
 }
 
-func TestUpdateUserGroupRoleRequest(t *testing.T) {
-	req := UpdateUserGroupRoleRequest{
+func TestUserGroupRoleUpdateRequest(t *testing.T) {
+	req := UserGroupRoleUpdateRequest{
 		Role: RoleAdmin,
 	}
 

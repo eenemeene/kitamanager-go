@@ -63,7 +63,7 @@ func (u *User) ToResponse() UserResponse {
 	}
 }
 
-// SetSuperAdminRequest represents the request body for setting superadmin status
-type SetSuperAdminRequest struct {
+// UserSetSuperAdminRequest represents the request body for setting superadmin status
+type UserSetSuperAdminRequest struct {
 	IsSuperAdmin bool `json:"is_superadmin" example:"true"`
 }

@@ -1,26 +1,5 @@
 basePath: /
 definitions:
-  github_com_eenemeene_kitamanager-go_internal_models.AddToOrganizationRequest:
-    properties:
-      organization_id:
-        example: 1
-        type: integer
-    required:
-    - organization_id
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.AddUserToGroupRequest:
-    properties:
-      group_id:
-        example: 1
-        type: integer
-      role:
-        allOf:
-        - $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Role'
-        example: member
-    required:
-    - group_id
-    - role
-    type: object
   github_com_eenemeene_kitamanager-go_internal_models.AgeDistributionBucket:
     properties:
       age_label:
@@ -1606,12 +1585,6 @@ definitions:
         maxLength: 255
         type: string
     type: object
-  github_com_eenemeene_kitamanager-go_internal_models.SetSuperAdminRequest:
-    properties:
-      is_superadmin:
-        example: true
-        type: boolean
-    type: object
   github_com_eenemeene_kitamanager-go_internal_models.StepPromotionResponse:
     properties:
       current_amount:
@@ -1663,15 +1636,6 @@ definitions:
       total_monthly_cost_delta:
         example: 40284
         type: integer
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.UpdateUserGroupRoleRequest:
-    properties:
-      role:
-        allOf:
-        - $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Role'
-        example: admin
-    required:
-    - role
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.User:
     properties:
@@ -1733,6 +1697,19 @@ definitions:
     - name
     - password
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.UserGroupAddRequest:
+    properties:
+      group_id:
+        example: 1
+        type: integer
+      role:
+        allOf:
+        - $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Role'
+        example: member
+    required:
+    - group_id
+    - role
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.UserGroupResponse:
     properties:
       created_at:
@@ -1753,6 +1730,15 @@ definitions:
       user_id:
         example: 1
         type: integer
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.UserGroupRoleUpdateRequest:
+    properties:
+      role:
+        allOf:
+        - $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Role'
+        example: admin
+    required:
+    - role
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.UserMembership:
     properties:
@@ -1781,6 +1767,14 @@ definitions:
         items:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserMembership'
         type: array
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.UserOrganizationAddRequest:
+    properties:
+      organization_id:
+        example: 1
+        type: integer
+    required:
+    - organization_id
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.UserResponse:
     properties:
@@ -1815,6 +1809,12 @@ definitions:
       updated_at:
         example: "2024-01-15T10:30:00Z"
         type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.UserSetSuperAdminRequest:
+    properties:
+      is_superadmin:
+        example: true
+        type: boolean
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.UserUpdateRequest:
     properties:
@@ -2815,6 +2815,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -3339,6 +3343,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -3848,6 +3856,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -4102,6 +4114,10 @@ paths:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "401":
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "500":
@@ -5658,6 +5674,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -5766,7 +5786,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.AddUserToGroupRequest'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserGroupAddRequest'
       produces:
       - application/json
       responses:
@@ -5861,7 +5881,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UpdateUserGroupRoleRequest'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserGroupRoleUpdateRequest'
       produces:
       - application/json
       responses:
@@ -5950,7 +5970,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.AddToOrganizationRequest'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserOrganizationAddRequest'
       produces:
       - application/json
       responses:
@@ -6037,7 +6057,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.SetSuperAdminRequest'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserSetSuperAdminRequest'
       produces:
       - application/json
       responses:

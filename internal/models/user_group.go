@@ -53,14 +53,14 @@ func (UserGroup) TableName() string {
 	return "user_groups"
 }
 
-// AddUserToGroupRequest represents the request body for adding a user to a group with a role
-type AddUserToGroupRequest struct {
+// UserGroupAddRequest represents the request body for adding a user to a group with a role
+type UserGroupAddRequest struct {
 	GroupID uint `json:"group_id" binding:"required" example:"1"`
 	Role    Role `json:"role" binding:"required" example:"member"`
 }
 
-// UpdateUserGroupRoleRequest represents the request body for updating a user's role in a group
-type UpdateUserGroupRoleRequest struct {
+// UserGroupRoleUpdateRequest represents the request body for updating a user's role in a group
+type UserGroupRoleUpdateRequest struct {
 	Role Role `json:"role" binding:"required" example:"admin"`
 }
 
