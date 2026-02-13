@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
@@ -167,6 +168,7 @@ func main() {
 	r.Use(middleware.RequestID())
 	r.Use(middleware.StructuredLogger())
 	r.Use(middleware.SecurityHeaders())
+	r.Use(middleware.Metrics())
 	r.Use(middleware.BodySizeLimit(middleware.MaxRequestBodySize))
 	r.Use(middleware.RequestTimeout(middleware.DefaultRequestTimeout))
 
@@ -174,7 +176,7 @@ func main() {
 	corsConfig := cors.Config{
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-CSRF-Token"},
-		ExposeHeaders:    []string{"Content-Length"},
+		ExposeHeaders:    []string{"Content-Length", "X-Request-ID"},
 		AllowCredentials: cfg.CORSAllowCredentials,
 		MaxAge:           12 * time.Hour,
 	}
@@ -186,10 +188,11 @@ func main() {
 	}
 	r.Use(cors.New(corsConfig))
 
-	// Health check endpoints (no auth required)
+	// Health check and metrics endpoints (no auth required)
 	r.GET("/api/v1/health", healthHandler.Check)
 	r.GET("/api/v1/ready", healthHandler.Ready)
 	r.GET("/api/v1/live", healthHandler.Live)
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	// Swagger UI
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
