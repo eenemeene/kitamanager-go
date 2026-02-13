@@ -67,11 +67,7 @@ func (s *OrganizationService) ListForUser(ctx context.Context, userID uint, sear
 	}
 	pagedOrgs := orgs[start:end]
 
-	responses := make([]models.OrganizationResponse, len(pagedOrgs))
-	for i, org := range pagedOrgs {
-		responses[i] = org.ToResponse()
-	}
-	return responses, total, nil
+	return toResponseList(pagedOrgs, (*models.Organization).ToResponse), total, nil
 }
 
 // List returns a paginated list of all organizations (for internal use)
@@ -81,11 +77,7 @@ func (s *OrganizationService) List(ctx context.Context, search string, limit, of
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch organizations")
 	}
 
-	responses := make([]models.OrganizationResponse, len(orgs))
-	for i, org := range orgs {
-		responses[i] = org.ToResponse()
-	}
-	return responses, total, nil
+	return toResponseList(orgs, (*models.Organization).ToResponse), total, nil
 }
 
 // GetByID returns an organization by ID
@@ -100,11 +92,9 @@ func (s *OrganizationService) GetByID(ctx context.Context, id uint) (*models.Org
 
 // Create creates a new organization with a default group (transactional)
 func (s *OrganizationService) Create(ctx context.Context, req *models.OrganizationCreateRequest, createdBy string) (*models.OrganizationResponse, error) {
-	// Trim and validate input
-	req.Name = strings.TrimSpace(req.Name)
-
-	if validation.IsWhitespaceOnly(req.Name) {
-		return nil, apperror.BadRequest("name cannot be empty or whitespace only")
+	name, err := validateRequiredName(req.Name)
+	if err != nil {
+		return nil, err
 	}
 
 	if !models.IsValidState(req.State) {
@@ -112,7 +102,7 @@ func (s *OrganizationService) Create(ctx context.Context, req *models.Organizati
 	}
 
 	org := &models.Organization{
-		Name:      req.Name,
+		Name:      name,
 		Active:    req.Active,
 		State:     req.State,
 		CreatedBy: createdBy,

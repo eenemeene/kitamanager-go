@@ -30,11 +30,7 @@ func (s *UserService) List(ctx context.Context, search string, limit, offset int
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch users")
 	}
 
-	responses := make([]models.UserResponse, len(users))
-	for i, user := range users {
-		responses[i] = user.ToResponse()
-	}
-	return responses, total, nil
+	return toResponseList(users, (*models.User).ToResponse), total, nil
 }
 
 // ListByOrganization returns a paginated list of users in a specific organization
@@ -44,11 +40,7 @@ func (s *UserService) ListByOrganization(ctx context.Context, orgID uint, search
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch users")
 	}
 
-	responses := make([]models.UserResponse, len(users))
-	for i, user := range users {
-		responses[i] = user.ToResponse()
-	}
-	return responses, total, nil
+	return toResponseList(users, (*models.User).ToResponse), total, nil
 }
 
 // GetByID returns a user by ID
@@ -63,13 +55,11 @@ func (s *UserService) GetByID(ctx context.Context, id uint) (*models.UserRespons
 
 // Create creates a new user
 func (s *UserService) Create(ctx context.Context, req *models.UserCreateRequest, createdBy string) (*models.UserResponse, error) {
-	// Trim and validate input
-	req.Name = strings.TrimSpace(req.Name)
-	req.Email = strings.TrimSpace(req.Email)
-
-	if validation.IsWhitespaceOnly(req.Name) {
-		return nil, apperror.BadRequest("name cannot be empty or whitespace only")
+	name, err := validateRequiredName(req.Name)
+	if err != nil {
+		return nil, err
 	}
+	req.Email = strings.TrimSpace(req.Email)
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -77,7 +67,7 @@ func (s *UserService) Create(ctx context.Context, req *models.UserCreateRequest,
 	}
 
 	user := &models.User{
-		Name:      req.Name,
+		Name:      name,
 		Email:     req.Email,
 		Password:  string(hashedPassword),
 		Active:    req.Active,

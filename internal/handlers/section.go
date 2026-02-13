@@ -5,7 +5,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 )
@@ -107,20 +106,18 @@ func (h *SectionHandler) Create(c *gin.Context) {
 		return
 	}
 
-	var req models.SectionCreateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.SectionCreateRequest](c)
+	if !ok {
 		return
 	}
 
-	section, err := h.service.Create(c.Request.Context(), orgID, &req, getCreatedBy(c))
+	section, err := h.service.Create(c.Request.Context(), orgID, req, getCreatedBy(c))
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	actorID := getUserID(c)
-	h.auditService.LogResourceCreate(actorID, "section", section.ID, section.Name, c.ClientIP())
+	auditCreate(c, h.auditService, "section", section.ID, section.Name)
 
 	c.JSON(http.StatusCreated, section)
 }
@@ -147,20 +144,18 @@ func (h *SectionHandler) Update(c *gin.Context) {
 		return
 	}
 
-	var req models.SectionUpdateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.SectionUpdateRequest](c)
+	if !ok {
 		return
 	}
 
-	section, err := h.service.UpdateByIDAndOrg(c.Request.Context(), sectionID, orgID, &req)
+	section, err := h.service.UpdateByIDAndOrg(c.Request.Context(), sectionID, orgID, req)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	actorID := getUserID(c)
-	h.auditService.LogResourceUpdate(actorID, "section", section.ID, section.Name, c.ClientIP())
+	auditUpdate(c, h.auditService, "section", section.ID, section.Name)
 
 	c.JSON(http.StatusOK, section)
 }
@@ -198,9 +193,7 @@ func (h *SectionHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	// Audit log section deletion
-	actorID := getUserID(c)
-	h.auditService.LogResourceDelete(actorID, "section", sectionID, section.Name, c.ClientIP())
+	auditDelete(c, h.auditService, "section", sectionID, section.Name)
 
 	c.Status(http.StatusNoContent)
 }

@@ -6,7 +6,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 )
@@ -117,20 +116,18 @@ func (h *PayPlanHandler) Create(c *gin.Context) {
 		return
 	}
 
-	var req models.PayPlanCreateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.PayPlanCreateRequest](c)
+	if !ok {
 		return
 	}
 
-	payplan, err := h.service.Create(c.Request.Context(), orgID, req)
+	payplan, err := h.service.Create(c.Request.Context(), orgID, *req)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	actorID := getUserID(c)
-	h.auditService.LogResourceCreate(actorID, "pay_plan", payplan.ID, payplan.Name, c.ClientIP())
+	auditCreate(c, h.auditService, "pay_plan", payplan.ID, payplan.Name)
 
 	c.JSON(http.StatusCreated, payplan)
 }
@@ -158,20 +155,18 @@ func (h *PayPlanHandler) Update(c *gin.Context) {
 		return
 	}
 
-	var req models.PayPlanUpdateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.PayPlanUpdateRequest](c)
+	if !ok {
 		return
 	}
 
-	payplan, err := h.service.Update(c.Request.Context(), id, orgID, req)
+	payplan, err := h.service.Update(c.Request.Context(), id, orgID, *req)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	actorID := getUserID(c)
-	h.auditService.LogResourceUpdate(actorID, "pay_plan", payplan.ID, payplan.Name, c.ClientIP())
+	auditUpdate(c, h.auditService, "pay_plan", payplan.ID, payplan.Name)
 
 	c.JSON(http.StatusOK, payplan)
 }
@@ -211,9 +206,7 @@ func (h *PayPlanHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	// Audit log pay plan deletion
-	actorID := getUserID(c)
-	h.auditService.LogResourceDelete(actorID, "pay_plan", id, payplan.Name, c.ClientIP())
+	auditDelete(c, h.auditService, "pay_plan", id, payplan.Name)
 
 	c.Status(http.StatusNoContent)
 }
@@ -243,20 +236,18 @@ func (h *PayPlanHandler) CreatePeriod(c *gin.Context) {
 		return
 	}
 
-	var req models.PayPlanPeriodCreateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.PayPlanPeriodCreateRequest](c)
+	if !ok {
 		return
 	}
 
-	period, err := h.service.CreatePeriod(c.Request.Context(), payplanID, orgID, req)
+	period, err := h.service.CreatePeriod(c.Request.Context(), payplanID, orgID, *req)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	actorID := getUserID(c)
-	h.auditService.LogResourceCreate(actorID, "pay_plan_period", period.ID, fmt.Sprintf("payplan=%d", payplanID), c.ClientIP())
+	auditCreate(c, h.auditService, "pay_plan_period", period.ID, fmt.Sprintf("payplan=%d", payplanID))
 
 	c.JSON(http.StatusCreated, period)
 }
@@ -329,20 +320,18 @@ func (h *PayPlanHandler) UpdatePeriod(c *gin.Context) {
 		return
 	}
 
-	var req models.PayPlanPeriodUpdateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.PayPlanPeriodUpdateRequest](c)
+	if !ok {
 		return
 	}
 
-	period, err := h.service.UpdatePeriod(c.Request.Context(), periodID, payplanID, orgID, req)
+	period, err := h.service.UpdatePeriod(c.Request.Context(), periodID, payplanID, orgID, *req)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	actorID := getUserID(c)
-	h.auditService.LogResourceUpdate(actorID, "pay_plan_period", period.ID, fmt.Sprintf("payplan=%d", payplanID), c.ClientIP())
+	auditUpdate(c, h.auditService, "pay_plan_period", period.ID, fmt.Sprintf("payplan=%d", payplanID))
 
 	c.JSON(http.StatusOK, period)
 }
@@ -382,9 +371,7 @@ func (h *PayPlanHandler) DeletePeriod(c *gin.Context) {
 		return
 	}
 
-	// Audit log period deletion
-	actorID := getUserID(c)
-	h.auditService.LogResourceDelete(actorID, "payplan_period", periodID, fmt.Sprintf("payplan=%d", payplanID), c.ClientIP())
+	auditDelete(c, h.auditService, "payplan_period", periodID, fmt.Sprintf("payplan=%d", payplanID))
 
 	c.Status(http.StatusNoContent)
 }
@@ -421,20 +408,18 @@ func (h *PayPlanHandler) CreateEntry(c *gin.Context) {
 		return
 	}
 
-	var req models.PayPlanEntryCreateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.PayPlanEntryCreateRequest](c)
+	if !ok {
 		return
 	}
 
-	entry, err := h.service.CreateEntry(c.Request.Context(), req, periodID, payplanID, orgID)
+	entry, err := h.service.CreateEntry(c.Request.Context(), *req, periodID, payplanID, orgID)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	actorID := getUserID(c)
-	h.auditService.LogResourceCreate(actorID, "pay_plan_entry", entry.ID, fmt.Sprintf("period=%d", periodID), c.ClientIP())
+	auditCreate(c, h.auditService, "pay_plan_entry", entry.ID, fmt.Sprintf("period=%d", periodID))
 
 	c.JSON(http.StatusCreated, entry)
 }
@@ -521,20 +506,18 @@ func (h *PayPlanHandler) UpdateEntry(c *gin.Context) {
 		return
 	}
 
-	var req models.PayPlanEntryUpdateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.PayPlanEntryUpdateRequest](c)
+	if !ok {
 		return
 	}
 
-	entry, err := h.service.UpdateEntry(c.Request.Context(), entryID, periodID, payplanID, orgID, req)
+	entry, err := h.service.UpdateEntry(c.Request.Context(), entryID, periodID, payplanID, orgID, *req)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	actorID := getUserID(c)
-	h.auditService.LogResourceUpdate(actorID, "pay_plan_entry", entry.ID, fmt.Sprintf("period=%d", periodID), c.ClientIP())
+	auditUpdate(c, h.auditService, "pay_plan_entry", entry.ID, fmt.Sprintf("period=%d", periodID))
 
 	c.JSON(http.StatusOK, entry)
 }
@@ -581,9 +564,7 @@ func (h *PayPlanHandler) DeleteEntry(c *gin.Context) {
 		return
 	}
 
-	// Audit log entry deletion
-	actorID := getUserID(c)
-	h.auditService.LogResourceDelete(actorID, "payplan_entry", entryID, fmt.Sprintf("period=%d", periodID), c.ClientIP())
+	auditDelete(c, h.auditService, "payplan_entry", entryID, fmt.Sprintf("period=%d", periodID))
 
 	c.Status(http.StatusNoContent)
 }

@@ -34,7 +34,7 @@ func (s *GroupStore) FindAll(ctx context.Context, limit, offset int) ([]models.G
 func (s *GroupStore) FindByID(ctx context.Context, id uint) (*models.Group, error) {
 	var group models.Group
 	if err := DBFromContext(ctx, s.db).Preload("Users").Preload("Organization").First(&group, id).Error; err != nil {
-		return nil, err
+		return nil, WrapNotFound(err)
 	}
 	return &group, nil
 }

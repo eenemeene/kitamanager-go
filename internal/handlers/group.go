@@ -5,7 +5,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 )
@@ -107,20 +106,18 @@ func (h *GroupHandler) Create(c *gin.Context) {
 		return
 	}
 
-	var req models.GroupCreateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.GroupCreateRequest](c)
+	if !ok {
 		return
 	}
 
-	group, err := h.service.Create(c.Request.Context(), orgID, &req, getCreatedBy(c))
+	group, err := h.service.Create(c.Request.Context(), orgID, req, getCreatedBy(c))
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	actorID := getUserID(c)
-	h.auditService.LogResourceCreate(actorID, "group", group.ID, group.Name, c.ClientIP())
+	auditCreate(c, h.auditService, "group", group.ID, group.Name)
 
 	c.JSON(http.StatusCreated, group)
 }
@@ -147,20 +144,18 @@ func (h *GroupHandler) Update(c *gin.Context) {
 		return
 	}
 
-	var req models.GroupUpdateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.GroupUpdateRequest](c)
+	if !ok {
 		return
 	}
 
-	group, err := h.service.UpdateByIDAndOrg(c.Request.Context(), groupID, orgID, &req)
+	group, err := h.service.UpdateByIDAndOrg(c.Request.Context(), groupID, orgID, req)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	actorID := getUserID(c)
-	h.auditService.LogResourceUpdate(actorID, "group", group.ID, group.Name, c.ClientIP())
+	auditUpdate(c, h.auditService, "group", group.ID, group.Name)
 
 	c.JSON(http.StatusOK, group)
 }
@@ -198,9 +193,7 @@ func (h *GroupHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	// Audit log group deletion
-	actorID := getUserID(c)
-	h.auditService.LogResourceDelete(actorID, "group", groupID, group.Name, c.ClientIP())
+	auditDelete(c, h.auditService, "group", groupID, group.Name)
 
 	c.Status(http.StatusNoContent)
 }

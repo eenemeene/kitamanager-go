@@ -29,11 +29,7 @@ func (s *GovernmentFundingService) List(ctx context.Context, limit, offset int) 
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch government fundings")
 	}
 
-	responses := make([]models.GovernmentFundingResponse, len(fundings))
-	for i, f := range fundings {
-		responses[i] = f.ToResponse()
-	}
-	return responses, total, nil
+	return toResponseList(fundings, (*models.GovernmentFunding).ToResponse), total, nil
 }
 
 // GetByID returns a government funding by ID without nested details
@@ -80,10 +76,9 @@ type GovernmentFundingCreateRequest struct {
 
 // Create creates a new government funding
 func (s *GovernmentFundingService) Create(ctx context.Context, req *GovernmentFundingCreateRequest) (*models.GovernmentFundingResponse, error) {
-	req.Name = strings.TrimSpace(req.Name)
-
-	if validation.IsWhitespaceOnly(req.Name) {
-		return nil, apperror.BadRequest("name cannot be empty or whitespace only")
+	name, err := validateRequiredName(req.Name)
+	if err != nil {
+		return nil, err
 	}
 
 	if !models.IsValidState(req.State) {
@@ -91,7 +86,7 @@ func (s *GovernmentFundingService) Create(ctx context.Context, req *GovernmentFu
 	}
 
 	funding := &models.GovernmentFunding{
-		Name:  req.Name,
+		Name:  name,
 		State: req.State,
 	}
 

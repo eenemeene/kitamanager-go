@@ -107,12 +107,7 @@ func (s *PayPlanService) List(ctx context.Context, orgID uint, limit, offset int
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch pay plans")
 	}
 
-	responses := make([]models.PayPlanResponse, len(payplans))
-	for i, p := range payplans {
-		responses[i] = p.ToResponse()
-	}
-
-	return responses, total, nil
+	return toResponseList(payplans, (*models.PayPlan).ToResponse), total, nil
 }
 
 // Update updates a pay plan.

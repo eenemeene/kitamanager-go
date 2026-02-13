@@ -38,11 +38,7 @@ func (s *ChildService) List(ctx context.Context, limit, offset int) ([]models.Ch
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch children")
 	}
 
-	responses := make([]models.ChildResponse, len(children))
-	for i, c := range children {
-		responses[i] = c.ToResponse()
-	}
-	return responses, total, nil
+	return toResponseList(children, (*models.Child).ToResponse), total, nil
 }
 
 // ListByOrganization returns a paginated list of children for an organization
@@ -62,11 +58,7 @@ func (s *ChildService) ListByOrganizationAndSection(ctx context.Context, orgID u
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch children")
 	}
 
-	responses := make([]models.ChildResponse, len(children))
-	for i, c := range children {
-		responses[i] = c.ToResponse()
-	}
-	return responses, total, nil
+	return toResponseList(children, (*models.Child).ToResponse), total, nil
 }
 
 // GetByID returns a child by ID, validating it belongs to the specified organization
@@ -248,11 +240,7 @@ func (s *ChildService) ListContracts(ctx context.Context, childID, orgID uint, l
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch contracts")
 	}
 
-	responses := make([]models.ChildContractResponse, len(contracts))
-	for i, c := range contracts {
-		responses[i] = c.ToResponse()
-	}
-	return responses, total, nil
+	return toResponseList(contracts, (*models.ChildContract).ToResponse), total, nil
 }
 
 // GetCurrentContract returns the current active contract for a child, validating it belongs to the specified organization

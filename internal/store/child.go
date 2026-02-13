@@ -29,7 +29,7 @@ func (s *ChildStore) FindAll(ctx context.Context, limit, offset int) ([]models.C
 		return nil, 0, err
 	}
 
-	if err := s.db.Limit(limit).Offset(offset).Find(&children).Error; err != nil {
+	if err := DBFromContext(ctx, s.db).Limit(limit).Offset(offset).Find(&children).Error; err != nil {
 		return nil, 0, err
 	}
 
@@ -40,53 +40,53 @@ func (s *ChildStore) FindByOrganization(ctx context.Context, orgID uint, limit, 
 	return s.FindByOrganizationAndSection(ctx, orgID, nil, nil, nil, "", limit, offset)
 }
 
+// applyListFilters adds WHERE/JOIN clauses for the child list filters.
+// Returns the modified query and whether DISTINCT is needed (due to JOINs).
+func (s *ChildStore) applyListFilters(query *gorm.DB, orgID uint, sectionID *uint, activeOn *time.Time, contractAfter *time.Time, search string) (*gorm.DB, bool) {
+	needsDistinct := false
+	query = query.Where("children.organization_id = ?", orgID)
+	if sectionID != nil {
+		query = query.Where("children.section_id = ?", *sectionID)
+	}
+	if search != "" {
+		query = query.Scopes(PersonNameSearch("children", search))
+	}
+	if activeOn != nil {
+		query = query.
+			Joins("JOIN child_contracts ON child_contracts.child_id = children.id").
+			Scopes(PeriodActiveOn("child_contracts.from_date", "child_contracts.to_date", *activeOn))
+		needsDistinct = true
+	}
+	if contractAfter != nil {
+		query = query.
+			Joins("JOIN child_contracts ON child_contracts.child_id = children.id").
+			Where("child_contracts.from_date > ?", *contractAfter)
+		needsDistinct = true
+	}
+	return query, needsDistinct
+}
+
 func (s *ChildStore) FindByOrganizationAndSection(ctx context.Context, orgID uint, sectionID *uint, activeOn *time.Time, contractAfter *time.Time, search string, limit, offset int) ([]models.Child, int64, error) {
 	var children []models.Child
 	var total int64
 
-	// Count query
-	countQuery := DBFromContext(ctx, s.db).Model(&models.Child{}).Where("children.organization_id = ?", orgID)
-	if sectionID != nil {
-		countQuery = countQuery.Where("children.section_id = ?", *sectionID)
-	}
-	if search != "" {
-		countQuery = countQuery.Scopes(PersonNameSearch("children", search))
-	}
-	if activeOn != nil {
-		countQuery = countQuery.
-			Joins("JOIN child_contracts ON child_contracts.child_id = children.id").
-			Scopes(PeriodActiveOn("child_contracts.from_date", "child_contracts.to_date", *activeOn)).
-			Distinct("children.id")
-	}
-	if contractAfter != nil {
-		countQuery = countQuery.
-			Joins("JOIN child_contracts ON child_contracts.child_id = children.id").
-			Where("child_contracts.from_date > ?", *contractAfter).
-			Distinct("children.id")
+	countQuery, needsDistinct := s.applyListFilters(
+		DBFromContext(ctx, s.db).Model(&models.Child{}),
+		orgID, sectionID, activeOn, contractAfter, search,
+	)
+	if needsDistinct {
+		countQuery = countQuery.Distinct("children.id")
 	}
 	if err := countQuery.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Data query
-	dataQuery := DBFromContext(ctx, s.db).Preload("Contracts").Preload("Section").Where("children.organization_id = ?", orgID)
-	if sectionID != nil {
-		dataQuery = dataQuery.Where("children.section_id = ?", *sectionID)
-	}
-	if search != "" {
-		dataQuery = dataQuery.Scopes(PersonNameSearch("children", search))
-	}
-	if activeOn != nil {
-		dataQuery = dataQuery.
-			Joins("JOIN child_contracts ON child_contracts.child_id = children.id").
-			Scopes(PeriodActiveOn("child_contracts.from_date", "child_contracts.to_date", *activeOn)).
-			Distinct()
-	}
-	if contractAfter != nil {
-		dataQuery = dataQuery.
-			Joins("JOIN child_contracts ON child_contracts.child_id = children.id").
-			Where("child_contracts.from_date > ?", *contractAfter).
-			Distinct()
+	dataQuery, needsDistinct := s.applyListFilters(
+		DBFromContext(ctx, s.db).Preload("Contracts").Preload("Section"),
+		orgID, sectionID, activeOn, contractAfter, search,
+	)
+	if needsDistinct {
+		dataQuery = dataQuery.Distinct()
 	}
 	if err := dataQuery.Limit(limit).Offset(offset).Find(&children).Error; err != nil {
 		return nil, 0, err
@@ -103,7 +103,7 @@ func (s *ChildStore) Contracts() ContractStorer[models.ChildContract] {
 func (s *ChildStore) FindByID(ctx context.Context, id uint) (*models.Child, error) {
 	var child models.Child
 	if err := DBFromContext(ctx, s.db).Preload("Organization").Preload("Section").Preload("Contracts.Section").Preload("Contracts").First(&child, id).Error; err != nil {
-		return nil, err
+		return nil, WrapNotFound(err)
 	}
 	return &child, nil
 }
@@ -113,7 +113,7 @@ func (s *ChildStore) FindByID(ctx context.Context, id uint) (*models.Child, erro
 func (s *ChildStore) FindByIDMinimal(ctx context.Context, id uint) (*models.Child, error) {
 	var child models.Child
 	if err := DBFromContext(ctx, s.db).First(&child, id).Error; err != nil {
-		return nil, err
+		return nil, WrapNotFound(err)
 	}
 	return &child, nil
 }
@@ -179,7 +179,7 @@ func (s *ChildStore) FindByOrganizationWithActiveOn(ctx context.Context, orgID u
 	var children []models.Child
 
 	// Find children with contracts active on the given date
-	if err := s.db.
+	if err := DBFromContext(ctx, s.db).
 		Preload("Contracts", "from_date <= ? AND (to_date IS NULL OR to_date >= ?)", date, date).
 		Joins("JOIN child_contracts ON child_contracts.child_id = children.id").
 		Where("children.organization_id = ?", orgID).

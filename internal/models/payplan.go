@@ -5,7 +5,7 @@ import "time"
 // PayPlan represents a salary pay plan (e.g., TVöD-SuE) for an organization.
 // Each organization can have multiple pay plans.
 type PayPlan struct {
-	ID             uint            `gorm:"primarykey" json:"id" example:"1"`
+	ID             uint            `gorm:"primaryKey" json:"id" example:"1"`
 	OrganizationID uint            `gorm:"not null;index" json:"organization_id" example:"1"`
 	Organization   *Organization   `gorm:"foreignKey:OrganizationID" json:"-"`
 	Name           string          `gorm:"not null" json:"name" example:"TVöD-SuE"`
@@ -17,7 +17,7 @@ type PayPlan struct {
 // PayPlanPeriod represents a time period with specific pay rates.
 // WeeklyHours defines the reference hours for full-time employment.
 type PayPlanPeriod struct {
-	ID          uint           `gorm:"primarykey" json:"id" example:"1"`
+	ID          uint           `gorm:"primaryKey" json:"id" example:"1"`
 	PayPlanID   uint           `gorm:"not null;index" json:"payplan_id" example:"1"`
 	PayPlan     *PayPlan       `gorm:"foreignKey:PayPlanID" json:"-"`
 	From        time.Time      `gorm:"not null" json:"from" example:"2024-01-01"`
@@ -31,7 +31,7 @@ type PayPlanPeriod struct {
 // PayPlanEntry represents a specific pay grade and step with its monthly amount.
 // Grade is the pay grade (e.g., "S8a", "S11b") and Step is the experience level (1-6).
 type PayPlanEntry struct {
-	ID            uint           `gorm:"primarykey" json:"id" example:"1"`
+	ID            uint           `gorm:"primaryKey" json:"id" example:"1"`
 	PeriodID      uint           `gorm:"not null;index" json:"period_id" example:"1"`
 	Period        *PayPlanPeriod `gorm:"foreignKey:PeriodID" json:"-"`
 	Grade         string         `gorm:"not null" json:"grade" example:"S8a"`

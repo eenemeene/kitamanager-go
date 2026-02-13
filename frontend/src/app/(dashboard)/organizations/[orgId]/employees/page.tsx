@@ -17,6 +17,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/lib/hooks/use-toast';
+import { useCrudMutations } from '@/lib/hooks/use-crud-mutations';
+import { useCrudDialogs } from '@/lib/hooks/use-crud-dialogs';
 import { apiClient, getErrorMessage } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import type {
@@ -51,11 +53,7 @@ export default function EmployeesPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [isEmployeeDialogOpen, setIsEmployeeDialogOpen] = useState(false);
   const [isContractDialogOpen, setIsContractDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-  const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(null);
   const [contractEmployee, setContractEmployee] = useState<Employee | null>(null);
   const [endCurrentContract, setEndCurrentContract] = useState(true);
   const [page, setPage] = useState(1);
@@ -111,60 +109,6 @@ export default function EmployeesPage() {
     enabled: payPlanIds.length > 0,
   });
   const payPlanMap = payPlanDetailsQueries.data ?? new Map<number, PayPlan>();
-
-  const createMutation = useMutation({
-    mutationFn: (data: Omit<EmployeeFormData, 'organization_id'>) =>
-      apiClient.createEmployee(orgId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.employees.all(orgId) });
-      toast({ title: t('employees.createSuccess') });
-      setIsEmployeeDialogOpen(false);
-      resetEmployee();
-    },
-    onError: (error) => {
-      toast({
-        title: t('common.error'),
-        description: getErrorMessage(error, t('common.failedToCreate', { resource: 'employee' })),
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<EmployeeFormData> }) =>
-      apiClient.updateEmployee(orgId, id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.employees.all(orgId) });
-      toast({ title: t('employees.updateSuccess') });
-      setIsEmployeeDialogOpen(false);
-      setEditingEmployee(null);
-      resetEmployee();
-    },
-    onError: (error) => {
-      toast({
-        title: t('common.error'),
-        description: getErrorMessage(error, t('common.failedToSave', { resource: 'employee' })),
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiClient.deleteEmployee(orgId, id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.employees.all(orgId) });
-      toast({ title: t('employees.deleteSuccess') });
-      setIsDeleteDialogOpen(false);
-      setDeletingEmployee(null);
-    },
-    onError: (error) => {
-      toast({
-        title: t('common.error'),
-        description: getErrorMessage(error, t('common.failedToDelete', { resource: 'employee' })),
-        variant: 'destructive',
-      });
-    },
-  });
 
   const createContractMutation = useMutation({
     mutationFn: async ({
@@ -247,30 +191,30 @@ export default function EmployeesPage() {
   const activeContract = contractEmployee ? getActiveContract(contractEmployee.contracts) : null;
   const endDatePreview = contractFromDate ? getDayBefore(contractFromDate) : null;
 
-  const handleCreateEmployee = useCallback(() => {
-    setEditingEmployee(null);
-    resetEmployee({ first_name: '', last_name: '', gender: 'male', birthdate: '' });
-    setIsEmployeeDialogOpen(true);
-  }, [resetEmployee]);
+  const dialogs = useCrudDialogs<Employee, EmployeeFormData>({
+    reset: resetEmployee,
+    itemToFormData: (emp) => ({
+      first_name: emp.first_name,
+      last_name: emp.last_name,
+      gender: emp.gender,
+      birthdate: formatDateForInput(emp.birthdate),
+    }),
+    defaultValues: { first_name: '', last_name: '', gender: 'male', birthdate: '' },
+  });
 
-  const handleEditEmployee = useCallback(
-    (employee: Employee) => {
-      setEditingEmployee(employee);
-      resetEmployee({
-        first_name: employee.first_name,
-        last_name: employee.last_name,
-        gender: employee.gender,
-        birthdate: formatDateForInput(employee.birthdate),
-      });
-      setIsEmployeeDialogOpen(true);
-    },
-    [resetEmployee]
-  );
-
-  const handleDeleteEmployee = useCallback((employee: Employee) => {
-    setDeletingEmployee(employee);
-    setIsDeleteDialogOpen(true);
-  }, []);
+  const mutations = useCrudMutations<
+    Employee,
+    Omit<EmployeeFormData, 'organization_id'>,
+    Partial<EmployeeFormData>
+  >({
+    resourceName: 'employees',
+    queryKey: queryKeys.employees.all(orgId),
+    createFn: (data) => apiClient.createEmployee(orgId, data),
+    updateFn: (id, data) => apiClient.updateEmployee(orgId, id, data),
+    deleteFn: (id) => apiClient.deleteEmployee(orgId, id),
+    onSuccess: () => dialogs.closeDialog(),
+    onDeleteSuccess: () => dialogs.closeDeleteDialog(),
+  });
 
   const handleAddContract = useCallback(
     (employee: Employee) => {
@@ -321,13 +265,13 @@ export default function EmployeesPage() {
 
   const onSubmitEmployee = useCallback(
     (data: EmployeeFormData) => {
-      if (editingEmployee) {
-        updateMutation.mutate({ id: editingEmployee.id, data });
+      if (dialogs.editingItem) {
+        mutations.updateMutation.mutate({ id: dialogs.editingItem.id, data });
       } else {
-        createMutation.mutate(data);
+        mutations.createMutation.mutate(data);
       }
     },
-    [editingEmployee, updateMutation, createMutation]
+    [dialogs.editingItem, mutations.updateMutation, mutations.createMutation]
   );
 
   const contractDetailsChanged = (
@@ -396,7 +340,7 @@ export default function EmployeesPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{t('employees.title')}</h1>
         </div>
-        <Button onClick={handleCreateEmployee}>
+        <Button onClick={dialogs.handleCreate}>
           <Plus className="mr-2 h-4 w-4" />
           {t('employees.newEmployee')}
         </Button>
@@ -461,8 +405,8 @@ export default function EmployeesPage() {
               payPlanMap={payPlanMap}
               onViewHistory={handleViewContractHistory}
               onAddContract={handleAddContract}
-              onEdit={handleEditEmployee}
-              onDelete={handleDeleteEmployee}
+              onEdit={dialogs.handleEdit}
+              onDelete={dialogs.handleDelete}
             />
           )}
           {paginatedData && (
@@ -479,15 +423,15 @@ export default function EmployeesPage() {
       </Card>
 
       <PersonFormDialog
-        open={isEmployeeDialogOpen}
-        onOpenChange={setIsEmployeeDialogOpen}
-        isEditing={!!editingEmployee}
+        open={dialogs.isDialogOpen}
+        onOpenChange={dialogs.setIsDialogOpen}
+        isEditing={dialogs.isEditing}
         register={registerEmployee}
         onSubmit={handleSubmitEmployee(onSubmitEmployee)}
         errors={errorsEmployee}
         watch={watchEmployee}
         setValue={setValueEmployee}
-        isSaving={createMutation.isPending || updateMutation.isPending}
+        isSaving={mutations.isMutating}
         translationPrefix="employees"
       />
 
@@ -519,14 +463,16 @@ export default function EmployeesPage() {
       />
 
       <DeleteConfirmDialog
-        open={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
-        onConfirm={() => deletingEmployee && deleteMutation.mutate(deletingEmployee.id)}
-        isLoading={deleteMutation.isPending}
+        open={dialogs.isDeleteDialogOpen}
+        onOpenChange={dialogs.setIsDeleteDialogOpen}
+        onConfirm={() =>
+          dialogs.deletingItem && mutations.deleteMutation.mutate(dialogs.deletingItem.id)
+        }
+        isLoading={mutations.deleteMutation.isPending}
         resourceName="employees"
         description={t('employees.confirmDeleteMessage', {
-          name: deletingEmployee
-            ? `${deletingEmployee.first_name} ${deletingEmployee.last_name}`
+          name: dialogs.deletingItem
+            ? `${dialogs.deletingItem.first_name} ${dialogs.deletingItem.last_name}`
             : '',
         })}
       />

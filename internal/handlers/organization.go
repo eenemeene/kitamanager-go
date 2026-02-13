@@ -5,7 +5,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 )
@@ -99,13 +98,12 @@ func (h *OrganizationHandler) Get(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations [post]
 func (h *OrganizationHandler) Create(c *gin.Context) {
-	var req models.OrganizationCreateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.OrganizationCreateRequest](c)
+	if !ok {
 		return
 	}
 
-	organization, err := h.service.Create(c.Request.Context(), &req, getCreatedBy(c))
+	organization, err := h.service.Create(c.Request.Context(), req, getCreatedBy(c))
 	if err != nil {
 		respondError(c, err)
 		return
@@ -140,20 +138,18 @@ func (h *OrganizationHandler) Update(c *gin.Context) {
 		return
 	}
 
-	var req models.OrganizationUpdateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.OrganizationUpdateRequest](c)
+	if !ok {
 		return
 	}
 
-	organization, err := h.service.Update(c.Request.Context(), id, &req)
+	organization, err := h.service.Update(c.Request.Context(), id, req)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	actorID := getUserID(c)
-	h.auditService.LogResourceUpdate(actorID, "organization", organization.ID, organization.Name, c.ClientIP())
+	auditUpdate(c, h.auditService, "organization", organization.ID, organization.Name)
 
 	c.JSON(http.StatusOK, organization)
 }
@@ -190,9 +186,7 @@ func (h *OrganizationHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	// Audit log organization deletion
-	actorID := getUserID(c)
-	h.auditService.LogResourceDelete(actorID, "organization", id, org.Name, c.ClientIP())
+	auditDelete(c, h.auditService, "organization", id, org.Name)
 
 	c.Status(http.StatusNoContent)
 }

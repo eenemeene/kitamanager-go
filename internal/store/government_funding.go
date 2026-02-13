@@ -27,7 +27,7 @@ func (s *GovernmentFundingStore) FindAll(ctx context.Context, limit, offset int)
 		return nil, 0, err
 	}
 
-	if err := s.db.Limit(limit).Offset(offset).Find(&fundings).Error; err != nil {
+	if err := DBFromContext(ctx, s.db).Limit(limit).Offset(offset).Find(&fundings).Error; err != nil {
 		return nil, 0, err
 	}
 
@@ -37,7 +37,7 @@ func (s *GovernmentFundingStore) FindAll(ctx context.Context, limit, offset int)
 func (s *GovernmentFundingStore) FindByID(ctx context.Context, id uint) (*models.GovernmentFunding, error) {
 	var funding models.GovernmentFunding
 	if err := DBFromContext(ctx, s.db).First(&funding, id).Error; err != nil {
-		return nil, err
+		return nil, WrapNotFound(err)
 	}
 	return &funding, nil
 }
@@ -60,7 +60,7 @@ func (s *GovernmentFundingStore) FindByState(ctx context.Context, state string) 
 
 func (s *GovernmentFundingStore) FindByStateWithDetails(ctx context.Context, state string, periodsLimit int, activeOn *time.Time) (*models.GovernmentFunding, error) {
 	var funding models.GovernmentFunding
-	if err := s.db.
+	if err := DBFromContext(ctx, s.db).
 		Preload("Periods", func(db *gorm.DB) *gorm.DB {
 			q := db.Order("from_date DESC")
 			if activeOn != nil {
@@ -83,7 +83,7 @@ func (s *GovernmentFundingStore) FindByStateWithDetails(ctx context.Context, sta
 
 func (s *GovernmentFundingStore) FindByIDWithDetails(ctx context.Context, id uint, periodsLimit int, activeOn *time.Time) (*models.GovernmentFunding, error) {
 	var funding models.GovernmentFunding
-	if err := s.db.
+	if err := DBFromContext(ctx, s.db).
 		Preload("Periods", func(db *gorm.DB) *gorm.DB {
 			q := db.Order("from_date DESC")
 			if activeOn != nil {
@@ -127,7 +127,7 @@ func (s *GovernmentFundingStore) Delete(ctx context.Context, id uint) error {
 
 func (s *GovernmentFundingStore) FindPeriodByID(ctx context.Context, id uint) (*models.GovernmentFundingPeriod, error) {
 	var period models.GovernmentFundingPeriod
-	if err := s.db.
+	if err := DBFromContext(ctx, s.db).
 		Preload("Properties", func(db *gorm.DB) *gorm.DB {
 			return db.Order("key ASC, value ASC, min_age ASC NULLS LAST")
 		}).

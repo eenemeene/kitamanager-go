@@ -19,7 +19,7 @@ func NewSectionStore(db *gorm.DB) *SectionStore {
 func (s *SectionStore) FindByID(ctx context.Context, id uint) (*models.Section, error) {
 	var section models.Section
 	if err := DBFromContext(ctx, s.db).Preload("Organization").First(&section, id).Error; err != nil {
-		return nil, err
+		return nil, WrapNotFound(err)
 	}
 	return &section, nil
 }

@@ -1,6 +1,11 @@
 package service
 
-import "github.com/eenemeene/kitamanager-go/internal/apperror"
+import (
+	"strings"
+
+	"github.com/eenemeene/kitamanager-go/internal/apperror"
+	"github.com/eenemeene/kitamanager-go/internal/validation"
+)
 
 // OrgOwned is implemented by entities that belong to an organization.
 type OrgOwned interface {
@@ -28,4 +33,22 @@ func verifyContractOwnership(contract PersonOwned, personID uint) error {
 		return apperror.NotFound("contract")
 	}
 	return nil
+}
+
+// toResponseList converts a slice of items to a slice of responses using the given converter function.
+func toResponseList[T any, R any](items []T, convert func(*T) R) []R {
+	result := make([]R, len(items))
+	for i := range items {
+		result[i] = convert(&items[i])
+	}
+	return result
+}
+
+// validateRequiredName trims whitespace and validates that name is not empty.
+func validateRequiredName(name string) (string, error) {
+	name = strings.TrimSpace(name)
+	if validation.IsWhitespaceOnly(name) {
+		return "", apperror.BadRequest("name cannot be empty or whitespace only")
+	}
+	return name, nil
 }

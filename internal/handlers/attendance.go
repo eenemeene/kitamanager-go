@@ -6,7 +6,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 )
@@ -45,20 +44,19 @@ func (h *ChildAttendanceHandler) Create(c *gin.Context) {
 		return
 	}
 
-	var req models.ChildAttendanceCreateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.ChildAttendanceCreateRequest](c)
+	if !ok {
 		return
 	}
 
 	recordedBy := getUserID(c)
-	attendance, err := h.service.Create(c.Request.Context(), orgID, childID, &req, recordedBy)
+	attendance, err := h.service.Create(c.Request.Context(), orgID, childID, req, recordedBy)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	h.auditService.LogResourceCreate(recordedBy, "attendance", attendance.ID, fmt.Sprintf("child=%d date=%s", attendance.ChildID, attendance.Date), c.ClientIP())
+	auditCreate(c, h.auditService, "attendance", attendance.ID, fmt.Sprintf("child=%d date=%s", attendance.ChildID, attendance.Date))
 
 	c.JSON(http.StatusCreated, attendance)
 }
@@ -117,20 +115,18 @@ func (h *ChildAttendanceHandler) Update(c *gin.Context) {
 		return
 	}
 
-	var req models.ChildAttendanceUpdateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.ChildAttendanceUpdateRequest](c)
+	if !ok {
 		return
 	}
 
-	attendance, svcErr := h.service.Update(c.Request.Context(), attendanceID, orgID, childID, &req)
+	attendance, svcErr := h.service.Update(c.Request.Context(), attendanceID, orgID, childID, req)
 	if svcErr != nil {
 		respondError(c, svcErr)
 		return
 	}
 
-	actorID := getUserID(c)
-	h.auditService.LogResourceUpdate(actorID, "attendance", attendance.ID, fmt.Sprintf("child=%d date=%s", attendance.ChildID, attendance.Date), c.ClientIP())
+	auditUpdate(c, h.auditService, "attendance", attendance.ID, fmt.Sprintf("child=%d date=%s", attendance.ChildID, attendance.Date))
 
 	c.JSON(http.StatusOK, attendance)
 }
@@ -169,9 +165,7 @@ func (h *ChildAttendanceHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	// Audit log attendance deletion
-	actorID := getUserID(c)
-	h.auditService.LogResourceDelete(actorID, "child_attendance", attendanceID, fmt.Sprintf("child=%d date=%s", attendance.ChildID, attendance.Date), c.ClientIP())
+	auditDelete(c, h.auditService, "child_attendance", attendanceID, fmt.Sprintf("child=%d date=%s", attendance.ChildID, attendance.Date))
 
 	c.Status(http.StatusNoContent)
 }

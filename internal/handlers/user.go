@@ -6,7 +6,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 )
@@ -138,13 +137,12 @@ func (h *UserHandler) Get(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/users [post]
 func (h *UserHandler) Create(c *gin.Context) {
-	var req models.UserCreateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.UserCreateRequest](c)
+	if !ok {
 		return
 	}
 
-	user, err := h.service.Create(c.Request.Context(), &req, getCreatedBy(c))
+	user, err := h.service.Create(c.Request.Context(), req, getCreatedBy(c))
 	if err != nil {
 		respondError(c, err)
 		return
@@ -179,20 +177,18 @@ func (h *UserHandler) Update(c *gin.Context) {
 		return
 	}
 
-	var req models.UserUpdateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.UserUpdateRequest](c)
+	if !ok {
 		return
 	}
 
-	user, err := h.service.Update(c.Request.Context(), id, &req)
+	user, err := h.service.Update(c.Request.Context(), id, req)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	actorID := getUserID(c)
-	h.auditService.LogResourceUpdate(actorID, "user", user.ID, user.Email, c.ClientIP())
+	auditUpdate(c, h.auditService, "user", user.ID, user.Email)
 
 	c.JSON(http.StatusOK, user)
 }
@@ -260,9 +256,8 @@ func (h *UserHandler) AddToGroup(c *gin.Context) {
 		return
 	}
 
-	var req models.UserGroupAddRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.UserGroupAddRequest](c)
+	if !ok {
 		return
 	}
 
@@ -307,9 +302,8 @@ func (h *UserHandler) UpdateGroupRole(c *gin.Context) {
 		return
 	}
 
-	var req models.UserGroupRoleUpdateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.UserGroupRoleUpdateRequest](c)
+	if !ok {
 		return
 	}
 
@@ -427,9 +421,8 @@ func (h *UserHandler) SetSuperAdmin(c *gin.Context) {
 		return
 	}
 
-	var req models.UserSetSuperAdminRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.UserSetSuperAdminRequest](c)
+	if !ok {
 		return
 	}
 
@@ -481,9 +474,8 @@ func (h *UserHandler) AddToOrganization(c *gin.Context) {
 		return
 	}
 
-	var req models.UserOrganizationAddRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.UserOrganizationAddRequest](c)
+	if !ok {
 		return
 	}
 
@@ -531,7 +523,7 @@ func (h *UserHandler) RemoveFromOrganization(c *gin.Context) {
 		return
 	}
 
-	h.auditService.LogResourceDelete(getUserID(c), "user_organization", userID, fmt.Sprintf("user %d from org %d", userID, orgID), c.ClientIP())
+	auditDelete(c, h.auditService, "user_organization", userID, fmt.Sprintf("user %d from org %d", userID, orgID))
 
 	c.Status(http.StatusNoContent)
 }

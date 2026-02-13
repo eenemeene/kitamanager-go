@@ -42,7 +42,7 @@ func (s *OrganizationStore) FindAll(ctx context.Context, search string, limit, o
 func (s *OrganizationStore) FindByID(ctx context.Context, id uint) (*models.Organization, error) {
 	var organization models.Organization
 	if err := DBFromContext(ctx, s.db).Preload("Groups").First(&organization, id).Error; err != nil {
-		return nil, err
+		return nil, WrapNotFound(err)
 	}
 	return &organization, nil
 }

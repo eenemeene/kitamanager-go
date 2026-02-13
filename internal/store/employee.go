@@ -29,7 +29,7 @@ func (s *EmployeeStore) FindAll(ctx context.Context, limit, offset int) ([]model
 		return nil, 0, err
 	}
 
-	if err := s.db.Limit(limit).Offset(offset).Find(&employees).Error; err != nil {
+	if err := DBFromContext(ctx, s.db).Limit(limit).Offset(offset).Find(&employees).Error; err != nil {
 		return nil, 0, err
 	}
 
@@ -40,57 +40,55 @@ func (s *EmployeeStore) FindByOrganization(ctx context.Context, orgID uint, limi
 	return s.FindByOrganizationAndSection(ctx, orgID, nil, nil, "", nil, limit, offset)
 }
 
+// applyListFilters adds WHERE/JOIN clauses for the employee list filters.
+// Returns the modified query and whether DISTINCT is needed (due to JOINs).
+func (s *EmployeeStore) applyListFilters(query *gorm.DB, orgID uint, sectionID *uint, activeOn *time.Time, search string, staffCategory *string) (*gorm.DB, bool) {
+	needsDistinct := false
+	query = query.Where("employees.organization_id = ?", orgID)
+	if sectionID != nil {
+		query = query.Where("employees.section_id = ?", *sectionID)
+	}
+	if search != "" {
+		query = query.Scopes(PersonNameSearch("employees", search))
+	}
+	if staffCategory != nil {
+		query = query.
+			Joins("JOIN employee_contracts ec_cat ON ec_cat.employee_id = employees.id").
+			Where("ec_cat.staff_category = ?", *staffCategory)
+		if activeOn != nil {
+			query = query.Scopes(PeriodActiveOn("ec_cat.from_date", "ec_cat.to_date", *activeOn))
+		}
+		needsDistinct = true
+	} else if activeOn != nil {
+		query = query.
+			Joins("JOIN employee_contracts ON employee_contracts.employee_id = employees.id").
+			Scopes(PeriodActiveOn("employee_contracts.from_date", "employee_contracts.to_date", *activeOn))
+		needsDistinct = true
+	}
+	return query, needsDistinct
+}
+
 func (s *EmployeeStore) FindByOrganizationAndSection(ctx context.Context, orgID uint, sectionID *uint, activeOn *time.Time, search string, staffCategory *string, limit, offset int) ([]models.Employee, int64, error) {
 	var employees []models.Employee
 	var total int64
 
-	// Count query
-	countQuery := DBFromContext(ctx, s.db).Model(&models.Employee{}).Where("employees.organization_id = ?", orgID)
-	if sectionID != nil {
-		countQuery = countQuery.Where("employees.section_id = ?", *sectionID)
-	}
-	if search != "" {
-		countQuery = countQuery.Scopes(PersonNameSearch("employees", search))
-	}
-	if staffCategory != nil {
-		countQuery = countQuery.
-			Joins("JOIN employee_contracts ec_cat ON ec_cat.employee_id = employees.id").
-			Where("ec_cat.staff_category = ?", *staffCategory)
-		if activeOn != nil {
-			countQuery = countQuery.Scopes(PeriodActiveOn("ec_cat.from_date", "ec_cat.to_date", *activeOn))
-		}
+	countQuery, needsDistinct := s.applyListFilters(
+		DBFromContext(ctx, s.db).Model(&models.Employee{}),
+		orgID, sectionID, activeOn, search, staffCategory,
+	)
+	if needsDistinct {
 		countQuery = countQuery.Distinct("employees.id")
-	} else if activeOn != nil {
-		countQuery = countQuery.
-			Joins("JOIN employee_contracts ON employee_contracts.employee_id = employees.id").
-			Scopes(PeriodActiveOn("employee_contracts.from_date", "employee_contracts.to_date", *activeOn)).
-			Distinct("employees.id")
 	}
 	if err := countQuery.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Data query
-	dataQuery := DBFromContext(ctx, s.db).Preload("Contracts").Preload("Section").Where("employees.organization_id = ?", orgID)
-	if sectionID != nil {
-		dataQuery = dataQuery.Where("employees.section_id = ?", *sectionID)
-	}
-	if search != "" {
-		dataQuery = dataQuery.Scopes(PersonNameSearch("employees", search))
-	}
-	if staffCategory != nil {
-		dataQuery = dataQuery.
-			Joins("JOIN employee_contracts ec_cat ON ec_cat.employee_id = employees.id").
-			Where("ec_cat.staff_category = ?", *staffCategory)
-		if activeOn != nil {
-			dataQuery = dataQuery.Scopes(PeriodActiveOn("ec_cat.from_date", "ec_cat.to_date", *activeOn))
-		}
+	dataQuery, needsDistinct := s.applyListFilters(
+		DBFromContext(ctx, s.db).Preload("Contracts").Preload("Section"),
+		orgID, sectionID, activeOn, search, staffCategory,
+	)
+	if needsDistinct {
 		dataQuery = dataQuery.Distinct()
-	} else if activeOn != nil {
-		dataQuery = dataQuery.
-			Joins("JOIN employee_contracts ON employee_contracts.employee_id = employees.id").
-			Scopes(PeriodActiveOn("employee_contracts.from_date", "employee_contracts.to_date", *activeOn)).
-			Distinct()
 	}
 	if err := dataQuery.Limit(limit).Offset(offset).Find(&employees).Error; err != nil {
 		return nil, 0, err
@@ -107,7 +105,7 @@ func (s *EmployeeStore) Contracts() ContractStorer[models.EmployeeContract] {
 func (s *EmployeeStore) FindByID(ctx context.Context, id uint) (*models.Employee, error) {
 	var employee models.Employee
 	if err := DBFromContext(ctx, s.db).Preload("Organization").Preload("Section").Preload("Contracts.Section").Preload("Contracts").First(&employee, id).Error; err != nil {
-		return nil, err
+		return nil, WrapNotFound(err)
 	}
 	return &employee, nil
 }
@@ -117,7 +115,7 @@ func (s *EmployeeStore) FindByID(ctx context.Context, id uint) (*models.Employee
 func (s *EmployeeStore) FindByIDMinimal(ctx context.Context, id uint) (*models.Employee, error) {
 	var employee models.Employee
 	if err := DBFromContext(ctx, s.db).First(&employee, id).Error; err != nil {
-		return nil, err
+		return nil, WrapNotFound(err)
 	}
 	return &employee, nil
 }
@@ -180,7 +178,7 @@ func (s *EmployeeStore) DeleteContract(ctx context.Context, id uint) error {
 // active contract on `date`, with ALL their contracts preloaded (for seniority calculation).
 func (s *EmployeeStore) FindByOrganizationWithContracts(ctx context.Context, orgID uint, date time.Time) ([]models.Employee, error) {
 	var employees []models.Employee
-	err := s.db.
+	err := DBFromContext(ctx, s.db).
 		Preload("Contracts", func(db *gorm.DB) *gorm.DB {
 			return db.Order("employee_contracts.from_date ASC")
 		}).

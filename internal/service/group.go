@@ -27,11 +27,7 @@ func (s *GroupService) List(ctx context.Context, limit, offset int) ([]models.Gr
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch groups")
 	}
 
-	responses := make([]models.GroupResponse, len(groups))
-	for i, group := range groups {
-		responses[i] = group.ToResponse()
-	}
-	return responses, total, nil
+	return toResponseList(groups, (*models.Group).ToResponse), total, nil
 }
 
 // ListByOrganization returns a paginated list of groups for a specific organization
@@ -41,11 +37,7 @@ func (s *GroupService) ListByOrganization(ctx context.Context, orgID uint, searc
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch groups")
 	}
 
-	responses := make([]models.GroupResponse, len(groups))
-	for i, group := range groups {
-		responses[i] = group.ToResponse()
-	}
-	return responses, total, nil
+	return toResponseList(groups, (*models.Group).ToResponse), total, nil
 }
 
 // GetByID returns a group by ID
@@ -73,15 +65,13 @@ func (s *GroupService) GetByIDAndOrg(ctx context.Context, id, orgID uint) (*mode
 
 // Create creates a new group
 func (s *GroupService) Create(ctx context.Context, orgID uint, req *models.GroupCreateRequest, createdBy string) (*models.GroupResponse, error) {
-	// Trim and validate input
-	req.Name = strings.TrimSpace(req.Name)
-
-	if validation.IsWhitespaceOnly(req.Name) {
-		return nil, apperror.BadRequest("name cannot be empty or whitespace only")
+	name, err := validateRequiredName(req.Name)
+	if err != nil {
+		return nil, err
 	}
 
 	group := &models.Group{
-		Name:           req.Name,
+		Name:           name,
 		OrganizationID: orgID,
 		Active:         req.Active,
 		CreatedBy:      createdBy,

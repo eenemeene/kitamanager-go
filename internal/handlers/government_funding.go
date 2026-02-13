@@ -114,9 +114,8 @@ func (h *GovernmentFundingHandler) Get(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/government-fundings [post]
 func (h *GovernmentFundingHandler) Create(c *gin.Context) {
-	var req models.GovernmentFundingCreateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.GovernmentFundingCreateRequest](c)
+	if !ok {
 		return
 	}
 
@@ -129,8 +128,7 @@ func (h *GovernmentFundingHandler) Create(c *gin.Context) {
 		return
 	}
 
-	actorID := getUserID(c)
-	h.auditService.LogResourceCreate(actorID, "government_funding", funding.ID, funding.Name, c.ClientIP())
+	auditCreate(c, h.auditService, "government_funding", funding.ID, funding.Name)
 
 	c.JSON(http.StatusCreated, funding)
 }
@@ -158,9 +156,8 @@ func (h *GovernmentFundingHandler) Update(c *gin.Context) {
 		return
 	}
 
-	var req models.GovernmentFundingUpdateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.GovernmentFundingUpdateRequest](c)
+	if !ok {
 		return
 	}
 
@@ -172,8 +169,7 @@ func (h *GovernmentFundingHandler) Update(c *gin.Context) {
 		return
 	}
 
-	actorID := getUserID(c)
-	h.auditService.LogResourceUpdate(actorID, "government_funding", funding.ID, funding.Name, c.ClientIP())
+	auditUpdate(c, h.auditService, "government_funding", funding.ID, funding.Name)
 
 	c.JSON(http.StatusOK, funding)
 }
@@ -211,9 +207,7 @@ func (h *GovernmentFundingHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	// Audit log government funding deletion
-	actorID := getUserID(c)
-	h.auditService.LogResourceDelete(actorID, "government_funding", id, funding.Name, c.ClientIP())
+	auditDelete(c, h.auditService, "government_funding", id, funding.Name)
 
 	c.Status(http.StatusNoContent)
 }
@@ -243,20 +237,18 @@ func (h *GovernmentFundingHandler) CreatePeriod(c *gin.Context) {
 		return
 	}
 
-	var req models.GovernmentFundingPeriodCreateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.GovernmentFundingPeriodCreateRequest](c)
+	if !ok {
 		return
 	}
 
-	period, err := h.service.CreatePeriod(c.Request.Context(), fundingID, &req)
+	period, err := h.service.CreatePeriod(c.Request.Context(), fundingID, req)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	actorID := getUserID(c)
-	h.auditService.LogResourceCreate(actorID, "gov_funding_period", period.ID, fmt.Sprintf("funding=%d", fundingID), c.ClientIP())
+	auditCreate(c, h.auditService, "gov_funding_period", period.ID, fmt.Sprintf("funding=%d", fundingID))
 
 	c.JSON(http.StatusCreated, period)
 }
@@ -291,20 +283,18 @@ func (h *GovernmentFundingHandler) UpdatePeriod(c *gin.Context) {
 		return
 	}
 
-	var req models.GovernmentFundingPeriodUpdateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.GovernmentFundingPeriodUpdateRequest](c)
+	if !ok {
 		return
 	}
 
-	period, err := h.service.UpdatePeriod(c.Request.Context(), periodID, &req)
+	period, err := h.service.UpdatePeriod(c.Request.Context(), periodID, req)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	actorID := getUserID(c)
-	h.auditService.LogResourceUpdate(actorID, "gov_funding_period", period.ID, fmt.Sprintf("funding=%d", period.GovernmentFundingID), c.ClientIP())
+	auditUpdate(c, h.auditService, "gov_funding_period", period.ID, fmt.Sprintf("funding=%d", period.GovernmentFundingID))
 
 	c.JSON(http.StatusOK, period)
 }
@@ -342,9 +332,7 @@ func (h *GovernmentFundingHandler) DeletePeriod(c *gin.Context) {
 		return
 	}
 
-	// Audit log period deletion
-	actorID := getUserID(c)
-	h.auditService.LogResourceDelete(actorID, "government_funding_period", periodID, fmt.Sprintf("funding=%d", fundingID), c.ClientIP())
+	auditDelete(c, h.auditService, "government_funding_period", periodID, fmt.Sprintf("funding=%d", fundingID))
 
 	c.Status(http.StatusNoContent)
 }
@@ -381,20 +369,18 @@ func (h *GovernmentFundingHandler) CreateProperty(c *gin.Context) {
 		return
 	}
 
-	var req models.GovernmentFundingPropertyCreateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.GovernmentFundingPropertyCreateRequest](c)
+	if !ok {
 		return
 	}
 
-	property, err := h.service.CreateProperty(c.Request.Context(), periodID, &req)
+	property, err := h.service.CreateProperty(c.Request.Context(), periodID, req)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	actorID := getUserID(c)
-	h.auditService.LogResourceCreate(actorID, "gov_funding_property", property.ID, fmt.Sprintf("period=%d", periodID), c.ClientIP())
+	auditCreate(c, h.auditService, "gov_funding_property", property.ID, fmt.Sprintf("period=%d", periodID))
 
 	c.JSON(http.StatusCreated, property)
 }
@@ -436,20 +422,18 @@ func (h *GovernmentFundingHandler) UpdateProperty(c *gin.Context) {
 		return
 	}
 
-	var req models.GovernmentFundingPropertyUpdateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.GovernmentFundingPropertyUpdateRequest](c)
+	if !ok {
 		return
 	}
 
-	property, err := h.service.UpdateProperty(c.Request.Context(), propID, &req)
+	property, err := h.service.UpdateProperty(c.Request.Context(), propID, req)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	actorID := getUserID(c)
-	h.auditService.LogResourceUpdate(actorID, "gov_funding_property", property.ID, fmt.Sprintf("period=%d", property.PeriodID), c.ClientIP())
+	auditUpdate(c, h.auditService, "gov_funding_property", property.ID, fmt.Sprintf("period=%d", property.PeriodID))
 
 	c.JSON(http.StatusOK, property)
 }
@@ -494,9 +478,7 @@ func (h *GovernmentFundingHandler) DeleteProperty(c *gin.Context) {
 		return
 	}
 
-	// Audit log property deletion
-	actorID := getUserID(c)
-	h.auditService.LogResourceDelete(actorID, "government_funding_property", propID, fmt.Sprintf("period=%d", periodID), c.ClientIP())
+	auditDelete(c, h.auditService, "government_funding_property", propID, fmt.Sprintf("period=%d", periodID))
 
 	c.Status(http.StatusNoContent)
 }

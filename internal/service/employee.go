@@ -31,11 +31,7 @@ func (s *EmployeeService) List(ctx context.Context, limit, offset int) ([]models
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch employees")
 	}
 
-	responses := make([]models.EmployeeResponse, len(employees))
-	for i, emp := range employees {
-		responses[i] = emp.ToResponse()
-	}
-	return responses, total, nil
+	return toResponseList(employees, (*models.Employee).ToResponse), total, nil
 }
 
 // ListByOrganization returns a paginated list of employees for an organization
@@ -55,11 +51,7 @@ func (s *EmployeeService) ListByOrganizationAndSection(ctx context.Context, orgI
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch employees")
 	}
 
-	responses := make([]models.EmployeeResponse, len(employees))
-	for i, emp := range employees {
-		responses[i] = emp.ToResponse()
-	}
-	return responses, total, nil
+	return toResponseList(employees, (*models.Employee).ToResponse), total, nil
 }
 
 // GetByID returns an employee by ID, validating it belongs to the specified organization
@@ -246,11 +238,7 @@ func (s *EmployeeService) ListContracts(ctx context.Context, employeeID, orgID u
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch contracts")
 	}
 
-	responses := make([]models.EmployeeContractResponse, len(contracts))
-	for i, c := range contracts {
-		responses[i] = c.ToResponse()
-	}
-	return responses, total, nil
+	return toResponseList(contracts, (*models.EmployeeContract).ToResponse), total, nil
 }
 
 // GetCurrentContract returns the current active contract for an employee, validating it belongs to the specified organization

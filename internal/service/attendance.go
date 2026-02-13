@@ -190,11 +190,7 @@ func (s *ChildAttendanceService) ListByChild(ctx context.Context, childID, orgID
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch attendance records")
 	}
 
-	responses := make([]models.ChildAttendanceResponse, len(records))
-	for i, r := range records {
-		responses[i] = r.ToResponse()
-	}
-	return responses, total, nil
+	return toResponseList(records, (*models.ChildAttendance).ToResponse), total, nil
 }
 
 // ListByDate returns attendance records for an organization on a given date.
@@ -204,11 +200,7 @@ func (s *ChildAttendanceService) ListByDate(ctx context.Context, orgID uint, dat
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch attendance records")
 	}
 
-	responses := make([]models.ChildAttendanceResponse, len(records))
-	for i, r := range records {
-		responses[i] = r.ToResponse()
-	}
-	return responses, total, nil
+	return toResponseList(records, (*models.ChildAttendance).ToResponse), total, nil
 }
 
 // GetDailySummary returns attendance summary for a given date.

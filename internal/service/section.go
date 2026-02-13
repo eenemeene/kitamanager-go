@@ -48,11 +48,7 @@ func (s *SectionService) ListByOrganization(ctx context.Context, orgID uint, sea
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch sections")
 	}
 
-	responses := make([]models.SectionResponse, len(sections))
-	for i, section := range sections {
-		responses[i] = section.ToResponse()
-	}
-	return responses, total, nil
+	return toResponseList(sections, (*models.Section).ToResponse), total, nil
 }
 
 // GetByIDAndOrg returns a section by ID if it belongs to the specified organization
@@ -70,11 +66,9 @@ func (s *SectionService) GetByIDAndOrg(ctx context.Context, id, orgID uint) (*mo
 
 // Create creates a new section
 func (s *SectionService) Create(ctx context.Context, orgID uint, req *models.SectionCreateRequest, createdBy string) (*models.SectionResponse, error) {
-	// Trim and validate input
-	name := strings.TrimSpace(req.Name)
-
-	if validation.IsWhitespaceOnly(name) {
-		return nil, apperror.BadRequest("name cannot be empty or whitespace only")
+	name, err := validateRequiredName(req.Name)
+	if err != nil {
+		return nil, err
 	}
 
 	// Validate age range

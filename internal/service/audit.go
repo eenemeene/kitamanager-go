@@ -307,12 +307,7 @@ func (s *AuditService) GetLogs(ctx context.Context, limit, offset int) ([]models
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch audit logs")
 	}
 
-	responses := make([]models.AuditLogResponse, len(logs))
-	for i, log := range logs {
-		responses[i] = log.ToResponse()
-	}
-
-	return responses, total, nil
+	return toResponseList(logs, (*models.AuditLog).ToResponse), total, nil
 }
 
 // GetLogsByUser returns audit logs for a specific user
@@ -326,12 +321,7 @@ func (s *AuditService) GetLogsByUser(ctx context.Context, userID uint, limit, of
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch audit logs for user")
 	}
 
-	responses := make([]models.AuditLogResponse, len(logs))
-	for i, log := range logs {
-		responses[i] = log.ToResponse()
-	}
-
-	return responses, total, nil
+	return toResponseList(logs, (*models.AuditLog).ToResponse), total, nil
 }
 
 // CountRecentFailedLogins counts failed login attempts for an email in the last duration

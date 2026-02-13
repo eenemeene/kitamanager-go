@@ -56,9 +56,8 @@ func NewAuthHandler(userStore *store.UserStore, jwtSecret string, auditService *
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
-	var req models.LoginRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.LoginRequest](c)
+	if !ok {
 		return
 	}
 
@@ -163,9 +162,8 @@ func (h *AuthHandler) generateRefreshToken(userID uint) (string, error) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/refresh [post]
 func (h *AuthHandler) Refresh(c *gin.Context) {
-	var req models.RefreshRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+	req, ok := bindJSON[models.RefreshRequest](c)
+	if !ok {
 		return
 	}
 
