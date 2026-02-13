@@ -24,6 +24,18 @@ updates:
         patterns:
           - "*"
 
+  # npm (frontend)
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "deps(frontend):"
+    groups:
+      npm-dependencies:
+        patterns:
+          - "*"
+
   # Docker
   - package-ecosystem: docker
     directory: /

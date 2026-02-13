@@ -164,6 +164,7 @@ func main() {
 	// Create Gin router
 	r := gin.New()
 	r.Use(gin.Recovery())
+	r.Use(middleware.RequestID())
 	r.Use(middleware.StructuredLogger())
 	r.Use(middleware.SecurityHeaders())
 	r.Use(middleware.BodySizeLimit(middleware.MaxRequestBodySize))

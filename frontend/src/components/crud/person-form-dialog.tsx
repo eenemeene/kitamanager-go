@@ -67,16 +67,30 @@ export function PersonFormDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="first_name">{t(`${translationPrefix}.firstName`)}</Label>
-              <Input id="first_name" {...register('first_name')} />
+              <Input
+                id="first_name"
+                aria-invalid={!!errors.first_name}
+                aria-describedby={errors.first_name ? 'first-name-error' : undefined}
+                {...register('first_name')}
+              />
               {errors.first_name && (
-                <p className="text-sm text-destructive">{t('validation.firstNameRequired')}</p>
+                <p id="first-name-error" className="text-sm text-destructive">
+                  {t('validation.firstNameRequired')}
+                </p>
               )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="last_name">{t(`${translationPrefix}.lastName`)}</Label>
-              <Input id="last_name" {...register('last_name')} />
+              <Input
+                id="last_name"
+                aria-invalid={!!errors.last_name}
+                aria-describedby={errors.last_name ? 'last-name-error' : undefined}
+                {...register('last_name')}
+              />
               {errors.last_name && (
-                <p className="text-sm text-destructive">{t('validation.lastNameRequired')}</p>
+                <p id="last-name-error" className="text-sm text-destructive">
+                  {t('validation.lastNameRequired')}
+                </p>
               )}
             </div>
           </div>
@@ -87,7 +101,10 @@ export function PersonFormDialog({
               value={watch('gender')}
               onValueChange={(value: Gender) => setValue('gender', value)}
             >
-              <SelectTrigger>
+              <SelectTrigger
+                aria-invalid={!!errors.gender}
+                aria-describedby={errors.gender ? 'gender-error' : undefined}
+              >
                 <SelectValue placeholder={t('gender.selectGender')} />
               </SelectTrigger>
               <SelectContent>
@@ -97,15 +114,25 @@ export function PersonFormDialog({
               </SelectContent>
             </Select>
             {errors.gender && (
-              <p className="text-sm text-destructive">{t('validation.genderRequired')}</p>
+              <p id="gender-error" className="text-sm text-destructive">
+                {t('validation.genderRequired')}
+              </p>
             )}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="birthdate">{t(`${translationPrefix}.birthdate`)}</Label>
-            <Input id="birthdate" type="date" {...register('birthdate')} />
+            <Input
+              id="birthdate"
+              type="date"
+              aria-invalid={!!errors.birthdate}
+              aria-describedby={errors.birthdate ? 'birthdate-error' : undefined}
+              {...register('birthdate')}
+            />
             {errors.birthdate && (
-              <p className="text-sm text-destructive">{t('validation.birthdateRequired')}</p>
+              <p id="birthdate-error" className="text-sm text-destructive">
+                {t('validation.birthdateRequired')}
+              </p>
             )}
           </div>
 

@@ -85,19 +85,32 @@ export default function LoginPage() {
                 id="email"
                 type="email"
                 placeholder="name@example.com"
+                aria-invalid={!!errors.email}
+                aria-describedby={errors.email ? 'email-error' : undefined}
                 {...register('email')}
                 disabled={isLoading}
               />
               {errors.email && (
-                <p className="text-sm text-destructive">{t('validation.invalidEmail')}</p>
+                <p id="email-error" className="text-sm text-destructive">
+                  {t('validation.invalidEmail')}
+                </p>
               )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="password">{t('auth.password')}</Label>
-              <Input id="password" type="password" {...register('password')} disabled={isLoading} />
+              <Input
+                id="password"
+                type="password"
+                aria-invalid={!!errors.password}
+                aria-describedby={errors.password ? 'password-error' : undefined}
+                {...register('password')}
+                disabled={isLoading}
+              />
               {errors.password && (
-                <p className="text-sm text-destructive">{t('validation.passwordRequired')}</p>
+                <p id="password-error" className="text-sm text-destructive">
+                  {t('validation.passwordRequired')}
+                </p>
               )}
             </div>
 

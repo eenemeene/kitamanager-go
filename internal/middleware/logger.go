@@ -42,6 +42,11 @@ func StructuredLogger() gin.HandlerFunc {
 			attrs = append(attrs, "errors", c.Errors.String())
 		}
 
+		// Get request ID if available
+		if requestID, exists := c.Get(RequestIDKey); exists {
+			attrs = append(attrs, "request_id", requestID)
+		}
+
 		// Get userID if available
 		if userID, exists := c.Get("userID"); exists {
 			attrs = append(attrs, "user_id", userID)
