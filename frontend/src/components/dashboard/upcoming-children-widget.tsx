@@ -14,6 +14,7 @@ import {
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { formatDate } from '@/lib/utils/formatting';
+import { compareDates, toUTCDate } from '@/lib/utils/contracts';
 
 interface UpcomingChildrenWidgetProps {
   orgId: number;
@@ -50,8 +51,8 @@ export function UpcomingChildrenWidget({ orgId }: UpcomingChildrenWidgetProps) {
             {data.map((child) => {
               // Pick the earliest future contract (contracts are preloaded, find the one starting soonest)
               const futureContract = child.contracts
-                ?.filter((c) => c.from > new Date().toISOString().split('T')[0])
-                .sort((a, b) => a.from.localeCompare(b.from))[0];
+                ?.filter((c) => toUTCDate(c.from) > Date.now())
+                .sort((a, b) => compareDates(a.from, b.from))[0];
               return (
                 <TableRow key={child.id}>
                   <TableCell className="font-medium">

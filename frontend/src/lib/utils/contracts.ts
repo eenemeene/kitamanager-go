@@ -1,12 +1,36 @@
 /**
+ * Parse a date string to UTC start-of-day timestamp (milliseconds).
+ * Handles both "2025-01-01" and "2025-01-01T00:00:00Z" formats.
+ */
+export function toUTCDate(d: string): number {
+  const date = new Date(d);
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
+/**
+ * Get UTC start-of-day timestamp for today.
+ */
+function todayUTC(): number {
+  const now = new Date();
+  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+}
+
+/**
+ * Check if a period (from/to) is active today.
+ */
+export function isActivePeriod(period: { from: string; to?: string | null }): boolean {
+  const today = todayUTC();
+  return toUTCDate(period.from) <= today && (!period.to || toUTCDate(period.to) >= today);
+}
+
+/**
  * Get the currently active contract (from <= today, no end date or end date >= today)
  */
 export function getActiveContract<T extends { from: string; to?: string | null }>(
   contracts?: T[]
 ): T | null {
   if (!contracts || contracts.length === 0) return null;
-  const today = new Date().toISOString().split('T')[0];
-  return contracts.find((c) => c.from <= today && (!c.to || c.to >= today)) || null;
+  return contracts.find((c) => isActivePeriod(c)) || null;
 }
 
 /**
@@ -17,10 +41,9 @@ export function getCurrentContract<T extends { from: string; to?: string | null 
   contracts?: T[]
 ): T | null {
   if (!contracts || contracts.length === 0) return null;
-  const today = new Date().toISOString().split('T')[0];
   return (
-    contracts.find((c) => c.from <= today && (!c.to || c.to >= today)) ||
-    [...contracts].sort((a, b) => b.from.localeCompare(a.from))[0]
+    contracts.find((c) => isActivePeriod(c)) ||
+    [...contracts].sort((a, b) => toUTCDate(b.from) - toUTCDate(a.from))[0]
   );
 }
 
@@ -40,8 +63,23 @@ export function getContractStatus(
   contract: { from: string; to?: string | null } | null
 ): 'active' | 'upcoming' | 'ended' | null {
   if (!contract) return null;
-  const today = new Date().toISOString().split('T')[0];
-  if (contract.from > today) return 'upcoming';
-  if (contract.to && contract.to < today) return 'ended';
+  const today = todayUTC();
+  if (toUTCDate(contract.from) > today) return 'upcoming';
+  if (contract.to && toUTCDate(contract.to) < today) return 'ended';
   return 'active';
+}
+
+/**
+ * Compare two date strings for sorting (ascending).
+ * Returns negative if a < b, positive if a > b, 0 if equal.
+ */
+export function compareDates(a: string, b: string): number {
+  return toUTCDate(a) - toUTCDate(b);
+}
+
+/**
+ * Check if date a is before date b.
+ */
+export function isDateBefore(a: string, b: string): boolean {
+  return toUTCDate(a) < toUTCDate(b);
 }

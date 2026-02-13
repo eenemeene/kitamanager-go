@@ -38,6 +38,7 @@ import type {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { formatDate, formatDateForInput, formatDateForApi } from '@/lib/utils/formatting';
+import { getContractStatus, compareDates } from '@/lib/utils/contracts';
 import { EmployeeContractDialog } from '@/components/employees/employee-contract-dialog';
 import { employeeContractSchema, type EmployeeContractFormData } from '@/lib/schemas';
 
@@ -219,17 +220,10 @@ export default function EmployeeContractsPage() {
     }
   };
 
-  const getContractStatus = (contract: EmployeeContract): 'active' | 'upcoming' | 'ended' => {
-    const today = new Date().toISOString().split('T')[0];
-    if (contract.from > today) return 'upcoming';
-    if (contract.to && contract.to < today) return 'ended';
-    return 'active';
-  };
-
   const isLoading = employeeLoading || contractsLoading;
 
   const sortedContracts = contracts
-    ? [...contracts].sort((a, b) => b.from.localeCompare(a.from))
+    ? [...contracts].sort((a, b) => compareDates(b.from, a.from))
     : [];
 
   return (

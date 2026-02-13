@@ -64,6 +64,7 @@ import {
   getCurrentContract,
   getDayBefore,
   getContractStatus,
+  isDateBefore,
 } from '@/lib/utils/contracts';
 import { calculateContractEndDate } from '@/lib/utils/school-enrollment';
 import { Pagination } from '@/components/ui/pagination';
@@ -455,7 +456,7 @@ export default function ChildrenPage() {
       if (contractChild) {
         // Validate contract start date is not before birthdate
         const childBirthdate = formatDateForInput(contractChild.birthdate);
-        if (childBirthdate && data.from && data.from < childBirthdate) {
+        if (childBirthdate && data.from && isDateBefore(data.from, childBirthdate)) {
           toast({
             title: t('common.error'),
             description: t('validation.contractBeforeBirthdate'),

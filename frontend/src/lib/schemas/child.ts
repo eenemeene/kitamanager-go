@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isDateBefore } from '@/lib/utils/contracts';
 
 export const childSchema = z.object({
   first_name: z.string().min(1),
@@ -13,7 +14,7 @@ export const childContractSchema = z
     to: z.string().optional(),
     properties: z.record(z.string()).optional(),
   })
-  .refine((data) => !data.to || data.to >= data.from, {
+  .refine((data) => !data.to || !isDateBefore(data.to, data.from), {
     path: ['to'],
     message: 'End date must be after start date',
   });
@@ -29,11 +30,11 @@ export const childWithContractSchema = z
     contract_to: z.string().optional(),
     properties: z.record(z.string()).optional(),
   })
-  .refine((data) => !data.contract_to || data.contract_to >= data.contract_from, {
+  .refine((data) => !data.contract_to || !isDateBefore(data.contract_to, data.contract_from), {
     path: ['contract_to'],
     message: 'End date must be after start date',
   })
-  .refine((data) => data.contract_from >= data.birthdate, {
+  .refine((data) => !isDateBefore(data.contract_from, data.birthdate), {
     path: ['contract_from'],
     message: 'Contract start date cannot be before birthdate',
   });

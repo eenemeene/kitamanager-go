@@ -56,6 +56,7 @@ import {
   propertiesToValues,
 } from '@/lib/utils/formatting';
 import { calculateContractEndDate } from '@/lib/utils/school-enrollment';
+import { getContractStatus, compareDates } from '@/lib/utils/contracts';
 import { childContractSchema, type ChildContractFormData } from '@/lib/schemas';
 import { useUiStore } from '@/stores/ui-store';
 
@@ -223,18 +224,11 @@ export default function ChildContractsPage() {
     }
   };
 
-  const getContractStatus = (contract: ChildContract): 'active' | 'upcoming' | 'ended' => {
-    const today = new Date().toISOString().split('T')[0];
-    if (contract.from > today) return 'upcoming';
-    if (contract.to && contract.to < today) return 'ended';
-    return 'active';
-  };
-
   const isLoading = childLoading || contractsLoading;
 
   // Sort contracts by start date descending (most recent first)
   const sortedContracts = contracts
-    ? [...contracts].sort((a, b) => b.from.localeCompare(a.from))
+    ? [...contracts].sort((a, b) => compareDates(b.from, a.from))
     : [];
 
   return (

@@ -61,6 +61,7 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
 
   const pedagogicalEmployees = useMemo(() => {
     if (!allEmployees) return [];
+    // Backend already filters by active_on — every employee here has an active contract.
     return allEmployees.filter((e) => {
       const c = getActiveContract(e.contracts);
       return c && c.staff_category !== 'non_pedagogical';

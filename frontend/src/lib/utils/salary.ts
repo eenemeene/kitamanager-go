@@ -1,11 +1,11 @@
 import type { EmployeeContract, PayPlan } from '@/lib/api/types';
+import { isActivePeriod } from '@/lib/utils/contracts';
 
 export function calculateMonthlySalary(
   contract: EmployeeContract,
   payPlan: PayPlan
 ): number | null {
-  const today = new Date().toISOString().split('T')[0];
-  const period = payPlan.periods?.find((p) => p.from <= today && (!p.to || p.to >= today));
+  const period = payPlan.periods?.find((p) => isActivePeriod(p));
   if (!period) return null;
 
   const entry = period.entries?.find((e) => e.grade === contract.grade && e.step === contract.step);
