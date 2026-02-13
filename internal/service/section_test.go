@@ -474,7 +474,7 @@ func TestSectionService_DeleteByIDAndOrg_CannotDeleteWithChildren(t *testing.T) 
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
 	// Assign a child to this section
-	createTestChildInSection(t, db, "John", "Doe", org.ID, section.ID)
+	createTestChildWithContract(t, db, "John", "Doe", org.ID, section.ID)
 
 	err := svc.DeleteByIDAndOrg(ctx, section.ID, org.ID)
 	if err == nil {

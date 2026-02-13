@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -354,17 +355,26 @@ func TestSectionHandler_Delete_WithChildren(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 	section := createTestSectionWithOrg(t, db, "Section With Children", org.ID)
 
-	// Create a child in the section
+	// Create a child with a contract in the section
 	child := &models.Child{
 		Person: models.Person{
 			FirstName:      "Test",
 			LastName:       "Child",
 			OrganizationID: org.ID,
-			SectionID:      &section.ID,
 		},
 	}
 	if err := db.Create(child).Error; err != nil {
 		t.Fatalf("failed to create test child: %v", err)
+	}
+	secID := section.ID
+	if err := db.Create(&models.ChildContract{
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period:    models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+			SectionID: &secID,
+		},
+	}).Error; err != nil {
+		t.Fatalf("failed to create test child contract: %v", err)
 	}
 
 	r := setupTestRouter()
@@ -392,17 +402,31 @@ func TestSectionHandler_Delete_WithEmployees(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 	section := createTestSectionWithOrg(t, db, "Section With Employees", org.ID)
 
-	// Create an employee in the section
+	// Create an employee with a contract in the section
 	employee := &models.Employee{
 		Person: models.Person{
 			FirstName:      "Test",
 			LastName:       "Employee",
 			OrganizationID: org.ID,
-			SectionID:      &section.ID,
 		},
 	}
 	if err := db.Create(employee).Error; err != nil {
 		t.Fatalf("failed to create test employee: %v", err)
+	}
+	secID := section.ID
+	if err := db.Create(&models.EmployeeContract{
+		EmployeeID: employee.ID,
+		BaseContract: models.BaseContract{
+			Period:    models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+			SectionID: &secID,
+		},
+		StaffCategory: "qualified",
+		Grade:         "S8a",
+		Step:          1,
+		WeeklyHours:   39,
+		PayPlanID:     1,
+	}).Error; err != nil {
+		t.Fatalf("failed to create test employee contract: %v", err)
 	}
 
 	r := setupTestRouter()

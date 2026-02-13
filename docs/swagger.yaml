@@ -67,11 +67,6 @@ definitions:
       organization_id:
         example: 1
         type: integer
-      section:
-        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Section'
-      section_id:
-        example: 1
-        type: integer
       updated_at:
         type: string
     type: object
@@ -243,6 +238,9 @@ definitions:
         type: string
       properties:
         $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
+      section_id:
+        example: 2
+        type: integer
       to:
         example: "2025-12-31"
         type: string
@@ -263,9 +261,6 @@ definitions:
         example: Schmidt
         maxLength: 255
         type: string
-      section_id:
-        example: 1
-        type: integer
     required:
     - birthdate
     - first_name
@@ -323,9 +318,6 @@ definitions:
         example: Schmidt
         maxLength: 255
         type: string
-      section_id:
-        example: 1
-        type: integer
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildrenContractCountByMonthResponse:
     properties:
@@ -398,11 +390,6 @@ definitions:
       organization:
         $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Organization'
       organization_id:
-        example: 1
-        type: integer
-      section:
-        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Section'
-      section_id:
         example: 1
         type: integer
       updated_at:
@@ -547,6 +534,9 @@ definitions:
         type: integer
       properties:
         $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
+      section_id:
+        example: 2
+        type: integer
       staff_category:
         example: qualified
         type: string
@@ -580,9 +570,6 @@ definitions:
         example: Mustermann
         maxLength: 255
         type: string
-      section_id:
-        example: 1
-        type: integer
     required:
     - birthdate
     - first_name
@@ -605,9 +592,6 @@ definitions:
         example: Mustermann
         maxLength: 255
         type: string
-      section_id:
-        example: 1
-        type: integer
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse:
     properties:
@@ -2919,10 +2903,7 @@ paths:
     put:
       consumes:
       - application/json
-      description: |-
-        Update an existing child by ID.
-        When section_id changes and the child has an active contract, the system automatically creates a contract transition:
-        if the current contract started today, its section is updated in place; otherwise the current contract is closed (end date = yesterday) and a new contract is created starting today with the new section.
+      description: Update an existing child by ID.
       parameters:
       - description: Organization ID
         in: path
@@ -3295,7 +3276,7 @@ paths:
       consumes:
       - application/json
       description: |-
-        Create a new contract for a child. If section_id is not provided, it defaults to the child's current section.
+        Create a new contract for a child.
 
         **Contract Date Rules:**
         - Both `from` and `to` dates are inclusive (the contract is active on both dates)
@@ -3960,10 +3941,7 @@ paths:
     put:
       consumes:
       - application/json
-      description: |-
-        Update an existing employee by ID.
-        When section_id changes and the employee has an active contract, the system automatically creates a contract transition:
-        if the current contract started today, its section is updated in place; otherwise the current contract is closed (end date = yesterday) and a new contract is created starting today with the new section (copying all contract fields).
+      description: Update an existing employee by ID.
       parameters:
       - description: Organization ID
         in: path
@@ -4068,7 +4046,7 @@ paths:
       consumes:
       - application/json
       description: |-
-        Create a new contract for an employee. If section_id is not provided, it defaults to the employee's current section.
+        Create a new contract for an employee.
 
         **Contract Date Rules:**
         - Both `from` and `to` dates are inclusive (the contract is active on both dates)
