@@ -32,6 +32,7 @@ import { getActiveContract, getDayBefore } from '@/lib/utils/contracts';
 import { Pagination } from '@/components/ui/pagination';
 import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
 import { DeleteConfirmDialog } from '@/components/crud/delete-confirm-dialog';
+import { QueryError } from '@/components/crud/query-error';
 import { PersonFormDialog } from '@/components/crud/person-form-dialog';
 import { EmployeesTable } from '@/components/employees/employees-table';
 import { EmployeeContractDialog } from '@/components/employees/employee-contract-dialog';
@@ -62,7 +63,12 @@ export default function EmployeesPage() {
   const search = useDebouncedValue(searchInput, 300);
   const [staffCategoryFilter, setStaffCategoryFilter] = useState<string>('');
 
-  const { data: paginatedData, isLoading } = useQuery({
+  const {
+    data: paginatedData,
+    isLoading,
+    error: queryError,
+    refetch,
+  } = useQuery({
     queryKey: queryKeys.employees.list(orgId, page, search, staffCategoryFilter),
     queryFn: () =>
       apiClient.getEmployees(orgId, {
@@ -441,7 +447,9 @@ export default function EmployeesPage() {
           <CardTitle>{t('employees.title')}</CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {queryError ? (
+            <QueryError error={queryError} onRetry={() => refetch()} />
+          ) : isLoading ? (
             <div className="space-y-2">
               {[...Array(3)].map((_, i) => (
                 <Skeleton key={i} className="h-12 w-full" />

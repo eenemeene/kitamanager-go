@@ -167,7 +167,7 @@ func (i *GovernmentFundingImporter) importPropertiesFromEntry(tx *gorm.DB, perio
 
 // parseDate parses a date string in YYYY-MM-DD format.
 func parseDate(s string) (time.Time, error) {
-	return time.Parse("2006-01-02", s)
+	return time.Parse(models.DateFormat, s)
 }
 
 // euroToCents converts a EUR amount to cents.

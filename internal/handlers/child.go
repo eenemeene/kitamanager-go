@@ -72,7 +72,7 @@ func (h *ChildHandler) List(c *gin.Context) {
 	var contractAfter *time.Time
 
 	if contractAfterStr := c.Query("contract_after"); contractAfterStr != "" {
-		date, err := time.Parse("2006-01-02", contractAfterStr)
+		date, err := time.Parse(models.DateFormat, contractAfterStr)
 		if err != nil {
 			respondError(c, apperror.BadRequest("invalid contract_after date format, expected YYYY-MM-DD"))
 			return
@@ -81,7 +81,7 @@ func (h *ChildHandler) List(c *gin.Context) {
 	}
 
 	if activeOnStr := c.Query("active_on"); activeOnStr != "" {
-		date, err := time.Parse("2006-01-02", activeOnStr)
+		date, err := time.Parse(models.DateFormat, activeOnStr)
 		if err != nil {
 			respondError(c, apperror.BadRequest("invalid date format, expected YYYY-MM-DD"))
 			return

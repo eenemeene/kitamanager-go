@@ -90,7 +90,7 @@ func parseRequiredDate(c *gin.Context, param string) (time.Time, bool) {
 		respondError(c, apperror.BadRequest(param+" is required"))
 		return time.Time{}, false
 	}
-	date, err := time.Parse("2006-01-02", dateStr)
+	date, err := time.Parse(models.DateFormat, dateStr)
 	if err != nil {
 		respondError(c, apperror.BadRequest("invalid date format for "+param+", expected YYYY-MM-DD"))
 		return time.Time{}, false
@@ -106,7 +106,7 @@ func parseOptionalDate(c *gin.Context, param string) (time.Time, bool) {
 	if dateStr == "" {
 		return time.Now(), true
 	}
-	date, err := time.Parse("2006-01-02", dateStr)
+	date, err := time.Parse(models.DateFormat, dateStr)
 	if err != nil {
 		respondError(c, apperror.BadRequest("invalid date format, expected YYYY-MM-DD"))
 		return time.Time{}, false

@@ -102,7 +102,7 @@ func (s *ChildAttendanceStore) GetDailySummary(ctx context.Context, orgID uint, 
 	}
 
 	summary := &models.ChildAttendanceDailySummaryResponse{
-		Date:          date.Format("2006-01-02"),
+		Date:          date.Format(models.DateFormat),
 		TotalChildren: len(records),
 	}
 

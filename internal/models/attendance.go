@@ -76,7 +76,7 @@ func (a *ChildAttendance) ToResponse() ChildAttendanceResponse {
 		ID:             a.ID,
 		ChildID:        a.ChildID,
 		OrganizationID: a.OrganizationID,
-		Date:           a.Date.Format("2006-01-02"),
+		Date:           a.Date.Format(DateFormat),
 		CheckInTime:    a.CheckInTime,
 		CheckOutTime:   a.CheckOutTime,
 		Status:         a.Status,

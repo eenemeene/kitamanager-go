@@ -649,7 +649,7 @@ func (s *ChildService) GetAgeDistribution(ctx context.Context, orgID uint, date 
 	}
 
 	return &models.AgeDistributionResponse{
-		Date:         date.Format("2006-01-02"),
+		Date:         date.Format(models.DateFormat),
 		TotalCount:   totalCount,
 		Distribution: buckets,
 	}, nil
@@ -669,8 +669,8 @@ func (s *ChildService) GetContractCountByMonth(ctx context.Context, orgID uint, 
 
 	response := &models.ChildrenContractCountByMonthResponse{
 		Period: models.ContractCountPeriod{
-			Start: startDate.Format("2006-01-02"),
-			End:   endDate.Format("2006-01-02"),
+			Start: startDate.Format(models.DateFormat),
+			End:   endDate.Format(models.DateFormat),
 		},
 		Years: make([]models.ContractCountByMonthYear, numYears),
 	}

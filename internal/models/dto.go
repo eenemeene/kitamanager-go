@@ -1,5 +1,8 @@
 package models
 
+// DateFormat is the standard date format (ISO 8601 date) used across the application.
+const DateFormat = "2006-01-02"
+
 // ErrorResponse represents a structured error response
 type ErrorResponse struct {
 	Code    string `json:"code" example:"not_found"`

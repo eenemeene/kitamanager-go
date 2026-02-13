@@ -39,7 +39,7 @@ func ValidatePersonCreate(f *PersonCreateFields) (*PersonCreateResult, error) {
 	if !models.IsValidGender(f.Gender) {
 		return nil, apperror.BadRequest("gender must be one of: male, female, diverse")
 	}
-	birthdate, err := time.Parse("2006-01-02", f.Birthdate)
+	birthdate, err := time.Parse(models.DateFormat, f.Birthdate)
 	if err != nil {
 		return nil, apperror.BadRequest("invalid birthdate format, expected YYYY-MM-DD")
 	}
@@ -75,7 +75,7 @@ func ValidateGender(gender string) error {
 
 // ParseAndValidateBirthdate parses a YYYY-MM-DD birthdate string and validates it.
 func ParseAndValidateBirthdate(dateStr string) (time.Time, error) {
-	bd, err := time.Parse("2006-01-02", dateStr)
+	bd, err := time.Parse(models.DateFormat, dateStr)
 	if err != nil {
 		return time.Time{}, apperror.BadRequest("invalid birthdate format, expected YYYY-MM-DD")
 	}

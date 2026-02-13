@@ -48,7 +48,7 @@ func (s *ChildAttendanceService) Create(ctx context.Context, orgID, childID uint
 	if req.Status == models.ChildAttendanceStatusPresent {
 		// For present: date defaults to today, check_in_time defaults to now
 		if req.Date != "" {
-			date, err = time.Parse("2006-01-02", req.Date)
+			date, err = time.Parse(models.DateFormat, req.Date)
 			if err != nil {
 				return nil, apperror.BadRequest("invalid date format, expected YYYY-MM-DD")
 			}
@@ -65,7 +65,7 @@ func (s *ChildAttendanceService) Create(ctx context.Context, orgID, childID uint
 		if req.Date == "" {
 			return nil, apperror.BadRequest("date is required for non-present status")
 		}
-		date, err = time.Parse("2006-01-02", req.Date)
+		date, err = time.Parse(models.DateFormat, req.Date)
 		if err != nil {
 			return nil, apperror.BadRequest("invalid date format, expected YYYY-MM-DD")
 		}

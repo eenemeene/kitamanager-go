@@ -69,6 +69,7 @@ import { calculateContractEndDate } from '@/lib/utils/school-enrollment';
 import { Pagination } from '@/components/ui/pagination';
 import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
 import { DeleteConfirmDialog } from '@/components/crud/delete-confirm-dialog';
+import { QueryError } from '@/components/crud/query-error';
 import { PersonFormDialog } from '@/components/crud/person-form-dialog';
 import { useUiStore } from '@/stores/ui-store';
 import {
@@ -99,7 +100,12 @@ export default function ChildrenPage() {
   const [searchInput, setSearchInput] = useState('');
   const search = useDebouncedValue(searchInput, 300);
 
-  const { data: paginatedData, isLoading } = useQuery({
+  const {
+    data: paginatedData,
+    isLoading,
+    error: queryError,
+    refetch,
+  } = useQuery({
     queryKey: queryKeys.children.list(orgId, page, search),
     queryFn: () => apiClient.getChildren(orgId, { page, search: search || undefined }),
     enabled: !!orgId,
@@ -521,7 +527,9 @@ export default function ChildrenPage() {
           <CardTitle>{t('children.title')}</CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {queryError ? (
+            <QueryError error={queryError} onRetry={() => refetch()} />
+          ) : isLoading ? (
             <div className="space-y-2">
               {[...Array(3)].map((_, i) => (
                 <Skeleton key={i} className="h-12 w-full" />

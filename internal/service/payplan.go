@@ -152,14 +152,14 @@ func (s *PayPlanService) CreatePeriod(ctx context.Context, payplanID, orgID uint
 		return nil, err
 	}
 
-	from, err := time.Parse("2006-01-02", req.From)
+	from, err := time.Parse(models.DateFormat, req.From)
 	if err != nil {
 		return nil, apperror.BadRequest("invalid from date format")
 	}
 
 	var to *time.Time
 	if req.To != nil && *req.To != "" {
-		toDate, err := time.Parse("2006-01-02", *req.To)
+		toDate, err := time.Parse(models.DateFormat, *req.To)
 		if err != nil {
 			return nil, apperror.BadRequest("invalid to date format")
 		}
@@ -214,14 +214,14 @@ func (s *PayPlanService) UpdatePeriod(ctx context.Context, periodID, payplanID, 
 		return nil, err
 	}
 
-	from, err := time.Parse("2006-01-02", req.From)
+	from, err := time.Parse(models.DateFormat, req.From)
 	if err != nil {
 		return nil, apperror.BadRequest("invalid from date format")
 	}
 
 	var to *time.Time
 	if req.To != nil && *req.To != "" {
-		toDate, err := time.Parse("2006-01-02", *req.To)
+		toDate, err := time.Parse(models.DateFormat, *req.To)
 		if err != nil {
 			return nil, apperror.BadRequest("invalid to date format")
 		}

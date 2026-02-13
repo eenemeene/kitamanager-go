@@ -156,7 +156,7 @@ func (p *PayPlan) ToDetailResponse() PayPlanDetailResponse {
 func (p *PayPlanPeriod) ToResponse() PayPlanPeriodResponse {
 	var to *string
 	if p.To != nil {
-		toStr := p.To.Format("2006-01-02")
+		toStr := p.To.Format(DateFormat)
 		to = &toStr
 	}
 	entries := make([]PayPlanEntryResponse, len(p.Entries))
@@ -166,7 +166,7 @@ func (p *PayPlanPeriod) ToResponse() PayPlanPeriodResponse {
 	return PayPlanPeriodResponse{
 		ID:          p.ID,
 		PayPlanID:   p.PayPlanID,
-		From:        p.From.Format("2006-01-02"),
+		From:        p.From.Format(DateFormat),
 		To:          to,
 		WeeklyHours: p.WeeklyHours,
 		Entries:     entries,

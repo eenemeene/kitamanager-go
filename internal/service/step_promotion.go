@@ -150,7 +150,7 @@ func (s *StepPromotionService) GetStepPromotions(ctx context.Context, orgID uint
 			CurrentStep:      activeContract.Step,
 			EligibleStep:     eligibleStep,
 			YearsOfService:   yearsOfService,
-			ServiceStart:     serviceStart.Format("2006-01-02"),
+			ServiceStart:     serviceStart.Format(models.DateFormat),
 			Grade:            activeContract.Grade,
 			CurrentAmount:    currentAmount,
 			NewAmount:        newAmount,
@@ -165,7 +165,7 @@ func (s *StepPromotionService) GetStepPromotions(ctx context.Context, orgID uint
 	}
 
 	return &models.StepPromotionsResponse{
-		Date:                  date.Format("2006-01-02"),
+		Date:                  date.Format(models.DateFormat),
 		TotalMonthlyCostDelta: totalDelta,
 		Promotions:            promotions,
 	}, nil
