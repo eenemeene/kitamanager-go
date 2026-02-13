@@ -205,6 +205,10 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
+	// Wait for interrupt signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
 	// Start server in goroutine
 	go func() {
 		slog.Info("Server started",
@@ -213,13 +217,11 @@ func main() {
 		)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			slog.Error("Server error", "error", err)
-			os.Exit(1)
+			// Signal shutdown instead of os.Exit to allow graceful cleanup
+			quit <- syscall.SIGTERM
 		}
 	}()
 
-	// Wait for interrupt signal
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
 	slog.Info("Shutting down server...")
