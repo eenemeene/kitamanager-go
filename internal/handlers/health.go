@@ -59,28 +59,33 @@ func (h *HealthHandler) Check(c *gin.Context) {
 	})
 }
 
+// StatusResponse represents a simple status response for readiness and liveness checks.
+type StatusResponse struct {
+	Status string `json:"status" example:"ready"`
+	Error  string `json:"error,omitempty" example:""`
+}
+
 // Ready godoc
 // @Summary Readiness check
 // @Description Check if the API is ready to accept traffic
 // @Tags health
 // @Produce json
-// @Success 200 {object} map[string]string
-// @Failure 500 {object} map[string]string
-// @Failure 503 {object} map[string]string
+// @Success 200 {object} StatusResponse
+// @Failure 503 {object} StatusResponse
 // @Router /api/v1/ready [get]
 func (h *HealthHandler) Ready(c *gin.Context) {
 	// Check database connectivity
 	sqlDB, err := h.db.DB()
 	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "not ready", "error": err.Error()})
+		c.JSON(http.StatusServiceUnavailable, StatusResponse{Status: "not ready", Error: err.Error()})
 		return
 	}
 	if err := sqlDB.Ping(); err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "not ready", "error": err.Error()})
+		c.JSON(http.StatusServiceUnavailable, StatusResponse{Status: "not ready", Error: err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "ready"})
+	c.JSON(http.StatusOK, StatusResponse{Status: "ready"})
 }
 
 // Live godoc
@@ -88,8 +93,8 @@ func (h *HealthHandler) Ready(c *gin.Context) {
 // @Description Check if the API process is alive
 // @Tags health
 // @Produce json
-// @Success 200 {object} map[string]string
+// @Success 200 {object} StatusResponse
 // @Router /api/v1/live [get]
 func (h *HealthHandler) Live(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"status": "alive"})
+	c.JSON(http.StatusOK, StatusResponse{Status: "alive"})
 }

@@ -11,14 +11,6 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
-const (
-	// Connection pool settings
-	maxIdleConns    = 10
-	maxOpenConns    = 100
-	connMaxLifetime = time.Hour
-	connMaxIdleTime = 10 * time.Minute
-)
-
 func Connect(cfg *config.Config) (*gorm.DB, error) {
 	dsn := fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable connect_timeout=10",
@@ -39,10 +31,10 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get underlying DB: %w", err)
 	}
-	sqlDB.SetMaxIdleConns(maxIdleConns)
-	sqlDB.SetMaxOpenConns(maxOpenConns)
-	sqlDB.SetConnMaxLifetime(connMaxLifetime)
-	sqlDB.SetConnMaxIdleTime(connMaxIdleTime)
+	sqlDB.SetMaxIdleConns(cfg.DBMaxIdleConns)
+	sqlDB.SetMaxOpenConns(cfg.DBMaxOpenConns)
+	sqlDB.SetConnMaxLifetime(time.Duration(cfg.DBConnMaxLifeMin) * time.Minute)
+	sqlDB.SetConnMaxIdleTime(time.Duration(cfg.DBConnMaxIdleMin) * time.Minute)
 
 	if err := db.AutoMigrate(
 		&models.GovernmentFunding{},

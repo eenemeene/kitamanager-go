@@ -1854,6 +1854,15 @@ definitions:
         example: "2024-01-15T10:30:00Z"
         type: string
     type: object
+  internal_handlers.StatusResponse:
+    properties:
+      error:
+        example: ""
+        type: string
+      status:
+        example: ready
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact:
@@ -2409,9 +2418,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal_handlers.StatusResponse'
       summary: Liveness check
       tags:
       - health
@@ -5522,21 +5529,11 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal_handlers.StatusResponse'
         "503":
           description: Service Unavailable
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal_handlers.StatusResponse'
       summary: Readiness check
       tags:
       - health

@@ -27,14 +27,18 @@ FROM alpine:3.23
 
 WORKDIR /app
 
-# Install ca-certificates for HTTPS
-RUN apk --no-cache add ca-certificates
+# Install ca-certificates for HTTPS and create non-root user
+RUN apk --no-cache add ca-certificates && \
+    addgroup -S appgroup && adduser -S appuser -G appgroup
 
 # Copy binary from builder
 COPY --from=go-builder /app/main .
 
 # Copy config files
 COPY --from=go-builder /app/configs ./configs
+
+# Switch to non-root user
+USER appuser
 
 # Expose port
 EXPOSE 8080

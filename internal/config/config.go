@@ -65,6 +65,12 @@ type Config struct {
 	// Rate Limiting
 	LoginRateLimitPerMinute int // 0 = disabled, default = 5
 	APIRateLimitPerMinute   int // 0 = disabled, default = 60
+
+	// Database Connection Pool
+	DBMaxIdleConns   int // default = 10
+	DBMaxOpenConns   int // default = 100
+	DBConnMaxLifeMin int // connection max lifetime in minutes, default = 60
+	DBConnMaxIdleMin int // idle connection max lifetime in minutes, default = 10
 }
 
 // IsProduction returns true if running in production mode
@@ -205,6 +211,12 @@ func Load() (*Config, error) {
 		// Rate Limiting
 		LoginRateLimitPerMinute: getEnvInt("LOGIN_RATE_LIMIT_PER_MINUTE", 5),
 		APIRateLimitPerMinute:   getEnvInt("API_RATE_LIMIT_PER_MINUTE", 60),
+
+		// Database Connection Pool
+		DBMaxIdleConns:   getEnvInt("DB_MAX_IDLE_CONNS", 10),
+		DBMaxOpenConns:   getEnvInt("DB_MAX_OPEN_CONNS", 100),
+		DBConnMaxLifeMin: getEnvInt("DB_CONN_MAX_LIFE_MIN", 60),
+		DBConnMaxIdleMin: getEnvInt("DB_CONN_MAX_IDLE_MIN", 10),
 	}
 
 	if err := cfg.Validate(); err != nil {

@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppSidebar } from '@/components/layout/app-sidebar';
 import { AppHeader } from '@/components/layout/app-header';
+import { ErrorBoundary } from '@/components/error-boundary';
 import { useAuthStore } from '@/stores/auth-store';
 import { useUiStore } from '@/stores/ui-store';
 import { cn } from '@/lib/utils';
@@ -50,7 +51,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <main
         className={cn('pt-16 transition-all duration-300', sidebarCollapsed ? 'ml-16' : 'ml-64')}
       >
-        <div className="p-6">{children}</div>
+        <div className="p-6">
+          <ErrorBoundary>{children}</ErrorBoundary>
+        </div>
       </main>
     </div>
   );
