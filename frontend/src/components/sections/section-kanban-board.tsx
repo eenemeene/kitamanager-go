@@ -30,7 +30,9 @@ interface SectionKanbanBoardProps {
 type ActiveItem = { type: 'child'; item: Child } | { type: 'employee'; item: Employee };
 
 /** Get the section_id from the active contract, or null if none. */
-function getContractSectionId(contracts?: { from: string; to?: string | null; section_id?: number | null }[]): number | null {
+function getContractSectionId(
+  contracts?: { from: string; to?: string | null; section_id?: number | null }[]
+): number | null {
   const active = getActiveContract(contracts);
   return active?.section_id ?? null;
 }
@@ -120,8 +122,15 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
   }, [sections, defaultSection, pedagogicalEmployees]);
 
   const moveChildMutation = useMutation({
-    mutationFn: ({ childId, contractId, sectionId }: { childId: number; contractId: number; sectionId: number | null }) =>
-      apiClient.updateChildContract(orgId, childId, contractId, { section_id: sectionId }),
+    mutationFn: ({
+      childId,
+      contractId,
+      sectionId,
+    }: {
+      childId: number;
+      contractId: number;
+      sectionId: number | null;
+    }) => apiClient.updateChildContract(orgId, childId, contractId, { section_id: sectionId }),
     onMutate: async ({ childId, contractId, sectionId }) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.children.allUnpaginated(orgId) });
       const previous = queryClient.getQueryData<Child[]>(queryKeys.children.allUnpaginated(orgId));
@@ -161,7 +170,15 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
   });
 
   const moveEmployeeMutation = useMutation({
-    mutationFn: ({ employeeId, contractId, sectionId }: { employeeId: number; contractId: number; sectionId: number | null }) =>
+    mutationFn: ({
+      employeeId,
+      contractId,
+      sectionId,
+    }: {
+      employeeId: number;
+      contractId: number;
+      sectionId: number | null;
+    }) =>
       apiClient.updateEmployeeContract(orgId, employeeId, contractId, { section_id: sectionId }),
     onMutate: async ({ employeeId, contractId, sectionId }) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.employees.allUnpaginated(orgId) });
@@ -248,14 +265,22 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
         }
       }
 
-      moveChildMutation.mutate({ childId: child.id, contractId: activeContract.id, sectionId: newSectionId });
+      moveChildMutation.mutate({
+        childId: child.id,
+        contractId: activeContract.id,
+        sectionId: newSectionId,
+      });
     } else {
       const employee = currentItem.item;
       const activeContract = getActiveContract(employee.contracts);
       if (!activeContract) return; // no active contract to update
       const currentSectionId = activeContract.section_id ?? null;
       if (newSectionId === currentSectionId) return;
-      moveEmployeeMutation.mutate({ employeeId: employee.id, contractId: activeContract.id, sectionId: newSectionId });
+      moveEmployeeMutation.mutate({
+        employeeId: employee.id,
+        contractId: activeContract.id,
+        sectionId: newSectionId,
+      });
     }
   }
 

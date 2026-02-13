@@ -108,7 +108,8 @@
     "requiredHours": "Required Hours",
     "availableHours": "Available Hours",
     "filterBySection": "Filter by Section",
-    "allSections": "All Sections"
+    "allSections": "All Sections",
+    "kitaYear": "Kita Year {year}"
   },
   "months": {
     "jan": "Jan",

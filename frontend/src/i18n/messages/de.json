@@ -108,7 +108,8 @@
     "requiredHours": "Benötigte Stunden",
     "availableHours": "Verfügbare Stunden",
     "filterBySection": "Nach Bereich filtern",
-    "allSections": "Alle Bereiche"
+    "allSections": "Alle Bereiche",
+    "kitaYear": "Kitajahr {year}"
   },
   "months": {
     "jan": "Jan",
