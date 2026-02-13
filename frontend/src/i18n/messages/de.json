@@ -519,7 +519,7 @@
     "totalCost": "Gesamt-Mehrkosten: {amount}/Monat"
   },
   "sectionAgeAlerts": {
-    "title": "Kinder am Altersgrenze des Bereichs",
+    "title": "Kinder über Altersgrenze des Bereichs",
     "count": "{count, plural, one {# Kind} other {# Kinder}}",
     "child": "Kind",
     "section": "Bereich",
@@ -527,6 +527,7 @@
     "maxAge": "Max (Mo)",
     "remaining": "Verbleibend",
     "overdue": "Überfällig",
-    "monthsLeft": "{count} Mo verbl."
+    "monthsLeft": "{count} Mo verbl.",
+    "moveTo": "Verschieben nach {section}"
   }
 }

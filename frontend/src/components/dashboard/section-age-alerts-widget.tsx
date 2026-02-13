@@ -1,10 +1,12 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
+import { ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -16,24 +18,48 @@ import {
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { getActiveContract } from '@/lib/utils/contracts';
-
-const ALERT_THRESHOLD_MONTHS = 3;
+import type { Section } from '@/lib/api/types';
 
 interface AgeAlert {
   childId: number;
   childName: string;
+  contractId: number;
   sectionName: string;
   ageMonths: number;
   maxAgeMonths: number;
-  monthsRemaining: number;
+  nextSection: Section | null;
 }
 
 interface SectionAgeAlertsWidgetProps {
   orgId: number;
 }
 
+function findNextSection(
+  ageMonths: number,
+  currentSectionId: number,
+  sections: Section[]
+): Section | null {
+  // Find sections where the child's age fits within the range,
+  // excluding the current section.
+  const candidates = sections.filter((s) => {
+    if (s.id === currentSectionId) return false;
+    if (s.min_age_months == null) return false;
+    const minOk = ageMonths >= s.min_age_months;
+    const maxOk = s.max_age_months == null || ageMonths < s.max_age_months;
+    return minOk && maxOk;
+  });
+
+  if (candidates.length === 0) return null;
+
+  // Pick the one with the closest (lowest) min_age_months above or at the child's age.
+  // This gives the "next" section rather than a much older section.
+  candidates.sort((a, b) => (a.min_age_months ?? 0) - (b.min_age_months ?? 0));
+  return candidates[0];
+}
+
 export function SectionAgeAlertsWidget({ orgId }: SectionAgeAlertsWidgetProps) {
   const t = useTranslations('sectionAgeAlerts');
+  const queryClient = useQueryClient();
 
   const { data: children } = useQuery({
     queryKey: queryKeys.children.allUnpaginated(orgId),
@@ -45,6 +71,21 @@ export function SectionAgeAlertsWidget({ orgId }: SectionAgeAlertsWidgetProps) {
     queryKey: queryKeys.sections.list(orgId),
     queryFn: () => apiClient.getSections(orgId, { limit: 100 }),
     enabled: !!orgId,
+  });
+
+  const moveMutation = useMutation({
+    mutationFn: ({
+      childId,
+      contractId,
+      sectionId,
+    }: {
+      childId: number;
+      contractId: number;
+      sectionId: number;
+    }) => apiClient.updateChildContract(orgId, childId, contractId, { section_id: sectionId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.children.allUnpaginated(orgId) });
+    },
   });
 
   const alerts = useMemo<AgeAlert[]>(() => {
@@ -67,19 +108,20 @@ export function SectionAgeAlertsWidget({ orgId }: SectionAgeAlertsWidgetProps) {
       );
       const monthsRemaining = section.max_age_months - ageMonths;
 
-      if (monthsRemaining <= ALERT_THRESHOLD_MONTHS) {
+      if (monthsRemaining <= 0) {
         result.push({
           childId: child.id,
           childName: `${child.first_name} ${child.last_name}`,
+          contractId: activeContract.id,
           sectionName: section.name,
           ageMonths,
           maxAgeMonths: section.max_age_months,
-          monthsRemaining,
+          nextSection: findNextSection(ageMonths, section.id, sections),
         });
       }
     }
 
-    result.sort((a, b) => a.monthsRemaining - b.monthsRemaining);
+    result.sort((a, b) => b.ageMonths - b.maxAgeMonths - (a.ageMonths - a.maxAgeMonths));
     return result;
   }, [children, sectionsData]);
 
@@ -101,7 +143,7 @@ export function SectionAgeAlertsWidget({ orgId }: SectionAgeAlertsWidgetProps) {
               <TableHead>{t('section')}</TableHead>
               <TableHead className="text-right">{t('ageMonths')}</TableHead>
               <TableHead className="text-right">{t('maxAge')}</TableHead>
-              <TableHead className="text-right">{t('remaining')}</TableHead>
+              <TableHead></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -112,12 +154,24 @@ export function SectionAgeAlertsWidget({ orgId }: SectionAgeAlertsWidgetProps) {
                 <TableCell className="text-right">{alert.ageMonths}</TableCell>
                 <TableCell className="text-right">{alert.maxAgeMonths}</TableCell>
                 <TableCell className="text-right">
-                  {alert.monthsRemaining <= 0 ? (
-                    <Badge variant="destructive">{t('overdue')}</Badge>
+                  {alert.nextSection ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={moveMutation.isPending}
+                      onClick={() =>
+                        moveMutation.mutate({
+                          childId: alert.childId,
+                          contractId: alert.contractId,
+                          sectionId: alert.nextSection!.id,
+                        })
+                      }
+                    >
+                      <ArrowRight className="mr-1 h-3 w-3" />
+                      {t('moveTo', { section: alert.nextSection.name })}
+                    </Button>
                   ) : (
-                    <Badge variant="secondary">
-                      {t('monthsLeft', { count: alert.monthsRemaining })}
-                    </Badge>
+                    <Badge variant="destructive">{t('overdue')}</Badge>
                   )}
                 </TableCell>
               </TableRow>

@@ -519,7 +519,7 @@
     "totalCost": "Total extra: {amount}/mo"
   },
   "sectionAgeAlerts": {
-    "title": "Children Aging Out of Section",
+    "title": "Children Over Section Age Limit",
     "count": "{count, plural, one {# child} other {# children}}",
     "child": "Child",
     "section": "Section",
@@ -527,6 +527,7 @@
     "maxAge": "Max (mo)",
     "remaining": "Remaining",
     "overdue": "Overdue",
-    "monthsLeft": "{count} mo left"
+    "monthsLeft": "{count} mo left",
+    "moveTo": "Move to {section}"
   }
 }
