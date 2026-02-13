@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"testing"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -275,17 +276,26 @@ func TestSectionStore_HasChildren(t *testing.T) {
 		t.Error("expected no children initially")
 	}
 
-	// Create a child in the section
+	// Create a child with a contract in the section
 	child := &models.Child{
 		Person: models.Person{
 			FirstName:      "Test",
 			LastName:       "Child",
 			OrganizationID: org.ID,
-			SectionID:      &section.ID,
 		},
 	}
 	if err := db.Create(child).Error; err != nil {
 		t.Fatalf("failed to create test child: %v", err)
+	}
+	secID := section.ID
+	if err := db.Create(&models.ChildContract{
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period:    models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+			SectionID: &secID,
+		},
+	}).Error; err != nil {
+		t.Fatalf("failed to create test child contract: %v", err)
 	}
 
 	// Section should now have children
@@ -314,17 +324,31 @@ func TestSectionStore_HasEmployees(t *testing.T) {
 		t.Error("expected no employees initially")
 	}
 
-	// Create an employee in the section
+	// Create an employee with a contract in the section
 	employee := &models.Employee{
 		Person: models.Person{
 			FirstName:      "Test",
 			LastName:       "Employee",
 			OrganizationID: org.ID,
-			SectionID:      &section.ID,
 		},
 	}
 	if err := db.Create(employee).Error; err != nil {
 		t.Fatalf("failed to create test employee: %v", err)
+	}
+	empSecID := section.ID
+	if err := db.Create(&models.EmployeeContract{
+		EmployeeID: employee.ID,
+		BaseContract: models.BaseContract{
+			Period:    models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+			SectionID: &empSecID,
+		},
+		StaffCategory: "qualified",
+		Grade:         "S8a",
+		Step:          1,
+		WeeklyHours:   39,
+		PayPlanID:     1,
+	}).Error; err != nil {
+		t.Fatalf("failed to create test employee contract: %v", err)
 	}
 
 	// Section should now have employees

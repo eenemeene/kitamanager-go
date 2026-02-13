@@ -53,16 +53,6 @@ const mockChildren = [
     gender: 'male',
     birthdate: '2020-03-15T00:00:00Z',
     organization_id: 1,
-    section_id: 1,
-    section: {
-      id: 1,
-      name: 'Bees',
-      organization_id: 1,
-      is_default: false,
-      created_at: '2024-01-01T00:00:00Z',
-      created_by: 'admin',
-      updated_at: '2024-01-01T00:00:00Z',
-    },
     contracts: [
       {
         id: 1,

@@ -27,7 +27,6 @@ const mockChildren: Child[] = [
     birthdate: '2020-06-15',
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
-    section_id: 1,
   },
   {
     id: 2,
@@ -38,7 +37,6 @@ const mockChildren: Child[] = [
     birthdate: '2021-03-20',
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
-    section_id: 1,
   },
 ];
 

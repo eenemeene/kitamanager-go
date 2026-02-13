@@ -71,22 +71,33 @@ func createTestSection(t *testing.T, db *gorm.DB, name string, orgID uint, isDef
 	return testutil.CreateTestSection(t, db, name, orgID, isDefault)
 }
 
-// createTestChildInSection creates a child assigned to a specific section.
-func createTestChildInSection(t *testing.T, db *gorm.DB, firstName, lastName string, orgID, sectionID uint) *models.Child {
+// createTestChildWithContract creates a child with an active contract assigned to a specific section.
+func createTestChildWithContract(t *testing.T, db *gorm.DB, firstName, lastName string, orgID, sectionID uint) *models.Child {
 	t.Helper()
 
-	sid := sectionID
 	child := &models.Child{
 		Person: models.Person{
 			OrganizationID: orgID,
 			FirstName:      firstName,
 			LastName:       lastName,
 			Birthdate:      time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
-			SectionID:      &sid,
 		},
 	}
 	if err := db.Create(child).Error; err != nil {
 		t.Fatalf("failed to create test child: %v", err)
+	}
+	sid := sectionID
+	contract := &models.ChildContract{
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period: models.Period{
+				From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			},
+			SectionID: &sid,
+		},
+	}
+	if err := db.Create(contract).Error; err != nil {
+		t.Fatalf("failed to create test child contract: %v", err)
 	}
 	return child
 }

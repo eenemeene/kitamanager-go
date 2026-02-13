@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -493,10 +494,21 @@ func TestSectionService_DeleteByIDAndOrg_CannotDeleteWithEmployees(t *testing.T)
 	org := createTestOrganization(t, db, "Test Org")
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
-	// Create an employee assigned to this section
+	// Create an employee with a contract assigned to this section
 	employee := createTestEmployee(t, db, "Jane", "Smith", org.ID)
-	employee.SectionID = &section.ID
-	db.Save(employee)
+	secID := section.ID
+	db.Create(&models.EmployeeContract{
+		EmployeeID: employee.ID,
+		BaseContract: models.BaseContract{
+			Period:    models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+			SectionID: &secID,
+		},
+		StaffCategory: "qualified",
+		Grade:         "S8a",
+		Step:          1,
+		WeeklyHours:   39,
+		PayPlanID:     1,
+	})
 
 	err := svc.DeleteByIDAndOrg(ctx, section.ID, org.ID)
 	if err == nil {

@@ -49,6 +49,7 @@ type EmployeeContractCreateRequest struct {
 type EmployeeContractUpdateRequest struct {
 	From          *time.Time         `json:"from" example:"2025-01-01"`
 	To            *time.Time         `json:"to" example:"2025-12-31"`
+	SectionID     *uint              `json:"section_id,omitempty" example:"2"`
 	StaffCategory *string            `json:"staff_category" binding:"omitempty" example:"qualified"`
 	Grade         *string            `json:"grade" binding:"omitempty,max=20" example:"S8a"`
 	Step          *int               `json:"step" binding:"omitempty,gte=0,lte=10" example:"3"`
@@ -64,7 +65,6 @@ type EmployeeCreateRequest struct {
 	LastName  string `json:"last_name" binding:"required,max=255" example:"Mustermann"`
 	Gender    string `json:"gender" binding:"required" example:"male"`
 	Birthdate string `json:"birthdate" binding:"required" example:"1990-05-15"`
-	SectionID *uint  `json:"section_id,omitempty" example:"1"`
 }
 
 // EmployeeUpdateRequest represents the request body for updating an employee.
@@ -73,15 +73,12 @@ type EmployeeUpdateRequest struct {
 	LastName  *string `json:"last_name" binding:"omitempty,max=255" example:"Mustermann"`
 	Gender    *string `json:"gender" binding:"omitempty" example:"male"`
 	Birthdate *string `json:"birthdate" example:"1990-05-15"`
-	SectionID *uint   `json:"section_id,omitempty" example:"1"`
 }
 
 // EmployeeResponse represents the employee response
 type EmployeeResponse struct {
 	ID             uint                       `json:"id" example:"1"`
 	OrganizationID uint                       `json:"organization_id" example:"1"`
-	SectionID      *uint                      `json:"section_id,omitempty" example:"1"`
-	Section        *SectionResponse           `json:"section,omitempty"`
 	FirstName      string                     `json:"first_name" example:"Max"`
 	LastName       string                     `json:"last_name" example:"Mustermann"`
 	Gender         string                     `json:"gender" example:"male"`
@@ -100,18 +97,12 @@ func (e *Employee) ToResponse() EmployeeResponse {
 	resp := EmployeeResponse{
 		ID:             e.ID,
 		OrganizationID: e.OrganizationID,
-		SectionID:      e.SectionID,
 		FirstName:      e.FirstName,
 		LastName:       e.LastName,
 		Gender:         e.Gender,
 		Birthdate:      e.Birthdate,
 		CreatedAt:      e.CreatedAt,
 		UpdatedAt:      e.UpdatedAt,
-	}
-
-	if e.Section != nil {
-		sectionResp := e.Section.ToResponse()
-		resp.Section = &sectionResp
 	}
 
 	if len(e.Contracts) > 0 {

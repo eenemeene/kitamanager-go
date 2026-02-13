@@ -88,7 +88,6 @@ func (s *ChildService) Create(ctx context.Context, orgID uint, req *models.Child
 	child := &models.Child{
 		Person: models.Person{
 			OrganizationID: orgID,
-			SectionID:      req.SectionID,
 			FirstName:      person.FirstName,
 			LastName:       person.LastName,
 			Gender:         person.Gender,
@@ -142,31 +141,11 @@ func (s *ChildService) Update(ctx context.Context, id, orgID uint, req *models.C
 		child.Birthdate = bd
 	}
 
-	sectionChanged := req.SectionID != nil && !sameSectionID(req.SectionID, child.SectionID)
-
-	if req.SectionID != nil {
-		child.SectionID = req.SectionID
-		// Clear preloaded association so GORM Save doesn't override the foreign key
-		child.Section = nil
+	if err := s.store.Update(ctx, child); err != nil {
+		return nil, apperror.InternalWrap(err, "failed to update child")
 	}
 
-	if sectionChanged {
-		// Wrap child update + contract transition in a single transaction
-		if err := s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
-			if err := s.store.Update(txCtx, child); err != nil {
-				return apperror.InternalWrap(err, "failed to update child")
-			}
-			return s.handleChildSectionTransfer(txCtx, id, req.SectionID)
-		}); err != nil {
-			return nil, err
-		}
-	} else {
-		if err := s.store.Update(ctx, child); err != nil {
-			return nil, apperror.InternalWrap(err, "failed to update child")
-		}
-	}
-
-	// Reload to get fresh associations (e.g., new Section after section_id change)
+	// Reload to get fresh associations
 	child, err = s.store.FindByID(ctx, id)
 	if err != nil {
 		return nil, apperror.InternalWrap(err, "failed to reload child after update")
@@ -174,32 +153,6 @@ func (s *ChildService) Update(ctx context.Context, id, orgID uint, req *models.C
 
 	resp := child.ToResponse()
 	return &resp, nil
-}
-
-// handleChildSectionTransfer creates a contract transition when a child moves between sections.
-func (s *ChildService) handleChildSectionTransfer(ctx context.Context, childID uint, newSectionID *uint) error {
-	return handleSectionTransfer(
-		ctx,
-		s.store.Contracts(),
-		s.store.UpdateContract,
-		s.store.CreateContract,
-		func(c *models.ChildContract) *models.BaseContract { return &c.BaseContract },
-		childID,
-		newSectionID,
-		func(old *models.ChildContract, today time.Time) *models.ChildContract {
-			return &models.ChildContract{
-				ChildID: childID,
-				BaseContract: models.BaseContract{
-					Period: models.Period{
-						From: today,
-						To:   nil,
-					},
-					SectionID:  newSectionID,
-					Properties: old.Properties,
-				},
-			}
-		},
-	)
 }
 
 // Delete deletes a child and its contracts, validating it belongs to the specified organization.
@@ -312,12 +265,6 @@ func (s *ChildService) CreateContract(ctx context.Context, childID, orgID uint, 
 		return nil, apperror.BadRequest("contract end date cannot be before child's birthdate")
 	}
 
-	// Auto-set section from child when not specified in request
-	sectionID := req.SectionID
-	if sectionID == nil {
-		sectionID = child.SectionID
-	}
-
 	contract := &models.ChildContract{
 		ChildID: childID,
 		BaseContract: models.BaseContract{
@@ -325,7 +272,7 @@ func (s *ChildService) CreateContract(ctx context.Context, childID, orgID uint, 
 				From: req.From,
 				To:   req.To,
 			},
-			SectionID:  sectionID,
+			SectionID:  req.SectionID,
 			Properties: req.Properties,
 		},
 	}
@@ -373,6 +320,10 @@ func (s *ChildService) UpdateContract(ctx context.Context, contractID, childID, 
 	}
 	if req.To != nil {
 		contract.To = req.To
+	}
+	if req.SectionID != nil {
+		contract.SectionID = req.SectionID
+		contract.Section = nil // clear preloaded association
 	}
 	// Properties can be replaced entirely
 	if req.Properties != nil {

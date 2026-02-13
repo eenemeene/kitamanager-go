@@ -45,23 +45,25 @@ func (s *ChildStore) FindByOrganization(ctx context.Context, orgID uint, limit, 
 func (s *ChildStore) applyListFilters(query *gorm.DB, orgID uint, sectionID *uint, activeOn *time.Time, contractAfter *time.Time, search string) (*gorm.DB, bool) {
 	needsDistinct := false
 	query = query.Where("children.organization_id = ?", orgID)
-	if sectionID != nil {
-		query = query.Where("children.section_id = ?", *sectionID)
-	}
 	if search != "" {
 		query = query.Scopes(PersonNameSearch("children", search))
 	}
-	if activeOn != nil {
-		query = query.
-			Joins("JOIN child_contracts ON child_contracts.child_id = children.id").
-			Scopes(PeriodActiveOn("child_contracts.from_date", "child_contracts.to_date", *activeOn))
+
+	// Section filtering is on contracts, so we need a contract JOIN when section_id is provided
+	needsContractJoin := sectionID != nil || activeOn != nil || contractAfter != nil
+	if needsContractJoin {
+		query = query.Joins("JOIN child_contracts ON child_contracts.child_id = children.id")
 		needsDistinct = true
-	}
-	if contractAfter != nil {
-		query = query.
-			Joins("JOIN child_contracts ON child_contracts.child_id = children.id").
-			Where("child_contracts.from_date > ?", *contractAfter)
-		needsDistinct = true
+
+		if sectionID != nil {
+			query = query.Where("child_contracts.section_id = ?", *sectionID)
+		}
+		if activeOn != nil {
+			query = query.Scopes(PeriodActiveOn("child_contracts.from_date", "child_contracts.to_date", *activeOn))
+		}
+		if contractAfter != nil {
+			query = query.Where("child_contracts.from_date > ?", *contractAfter)
+		}
 	}
 	return query, needsDistinct
 }
@@ -82,7 +84,7 @@ func (s *ChildStore) FindByOrganizationAndSection(ctx context.Context, orgID uin
 	}
 
 	dataQuery, needsDistinct := s.applyListFilters(
-		DBFromContext(ctx, s.db).Preload("Contracts").Preload("Section"),
+		DBFromContext(ctx, s.db).Preload("Contracts").Preload("Contracts.Section"),
 		orgID, sectionID, activeOn, contractAfter, search,
 	)
 	if needsDistinct {
@@ -102,7 +104,7 @@ func (s *ChildStore) Contracts() ContractStorer[models.ChildContract] {
 
 func (s *ChildStore) FindByID(ctx context.Context, id uint) (*models.Child, error) {
 	var child models.Child
-	if err := DBFromContext(ctx, s.db).Preload("Organization").Preload("Section").Preload("Contracts.Section").Preload("Contracts").First(&child, id).Error; err != nil {
+	if err := DBFromContext(ctx, s.db).Preload("Organization").Preload("Contracts.Section").Preload("Contracts").First(&child, id).Error; err != nil {
 		return nil, WrapNotFound(err)
 	}
 	return &child, nil
