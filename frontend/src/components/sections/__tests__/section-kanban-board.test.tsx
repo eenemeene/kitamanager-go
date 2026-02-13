@@ -104,13 +104,13 @@ describe('SectionKanbanBoard', () => {
         birthdate: '2020-06-15',
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
-        section_id: 1,
         contracts: [
           {
             id: 1,
             child_id: 1,
             from: '2024-01-01T00:00:00Z',
             to: null,
+            section_id: 1,
             created_at: '2024-01-01T00:00:00Z',
             updated_at: '2024-01-01T00:00:00Z',
           },
@@ -125,7 +125,6 @@ describe('SectionKanbanBoard', () => {
         birthdate: '2021-03-20',
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
-        section_id: null,
         contracts: [
           {
             id: 2,
@@ -176,13 +175,13 @@ describe('SectionKanbanBoard', () => {
         birthdate: '2020-06-15',
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
-        section_id: 1,
         contracts: [
           {
             id: 1,
             child_id: 1,
             from: '2024-01-01T00:00:00Z',
             to: null,
+            section_id: 1,
             created_at: '2024-01-01T00:00:00Z',
             updated_at: '2024-01-01T00:00:00Z',
           },
@@ -197,7 +196,6 @@ describe('SectionKanbanBoard', () => {
         birthdate: '2021-03-20',
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
-        section_id: null,
         contracts: [
           {
             id: 2,

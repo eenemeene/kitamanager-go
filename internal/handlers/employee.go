@@ -163,8 +163,6 @@ func (h *EmployeeHandler) Create(c *gin.Context) {
 // Update godoc
 // @Summary Update an employee
 // @Description Update an existing employee by ID.
-// @Description When section_id changes and the employee has an active contract, the system automatically creates a contract transition:
-// @Description if the current contract started today, its section is updated in place; otherwise the current contract is closed (end date = yesterday) and a new contract is created starting today with the new section (copying all contract fields).
 // @Tags employees
 // @Accept json
 // @Produce json
@@ -280,7 +278,7 @@ func (h *EmployeeHandler) GetCurrentContract(c *gin.Context) {
 
 // CreateContract godoc
 // @Summary Create employee contract
-// @Description Create a new contract for an employee. If section_id is not provided, it defaults to the employee's current section.
+// @Description Create a new contract for an employee.
 // @Description
 // @Description **Contract Date Rules:**
 // @Description - Both `from` and `to` dates are inclusive (the contract is active on both dates)

@@ -58,7 +58,7 @@ export function UpcomingChildrenWidget({ orgId }: UpcomingChildrenWidgetProps) {
                   <TableCell className="font-medium">
                     {child.first_name} {child.last_name}
                   </TableCell>
-                  <TableCell>{child.section?.name ?? '-'}</TableCell>
+                  <TableCell>{futureContract?.section_name ?? '-'}</TableCell>
                   <TableCell>{futureContract ? formatDate(futureContract.from) : '-'}</TableCell>
                 </TableRow>
               );

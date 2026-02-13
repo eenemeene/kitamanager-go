@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/table';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
+import { getActiveContract } from '@/lib/utils/contracts';
 
 const ALERT_THRESHOLD_MONTHS = 3;
 
@@ -55,8 +56,10 @@ export function SectionAgeAlertsWidget({ orgId }: SectionAgeAlertsWidgetProps) {
     const result: AgeAlert[] = [];
 
     for (const child of children) {
-      if (!child.section_id || !child.birthdate) continue;
-      const section = sectionMap.get(child.section_id);
+      if (!child.birthdate) continue;
+      const activeContract = getActiveContract(child.contracts);
+      if (!activeContract?.section_id) continue;
+      const section = sectionMap.get(activeContract.section_id);
       if (!section || section.max_age_months == null) continue;
 
       const ageMonths = Math.floor(

@@ -45,24 +45,31 @@ func (s *EmployeeStore) FindByOrganization(ctx context.Context, orgID uint, limi
 func (s *EmployeeStore) applyListFilters(query *gorm.DB, orgID uint, sectionID *uint, activeOn *time.Time, search string, staffCategory *string) (*gorm.DB, bool) {
 	needsDistinct := false
 	query = query.Where("employees.organization_id = ?", orgID)
-	if sectionID != nil {
-		query = query.Where("employees.section_id = ?", *sectionID)
-	}
 	if search != "" {
 		query = query.Scopes(PersonNameSearch("employees", search))
 	}
+
+	// Section filtering is on contracts, so section_id requires a contract JOIN
 	if staffCategory != nil {
 		query = query.
 			Joins("JOIN employee_contracts ec_cat ON ec_cat.employee_id = employees.id").
 			Where("ec_cat.staff_category = ?", *staffCategory)
+		if sectionID != nil {
+			query = query.Where("ec_cat.section_id = ?", *sectionID)
+		}
 		if activeOn != nil {
 			query = query.Scopes(PeriodActiveOn("ec_cat.from_date", "ec_cat.to_date", *activeOn))
 		}
 		needsDistinct = true
-	} else if activeOn != nil {
+	} else if sectionID != nil || activeOn != nil {
 		query = query.
-			Joins("JOIN employee_contracts ON employee_contracts.employee_id = employees.id").
-			Scopes(PeriodActiveOn("employee_contracts.from_date", "employee_contracts.to_date", *activeOn))
+			Joins("JOIN employee_contracts ON employee_contracts.employee_id = employees.id")
+		if sectionID != nil {
+			query = query.Where("employee_contracts.section_id = ?", *sectionID)
+		}
+		if activeOn != nil {
+			query = query.Scopes(PeriodActiveOn("employee_contracts.from_date", "employee_contracts.to_date", *activeOn))
+		}
 		needsDistinct = true
 	}
 	return query, needsDistinct
@@ -84,7 +91,7 @@ func (s *EmployeeStore) FindByOrganizationAndSection(ctx context.Context, orgID 
 	}
 
 	dataQuery, needsDistinct := s.applyListFilters(
-		DBFromContext(ctx, s.db).Preload("Contracts").Preload("Section"),
+		DBFromContext(ctx, s.db).Preload("Contracts").Preload("Contracts.Section"),
 		orgID, sectionID, activeOn, search, staffCategory,
 	)
 	if needsDistinct {
@@ -104,7 +111,7 @@ func (s *EmployeeStore) Contracts() ContractStorer[models.EmployeeContract] {
 
 func (s *EmployeeStore) FindByID(ctx context.Context, id uint) (*models.Employee, error) {
 	var employee models.Employee
-	if err := DBFromContext(ctx, s.db).Preload("Organization").Preload("Section").Preload("Contracts.Section").Preload("Contracts").First(&employee, id).Error; err != nil {
+	if err := DBFromContext(ctx, s.db).Preload("Organization").Preload("Contracts.Section").Preload("Contracts").First(&employee, id).Error; err != nil {
 		return nil, WrapNotFound(err)
 	}
 	return &employee, nil

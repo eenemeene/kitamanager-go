@@ -1834,7 +1834,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update an existing child by ID.\nWhen section_id changes and the child has an active contract, the system automatically creates a contract transition:\nif the current contract started today, its section is updated in place; otherwise the current contract is closed (end date = yesterday) and a new contract is created starting today with the new section.",
+                "description": "Update an existing child by ID.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2460,7 +2460,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create a new contract for a child. If section_id is not provided, it defaults to the child's current section.\n\n**Contract Date Rules:**\n- Both ` + "`" + `from` + "`" + ` and ` + "`" + `to` + "`" + ` dates are inclusive (the contract is active on both dates)\n- Same-day contracts are allowed (` + "`" + `from` + "`" + ` == ` + "`" + `to` + "`" + `)\n- Contracts must not overlap with existing contracts\n- \"Touching\" contracts (where contract A ends on the same day contract B starts) are considered overlapping\n- To transition between contracts, the new contract must start the day AFTER the previous one ends\n\n**Example:** If contract A ends on 2025-01-31, contract B must start on 2025-02-01 or later.",
+                "description": "Create a new contract for a child.\n\n**Contract Date Rules:**\n- Both ` + "`" + `from` + "`" + ` and ` + "`" + `to` + "`" + ` dates are inclusive (the contract is active on both dates)\n- Same-day contracts are allowed (` + "`" + `from` + "`" + ` == ` + "`" + `to` + "`" + `)\n- Contracts must not overlap with existing contracts\n- \"Touching\" contracts (where contract A ends on the same day contract B starts) are considered overlapping\n- To transition between contracts, the new contract must start the day AFTER the previous one ends\n\n**Example:** If contract A ends on 2025-01-31, contract B must start on 2025-02-01 or later.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3121,7 +3121,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update an existing employee by ID.\nWhen section_id changes and the employee has an active contract, the system automatically creates a contract transition:\nif the current contract started today, its section is updated in place; otherwise the current contract is closed (end date = yesterday) and a new contract is created starting today with the new section (copying all contract fields).",
+                "description": "Update an existing employee by ID.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3342,7 +3342,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create a new contract for an employee. If section_id is not provided, it defaults to the employee's current section.\n\n**Contract Date Rules:**\n- Both ` + "`" + `from` + "`" + ` and ` + "`" + `to` + "`" + ` dates are inclusive (the contract is active on both dates)\n- Same-day contracts are allowed (` + "`" + `from` + "`" + ` == ` + "`" + `to` + "`" + `)\n- Contracts must not overlap with existing contracts\n- \"Touching\" contracts (where contract A ends on the same day contract B starts) are considered overlapping\n- To transition between contracts, the new contract must start the day AFTER the previous one ends\n\n**Example:** If contract A ends on 2025-01-31, contract B must start on 2025-02-01 or later.",
+                "description": "Create a new contract for an employee.\n\n**Contract Date Rules:**\n- Both ` + "`" + `from` + "`" + ` and ` + "`" + `to` + "`" + ` dates are inclusive (the contract is active on both dates)\n- Same-day contracts are allowed (` + "`" + `from` + "`" + ` == ` + "`" + `to` + "`" + `)\n- Contracts must not overlap with existing contracts\n- \"Touching\" contracts (where contract A ends on the same day contract B starts) are considered overlapping\n- To transition between contracts, the new contract must start the day AFTER the previous one ends\n\n**Example:** If contract A ends on 2025-01-31, contract B must start on 2025-02-01 or later.",
                 "consumes": [
                     "application/json"
                 ],
@@ -6585,13 +6585,6 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 1
                 },
-                "section": {
-                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Section"
-                },
-                "section_id": {
-                    "type": "integer",
-                    "example": 1
-                },
                 "updated_at": {
                     "type": "string"
                 }
@@ -6832,6 +6825,10 @@ const docTemplate = `{
                 "properties": {
                     "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties"
                 },
+                "section_id": {
+                    "type": "integer",
+                    "example": 2
+                },
                 "to": {
                     "type": "string",
                     "example": "2025-12-31"
@@ -6864,10 +6861,6 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255,
                     "example": "Schmidt"
-                },
-                "section_id": {
-                    "type": "integer",
-                    "example": 1
                 }
             }
         },
@@ -6941,10 +6934,6 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255,
                     "example": "Schmidt"
-                },
-                "section_id": {
-                    "type": "integer",
-                    "example": 1
                 }
             }
         },
@@ -7050,13 +7039,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Organization"
                 },
                 "organization_id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "section": {
-                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Section"
-                },
-                "section_id": {
                     "type": "integer",
                     "example": 1
                 },
@@ -7253,6 +7235,10 @@ const docTemplate = `{
                 "properties": {
                     "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties"
                 },
+                "section_id": {
+                    "type": "integer",
+                    "example": 2
+                },
                 "staff_category": {
                     "type": "string",
                     "example": "qualified"
@@ -7301,10 +7287,6 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255,
                     "example": "Mustermann"
-                },
-                "section_id": {
-                    "type": "integer",
-                    "example": 1
                 }
             }
         },
@@ -7328,10 +7310,6 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255,
                     "example": "Mustermann"
-                },
-                "section_id": {
-                    "type": "integer",
-                    "example": 1
                 }
             }
         },

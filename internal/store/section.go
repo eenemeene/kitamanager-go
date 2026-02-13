@@ -87,7 +87,7 @@ func (s *SectionStore) Delete(ctx context.Context, id uint) error {
 
 func (s *SectionStore) HasChildren(ctx context.Context, id uint) (bool, error) {
 	var count int64
-	if err := DBFromContext(ctx, s.db).Model(&models.Child{}).Where("section_id = ?", id).Count(&count).Error; err != nil {
+	if err := DBFromContext(ctx, s.db).Model(&models.ChildContract{}).Where("section_id = ?", id).Count(&count).Error; err != nil {
 		return false, err
 	}
 	return count > 0, nil
@@ -95,7 +95,7 @@ func (s *SectionStore) HasChildren(ctx context.Context, id uint) (bool, error) {
 
 func (s *SectionStore) HasEmployees(ctx context.Context, id uint) (bool, error) {
 	var count int64
-	if err := DBFromContext(ctx, s.db).Model(&models.Employee{}).Where("section_id = ?", id).Count(&count).Error; err != nil {
+	if err := DBFromContext(ctx, s.db).Model(&models.EmployeeContract{}).Where("section_id = ?", id).Count(&count).Error; err != nil {
 		return false, err
 	}
 	return count > 0, nil

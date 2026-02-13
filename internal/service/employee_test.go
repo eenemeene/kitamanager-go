@@ -248,54 +248,6 @@ func TestEmployeeService_Update(t *testing.T) {
 	}
 }
 
-// REGRESSION TEST: Updating section_id must persist when employee has a preloaded section association.
-// Previously, GORM's Save() would override section_id from the preloaded Section association,
-// causing the update to silently fail.
-func TestEmployeeService_Update_SectionID(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createEmployeeService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	section1 := createTestSection(t, db, "Section A", org.ID, false)
-	section2 := createTestSection(t, db, "Section B", org.ID, false)
-
-	// Create employee in section1
-	sid1 := section1.ID
-	employee := &models.Employee{
-		Person: models.Person{
-			OrganizationID: org.ID,
-			FirstName:      "Maria",
-			LastName:       "Weber",
-			Birthdate:      time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC),
-			SectionID:      &sid1,
-		},
-	}
-	if err := db.Create(employee).Error; err != nil {
-		t.Fatalf("failed to create test employee: %v", err)
-	}
-
-	// Update section_id to section2
-	newSectionID := section2.ID
-	updated, err := svc.Update(ctx, employee.ID, org.ID, &models.EmployeeUpdateRequest{SectionID: &newSectionID})
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	if updated.SectionID == nil || *updated.SectionID != section2.ID {
-		t.Errorf("response SectionID = %v, want %d", updated.SectionID, section2.ID)
-	}
-
-	// Verify it persisted
-	refetched, err := svc.GetByID(ctx, employee.ID, org.ID)
-	if err != nil {
-		t.Fatalf("expected no error on re-fetch, got %v", err)
-	}
-	if refetched.SectionID == nil || *refetched.SectionID != section2.ID {
-		t.Errorf("persisted SectionID = %v, want %d", refetched.SectionID, section2.ID)
-	}
-}
-
 func TestEmployeeService_Update_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createEmployeeService(db)

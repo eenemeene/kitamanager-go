@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"strings"
-	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -83,7 +82,6 @@ func (s *EmployeeService) Create(ctx context.Context, orgID uint, req *models.Em
 	employee := &models.Employee{
 		Person: models.Person{
 			OrganizationID: orgID,
-			SectionID:      req.SectionID,
 			FirstName:      person.FirstName,
 			LastName:       person.LastName,
 			Gender:         person.Gender,
@@ -137,31 +135,11 @@ func (s *EmployeeService) Update(ctx context.Context, id, orgID uint, req *model
 		employee.Birthdate = bd
 	}
 
-	sectionChanged := req.SectionID != nil && !sameSectionID(req.SectionID, employee.SectionID)
-
-	if req.SectionID != nil {
-		employee.SectionID = req.SectionID
-		// Clear preloaded association so GORM Save doesn't override the foreign key
-		employee.Section = nil
+	if err := s.store.Update(ctx, employee); err != nil {
+		return nil, apperror.InternalWrap(err, "failed to update employee")
 	}
 
-	if sectionChanged {
-		// Wrap employee update + contract transition in a single transaction
-		if err := s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
-			if err := s.store.Update(txCtx, employee); err != nil {
-				return apperror.InternalWrap(err, "failed to update employee")
-			}
-			return s.handleEmployeeSectionTransfer(txCtx, id, req.SectionID)
-		}); err != nil {
-			return nil, err
-		}
-	} else {
-		if err := s.store.Update(ctx, employee); err != nil {
-			return nil, apperror.InternalWrap(err, "failed to update employee")
-		}
-	}
-
-	// Reload to get fresh associations (e.g., new Section after section_id change)
+	// Reload to get fresh associations
 	employee, err = s.store.FindByID(ctx, id)
 	if err != nil {
 		return nil, apperror.InternalWrap(err, "failed to reload employee after update")
@@ -169,37 +147,6 @@ func (s *EmployeeService) Update(ctx context.Context, id, orgID uint, req *model
 
 	resp := employee.ToResponse()
 	return &resp, nil
-}
-
-// handleEmployeeSectionTransfer creates a contract transition when an employee moves between sections.
-func (s *EmployeeService) handleEmployeeSectionTransfer(ctx context.Context, employeeID uint, newSectionID *uint) error {
-	return handleSectionTransfer(
-		ctx,
-		s.store.Contracts(),
-		s.store.UpdateContract,
-		s.store.CreateContract,
-		func(c *models.EmployeeContract) *models.BaseContract { return &c.BaseContract },
-		employeeID,
-		newSectionID,
-		func(old *models.EmployeeContract, today time.Time) *models.EmployeeContract {
-			return &models.EmployeeContract{
-				EmployeeID: employeeID,
-				BaseContract: models.BaseContract{
-					Period: models.Period{
-						From: today,
-						To:   nil,
-					},
-					SectionID:  newSectionID,
-					Properties: old.Properties,
-				},
-				StaffCategory: old.StaffCategory,
-				Grade:         old.Grade,
-				Step:          old.Step,
-				WeeklyHours:   old.WeeklyHours,
-				PayPlanID:     old.PayPlanID,
-			}
-		},
-	)
 }
 
 // Delete deletes an employee and its contracts, validating it belongs to the specified organization.
@@ -295,12 +242,6 @@ func (s *EmployeeService) CreateContract(ctx context.Context, employeeID, orgID 
 		return nil, apperror.BadRequest("payplan does not belong to this organization")
 	}
 
-	// Auto-set section from employee when not specified in request
-	sectionID := req.SectionID
-	if sectionID == nil {
-		sectionID = employee.SectionID
-	}
-
 	contract := &models.EmployeeContract{
 		EmployeeID: employeeID,
 		BaseContract: models.BaseContract{
@@ -308,7 +249,7 @@ func (s *EmployeeService) CreateContract(ctx context.Context, employeeID, orgID 
 				From: req.From,
 				To:   req.To,
 			},
-			SectionID:  sectionID,
+			SectionID:  req.SectionID,
 			Properties: req.Properties,
 		},
 		StaffCategory: req.StaffCategory,
@@ -435,6 +376,10 @@ func (s *EmployeeService) UpdateContract(ctx context.Context, contractID, employ
 	}
 	if req.Step != nil {
 		contract.Step = *req.Step
+	}
+	if req.SectionID != nil {
+		contract.SectionID = req.SectionID
+		contract.Section = nil // clear preloaded association
 	}
 	// Properties can be replaced entirely
 	if req.Properties != nil {

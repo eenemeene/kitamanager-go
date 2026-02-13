@@ -199,8 +199,6 @@ export interface Person {
 
 // Employee
 export interface Employee extends Person {
-  section_id?: number | null;
-  section?: Section | null;
   contracts?: EmployeeContract[];
 }
 
@@ -234,7 +232,6 @@ export interface EmployeeUpdateRequest {
   last_name?: string;
   gender?: Gender;
   birthdate?: string;
-  section_id?: number | null;
 }
 
 export interface EmployeeContractCreateRequest {
@@ -252,6 +249,7 @@ export interface EmployeeContractCreateRequest {
 export interface EmployeeContractUpdateRequest {
   from?: string;
   to?: string | null;
+  section_id?: number | null;
   staff_category?: string;
   grade?: string;
   step?: number;
@@ -286,8 +284,6 @@ export interface SectionUpdateRequest {
 
 // Child
 export interface Child extends Person {
-  section_id?: number | null;
-  section?: Section | null;
   contracts?: ChildContract[];
 }
 
@@ -314,7 +310,6 @@ export interface ChildCreateRequest {
   last_name: string;
   gender: Gender;
   birthdate: string;
-  section_id?: number | null;
 }
 
 export interface ChildUpdateRequest {
@@ -322,7 +317,6 @@ export interface ChildUpdateRequest {
   last_name?: string;
   gender?: Gender;
   birthdate?: string;
-  section_id?: number | null;
 }
 
 export interface ChildContractCreateRequest {
@@ -335,6 +329,7 @@ export interface ChildContractCreateRequest {
 export interface ChildContractUpdateRequest {
   from?: string;
   to?: string | null;
+  section_id?: number | null;
   properties?: ContractProperties;
 }
 

@@ -568,8 +568,8 @@ export default function ChildrenPage() {
                       <TableCell>{formatDate(child.birthdate)}</TableCell>
                       <TableCell>{calculateAge(child.birthdate)}</TableCell>
                       <TableCell>
-                        {child.section ? (
-                          <span>{child.section.name}</span>
+                        {currentContract?.section_name ? (
+                          <span>{currentContract.section_name}</span>
                         ) : (
                           <span className="text-muted-foreground">{t('sections.unassigned')}</span>
                         )}

@@ -29,6 +29,12 @@ interface SectionKanbanBoardProps {
 
 type ActiveItem = { type: 'child'; item: Child } | { type: 'employee'; item: Employee };
 
+/** Get the section_id from the active contract, or null if none. */
+function getContractSectionId(contracts?: { from: string; to?: string | null; section_id?: number | null }[]): number | null {
+  const active = getActiveContract(contracts);
+  return active?.section_id ?? null;
+}
+
 export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
   const t = useTranslations();
   const { toast } = useToast();
@@ -80,7 +86,7 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
       map.set(String(section.id), []);
     }
     for (const child of children ?? []) {
-      const sectionId = child.section_id ?? null;
+      const sectionId = getContractSectionId(child.contracts);
       const isUnassigned = !sectionId || (defaultSection && sectionId === defaultSection.id);
       const key = isUnassigned ? 'unassigned' : String(sectionId);
       const list = map.get(key);
@@ -100,7 +106,7 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
       map.set(String(section.id), []);
     }
     for (const emp of pedagogicalEmployees) {
-      const sectionId = emp.section_id ?? null;
+      const sectionId = getContractSectionId(emp.contracts);
       const isUnassigned = !sectionId || (defaultSection && sectionId === defaultSection.id);
       const key = isUnassigned ? 'unassigned' : String(sectionId);
       const list = map.get(key);
@@ -114,13 +120,22 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
   }, [sections, defaultSection, pedagogicalEmployees]);
 
   const moveChildMutation = useMutation({
-    mutationFn: ({ childId, sectionId }: { childId: number; sectionId: number | null }) =>
-      apiClient.updateChild(orgId, childId, { section_id: sectionId }),
-    onMutate: async ({ childId, sectionId }) => {
+    mutationFn: ({ childId, contractId, sectionId }: { childId: number; contractId: number; sectionId: number | null }) =>
+      apiClient.updateChildContract(orgId, childId, contractId, { section_id: sectionId }),
+    onMutate: async ({ childId, contractId, sectionId }) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.children.allUnpaginated(orgId) });
       const previous = queryClient.getQueryData<Child[]>(queryKeys.children.allUnpaginated(orgId));
       queryClient.setQueryData<Child[]>(queryKeys.children.allUnpaginated(orgId), (old) =>
-        old?.map((c) => (c.id === childId ? { ...c, section_id: sectionId } : c))
+        old?.map((c) =>
+          c.id === childId
+            ? {
+                ...c,
+                contracts: c.contracts?.map((ct) =>
+                  ct.id === contractId ? { ...ct, section_id: sectionId } : ct
+                ),
+              }
+            : c
+        )
       );
       return { previous };
     },
@@ -146,15 +161,24 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
   });
 
   const moveEmployeeMutation = useMutation({
-    mutationFn: ({ employeeId, sectionId }: { employeeId: number; sectionId: number | null }) =>
-      apiClient.updateEmployee(orgId, employeeId, { section_id: sectionId }),
-    onMutate: async ({ employeeId, sectionId }) => {
+    mutationFn: ({ employeeId, contractId, sectionId }: { employeeId: number; contractId: number; sectionId: number | null }) =>
+      apiClient.updateEmployeeContract(orgId, employeeId, contractId, { section_id: sectionId }),
+    onMutate: async ({ employeeId, contractId, sectionId }) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.employees.allUnpaginated(orgId) });
       const previous = queryClient.getQueryData<Employee[]>(
         queryKeys.employees.allUnpaginated(orgId)
       );
       queryClient.setQueryData<Employee[]>(queryKeys.employees.allUnpaginated(orgId), (old) =>
-        old?.map((e) => (e.id === employeeId ? { ...e, section_id: sectionId } : e))
+        old?.map((e) =>
+          e.id === employeeId
+            ? {
+                ...e,
+                contracts: e.contracts?.map((ct) =>
+                  ct.id === contractId ? { ...ct, section_id: sectionId } : ct
+                ),
+              }
+            : e
+        )
       );
       return { previous };
     },
@@ -200,7 +224,9 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
 
     if (currentItem.type === 'child') {
       const child = currentItem.item;
-      const currentSectionId = child.section_id ?? null;
+      const activeContract = getActiveContract(child.contracts);
+      if (!activeContract) return; // no active contract to update
+      const currentSectionId = activeContract.section_id ?? null;
       if (newSectionId === currentSectionId) return;
 
       // Warn if child's age is outside target section's age range
@@ -222,12 +248,14 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
         }
       }
 
-      moveChildMutation.mutate({ childId: child.id, sectionId: newSectionId });
+      moveChildMutation.mutate({ childId: child.id, contractId: activeContract.id, sectionId: newSectionId });
     } else {
       const employee = currentItem.item;
-      const currentSectionId = employee.section_id ?? null;
+      const activeContract = getActiveContract(employee.contracts);
+      if (!activeContract) return; // no active contract to update
+      const currentSectionId = activeContract.section_id ?? null;
       if (newSectionId === currentSectionId) return;
-      moveEmployeeMutation.mutate({ employeeId: employee.id, sectionId: newSectionId });
+      moveEmployeeMutation.mutate({ employeeId: employee.id, contractId: activeContract.id, sectionId: newSectionId });
     }
   }
 
