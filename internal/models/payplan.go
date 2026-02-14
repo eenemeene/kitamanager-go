@@ -73,24 +73,24 @@ type PayPlanDetailResponse struct {
 
 // PayPlanPeriodCreateRequest is the request body for creating a period.
 type PayPlanPeriodCreateRequest struct {
-	From        string  `json:"from" binding:"required" example:"2024-01-01"`
-	To          *string `json:"to,omitempty" example:"2024-12-31"`
-	WeeklyHours float64 `json:"weekly_hours" binding:"required,gt=0" example:"39.0"`
+	From        time.Time  `json:"from" binding:"required" example:"2024-01-01T00:00:00Z"`
+	To          *time.Time `json:"to,omitempty" example:"2024-12-31T00:00:00Z"`
+	WeeklyHours float64    `json:"weekly_hours" binding:"required,gt=0" example:"39.0"`
 }
 
 // PayPlanPeriodUpdateRequest is the request body for updating a period.
 type PayPlanPeriodUpdateRequest struct {
-	From        string  `json:"from" binding:"required" example:"2024-01-01"`
-	To          *string `json:"to,omitempty" example:"2024-12-31"`
-	WeeklyHours float64 `json:"weekly_hours" binding:"required,gt=0" example:"39.0"`
+	From        time.Time  `json:"from" binding:"required" example:"2024-01-01T00:00:00Z"`
+	To          *time.Time `json:"to,omitempty" example:"2024-12-31T00:00:00Z"`
+	WeeklyHours float64    `json:"weekly_hours" binding:"required,gt=0" example:"39.0"`
 }
 
 // PayPlanPeriodResponse is the response for a period.
 type PayPlanPeriodResponse struct {
 	ID          uint                   `json:"id" example:"1"`
 	PayPlanID   uint                   `json:"payplan_id" example:"1"`
-	From        string                 `json:"from" example:"2024-01-01"`
-	To          *string                `json:"to,omitempty" example:"2024-12-31"`
+	From        time.Time              `json:"from" example:"2024-01-01T00:00:00Z"`
+	To          *time.Time             `json:"to,omitempty" example:"2024-12-31T00:00:00Z"`
 	WeeklyHours float64                `json:"weekly_hours" example:"39.0"`
 	Entries     []PayPlanEntryResponse `json:"entries,omitempty"`
 	CreatedAt   time.Time              `json:"created_at"`
@@ -154,11 +154,6 @@ func (p *PayPlan) ToDetailResponse() PayPlanDetailResponse {
 
 // ToResponse converts a PayPlanPeriod to PayPlanPeriodResponse.
 func (p *PayPlanPeriod) ToResponse() PayPlanPeriodResponse {
-	var to *string
-	if p.To != nil {
-		toStr := p.To.Format(DateFormat)
-		to = &toStr
-	}
 	entries := make([]PayPlanEntryResponse, len(p.Entries))
 	for i, entry := range p.Entries {
 		entries[i] = entry.ToResponse()
@@ -166,8 +161,8 @@ func (p *PayPlanPeriod) ToResponse() PayPlanPeriodResponse {
 	return PayPlanPeriodResponse{
 		ID:          p.ID,
 		PayPlanID:   p.PayPlanID,
-		From:        p.From.Format(DateFormat),
-		To:          to,
+		From:        p.From,
+		To:          p.To,
 		WeeklyHours: p.WeeklyHours,
 		Entries:     entries,
 		CreatedAt:   p.CreatedAt,

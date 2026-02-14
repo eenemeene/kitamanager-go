@@ -20,16 +20,6 @@ func NewGroupService(store store.GroupStorer) *GroupService {
 	return &GroupService{store: store}
 }
 
-// List returns a paginated list of groups
-func (s *GroupService) List(ctx context.Context, limit, offset int) ([]models.GroupResponse, int64, error) {
-	groups, total, err := s.store.FindAll(ctx, limit, offset)
-	if err != nil {
-		return nil, 0, apperror.InternalWrap(err, "failed to fetch groups")
-	}
-
-	return toResponseList(groups, (*models.Group).ToResponse), total, nil
-}
-
 // ListByOrganization returns a paginated list of groups for a specific organization
 func (s *GroupService) ListByOrganization(ctx context.Context, orgID uint, search string, limit, offset int) ([]models.GroupResponse, int64, error) {
 	groups, total, err := s.store.FindByOrganizationPaginated(ctx, orgID, search, limit, offset)
@@ -38,16 +28,6 @@ func (s *GroupService) ListByOrganization(ctx context.Context, orgID uint, searc
 	}
 
 	return toResponseList(groups, (*models.Group).ToResponse), total, nil
-}
-
-// GetByID returns a group by ID
-func (s *GroupService) GetByID(ctx context.Context, id uint) (*models.GroupResponse, error) {
-	group, err := s.store.FindByID(ctx, id)
-	if err != nil {
-		return nil, apperror.NotFound("group")
-	}
-	resp := group.ToResponse()
-	return &resp, nil
 }
 
 // GetByIDAndOrg returns a group by ID if it belongs to the specified organization
@@ -85,34 +65,6 @@ func (s *GroupService) Create(ctx context.Context, orgID uint, req *models.Group
 	return &resp, nil
 }
 
-// Update updates an existing group
-func (s *GroupService) Update(ctx context.Context, id uint, req *models.GroupUpdateRequest) (*models.GroupResponse, error) {
-	group, err := s.store.FindByID(ctx, id)
-	if err != nil {
-		return nil, apperror.NotFound("group")
-	}
-
-	// Trim and validate input
-	req.Name = strings.TrimSpace(req.Name)
-
-	if req.Name != "" {
-		if validation.IsWhitespaceOnly(req.Name) {
-			return nil, apperror.BadRequest("name cannot be empty or whitespace only")
-		}
-		group.Name = req.Name
-	}
-	if req.Active != nil {
-		group.Active = *req.Active
-	}
-
-	if err := s.store.Update(ctx, group); err != nil {
-		return nil, apperror.InternalWrap(err, "failed to update group")
-	}
-
-	resp := group.ToResponse()
-	return &resp, nil
-}
-
 // UpdateByIDAndOrg updates a group if it belongs to the specified organization
 func (s *GroupService) UpdateByIDAndOrg(ctx context.Context, id, orgID uint, req *models.GroupUpdateRequest) (*models.GroupResponse, error) {
 	group, err := s.store.FindByID(ctx, id)
@@ -142,14 +94,6 @@ func (s *GroupService) UpdateByIDAndOrg(ctx context.Context, id, orgID uint, req
 
 	resp := group.ToResponse()
 	return &resp, nil
-}
-
-// Delete deletes a group
-func (s *GroupService) Delete(ctx context.Context, id uint) error {
-	if err := s.store.Delete(ctx, id); err != nil {
-		return apperror.InternalWrap(err, "failed to delete group")
-	}
-	return nil
 }
 
 // DeleteByIDAndOrg deletes a group if it belongs to the specified organization

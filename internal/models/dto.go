@@ -39,6 +39,12 @@ type HealthResponse struct {
 	Services map[string]string `json:"services"`
 }
 
+// StatusResponse represents a simple status response for readiness and liveness checks.
+type StatusResponse struct {
+	Status string `json:"status" example:"ready"`
+	Error  string `json:"error,omitempty" example:""`
+}
+
 // UserOrganizationAddRequest represents the request body for adding a user to an organization
 type UserOrganizationAddRequest struct {
 	OrganizationID uint `json:"organization_id" binding:"required" example:"1"`

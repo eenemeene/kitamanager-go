@@ -9,66 +9,6 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
-func TestGroupService_List(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createGroupService(db)
-	ctx := context.Background()
-
-	createTestGroup(t, db, "Group 1")
-	createTestGroup(t, db, "Group 2")
-
-	groups, total, err := svc.List(ctx, 10, 0)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	if len(groups) != 2 {
-		t.Errorf("expected 2 groups, got %d", len(groups))
-	}
-	if total != 2 {
-		t.Errorf("expected total 2, got %d", total)
-	}
-}
-
-func TestGroupService_GetByID(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createGroupService(db)
-	ctx := context.Background()
-
-	group := createTestGroup(t, db, "Test Group")
-
-	found, err := svc.GetByID(ctx, group.ID)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	if found.ID != group.ID {
-		t.Errorf("ID = %d, want %d", found.ID, group.ID)
-	}
-	if found.Name != "Test Group" {
-		t.Errorf("Name = %v, want Test Group", found.Name)
-	}
-}
-
-func TestGroupService_GetByID_NotFound(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createGroupService(db)
-	ctx := context.Background()
-
-	_, err := svc.GetByID(ctx, 999)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	var appErr *apperror.AppError
-	if !errors.As(err, &appErr) {
-		t.Fatalf("expected AppError, got %T", err)
-	}
-	if !errors.Is(err, apperror.ErrNotFound) {
-		t.Errorf("expected ErrNotFound, got %v", err)
-	}
-}
-
 func TestGroupService_GetByIDAndOrg(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createGroupService(db)
@@ -234,94 +174,6 @@ func TestGroupService_Create_TrimmedName(t *testing.T) {
 	}
 }
 
-func TestGroupService_Update(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createGroupService(db)
-	ctx := context.Background()
-
-	group := createTestGroup(t, db, "Original Name")
-
-	req := &models.GroupUpdateRequest{
-		Name: "Updated Name",
-	}
-
-	updated, err := svc.Update(ctx, group.ID, req)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	if updated.Name != "Updated Name" {
-		t.Errorf("Name = %v, want Updated Name", updated.Name)
-	}
-}
-
-func TestGroupService_Update_ActiveOnly(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createGroupService(db)
-	ctx := context.Background()
-
-	group := createTestGroup(t, db, "Test Group")
-
-	active := false
-	req := &models.GroupUpdateRequest{
-		Active: &active,
-	}
-
-	updated, err := svc.Update(ctx, group.ID, req)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	if updated.Active != false {
-		t.Errorf("Active = %v, want false", updated.Active)
-	}
-	if updated.Name != "Test Group" {
-		t.Errorf("Name should not change, got %v", updated.Name)
-	}
-}
-
-func TestGroupService_Update_NotFound(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createGroupService(db)
-	ctx := context.Background()
-
-	req := &models.GroupUpdateRequest{
-		Name: "New Name",
-	}
-
-	_, err := svc.Update(ctx, 999, req)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	var appErr *apperror.AppError
-	if !errors.As(err, &appErr) {
-		t.Fatalf("expected AppError, got %T", err)
-	}
-	if !errors.Is(err, apperror.ErrNotFound) {
-		t.Errorf("expected ErrNotFound, got %v", err)
-	}
-}
-
-func TestGroupService_Delete(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createGroupService(db)
-	ctx := context.Background()
-
-	group := createTestGroup(t, db, "To Delete")
-
-	err := svc.Delete(ctx, group.ID)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	// Verify it's deleted
-	_, err = svc.GetByID(ctx, group.ID)
-	if err == nil {
-		t.Error("expected group to be deleted")
-	}
-}
-
 func TestGroupService_ListByOrganization(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createGroupService(db)
@@ -397,7 +249,7 @@ func TestGroupService_UpdateByIDAndOrg_WrongOrg(t *testing.T) {
 	}
 
 	// Verify the group was NOT updated
-	found, err := svc.GetByID(ctx, group.ID)
+	found, err := svc.GetByIDAndOrg(ctx, group.ID, org1.ID)
 	if err != nil {
 		t.Fatalf("failed to get group: %v", err)
 	}
@@ -445,7 +297,7 @@ func TestGroupService_DeleteByIDAndOrg(t *testing.T) {
 	}
 
 	// Verify it's deleted
-	_, err = svc.GetByID(ctx, group.ID)
+	_, err = svc.GetByIDAndOrg(ctx, group.ID, org.ID)
 	if err == nil {
 		t.Error("expected group to be deleted")
 	}
@@ -475,7 +327,7 @@ func TestGroupService_DeleteByIDAndOrg_WrongOrg(t *testing.T) {
 	}
 
 	// Verify the group was NOT deleted
-	_, err = svc.GetByID(ctx, group.ID)
+	_, err = svc.GetByIDAndOrg(ctx, group.ID, org1.ID)
 	if err != nil {
 		t.Errorf("group was deleted despite wrong org: %v", err)
 	}

@@ -23,7 +23,7 @@ func NewPayPlanService(store store.PayPlanStorer) *PayPlanService {
 
 // verifyPayPlanOwnership verifies a pay plan exists and belongs to the organization.
 func (s *PayPlanService) verifyPayPlanOwnership(ctx context.Context, payplanID, orgID uint) (*models.PayPlan, error) {
-	payplan, err := s.store.GetByID(ctx, payplanID)
+	payplan, err := s.store.FindByID(ctx, payplanID)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			return nil, apperror.NotFound("pay plan")
@@ -38,7 +38,7 @@ func (s *PayPlanService) verifyPayPlanOwnership(ctx context.Context, payplanID, 
 
 // verifyPeriodOwnership verifies a period exists and belongs to the pay plan.
 func (s *PayPlanService) verifyPeriodOwnership(ctx context.Context, periodID, payplanID uint) (*models.PayPlanPeriod, error) {
-	period, err := s.store.GetPeriodByID(ctx, periodID)
+	period, err := s.store.FindPeriodByID(ctx, periodID)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			return nil, apperror.NotFound("period")
@@ -53,7 +53,7 @@ func (s *PayPlanService) verifyPeriodOwnership(ctx context.Context, periodID, pa
 
 // verifyEntryOwnership verifies an entry exists and belongs to the period.
 func (s *PayPlanService) verifyEntryOwnership(ctx context.Context, entryID, periodID uint) (*models.PayPlanEntry, error) {
-	entry, err := s.store.GetEntryByID(ctx, entryID)
+	entry, err := s.store.FindEntryByID(ctx, entryID)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			return nil, apperror.NotFound("entry")
@@ -67,7 +67,7 @@ func (s *PayPlanService) verifyEntryOwnership(ctx context.Context, entryID, peri
 }
 
 // Create creates a new pay plan.
-func (s *PayPlanService) Create(ctx context.Context, orgID uint, req models.PayPlanCreateRequest) (*models.PayPlanResponse, error) {
+func (s *PayPlanService) Create(ctx context.Context, orgID uint, req *models.PayPlanCreateRequest) (*models.PayPlanResponse, error) {
 	payplan := &models.PayPlan{
 		OrganizationID: orgID,
 		Name:           req.Name,
@@ -84,7 +84,7 @@ func (s *PayPlanService) Create(ctx context.Context, orgID uint, req models.PayP
 // GetByID retrieves a pay plan by ID.
 // activeOn filters periods to those active on the given date (nil = no filter).
 func (s *PayPlanService) GetByID(ctx context.Context, id, orgID uint, activeOn *time.Time) (*models.PayPlanDetailResponse, error) {
-	payplan, err := s.store.GetByIDWithPeriods(ctx, id, activeOn)
+	payplan, err := s.store.FindByIDWithPeriods(ctx, id, activeOn)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			return nil, apperror.NotFound("pay plan")
@@ -102,7 +102,7 @@ func (s *PayPlanService) GetByID(ctx context.Context, id, orgID uint, activeOn *
 
 // List retrieves all pay plans for an organization.
 func (s *PayPlanService) List(ctx context.Context, orgID uint, limit, offset int) ([]models.PayPlanResponse, int64, error) {
-	payplans, total, err := s.store.GetByOrganization(ctx, orgID, limit, offset)
+	payplans, total, err := s.store.FindByOrganization(ctx, orgID, limit, offset)
 	if err != nil {
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch pay plans")
 	}
@@ -111,7 +111,7 @@ func (s *PayPlanService) List(ctx context.Context, orgID uint, limit, offset int
 }
 
 // Update updates a pay plan.
-func (s *PayPlanService) Update(ctx context.Context, id, orgID uint, req models.PayPlanUpdateRequest) (*models.PayPlanResponse, error) {
+func (s *PayPlanService) Update(ctx context.Context, id, orgID uint, req *models.PayPlanUpdateRequest) (*models.PayPlanResponse, error) {
 	payplan, err := s.verifyPayPlanOwnership(ctx, id, orgID)
 	if err != nil {
 		return nil, err
@@ -142,29 +142,15 @@ func (s *PayPlanService) Delete(ctx context.Context, id, orgID uint) error {
 // Period operations
 
 // CreatePeriod creates a new period for a pay plan.
-func (s *PayPlanService) CreatePeriod(ctx context.Context, payplanID, orgID uint, req models.PayPlanPeriodCreateRequest) (*models.PayPlanPeriodResponse, error) {
+func (s *PayPlanService) CreatePeriod(ctx context.Context, payplanID, orgID uint, req *models.PayPlanPeriodCreateRequest) (*models.PayPlanPeriodResponse, error) {
 	if _, err := s.verifyPayPlanOwnership(ctx, payplanID, orgID); err != nil {
 		return nil, err
 	}
 
-	from, err := time.Parse(models.DateFormat, req.From)
-	if err != nil {
-		return nil, apperror.BadRequest("invalid from date format")
-	}
-
-	var to *time.Time
-	if req.To != nil && *req.To != "" {
-		toDate, err := time.Parse(models.DateFormat, *req.To)
-		if err != nil {
-			return nil, apperror.BadRequest("invalid to date format")
-		}
-		to = &toDate
-	}
-
 	period := &models.PayPlanPeriod{
 		PayPlanID:   payplanID,
-		From:        from,
-		To:          to,
+		From:        req.From,
+		To:          req.To,
 		WeeklyHours: req.WeeklyHours,
 	}
 
@@ -182,7 +168,7 @@ func (s *PayPlanService) GetPeriod(ctx context.Context, periodID, payplanID, org
 		return nil, err
 	}
 
-	period, err := s.store.GetPeriodByIDWithEntries(ctx, periodID)
+	period, err := s.store.FindPeriodByIDWithEntries(ctx, periodID)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			return nil, apperror.NotFound("period")
@@ -199,7 +185,7 @@ func (s *PayPlanService) GetPeriod(ctx context.Context, periodID, payplanID, org
 }
 
 // UpdatePeriod updates a period.
-func (s *PayPlanService) UpdatePeriod(ctx context.Context, periodID, payplanID, orgID uint, req models.PayPlanPeriodUpdateRequest) (*models.PayPlanPeriodResponse, error) {
+func (s *PayPlanService) UpdatePeriod(ctx context.Context, periodID, payplanID, orgID uint, req *models.PayPlanPeriodUpdateRequest) (*models.PayPlanPeriodResponse, error) {
 	if _, err := s.verifyPayPlanOwnership(ctx, payplanID, orgID); err != nil {
 		return nil, err
 	}
@@ -209,22 +195,8 @@ func (s *PayPlanService) UpdatePeriod(ctx context.Context, periodID, payplanID, 
 		return nil, err
 	}
 
-	from, err := time.Parse(models.DateFormat, req.From)
-	if err != nil {
-		return nil, apperror.BadRequest("invalid from date format")
-	}
-
-	var to *time.Time
-	if req.To != nil && *req.To != "" {
-		toDate, err := time.Parse(models.DateFormat, *req.To)
-		if err != nil {
-			return nil, apperror.BadRequest("invalid to date format")
-		}
-		to = &toDate
-	}
-
-	period.From = from
-	period.To = to
+	period.From = req.From
+	period.To = req.To
 	period.WeeklyHours = req.WeeklyHours
 
 	if err := s.store.UpdatePeriod(ctx, period); err != nil {
@@ -254,7 +226,7 @@ func (s *PayPlanService) DeletePeriod(ctx context.Context, periodID, payplanID, 
 // Entry operations
 
 // CreateEntry creates a new entry for a period.
-func (s *PayPlanService) CreateEntry(ctx context.Context, entryReq models.PayPlanEntryCreateRequest, periodID, payplanID, orgID uint) (*models.PayPlanEntryResponse, error) {
+func (s *PayPlanService) CreateEntry(ctx context.Context, periodID, payplanID, orgID uint, req *models.PayPlanEntryCreateRequest) (*models.PayPlanEntryResponse, error) {
 	if _, err := s.verifyPayPlanOwnership(ctx, payplanID, orgID); err != nil {
 		return nil, err
 	}
@@ -265,10 +237,10 @@ func (s *PayPlanService) CreateEntry(ctx context.Context, entryReq models.PayPla
 
 	entry := &models.PayPlanEntry{
 		PeriodID:      periodID,
-		Grade:         entryReq.Grade,
-		Step:          entryReq.Step,
-		MonthlyAmount: entryReq.MonthlyAmount,
-		StepMinYears:  entryReq.StepMinYears,
+		Grade:         req.Grade,
+		Step:          req.Step,
+		MonthlyAmount: req.MonthlyAmount,
+		StepMinYears:  req.StepMinYears,
 	}
 
 	if err := s.store.CreateEntry(ctx, entry); err != nil {
@@ -299,7 +271,7 @@ func (s *PayPlanService) GetEntry(ctx context.Context, entryID, periodID, paypla
 }
 
 // UpdateEntry updates an entry.
-func (s *PayPlanService) UpdateEntry(ctx context.Context, entryID, periodID, payplanID, orgID uint, req models.PayPlanEntryUpdateRequest) (*models.PayPlanEntryResponse, error) {
+func (s *PayPlanService) UpdateEntry(ctx context.Context, entryID, periodID, payplanID, orgID uint, req *models.PayPlanEntryUpdateRequest) (*models.PayPlanEntryResponse, error) {
 	if _, err := s.verifyPayPlanOwnership(ctx, payplanID, orgID); err != nil {
 		return nil, err
 	}
@@ -348,7 +320,7 @@ func (s *PayPlanService) DeleteEntry(ctx context.Context, entryID, periodID, pay
 
 // CalculateSalary calculates the monthly salary based on pay plan, grade, step, and working hours.
 func (s *PayPlanService) CalculateSalary(ctx context.Context, payplanID uint, grade string, step int, weeklyHours float64, date time.Time) (int, error) {
-	period, err := s.store.GetActivePeriod(ctx, payplanID, date)
+	period, err := s.store.FindActivePeriod(ctx, payplanID, date)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			return 0, apperror.NotFound("no active pay plan period found for the given date")
@@ -356,7 +328,7 @@ func (s *PayPlanService) CalculateSalary(ctx context.Context, payplanID uint, gr
 		return 0, apperror.InternalWrap(err, "failed to fetch pay plan period")
 	}
 
-	entry, err := s.store.GetEntry(ctx, period.ID, grade, step)
+	entry, err := s.store.FindEntry(ctx, period.ID, grade, step)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			return 0, apperror.NotFound("no pay plan entry found for the given grade and step")

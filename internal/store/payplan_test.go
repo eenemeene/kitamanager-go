@@ -8,7 +8,7 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
-func TestPayPlanStore_GetByIDWithPeriods_ActiveOn(t *testing.T) {
+func TestPayPlanStore_FindByIDWithPeriods_ActiveOn(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewPayPlanStore(db)
 	org := createTestOrganization(t, db, "Test Org")
@@ -59,7 +59,7 @@ func TestPayPlanStore_GetByIDWithPeriods_ActiveOn(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("nil activeOn returns all periods", func(t *testing.T) {
-		result, err := store.GetByIDWithPeriods(ctx, payplan.ID, nil)
+		result, err := store.FindByIDWithPeriods(ctx, payplan.ID, nil)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -70,7 +70,7 @@ func TestPayPlanStore_GetByIDWithPeriods_ActiveOn(t *testing.T) {
 
 	t.Run("activeOn filters to matching period", func(t *testing.T) {
 		date := time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC)
-		result, err := store.GetByIDWithPeriods(ctx, payplan.ID, &date)
+		result, err := store.FindByIDWithPeriods(ctx, payplan.ID, &date)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -88,7 +88,7 @@ func TestPayPlanStore_GetByIDWithPeriods_ActiveOn(t *testing.T) {
 
 	t.Run("activeOn matches ongoing period", func(t *testing.T) {
 		date := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-		result, err := store.GetByIDWithPeriods(ctx, payplan.ID, &date)
+		result, err := store.FindByIDWithPeriods(ctx, payplan.ID, &date)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -102,7 +102,7 @@ func TestPayPlanStore_GetByIDWithPeriods_ActiveOn(t *testing.T) {
 
 	t.Run("activeOn with no matching period returns empty", func(t *testing.T) {
 		date := time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)
-		result, err := store.GetByIDWithPeriods(ctx, payplan.ID, &date)
+		result, err := store.FindByIDWithPeriods(ctx, payplan.ID, &date)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -112,7 +112,7 @@ func TestPayPlanStore_GetByIDWithPeriods_ActiveOn(t *testing.T) {
 	})
 }
 
-func TestPayPlanStore_GetActivePeriod_UsesScope(t *testing.T) {
+func TestPayPlanStore_FindActivePeriod_UsesScope(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewPayPlanStore(db)
 	org := createTestOrganization(t, db, "Test Org")
@@ -145,7 +145,7 @@ func TestPayPlanStore_GetActivePeriod_UsesScope(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("finds period active on date in first period", func(t *testing.T) {
-		result, err := store.GetActivePeriod(ctx, payplan.ID, time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC))
+		result, err := store.FindActivePeriod(ctx, payplan.ID, time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -155,7 +155,7 @@ func TestPayPlanStore_GetActivePeriod_UsesScope(t *testing.T) {
 	})
 
 	t.Run("finds ongoing period", func(t *testing.T) {
-		result, err := store.GetActivePeriod(ctx, payplan.ID, time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
+		result, err := store.FindActivePeriod(ctx, payplan.ID, time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -165,7 +165,7 @@ func TestPayPlanStore_GetActivePeriod_UsesScope(t *testing.T) {
 	})
 
 	t.Run("no active period returns error", func(t *testing.T) {
-		_, err := store.GetActivePeriod(ctx, payplan.ID, time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC))
+		_, err := store.FindActivePeriod(ctx, payplan.ID, time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC))
 		if err == nil {
 			t.Fatal("expected error for date with no active period")
 		}

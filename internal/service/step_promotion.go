@@ -90,11 +90,11 @@ func (s *StepPromotionService) GetStepPromotions(ctx context.Context, orgID uint
 	}
 	periodsByPayPlan := make(map[uint]*periodInfo)
 	for ppID := range payplanIDs {
-		period, err := s.payPlanStore.GetActivePeriod(ctx, ppID, date)
+		period, err := s.payPlanStore.FindActivePeriod(ctx, ppID, date)
 		if err != nil {
 			continue // skip payplans without active period
 		}
-		pp, err := s.payPlanStore.GetByID(ctx, ppID)
+		pp, err := s.payPlanStore.FindByID(ctx, ppID)
 		if err != nil {
 			continue
 		}

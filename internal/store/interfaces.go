@@ -173,26 +173,26 @@ type ChildAttendanceStorer interface {
 // PayPlanStorer defines the interface for pay plan storage operations
 type PayPlanStorer interface {
 	Create(ctx context.Context, payplan *models.PayPlan) error
-	GetByID(ctx context.Context, id uint) (*models.PayPlan, error)
-	GetByIDWithPeriods(ctx context.Context, id uint, activeOn *time.Time) (*models.PayPlan, error)
-	GetByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.PayPlan, int64, error)
+	FindByID(ctx context.Context, id uint) (*models.PayPlan, error)
+	FindByIDWithPeriods(ctx context.Context, id uint, activeOn *time.Time) (*models.PayPlan, error)
+	FindByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.PayPlan, int64, error)
 	Update(ctx context.Context, payplan *models.PayPlan) error
 	Delete(ctx context.Context, id uint) error
 
 	// Period operations
 	CreatePeriod(ctx context.Context, period *models.PayPlanPeriod) error
-	GetPeriodByID(ctx context.Context, id uint) (*models.PayPlanPeriod, error)
-	GetPeriodByIDWithEntries(ctx context.Context, id uint) (*models.PayPlanPeriod, error)
-	GetPeriodsByPayPlan(ctx context.Context, payplanID uint) ([]models.PayPlanPeriod, error)
-	GetActivePeriod(ctx context.Context, payplanID uint, date time.Time) (*models.PayPlanPeriod, error)
+	FindPeriodByID(ctx context.Context, id uint) (*models.PayPlanPeriod, error)
+	FindPeriodByIDWithEntries(ctx context.Context, id uint) (*models.PayPlanPeriod, error)
+	FindPeriodsByPayPlan(ctx context.Context, payplanID uint) ([]models.PayPlanPeriod, error)
+	FindActivePeriod(ctx context.Context, payplanID uint, date time.Time) (*models.PayPlanPeriod, error)
 	UpdatePeriod(ctx context.Context, period *models.PayPlanPeriod) error
 	DeletePeriod(ctx context.Context, id uint) error
 
 	// Entry operations
 	CreateEntry(ctx context.Context, entry *models.PayPlanEntry) error
-	GetEntryByID(ctx context.Context, id uint) (*models.PayPlanEntry, error)
-	GetEntriesByPeriod(ctx context.Context, periodID uint) ([]models.PayPlanEntry, error)
-	GetEntry(ctx context.Context, periodID uint, grade string, step int) (*models.PayPlanEntry, error)
+	FindEntryByID(ctx context.Context, id uint) (*models.PayPlanEntry, error)
+	FindEntriesByPeriod(ctx context.Context, periodID uint) ([]models.PayPlanEntry, error)
+	FindEntry(ctx context.Context, periodID uint, grade string, step int) (*models.PayPlanEntry, error)
 	UpdateEntry(ctx context.Context, entry *models.PayPlanEntry) error
 	DeleteEntry(ctx context.Context, id uint) error
 }

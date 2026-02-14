@@ -860,6 +860,30 @@ definitions:
         maxLength: 255
         type: string
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingWithDetailsResponse:
+    properties:
+      created_at:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+      id:
+        example: 1
+        type: integer
+      name:
+        example: Berlin Kita Funding
+        type: string
+      periods:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriod'
+        type: array
+      state:
+        example: berlin
+        type: string
+      total_periods:
+        type: integer
+      updated_at:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.Group:
     properties:
       active:
@@ -1406,10 +1430,10 @@ definitions:
   github_com_eenemeene_kitamanager-go_internal_models.PayPlanPeriodCreateRequest:
     properties:
       from:
-        example: "2024-01-01"
+        example: "2024-01-01T00:00:00Z"
         type: string
       to:
-        example: "2024-12-31"
+        example: "2024-12-31T00:00:00Z"
         type: string
       weekly_hours:
         example: 39
@@ -1427,7 +1451,7 @@ definitions:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayPlanEntryResponse'
         type: array
       from:
-        example: "2024-01-01"
+        example: "2024-01-01T00:00:00Z"
         type: string
       id:
         example: 1
@@ -1436,7 +1460,7 @@ definitions:
         example: 1
         type: integer
       to:
-        example: "2024-12-31"
+        example: "2024-12-31T00:00:00Z"
         type: string
       updated_at:
         type: string
@@ -1447,10 +1471,10 @@ definitions:
   github_com_eenemeene_kitamanager-go_internal_models.PayPlanPeriodUpdateRequest:
     properties:
       from:
-        example: "2024-01-01"
+        example: "2024-01-01T00:00:00Z"
         type: string
       to:
-        example: "2024-12-31"
+        example: "2024-12-31T00:00:00Z"
         type: string
       weekly_hours:
         example: 39
@@ -1613,6 +1637,15 @@ definitions:
         items:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.StaffingHoursDataPoint'
         type: array
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.StatusResponse:
+    properties:
+      error:
+        example: ""
+        type: string
+      status:
+        example: ready
+        type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.StepPromotionResponse:
     properties:
@@ -1859,39 +1892,6 @@ definitions:
         maxLength: 255
         type: string
     type: object
-  github_com_eenemeene_kitamanager-go_internal_service.GovernmentFundingWithDetailsResponse:
-    properties:
-      created_at:
-        example: "2024-01-15T10:30:00Z"
-        type: string
-      id:
-        example: 1
-        type: integer
-      name:
-        example: Berlin Kita Funding
-        type: string
-      periods:
-        items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriod'
-        type: array
-      state:
-        example: berlin
-        type: string
-      total_periods:
-        type: integer
-      updated_at:
-        example: "2024-01-15T10:30:00Z"
-        type: string
-    type: object
-  internal_handlers.StatusResponse:
-    properties:
-      error:
-        example: ""
-        type: string
-      status:
-        example: ready
-        type: string
-    type: object
 host: localhost:8080
 info:
   contact:
@@ -2044,7 +2044,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_service.GovernmentFundingWithDetailsResponse'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingWithDetailsResponse'
         "400":
           description: Bad Request
           schema:
@@ -2447,7 +2447,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_handlers.StatusResponse'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.StatusResponse'
       summary: Liveness check
       tags:
       - health
@@ -5602,11 +5602,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_handlers.StatusResponse'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.StatusResponse'
         "503":
           description: Service Unavailable
           schema:
-            $ref: '#/definitions/internal_handlers.StatusResponse'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.StatusResponse'
       summary: Readiness check
       tags:
       - health

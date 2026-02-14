@@ -184,7 +184,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_service.GovernmentFundingWithDetailsResponse"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingWithDetailsResponse"
                         }
                     },
                     "400": {
@@ -855,7 +855,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers.StatusResponse"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.StatusResponse"
                         }
                     }
                 }
@@ -5629,13 +5629,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers.StatusResponse"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.StatusResponse"
                         }
                     },
                     "503": {
                         "description": "Service Unavailable",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers.StatusResponse"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.StatusResponse"
                         }
                     }
                 }
@@ -7675,6 +7675,40 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingWithDetailsResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2024-01-15T10:30:00Z"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Berlin Kita Funding"
+                },
+                "periods": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriod"
+                    }
+                },
+                "state": {
+                    "type": "string",
+                    "example": "berlin"
+                },
+                "total_periods": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2024-01-15T10:30:00Z"
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.Group": {
             "type": "object",
             "required": [
@@ -8449,11 +8483,11 @@ const docTemplate = `{
             "properties": {
                 "from": {
                     "type": "string",
-                    "example": "2024-01-01"
+                    "example": "2024-01-01T00:00:00Z"
                 },
                 "to": {
                     "type": "string",
-                    "example": "2024-12-31"
+                    "example": "2024-12-31T00:00:00Z"
                 },
                 "weekly_hours": {
                     "type": "number",
@@ -8475,7 +8509,7 @@ const docTemplate = `{
                 },
                 "from": {
                     "type": "string",
-                    "example": "2024-01-01"
+                    "example": "2024-01-01T00:00:00Z"
                 },
                 "id": {
                     "type": "integer",
@@ -8487,7 +8521,7 @@ const docTemplate = `{
                 },
                 "to": {
                     "type": "string",
-                    "example": "2024-12-31"
+                    "example": "2024-12-31T00:00:00Z"
                 },
                 "updated_at": {
                     "type": "string"
@@ -8507,11 +8541,11 @@ const docTemplate = `{
             "properties": {
                 "from": {
                     "type": "string",
-                    "example": "2024-01-01"
+                    "example": "2024-01-01T00:00:00Z"
                 },
                 "to": {
                     "type": "string",
-                    "example": "2024-12-31"
+                    "example": "2024-12-31T00:00:00Z"
                 },
                 "weekly_hours": {
                     "type": "number",
@@ -8734,6 +8768,19 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.StaffingHoursDataPoint"
                     }
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.StatusResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": ""
+                },
+                "status": {
+                    "type": "string",
+                    "example": "ready"
                 }
             }
         },
@@ -9089,53 +9136,6 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255,
                     "example": "John Doe Updated"
-                }
-            }
-        },
-        "github_com_eenemeene_kitamanager-go_internal_service.GovernmentFundingWithDetailsResponse": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string",
-                    "example": "2024-01-15T10:30:00Z"
-                },
-                "id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "name": {
-                    "type": "string",
-                    "example": "Berlin Kita Funding"
-                },
-                "periods": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriod"
-                    }
-                },
-                "state": {
-                    "type": "string",
-                    "example": "berlin"
-                },
-                "total_periods": {
-                    "type": "integer"
-                },
-                "updated_at": {
-                    "type": "string",
-                    "example": "2024-01-15T10:30:00Z"
-                }
-            }
-        },
-        "internal_handlers.StatusResponse": {
-            "type": "object",
-            "properties": {
-                "error": {
-                    "type": "string",
-                    "example": ""
-                },
-                "status": {
-                    "type": "string",
-                    "example": "ready"
                 }
             }
         }

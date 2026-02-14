@@ -24,7 +24,7 @@ func TestPayPlanService_Create(t *testing.T) {
 		Name: "TVöD-SuE",
 	}
 
-	resp, err := svc.Create(ctx, org.ID, req)
+	resp, err := svc.Create(ctx, org.ID, &req)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -124,8 +124,9 @@ func TestPayPlanService_GetByID_ActiveOnFilter(t *testing.T) {
 	if len(resp.Periods) != 1 {
 		t.Fatalf("expected 1 period for activeOn March 2024, got %d", len(resp.Periods))
 	}
-	if resp.Periods[0].From != "2024-01-01" {
-		t.Errorf("expected period from 2024-01-01, got %s", resp.Periods[0].From)
+	expectedFrom := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	if !resp.Periods[0].From.Equal(expectedFrom) {
+		t.Errorf("expected period from %v, got %v", expectedFrom, resp.Periods[0].From)
 	}
 }
 
@@ -194,7 +195,7 @@ func TestPayPlanService_Update(t *testing.T) {
 		Name: "Updated Name",
 	}
 
-	resp, err := svc.Update(ctx, payplan.ID, org.ID, req)
+	resp, err := svc.Update(ctx, payplan.ID, org.ID, &req)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -217,7 +218,7 @@ func TestPayPlanService_Update_WrongOrg(t *testing.T) {
 		Name: "Updated",
 	}
 
-	_, err := svc.Update(ctx, payplan.ID, org2.ID, req)
+	_, err := svc.Update(ctx, payplan.ID, org2.ID, &req)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -285,14 +286,15 @@ func TestPayPlanService_CreatePeriod(t *testing.T) {
 	payplan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
 
 	// With To date
-	toStr := "2024-12-31"
+	fromDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	toDate := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
 	req := models.PayPlanPeriodCreateRequest{
-		From:        "2024-01-01",
-		To:          &toStr,
+		From:        fromDate,
+		To:          &toDate,
 		WeeklyHours: 39.0,
 	}
 
-	resp, err := svc.CreatePeriod(ctx, payplan.ID, org.ID, req)
+	resp, err := svc.CreatePeriod(ctx, payplan.ID, org.ID, &req)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -303,11 +305,11 @@ func TestPayPlanService_CreatePeriod(t *testing.T) {
 	if resp.PayPlanID != payplan.ID {
 		t.Errorf("PayPlanID = %d, want %d", resp.PayPlanID, payplan.ID)
 	}
-	if resp.From != "2024-01-01" {
-		t.Errorf("From = %s, want 2024-01-01", resp.From)
+	if !resp.From.Equal(fromDate) {
+		t.Errorf("From = %v, want %v", resp.From, fromDate)
 	}
-	if resp.To == nil || *resp.To != "2024-12-31" {
-		t.Errorf("To = %v, want 2024-12-31", resp.To)
+	if resp.To == nil || !resp.To.Equal(toDate) {
+		t.Errorf("To = %v, want %v", resp.To, toDate)
 	}
 	if resp.WeeklyHours != 39.0 {
 		t.Errorf("WeeklyHours = %f, want 39.0", resp.WeeklyHours)
@@ -323,45 +325,18 @@ func TestPayPlanService_CreatePeriod_WithoutTo(t *testing.T) {
 	payplan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
 
 	req := models.PayPlanPeriodCreateRequest{
-		From:        "2024-01-01",
+		From:        time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		To:          nil,
 		WeeklyHours: 39.0,
 	}
 
-	resp, err := svc.CreatePeriod(ctx, payplan.ID, org.ID, req)
+	resp, err := svc.CreatePeriod(ctx, payplan.ID, org.ID, &req)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
 	if resp.To != nil {
 		t.Errorf("To = %v, want nil", resp.To)
-	}
-}
-
-func TestPayPlanService_CreatePeriod_InvalidDateFormat(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createPayPlanService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	payplan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
-
-	req := models.PayPlanPeriodCreateRequest{
-		From:        "not-a-date",
-		WeeklyHours: 39.0,
-	}
-
-	_, err := svc.CreatePeriod(ctx, payplan.ID, org.ID, req)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	var appErr *apperror.AppError
-	if !errors.As(err, &appErr) {
-		t.Fatalf("expected AppError, got %T", err)
-	}
-	if !errors.Is(err, apperror.ErrBadRequest) {
-		t.Errorf("expected ErrBadRequest, got %v", err)
 	}
 }
 
@@ -373,11 +348,11 @@ func TestPayPlanService_CreatePeriod_WrongPayPlan(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	req := models.PayPlanPeriodCreateRequest{
-		From:        "2024-01-01",
+		From:        time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		WeeklyHours: 39.0,
 	}
 
-	_, err := svc.CreatePeriod(ctx, 999, org.ID, req)
+	_, err := svc.CreatePeriod(ctx, 999, org.ID, &req)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -476,55 +451,27 @@ func TestPayPlanService_UpdatePeriod(t *testing.T) {
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	period := createTestPayPlanPeriod(t, db, payplan.ID, from, nil, 39.0)
 
-	toStr := "2024-12-31"
+	newFrom := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
+	newTo := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
 	req := models.PayPlanPeriodUpdateRequest{
-		From:        "2024-02-01",
-		To:          &toStr,
+		From:        newFrom,
+		To:          &newTo,
 		WeeklyHours: 38.5,
 	}
 
-	resp, err := svc.UpdatePeriod(ctx, period.ID, payplan.ID, org.ID, req)
+	resp, err := svc.UpdatePeriod(ctx, period.ID, payplan.ID, org.ID, &req)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	if resp.From != "2024-02-01" {
-		t.Errorf("From = %s, want 2024-02-01", resp.From)
+	if !resp.From.Equal(newFrom) {
+		t.Errorf("From = %v, want %v", resp.From, newFrom)
 	}
-	if resp.To == nil || *resp.To != "2024-12-31" {
-		t.Errorf("To = %v, want 2024-12-31", resp.To)
+	if resp.To == nil || !resp.To.Equal(newTo) {
+		t.Errorf("To = %v, want %v", resp.To, newTo)
 	}
 	if resp.WeeklyHours != 38.5 {
 		t.Errorf("WeeklyHours = %f, want 38.5", resp.WeeklyHours)
-	}
-}
-
-func TestPayPlanService_UpdatePeriod_InvalidDateFormat(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createPayPlanService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	payplan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
-	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	period := createTestPayPlanPeriod(t, db, payplan.ID, from, nil, 39.0)
-
-	req := models.PayPlanPeriodUpdateRequest{
-		From:        "invalid-date",
-		WeeklyHours: 39.0,
-	}
-
-	_, err := svc.UpdatePeriod(ctx, period.ID, payplan.ID, org.ID, req)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	var appErr *apperror.AppError
-	if !errors.As(err, &appErr) {
-		t.Fatalf("expected AppError, got %T", err)
-	}
-	if !errors.Is(err, apperror.ErrBadRequest) {
-		t.Errorf("expected ErrBadRequest, got %v", err)
 	}
 }
 
@@ -540,11 +487,11 @@ func TestPayPlanService_UpdatePeriod_WrongOrg(t *testing.T) {
 	period := createTestPayPlanPeriod(t, db, payplan.ID, from, nil, 39.0)
 
 	req := models.PayPlanPeriodUpdateRequest{
-		From:        "2024-02-01",
+		From:        time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC),
 		WeeklyHours: 39.0,
 	}
 
-	_, err := svc.UpdatePeriod(ctx, period.ID, payplan.ID, org2.ID, req)
+	_, err := svc.UpdatePeriod(ctx, period.ID, payplan.ID, org2.ID, &req)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -567,11 +514,11 @@ func TestPayPlanService_UpdatePeriod_WrongPeriod(t *testing.T) {
 	payplan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
 
 	req := models.PayPlanPeriodUpdateRequest{
-		From:        "2024-02-01",
+		From:        time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC),
 		WeeklyHours: 39.0,
 	}
 
-	_, err := svc.UpdatePeriod(ctx, 999, payplan.ID, org.ID, req)
+	_, err := svc.UpdatePeriod(ctx, 999, payplan.ID, org.ID, &req)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -674,7 +621,7 @@ func TestPayPlanService_CreateEntry(t *testing.T) {
 		StepMinYears:  &stepMinYears,
 	}
 
-	resp, err := svc.CreateEntry(ctx, req, period.ID, payplan.ID, org.ID)
+	resp, err := svc.CreateEntry(ctx, period.ID, payplan.ID, org.ID, &req)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -716,7 +663,7 @@ func TestPayPlanService_CreateEntry_WrongPayPlan(t *testing.T) {
 	}
 
 	// Wrong payplan ID in the ownership chain
-	_, err := svc.CreateEntry(ctx, req, period.ID, 999, org.ID)
+	_, err := svc.CreateEntry(ctx, period.ID, 999, org.ID, &req)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -745,7 +692,7 @@ func TestPayPlanService_CreateEntry_WrongPeriod(t *testing.T) {
 	}
 
 	// Period 999 doesn't exist
-	_, err := svc.CreateEntry(ctx, req, 999, payplan.ID, org.ID)
+	_, err := svc.CreateEntry(ctx, 999, payplan.ID, org.ID, &req)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -856,7 +803,7 @@ func TestPayPlanService_UpdateEntry(t *testing.T) {
 		StepMinYears:  &stepMinYears,
 	}
 
-	resp, err := svc.UpdateEntry(ctx, entry.ID, period.ID, payplan.ID, org.ID, req)
+	resp, err := svc.UpdateEntry(ctx, entry.ID, period.ID, payplan.ID, org.ID, &req)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -892,7 +839,7 @@ func TestPayPlanService_UpdateEntry_WrongPayPlan(t *testing.T) {
 		MonthlyAmount: 500000,
 	}
 
-	_, err := svc.UpdateEntry(ctx, entry.ID, period.ID, 999, org.ID, req)
+	_, err := svc.UpdateEntry(ctx, entry.ID, period.ID, 999, org.ID, &req)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -926,7 +873,7 @@ func TestPayPlanService_UpdateEntry_WrongPeriod(t *testing.T) {
 		MonthlyAmount: 500000,
 	}
 
-	_, err := svc.UpdateEntry(ctx, entry.ID, period2.ID, payplan.ID, org.ID, req)
+	_, err := svc.UpdateEntry(ctx, entry.ID, period2.ID, payplan.ID, org.ID, &req)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}

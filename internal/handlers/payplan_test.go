@@ -201,9 +201,10 @@ func TestPayPlanHandler_Period_CRUD(t *testing.T) {
 
 	// Test Create Period
 	t.Run("CreatePeriod", func(t *testing.T) {
+		toDate := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
 		body := models.PayPlanPeriodCreateRequest{
-			From:        "2024-01-01",
-			To:          strPtr("2024-12-31"),
+			From:        time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			To:          &toDate,
 			WeeklyHours: 39.0,
 		}
 		w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/payplans/%d/periods", org.ID, payplan.ID), body)
@@ -217,8 +218,9 @@ func TestPayPlanHandler_Period_CRUD(t *testing.T) {
 		if result.WeeklyHours != 39.0 {
 			t.Errorf("expected weekly_hours 39.0, got %f", result.WeeklyHours)
 		}
-		if result.From != "2024-01-01" {
-			t.Errorf("expected from '2024-01-01', got '%s'", result.From)
+		expectedFrom := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+		if !result.From.Equal(expectedFrom) {
+			t.Errorf("expected from %v, got %v", expectedFrom, result.From)
 		}
 		periodID = result.ID
 	})
@@ -240,9 +242,10 @@ func TestPayPlanHandler_Period_CRUD(t *testing.T) {
 
 	// Test Update Period
 	t.Run("UpdatePeriod", func(t *testing.T) {
+		toDate := time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC)
 		body := models.PayPlanPeriodUpdateRequest{
-			From:        "2024-01-01",
-			To:          strPtr("2025-12-31"),
+			From:        time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			To:          &toDate,
 			WeeklyHours: 40.0,
 		}
 		w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/payplans/%d/periods/%d", org.ID, payplan.ID, periodID), body)
@@ -543,7 +546,7 @@ func TestPayPlanHandler_InvalidRequests(t *testing.T) {
 		db.Create(payplan)
 
 		body := models.PayPlanPeriodCreateRequest{
-			From:        "2024-01-01",
+			From:        time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 			WeeklyHours: 0, // Invalid - should be > 0
 		}
 		w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/payplans/%d/periods", org.ID, payplan.ID), body)
@@ -721,7 +724,7 @@ func TestPayPlanHandler_UpdatePeriod_NotFound(t *testing.T) {
 	pp := &models.PayPlan{OrganizationID: org.ID, Name: "Test"}
 	db.Create(pp)
 
-	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/payplans/%d/periods/9999", org.ID, pp.ID), models.PayPlanPeriodUpdateRequest{From: "2024-01-01", WeeklyHours: 39})
+	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/payplans/%d/periods/9999", org.ID, pp.ID), models.PayPlanPeriodUpdateRequest{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), WeeklyHours: 39})
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d, got %d: %s", http.StatusNotFound, w.Code, w.Body.String())
 	}

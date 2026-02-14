@@ -441,7 +441,7 @@ func TestGovernmentFundingHandler_Get_PeriodsLimit(t *testing.T) {
 			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
 		}
 
-		var result service.GovernmentFundingWithDetailsResponse
+		var result models.GovernmentFundingWithDetailsResponse
 		parseResponse(t, w, &result)
 
 		if len(result.Periods) != 1 {
@@ -459,7 +459,7 @@ func TestGovernmentFundingHandler_Get_PeriodsLimit(t *testing.T) {
 			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
 		}
 
-		var result service.GovernmentFundingWithDetailsResponse
+		var result models.GovernmentFundingWithDetailsResponse
 		parseResponse(t, w, &result)
 
 		if len(result.Periods) != 3 {
@@ -477,7 +477,7 @@ func TestGovernmentFundingHandler_Get_PeriodsLimit(t *testing.T) {
 			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
 		}
 
-		var result service.GovernmentFundingWithDetailsResponse
+		var result models.GovernmentFundingWithDetailsResponse
 		parseResponse(t, w, &result)
 
 		if len(result.Periods) != 2 {

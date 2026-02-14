@@ -30,12 +30,12 @@ const (
 )
 
 type AuthHandler struct {
-	userStore    *store.UserStore
+	userStore    store.UserStorer
 	jwtSecret    string
 	auditService *service.AuditService
 }
 
-func NewAuthHandler(userStore *store.UserStore, jwtSecret string, auditService *service.AuditService) *AuthHandler {
+func NewAuthHandler(userStore store.UserStorer, jwtSecret string, auditService *service.AuditService) *AuthHandler {
 	return &AuthHandler{
 		userStore:    userStore,
 		jwtSecret:    jwtSecret,

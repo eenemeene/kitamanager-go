@@ -121,7 +121,7 @@ func (h *PayPlanHandler) Create(c *gin.Context) {
 		return
 	}
 
-	payplan, err := h.service.Create(c.Request.Context(), orgID, *req)
+	payplan, err := h.service.Create(c.Request.Context(), orgID, req)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -160,7 +160,7 @@ func (h *PayPlanHandler) Update(c *gin.Context) {
 		return
 	}
 
-	payplan, err := h.service.Update(c.Request.Context(), id, orgID, *req)
+	payplan, err := h.service.Update(c.Request.Context(), id, orgID, req)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -241,7 +241,7 @@ func (h *PayPlanHandler) CreatePeriod(c *gin.Context) {
 		return
 	}
 
-	period, err := h.service.CreatePeriod(c.Request.Context(), payplanID, orgID, *req)
+	period, err := h.service.CreatePeriod(c.Request.Context(), payplanID, orgID, req)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -325,7 +325,7 @@ func (h *PayPlanHandler) UpdatePeriod(c *gin.Context) {
 		return
 	}
 
-	period, err := h.service.UpdatePeriod(c.Request.Context(), periodID, payplanID, orgID, *req)
+	period, err := h.service.UpdatePeriod(c.Request.Context(), periodID, payplanID, orgID, req)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -413,7 +413,7 @@ func (h *PayPlanHandler) CreateEntry(c *gin.Context) {
 		return
 	}
 
-	entry, err := h.service.CreateEntry(c.Request.Context(), *req, periodID, payplanID, orgID)
+	entry, err := h.service.CreateEntry(c.Request.Context(), periodID, payplanID, orgID, req)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -511,7 +511,7 @@ func (h *PayPlanHandler) UpdateEntry(c *gin.Context) {
 		return
 	}
 
-	entry, err := h.service.UpdateEntry(c.Request.Context(), entryID, periodID, payplanID, orgID, *req)
+	entry, err := h.service.UpdateEntry(c.Request.Context(), entryID, periodID, payplanID, orgID, req)
 	if err != nil {
 		respondError(c, err)
 		return

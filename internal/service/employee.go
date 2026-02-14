@@ -235,7 +235,7 @@ func (s *EmployeeService) CreateContract(ctx context.Context, employeeID, orgID 
 	}
 
 	// Validate pay plan exists and belongs to same organization
-	payPlan, err := s.payPlanStore.GetByID(ctx, req.PayPlanID)
+	payPlan, err := s.payPlanStore.FindByID(ctx, req.PayPlanID)
 	if err != nil {
 		return nil, apperror.BadRequest("payplan_id not found")
 	}
@@ -358,7 +358,7 @@ func (s *EmployeeService) UpdateContract(ctx context.Context, contractID, employ
 
 	// Validate and update pay plan if provided
 	if req.PayPlanID != nil {
-		payPlan, err := s.payPlanStore.GetByID(ctx, *req.PayPlanID)
+		payPlan, err := s.payPlanStore.FindByID(ctx, *req.PayPlanID)
 		if err != nil {
 			return nil, apperror.BadRequest("payplan_id not found")
 		}

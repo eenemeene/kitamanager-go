@@ -58,7 +58,7 @@ func (h *GovernmentFundingHandler) List(c *gin.Context) {
 // @Param id path int true "GovernmentFunding ID"
 // @Param periods_limit query int false "Limit number of periods returned (0 = all, default 1 for latest only)"
 // @Param active_on query string false "Filter periods active on date (YYYY-MM-DD, defaults to today)"
-// @Success 200 {object} service.GovernmentFundingWithDetailsResponse
+// @Success 200 {object} models.GovernmentFundingWithDetailsResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
@@ -119,10 +119,7 @@ func (h *GovernmentFundingHandler) Create(c *gin.Context) {
 		return
 	}
 
-	funding, err := h.service.Create(c.Request.Context(), &service.GovernmentFundingCreateRequest{
-		Name:  req.Name,
-		State: req.State,
-	})
+	funding, err := h.service.Create(c.Request.Context(), req)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -161,9 +158,7 @@ func (h *GovernmentFundingHandler) Update(c *gin.Context) {
 		return
 	}
 
-	funding, err := h.service.Update(c.Request.Context(), id, &service.GovernmentFundingUpdateRequest{
-		Name: req.Name,
-	})
+	funding, err := h.service.Update(c.Request.Context(), id, req)
 	if err != nil {
 		respondError(c, err)
 		return

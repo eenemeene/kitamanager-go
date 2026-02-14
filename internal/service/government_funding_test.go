@@ -147,7 +147,7 @@ func TestGovernmentFundingService_Create(t *testing.T) {
 	svc := NewGovernmentFundingService(fundingStore, store.NewTransactor(db))
 	ctx := context.Background()
 
-	req := &GovernmentFundingCreateRequest{
+	req := &models.GovernmentFundingCreateRequest{
 		Name:  "Berlin Funding",
 		State: "berlin",
 	}
@@ -174,7 +174,7 @@ func TestGovernmentFundingService_Create_InvalidState(t *testing.T) {
 	svc := NewGovernmentFundingService(fundingStore, store.NewTransactor(db))
 	ctx := context.Background()
 
-	req := &GovernmentFundingCreateRequest{
+	req := &models.GovernmentFundingCreateRequest{
 		Name:  "Invalid Funding",
 		State: "invalid",
 	}
@@ -199,7 +199,7 @@ func TestGovernmentFundingService_Create_WhitespaceName(t *testing.T) {
 	svc := NewGovernmentFundingService(fundingStore, store.NewTransactor(db))
 	ctx := context.Background()
 
-	req := &GovernmentFundingCreateRequest{
+	req := &models.GovernmentFundingCreateRequest{
 		Name:  "   ",
 		State: "berlin",
 	}
@@ -224,7 +224,7 @@ func TestGovernmentFundingService_Create_TrimsName(t *testing.T) {
 	svc := NewGovernmentFundingService(fundingStore, store.NewTransactor(db))
 	ctx := context.Background()
 
-	req := &GovernmentFundingCreateRequest{
+	req := &models.GovernmentFundingCreateRequest{
 		Name:  "  Berlin Funding  ",
 		State: "berlin",
 	}
@@ -249,7 +249,7 @@ func TestGovernmentFundingService_Update(t *testing.T) {
 	db.Create(funding)
 
 	newName := "Updated Name"
-	req := &GovernmentFundingUpdateRequest{Name: &newName}
+	req := &models.GovernmentFundingUpdateRequest{Name: &newName}
 
 	result, err := svc.Update(ctx, funding.ID, req)
 	if err != nil {
@@ -268,7 +268,7 @@ func TestGovernmentFundingService_Update_NotFound(t *testing.T) {
 	ctx := context.Background()
 
 	newName := "Updated Name"
-	req := &GovernmentFundingUpdateRequest{Name: &newName}
+	req := &models.GovernmentFundingUpdateRequest{Name: &newName}
 
 	_, err := svc.Update(ctx, 999, req)
 	if err == nil {
@@ -294,7 +294,7 @@ func TestGovernmentFundingService_Update_WhitespaceName(t *testing.T) {
 	db.Create(funding)
 
 	newName := "   "
-	req := &GovernmentFundingUpdateRequest{Name: &newName}
+	req := &models.GovernmentFundingUpdateRequest{Name: &newName}
 
 	_, err := svc.Update(ctx, funding.ID, req)
 	if err == nil {

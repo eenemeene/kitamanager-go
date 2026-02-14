@@ -42,16 +42,10 @@ func (s *GovernmentFundingService) GetByID(ctx context.Context, id uint) (*model
 	return &resp, nil
 }
 
-// GovernmentFundingWithDetailsResponse wraps the funding with metadata
-type GovernmentFundingWithDetailsResponse struct {
-	*models.GovernmentFunding
-	TotalPeriods int64 `json:"total_periods"`
-}
-
 // GetByIDWithDetails returns a government funding by ID with nested periods and properties
 // periodsLimit controls how many periods are returned (0 = all)
 // activeOn filters periods to those active on the given date (nil = no filter)
-func (s *GovernmentFundingService) GetByIDWithDetails(ctx context.Context, id uint, periodsLimit int, activeOn *time.Time) (*GovernmentFundingWithDetailsResponse, error) {
+func (s *GovernmentFundingService) GetByIDWithDetails(ctx context.Context, id uint, periodsLimit int, activeOn *time.Time) (*models.GovernmentFundingWithDetailsResponse, error) {
 	funding, err := s.store.FindByIDWithDetails(ctx, id, periodsLimit, activeOn)
 	if err != nil {
 		return nil, apperror.NotFound("government funding")
@@ -62,20 +56,14 @@ func (s *GovernmentFundingService) GetByIDWithDetails(ctx context.Context, id ui
 		return nil, apperror.InternalWrap(err, "failed to count periods")
 	}
 
-	return &GovernmentFundingWithDetailsResponse{
+	return &models.GovernmentFundingWithDetailsResponse{
 		GovernmentFunding: funding,
 		TotalPeriods:      totalPeriods,
 	}, nil
 }
 
-// GovernmentFundingCreateRequest represents the request for creating a government funding
-type GovernmentFundingCreateRequest struct {
-	Name  string
-	State string
-}
-
 // Create creates a new government funding
-func (s *GovernmentFundingService) Create(ctx context.Context, req *GovernmentFundingCreateRequest) (*models.GovernmentFundingResponse, error) {
+func (s *GovernmentFundingService) Create(ctx context.Context, req *models.GovernmentFundingCreateRequest) (*models.GovernmentFundingResponse, error) {
 	name, err := validateRequiredName(req.Name)
 	if err != nil {
 		return nil, err
@@ -98,13 +86,8 @@ func (s *GovernmentFundingService) Create(ctx context.Context, req *GovernmentFu
 	return &resp, nil
 }
 
-// GovernmentFundingUpdateRequest represents the request for updating a government funding
-type GovernmentFundingUpdateRequest struct {
-	Name *string
-}
-
 // Update updates an existing government funding
-func (s *GovernmentFundingService) Update(ctx context.Context, id uint, req *GovernmentFundingUpdateRequest) (*models.GovernmentFundingResponse, error) {
+func (s *GovernmentFundingService) Update(ctx context.Context, id uint, req *models.GovernmentFundingUpdateRequest) (*models.GovernmentFundingResponse, error) {
 	funding, err := s.store.FindByID(ctx, id)
 	if err != nil {
 		return nil, apperror.NotFound("government funding")

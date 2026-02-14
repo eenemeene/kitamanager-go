@@ -25,7 +25,7 @@ func (s *PayPlanStore) Create(ctx context.Context, payplan *models.PayPlan) erro
 }
 
 // GetByID retrieves a pay plan by ID.
-func (s *PayPlanStore) GetByID(ctx context.Context, id uint) (*models.PayPlan, error) {
+func (s *PayPlanStore) FindByID(ctx context.Context, id uint) (*models.PayPlan, error) {
 	var payplan models.PayPlan
 	err := DBFromContext(ctx, s.db).First(&payplan, id).Error
 	if err != nil {
@@ -36,7 +36,7 @@ func (s *PayPlanStore) GetByID(ctx context.Context, id uint) (*models.PayPlan, e
 
 // GetByIDWithPeriods retrieves a pay plan with all periods and entries.
 // If activeOn is non-nil, only periods active on that date are returned.
-func (s *PayPlanStore) GetByIDWithPeriods(ctx context.Context, id uint, activeOn *time.Time) (*models.PayPlan, error) {
+func (s *PayPlanStore) FindByIDWithPeriods(ctx context.Context, id uint, activeOn *time.Time) (*models.PayPlan, error) {
 	var payplan models.PayPlan
 	err := DBFromContext(ctx, s.db).
 		Preload("Periods", func(db *gorm.DB) *gorm.DB {
@@ -57,7 +57,7 @@ func (s *PayPlanStore) GetByIDWithPeriods(ctx context.Context, id uint, activeOn
 }
 
 // GetByOrganization retrieves all pay plans for an organization.
-func (s *PayPlanStore) GetByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.PayPlan, int64, error) {
+func (s *PayPlanStore) FindByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.PayPlan, int64, error) {
 	var payplans []models.PayPlan
 	var total int64
 
@@ -113,7 +113,7 @@ func (s *PayPlanStore) CreatePeriod(ctx context.Context, period *models.PayPlanP
 }
 
 // GetPeriodByID retrieves a period by ID.
-func (s *PayPlanStore) GetPeriodByID(ctx context.Context, id uint) (*models.PayPlanPeriod, error) {
+func (s *PayPlanStore) FindPeriodByID(ctx context.Context, id uint) (*models.PayPlanPeriod, error) {
 	var period models.PayPlanPeriod
 	err := DBFromContext(ctx, s.db).First(&period, id).Error
 	if err != nil {
@@ -123,7 +123,7 @@ func (s *PayPlanStore) GetPeriodByID(ctx context.Context, id uint) (*models.PayP
 }
 
 // GetPeriodByIDWithEntries retrieves a period with all entries.
-func (s *PayPlanStore) GetPeriodByIDWithEntries(ctx context.Context, id uint) (*models.PayPlanPeriod, error) {
+func (s *PayPlanStore) FindPeriodByIDWithEntries(ctx context.Context, id uint) (*models.PayPlanPeriod, error) {
 	var period models.PayPlanPeriod
 	err := DBFromContext(ctx, s.db).
 		Preload("Entries", func(db *gorm.DB) *gorm.DB {
@@ -137,7 +137,7 @@ func (s *PayPlanStore) GetPeriodByIDWithEntries(ctx context.Context, id uint) (*
 }
 
 // GetPeriodsByPayPlan retrieves all periods for a pay plan.
-func (s *PayPlanStore) GetPeriodsByPayPlan(ctx context.Context, payplanID uint) ([]models.PayPlanPeriod, error) {
+func (s *PayPlanStore) FindPeriodsByPayPlan(ctx context.Context, payplanID uint) ([]models.PayPlanPeriod, error) {
 	var periods []models.PayPlanPeriod
 	err := DBFromContext(ctx, s.db).
 		Where("pay_plan_id = ?", payplanID).
@@ -150,7 +150,7 @@ func (s *PayPlanStore) GetPeriodsByPayPlan(ctx context.Context, payplanID uint) 
 }
 
 // GetActivePeriod retrieves the active period for a pay plan at a given date.
-func (s *PayPlanStore) GetActivePeriod(ctx context.Context, payplanID uint, date time.Time) (*models.PayPlanPeriod, error) {
+func (s *PayPlanStore) FindActivePeriod(ctx context.Context, payplanID uint, date time.Time) (*models.PayPlanPeriod, error) {
 	var period models.PayPlanPeriod
 	err := DBFromContext(ctx, s.db).
 		Preload("Entries").
@@ -188,7 +188,7 @@ func (s *PayPlanStore) CreateEntry(ctx context.Context, entry *models.PayPlanEnt
 }
 
 // GetEntryByID retrieves an entry by ID.
-func (s *PayPlanStore) GetEntryByID(ctx context.Context, id uint) (*models.PayPlanEntry, error) {
+func (s *PayPlanStore) FindEntryByID(ctx context.Context, id uint) (*models.PayPlanEntry, error) {
 	var entry models.PayPlanEntry
 	err := DBFromContext(ctx, s.db).First(&entry, id).Error
 	if err != nil {
@@ -198,7 +198,7 @@ func (s *PayPlanStore) GetEntryByID(ctx context.Context, id uint) (*models.PayPl
 }
 
 // GetEntriesByPeriod retrieves all entries for a period.
-func (s *PayPlanStore) GetEntriesByPeriod(ctx context.Context, periodID uint) ([]models.PayPlanEntry, error) {
+func (s *PayPlanStore) FindEntriesByPeriod(ctx context.Context, periodID uint) ([]models.PayPlanEntry, error) {
 	var entries []models.PayPlanEntry
 	err := DBFromContext(ctx, s.db).
 		Where("period_id = ?", periodID).
@@ -211,7 +211,7 @@ func (s *PayPlanStore) GetEntriesByPeriod(ctx context.Context, periodID uint) ([
 }
 
 // GetEntry retrieves a specific entry by grade and step.
-func (s *PayPlanStore) GetEntry(ctx context.Context, periodID uint, grade string, step int) (*models.PayPlanEntry, error) {
+func (s *PayPlanStore) FindEntry(ctx context.Context, periodID uint, grade string, step int) (*models.PayPlanEntry, error) {
 	var entry models.PayPlanEntry
 	err := DBFromContext(ctx, s.db).
 		Where("period_id = ? AND grade = ? AND step = ?", periodID, grade, step).
