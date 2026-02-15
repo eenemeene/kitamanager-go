@@ -23,9 +23,27 @@ jest.mock('@nivo/line', () => ({
 describe('MonthlyContractChart', () => {
   const mockData: StaffingHoursResponse = {
     data_points: [
-      { date: '2025-01-01', required_hours: 100, available_hours: 120, child_count: 10, staff_count: 5 },
-      { date: '2025-02-01', required_hours: 110, available_hours: 120, child_count: 12, staff_count: 5 },
-      { date: '2025-03-01', required_hours: 120, available_hours: 130, child_count: 15, staff_count: 6 },
+      {
+        date: '2025-01-01',
+        required_hours: 100,
+        available_hours: 120,
+        child_count: 10,
+        staff_count: 5,
+      },
+      {
+        date: '2025-02-01',
+        required_hours: 110,
+        available_hours: 120,
+        child_count: 12,
+        staff_count: 5,
+      },
+      {
+        date: '2025-03-01',
+        required_hours: 120,
+        available_hours: 130,
+        child_count: 15,
+        staff_count: 6,
+      },
     ],
   };
 

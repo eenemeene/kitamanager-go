@@ -214,12 +214,17 @@ class ApiClient {
     return {
       list: (
         orgId: number,
-        params: PaginationParams & { search?: string; staff_category?: string } = {}
+        params: PaginationParams & {
+          search?: string;
+          staff_category?: string;
+          section_id?: number;
+        } = {}
       ) => {
-        const { page = 1, limit = DEFAULT_PAGE_SIZE, search, staff_category } = params;
+        const { page = 1, limit = DEFAULT_PAGE_SIZE, search, staff_category, section_id } = params;
         const qp = new URLSearchParams({ page: String(page), limit: String(limit) });
         if (search) qp.set('search', search);
         if (staff_category) qp.set('staff_category', staff_category);
+        if (section_id) qp.set('section_id', String(section_id));
         return this.client
           .get<PaginatedResponse<T>>(`/organizations/${orgId}/${resource}?${qp}`)
           .then((r) => r.data);

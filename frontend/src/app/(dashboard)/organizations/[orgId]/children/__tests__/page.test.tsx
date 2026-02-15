@@ -28,6 +28,7 @@ jest.mock('@/lib/api/client', () => ({
     deleteChild: jest.fn(),
     createChildContract: jest.fn(),
     updateChildContract: jest.fn(),
+    getSections: jest.fn(),
   },
   getErrorMessage: jest.fn((e: unknown, f: string) => f),
 }));
@@ -88,6 +89,7 @@ describe('ChildrenPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (apiClient.getChildrenFunding as jest.Mock).mockResolvedValue(mockFundingResponse);
+    (apiClient.getSections as jest.Mock).mockResolvedValue(createMockPaginatedResponse([]));
   });
 
   it('renders page title', async () => {
@@ -162,7 +164,6 @@ describe('ChildrenPage', () => {
     expect(screen.getByText('children.birthdate')).toBeInTheDocument();
     expect(screen.getByText('children.age')).toBeInTheDocument();
     expect(screen.getByText('sections.title')).toBeInTheDocument();
-    expect(screen.getByText('children.currentContract')).toBeInTheDocument();
     expect(screen.getByText('children.properties')).toBeInTheDocument();
     expect(screen.getByText('children.funding')).toBeInTheDocument();
     expect(screen.getByText('children.requirement')).toBeInTheDocument();

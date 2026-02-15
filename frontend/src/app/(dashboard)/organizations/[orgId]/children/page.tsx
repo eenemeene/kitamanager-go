@@ -18,6 +18,13 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useToast } from '@/lib/hooks/use-toast';
 import { apiClient, getErrorMessage } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
@@ -39,7 +46,7 @@ import {
   formatFte,
   propertiesToValues,
 } from '@/lib/utils/formatting';
-import { getActiveContract, getCurrentContract, getContractStatus } from '@/lib/utils/contracts';
+import { getActiveContract, getCurrentContract } from '@/lib/utils/contracts';
 import { Pagination } from '@/components/ui/pagination';
 import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
 import { DeleteConfirmDialog } from '@/components/crud/delete-confirm-dialog';
@@ -72,6 +79,7 @@ export default function ChildrenPage() {
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
   const search = useDebouncedValue(searchInput, 300);
+  const [sectionFilter, setSectionFilter] = useState<number | undefined>(undefined);
 
   const {
     data: paginatedData,
@@ -79,8 +87,13 @@ export default function ChildrenPage() {
     error: queryError,
     refetch,
   } = useQuery({
-    queryKey: queryKeys.children.list(orgId, page, search),
-    queryFn: () => apiClient.getChildren(orgId, { page, search: search || undefined }),
+    queryKey: queryKeys.children.list(orgId, page, search, sectionFilter),
+    queryFn: () =>
+      apiClient.getChildren(orgId, {
+        page,
+        search: search || undefined,
+        section_id: sectionFilter,
+      }),
     enabled: !!orgId,
   });
 
@@ -320,21 +333,42 @@ export default function ChildrenPage() {
         </Button>
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <label htmlFor="search-children" className="sr-only">
-          {t('common.search')}
-        </label>
-        <Input
-          id="search-children"
-          placeholder={t('common.search')}
-          value={searchInput}
-          onChange={(e) => {
-            setSearchInput(e.target.value);
+      <div className="flex items-center gap-4">
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <label htmlFor="search-children" className="sr-only">
+            {t('common.search')}
+          </label>
+          <Input
+            id="search-children"
+            placeholder={t('common.search')}
+            value={searchInput}
+            onChange={(e) => {
+              setSearchInput(e.target.value);
+              setPage(1);
+            }}
+            className="pl-9"
+          />
+        </div>
+        <Select
+          value={sectionFilter ? String(sectionFilter) : 'all'}
+          onValueChange={(value) => {
+            setSectionFilter(value === 'all' ? undefined : Number(value));
             setPage(1);
           }}
-          className="pl-9"
-        />
+        >
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder={t('statistics.filterBySection')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('statistics.allSections')}</SelectItem>
+            {sections.map((section) => (
+              <SelectItem key={section.id} value={String(section.id)}>
+                {section.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <Card>
@@ -359,7 +393,6 @@ export default function ChildrenPage() {
                   <TableHead>{t('children.birthdate')}</TableHead>
                   <TableHead>{t('children.age')}</TableHead>
                   <TableHead>{t('sections.title')}</TableHead>
-                  <TableHead>{t('children.currentContract')}</TableHead>
                   <TableHead>{t('children.properties')}</TableHead>
                   <TableHead className="text-right">{t('children.funding')}</TableHead>
                   <TableHead className="text-right">
@@ -372,7 +405,6 @@ export default function ChildrenPage() {
               <TableBody>
                 {children?.map((child) => {
                   const currentContract = getCurrentContract(child.contracts);
-                  const status = getContractStatus(currentContract);
                   return (
                     <TableRow key={child.id}>
                       <TableCell className="font-medium">
@@ -384,27 +416,6 @@ export default function ChildrenPage() {
                       <TableCell>
                         {currentContract?.section_name && (
                           <span>{currentContract.section_name}</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {currentContract ? (
-                          <Badge
-                            variant={
-                              status === 'active'
-                                ? 'success'
-                                : status === 'upcoming'
-                                  ? 'warning'
-                                  : 'secondary'
-                            }
-                          >
-                            {status === 'active'
-                              ? t('common.active')
-                              : status === 'upcoming'
-                                ? t('common.upcoming')
-                                : t('common.ended')}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground">{t('children.noContract')}</span>
                         )}
                       </TableCell>
                       <TableCell>
@@ -493,7 +504,7 @@ export default function ChildrenPage() {
                 })}
                 {children?.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center text-muted-foreground">
                       {t('common.noResults')}
                     </TableCell>
                   </TableRow>
