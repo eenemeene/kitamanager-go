@@ -75,7 +75,8 @@ describe('AppSidebar', () => {
     expect(screen.getByText('nav.groups')).toBeInTheDocument();
     expect(screen.getByText('nav.sections')).toBeInTheDocument();
     expect(screen.getByText('nav.statistics')).toBeInTheDocument();
-    expect(screen.getByText('nav.payPlans')).toBeInTheDocument();
+    // Pay Plans is nested under Employees (collapsed by default)
+    expect(screen.queryByText('nav.payPlans')).not.toBeInTheDocument();
   });
 
   it('renders collapse/toggle sidebar button', () => {

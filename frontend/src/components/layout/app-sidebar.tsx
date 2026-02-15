@@ -14,7 +14,6 @@ import {
   UsersRound,
   BarChart3,
   Landmark,
-  CircleDollarSign,
   Receipt,
   Wallet,
   ChevronLeft,
@@ -55,7 +54,12 @@ const orgNavigation: NavItem[] = [
   { name: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'nav.users', href: '/users', icon: UserCog },
   { name: 'nav.groups', href: '/groups', icon: UsersRound },
-  { name: 'nav.employees', href: '/employees', icon: Users },
+  {
+    name: 'nav.employees',
+    href: '/employees',
+    icon: Users,
+    children: [{ name: 'nav.payPlans', href: '/payplans' }],
+  },
   { name: 'nav.children', href: '/children', icon: Baby },
   { name: 'nav.sections', href: '/sections', icon: LayoutGrid },
   {
@@ -70,7 +74,6 @@ const orgNavigation: NavItem[] = [
       { name: 'nav.statisticsOccupancy', href: '/statistics/occupancy' },
     ],
   },
-  { name: 'nav.payPlans', href: '/payplans', icon: CircleDollarSign },
   { name: 'nav.costs', href: '/costs', icon: Receipt },
   { name: 'nav.budgetItems', href: '/budget-items', icon: Wallet },
 ];
