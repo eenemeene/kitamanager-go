@@ -223,6 +223,36 @@ func createStepPromotionService(db *gorm.DB) *StepPromotionService {
 	return NewStepPromotionService(payPlanStore, employeeStore)
 }
 
+// createTestCost creates a cost for testing.
+func createTestCost(t *testing.T, db *gorm.DB, name string, orgID uint) *models.Cost {
+	t.Helper()
+
+	cost := &models.Cost{
+		OrganizationID: orgID,
+		Name:           name,
+	}
+	if err := db.Create(cost).Error; err != nil {
+		t.Fatalf("failed to create test cost: %v", err)
+	}
+	return cost
+}
+
+// createTestCostEntry creates a cost entry for testing.
+func createTestCostEntry(t *testing.T, db *gorm.DB, costID uint, from time.Time, to *time.Time, amountCents int, notes string) *models.CostEntry {
+	t.Helper()
+
+	entry := &models.CostEntry{
+		CostID:      costID,
+		Period:      models.Period{From: from, To: to},
+		AmountCents: amountCents,
+		Notes:       notes,
+	}
+	if err := db.Create(entry).Error; err != nil {
+		t.Fatalf("failed to create test cost entry: %v", err)
+	}
+	return entry
+}
+
 // createTestGovernmentFunding creates a government funding plan for testing.
 func createTestGovernmentFunding(t *testing.T, db *gorm.DB, name string) *models.GovernmentFunding {
 	t.Helper()

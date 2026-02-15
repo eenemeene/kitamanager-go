@@ -101,6 +101,7 @@ func main() {
 	governmentFundingStore := store.NewGovernmentFundingStore(db)
 	payPlanStore := store.NewPayPlanStore(db)
 	childAttendanceStore := store.NewChildAttendanceStore(db)
+	costStore := store.NewCostStore(db)
 	auditStore := store.NewAuditStore(db)
 
 	// Seed admin user if configured
@@ -139,6 +140,7 @@ func main() {
 	governmentFundingService := service.NewGovernmentFundingService(governmentFundingStore, transactor)
 	payPlanService := service.NewPayPlanService(payPlanStore)
 	childAttendanceService := service.NewChildAttendanceService(childAttendanceStore, childStore)
+	costService := service.NewCostService(costStore, transactor)
 	stepPromotionService := service.NewStepPromotionService(payPlanStore, employeeStore)
 	statisticsService := service.NewStatisticsService(childStore, employeeStore, orgStore, governmentFundingStore)
 
@@ -153,6 +155,7 @@ func main() {
 	governmentFundingHandler := handlers.NewGovernmentFundingHandler(governmentFundingService, auditService)
 	payPlanHandler := handlers.NewPayPlanHandler(payPlanService, auditService)
 	childAttendanceHandler := handlers.NewChildAttendanceHandler(childAttendanceService, auditService)
+	costHandler := handlers.NewCostHandler(costService, auditService)
 	stepPromotionHandler := handlers.NewStepPromotionHandler(stepPromotionService)
 	statisticsHandler := handlers.NewStatisticsHandler(statisticsService)
 	healthHandler := handlers.NewHealthHandler(db)
@@ -200,7 +203,7 @@ func main() {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Setup API routes
-	routes.Setup(r, authHandler, userHandler, groupHandler, sectionHandler, orgHandler, employeeHandler, childHandler, governmentFundingHandler, payPlanHandler, childAttendanceHandler, stepPromotionHandler, statisticsHandler, authMiddleware, authzMiddleware, csrfMiddleware, loginRateLimiter, apiRateLimiter)
+	routes.Setup(r, authHandler, userHandler, groupHandler, sectionHandler, orgHandler, employeeHandler, childHandler, governmentFundingHandler, payPlanHandler, childAttendanceHandler, costHandler, stepPromotionHandler, statisticsHandler, authMiddleware, authzMiddleware, csrfMiddleware, loginRateLimiter, apiRateLimiter)
 
 	// Create HTTP server
 	srv := &http.Server{

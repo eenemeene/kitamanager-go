@@ -16,16 +16,18 @@ type PayPlan struct {
 
 // PayPlanPeriod represents a time period with specific pay rates.
 // WeeklyHours defines the reference hours for full-time employment.
+// EmployerContributionRate is stored in hundredths of a percent (e.g. 2200 = 22.00%).
 type PayPlanPeriod struct {
-	ID          uint           `gorm:"primaryKey" json:"id" example:"1"`
-	PayPlanID   uint           `gorm:"not null;index" json:"payplan_id" example:"1"`
-	PayPlan     *PayPlan       `gorm:"foreignKey:PayPlanID" json:"-"`
-	From        time.Time      `gorm:"not null" json:"from" example:"2024-01-01"`
-	To          *time.Time     `json:"to,omitempty" example:"2024-12-31"`
-	WeeklyHours float64        `gorm:"not null" json:"weekly_hours" example:"39.0"`
-	Entries     []PayPlanEntry `gorm:"foreignKey:PeriodID" json:"entries,omitempty"`
-	CreatedAt   time.Time      `json:"created_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
+	ID                       uint           `gorm:"primaryKey" json:"id" example:"1"`
+	PayPlanID                uint           `gorm:"not null;index" json:"payplan_id" example:"1"`
+	PayPlan                  *PayPlan       `gorm:"foreignKey:PayPlanID" json:"-"`
+	From                     time.Time      `gorm:"not null" json:"from" example:"2024-01-01"`
+	To                       *time.Time     `json:"to,omitempty" example:"2024-12-31"`
+	WeeklyHours              float64        `gorm:"not null" json:"weekly_hours" example:"39.0"`
+	EmployerContributionRate int            `json:"employer_contribution_rate" example:"2200"` // hundredths of percent: 2200 = 22.00%
+	Entries                  []PayPlanEntry `gorm:"foreignKey:PeriodID" json:"entries,omitempty"`
+	CreatedAt                time.Time      `json:"created_at"`
+	UpdatedAt                time.Time      `json:"updated_at"`
 }
 
 // PayPlanEntry represents a specific pay grade and step with its monthly amount.
@@ -73,28 +75,31 @@ type PayPlanDetailResponse struct {
 
 // PayPlanPeriodCreateRequest is the request body for creating a period.
 type PayPlanPeriodCreateRequest struct {
-	From        time.Time  `json:"from" binding:"required" example:"2024-01-01T00:00:00Z"`
-	To          *time.Time `json:"to,omitempty" example:"2024-12-31T00:00:00Z"`
-	WeeklyHours float64    `json:"weekly_hours" binding:"required,gt=0" example:"39.0"`
+	From                     time.Time  `json:"from" binding:"required" example:"2024-01-01T00:00:00Z"`
+	To                       *time.Time `json:"to,omitempty" example:"2024-12-31T00:00:00Z"`
+	WeeklyHours              float64    `json:"weekly_hours" binding:"required,gt=0" example:"39.0"`
+	EmployerContributionRate int        `json:"employer_contribution_rate" binding:"min=0,max=10000" example:"2200"` // hundredths of percent: 2200 = 22.00%
 }
 
 // PayPlanPeriodUpdateRequest is the request body for updating a period.
 type PayPlanPeriodUpdateRequest struct {
-	From        time.Time  `json:"from" binding:"required" example:"2024-01-01T00:00:00Z"`
-	To          *time.Time `json:"to,omitempty" example:"2024-12-31T00:00:00Z"`
-	WeeklyHours float64    `json:"weekly_hours" binding:"required,gt=0" example:"39.0"`
+	From                     time.Time  `json:"from" binding:"required" example:"2024-01-01T00:00:00Z"`
+	To                       *time.Time `json:"to,omitempty" example:"2024-12-31T00:00:00Z"`
+	WeeklyHours              float64    `json:"weekly_hours" binding:"required,gt=0" example:"39.0"`
+	EmployerContributionRate int        `json:"employer_contribution_rate" binding:"min=0,max=10000" example:"2200"` // hundredths of percent: 2200 = 22.00%
 }
 
 // PayPlanPeriodResponse is the response for a period.
 type PayPlanPeriodResponse struct {
-	ID          uint                   `json:"id" example:"1"`
-	PayPlanID   uint                   `json:"payplan_id" example:"1"`
-	From        time.Time              `json:"from" example:"2024-01-01T00:00:00Z"`
-	To          *time.Time             `json:"to,omitempty" example:"2024-12-31T00:00:00Z"`
-	WeeklyHours float64                `json:"weekly_hours" example:"39.0"`
-	Entries     []PayPlanEntryResponse `json:"entries,omitempty"`
-	CreatedAt   time.Time              `json:"created_at"`
-	UpdatedAt   time.Time              `json:"updated_at"`
+	ID                       uint                   `json:"id" example:"1"`
+	PayPlanID                uint                   `json:"payplan_id" example:"1"`
+	From                     time.Time              `json:"from" example:"2024-01-01T00:00:00Z"`
+	To                       *time.Time             `json:"to,omitempty" example:"2024-12-31T00:00:00Z"`
+	WeeklyHours              float64                `json:"weekly_hours" example:"39.0"`
+	EmployerContributionRate int                    `json:"employer_contribution_rate" example:"2200"` // hundredths of percent: 2200 = 22.00%
+	Entries                  []PayPlanEntryResponse `json:"entries,omitempty"`
+	CreatedAt                time.Time              `json:"created_at"`
+	UpdatedAt                time.Time              `json:"updated_at"`
 }
 
 // PayPlanEntryCreateRequest is the request body for creating an entry.
@@ -159,14 +164,15 @@ func (p *PayPlanPeriod) ToResponse() PayPlanPeriodResponse {
 		entries[i] = entry.ToResponse()
 	}
 	return PayPlanPeriodResponse{
-		ID:          p.ID,
-		PayPlanID:   p.PayPlanID,
-		From:        p.From,
-		To:          p.To,
-		WeeklyHours: p.WeeklyHours,
-		Entries:     entries,
-		CreatedAt:   p.CreatedAt,
-		UpdatedAt:   p.UpdatedAt,
+		ID:                       p.ID,
+		PayPlanID:                p.PayPlanID,
+		From:                     p.From,
+		To:                       p.To,
+		WeeklyHours:              p.WeeklyHours,
+		EmployerContributionRate: p.EmployerContributionRate,
+		Entries:                  entries,
+		CreatedAt:                p.CreatedAt,
+		UpdatedAt:                p.UpdatedAt,
 	}
 }
 

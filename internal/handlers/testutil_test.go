@@ -237,3 +237,10 @@ func createStatisticsService(db *gorm.DB) *service.StatisticsService {
 	fundingStore := store.NewGovernmentFundingStore(db)
 	return service.NewStatisticsService(childStore, employeeStore, orgStore, fundingStore)
 }
+
+// createCostServiceForHandler creates a cost service for handler testing.
+func createCostServiceForHandler(db *gorm.DB) *service.CostService {
+	costStore := store.NewCostStore(db)
+	transactor := store.NewTransactor(db)
+	return service.NewCostService(costStore, transactor)
+}

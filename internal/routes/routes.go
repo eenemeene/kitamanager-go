@@ -20,6 +20,7 @@ func Setup(
 	governmentFundingHandler *handlers.GovernmentFundingHandler,
 	payPlanHandler *handlers.PayPlanHandler,
 	childAttendanceHandler *handlers.ChildAttendanceHandler,
+	costHandler *handlers.CostHandler,
 	stepPromotionHandler *handlers.StepPromotionHandler,
 	statisticsHandler *handlers.StatisticsHandler,
 	authMiddleware *middleware.AuthMiddleware,
@@ -393,6 +394,45 @@ func Setup(
 					payplans.DELETE("/:id/periods/:periodId/entries/:entryId",
 						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionDelete),
 						payPlanHandler.DeleteEntry)
+				}
+
+				// ============================================================
+				// Cost management (org-scoped)
+				// ============================================================
+				costs := orgScoped.Group("/costs")
+				{
+					costs.GET("",
+						authzMiddleware.RequirePermission(rbac.ResourceCosts, rbac.ActionRead),
+						costHandler.List)
+					costs.GET("/:id",
+						authzMiddleware.RequirePermission(rbac.ResourceCosts, rbac.ActionRead),
+						costHandler.Get)
+					costs.POST("",
+						authzMiddleware.RequirePermission(rbac.ResourceCosts, rbac.ActionCreate),
+						costHandler.Create)
+					costs.PUT("/:id",
+						authzMiddleware.RequirePermission(rbac.ResourceCosts, rbac.ActionUpdate),
+						costHandler.Update)
+					costs.DELETE("/:id",
+						authzMiddleware.RequirePermission(rbac.ResourceCosts, rbac.ActionDelete),
+						costHandler.Delete)
+
+					// Cost entry management
+					costs.GET("/:id/entries",
+						authzMiddleware.RequirePermission(rbac.ResourceCostEntries, rbac.ActionRead),
+						costHandler.ListEntries)
+					costs.POST("/:id/entries",
+						authzMiddleware.RequirePermission(rbac.ResourceCostEntries, rbac.ActionCreate),
+						costHandler.CreateEntry)
+					costs.GET("/:id/entries/:entryId",
+						authzMiddleware.RequirePermission(rbac.ResourceCostEntries, rbac.ActionRead),
+						costHandler.GetEntry)
+					costs.PUT("/:id/entries/:entryId",
+						authzMiddleware.RequirePermission(rbac.ResourceCostEntries, rbac.ActionUpdate),
+						costHandler.UpdateEntry)
+					costs.DELETE("/:id/entries/:entryId",
+						authzMiddleware.RequirePermission(rbac.ResourceCostEntries, rbac.ActionDelete),
+						costHandler.DeleteEntry)
 				}
 			}
 

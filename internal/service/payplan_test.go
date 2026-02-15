@@ -1079,3 +1079,79 @@ func TestPayPlanService_CalculateSalary_NoMatchingGradeStep(t *testing.T) {
 		t.Errorf("expected ErrNotFound, got %v", err)
 	}
 }
+
+// EmployerContributionRate tests
+
+func TestPayPlanService_CreatePeriod_WithEmployerContributionRate(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createPayPlanService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	payplan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
+
+	fromDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	req := models.PayPlanPeriodCreateRequest{
+		From:                     fromDate,
+		WeeklyHours:              39.0,
+		EmployerContributionRate: 2200, // 22.00%
+	}
+
+	resp, err := svc.CreatePeriod(ctx, payplan.ID, org.ID, &req)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if resp.EmployerContributionRate != 2200 {
+		t.Errorf("EmployerContributionRate = %d, want 2200", resp.EmployerContributionRate)
+	}
+}
+
+func TestPayPlanService_CreatePeriod_DefaultEmployerContributionRate(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createPayPlanService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	payplan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
+
+	req := models.PayPlanPeriodCreateRequest{
+		From:        time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		WeeklyHours: 39.0,
+	}
+
+	resp, err := svc.CreatePeriod(ctx, payplan.ID, org.ID, &req)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if resp.EmployerContributionRate != 0 {
+		t.Errorf("EmployerContributionRate = %d, want 0", resp.EmployerContributionRate)
+	}
+}
+
+func TestPayPlanService_UpdatePeriod_EmployerContributionRate(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createPayPlanService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	payplan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	period := createTestPayPlanPeriod(t, db, payplan.ID, from, nil, 39.0)
+
+	req := models.PayPlanPeriodUpdateRequest{
+		From:                     from,
+		WeeklyHours:              39.0,
+		EmployerContributionRate: 2350, // 23.50%
+	}
+
+	resp, err := svc.UpdatePeriod(ctx, period.ID, payplan.ID, org.ID, &req)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if resp.EmployerContributionRate != 2350 {
+		t.Errorf("EmployerContributionRate = %d, want 2350", resp.EmployerContributionRate)
+	}
+}

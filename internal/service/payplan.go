@@ -148,10 +148,11 @@ func (s *PayPlanService) CreatePeriod(ctx context.Context, payplanID, orgID uint
 	}
 
 	period := &models.PayPlanPeriod{
-		PayPlanID:   payplanID,
-		From:        req.From,
-		To:          req.To,
-		WeeklyHours: req.WeeklyHours,
+		PayPlanID:                payplanID,
+		From:                     req.From,
+		To:                       req.To,
+		WeeklyHours:              req.WeeklyHours,
+		EmployerContributionRate: req.EmployerContributionRate,
 	}
 
 	if err := s.store.CreatePeriod(ctx, period); err != nil {
@@ -198,6 +199,7 @@ func (s *PayPlanService) UpdatePeriod(ctx context.Context, periodID, payplanID, 
 	period.From = req.From
 	period.To = req.To
 	period.WeeklyHours = req.WeeklyHours
+	period.EmployerContributionRate = req.EmployerContributionRate
 
 	if err := s.store.UpdatePeriod(ctx, period); err != nil {
 		return nil, apperror.InternalWrap(err, "failed to update period")

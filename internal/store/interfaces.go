@@ -197,6 +197,24 @@ type PayPlanStorer interface {
 	DeleteEntry(ctx context.Context, id uint) error
 }
 
+// CostStorer defines the interface for cost storage operations
+type CostStorer interface {
+	Create(ctx context.Context, cost *models.Cost) error
+	FindByID(ctx context.Context, id uint) (*models.Cost, error)
+	FindByIDWithEntries(ctx context.Context, id uint) (*models.Cost, error)
+	FindByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.Cost, int64, error)
+	Update(ctx context.Context, cost *models.Cost) error
+	Delete(ctx context.Context, id uint) error
+
+	// Entry operations
+	CreateEntry(ctx context.Context, entry *models.CostEntry) error
+	FindEntryByID(ctx context.Context, id uint) (*models.CostEntry, error)
+	FindEntriesByCostPaginated(ctx context.Context, costID uint, limit, offset int) ([]models.CostEntry, int64, error)
+	UpdateEntry(ctx context.Context, entry *models.CostEntry) error
+	DeleteEntry(ctx context.Context, id uint) error
+	Entries() ContractStorer[models.CostEntry]
+}
+
 // AuditStorer defines the interface for audit log storage operations
 type AuditStorer interface {
 	Create(ctx context.Context, log *models.AuditLog) error
@@ -222,5 +240,6 @@ var (
 	_ ChildAttendanceStorer   = (*ChildAttendanceStore)(nil)
 	_ PayPlanStorer           = (*PayPlanStore)(nil)
 	_ AuditStorer             = (*AuditStore)(nil)
+	_ CostStorer              = (*CostStore)(nil)
 	_ Transactor              = (*GormTransactor)(nil)
 )
