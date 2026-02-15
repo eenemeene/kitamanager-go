@@ -47,6 +47,8 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 		&models.ChildAttendance{},
 		&models.Cost{},
 		&models.CostEntry{},
+		&models.BudgetItem{},
+		&models.BudgetItemEntry{},
 		&models.RevokedToken{},
 	)
 	if err != nil {

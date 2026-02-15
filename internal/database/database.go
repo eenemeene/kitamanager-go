@@ -56,6 +56,8 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 		&models.ChildAttendance{},
 		&models.Cost{},
 		&models.CostEntry{},
+		&models.BudgetItem{},
+		&models.BudgetItemEntry{},
 		&models.RevokedToken{},
 	); err != nil {
 		return nil, fmt.Errorf("failed to run migrations: %w", err)

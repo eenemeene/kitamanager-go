@@ -31,6 +31,8 @@ const (
 	ResourceChildAttendance   = "child_attendance"
 	ResourceCosts             = "costs"
 	ResourceCostEntries       = "cost_entries"
+	ResourceBudgetItems       = "budget_items"
+	ResourceBudgetItemEntries = "budget_item_entries"
 )
 
 // Actions
@@ -167,6 +169,14 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleSuperAdmin, "*", ResourceCostEntries, ActionRead},
 		{RoleSuperAdmin, "*", ResourceCostEntries, ActionUpdate},
 		{RoleSuperAdmin, "*", ResourceCostEntries, ActionDelete},
+		{RoleSuperAdmin, "*", ResourceBudgetItems, ActionCreate},
+		{RoleSuperAdmin, "*", ResourceBudgetItems, ActionRead},
+		{RoleSuperAdmin, "*", ResourceBudgetItems, ActionUpdate},
+		{RoleSuperAdmin, "*", ResourceBudgetItems, ActionDelete},
+		{RoleSuperAdmin, "*", ResourceBudgetItemEntries, ActionCreate},
+		{RoleSuperAdmin, "*", ResourceBudgetItemEntries, ActionRead},
+		{RoleSuperAdmin, "*", ResourceBudgetItemEntries, ActionUpdate},
+		{RoleSuperAdmin, "*", ResourceBudgetItemEntries, ActionDelete},
 
 		// Admin - full access within their organization (domain is checked at runtime)
 		{RoleAdmin, "*", ResourceOrganizations, ActionRead},
@@ -215,6 +225,14 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleAdmin, "*", ResourceCostEntries, ActionRead},
 		{RoleAdmin, "*", ResourceCostEntries, ActionUpdate},
 		{RoleAdmin, "*", ResourceCostEntries, ActionDelete},
+		{RoleAdmin, "*", ResourceBudgetItems, ActionCreate},
+		{RoleAdmin, "*", ResourceBudgetItems, ActionRead},
+		{RoleAdmin, "*", ResourceBudgetItems, ActionUpdate},
+		{RoleAdmin, "*", ResourceBudgetItems, ActionDelete},
+		{RoleAdmin, "*", ResourceBudgetItemEntries, ActionCreate},
+		{RoleAdmin, "*", ResourceBudgetItemEntries, ActionRead},
+		{RoleAdmin, "*", ResourceBudgetItemEntries, ActionUpdate},
+		{RoleAdmin, "*", ResourceBudgetItemEntries, ActionDelete},
 
 		// Manager - manage employees, children, contracts; read-only for users/groups
 		{RoleManager, "*", ResourceOrganizations, ActionRead},
@@ -244,6 +262,8 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleManager, "*", ResourceChildAttendance, ActionDelete},
 		{RoleManager, "*", ResourceCosts, ActionRead},
 		{RoleManager, "*", ResourceCostEntries, ActionRead},
+		{RoleManager, "*", ResourceBudgetItems, ActionRead},
+		{RoleManager, "*", ResourceBudgetItemEntries, ActionRead},
 
 		// Member - read-only access to employees, children, contracts in their org
 		{RoleMember, "*", ResourceOrganizations, ActionRead},
@@ -256,6 +276,8 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleMember, "*", ResourceChildAttendance, ActionRead},
 		{RoleMember, "*", ResourceCosts, ActionRead},
 		{RoleMember, "*", ResourceCostEntries, ActionRead},
+		{RoleMember, "*", ResourceBudgetItems, ActionRead},
+		{RoleMember, "*", ResourceBudgetItemEntries, ActionRead},
 	}
 
 	_, err := e.AddPolicies(policies)

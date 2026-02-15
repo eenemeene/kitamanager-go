@@ -21,6 +21,7 @@ func Setup(
 	payPlanHandler *handlers.PayPlanHandler,
 	childAttendanceHandler *handlers.ChildAttendanceHandler,
 	costHandler *handlers.CostHandler,
+	budgetItemHandler *handlers.BudgetItemHandler,
 	stepPromotionHandler *handlers.StepPromotionHandler,
 	statisticsHandler *handlers.StatisticsHandler,
 	authMiddleware *middleware.AuthMiddleware,
@@ -444,6 +445,45 @@ func Setup(
 					costs.DELETE("/:id/entries/:entryId",
 						authzMiddleware.RequirePermission(rbac.ResourceCostEntries, rbac.ActionDelete),
 						costHandler.DeleteEntry)
+				}
+
+				// ============================================================
+				// Budget Item management (org-scoped)
+				// ============================================================
+				budgetItems := orgScoped.Group("/budget-items")
+				{
+					budgetItems.GET("",
+						authzMiddleware.RequirePermission(rbac.ResourceBudgetItems, rbac.ActionRead),
+						budgetItemHandler.List)
+					budgetItems.GET("/:id",
+						authzMiddleware.RequirePermission(rbac.ResourceBudgetItems, rbac.ActionRead),
+						budgetItemHandler.Get)
+					budgetItems.POST("",
+						authzMiddleware.RequirePermission(rbac.ResourceBudgetItems, rbac.ActionCreate),
+						budgetItemHandler.Create)
+					budgetItems.PUT("/:id",
+						authzMiddleware.RequirePermission(rbac.ResourceBudgetItems, rbac.ActionUpdate),
+						budgetItemHandler.Update)
+					budgetItems.DELETE("/:id",
+						authzMiddleware.RequirePermission(rbac.ResourceBudgetItems, rbac.ActionDelete),
+						budgetItemHandler.Delete)
+
+					// Budget item entry management
+					budgetItems.GET("/:id/entries",
+						authzMiddleware.RequirePermission(rbac.ResourceBudgetItemEntries, rbac.ActionRead),
+						budgetItemHandler.ListEntries)
+					budgetItems.POST("/:id/entries",
+						authzMiddleware.RequirePermission(rbac.ResourceBudgetItemEntries, rbac.ActionCreate),
+						budgetItemHandler.CreateEntry)
+					budgetItems.GET("/:id/entries/:entryId",
+						authzMiddleware.RequirePermission(rbac.ResourceBudgetItemEntries, rbac.ActionRead),
+						budgetItemHandler.GetEntry)
+					budgetItems.PUT("/:id/entries/:entryId",
+						authzMiddleware.RequirePermission(rbac.ResourceBudgetItemEntries, rbac.ActionUpdate),
+						budgetItemHandler.UpdateEntry)
+					budgetItems.DELETE("/:id/entries/:entryId",
+						authzMiddleware.RequirePermission(rbac.ResourceBudgetItemEntries, rbac.ActionDelete),
+						budgetItemHandler.DeleteEntry)
 				}
 			}
 
