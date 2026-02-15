@@ -54,8 +54,6 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 		&models.PayPlanPeriod{},
 		&models.PayPlanEntry{},
 		&models.ChildAttendance{},
-		&models.Cost{},
-		&models.CostEntry{},
 		&models.BudgetItem{},
 		&models.BudgetItemEntry{},
 		&models.RevokedToken{},

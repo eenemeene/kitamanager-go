@@ -21,8 +21,9 @@ type FinancialDataPoint struct {
 	FundingIncome int `json:"funding_income" example:"5000000"` // cents
 	// Expenses
 	GrossSalary   int `json:"gross_salary" example:"3500000"`  // cents
-	EmployerCosts int `json:"employer_costs" example:"770000"` // cents
-	OperatingCost int `json:"operating_cost" example:"500000"` // cents
+	EmployerCosts  int `json:"employer_costs" example:"770000"`  // cents
+	BudgetIncome   int `json:"budget_income" example:"200000"`   // cents
+	BudgetExpenses int `json:"budget_expenses" example:"300000"` // cents
 	// Totals
 	TotalIncome   int `json:"total_income" example:"5000000"`   // cents
 	TotalExpenses int `json:"total_expenses" example:"4770000"` // cents

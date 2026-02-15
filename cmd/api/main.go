@@ -101,7 +101,6 @@ func main() {
 	governmentFundingStore := store.NewGovernmentFundingStore(db)
 	payPlanStore := store.NewPayPlanStore(db)
 	childAttendanceStore := store.NewChildAttendanceStore(db)
-	costStore := store.NewCostStore(db)
 	budgetItemStore := store.NewBudgetItemStore(db)
 	auditStore := store.NewAuditStore(db)
 	tokenStore := store.NewTokenStore(db)
@@ -142,10 +141,9 @@ func main() {
 	governmentFundingService := service.NewGovernmentFundingService(governmentFundingStore, transactor)
 	payPlanService := service.NewPayPlanService(payPlanStore)
 	childAttendanceService := service.NewChildAttendanceService(childAttendanceStore, childStore)
-	costService := service.NewCostService(costStore, transactor)
 	budgetItemService := service.NewBudgetItemService(budgetItemStore, transactor)
 	stepPromotionService := service.NewStepPromotionService(payPlanStore, employeeStore)
-	statisticsService := service.NewStatisticsService(childStore, employeeStore, orgStore, governmentFundingStore, payPlanStore, costStore)
+	statisticsService := service.NewStatisticsService(childStore, employeeStore, orgStore, governmentFundingStore, payPlanStore, budgetItemStore)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(userStore, tokenStore, cfg.JWTSecret, auditService)
@@ -158,7 +156,6 @@ func main() {
 	governmentFundingHandler := handlers.NewGovernmentFundingHandler(governmentFundingService, auditService)
 	payPlanHandler := handlers.NewPayPlanHandler(payPlanService, auditService)
 	childAttendanceHandler := handlers.NewChildAttendanceHandler(childAttendanceService, auditService)
-	costHandler := handlers.NewCostHandler(costService, auditService)
 	budgetItemHandler := handlers.NewBudgetItemHandler(budgetItemService, auditService)
 	stepPromotionHandler := handlers.NewStepPromotionHandler(stepPromotionService)
 	statisticsHandler := handlers.NewStatisticsHandler(statisticsService)
@@ -228,7 +225,7 @@ func main() {
 	}
 
 	// Setup API routes
-	routes.Setup(r, authHandler, userHandler, groupHandler, sectionHandler, orgHandler, employeeHandler, childHandler, governmentFundingHandler, payPlanHandler, childAttendanceHandler, costHandler, budgetItemHandler, stepPromotionHandler, statisticsHandler, authMiddleware, authzMiddleware, csrfMiddleware, loginRateLimiter, apiRateLimiter)
+	routes.Setup(r, authHandler, userHandler, groupHandler, sectionHandler, orgHandler, employeeHandler, childHandler, governmentFundingHandler, payPlanHandler, childAttendanceHandler, budgetItemHandler, stepPromotionHandler, statisticsHandler, authMiddleware, authzMiddleware, csrfMiddleware, loginRateLimiter, apiRateLimiter)
 
 	// Create HTTP server
 	srv := &http.Server{

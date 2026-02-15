@@ -522,49 +522,6 @@ export interface PayPlanEntryUpdateRequest {
   step_min_years?: number | null;
 }
 
-// Cost (organization-scoped operating costs)
-export interface Cost {
-  id: number;
-  organization_id: number;
-  name: string;
-  entries?: CostEntry[];
-  created_at: string;
-  updated_at: string;
-}
-
-export interface CostEntry {
-  id: number;
-  cost_id: number;
-  from: string;
-  to?: string | null;
-  amount_cents: number;
-  notes?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface CostCreateRequest {
-  name: string;
-}
-
-export interface CostUpdateRequest {
-  name: string;
-}
-
-export interface CostEntryCreateRequest {
-  from: string;
-  to?: string | null;
-  amount_cents: number;
-  notes?: string;
-}
-
-export interface CostEntryUpdateRequest {
-  from: string;
-  to?: string | null;
-  amount_cents: number;
-  notes?: string;
-}
-
 // BudgetItem (organization-scoped income/expense categories)
 export interface BudgetItem {
   id: number;
@@ -642,7 +599,8 @@ export interface FinancialDataPoint {
   funding_income: number;
   gross_salary: number;
   employer_costs: number;
-  operating_cost: number;
+  budget_income: number;
+  budget_expenses: number;
   total_income: number;
   total_expenses: number;
   balance: number;

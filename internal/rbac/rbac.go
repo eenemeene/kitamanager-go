@@ -29,8 +29,6 @@ const (
 	ResourceFundings          = "fundings"
 	ResourcePayPlans          = "payplans"
 	ResourceChildAttendance   = "child_attendance"
-	ResourceCosts             = "costs"
-	ResourceCostEntries       = "cost_entries"
 	ResourceBudgetItems       = "budget_items"
 	ResourceBudgetItemEntries = "budget_item_entries"
 )
@@ -161,14 +159,6 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleSuperAdmin, "*", ResourceChildAttendance, ActionRead},
 		{RoleSuperAdmin, "*", ResourceChildAttendance, ActionUpdate},
 		{RoleSuperAdmin, "*", ResourceChildAttendance, ActionDelete},
-		{RoleSuperAdmin, "*", ResourceCosts, ActionCreate},
-		{RoleSuperAdmin, "*", ResourceCosts, ActionRead},
-		{RoleSuperAdmin, "*", ResourceCosts, ActionUpdate},
-		{RoleSuperAdmin, "*", ResourceCosts, ActionDelete},
-		{RoleSuperAdmin, "*", ResourceCostEntries, ActionCreate},
-		{RoleSuperAdmin, "*", ResourceCostEntries, ActionRead},
-		{RoleSuperAdmin, "*", ResourceCostEntries, ActionUpdate},
-		{RoleSuperAdmin, "*", ResourceCostEntries, ActionDelete},
 		{RoleSuperAdmin, "*", ResourceBudgetItems, ActionCreate},
 		{RoleSuperAdmin, "*", ResourceBudgetItems, ActionRead},
 		{RoleSuperAdmin, "*", ResourceBudgetItems, ActionUpdate},
@@ -217,14 +207,6 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleAdmin, "*", ResourceChildAttendance, ActionRead},
 		{RoleAdmin, "*", ResourceChildAttendance, ActionUpdate},
 		{RoleAdmin, "*", ResourceChildAttendance, ActionDelete},
-		{RoleAdmin, "*", ResourceCosts, ActionCreate},
-		{RoleAdmin, "*", ResourceCosts, ActionRead},
-		{RoleAdmin, "*", ResourceCosts, ActionUpdate},
-		{RoleAdmin, "*", ResourceCosts, ActionDelete},
-		{RoleAdmin, "*", ResourceCostEntries, ActionCreate},
-		{RoleAdmin, "*", ResourceCostEntries, ActionRead},
-		{RoleAdmin, "*", ResourceCostEntries, ActionUpdate},
-		{RoleAdmin, "*", ResourceCostEntries, ActionDelete},
 		{RoleAdmin, "*", ResourceBudgetItems, ActionCreate},
 		{RoleAdmin, "*", ResourceBudgetItems, ActionRead},
 		{RoleAdmin, "*", ResourceBudgetItems, ActionUpdate},
@@ -260,8 +242,6 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleManager, "*", ResourceChildAttendance, ActionRead},
 		{RoleManager, "*", ResourceChildAttendance, ActionUpdate},
 		{RoleManager, "*", ResourceChildAttendance, ActionDelete},
-		{RoleManager, "*", ResourceCosts, ActionRead},
-		{RoleManager, "*", ResourceCostEntries, ActionRead},
 		{RoleManager, "*", ResourceBudgetItems, ActionRead},
 		{RoleManager, "*", ResourceBudgetItemEntries, ActionRead},
 
@@ -274,8 +254,6 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleMember, "*", ResourceSections, ActionRead},
 		{RoleMember, "*", ResourcePayPlans, ActionRead},
 		{RoleMember, "*", ResourceChildAttendance, ActionRead},
-		{RoleMember, "*", ResourceCosts, ActionRead},
-		{RoleMember, "*", ResourceCostEntries, ActionRead},
 		{RoleMember, "*", ResourceBudgetItems, ActionRead},
 		{RoleMember, "*", ResourceBudgetItemEntries, ActionRead},
 	}

@@ -197,25 +197,6 @@ type PayPlanStorer interface {
 	DeleteEntry(ctx context.Context, id uint) error
 }
 
-// CostStorer defines the interface for cost storage operations
-type CostStorer interface {
-	Create(ctx context.Context, cost *models.Cost) error
-	FindByID(ctx context.Context, id uint) (*models.Cost, error)
-	FindByIDWithEntries(ctx context.Context, id uint) (*models.Cost, error)
-	FindByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.Cost, int64, error)
-	FindByOrganizationWithEntries(ctx context.Context, orgID uint) ([]models.Cost, error)
-	Update(ctx context.Context, cost *models.Cost) error
-	Delete(ctx context.Context, id uint) error
-
-	// Entry operations
-	CreateEntry(ctx context.Context, entry *models.CostEntry) error
-	FindEntryByID(ctx context.Context, id uint) (*models.CostEntry, error)
-	FindEntriesByCostPaginated(ctx context.Context, costID uint, limit, offset int) ([]models.CostEntry, int64, error)
-	UpdateEntry(ctx context.Context, entry *models.CostEntry) error
-	DeleteEntry(ctx context.Context, id uint) error
-	Entries() PeriodStorer[models.CostEntry]
-}
-
 // BudgetItemStorer defines the interface for budget item storage operations
 type BudgetItemStorer interface {
 	Create(ctx context.Context, item *models.BudgetItem) error
@@ -260,7 +241,6 @@ var (
 	_ ChildAttendanceStorer   = (*ChildAttendanceStore)(nil)
 	_ PayPlanStorer           = (*PayPlanStore)(nil)
 	_ AuditStorer             = (*AuditStore)(nil)
-	_ CostStorer              = (*CostStore)(nil)
 	_ BudgetItemStorer        = (*BudgetItemStore)(nil)
 	_ Transactor              = (*GormTransactor)(nil)
 )

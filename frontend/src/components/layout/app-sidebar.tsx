@@ -14,7 +14,6 @@ import {
   UsersRound,
   BarChart3,
   Landmark,
-  Receipt,
   Wallet,
   ChevronLeft,
   ChevronRight,
@@ -74,7 +73,6 @@ const orgNavigation: NavItem[] = [
       { name: 'nav.statisticsOccupancy', href: '/statistics/occupancy' },
     ],
   },
-  { name: 'nav.costs', href: '/costs', icon: Receipt },
   { name: 'nav.budgetItems', href: '/budget-items', icon: Wallet },
 ];
 

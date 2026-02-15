@@ -236,6 +236,15 @@ func createStatisticsService(db *gorm.DB) *service.StatisticsService {
 	orgStore := store.NewOrganizationStore(db)
 	fundingStore := store.NewGovernmentFundingStore(db)
 	payPlanStore := store.NewPayPlanStore(db)
-	costStore := store.NewCostStore(db)
-	return service.NewStatisticsService(childStore, employeeStore, orgStore, fundingStore, payPlanStore, costStore)
+	budgetItemStore := store.NewBudgetItemStore(db)
+	return service.NewStatisticsService(childStore, employeeStore, orgStore, fundingStore, payPlanStore, budgetItemStore)
+}
+
+func parseTime(t *testing.T, value string) time.Time {
+	t.Helper()
+	parsed, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		t.Fatalf("failed to parse time %q: %v", value, err)
+	}
+	return parsed
 }

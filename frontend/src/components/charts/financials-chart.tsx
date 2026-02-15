@@ -167,13 +167,16 @@ export function FinancialsChart({ data }: FinancialsChartProps) {
                     {t('statistics.fundingIncome')}: {formatEur(dp.funding_income)}
                   </div>
                   <div>
+                    {t('statistics.budgetIncome')}: {formatEur(dp.budget_income)}
+                  </div>
+                  <div>
                     {t('statistics.grossSalary')}: {formatEur(dp.gross_salary)}
                   </div>
                   <div>
                     {t('statistics.employerCosts')}: {formatEur(dp.employer_costs)}
                   </div>
                   <div>
-                    {t('statistics.operatingCost')}: {formatEur(dp.operating_cost)}
+                    {t('statistics.budgetExpenses')}: {formatEur(dp.budget_expenses)}
                   </div>
                 </div>
               )}

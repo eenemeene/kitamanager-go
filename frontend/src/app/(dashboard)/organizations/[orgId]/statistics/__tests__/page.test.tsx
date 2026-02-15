@@ -36,7 +36,8 @@ const mockFinancials = {
       funding_income: 500000,
       gross_salary: 200000,
       employer_costs: 50000,
-      operating_cost: 50000,
+      budget_income: 0,
+      budget_expenses: 0,
     },
   ],
 };

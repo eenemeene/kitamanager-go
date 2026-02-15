@@ -232,32 +232,32 @@ func createStepPromotionService(db *gorm.DB) *StepPromotionService {
 	return NewStepPromotionService(payPlanStore, employeeStore)
 }
 
-// createTestCost creates a cost for testing.
-func createTestCost(t *testing.T, db *gorm.DB, name string, orgID uint) *models.Cost {
+// createTestBudgetItem creates a budget item for testing.
+func createTestBudgetItem(t *testing.T, db *gorm.DB, name string, orgID uint, category string, perChild bool) *models.BudgetItem {
 	t.Helper()
-
-	cost := &models.Cost{
+	item := &models.BudgetItem{
 		OrganizationID: orgID,
 		Name:           name,
+		Category:       category,
+		PerChild:       perChild,
 	}
-	if err := db.Create(cost).Error; err != nil {
-		t.Fatalf("failed to create test cost: %v", err)
+	if err := db.Create(item).Error; err != nil {
+		t.Fatalf("failed to create test budget item: %v", err)
 	}
-	return cost
+	return item
 }
 
-// createTestCostEntry creates a cost entry for testing.
-func createTestCostEntry(t *testing.T, db *gorm.DB, costID uint, from time.Time, to *time.Time, amountCents int, notes string) *models.CostEntry {
+// createTestBudgetItemEntry creates a budget item entry for testing.
+func createTestBudgetItemEntry(t *testing.T, db *gorm.DB, budgetItemID uint, from time.Time, to *time.Time, amountCents int, notes string) *models.BudgetItemEntry {
 	t.Helper()
-
-	entry := &models.CostEntry{
-		CostID:      costID,
-		Period:      models.Period{From: from, To: to},
-		AmountCents: amountCents,
-		Notes:       notes,
+	entry := &models.BudgetItemEntry{
+		BudgetItemID: budgetItemID,
+		Period:       models.Period{From: from, To: to},
+		AmountCents:  amountCents,
+		Notes:        notes,
 	}
 	if err := db.Create(entry).Error; err != nil {
-		t.Fatalf("failed to create test cost entry: %v", err)
+		t.Fatalf("failed to create test budget item entry: %v", err)
 	}
 	return entry
 }

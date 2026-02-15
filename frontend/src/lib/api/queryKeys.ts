@@ -42,11 +42,6 @@ export const queryKeys = {
     detailCached: (fundingId: number | undefined) =>
       ['governmentFunding', fundingId, 'details'] as const,
   },
-  costs: {
-    all: (orgId: number) => ['costs', orgId] as const,
-    list: (orgId: number, page: number) => ['costs', orgId, page] as const,
-    detail: (orgId: number, costId: number) => ['cost', orgId, costId] as const,
-  },
   budgetItems: {
     all: (orgId: number) => ['budgetItems', orgId] as const,
     list: (orgId: number, page: number) => ['budgetItems', orgId, page] as const,
