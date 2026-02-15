@@ -21,8 +21,7 @@ type PayPlanPeriod struct {
 	ID                       uint           `gorm:"primaryKey" json:"id" example:"1"`
 	PayPlanID                uint           `gorm:"not null;index" json:"payplan_id" example:"1"`
 	PayPlan                  *PayPlan       `gorm:"foreignKey:PayPlanID" json:"-"`
-	From                     time.Time      `gorm:"not null" json:"from" example:"2024-01-01"`
-	To                       *time.Time     `json:"to,omitempty" example:"2024-12-31"`
+	Period                                  // From, To (embedded)
 	WeeklyHours              float64        `gorm:"not null" json:"weekly_hours" example:"39.0"`
 	EmployerContributionRate int            `json:"employer_contribution_rate" example:"2200"` // hundredths of percent: 2200 = 22.00%
 	Entries                  []PayPlanEntry `gorm:"foreignKey:PeriodID" json:"entries,omitempty"`

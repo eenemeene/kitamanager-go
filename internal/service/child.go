@@ -547,28 +547,35 @@ func (s *ChildService) CalculateFunding(ctx context.Context, orgID uint, date ti
 func findPeriodForDate(periods []models.GovernmentFundingPeriod, date time.Time) *models.GovernmentFundingPeriod {
 	for i := range periods {
 		period := &periods[i]
-		if !period.From.After(date) && (period.To == nil || !period.To.Before(date)) {
+		if period.IsActiveOn(date) {
 			return period
 		}
 	}
 	return nil
 }
 
-// sumChildRequirement calculates the total requirement for a child based on their age and contract properties.
-func sumChildRequirement(age int, props models.ContractProperties, period *models.GovernmentFundingPeriod) float64 {
+// sumChildFundingMatch returns total payment (cents) and requirement for a child
+// by matching their contract properties against government funding properties.
+func sumChildFundingMatch(age int, props models.ContractProperties, period *models.GovernmentFundingPeriod) (payment int, requirement float64) {
 	if period == nil {
-		return 0
+		return 0, 0
 	}
-	total := 0.0
-	for _, fundingProp := range period.Properties {
-		if !fundingProp.MatchesAge(age) {
+	for _, fp := range period.Properties {
+		if !fp.MatchesAge(age) {
 			continue
 		}
-		if props.HasValue(fundingProp.Key, fundingProp.Value) {
-			total += fundingProp.Requirement
+		if props.HasValue(fp.Key, fp.Value) {
+			payment += fp.Payment
+			requirement += fp.Requirement
 		}
 	}
-	return total
+	return
+}
+
+// sumChildRequirement calculates the total requirement for a child based on their age and contract properties.
+func sumChildRequirement(age int, props models.ContractProperties, period *models.GovernmentFundingPeriod) float64 {
+	_, req := sumChildFundingMatch(age, props, period)
+	return req
 }
 
 // calculateChildFunding calculates funding for a single child based on their age and contract properties.
@@ -588,21 +595,16 @@ func (s *ChildService) calculateChildFunding(age int, properties models.Contract
 		return result
 	}
 
-	// Track which contract key-value pairs have been matched
-	matchedSet := make(map[string]bool) // key:value -> matched
+	// Get totals from the generalized matcher
+	totalFunding, totalRequirement := sumChildFundingMatch(age, properties, period)
 
-	totalFunding := 0
-	totalRequirement := 0.0
+	// Track which contract key-value pairs have been matched (for detailed reporting)
+	matchedSet := make(map[string]bool) // key:value -> matched
 	for _, fundingProp := range period.Properties {
-		// Check if age matches
 		if !fundingProp.MatchesAge(age) {
 			continue
 		}
-
-		// Check if contract has this key:value
 		if properties.HasValue(fundingProp.Key, fundingProp.Value) {
-			totalFunding += fundingProp.Payment
-			totalRequirement += fundingProp.Requirement
 			kvKey := fundingProp.Key + ":" + fundingProp.Value
 			if !matchedSet[kvKey] {
 				matchedSet[kvKey] = true

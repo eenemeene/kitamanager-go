@@ -6311,6 +6311,79 @@
                 }
             }
         },
+        "/api/v1/organizations/{orgId}/statistics/financials": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns monthly data points with income (government funding), expenses (salaries, employer costs, operating costs), and balance.\nIncome is calculated from children's contract properties matched against government funding.\nSalary costs use pay plan entries pro-rated by weekly hours. Employer costs apply the period's contribution rate.\nOperating costs sum active cost entries for the organization.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "statistics"
+                ],
+                "summary": "Get financial statistics",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DD), defaults to 12 months ago",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End date (YYYY-MM-DD), defaults to 6 months ahead",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Filter by section ID",
+                        "name": "section_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FinancialResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/organizations/{orgId}/statistics/staffing-hours": {
             "get": {
                 "security": [
@@ -8412,6 +8485,70 @@
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.FinancialDataPoint": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "description": "cents (income - expenses)",
+                    "type": "integer",
+                    "example": 230000
+                },
+                "child_count": {
+                    "description": "Counts",
+                    "type": "integer",
+                    "example": 45
+                },
+                "date": {
+                    "type": "string",
+                    "example": "2025-01-01"
+                },
+                "employer_costs": {
+                    "description": "cents",
+                    "type": "integer",
+                    "example": 770000
+                },
+                "funding_income": {
+                    "description": "Income",
+                    "type": "integer",
+                    "example": 5000000
+                },
+                "gross_salary": {
+                    "description": "Expenses",
+                    "type": "integer",
+                    "example": 3500000
+                },
+                "operating_cost": {
+                    "description": "cents",
+                    "type": "integer",
+                    "example": 500000
+                },
+                "staff_count": {
+                    "type": "integer",
+                    "example": 12
+                },
+                "total_expenses": {
+                    "description": "cents",
+                    "type": "integer",
+                    "example": 4770000
+                },
+                "total_income": {
+                    "description": "Totals",
+                    "type": "integer",
+                    "example": 5000000
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.FinancialResponse": {
+            "type": "object",
+            "properties": {
+                "data_points": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FinancialDataPoint"
+                    }
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingCreateRequest": {
             "type": "object",
             "required": [
@@ -8442,8 +8579,7 @@
                     "example": "2024-01-15T10:30:00Z"
                 },
                 "from": {
-                    "type": "string",
-                    "example": "2023-03-01"
+                    "type": "string"
                 },
                 "full_time_weekly_hours": {
                     "type": "number",
@@ -8464,8 +8600,7 @@
                     }
                 },
                 "to": {
-                    "type": "string",
-                    "example": "2024-02-29"
+                    "type": "string"
                 }
             }
         },

@@ -235,5 +235,7 @@ func createStatisticsService(db *gorm.DB) *service.StatisticsService {
 	employeeStore := store.NewEmployeeStore(db)
 	orgStore := store.NewOrganizationStore(db)
 	fundingStore := store.NewGovernmentFundingStore(db)
-	return service.NewStatisticsService(childStore, employeeStore, orgStore, fundingStore)
+	payPlanStore := store.NewPayPlanStore(db)
+	costStore := store.NewCostStore(db)
+	return service.NewStatisticsService(childStore, employeeStore, orgStore, fundingStore, payPlanStore, costStore)
 }

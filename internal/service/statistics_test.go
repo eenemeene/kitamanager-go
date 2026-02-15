@@ -17,7 +17,9 @@ func createStatisticsService(db *gorm.DB) *StatisticsService {
 	employeeStore := store.NewEmployeeStore(db)
 	orgStore := store.NewOrganizationStore(db)
 	fundingStore := store.NewGovernmentFundingStore(db)
-	return NewStatisticsService(childStore, employeeStore, orgStore, fundingStore)
+	payPlanStore := store.NewPayPlanStore(db)
+	costStore := store.NewCostStore(db)
+	return NewStatisticsService(childStore, employeeStore, orgStore, fundingStore, payPlanStore, costStore)
 }
 
 func createTestEmployeeContractWithCategory(t *testing.T, db *gorm.DB, employeeID uint, payplanID uint, from time.Time, to *time.Time, weeklyHours float64, staffCategory string, sectionID uint) *models.EmployeeContract {

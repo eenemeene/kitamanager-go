@@ -721,6 +721,54 @@ definitions:
         example: resource not found
         type: string
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.FinancialDataPoint:
+    properties:
+      balance:
+        description: cents (income - expenses)
+        example: 230000
+        type: integer
+      child_count:
+        description: Counts
+        example: 45
+        type: integer
+      date:
+        example: "2025-01-01"
+        type: string
+      employer_costs:
+        description: cents
+        example: 770000
+        type: integer
+      funding_income:
+        description: Income
+        example: 5000000
+        type: integer
+      gross_salary:
+        description: Expenses
+        example: 3500000
+        type: integer
+      operating_cost:
+        description: cents
+        example: 500000
+        type: integer
+      staff_count:
+        example: 12
+        type: integer
+      total_expenses:
+        description: cents
+        example: 4770000
+        type: integer
+      total_income:
+        description: Totals
+        example: 5000000
+        type: integer
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.FinancialResponse:
+    properties:
+      data_points:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FinancialDataPoint'
+        type: array
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingCreateRequest:
     properties:
       name:
@@ -743,7 +791,6 @@ definitions:
         example: "2024-01-15T10:30:00Z"
         type: string
       from:
-        example: "2023-03-01"
         type: string
       full_time_weekly_hours:
         example: 39
@@ -759,7 +806,6 @@ definitions:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingProperty'
         type: array
       to:
-        example: "2024-02-29"
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriodCreateRequest:
@@ -6248,6 +6294,57 @@ paths:
       summary: Update a section
       tags:
       - sections
+  /api/v1/organizations/{orgId}/statistics/financials:
+    get:
+      consumes:
+      - application/json
+      description: |-
+        Returns monthly data points with income (government funding), expenses (salaries, employer costs, operating costs), and balance.
+        Income is calculated from children's contract properties matched against government funding.
+        Salary costs use pay plan entries pro-rated by weekly hours. Employer costs apply the period's contribution rate.
+        Operating costs sum active cost entries for the organization.
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Start date (YYYY-MM-DD), defaults to 12 months ago
+        in: query
+        name: from
+        type: string
+      - description: End date (YYYY-MM-DD), defaults to 6 months ahead
+        in: query
+        name: to
+        type: string
+      - description: Filter by section ID
+        in: query
+        name: section_id
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FinancialResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get financial statistics
+      tags:
+      - statistics
   /api/v1/organizations/{orgId}/statistics/staffing-hours:
     get:
       consumes:

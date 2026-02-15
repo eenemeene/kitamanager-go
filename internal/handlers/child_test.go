@@ -2915,7 +2915,7 @@ func TestChildHandler_GetFunding(t *testing.T) {
 	// Create funding period
 	period := &models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:                time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
 	}
 	db.Create(period)
 

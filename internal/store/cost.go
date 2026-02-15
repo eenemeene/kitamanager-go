@@ -81,6 +81,19 @@ func (s *CostStore) FindByOrganization(ctx context.Context, orgID uint, limit, o
 	return costs, total, nil
 }
 
+// FindByOrganizationWithEntries retrieves all costs for an organization with entries preloaded.
+func (s *CostStore) FindByOrganizationWithEntries(ctx context.Context, orgID uint) ([]models.Cost, error) {
+	var costs []models.Cost
+	err := DBFromContext(ctx, s.db).
+		Where("organization_id = ?", orgID).
+		Preload("Entries").
+		Find(&costs).Error
+	if err != nil {
+		return nil, err
+	}
+	return costs, nil
+}
+
 // Update updates a cost.
 func (s *CostStore) Update(ctx context.Context, cost *models.Cost) error {
 	return DBFromContext(ctx, s.db).Save(cost).Error

@@ -130,8 +130,7 @@ func (i *GovernmentFundingImporter) importPeriod(tx *gorm.DB, fundingID uint, ya
 
 	period := &models.GovernmentFundingPeriod{
 		GovernmentFundingID: fundingID,
-		From:                from,
-		To:                  to,
+		Period:              models.Period{From: from, To: to},
 		FullTimeWeeklyHours: yamlPeriod.FullTimeWeeklyHours,
 		Comment:             strings.TrimSpace(yamlPeriod.Comment),
 	}

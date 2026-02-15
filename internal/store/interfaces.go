@@ -203,6 +203,7 @@ type CostStorer interface {
 	FindByID(ctx context.Context, id uint) (*models.Cost, error)
 	FindByIDWithEntries(ctx context.Context, id uint) (*models.Cost, error)
 	FindByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.Cost, int64, error)
+	FindByOrganizationWithEntries(ctx context.Context, orgID uint) ([]models.Cost, error)
 	Update(ctx context.Context, cost *models.Cost) error
 	Delete(ctx context.Context, id uint) error
 

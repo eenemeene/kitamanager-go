@@ -149,8 +149,7 @@ func (s *PayPlanService) CreatePeriod(ctx context.Context, payplanID, orgID uint
 
 	period := &models.PayPlanPeriod{
 		PayPlanID:                payplanID,
-		From:                     req.From,
-		To:                       req.To,
+		Period:                   models.Period{From: req.From, To: req.To},
 		WeeklyHours:              req.WeeklyHours,
 		EmployerContributionRate: req.EmployerContributionRate,
 	}

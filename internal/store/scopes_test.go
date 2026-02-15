@@ -81,23 +81,20 @@ func TestPeriodActiveOn_GovernmentFundingPeriods(t *testing.T) {
 	to1 := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
 	db.Create(&models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:                time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-		To:                  &to1,
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: &to1},
 	})
 
 	// Period 2: 2024-07-01 to nil (ongoing)
 	db.Create(&models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:                time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC),
-		To:                  nil,
+		Period:              models.Period{From: time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC)},
 	})
 
 	// Period 3: 2023-01-01 to 2023-12-31 (expired)
 	to3 := time.Date(2023, 12, 31, 0, 0, 0, 0, time.UTC)
 	db.Create(&models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:                time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC),
-		To:                  &to3,
+		Period:              models.Period{From: time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), To: &to3},
 	})
 
 	tests := []struct {

@@ -107,13 +107,13 @@ func TestGovernmentFundingService_GetByIDWithDetails(t *testing.T) {
 	// Create periods
 	period1 := &models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:                time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
 	}
 	db.Create(period1)
 
 	period2 := &models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:                time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC),
+		Period:              models.Period{From: time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)},
 	}
 	db.Create(period2)
 
@@ -401,8 +401,7 @@ func TestGovernmentFundingService_CreatePeriod_OverlapRejected(t *testing.T) {
 	to := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
 	period := &models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:                time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-		To:                  &to,
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: &to},
 	}
 	db.Create(period)
 
@@ -436,7 +435,7 @@ func TestGovernmentFundingService_UpdatePeriod(t *testing.T) {
 
 	period := &models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:                time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
 		Comment:             "Original comment",
 	}
 	db.Create(period)
@@ -467,7 +466,7 @@ func TestGovernmentFundingService_UpdatePeriod_FullTimeWeeklyHours(t *testing.T)
 
 	period := &models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:                time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
 		FullTimeWeeklyHours: 39.0,
 	}
 	db.Create(period)
@@ -523,7 +522,7 @@ func TestGovernmentFundingService_DeletePeriod(t *testing.T) {
 
 	period := &models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:                time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
 	}
 	db.Create(period)
 
@@ -552,7 +551,7 @@ func TestGovernmentFundingService_CreateProperty(t *testing.T) {
 
 	period := &models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:                time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
 	}
 	db.Create(period)
 
@@ -621,7 +620,7 @@ func TestGovernmentFundingService_CreateProperty_InvalidAgeRange(t *testing.T) {
 
 	period := &models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:                time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
 	}
 	db.Create(period)
 
@@ -662,7 +661,7 @@ func TestGovernmentFundingService_CreateProperty_WhitespaceKey(t *testing.T) {
 
 	period := &models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:                time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
 	}
 	db.Create(period)
 
@@ -698,7 +697,7 @@ func TestGovernmentFundingService_UpdateProperty(t *testing.T) {
 
 	period := &models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:                time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
 	}
 	db.Create(period)
 
@@ -762,7 +761,7 @@ func TestGovernmentFundingService_DeleteProperty(t *testing.T) {
 
 	period := &models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:                time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
 	}
 	db.Create(period)
 

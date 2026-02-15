@@ -214,7 +214,7 @@ func TestGovernmentFundingHandler_CreatePeriod_NoOverlap(t *testing.T) {
 			existingFrom, _ := time.Parse("2006-01-02", tt.existingFrom)
 			existingPeriod := &models.GovernmentFundingPeriod{
 				GovernmentFundingID: funding.ID,
-				From:                existingFrom,
+				Period:              models.Period{From: existingFrom},
 			}
 			if tt.existingTo != nil {
 				to, _ := time.Parse("2006-01-02", *tt.existingTo)
@@ -263,12 +263,12 @@ func TestGovernmentFundingHandler_UpdatePeriod_NoOverlap(t *testing.T) {
 		// Create two non-overlapping periods
 		from1, _ := time.Parse("2006-01-02", "2024-01-01")
 		to1, _ := time.Parse("2006-01-02", "2024-06-30")
-		period1 := &models.GovernmentFundingPeriod{GovernmentFundingID: funding.ID, From: from1, To: &to1}
+		period1 := &models.GovernmentFundingPeriod{GovernmentFundingID: funding.ID, Period: models.Period{From: from1, To: &to1}}
 		db.Create(period1)
 
 		from2, _ := time.Parse("2006-01-02", "2024-07-01")
 		to2, _ := time.Parse("2006-01-02", "2024-12-31")
-		period2 := &models.GovernmentFundingPeriod{GovernmentFundingID: funding.ID, From: from2, To: &to2}
+		period2 := &models.GovernmentFundingPeriod{GovernmentFundingID: funding.ID, Period: models.Period{From: from2, To: &to2}}
 		db.Create(period2)
 
 		// Try to update period2 to overlap with period1
@@ -292,12 +292,12 @@ func TestGovernmentFundingHandler_UpdatePeriod_NoOverlap(t *testing.T) {
 		// Create two non-overlapping periods
 		from1, _ := time.Parse("2006-01-02", "2024-01-01")
 		to1, _ := time.Parse("2006-01-02", "2024-06-30")
-		period1 := &models.GovernmentFundingPeriod{GovernmentFundingID: funding.ID, From: from1, To: &to1}
+		period1 := &models.GovernmentFundingPeriod{GovernmentFundingID: funding.ID, Period: models.Period{From: from1, To: &to1}}
 		db.Create(period1)
 
 		from2, _ := time.Parse("2006-01-02", "2024-07-01")
 		to2, _ := time.Parse("2006-01-02", "2024-12-31")
-		period2 := &models.GovernmentFundingPeriod{GovernmentFundingID: funding.ID, From: from2, To: &to2}
+		period2 := &models.GovernmentFundingPeriod{GovernmentFundingID: funding.ID, Period: models.Period{From: from2, To: &to2}}
 		db.Create(period2)
 
 		// Update period2's end date (no overlap)
@@ -326,7 +326,7 @@ func TestGovernmentFundingHandler_Property_AgeRange(t *testing.T) {
 	db.Create(funding)
 	period := &models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:                time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
 	}
 	db.Create(period)
 
@@ -425,8 +425,7 @@ func TestGovernmentFundingHandler_Get_PeriodsLimit(t *testing.T) {
 		to := p.to
 		period := &models.GovernmentFundingPeriod{
 			GovernmentFundingID: funding.ID,
-			From:                p.from,
-			To:                  &to,
+			Period:              models.Period{From: p.from, To: &to},
 		}
 		db.Create(period)
 	}
@@ -826,7 +825,7 @@ func TestGovernmentFundingHandler_CreateProperty_Validation(t *testing.T) {
 	db.Create(funding)
 	period := &models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:                time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
 	}
 	db.Create(period)
 
@@ -901,7 +900,7 @@ func TestGovernmentFundingHandler_UpdateProperty_Validation(t *testing.T) {
 	db.Create(funding)
 	period := &models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:                time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
 	}
 	db.Create(period)
 	property := &models.GovernmentFundingProperty{
@@ -970,7 +969,7 @@ func TestGovernmentFundingHandler_DeleteProperty(t *testing.T) {
 	db.Create(funding)
 	period := &models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:                time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
 	}
 	db.Create(period)
 	property := &models.GovernmentFundingProperty{
@@ -1003,7 +1002,7 @@ func TestGovernmentFundingHandler_DeleteProperty_NotFound(t *testing.T) {
 	db.Create(funding)
 	period := &models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:                time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
 	}
 	db.Create(period)
 

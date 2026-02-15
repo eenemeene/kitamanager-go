@@ -40,9 +40,9 @@ func (s *PayPlanStore) FindByIDWithPeriods(ctx context.Context, id uint, activeO
 	var payplan models.PayPlan
 	err := DBFromContext(ctx, s.db).
 		Preload("Periods", func(db *gorm.DB) *gorm.DB {
-			q := db.Order("pay_plan_periods.\"from\" DESC")
+			q := db.Order("pay_plan_periods.from_date DESC")
 			if activeOn != nil {
-				q = q.Scopes(PeriodActiveOn(`"from"`, `"to"`, *activeOn))
+				q = q.Scopes(PeriodActiveOn("from_date", "to_date", *activeOn))
 			}
 			return q
 		}).
@@ -141,7 +141,7 @@ func (s *PayPlanStore) FindPeriodsByPayPlan(ctx context.Context, payplanID uint)
 	var periods []models.PayPlanPeriod
 	err := DBFromContext(ctx, s.db).
 		Where("pay_plan_id = ?", payplanID).
-		Order("\"from\" DESC").
+		Order("from_date DESC").
 		Find(&periods).Error
 	if err != nil {
 		return nil, err
@@ -155,8 +155,8 @@ func (s *PayPlanStore) FindActivePeriod(ctx context.Context, payplanID uint, dat
 	err := DBFromContext(ctx, s.db).
 		Preload("Entries").
 		Where("pay_plan_id = ?", payplanID).
-		Scopes(PeriodActiveOn(`"from"`, `"to"`, date)).
-		Order("\"from\" DESC").
+		Scopes(PeriodActiveOn("from_date", "to_date", date)).
+		Order("from_date DESC").
 		First(&period).Error
 	if err != nil {
 		return nil, WrapNotFound(err)

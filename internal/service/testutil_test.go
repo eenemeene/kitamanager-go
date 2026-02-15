@@ -167,8 +167,7 @@ func createTestPayPlanPeriod(t *testing.T, db *gorm.DB, payplanID uint, from tim
 
 	period := &models.PayPlanPeriod{
 		PayPlanID:   payplanID,
-		From:        from,
-		To:          to,
+		Period:      models.Period{From: from, To: to},
 		WeeklyHours: weeklyHours,
 	}
 	if err := db.Create(period).Error; err != nil {
@@ -283,8 +282,7 @@ func createTestFundingPeriod(t *testing.T, db *gorm.DB, fundingID uint, from tim
 
 	period := &models.GovernmentFundingPeriod{
 		GovernmentFundingID: fundingID,
-		From:                from,
-		To:                  to,
+		Period:              models.Period{From: from, To: to},
 		FullTimeWeeklyHours: fullTimeWeeklyHours,
 	}
 	if err := db.Create(period).Error; err != nil {

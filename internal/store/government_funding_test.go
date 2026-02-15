@@ -18,8 +18,7 @@ func TestGovernmentFundingStore_FindByIDWithDetails_ActiveOn(t *testing.T) {
 	to1 := time.Date(2023, 12, 31, 0, 0, 0, 0, time.UTC)
 	period1 := &models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:                time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC),
-		To:                  &to1,
+		Period:              models.Period{From: time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), To: &to1},
 	}
 	db.Create(period1)
 
@@ -27,16 +26,14 @@ func TestGovernmentFundingStore_FindByIDWithDetails_ActiveOn(t *testing.T) {
 	to2 := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
 	period2 := &models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:                time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-		To:                  &to2,
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: &to2},
 	}
 	db.Create(period2)
 
 	// Period 3: 2025-01-01 to nil (ongoing)
 	period3 := &models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:                time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
-		To:                  nil,
+		Period:              models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
 	}
 	db.Create(period3)
 
@@ -125,15 +122,13 @@ func TestGovernmentFundingStore_FindByStateWithDetails_ActiveOn(t *testing.T) {
 	to1 := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
 	db.Create(&models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:                time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-		To:                  &to1,
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: &to1},
 	})
 
 	// Period 2: 2025-01-01 to nil (ongoing)
 	db.Create(&models.GovernmentFundingPeriod{
 		GovernmentFundingID: funding.ID,
-		From:                time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
-		To:                  nil,
+		Period:              models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
 	})
 
 	t.Run("nil activeOn returns all", func(t *testing.T) {

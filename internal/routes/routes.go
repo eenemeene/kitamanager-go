@@ -215,6 +215,9 @@ func Setup(
 				orgScoped.GET("/statistics/staffing-hours",
 					authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
 					statisticsHandler.GetStaffingHours)
+				orgScoped.GET("/statistics/financials",
+					authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
+					statisticsHandler.GetFinancials)
 
 				// Employees
 				employees := orgScoped.Group("/employees")

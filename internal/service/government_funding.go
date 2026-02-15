@@ -179,8 +179,7 @@ func (s *GovernmentFundingService) CreatePeriod(ctx context.Context, governmentF
 
 		period := &models.GovernmentFundingPeriod{
 			GovernmentFundingID: governmentFundingID,
-			From:                req.From,
-			To:                  req.To,
+			Period:              models.Period{From: req.From, To: req.To},
 			FullTimeWeeklyHours: req.FullTimeWeeklyHours,
 			Comment:             strings.TrimSpace(req.Comment),
 		}

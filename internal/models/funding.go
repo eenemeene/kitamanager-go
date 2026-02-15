@@ -26,8 +26,7 @@ func (GovernmentFunding) TableName() string {
 type GovernmentFundingPeriod struct {
 	ID                  uint                        `gorm:"primaryKey" json:"id" example:"1"`
 	GovernmentFundingID uint                        `gorm:"not null;index" json:"government_funding_id" example:"1"`
-	From                time.Time                   `gorm:"column:from_date;type:date;not null" json:"from" example:"2023-03-01"`
-	To                  *time.Time                  `gorm:"column:to_date;type:date" json:"to" example:"2024-02-29"`
+	Period                                          // From, To (embedded)
 	FullTimeWeeklyHours float64                     `gorm:"not null" json:"full_time_weekly_hours" example:"39.0"`
 	Comment             string                      `gorm:"size:1000" json:"comment,omitempty" example:"Funding period 2023/2024"`
 	CreatedAt           time.Time                   `json:"created_at" example:"2024-01-15T10:30:00Z"`

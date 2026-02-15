@@ -24,7 +24,7 @@ func TestStepPromotionHandler_GetStepPromotions(t *testing.T) {
 	payPlan := createTestPayPlan(t, db, "TVoeD-SuE", org.ID)
 	period := &models.PayPlanPeriod{
 		PayPlanID:   payPlan.ID,
-		From:        time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		Period:      models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
 		WeeklyHours: 39.0,
 	}
 	db.Create(period)

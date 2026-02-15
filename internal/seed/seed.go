@@ -314,8 +314,7 @@ func SeedTestData(cfg *config.Config, db *gorm.DB, fundingStore *store.Governmen
 	periodStart := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	payPeriod := &models.PayPlanPeriod{
 		PayPlanID:   payPlan.ID,
-		From:        periodStart,
-		To:          nil,
+		Period:      models.Period{From: periodStart},
 		WeeklyHours: 39.0,
 	}
 	if err := db.Create(payPeriod).Error; err != nil {

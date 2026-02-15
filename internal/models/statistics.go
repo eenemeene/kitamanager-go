@@ -13,3 +13,26 @@ type StaffingHoursDataPoint struct {
 type StaffingHoursResponse struct {
 	DataPoints []StaffingHoursDataPoint `json:"data_points"`
 }
+
+// FinancialDataPoint represents a single monthly data point for financial overview
+type FinancialDataPoint struct {
+	Date string `json:"date" example:"2025-01-01"`
+	// Income
+	FundingIncome int `json:"funding_income" example:"5000000"` // cents
+	// Expenses
+	GrossSalary   int `json:"gross_salary" example:"3500000"`  // cents
+	EmployerCosts int `json:"employer_costs" example:"770000"` // cents
+	OperatingCost int `json:"operating_cost" example:"500000"` // cents
+	// Totals
+	TotalIncome   int `json:"total_income" example:"5000000"`   // cents
+	TotalExpenses int `json:"total_expenses" example:"4770000"` // cents
+	Balance       int `json:"balance" example:"230000"`         // cents (income - expenses)
+	// Counts
+	ChildCount int `json:"child_count" example:"45"`
+	StaffCount int `json:"staff_count" example:"12"`
+}
+
+// FinancialResponse represents the response for financial statistics
+type FinancialResponse struct {
+	DataPoints []FinancialDataPoint `json:"data_points"`
+}

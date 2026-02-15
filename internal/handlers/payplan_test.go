@@ -290,7 +290,7 @@ func TestPayPlanHandler_Entry_CRUD(t *testing.T) {
 
 	period := &models.PayPlanPeriod{
 		PayPlanID:   payplan.ID,
-		From:        time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		Period:      models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
 		WeeklyHours: 39.0,
 	}
 	db.Create(period)
@@ -402,7 +402,7 @@ func TestPayPlanHandler_GetWithPeriodsAndEntries(t *testing.T) {
 	// Create period
 	period := &models.PayPlanPeriod{
 		PayPlanID:   payplan.ID,
-		From:        time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		Period:      models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
 		WeeklyHours: 39.0,
 	}
 	db.Create(period)
@@ -457,7 +457,7 @@ func TestPayPlanHandler_DeleteCascade(t *testing.T) {
 
 	period := &models.PayPlanPeriod{
 		PayPlanID:   payplan.ID,
-		From:        time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		Period:      models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
 		WeeklyHours: 39.0,
 	}
 	db.Create(period)
@@ -792,7 +792,7 @@ func TestPayPlanHandler_GetEntry_NotFound(t *testing.T) {
 
 	pp := &models.PayPlan{OrganizationID: org.ID, Name: "Test"}
 	db.Create(pp)
-	period := &models.PayPlanPeriod{PayPlanID: pp.ID, From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), WeeklyHours: 39}
+	period := &models.PayPlanPeriod{PayPlanID: pp.ID, Period: models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)}, WeeklyHours: 39}
 	db.Create(period)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/payplans/%d/periods/%d/entries/9999", org.ID, pp.ID, period.ID), nil)
@@ -833,7 +833,7 @@ func TestPayPlanHandler_UpdateEntry_NotFound(t *testing.T) {
 
 	pp := &models.PayPlan{OrganizationID: org.ID, Name: "Test"}
 	db.Create(pp)
-	period := &models.PayPlanPeriod{PayPlanID: pp.ID, From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), WeeklyHours: 39}
+	period := &models.PayPlanPeriod{PayPlanID: pp.ID, Period: models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)}, WeeklyHours: 39}
 	db.Create(period)
 
 	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/payplans/%d/periods/%d/entries/9999", org.ID, pp.ID, period.ID), models.PayPlanEntryUpdateRequest{Grade: "S8a", Step: 1, MonthlyAmount: 100000})
@@ -865,7 +865,7 @@ func TestPayPlanHandler_DeleteEntry_NotFound(t *testing.T) {
 
 	pp := &models.PayPlan{OrganizationID: org.ID, Name: "Test"}
 	db.Create(pp)
-	period := &models.PayPlanPeriod{PayPlanID: pp.ID, From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), WeeklyHours: 39}
+	period := &models.PayPlanPeriod{PayPlanID: pp.ID, Period: models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)}, WeeklyHours: 39}
 	db.Create(period)
 
 	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/payplans/%d/periods/%d/entries/9999", org.ID, pp.ID, period.ID), nil)

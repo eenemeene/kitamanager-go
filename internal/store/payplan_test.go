@@ -23,8 +23,7 @@ func TestPayPlanStore_FindByIDWithPeriods_ActiveOn(t *testing.T) {
 	to1 := time.Date(2023, 12, 31, 0, 0, 0, 0, time.UTC)
 	period1 := &models.PayPlanPeriod{
 		PayPlanID:   payplan.ID,
-		From:        time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC),
-		To:          &to1,
+		Period:      models.Period{From: time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), To: &to1},
 		WeeklyHours: 39.0,
 	}
 	db.Create(period1)
@@ -33,8 +32,7 @@ func TestPayPlanStore_FindByIDWithPeriods_ActiveOn(t *testing.T) {
 	to2 := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
 	period2 := &models.PayPlanPeriod{
 		PayPlanID:   payplan.ID,
-		From:        time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-		To:          &to2,
+		Period:      models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: &to2},
 		WeeklyHours: 39.0,
 	}
 	db.Create(period2)
@@ -42,8 +40,7 @@ func TestPayPlanStore_FindByIDWithPeriods_ActiveOn(t *testing.T) {
 	// Period 3: 2025-01-01 to nil (ongoing)
 	period3 := &models.PayPlanPeriod{
 		PayPlanID:   payplan.ID,
-		From:        time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
-		To:          nil,
+		Period:      models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
 		WeeklyHours: 39.0,
 	}
 	db.Create(period3)
@@ -127,8 +124,7 @@ func TestPayPlanStore_FindActivePeriod_UsesScope(t *testing.T) {
 	to1 := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
 	period1 := &models.PayPlanPeriod{
 		PayPlanID:   payplan.ID,
-		From:        time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-		To:          &to1,
+		Period:      models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: &to1},
 		WeeklyHours: 39.0,
 	}
 	db.Create(period1)
@@ -136,8 +132,7 @@ func TestPayPlanStore_FindActivePeriod_UsesScope(t *testing.T) {
 	// Period 2: 2025-01-01 to nil (ongoing)
 	period2 := &models.PayPlanPeriod{
 		PayPlanID:   payplan.ID,
-		From:        time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
-		To:          nil,
+		Period:      models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
 		WeeklyHours: 39.0,
 	}
 	db.Create(period2)

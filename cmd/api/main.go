@@ -143,7 +143,7 @@ func main() {
 	childAttendanceService := service.NewChildAttendanceService(childAttendanceStore, childStore)
 	costService := service.NewCostService(costStore, transactor)
 	stepPromotionService := service.NewStepPromotionService(payPlanStore, employeeStore)
-	statisticsService := service.NewStatisticsService(childStore, employeeStore, orgStore, governmentFundingStore)
+	statisticsService := service.NewStatisticsService(childStore, employeeStore, orgStore, governmentFundingStore, payPlanStore, costStore)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(userStore, tokenStore, cfg.JWTSecret, auditService)
