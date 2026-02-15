@@ -9,7 +9,7 @@ export const costEntrySchema = z
   .object({
     from: z.string().min(1),
     to: z.string().optional(),
-    amount_cents: z.number().min(0),
+    amount_euros: z.number().min(0),
     notes: z.string().max(500).optional(),
   })
   .refine((data) => !data.to || !isDateBefore(data.to, data.from), {

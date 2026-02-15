@@ -20,7 +20,7 @@ export const payPlanPeriodSchema = z
 export const payPlanEntrySchema = z.object({
   grade: z.string().min(1),
   step: z.number().min(1).max(10),
-  monthly_amount: z.number().min(0),
+  monthly_amount_euros: z.number().min(0),
   step_min_years: z.number().min(0).optional(),
 });
 

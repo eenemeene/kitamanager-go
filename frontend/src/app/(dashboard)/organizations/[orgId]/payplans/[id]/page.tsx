@@ -47,7 +47,13 @@ import type {
 } from '@/lib/api/types';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { formatDate, formatDateForApi, formatCurrency, formatPeriod } from '@/lib/utils/formatting';
+import {
+  formatDate,
+  formatDateForApi,
+  formatCurrency,
+  formatPeriod,
+  eurosToCents,
+} from '@/lib/utils/formatting';
 import { PayPlanGrid } from '@/components/payplans/payplan-grid';
 import {
   payPlanPeriodSchema,
@@ -194,7 +200,7 @@ export default function PayPlanDetailPage() {
     formState: { errors: errorsEntry },
   } = useForm<PayPlanEntryFormData>({
     resolver: zodResolver(payPlanEntrySchema),
-    defaultValues: { grade: '', step: 1, monthly_amount: 0, step_min_years: undefined },
+    defaultValues: { grade: '', step: 1, monthly_amount_euros: 0, step_min_years: undefined },
   });
 
   const handleAddPeriod = () => {
@@ -217,7 +223,7 @@ export default function PayPlanDetailPage() {
   const handleAddEntry = (period: PayPlanPeriod) => {
     setSelectedPeriod(period);
     setEditingEntry(null);
-    resetEntry({ grade: '', step: 1, monthly_amount: 0, step_min_years: undefined });
+    resetEntry({ grade: '', step: 1, monthly_amount_euros: 0, step_min_years: undefined });
     setIsEntryDialogOpen(true);
   };
 
@@ -240,7 +246,9 @@ export default function PayPlanDetailPage() {
       createEntryMutation.mutate({
         periodId: selectedPeriod.id,
         data: {
-          ...data,
+          grade: data.grade,
+          step: data.step,
+          monthly_amount: eurosToCents(data.monthly_amount_euros),
           step_min_years:
             data.step_min_years != null && !isNaN(data.step_min_years)
               ? data.step_min_years
@@ -519,14 +527,15 @@ export default function PayPlanDetailPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="monthly_amount">{t('payPlans.monthlyAmountInCents')}</Label>
+              <Label htmlFor="monthly_amount_euros">{t('payPlans.monthlyAmountInEuros')}</Label>
               <Input
-                id="monthly_amount"
+                id="monthly_amount_euros"
                 type="number"
                 min={0}
-                {...registerEntry('monthly_amount', { valueAsNumber: true })}
+                step={0.01}
+                {...registerEntry('monthly_amount_euros', { valueAsNumber: true })}
               />
-              {errorsEntry.monthly_amount && (
+              {errorsEntry.monthly_amount_euros && (
                 <p className="text-sm text-destructive">{t('payPlans.monthlyAmountRequired')}</p>
               )}
             </div>

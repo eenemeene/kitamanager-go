@@ -52,6 +52,7 @@ import {
   formatPeriod,
   formatAgeRange,
   formatFte,
+  eurosToCents,
 } from '@/lib/utils/formatting';
 import {
   governmentFundingPeriodSchema,
@@ -268,7 +269,7 @@ export default function GovernmentFundingDetailPage() {
     defaultValues: {
       key: '',
       value: '',
-      payment: 0,
+      payment_euros: 0,
       requirement: 0,
       min_age: null,
       max_age: null,
@@ -286,7 +287,7 @@ export default function GovernmentFundingDetailPage() {
     resetProperty({
       key: '',
       value: '',
-      payment: 0,
+      payment_euros: 0,
       requirement: 0,
       min_age: null,
       max_age: null,
@@ -307,9 +308,13 @@ export default function GovernmentFundingDetailPage() {
       createPropertyMutation.mutate({
         periodId: selectedPeriod.id,
         data: {
-          ...data,
+          key: data.key,
+          value: data.value,
+          payment: eurosToCents(data.payment_euros),
+          requirement: data.requirement,
           min_age: data.min_age ?? null,
           max_age: data.max_age ?? null,
+          comment: data.comment,
         },
       });
     }
@@ -490,12 +495,13 @@ export default function GovernmentFundingDetailPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="payment">{t('governmentFundings.paymentInCents')}</Label>
+                <Label htmlFor="payment_euros">{t('governmentFundings.paymentInEuros')}</Label>
                 <Input
-                  id="payment"
+                  id="payment_euros"
                   type="number"
                   min={0}
-                  {...registerProperty('payment', { valueAsNumber: true })}
+                  step={0.01}
+                  {...registerProperty('payment_euros', { valueAsNumber: true })}
                 />
               </div>
               <div className="space-y-2">

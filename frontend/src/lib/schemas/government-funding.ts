@@ -21,7 +21,7 @@ export const governmentFundingPeriodSchema = z
 export const governmentFundingPropertySchema = z.object({
   key: z.string().min(1).max(100),
   value: z.string().min(1).max(255),
-  payment: z.number().min(0),
+  payment_euros: z.number().min(0),
   requirement: z.number().min(0),
   min_age: z.number().min(0).optional().nullable(),
   max_age: z.number().min(0).optional().nullable(),

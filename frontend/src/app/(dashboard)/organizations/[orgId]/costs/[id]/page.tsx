@@ -41,7 +41,13 @@ import { queryKeys } from '@/lib/api/queryKeys';
 import type { CostEntry, CostEntryCreateRequest, CostEntryUpdateRequest } from '@/lib/api/types';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { formatCurrency, formatPeriod, formatDateForApi } from '@/lib/utils/formatting';
+import {
+  formatCurrency,
+  formatPeriod,
+  formatDateForApi,
+  eurosToCents,
+  centsToEuros,
+} from '@/lib/utils/formatting';
 import { costEntrySchema, type CostEntryFormData } from '@/lib/schemas';
 
 export default function CostDetailPage() {
@@ -71,7 +77,7 @@ export default function CostDetailPage() {
     formState: { errors },
   } = useForm<CostEntryFormData>({
     resolver: zodResolver(costEntrySchema),
-    defaultValues: { from: '', to: '', amount_cents: 0, notes: '' },
+    defaultValues: { from: '', to: '', amount_euros: 0, notes: '' },
   });
 
   const createEntryMutation = useMutation({
@@ -130,7 +136,7 @@ export default function CostDetailPage() {
 
   const handleAddEntry = () => {
     setEditingEntry(null);
-    reset({ from: '', to: '', amount_cents: 0, notes: '' });
+    reset({ from: '', to: '', amount_euros: 0, notes: '' });
     setIsEntryDialogOpen(true);
   };
 
@@ -139,7 +145,7 @@ export default function CostDetailPage() {
     reset({
       from: entry.from?.slice(0, 10) || '',
       to: entry.to?.slice(0, 10) || '',
-      amount_cents: entry.amount_cents,
+      amount_euros: centsToEuros(entry.amount_cents),
       notes: entry.notes || '',
     });
     setIsEntryDialogOpen(true);
@@ -149,7 +155,7 @@ export default function CostDetailPage() {
     const payload = {
       from: formatDateForApi(data.from) || data.from,
       to: formatDateForApi(data.to) || null,
-      amount_cents: data.amount_cents,
+      amount_cents: eurosToCents(data.amount_euros),
       notes: data.notes || '',
     };
 
@@ -261,14 +267,15 @@ export default function CostDetailPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="amount_cents">{t('costs.amountInCents')}</Label>
+              <Label htmlFor="amount_euros">{t('costs.amountInEuros')}</Label>
               <Input
-                id="amount_cents"
+                id="amount_euros"
                 type="number"
                 min={0}
-                {...register('amount_cents', { valueAsNumber: true })}
+                step={0.01}
+                {...register('amount_euros', { valueAsNumber: true })}
               />
-              {errors.amount_cents && (
+              {errors.amount_euros && (
                 <p className="text-sm text-destructive">{t('validation.required')}</p>
               )}
             </div>
