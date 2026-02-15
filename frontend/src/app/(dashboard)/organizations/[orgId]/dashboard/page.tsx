@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
-import { Users, Baby, Clock, CalendarClock } from 'lucide-react';
+import { Users, Baby, Clock } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { StepPromotionsWidget } from '@/components/dashboard/step-promotions-widget';
 import { UpcomingChildrenWidget } from '@/components/dashboard/upcoming-children-widget';
@@ -53,6 +53,10 @@ export default function OrgDashboardPage() {
   });
 
   const currentMonth = staffingData?.data_points?.[0];
+  const coverageBalance =
+    currentMonth && currentMonth.required_hours > 0
+      ? Math.round((currentMonth.available_hours / currentMonth.required_hours) * 100) - 100
+      : null;
 
   return (
     <div className="space-y-6">
@@ -64,7 +68,7 @@ export default function OrgDashboardPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <StatCard
           title={t('dashboard.activeEmployees')}
           value={employeesData?.total ?? '-'}
@@ -78,15 +82,23 @@ export default function OrgDashboardPage() {
           loading={childrenLoading}
         />
         <StatCard
-          title={t('dashboard.requiredHours')}
-          value={currentMonth ? Math.round(currentMonth.required_hours) : '-'}
+          title={t('dashboard.staffingCoverage')}
+          value={
+            coverageBalance !== null ? `${coverageBalance >= 0 ? '+' : ''}${coverageBalance}%` : '-'
+          }
+          description={
+            currentMonth
+              ? `${Math.round(currentMonth.available_hours)}h / ${Math.round(currentMonth.required_hours)}h`
+              : undefined
+          }
+          valueClassName={
+            coverageBalance !== null
+              ? coverageBalance >= 0
+                ? 'text-green-600'
+                : 'text-red-600'
+              : undefined
+          }
           icon={Clock}
-          loading={staffingLoading}
-        />
-        <StatCard
-          title={t('dashboard.availableHours')}
-          value={currentMonth ? Math.round(currentMonth.available_hours) : '-'}
-          icon={CalendarClock}
           loading={staffingLoading}
         />
       </div>

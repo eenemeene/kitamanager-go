@@ -96,7 +96,8 @@
     "activeEmployees": "Aktive Mitarbeiter",
     "activeChildren": "Aktive Kinder",
     "requiredHours": "Benötigte Stunden",
-    "availableHours": "Verfügbare Stunden"
+    "availableHours": "Verfügbare Stunden",
+    "staffingCoverage": "Personalabdeckung"
   },
   "statistics": {
     "title": "Statistiken",

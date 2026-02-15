@@ -96,7 +96,8 @@
     "activeEmployees": "Active Employees",
     "activeChildren": "Active Children",
     "requiredHours": "Required Hours",
-    "availableHours": "Available Hours"
+    "availableHours": "Available Hours",
+    "staffingCoverage": "Staffing Coverage"
   },
   "statistics": {
     "title": "Statistics",
