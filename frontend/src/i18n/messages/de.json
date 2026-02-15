@@ -513,6 +513,7 @@
     "title": "Bevorstehende Aufnahmen",
     "name": "Name",
     "gender": "Geschlecht",
+    "birthdate": "Geburtsdatum",
     "age": "Alter",
     "section": "Bereich",
     "properties": "Eigenschaften",

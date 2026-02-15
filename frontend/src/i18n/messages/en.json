@@ -513,6 +513,7 @@
     "title": "Upcoming Children",
     "name": "Name",
     "gender": "Gender",
+    "birthdate": "Birthdate",
     "age": "Age",
     "section": "Section",
     "properties": "Properties",

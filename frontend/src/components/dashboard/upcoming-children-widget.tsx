@@ -24,6 +24,8 @@ interface UpcomingChildrenWidgetProps {
 
 export function UpcomingChildrenWidget({ orgId }: UpcomingChildrenWidgetProps) {
   const t = useTranslations('upcomingChildren');
+  const tChildren = useTranslations('children');
+  const tContracts = useTranslations('contracts');
   const tGender = useTranslations('gender');
 
   const { data } = useQuery({
@@ -47,6 +49,7 @@ export function UpcomingChildrenWidget({ orgId }: UpcomingChildrenWidgetProps) {
             <TableRow>
               <TableHead>{t('name')}</TableHead>
               <TableHead>{t('gender')}</TableHead>
+              <TableHead>{t('birthdate')}</TableHead>
               <TableHead>{t('age')}</TableHead>
               <TableHead>{t('section')}</TableHead>
               <TableHead>{t('properties')}</TableHead>
@@ -72,22 +75,32 @@ export function UpcomingChildrenWidget({ orgId }: UpcomingChildrenWidgetProps) {
                     {child.first_name} {child.last_name}
                   </TableCell>
                   <TableCell>{tGender(child.gender)}</TableCell>
+                  <TableCell>{formatDate(child.birthdate)}</TableCell>
                   <TableCell>{calculateAge(child.birthdate)}</TableCell>
-                  <TableCell>{futureContract?.section_name ?? '-'}</TableCell>
+                  <TableCell>
+                    {futureContract?.section_name && <span>{futureContract.section_name}</span>}
+                  </TableCell>
                   <TableCell>
                     {futureContract?.properties &&
                     Object.keys(futureContract.properties).length > 0 ? (
                       <div className="flex flex-wrap gap-1">
-                        {propertiesToValues(futureContract.properties as ContractProperties).map(
-                          (value) => (
+                        {propertiesToValues(futureContract.properties as ContractProperties)
+                          .slice(0, 3)
+                          .map((value) => (
                             <Badge key={value} variant="outline" className="text-xs">
                               {value}
                             </Badge>
-                          )
+                          ))}
+                        {Object.keys(futureContract.properties).length > 3 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{Object.keys(futureContract.properties).length - 3}
+                          </Badge>
                         )}
                       </div>
                     ) : (
-                      '-'
+                      <span className="text-sm text-muted-foreground">
+                        {tContracts('noProperties')}
+                      </span>
                     )}
                   </TableCell>
                   <TableCell>{futureContract ? formatDate(futureContract.from) : '-'}</TableCell>
