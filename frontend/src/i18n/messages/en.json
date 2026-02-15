@@ -120,7 +120,16 @@
     "staffingBalance": "Staffing Balance",
     "balancePercentage": "Balance",
     "sectionStaffing": "Staffing by Section (Today)",
-    "contractProperties": "Children Contract Properties (Today)"
+    "contractProperties": "Children Contract Properties (Today)",
+    "financialOverview": "Financial Overview (History)",
+    "financialOverviewDescription": "Monthly income, expenses, and balance based on active contracts",
+    "totalIncome": "Total Income",
+    "totalExpenses": "Total Expenses",
+    "balance": "Balance",
+    "fundingIncome": "Funding Income",
+    "grossSalary": "Gross Salary",
+    "employerCosts": "Employer Costs",
+    "operatingCost": "Operating Cost"
   },
   "months": {
     "jan": "Jan",

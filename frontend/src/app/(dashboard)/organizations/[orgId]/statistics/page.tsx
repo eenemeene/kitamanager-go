@@ -48,6 +48,16 @@ const ContractPropertiesChart = dynamic(
   { ssr: false, loading: () => <Skeleton className="h-[300px] w-full" /> }
 );
 
+const FinancialsChart = dynamic(
+  () => import('@/components/charts/financials-chart').then((mod) => mod.FinancialsChart),
+  { ssr: false, loading: () => <Skeleton className="h-[300px] w-full" /> }
+);
+
+/** Format cents as EUR currency string */
+function formatEur(cents: number): string {
+  return (cents / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+}
+
 export default function StatisticsPage() {
   const params = useParams();
   const orgId = Number(params.orgId);
@@ -81,6 +91,12 @@ export default function StatisticsPage() {
   const { data: staffingHours, isLoading: isLoadingStaffing } = useQuery({
     queryKey: queryKeys.statistics.staffingHours(orgId, selectedSectionId),
     queryFn: () => apiClient.getStaffingHours(orgId, { sectionId: selectedSectionId }),
+    enabled: !!orgId,
+  });
+
+  const { data: financials, isLoading: isLoadingFinancials } = useQuery({
+    queryKey: queryKeys.statistics.financials(orgId),
+    queryFn: () => apiClient.getFinancials(orgId),
     enabled: !!orgId,
   });
 
@@ -122,13 +138,89 @@ export default function StatisticsPage() {
   const isLoadingSectionStaffing =
     sectionStaffingQueries.length > 0 && sectionStaffingQueries.some((q) => q.isLoading);
 
+  // Get the current month's financial data point for summary cards
+  const currentFinancials = useMemo(() => {
+    if (!financials?.data_points?.length) return null;
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    const exact = financials.data_points.find((dp) => dp.date === currentMonth);
+    return exact ?? financials.data_points[financials.data_points.length - 1];
+  }, [financials]);
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">{t('statistics.title')}</h1>
       </div>
 
+      {/* Financial Summary Cards */}
+      {currentFinancials && (
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                {t('statistics.totalIncome')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                {formatEur(currentFinancials.total_income)}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                {t('statistics.totalExpenses')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+                {formatEur(currentFinancials.total_expenses)}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                {t('statistics.balance')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div
+                className={`text-2xl font-bold ${
+                  currentFinancials.balance >= 0
+                    ? 'text-blue-600 dark:text-blue-400'
+                    : 'text-red-600 dark:text-red-400'
+                }`}
+              >
+                {formatEur(currentFinancials.balance)}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-2">
+        {/* Financial Overview */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>{t('statistics.financialOverview')}</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {t('statistics.financialOverviewDescription')}
+            </p>
+          </CardHeader>
+          <CardContent>
+            {isLoadingFinancials ? (
+              <Skeleton className="h-[350px] w-full" />
+            ) : financials ? (
+              <FinancialsChart data={financials} />
+            ) : (
+              <p className="text-muted-foreground">{t('statistics.chartError')}</p>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Staffing Hours */}
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

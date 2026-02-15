@@ -587,6 +587,24 @@ export interface StepPromotionsResponse {
   promotions: StepPromotion[];
 }
 
+// Financial statistics
+export interface FinancialDataPoint {
+  date: string;
+  funding_income: number;
+  gross_salary: number;
+  employer_costs: number;
+  operating_cost: number;
+  total_income: number;
+  total_expenses: number;
+  balance: number;
+  child_count: number;
+  staff_count: number;
+}
+
+export interface FinancialResponse {
+  data_points: FinancialDataPoint[];
+}
+
 // Staffing hours statistics
 export interface StaffingHoursDataPoint {
   date: string;

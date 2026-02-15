@@ -120,7 +120,16 @@
     "staffingBalance": "Personalabgleich",
     "balancePercentage": "Abgleich",
     "sectionStaffing": "Personal nach Bereich (Heute)",
-    "contractProperties": "Kinder-Vertragseigenschaften (Heute)"
+    "contractProperties": "Kinder-Vertragseigenschaften (Heute)",
+    "financialOverview": "Finanzübersicht (Verlauf)",
+    "financialOverviewDescription": "Monatliche Einnahmen, Ausgaben und Bilanz basierend auf aktiven Verträgen",
+    "totalIncome": "Gesamteinnahmen",
+    "totalExpenses": "Gesamtausgaben",
+    "balance": "Bilanz",
+    "fundingIncome": "Fördereinnahmen",
+    "grossSalary": "Bruttogehälter",
+    "employerCosts": "Arbeitgeberanteile",
+    "operatingCost": "Betriebskosten"
   },
   "months": {
     "jan": "Jan",

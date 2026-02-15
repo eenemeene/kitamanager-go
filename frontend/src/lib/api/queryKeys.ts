@@ -53,6 +53,8 @@ export const queryKeys = {
     contractProperties: (orgId: number) => ['contract-properties', orgId] as const,
     staffingHours: (orgId: number, sectionId?: number, from?: string, to?: string) =>
       ['staffing-hours', orgId, sectionId, from, to] as const,
+    financials: (orgId: number, from?: string, to?: string) =>
+      ['financials', orgId, from, to] as const,
   },
   stepPromotions: (orgId: number) => ['step-promotions', orgId] as const,
 } as const;

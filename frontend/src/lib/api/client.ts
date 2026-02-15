@@ -56,6 +56,7 @@ import type {
   CostEntryUpdateRequest,
   StepPromotionsResponse,
   StaffingHoursResponse,
+  FinancialResponse,
   Section,
   SectionCreateRequest,
   SectionUpdateRequest,
@@ -774,6 +775,20 @@ class ApiClient {
     if (opts?.to) params.to = opts.to;
     const response = await this.client.get<StaffingHoursResponse>(
       `/organizations/${orgId}/statistics/staffing-hours`,
+      { params }
+    );
+    return response.data;
+  }
+
+  async getFinancials(
+    orgId: number,
+    opts?: { from?: string; to?: string }
+  ): Promise<FinancialResponse> {
+    const params: Record<string, string> = {};
+    if (opts?.from) params.from = opts.from;
+    if (opts?.to) params.to = opts.to;
+    const response = await this.client.get<FinancialResponse>(
+      `/organizations/${orgId}/statistics/financials`,
       { params }
     );
     return response.data;
