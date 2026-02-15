@@ -16,11 +16,11 @@ test.describe('Form Validation Errors', () => {
     await page.waitForLoadState('networkidle');
 
     // Open create dialog
-    await page.getByRole('button', { name: /new organization|neue organisation/i }).click();
+    await page.getByRole('button', { name: /new organization/i }).click();
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
 
     // Try to submit empty form
-    await page.getByRole('button', { name: /save|speichern/i }).click();
+    await page.getByRole('button', { name: /save/i }).click();
 
     // Should stay on dialog (not close) - form validation prevents submission
     await expect(page.getByRole('dialog')).toBeVisible();
@@ -34,11 +34,11 @@ test.describe('Form Validation Errors', () => {
     await page.waitForLoadState('networkidle');
 
     // Open create dialog
-    await page.getByRole('button', { name: /new employee|neuer mitarbeiter/i }).click();
+    await page.getByRole('button', { name: /new employee/i }).click();
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
 
     // Try to submit empty form
-    await page.getByRole('button', { name: /save|speichern/i }).click();
+    await page.getByRole('button', { name: /save/i }).click();
 
     // Dialog should remain open because of validation errors
     await expect(page.getByRole('dialog')).toBeVisible();
@@ -52,11 +52,11 @@ test.describe('Form Validation Errors', () => {
     await page.waitForLoadState('networkidle');
 
     // Open create dialog
-    await page.getByRole('button', { name: /new child|neues kind/i }).click();
+    await page.getByRole('button', { name: /new child/i }).click();
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
 
     // Try to submit empty form
-    await page.getByRole('button', { name: /save|speichern/i }).click();
+    await page.getByRole('button', { name: /save/i }).click();
 
     // Dialog should remain open because of validation errors
     await expect(page.getByRole('dialog')).toBeVisible();
@@ -89,7 +89,7 @@ test.describe('Authentication Error Scenarios', () => {
     // Fill form with invalid credentials
     await page.getByLabel(/email/i).fill('nonexistent@example.com');
     await page.getByLabel(/password/i).fill('wrongpassword123');
-    await page.getByRole('button', { name: /sign in|login|anmelden/i }).click();
+    await page.getByRole('button', { name: /sign in|login/i }).click();
 
     // Should remain on login page
     await expect(page).toHaveURL(/.*login/, { timeout: 10000 });
@@ -105,7 +105,7 @@ test.describe('Authentication Error Scenarios', () => {
     await expect(page.getByLabel(/email/i)).toBeVisible({ timeout: 10000 });
 
     // Click login without filling fields
-    await page.getByRole('button', { name: /sign in|login|anmelden/i }).click();
+    await page.getByRole('button', { name: /sign in|login/i }).click();
 
     // Should remain on login page
     await expect(page).toHaveURL(/.*login/);
@@ -173,14 +173,14 @@ test.describe('Duplicate Resource Errors', () => {
     await page.waitForLoadState('networkidle');
 
     // Create org with same name as existing one
-    await page.getByRole('button', { name: /new organization|neue organisation/i }).click();
+    await page.getByRole('button', { name: /new organization/i }).click();
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
 
     await page.getByLabel('Name', { exact: true }).fill(org.name);
     await page.getByLabel(/Default Section Name/i).fill('Default');
 
     // Submit
-    await page.getByRole('button', { name: /save|speichern/i }).click();
+    await page.getByRole('button', { name: /save/i }).click();
 
     // Dialog should close - duplicate names are allowed
     await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10000 });

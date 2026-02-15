@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { login } from './utils/test-helpers';
 
+// Ensure English locale for all tests
+test.use({ locale: 'en-US' });
+
 test.describe('Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
@@ -27,7 +30,7 @@ test.describe('Navigation', () => {
     // Wait for initial redirect after login to complete
     await page.waitForLoadState('networkidle');
 
-    const link = page.getByRole('link', { name: /government funding|förderung/i }).first();
+    const link = page.getByRole('link', { name: /government funding/i }).first();
     await expect(link).toBeVisible({ timeout: 10000 });
     await link.click();
 
@@ -37,7 +40,7 @@ test.describe('Navigation', () => {
   test('should show sidebar navigation items', async ({ page }) => {
     // Check for main navigation links
     await expect(page.getByRole('link', { name: /organization/i }).first()).toBeVisible();
-    await expect(page.getByRole('link', { name: /government funding|förderung/i }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: /government funding/i }).first()).toBeVisible();
   });
 
   test('should show organization selector', async ({ page }) => {

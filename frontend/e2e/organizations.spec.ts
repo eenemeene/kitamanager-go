@@ -7,6 +7,9 @@ import {
   uniqueName,
 } from './utils/test-helpers';
 
+// Ensure English locale for all tests
+test.use({ locale: 'en-US' });
+
 test.describe('Organizations', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
@@ -23,12 +26,12 @@ test.describe('Organizations', () => {
   });
 
   test('should have new organization button', async ({ page }) => {
-    const newButton = page.getByRole('button', { name: /new organization|neue organisation/i });
+    const newButton = page.getByRole('button', { name: /new organization/i });
     await expect(newButton).toBeVisible();
   });
 
   test('should open create dialog', async ({ page }) => {
-    await page.getByRole('button', { name: /new organization|neue organisation/i }).click();
+    await page.getByRole('button', { name: /new organization/i }).click();
 
     // Dialog should be visible
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
@@ -41,7 +44,7 @@ test.describe('Organizations', () => {
     const orgName = uniqueName('Test Org');
 
     // Open dialog
-    await page.getByRole('button', { name: /new organization|neue organisation/i }).click();
+    await page.getByRole('button', { name: /new organization/i }).click();
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
 
     // Fill form (use exact match to avoid "Default Section Name" field)
@@ -49,7 +52,7 @@ test.describe('Organizations', () => {
     await page.getByLabel(/Default Section Name/i).fill('Default');
 
     // Submit
-    await page.getByRole('button', { name: /save|speichern/i }).click();
+    await page.getByRole('button', { name: /save/i }).click();
 
     // Dialog should close
     await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10000 });
@@ -94,7 +97,7 @@ test.describe('Organizations', () => {
   test('should show table headers', async ({ page }) => {
     await expect(page.getByRole('columnheader', { name: /id/i })).toBeVisible({ timeout: 10000 });
     await expect(page.getByRole('columnheader', { name: /name/i })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: /state|bundesland/i })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /state/i })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: /status/i })).toBeVisible();
   });
 });

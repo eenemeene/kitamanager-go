@@ -100,7 +100,7 @@ test.describe('Visual Regression - Dialogs', () => {
     await page.goto('/organizations');
     await page.waitForLoadState('networkidle');
 
-    await page.getByRole('button', { name: /new organization|neue organisation/i }).click();
+    await page.getByRole('button', { name: /new organization/i }).click();
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
 
     await expect(page).toHaveScreenshot('create-organization-dialog.png', {
@@ -115,7 +115,7 @@ test.describe('Visual Regression - Dialogs', () => {
     await page.goto(`/organizations/${org.id}/employees`);
     await page.waitForLoadState('networkidle');
 
-    await page.getByRole('button', { name: /new employee|neuer mitarbeiter/i }).click();
+    await page.getByRole('button', { name: /new employee/i }).click();
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
 
     await expect(page).toHaveScreenshot('create-employee-dialog.png', {
@@ -130,7 +130,7 @@ test.describe('Visual Regression - Dialogs', () => {
     await page.goto(`/organizations/${org.id}/children`);
     await page.waitForLoadState('networkidle');
 
-    await page.getByRole('button', { name: /new child|neues kind/i }).click();
+    await page.getByRole('button', { name: /new child/i }).click();
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
 
     await expect(page).toHaveScreenshot('create-child-dialog.png', {

@@ -70,7 +70,7 @@ export async function loginViaForm(page: Page, email: string = ADMIN_EMAIL, pass
   // Wait for the form to be fully loaded and React to hydrate
   const emailInput = page.getByLabel(/email/i);
   const passwordInput = page.getByLabel(/password/i);
-  const submitButton = page.getByRole('button', { name: /sign in|login|anmelden/i });
+  const submitButton = page.getByRole('button', { name: /sign in|login/i });
 
   await expect(emailInput).toBeVisible({ timeout: 10000 });
   await expect(passwordInput).toBeVisible();
@@ -106,10 +106,10 @@ export async function loginViaForm(page: Page, email: string = ADMIN_EMAIL, pass
  */
 export async function logout(page: Page) {
   // Click user menu button
-  const userMenuButton = page.getByRole('button', { name: /user menu|benutzermenü/i });
+  const userMenuButton = page.getByRole('button', { name: /user menu/i });
   if (await userMenuButton.isVisible({ timeout: 2000 }).catch(() => false)) {
     await userMenuButton.click();
-    await page.getByRole('menuitem', { name: /logout|sign out|abmelden/i }).click();
+    await page.getByRole('menuitem', { name: /logout|sign out/i }).click();
     await expect(page).toHaveURL(/.*login/, { timeout: 10000 });
   }
 }

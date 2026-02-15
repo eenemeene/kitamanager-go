@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { ADMIN_EMAIL, ADMIN_PASSWORD, login, loginViaForm } from './utils/test-helpers';
 
+// Ensure English locale for all tests
+test.use({ locale: 'en-US' });
+
 test.describe('Authentication', () => {
   test('should display login page', async ({ page }) => {
     await page.goto('/');
@@ -11,7 +14,7 @@ test.describe('Authentication', () => {
     // Login form should be visible
     await expect(page.getByLabel(/email/i)).toBeVisible();
     await expect(page.getByLabel(/password/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /sign in|login|anmelden/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /sign in|login/i })).toBeVisible();
   });
 
   test('should login with valid credentials', async ({ page }) => {
@@ -27,7 +30,7 @@ test.describe('Authentication', () => {
 
     await page.getByLabel(/email/i).fill('wrong@example.com');
     await page.getByLabel(/password/i).fill('wrongpassword');
-    await page.getByRole('button', { name: /sign in|login|anmelden/i }).click();
+    await page.getByRole('button', { name: /sign in|login/i }).click();
 
     // Should stay on login page or show error
     await expect(page).toHaveURL(/.*login/);
@@ -54,7 +57,7 @@ test.describe('Authentication', () => {
     await expect(emailInput).toBeVisible({ timeout: 10000 });
     await emailInput.fill(ADMIN_EMAIL);
     await passwordInput.fill(ADMIN_PASSWORD);
-    await page.getByRole('button', { name: /sign in|login|anmelden/i }).click();
+    await page.getByRole('button', { name: /sign in|login/i }).click();
 
     // Should redirect back to organizations (or dashboard)
     await expect(page).not.toHaveURL(/.*login/, { timeout: 10000 });
