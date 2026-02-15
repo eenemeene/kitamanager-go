@@ -11,13 +11,13 @@ import (
 
 type ChildStore struct {
 	db            *gorm.DB
-	contractStore *PeriodStore[models.ChildContract]
+	periodStore *PeriodStore[models.ChildContract]
 }
 
 func NewChildStore(db *gorm.DB) *ChildStore {
 	return &ChildStore{
 		db:            db,
-		contractStore: NewPeriodStore[models.ChildContract](db, "child_id"),
+		periodStore: NewPeriodStore[models.ChildContract](db, "child_id"),
 	}
 }
 
@@ -98,8 +98,8 @@ func (s *ChildStore) FindByOrganizationAndSection(ctx context.Context, orgID uin
 }
 
 // Contracts returns the contract store for children
-func (s *ChildStore) Contracts() ContractStorer[models.ChildContract] {
-	return s.contractStore
+func (s *ChildStore) Contracts() PeriodStorer[models.ChildContract] {
+	return s.periodStore
 }
 
 func (s *ChildStore) FindByID(ctx context.Context, id uint) (*models.Child, error) {

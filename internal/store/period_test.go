@@ -10,7 +10,7 @@ import (
 
 // datePtr is defined in testutil_test.go
 
-func TestPeriodStore_GetCurrentContract(t *testing.T) {
+func TestPeriodStore_GetCurrentRecord(t *testing.T) {
 	db := setupTestDB(t)
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -41,7 +41,7 @@ func TestPeriodStore_GetCurrentContract(t *testing.T) {
 	}
 	db.Create(contract)
 
-	current, err := store.Contracts().GetCurrentContract(ctx, employee.ID)
+	current, err := store.Contracts().GetCurrentRecord(ctx, employee.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -55,7 +55,7 @@ func TestPeriodStore_GetCurrentContract(t *testing.T) {
 	}
 }
 
-func TestPeriodStore_GetCurrentContract_NoContract(t *testing.T) {
+func TestPeriodStore_GetCurrentRecord_NoContract(t *testing.T) {
 	db := setupTestDB(t)
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -71,7 +71,7 @@ func TestPeriodStore_GetCurrentContract_NoContract(t *testing.T) {
 
 	store := NewEmployeeStore(db)
 
-	current, err := store.Contracts().GetCurrentContract(ctx, employee.ID)
+	current, err := store.Contracts().GetCurrentRecord(ctx, employee.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -81,7 +81,7 @@ func TestPeriodStore_GetCurrentContract_NoContract(t *testing.T) {
 	}
 }
 
-func TestPeriodStore_GetContractOn(t *testing.T) {
+func TestPeriodStore_GetRecordOn(t *testing.T) {
 	db := setupTestDB(t)
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -147,7 +147,7 @@ func TestPeriodStore_GetContractOn(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			found, err := store.Contracts().GetContractOn(ctx, employee.ID, tt.date)
+			found, err := store.Contracts().GetRecordOn(ctx, employee.ID, tt.date)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -167,7 +167,7 @@ func TestPeriodStore_GetContractOn(t *testing.T) {
 	}
 }
 
-func TestPeriodStore_GetHistory(t *testing.T) {
+func TestPeriodStore_ListRecords(t *testing.T) {
 	db := setupTestDB(t)
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -208,7 +208,7 @@ func TestPeriodStore_GetHistory(t *testing.T) {
 	}
 	db.Create(contract1)
 
-	history, err := store.Contracts().GetHistory(ctx, employee.ID)
+	history, err := store.Contracts().ListRecords(ctx, employee.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -361,8 +361,8 @@ func TestPeriodStore_ValidateNoOverlap_Overlapping(t *testing.T) {
 			if !tt.shouldError && err != nil {
 				t.Errorf("expected no error, got %v", err)
 			}
-			if tt.shouldError && err != nil && !errors.Is(err, ErrContractOverlap) {
-				t.Errorf("expected ErrContractOverlap, got %v", err)
+			if tt.shouldError && err != nil && !errors.Is(err, ErrPeriodOverlap) {
+				t.Errorf("expected ErrPeriodOverlap, got %v", err)
 			}
 		})
 	}
@@ -485,7 +485,7 @@ func TestPeriodStore_ValidateNoOverlap_OngoingContracts(t *testing.T) {
 	}
 }
 
-func TestPeriodStore_HasActiveContract(t *testing.T) {
+func TestPeriodStore_HasActiveRecord(t *testing.T) {
 	db := setupTestDB(t)
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -538,7 +538,7 @@ func TestPeriodStore_HasActiveContract(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			hasActive, err := store.Contracts().HasActiveContract(ctx, employee.ID, tt.date)
+			hasActive, err := store.Contracts().HasActiveRecord(ctx, employee.ID, tt.date)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -550,7 +550,7 @@ func TestPeriodStore_HasActiveContract(t *testing.T) {
 	}
 }
 
-func TestPeriodStore_GetContractOn_ConsecutiveContracts(t *testing.T) {
+func TestPeriodStore_GetRecordOn_ConsecutiveContracts(t *testing.T) {
 	db := setupTestDB(t)
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -631,7 +631,7 @@ func TestPeriodStore_GetContractOn_ConsecutiveContracts(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			found, err := store.Contracts().GetContractOn(ctx, employee.ID, tt.date)
+			found, err := store.Contracts().GetRecordOn(ctx, employee.ID, tt.date)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -651,7 +651,7 @@ func TestPeriodStore_GetContractOn_ConsecutiveContracts(t *testing.T) {
 	}
 }
 
-func TestPeriodStore_GetContractOn_GapBetweenContracts(t *testing.T) {
+func TestPeriodStore_GetRecordOn_GapBetweenContracts(t *testing.T) {
 	db := setupTestDB(t)
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -732,7 +732,7 @@ func TestPeriodStore_GetContractOn_GapBetweenContracts(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			found, err := store.Contracts().GetContractOn(ctx, employee.ID, tt.date)
+			found, err := store.Contracts().GetRecordOn(ctx, employee.ID, tt.date)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -752,7 +752,7 @@ func TestPeriodStore_GetContractOn_GapBetweenContracts(t *testing.T) {
 	}
 }
 
-func TestPeriodStore_HasActiveContract_GapBetweenContracts(t *testing.T) {
+func TestPeriodStore_HasActiveRecord_GapBetweenContracts(t *testing.T) {
 	db := setupTestDB(t)
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -804,7 +804,7 @@ func TestPeriodStore_HasActiveContract_GapBetweenContracts(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			hasActive, err := store.Contracts().HasActiveContract(ctx, employee.ID, tt.date)
+			hasActive, err := store.Contracts().HasActiveRecord(ctx, employee.ID, tt.date)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -815,7 +815,7 @@ func TestPeriodStore_HasActiveContract_GapBetweenContracts(t *testing.T) {
 	}
 }
 
-func TestPeriodStore_CloseCurrentContract(t *testing.T) {
+func TestPeriodStore_CloseCurrentRecord(t *testing.T) {
 	db := setupTestDB(t)
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -845,7 +845,7 @@ func TestPeriodStore_CloseCurrentContract(t *testing.T) {
 	store := NewEmployeeStore(db)
 
 	endDate := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-	err := store.Contracts().CloseCurrentContract(ctx, employee.ID, endDate)
+	err := store.Contracts().CloseCurrentRecord(ctx, employee.ID, endDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}

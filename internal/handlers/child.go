@@ -272,7 +272,7 @@ func (h *ChildHandler) ListContracts(c *gin.Context) {
 	handleListContracts(c, h.service.ListContracts)
 }
 
-// GetCurrentContract godoc
+// GetCurrentRecord godoc
 // @Summary Get current child contract
 // @Description Get the currently active contract for a child
 // @Tags children
@@ -287,8 +287,8 @@ func (h *ChildHandler) ListContracts(c *gin.Context) {
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/children/{id}/contracts/current [get]
-func (h *ChildHandler) GetCurrentContract(c *gin.Context) {
-	handleGetCurrentContract(c, h.service.GetCurrentContract)
+func (h *ChildHandler) GetCurrentRecord(c *gin.Context) {
+	handleGetCurrentRecord(c, h.service.GetCurrentRecord)
 }
 
 // GetContract godoc

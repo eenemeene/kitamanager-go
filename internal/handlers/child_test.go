@@ -194,7 +194,7 @@ func TestChildHandler_ListContracts(t *testing.T) {
 	}
 }
 
-func TestChildHandler_GetCurrentContract(t *testing.T) {
+func TestChildHandler_GetCurrentRecord(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
 	handler := NewChildHandler(childService, createAuditService(db))
@@ -216,7 +216,7 @@ func TestChildHandler_GetCurrentContract(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/:id/contracts/current", handler.GetCurrentContract)
+	r.GET("/organizations/:orgId/children/:id/contracts/current", handler.GetCurrentRecord)
 
 	w := performRequest(r, "GET", "/organizations/1/children/1/contracts/current", nil)
 
@@ -232,7 +232,7 @@ func TestChildHandler_GetCurrentContract(t *testing.T) {
 	}
 }
 
-func TestChildHandler_GetCurrentContract_NotFound(t *testing.T) {
+func TestChildHandler_GetCurrentRecord_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
 	handler := NewChildHandler(childService, createAuditService(db))
@@ -244,7 +244,7 @@ func TestChildHandler_GetCurrentContract_NotFound(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/:id/contracts/current", handler.GetCurrentContract)
+	r.GET("/organizations/:orgId/children/:id/contracts/current", handler.GetCurrentRecord)
 
 	w := performRequest(r, "GET", "/organizations/1/children/1/contracts/current", nil)
 
@@ -841,7 +841,7 @@ func TestChildHandler_DeleteContract_InvalidContractID(t *testing.T) {
 	}
 }
 
-func TestChildHandler_GetCurrentContract_InvalidID(t *testing.T) {
+func TestChildHandler_GetCurrentRecord_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
 	handler := NewChildHandler(childService, createAuditService(db))
@@ -849,7 +849,7 @@ func TestChildHandler_GetCurrentContract_InvalidID(t *testing.T) {
 	createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/:id/contracts/current", handler.GetCurrentContract)
+	r.GET("/organizations/:orgId/children/:id/contracts/current", handler.GetCurrentRecord)
 
 	w := performRequest(r, "GET", "/organizations/1/children/invalid/contracts/current", nil)
 
@@ -1135,7 +1135,7 @@ func TestChildHandler_DeleteContract_WrongOrg(t *testing.T) {
 	}
 }
 
-func TestChildHandler_GetCurrentContract_WrongOrg(t *testing.T) {
+func TestChildHandler_GetCurrentRecord_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
 	handler := NewChildHandler(childService, createAuditService(db))
@@ -1160,7 +1160,7 @@ func TestChildHandler_GetCurrentContract_WrongOrg(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/:id/contracts/current", handler.GetCurrentContract)
+	r.GET("/organizations/:orgId/children/:id/contracts/current", handler.GetCurrentRecord)
 
 	// Try to get current contract for org1's child via org2's URL
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/%d/contracts/current", org2.ID, child.ID), nil)

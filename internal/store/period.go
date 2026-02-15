@@ -10,84 +10,84 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
-// ErrContractOverlap is returned when a contract would overlap with an existing one.
-var ErrContractOverlap = errors.New("contract would overlap with existing contract")
+// ErrPeriodOverlap is returned when a period record would overlap with an existing one.
+var ErrPeriodOverlap = errors.New("period would overlap with existing record")
 
 // PeriodStore provides common queries for time-bounded records.
-type PeriodStore[T models.HasPeriod] struct {
-	db          *gorm.DB
-	personIDCol string // "employee_id" or "child_id"
+type PeriodStore[T models.PeriodRecord] struct {
+	db         *gorm.DB
+	ownerIDCol string // "employee_id", "child_id", or "cost_id"
 }
 
 // NewPeriodStore creates a new store for time-bounded records.
-func NewPeriodStore[T models.HasPeriod](db *gorm.DB, personIDCol string) *PeriodStore[T] {
-	return &PeriodStore[T]{db: db, personIDCol: personIDCol}
+func NewPeriodStore[T models.PeriodRecord](db *gorm.DB, ownerIDCol string) *PeriodStore[T] {
+	return &PeriodStore[T]{db: db, ownerIDCol: ownerIDCol}
 }
 
-// GetCurrentContract returns the active contract for a person (if any).
-func (s *PeriodStore[T]) GetCurrentContract(ctx context.Context, personID uint) (*T, error) {
-	return s.GetContractOn(ctx, personID, time.Now())
+// GetCurrentRecord returns the active record for an owner (if any).
+func (s *PeriodStore[T]) GetCurrentRecord(ctx context.Context, ownerID uint) (*T, error) {
+	return s.GetRecordOn(ctx, ownerID, time.Now())
 }
 
-// GetContractOn returns the contract valid on a specific date.
-// Returns nil if no contract exists for that date.
-func (s *PeriodStore[T]) GetContractOn(ctx context.Context, personID uint, date time.Time) (*T, error) {
-	var contract T
+// GetRecordOn returns the record valid on a specific date.
+// Returns nil if no record exists for that date.
+func (s *PeriodStore[T]) GetRecordOn(ctx context.Context, ownerID uint, date time.Time) (*T, error) {
+	var record T
 	err := DBFromContext(ctx, s.db).Where(
-		s.personIDCol+" = ? AND from_date <= ? AND (to_date IS NULL OR to_date >= ?)",
-		personID, date, date,
-	).First(&contract).Error
+		s.ownerIDCol+" = ? AND from_date <= ? AND (to_date IS NULL OR to_date >= ?)",
+		ownerID, date, date,
+	).First(&record).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	return &contract, nil
+	return &record, nil
 }
 
-// GetHistory returns all contracts for a person ordered by from_date.
-func (s *PeriodStore[T]) GetHistory(ctx context.Context, personID uint) ([]T, error) {
-	var contracts []T
-	err := DBFromContext(ctx, s.db).Where(s.personIDCol+" = ?", personID).
+// ListRecords returns all records for an owner ordered by from_date.
+func (s *PeriodStore[T]) ListRecords(ctx context.Context, ownerID uint) ([]T, error) {
+	var records []T
+	err := DBFromContext(ctx, s.db).Where(s.ownerIDCol+" = ?", ownerID).
 		Order("from_date ASC").
-		Find(&contracts).Error
-	return contracts, err
+		Find(&records).Error
+	return records, err
 }
 
-// GetHistoryPaginated returns paginated contracts for a person ordered by from_date desc.
-func (s *PeriodStore[T]) GetHistoryPaginated(ctx context.Context, personID uint, limit, offset int) ([]T, int64, error) {
-	var contracts []T
+// ListRecordsPaginated returns paginated records for an owner ordered by from_date desc.
+func (s *PeriodStore[T]) ListRecordsPaginated(ctx context.Context, ownerID uint, limit, offset int) ([]T, int64, error) {
+	var records []T
 	var total int64
 
 	// Count total
-	if err := DBFromContext(ctx, s.db).Model(new(T)).Where(s.personIDCol+" = ?", personID).Count(&total).Error; err != nil {
+	if err := DBFromContext(ctx, s.db).Model(new(T)).Where(s.ownerIDCol+" = ?", ownerID).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
 	// Get paginated results (desc for most recent first)
-	err := DBFromContext(ctx, s.db).Where(s.personIDCol+" = ?", personID).
+	err := DBFromContext(ctx, s.db).Where(s.ownerIDCol+" = ?", ownerID).
 		Order("from_date DESC").
 		Limit(limit).
 		Offset(offset).
-		Find(&contracts).Error
-	return contracts, total, err
+		Find(&records).Error
+	return records, total, err
 }
 
-// HasActiveContract checks if a person has a contract on the given date.
-func (s *PeriodStore[T]) HasActiveContract(ctx context.Context, personID uint, date time.Time) (bool, error) {
+// HasActiveRecord checks if an owner has a record on the given date.
+func (s *PeriodStore[T]) HasActiveRecord(ctx context.Context, ownerID uint, date time.Time) (bool, error) {
 	var count int64
 	err := DBFromContext(ctx, s.db).Model(new(T)).Where(
-		s.personIDCol+" = ? AND from_date <= ? AND (to_date IS NULL OR to_date >= ?)",
-		personID, date, date,
+		s.ownerIDCol+" = ? AND from_date <= ? AND (to_date IS NULL OR to_date >= ?)",
+		ownerID, date, date,
 	).Count(&count).Error
 	return count > 0, err
 }
 
-// ValidateNoOverlap checks if a new contract would overlap with existing ones.
-// Use excludeID to exclude a specific contract (for updates).
-func (s *PeriodStore[T]) ValidateNoOverlap(ctx context.Context, personID uint, from time.Time, to *time.Time, excludeID *uint) error {
-	query := DBFromContext(ctx, s.db).Model(new(T)).Where(s.personIDCol+" = ?", personID)
+// ValidateNoOverlap checks if a new record would overlap with existing ones.
+// Use excludeID to exclude a specific record (for updates).
+func (s *PeriodStore[T]) ValidateNoOverlap(ctx context.Context, ownerID uint, from time.Time, to *time.Time, excludeID *uint) error {
+	query := DBFromContext(ctx, s.db).Model(new(T)).Where(s.ownerIDCol+" = ?", ownerID)
 
 	if excludeID != nil {
 		query = query.Where("id != ?", *excludeID)
@@ -101,13 +101,13 @@ func (s *PeriodStore[T]) ValidateNoOverlap(ctx context.Context, personID uint, f
 	// - If existing.to is NULL: overlaps if new.to is NULL OR new.to >= existing.from
 
 	if to != nil {
-		// New contract has end date
+		// New record has end date
 		query = query.Where(
 			"from_date <= ? AND (to_date IS NULL OR to_date >= ?)",
 			to, from,
 		)
 	} else {
-		// New contract is ongoing
+		// New record is ongoing
 		query = query.Where(
 			"to_date IS NULL OR to_date >= ?",
 			from,
@@ -119,14 +119,14 @@ func (s *PeriodStore[T]) ValidateNoOverlap(ctx context.Context, personID uint, f
 		return err
 	}
 	if count > 0 {
-		return ErrContractOverlap
+		return ErrPeriodOverlap
 	}
 	return nil
 }
 
-// CloseCurrentContract sets the end date of the current ongoing contract.
-func (s *PeriodStore[T]) CloseCurrentContract(ctx context.Context, personID uint, endDate time.Time) error {
+// CloseCurrentRecord sets the end date of the current ongoing record.
+func (s *PeriodStore[T]) CloseCurrentRecord(ctx context.Context, ownerID uint, endDate time.Time) error {
 	return DBFromContext(ctx, s.db).Model(new(T)).
-		Where(s.personIDCol+" = ? AND to_date IS NULL", personID).
+		Where(s.ownerIDCol+" = ? AND to_date IS NULL", ownerID).
 		Update("to_date", endDate).Error
 }

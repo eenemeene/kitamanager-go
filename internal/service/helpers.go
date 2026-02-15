@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
+	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/validation"
 )
 
@@ -21,16 +22,11 @@ func verifyOrgOwnership(entity OrgOwned, orgID uint, resourceName string) error 
 	return nil
 }
 
-// PersonOwned is implemented by contracts that belong to a person (child/employee).
-type PersonOwned interface {
-	GetPersonID() uint
-}
-
-// verifyContractOwnership checks that a contract belongs to the expected person.
-// Returns apperror.NotFound if contract is nil or belongs to a different person.
-func verifyContractOwnership(contract PersonOwned, personID uint) error {
-	if contract == nil || contract.GetPersonID() != personID {
-		return apperror.NotFound("contract")
+// verifyRecordOwnership checks that a period record belongs to the expected owner.
+// Returns apperror.NotFound if record is nil or belongs to a different owner.
+func verifyRecordOwnership(record models.PeriodRecord, ownerID uint, resourceName string) error { //nolint:unparam // resourceName will vary as more record types adopt this
+	if record == nil || record.GetOwnerID() != ownerID {
+		return apperror.NotFound(resourceName)
 	}
 	return nil
 }

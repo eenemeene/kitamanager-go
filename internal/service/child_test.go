@@ -813,8 +813,8 @@ func TestChildService_DeleteContract_WrongOrg(t *testing.T) {
 	}
 }
 
-// SECURITY TEST: GetCurrentContract cross-org
-func TestChildService_GetCurrentContract_WrongOrg(t *testing.T) {
+// SECURITY TEST: GetCurrentRecord cross-org
+func TestChildService_GetCurrentRecord_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
 	ctx := context.Background()
@@ -829,7 +829,7 @@ func TestChildService_GetCurrentContract_WrongOrg(t *testing.T) {
 	_, _ = svc.CreateContract(ctx, child.ID, org1.ID, req)
 
 	// Try to get current contract from wrong organization
-	_, err := svc.GetCurrentContract(ctx, child.ID, org2.ID)
+	_, err := svc.GetCurrentRecord(ctx, child.ID, org2.ID)
 	if err == nil {
 		t.Fatal("expected error when getting current contract from wrong org, got nil")
 	}
@@ -2192,10 +2192,10 @@ func TestChildService_GetContractByID_NonexistentContract(t *testing.T) {
 }
 
 // =========================================
-// GetCurrentContract Tests
+// GetCurrentRecord Tests
 // =========================================
 
-func TestChildService_GetCurrentContract(t *testing.T) {
+func TestChildService_GetCurrentRecord(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
 	ctx := context.Background()
@@ -2214,7 +2214,7 @@ func TestChildService_GetCurrentContract(t *testing.T) {
 		t.Fatalf("failed to create contract: %v", err)
 	}
 
-	current, err := svc.GetCurrentContract(ctx, child.ID, org.ID)
+	current, err := svc.GetCurrentRecord(ctx, child.ID, org.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -2230,7 +2230,7 @@ func TestChildService_GetCurrentContract(t *testing.T) {
 	}
 }
 
-func TestChildService_GetCurrentContract_NoActiveContract(t *testing.T) {
+func TestChildService_GetCurrentRecord_NoActiveContract(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
 	ctx := context.Background()
@@ -2250,7 +2250,7 @@ func TestChildService_GetCurrentContract_NoActiveContract(t *testing.T) {
 		t.Fatalf("failed to create contract: %v", err)
 	}
 
-	_, err = svc.GetCurrentContract(ctx, child.ID, org.ID)
+	_, err = svc.GetCurrentRecord(ctx, child.ID, org.ID)
 	if err == nil {
 		t.Fatal("expected error for no active contract, got nil")
 	}
@@ -2941,7 +2941,7 @@ func TestChildService_UpdateContract_AmendPreservesToWhenNotInRequest(t *testing
 	}
 }
 
-// After amend: list contracts shows both old (closed) and new, GetCurrentContract returns new
+// After amend: list contracts shows both old (closed) and new, GetCurrentRecord returns new
 func TestChildService_UpdateContract_AmendStateConsistency(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
@@ -2996,13 +2996,13 @@ func TestChildService_UpdateContract_AmendStateConsistency(t *testing.T) {
 		t.Errorf("old contract To = %v, want %v", oldContract.To, yesterday)
 	}
 
-	// GetCurrentContract should return the new contract
-	current, err := svc.GetCurrentContract(ctx, child.ID, org.ID)
+	// GetCurrentRecord should return the new contract
+	current, err := svc.GetCurrentRecord(ctx, child.ID, org.ID)
 	if err != nil {
-		t.Fatalf("GetCurrentContract failed: %v", err)
+		t.Fatalf("GetCurrentRecord failed: %v", err)
 	}
 	if current.ID != newContract.ID {
-		t.Errorf("GetCurrentContract returned ID %d, want %d (new contract)", current.ID, newContract.ID)
+		t.Errorf("GetCurrentRecord returned ID %d, want %d (new contract)", current.ID, newContract.ID)
 	}
 	if current.Properties["care_type"] != "halbtag" {
 		t.Errorf("current contract should have updated properties, got %v", current.Properties)

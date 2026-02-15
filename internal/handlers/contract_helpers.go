@@ -42,8 +42,8 @@ func handleListContracts[Resp any](
 	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(contracts, params.Page, params.Limit, total, c.Request.URL.Path))
 }
 
-// handleGetCurrentContract handles fetching the currently active contract.
-func handleGetCurrentContract[Resp any](
+// handleGetCurrentRecord handles fetching the currently active contract.
+func handleGetCurrentRecord[Resp any](
 	c *gin.Context,
 	getFn func(context.Context, uint, uint) (*Resp, error),
 ) {

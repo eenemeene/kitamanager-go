@@ -77,7 +77,7 @@ type EmployeeStorer interface {
 	FindContractByID(ctx context.Context, id uint) (*models.EmployeeContract, error)
 	UpdateContract(ctx context.Context, contract *models.EmployeeContract) error
 	DeleteContract(ctx context.Context, id uint) error
-	Contracts() ContractStorer[models.EmployeeContract]
+	Contracts() PeriodStorer[models.EmployeeContract]
 	FindByOrganizationWithContracts(ctx context.Context, orgID uint, date time.Time) ([]models.Employee, error)
 	FindContractsByEmployeePaginated(ctx context.Context, employeeID uint, limit, offset int) ([]models.EmployeeContract, int64, error)
 	FindContractsByOrganizationInDateRange(ctx context.Context, orgID uint, rangeStart, rangeEnd time.Time, staffCategories []string, sectionID *uint) ([]models.EmployeeContract, error)
@@ -101,19 +101,19 @@ type ChildStorer interface {
 	FindContractByID(ctx context.Context, id uint) (*models.ChildContract, error)
 	UpdateContract(ctx context.Context, contract *models.ChildContract) error
 	DeleteContract(ctx context.Context, id uint) error
-	Contracts() ContractStorer[models.ChildContract]
+	Contracts() PeriodStorer[models.ChildContract]
 	FindContractsByChildPaginated(ctx context.Context, childID uint, limit, offset int) ([]models.ChildContract, int64, error)
 }
 
-// ContractStorer defines the interface for contract storage operations
-type ContractStorer[T models.HasPeriod] interface {
-	GetCurrentContract(ctx context.Context, personID uint) (*T, error)
-	GetContractOn(ctx context.Context, personID uint, date time.Time) (*T, error)
-	GetHistory(ctx context.Context, personID uint) ([]T, error)
-	GetHistoryPaginated(ctx context.Context, personID uint, limit, offset int) ([]T, int64, error)
-	HasActiveContract(ctx context.Context, personID uint, date time.Time) (bool, error)
-	ValidateNoOverlap(ctx context.Context, personID uint, from time.Time, to *time.Time, excludeID *uint) error
-	CloseCurrentContract(ctx context.Context, personID uint, endDate time.Time) error
+// PeriodStorer defines the interface for time-bounded record operations
+type PeriodStorer[T models.PeriodRecord] interface {
+	GetCurrentRecord(ctx context.Context, ownerID uint) (*T, error)
+	GetRecordOn(ctx context.Context, ownerID uint, date time.Time) (*T, error)
+	ListRecords(ctx context.Context, ownerID uint) ([]T, error)
+	ListRecordsPaginated(ctx context.Context, ownerID uint, limit, offset int) ([]T, int64, error)
+	HasActiveRecord(ctx context.Context, ownerID uint, date time.Time) (bool, error)
+	ValidateNoOverlap(ctx context.Context, ownerID uint, from time.Time, to *time.Time, excludeID *uint) error
+	CloseCurrentRecord(ctx context.Context, ownerID uint, endDate time.Time) error
 }
 
 // SectionStorer defines the interface for section storage operations
@@ -212,7 +212,7 @@ type CostStorer interface {
 	FindEntriesByCostPaginated(ctx context.Context, costID uint, limit, offset int) ([]models.CostEntry, int64, error)
 	UpdateEntry(ctx context.Context, entry *models.CostEntry) error
 	DeleteEntry(ctx context.Context, id uint) error
-	Entries() ContractStorer[models.CostEntry]
+	Entries() PeriodStorer[models.CostEntry]
 }
 
 // AuditStorer defines the interface for audit log storage operations

@@ -608,8 +608,8 @@ func TestCostStore_Entries_ValidateNoOverlap(t *testing.T) {
 			if !tt.shouldError && err != nil {
 				t.Errorf("expected no error, got %v", err)
 			}
-			if tt.shouldError && err != nil && !errors.Is(err, ErrContractOverlap) {
-				t.Errorf("expected ErrContractOverlap, got %v", err)
+			if tt.shouldError && err != nil && !errors.Is(err, ErrPeriodOverlap) {
+				t.Errorf("expected ErrPeriodOverlap, got %v", err)
 			}
 		})
 	}

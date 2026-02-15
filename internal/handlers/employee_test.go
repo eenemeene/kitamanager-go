@@ -328,7 +328,7 @@ func TestEmployeeHandler_ListContracts_WrongOrg(t *testing.T) {
 	}
 }
 
-func TestEmployeeHandler_GetCurrentContract(t *testing.T) {
+func TestEmployeeHandler_GetCurrentRecord(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService, createAuditService(db))
@@ -351,7 +351,7 @@ func TestEmployeeHandler_GetCurrentContract(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/employees/:id/contracts/current", handler.GetCurrentContract)
+	r.GET("/organizations/:orgId/employees/:id/contracts/current", handler.GetCurrentRecord)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/%d/contracts/current", org.ID, employee.ID), nil)
 
@@ -367,7 +367,7 @@ func TestEmployeeHandler_GetCurrentContract(t *testing.T) {
 	}
 }
 
-func TestEmployeeHandler_GetCurrentContract_WrongOrg(t *testing.T) {
+func TestEmployeeHandler_GetCurrentRecord_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService, createAuditService(db))
@@ -393,7 +393,7 @@ func TestEmployeeHandler_GetCurrentContract_WrongOrg(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/employees/:id/contracts/current", handler.GetCurrentContract)
+	r.GET("/organizations/:orgId/employees/:id/contracts/current", handler.GetCurrentRecord)
 
 	// Try to get current contract from org2 (should fail with 404)
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/%d/contracts/current", org2.ID, employee.ID), nil)
@@ -403,7 +403,7 @@ func TestEmployeeHandler_GetCurrentContract_WrongOrg(t *testing.T) {
 	}
 }
 
-func TestEmployeeHandler_GetCurrentContract_NotFound(t *testing.T) {
+func TestEmployeeHandler_GetCurrentRecord_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService, createAuditService(db))
@@ -415,7 +415,7 @@ func TestEmployeeHandler_GetCurrentContract_NotFound(t *testing.T) {
 	db.Create(employee)
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/employees/:id/contracts/current", handler.GetCurrentContract)
+	r.GET("/organizations/:orgId/employees/:id/contracts/current", handler.GetCurrentRecord)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/%d/contracts/current", org.ID, employee.ID), nil)
 
@@ -1540,7 +1540,7 @@ func TestEmployeeHandler_DeleteContract_InvalidContractID(t *testing.T) {
 	}
 }
 
-func TestEmployeeHandler_GetCurrentContract_InvalidID(t *testing.T) {
+func TestEmployeeHandler_GetCurrentRecord_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	employeeService := createEmployeeService(db)
 	handler := NewEmployeeHandler(employeeService, createAuditService(db))
@@ -1548,7 +1548,7 @@ func TestEmployeeHandler_GetCurrentContract_InvalidID(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/employees/:id/contracts/current", handler.GetCurrentContract)
+	r.GET("/organizations/:orgId/employees/:id/contracts/current", handler.GetCurrentRecord)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/invalid/contracts/current", org.ID), nil)
 

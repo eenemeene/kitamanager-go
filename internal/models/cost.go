@@ -31,9 +31,8 @@ type CostEntry struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
-// GetPersonID returns the cost ID for the HasPeriod interface.
-// Named GetPersonID for compatibility with the generic PeriodStore.
-func (e CostEntry) GetPersonID() uint {
+// GetOwnerID returns the cost ID for the PeriodRecord interface.
+func (e CostEntry) GetOwnerID() uint {
 	return e.CostID
 }
 

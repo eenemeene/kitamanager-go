@@ -242,7 +242,7 @@ func Setup(
 						employeeHandler.ListContracts)
 					employees.GET("/:id/contracts/current",
 						authzMiddleware.RequirePermission(rbac.ResourceEmployeeContracts, rbac.ActionRead),
-						employeeHandler.GetCurrentContract)
+						employeeHandler.GetCurrentRecord)
 					employees.POST("/:id/contracts",
 						authzMiddleware.RequirePermission(rbac.ResourceEmployeeContracts, rbac.ActionCreate),
 						employeeHandler.CreateContract)
@@ -306,7 +306,7 @@ func Setup(
 						childHandler.ListContracts)
 					children.GET("/:id/contracts/current",
 						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionRead),
-						childHandler.GetCurrentContract)
+						childHandler.GetCurrentRecord)
 					children.POST("/:id/contracts",
 						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionCreate),
 						childHandler.CreateContract)

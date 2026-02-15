@@ -152,7 +152,7 @@ func (s *CostService) CreateEntry(ctx context.Context, costID, orgID uint, req *
 	var resp models.CostEntryResponse
 	err := s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
 		if err := s.store.Entries().ValidateNoOverlap(txCtx, costID, req.From, req.To, nil); err != nil {
-			if errors.Is(err, store.ErrContractOverlap) {
+			if errors.Is(err, store.ErrPeriodOverlap) {
 				return apperror.Conflict("cost entry overlaps with existing entry")
 			}
 			return apperror.InternalWrap(err, "failed to validate overlap")
@@ -226,7 +226,7 @@ func (s *CostService) UpdateEntry(ctx context.Context, entryID, costID, orgID ui
 	var resp models.CostEntryResponse
 	err = s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
 		if err := s.store.Entries().ValidateNoOverlap(txCtx, costID, req.From, req.To, &entryID); err != nil {
-			if errors.Is(err, store.ErrContractOverlap) {
+			if errors.Is(err, store.ErrPeriodOverlap) {
 				return apperror.Conflict("cost entry overlaps with existing entry")
 			}
 			return apperror.InternalWrap(err, "failed to validate overlap")

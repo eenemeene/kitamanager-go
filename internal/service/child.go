@@ -196,8 +196,8 @@ func (s *ChildService) ListContracts(ctx context.Context, childID, orgID uint, l
 	return toResponseList(contracts, (*models.ChildContract).ToResponse), total, nil
 }
 
-// GetCurrentContract returns the current active contract for a child, validating it belongs to the specified organization
-func (s *ChildService) GetCurrentContract(ctx context.Context, childID, orgID uint) (*models.ChildContractResponse, error) {
+// GetCurrentRecord returns the current active contract for a child, validating it belongs to the specified organization
+func (s *ChildService) GetCurrentRecord(ctx context.Context, childID, orgID uint) (*models.ChildContractResponse, error) {
 	// Security: Validate child belongs to the specified organization (use minimal query - no preloads needed)
 	child, err := s.store.FindByIDMinimal(ctx, childID)
 	if err != nil {
@@ -207,7 +207,7 @@ func (s *ChildService) GetCurrentContract(ctx context.Context, childID, orgID ui
 		return nil, err
 	}
 
-	contract, err := s.store.Contracts().GetCurrentContract(ctx, childID)
+	contract, err := s.store.Contracts().GetCurrentRecord(ctx, childID)
 	if err != nil {
 		return nil, apperror.InternalWrap(err, "failed to fetch contract")
 	}
@@ -234,7 +234,7 @@ func (s *ChildService) GetContractByID(ctx context.Context, contractID, childID,
 	if err != nil {
 		return nil, apperror.NotFound("contract")
 	}
-	if err := verifyContractOwnership(contract, childID); err != nil {
+	if err := verifyRecordOwnership(contract, childID, "contract"); err != nil {
 		return nil, err
 	}
 
@@ -291,7 +291,7 @@ func (s *ChildService) CreateContract(ctx context.Context, childID, orgID uint, 
 	// Validate + create in a single transaction to prevent race conditions
 	if err := s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
 		if err := s.store.Contracts().ValidateNoOverlap(txCtx, childID, req.From, req.To, nil); err != nil {
-			if errors.Is(err, store.ErrContractOverlap) {
+			if errors.Is(err, store.ErrPeriodOverlap) {
 				return apperror.Conflict(err.Error())
 			}
 			return apperror.InternalWrap(err, "failed to validate contract")
@@ -324,7 +324,7 @@ func (s *ChildService) UpdateContract(ctx context.Context, contractID, childID, 
 	if err != nil {
 		return nil, apperror.NotFound("contract")
 	}
-	if err := verifyContractOwnership(contract, childID); err != nil {
+	if err := verifyRecordOwnership(contract, childID, "contract"); err != nil {
 		return nil, err
 	}
 
@@ -378,7 +378,7 @@ func (s *ChildService) updateContractInPlace(ctx context.Context, contract *mode
 	contractID := contract.ID
 	if err := s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
 		if err := s.store.Contracts().ValidateNoOverlap(txCtx, childID, contract.From, contract.To, &contractID); err != nil {
-			if errors.Is(err, store.ErrContractOverlap) {
+			if errors.Is(err, store.ErrPeriodOverlap) {
 				return apperror.Conflict(err.Error())
 			}
 			return apperror.InternalWrap(err, "failed to validate contract")
@@ -435,7 +435,7 @@ func (s *ChildService) amendContract(ctx context.Context, contract *models.Child
 
 		// Validate new contract doesn't overlap with any other contracts
 		if err := s.store.Contracts().ValidateNoOverlap(txCtx, childID, newContract.From, newContract.To, nil); err != nil {
-			if errors.Is(err, store.ErrContractOverlap) {
+			if errors.Is(err, store.ErrPeriodOverlap) {
 				return apperror.Conflict(err.Error())
 			}
 			return apperror.InternalWrap(err, "failed to validate contract")
@@ -467,7 +467,7 @@ func (s *ChildService) DeleteContract(ctx context.Context, contractID, childID, 
 	if err != nil {
 		return apperror.NotFound("contract")
 	}
-	if err := verifyContractOwnership(contract, childID); err != nil {
+	if err := verifyRecordOwnership(contract, childID, "contract"); err != nil {
 		return err
 	}
 

@@ -302,23 +302,23 @@ func TestPeriod_IsActiveOn_TimeComponentIgnored(t *testing.T) {
 	}
 }
 
-func TestEmployeeContract_GetPersonID(t *testing.T) {
+func TestEmployeeContract_GetOwnerID(t *testing.T) {
 	contract := EmployeeContract{
 		EmployeeID: 42,
 	}
 
-	if got := contract.GetPersonID(); got != 42 {
-		t.Errorf("EmployeeContract.GetPersonID() = %d, want 42", got)
+	if got := contract.GetOwnerID(); got != 42 {
+		t.Errorf("EmployeeContract.GetOwnerID() = %d, want 42", got)
 	}
 }
 
-func TestChildContract_GetPersonID(t *testing.T) {
+func TestChildContract_GetOwnerID(t *testing.T) {
 	contract := ChildContract{
 		ChildID: 99,
 	}
 
-	if got := contract.GetPersonID(); got != 99 {
-		t.Errorf("ChildContract.GetPersonID() = %d, want 99", got)
+	if got := contract.GetOwnerID(); got != 99 {
+		t.Errorf("ChildContract.GetOwnerID() = %d, want 99", got)
 	}
 }
 

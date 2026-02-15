@@ -257,7 +257,7 @@ func (h *EmployeeHandler) ListContracts(c *gin.Context) {
 	handleListContracts(c, h.service.ListContracts)
 }
 
-// GetCurrentContract godoc
+// GetCurrentRecord godoc
 // @Summary Get current employee contract
 // @Description Get the currently active contract for an employee
 // @Tags employees
@@ -272,8 +272,8 @@ func (h *EmployeeHandler) ListContracts(c *gin.Context) {
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{id}/contracts/current [get]
-func (h *EmployeeHandler) GetCurrentContract(c *gin.Context) {
-	handleGetCurrentContract(c, h.service.GetCurrentContract)
+func (h *EmployeeHandler) GetCurrentRecord(c *gin.Context) {
+	handleGetCurrentRecord(c, h.service.GetCurrentRecord)
 }
 
 // CreateContract godoc

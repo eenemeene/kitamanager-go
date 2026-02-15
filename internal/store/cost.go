@@ -11,20 +11,20 @@ import (
 // CostStore handles database operations for costs and cost entries.
 type CostStore struct {
 	db         *gorm.DB
-	entryStore *PeriodStore[models.CostEntry]
+	periodStore *PeriodStore[models.CostEntry]
 }
 
 // NewCostStore creates a new CostStore.
 func NewCostStore(db *gorm.DB) *CostStore {
 	return &CostStore{
 		db:         db,
-		entryStore: NewPeriodStore[models.CostEntry](db, "cost_id"),
+		periodStore: NewPeriodStore[models.CostEntry](db, "cost_id"),
 	}
 }
 
 // Entries returns the period store for cost entries (overlap validation etc.).
-func (s *CostStore) Entries() ContractStorer[models.CostEntry] {
-	return s.entryStore
+func (s *CostStore) Entries() PeriodStorer[models.CostEntry] {
+	return s.periodStore
 }
 
 // Cost CRUD

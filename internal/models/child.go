@@ -19,8 +19,8 @@ type ChildContract struct {
 	BaseContract
 }
 
-// GetPersonID returns the child ID for the HasPeriod interface.
-func (c ChildContract) GetPersonID() uint {
+// GetOwnerID returns the child ID for the PeriodRecord interface.
+func (c ChildContract) GetOwnerID() uint {
 	return c.ChildID
 }
 

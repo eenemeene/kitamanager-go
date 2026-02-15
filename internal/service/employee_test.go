@@ -991,8 +991,8 @@ func TestEmployeeService_ListByOrganization_IsolatesData(t *testing.T) {
 	}
 }
 
-// SECURITY TEST: Verify GetCurrentContract returns not found for wrong org
-func TestEmployeeService_GetCurrentContract_WrongOrg(t *testing.T) {
+// SECURITY TEST: Verify GetCurrentRecord returns not found for wrong org
+func TestEmployeeService_GetCurrentRecord_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createEmployeeService(db)
 	ctx := context.Background()
@@ -1008,7 +1008,7 @@ func TestEmployeeService_GetCurrentContract_WrongOrg(t *testing.T) {
 	_, _ = svc.CreateContract(ctx, employee.ID, org1.ID, req)
 
 	// Try to get current contract for employee from org1 using org2's context
-	_, err := svc.GetCurrentContract(ctx, employee.ID, org2.ID)
+	_, err := svc.GetCurrentRecord(ctx, employee.ID, org2.ID)
 	if err == nil {
 		t.Fatal("SECURITY: expected error when getting current contract for employee from wrong org, got nil")
 	}
@@ -1166,7 +1166,7 @@ func TestEmployeeService_DeleteContract_WrongEmployee(t *testing.T) {
 	}
 }
 
-func TestEmployeeService_GetCurrentContract(t *testing.T) {
+func TestEmployeeService_GetCurrentRecord(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createEmployeeService(db)
 	ctx := context.Background()
@@ -1184,7 +1184,7 @@ func TestEmployeeService_GetCurrentContract(t *testing.T) {
 	}
 
 	// Get current contract
-	current, err := svc.GetCurrentContract(ctx, employee.ID, org.ID)
+	current, err := svc.GetCurrentRecord(ctx, employee.ID, org.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1197,7 +1197,7 @@ func TestEmployeeService_GetCurrentContract(t *testing.T) {
 	}
 }
 
-func TestEmployeeService_GetCurrentContract_NoActiveContract(t *testing.T) {
+func TestEmployeeService_GetCurrentRecord_NoActiveContract(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createEmployeeService(db)
 	ctx := context.Background()
@@ -1216,7 +1216,7 @@ func TestEmployeeService_GetCurrentContract_NoActiveContract(t *testing.T) {
 	}
 
 	// Get current contract (should fail - all contracts expired)
-	_, err = svc.GetCurrentContract(ctx, employee.ID, org.ID)
+	_, err = svc.GetCurrentRecord(ctx, employee.ID, org.ID)
 	if err == nil {
 		t.Fatal("expected error for no active contract, got nil")
 	}
@@ -1693,8 +1693,8 @@ func TestEmployeeService_CreateContract_PayPlanIDResponse(t *testing.T) {
 		t.Errorf("get response PayPlanID = %d, want %d", fetched.PayPlanID, payPlan.ID)
 	}
 
-	// Verify it's in the GetCurrentContract response
-	current, err := svc.GetCurrentContract(ctx, employee.ID, org.ID)
+	// Verify it's in the GetCurrentRecord response
+	current, err := svc.GetCurrentRecord(ctx, employee.ID, org.ID)
 	if err != nil {
 		t.Fatalf("failed to get current contract: %v", err)
 	}
@@ -2309,13 +2309,13 @@ func TestEmployeeService_UpdateContract_AmendStateConsistency(t *testing.T) {
 		t.Errorf("old contract To = %v, want %v", oldContract.To, yesterday)
 	}
 
-	// GetCurrentContract should return the new contract
-	current, err := svc.GetCurrentContract(ctx, employee.ID, org.ID)
+	// GetCurrentRecord should return the new contract
+	current, err := svc.GetCurrentRecord(ctx, employee.ID, org.ID)
 	if err != nil {
-		t.Fatalf("GetCurrentContract failed: %v", err)
+		t.Fatalf("GetCurrentRecord failed: %v", err)
 	}
 	if current.ID != newContract.ID {
-		t.Errorf("GetCurrentContract returned ID %d, want %d", current.ID, newContract.ID)
+		t.Errorf("GetCurrentRecord returned ID %d, want %d", current.ID, newContract.ID)
 	}
 	if current.StaffCategory != "supplementary" {
 		t.Errorf("current contract StaffCategory = %s, want supplementary", current.StaffCategory)

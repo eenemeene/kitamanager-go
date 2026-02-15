@@ -10,11 +10,11 @@ type Period struct {
 	To   *time.Time `gorm:"column:to_date;type:date" json:"to"`
 }
 
-// HasPeriod interface for any time-bounded record
-type HasPeriod interface {
+// PeriodRecord interface for any time-bounded record
+type PeriodRecord interface {
 	GetFrom() time.Time
 	GetTo() *time.Time
-	GetPersonID() uint
+	GetOwnerID() uint
 }
 
 // GetFrom returns the start date of the period.

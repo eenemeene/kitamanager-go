@@ -27,8 +27,8 @@ type EmployeeContract struct {
 	PayPlan       *PayPlan `gorm:"foreignKey:PayPlanID" json:"-"`
 }
 
-// GetPersonID returns the employee ID for the HasPeriod interface.
-func (c EmployeeContract) GetPersonID() uint {
+// GetOwnerID returns the employee ID for the PeriodRecord interface.
+func (c EmployeeContract) GetOwnerID() uint {
 	return c.EmployeeID
 }
 
