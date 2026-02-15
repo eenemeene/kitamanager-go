@@ -266,7 +266,7 @@ func (h *GovernmentFundingHandler) CreatePeriod(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/government-fundings/{id}/periods/{periodId} [put]
 func (h *GovernmentFundingHandler) UpdatePeriod(c *gin.Context) {
-	_, err := parseID(c, "id")
+	fundingID, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
 		return
@@ -283,7 +283,7 @@ func (h *GovernmentFundingHandler) UpdatePeriod(c *gin.Context) {
 		return
 	}
 
-	period, err := h.service.UpdatePeriod(c.Request.Context(), periodID, req)
+	period, err := h.service.UpdatePeriod(c.Request.Context(), fundingID, periodID, req)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -322,7 +322,7 @@ func (h *GovernmentFundingHandler) DeletePeriod(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.DeletePeriod(c.Request.Context(), periodID); err != nil {
+	if err := h.service.DeletePeriod(c.Request.Context(), fundingID, periodID); err != nil {
 		respondError(c, err)
 		return
 	}
@@ -352,7 +352,7 @@ func (h *GovernmentFundingHandler) DeletePeriod(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/government-fundings/{id}/periods/{periodId}/properties [post]
 func (h *GovernmentFundingHandler) CreateProperty(c *gin.Context) {
-	_, err := parseID(c, "id")
+	fundingID, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
 		return
@@ -369,7 +369,7 @@ func (h *GovernmentFundingHandler) CreateProperty(c *gin.Context) {
 		return
 	}
 
-	property, err := h.service.CreateProperty(c.Request.Context(), periodID, req)
+	property, err := h.service.CreateProperty(c.Request.Context(), fundingID, periodID, req)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -399,13 +399,13 @@ func (h *GovernmentFundingHandler) CreateProperty(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/government-fundings/{id}/periods/{periodId}/properties/{propId} [put]
 func (h *GovernmentFundingHandler) UpdateProperty(c *gin.Context) {
-	_, err := parseID(c, "id")
+	fundingID, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	_, err = parseID(c, "periodId")
+	periodID, err := parseID(c, "periodId")
 	if err != nil {
 		respondError(c, err)
 		return
@@ -422,7 +422,7 @@ func (h *GovernmentFundingHandler) UpdateProperty(c *gin.Context) {
 		return
 	}
 
-	property, err := h.service.UpdateProperty(c.Request.Context(), propID, req)
+	property, err := h.service.UpdateProperty(c.Request.Context(), fundingID, periodID, propID, req)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -450,7 +450,7 @@ func (h *GovernmentFundingHandler) UpdateProperty(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/government-fundings/{id}/periods/{periodId}/properties/{propId} [delete]
 func (h *GovernmentFundingHandler) DeleteProperty(c *gin.Context) {
-	_, err := parseID(c, "id")
+	fundingID, err := parseID(c, "id")
 	if err != nil {
 		respondError(c, err)
 		return
@@ -468,7 +468,7 @@ func (h *GovernmentFundingHandler) DeleteProperty(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.DeleteProperty(c.Request.Context(), propID); err != nil {
+	if err := h.service.DeleteProperty(c.Request.Context(), fundingID, periodID, propID); err != nil {
 		respondError(c, err)
 		return
 	}
