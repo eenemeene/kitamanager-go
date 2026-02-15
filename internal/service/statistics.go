@@ -16,23 +16,23 @@ import (
 
 // StatisticsService handles cross-resource statistics calculations
 type StatisticsService struct {
-	childStore    store.ChildStorer
-	employeeStore store.EmployeeStorer
-	orgStore      store.OrganizationStorer
-	fundingStore  store.GovernmentFundingStorer
-	payPlanStore  store.PayPlanStorer
-	costStore     store.CostStorer
+	childStore      store.ChildStorer
+	employeeStore   store.EmployeeStorer
+	orgStore        store.OrganizationStorer
+	fundingStore    store.GovernmentFundingStorer
+	payPlanStore    store.PayPlanStorer
+	budgetItemStore store.BudgetItemStorer
 }
 
 // NewStatisticsService creates a new statistics service
-func NewStatisticsService(childStore store.ChildStorer, employeeStore store.EmployeeStorer, orgStore store.OrganizationStorer, fundingStore store.GovernmentFundingStorer, payPlanStore store.PayPlanStorer, costStore store.CostStorer) *StatisticsService {
+func NewStatisticsService(childStore store.ChildStorer, employeeStore store.EmployeeStorer, orgStore store.OrganizationStorer, fundingStore store.GovernmentFundingStorer, payPlanStore store.PayPlanStorer, budgetItemStore store.BudgetItemStorer) *StatisticsService {
 	return &StatisticsService{
-		childStore:    childStore,
-		employeeStore: employeeStore,
-		orgStore:      orgStore,
-		fundingStore:  fundingStore,
-		payPlanStore:  payPlanStore,
-		costStore:     costStore,
+		childStore:      childStore,
+		employeeStore:   employeeStore,
+		orgStore:        orgStore,
+		fundingStore:    fundingStore,
+		payPlanStore:    payPlanStore,
+		budgetItemStore: budgetItemStore,
 	}
 }
 
@@ -43,18 +43,29 @@ var pedagogicalCategories = []string{
 }
 
 // snapDateRange returns a date range snapped to 1st-of-month with defaults.
+// Defaults cover: 1 month before the previous Kita year through the end of the
+// next Kita year. A Kita year runs Aug 1 – Jul 31.
 func snapDateRange(from, to *time.Time) (time.Time, time.Time) {
 	now := time.Now()
 	var rangeStart, rangeEnd time.Time
+
+	// Current Kita year starts on Aug 1 of this or last calendar year
+	kitaYearStartYear := now.Year()
+	if now.Month() < time.August {
+		kitaYearStartYear--
+	}
+
 	if from != nil {
 		rangeStart = time.Date(from.Year(), from.Month(), 1, 0, 0, 0, 0, time.UTC)
 	} else {
-		rangeStart = time.Date(now.Year(), now.Month()-12, 1, 0, 0, 0, 0, time.UTC)
+		// 1 month before the previous Kita year (= July of kitaYearStartYear-1)
+		rangeStart = time.Date(kitaYearStartYear-1, time.July, 1, 0, 0, 0, 0, time.UTC)
 	}
 	if to != nil {
 		rangeEnd = time.Date(to.Year(), to.Month(), 1, 0, 0, 0, 0, time.UTC)
 	} else {
-		rangeEnd = time.Date(now.Year(), now.Month()+6, 1, 0, 0, 0, 0, time.UTC)
+		// 1 month past the next Kita year (= August of kitaYearStartYear+2)
+		rangeEnd = time.Date(kitaYearStartYear+2, time.August, 1, 0, 0, 0, 0, time.UTC)
 	}
 	return rangeStart, rangeEnd
 }
@@ -187,10 +198,10 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 		payPlanMap[ppID] = pp
 	}
 
-	// Fetch all costs with entries for operating cost calculation
-	costs, err := s.costStore.FindByOrganizationWithEntries(ctx, orgID)
+	// Fetch budget items with entries for this organization
+	budgetItems, err := s.budgetItemStore.FindByOrganizationWithEntries(ctx, orgID)
 	if err != nil {
-		return nil, apperror.InternalWrap(err, "failed to fetch costs")
+		budgetItems = nil // non-fatal: proceed without budget items
 	}
 
 	// Generate data points for each month
@@ -252,14 +263,24 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 			employerCosts += contrib
 		}
 
-		// Expenses: operating costs
-		operatingCost := 0
-		for i := range costs {
-			for j := range costs[i].Entries {
-				entry := &costs[i].Entries[j]
+		// Budget items: income and expenses from budget items
+		budgetIncome := 0
+		budgetExpenses := 0
+		for i := range budgetItems {
+			item := &budgetItems[i]
+			for j := range item.Entries {
+				entry := &item.Entries[j]
 				if entry.IsActiveOn(date) {
-					operatingCost += entry.AmountCents
-					break // one active entry per cost category
+					amount := entry.AmountCents
+					if item.PerChild {
+						amount *= childCount
+					}
+					if item.Category == string(models.BudgetItemCategoryIncome) {
+						budgetIncome += amount
+					} else {
+						budgetExpenses += amount
+					}
+					break // only first active entry per item
 				}
 			}
 		}
@@ -267,9 +288,10 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 		dp.FundingIncome = fundingIncome
 		dp.GrossSalary = grossSalary
 		dp.EmployerCosts = employerCosts
-		dp.OperatingCost = operatingCost
-		dp.TotalIncome = fundingIncome
-		dp.TotalExpenses = grossSalary + employerCosts + operatingCost
+		dp.BudgetIncome = budgetIncome
+		dp.BudgetExpenses = budgetExpenses
+		dp.TotalIncome = fundingIncome + budgetIncome
+		dp.TotalExpenses = grossSalary + employerCosts + budgetExpenses
 		dp.Balance = dp.TotalIncome - dp.TotalExpenses
 		dp.ChildCount = childCount
 		dp.StaffCount = staffCount

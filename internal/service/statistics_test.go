@@ -18,8 +18,8 @@ func createStatisticsService(db *gorm.DB) *StatisticsService {
 	orgStore := store.NewOrganizationStore(db)
 	fundingStore := store.NewGovernmentFundingStore(db)
 	payPlanStore := store.NewPayPlanStore(db)
-	costStore := store.NewCostStore(db)
-	return NewStatisticsService(childStore, employeeStore, orgStore, fundingStore, payPlanStore, costStore)
+	budgetItemStore := store.NewBudgetItemStore(db)
+	return NewStatisticsService(childStore, employeeStore, orgStore, fundingStore, payPlanStore, budgetItemStore)
 }
 
 func createTestEmployeeContractWithCategory(t *testing.T, db *gorm.DB, employeeID uint, payplanID uint, from time.Time, to *time.Time, weeklyHours float64, staffCategory string, sectionID uint) *models.EmployeeContract {
@@ -398,15 +398,27 @@ func TestStatisticsService_GetStaffingHours_DefaultDateRange(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 	db.Model(org).Update("state", "berlin")
 
-	// Pass nil for from/to to use default range: 12 months back to 6 months forward = 19 data points
+	// Pass nil for from/to to use default Kita year range:
+	// 1 month before previous Kita year through end of next Kita year
 	result, err := svc.GetStaffingHours(ctx, org.ID, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	// Default is 12 months back + current month + 6 months forward = 19 data points
-	if len(result.DataPoints) != 19 {
-		t.Errorf("expected 19 data points, got %d", len(result.DataPoints))
+	// Verify the range spans 3 Kita years + 1 extra month
+	now := time.Now()
+	kitaYearStartYear := now.Year()
+	if now.Month() < time.August {
+		kitaYearStartYear--
+	}
+	from := time.Date(kitaYearStartYear-1, time.July, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(kitaYearStartYear+2, time.August, 1, 0, 0, 0, 0, time.UTC)
+	expectedPoints := 0
+	for d := from; !d.After(to); d = d.AddDate(0, 1, 0) {
+		expectedPoints++
+	}
+	if len(result.DataPoints) != expectedPoints {
+		t.Errorf("expected %d data points, got %d", expectedPoints, len(result.DataPoints))
 	}
 }
 
@@ -624,10 +636,6 @@ func TestStatisticsService_GetFinancials_Basic(t *testing.T) {
 	createTestEmployeeContractWithCategory(t, db, emp.ID, payplan.ID, contractFrom, nil, 39.0, "qualified", section.ID)
 	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]interface{}{"grade": "S8a", "step": 3})
 
-	// 1 cost: rent 150000 cents/month
-	cost := createTestCost(t, db, "Rent", org.ID)
-	createTestCostEntry(t, db, cost.ID, contractFrom, nil, 150000, "Monthly rent")
-
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
 	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
@@ -652,15 +660,11 @@ func TestStatisticsService_GetFinancials_Basic(t *testing.T) {
 		if dp.EmployerCosts != 77000 {
 			t.Errorf("dp %d: EmployerCosts = %d, want 77000", i, dp.EmployerCosts)
 		}
-		// Operating cost: 150000
-		if dp.OperatingCost != 150000 {
-			t.Errorf("dp %d: OperatingCost = %d, want 150000", i, dp.OperatingCost)
-		}
 		// Totals
 		if dp.TotalIncome != 166847 {
 			t.Errorf("dp %d: TotalIncome = %d, want 166847", i, dp.TotalIncome)
 		}
-		expectedExpenses := 350000 + 77000 + 150000
+		expectedExpenses := 350000 + 77000
 		if dp.TotalExpenses != expectedExpenses {
 			t.Errorf("dp %d: TotalExpenses = %d, want %d", i, dp.TotalExpenses, expectedExpenses)
 		}
@@ -705,9 +709,6 @@ func TestStatisticsService_GetFinancials_Empty(t *testing.T) {
 		}
 		if dp.EmployerCosts != 0 {
 			t.Errorf("dp %d: EmployerCosts = %d, want 0", i, dp.EmployerCosts)
-		}
-		if dp.OperatingCost != 0 {
-			t.Errorf("dp %d: OperatingCost = %d, want 0", i, dp.OperatingCost)
 		}
 		if dp.TotalIncome != 0 {
 			t.Errorf("dp %d: TotalIncome = %d, want 0", i, dp.TotalIncome)
@@ -956,79 +957,6 @@ func TestStatisticsService_GetFinancials_AllStaffIncluded(t *testing.T) {
 	}
 }
 
-func TestStatisticsService_GetFinancials_MultipleCosts(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createStatisticsService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	db.Model(org).Update("state", "berlin")
-
-	contractFrom := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-
-	// Multiple cost categories
-	rent := createTestCost(t, db, "Rent", org.ID)
-	createTestCostEntry(t, db, rent.ID, contractFrom, nil, 200000, "")
-
-	insurance := createTestCost(t, db, "Insurance", org.ID)
-	createTestCostEntry(t, db, insurance.ID, contractFrom, nil, 50000, "")
-
-	utilities := createTestCost(t, db, "Utilities", org.ID)
-	createTestCostEntry(t, db, utilities.ID, contractFrom, nil, 30000, "")
-
-	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	dp := result.DataPoints[0]
-	expectedCost := 200000 + 50000 + 30000
-	if dp.OperatingCost != expectedCost {
-		t.Errorf("OperatingCost = %d, want %d", dp.OperatingCost, expectedCost)
-	}
-}
-
-func TestStatisticsService_GetFinancials_CostEntryNotActiveOnDate(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createStatisticsService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	db.Model(org).Update("state", "berlin")
-
-	// Cost entry covers only Jul-Dec 2024
-	cost := createTestCost(t, db, "Rent", org.ID)
-	entryFrom := time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC)
-	entryTo := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-	createTestCostEntry(t, db, cost.ID, entryFrom, &entryTo, 150000, "")
-
-	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	to := time.Date(2024, 12, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	if len(result.DataPoints) != 12 {
-		t.Fatalf("expected 12 data points, got %d", len(result.DataPoints))
-	}
-
-	// Jan-Jun: no cost
-	for i := 0; i < 6; i++ {
-		if result.DataPoints[i].OperatingCost != 0 {
-			t.Errorf("dp %d: OperatingCost = %d, want 0 (entry not active yet)", i, result.DataPoints[i].OperatingCost)
-		}
-	}
-	// Jul-Dec: cost active
-	for i := 6; i < 12; i++ {
-		if result.DataPoints[i].OperatingCost != 150000 {
-			t.Errorf("dp %d: OperatingCost = %d, want 150000", i, result.DataPoints[i].OperatingCost)
-		}
-	}
-}
-
 func TestStatisticsService_GetFinancials_ContractStartsMidRange(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createStatisticsService(db)
@@ -1183,11 +1111,7 @@ func TestStatisticsService_GetFinancials_BalanceNegative(t *testing.T) {
 	section := getDefaultSection(t, db, org.ID)
 	contractFrom := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
-	// No children (no income), but has costs
-	cost := createTestCost(t, db, "Rent", org.ID)
-	createTestCostEntry(t, db, cost.ID, contractFrom, nil, 500000, "")
-
-	// Employee with salary
+	// No children (no income), but has employee salary
 	payplan := createTestPayPlan(t, db, "TVöD", org.ID)
 	ppPeriod := createTestPayPlanPeriodWithContrib(t, db, payplan.ID, contractFrom, nil, 39.0, 0)
 	createTestPayPlanEntry(t, db, ppPeriod.ID, "S8a", 1, 250000, nil)
@@ -1207,7 +1131,7 @@ func TestStatisticsService_GetFinancials_BalanceNegative(t *testing.T) {
 	if dp.TotalIncome != 0 {
 		t.Errorf("TotalIncome = %d, want 0", dp.TotalIncome)
 	}
-	expectedExpenses := 250000 + 500000
+	expectedExpenses := 250000
 	if dp.TotalExpenses != expectedExpenses {
 		t.Errorf("TotalExpenses = %d, want %d", dp.TotalExpenses, expectedExpenses)
 	}
@@ -1227,14 +1151,26 @@ func TestStatisticsService_GetFinancials_DefaultDateRange(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 	db.Model(org).Update("state", "berlin")
 
-	// nil from/to -> default 12 months back + 6 months forward = 19 data points
+	// nil from/to -> default Kita year range
 	result, err := svc.GetFinancials(ctx, org.ID, nil, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	if len(result.DataPoints) != 19 {
-		t.Errorf("expected 19 data points (default range), got %d", len(result.DataPoints))
+	// Verify the range spans 3 Kita years + 1 extra month
+	now := time.Now()
+	kitaYearStartYear := now.Year()
+	if now.Month() < time.August {
+		kitaYearStartYear--
+	}
+	from := time.Date(kitaYearStartYear-1, time.July, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(kitaYearStartYear+2, time.August, 1, 0, 0, 0, 0, time.UTC)
+	expectedPoints := 0
+	for d := from; !d.After(to); d = d.AddDate(0, 1, 0) {
+		expectedPoints++
+	}
+	if len(result.DataPoints) != expectedPoints {
+		t.Errorf("expected %d data points (default range), got %d", expectedPoints, len(result.DataPoints))
 	}
 }
 
@@ -1318,41 +1254,6 @@ func TestStatisticsService_GetFinancials_EmployeeNoPayPlan(t *testing.T) {
 	}
 }
 
-func TestStatisticsService_GetFinancials_OneCostEntryPerCategory(t *testing.T) {
-	// Only one active entry per cost category should be counted (break after first match)
-	db := setupTestDB(t)
-	svc := createStatisticsService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	db.Model(org).Update("state", "berlin")
-
-	cost := createTestCost(t, db, "Rent", org.ID)
-
-	// Two overlapping entries for same cost (shouldn't happen in practice, but test the break)
-	contractFrom := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	createTestCostEntry(t, db, cost.ID, contractFrom, nil, 100000, "Old rate")
-	// Second entry also active - only first should be counted due to break
-	createTestCostEntry(t, db, cost.ID, contractFrom, nil, 200000, "New rate")
-
-	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	dp := result.DataPoints[0]
-	// Should NOT be 300000 (both added) - only one should be used
-	if dp.OperatingCost == 300000 {
-		t.Errorf("OperatingCost = 300000, but should only count one entry per cost category")
-	}
-	// Should be either 100000 or 200000 (whichever DB returns first)
-	if dp.OperatingCost != 100000 && dp.OperatingCost != 200000 {
-		t.Errorf("OperatingCost = %d, want 100000 or 200000", dp.OperatingCost)
-	}
-}
-
 func TestStatisticsService_GetStaffingHours_FundingPeriodChange(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createStatisticsService(db)
@@ -1405,6 +1306,444 @@ func TestStatisticsService_GetStaffingHours_FundingPeriodChange(t *testing.T) {
 	for i := 6; i < 12; i++ {
 		if !almostEqual(result.DataPoints[i].RequiredHours, expectedSecond, 0.01) {
 			t.Errorf("data point %d (period 2): RequiredHours = %v, want %v", i, result.DataPoints[i].RequiredHours, expectedSecond)
+		}
+	}
+}
+
+// ============================================================
+// GetFinancials - Budget Items tests
+// ============================================================
+
+func TestGetFinancials_BudgetExpenseFixed(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	db.Model(org).Update("state", "berlin")
+
+	// Fixed expense budget item: 50000 cents/month (not per-child)
+	item := createTestBudgetItem(t, db, "Rent", org.ID, "expense", false)
+	createTestBudgetItemEntry(t, db, item.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 50000, "")
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	for i, dp := range result.DataPoints {
+		if dp.BudgetExpenses != 50000 {
+			t.Errorf("dp %d: BudgetExpenses = %d, want 50000", i, dp.BudgetExpenses)
+		}
+		if dp.BudgetIncome != 0 {
+			t.Errorf("dp %d: BudgetIncome = %d, want 0", i, dp.BudgetIncome)
+		}
+		if dp.TotalExpenses != 50000 {
+			t.Errorf("dp %d: TotalExpenses = %d, want 50000", i, dp.TotalExpenses)
+		}
+		if dp.Balance != -50000 {
+			t.Errorf("dp %d: Balance = %d, want -50000", i, dp.Balance)
+		}
+	}
+}
+
+func TestGetFinancials_BudgetIncomeFixed(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	db.Model(org).Update("state", "berlin")
+
+	item := createTestBudgetItem(t, db, "Donations", org.ID, "income", false)
+	createTestBudgetItemEntry(t, db, item.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 100000, "")
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	for i, dp := range result.DataPoints {
+		if dp.BudgetIncome != 100000 {
+			t.Errorf("dp %d: BudgetIncome = %d, want 100000", i, dp.BudgetIncome)
+		}
+		if dp.BudgetExpenses != 0 {
+			t.Errorf("dp %d: BudgetExpenses = %d, want 0", i, dp.BudgetExpenses)
+		}
+		if dp.TotalIncome != 100000 {
+			t.Errorf("dp %d: TotalIncome = %d, want 100000", i, dp.TotalIncome)
+		}
+	}
+}
+
+func TestGetFinancials_BudgetExpensePerChild(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	db.Model(org).Update("state", "berlin")
+	section := getDefaultSection(t, db, org.ID)
+
+	// 3 children with active contracts
+	for _, name := range []string{"A", "B", "C"} {
+		child := createTestChild(t, db, "Child", name, org.ID)
+		createTestChildContract(t, db, child.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, section.ID, nil)
+	}
+
+	// Per-child expense: 2000 cents/child/month
+	item := createTestBudgetItem(t, db, "Meals", org.ID, "expense", true)
+	createTestBudgetItemEntry(t, db, item.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 2000, "")
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	dp := result.DataPoints[0]
+	// 3 children * 2000 = 6000
+	if dp.BudgetExpenses != 6000 {
+		t.Errorf("BudgetExpenses = %d, want 6000", dp.BudgetExpenses)
+	}
+	if dp.TotalExpenses != 6000 {
+		t.Errorf("TotalExpenses = %d, want 6000", dp.TotalExpenses)
+	}
+}
+
+func TestGetFinancials_BudgetIncomePerChild(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	db.Model(org).Update("state", "berlin")
+	section := getDefaultSection(t, db, org.ID)
+
+	// 2 children
+	for _, name := range []string{"A", "B"} {
+		child := createTestChild(t, db, "Child", name, org.ID)
+		createTestChildContract(t, db, child.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, section.ID, nil)
+	}
+
+	// Per-child income: 15000 cents/child/month
+	item := createTestBudgetItem(t, db, "Parent Fees", org.ID, "income", true)
+	createTestBudgetItemEntry(t, db, item.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 15000, "")
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	dp := result.DataPoints[0]
+	// 2 children * 15000 = 30000
+	if dp.BudgetIncome != 30000 {
+		t.Errorf("BudgetIncome = %d, want 30000", dp.BudgetIncome)
+	}
+	if dp.TotalIncome != 30000 {
+		t.Errorf("TotalIncome = %d, want 30000", dp.TotalIncome)
+	}
+}
+
+func TestGetFinancials_BudgetPerChildNoChildren(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	db.Model(org).Update("state", "berlin")
+
+	// Per-child item but no children
+	item := createTestBudgetItem(t, db, "Meals", org.ID, "expense", true)
+	createTestBudgetItemEntry(t, db, item.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 5000, "")
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	dp := result.DataPoints[0]
+	if dp.BudgetExpenses != 0 {
+		t.Errorf("BudgetExpenses = %d, want 0 (no children)", dp.BudgetExpenses)
+	}
+}
+
+func TestGetFinancials_BudgetMultipleMixed(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	db.Model(org).Update("state", "berlin")
+	section := getDefaultSection(t, db, org.ID)
+
+	// 2 children
+	for _, name := range []string{"A", "B"} {
+		child := createTestChild(t, db, "Child", name, org.ID)
+		createTestChildContract(t, db, child.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, section.ID, nil)
+	}
+
+	// Fixed income: 80000
+	item1 := createTestBudgetItem(t, db, "Donations", org.ID, "income", false)
+	createTestBudgetItemEntry(t, db, item1.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 80000, "")
+
+	// Per-child income: 10000/child -> 20000
+	item2 := createTestBudgetItem(t, db, "Parent Fees", org.ID, "income", true)
+	createTestBudgetItemEntry(t, db, item2.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 10000, "")
+
+	// Fixed expense: 50000
+	item3 := createTestBudgetItem(t, db, "Rent", org.ID, "expense", false)
+	createTestBudgetItemEntry(t, db, item3.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 50000, "")
+
+	// Per-child expense: 3000/child -> 6000
+	item4 := createTestBudgetItem(t, db, "Meals", org.ID, "expense", true)
+	createTestBudgetItemEntry(t, db, item4.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 3000, "")
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	dp := result.DataPoints[0]
+	expectedIncome := 80000 + 20000
+	expectedExpenses := 50000 + 6000
+	if dp.BudgetIncome != expectedIncome {
+		t.Errorf("BudgetIncome = %d, want %d", dp.BudgetIncome, expectedIncome)
+	}
+	if dp.BudgetExpenses != expectedExpenses {
+		t.Errorf("BudgetExpenses = %d, want %d", dp.BudgetExpenses, expectedExpenses)
+	}
+	if dp.TotalIncome != expectedIncome {
+		t.Errorf("TotalIncome = %d, want %d", dp.TotalIncome, expectedIncome)
+	}
+	if dp.TotalExpenses != expectedExpenses {
+		t.Errorf("TotalExpenses = %d, want %d", dp.TotalExpenses, expectedExpenses)
+	}
+	if dp.Balance != expectedIncome-expectedExpenses {
+		t.Errorf("Balance = %d, want %d", dp.Balance, expectedIncome-expectedExpenses)
+	}
+}
+
+func TestGetFinancials_BudgetEntryNotActive(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	db.Model(org).Update("state", "berlin")
+
+	// Entry covers 2025, but we query 2024
+	item := createTestBudgetItem(t, db, "Rent", org.ID, "expense", false)
+	createTestBudgetItemEntry(t, db, item.ID, time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), nil, 50000, "")
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	for i, dp := range result.DataPoints {
+		if dp.BudgetExpenses != 0 {
+			t.Errorf("dp %d: BudgetExpenses = %d, want 0 (entry not active)", i, dp.BudgetExpenses)
+		}
+	}
+}
+
+func TestGetFinancials_BudgetEntryStartsMidRange(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	db.Model(org).Update("state", "berlin")
+
+	// Entry starts March 2024
+	item := createTestBudgetItem(t, db, "Rent", org.ID, "expense", false)
+	createTestBudgetItemEntry(t, db, item.ID, time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC), nil, 40000, "")
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	// Jan, Feb: 0
+	for i := 0; i < 2; i++ {
+		if result.DataPoints[i].BudgetExpenses != 0 {
+			t.Errorf("dp %d: BudgetExpenses = %d, want 0 (entry not started)", i, result.DataPoints[i].BudgetExpenses)
+		}
+	}
+	// Mar-Jun: 40000
+	for i := 2; i < 6; i++ {
+		if result.DataPoints[i].BudgetExpenses != 40000 {
+			t.Errorf("dp %d: BudgetExpenses = %d, want 40000", i, result.DataPoints[i].BudgetExpenses)
+		}
+	}
+}
+
+func TestGetFinancials_BudgetOneEntryPerItem(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	db.Model(org).Update("state", "berlin")
+
+	// Two overlapping entries on same item: only first active one is counted
+	item := createTestBudgetItem(t, db, "Rent", org.ID, "expense", false)
+	createTestBudgetItemEntry(t, db, item.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 30000, "first")
+	createTestBudgetItemEntry(t, db, item.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 70000, "second")
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	dp := result.DataPoints[0]
+	// Should be either 30000 or 70000, but NOT 100000 (both combined)
+	if dp.BudgetExpenses == 100000 {
+		t.Errorf("BudgetExpenses = 100000, should only count first active entry, not both")
+	}
+	if dp.BudgetExpenses != 30000 && dp.BudgetExpenses != 70000 {
+		t.Errorf("BudgetExpenses = %d, want 30000 or 70000 (first active entry)", dp.BudgetExpenses)
+	}
+}
+
+func TestGetFinancials_BudgetWithSalariesAndFunding(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	db.Model(org).Update("state", "berlin")
+
+	// Government funding
+	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
+	toDate := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	fundingPeriod := createTestFundingPeriod(t, db, funding.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &toDate, 39.0)
+	createTestFundingPropertyFull(t, db, fundingPeriod.ID, "care_type", "ganztag", 100000, 0.25, 0, 6)
+
+	section := getDefaultSection(t, db, org.ID)
+
+	// 1 child
+	child := createTestChild(t, db, "Child", "One", org.ID)
+	createTestChildContract(t, db, child.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, section.ID, models.ContractProperties{"care_type": "ganztag"})
+
+	// Pay plan + employee
+	payplan := createTestPayPlan(t, db, "TVöD", org.ID)
+	ppPeriod := createTestPayPlanPeriodWithContrib(t, db, payplan.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0, 2000)
+	createTestPayPlanEntry(t, db, ppPeriod.ID, "S8a", 3, 300000, nil)
+	emp := createTestEmployee(t, db, "Emp", "One", org.ID)
+	createTestEmployeeContractWithCategory(t, db, emp.ID, payplan.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0, "qualified", section.ID)
+	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]interface{}{"grade": "S8a", "step": 3})
+
+	// Budget items
+	incomeItem := createTestBudgetItem(t, db, "Parent Fees", org.ID, "income", true)
+	createTestBudgetItemEntry(t, db, incomeItem.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 20000, "")
+
+	expenseItem := createTestBudgetItem(t, db, "Rent", org.ID, "expense", false)
+	createTestBudgetItemEntry(t, db, expenseItem.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 50000, "")
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	dp := result.DataPoints[0]
+	// Funding: 100000
+	if dp.FundingIncome != 100000 {
+		t.Errorf("FundingIncome = %d, want 100000", dp.FundingIncome)
+	}
+	// Budget income: 1 child * 20000 = 20000
+	if dp.BudgetIncome != 20000 {
+		t.Errorf("BudgetIncome = %d, want 20000", dp.BudgetIncome)
+	}
+	// TotalIncome = funding + budget income
+	if dp.TotalIncome != 120000 {
+		t.Errorf("TotalIncome = %d, want 120000", dp.TotalIncome)
+	}
+	// Gross: 300000, Employer: 300000 * 2000/10000 = 60000
+	if dp.GrossSalary != 300000 {
+		t.Errorf("GrossSalary = %d, want 300000", dp.GrossSalary)
+	}
+	if dp.EmployerCosts != 60000 {
+		t.Errorf("EmployerCosts = %d, want 60000", dp.EmployerCosts)
+	}
+	if dp.BudgetExpenses != 50000 {
+		t.Errorf("BudgetExpenses = %d, want 50000", dp.BudgetExpenses)
+	}
+	// TotalExpenses = salary + employer + budget expenses
+	expectedExpenses := 300000 + 60000 + 50000
+	if dp.TotalExpenses != expectedExpenses {
+		t.Errorf("TotalExpenses = %d, want %d", dp.TotalExpenses, expectedExpenses)
+	}
+	expectedBalance := 120000 - expectedExpenses
+	if dp.Balance != expectedBalance {
+		t.Errorf("Balance = %d, want %d", dp.Balance, expectedBalance)
+	}
+}
+
+func TestGetFinancials_BudgetPerChildCountChanges(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	db.Model(org).Update("state", "berlin")
+	section := getDefaultSection(t, db, org.ID)
+
+	// Child A: active from Jan
+	childA := createTestChild(t, db, "Child", "A", org.ID)
+	createTestChildContract(t, db, childA.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, section.ID, nil)
+
+	// Child B: active from March (mid-range)
+	childB := createTestChild(t, db, "Child", "B", org.ID)
+	createTestChildContract(t, db, childB.ID, time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC), nil, section.ID, nil)
+
+	// Per-child expense: 10000 cents/child/month
+	item := createTestBudgetItem(t, db, "Meals", org.ID, "expense", true)
+	createTestBudgetItemEntry(t, db, item.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 10000, "")
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	// Jan, Feb: 1 child * 10000 = 10000
+	for i := 0; i < 2; i++ {
+		if result.DataPoints[i].BudgetExpenses != 10000 {
+			t.Errorf("dp %d: BudgetExpenses = %d, want 10000 (1 child)", i, result.DataPoints[i].BudgetExpenses)
+		}
+		if result.DataPoints[i].ChildCount != 1 {
+			t.Errorf("dp %d: ChildCount = %d, want 1", i, result.DataPoints[i].ChildCount)
+		}
+	}
+	// Mar-Jun: 2 children * 10000 = 20000
+	for i := 2; i < 6; i++ {
+		if result.DataPoints[i].BudgetExpenses != 20000 {
+			t.Errorf("dp %d: BudgetExpenses = %d, want 20000 (2 children)", i, result.DataPoints[i].BudgetExpenses)
+		}
+		if result.DataPoints[i].ChildCount != 2 {
+			t.Errorf("dp %d: ChildCount = %d, want 2", i, result.DataPoints[i].ChildCount)
 		}
 	}
 }
