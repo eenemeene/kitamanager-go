@@ -332,8 +332,7 @@ func SeedTestData(cfg *config.Config, db *gorm.DB, fundingStore *store.Governmen
 	// Some children have left (contracts ended), some are current
 	contractCount := 0
 	for i, child := range children {
-		sectionID := sectionForAge(child.Birthdate, namedSectionList)
-		contracts := createTestContractsDistributed(child.ID, child.Birthdate, i, sectionID)
+		contracts := createTestContractsDistributed(child.ID, child.Birthdate, i, namedSectionList)
 		for _, contract := range contracts {
 			if err := db.Create(&contract).Error; err != nil {
 				return err
@@ -628,12 +627,12 @@ func SeedTestData(cfg *config.Config, db *gorm.DB, fundingStore *store.Governmen
 	return nil
 }
 
-// sectionForAge returns the appropriate section ID based on child age:
+// sectionForAgeAt returns the appropriate section ID based on child age at a given date:
 // - Under 36 months → Krippe (sections[0])
 // - 36-72 months → Kindergarten (sections[1])
 // - Over 72 months → Hort (sections[2])
-func sectionForAge(birthdate time.Time, sections []*models.Section) uint {
-	ageMonths := int(time.Since(birthdate).Hours() / 24 / 30)
+func sectionForAgeAt(birthdate time.Time, at time.Time, sections []*models.Section) uint {
+	ageMonths := int(at.Sub(birthdate).Hours() / 24 / 30)
 	switch {
 	case ageMonths < 36:
 		return sections[0].ID
@@ -730,7 +729,7 @@ func makeChildContract(childID uint, from time.Time, to *time.Time, sectionID ui
 // - ~30% of children have multiple contracts (contract history)
 //
 //nolint:gosec // G404: math/rand is fine for test data generation
-func createTestContractsDistributed(childID uint, birthdate time.Time, childIndex int, sectionID uint) []models.ChildContract {
+func createTestContractsDistributed(childID uint, birthdate time.Time, childIndex int, sections []*models.Section) []models.ChildContract {
 	now := time.Now()
 
 	// Determine when this child's contract should start based on their index
@@ -749,6 +748,11 @@ func createTestContractsDistributed(childID uint, birthdate time.Time, childInde
 	if contractStart.After(now) {
 		contractStart = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
 	}
+
+	// Assign section based on age at contract start (not current age).
+	// This means children who started in Krippe may now be old enough for Kindergarten,
+	// which triggers age alerts on the dashboard.
+	sectionID := sectionForAgeAt(birthdate, contractStart, sections)
 
 	// Calculate child's current age in months
 	childAgeMonths := int(now.Sub(birthdate).Hours() / 24 / 30)
