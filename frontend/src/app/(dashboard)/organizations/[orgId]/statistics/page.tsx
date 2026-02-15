@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueries } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -31,6 +31,12 @@ const MonthlyContractChart = dynamic(
 
 const StaffingHoursChart = dynamic(
   () => import('@/components/charts/staffing-hours-chart').then((mod) => mod.StaffingHoursChart),
+  { ssr: false, loading: () => <Skeleton className="h-[300px] w-full" /> }
+);
+
+const SectionStaffingChart = dynamic(
+  () =>
+    import('@/components/charts/section-staffing-chart').then((mod) => mod.SectionStaffingChart),
   { ssr: false, loading: () => <Skeleton className="h-[300px] w-full" /> }
 );
 
@@ -63,6 +69,44 @@ export default function StatisticsPage() {
     queryFn: () => apiClient.getStaffingHours(orgId, { sectionId: selectedSectionId }),
     enabled: !!orgId,
   });
+
+  // Fetch staffing hours per section for the grouped bar chart
+  const sectionStaffingQueries = useQueries({
+    queries: (sections?.data ?? []).map((section) => ({
+      queryKey: queryKeys.statistics.staffingHours(orgId, section.id),
+      queryFn: () => apiClient.getStaffingHours(orgId, { sectionId: section.id }),
+      enabled: !!orgId && !!sections,
+    })),
+  });
+
+  const sectionStaffingData = useMemo(() => {
+    if (!sections?.data) return [];
+
+    // Find the data point closest to the 1st of the current month
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+
+    return sections.data
+      .map((section, i) => {
+        const queryResult = sectionStaffingQueries[i];
+        if (!queryResult?.data?.data_points?.length) return null;
+
+        // Find the data point for the current month, or the closest one
+        const points = queryResult.data.data_points;
+        const exact = points.find((dp) => dp.date === currentMonth);
+        const dp = exact ?? points[points.length - 1];
+
+        return {
+          sectionName: section.name,
+          required: dp.required_hours,
+          available: dp.available_hours,
+        };
+      })
+      .filter((d): d is NonNullable<typeof d> => d !== null);
+  }, [sections?.data, sectionStaffingQueries]);
+
+  const isLoadingSectionStaffing =
+    sectionStaffingQueries.length > 0 && sectionStaffingQueries.some((q) => q.isLoading);
 
   return (
     <div className="space-y-6">
@@ -102,6 +146,24 @@ export default function StatisticsPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Staffing by Section */}
+        {sections && sections.data.length > 0 && (
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle>{t('statistics.sectionStaffing')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoadingSectionStaffing ? (
+                <Skeleton className="h-[300px] w-full" />
+              ) : sectionStaffingData.length > 0 ? (
+                <SectionStaffingChart data={sectionStaffingData} />
+              ) : (
+                <p className="text-muted-foreground">{t('statistics.chartError')}</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Staffing Hours */}
         <Card className="lg:col-span-2">

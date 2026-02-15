@@ -54,7 +54,7 @@ export function PayPlanGrid({ period }: PayPlanGridProps) {
         <TableRow>
           <TableHead />
           {steps.map((step) => (
-            <TableHead key={step} className="text-center">
+            <TableHead key={step} className="text-right">
               {step}
               {stepMinYearsMap.get(step) != null && (
                 <span className="ml-1 text-xs text-muted-foreground">

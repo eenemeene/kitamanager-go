@@ -103,12 +103,12 @@
     "selectOrgForStats": "Wählen Sie eine Organisation, um Statistiken anzuzeigen",
     "childrenContractCount": "Kinder mit aktiven Verträgen",
     "chartError": "Fehler beim Laden der Diagrammdaten",
-    "ageDistribution": "Altersverteilung",
+    "ageDistribution": "Altersverteilung (Heute)",
     "childrenCount": "Kinder",
     "totalChildren": "{count} Kinder insgesamt",
     "ageYears": "{age} Jahre",
     "ageSixPlus": "6+ Jahre",
-    "staffingHours": "Personalstunden",
+    "staffingHours": "Personalstunden (Verlauf)",
     "staffingHoursDescription": "Basierend auf aktiven Verträgen am 1. jedes Monats",
     "requiredHours": "Benötigte Stunden",
     "availableHours": "Verfügbare Stunden",
@@ -116,7 +116,8 @@
     "allSections": "Alle Bereiche",
     "kitaYear": "Kitajahr {year}",
     "staffingBalance": "Personalabgleich",
-    "balancePercentage": "Abgleich"
+    "balancePercentage": "Abgleich",
+    "sectionStaffing": "Personal nach Bereich (Heute)"
   },
   "months": {
     "jan": "Jan",

@@ -103,12 +103,12 @@
     "selectOrgForStats": "Select an organization to view statistics",
     "childrenContractCount": "Children with Active Contracts",
     "chartError": "Failed to load chart data",
-    "ageDistribution": "Age Distribution",
+    "ageDistribution": "Age Distribution (Today)",
     "childrenCount": "Children",
     "totalChildren": "{count} children total",
     "ageYears": "{age} years",
     "ageSixPlus": "6+ years",
-    "staffingHours": "Staffing Hours",
+    "staffingHours": "Staffing Hours (History)",
     "staffingHoursDescription": "Based on active contracts on the 1st of each month",
     "requiredHours": "Required Hours",
     "availableHours": "Available Hours",
@@ -116,7 +116,8 @@
     "allSections": "All Sections",
     "kitaYear": "Kita Year {year}",
     "staffingBalance": "Staffing Balance",
-    "balancePercentage": "Balance"
+    "balancePercentage": "Balance",
+    "sectionStaffing": "Staffing by Section (Today)"
   },
   "months": {
     "jan": "Jan",

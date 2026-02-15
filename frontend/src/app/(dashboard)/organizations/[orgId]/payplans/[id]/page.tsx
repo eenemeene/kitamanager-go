@@ -64,7 +64,7 @@ export default function PayPlanDetailPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [view, setView] = useState<'panels' | 'table'>('panels');
+  const [view, setView] = useState<'panels' | 'table'>('table');
   const [isPeriodDialogOpen, setIsPeriodDialogOpen] = useState(false);
   const [isEntryDialogOpen, setIsEntryDialogOpen] = useState(false);
   const [isDeletePeriodDialogOpen, setIsDeletePeriodDialogOpen] = useState(false);
