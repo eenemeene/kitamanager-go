@@ -458,53 +458,6 @@ func (h *ChildHandler) GetContractPropertiesDistribution(c *gin.Context) {
 	c.JSON(http.StatusOK, stats)
 }
 
-// GetContractCountByMonth godoc
-// @Summary Get children contract count by month
-// @Description Get children contract counts per month for the specified year range
-// @Tags children
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param orgId path int true "Organization ID"
-// @Param min_year query int false "Start year (default: current year - 3)"
-// @Param max_year query int false "End year (default: current year + 1)"
-// @Success 200 {object} models.ChildrenContractCountByMonthResponse
-// @Failure 400 {object} models.ErrorResponse
-// @Failure 401 {object} models.ErrorResponse
-// @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/statistics/contract-count-by-month [get]
-func (h *ChildHandler) GetContractCountByMonth(c *gin.Context) {
-	orgID, ok := parseOrgID(c)
-	if !ok {
-		return
-	}
-
-	currentYear := time.Now().Year()
-
-	minYear, ok := parseOptionalInt(c, "min_year", currentYear-3)
-	if !ok {
-		return
-	}
-
-	maxYear, ok := parseOptionalInt(c, "max_year", currentYear+1)
-	if !ok {
-		return
-	}
-
-	if minYear > maxYear {
-		respondError(c, apperror.BadRequest("min_year cannot be greater than max_year"))
-		return
-	}
-
-	stats, err := h.service.GetContractCountByMonth(c.Request.Context(), orgID, minYear, maxYear)
-	if err != nil {
-		respondError(c, err)
-		return
-	}
-
-	c.JSON(http.StatusOK, stats)
-}
-
 // GetFunding godoc
 // @Summary Calculate children funding
 // @Description Calculate government funding for all children with active contracts on a given date

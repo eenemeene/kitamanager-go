@@ -2558,73 +2558,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/organizations/{orgId}/children/statistics/contract-count-by-month": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get children contract counts per month for the specified year range",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "children"
-                ],
-                "summary": "Get children contract count by month",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Organization ID",
-                        "name": "orgId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Start year (default: current year - 3)",
-                        "name": "min_year",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "End year (default: current year + 1)",
-                        "name": "max_year",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildrenContractCountByMonthResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/organizations/{orgId}/children/statistics/contract-properties": {
             "get": {
                 "security": [
@@ -8275,20 +8208,6 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_eenemeene_kitamanager-go_internal_models.ChildrenContractCountByMonthResponse": {
-            "type": "object",
-            "properties": {
-                "period": {
-                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractCountPeriod"
-                },
-                "years": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractCountByMonthYear"
-                    }
-                }
-            }
-        },
         "github_com_eenemeene_kitamanager-go_internal_models.ChildrenFundingResponse": {
             "type": "object",
             "properties": {
@@ -8305,35 +8224,6 @@ const docTemplate = `{
                 "weekly_hours_basis": {
                     "type": "number",
                     "example": 39
-                }
-            }
-        },
-        "github_com_eenemeene_kitamanager-go_internal_models.ContractCountByMonthYear": {
-            "type": "object",
-            "properties": {
-                "counts": {
-                    "description": "12 values, one per month (Jan=0, Dec=11)",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "year": {
-                    "type": "integer",
-                    "example": 2025
-                }
-            }
-        },
-        "github_com_eenemeene_kitamanager-go_internal_models.ContractCountPeriod": {
-            "type": "object",
-            "properties": {
-                "end": {
-                    "type": "string",
-                    "example": "2026-01-01"
-                },
-                "start": {
-                    "type": "string",
-                    "example": "2023-01-01"
                 }
             }
         },
@@ -8708,6 +8598,16 @@ const docTemplate = `{
                     "description": "cents (income - expenses)",
                     "type": "integer",
                     "example": 230000
+                },
+                "budget_expenses": {
+                    "description": "cents",
+                    "type": "integer",
+                    "example": 300000
+                },
+                "budget_income": {
+                    "description": "cents",
+                    "type": "integer",
+                    "example": 200000
                 },
                 "child_count": {
                     "description": "Counts",

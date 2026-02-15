@@ -24,7 +24,6 @@ import type {
   ChildContractCreateRequest,
   ChildContractUpdateRequest,
   ChildrenFundingResponse,
-  ChildrenContractCountByMonthResponse,
   AgeDistributionResponse,
   ContractPropertiesDistributionResponse,
   Role,
@@ -473,21 +472,6 @@ class ApiClient {
     const params = date ? { date } : {};
     const response = await this.client.get<ChildrenFundingResponse>(
       `/organizations/${orgId}/children/funding`,
-      { params }
-    );
-    return response.data;
-  }
-
-  async getChildrenContractCountByMonth(
-    orgId: number,
-    minYear?: number,
-    maxYear?: number
-  ): Promise<ChildrenContractCountByMonthResponse> {
-    const params: { min_year?: number; max_year?: number } = {};
-    if (minYear !== undefined) params.min_year = minYear;
-    if (maxYear !== undefined) params.max_year = maxYear;
-    const response = await this.client.get<ChildrenContractCountByMonthResponse>(
-      `/organizations/${orgId}/children/statistics/contract-count-by-month`,
       { params }
     );
     return response.data;

@@ -281,10 +281,6 @@ func Setup(
 						childAttendanceHandler.GetDailySummary)
 
 					// Statistics endpoint (must be before /:id to avoid conflict)
-					children.GET("/statistics/contract-count-by-month",
-						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
-						childHandler.GetContractCountByMonth)
-
 					children.GET("/statistics/age-distribution",
 						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
 						childHandler.GetAgeDistribution)
