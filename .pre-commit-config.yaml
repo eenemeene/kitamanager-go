@@ -70,7 +70,7 @@ repos:
 
       - id: swagger-check
         name: swagger docs check
-        entry: bash -c 'go install github.com/swaggo/swag/cmd/swag@latest && swag init -g cmd/api/main.go -o docs --parseDependency --parseInternal && git diff --exit-code docs/'
+        entry: bash -c 'go install github.com/swaggo/swag/cmd/swag@latest && make swagger-docs && git diff --exit-code docs/'
         language: system
         types: [go]
         pass_filenames: false
