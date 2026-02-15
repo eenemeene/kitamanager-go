@@ -22,6 +22,30 @@ func NewGovernmentFundingService(store store.GovernmentFundingStorer, transactor
 	return &GovernmentFundingService{store: store, transactor: transactor}
 }
 
+// verifyPeriodOwnership verifies a period exists and belongs to the government funding.
+func (s *GovernmentFundingService) verifyPeriodOwnership(ctx context.Context, periodID, fundingID uint) (*models.GovernmentFundingPeriod, error) {
+	period, err := s.store.FindPeriodByID(ctx, periodID)
+	if err != nil {
+		return nil, apperror.NotFound("period")
+	}
+	if period.GovernmentFundingID != fundingID {
+		return nil, apperror.NotFound("period")
+	}
+	return period, nil
+}
+
+// verifyPropertyOwnership verifies a property exists and belongs to the period.
+func (s *GovernmentFundingService) verifyPropertyOwnership(ctx context.Context, propertyID, periodID uint) (*models.GovernmentFundingProperty, error) {
+	property, err := s.store.FindPropertyByID(ctx, propertyID)
+	if err != nil {
+		return nil, apperror.NotFound("property")
+	}
+	if property.PeriodID != periodID {
+		return nil, apperror.NotFound("property")
+	}
+	return property, nil
+}
+
 // List returns a paginated list of government fundings
 func (s *GovernmentFundingService) List(ctx context.Context, limit, offset int) ([]models.GovernmentFundingResponse, int64, error) {
 	fundings, total, err := s.store.FindAll(ctx, limit, offset)
@@ -208,10 +232,10 @@ func (s *GovernmentFundingService) GetPeriodByID(ctx context.Context, id uint) (
 }
 
 // UpdatePeriod updates an existing period
-func (s *GovernmentFundingService) UpdatePeriod(ctx context.Context, periodID uint, req *models.GovernmentFundingPeriodUpdateRequest) (*models.GovernmentFundingPeriodResponse, error) {
-	period, err := s.store.FindPeriodByID(ctx, periodID)
+func (s *GovernmentFundingService) UpdatePeriod(ctx context.Context, fundingID, periodID uint, req *models.GovernmentFundingPeriodUpdateRequest) (*models.GovernmentFundingPeriodResponse, error) {
+	period, err := s.verifyPeriodOwnership(ctx, periodID, fundingID)
 	if err != nil {
-		return nil, apperror.NotFound("period")
+		return nil, err
 	}
 
 	// Apply updates to determine new date range
@@ -254,7 +278,10 @@ func (s *GovernmentFundingService) UpdatePeriod(ctx context.Context, periodID ui
 }
 
 // DeletePeriod deletes a period
-func (s *GovernmentFundingService) DeletePeriod(ctx context.Context, periodID uint) error {
+func (s *GovernmentFundingService) DeletePeriod(ctx context.Context, fundingID, periodID uint) error {
+	if _, err := s.verifyPeriodOwnership(ctx, periodID, fundingID); err != nil {
+		return err
+	}
 	if err := s.store.DeletePeriod(ctx, periodID); err != nil {
 		return apperror.InternalWrap(err, "failed to delete period")
 	}
@@ -264,10 +291,10 @@ func (s *GovernmentFundingService) DeletePeriod(ctx context.Context, periodID ui
 // Property operations
 
 // CreateProperty creates a new property
-func (s *GovernmentFundingService) CreateProperty(ctx context.Context, periodID uint, req *models.GovernmentFundingPropertyCreateRequest) (*models.GovernmentFundingPropertyResponse, error) {
-	// Verify period exists
-	if _, err := s.store.FindPeriodByID(ctx, periodID); err != nil {
-		return nil, apperror.NotFound("period")
+func (s *GovernmentFundingService) CreateProperty(ctx context.Context, fundingID, periodID uint, req *models.GovernmentFundingPropertyCreateRequest) (*models.GovernmentFundingPropertyResponse, error) {
+	// Verify period exists and belongs to the funding
+	if _, err := s.verifyPeriodOwnership(ctx, periodID, fundingID); err != nil {
+		return nil, err
 	}
 
 	// Validate age range if both are provided
@@ -312,10 +339,13 @@ func (s *GovernmentFundingService) GetPropertyByID(ctx context.Context, id uint)
 }
 
 // UpdateProperty updates an existing property
-func (s *GovernmentFundingService) UpdateProperty(ctx context.Context, propertyID uint, req *models.GovernmentFundingPropertyUpdateRequest) (*models.GovernmentFundingPropertyResponse, error) {
-	property, err := s.store.FindPropertyByID(ctx, propertyID)
+func (s *GovernmentFundingService) UpdateProperty(ctx context.Context, fundingID, periodID, propertyID uint, req *models.GovernmentFundingPropertyUpdateRequest) (*models.GovernmentFundingPropertyResponse, error) {
+	if _, err := s.verifyPeriodOwnership(ctx, periodID, fundingID); err != nil {
+		return nil, err
+	}
+	property, err := s.verifyPropertyOwnership(ctx, propertyID, periodID)
 	if err != nil {
-		return nil, apperror.NotFound("property")
+		return nil, err
 	}
 
 	if req.Key != nil {
@@ -362,7 +392,13 @@ func (s *GovernmentFundingService) UpdateProperty(ctx context.Context, propertyI
 }
 
 // DeleteProperty deletes a property
-func (s *GovernmentFundingService) DeleteProperty(ctx context.Context, propertyID uint) error {
+func (s *GovernmentFundingService) DeleteProperty(ctx context.Context, fundingID, periodID, propertyID uint) error {
+	if _, err := s.verifyPeriodOwnership(ctx, periodID, fundingID); err != nil {
+		return err
+	}
+	if _, err := s.verifyPropertyOwnership(ctx, propertyID, periodID); err != nil {
+		return err
+	}
 	if err := s.store.DeleteProperty(ctx, propertyID); err != nil {
 		return apperror.InternalWrap(err, "failed to delete property")
 	}
