@@ -2,22 +2,18 @@
 
 import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
+import { Plus } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { apiClient } from '@/lib/api/client';
 import { formatMonthRange } from '@/lib/utils/formatting';
 import type { Section, SectionCreateRequest, SectionUpdateRequest } from '@/lib/api/types';
 import { useCrudPage } from '@/lib/hooks/use-crud-page';
-import {
-  CrudPageHeader,
-  ResourceTable,
-  DeleteConfirmDialog,
-  CrudFormDialog,
-  Column,
-} from '@/components/crud';
+import { ResourceTable, DeleteConfirmDialog, CrudFormDialog, Column } from '@/components/crud';
 import { Pagination } from '@/components/ui/pagination';
 import { SectionKanbanBoard } from '@/components/sections/section-kanban-board';
 import { sectionSchema, type SectionFormData } from '@/lib/schemas';
@@ -95,11 +91,12 @@ export default function SectionsPage() {
         </TabsContent>
 
         <TabsContent value="manage" className="mt-4 space-y-6">
-          <CrudPageHeader
-            title="sections.manage"
-            onNew={crud.dialogs.handleCreate}
-            newButtonText="sections.newSection"
-          />
+          <div className="flex justify-end">
+            <Button onClick={crud.dialogs.handleCreate}>
+              <Plus className="mr-2 h-4 w-4" />
+              {t('sections.newSection')}
+            </Button>
+          </div>
 
           <Card>
             <CardHeader>
