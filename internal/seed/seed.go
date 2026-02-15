@@ -241,9 +241,9 @@ func SeedTestData(cfg *config.Config, db *gorm.DB, fundingStore *store.Governmen
 		maxAgeMonths *int
 	}
 	namedSectionDefs := []namedSectionDef{
-		{"Marienkäfer (Krippe)", intPtr(0), intPtr(36)},
-		{"Schmetterlinge (Kindergarten)", intPtr(36), intPtr(72)},
-		{"Sonnenkäfer (Hort)", intPtr(72), nil},
+		{"Nest", intPtr(0), intPtr(24)},
+		{"Nestflüchter", intPtr(24), intPtr(36)},
+		{"Große", intPtr(36), nil},
 	}
 	// allSections includes default + named sections; used for employee distribution
 	allSections := []*models.Section{section}
@@ -628,15 +628,15 @@ func SeedTestData(cfg *config.Config, db *gorm.DB, fundingStore *store.Governmen
 }
 
 // sectionForAgeAt returns the appropriate section ID based on child age at a given date:
-// - Under 36 months → Krippe (sections[0])
-// - 36-72 months → Kindergarten (sections[1])
-// - Over 72 months → Hort (sections[2])
+// - Under 24 months → Nest (sections[0])
+// - 24-36 months → Nestflüchter (sections[1])
+// - Over 36 months → Große (sections[2])
 func sectionForAgeAt(birthdate time.Time, at time.Time, sections []*models.Section) uint {
 	ageMonths := int(at.Sub(birthdate).Hours() / 24 / 30)
 	switch {
-	case ageMonths < 36:
+	case ageMonths < 24:
 		return sections[0].ID
-	case ageMonths < 72:
+	case ageMonths < 36:
 		return sections[1].ID
 	default:
 		return sections[2].ID

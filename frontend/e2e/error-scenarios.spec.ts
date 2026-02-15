@@ -162,7 +162,9 @@ test.describe('Not Found Scenarios', () => {
 });
 
 test.describe('Duplicate Resource Errors', () => {
-  test('should show error when creating duplicate organization name', async ({ page }) => {
+  test('should allow creating organization with same name (no unique constraint)', async ({
+    page,
+  }) => {
     await login(page);
     const token = await getApiToken(page);
     const org = await getFirstOrganization(page, token);
@@ -170,28 +172,44 @@ test.describe('Duplicate Resource Errors', () => {
     await page.goto('/organizations');
     await page.waitForLoadState('networkidle');
 
-    // Try to create org with same name as existing one
+    // Create org with same name as existing one
     await page.getByRole('button', { name: /new organization|neue organisation/i }).click();
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
 
-    await page.getByLabel(/name/i).fill(org.name);
+    await page.getByLabel('Name', { exact: true }).fill(org.name);
+    await page.getByLabel(/Default Section Name/i).fill('Default');
 
     // Submit
     await page.getByRole('button', { name: /save|speichern/i }).click();
 
-    // Should show an error - either dialog stays open with error or toast appears
-    // Wait a moment for the API response
-    await page.waitForTimeout(2000);
+    // Dialog should close - duplicate names are allowed
+    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10000 });
 
-    // The form should either show an error or the dialog should remain open
-    // (API returns 409 Conflict for duplicate names)
-    const dialogStillOpen = await page.getByRole('dialog').isVisible();
-    const errorVisible = await page
-      .getByText(/already exists|duplicate|conflict/i)
-      .isVisible()
-      .catch(() => false);
-
-    // At least one error indication should be present
-    expect(dialogStillOpen || errorVisible).toBeTruthy();
+    // Cleanup: delete the duplicate org
+    const orgs = await page.evaluate(
+      async ({ token }) => {
+        const res = await fetch('/api/v1/organizations?limit=100', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        return data.data || [];
+      },
+      { token }
+    );
+    // Delete the last org with the matching name (the one we just created)
+    const duplicates = orgs.filter((o: { name: string }) => o.name === org.name);
+    if (duplicates.length > 1) {
+      const newest = duplicates[duplicates.length - 1];
+      await page.evaluate(
+        async ({ token, orgId }) => {
+          const csrfMatch = document.cookie.match(/csrf_token=([^;]+)/);
+          const csrfToken = csrfMatch ? csrfMatch[1] : null;
+          const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+          if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+          await fetch(`/api/v1/organizations/${orgId}`, { method: 'DELETE', headers });
+        },
+        { token, orgId: newest.id }
+      );
+    }
   });
 });

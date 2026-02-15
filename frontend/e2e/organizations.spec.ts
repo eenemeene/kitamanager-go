@@ -33,8 +33,8 @@ test.describe('Organizations', () => {
     // Dialog should be visible
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
 
-    // Should have name input
-    await expect(page.getByLabel(/name/i)).toBeVisible();
+    // Should have name input (use exact match to avoid "Default Section Name" field)
+    await expect(page.getByLabel('Name', { exact: true })).toBeVisible();
   });
 
   test('should create a new organization', async ({ page }) => {
@@ -44,8 +44,9 @@ test.describe('Organizations', () => {
     await page.getByRole('button', { name: /new organization|neue organisation/i }).click();
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
 
-    // Fill form
-    await page.getByLabel(/name/i).fill(orgName);
+    // Fill form (use exact match to avoid "Default Section Name" field)
+    await page.getByLabel('Name', { exact: true }).fill(orgName);
+    await page.getByLabel(/Default Section Name/i).fill('Default');
 
     // Submit
     await page.getByRole('button', { name: /save|speichern/i }).click();

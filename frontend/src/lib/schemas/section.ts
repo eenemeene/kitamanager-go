@@ -1,10 +1,16 @@
 import { z } from 'zod';
 
+const optionalAge = z.preprocess((val) => {
+  if (val === '' || val === null || val === undefined) return null;
+  const num = Number(val);
+  return isNaN(num) ? null : num;
+}, z.number().int().min(0).nullable());
+
 export const sectionSchema = z
   .object({
     name: z.string().min(1).max(255),
-    min_age_months: z.coerce.number().int().min(0).optional().nullable(),
-    max_age_months: z.coerce.number().int().min(0).optional().nullable(),
+    min_age_months: optionalAge.optional(),
+    max_age_months: optionalAge.optional(),
   })
   .refine(
     (data) => {

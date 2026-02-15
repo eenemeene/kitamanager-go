@@ -11,17 +11,27 @@ test.describe('Navigation', () => {
   });
 
   test('should navigate to organizations page', async ({ page }) => {
-    await page.getByRole('link', { name: /organization/i }).first().click();
+    // Wait for initial redirect after login to complete
+    await page.waitForLoadState('networkidle');
 
-    await expect(page).toHaveURL(/.*organization/);
+    const link = page.getByRole('link', { name: /organization/i }).first();
+    await expect(link).toBeVisible({ timeout: 10000 });
+    await link.click();
+
+    await expect(page).toHaveURL(/\/organizations\/?$/, { timeout: 10000 });
     // Use first() since there may be multiple headings with "organization"
-    await expect(page.getByRole('heading', { name: /organization/i }).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /organization/i }).first()).toBeVisible({ timeout: 10000 });
   });
 
   test('should navigate to government fundings page', async ({ page }) => {
-    await page.getByRole('link', { name: /government funding|förderung/i }).first().click();
+    // Wait for initial redirect after login to complete
+    await page.waitForLoadState('networkidle');
 
-    await expect(page).toHaveURL(/.*government-funding/);
+    const link = page.getByRole('link', { name: /government funding|förderung/i }).first();
+    await expect(link).toBeVisible({ timeout: 10000 });
+    await link.click();
+
+    await expect(page).toHaveURL(/.*government-funding/, { timeout: 10000 });
   });
 
   test('should show sidebar navigation items', async ({ page }) => {

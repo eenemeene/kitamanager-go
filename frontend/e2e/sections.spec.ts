@@ -10,6 +10,7 @@ import {
   createChildContractViaApi,
   deleteChildViaApi,
   uniqueName,
+  formatDateForApi,
 } from './utils/test-helpers';
 
 test.use({ locale: 'en-US' });
@@ -30,7 +31,7 @@ test.describe('Sections', () => {
     await page.waitForLoadState('networkidle');
 
     // Board tab should be active by default and show drag hint
-    await expect(page.getByText(/drag/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/drag children/i)).toBeVisible({ timeout: 10000 });
   });
 
   test('should switch to Manage tab and create a section', async ({ page }) => {
@@ -92,19 +93,20 @@ test.describe('Sections', () => {
 
   test('should show children grouped by section on board', async ({ page }) => {
     // Create section and child via API
-    const sectionName = uniqueName('BoardTest');
+    const sectionName = uniqueName('BoardSec');
     const section = await createSectionViaApi(page, token, orgId, sectionName);
 
+    const childFirstName = uniqueName('BoardChild');
     const child = await createChildViaApi(page, token, orgId, {
-      first_name: 'BoardTest',
-      last_name: uniqueName('Child'),
+      first_name: childFirstName,
+      last_name: 'Test',
       birthdate: '2020-01-15',
       gender: 'female',
     });
 
     // Create a contract with the section so the child appears on the board
     await createChildContractViaApi(page, token, orgId, child.id, {
-      from: '2020-02-01',
+      from: formatDateForApi('2020-02-01'),
       section_id: section.id,
     });
 
@@ -113,7 +115,12 @@ test.describe('Sections', () => {
 
     // Should see section column and child
     await expect(page.getByText(sectionName)).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('BoardTest')).toBeVisible({ timeout: 10000 });
+    // Reload once if child not visible (concurrent tests can shift pagination boundaries)
+    if (!(await page.getByText(childFirstName).isVisible({ timeout: 5000 }).catch(() => false))) {
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+    }
+    await expect(page.getByText(childFirstName)).toBeVisible({ timeout: 10000 });
 
     // Cleanup
     await deleteChildViaApi(page, token, orgId, child.id);

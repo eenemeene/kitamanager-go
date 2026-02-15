@@ -123,7 +123,7 @@ export function EmployeeContractDialog({
                 value={watch('section_id')?.toString() || ''}
                 onValueChange={(val) => setValue('section_id', val ? Number(val) : 0)}
               >
-                <SelectTrigger>
+                <SelectTrigger id="section_id" aria-label={t('sections.title')}>
                   <SelectValue placeholder={t('sections.selectSection')} />
                 </SelectTrigger>
                 <SelectContent>
@@ -146,7 +146,7 @@ export function EmployeeContractDialog({
               value={String(watch('payplan_id') || '')}
               onValueChange={(val) => setValue('payplan_id', Number(val))}
             >
-              <SelectTrigger>
+              <SelectTrigger id="payplan_id" aria-label={t('employees.payPlan')}>
                 <SelectValue placeholder={t('employees.selectPayPlan')} />
               </SelectTrigger>
               <SelectContent>
@@ -170,7 +170,7 @@ export function EmployeeContractDialog({
                 setValue('staff_category', val as 'qualified' | 'supplementary' | 'non_pedagogical')
               }
             >
-              <SelectTrigger>
+              <SelectTrigger id="staff_category" aria-label={t('employees.staffCategory.label')}>
                 <SelectValue placeholder={t('employees.staffCategory.label')} />
               </SelectTrigger>
               <SelectContent>

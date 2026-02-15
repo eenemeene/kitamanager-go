@@ -162,7 +162,8 @@ export default function SectionsPage() {
                       type="number"
                       min={0}
                       {...crud.register('min_age_months', {
-                        setValueAs: (v: string) => (v === '' ? null : Number(v)),
+                        setValueAs: (v: unknown) =>
+                          v === '' || v === null || v === undefined ? null : Number(v),
                       })}
                     />
                   </div>
@@ -176,7 +177,8 @@ export default function SectionsPage() {
                       type="number"
                       min={0}
                       {...crud.register('max_age_months', {
-                        setValueAs: (v: string) => (v === '' ? null : Number(v)),
+                        setValueAs: (v: unknown) =>
+                          v === '' || v === null || v === undefined ? null : Number(v),
                       })}
                     />
                     {crud.errors.max_age_months && (

@@ -198,7 +198,7 @@ export function ChildContractCreateDialog({
                 value={watch('section_id')?.toString() || ''}
                 onValueChange={(value) => setValue('section_id', value ? Number(value) : 0)}
               >
-                <SelectTrigger id="contract_section">
+                <SelectTrigger id="contract_section" aria-label={t('sections.title')}>
                   <SelectValue placeholder={t('sections.selectSection')} />
                 </SelectTrigger>
                 <SelectContent>

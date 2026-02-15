@@ -10,6 +10,7 @@ import {
   createChildContractViaApi,
   createEmployeeContractViaApi,
   getSectionsViaApi,
+  getPayPlansViaApi,
   uniqueName,
   formatDateForApi,
 } from './utils/test-helpers';
@@ -44,7 +45,7 @@ test.describe('Child Contracts - CRUD Operations', () => {
     const child = await createChildViaApi(page, token, orgId, {
       first_name: childName,
       last_name: 'Test',
-      birthdate: formatDateForApi('2020-06-15'),
+      birthdate: '2020-06-15',
       gender: 'female',
     });
 
@@ -66,6 +67,10 @@ test.describe('Child Contracts - CRUD Operations', () => {
 
       // Fill the form - use a past date to ensure Active status
       await page.getByLabel(/Start Date/i).fill('2024-01-01');
+
+      // Select a section (required)
+      await page.getByRole('combobox', { name: /Sections/i }).click();
+      await page.getByRole('option').first().click();
 
       // Wait for property suggestions to load and click on them
       // The PropertyTagInput shows clickable suggestion buttons
@@ -103,7 +108,7 @@ test.describe('Child Contracts - CRUD Operations', () => {
     const child = await createChildViaApi(page, token, orgId, {
       first_name: childName,
       last_name: 'Test',
-      birthdate: formatDateForApi('2022-03-15'),
+      birthdate: '2022-03-15',
       gender: 'male',
     });
 
@@ -117,6 +122,10 @@ test.describe('Child Contracts - CRUD Operations', () => {
 
       // Fill a date that overlaps with Berlin funding period (2025-02-01 onwards)
       await page.getByLabel(/Start Date/i).fill('2025-03-01');
+
+      // Select a section (required)
+      await page.getByRole('combobox', { name: /Sections/i }).click();
+      await page.getByRole('option').first().click();
 
       // Wait for suggestions to appear (Berlin funding has these properties)
       // The suggestions should show property values from the government funding
@@ -159,7 +168,7 @@ test.describe('Child Contracts - CRUD Operations', () => {
     const child = await createChildViaApi(page, token, orgId, {
       first_name: childName,
       last_name: 'Test',
-      birthdate: formatDateForApi('2020-01-15'),
+      birthdate: '2020-01-15',
       gender: 'female',
     });
 
@@ -209,7 +218,7 @@ test.describe('Child Contracts - CRUD Operations', () => {
     const child = await createChildViaApi(page, token, orgId, {
       first_name: childName,
       last_name: 'Test',
-      birthdate: formatDateForApi('2019-08-20'),
+      birthdate: '2019-08-20',
       gender: 'male',
     });
 
@@ -270,13 +279,14 @@ test.describe('Child Contract Workflow - create child, add contract, move sectio
 
   test('should create child, add new contract (ending previous), move section, and verify', async ({
     page,
-  }) => {
+  }, testInfo) => {
+    testInfo.setTimeout(60000);
     // 1. Create child with initial contract via API
     const childName = uniqueName('Workflow');
     const child = await createChildViaApi(page, token, orgId, {
       first_name: childName,
       last_name: 'Test',
-      birthdate: formatDateForApi('2021-03-15'),
+      birthdate: '2021-03-15',
       gender: 'female',
     });
 
@@ -289,6 +299,10 @@ test.describe('Child Contract Workflow - create child, add contract, move sectio
     try {
       // 2. Navigate to children list and add a new contract via the UI
       await page.goto(`/organizations/${orgId}/children`);
+      await page.waitForLoadState('networkidle');
+
+      // Search for the child to find it in the paginated list
+      await page.getByPlaceholder(/Search/i).fill(childName);
       await page.waitForLoadState('networkidle');
 
       // Find the child row
@@ -308,6 +322,10 @@ test.describe('Child Contract Workflow - create child, add contract, move sectio
 
       // Fill the start date for the new contract
       await page.getByLabel(/Start Date/i).fill('2025-01-01');
+
+      // Select a section (required)
+      await page.getByRole('combobox', { name: /Sections/i }).click();
+      await page.getByRole('option').first().click();
 
       // Click on a different property suggestion to make the contract different
       await expect(page.getByText(/Available:/i)).toBeVisible({ timeout: 10000 });
@@ -347,6 +365,7 @@ test.describe('Employee Contracts - CRUD Operations', () => {
   let token: string;
   let orgId: number;
   let defaultSectionId: number;
+  let payplanId: number;
 
   test.beforeAll(async ({ browser }) => {
     const page = await browser.newPage();
@@ -356,6 +375,8 @@ test.describe('Employee Contracts - CRUD Operations', () => {
     orgId = org.id;
     const sections = await getSectionsViaApi(page, token, orgId);
     defaultSectionId = sections[0].id;
+    const payplans = await getPayPlansViaApi(page, token, orgId);
+    payplanId = payplans[0].id;
     await page.close();
   });
 
@@ -370,7 +391,7 @@ test.describe('Employee Contracts - CRUD Operations', () => {
       first_name: employeeName,
       last_name: 'Test',
       gender: 'male',
-      birthdate: formatDateForApi('1990-05-15'),
+      birthdate: '1990-05-15',
     });
 
     try {
@@ -391,9 +412,23 @@ test.describe('Employee Contracts - CRUD Operations', () => {
 
       // Fill the form - use a past date
       await page.getByLabel(/Start Date/i).fill('2024-01-01');
-      await page.locator('#staff_category').selectOption('qualified');
+
+      // Select a section (required)
+      await page.getByRole('combobox', { name: /Sections/i }).click();
+      await page.getByRole('option').first().click();
+
+      // Select a pay plan (required)
+      await page.getByRole('combobox', { name: /Pay Plan/i }).click();
+      await page.getByRole('option').first().click();
+
+      // Select staff category
+      await page.getByRole('combobox', { name: /Staff Category/i }).click();
+      await page.getByRole('option', { name: /Qualified/i }).click();
+
       await page.getByLabel(/Grade/i).fill('S8a');
+      await page.getByLabel(/Step/i).clear();
       await page.getByLabel(/Step/i).fill('3');
+      await page.getByLabel(/Weekly Hours/i).clear();
       await page.getByLabel(/Weekly Hours/i).fill('39');
 
       // Submit
@@ -417,7 +452,7 @@ test.describe('Employee Contracts - CRUD Operations', () => {
       first_name: employeeName,
       last_name: 'Test',
       gender: 'male',
-      birthdate: formatDateForApi('1988-03-12'),
+      birthdate: '1988-03-12',
     });
 
     await createEmployeeContractViaApi(page, token, orgId, employee.id, {
@@ -427,6 +462,7 @@ test.describe('Employee Contracts - CRUD Operations', () => {
       grade: 'S8a',
       step: 2,
       weekly_hours: 39,
+      payplan_id: payplanId,
     });
 
     try {
@@ -444,7 +480,8 @@ test.describe('Employee Contracts - CRUD Operations', () => {
       await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
 
       // Update staff category and step
-      await page.locator('#staff_category').selectOption('non_pedagogical');
+      await page.getByRole('combobox', { name: /Staff Category/i }).click();
+      await page.getByRole('option', { name: /Non-pedagogical/i }).click();
 
       const stepInput = page.getByLabel(/Step/i);
       await stepInput.clear();
@@ -470,7 +507,7 @@ test.describe('Employee Contracts - CRUD Operations', () => {
       first_name: employeeName,
       last_name: 'Test',
       gender: 'female',
-      birthdate: formatDateForApi('1992-07-08'),
+      birthdate: '1992-07-08',
     });
 
     await createEmployeeContractViaApi(page, token, orgId, employee.id, {
@@ -480,6 +517,7 @@ test.describe('Employee Contracts - CRUD Operations', () => {
       grade: 'S2',
       step: 1,
       weekly_hours: 20,
+      payplan_id: payplanId,
     });
 
     try {

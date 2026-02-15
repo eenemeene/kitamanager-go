@@ -227,6 +227,23 @@ class ApiClient {
     };
   }
 
+  /** Fetch all pages of a paginated endpoint and return the combined data array. */
+  private async fetchAllPages<T>(baseUrl: string, pageSize = 100): Promise<T[]> {
+    const separator = baseUrl.includes('?') ? '&' : '?';
+    const all: T[] = [];
+    let page = 1;
+    let totalPages = 1;
+    do {
+      const response = await this.client.get<PaginatedResponse<T>>(
+        `${baseUrl}${separator}limit=${pageSize}&page=${page}`
+      );
+      all.push(...response.data.data);
+      totalPages = response.data.total_pages;
+      page++;
+    } while (page <= totalPages);
+    return all;
+  }
+
   // Auth
   async login(request: LoginRequest): Promise<LoginResponse> {
     const response = await this.client.post<LoginResponse>('/login', request);
@@ -678,10 +695,7 @@ class ApiClient {
   // Employees - fetch all with active contracts (for kanban board view)
   async getEmployeesAll(orgId: number): Promise<Employee[]> {
     const today = new Date().toISOString().slice(0, 10);
-    const response = await this.client.get<PaginatedResponse<Employee>>(
-      `/organizations/${orgId}/employees?limit=100&active_on=${today}`
-    );
-    return response.data.data;
+    return this.fetchAllPages<Employee>(`/organizations/${orgId}/employees?active_on=${today}`);
   }
 
   async getStepPromotions(orgId: number, date?: string): Promise<StepPromotionsResponse> {
@@ -711,19 +725,13 @@ class ApiClient {
   // Children - fetch upcoming (contracts starting after today)
   async getUpcomingChildren(orgId: number): Promise<Child[]> {
     const today = new Date().toISOString().slice(0, 10);
-    const response = await this.client.get<PaginatedResponse<Child>>(
-      `/organizations/${orgId}/children?limit=100&contract_after=${today}`
-    );
-    return response.data.data;
+    return this.fetchAllPages<Child>(`/organizations/${orgId}/children?contract_after=${today}`);
   }
 
   // Children - fetch all with active contracts (for kanban board view)
   async getChildrenAll(orgId: number): Promise<Child[]> {
     const today = new Date().toISOString().slice(0, 10);
-    const response = await this.client.get<PaginatedResponse<Child>>(
-      `/organizations/${orgId}/children?limit=100&contract_on=${today}`
-    );
-    return response.data.data;
+    return this.fetchAllPages<Child>(`/organizations/${orgId}/children?contract_on=${today}`);
   }
 }
 

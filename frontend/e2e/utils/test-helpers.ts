@@ -151,10 +151,11 @@ export async function createOrganizationViaApi(
   page: Page,
   token: string,
   name: string,
-  state: string = 'berlin'
+  state: string = 'berlin',
+  defaultSectionName: string = 'Default'
 ): Promise<{ id: number; name: string }> {
   return page.evaluate(
-    async ({ token, name, state }) => {
+    async ({ token, name, state, defaultSectionName }) => {
       // Get CSRF token from cookie
       const csrfMatch = document.cookie.match(/csrf_token=([^;]+)/);
       const csrfToken = csrfMatch ? csrfMatch[1] : null;
@@ -170,7 +171,12 @@ export async function createOrganizationViaApi(
       const response = await fetch('/api/v1/organizations', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ name, state, active: true }),
+        body: JSON.stringify({
+          name,
+          state,
+          active: true,
+          default_section_name: defaultSectionName,
+        }),
       });
       if (!response.ok) {
         const text = await response.text();
@@ -178,7 +184,7 @@ export async function createOrganizationViaApi(
       }
       return response.json();
     },
-    { token, name, state }
+    { token, name, state, defaultSectionName }
   );
 }
 
@@ -381,11 +387,12 @@ export async function createEmployeeContractViaApi(
   data: {
     from: string;
     to?: string | null;
-    section_id?: number;
+    section_id: number;
     staff_category: string;
     grade: string;
     step: number;
     weekly_hours: number;
+    payplan_id: number;
   }
 ): Promise<{ id: number }> {
   return page.evaluate(
@@ -581,6 +588,26 @@ export async function getSectionsViaApi(
   return page.evaluate(
     async ({ token, orgId }) => {
       const response = await fetch(`/api/v1/organizations/${orgId}/sections?limit=100`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      return data.data || [];
+    },
+    { token, orgId }
+  );
+}
+
+/**
+ * Get pay plans via the API
+ */
+export async function getPayPlansViaApi(
+  page: Page,
+  token: string,
+  orgId: number
+): Promise<Array<{ id: number; name: string }>> {
+  return page.evaluate(
+    async ({ token, orgId }) => {
+      const response = await fetch(`/api/v1/organizations/${orgId}/payplans?limit=100`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
