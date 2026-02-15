@@ -122,6 +122,25 @@ func (s *UserService) Update(ctx context.Context, id uint, req *models.UserUpdat
 	return &resp, nil
 }
 
+// ResetPassword sets a new password for a user (admin-initiated).
+func (s *UserService) ResetPassword(ctx context.Context, userID uint, newPassword string) error {
+	user, err := s.store.FindByID(ctx, userID)
+	if err != nil {
+		return apperror.NotFound("user")
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return apperror.InternalWrap(err, "failed to hash password")
+	}
+
+	user.Password = string(hashedPassword)
+	if err := s.store.Update(ctx, user); err != nil {
+		return apperror.InternalWrap(err, "failed to update password")
+	}
+	return nil
+}
+
 // Delete deletes a user
 func (s *UserService) Delete(ctx context.Context, id uint) error {
 	if err := s.store.Delete(ctx, id); err != nil {

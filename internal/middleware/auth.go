@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -10,14 +12,26 @@ import (
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
+	"github.com/eenemeene/kitamanager-go/internal/store"
 )
 
 type AuthMiddleware struct {
-	jwtSecret string
+	jwtSecret  string
+	tokenStore store.TokenStorer
 }
 
-func NewAuthMiddleware(jwtSecret string) *AuthMiddleware {
-	return &AuthMiddleware{jwtSecret: jwtSecret}
+func NewAuthMiddleware(jwtSecret string, tokenStore ...store.TokenStorer) *AuthMiddleware {
+	m := &AuthMiddleware{jwtSecret: jwtSecret}
+	if len(tokenStore) > 0 {
+		m.tokenStore = tokenStore[0]
+	}
+	return m
+}
+
+// HashToken computes the SHA-256 hash of a JWT token string.
+func HashToken(token string) string {
+	h := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(h[:])
 }
 
 func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
@@ -106,7 +120,45 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 			return
 		}
 
-		c.Set("userID", uint(userIDFloat))
+		userID := uint(userIDFloat)
+
+		// Check if token has been revoked
+		if m.tokenStore != nil {
+			tokenHash := HashToken(tokenString)
+			revoked, err := m.tokenStore.IsRevoked(c.Request.Context(), tokenHash)
+			if err != nil {
+				slog.Error("Failed to check token revocation", "error", err, "ip", c.ClientIP())
+				c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+					Code:    apperror.CodeInternal,
+					Message: "internal server error",
+				})
+				c.Abort()
+				return
+			}
+			if revoked {
+				c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+					Code:    apperror.CodeUnauthorized,
+					Message: "token has been revoked",
+				})
+				c.Abort()
+				return
+			}
+
+			// Check if all tokens for this user have been revoked
+			userRevoked, err := m.tokenStore.IsUserRevoked(c.Request.Context(), userID)
+			if err != nil {
+				slog.Error("Failed to check user token revocation", "error", err, "ip", c.ClientIP())
+			} else if userRevoked {
+				c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+					Code:    apperror.CodeUnauthorized,
+					Message: "token has been revoked",
+				})
+				c.Abort()
+				return
+			}
+		}
+
+		c.Set("userID", userID)
 		c.Set("userEmail", claims["email"])
 		c.Next()
 	}

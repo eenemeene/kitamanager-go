@@ -484,6 +484,41 @@ func TestConfig_IsDevelopment(t *testing.T) {
 	}
 }
 
+func TestLoad_TrustedProxies(t *testing.T) {
+	t.Run("parses TRUSTED_PROXIES correctly", func(t *testing.T) {
+		os.Setenv("TRUSTED_PROXIES", "10.0.0.1, 10.0.0.2 , 192.168.1.0/24")
+		defer os.Unsetenv("TRUSTED_PROXIES")
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+
+		expected := []string{"10.0.0.1", "10.0.0.2", "192.168.1.0/24"}
+		if len(cfg.TrustedProxies) != len(expected) {
+			t.Fatalf("TrustedProxies length = %d, want %d", len(cfg.TrustedProxies), len(expected))
+		}
+		for i, p := range cfg.TrustedProxies {
+			if p != expected[i] {
+				t.Errorf("TrustedProxies[%d] = %q, want %q", i, p, expected[i])
+			}
+		}
+	})
+
+	t.Run("returns nil when TRUSTED_PROXIES not set", func(t *testing.T) {
+		os.Unsetenv("TRUSTED_PROXIES")
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+
+		if cfg.TrustedProxies != nil {
+			t.Errorf("TrustedProxies = %v, want nil", cfg.TrustedProxies)
+		}
+	})
+}
+
 func TestIsValidPort(t *testing.T) {
 	tests := []struct {
 		port string

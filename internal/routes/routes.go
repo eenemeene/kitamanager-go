@@ -51,8 +51,9 @@ func Setup(
 			protected.Use(apiRateLimiter.RateLimitMutations())
 		}
 
-		// Current user endpoint (auth required, but no CSRF needed for GET)
+		// Current user endpoints
 		protected.GET("/me", authHandler.Me)
+		protected.PUT("/me/password", authHandler.ChangePassword)
 		{
 			// ============================================================
 			// Organization management
@@ -137,6 +138,9 @@ func Setup(
 				users.GET("/:userId/memberships",
 					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionRead),
 					userHandler.GetMemberships)
+				users.PUT("/:userId/password",
+					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionUpdate),
+					userHandler.ResetPassword)
 				users.PUT("/:userId/superadmin",
 					authzMiddleware.RequireSuperAdmin(),
 					userHandler.SetSuperAdmin)

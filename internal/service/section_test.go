@@ -254,8 +254,8 @@ func TestSectionService_Create_DuplicateName(t *testing.T) {
 		t.Fatal("expected error for duplicate name, got nil")
 	}
 
-	if !errors.Is(err, apperror.ErrBadRequest) {
-		t.Errorf("expected ErrBadRequest, got %v", err)
+	if !errors.Is(err, apperror.ErrConflict) {
+		t.Errorf("expected ErrConflict, got %v", err)
 	}
 }
 
@@ -354,8 +354,8 @@ func TestSectionService_UpdateByIDAndOrg_DuplicateName(t *testing.T) {
 		t.Fatal("expected error for duplicate name, got nil")
 	}
 
-	if !errors.Is(err, apperror.ErrBadRequest) {
-		t.Errorf("expected ErrBadRequest, got %v", err)
+	if !errors.Is(err, apperror.ErrConflict) {
+		t.Errorf("expected ErrConflict, got %v", err)
 	}
 }
 

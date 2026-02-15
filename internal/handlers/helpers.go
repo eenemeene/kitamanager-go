@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -11,6 +12,9 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 )
+
+// MaxDateRangeMonths is the maximum allowed date range for queries.
+const MaxDateRangeMonths = 72
 
 // parseID extracts and validates ID from URL parameter
 func parseID(c *gin.Context, param string) (uint, error) {
@@ -201,6 +205,18 @@ func auditUpdate(c *gin.Context, svc *service.AuditService, resourceType string,
 // auditDelete logs a resource deletion audit event.
 func auditDelete(c *gin.Context, svc *service.AuditService, resourceType string, id uint, name string) {
 	svc.LogResourceDelete(getUserID(c), resourceType, id, name, c.ClientIP())
+}
+
+// validateDateRange checks that a date range is valid: to >= from, and the range does not exceed maxMonths.
+func validateDateRange(from, to time.Time, maxMonths int) error {
+	if to.Before(from) {
+		return apperror.BadRequest("'to' date must not be before 'from' date")
+	}
+	maxEnd := from.AddDate(0, maxMonths, 0)
+	if to.After(maxEnd) {
+		return apperror.BadRequest(fmt.Sprintf("date range must not exceed %d months", maxMonths))
+	}
+	return nil
 }
 
 // respondError sends consistent structured error response

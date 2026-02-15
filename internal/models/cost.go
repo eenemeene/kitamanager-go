@@ -5,9 +5,9 @@ import "time"
 // Cost represents a recurring cost category for an organization (e.g., "Rent", "Insurance").
 type Cost struct {
 	ID             uint          `gorm:"primaryKey" json:"id" example:"1"`
-	OrganizationID uint          `gorm:"not null;index" json:"organization_id" example:"1"`
+	OrganizationID uint          `gorm:"not null;index;uniqueIndex:idx_cost_org_name" json:"organization_id" example:"1"`
 	Organization   *Organization `gorm:"foreignKey:OrganizationID" json:"-"`
-	Name           string        `gorm:"size:255;not null" json:"name" example:"Rent"`
+	Name           string        `gorm:"size:255;not null;uniqueIndex:idx_cost_org_name" json:"name" example:"Rent"`
 	Entries        []CostEntry   `gorm:"foreignKey:CostID" json:"entries,omitempty"`
 	CreatedAt      time.Time     `json:"created_at"`
 	UpdatedAt      time.Time     `json:"updated_at"`

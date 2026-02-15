@@ -64,6 +64,14 @@ func (h *StatisticsHandler) GetStaffingHours(c *gin.Context) {
 		to = &parsed
 	}
 
+	// Validate date range if both dates are provided
+	if from != nil && to != nil {
+		if err := validateDateRange(*from, *to, MaxDateRangeMonths); err != nil {
+			respondError(c, err)
+			return
+		}
+	}
+
 	sectionID, ok := parseOptionalUint(c, "section_id")
 	if !ok {
 		return

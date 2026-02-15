@@ -66,6 +66,9 @@ func (s *CostService) Create(ctx context.Context, orgID uint, req *models.CostCr
 	}
 
 	if err := s.store.Create(ctx, cost); err != nil {
+		if store.IsDuplicateKeyError(err) {
+			return nil, apperror.Conflict("cost with this name already exists in the organization")
+		}
 		return nil, apperror.InternalWrap(err, "failed to create cost")
 	}
 
@@ -116,6 +119,9 @@ func (s *CostService) Update(ctx context.Context, id, orgID uint, req *models.Co
 	cost.Name = name
 
 	if err := s.store.Update(ctx, cost); err != nil {
+		if store.IsDuplicateKeyError(err) {
+			return nil, apperror.Conflict("cost with this name already exists in the organization")
+		}
 		return nil, apperror.InternalWrap(err, "failed to update cost")
 	}
 

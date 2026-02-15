@@ -99,7 +99,7 @@ func TestStatisticsService_GetStaffingHours_Basic(t *testing.T) {
 	// Funding property: care_type=ganztag, requirement=0.25, ages 0-6
 	createTestFundingPropertyWithRequirement(t, db, period.ID, "care_type", "ganztag", 0.25, 0, 6)
 
-	section := createTestSection(t, db, "Default", org.ID, true)
+	section := getDefaultSection(t, db, org.ID)
 
 	// 2 children with contracts from 2024-01-01, ongoing
 	child1 := createTestChild(t, db, "Child", "One", org.ID)
@@ -159,7 +159,7 @@ func TestStatisticsService_GetStaffingHours_NoChildren(t *testing.T) {
 	period := createTestFundingPeriod(t, db, funding.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &toDate, 39.0)
 	createTestFundingPropertyWithRequirement(t, db, period.ID, "care_type", "ganztag", 0.25, 0, 6)
 
-	section := createTestSection(t, db, "Default", org.ID, true)
+	section := getDefaultSection(t, db, org.ID)
 
 	// Only employees, no children
 	payplan := createTestPayPlan(t, db, "TV-L", org.ID)
@@ -203,7 +203,7 @@ func TestStatisticsService_GetStaffingHours_NoEmployees(t *testing.T) {
 	period := createTestFundingPeriod(t, db, funding.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &toDate, 39.0)
 	createTestFundingPropertyWithRequirement(t, db, period.ID, "care_type", "ganztag", 0.25, 0, 6)
 
-	section := createTestSection(t, db, "Default", org.ID, true)
+	section := getDefaultSection(t, db, org.ID)
 
 	// Only children, no employees
 	child := createTestChild(t, db, "Child", "One", org.ID)
@@ -421,7 +421,7 @@ func TestStatisticsService_GetStaffingHours_ContractStartsMidRange(t *testing.T)
 	period := createTestFundingPeriod(t, db, funding.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &toDate, 39.0)
 	createTestFundingPropertyWithRequirement(t, db, period.ID, "care_type", "ganztag", 0.25, 0, 6)
 
-	section := createTestSection(t, db, "Default", org.ID, true)
+	section := getDefaultSection(t, db, org.ID)
 
 	// Child contract starts 2024-03-01 (mid-range)
 	child := createTestChild(t, db, "Child", "One", org.ID)
@@ -474,7 +474,7 @@ func TestStatisticsService_GetStaffingHours_OngoingContracts(t *testing.T) {
 	period := createTestFundingPeriod(t, db, funding.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &toDate, 39.0)
 	createTestFundingPropertyWithRequirement(t, db, period.ID, "care_type", "ganztag", 0.25, 0, 6)
 
-	section := createTestSection(t, db, "Default", org.ID, true)
+	section := getDefaultSection(t, db, org.ID)
 
 	// Contracts with To = nil (ongoing)
 	child := createTestChild(t, db, "Child", "One", org.ID)
@@ -515,7 +515,7 @@ func TestStatisticsService_GetStaffingHours_NonPedagogicalExcluded(t *testing.T)
 	org := createTestOrganization(t, db, "Test Org")
 	db.Model(org).Update("state", "berlin")
 
-	section := createTestSection(t, db, "Default", org.ID, true)
+	section := getDefaultSection(t, db, org.ID)
 
 	payplan := createTestPayPlan(t, db, "TV-L", org.ID)
 	contractFrom := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -560,7 +560,7 @@ func TestStatisticsService_GetStaffingHours_NoFundingForState(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 	db.Model(org).Update("state", "hamburg")
 
-	section := createTestSection(t, db, "Default", org.ID, true)
+	section := getDefaultSection(t, db, org.ID)
 
 	// Child with contract
 	child := createTestChild(t, db, "Child", "One", org.ID)
@@ -607,7 +607,7 @@ func TestStatisticsService_GetStaffingHours_FundingPeriodChange(t *testing.T) {
 	period2 := createTestFundingPeriod(t, db, funding.ID, time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC), &toDate2, 40.0)
 	createTestFundingPropertyWithRequirement(t, db, period2.ID, "care_type", "ganztag", 0.25, 0, 6)
 
-	section := createTestSection(t, db, "Default", org.ID, true)
+	section := getDefaultSection(t, db, org.ID)
 
 	// Child with ongoing contract
 	child := createTestChild(t, db, "Child", "One", org.ID)

@@ -71,6 +71,16 @@ func createTestSection(t *testing.T, db *gorm.DB, name string, orgID uint, isDef
 	return testutil.CreateTestSection(t, db, name, orgID, isDefault)
 }
 
+// getDefaultSection returns the default section already created by createTestOrganization.
+func getDefaultSection(t *testing.T, db *gorm.DB, orgID uint) *models.Section {
+	t.Helper()
+	var section models.Section
+	if err := db.Where("organization_id = ? AND is_default = ?", orgID, true).First(&section).Error; err != nil {
+		t.Fatalf("failed to find default section: %v", err)
+	}
+	return &section
+}
+
 // createTestChildWithContract creates a child with an active contract assigned to a specific section.
 func createTestChildWithContract(t *testing.T, db *gorm.DB, firstName, lastName string, orgID, sectionID uint) *models.Child {
 	t.Helper()

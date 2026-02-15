@@ -8,19 +8,22 @@ import (
 
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
+	"github.com/eenemeene/kitamanager-go/internal/store"
 )
 
 type UserHandler struct {
 	service          *service.UserService
 	userGroupService *service.UserGroupService
 	auditService     *service.AuditService
+	tokenStore       store.TokenStorer
 }
 
-func NewUserHandler(service *service.UserService, userGroupService *service.UserGroupService, auditService *service.AuditService) *UserHandler {
+func NewUserHandler(service *service.UserService, userGroupService *service.UserGroupService, auditService *service.AuditService, tokenStore store.TokenStorer) *UserHandler {
 	return &UserHandler{
 		service:          service,
 		userGroupService: userGroupService,
 		auditService:     auditService,
+		tokenStore:       tokenStore,
 	}
 }
 
@@ -524,6 +527,56 @@ func (h *UserHandler) RemoveFromOrganization(c *gin.Context) {
 	}
 
 	auditDelete(c, h.auditService, "user_organization", userID, fmt.Sprintf("user %d from org %d", userID, orgID))
+
+	c.Status(http.StatusNoContent)
+}
+
+// ResetPassword godoc
+// @Summary Reset a user's password (admin)
+// @Description Admin-initiated password reset. Sets a new password for the specified user and revokes all their tokens.
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param userId path int true "User ID"
+// @Param request body models.UserPasswordResetRequest true "New password"
+// @Success 204 "No Content"
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/users/{userId}/password [put]
+func (h *UserHandler) ResetPassword(c *gin.Context) {
+	targetUserID, err := parseID(c, "userId")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	req, ok := bindJSON[models.UserPasswordResetRequest](c)
+	if !ok {
+		return
+	}
+
+	if err := h.service.ResetPassword(c.Request.Context(), targetUserID, req.NewPassword); err != nil {
+		respondError(c, err)
+		return
+	}
+
+	// Revoke all tokens for the target user
+	if h.tokenStore != nil {
+		_ = h.tokenStore.RevokeAllForUser(c.Request.Context(), targetUserID)
+	}
+
+	// Audit log
+	actorID := getUserID(c)
+	targetUser, _ := h.service.GetByID(c.Request.Context(), targetUserID)
+	email := ""
+	if targetUser != nil {
+		email = targetUser.Email
+	}
+	h.auditService.LogResourceUpdate(actorID, "user_password_reset", targetUserID, email, c.ClientIP())
 
 	c.Status(http.StatusNoContent)
 }

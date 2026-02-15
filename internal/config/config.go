@@ -71,6 +71,9 @@ type Config struct {
 	DBMaxOpenConns   int // default = 100
 	DBConnMaxLifeMin int // connection max lifetime in minutes, default = 60
 	DBConnMaxIdleMin int // idle connection max lifetime in minutes, default = 10
+
+	// Trusted Proxies
+	TrustedProxies []string // TRUSTED_PROXIES env var, comma-separated
 }
 
 // IsProduction returns true if running in production mode
@@ -170,6 +173,16 @@ func Load() (*Config, error) {
 		origins[i] = strings.TrimSpace(origins[i])
 	}
 
+	var trustedProxies []string
+	if tp := getEnv("TRUSTED_PROXIES", ""); tp != "" {
+		for _, p := range strings.Split(tp, ",") {
+			p = strings.TrimSpace(p)
+			if p != "" {
+				trustedProxies = append(trustedProxies, p)
+			}
+		}
+	}
+
 	cfg := &Config{
 		// Database
 		DBHost:     getEnv("DB_HOST", "localhost"),
@@ -217,6 +230,9 @@ func Load() (*Config, error) {
 		DBMaxOpenConns:   getEnvInt("DB_MAX_OPEN_CONNS", 100),
 		DBConnMaxLifeMin: getEnvInt("DB_CONN_MAX_LIFE_MIN", 60),
 		DBConnMaxIdleMin: getEnvInt("DB_CONN_MAX_IDLE_MIN", 10),
+
+		// Trusted Proxies
+		TrustedProxies: trustedProxies,
 	}
 
 	if err := cfg.Validate(); err != nil {

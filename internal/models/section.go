@@ -7,9 +7,9 @@ import (
 // Section represents a section within an organization for grouping children and employees.
 type Section struct {
 	ID             uint          `gorm:"primaryKey" json:"id" example:"1"`
-	OrganizationID uint          `gorm:"not null;index" json:"organization_id" example:"1"`
+	OrganizationID uint          `gorm:"not null;index;uniqueIndex:idx_section_org_name" json:"organization_id" example:"1"`
 	Organization   *Organization `gorm:"foreignKey:OrganizationID;constraint:OnDelete:CASCADE" json:"organization,omitempty"`
-	Name           string        `gorm:"size:255;not null" json:"name" example:"Krippe"`
+	Name           string        `gorm:"size:255;not null;uniqueIndex:idx_section_org_name" json:"name" example:"Krippe"`
 	IsDefault      bool          `gorm:"default:false" json:"is_default" example:"false"`
 	MinAgeMonths   *int          `gorm:"default:null" json:"min_age_months,omitempty" example:"0"`
 	MaxAgeMonths   *int          `gorm:"default:null" json:"max_age_months,omitempty" example:"36"`

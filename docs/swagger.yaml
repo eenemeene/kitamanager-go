@@ -2013,6 +2013,30 @@ definitions:
     required:
     - organization_id
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.UserPasswordChangeRequest:
+    properties:
+      current_password:
+        example: oldsecret
+        type: string
+      new_password:
+        example: newsecret123
+        maxLength: 72
+        minLength: 8
+        type: string
+    required:
+    - current_password
+    - new_password
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.UserPasswordResetRequest:
+    properties:
+      new_password:
+        example: newsecret123
+        maxLength: 72
+        minLength: 8
+        type: string
+    required:
+    - new_password
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.UserResponse:
     properties:
       active:
@@ -2698,6 +2722,43 @@ paths:
       security:
       - BearerAuth: []
       summary: Get current user
+      tags:
+      - auth
+  /api/v1/me/password:
+    put:
+      consumes:
+      - application/json
+      description: Authenticated user changes their own password. Requires current
+        password verification. Revokes all existing tokens.
+      parameters:
+      - description: Password change data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserPasswordChangeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Change current user's password
       tags:
       - auth
   /api/v1/organizations:
@@ -6805,6 +6866,54 @@ paths:
       security:
       - BearerAuth: []
       summary: Remove user from organization
+      tags:
+      - users
+  /api/v1/users/{userId}/password:
+    put:
+      consumes:
+      - application/json
+      description: Admin-initiated password reset. Sets a new password for the specified
+        user and revokes all their tokens.
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      - description: New password
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserPasswordResetRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Reset a user's password (admin)
       tags:
       - users
   /api/v1/users/{userId}/superadmin:

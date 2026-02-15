@@ -20,7 +20,7 @@ func TestAuthHandler_Login_Success(t *testing.T) {
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
 	createTestUser(t, db, "Test User", "test@example.com", string(hashedPassword))
 
-	handler := NewAuthHandler(userStore, "test-jwt-secret", createAuditService(db))
+	handler := NewAuthHandler(userStore, store.NewTokenStore(db), "test-jwt-secret", createAuditService(db))
 
 	r := gin.New()
 	r.POST("/login", handler.Login)
@@ -47,7 +47,7 @@ func TestAuthHandler_Login_Success(t *testing.T) {
 func TestAuthHandler_Login_InvalidEmail(t *testing.T) {
 	db := setupTestDB(t)
 	userStore := store.NewUserStore(db)
-	handler := NewAuthHandler(userStore, "test-jwt-secret", createAuditService(db))
+	handler := NewAuthHandler(userStore, store.NewTokenStore(db), "test-jwt-secret", createAuditService(db))
 
 	r := gin.New()
 	r.POST("/login", handler.Login)
@@ -71,7 +71,7 @@ func TestAuthHandler_Login_InvalidPassword(t *testing.T) {
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
 	createTestUser(t, db, "Test User", "test@example.com", string(hashedPassword))
 
-	handler := NewAuthHandler(userStore, "test-jwt-secret", createAuditService(db))
+	handler := NewAuthHandler(userStore, store.NewTokenStore(db), "test-jwt-secret", createAuditService(db))
 
 	r := gin.New()
 	r.POST("/login", handler.Login)
@@ -99,7 +99,7 @@ func TestAuthHandler_Login_InactiveUser(t *testing.T) {
 	user.Active = false
 	db.Save(user)
 
-	handler := NewAuthHandler(userStore, "test-jwt-secret", createAuditService(db))
+	handler := NewAuthHandler(userStore, store.NewTokenStore(db), "test-jwt-secret", createAuditService(db))
 
 	r := gin.New()
 	r.POST("/login", handler.Login)
@@ -119,7 +119,7 @@ func TestAuthHandler_Login_InactiveUser(t *testing.T) {
 func TestAuthHandler_Login_BadRequest(t *testing.T) {
 	db := setupTestDB(t)
 	userStore := store.NewUserStore(db)
-	handler := NewAuthHandler(userStore, "test-jwt-secret", createAuditService(db))
+	handler := NewAuthHandler(userStore, store.NewTokenStore(db), "test-jwt-secret", createAuditService(db))
 
 	r := gin.New()
 	r.POST("/login", handler.Login)
@@ -149,7 +149,7 @@ func TestAuthHandler_Login_UpdatesLastLogin(t *testing.T) {
 		t.Error("expected last_login to be nil initially")
 	}
 
-	handler := NewAuthHandler(userStore, "test-jwt-secret", createAuditService(db))
+	handler := NewAuthHandler(userStore, store.NewTokenStore(db), "test-jwt-secret", createAuditService(db))
 
 	r := gin.New()
 	r.POST("/login", handler.Login)
@@ -183,7 +183,7 @@ func TestAuthHandler_Login_ReturnsRefreshToken(t *testing.T) {
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
 	createTestUser(t, db, "Test User", "test@example.com", string(hashedPassword))
 
-	handler := NewAuthHandler(userStore, "test-jwt-secret", createAuditService(db))
+	handler := NewAuthHandler(userStore, store.NewTokenStore(db), "test-jwt-secret", createAuditService(db))
 
 	r := gin.New()
 	r.POST("/login", handler.Login)
@@ -220,7 +220,7 @@ func TestAuthHandler_Refresh_Success(t *testing.T) {
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
 	createTestUser(t, db, "Test User", "test@example.com", string(hashedPassword))
 
-	handler := NewAuthHandler(userStore, "test-jwt-secret", createAuditService(db))
+	handler := NewAuthHandler(userStore, store.NewTokenStore(db), "test-jwt-secret", createAuditService(db))
 
 	r := gin.New()
 	r.POST("/login", handler.Login)
@@ -260,7 +260,7 @@ func TestAuthHandler_Refresh_Success(t *testing.T) {
 func TestAuthHandler_Refresh_InvalidToken(t *testing.T) {
 	db := setupTestDB(t)
 	userStore := store.NewUserStore(db)
-	handler := NewAuthHandler(userStore, "test-jwt-secret", createAuditService(db))
+	handler := NewAuthHandler(userStore, store.NewTokenStore(db), "test-jwt-secret", createAuditService(db))
 
 	r := gin.New()
 	r.POST("/refresh", handler.Refresh)
@@ -282,7 +282,7 @@ func TestAuthHandler_Refresh_WithAccessToken(t *testing.T) {
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
 	createTestUser(t, db, "Test User", "test@example.com", string(hashedPassword))
 
-	handler := NewAuthHandler(userStore, "test-jwt-secret", createAuditService(db))
+	handler := NewAuthHandler(userStore, store.NewTokenStore(db), "test-jwt-secret", createAuditService(db))
 
 	r := gin.New()
 	r.POST("/login", handler.Login)
@@ -316,7 +316,7 @@ func TestAuthHandler_Refresh_InactiveUser(t *testing.T) {
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
 	user := createTestUser(t, db, "Test User", "test@example.com", string(hashedPassword))
 
-	handler := NewAuthHandler(userStore, "test-jwt-secret", createAuditService(db))
+	handler := NewAuthHandler(userStore, store.NewTokenStore(db), "test-jwt-secret", createAuditService(db))
 
 	r := gin.New()
 	r.POST("/login", handler.Login)
@@ -350,7 +350,7 @@ func TestAuthHandler_Refresh_InactiveUser(t *testing.T) {
 func TestAuthHandler_Refresh_MissingToken(t *testing.T) {
 	db := setupTestDB(t)
 	userStore := store.NewUserStore(db)
-	handler := NewAuthHandler(userStore, "test-jwt-secret", createAuditService(db))
+	handler := NewAuthHandler(userStore, store.NewTokenStore(db), "test-jwt-secret", createAuditService(db))
 
 	r := gin.New()
 	r.POST("/refresh", handler.Refresh)
@@ -371,7 +371,7 @@ func TestAuthHandler_Login_SetsCookies(t *testing.T) {
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
 	createTestUser(t, db, "Test User", "test@example.com", string(hashedPassword))
 
-	handler := NewAuthHandler(userStore, "test-jwt-secret", createAuditService(db))
+	handler := NewAuthHandler(userStore, store.NewTokenStore(db), "test-jwt-secret", createAuditService(db))
 
 	r := gin.New()
 	r.POST("/login", handler.Login)
@@ -416,7 +416,7 @@ func TestAuthHandler_Login_SetsCookies(t *testing.T) {
 func TestAuthHandler_Logout_ClearsCookies(t *testing.T) {
 	db := setupTestDB(t)
 	userStore := store.NewUserStore(db)
-	handler := NewAuthHandler(userStore, "test-jwt-secret", createAuditService(db))
+	handler := NewAuthHandler(userStore, store.NewTokenStore(db), "test-jwt-secret", createAuditService(db))
 
 	r := gin.New()
 	r.POST("/logout", handler.Logout)
@@ -453,7 +453,7 @@ func TestAuthHandler_Me(t *testing.T) {
 	// Create user with ID matching setupTestRouter's userID (1)
 	createTestUser(t, db, "Test User", "test@example.com", "password")
 
-	handler := NewAuthHandler(userStore, "test-jwt-secret", createAuditService(db))
+	handler := NewAuthHandler(userStore, store.NewTokenStore(db), "test-jwt-secret", createAuditService(db))
 
 	r := setupTestRouter()
 	r.GET("/me", handler.Me)
@@ -480,7 +480,7 @@ func TestAuthHandler_Me_UserNotFound(t *testing.T) {
 	userStore := store.NewUserStore(db)
 
 	// Don't create any user - setupTestRouter sets userID=1 which won't exist
-	handler := NewAuthHandler(userStore, "test-jwt-secret", createAuditService(db))
+	handler := NewAuthHandler(userStore, store.NewTokenStore(db), "test-jwt-secret", createAuditService(db))
 
 	r := setupTestRouter()
 	r.GET("/me", handler.Me)
@@ -495,7 +495,7 @@ func TestAuthHandler_Me_UserNotFound(t *testing.T) {
 func TestAuthHandler_Me_NotAuthenticated(t *testing.T) {
 	db := setupTestDB(t)
 	userStore := store.NewUserStore(db)
-	handler := NewAuthHandler(userStore, "test-jwt-secret", createAuditService(db))
+	handler := NewAuthHandler(userStore, store.NewTokenStore(db), "test-jwt-secret", createAuditService(db))
 
 	// Use gin.New() without auth middleware - no userID in context
 	r := gin.New()

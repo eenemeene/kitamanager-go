@@ -11,6 +11,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
+	"github.com/eenemeene/kitamanager-go/internal/middleware"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 	"github.com/eenemeene/kitamanager-go/internal/store"
@@ -31,13 +32,15 @@ const (
 
 type AuthHandler struct {
 	userStore    store.UserStorer
+	tokenStore   store.TokenStorer
 	jwtSecret    string
 	auditService *service.AuditService
 }
 
-func NewAuthHandler(userStore store.UserStorer, jwtSecret string, auditService *service.AuditService) *AuthHandler {
+func NewAuthHandler(userStore store.UserStorer, tokenStore store.TokenStorer, jwtSecret string, auditService *service.AuditService) *AuthHandler {
 	return &AuthHandler{
 		userStore:    userStore,
+		tokenStore:   tokenStore,
 		jwtSecret:    jwtSecret,
 		auditService: auditService,
 	}
@@ -213,6 +216,14 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
+	// Revoke the old refresh token
+	if h.tokenStore != nil {
+		expFloat, _ := claims["exp"].(float64)
+		oldExpiresAt := time.Unix(int64(expFloat), 0)
+		oldHash := middleware.HashToken(req.RefreshToken)
+		_ = h.tokenStore.RevokeToken(c.Request.Context(), oldHash, user.ID, oldExpiresAt)
+	}
+
 	// Generate new tokens
 	accessToken, err := h.generateAccessToken(user.ID, user.Email)
 	if err != nil {
@@ -252,12 +263,43 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
-	// Clear all auth cookies by setting them with empty values and expired time
+	// Revoke current tokens if token store is available
+	if h.tokenStore != nil {
+		// Revoke access token
+		if cookie, err := c.Cookie(accessTokenCookie); err == nil && cookie != "" {
+			h.revokeTokenString(c, cookie)
+		}
+		// Revoke refresh token
+		if cookie, err := c.Cookie(refreshTokenCookie); err == nil && cookie != "" {
+			h.revokeTokenString(c, cookie)
+		}
+	}
+
+	// Clear all auth cookies
 	h.clearAuthCookies(c)
 
 	c.JSON(http.StatusOK, models.MessageResponse{
 		Message: "logged out successfully",
 	})
+}
+
+// revokeTokenString parses a JWT to extract user_id and exp, then revokes it.
+func (h *AuthHandler) revokeTokenString(c *gin.Context, tokenStr string) {
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		return []byte(h.jwtSecret), nil
+	})
+	if err != nil || !token.Valid {
+		return // Can't revoke invalid tokens
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return
+	}
+	userIDFloat, _ := claims["user_id"].(float64)
+	expFloat, _ := claims["exp"].(float64)
+	expiresAt := time.Unix(int64(expFloat), 0)
+	tokenHash := middleware.HashToken(tokenStr)
+	_ = h.tokenStore.RevokeToken(c.Request.Context(), tokenHash, uint(userIDFloat), expiresAt)
 }
 
 // setAuthCookies sets the authentication cookies (access token, refresh token, CSRF token)
@@ -365,5 +407,88 @@ func (h *AuthHandler) Me(c *gin.Context) {
 		CreatedAt:    user.CreatedAt,
 		CreatedBy:    user.CreatedBy,
 		UpdatedAt:    user.UpdatedAt,
+	})
+}
+
+// ChangePassword godoc
+// @Summary Change current user's password
+// @Description Authenticated user changes their own password. Requires current password verification. Revokes all existing tokens.
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body models.UserPasswordChangeRequest true "Password change data"
+// @Success 200 {object} models.LoginResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/me/password [put]
+func (h *AuthHandler) ChangePassword(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == 0 {
+		respondError(c, apperror.Unauthorized("not authenticated"))
+		return
+	}
+
+	req, ok := bindJSON[models.UserPasswordChangeRequest](c)
+	if !ok {
+		return
+	}
+
+	user, err := h.userStore.FindByID(c.Request.Context(), userID)
+	if err != nil {
+		respondError(c, apperror.NotFound("user not found"))
+		return
+	}
+
+	// Verify current password
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.CurrentPassword)); err != nil {
+		respondError(c, apperror.Unauthorized("current password is incorrect"))
+		return
+	}
+
+	// Hash new password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		respondError(c, apperror.Internal("failed to hash password"))
+		return
+	}
+
+	user.Password = string(hashedPassword)
+	if err := h.userStore.Update(c.Request.Context(), user); err != nil {
+		respondError(c, apperror.Internal("failed to update password"))
+		return
+	}
+
+	// Revoke all existing tokens for this user
+	if h.tokenStore != nil {
+		_ = h.tokenStore.RevokeAllForUser(c.Request.Context(), userID)
+	}
+
+	// Generate new tokens so the user stays logged in
+	accessToken, err := h.generateAccessToken(user.ID, user.Email)
+	if err != nil {
+		respondError(c, apperror.Internal("failed to generate access token"))
+		return
+	}
+	refreshToken, err := h.generateRefreshToken(user.ID)
+	if err != nil {
+		respondError(c, apperror.Internal("failed to generate refresh token"))
+		return
+	}
+	csrfToken, err := generateCSRFToken()
+	if err != nil {
+		respondError(c, apperror.Internal("failed to generate CSRF token"))
+		return
+	}
+
+	h.setAuthCookies(c, accessToken, refreshToken, csrfToken)
+
+	h.auditService.LogResourceUpdate(userID, "user_password", userID, user.Email, c.ClientIP())
+
+	c.JSON(http.StatusOK, models.LoginResponse{
+		Token:        accessToken,
+		RefreshToken: refreshToken,
+		ExpiresIn:    int64(accessTokenExpiry.Seconds()),
 	})
 }

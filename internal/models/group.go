@@ -6,8 +6,8 @@ import (
 
 type Group struct {
 	ID             uint          `gorm:"primaryKey" json:"id" example:"1"`
-	Name           string        `gorm:"size:255;not null" json:"name" binding:"required" example:"Administrators"`
-	OrganizationID uint          `gorm:"not null" json:"organization_id" example:"1"`
+	Name           string        `gorm:"size:255;not null;uniqueIndex:idx_group_org_name" json:"name" binding:"required" example:"Administrators"`
+	OrganizationID uint          `gorm:"not null;uniqueIndex:idx_group_org_name" json:"organization_id" example:"1"`
 	Organization   *Organization `gorm:"foreignKey:OrganizationID;constraint:OnDelete:CASCADE" json:"organization,omitempty"`
 	IsDefault      bool          `gorm:"default:false" json:"is_default" example:"false"`
 	Active         bool          `gorm:"default:true" json:"active" example:"true"`

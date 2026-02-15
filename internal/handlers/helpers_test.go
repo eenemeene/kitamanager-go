@@ -110,3 +110,64 @@ func TestParseOptionalUint_Negative(t *testing.T) {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
 	}
 }
+
+func TestValidateDateRange(t *testing.T) {
+	tests := []struct {
+		name    string
+		from    time.Time
+		to      time.Time
+		max     int
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "valid range",
+			from: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			to:   time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
+			max:  36,
+		},
+		{
+			name: "same date",
+			from: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			to:   time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			max:  36,
+		},
+		{
+			name:    "reversed dates",
+			from:    time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
+			to:      time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			max:     36,
+			wantErr: true,
+			errMsg:  "'to' date must not be before 'from' date",
+		},
+		{
+			name:    "range exceeds max months",
+			from:    time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+			to:      time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			max:     36,
+			wantErr: true,
+			errMsg:  "date range must not exceed 36 months",
+		},
+		{
+			name: "exactly max months",
+			from: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			to:   time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC),
+			max:  36,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateDateRange(tt.from, tt.to, tt.max)
+			if tt.wantErr {
+				if err == nil {
+					t.Error("expected error, got nil")
+				} else if err.Error() != tt.errMsg {
+					t.Errorf("error = %q, want %q", err.Error(), tt.errMsg)
+				}
+			} else if err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+		})
+	}
+}

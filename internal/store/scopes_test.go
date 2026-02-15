@@ -7,6 +7,70 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
+func TestMustBeIdentifier_Valid(t *testing.T) {
+	valid := []string{
+		"users", "first_name", "employee_contracts",
+		"from_date", "to_date", "a", "_private", "col123",
+		"child_contracts.from_date", "employees.to_date",
+		`"from"`, `"to"`,
+	}
+	for _, id := range valid {
+		t.Run(id, func(t *testing.T) {
+			defer func() {
+				if r := recover(); r != nil {
+					t.Errorf("mustBeIdentifier(%q) panicked: %v", id, r)
+				}
+			}()
+			mustBeIdentifier(id)
+		})
+	}
+}
+
+func TestMustBeIdentifier_Invalid(t *testing.T) {
+	invalid := []string{
+		"users; DROP TABLE", "col--comment", "table name",
+		"UPPER", "123start", "", "a'b", "a\"b",
+		"a.b.c", "table.", ".column",
+	}
+	for _, id := range invalid {
+		t.Run(id, func(t *testing.T) {
+			defer func() {
+				if r := recover(); r == nil {
+					t.Errorf("mustBeIdentifier(%q) should have panicked", id)
+				}
+			}()
+			mustBeIdentifier(id)
+		})
+	}
+}
+
+func TestPeriodActiveOn_ValidatesIdentifiers(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("PeriodActiveOn with invalid fromCol should have panicked")
+		}
+	}()
+	PeriodActiveOn("from; DROP TABLE users", "to_date", time.Now())
+}
+
+func TestNameSearch_ValidatesIdentifiers(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("NameSearch with invalid table prefix should have panicked")
+		}
+	}()
+	NameSearch("sections; --", "name", "test")
+}
+
+func TestPersonNameSearch_ValidatesIdentifiers(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("PersonNameSearch with invalid identifier should have panicked")
+		}
+	}()
+	PersonNameSearch("children OR 1=1", "test")
+}
+
 func TestPeriodActiveOn_GovernmentFundingPeriods(t *testing.T) {
 	db := setupTestDB(t)
 

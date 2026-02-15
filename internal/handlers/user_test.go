@@ -12,7 +12,7 @@ func TestUserHandler_List(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	createTestUser(t, db, "User 1", "user1@example.com", "password")
 	createTestUser(t, db, "User 2", "user2@example.com", "password")
@@ -38,7 +38,7 @@ func TestUserHandler_List_IncludesGroups(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	// Create org, group, and user
 	org := createTestOrganization(t, db, "Test Org")
@@ -83,7 +83,7 @@ func TestUserHandler_ListByOrganization(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	// Create two orgs with groups
 	org1 := createTestOrganization(t, db, "Org 1")
@@ -138,7 +138,7 @@ func TestUserHandler_ListByOrganization_Empty(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	org := createTestOrganization(t, db, "Empty Org")
 
@@ -163,7 +163,7 @@ func TestUserHandler_Get(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 
@@ -188,7 +188,7 @@ func TestUserHandler_Get_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	r := setupTestRouter()
 	r.GET("/users/:userId", handler.Get)
@@ -204,7 +204,7 @@ func TestUserHandler_Create(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	r := setupTestRouter()
 	r.POST("/users", handler.Create)
@@ -237,7 +237,7 @@ func TestUserHandler_Create_BadRequest(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	r := setupTestRouter()
 	r.POST("/users", handler.Create)
@@ -258,7 +258,7 @@ func TestUserHandler_Update(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	createTestUser(t, db, "Original Name", "test@example.com", "password")
 
@@ -287,7 +287,7 @@ func TestUserHandler_Delete(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	createTestUser(t, db, "To Delete", "delete@example.com", "password")
 
@@ -312,7 +312,7 @@ func TestUserHandler_AddToGroup(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	// Create org, group, and user
 	org := createTestOrganization(t, db, "Test Org")
@@ -346,7 +346,7 @@ func TestUserHandler_RemoveFromGroup(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	// Create org, group, and user
 	org := createTestOrganization(t, db, "Test Org")
@@ -380,7 +380,7 @@ func TestUserHandler_AddToOrganization(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	createTestUser(t, db, "Test User", "test@example.com", "password")
 	org := createTestOrganization(t, db, "Test Org")
@@ -415,7 +415,7 @@ func TestUserHandler_RemoveFromOrganization(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 	org := createTestOrganization(t, db, "Test Org")
@@ -448,7 +448,7 @@ func TestUserHandler_Get_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	r := setupTestRouter()
 	r.GET("/users/:userId", handler.Get)
@@ -464,7 +464,7 @@ func TestUserHandler_Get_ZeroID(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	r := setupTestRouter()
 	r.GET("/users/:userId", handler.Get)
@@ -480,7 +480,7 @@ func TestUserHandler_Create_EmptyEmail(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	r := setupTestRouter()
 	r.POST("/users", handler.Create)
@@ -503,7 +503,7 @@ func TestUserHandler_Create_EmptyPassword(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	r := setupTestRouter()
 	r.POST("/users", handler.Create)
@@ -526,7 +526,7 @@ func TestUserHandler_Create_EmptyName(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	r := setupTestRouter()
 	r.POST("/users", handler.Create)
@@ -549,7 +549,7 @@ func TestUserHandler_Create_DuplicateEmail(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	createTestUser(t, db, "Existing User", "existing@example.com", "password")
 
@@ -575,7 +575,7 @@ func TestUserHandler_Update_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	r := setupTestRouter()
 	r.PUT("/users/:userId", handler.Update)
@@ -595,7 +595,7 @@ func TestUserHandler_Update_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	r := setupTestRouter()
 	r.PUT("/users/:userId", handler.Update)
@@ -615,7 +615,7 @@ func TestUserHandler_Delete_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	r := setupTestRouter()
 	r.DELETE("/users/:userId", handler.Delete)
@@ -632,7 +632,7 @@ func TestUserHandler_Delete_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	r := setupTestRouter()
 	r.DELETE("/users/:userId", handler.Delete)
@@ -648,7 +648,7 @@ func TestUserHandler_List_Empty(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	r := setupTestRouter()
 	r.GET("/users", handler.List)
@@ -671,7 +671,7 @@ func TestUserHandler_AddToGroup_InvalidUserID(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	r := setupTestRouter()
 	r.POST("/users/:userId/groups", handler.AddToGroup)
@@ -692,7 +692,7 @@ func TestUserHandler_AddToGroup_UserNotFound(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	group := createTestGroup(t, db, "Test Group")
 
@@ -715,7 +715,7 @@ func TestUserHandler_AddToGroup_GroupNotFound(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	createTestUser(t, db, "Test User", "test@example.com", "password")
 
@@ -738,7 +738,7 @@ func TestUserHandler_RemoveFromGroup_InvalidUserID(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	r := setupTestRouter()
 	r.DELETE("/users/:userId/groups/:groupId", handler.RemoveFromGroup)
@@ -754,7 +754,7 @@ func TestUserHandler_RemoveFromGroup_InvalidGroupID(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	createTestUser(t, db, "Test User", "test@example.com", "password")
 
@@ -772,7 +772,7 @@ func TestUserHandler_AddToOrganization_InvalidUserID(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	r := setupTestRouter()
 	r.POST("/users/:userId/organizations", handler.AddToOrganization)
@@ -792,7 +792,7 @@ func TestUserHandler_AddToOrganization_UserNotFound(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -814,7 +814,7 @@ func TestUserHandler_RemoveFromOrganization_InvalidUserID(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	r := setupTestRouter()
 	r.DELETE("/users/:userId/organizations/:orgId", handler.RemoveFromOrganization)
@@ -830,7 +830,7 @@ func TestUserHandler_RemoveFromOrganization_InvalidOrgID(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	createTestUser(t, db, "Test User", "test@example.com", "password")
 
@@ -850,7 +850,7 @@ func TestUserHandler_Create_WhitespaceOnlyName(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	r := setupTestRouter()
 	r.POST("/users", handler.Create)
@@ -873,7 +873,7 @@ func TestUserHandler_Create_NameTooLong(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	r := setupTestRouter()
 	r.POST("/users", handler.Create)
@@ -902,7 +902,7 @@ func TestUserHandler_Create_PasswordTooShort(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	r := setupTestRouter()
 	r.POST("/users", handler.Create)
@@ -925,7 +925,7 @@ func TestUserHandler_Create_PasswordTooLong(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	r := setupTestRouter()
 	r.POST("/users", handler.Create)
@@ -956,7 +956,7 @@ func TestUserHandler_UpdateGroupRole(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	group := createTestGroupWithOrg(t, db, "Test Group", org.ID)
@@ -996,7 +996,7 @@ func TestUserHandler_UpdateGroupRole_InvalidRole(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	group := createTestGroupWithOrg(t, db, "Test Group", org.ID)
@@ -1029,7 +1029,7 @@ func TestUserHandler_UpdateGroupRole_UserNotFound(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	group := createTestGroup(t, db, "Test Group")
 
@@ -1051,7 +1051,7 @@ func TestUserHandler_UpdateGroupRole_UserNotInGroup(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	group := createTestGroupWithOrg(t, db, "Test Group", org.ID)
@@ -1076,7 +1076,7 @@ func TestUserHandler_UpdateGroupRole_InvalidUserID(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	r := setupTestRouter()
 	r.PUT("/users/:userId/groups/:groupId", handler.UpdateGroupRole)
@@ -1096,7 +1096,7 @@ func TestUserHandler_UpdateGroupRole_InvalidGroupID(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	createTestUser(t, db, "Test User", "test@example.com", "password")
 
@@ -1120,7 +1120,7 @@ func TestUserHandler_GetMemberships(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	group1 := createTestGroupWithOrg(t, db, "Group 1", org.ID)
@@ -1152,7 +1152,7 @@ func TestUserHandler_GetMemberships_WithEffectiveRole(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 	group1 := createTestGroupWithOrg(t, db, "Group 1", org.ID)
@@ -1187,7 +1187,7 @@ func TestUserHandler_GetMemberships_UserNotFound(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	r := setupTestRouter()
 	r.GET("/users/:userId/memberships", handler.GetMemberships)
@@ -1203,7 +1203,7 @@ func TestUserHandler_GetMemberships_Empty(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 
@@ -1228,7 +1228,7 @@ func TestUserHandler_GetMemberships_InvalidUserID(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	r := setupTestRouter()
 	r.GET("/users/:userId/memberships", handler.GetMemberships)
@@ -1246,7 +1246,7 @@ func TestUserHandler_SetSuperAdmin_True(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 
@@ -1275,7 +1275,7 @@ func TestUserHandler_SetSuperAdmin_False(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 	// Set as superadmin first
@@ -1306,7 +1306,7 @@ func TestUserHandler_SetSuperAdmin_UserNotFound(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	r := setupTestRouter()
 	r.PUT("/users/:userId/superadmin", handler.SetSuperAdmin)
@@ -1326,7 +1326,7 @@ func TestUserHandler_SetSuperAdmin_InvalidUserID(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	r := setupTestRouter()
 	r.PUT("/users/:userId/superadmin", handler.SetSuperAdmin)
@@ -1346,7 +1346,7 @@ func TestUserHandler_SetSuperAdmin_MissingBody(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 
@@ -1367,7 +1367,7 @@ func TestUserHandler_AddToOrganization_OrgNotFound(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	createTestUser(t, db, "Test User", "test@example.com", "password")
 
@@ -1391,7 +1391,7 @@ func TestUserHandler_RemoveFromOrganization_UserNotFound(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -1409,7 +1409,7 @@ func TestUserHandler_List_Search(t *testing.T) {
 	db := setupTestDB(t)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
-	handler := NewUserHandler(userService, userGroupService, nil)
+	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	createTestUser(t, db, "Alice Smith", "alice@example.com", "password")
 	createTestUser(t, db, "Bob Jones", "bob@example.com", "password")

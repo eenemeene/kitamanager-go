@@ -10,7 +10,8 @@ type PaginationParams struct {
 
 // Validate checks for explicitly invalid pagination values.
 // Returns an error if page or limit are negative, or if limit exceeds 100.
-// Zero values are allowed as they indicate "not provided" and will be set by SetDefaults.
+// Zero values (Go default for int from query binding) are allowed as they indicate
+// "not provided" and will be defaulted by SetDefaults() (page=1, limit=20).
 func (p *PaginationParams) Validate() error {
 	if p.Page < 0 {
 		return fmt.Errorf("page must be positive")

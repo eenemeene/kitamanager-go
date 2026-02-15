@@ -58,6 +58,9 @@ func (s *GroupService) Create(ctx context.Context, orgID uint, req *models.Group
 	}
 
 	if err := s.store.Create(ctx, group); err != nil {
+		if store.IsDuplicateKeyError(err) {
+			return nil, apperror.Conflict("group with this name already exists in the organization")
+		}
 		return nil, apperror.InternalWrap(err, "failed to create group")
 	}
 
@@ -89,6 +92,9 @@ func (s *GroupService) UpdateByIDAndOrg(ctx context.Context, id, orgID uint, req
 	}
 
 	if err := s.store.Update(ctx, group); err != nil {
+		if store.IsDuplicateKeyError(err) {
+			return nil, apperror.Conflict("group with this name already exists in the organization")
+		}
 		return nil, apperror.InternalWrap(err, "failed to update group")
 	}
 

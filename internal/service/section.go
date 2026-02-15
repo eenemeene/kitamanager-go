@@ -76,7 +76,7 @@ func (s *SectionService) Create(ctx context.Context, orgID uint, req *models.Sec
 	// Check for duplicate name in organization
 	existing, err := s.store.FindByNameAndOrg(ctx, name, orgID)
 	if err == nil && existing != nil {
-		return nil, apperror.BadRequest("section with this name already exists in the organization")
+		return nil, apperror.Conflict("section with this name already exists in the organization")
 	}
 
 	section := &models.Section{
@@ -114,7 +114,7 @@ func (s *SectionService) UpdateByIDAndOrg(ctx context.Context, id, orgID uint, r
 		// Check for duplicate name in organization (excluding current section)
 		existing, err := s.store.FindByNameAndOrg(ctx, name, orgID)
 		if err == nil && existing != nil && existing.ID != id {
-			return nil, apperror.BadRequest("section with this name already exists in the organization")
+			return nil, apperror.Conflict("section with this name already exists in the organization")
 		}
 
 		section.Name = name

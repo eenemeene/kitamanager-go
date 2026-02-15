@@ -204,6 +204,11 @@ func (h *ChildAttendanceHandler) ListByChild(c *gin.Context) {
 		return
 	}
 
+	if err := validateDateRange(from, to, MaxDateRangeMonths); err != nil {
+		respondError(c, err)
+		return
+	}
+
 	params, ok := parsePagination(c)
 	if !ok {
 		return

@@ -103,6 +103,7 @@ func main() {
 	childAttendanceStore := store.NewChildAttendanceStore(db)
 	costStore := store.NewCostStore(db)
 	auditStore := store.NewAuditStore(db)
+	tokenStore := store.NewTokenStore(db)
 
 	// Seed admin user if configured
 	if err := seed.SeedAdmin(cfg, userStore, userGroupStore, enforcer); err != nil {
@@ -145,8 +146,8 @@ func main() {
 	statisticsService := service.NewStatisticsService(childStore, employeeStore, orgStore, governmentFundingStore)
 
 	// Initialize handlers
-	authHandler := handlers.NewAuthHandler(userStore, cfg.JWTSecret, auditService)
-	userHandler := handlers.NewUserHandler(userService, userGroupService, auditService)
+	authHandler := handlers.NewAuthHandler(userStore, tokenStore, cfg.JWTSecret, auditService)
+	userHandler := handlers.NewUserHandler(userService, userGroupService, auditService, tokenStore)
 	groupHandler := handlers.NewGroupHandler(groupService, auditService)
 	sectionHandler := handlers.NewSectionHandler(sectionService, auditService)
 	orgHandler := handlers.NewOrganizationHandler(orgService, auditService)
@@ -161,7 +162,7 @@ func main() {
 	healthHandler := handlers.NewHealthHandler(db)
 
 	// Initialize middleware
-	authMiddleware := middleware.NewAuthMiddleware(cfg.JWTSecret)
+	authMiddleware := middleware.NewAuthMiddleware(cfg.JWTSecret, tokenStore)
 	authzMiddleware := middleware.NewAuthorizationMiddleware(permissionService)
 	csrfMiddleware := middleware.NewCSRFMiddleware()
 	loginRateLimiter := middleware.LoginRateLimiter(cfg.LoginRateLimitPerMinute)
@@ -169,6 +170,21 @@ func main() {
 
 	// Create Gin router
 	r := gin.New()
+
+	// Configure trusted proxies for accurate client IP detection
+	if len(cfg.TrustedProxies) > 0 {
+		if err := r.SetTrustedProxies(cfg.TrustedProxies); err != nil {
+			slog.Error("Failed to set trusted proxies", "error", err)
+			os.Exit(1)
+		}
+	} else if cfg.IsProduction() {
+		// In production, trust no proxies by default for security
+		if err := r.SetTrustedProxies(nil); err != nil {
+			slog.Error("Failed to set trusted proxies", "error", err)
+			os.Exit(1)
+		}
+	}
+
 	r.Use(gin.Recovery())
 	r.Use(middleware.RequestID())
 	r.Use(middleware.StructuredLogger())
@@ -199,8 +215,14 @@ func main() {
 	r.GET("/api/v1/live", healthHandler.Live)
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
-	// Swagger UI
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	// Swagger UI — require auth in non-development environments
+	if cfg.IsDevelopment() {
+		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	} else {
+		swagger := r.Group("/swagger")
+		swagger.Use(authMiddleware.RequireAuth())
+		swagger.GET("/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	}
 
 	// Setup API routes
 	routes.Setup(r, authHandler, userHandler, groupHandler, sectionHandler, orgHandler, employeeHandler, childHandler, governmentFundingHandler, payPlanHandler, childAttendanceHandler, costHandler, stepPromotionHandler, statisticsHandler, authMiddleware, authzMiddleware, csrfMiddleware, loginRateLimiter, apiRateLimiter)
@@ -213,6 +235,23 @@ func main() {
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
+
+	// Start token cleanup goroutine (removes expired revocations every hour)
+	tokenCleanupDone := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				if err := tokenStore.CleanupExpired(context.Background()); err != nil {
+					slog.Error("Failed to cleanup expired tokens", "error", err)
+				}
+			case <-tokenCleanupDone:
+				return
+			}
+		}
+	}()
 
 	// Wait for interrupt signal
 	quit := make(chan os.Signal, 1)
@@ -243,6 +282,8 @@ func main() {
 		slog.Error("Server forced to shutdown", "error", err)
 		os.Exit(1)
 	}
+
+	close(tokenCleanupDone)
 
 	slog.Info("Draining audit logs...")
 	auditService.Shutdown()
