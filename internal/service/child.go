@@ -305,7 +305,10 @@ func (s *ChildService) CreateContract(ctx context.Context, childID, orgID uint, 
 	return &resp, nil
 }
 
-// UpdateContract updates an existing contract, validating it belongs to a child in the specified organization.
+// UpdateContract updates an existing contract with amend semantics.
+// - Contract started today or in the future → update in place
+// - Contract started before today → end old contract (yesterday), create new contract (today) with changes
+// - Contract already ended → reject with 400
 func (s *ChildService) UpdateContract(ctx context.Context, contractID, childID, orgID uint, req *models.ChildContractUpdateRequest) (*models.ChildContractResponse, error) {
 	// Security: Validate child belongs to the specified organization (use minimal query - no preloads needed)
 	child, err := s.store.FindByIDMinimal(ctx, childID)
@@ -325,15 +328,14 @@ func (s *ChildService) UpdateContract(ctx context.Context, contractID, childID, 
 		return nil, err
 	}
 
-	// Update fields if provided
-	if req.From != nil {
-		contract.From = *req.From
+	// Determine amend mode
+	mode, err := determineAmendMode(contract.From, contract.To)
+	if err != nil {
+		return nil, err
 	}
-	if req.To != nil {
-		contract.To = req.To
-	}
+
+	// Validate section if provided (applies to both modes)
 	if req.SectionID != nil {
-		// Validate section belongs to the same organization
 		section, err := s.sectionStore.FindByID(ctx, *req.SectionID)
 		if err != nil {
 			return nil, apperror.BadRequest("section not found")
@@ -341,20 +343,39 @@ func (s *ChildService) UpdateContract(ctx context.Context, contractID, childID, 
 		if section.OrganizationID != orgID {
 			return nil, apperror.BadRequest("section does not belong to this organization")
 		}
-		contract.SectionID = *req.SectionID
-		contract.Section = nil // clear preloaded association
 	}
-	// Properties can be replaced entirely
+
+	switch mode {
+	case amendModeInPlace:
+		return s.updateContractInPlace(ctx, contract, childID, req)
+	case amendModeAmend:
+		return s.amendContract(ctx, contract, childID, req)
+	default:
+		return nil, apperror.Internal("unexpected amend mode")
+	}
+}
+
+// updateContractInPlace applies changes directly to the existing contract.
+func (s *ChildService) updateContractInPlace(ctx context.Context, contract *models.ChildContract, childID uint, req *models.ChildContractUpdateRequest) (*models.ChildContractResponse, error) {
+	if req.From != nil {
+		contract.From = *req.From
+	}
+	if req.To != nil {
+		contract.To = req.To
+	}
+	if req.SectionID != nil {
+		contract.SectionID = *req.SectionID
+		contract.Section = nil
+	}
 	if req.Properties != nil {
 		contract.Properties = req.Properties
 	}
 
-	// Validate period
 	if err := validation.ValidatePeriod(contract.From, contract.To); err != nil {
 		return nil, apperror.BadRequest(err.Error())
 	}
 
-	// Validate + update in a single transaction to prevent race conditions
+	contractID := contract.ID
 	if err := s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
 		if err := s.store.Contracts().ValidateNoOverlap(txCtx, childID, contract.From, contract.To, &contractID); err != nil {
 			if errors.Is(err, store.ErrContractOverlap) {
@@ -368,6 +389,65 @@ func (s *ChildService) UpdateContract(ctx context.Context, contractID, childID, 
 	}
 
 	resp := contract.ToResponse()
+	return &resp, nil
+}
+
+// amendContract closes the old contract and creates a new one with changes applied.
+func (s *ChildService) amendContract(ctx context.Context, contract *models.ChildContract, childID uint, req *models.ChildContractUpdateRequest) (*models.ChildContractResponse, error) {
+	today := truncateToDate(time.Now())
+	yesterday := today.AddDate(0, 0, -1)
+
+	// Clone contract with current values, new contract starts today
+	newContract := &models.ChildContract{
+		ChildID: contract.ChildID,
+		BaseContract: models.BaseContract{
+			Period: models.Period{
+				From: today,
+				To:   contract.To, // inherit original To
+			},
+			SectionID:  contract.SectionID,
+			Properties: contract.Properties,
+		},
+	}
+
+	// Apply changes (From is ignored — always today; To is applied if provided)
+	if req.SectionID != nil {
+		newContract.SectionID = *req.SectionID
+	}
+	if req.Properties != nil {
+		newContract.Properties = req.Properties
+	}
+	if req.To != nil {
+		newContract.To = req.To
+	}
+
+	if err := validation.ValidatePeriod(newContract.From, newContract.To); err != nil {
+		return nil, apperror.BadRequest(err.Error())
+	}
+
+	// Transaction: close old contract + validate overlap + create new
+	if err := s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
+		// Close old contract (end = yesterday)
+		contract.To = &yesterday
+		if err := s.store.UpdateContract(txCtx, contract); err != nil {
+			return apperror.InternalWrap(err, "failed to close old contract")
+		}
+
+		// Validate new contract doesn't overlap with any other contracts
+		if err := s.store.Contracts().ValidateNoOverlap(txCtx, childID, newContract.From, newContract.To, nil); err != nil {
+			if errors.Is(err, store.ErrContractOverlap) {
+				return apperror.Conflict(err.Error())
+			}
+			return apperror.InternalWrap(err, "failed to validate contract")
+		}
+
+		// Create new contract
+		return s.store.CreateContract(txCtx, newContract)
+	}); err != nil {
+		return nil, err
+	}
+
+	resp := newContract.ToResponse()
 	return &resp, nil
 }
 

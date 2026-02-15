@@ -2737,11 +2737,13 @@ func TestChildHandler_UpdateContract(t *testing.T) {
 	}
 	db.Create(child)
 
+	// Use today so contract qualifies for in-place update
+	today := time.Now().UTC().Truncate(24 * time.Hour)
 	contract := &models.ChildContract{
 		ChildID: child.ID,
 		BaseContract: models.BaseContract{
 			SectionID: sectionID,
-			Period:    models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+			Period:    models.Period{From: today},
 		},
 	}
 	db.Create(contract)
@@ -2749,7 +2751,7 @@ func TestChildHandler_UpdateContract(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/organizations/:orgId/children/:id/contracts/:contractId", handler.UpdateContract)
 
-	newFrom := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
+	newFrom := today.AddDate(0, 2, 0)
 	body := models.ChildContractUpdateRequest{
 		From: &newFrom,
 	}
@@ -2806,13 +2808,14 @@ func TestChildHandler_UpdateContract_Overlap(t *testing.T) {
 	}
 	db.Create(child)
 
-	// Create two non-overlapping contracts
-	endDate1 := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
+	// Use future dates so contracts qualify for in-place update
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	endDate1 := today.AddDate(0, 6, 0)
 	db.Create(&models.ChildContract{
 		ChildID: child.ID,
 		BaseContract: models.BaseContract{
 			SectionID: sectionID,
-			Period:    models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: &endDate1},
+			Period:    models.Period{From: today, To: &endDate1},
 		},
 	})
 
@@ -2820,7 +2823,7 @@ func TestChildHandler_UpdateContract_Overlap(t *testing.T) {
 		ChildID: child.ID,
 		BaseContract: models.BaseContract{
 			SectionID: sectionID,
-			Period:    models.Period{From: time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC)},
+			Period:    models.Period{From: today.AddDate(0, 7, 0)},
 		},
 	}
 	db.Create(contract2)
@@ -2828,8 +2831,8 @@ func TestChildHandler_UpdateContract_Overlap(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/organizations/:orgId/children/:id/contracts/:contractId", handler.UpdateContract)
 
-	// Update contract2 to overlap with contract1
-	newFrom := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
+	// Update contract2's From to overlap with contract1
+	newFrom := today.AddDate(0, 3, 0)
 	body := models.ChildContractUpdateRequest{
 		From: &newFrom,
 	}

@@ -2099,13 +2099,14 @@ func TestEmployeeHandler_UpdateContract_Overlap(t *testing.T) {
 	}
 	db.Create(employee)
 
-	// Create two non-overlapping contracts
-	endDate1 := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
+	// Use future dates so contracts qualify for in-place update
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	endDate1 := today.AddDate(0, 6, 0)
 	db.Create(&models.EmployeeContract{
 		EmployeeID: employee.ID,
 		BaseContract: models.BaseContract{
 			SectionID: sectionID,
-			Period:    models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: &endDate1},
+			Period:    models.Period{From: today, To: &endDate1},
 		},
 		StaffCategory: "qualified",
 		WeeklyHours:   40,
@@ -2115,7 +2116,7 @@ func TestEmployeeHandler_UpdateContract_Overlap(t *testing.T) {
 		EmployeeID: employee.ID,
 		BaseContract: models.BaseContract{
 			SectionID: sectionID,
-			Period:    models.Period{From: time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC)},
+			Period:    models.Period{From: today.AddDate(0, 7, 0)},
 		},
 		StaffCategory: "non_pedagogical",
 		WeeklyHours:   40,
@@ -2125,8 +2126,8 @@ func TestEmployeeHandler_UpdateContract_Overlap(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/organizations/:orgId/employees/:id/contracts/:contractId", handler.UpdateContract)
 
-	// Update contract2 to overlap with contract1
-	newFrom := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
+	// Update contract2's From to overlap with contract1
+	newFrom := today.AddDate(0, 3, 0)
 	body := models.EmployeeContractUpdateRequest{
 		From: &newFrom,
 	}

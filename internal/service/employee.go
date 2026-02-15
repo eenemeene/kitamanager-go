@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -336,7 +337,10 @@ func (s *EmployeeService) GetContractByID(ctx context.Context, contractID, emplo
 	return &resp, nil
 }
 
-// UpdateContract updates an existing contract, validating ownership
+// UpdateContract updates an existing contract with amend semantics.
+// - Contract started today or in the future → update in place
+// - Contract started before today → end old contract (yesterday), create new contract (today) with changes
+// - Contract already ended → reject with 400
 func (s *EmployeeService) UpdateContract(ctx context.Context, contractID, employeeID, orgID uint, req *models.EmployeeContractUpdateRequest) (*models.EmployeeContractResponse, error) {
 	// Security: Validate employee belongs to the specified organization (use minimal query - no preloads needed)
 	employee, err := s.store.FindByIDMinimal(ctx, employeeID)
@@ -356,7 +360,13 @@ func (s *EmployeeService) UpdateContract(ctx context.Context, contractID, employ
 		return nil, err
 	}
 
-	// Validate and update pay plan if provided
+	// Determine amend mode
+	mode, err := determineAmendMode(contract.From, contract.To)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate pay plan if provided (applies to both modes)
 	if req.PayPlanID != nil {
 		payPlan, err := s.payPlanStore.FindByID(ctx, *req.PayPlanID)
 		if err != nil {
@@ -365,20 +375,52 @@ func (s *EmployeeService) UpdateContract(ctx context.Context, contractID, employ
 		if payPlan.OrganizationID != orgID {
 			return nil, apperror.BadRequest("payplan does not belong to this organization")
 		}
-		contract.PayPlanID = *req.PayPlanID
 	}
 
-	// Update fields if provided
+	// Validate staff category if provided
 	if req.StaffCategory != nil {
 		if !models.IsValidStaffCategory(*req.StaffCategory) {
 			return nil, apperror.BadRequest("staff_category must be one of: qualified, supplementary, non_pedagogical")
 		}
-		contract.StaffCategory = *req.StaffCategory
 	}
+
+	// Validate weekly hours if provided
 	if req.WeeklyHours != nil {
 		if err := validation.ValidateWeeklyHours(*req.WeeklyHours, "weekly_hours"); err != nil {
 			return nil, apperror.BadRequest(err.Error())
 		}
+	}
+
+	// Validate section if provided (applies to both modes)
+	if req.SectionID != nil {
+		section, err := s.sectionStore.FindByID(ctx, *req.SectionID)
+		if err != nil {
+			return nil, apperror.BadRequest("section not found")
+		}
+		if section.OrganizationID != orgID {
+			return nil, apperror.BadRequest("section does not belong to this organization")
+		}
+	}
+
+	switch mode {
+	case amendModeInPlace:
+		return s.updateContractInPlace(ctx, contract, employeeID, req)
+	case amendModeAmend:
+		return s.amendContract(ctx, contract, employeeID, req)
+	default:
+		return nil, apperror.Internal("unexpected amend mode")
+	}
+}
+
+// updateContractInPlace applies changes directly to the existing employee contract.
+func (s *EmployeeService) updateContractInPlace(ctx context.Context, contract *models.EmployeeContract, employeeID uint, req *models.EmployeeContractUpdateRequest) (*models.EmployeeContractResponse, error) {
+	if req.PayPlanID != nil {
+		contract.PayPlanID = *req.PayPlanID
+	}
+	if req.StaffCategory != nil {
+		contract.StaffCategory = *req.StaffCategory
+	}
+	if req.WeeklyHours != nil {
 		contract.WeeklyHours = *req.WeeklyHours
 	}
 	if req.Grade != nil {
@@ -388,49 +430,30 @@ func (s *EmployeeService) UpdateContract(ctx context.Context, contractID, employ
 		contract.Step = *req.Step
 	}
 	if req.SectionID != nil {
-		// Validate section belongs to the same organization
-		section, err := s.sectionStore.FindByID(ctx, *req.SectionID)
-		if err != nil {
-			return nil, apperror.BadRequest("section not found")
-		}
-		if section.OrganizationID != orgID {
-			return nil, apperror.BadRequest("section does not belong to this organization")
-		}
 		contract.SectionID = *req.SectionID
-		contract.Section = nil // clear preloaded association
+		contract.Section = nil
 	}
-	// Properties can be replaced entirely
 	if req.Properties != nil {
 		contract.Properties = req.Properties
 	}
-
-	// Handle date changes
-	newFrom := contract.From
-	newTo := contract.To
 	if req.From != nil {
-		newFrom = *req.From
+		contract.From = *req.From
 	}
 	if req.To != nil {
-		newTo = req.To
+		contract.To = req.To
 	}
 
-	// Validate period
-	if err := validation.ValidatePeriod(newFrom, newTo); err != nil {
+	if err := validation.ValidatePeriod(contract.From, contract.To); err != nil {
 		return nil, apperror.BadRequest(err.Error())
 	}
 
-	contract.From = newFrom
-	contract.To = newTo
-
-	// Validate + update in a single transaction to prevent race conditions
+	contractID := contract.ID
 	if err := s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
-		if req.From != nil || req.To != nil {
-			if err := s.store.Contracts().ValidateNoOverlap(txCtx, employeeID, newFrom, newTo, &contractID); err != nil {
-				if errors.Is(err, store.ErrContractOverlap) {
-					return apperror.Conflict(err.Error())
-				}
-				return apperror.InternalWrap(err, "failed to validate contract")
+		if err := s.store.Contracts().ValidateNoOverlap(txCtx, employeeID, contract.From, contract.To, &contractID); err != nil {
+			if errors.Is(err, store.ErrContractOverlap) {
+				return apperror.Conflict(err.Error())
 			}
+			return apperror.InternalWrap(err, "failed to validate contract")
 		}
 		return s.store.UpdateContract(txCtx, contract)
 	}); err != nil {
@@ -438,5 +461,84 @@ func (s *EmployeeService) UpdateContract(ctx context.Context, contractID, employ
 	}
 
 	resp := contract.ToResponse()
+	return &resp, nil
+}
+
+// amendContract closes the old employee contract and creates a new one with changes applied.
+func (s *EmployeeService) amendContract(ctx context.Context, contract *models.EmployeeContract, employeeID uint, req *models.EmployeeContractUpdateRequest) (*models.EmployeeContractResponse, error) {
+	today := truncateToDate(time.Now())
+	yesterday := today.AddDate(0, 0, -1)
+
+	// Clone contract with current values, new contract starts today
+	newContract := &models.EmployeeContract{
+		EmployeeID: contract.EmployeeID,
+		BaseContract: models.BaseContract{
+			Period: models.Period{
+				From: today,
+				To:   contract.To, // inherit original To
+			},
+			SectionID:  contract.SectionID,
+			Properties: contract.Properties,
+		},
+		StaffCategory: contract.StaffCategory,
+		Grade:         contract.Grade,
+		Step:          contract.Step,
+		WeeklyHours:   contract.WeeklyHours,
+		PayPlanID:     contract.PayPlanID,
+	}
+
+	// Apply changes (From is ignored — always today; To is applied if provided)
+	if req.SectionID != nil {
+		newContract.SectionID = *req.SectionID
+	}
+	if req.Properties != nil {
+		newContract.Properties = req.Properties
+	}
+	if req.To != nil {
+		newContract.To = req.To
+	}
+	if req.PayPlanID != nil {
+		newContract.PayPlanID = *req.PayPlanID
+	}
+	if req.StaffCategory != nil {
+		newContract.StaffCategory = *req.StaffCategory
+	}
+	if req.WeeklyHours != nil {
+		newContract.WeeklyHours = *req.WeeklyHours
+	}
+	if req.Grade != nil {
+		newContract.Grade = strings.TrimSpace(*req.Grade)
+	}
+	if req.Step != nil {
+		newContract.Step = *req.Step
+	}
+
+	if err := validation.ValidatePeriod(newContract.From, newContract.To); err != nil {
+		return nil, apperror.BadRequest(err.Error())
+	}
+
+	// Transaction: close old contract + validate overlap + create new
+	if err := s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
+		// Close old contract (end = yesterday)
+		contract.To = &yesterday
+		if err := s.store.UpdateContract(txCtx, contract); err != nil {
+			return apperror.InternalWrap(err, "failed to close old contract")
+		}
+
+		// Validate new contract doesn't overlap with any other contracts
+		if err := s.store.Contracts().ValidateNoOverlap(txCtx, employeeID, newContract.From, newContract.To, nil); err != nil {
+			if errors.Is(err, store.ErrContractOverlap) {
+				return apperror.Conflict(err.Error())
+			}
+			return apperror.InternalWrap(err, "failed to validate contract")
+		}
+
+		// Create new contract
+		return s.store.CreateContract(txCtx, newContract)
+	}); err != nil {
+		return nil, err
+	}
+
+	resp := newContract.ToResponse()
 	return &resp, nil
 }

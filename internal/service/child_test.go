@@ -2264,7 +2264,7 @@ func TestChildService_GetCurrentContract_NoActiveContract(t *testing.T) {
 // UpdateContract Tests
 // =========================================
 
-func TestChildService_UpdateContract(t *testing.T) {
+func TestChildService_UpdateContract_InPlace(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
 	ctx := context.Background()
@@ -2272,11 +2272,12 @@ func TestChildService_UpdateContract(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 	child := createTestChild(t, db, "John", "Doe", org.ID)
 
-	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	// Use today's date so the contract qualifies for in-place update
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	to := today.AddDate(1, 0, 0)
 	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		SectionID:  1,
-		From:       from,
+		From:       today,
 		To:         &to,
 		Properties: models.ContractProperties{"care_type": "ganztag"},
 	})
@@ -2284,9 +2285,9 @@ func TestChildService_UpdateContract(t *testing.T) {
 		t.Fatalf("failed to create contract: %v", err)
 	}
 
-	// Update dates and properties
-	newFrom := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
-	newTo := time.Date(2025, 6, 30, 0, 0, 0, 0, time.UTC)
+	// Update dates and properties — in-place update since contract starts today
+	newFrom := today.AddDate(0, 1, 0)
+	newTo := today.AddDate(1, 6, 0)
 	updateReq := &models.ChildContractUpdateRequest{
 		From:       &newFrom,
 		To:         &newTo,
@@ -2298,6 +2299,10 @@ func TestChildService_UpdateContract(t *testing.T) {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
+	// Should be the same ID (updated in place)
+	if updated.ID != contract.ID {
+		t.Errorf("ID = %d, want %d (should be updated in place)", updated.ID, contract.ID)
+	}
 	if !updated.From.Equal(newFrom) {
 		t.Errorf("From = %v, want %v", updated.From, newFrom)
 	}
@@ -2317,11 +2322,12 @@ func TestChildService_UpdateContract_InvalidPeriod(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 	child := createTestChild(t, db, "John", "Doe", org.ID)
 
-	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	// Use today so the contract qualifies for in-place update
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	to := today.AddDate(1, 0, 0)
 	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		SectionID: 1,
-		From:      from,
+		From:      today,
 		To:        &to,
 	})
 	if err != nil {
@@ -2329,7 +2335,7 @@ func TestChildService_UpdateContract_InvalidPeriod(t *testing.T) {
 	}
 
 	// Try to update with 'to' before 'from'
-	invalidTo := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
+	invalidTo := today.AddDate(-1, 0, 0)
 	updateReq := &models.ChildContractUpdateRequest{
 		To: &invalidTo,
 	}
@@ -2352,9 +2358,12 @@ func TestChildService_UpdateContract_OverlapConflict(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 	child := createTestChild(t, db, "John", "Doe", org.ID)
 
-	// Create first contract: Jan-Jun 2024
-	from1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	to1 := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
+	// Use future dates so contracts are eligible for in-place update
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+
+	// Create first contract: today to today+6 months
+	from1 := today
+	to1 := today.AddDate(0, 6, 0)
 	_, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		SectionID: 1,
 		From:      from1,
@@ -2364,9 +2373,9 @@ func TestChildService_UpdateContract_OverlapConflict(t *testing.T) {
 		t.Fatalf("failed to create first contract: %v", err)
 	}
 
-	// Create second contract: Aug-Dec 2024
-	from2 := time.Date(2024, 8, 1, 0, 0, 0, 0, time.UTC)
-	to2 := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	// Create second contract: today+8 months to today+12 months
+	from2 := today.AddDate(0, 8, 0)
+	to2 := today.AddDate(1, 0, 0)
 	contract2, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		SectionID: 1,
 		From:      from2,
@@ -2377,7 +2386,7 @@ func TestChildService_UpdateContract_OverlapConflict(t *testing.T) {
 	}
 
 	// Try to update second contract to overlap with first
-	overlapFrom := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
+	overlapFrom := today.AddDate(0, 3, 0)
 	updateReq := &models.ChildContractUpdateRequest{
 		From: &overlapFrom,
 	}
@@ -2402,13 +2411,13 @@ func TestChildService_UpdateContract_WrongOrg(t *testing.T) {
 	org2 := createTestOrganization(t, db, "Org 2")
 	child := createTestChild(t, db, "John", "Doe", org1.ID)
 
-	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	contract, err := svc.CreateContract(ctx, child.ID, org1.ID, &models.ChildContractCreateRequest{SectionID: 1, From: from})
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	contract, err := svc.CreateContract(ctx, child.ID, org1.ID, &models.ChildContractCreateRequest{SectionID: 1, From: today})
 	if err != nil {
 		t.Fatalf("failed to create contract: %v", err)
 	}
 
-	newFrom := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
+	newFrom := today.AddDate(0, 1, 0)
 	updateReq := &models.ChildContractUpdateRequest{
 		From: &newFrom,
 	}
@@ -2432,13 +2441,13 @@ func TestChildService_UpdateContract_WrongChild(t *testing.T) {
 	child1 := createTestChild(t, db, "John", "Doe", org.ID)
 	child2 := createTestChild(t, db, "Jane", "Doe", org.ID)
 
-	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	contract, err := svc.CreateContract(ctx, child1.ID, org.ID, &models.ChildContractCreateRequest{SectionID: 1, From: from})
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	contract, err := svc.CreateContract(ctx, child1.ID, org.ID, &models.ChildContractCreateRequest{SectionID: 1, From: today})
 	if err != nil {
 		t.Fatalf("failed to create contract: %v", err)
 	}
 
-	newFrom := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
+	newFrom := today.AddDate(0, 1, 0)
 	updateReq := &models.ChildContractUpdateRequest{
 		From: &newFrom,
 	}
@@ -2487,5 +2496,301 @@ func TestChildService_DeleteContract(t *testing.T) {
 	}
 	if len(contracts) != 0 {
 		t.Errorf("expected 0 contracts after delete, got %d", len(contracts))
+	}
+}
+
+// =========================================
+// Amend-specific UpdateContract Tests
+// =========================================
+
+func TestChildService_UpdateContract_AmendChangeSection(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := createTestChild(t, db, "John", "Doe", org.ID)
+	section1 := createTestSection(t, db, "Krippe", org.ID, false)
+	section2 := createTestSection(t, db, "Elementar", org.ID, false)
+
+	// Create contract starting in the past (triggers amend mode)
+	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID:  section1.ID,
+		From:       past,
+		Properties: models.ContractProperties{"care_type": "ganztag"},
+	})
+	if err != nil {
+		t.Fatalf("failed to create contract: %v", err)
+	}
+
+	// Update section → should trigger amend
+	updated, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
+		SectionID: &section2.ID,
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	yesterday := today.AddDate(0, 0, -1)
+
+	// New contract should have a different ID
+	if updated.ID == contract.ID {
+		t.Error("expected new contract ID (amend creates new contract)")
+	}
+	// New contract starts today
+	if !updated.From.Truncate(24 * time.Hour).Equal(today) {
+		t.Errorf("new contract From = %v, want %v", updated.From, today)
+	}
+	// New contract has new section
+	if updated.SectionID != section2.ID {
+		t.Errorf("SectionID = %d, want %d", updated.SectionID, section2.ID)
+	}
+	// Properties carried over
+	if updated.Properties["care_type"] != "ganztag" {
+		t.Errorf("Properties should carry over, got %v", updated.Properties)
+	}
+	// Child ID carried over
+	if updated.ChildID != child.ID {
+		t.Errorf("ChildID = %d, want %d", updated.ChildID, child.ID)
+	}
+
+	// Verify old contract was closed (end = yesterday)
+	old, err := svc.GetContractByID(ctx, contract.ID, child.ID, org.ID)
+	if err != nil {
+		t.Fatalf("failed to get old contract: %v", err)
+	}
+	if old.To == nil {
+		t.Fatal("old contract To should not be nil after amend")
+	}
+	if !old.To.Truncate(24 * time.Hour).Equal(yesterday) {
+		t.Errorf("old contract To = %v, want %v", old.To, yesterday)
+	}
+}
+
+func TestChildService_UpdateContract_AmendChangeProperties(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := createTestChild(t, db, "John", "Doe", org.ID)
+	section := createTestSection(t, db, "Krippe", org.ID, false)
+
+	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID:  section.ID,
+		From:       past,
+		Properties: models.ContractProperties{"care_type": "ganztag"},
+	})
+	if err != nil {
+		t.Fatalf("failed to create contract: %v", err)
+	}
+
+	// Update properties → triggers amend
+	updated, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
+		Properties: models.ContractProperties{"care_type": "halbtag"},
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if updated.ID == contract.ID {
+		t.Error("expected new contract ID (amend)")
+	}
+	if updated.Properties["care_type"] != "halbtag" {
+		t.Errorf("Properties = %v, want care_type=halbtag", updated.Properties)
+	}
+	// Section carried over
+	if updated.SectionID != section.ID {
+		t.Errorf("SectionID should carry over, got %d, want %d", updated.SectionID, section.ID)
+	}
+}
+
+func TestChildService_UpdateContract_AmendFromIgnored(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := createTestChild(t, db, "John", "Doe", org.ID)
+	section := createTestSection(t, db, "Krippe", org.ID, false)
+
+	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID: section.ID,
+		From:      past,
+	})
+	if err != nil {
+		t.Fatalf("failed to create contract: %v", err)
+	}
+
+	// Try to set From to a specific date — should be ignored in amend mode
+	requestedFrom := time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC)
+	updated, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
+		From: &requestedFrom,
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	// From should be today, NOT the requested date
+	if !updated.From.Truncate(24 * time.Hour).Equal(today) {
+		t.Errorf("From = %v, want today (%v) — From should be ignored in amend mode", updated.From, today)
+	}
+}
+
+func TestChildService_UpdateContract_AmendToApplied(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := createTestChild(t, db, "John", "Doe", org.ID)
+	section := createTestSection(t, db, "Krippe", org.ID, false)
+
+	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID: section.ID,
+		From:      past,
+	})
+	if err != nil {
+		t.Fatalf("failed to create contract: %v", err)
+	}
+
+	// Set To date in the request
+	endDate := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, 6, 0)
+	updated, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
+		To: &endDate,
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if updated.To == nil {
+		t.Fatal("To should not be nil")
+	}
+	if !updated.To.Truncate(24 * time.Hour).Equal(endDate) {
+		t.Errorf("To = %v, want %v", updated.To, endDate)
+	}
+}
+
+func TestChildService_UpdateContract_EndedContract(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := createTestChild(t, db, "John", "Doe", org.ID)
+
+	// Create a contract that has already ended
+	past := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
+	pastEnd := time.Date(2023, 12, 31, 0, 0, 0, 0, time.UTC)
+	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID: 1,
+		From:      past,
+		To:        &pastEnd,
+	})
+	if err != nil {
+		t.Fatalf("failed to create contract: %v", err)
+	}
+
+	// Try to update an ended contract → should be rejected
+	_, err = svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
+		Properties: models.ContractProperties{"care_type": "halbtag"},
+	})
+	if err == nil {
+		t.Fatal("expected error for ended contract, got nil")
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+}
+
+func TestChildService_UpdateContract_InPlace_FutureContract(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := createTestChild(t, db, "John", "Doe", org.ID)
+	section := createTestSection(t, db, "Krippe", org.ID, false)
+
+	// Create a contract starting tomorrow
+	tomorrow := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, 0, 1)
+	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID: section.ID,
+		From:      tomorrow,
+	})
+	if err != nil {
+		t.Fatalf("failed to create contract: %v", err)
+	}
+
+	// Update From date — should be in-place (contract hasn't started yet)
+	newFrom := tomorrow.AddDate(0, 0, 7)
+	updated, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
+		From: &newFrom,
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	// Same contract ID (in-place)
+	if updated.ID != contract.ID {
+		t.Errorf("ID = %d, want %d (should be in-place update)", updated.ID, contract.ID)
+	}
+	if !updated.From.Equal(newFrom) {
+		t.Errorf("From = %v, want %v", updated.From, newFrom)
+	}
+}
+
+func TestChildService_UpdateContract_AmendOverlapConflict(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := createTestChild(t, db, "John", "Doe", org.ID)
+	section := createTestSection(t, db, "Krippe", org.ID, false)
+
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	past := today.AddDate(0, -3, 0)
+
+	// Create ongoing contract starting in the past (qualifies for amend)
+	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID: section.ID,
+		From:      past,
+	})
+	if err != nil {
+		t.Fatalf("failed to create first contract: %v", err)
+	}
+
+	// Insert a blocking contract directly in DB (bypass overlap validation)
+	// This simulates a scenario where another contract exists starting today.
+	futureEnd := today.AddDate(1, 0, 0)
+	blockingContract := &models.ChildContract{
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period:    models.Period{From: today, To: &futureEnd},
+			SectionID: section.ID,
+		},
+	}
+	if err := db.Create(blockingContract).Error; err != nil {
+		t.Fatalf("failed to insert blocking contract: %v", err)
+	}
+
+	// Try to amend the first contract:
+	// Amend closes old contract (To=yesterday), creates new from=today (ongoing).
+	// New contract would overlap with blocking contract (today → future).
+	_, err = svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
+		Properties: models.ContractProperties{"care_type": "halbtag"},
+	})
+	if err == nil {
+		t.Fatal("expected overlap conflict error, got nil")
+	}
+	if !errors.Is(err, apperror.ErrConflict) {
+		t.Errorf("expected ErrConflict, got %v", err)
 	}
 }
