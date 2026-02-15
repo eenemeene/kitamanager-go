@@ -533,7 +533,10 @@
     "serviceStart": "Since",
     "yearsOfService": "Years of Service",
     "monthlyCostDelta": "Monthly Delta",
-    "totalCost": "Total extra: {amount}/mo"
+    "totalCost": "Total extra: {amount}/mo",
+    "inclEmployerContrib": "incl.",
+    "employerContrib": "EC",
+    "employerContribFull": "Employer Contribution"
   },
   "costs": {
     "title": "Costs",

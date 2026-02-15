@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { formatCurrency } from '@/lib/utils/formatting';
@@ -43,7 +44,15 @@ export function StepPromotionsWidget({ orgId }: StepPromotionsWidgetProps) {
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-base font-medium">{t('title')}</CardTitle>
         <Badge variant="secondary">
-          {t('totalCost', { amount: formatCurrency(data.total_monthly_cost_delta) })}
+          {t('totalCost', { amount: formatCurrency(data.total_monthly_cost_delta) })} (
+          {t('inclEmployerContrib')}{' '}
+          <Tooltip delayDuration={0}>
+            <TooltipTrigger className="cursor-help underline decoration-dotted underline-offset-2">
+              {t('employerContrib')}
+            </TooltipTrigger>
+            <TooltipContent>{t('employerContribFull')}</TooltipContent>
+          </Tooltip>
+          )
         </Badge>
       </CardHeader>
       <CardContent>
@@ -56,7 +65,16 @@ export function StepPromotionsWidget({ orgId }: StepPromotionsWidgetProps) {
               <TableHead className="text-center">{t('eligibleStep')}</TableHead>
               <TableHead>{t('serviceStart')}</TableHead>
               <TableHead className="text-right">{t('yearsOfService')}</TableHead>
-              <TableHead className="text-right">{t('monthlyCostDelta')}</TableHead>
+              <TableHead className="text-right">
+                {t('monthlyCostDelta')} ({t('inclEmployerContrib')}{' '}
+                <Tooltip delayDuration={0}>
+                  <TooltipTrigger className="cursor-help underline decoration-dotted underline-offset-2">
+                    {t('employerContrib')}
+                  </TooltipTrigger>
+                  <TooltipContent>{t('employerContribFull')}</TooltipContent>
+                </Tooltip>
+                )
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -70,6 +88,25 @@ export function StepPromotionsWidget({ orgId }: StepPromotionsWidgetProps) {
                 <TableCell className="text-right">{p.years_of_service.toFixed(1)}</TableCell>
                 <TableCell className="text-right">
                   +{formatCurrency(p.monthly_cost_delta)}
+                  {(() => {
+                    const salaryDelta = p.new_amount - p.current_amount;
+                    const contribDelta = p.monthly_cost_delta - salaryDelta;
+                    if (contribDelta > 0)
+                      return (
+                        <>
+                          {' '}
+                          ({formatCurrency(contribDelta)}{' '}
+                          <Tooltip delayDuration={0}>
+                            <TooltipTrigger className="cursor-help underline decoration-dotted underline-offset-2">
+                              {t('employerContrib')}
+                            </TooltipTrigger>
+                            <TooltipContent>{t('employerContribFull')}</TooltipContent>
+                          </Tooltip>
+                          )
+                        </>
+                      );
+                    return null;
+                  })()}
                 </TableCell>
               </TableRow>
             ))}

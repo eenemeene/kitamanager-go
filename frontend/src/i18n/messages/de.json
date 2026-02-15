@@ -533,7 +533,10 @@
     "serviceStart": "Seit",
     "yearsOfService": "Dienstjahre",
     "monthlyCostDelta": "Monatliche Differenz",
-    "totalCost": "Gesamt-Mehrkosten: {amount}/Monat"
+    "totalCost": "Gesamt-Mehrkosten: {amount}/Monat",
+    "inclEmployerContrib": "inkl.",
+    "employerContrib": "AG",
+    "employerContribFull": "Arbeitgeberanteil"
   },
   "costs": {
     "title": "Kosten",
