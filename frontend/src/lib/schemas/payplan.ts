@@ -10,6 +10,7 @@ export const payPlanPeriodSchema = z
     from: z.string().min(1),
     to: z.string().optional(),
     weekly_hours: z.number().gt(0).max(168),
+    employer_contribution_rate: z.number().min(0).max(100),
   })
   .refine((data) => !data.to || !isDateBefore(data.to, data.from), {
     path: ['to'],

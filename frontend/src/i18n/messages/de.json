@@ -508,7 +508,10 @@
     "monthlyAmountRequired": "Monatsbetrag ist erforderlich",
     "monthlyAmountMin": "Monatsbetrag muss mindestens 0 sein",
     "stepMinYears": "Mind. Jahre",
-    "stepMinYearsLabel": "Mind. Dienstjahre (optional)"
+    "stepMinYearsLabel": "Mind. Dienstjahre (optional)",
+    "employerContributionRate": "Arbeitgeberanteil",
+    "employerContributionRateLabel": "Arbeitgeberanteil (%)",
+    "employerContributionRateRequired": "Arbeitgeberanteil ist erforderlich"
   },
   "upcomingChildren": {
     "title": "Bevorstehende Aufnahmen",

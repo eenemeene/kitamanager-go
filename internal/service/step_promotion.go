@@ -141,7 +141,10 @@ func (s *StepPromotionService) GetStepPromotions(ctx context.Context, orgID uint
 			}
 		}
 
-		delta := newAmount - currentAmount
+		// Include employer contribution in the delta
+		salaryDelta := newAmount - currentAmount
+		contribDelta := int(math.Round(float64(salaryDelta) * float64(pi.period.EmployerContributionRate) / 10000.0))
+		delta := salaryDelta + contribDelta
 		totalDelta += delta
 
 		promotions = append(promotions, models.StepPromotionResponse{

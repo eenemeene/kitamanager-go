@@ -469,6 +469,7 @@ export interface PayPlanPeriod {
   from: string;
   to?: string | null;
   weekly_hours: number;
+  employer_contribution_rate: number; // hundredths of percent: 2200 = 22.00%
   created_at: string;
   updated_at: string;
   entries?: PayPlanEntry[];
@@ -497,12 +498,14 @@ export interface PayPlanPeriodCreateRequest {
   from: string;
   to?: string | null;
   weekly_hours: number;
+  employer_contribution_rate: number;
 }
 
 export interface PayPlanPeriodUpdateRequest {
   from?: string;
   to?: string | null;
   weekly_hours?: number;
+  employer_contribution_rate?: number;
 }
 
 export interface PayPlanEntryCreateRequest {

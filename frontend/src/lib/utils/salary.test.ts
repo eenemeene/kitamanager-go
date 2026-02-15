@@ -35,6 +35,7 @@ function makePayPlan(overrides: Partial<PayPlan> = {}): PayPlan {
         from: '2024-01-01',
         to: null,
         weekly_hours: 39,
+        employer_contribution_rate: 0,
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
         entries: [
@@ -95,6 +96,7 @@ describe('calculateMonthlySalary', () => {
           from: '2020-01-01',
           to: '2023-12-31', // ended before today (2025-06-15)
           weekly_hours: 39,
+          employer_contribution_rate: 0,
           created_at: '2020-01-01T00:00:00Z',
           updated_at: '2020-01-01T00:00:00Z',
           entries: [
@@ -132,6 +134,7 @@ describe('calculateMonthlySalary', () => {
           from: '2024-01-01',
           to: null,
           weekly_hours: 0,
+          employer_contribution_rate: 0,
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           entries: [
@@ -162,6 +165,7 @@ describe('calculateMonthlySalary', () => {
           from: '2024-01-01',
           to: '2026-12-31', // still active (today is 2025-06-15)
           weekly_hours: 39,
+          employer_contribution_rate: 0,
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           entries: [
@@ -192,6 +196,7 @@ describe('calculateMonthlySalary', () => {
           from: '2020-01-01',
           to: '2023-12-31',
           weekly_hours: 39,
+          employer_contribution_rate: 0,
           created_at: '2020-01-01T00:00:00Z',
           updated_at: '2020-01-01T00:00:00Z',
           entries: [
@@ -212,6 +217,7 @@ describe('calculateMonthlySalary', () => {
           from: '2024-01-01',
           to: null,
           weekly_hours: 39,
+          employer_contribution_rate: 0,
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           entries: [
@@ -257,6 +263,7 @@ describe('calculateMonthlySalary', () => {
           from: '2024-01-01',
           to: null,
           weekly_hours: 39,
+          employer_contribution_rate: 0,
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           entries: [],
@@ -277,6 +284,7 @@ describe('calculateMonthlySalary', () => {
           from: '2024-01-01',
           to: null,
           weekly_hours: 39,
+          employer_contribution_rate: 0,
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           entries: undefined,
@@ -304,6 +312,7 @@ describe('calculateMonthlySalary', () => {
           from: '2024-01-01',
           to: null,
           weekly_hours: 39,
+          employer_contribution_rate: 0,
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           entries: [
@@ -345,6 +354,7 @@ describe('calculateMonthlySalary', () => {
           from: '2025-06-15', // exactly today
           to: null,
           weekly_hours: 39,
+          employer_contribution_rate: 0,
           created_at: '2025-06-15T00:00:00Z',
           updated_at: '2025-06-15T00:00:00Z',
           entries: [
@@ -375,6 +385,7 @@ describe('calculateMonthlySalary', () => {
           from: '2024-01-01',
           to: '2025-06-15', // ends exactly today - should still be active
           weekly_hours: 39,
+          employer_contribution_rate: 0,
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           entries: [
@@ -405,6 +416,7 @@ describe('calculateMonthlySalary', () => {
           from: '2025-06-16', // tomorrow
           to: null,
           weekly_hours: 39,
+          employer_contribution_rate: 0,
           created_at: '2025-06-16T00:00:00Z',
           updated_at: '2025-06-16T00:00:00Z',
           entries: [
@@ -435,6 +447,7 @@ describe('calculateMonthlySalary', () => {
           from: '2024-01-01',
           to: null,
           weekly_hours: 39,
+          employer_contribution_rate: 0,
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           entries: [

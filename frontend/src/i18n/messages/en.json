@@ -508,7 +508,10 @@
     "monthlyAmountRequired": "Monthly amount is required",
     "monthlyAmountMin": "Monthly amount must be at least 0",
     "stepMinYears": "Min. Years",
-    "stepMinYearsLabel": "Min. years of service (optional)"
+    "stepMinYearsLabel": "Min. years of service (optional)",
+    "employerContributionRate": "Employer Contribution",
+    "employerContributionRateLabel": "Employer Contribution (%)",
+    "employerContributionRateRequired": "Employer contribution rate is required"
   },
   "upcomingChildren": {
     "title": "Upcoming Children",

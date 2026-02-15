@@ -551,4 +551,46 @@ func TestStepPromotionService_GetStepPromotions(t *testing.T) {
 			t.Errorf("expected new amount %d, got %d", expectedNew, promo.NewAmount)
 		}
 	})
+
+	t.Run("monthly cost delta includes employer contribution", func(t *testing.T) {
+		db := setupTestDB(t)
+		svc := createStepPromotionService(db)
+		org := createTestOrganization(t, db, "Test Org")
+		emp := createTestEmployee(t, db, "Anna", "Müller", org.ID)
+
+		payPlan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
+		now := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
+		// Period with 22% employer contribution rate (2200 hundredths of percent)
+		period := createTestPayPlanPeriodWithContrib(t, db, payPlan.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0, 2200)
+
+		createTestPayPlanEntry(t, db, period.ID, "S8a", 1, 314847, intPtr(0))
+		createTestPayPlanEntry(t, db, period.ID, "S8a", 2, 329947, intPtr(1))
+		createTestPayPlanEntry(t, db, period.ID, "S8a", 3, 350089, intPtr(3))
+
+		// Employee started 4 years ago, at step 2, eligible for step 3
+		createTestEmployeeContract(t, db, emp.ID, payPlan.ID,
+			now.AddDate(-4, 0, 0), nil, "S8a", 2, 39.0)
+
+		result, err := svc.GetStepPromotions(context.Background(), org.ID, now)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(result.Promotions) != 1 {
+			t.Fatalf("expected 1 promotion, got %d", len(result.Promotions))
+		}
+
+		promo := result.Promotions[0]
+		// Salary delta: 350089 - 329947 = 20142
+		salaryDelta := 350089 - 329947
+		// Employer contribution on delta: 20142 * 2200 / 10000 = 4431 (rounded)
+		contribDelta := int(math.Round(float64(salaryDelta) * 2200.0 / 10000.0))
+		expectedDelta := salaryDelta + contribDelta
+		if promo.MonthlyCostDelta != expectedDelta {
+			t.Errorf("expected monthly cost delta %d (salary %d + contrib %d), got %d",
+				expectedDelta, salaryDelta, contribDelta, promo.MonthlyCostDelta)
+		}
+		if result.TotalMonthlyCostDelta != expectedDelta {
+			t.Errorf("expected total monthly cost delta %d, got %d", expectedDelta, result.TotalMonthlyCostDelta)
+		}
+	})
 }

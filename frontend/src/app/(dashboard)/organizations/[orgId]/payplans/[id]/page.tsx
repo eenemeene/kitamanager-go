@@ -42,6 +42,7 @@ import type {
   PayPlanPeriod,
   PayPlanEntry,
   PayPlanPeriodCreateRequest,
+  PayPlanPeriodUpdateRequest,
   PayPlanEntryCreateRequest,
 } from '@/lib/api/types';
 import { useForm } from 'react-hook-form';
@@ -92,6 +93,25 @@ export default function PayPlanDetailPage() {
       queryClient.invalidateQueries({ queryKey: queryKeys.payPlans.detail(orgId, payPlanId) });
       toast({ title: t('payPlans.periodCreated') });
       setIsPeriodDialogOpen(false);
+      resetPeriod();
+    },
+    onError: (error) => {
+      toast({
+        title: t('common.error'),
+        description: getErrorMessage(error, t('payPlans.failedToSavePeriod')),
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const updatePeriodMutation = useMutation({
+    mutationFn: ({ periodId, data }: { periodId: number; data: PayPlanPeriodUpdateRequest }) =>
+      apiClient.updatePayPlanPeriod(orgId, payPlanId, periodId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.payPlans.detail(orgId, payPlanId) });
+      toast({ title: t('payPlans.periodUpdated') });
+      setIsPeriodDialogOpen(false);
+      setEditingPeriod(null);
       resetPeriod();
     },
     onError: (error) => {
@@ -164,7 +184,7 @@ export default function PayPlanDetailPage() {
     formState: { errors: errorsPeriod },
   } = useForm<PayPlanPeriodFormData>({
     resolver: zodResolver(payPlanPeriodSchema),
-    defaultValues: { from: '', to: '', weekly_hours: 39 },
+    defaultValues: { from: '', to: '', weekly_hours: 39, employer_contribution_rate: 0 },
   });
 
   const {
@@ -179,7 +199,18 @@ export default function PayPlanDetailPage() {
 
   const handleAddPeriod = () => {
     setEditingPeriod(null);
-    resetPeriod({ from: '', to: '', weekly_hours: 39 });
+    resetPeriod({ from: '', to: '', weekly_hours: 39, employer_contribution_rate: 0 });
+    setIsPeriodDialogOpen(true);
+  };
+
+  const handleEditPeriod = (period: PayPlanPeriod) => {
+    setEditingPeriod(period);
+    resetPeriod({
+      from: period.from.slice(0, 10),
+      to: period.to?.slice(0, 10) ?? '',
+      weekly_hours: period.weekly_hours,
+      employer_contribution_rate: period.employer_contribution_rate / 100,
+    });
     setIsPeriodDialogOpen(true);
   };
 
@@ -191,10 +222,16 @@ export default function PayPlanDetailPage() {
   };
 
   const onSubmitPeriod = (data: PayPlanPeriodFormData) => {
-    createPeriodMutation.mutate({
+    const payload = {
       ...data,
       to: data.to || null,
-    });
+      employer_contribution_rate: Math.round(data.employer_contribution_rate * 100),
+    };
+    if (editingPeriod) {
+      updatePeriodMutation.mutate({ periodId: editingPeriod.id, data: payload });
+    } else {
+      createPeriodMutation.mutate(payload);
+    }
   };
 
   const onSubmitEntry = (data: PayPlanEntryFormData) => {
@@ -281,6 +318,13 @@ export default function PayPlanDetailPage() {
                     {formatPeriod(period.from, period.to, 'en', t('common.ongoing'))}
                     {' \u2014 '}
                     {period.weekly_hours}h / {t('payPlans.weeklyHours')}
+                    {period.employer_contribution_rate > 0 && (
+                      <>
+                        {' \u2014 '}
+                        {t('payPlans.employerContributionRate')}:{' '}
+                        {(period.employer_contribution_rate / 100).toFixed(2)}%
+                      </>
+                    )}
                   </h3>
                   <PayPlanGrid period={period} />
                 </div>
@@ -297,12 +341,22 @@ export default function PayPlanDetailPage() {
                       </CardTitle>
                       <p className="text-sm text-muted-foreground">
                         {period.weekly_hours}h / {t('payPlans.weeklyHours')}
+                        {period.employer_contribution_rate > 0 && (
+                          <>
+                            {' \u2014 '}
+                            {t('payPlans.employerContributionRate')}:{' '}
+                            {(period.employer_contribution_rate / 100).toFixed(2)}%
+                          </>
+                        )}
                       </p>
                     </div>
                     <div className="flex gap-2">
                       <Button size="sm" variant="outline" onClick={() => handleAddEntry(period)}>
                         <Plus className="mr-2 h-4 w-4" />
                         {t('payPlans.addEntry')}
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={() => handleEditPeriod(period)}>
+                        <Pencil className="h-4 w-4" />
                       </Button>
                       <Button
                         size="icon"
@@ -372,7 +426,9 @@ export default function PayPlanDetailPage() {
       <Dialog open={isPeriodDialogOpen} onOpenChange={setIsPeriodDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('payPlans.addPeriod')}</DialogTitle>
+            <DialogTitle>
+              {editingPeriod ? t('payPlans.editPeriod') : t('payPlans.addPeriod')}
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmitPeriod(onSubmitPeriod)} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -389,26 +445,49 @@ export default function PayPlanDetailPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="weekly_hours">{t('payPlans.weeklyHoursLabel')}</Label>
-              <Input
-                id="weekly_hours"
-                type="number"
-                min={0}
-                max={168}
-                step={0.5}
-                {...registerPeriod('weekly_hours', { valueAsNumber: true })}
-              />
-              {errorsPeriod.weekly_hours && (
-                <p className="text-sm text-destructive">{t('payPlans.weeklyHoursRequired')}</p>
-              )}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="weekly_hours">{t('payPlans.weeklyHoursLabel')}</Label>
+                <Input
+                  id="weekly_hours"
+                  type="number"
+                  min={0}
+                  max={168}
+                  step={0.5}
+                  {...registerPeriod('weekly_hours', { valueAsNumber: true })}
+                />
+                {errorsPeriod.weekly_hours && (
+                  <p className="text-sm text-destructive">{t('payPlans.weeklyHoursRequired')}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="employer_contribution_rate">
+                  {t('payPlans.employerContributionRateLabel')}
+                </Label>
+                <Input
+                  id="employer_contribution_rate"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={0.01}
+                  {...registerPeriod('employer_contribution_rate', { valueAsNumber: true })}
+                />
+                {errorsPeriod.employer_contribution_rate && (
+                  <p className="text-sm text-destructive">
+                    {t('payPlans.employerContributionRateRequired')}
+                  </p>
+                )}
+              </div>
             </div>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsPeriodDialogOpen(false)}>
                 {t('common.cancel')}
               </Button>
-              <Button type="submit" disabled={createPeriodMutation.isPending}>
+              <Button
+                type="submit"
+                disabled={createPeriodMutation.isPending || updatePeriodMutation.isPending}
+              >
                 {t('common.save')}
               </Button>
             </DialogFooter>
