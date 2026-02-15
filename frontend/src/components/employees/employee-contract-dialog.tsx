@@ -29,7 +29,6 @@ interface ActiveContractInfo {
   contract: EmployeeContract;
   endCurrentContract: boolean;
   onEndCurrentContractChange: (checked: boolean) => void;
-  endDatePreview: string | null;
 }
 
 export interface EmployeeContractDialogProps {
@@ -96,11 +95,7 @@ export function EmployeeContractDialog({
                     htmlFor="endCurrentContract"
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
-                    {activeContractInfo.endDatePreview
-                      ? t('contracts.endCurrentContract', {
-                          date: formatDate(activeContractInfo.endDatePreview),
-                        })
-                      : t('contracts.endCurrentContract', { date: '...' })}
+                    {t('contracts.endCurrentContract')}
                   </label>
                 </div>
               </AlertDescription>
@@ -169,17 +164,25 @@ export function EmployeeContractDialog({
 
           <div className="space-y-2">
             <Label htmlFor="staff_category">{t('employees.staffCategory.label')}</Label>
-            <select
-              id="staff_category"
-              {...register('staff_category')}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            <Select
+              value={watch('staff_category') || ''}
+              onValueChange={(val) =>
+                setValue('staff_category', val as 'qualified' | 'supplementary' | 'non_pedagogical')
+              }
             >
-              <option value="qualified">{t('employees.staffCategory.qualified')}</option>
-              <option value="supplementary">{t('employees.staffCategory.supplementary')}</option>
-              <option value="non_pedagogical">
-                {t('employees.staffCategory.non_pedagogical')}
-              </option>
-            </select>
+              <SelectTrigger>
+                <SelectValue placeholder={t('employees.staffCategory.label')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="qualified">{t('employees.staffCategory.qualified')}</SelectItem>
+                <SelectItem value="supplementary">
+                  {t('employees.staffCategory.supplementary')}
+                </SelectItem>
+                <SelectItem value="non_pedagogical">
+                  {t('employees.staffCategory.non_pedagogical')}
+                </SelectItem>
+              </SelectContent>
+            </Select>
             {errors.staff_category && (
               <p className="text-sm text-destructive">{t('validation.staffCategoryRequired')}</p>
             )}

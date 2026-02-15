@@ -10,12 +10,14 @@ import {
   type DragStartEvent,
   type DragEndEvent,
 } from '@dnd-kit/core';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
+import { differenceInMonths, parseISO } from 'date-fns';
 import { useTranslations } from 'next-intl';
 import { GripVertical } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { useToast } from '@/lib/hooks/use-toast';
+import { useMoveContractMutation } from '@/lib/hooks/use-move-contract-mutation';
 import type { Child, Employee } from '@/lib/api/types';
 import { getActiveContract } from '@/lib/utils/contracts';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -40,7 +42,6 @@ function getContractSectionId(
 export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
   const t = useTranslations();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [activeItem, setActiveItem] = useState<ActiveItem | null>(null);
 
   const sensors = useSensors(
@@ -77,7 +78,7 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
   }, [allEmployees]);
 
   const allSections = useMemo(() => sectionsData?.data ?? [], [sectionsData]);
-  const sections = useMemo(() => allSections, [allSections]);
+  const sections = allSections;
   const isLoading = sectionsLoading || childrenLoading || employeesLoading;
 
   const childrenBySection = useMemo(() => {
@@ -116,103 +117,32 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
     return map;
   }, [sections, pedagogicalEmployees]);
 
-  const moveChildMutation = useMutation({
-    mutationFn: ({
-      childId,
-      contractId,
-      sectionId,
-    }: {
-      childId: number;
-      contractId: number;
-      sectionId: number;
-    }) => apiClient.updateChildContract(orgId, childId, contractId, { section_id: sectionId }),
-    onMutate: async ({ childId, contractId, sectionId }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.children.allUnpaginated(orgId) });
-      const previous = queryClient.getQueryData<Child[]>(queryKeys.children.allUnpaginated(orgId));
-      queryClient.setQueryData<Child[]>(queryKeys.children.allUnpaginated(orgId), (old) =>
-        old?.map((c) =>
-          c.id === childId
-            ? {
-                ...c,
-                contracts: c.contracts?.map((ct) =>
-                  ct.id === contractId ? { ...ct, section_id: sectionId } : ct
-                ),
-              }
-            : c
-        )
-      );
-      return { previous };
-    },
-    onSuccess: () => {
-      toast({ title: t('sections.movedSuccess') });
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(queryKeys.children.allUnpaginated(orgId), context.previous);
-      }
-      toast({ title: t('sections.movedFailed'), variant: 'destructive' });
-    },
-    onSettled: (_data, _error, variables) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.children.allUnpaginated(orgId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.children.all(orgId) });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.children.contracts(orgId, variables.childId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.children.detail(orgId, variables.childId),
-      });
-    },
+  const moveChildMutation = useMoveContractMutation<Child>({
+    orgId,
+    updateFn: (childId, contractId, sectionId) =>
+      apiClient.updateChildContract(orgId, childId, contractId, { section_id: sectionId }),
+    allUnpaginatedKey: queryKeys.children.allUnpaginated(orgId),
+    invalidateKeys: (childId) => [
+      queryKeys.children.all(orgId),
+      queryKeys.children.contracts(orgId, childId),
+      queryKeys.children.detail(orgId, childId),
+    ],
+    successMessage: 'sections.movedSuccess',
+    errorMessage: 'sections.movedFailed',
   });
 
-  const moveEmployeeMutation = useMutation({
-    mutationFn: ({
-      employeeId,
-      contractId,
-      sectionId,
-    }: {
-      employeeId: number;
-      contractId: number;
-      sectionId: number;
-    }) =>
+  const moveEmployeeMutation = useMoveContractMutation<Employee>({
+    orgId,
+    updateFn: (employeeId, contractId, sectionId) =>
       apiClient.updateEmployeeContract(orgId, employeeId, contractId, { section_id: sectionId }),
-    onMutate: async ({ employeeId, contractId, sectionId }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.employees.allUnpaginated(orgId) });
-      const previous = queryClient.getQueryData<Employee[]>(
-        queryKeys.employees.allUnpaginated(orgId)
-      );
-      queryClient.setQueryData<Employee[]>(queryKeys.employees.allUnpaginated(orgId), (old) =>
-        old?.map((e) =>
-          e.id === employeeId
-            ? {
-                ...e,
-                contracts: e.contracts?.map((ct) =>
-                  ct.id === contractId ? { ...ct, section_id: sectionId } : ct
-                ),
-              }
-            : e
-        )
-      );
-      return { previous };
-    },
-    onSuccess: () => {
-      toast({ title: t('sections.employeeMovedSuccess') });
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(queryKeys.employees.allUnpaginated(orgId), context.previous);
-      }
-      toast({ title: t('sections.employeeMovedFailed'), variant: 'destructive' });
-    },
-    onSettled: (_data, _error, variables) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.employees.allUnpaginated(orgId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.employees.all(orgId) });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.employees.contracts(orgId, variables.employeeId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.employees.detail(orgId, variables.employeeId),
-      });
-    },
+    allUnpaginatedKey: queryKeys.employees.allUnpaginated(orgId),
+    invalidateKeys: (employeeId) => [
+      queryKeys.employees.all(orgId),
+      queryKeys.employees.contracts(orgId, employeeId),
+      queryKeys.employees.detail(orgId, employeeId),
+    ],
+    successMessage: 'sections.employeeMovedSuccess',
+    errorMessage: 'sections.employeeMovedFailed',
   });
 
   function handleDragStart(event: DragStartEvent) {
@@ -242,9 +172,7 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
       // Warn if child's age is outside target section's age range
       const targetSection = allSections.find((s) => s.id === newSectionId);
       if (targetSection && child.birthdate) {
-        const ageMonths = Math.floor(
-          (Date.now() - new Date(child.birthdate).getTime()) / (1000 * 60 * 60 * 24 * 30.44)
-        );
+        const ageMonths = differenceInMonths(new Date(), parseISO(child.birthdate));
         const minAge = targetSection.min_age_months;
         const maxAge = targetSection.max_age_months;
         const outsideRange =
@@ -259,7 +187,7 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
       }
 
       moveChildMutation.mutate({
-        childId: child.id,
+        entityId: child.id,
         contractId: activeContract.id,
         sectionId: newSectionId,
       });
@@ -269,7 +197,7 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
       if (!activeContract) return; // no active contract to update
       if (newSectionId === activeContract.section_id) return;
       moveEmployeeMutation.mutate({
-        employeeId: employee.id,
+        entityId: employee.id,
         contractId: activeContract.id,
         sectionId: newSectionId,
       });

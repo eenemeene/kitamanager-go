@@ -1,5 +1,6 @@
 import { format, parseISO, differenceInYears, type Locale } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
+import type { ContractProperties } from '@/lib/api/types';
 
 const locales: Record<string, Locale> = {
   de: de,
@@ -136,7 +137,7 @@ export function formatAgeRange(
  * Values can be strings (scalar) or string arrays.
  */
 
-export type ContractProperties = Record<string, string | string[]>;
+export type { ContractProperties };
 
 export interface FundingAttribute {
   key: string;

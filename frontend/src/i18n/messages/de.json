@@ -312,13 +312,11 @@
     "hasActiveContractEmployee": "Dieser Mitarbeiter hat einen aktiven Vertrag:",
     "activeSince": "Aktiv seit {date} ({attrs})",
     "activeSinceEmployee": "Aktiv seit {date}: {staffCategory} ({grade}/{step})",
-    "endCurrentContract": "Aktuellen Vertrag am {date} beenden (Tag vor Beginn des neuen Vertrags)",
+    "endCurrentContract": "Aktuellen Vertrag beenden und neuen erstellen",
     "contractStartPlaceholder": "Vertragsbeginn",
     "contractEndPlaceholder": "Vertragsende",
     "from": "Von",
-    "to": "Bis",
-    "noChangesDetected": "Keine Änderungen erkannt",
-    "noChangesDescription": "Der neue Vertrag hat die gleichen Details wie der aktuelle. Wenn Sie nur die Daten ändern möchten, bearbeiten Sie bitte stattdessen den bestehenden Vertrag."
+    "to": "Bis"
   },
   "validation": {
     "required": "Dieses Feld ist erforderlich",

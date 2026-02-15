@@ -312,13 +312,11 @@
     "hasActiveContractEmployee": "This employee has an active contract:",
     "activeSince": "Active since {date} ({attrs})",
     "activeSinceEmployee": "Active since {date}: {staffCategory} ({grade}/{step})",
-    "endCurrentContract": "End current contract on {date} (day before new contract starts)",
+    "endCurrentContract": "End current contract and create a new one",
     "contractStartPlaceholder": "Contract start date",
     "contractEndPlaceholder": "Contract end date",
     "from": "From",
-    "to": "To",
-    "noChangesDetected": "No changes detected",
-    "noChangesDescription": "The new contract has the same details as the current one. If you only need to change the dates, please edit the existing contract instead."
+    "to": "To"
   },
   "validation": {
     "required": "This field is required",

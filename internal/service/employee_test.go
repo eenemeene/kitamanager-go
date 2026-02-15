@@ -2243,3 +2243,268 @@ func TestEmployeeService_UpdateContract_InPlace_FutureContract(t *testing.T) {
 		t.Errorf("From = %v, want %v", updated.From, newFrom)
 	}
 }
+
+// =========================================
+// Edge Case Tests: Amend Field Preservation
+// =========================================
+
+// After amend: verify state consistency (old closed, new active, list shows both)
+func TestEmployeeService_UpdateContract_AmendStateConsistency(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
+	section := createTestSection(t, db, "Krippe", org.ID, false)
+	payPlan := createTestPayPlan(t, db, "TVÖD", org.ID)
+
+	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	yesterday := today.AddDate(0, 0, -1)
+
+	contract, err := svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
+		SectionID:     section.ID,
+		From:          past,
+		StaffCategory: "qualified",
+		WeeklyHours:   39,
+		Grade:         "S8a",
+		Step:          3,
+		PayPlanID:     payPlan.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed to create contract: %v", err)
+	}
+
+	// Amend: change staff category
+	newCategory := "supplementary"
+	newContract, err := svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
+		StaffCategory: &newCategory,
+	})
+	if err != nil {
+		t.Fatalf("amend failed: %v", err)
+	}
+
+	// List should show 2 contracts
+	contracts, total, err := svc.ListContracts(ctx, employee.ID, org.ID, 100, 0)
+	if err != nil {
+		t.Fatalf("ListContracts failed: %v", err)
+	}
+	if len(contracts) != 2 {
+		t.Fatalf("expected 2 contracts after amend, got %d", len(contracts))
+	}
+	if total != 2 {
+		t.Errorf("expected total 2, got %d", total)
+	}
+
+	// Old contract should be closed
+	oldContract, err := svc.GetContractByID(ctx, contract.ID, employee.ID, org.ID)
+	if err != nil {
+		t.Fatalf("failed to get old contract: %v", err)
+	}
+	if oldContract.To == nil {
+		t.Fatal("old contract To should not be nil")
+	}
+	if !oldContract.To.Truncate(24 * time.Hour).Equal(yesterday) {
+		t.Errorf("old contract To = %v, want %v", oldContract.To, yesterday)
+	}
+
+	// GetCurrentContract should return the new contract
+	current, err := svc.GetCurrentContract(ctx, employee.ID, org.ID)
+	if err != nil {
+		t.Fatalf("GetCurrentContract failed: %v", err)
+	}
+	if current.ID != newContract.ID {
+		t.Errorf("GetCurrentContract returned ID %d, want %d", current.ID, newContract.ID)
+	}
+	if current.StaffCategory != "supplementary" {
+		t.Errorf("current contract StaffCategory = %s, want supplementary", current.StaffCategory)
+	}
+}
+
+// Amend on ongoing contract: new contract should also have nil To
+func TestEmployeeService_UpdateContract_AmendPreservesOngoingTo(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
+	section := createTestSection(t, db, "Krippe", org.ID, false)
+	payPlan := createTestPayPlan(t, db, "TVÖD", org.ID)
+
+	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	contract, err := svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
+		SectionID:     section.ID,
+		From:          past,
+		StaffCategory: "qualified",
+		WeeklyHours:   39,
+		Grade:         "S8a",
+		Step:          3,
+		PayPlanID:     payPlan.ID,
+		// No To — ongoing
+	})
+	if err != nil {
+		t.Fatalf("failed to create contract: %v", err)
+	}
+
+	newHours := float64(30)
+	updated, err := svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
+		WeeklyHours: &newHours,
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if updated.To != nil {
+		t.Errorf("new contract To should be nil (ongoing), got %v", updated.To)
+	}
+}
+
+// Amend on contract with specific To: To carries over when not in request
+func TestEmployeeService_UpdateContract_AmendPreservesToWhenNotInRequest(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
+	section := createTestSection(t, db, "Krippe", org.ID, false)
+	payPlan := createTestPayPlan(t, db, "TVÖD", org.ID)
+
+	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	endDate := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, 6, 0)
+	contract, err := svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
+		SectionID:     section.ID,
+		From:          past,
+		To:            &endDate,
+		StaffCategory: "qualified",
+		WeeklyHours:   39,
+		Grade:         "S8a",
+		Step:          3,
+		PayPlanID:     payPlan.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed to create contract: %v", err)
+	}
+
+	newGrade := "S9"
+	updated, err := svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
+		Grade: &newGrade,
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if updated.To == nil {
+		t.Fatal("new contract To should not be nil")
+	}
+	if !updated.To.Truncate(24 * time.Hour).Equal(endDate) {
+		t.Errorf("To = %v, want %v (carried over from original)", updated.To, endDate)
+	}
+}
+
+// =========================================
+// Edge Case Tests: Contract Creation Boundaries
+// =========================================
+
+// Adjacent contracts (touching, not overlapping) should succeed
+func TestEmployeeService_CreateContract_AdjacentContracts(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
+	payPlan := createTestPayPlan(t, db, "TVÖD", org.ID)
+
+	from1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to1 := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
+	_, err := svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
+		SectionID:     1,
+		From:          from1,
+		To:            &to1,
+		StaffCategory: "qualified",
+		WeeklyHours:   39,
+		PayPlanID:     payPlan.ID,
+	})
+	if err != nil {
+		t.Fatalf("first contract: %v", err)
+	}
+
+	// Jul 1 (day after Jun 30) — should succeed
+	from2 := time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC)
+	to2 := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	_, err = svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
+		SectionID:     1,
+		From:          from2,
+		To:            &to2,
+		StaffCategory: "qualified",
+		WeeklyHours:   39,
+		PayPlanID:     payPlan.ID,
+	})
+	if err != nil {
+		t.Fatalf("adjacent contract should succeed, got: %v", err)
+	}
+}
+
+// Overlapping on single day (inclusive boundaries) should fail
+func TestEmployeeService_CreateContract_OverlapOnSameDay(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
+	payPlan := createTestPayPlan(t, db, "TVÖD", org.ID)
+
+	from1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to1 := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
+	_, err := svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
+		SectionID:     1,
+		From:          from1,
+		To:            &to1,
+		StaffCategory: "qualified",
+		WeeklyHours:   39,
+		PayPlanID:     payPlan.ID,
+	})
+	if err != nil {
+		t.Fatalf("first contract: %v", err)
+	}
+
+	// Starts on Jun 30 — same day as contract 1 ends — should fail
+	from2 := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
+	to2 := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	_, err = svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
+		SectionID:     1,
+		From:          from2,
+		To:            &to2,
+		StaffCategory: "qualified",
+		WeeklyHours:   39,
+		PayPlanID:     payPlan.ID,
+	})
+	if err == nil {
+		t.Fatal("expected overlap error for same-day boundary, got nil")
+	}
+	if !errors.Is(err, apperror.ErrConflict) {
+		t.Errorf("expected ErrConflict, got %v", err)
+	}
+}
+
+// Delete non-existent contract
+func TestEmployeeService_DeleteContract_NotFoundByID(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
+
+	err := svc.DeleteContract(ctx, 99999, employee.ID, org.ID)
+	if err == nil {
+		t.Fatal("expected error for non-existent contract, got nil")
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}

@@ -30,7 +30,7 @@ import type {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { formatDateForInput, formatDateForApi } from '@/lib/utils/formatting';
-import { getActiveContract, getDayBefore } from '@/lib/utils/contracts';
+import { getActiveContract } from '@/lib/utils/contracts';
 import { Pagination } from '@/components/ui/pagination';
 import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
 import { DeleteConfirmDialog } from '@/components/crud/delete-confirm-dialog';
@@ -125,12 +125,19 @@ export default function EmployeesPage() {
       employeeId: number;
       data: EmployeeContractCreateRequest;
     }) => {
+      // When ending current contract, use UPDATE (amend semantics) instead of two separate calls.
+      // The backend atomically closes the old contract and creates a new one.
       if (contractEmployee && endCurrentContract) {
         const active = getActiveContract(contractEmployee.contracts);
-        if (active && data.from) {
-          const endDate = getDayBefore(data.from);
-          await apiClient.updateEmployeeContract(orgId, employeeId, active.id, {
-            to: formatDateForApi(endDate),
+        if (active) {
+          return apiClient.updateEmployeeContract(orgId, employeeId, active.id, {
+            section_id: data.section_id,
+            staff_category: data.staff_category,
+            grade: data.grade,
+            step: data.step,
+            weekly_hours: data.weekly_hours,
+            payplan_id: data.payplan_id,
+            to: data.to,
           });
         }
       }
@@ -195,9 +202,7 @@ export default function EmployeesPage() {
     },
   });
 
-  const contractFromDate = watchContract('from');
   const activeContract = contractEmployee ? getActiveContract(contractEmployee.contracts) : null;
-  const endDatePreview = contractFromDate ? getDayBefore(contractFromDate) : null;
 
   const dialogs = useCrudDialogs<Employee, EmployeeFormData>({
     reset: resetEmployee,
@@ -284,52 +289,9 @@ export default function EmployeesPage() {
     [dialogs.editingItem, mutations.updateMutation, mutations.createMutation]
   );
 
-  const contractDetailsChanged = (
-    newData: {
-      section_id: number;
-      staff_category: string;
-      grade: string;
-      step: number;
-      weekly_hours: number;
-      payplan_id: number;
-    },
-    oldContract: EmployeeContract
-  ): boolean => {
-    return (
-      newData.section_id !== oldContract.section_id ||
-      newData.staff_category !== oldContract.staff_category ||
-      newData.grade !== oldContract.grade ||
-      newData.step !== oldContract.step ||
-      newData.weekly_hours !== oldContract.weekly_hours ||
-      newData.payplan_id !== oldContract.payplan_id
-    );
-  };
-
   const onSubmitContract = useCallback(
     (data: EmployeeContractFormData) => {
       if (contractEmployee) {
-        if (activeContract && endCurrentContract) {
-          const hasChanges = contractDetailsChanged(
-            {
-              section_id: data.section_id,
-              staff_category: data.staff_category,
-              grade: data.grade,
-              step: data.step,
-              weekly_hours: data.weekly_hours,
-              payplan_id: data.payplan_id,
-            },
-            activeContract
-          );
-          if (!hasChanges) {
-            toast({
-              title: t('contracts.noChangesDetected'),
-              description: t('contracts.noChangesDescription'),
-              variant: 'destructive',
-            });
-            return;
-          }
-        }
-
         createContractMutation.mutate({
           employeeId: contractEmployee.id,
           data: {
@@ -345,7 +307,7 @@ export default function EmployeesPage() {
         });
       }
     },
-    [contractEmployee, activeContract, endCurrentContract, createContractMutation, toast, t]
+    [contractEmployee, createContractMutation]
   );
 
   return (
@@ -471,7 +433,6 @@ export default function EmployeesPage() {
                 contract: activeContract,
                 endCurrentContract,
                 onEndCurrentContractChange: setEndCurrentContract,
-                endDatePreview,
               }
             : undefined
         }

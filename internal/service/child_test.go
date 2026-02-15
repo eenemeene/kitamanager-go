@@ -2794,3 +2794,421 @@ func TestChildService_UpdateContract_AmendOverlapConflict(t *testing.T) {
 		t.Errorf("expected ErrConflict, got %v", err)
 	}
 }
+
+// =========================================
+// Edge Case Tests: Amend Field Preservation
+// =========================================
+
+// Amend with only SectionID change: properties should carry over
+func TestChildService_UpdateContract_AmendPreservesProperties(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := createTestChild(t, db, "John", "Doe", org.ID)
+	section1 := createTestSection(t, db, "Krippe", org.ID, false)
+	section2 := createTestSection(t, db, "Elementar", org.ID, false)
+
+	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID:  section1.ID,
+		From:       past,
+		Properties: models.ContractProperties{"care_type": "ganztag", "supplements": []interface{}{"ndh", "sprachfoerderung"}},
+	})
+	if err != nil {
+		t.Fatalf("failed to create contract: %v", err)
+	}
+
+	// Update only section — properties should carry over
+	updated, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
+		SectionID: &section2.ID,
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if updated.Properties["care_type"] != "ganztag" {
+		t.Errorf("care_type should carry over, got %v", updated.Properties["care_type"])
+	}
+	if updated.Properties["supplements"] == nil {
+		t.Error("supplements should carry over, got nil")
+	}
+}
+
+// Amend with only Properties change: section should carry over
+func TestChildService_UpdateContract_AmendPreservesSection(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := createTestChild(t, db, "John", "Doe", org.ID)
+	section := createTestSection(t, db, "Krippe", org.ID, false)
+
+	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID:  section.ID,
+		From:       past,
+		Properties: models.ContractProperties{"care_type": "ganztag"},
+	})
+	if err != nil {
+		t.Fatalf("failed to create contract: %v", err)
+	}
+
+	// Update only properties — section should carry over
+	updated, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
+		Properties: models.ContractProperties{"care_type": "halbtag"},
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if updated.SectionID != section.ID {
+		t.Errorf("SectionID should carry over, got %d, want %d", updated.SectionID, section.ID)
+	}
+}
+
+// Amend on ongoing contract (nil To): new contract should also have nil To
+func TestChildService_UpdateContract_AmendPreservesOngoingTo(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := createTestChild(t, db, "John", "Doe", org.ID)
+	section := createTestSection(t, db, "Krippe", org.ID, false)
+
+	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID: section.ID,
+		From:      past,
+		// No To — ongoing
+	})
+	if err != nil {
+		t.Fatalf("failed to create contract: %v", err)
+	}
+
+	// Amend: change properties, don't set To in request
+	updated, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
+		Properties: models.ContractProperties{"care_type": "halbtag"},
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	// New contract should also be ongoing (nil To)
+	if updated.To != nil {
+		t.Errorf("new contract To should be nil (ongoing), got %v", updated.To)
+	}
+}
+
+// Amend on contract with specific To: new contract should carry over To when not in request
+func TestChildService_UpdateContract_AmendPreservesToWhenNotInRequest(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := createTestChild(t, db, "John", "Doe", org.ID)
+	section := createTestSection(t, db, "Krippe", org.ID, false)
+
+	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	endDate := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, 6, 0)
+	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID: section.ID,
+		From:      past,
+		To:        &endDate,
+	})
+	if err != nil {
+		t.Fatalf("failed to create contract: %v", err)
+	}
+
+	// Amend: change properties, don't set To in request
+	updated, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
+		Properties: models.ContractProperties{"care_type": "halbtag"},
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	// New contract should have the original To date
+	if updated.To == nil {
+		t.Fatal("new contract To should not be nil — should carry over from original")
+	}
+	if !updated.To.Truncate(24 * time.Hour).Equal(endDate) {
+		t.Errorf("To = %v, want %v (carried over from original)", updated.To, endDate)
+	}
+}
+
+// After amend: list contracts shows both old (closed) and new, GetCurrentContract returns new
+func TestChildService_UpdateContract_AmendStateConsistency(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := createTestChild(t, db, "John", "Doe", org.ID)
+	section := createTestSection(t, db, "Krippe", org.ID, false)
+
+	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	yesterday := today.AddDate(0, 0, -1)
+
+	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID:  section.ID,
+		From:       past,
+		Properties: models.ContractProperties{"care_type": "ganztag"},
+	})
+	if err != nil {
+		t.Fatalf("failed to create contract: %v", err)
+	}
+
+	// Amend the contract
+	newContract, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
+		Properties: models.ContractProperties{"care_type": "halbtag"},
+	})
+	if err != nil {
+		t.Fatalf("amend failed: %v", err)
+	}
+
+	// List should show 2 contracts
+	contracts, total, err := svc.ListContracts(ctx, child.ID, org.ID, 100, 0)
+	if err != nil {
+		t.Fatalf("ListContracts failed: %v", err)
+	}
+	if len(contracts) != 2 {
+		t.Fatalf("expected 2 contracts after amend, got %d", len(contracts))
+	}
+	if total != 2 {
+		t.Errorf("expected total 2, got %d", total)
+	}
+
+	// Old contract should be closed (To = yesterday)
+	oldContract, err := svc.GetContractByID(ctx, contract.ID, child.ID, org.ID)
+	if err != nil {
+		t.Fatalf("failed to get old contract: %v", err)
+	}
+	if oldContract.To == nil {
+		t.Fatal("old contract To should not be nil")
+	}
+	if !oldContract.To.Truncate(24 * time.Hour).Equal(yesterday) {
+		t.Errorf("old contract To = %v, want %v", oldContract.To, yesterday)
+	}
+
+	// GetCurrentContract should return the new contract
+	current, err := svc.GetCurrentContract(ctx, child.ID, org.ID)
+	if err != nil {
+		t.Fatalf("GetCurrentContract failed: %v", err)
+	}
+	if current.ID != newContract.ID {
+		t.Errorf("GetCurrentContract returned ID %d, want %d (new contract)", current.ID, newContract.ID)
+	}
+	if current.Properties["care_type"] != "halbtag" {
+		t.Errorf("current contract should have updated properties, got %v", current.Properties)
+	}
+}
+
+// =========================================
+// Edge Case Tests: Contract Creation Boundaries
+// =========================================
+
+// Adjacent contracts (touching, not overlapping) should succeed
+func TestChildService_CreateContract_AdjacentContracts(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := createTestChild(t, db, "John", "Doe", org.ID)
+
+	// Contract 1: Jan 1 - Jan 31
+	from1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to1 := time.Date(2024, 1, 31, 0, 0, 0, 0, time.UTC)
+	_, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID: 1,
+		From:      from1,
+		To:        &to1,
+	})
+	if err != nil {
+		t.Fatalf("first contract: %v", err)
+	}
+
+	// Contract 2: Feb 1 - Feb 28 (day after contract 1 ends — should succeed)
+	from2 := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
+	to2 := time.Date(2024, 2, 28, 0, 0, 0, 0, time.UTC)
+	_, err = svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID: 1,
+		From:      from2,
+		To:        &to2,
+	})
+	if err != nil {
+		t.Fatalf("adjacent contract should succeed, got: %v", err)
+	}
+}
+
+// Overlapping on single day (inclusive boundaries) should fail
+func TestChildService_CreateContract_OverlapOnSameDay(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := createTestChild(t, db, "John", "Doe", org.ID)
+
+	// Contract 1: Jan 1 - Jan 31
+	from1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to1 := time.Date(2024, 1, 31, 0, 0, 0, 0, time.UTC)
+	_, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID: 1,
+		From:      from1,
+		To:        &to1,
+	})
+	if err != nil {
+		t.Fatalf("first contract: %v", err)
+	}
+
+	// Contract 2 starts on Jan 31 (same day as contract 1 ends — should fail, dates are inclusive)
+	from2 := time.Date(2024, 1, 31, 0, 0, 0, 0, time.UTC)
+	to2 := time.Date(2024, 2, 28, 0, 0, 0, 0, time.UTC)
+	_, err = svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID: 1,
+		From:      from2,
+		To:        &to2,
+	})
+	if err == nil {
+		t.Fatal("expected overlap error for same-day boundary, got nil")
+	}
+	if !errors.Is(err, apperror.ErrConflict) {
+		t.Errorf("expected ErrConflict, got %v", err)
+	}
+}
+
+// Create contract in gap between two existing contracts
+func TestChildService_CreateContract_InGap(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := createTestChild(t, db, "John", "Doe", org.ID)
+
+	// Contract 1: Jan 1 - Mar 31
+	from1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to1 := time.Date(2024, 3, 31, 0, 0, 0, 0, time.UTC)
+	_, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID: 1,
+		From:      from1,
+		To:        &to1,
+	})
+	if err != nil {
+		t.Fatalf("first contract: %v", err)
+	}
+
+	// Contract 2: Jul 1 - Dec 31
+	from2 := time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC)
+	to2 := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	_, err = svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID: 1,
+		From:      from2,
+		To:        &to2,
+	})
+	if err != nil {
+		t.Fatalf("second contract: %v", err)
+	}
+
+	// Contract 3: Apr 1 - Jun 30 (fills the gap — should succeed)
+	from3 := time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC)
+	to3 := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
+	_, err = svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID: 1,
+		From:      from3,
+		To:        &to3,
+	})
+	if err != nil {
+		t.Fatalf("gap contract should succeed, got: %v", err)
+	}
+}
+
+// =========================================
+// Edge Case Tests: Delete
+// =========================================
+
+// Delete non-existent contract returns not found
+func TestChildService_DeleteContract_NotFound(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := createTestChild(t, db, "John", "Doe", org.ID)
+
+	err := svc.DeleteContract(ctx, 99999, child.ID, org.ID)
+	if err == nil {
+		t.Fatal("expected error for non-existent contract, got nil")
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
+// Delete contract belonging to different child
+func TestChildService_DeleteContract_WrongChild(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	child1 := createTestChild(t, db, "John", "Doe", org.ID)
+	child2 := createTestChild(t, db, "Jane", "Doe", org.ID)
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	contract, err := svc.CreateContract(ctx, child1.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID: 1,
+		From:      from,
+	})
+	if err != nil {
+		t.Fatalf("failed to create contract: %v", err)
+	}
+
+	// Try to delete via wrong child
+	err = svc.DeleteContract(ctx, contract.ID, child2.ID, org.ID)
+	if err == nil {
+		t.Fatal("expected error when deleting via wrong child, got nil")
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+
+	// Verify contract still exists
+	contracts, _, _ := svc.ListContracts(ctx, child1.ID, org.ID, 100, 0)
+	if len(contracts) != 1 {
+		t.Error("contract should still exist")
+	}
+}
+
+// Same-day contract (From == To) can be created and deleted
+func TestChildService_CreateContract_SameDay(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := createTestChild(t, db, "John", "Doe", org.ID)
+
+	date := time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC)
+	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID: 1,
+		From:      date,
+		To:        &date,
+	})
+	if err != nil {
+		t.Fatalf("same-day contract should succeed, got: %v", err)
+	}
+	if !contract.From.Equal(date) {
+		t.Errorf("From = %v, want %v", contract.From, date)
+	}
+	if contract.To == nil || !contract.To.Equal(date) {
+		t.Errorf("To = %v, want %v", contract.To, date)
+	}
+}

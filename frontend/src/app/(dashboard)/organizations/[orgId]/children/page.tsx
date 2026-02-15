@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -17,22 +17,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { useToast } from '@/lib/hooks/use-toast';
 import { apiClient, getErrorMessage } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
@@ -40,15 +25,10 @@ import type {
   Child,
   Gender,
   ChildContractCreateRequest,
-  ChildContractUpdateRequest,
   ChildFundingResponse,
   ContractProperties,
 } from '@/lib/api/types';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Checkbox } from '@/components/ui/checkbox';
-import { PropertyTagInput } from '@/components/ui/tag-input';
-import { useFundingAttributes } from '@/lib/hooks/use-funding-attributes';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   formatDate,
@@ -59,24 +39,17 @@ import {
   formatFte,
   propertiesToValues,
 } from '@/lib/utils/formatting';
-import {
-  getActiveContract,
-  getCurrentContract,
-  getDayBefore,
-  getContractStatus,
-  isDateBefore,
-} from '@/lib/utils/contracts';
-import { calculateContractEndDate } from '@/lib/utils/school-enrollment';
+import { getActiveContract, getCurrentContract, getContractStatus } from '@/lib/utils/contracts';
 import { Pagination } from '@/components/ui/pagination';
 import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
 import { DeleteConfirmDialog } from '@/components/crud/delete-confirm-dialog';
 import { QueryError } from '@/components/crud/query-error';
 import { PersonFormDialog } from '@/components/crud/person-form-dialog';
+import { ChildCreateDialog } from '@/components/children/child-create-dialog';
+import { ChildContractCreateDialog } from '@/components/children/child-contract-create-dialog';
 import { useUiStore } from '@/stores/ui-store';
 import {
   childSchema,
-  childContractSchema,
-  childWithContractSchema,
   type ChildFormData,
   type ChildContractFormData,
   type ChildWithContractFormData,
@@ -96,7 +69,6 @@ export default function ChildrenPage() {
   const [editingChild, setEditingChild] = useState<Child | null>(null);
   const [deletingChild, setDeletingChild] = useState<Child | null>(null);
   const [contractChild, setContractChild] = useState<Child | null>(null);
-  const [endCurrentContract, setEndCurrentContract] = useState(true);
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
   const search = useDebouncedValue(searchInput, 300);
@@ -134,6 +106,8 @@ export default function ChildrenPage() {
     enabled: !!orgId,
   });
 
+  const sections = sectionsData?.data ?? [];
+
   // Get org state for school enrollment date calculation
   const orgState = useUiStore((state) => state.organizations.find((o) => o.id === orgId)?.state);
 
@@ -157,7 +131,6 @@ export default function ChildrenPage() {
       queryClient.invalidateQueries({ queryKey: queryKeys.children.all(orgId) });
       toast({ title: t('children.createSuccess') });
       setIsChildDialogOpen(false);
-      resetCreate();
     },
     onError: (error) => {
       toast({
@@ -204,46 +177,25 @@ export default function ChildrenPage() {
     },
   });
 
-  const updateContractMutation = useMutation({
-    mutationFn: ({
-      childId,
-      contractId,
-      data,
-    }: {
-      childId: number;
-      contractId: number;
-      data: ChildContractUpdateRequest;
-    }) => apiClient.updateChildContract(orgId, childId, contractId, data),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.children.all(orgId) });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.children.contracts(orgId, variables.childId),
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: t('common.error'),
-        description: getErrorMessage(error, t('common.failedToSave', { resource: 'contract' })),
-        variant: 'destructive',
-      });
-    },
-  });
-
   const createContractMutation = useMutation({
     mutationFn: async ({
       childId,
       data,
+      endCurrentContract,
     }: {
       childId: number;
       data: ChildContractCreateRequest;
+      endCurrentContract: boolean;
     }) => {
-      // If we need to end the current contract first
+      // When ending current contract, use UPDATE (amend semantics) instead of two separate calls.
+      // The backend atomically closes the old contract and creates a new one.
       if (contractChild && endCurrentContract) {
         const active = getActiveContract(contractChild.contracts);
-        if (active && data.from) {
-          const endDate = getDayBefore(data.from);
-          await apiClient.updateChildContract(orgId, childId, active.id, {
-            to: formatDateForApi(endDate),
+        if (active) {
+          return apiClient.updateChildContract(orgId, childId, active.id, {
+            section_id: data.section_id,
+            properties: data.properties,
+            to: data.to,
           });
         }
       }
@@ -255,14 +207,12 @@ export default function ChildrenPage() {
         queryKey: queryKeys.children.contracts(orgId, variables.childId),
       });
       toast({
-        title: endCurrentContract
+        title: variables.endCurrentContract
           ? t('contracts.previousContractEnded')
           : t('contracts.createSuccess'),
       });
       setIsContractDialogOpen(false);
       setContractChild(null);
-      setEndCurrentContract(true);
-      resetContract();
     },
     onError: (error) => {
       toast({
@@ -290,93 +240,10 @@ export default function ChildrenPage() {
     },
   });
 
-  const {
-    register: registerContract,
-    handleSubmit: handleSubmitContract,
-    reset: resetContract,
-    watch: watchContract,
-    setValue: setValueContract,
-    control: controlContract,
-    formState: { errors: errorsContract },
-  } = useForm<ChildContractFormData>({
-    resolver: zodResolver(childContractSchema),
-    defaultValues: {
-      from: '',
-      to: '',
-      section_id: 0,
-      properties: undefined,
-    },
-  });
-
-  // Combined child + contract form (for creating new children)
-  const {
-    register: registerCreate,
-    handleSubmit: handleSubmitCreate,
-    reset: resetCreate,
-    setValue: setValueCreate,
-    watch: watchCreate,
-    control: controlCreate,
-    formState: { errors: errorsCreate },
-  } = useForm<ChildWithContractFormData>({
-    resolver: zodResolver(childWithContractSchema),
-    defaultValues: {
-      first_name: '',
-      last_name: '',
-      gender: 'male',
-      birthdate: '',
-      contract_from: '',
-      contract_to: '',
-      section_id: 0,
-      properties: undefined,
-    },
-  });
-
-  const createBirthdate = watchCreate('birthdate');
-  const createContractFrom = watchCreate('contract_from');
-  const createContractTo = watchCreate('contract_to');
-
-  // Auto-fill contract end date based on birthdate + org state
-  useEffect(() => {
-    if (createBirthdate && orgState) {
-      const suggestedEnd = calculateContractEndDate(createBirthdate, orgState);
-      if (suggestedEnd) {
-        setValueCreate('contract_to', suggestedEnd);
-      }
-    }
-  }, [createBirthdate, orgState, setValueCreate]);
-
-  // Funding attributes for the create dialog
-  const { fundingAttributes: createFundingAttributes, attributesByKey: createAttributesByKey } =
-    useFundingAttributes(orgId, createContractFrom, createContractTo);
-
-  const contractFromDate = watchContract('from');
-  const contractToDate = watchContract('to');
-
-  // Get funding attributes from government funding (for the add-contract dialog)
-  const { fundingAttributes, attributesByKey } = useFundingAttributes(
-    orgId,
-    contractFromDate,
-    contractToDate
-  );
-
-  // Calculate end date preview based on contract from date
-  const activeContract = contractChild ? getActiveContract(contractChild.contracts) : null;
-  const endDatePreview = contractFromDate ? getDayBefore(contractFromDate) : null;
-
   const handleCreateChild = useCallback(() => {
     setEditingChild(null);
-    resetCreate({
-      first_name: '',
-      last_name: '',
-      gender: 'male',
-      birthdate: '',
-      contract_from: '',
-      contract_to: '',
-      section_id: 0,
-      properties: undefined,
-    });
     setIsChildDialogOpen(true);
-  }, [resetCreate]);
+  }, []);
 
   const handleEditChild = useCallback(
     (child: Child) => {
@@ -397,37 +264,10 @@ export default function ChildrenPage() {
     setIsDeleteDialogOpen(true);
   }, []);
 
-  const handleAddContract = useCallback(
-    (child: Child) => {
-      setContractChild(child);
-      setEndCurrentContract(true);
-
-      // Auto-fill end date based on birthdate + org state
-      const birthdate = formatDateForInput(child.birthdate);
-      const suggestedTo =
-        birthdate && orgState ? calculateContractEndDate(birthdate, orgState) || '' : '';
-
-      // Prefill from active contract if exists
-      const active = getActiveContract(child.contracts);
-      if (active) {
-        // Suggest start date as tomorrow
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowStr = tomorrow.toISOString().split('T')[0];
-
-        resetContract({
-          from: tomorrowStr,
-          to: suggestedTo,
-          section_id: active.section_id,
-          properties: active.properties as Record<string, string> | undefined,
-        });
-      } else {
-        resetContract({ from: '', to: suggestedTo, section_id: 0, properties: undefined });
-      }
-      setIsContractDialogOpen(true);
-    },
-    [resetContract, orgState]
-  );
+  const handleAddContract = useCallback((child: Child) => {
+    setContractChild(child);
+    setIsContractDialogOpen(true);
+  }, []);
 
   const handleViewContractHistory = useCallback(
     (child: Child) => {
@@ -452,60 +292,20 @@ export default function ChildrenPage() {
     [createWithContractMutation]
   );
 
-  // Helper to check if properties have changed
-  const propertiesChanged = (
-    newProps: ContractProperties | undefined,
-    oldProps: ContractProperties | undefined
-  ): boolean => {
-    const newKeys = Object.keys(newProps || {}).sort();
-    const oldKeys = Object.keys(oldProps || {}).sort();
-    if (newKeys.length !== oldKeys.length) return true;
-    if (newKeys.some((key, i) => key !== oldKeys[i])) return true;
-    return newKeys.some((key) => (newProps || {})[key] !== (oldProps || {})[key]);
-  };
-
   const onSubmitContract = useCallback(
-    (data: ChildContractFormData) => {
-      if (contractChild) {
-        // Validate contract start date is not before birthdate
-        const childBirthdate = formatDateForInput(contractChild.birthdate);
-        if (childBirthdate && data.from && isDateBefore(data.from, childBirthdate)) {
-          toast({
-            title: t('common.error'),
-            description: t('validation.contractBeforeBirthdate'),
-            variant: 'destructive',
-          });
-          return;
-        }
-
-        // If there's an active contract and we're ending it, check if something actually changed
-        if (activeContract && endCurrentContract) {
-          const hasChanges = propertiesChanged(
-            data.properties,
-            activeContract.properties as ContractProperties | undefined
-          );
-          if (!hasChanges) {
-            toast({
-              title: t('contracts.noChangesDetected'),
-              description: t('contracts.noChangesDescription'),
-              variant: 'destructive',
-            });
-            return;
-          }
-        }
-
-        createContractMutation.mutate({
-          childId: contractChild.id,
-          data: {
-            from: formatDateForApi(data.from) || data.from,
-            to: formatDateForApi(data.to),
-            section_id: data.section_id,
-            properties: data.properties,
-          },
-        });
-      }
+    (data: ChildContractFormData, child: Child, endCurrentContract: boolean) => {
+      createContractMutation.mutate({
+        childId: child.id,
+        data: {
+          from: formatDateForApi(data.from) || data.from,
+          to: formatDateForApi(data.to),
+          section_id: data.section_id,
+          properties: data.properties,
+        },
+        endCurrentContract,
+      });
     },
-    [contractChild, activeContract, endCurrentContract, createContractMutation, toast, t]
+    [createContractMutation]
   );
 
   return (
@@ -731,266 +531,29 @@ export default function ChildrenPage() {
       )}
 
       {/* Child Create Dialog (with initial contract) */}
-      <Dialog open={isChildDialogOpen && !editingChild} onOpenChange={setIsChildDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{t('children.create')}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmitCreate(onSubmitCreate)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="create_first_name">{t('children.firstName')}</Label>
-                <Input id="create_first_name" {...registerCreate('first_name')} />
-                {errorsCreate.first_name && (
-                  <p className="text-sm text-destructive">{t('validation.firstNameRequired')}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="create_last_name">{t('children.lastName')}</Label>
-                <Input id="create_last_name" {...registerCreate('last_name')} />
-                {errorsCreate.last_name && (
-                  <p className="text-sm text-destructive">{t('validation.lastNameRequired')}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="create_gender">{t('gender.label')}</Label>
-              <Select
-                value={watchCreate('gender')}
-                onValueChange={(value: Gender) => setValueCreate('gender', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t('gender.selectGender')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="male">{t('gender.male')}</SelectItem>
-                  <SelectItem value="female">{t('gender.female')}</SelectItem>
-                  <SelectItem value="diverse">{t('gender.diverse')}</SelectItem>
-                </SelectContent>
-              </Select>
-              {errorsCreate.gender && (
-                <p className="text-sm text-destructive">{t('validation.genderRequired')}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="create_birthdate">{t('children.birthdate')}</Label>
-              <Input id="create_birthdate" type="date" {...registerCreate('birthdate')} />
-              {errorsCreate.birthdate && (
-                <p className="text-sm text-destructive">{t('validation.birthdateRequired')}</p>
-              )}
-            </div>
-
-            <div className="border-t pt-4">
-              <h4 className="mb-3 text-sm font-medium">{t('children.initialContract')}</h4>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="create_contract_from">{t('contracts.startDate')}</Label>
-                  <Input
-                    id="create_contract_from"
-                    type="date"
-                    {...registerCreate('contract_from')}
-                  />
-                  {errorsCreate.contract_from && (
-                    <p className="text-sm text-destructive">
-                      {errorsCreate.contract_from.type === 'custom'
-                        ? t('validation.contractBeforeBirthdate')
-                        : t('contracts.startDateRequired')}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="create_contract_to">{t('contracts.endDateOptional')}</Label>
-                  <Input id="create_contract_to" type="date" {...registerCreate('contract_to')} />
-                  {createBirthdate && orgState && (
-                    <p className="text-xs text-muted-foreground">{t('children.contractEndHint')}</p>
-                  )}
-                </div>
-              </div>
-
-              {sectionsData && sectionsData.data.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  <Label htmlFor="create_section">{t('sections.title')} *</Label>
-                  <Select
-                    value={watchCreate('section_id')?.toString() || ''}
-                    onValueChange={(value) =>
-                      setValueCreate('section_id', value ? Number(value) : 0)
-                    }
-                  >
-                    <SelectTrigger id="create_section">
-                      <SelectValue placeholder={t('sections.selectSection')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sectionsData.data.map((section) => (
-                        <SelectItem key={section.id} value={section.id.toString()}>
-                          {section.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errorsCreate.section_id && (
-                    <p className="text-sm text-destructive">{t('validation.sectionRequired')}</p>
-                  )}
-                </div>
-              )}
-
-              <div className="mt-4 space-y-2">
-                <Label htmlFor="create_properties">{t('contracts.propertiesLabel')}</Label>
-                <Controller
-                  name="properties"
-                  control={controlCreate}
-                  render={({ field }) => (
-                    <PropertyTagInput
-                      id="create_properties"
-                      value={field.value}
-                      onChange={field.onChange}
-                      fundingAttributes={createFundingAttributes}
-                      attributesByKey={createAttributesByKey}
-                      placeholder={t('contracts.propertiesPlaceholder')}
-                      suggestionsLabel={t('contracts.suggestedProperties')}
-                    />
-                  )}
-                />
-                <p className="text-xs text-muted-foreground">{t('contracts.propertiesHelp')}</p>
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsChildDialogOpen(false)}>
-                {t('common.cancel')}
-              </Button>
-              <Button type="submit" disabled={createWithContractMutation.isPending}>
-                {t('common.save')}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {!editingChild && (
+        <ChildCreateDialog
+          open={isChildDialogOpen}
+          onOpenChange={setIsChildDialogOpen}
+          orgId={orgId}
+          orgState={orgState}
+          sections={sections}
+          isSaving={createWithContractMutation.isPending}
+          onSubmit={onSubmitCreate}
+        />
+      )}
 
       {/* Contract Create Dialog */}
-      <Dialog open={isContractDialogOpen} onOpenChange={setIsContractDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>
-              {t('contracts.newContractFor', {
-                name: contractChild ? `${contractChild.first_name} ${contractChild.last_name}` : '',
-              })}
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmitContract(onSubmitContract)} className="space-y-4">
-            {/* Show active contract info if exists */}
-            {activeContract && (
-              <Alert>
-                <AlertDescription className="space-y-3">
-                  <p className="font-medium">{t('contracts.hasActiveContract')}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {t('contracts.activeSince', {
-                      date: formatDate(activeContract.from),
-                      attrs:
-                        propertiesToValues(activeContract.properties as ContractProperties).join(
-                          ', '
-                        ) || t('contracts.noAttributes'),
-                    })}
-                  </p>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="endCurrentContract"
-                      checked={endCurrentContract}
-                      onCheckedChange={(checked) => setEndCurrentContract(checked === true)}
-                    />
-                    <label
-                      htmlFor="endCurrentContract"
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      {endDatePreview
-                        ? t('contracts.endCurrentContract', { date: formatDate(endDatePreview) })
-                        : t('contracts.endCurrentContract', { date: '...' })}
-                    </label>
-                  </div>
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="from">{t('contracts.startDate')}</Label>
-                <Input id="from" type="date" {...registerContract('from')} />
-                {errorsContract.from && (
-                  <p className="text-sm text-destructive">{t('contracts.startDateRequired')}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="to">{t('contracts.endDateOptional')}</Label>
-                <Input id="to" type="date" {...registerContract('to')} />
-                {contractChild && orgState && (
-                  <p className="text-xs text-muted-foreground">{t('children.contractEndHint')}</p>
-                )}
-              </div>
-            </div>
-
-            {sectionsData && sectionsData.data.length > 0 && (
-              <div className="space-y-2">
-                <Label htmlFor="contract_section">{t('sections.title')} *</Label>
-                <Select
-                  value={watchContract('section_id')?.toString() || ''}
-                  onValueChange={(value) =>
-                    setValueContract('section_id', value ? Number(value) : 0)
-                  }
-                >
-                  <SelectTrigger id="contract_section">
-                    <SelectValue placeholder={t('sections.selectSection')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sectionsData.data.map((section) => (
-                      <SelectItem key={section.id} value={section.id.toString()}>
-                        {section.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errorsContract.section_id && (
-                  <p className="text-sm text-destructive">{t('validation.sectionRequired')}</p>
-                )}
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="properties">{t('contracts.propertiesLabel')}</Label>
-              <Controller
-                name="properties"
-                control={controlContract}
-                render={({ field }) => (
-                  <PropertyTagInput
-                    id="properties"
-                    value={field.value}
-                    onChange={field.onChange}
-                    fundingAttributes={fundingAttributes}
-                    attributesByKey={attributesByKey}
-                    placeholder={t('contracts.propertiesPlaceholder')}
-                    suggestionsLabel={t('contracts.suggestedProperties')}
-                  />
-                )}
-              />
-              <p className="text-xs text-muted-foreground">{t('contracts.propertiesHelp')}</p>
-            </div>
-
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsContractDialogOpen(false)}
-              >
-                {t('common.cancel')}
-              </Button>
-              <Button type="submit" disabled={createContractMutation.isPending}>
-                {t('common.save')}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <ChildContractCreateDialog
+        open={isContractDialogOpen}
+        onOpenChange={setIsContractDialogOpen}
+        orgId={orgId}
+        orgState={orgState}
+        child={contractChild}
+        sections={sections}
+        isSaving={createContractMutation.isPending}
+        onSubmit={onSubmitContract}
+      />
 
       {/* Delete Confirmation Dialog */}
       <DeleteConfirmDialog

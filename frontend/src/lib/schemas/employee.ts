@@ -16,7 +16,7 @@ export const employeeContractSchema = z
     payplan_id: z.number().min(1),
     staff_category: z.enum(['qualified', 'supplementary', 'non_pedagogical']),
     grade: z.string().min(1).max(20),
-    step: z.number().min(0).max(10),
+    step: z.number().min(1).max(10),
     weekly_hours: z.number().min(0).max(168),
   })
   .refine((data) => !data.to || !isDateBefore(data.to, data.from), {
