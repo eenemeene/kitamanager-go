@@ -119,7 +119,8 @@
     "kitaYear": "Kitajahr {year}",
     "staffingBalance": "Personalabgleich",
     "balancePercentage": "Abgleich",
-    "sectionStaffing": "Personal nach Bereich (Heute)"
+    "sectionStaffing": "Personal nach Bereich (Heute)",
+    "contractProperties": "Vertragseigenschaften (Heute)"
   },
   "months": {
     "jan": "Jan",

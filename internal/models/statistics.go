@@ -36,3 +36,17 @@ type FinancialDataPoint struct {
 type FinancialResponse struct {
 	DataPoints []FinancialDataPoint `json:"data_points"`
 }
+
+// ContractPropertyCount represents the count of a specific property key-value pair across children
+type ContractPropertyCount struct {
+	Key   string `json:"key" example:"care_type"`
+	Value string `json:"value" example:"ganztag"`
+	Count int    `json:"count" example:"20"`
+}
+
+// ContractPropertiesDistributionResponse represents the distribution of contract properties
+type ContractPropertiesDistributionResponse struct {
+	Date          string                  `json:"date" example:"2026-02-15"`
+	TotalChildren int                     `json:"total_children" example:"45"`
+	Properties    []ContractPropertyCount `json:"properties"`
+}

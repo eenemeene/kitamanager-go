@@ -424,6 +424,40 @@ func (h *ChildHandler) GetAgeDistribution(c *gin.Context) {
 	c.JSON(http.StatusOK, stats)
 }
 
+// GetContractPropertiesDistribution godoc
+// @Summary Get children contract properties distribution
+// @Description Get the distribution of contract properties for children with active contracts on the specified date
+// @Tags children
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Param date query string false "Date for calculation (YYYY-MM-DD format, defaults to today)"
+// @Success 200 {object} models.ContractPropertiesDistributionResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/organizations/{orgId}/children/statistics/contract-properties [get]
+func (h *ChildHandler) GetContractPropertiesDistribution(c *gin.Context) {
+	orgID, ok := parseOrgID(c)
+	if !ok {
+		return
+	}
+
+	date, ok := parseOptionalDate(c, "date")
+	if !ok {
+		return
+	}
+
+	stats, err := h.service.GetContractPropertiesDistribution(c.Request.Context(), orgID, date)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, stats)
+}
+
 // GetContractCountByMonth godoc
 // @Summary Get children contract count by month
 // @Description Get children contract counts per month for the specified year range

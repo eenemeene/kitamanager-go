@@ -40,6 +40,14 @@ const SectionStaffingChart = dynamic(
   { ssr: false, loading: () => <Skeleton className="h-[300px] w-full" /> }
 );
 
+const ContractPropertiesChart = dynamic(
+  () =>
+    import('@/components/charts/contract-properties-chart').then(
+      (mod) => mod.ContractPropertiesChart
+    ),
+  { ssr: false, loading: () => <Skeleton className="h-[300px] w-full" /> }
+);
+
 export default function StatisticsPage() {
   const params = useParams();
   const orgId = Number(params.orgId);
@@ -55,6 +63,12 @@ export default function StatisticsPage() {
   const { data: contractCounts, isLoading: isLoadingContracts } = useQuery({
     queryKey: queryKeys.statistics.contractCounts(orgId),
     queryFn: () => apiClient.getChildrenContractCountByMonth(orgId),
+    enabled: !!orgId,
+  });
+
+  const { data: contractProperties, isLoading: isLoadingContractProperties } = useQuery({
+    queryKey: queryKeys.statistics.contractProperties(orgId),
+    queryFn: () => apiClient.getContractPropertiesDistribution(orgId),
     enabled: !!orgId,
   });
 
@@ -141,6 +155,22 @@ export default function StatisticsPage() {
               <Skeleton className="h-[300px] w-full" />
             ) : contractCounts ? (
               <MonthlyContractChart data={contractCounts} />
+            ) : (
+              <p className="text-muted-foreground">{t('statistics.chartError')}</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Contract Properties Distribution */}
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('statistics.contractProperties')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoadingContractProperties ? (
+              <Skeleton className="h-[300px] w-full" />
+            ) : contractProperties ? (
+              <ContractPropertiesChart data={contractProperties} />
             ) : (
               <p className="text-muted-foreground">{t('statistics.chartError')}</p>
             )}

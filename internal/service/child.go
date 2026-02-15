@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"sort"
 	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
@@ -704,6 +705,70 @@ func (s *ChildService) GetAgeDistribution(ctx context.Context, orgID uint, date 
 		Date:         date.Format(models.DateFormat),
 		TotalCount:   totalCount,
 		Distribution: buckets,
+	}, nil
+}
+
+// GetContractPropertiesDistribution returns the distribution of contract properties
+// for children with active contracts on the given date
+func (s *ChildService) GetContractPropertiesDistribution(ctx context.Context, orgID uint, date time.Time) (*models.ContractPropertiesDistributionResponse, error) {
+	// Get children with active contracts on this date
+	children, err := s.store.FindByOrganizationWithActiveOn(ctx, orgID, date)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "failed to fetch children")
+	}
+
+	// Aggregate: key -> value -> count
+	distribution := make(map[string]map[string]int)
+	totalChildren := len(children)
+
+	for _, child := range children {
+		if len(child.Contracts) == 0 {
+			continue
+		}
+		for _, contract := range child.Contracts {
+			if contract.Properties == nil {
+				continue
+			}
+			for key := range contract.Properties {
+				values := contract.Properties.GetAllValues(key)
+				for _, value := range values {
+					if distribution[key] == nil {
+						distribution[key] = make(map[string]int)
+					}
+					distribution[key][value]++
+				}
+			}
+		}
+	}
+
+	// Flatten to sorted slice
+	properties := make([]models.ContractPropertyCount, 0)
+	// Collect and sort keys
+	keys := make([]string, 0, len(distribution))
+	for key := range distribution {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		values := make([]string, 0, len(distribution[key]))
+		for value := range distribution[key] {
+			values = append(values, value)
+		}
+		sort.Strings(values)
+		for _, value := range values {
+			properties = append(properties, models.ContractPropertyCount{
+				Key:   key,
+				Value: value,
+				Count: distribution[key][value],
+			})
+		}
+	}
+
+	return &models.ContractPropertiesDistributionResponse{
+		Date:          date.Format(models.DateFormat),
+		TotalChildren: totalChildren,
+		Properties:    properties,
 	}, nil
 }
 

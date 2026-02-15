@@ -26,6 +26,7 @@ import type {
   ChildrenFundingResponse,
   ChildrenContractCountByMonthResponse,
   AgeDistributionResponse,
+  ContractPropertiesDistributionResponse,
   Role,
   UserGroupResponse,
   UserMembershipsResponse,
@@ -494,6 +495,18 @@ class ApiClient {
     const params = date ? { date } : {};
     const response = await this.client.get<AgeDistributionResponse>(
       `/organizations/${orgId}/children/statistics/age-distribution`,
+      { params }
+    );
+    return response.data;
+  }
+
+  async getContractPropertiesDistribution(
+    orgId: number,
+    date?: string
+  ): Promise<ContractPropertiesDistributionResponse> {
+    const params = date ? { date } : {};
+    const response = await this.client.get<ContractPropertiesDistributionResponse>(
+      `/organizations/${orgId}/children/statistics/contract-properties`,
       { params }
     );
     return response.data;

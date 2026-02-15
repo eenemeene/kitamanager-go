@@ -596,3 +596,16 @@ export interface StaffingHoursDataPoint {
 export interface StaffingHoursResponse {
   data_points: StaffingHoursDataPoint[];
 }
+
+// Contract properties distribution
+export interface ContractPropertyCount {
+  key: string;
+  value: string;
+  count: number;
+}
+
+export interface ContractPropertiesDistributionResponse {
+  date: string;
+  total_children: number;
+  properties: ContractPropertyCount[];
+}

@@ -2972,3 +2972,260 @@ func TestChildHandler_GetFunding_InvalidDate(t *testing.T) {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
 	}
 }
+
+// =============================================================================
+// Contract Properties Distribution Tests
+// =============================================================================
+
+func TestChildHandler_GetContractPropertiesDistribution(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService, createAuditService(db))
+
+	org := createTestOrganization(t, db, "Test Org")
+	sectionID := ensureTestSection(t, db, org.ID)
+	refDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
+
+	// Child 1: care_type=ganztag, supplements=["ndh","mss"]
+	child1 := &models.Child{
+		Person: models.Person{
+			OrganizationID: org.ID, FirstName: "Child1", LastName: "Test",
+			Gender: "female", Birthdate: time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC),
+		},
+	}
+	db.Create(child1)
+	db.Create(&models.ChildContract{
+		ChildID: child1.ID,
+		BaseContract: models.BaseContract{
+			SectionID:  sectionID,
+			Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+			Properties: models.ContractProperties{"care_type": "ganztag", "supplements": []string{"ndh", "mss"}},
+		},
+	})
+
+	// Child 2: care_type=halbtag
+	child2 := &models.Child{
+		Person: models.Person{
+			OrganizationID: org.ID, FirstName: "Child2", LastName: "Test",
+			Gender: "male", Birthdate: time.Date(2021, 6, 1, 0, 0, 0, 0, time.UTC),
+		},
+	}
+	db.Create(child2)
+	db.Create(&models.ChildContract{
+		ChildID: child2.ID,
+		BaseContract: models.BaseContract{
+			SectionID:  sectionID,
+			Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+			Properties: models.ContractProperties{"care_type": "halbtag"},
+		},
+	})
+
+	// Child 3: care_type=ganztag, supplements=["ndh"]
+	child3 := &models.Child{
+		Person: models.Person{
+			OrganizationID: org.ID, FirstName: "Child3", LastName: "Test",
+			Gender: "female", Birthdate: time.Date(2023, 3, 1, 0, 0, 0, 0, time.UTC),
+		},
+	}
+	db.Create(child3)
+	db.Create(&models.ChildContract{
+		ChildID: child3.ID,
+		BaseContract: models.BaseContract{
+			SectionID:  sectionID,
+			Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+			Properties: models.ContractProperties{"care_type": "ganztag", "supplements": []string{"ndh"}},
+		},
+	})
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/children/statistics/contract-properties", handler.GetContractPropertiesDistribution)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/statistics/contract-properties?date=%s", org.ID, refDate.Format("2006-01-02")), nil)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var response models.ContractPropertiesDistributionResponse
+	parseResponse(t, w, &response)
+
+	if response.TotalChildren != 3 {
+		t.Errorf("expected total_children 3, got %d", response.TotalChildren)
+	}
+
+	if response.Date != "2025-06-15" {
+		t.Errorf("expected date '2025-06-15', got '%s'", response.Date)
+	}
+
+	// Expected properties (sorted by key, then value):
+	// care_type/ganztag: 2, care_type/halbtag: 1, supplements/mss: 1, supplements/ndh: 2
+	expected := map[string]int{
+		"care_type:ganztag": 2,
+		"care_type:halbtag": 1,
+		"supplements:mss":   1,
+		"supplements:ndh":   2,
+	}
+	if len(response.Properties) != len(expected) {
+		t.Errorf("expected %d property entries, got %d", len(expected), len(response.Properties))
+	}
+	for _, p := range response.Properties {
+		key := p.Key + ":" + p.Value
+		if expected[key] != p.Count {
+			t.Errorf("property %s: expected count %d, got %d", key, expected[key], p.Count)
+		}
+	}
+}
+
+func TestChildHandler_GetContractPropertiesDistribution_DefaultDate(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService, createAuditService(db))
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/children/statistics/contract-properties", handler.GetContractPropertiesDistribution)
+
+	// No date parameter - should default to today
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/statistics/contract-properties", org.ID), nil)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var response models.ContractPropertiesDistributionResponse
+	parseResponse(t, w, &response)
+
+	if response.Date == "" {
+		t.Error("expected date to be set to today")
+	}
+}
+
+func TestChildHandler_GetContractPropertiesDistribution_CustomDate(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService, createAuditService(db))
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/children/statistics/contract-properties", handler.GetContractPropertiesDistribution)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/statistics/contract-properties?date=2025-06-15", org.ID), nil)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var response models.ContractPropertiesDistributionResponse
+	parseResponse(t, w, &response)
+
+	if response.Date != "2025-06-15" {
+		t.Errorf("expected date '2025-06-15', got '%s'", response.Date)
+	}
+}
+
+func TestChildHandler_GetContractPropertiesDistribution_InvalidDate(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService, createAuditService(db))
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/children/statistics/contract-properties", handler.GetContractPropertiesDistribution)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/statistics/contract-properties?date=not-a-date", org.ID), nil)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for invalid date, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestChildHandler_GetContractPropertiesDistribution_InvalidOrgId(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService, createAuditService(db))
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/children/statistics/contract-properties", handler.GetContractPropertiesDistribution)
+
+	w := performRequest(r, "GET", "/organizations/abc/children/statistics/contract-properties", nil)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for invalid org ID, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestChildHandler_GetContractPropertiesDistribution_NoChildren(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService, createAuditService(db))
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/children/statistics/contract-properties", handler.GetContractPropertiesDistribution)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/statistics/contract-properties?date=2025-06-15", org.ID), nil)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var response models.ContractPropertiesDistributionResponse
+	parseResponse(t, w, &response)
+
+	if response.TotalChildren != 0 {
+		t.Errorf("expected total_children 0, got %d", response.TotalChildren)
+	}
+
+	if len(response.Properties) != 0 {
+		t.Errorf("expected 0 properties, got %d", len(response.Properties))
+	}
+}
+
+// SECURITY TEST: Cross-organization isolation
+func TestChildHandler_GetContractPropertiesDistribution_WrongOrg(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService, createAuditService(db))
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	sectionID := ensureTestSection(t, db, org1.ID)
+	org2 := createTestOrganization(t, db, "Org 2")
+
+	// Create child in org1
+	child := &models.Child{
+		Person: models.Person{
+			OrganizationID: org1.ID, FirstName: "Test", LastName: "Child",
+			Gender: "female", Birthdate: time.Date(2022, 1, 28, 0, 0, 0, 0, time.UTC),
+		},
+	}
+	db.Create(child)
+	db.Create(&models.ChildContract{
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			SectionID:  sectionID,
+			Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+			Properties: models.ContractProperties{"care_type": "ganztag"},
+		},
+	})
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/children/statistics/contract-properties", handler.GetContractPropertiesDistribution)
+
+	// Query org2 - should not see org1's children
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/statistics/contract-properties?date=2025-01-28", org2.ID), nil)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var response models.ContractPropertiesDistributionResponse
+	parseResponse(t, w, &response)
+
+	if response.TotalChildren != 0 {
+		t.Errorf("SECURITY: expected total_children 0 for org2 (child in org1), got %d", response.TotalChildren)
+	}
+}

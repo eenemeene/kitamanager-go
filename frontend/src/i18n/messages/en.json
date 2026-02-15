@@ -119,7 +119,8 @@
     "kitaYear": "Kita Year {year}",
     "staffingBalance": "Staffing Balance",
     "balancePercentage": "Balance",
-    "sectionStaffing": "Staffing by Section (Today)"
+    "sectionStaffing": "Staffing by Section (Today)",
+    "contractProperties": "Contract Properties (Today)"
   },
   "months": {
     "jan": "Jan",

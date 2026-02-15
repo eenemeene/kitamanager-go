@@ -1818,6 +1818,67 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/organizations/{orgId}/children/statistics/contract-properties": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get the distribution of contract properties for children with active contracts on the specified date",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "children"
+                ],
+                "summary": "Get children contract properties distribution",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Date for calculation (YYYY-MM-DD format, defaults to today)",
+                        "name": "date",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractPropertiesDistributionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/organizations/{orgId}/children/{id}": {
             "get": {
                 "security": [
@@ -8001,6 +8062,42 @@ const docTemplate = `{
         "github_com_eenemeene_kitamanager-go_internal_models.ContractProperties": {
             "type": "object",
             "additionalProperties": true
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ContractPropertiesDistributionResponse": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string",
+                    "example": "2026-02-15"
+                },
+                "properties": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractPropertyCount"
+                    }
+                },
+                "total_children": {
+                    "type": "integer",
+                    "example": 45
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ContractPropertyCount": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer",
+                    "example": 20
+                },
+                "key": {
+                    "type": "string",
+                    "example": "care_type"
+                },
+                "value": {
+                    "type": "string",
+                    "example": "ganztag"
+                }
+            }
         },
         "github_com_eenemeene_kitamanager-go_internal_models.CostCreateRequest": {
             "type": "object",

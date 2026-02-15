@@ -365,6 +365,31 @@ definitions:
   github_com_eenemeene_kitamanager-go_internal_models.ContractProperties:
     additionalProperties: true
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ContractPropertiesDistributionResponse:
+    properties:
+      date:
+        example: "2026-02-15"
+        type: string
+      properties:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractPropertyCount'
+        type: array
+      total_children:
+        example: 45
+        type: integer
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ContractPropertyCount:
+    properties:
+      count:
+        example: 20
+        type: integer
+      key:
+        example: care_type
+        type: string
+      value:
+        example: ganztag
+        type: string
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.CostCreateRequest:
     properties:
       name:
@@ -4038,6 +4063,46 @@ paths:
       security:
       - BearerAuth: []
       summary: Get children contract count by month
+      tags:
+      - children
+  /api/v1/organizations/{orgId}/children/statistics/contract-properties:
+    get:
+      consumes:
+      - application/json
+      description: Get the distribution of contract properties for children with active
+        contracts on the specified date
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Date for calculation (YYYY-MM-DD format, defaults to today)
+        in: query
+        name: date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractPropertiesDistributionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get children contract properties distribution
       tags:
       - children
   /api/v1/organizations/{orgId}/costs:

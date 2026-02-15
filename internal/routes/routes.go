@@ -286,6 +286,10 @@ func Setup(
 						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
 						childHandler.GetAgeDistribution)
 
+					children.GET("/statistics/contract-properties",
+						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
+						childHandler.GetContractPropertiesDistribution)
+
 					// Funding calculation endpoint (must be before /:id to avoid conflict)
 					children.GET("/funding",
 						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -3210,5 +3211,529 @@ func TestChildService_CreateContract_SameDay(t *testing.T) {
 	}
 	if contract.To == nil || !contract.To.Equal(date) {
 		t.Errorf("To = %v, want %v", contract.To, date)
+	}
+}
+
+// =============================================================================
+// Contract Properties Distribution Tests
+// =============================================================================
+
+func TestChildService_GetContractPropertiesDistribution_BasicScalar(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	refDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	// 2 children with care_type=ganztag, 1 with care_type=halbtag
+	child1 := createTestChild(t, db, "Child1", "A", org.ID)
+	createTestChildContract(t, db, child1.ID, from, nil, section.ID, models.ContractProperties{"care_type": "ganztag"})
+
+	child2 := createTestChild(t, db, "Child2", "B", org.ID)
+	createTestChildContract(t, db, child2.ID, from, nil, section.ID, models.ContractProperties{"care_type": "ganztag"})
+
+	child3 := createTestChild(t, db, "Child3", "C", org.ID)
+	createTestChildContract(t, db, child3.ID, from, nil, section.ID, models.ContractProperties{"care_type": "halbtag"})
+
+	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if stats.TotalChildren != 3 {
+		t.Errorf("TotalChildren = %d, want 3", stats.TotalChildren)
+	}
+
+	expected := map[string]int{
+		"care_type:ganztag": 2,
+		"care_type:halbtag": 1,
+	}
+
+	if len(stats.Properties) != len(expected) {
+		t.Fatalf("expected %d properties, got %d", len(expected), len(stats.Properties))
+	}
+
+	for _, p := range stats.Properties {
+		key := p.Key + ":" + p.Value
+		if expected[key] != p.Count {
+			t.Errorf("property %s: expected count %d, got %d", key, expected[key], p.Count)
+		}
+	}
+}
+
+func TestChildService_GetContractPropertiesDistribution_ArrayProperties(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	refDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	// Child with array property supplements=["ndh","mss"]
+	child := createTestChild(t, db, "Child1", "A", org.ID)
+	createTestChildContract(t, db, child.ID, from, nil, section.ID, models.ContractProperties{
+		"supplements": []string{"ndh", "mss"},
+	})
+
+	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if stats.TotalChildren != 1 {
+		t.Errorf("TotalChildren = %d, want 1", stats.TotalChildren)
+	}
+
+	expected := map[string]int{
+		"supplements:mss": 1,
+		"supplements:ndh": 1,
+	}
+
+	if len(stats.Properties) != len(expected) {
+		t.Fatalf("expected %d properties, got %d", len(expected), len(stats.Properties))
+	}
+
+	for _, p := range stats.Properties {
+		key := p.Key + ":" + p.Value
+		if expected[key] != p.Count {
+			t.Errorf("property %s: expected count %d, got %d", key, expected[key], p.Count)
+		}
+	}
+}
+
+func TestChildService_GetContractPropertiesDistribution_MixedScalarAndArray(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	refDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	// Child 1: scalar care_type + array supplements
+	child1 := createTestChild(t, db, "Child1", "A", org.ID)
+	createTestChildContract(t, db, child1.ID, from, nil, section.ID, models.ContractProperties{
+		"care_type":   "ganztag",
+		"supplements": []string{"ndh", "mss"},
+	})
+
+	// Child 2: scalar care_type + array supplements (overlapping)
+	child2 := createTestChild(t, db, "Child2", "B", org.ID)
+	createTestChildContract(t, db, child2.ID, from, nil, section.ID, models.ContractProperties{
+		"care_type":   "ganztag",
+		"supplements": []string{"ndh"},
+	})
+
+	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if stats.TotalChildren != 2 {
+		t.Errorf("TotalChildren = %d, want 2", stats.TotalChildren)
+	}
+
+	expected := map[string]int{
+		"care_type:ganztag": 2,
+		"supplements:mss":   1,
+		"supplements:ndh":   2,
+	}
+
+	if len(stats.Properties) != len(expected) {
+		t.Fatalf("expected %d properties, got %d", len(expected), len(stats.Properties))
+	}
+
+	for _, p := range stats.Properties {
+		key := p.Key + ":" + p.Value
+		if expected[key] != p.Count {
+			t.Errorf("property %s: expected count %d, got %d", key, expected[key], p.Count)
+		}
+	}
+}
+
+func TestChildService_GetContractPropertiesDistribution_NoChildren(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	refDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
+
+	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if stats.TotalChildren != 0 {
+		t.Errorf("TotalChildren = %d, want 0", stats.TotalChildren)
+	}
+
+	if len(stats.Properties) != 0 {
+		t.Errorf("expected 0 properties, got %d", len(stats.Properties))
+	}
+}
+
+func TestChildService_GetContractPropertiesDistribution_ChildWithNoContract(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	refDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
+
+	// Create child without contract
+	createTestChild(t, db, "NoContract", "Child", org.ID)
+
+	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	// FindByOrganizationWithActiveOn only returns children with active contracts
+	if stats.TotalChildren != 0 {
+		t.Errorf("TotalChildren = %d, want 0 (child has no contract)", stats.TotalChildren)
+	}
+}
+
+func TestChildService_GetContractPropertiesDistribution_ContractWithNoProperties(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	refDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	// Child with active contract but nil properties
+	child := createTestChild(t, db, "NoProps", "Child", org.ID)
+	createTestChildContract(t, db, child.ID, from, nil, section.ID, nil)
+
+	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if stats.TotalChildren != 1 {
+		t.Errorf("TotalChildren = %d, want 1 (child counted even without properties)", stats.TotalChildren)
+	}
+
+	if len(stats.Properties) != 0 {
+		t.Errorf("expected 0 properties, got %d", len(stats.Properties))
+	}
+}
+
+func TestChildService_GetContractPropertiesDistribution_ExpiredContract(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	refDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
+
+	// Contract expired before refDate
+	child := createTestChild(t, db, "Expired", "Child", org.ID)
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	createTestChildContract(t, db, child.ID, from, &to, section.ID, models.ContractProperties{"care_type": "ganztag"})
+
+	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if stats.TotalChildren != 0 {
+		t.Errorf("TotalChildren = %d, want 0 (contract expired)", stats.TotalChildren)
+	}
+}
+
+func TestChildService_GetContractPropertiesDistribution_FutureContract(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	refDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
+
+	// Contract starts after refDate
+	child := createTestChild(t, db, "Future", "Child", org.ID)
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	createTestChildContract(t, db, child.ID, from, nil, section.ID, models.ContractProperties{"care_type": "ganztag"})
+
+	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if stats.TotalChildren != 0 {
+		t.Errorf("TotalChildren = %d, want 0 (contract starts in future)", stats.TotalChildren)
+	}
+}
+
+func TestChildService_GetContractPropertiesDistribution_MultipleChildrenSameValue(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	refDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	// 5 children all with care_type=ganztag
+	for i := 0; i < 5; i++ {
+		child := createTestChild(t, db, fmt.Sprintf("Child%d", i), "Same", org.ID)
+		createTestChildContract(t, db, child.ID, from, nil, section.ID, models.ContractProperties{"care_type": "ganztag"})
+	}
+
+	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if stats.TotalChildren != 5 {
+		t.Errorf("TotalChildren = %d, want 5", stats.TotalChildren)
+	}
+
+	if len(stats.Properties) != 1 {
+		t.Fatalf("expected 1 property entry, got %d", len(stats.Properties))
+	}
+
+	if stats.Properties[0].Count != 5 {
+		t.Errorf("expected count 5, got %d", stats.Properties[0].Count)
+	}
+}
+
+func TestChildService_GetContractPropertiesDistribution_MultiplePropertiesPerChild(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	refDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	// Child with 3 different property keys
+	child := createTestChild(t, db, "Multi", "Props", org.ID)
+	createTestChildContract(t, db, child.ID, from, nil, section.ID, models.ContractProperties{
+		"care_type":   "ganztag",
+		"supplements": []string{"ndh"},
+		"lunch":       "yes",
+	})
+
+	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if stats.TotalChildren != 1 {
+		t.Errorf("TotalChildren = %d, want 1", stats.TotalChildren)
+	}
+
+	// 3 keys: care_type, lunch, supplements
+	if len(stats.Properties) != 3 {
+		t.Fatalf("expected 3 property entries, got %d", len(stats.Properties))
+	}
+
+	expected := map[string]int{
+		"care_type:ganztag": 1,
+		"lunch:yes":         1,
+		"supplements:ndh":   1,
+	}
+
+	for _, p := range stats.Properties {
+		key := p.Key + ":" + p.Value
+		if expected[key] != p.Count {
+			t.Errorf("property %s: expected count %d, got %d", key, expected[key], p.Count)
+		}
+	}
+}
+
+func TestChildService_GetContractPropertiesDistribution_CrossOrgIsolation(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	section1 := getDefaultSection(t, db, org1.ID)
+	org2 := createTestOrganization(t, db, "Org 2")
+
+	refDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	// Create child in org1
+	child := createTestChild(t, db, "Child1", "Org1", org1.ID)
+	createTestChildContract(t, db, child.ID, from, nil, section1.ID, models.ContractProperties{"care_type": "ganztag"})
+
+	// Query org2 - should not see org1's children
+	stats, err := svc.GetContractPropertiesDistribution(ctx, org2.ID, refDate)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if stats.TotalChildren != 0 {
+		t.Errorf("TotalChildren = %d, want 0 (child in different org)", stats.TotalChildren)
+	}
+}
+
+func TestChildService_GetContractPropertiesDistribution_HistoricalDate(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+
+	// Contract active from 2024-01-01 to 2024-06-30
+	child := createTestChild(t, db, "Historical", "Child", org.ID)
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
+	createTestChildContract(t, db, child.ID, from, &to, section.ID, models.ContractProperties{"care_type": "ganztag"})
+
+	// Query during active period
+	activeDate := time.Date(2024, 3, 15, 0, 0, 0, 0, time.UTC)
+	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, activeDate)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if stats.TotalChildren != 1 {
+		t.Errorf("TotalChildren = %d, want 1 (contract active on historical date)", stats.TotalChildren)
+	}
+
+	// Query after contract ended
+	afterDate := time.Date(2024, 7, 15, 0, 0, 0, 0, time.UTC)
+	stats, err = svc.GetContractPropertiesDistribution(ctx, org.ID, afterDate)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if stats.TotalChildren != 0 {
+		t.Errorf("TotalChildren = %d, want 0 (contract expired by this date)", stats.TotalChildren)
+	}
+}
+
+func TestChildService_GetContractPropertiesDistribution_SortedOutput(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	refDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	// Create child with properties that should be sorted: z_key before a_key alphabetically
+	child := createTestChild(t, db, "Sort", "Test", org.ID)
+	createTestChildContract(t, db, child.ID, from, nil, section.ID, models.ContractProperties{
+		"z_key": "beta",
+		"a_key": "alpha",
+	})
+
+	// Another child with z_key=alpha (to have multiple values for z_key)
+	child2 := createTestChild(t, db, "Sort2", "Test", org.ID)
+	createTestChildContract(t, db, child2.ID, from, nil, section.ID, models.ContractProperties{
+		"z_key": "alpha",
+	})
+
+	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	// Expected order: a_key:alpha, z_key:alpha, z_key:beta
+	if len(stats.Properties) != 3 {
+		t.Fatalf("expected 3 property entries, got %d", len(stats.Properties))
+	}
+
+	expectedOrder := []struct {
+		Key   string
+		Value string
+	}{
+		{"a_key", "alpha"},
+		{"z_key", "alpha"},
+		{"z_key", "beta"},
+	}
+
+	for i, exp := range expectedOrder {
+		if stats.Properties[i].Key != exp.Key || stats.Properties[i].Value != exp.Value {
+			t.Errorf("position %d: expected %s:%s, got %s:%s", i, exp.Key, exp.Value, stats.Properties[i].Key, stats.Properties[i].Value)
+		}
+	}
+}
+
+func TestChildService_GetContractPropertiesDistribution_MultipleActiveContracts(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	refDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
+
+	// Create child with two overlapping contracts (via direct DB insert, bypassing overlap validation)
+	child := createTestChild(t, db, "Overlap", "Child", org.ID)
+	from1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	createTestChildContract(t, db, child.ID, from1, nil, section.ID, models.ContractProperties{"care_type": "ganztag"})
+	from2 := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	createTestChildContract(t, db, child.ID, from2, nil, section.ID, models.ContractProperties{"lunch": "yes"})
+
+	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	// Both contracts are active, properties from both should be counted
+	expected := map[string]int{
+		"care_type:ganztag": 1,
+		"lunch:yes":         1,
+	}
+
+	for _, p := range stats.Properties {
+		key := p.Key + ":" + p.Value
+		if expected[key] != p.Count {
+			t.Errorf("property %s: expected count %d, got %d", key, expected[key], p.Count)
+		}
+	}
+}
+
+func TestChildService_GetContractPropertiesDistribution_EmptyStringValue(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	refDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	// Child with empty string value
+	child := createTestChild(t, db, "Empty", "Value", org.ID)
+	createTestChildContract(t, db, child.ID, from, nil, section.ID, models.ContractProperties{"care_type": ""})
+
+	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if stats.TotalChildren != 1 {
+		t.Errorf("TotalChildren = %d, want 1", stats.TotalChildren)
+	}
+
+	if len(stats.Properties) != 1 {
+		t.Fatalf("expected 1 property entry, got %d", len(stats.Properties))
+	}
+
+	if stats.Properties[0].Key != "care_type" || stats.Properties[0].Value != "" {
+		t.Errorf("expected care_type with empty value, got %s:%s", stats.Properties[0].Key, stats.Properties[0].Value)
 	}
 }
