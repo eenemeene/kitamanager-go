@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
-import { CircleDollarSign, Users, Baby } from 'lucide-react';
+import { CircleDollarSign, Users, Baby, Table } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { apiClient } from '@/lib/api/client';
@@ -50,6 +50,12 @@ export default function StatisticsPage() {
       icon: Baby,
       title: t('nav.statisticsChildren'),
       description: t('statistics.ageDistribution'),
+    },
+    {
+      href: `/organizations/${orgId}/statistics/occupancy`,
+      icon: Table,
+      title: t('nav.statisticsOccupancy'),
+      description: t('statistics.occupancyDescription'),
     },
   ];
 

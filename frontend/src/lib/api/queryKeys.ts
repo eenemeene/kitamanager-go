@@ -47,6 +47,11 @@ export const queryKeys = {
     list: (orgId: number, page: number) => ['costs', orgId, page] as const,
     detail: (orgId: number, costId: number) => ['cost', orgId, costId] as const,
   },
+  budgetItems: {
+    all: (orgId: number) => ['budgetItems', orgId] as const,
+    list: (orgId: number, page: number) => ['budgetItems', orgId, page] as const,
+    detail: (orgId: number, budgetItemId: number) => ['budgetItem', orgId, budgetItemId] as const,
+  },
   statistics: {
     ageDistribution: (orgId: number) => ['age-distribution', orgId] as const,
     contractCounts: (orgId: number) => ['contract-counts', orgId] as const,
@@ -55,6 +60,8 @@ export const queryKeys = {
       ['staffing-hours', orgId, sectionId, from, to] as const,
     financials: (orgId: number, from?: string, to?: string) =>
       ['financials', orgId, from, to] as const,
+    occupancy: (orgId: number, sectionId?: number, from?: string, to?: string) =>
+      ['occupancy', orgId, sectionId, from, to] as const,
   },
   stepPromotions: (orgId: number) => ['step-promotions', orgId] as const,
 } as const;

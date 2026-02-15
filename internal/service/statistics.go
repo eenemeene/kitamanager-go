@@ -2,7 +2,10 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"math"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
@@ -276,6 +279,195 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 	return &models.FinancialResponse{
 		DataPoints: dataPoints,
 	}, nil
+}
+
+// GetOccupancy calculates monthly occupancy data points broken down by age group, care type, and supplements.
+func (s *StatisticsService) GetOccupancy(ctx context.Context, orgID uint, from, to *time.Time, sectionID *uint) (*models.OccupancyResponse, error) {
+	rangeStart, rangeEnd := snapDateRange(from, to)
+
+	// Fetch organization for state
+	org, err := s.orgStore.FindByID(ctx, orgID)
+	if err != nil {
+		return nil, apperror.NotFound("organization")
+	}
+
+	// Fetch government funding with all periods and properties
+	var fundingPeriods []models.GovernmentFundingPeriod
+	funding, err := s.fundingStore.FindByStateWithDetails(ctx, org.State, 0, nil)
+	if err == nil {
+		fundingPeriods = funding.Periods
+	}
+
+	// Extract table structure from funding configuration
+	ageGroups, careTypes, supplementTypes := extractOccupancyStructure(fundingPeriods)
+
+	// Fetch children with contracts in range
+	children, err := s.childStore.FindByOrganizationInDateRange(ctx, orgID, rangeStart, rangeEnd, sectionID)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "failed to fetch children")
+	}
+
+	// Generate data points for each month
+	var dataPoints []models.OccupancyDataPoint
+	for date := rangeStart; !date.After(rangeEnd); date = date.AddDate(0, 1, 0) {
+		dp := models.OccupancyDataPoint{
+			Date:             date.Format(models.DateFormat),
+			ByAgeAndCareType: make(map[string]map[string]int),
+			BySupplement:     make(map[string]int),
+		}
+
+		// Initialize the nested maps
+		for _, ag := range ageGroups {
+			dp.ByAgeAndCareType[ag.Label] = make(map[string]int)
+		}
+
+		for i := range children {
+			child := &children[i]
+			for j := range child.Contracts {
+				contract := &child.Contracts[j]
+				if !contract.IsActiveOn(date) {
+					continue
+				}
+				dp.Total++
+
+				age := validation.CalculateAgeOnDate(child.Birthdate, date)
+				ageLabel := findAgeGroupLabel(age, ageGroups)
+
+				// Count by age group × care type
+				careType := contract.Properties.GetScalarProperty("care_type")
+				if ageLabel != "" && careType != "" {
+					if dp.ByAgeAndCareType[ageLabel] == nil {
+						dp.ByAgeAndCareType[ageLabel] = make(map[string]int)
+					}
+					dp.ByAgeAndCareType[ageLabel][careType]++
+				}
+
+				// Count supplements
+				for _, st := range supplementTypes {
+					if contract.Properties.HasValue(st.Key, st.Value) {
+						dp.BySupplement[st.Value]++
+					}
+				}
+
+				break // Only count each child once per month
+			}
+		}
+
+		dataPoints = append(dataPoints, dp)
+	}
+
+	return &models.OccupancyResponse{
+		AgeGroups:       ageGroups,
+		CareTypes:       careTypes,
+		SupplementTypes: supplementTypes,
+		DataPoints:      dataPoints,
+	}, nil
+}
+
+// extractOccupancyStructure derives age groups, care types, and supplement types
+// from the government funding periods' properties.
+func extractOccupancyStructure(periods []models.GovernmentFundingPeriod) ([]models.OccupancyAgeGroup, []string, []models.OccupancySupplementType) {
+	// Use the most recent period (periods are ordered DESC by from_date)
+	if len(periods) == 0 {
+		return nil, nil, nil
+	}
+	period := periods[0]
+
+	type ageKey struct {
+		minAge, maxAge int
+	}
+	ageGroupSet := make(map[ageKey]bool)
+	careTypeSet := make(map[string]bool)
+	supplementSet := make(map[string]models.OccupancySupplementType)
+
+	for _, prop := range period.Properties {
+		if prop.Key == "care_type" {
+			careTypeSet[prop.Value] = true
+			if prop.MinAge != nil && prop.MaxAge != nil {
+				ageGroupSet[ageKey{*prop.MinAge, *prop.MaxAge}] = true
+			}
+		} else {
+			if _, exists := supplementSet[prop.Value]; !exists {
+				supplementSet[prop.Value] = models.OccupancySupplementType{
+					Key:   prop.Key,
+					Value: prop.Value,
+					Label: formatSupplementLabel(prop.Value),
+				}
+			}
+		}
+	}
+
+	// Build sorted age groups
+	var ageGroups []models.OccupancyAgeGroup
+	for ak := range ageGroupSet {
+		ageGroups = append(ageGroups, models.OccupancyAgeGroup{
+			Label:  formatAgeGroupLabel(ak.minAge, ak.maxAge),
+			MinAge: ak.minAge,
+			MaxAge: ak.maxAge,
+		})
+	}
+	sort.Slice(ageGroups, func(i, j int) bool {
+		return ageGroups[i].MinAge < ageGroups[j].MinAge
+	})
+
+	// Build sorted care types
+	var careTypes []string
+	for ct := range careTypeSet {
+		careTypes = append(careTypes, ct)
+	}
+	sort.Strings(careTypes)
+
+	// Build sorted supplement types
+	var supplements []models.OccupancySupplementType
+	for _, st := range supplementSet {
+		supplements = append(supplements, st)
+	}
+	sort.Slice(supplements, func(i, j int) bool {
+		return supplements[i].Value < supplements[j].Value
+	})
+
+	return ageGroups, careTypes, supplements
+}
+
+// formatAgeGroupLabel formats an age range into a display label.
+// Examples: {0,1}→"0/1", {2,2}→"2", {3,8}→"3+"
+func formatAgeGroupLabel(minAge, maxAge int) string {
+	if minAge == maxAge {
+		return fmt.Sprintf("%d", minAge)
+	}
+	if maxAge >= 6 {
+		return fmt.Sprintf("%d+", minAge)
+	}
+	// For small ranges like 0-1, use slash notation
+	parts := make([]string, 0, maxAge-minAge+1)
+	for i := minAge; i <= maxAge; i++ {
+		parts = append(parts, fmt.Sprintf("%d", i))
+	}
+	return strings.Join(parts, "/")
+}
+
+// formatSupplementLabel formats a supplement value into a display label.
+// Capitalizes words and replaces separators.
+func formatSupplementLabel(value string) string {
+	words := strings.FieldsFunc(value, func(r rune) bool {
+		return r == '_' || r == '/' || r == '-'
+	})
+	for i, w := range words {
+		if len(w) > 0 {
+			words[i] = strings.ToUpper(w[:1]) + w[1:]
+		}
+	}
+	return strings.Join(words, " ")
+}
+
+// findAgeGroupLabel returns the label of the age group that matches the given age.
+func findAgeGroupLabel(age int, ageGroups []models.OccupancyAgeGroup) string {
+	for _, ag := range ageGroups {
+		if age >= ag.MinAge && age <= ag.MaxAge {
+			return ag.Label
+		}
+	}
+	return ""
 }
 
 // findPayPlanPeriodForDate finds the pay plan period covering a date.

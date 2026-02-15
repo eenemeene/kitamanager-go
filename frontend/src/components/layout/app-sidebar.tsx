@@ -16,6 +16,7 @@ import {
   Landmark,
   CircleDollarSign,
   Receipt,
+  Wallet,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -66,10 +67,12 @@ const orgNavigation: NavItem[] = [
       { name: 'nav.statisticsFinancials', href: '/statistics/financials' },
       { name: 'nav.statisticsStaffing', href: '/statistics/staffing' },
       { name: 'nav.statisticsChildren', href: '/statistics/children' },
+      { name: 'nav.statisticsOccupancy', href: '/statistics/occupancy' },
     ],
   },
   { name: 'nav.payPlans', href: '/payplans', icon: CircleDollarSign },
   { name: 'nav.costs', href: '/costs', icon: Receipt },
+  { name: 'nav.budgetItems', href: '/budget-items', icon: Wallet },
 ];
 
 export function AppSidebar() {

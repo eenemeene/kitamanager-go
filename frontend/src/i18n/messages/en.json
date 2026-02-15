@@ -86,8 +86,10 @@
     "statisticsFinancials": "Financials",
     "statisticsStaffing": "Staffing",
     "statisticsChildren": "Children",
+    "statisticsOccupancy": "Occupancy",
     "settings": "Settings",
-    "costs": "Costs"
+    "costs": "Costs",
+    "budgetItems": "Budget Items"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -133,7 +135,13 @@
     "fundingIncome": "Funding Income",
     "grossSalary": "Gross Salary",
     "employerCosts": "Employer Costs",
-    "operatingCost": "Operating Cost"
+    "operatingCost": "Operating Cost",
+    "occupancyMatrix": "Occupancy Matrix",
+    "occupancyDescription": "Monthly breakdown of children by age group and care type",
+    "ageGroup": "Age Group",
+    "careType": "Care Type",
+    "supplements": "Supplements",
+    "total": "Total"
   },
   "months": {
     "jan": "Jan",
@@ -573,6 +581,35 @@
     "failedToSaveEntry": "Failed to save entry",
     "failedToDeleteEntry": "Failed to delete entry",
     "failedToLoadCost": "Failed to load cost",
+    "deleteEntryConfirm": "Are you sure you want to delete this entry?",
+    "noEntriesDefined": "No entries defined. Click \"Add Entry\" to get started."
+  },
+  "budgetItems": {
+    "title": "Budget Items",
+    "create": "Create Budget Item",
+    "edit": "Edit Budget Item",
+    "newBudgetItem": "New Budget Item",
+    "deleteConfirm": "Are you sure you want to delete this budget item? All entries will also be deleted.",
+    "deleteSuccess": "Budget item deleted successfully",
+    "createSuccess": "Budget item created successfully",
+    "updateSuccess": "Budget item updated successfully",
+    "category": "Category",
+    "categoryIncome": "Income",
+    "categoryExpense": "Expense",
+    "perChild": "Per Child",
+    "addEntry": "Add Entry",
+    "editEntry": "Edit Entry",
+    "deleteEntry": "Delete Entry",
+    "fromDate": "From Date",
+    "toDateOptional": "To Date (leave empty for ongoing)",
+    "amountInEuros": "Amount (EUR)",
+    "notes": "Notes",
+    "entryCreated": "Entry created",
+    "entryUpdated": "Entry updated",
+    "entryDeleted": "Entry deleted",
+    "failedToSaveEntry": "Failed to save entry",
+    "failedToDeleteEntry": "Failed to delete entry",
+    "failedToLoadBudgetItem": "Failed to load budget item",
     "deleteEntryConfirm": "Are you sure you want to delete this entry?",
     "noEntriesDefined": "No entries defined. Click \"Add Entry\" to get started."
   },

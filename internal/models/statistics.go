@@ -37,6 +37,36 @@ type FinancialResponse struct {
 	DataPoints []FinancialDataPoint `json:"data_points"`
 }
 
+// OccupancyAgeGroup describes an age group derived from government funding configuration
+type OccupancyAgeGroup struct {
+	Label  string `json:"label" example:"0/1"`
+	MinAge int    `json:"min_age" example:"0"`
+	MaxAge int    `json:"max_age" example:"1"`
+}
+
+// OccupancySupplementType describes a non-care_type funding property (e.g. integration, ndh)
+type OccupancySupplementType struct {
+	Key   string `json:"key" example:"integration"`
+	Value string `json:"value" example:"integration a"`
+	Label string `json:"label" example:"Integration A"`
+}
+
+// OccupancyDataPoint represents a single monthly snapshot of the occupancy matrix
+type OccupancyDataPoint struct {
+	Date             string                    `json:"date" example:"2026-01-01"`
+	Total            int                       `json:"total" example:"45"`
+	ByAgeAndCareType map[string]map[string]int `json:"by_age_and_care_type"`
+	BySupplement     map[string]int            `json:"by_supplement"`
+}
+
+// OccupancyResponse represents the full occupancy matrix response
+type OccupancyResponse struct {
+	AgeGroups       []OccupancyAgeGroup       `json:"age_groups"`
+	CareTypes       []string                  `json:"care_types"`
+	SupplementTypes []OccupancySupplementType `json:"supplement_types"`
+	DataPoints      []OccupancyDataPoint      `json:"data_points"`
+}
+
 // ContractPropertyCount represents the count of a specific property key-value pair across children
 type ContractPropertyCount struct {
 	Key   string `json:"key" example:"care_type"`

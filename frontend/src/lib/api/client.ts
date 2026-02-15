@@ -54,9 +54,16 @@ import type {
   CostEntry,
   CostEntryCreateRequest,
   CostEntryUpdateRequest,
+  BudgetItem,
+  BudgetItemCreateRequest,
+  BudgetItemUpdateRequest,
+  BudgetItemEntry,
+  BudgetItemEntryCreateRequest,
+  BudgetItemEntryUpdateRequest,
   StepPromotionsResponse,
   StaffingHoursResponse,
   FinancialResponse,
+  OccupancyResponse,
   Section,
   SectionCreateRequest,
   SectionUpdateRequest,
@@ -740,6 +747,50 @@ class ApiClient {
     await this.client.delete(`/organizations/${orgId}/costs/${costId}/entries/${entryId}`);
   }
 
+  // Budget Items (organization-scoped)
+  private _budgetItems = this.orgScopedCrud<
+    BudgetItem,
+    BudgetItemCreateRequest,
+    BudgetItemUpdateRequest
+  >('budget-items');
+  getBudgetItems = this._budgetItems.list;
+  getBudgetItem = this._budgetItems.get;
+  createBudgetItem = this._budgetItems.create;
+  updateBudgetItem = this._budgetItems.update;
+  deleteBudgetItem = this._budgetItems.delete;
+
+  // Budget Item Entries
+  async createBudgetItemEntry(
+    orgId: number,
+    budgetItemId: number,
+    data: BudgetItemEntryCreateRequest
+  ): Promise<BudgetItemEntry> {
+    const response = await this.client.post<BudgetItemEntry>(
+      `/organizations/${orgId}/budget-items/${budgetItemId}/entries`,
+      data
+    );
+    return response.data;
+  }
+
+  async updateBudgetItemEntry(
+    orgId: number,
+    budgetItemId: number,
+    entryId: number,
+    data: BudgetItemEntryUpdateRequest
+  ): Promise<BudgetItemEntry> {
+    const response = await this.client.put<BudgetItemEntry>(
+      `/organizations/${orgId}/budget-items/${budgetItemId}/entries/${entryId}`,
+      data
+    );
+    return response.data;
+  }
+
+  async deleteBudgetItemEntry(orgId: number, budgetItemId: number, entryId: number): Promise<void> {
+    await this.client.delete(
+      `/organizations/${orgId}/budget-items/${budgetItemId}/entries/${entryId}`
+    );
+  }
+
   // Sections (organization-scoped)
   private _sections = this.orgScopedCrud<Section, SectionCreateRequest, SectionUpdateRequest>(
     'sections'
@@ -789,6 +840,21 @@ class ApiClient {
     if (opts?.to) params.to = opts.to;
     const response = await this.client.get<FinancialResponse>(
       `/organizations/${orgId}/statistics/financials`,
+      { params }
+    );
+    return response.data;
+  }
+
+  async getOccupancy(
+    orgId: number,
+    opts?: { sectionId?: number; from?: string; to?: string }
+  ): Promise<OccupancyResponse> {
+    const params: Record<string, string> = {};
+    if (opts?.sectionId) params.section_id = opts.sectionId.toString();
+    if (opts?.from) params.from = opts.from;
+    if (opts?.to) params.to = opts.to;
+    const response = await this.client.get<OccupancyResponse>(
+      `/organizations/${orgId}/statistics/occupancy`,
       { params }
     );
     return response.data;

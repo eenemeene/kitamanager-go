@@ -565,6 +565,55 @@ export interface CostEntryUpdateRequest {
   notes?: string;
 }
 
+// BudgetItem (organization-scoped income/expense categories)
+export interface BudgetItem {
+  id: number;
+  organization_id: number;
+  name: string;
+  category: 'income' | 'expense';
+  per_child: boolean;
+  entries?: BudgetItemEntry[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BudgetItemEntry {
+  id: number;
+  budget_item_id: number;
+  from: string;
+  to?: string | null;
+  amount_cents: number;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BudgetItemCreateRequest {
+  name: string;
+  category: string;
+  per_child: boolean;
+}
+
+export interface BudgetItemUpdateRequest {
+  name: string;
+  category: string;
+  per_child: boolean;
+}
+
+export interface BudgetItemEntryCreateRequest {
+  from: string;
+  to?: string | null;
+  amount_cents: number;
+  notes?: string;
+}
+
+export interface BudgetItemEntryUpdateRequest {
+  from: string;
+  to?: string | null;
+  amount_cents: number;
+  notes?: string;
+}
+
 // Step Promotions
 export interface StepPromotion {
   employee_id: number;
@@ -616,6 +665,33 @@ export interface StaffingHoursDataPoint {
 
 export interface StaffingHoursResponse {
   data_points: StaffingHoursDataPoint[];
+}
+
+// Occupancy matrix statistics
+export interface OccupancyAgeGroup {
+  label: string;
+  min_age: number;
+  max_age: number;
+}
+
+export interface OccupancySupplementType {
+  key: string;
+  value: string;
+  label: string;
+}
+
+export interface OccupancyDataPoint {
+  date: string;
+  total: number;
+  by_age_and_care_type: Record<string, Record<string, number>>;
+  by_supplement: Record<string, number>;
+}
+
+export interface OccupancyResponse {
+  age_groups: OccupancyAgeGroup[];
+  care_types: string[];
+  supplement_types: OccupancySupplementType[];
+  data_points: OccupancyDataPoint[];
 }
 
 // Contract properties distribution

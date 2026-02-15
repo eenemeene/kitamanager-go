@@ -86,8 +86,10 @@
     "statisticsFinancials": "Finanzen",
     "statisticsStaffing": "Personal",
     "statisticsChildren": "Kinder",
+    "statisticsOccupancy": "Belegung",
     "settings": "Einstellungen",
-    "costs": "Kosten"
+    "costs": "Kosten",
+    "budgetItems": "Budgetposten"
   },
   "dashboard": {
     "title": "Übersicht",
@@ -133,7 +135,13 @@
     "fundingIncome": "Fördereinnahmen",
     "grossSalary": "Bruttogehälter",
     "employerCosts": "Arbeitgeberanteile",
-    "operatingCost": "Betriebskosten"
+    "operatingCost": "Betriebskosten",
+    "occupancyMatrix": "Belegungsmatrix",
+    "occupancyDescription": "Monatliche Aufschlüsselung der Kinder nach Altersgruppe und Betreuungsumfang",
+    "ageGroup": "Alter",
+    "careType": "Umfang",
+    "supplements": "Zuschläge",
+    "total": "Gesamt"
   },
   "months": {
     "jan": "Jan",
@@ -573,6 +581,35 @@
     "failedToSaveEntry": "Fehler beim Speichern des Eintrags",
     "failedToDeleteEntry": "Fehler beim Löschen des Eintrags",
     "failedToLoadCost": "Fehler beim Laden der Kosten",
+    "deleteEntryConfirm": "Möchten Sie diesen Eintrag wirklich löschen?",
+    "noEntriesDefined": "Keine Einträge definiert. Klicken Sie auf \"Eintrag hinzufügen\", um zu beginnen."
+  },
+  "budgetItems": {
+    "title": "Budgetposten",
+    "create": "Budgetposten erstellen",
+    "edit": "Budgetposten bearbeiten",
+    "newBudgetItem": "Neuer Budgetposten",
+    "deleteConfirm": "Möchten Sie diesen Budgetposten wirklich löschen? Alle Einträge werden ebenfalls gelöscht.",
+    "deleteSuccess": "Budgetposten erfolgreich gelöscht",
+    "createSuccess": "Budgetposten erfolgreich erstellt",
+    "updateSuccess": "Budgetposten erfolgreich aktualisiert",
+    "category": "Kategorie",
+    "categoryIncome": "Einnahmen",
+    "categoryExpense": "Ausgaben",
+    "perChild": "Pro Kind",
+    "addEntry": "Eintrag hinzufügen",
+    "editEntry": "Eintrag bearbeiten",
+    "deleteEntry": "Eintrag löschen",
+    "fromDate": "Von-Datum",
+    "toDateOptional": "Bis-Datum (leer lassen für laufend)",
+    "amountInEuros": "Betrag (EUR)",
+    "notes": "Notizen",
+    "entryCreated": "Eintrag erstellt",
+    "entryUpdated": "Eintrag aktualisiert",
+    "entryDeleted": "Eintrag gelöscht",
+    "failedToSaveEntry": "Fehler beim Speichern des Eintrags",
+    "failedToDeleteEntry": "Fehler beim Löschen des Eintrags",
+    "failedToLoadBudgetItem": "Fehler beim Laden des Budgetpostens",
     "deleteEntryConfirm": "Möchten Sie diesen Eintrag wirklich löschen?",
     "noEntriesDefined": "Keine Einträge definiert. Klicken Sie auf \"Eintrag hinzufügen\", um zu beginnen."
   },

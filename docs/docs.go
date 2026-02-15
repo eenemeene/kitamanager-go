@@ -7252,6 +7252,79 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/organizations/{orgId}/statistics/occupancy": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns monthly data points showing the occupancy matrix: children broken down by age group and care type,\nplus supplement counts. Age groups and care types are derived from the government funding configuration.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "statistics"
+                ],
+                "summary": "Get occupancy matrix statistics",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DD), defaults to 12 months ago",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End date (YYYY-MM-DD), defaults to 6 months ahead",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Filter by section ID",
+                        "name": "section_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.OccupancyResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/organizations/{orgId}/statistics/staffing-hours": {
             "get": {
                 "security": [
@@ -10216,6 +10289,97 @@ const docTemplate = `{
                 "message": {
                     "type": "string",
                     "example": "operation successful"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.OccupancyAgeGroup": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string",
+                    "example": "0/1"
+                },
+                "max_age": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "min_age": {
+                    "type": "integer",
+                    "example": 0
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.OccupancyDataPoint": {
+            "type": "object",
+            "properties": {
+                "by_age_and_care_type": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "by_supplement": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "date": {
+                    "type": "string",
+                    "example": "2026-01-01"
+                },
+                "total": {
+                    "type": "integer",
+                    "example": 45
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.OccupancyResponse": {
+            "type": "object",
+            "properties": {
+                "age_groups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.OccupancyAgeGroup"
+                    }
+                },
+                "care_types": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "data_points": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.OccupancyDataPoint"
+                    }
+                },
+                "supplement_types": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.OccupancySupplementType"
+                    }
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.OccupancySupplementType": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string",
+                    "example": "integration"
+                },
+                "label": {
+                    "type": "string",
+                    "example": "Integration A"
+                },
+                "value": {
+                    "type": "string",
+                    "example": "integration a"
                 }
             }
         },

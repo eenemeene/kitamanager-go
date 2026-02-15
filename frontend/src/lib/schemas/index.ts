@@ -39,6 +39,12 @@ export {
 } from './payplan';
 export { costSchema, costEntrySchema, type CostFormData, type CostEntryFormData } from './cost';
 export {
+  budgetItemSchema,
+  budgetItemEntrySchema,
+  type BudgetItemFormData,
+  type BudgetItemEntryFormData,
+} from './budget-item';
+export {
   governmentFundingSchema,
   governmentFundingPeriodSchema,
   governmentFundingPropertySchema,

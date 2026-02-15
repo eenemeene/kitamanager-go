@@ -1348,6 +1348,68 @@ definitions:
         example: operation successful
         type: string
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.OccupancyAgeGroup:
+    properties:
+      label:
+        example: 0/1
+        type: string
+      max_age:
+        example: 1
+        type: integer
+      min_age:
+        example: 0
+        type: integer
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.OccupancyDataPoint:
+    properties:
+      by_age_and_care_type:
+        additionalProperties:
+          additionalProperties:
+            type: integer
+          type: object
+        type: object
+      by_supplement:
+        additionalProperties:
+          type: integer
+        type: object
+      date:
+        example: "2026-01-01"
+        type: string
+      total:
+        example: 45
+        type: integer
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.OccupancyResponse:
+    properties:
+      age_groups:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.OccupancyAgeGroup'
+        type: array
+      care_types:
+        items:
+          type: string
+        type: array
+      data_points:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.OccupancyDataPoint'
+        type: array
+      supplement_types:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.OccupancySupplementType'
+        type: array
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.OccupancySupplementType:
+    properties:
+      key:
+        example: integration
+        type: string
+      label:
+        example: Integration A
+        type: string
+      value:
+        example: integration a
+        type: string
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.Organization:
     properties:
       active:
@@ -7119,6 +7181,55 @@ paths:
       security:
       - BearerAuth: []
       summary: Get financial statistics
+      tags:
+      - statistics
+  /api/v1/organizations/{orgId}/statistics/occupancy:
+    get:
+      consumes:
+      - application/json
+      description: |-
+        Returns monthly data points showing the occupancy matrix: children broken down by age group and care type,
+        plus supplement counts. Age groups and care types are derived from the government funding configuration.
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Start date (YYYY-MM-DD), defaults to 12 months ago
+        in: query
+        name: from
+        type: string
+      - description: End date (YYYY-MM-DD), defaults to 6 months ahead
+        in: query
+        name: to
+        type: string
+      - description: Filter by section ID
+        in: query
+        name: section_id
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.OccupancyResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get occupancy matrix statistics
       tags:
       - statistics
   /api/v1/organizations/{orgId}/statistics/staffing-hours:
