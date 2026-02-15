@@ -113,7 +113,9 @@
     "availableHours": "Available Hours",
     "filterBySection": "Filter by Section",
     "allSections": "All Sections",
-    "kitaYear": "Kita Year {year}"
+    "kitaYear": "Kita Year {year}",
+    "staffingBalance": "Staffing Balance",
+    "balancePercentage": "Balance"
   },
   "months": {
     "jan": "Jan",

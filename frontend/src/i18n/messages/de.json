@@ -113,7 +113,9 @@
     "availableHours": "Verfügbare Stunden",
     "filterBySection": "Nach Bereich filtern",
     "allSections": "Alle Bereiche",
-    "kitaYear": "Kitajahr {year}"
+    "kitaYear": "Kitajahr {year}",
+    "staffingBalance": "Personalabgleich",
+    "balancePercentage": "Abgleich"
   },
   "months": {
     "jan": "Jan",

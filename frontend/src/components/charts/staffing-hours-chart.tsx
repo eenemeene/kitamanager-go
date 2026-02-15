@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { ResponsiveLine, type CustomLayerProps } from '@nivo/line';
+import { scaleLinear } from 'd3-scale';
 import type { StaffingHoursResponse } from '@/lib/api/types';
 
 interface StaffingHoursChartProps {
@@ -57,6 +58,17 @@ export function StaffingHoursChart({ data }: StaffingHoursChartProps) {
   const xLabels = rawDates.map(formatDate);
   const kitaYearBands = useMemo(() => buildKitaYearBands(rawDates), [rawDates]);
 
+  // Compute balance percentages for the bar layer
+  const balancePercentages = useMemo(
+    () =>
+      data.data_points.map((dp) =>
+        dp.required_hours > 0
+          ? Math.round(((dp.available_hours - dp.required_hours) / dp.required_hours) * 1000) / 10
+          : 0
+      ),
+    [data.data_points]
+  );
+
   // Custom Nivo layer that draws alternating background bands per Kita year
   const KitaYearBackgroundLayer = useMemo(() => {
     return function KitaYearBg({ xScale, innerHeight, innerWidth }: CustomLayerProps) {
@@ -102,6 +114,75 @@ export function StaffingHoursChart({ data }: StaffingHoursChartProps) {
     };
   }, [kitaYearBands, xLabels, t]);
 
+  // Custom layer that draws balance percentage bars behind the lines
+  const BalanceBarsLayer = useMemo(() => {
+    return function BalanceBars({ xScale, innerHeight, innerWidth }: CustomLayerProps) {
+      const scale = xScale as unknown as (value: string) => number;
+      const step = xLabels.length > 1 ? scale(xLabels[1]) - scale(xLabels[0]) : innerWidth;
+      const barWidth = step * 0.5;
+
+      // Build a symmetric y-scale for percentages
+      const maxAbs = Math.max(10, ...balancePercentages.map(Math.abs));
+      const pctScale = scaleLinear().domain([-maxAbs, maxAbs]).range([innerHeight, 0]);
+      const zeroY = pctScale(0);
+
+      // Right-axis ticks
+      const ticks = pctScale.ticks(5);
+
+      return (
+        <g>
+          {/* Bars */}
+          {xLabels.map((label, i) => {
+            const pct = balancePercentages[i];
+            const cx = scale(label);
+            const barY = pct >= 0 ? pctScale(pct) : zeroY;
+            const barH = Math.abs(pctScale(pct) - zeroY);
+
+            return (
+              <rect
+                key={label}
+                x={cx - barWidth / 2}
+                y={barY}
+                width={barWidth}
+                height={barH}
+                fill={pct >= 0 ? '#22c55e' : '#ef4444'}
+                opacity={0.2}
+                rx={2}
+              />
+            );
+          })}
+          {/* Zero line */}
+          <line
+            x1={0}
+            x2={innerWidth}
+            y1={zeroY}
+            y2={zeroY}
+            stroke="hsl(var(--muted-foreground))"
+            strokeWidth={1}
+            strokeDasharray="3 3"
+            opacity={0.5}
+          />
+          {/* Right axis ticks */}
+          {ticks.map((tick) => (
+            <g key={tick} transform={`translate(${innerWidth}, ${pctScale(tick)})`}>
+              <line x1={0} x2={5} y1={0} y2={0} stroke="hsl(var(--muted-foreground))" />
+              <text
+                x={8}
+                y={0}
+                dominantBaseline="central"
+                fontSize={10}
+                fill="hsl(var(--muted-foreground))"
+              >
+                {tick > 0 ? '+' : ''}
+                {tick}%
+              </text>
+            </g>
+          ))}
+        </g>
+      );
+    };
+  }, [xLabels, balancePercentages]);
+
   // Find today marker position
   const today = new Date();
   const todayStr = today.toISOString().slice(0, 10);
@@ -129,14 +210,15 @@ export function StaffingHoursChart({ data }: StaffingHoursChartProps) {
   const todayLabel = formatDate(todayStr);
 
   return (
-    <div className="h-[300px]">
+    <div className="h-[350px]">
       <ResponsiveLine
         data={chartData}
-        margin={{ top: 20, right: 110, bottom: 50, left: 60 }}
+        margin={{ top: 20, right: 60, bottom: 50, left: 60 }}
         xScale={{ type: 'point' }}
         yScale={{ type: 'linear', min: 'auto', max: 'auto', stacked: false }}
         layers={[
           KitaYearBackgroundLayer,
+          BalanceBarsLayer,
           'grid',
           'markers',
           'axes',
@@ -188,14 +270,14 @@ export function StaffingHoursChart({ data }: StaffingHoursChartProps) {
         ]}
         legends={[
           {
-            anchor: 'bottom-right',
-            direction: 'column',
+            anchor: 'top-left',
+            direction: 'row',
             justify: false,
-            translateX: 100,
-            translateY: 0,
-            itemsSpacing: 0,
+            translateX: 0,
+            translateY: -20,
+            itemsSpacing: 16,
             itemDirection: 'left-to-right',
-            itemWidth: 80,
+            itemWidth: 120,
             itemHeight: 20,
             itemOpacity: 0.85,
             symbolSize: 12,
