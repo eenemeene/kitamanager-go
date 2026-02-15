@@ -251,6 +251,56 @@ export function StaffingHoursChart({ data }: StaffingHoursChartProps) {
         pointLabelYOffset={-12}
         useMesh={true}
         enableSlices="x"
+        sliceTooltip={({ slice }) => {
+          const idx = xLabels.indexOf(slice.points[0].data.xFormatted as string);
+          const pct = idx >= 0 ? balancePercentages[idx] : null;
+          return (
+            <div
+              style={{
+                background: 'hsl(var(--background))',
+                color: 'hsl(var(--foreground))',
+                border: '1px solid hsl(var(--border))',
+                borderRadius: '6px',
+                padding: '9px 12px',
+                fontSize: 13,
+              }}
+            >
+              <strong>{slice.points[0].data.xFormatted}</strong>
+              {slice.points.map((point) => (
+                <div
+                  key={point.id}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}
+                >
+                  <span
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: '50%',
+                      background: point.serieColor,
+                      display: 'inline-block',
+                    }}
+                  />
+                  {point.serieId}: {point.data.yFormatted}h
+                </div>
+              ))}
+              {pct !== null && (
+                <div
+                  style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid hsl(var(--border))' }}
+                >
+                  <span
+                    style={{
+                      color: pct >= 0 ? '#22c55e' : '#ef4444',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {t('statistics.balancePercentage')}: {pct > 0 ? '+' : ''}
+                    {pct}%
+                  </span>
+                </div>
+              )}
+            </div>
+          );
+        }}
         markers={[
           {
             axis: 'x',
