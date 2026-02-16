@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -28,15 +29,39 @@ func setupTestDB(t *testing.T) *gorm.DB {
 	return testutil.SetupTestDB(t)
 }
 
+// mustMarshal marshals body to JSON, panicking on failure (test bug).
+func mustMarshal(body interface{}) []byte {
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		panic(fmt.Sprintf("test bug: failed to marshal request body: %v", err))
+	}
+	return jsonBody
+}
+
+// mustNewRequest creates an HTTP request, panicking on failure (test bug).
+func mustNewRequest(method, path string, body *bytes.Buffer) *http.Request {
+	var req *http.Request
+	var err error
+	if body != nil {
+		req, err = http.NewRequest(method, path, body)
+	} else {
+		req, err = http.NewRequest(method, path, nil)
+	}
+	if err != nil {
+		panic(fmt.Sprintf("test bug: failed to create request: %v", err))
+	}
+	return req
+}
+
 // performRequest executes an HTTP request against the router.
 func performRequest(r *gin.Engine, method, path string, body interface{}) *httptest.ResponseRecorder {
 	var req *http.Request
 	if body != nil {
-		jsonBody, _ := json.Marshal(body)
-		req, _ = http.NewRequest(method, path, bytes.NewBuffer(jsonBody))
+		jsonBody := mustMarshal(body)
+		req = mustNewRequest(method, path, bytes.NewBuffer(jsonBody))
 		req.Header.Set("Content-Type", "application/json")
 	} else {
-		req, _ = http.NewRequest(method, path, nil)
+		req = mustNewRequest(method, path, nil)
 	}
 
 	w := httptest.NewRecorder()
@@ -48,11 +73,11 @@ func performRequest(r *gin.Engine, method, path string, body interface{}) *httpt
 func performRequestWithCookies(r *gin.Engine, method, path string, body interface{}, cookies []*http.Cookie) *httptest.ResponseRecorder {
 	var req *http.Request
 	if body != nil {
-		jsonBody, _ := json.Marshal(body)
-		req, _ = http.NewRequest(method, path, bytes.NewBuffer(jsonBody))
+		jsonBody := mustMarshal(body)
+		req = mustNewRequest(method, path, bytes.NewBuffer(jsonBody))
 		req.Header.Set("Content-Type", "application/json")
 	} else {
-		req, _ = http.NewRequest(method, path, nil)
+		req = mustNewRequest(method, path, nil)
 	}
 	for _, cookie := range cookies {
 		req.AddCookie(cookie)
@@ -64,7 +89,7 @@ func performRequestWithCookies(r *gin.Engine, method, path string, body interfac
 
 // performRequestRaw executes an HTTP request with a raw string body.
 func performRequestRaw(r *gin.Engine, method, path string, body string) *httptest.ResponseRecorder {
-	req, _ := http.NewRequest(method, path, bytes.NewBufferString(body))
+	req := mustNewRequest(method, path, bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
