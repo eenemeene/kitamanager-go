@@ -8,10 +8,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const testJWTSecret = "test-secret-key-for-csrf"
+
 func TestCSRFMiddleware_SafeMethods(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	middleware := NewCSRFMiddleware()
+	middleware := NewCSRFMiddleware(testJWTSecret)
 
 	safeMethods := []string{"GET", "HEAD", "OPTIONS"}
 
@@ -37,8 +39,9 @@ func TestCSRFMiddleware_SafeMethods(t *testing.T) {
 func TestCSRFMiddleware_UnsafeMethods_WithValidToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	middleware := NewCSRFMiddleware()
-	csrfToken := "test-csrf-token-12345"
+	middleware := NewCSRFMiddleware(testJWTSecret)
+	accessToken := "test-access-token-jwt"
+	csrfToken := ComputeCSRFToken(accessToken, testJWTSecret)
 
 	unsafeMethods := []string{"POST", "PUT", "PATCH", "DELETE"}
 
@@ -50,8 +53,7 @@ func TestCSRFMiddleware_UnsafeMethods_WithValidToken(t *testing.T) {
 			})
 
 			req := httptest.NewRequest(method, "/test", nil)
-			req.AddCookie(&http.Cookie{Name: "access_token", Value: "some-token"})
-			req.AddCookie(&http.Cookie{Name: CSRFCookieName, Value: csrfToken})
+			req.AddCookie(&http.Cookie{Name: "access_token", Value: accessToken})
 			req.Header.Set(CSRFHeaderName, csrfToken)
 			w := httptest.NewRecorder()
 
@@ -65,33 +67,10 @@ func TestCSRFMiddleware_UnsafeMethods_WithValidToken(t *testing.T) {
 	}
 }
 
-func TestCSRFMiddleware_UnsafeMethods_MissingCookie(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	middleware := NewCSRFMiddleware()
-
-	router := gin.New()
-	router.POST("/test", middleware.ValidateCSRF(), func(c *gin.Context) {
-		c.Status(http.StatusOK)
-	})
-
-	req := httptest.NewRequest("POST", "/test", nil)
-	req.AddCookie(&http.Cookie{Name: "access_token", Value: "some-token"})
-	// No CSRF cookie
-	req.Header.Set(CSRFHeaderName, "some-token")
-	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
-
-	if w.Code != http.StatusForbidden {
-		t.Errorf("expected status %d for missing CSRF cookie, got %d", http.StatusForbidden, w.Code)
-	}
-}
-
 func TestCSRFMiddleware_UnsafeMethods_MissingHeader(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	middleware := NewCSRFMiddleware()
+	middleware := NewCSRFMiddleware(testJWTSecret)
 
 	router := gin.New()
 	router.POST("/test", middleware.ValidateCSRF(), func(c *gin.Context) {
@@ -100,7 +79,6 @@ func TestCSRFMiddleware_UnsafeMethods_MissingHeader(t *testing.T) {
 
 	req := httptest.NewRequest("POST", "/test", nil)
 	req.AddCookie(&http.Cookie{Name: "access_token", Value: "some-token"})
-	req.AddCookie(&http.Cookie{Name: CSRFCookieName, Value: "csrf-token"})
 	// No CSRF header
 	w := httptest.NewRecorder()
 
@@ -111,10 +89,10 @@ func TestCSRFMiddleware_UnsafeMethods_MissingHeader(t *testing.T) {
 	}
 }
 
-func TestCSRFMiddleware_UnsafeMethods_MismatchedTokens(t *testing.T) {
+func TestCSRFMiddleware_UnsafeMethods_WrongToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	middleware := NewCSRFMiddleware()
+	middleware := NewCSRFMiddleware(testJWTSecret)
 
 	router := gin.New()
 	router.POST("/test", middleware.ValidateCSRF(), func(c *gin.Context) {
@@ -123,21 +101,45 @@ func TestCSRFMiddleware_UnsafeMethods_MismatchedTokens(t *testing.T) {
 
 	req := httptest.NewRequest("POST", "/test", nil)
 	req.AddCookie(&http.Cookie{Name: "access_token", Value: "some-token"})
-	req.AddCookie(&http.Cookie{Name: CSRFCookieName, Value: "cookie-token"})
-	req.Header.Set(CSRFHeaderName, "different-header-token")
+	req.Header.Set(CSRFHeaderName, "wrong-csrf-token")
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusForbidden {
-		t.Errorf("expected status %d for mismatched CSRF tokens, got %d", http.StatusForbidden, w.Code)
+		t.Errorf("expected status %d for wrong CSRF token, got %d", http.StatusForbidden, w.Code)
+	}
+}
+
+func TestCSRFMiddleware_UnsafeMethods_TokenFromDifferentSession(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	middleware := NewCSRFMiddleware(testJWTSecret)
+
+	// Compute CSRF for a different access token
+	csrfForOtherSession := ComputeCSRFToken("other-access-token", testJWTSecret)
+
+	router := gin.New()
+	router.POST("/test", middleware.ValidateCSRF(), func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest("POST", "/test", nil)
+	req.AddCookie(&http.Cookie{Name: "access_token", Value: "my-access-token"})
+	req.Header.Set(CSRFHeaderName, csrfForOtherSession)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("expected status %d for CSRF token from different session, got %d", http.StatusForbidden, w.Code)
 	}
 }
 
 func TestCSRFMiddleware_SkipForAPIClients(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	middleware := NewCSRFMiddleware()
+	middleware := NewCSRFMiddleware(testJWTSecret)
 
 	router := gin.New()
 	router.POST("/test", middleware.ValidateCSRF(), func(c *gin.Context) {
@@ -161,7 +163,7 @@ func TestCSRFMiddleware_SkipForAPIClients(t *testing.T) {
 func TestCSRFMiddleware_RequireCSRFForCookieAuth(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	middleware := NewCSRFMiddleware()
+	middleware := NewCSRFMiddleware(testJWTSecret)
 
 	router := gin.New()
 	router.POST("/test", middleware.ValidateCSRF(), func(c *gin.Context) {
@@ -182,25 +184,27 @@ func TestCSRFMiddleware_RequireCSRFForCookieAuth(t *testing.T) {
 	}
 }
 
-func TestSecureCompare(t *testing.T) {
-	tests := []struct {
-		a, b     string
-		expected bool
-	}{
-		{"hello", "hello", true},
-		{"hello", "world", false},
-		{"hello", "hell", false},
-		{"", "", true},
-		{"a", "", false},
-		{"abc123", "abc123", true},
-		{"abc123", "abc124", false},
+func TestComputeCSRFToken_Deterministic(t *testing.T) {
+	token1 := ComputeCSRFToken("access-token", "secret")
+	token2 := ComputeCSRFToken("access-token", "secret")
+	if token1 != token2 {
+		t.Error("ComputeCSRFToken should be deterministic for same inputs")
 	}
+}
 
-	for _, tc := range tests {
-		result := secureCompare(tc.a, tc.b)
-		if result != tc.expected {
-			t.Errorf("secureCompare(%q, %q) = %v, expected %v", tc.a, tc.b, result, tc.expected)
-		}
+func TestComputeCSRFToken_DifferentInputs(t *testing.T) {
+	token1 := ComputeCSRFToken("access-token-1", "secret")
+	token2 := ComputeCSRFToken("access-token-2", "secret")
+	if token1 == token2 {
+		t.Error("ComputeCSRFToken should produce different tokens for different access tokens")
+	}
+}
+
+func TestComputeCSRFToken_DifferentSecrets(t *testing.T) {
+	token1 := ComputeCSRFToken("access-token", "secret-1")
+	token2 := ComputeCSRFToken("access-token", "secret-2")
+	if token1 == token2 {
+		t.Error("ComputeCSRFToken should produce different tokens for different secrets")
 	}
 }
 

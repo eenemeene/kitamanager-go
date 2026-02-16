@@ -164,7 +164,7 @@ func main() {
 	// Initialize middleware
 	authMiddleware := middleware.NewAuthMiddleware(cfg.JWTSecret, tokenStore)
 	authzMiddleware := middleware.NewAuthorizationMiddleware(permissionService)
-	csrfMiddleware := middleware.NewCSRFMiddleware()
+	csrfMiddleware := middleware.NewCSRFMiddleware(cfg.JWTSecret)
 	loginRateLimiter := middleware.LoginRateLimiter(cfg.LoginRateLimitPerMinute)
 	apiRateLimiter := middleware.APIRateLimiter(cfg.APIRateLimitPerMinute)
 

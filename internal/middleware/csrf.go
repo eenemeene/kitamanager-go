@@ -1,6 +1,10 @@
 package middleware
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/hex"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -16,13 +20,23 @@ const (
 )
 
 // CSRFMiddleware validates CSRF tokens for state-changing requests.
-// It checks that the X-CSRF-Token header matches the csrf_token cookie.
-// Safe methods (GET, HEAD, OPTIONS) are allowed without CSRF validation.
-type CSRFMiddleware struct{}
+// The CSRF token is derived from the access token via HMAC, binding it to the session.
+// This prevents cookie-injection attacks where an attacker sets their own CSRF cookie.
+type CSRFMiddleware struct {
+	jwtSecret string
+}
 
 // NewCSRFMiddleware creates a new CSRF middleware instance.
-func NewCSRFMiddleware() *CSRFMiddleware {
-	return &CSRFMiddleware{}
+func NewCSRFMiddleware(jwtSecret string) *CSRFMiddleware {
+	return &CSRFMiddleware{jwtSecret: jwtSecret}
+}
+
+// ComputeCSRFToken derives a CSRF token from the access token using HMAC-SHA256.
+// This binds the CSRF token to the specific session, preventing cookie injection.
+func ComputeCSRFToken(accessToken, secret string) string {
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write([]byte(accessToken))
+	return hex.EncodeToString(mac.Sum(nil))
 }
 
 // ValidateCSRF returns a Gin middleware handler that validates CSRF tokens.
@@ -36,23 +50,12 @@ func (m *CSRFMiddleware) ValidateCSRF() gin.HandlerFunc {
 
 		// Check if request has cookie authentication
 		// If using Authorization header only, skip CSRF check (for API clients)
-		_, cookieErr := c.Cookie("access_token")
+		accessToken, cookieErr := c.Cookie("access_token")
 		authHeader := c.GetHeader("Authorization")
 
 		// If no cookie auth is used (pure API client with header auth), skip CSRF
 		if cookieErr != nil && authHeader != "" {
 			c.Next()
-			return
-		}
-
-		// For cookie-based auth, require CSRF token
-		csrfCookie, err := c.Cookie(CSRFCookieName)
-		if err != nil || csrfCookie == "" {
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
-				Code:    "csrf_error",
-				Message: "CSRF token cookie missing",
-			})
-			c.Abort()
 			return
 		}
 
@@ -66,8 +69,11 @@ func (m *CSRFMiddleware) ValidateCSRF() gin.HandlerFunc {
 			return
 		}
 
+		// Compute expected CSRF token from the access token cookie
+		expectedCSRF := ComputeCSRFToken(accessToken, m.jwtSecret)
+
 		// Constant-time comparison to prevent timing attacks
-		if !secureCompare(csrfHeader, csrfCookie) {
+		if subtle.ConstantTimeCompare([]byte(csrfHeader), []byte(expectedCSRF)) != 1 {
 			c.JSON(http.StatusForbidden, models.ErrorResponse{
 				Code:    "csrf_error",
 				Message: "CSRF token validation failed",
@@ -89,17 +95,4 @@ func isSafeMethod(method string) bool {
 	default:
 		return false
 	}
-}
-
-// secureCompare performs a constant-time comparison of two strings
-// to prevent timing attacks.
-func secureCompare(a, b string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	var result byte
-	for i := 0; i < len(a); i++ {
-		result |= a[i] ^ b[i]
-	}
-	return result == 0
 }

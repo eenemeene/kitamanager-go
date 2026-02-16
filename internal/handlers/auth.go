@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"net/http"
 	"time"
 
@@ -125,12 +123,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	// Log successful login
 	h.auditService.LogLogin(user.ID, user.Email, ipAddress, userAgent)
 
-	// Generate CSRF token
-	csrfToken, err := generateCSRFToken()
-	if err != nil {
-		respondError(c, apperror.Internal("failed to generate CSRF token"))
-		return
-	}
+	// Derive CSRF token from access token (binds CSRF to session)
+	csrfToken := middleware.ComputeCSRFToken(accessToken, h.jwtSecret)
 
 	// Set HttpOnly cookies for tokens
 	h.setAuthCookies(c, accessToken, refreshToken, csrfToken)
@@ -265,12 +259,8 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	// Generate new CSRF token
-	csrfToken, err := generateCSRFToken()
-	if err != nil {
-		respondError(c, apperror.Internal("failed to generate CSRF token"))
-		return
-	}
+	// Derive CSRF token from access token (binds CSRF to session)
+	csrfToken := middleware.ComputeCSRFToken(accessToken, h.jwtSecret)
 
 	// Set HttpOnly cookies for tokens
 	h.setAuthCookies(c, accessToken, refreshToken, csrfToken)
@@ -384,15 +374,6 @@ func (h *AuthHandler) clearAuthCookies(c *gin.Context) {
 	c.SetCookie(csrfTokenCookie, "", -1, "/", "", secure, false)
 }
 
-// generateCSRFToken generates a cryptographically secure random token
-func generateCSRFToken() (string, error) {
-	bytes := make([]byte, 32)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(bytes), nil
-}
-
 // Me godoc
 // @Summary Get current user
 // @Description Returns the currently authenticated user based on the JWT token
@@ -502,11 +483,7 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 		respondError(c, apperror.Internal("failed to generate refresh token"))
 		return
 	}
-	csrfToken, err := generateCSRFToken()
-	if err != nil {
-		respondError(c, apperror.Internal("failed to generate CSRF token"))
-		return
-	}
+	csrfToken := middleware.ComputeCSRFToken(accessToken, h.jwtSecret)
 
 	h.setAuthCookies(c, accessToken, refreshToken, csrfToken)
 
