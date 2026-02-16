@@ -55,7 +55,7 @@ type PayPlanCreateRequest struct {
 
 // PayPlanUpdateRequest is the request body for updating a pay plan.
 type PayPlanUpdateRequest struct {
-	Name string `json:"name" binding:"required" example:"TVöD-SuE"`
+	Name *string `json:"name" binding:"omitempty,max=255" example:"TVöD-SuE"`
 }
 
 // PayPlanResponse is the response for a pay plan.

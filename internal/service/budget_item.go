@@ -117,18 +117,24 @@ func (s *BudgetItemService) Update(ctx context.Context, id, orgID uint, req *mod
 		return nil, err
 	}
 
-	name, err := validateRequiredName(req.Name)
-	if err != nil {
-		return nil, err
+	if req.Name != nil {
+		name, err := validateRequiredName(*req.Name)
+		if err != nil {
+			return nil, err
+		}
+		item.Name = name
 	}
 
-	if !models.ValidBudgetItemCategory(req.Category) {
-		return nil, apperror.BadRequest("category must be 'income' or 'expense'")
+	if req.Category != nil {
+		if !models.ValidBudgetItemCategory(*req.Category) {
+			return nil, apperror.BadRequest("category must be 'income' or 'expense'")
+		}
+		item.Category = *req.Category
 	}
 
-	item.Name = name
-	item.Category = req.Category
-	item.PerChild = req.PerChild
+	if req.PerChild != nil {
+		item.PerChild = *req.PerChild
+	}
 
 	if err := s.store.Update(ctx, item); err != nil {
 		if store.IsDuplicateKeyError(err) {

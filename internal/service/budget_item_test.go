@@ -286,10 +286,13 @@ func TestBudgetItemService_Update(t *testing.T) {
 		t.Fatalf("failed to create item: %v", err)
 	}
 
+	updName := "Updated Name"
+	updCategory := "expense"
+	updPerChild := true
 	resp, err := svc.Update(ctx, item.ID, org.ID, &models.BudgetItemUpdateRequest{
-		Name:     "Updated Name",
-		Category: "expense",
-		PerChild: true,
+		Name:     &updName,
+		Category: &updCategory,
+		PerChild: &updPerChild,
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -321,9 +324,11 @@ func TestBudgetItemService_Update_InvalidCategory(t *testing.T) {
 		t.Fatalf("failed to create item: %v", err)
 	}
 
+	badName := "Item"
+	badCategory := "bad"
 	_, err = svc.Update(ctx, item.ID, org.ID, &models.BudgetItemUpdateRequest{
-		Name:     "Item",
-		Category: "bad",
+		Name:     &badName,
+		Category: &badCategory,
 	})
 	if err == nil {
 		t.Fatal("expected error for invalid category, got nil")
@@ -350,9 +355,11 @@ func TestBudgetItemService_Update_WrongOrg(t *testing.T) {
 		t.Fatalf("failed to create item: %v", err)
 	}
 
+	hackedName := "Hacked"
+	hackedCategory := "income"
 	_, err = svc.Update(ctx, item.ID, org2.ID, &models.BudgetItemUpdateRequest{
-		Name:     "Hacked",
-		Category: "income",
+		Name:     &hackedName,
+		Category: &hackedCategory,
 	})
 	if err == nil {
 		t.Fatal("expected error, got nil")

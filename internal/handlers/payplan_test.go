@@ -83,7 +83,8 @@ func TestPayPlanHandler_CRUD(t *testing.T) {
 
 	// Test Update
 	t.Run("Update", func(t *testing.T) {
-		body := models.PayPlanUpdateRequest{Name: "TVöD-VKA"}
+		updName := "TVöD-VKA"
+		body := models.PayPlanUpdateRequest{Name: &updName}
 		w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/payplans/%d", org.ID, createdID), body)
 
 		if w.Code != http.StatusOK {
@@ -655,7 +656,8 @@ func TestPayPlanHandler_Update_InvalidBody(t *testing.T) {
 func TestPayPlanHandler_Update_NotFound(t *testing.T) {
 	org, _, r, _ := setupPayPlanTestFull(t)
 
-	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/payplans/9999", org.ID), models.PayPlanUpdateRequest{Name: "x"})
+	notFoundName := "x"
+	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/payplans/9999", org.ID), models.PayPlanUpdateRequest{Name: &notFoundName})
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d, got %d: %s", http.StatusNotFound, w.Code, w.Body.String())
 	}

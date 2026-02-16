@@ -124,11 +124,13 @@ func (s *PayPlanService) Update(ctx context.Context, id, orgID uint, req *models
 		return nil, err
 	}
 
-	name := strings.TrimSpace(req.Name)
-	if validation.IsWhitespaceOnly(name) {
-		return nil, apperror.BadRequest("name cannot be empty or whitespace only")
+	if req.Name != nil {
+		name := strings.TrimSpace(*req.Name)
+		if validation.IsWhitespaceOnly(name) {
+			return nil, apperror.BadRequest("name cannot be empty or whitespace only")
+		}
+		payplan.Name = name
 	}
-	payplan.Name = name
 
 	if err := s.store.Update(ctx, payplan); err != nil {
 		return nil, apperror.InternalWrap(err, "failed to update pay plan")

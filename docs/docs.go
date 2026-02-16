@@ -7797,10 +7797,6 @@ const docTemplate = `{
         },
         "github_com_eenemeene_kitamanager-go_internal_models.BudgetItemUpdateRequest": {
             "type": "object",
-            "required": [
-                "category",
-                "name"
-            ],
             "properties": {
                 "category": {
                     "type": "string",
@@ -7808,6 +7804,7 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string",
+                    "maxLength": 255,
                     "example": "Elternbeiträge"
                 },
                 "per_child": {
@@ -10078,12 +10075,10 @@ const docTemplate = `{
         },
         "github_com_eenemeene_kitamanager-go_internal_models.PayPlanUpdateRequest": {
             "type": "object",
-            "required": [
-                "name"
-            ],
             "properties": {
                 "name": {
                     "type": "string",
+                    "maxLength": 255,
                     "example": "TVöD-SuE"
                 }
             }

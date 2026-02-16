@@ -191,8 +191,9 @@ func TestPayPlanService_Update(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 	payplan := createTestPayPlan(t, db, "Original Name", org.ID)
 
+	updatedName := "Updated Name"
 	req := models.PayPlanUpdateRequest{
-		Name: "Updated Name",
+		Name: &updatedName,
 	}
 
 	resp, err := svc.Update(ctx, payplan.ID, org.ID, &req)
@@ -214,8 +215,9 @@ func TestPayPlanService_Update_WrongOrg(t *testing.T) {
 	org2 := createTestOrganization(t, db, "Org 2")
 	payplan := createTestPayPlan(t, db, "TVöD-SuE", org1.ID)
 
+	updName := "Updated"
 	req := models.PayPlanUpdateRequest{
-		Name: "Updated",
+		Name: &updName,
 	}
 
 	_, err := svc.Update(ctx, payplan.ID, org2.ID, &req)

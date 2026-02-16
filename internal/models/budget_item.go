@@ -64,9 +64,9 @@ type BudgetItemCreateRequest struct {
 
 // BudgetItemUpdateRequest is the request body for updating a budget item.
 type BudgetItemUpdateRequest struct {
-	Name     string `json:"name" binding:"required" example:"Elternbeiträge"`
-	Category string `json:"category" binding:"required" example:"income"`
-	PerChild bool   `json:"per_child" example:"true"`
+	Name     *string `json:"name" binding:"omitempty,max=255" example:"Elternbeiträge"`
+	Category *string `json:"category" binding:"omitempty" example:"income"`
+	PerChild *bool   `json:"per_child" example:"true"`
 }
 
 // BudgetItemResponse is the response for a budget item.

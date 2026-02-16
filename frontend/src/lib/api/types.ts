@@ -546,9 +546,9 @@ export interface BudgetItemCreateRequest {
 }
 
 export interface BudgetItemUpdateRequest {
-  name: string;
-  category: string;
-  per_child: boolean;
+  name?: string;
+  category?: string;
+  per_child?: boolean;
 }
 
 export interface BudgetItemEntryCreateRequest {

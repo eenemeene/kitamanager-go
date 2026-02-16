@@ -174,13 +174,11 @@ definitions:
         type: string
       name:
         example: Elternbeiträge
+        maxLength: 255
         type: string
       per_child:
         example: true
         type: boolean
-    required:
-    - category
-    - name
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.Child:
     properties:
@@ -1812,9 +1810,8 @@ definitions:
     properties:
       name:
         example: TVöD-SuE
+        maxLength: 255
         type: string
-    required:
-    - name
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.RefreshRequest:
     properties:

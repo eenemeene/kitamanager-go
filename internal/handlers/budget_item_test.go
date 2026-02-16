@@ -315,7 +315,10 @@ func TestBudgetItemHandler_Update(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/api/v1/organizations/:orgId/budget-items/:id", handler.Update)
 
-	body := models.BudgetItemUpdateRequest{Name: "Office Rent", Category: "expense", PerChild: false}
+	updName := "Office Rent"
+	updCategory := "expense"
+	updPerChild := false
+	body := models.BudgetItemUpdateRequest{Name: &updName, Category: &updCategory, PerChild: &updPerChild}
 	w := performRequest(r, "PUT", fmt.Sprintf("/api/v1/organizations/%d/budget-items/%d", org.ID, item.ID), body)
 
 	if w.Code != http.StatusOK {
@@ -342,7 +345,9 @@ func TestBudgetItemHandler_Update_InvalidCategory(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/api/v1/organizations/:orgId/budget-items/:id", handler.Update)
 
-	body := models.BudgetItemUpdateRequest{Name: "Rent", Category: "bogus"}
+	bogusName := "Rent"
+	bogusCategory := "bogus"
+	body := models.BudgetItemUpdateRequest{Name: &bogusName, Category: &bogusCategory}
 	w := performRequest(r, "PUT", fmt.Sprintf("/api/v1/organizations/%d/budget-items/%d", org.ID, item.ID), body)
 
 	if w.Code != http.StatusBadRequest {
