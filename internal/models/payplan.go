@@ -14,6 +14,11 @@ type PayPlan struct {
 	UpdatedAt      time.Time       `json:"updated_at"`
 }
 
+// GetOrganizationID returns the organization ID for the OrgOwned interface.
+func (p *PayPlan) GetOrganizationID() uint {
+	return p.OrganizationID
+}
+
 // PayPlanPeriod represents a time period with specific pay rates.
 // WeeklyHours defines the reference hours for full-time employment.
 // EmployerContributionRate is stored in hundredths of a percent (e.g. 2200 = 22.00%).

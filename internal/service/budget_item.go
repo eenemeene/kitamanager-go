@@ -30,8 +30,8 @@ func (s *BudgetItemService) verifyBudgetItemOwnership(ctx context.Context, itemI
 		}
 		return nil, apperror.InternalWrap(err, "failed to fetch budget item")
 	}
-	if item.OrganizationID != orgID {
-		return nil, apperror.NotFound("budget item")
+	if err := verifyOrgOwnership(item, orgID, "budget item"); err != nil {
+		return nil, err
 	}
 	return item, nil
 }
@@ -45,8 +45,8 @@ func (s *BudgetItemService) verifyEntryOwnership(ctx context.Context, entryID, i
 		}
 		return nil, apperror.InternalWrap(err, "failed to fetch budget item entry")
 	}
-	if entry.BudgetItemID != itemID {
-		return nil, apperror.NotFound("budget item entry")
+	if err := verifyRecordOwnership(entry, itemID, "budget item entry"); err != nil {
+		return nil, err
 	}
 	return entry, nil
 }

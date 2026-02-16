@@ -32,8 +32,8 @@ func (s *PayPlanService) verifyPayPlanOwnership(ctx context.Context, payplanID, 
 		}
 		return nil, apperror.InternalWrap(err, "failed to fetch pay plan")
 	}
-	if payplan.OrganizationID != orgID {
-		return nil, apperror.NotFound("pay plan")
+	if err := verifyOrgOwnership(payplan, orgID, "pay plan"); err != nil {
+		return nil, err
 	}
 	return payplan, nil
 }
