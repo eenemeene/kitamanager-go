@@ -102,12 +102,8 @@ func (s *ChildService) CreateContract(ctx context.Context, childID, orgID uint, 
 	}
 
 	// Validate section belongs to the same organization
-	section, err := s.sectionStore.FindByID(ctx, req.SectionID)
-	if err != nil {
-		return nil, apperror.BadRequest("section not found")
-	}
-	if section.OrganizationID != orgID {
-		return nil, apperror.BadRequest("section does not belong to this organization")
+	if err := validateSectionOrg(ctx, s.sectionStore, req.SectionID, orgID); err != nil {
+		return nil, err
 	}
 
 	contract := &models.ChildContract{
@@ -169,14 +165,8 @@ func (s *ChildService) UpdateContract(ctx context.Context, contractID, childID, 
 	}
 
 	// Validate section if provided (applies to both modes)
-	if req.SectionID != nil {
-		section, err := s.sectionStore.FindByID(ctx, *req.SectionID)
-		if err != nil {
-			return nil, apperror.BadRequest("section not found")
-		}
-		if section.OrganizationID != orgID {
-			return nil, apperror.BadRequest("section does not belong to this organization")
-		}
+	if err := validateOptionalSectionOrg(ctx, s.sectionStore, req.SectionID, orgID); err != nil {
+		return nil, err
 	}
 
 	switch mode {

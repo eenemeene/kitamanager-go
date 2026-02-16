@@ -1,10 +1,12 @@
 package service
 
 import (
+	"context"
 	"strings"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
+	"github.com/eenemeene/kitamanager-go/internal/store"
 	"github.com/eenemeene/kitamanager-go/internal/validation"
 )
 
@@ -47,6 +49,27 @@ func validateRequiredName(name string) (string, error) {
 		return "", apperror.BadRequest("name cannot be empty or whitespace only")
 	}
 	return name, nil
+}
+
+// validateSectionOrg validates that a section exists and belongs to the given organization.
+func validateSectionOrg(ctx context.Context, sectionStore store.SectionStorer, sectionID, orgID uint) error {
+	section, err := sectionStore.FindByID(ctx, sectionID)
+	if err != nil {
+		return apperror.BadRequest("section not found")
+	}
+	if section.OrganizationID != orgID {
+		return apperror.BadRequest("section does not belong to this organization")
+	}
+	return nil
+}
+
+// validateOptionalSectionOrg validates that a section exists and belongs to the given
+// organization when sectionID is non-nil. Returns nil if sectionID is nil.
+func validateOptionalSectionOrg(ctx context.Context, sectionStore store.SectionStorer, sectionID *uint, orgID uint) error {
+	if sectionID == nil {
+		return nil
+	}
+	return validateSectionOrg(ctx, sectionStore, *sectionID, orgID)
 }
 
 // personUpdateFields describes the optional fields in a person update request.
