@@ -13,6 +13,7 @@ var (
 	ErrConflict       = errors.New("resource conflict")
 	ErrUnauthorized   = errors.New("unauthorized")
 	ErrForbidden      = errors.New("forbidden")
+	ErrTooManyRequests = errors.New("too many requests")
 	ErrInternalServer = errors.New("internal server error")
 )
 
@@ -24,6 +25,7 @@ const (
 	CodeConflict         = "conflict"
 	CodeUnauthorized     = "unauthorized"
 	CodeForbidden        = "forbidden"
+	CodeTooManyRequests  = "too_many_requests"
 	CodeInternal         = "internal_error"
 	CodeEmailConflict    = "email_conflict"
 	CodeContractConflict = "contract_overlap"
@@ -62,6 +64,8 @@ func (e *AppError) GetErrorCode() string {
 		return CodeUnauthorized
 	case http.StatusForbidden:
 		return CodeForbidden
+	case http.StatusTooManyRequests:
+		return CodeTooManyRequests
 	default:
 		return CodeInternal
 	}
@@ -95,6 +99,11 @@ func EmailConflict() *AppError {
 // ContractConflict creates an error for overlapping contracts
 func ContractConflict(msg string) *AppError {
 	return &AppError{Err: ErrConflict, Message: msg, Code: http.StatusConflict, ErrorCode: CodeContractConflict}
+}
+
+// TooManyRequests creates a 429 rate-limit error
+func TooManyRequests(msg string) *AppError {
+	return &AppError{Err: ErrTooManyRequests, Message: msg, Code: http.StatusTooManyRequests, ErrorCode: CodeTooManyRequests}
 }
 
 // Forbidden creates a forbidden error
@@ -146,6 +155,9 @@ func HTTPStatus(err error) int {
 	}
 	if errors.Is(err, ErrForbidden) {
 		return http.StatusForbidden
+	}
+	if errors.Is(err, ErrTooManyRequests) {
+		return http.StatusTooManyRequests
 	}
 	if errors.Is(err, ErrUnauthorized) {
 		return http.StatusUnauthorized

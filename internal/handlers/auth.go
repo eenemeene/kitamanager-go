@@ -59,6 +59,11 @@ func NewAuthHandler(userStore store.UserStorer, tokenStore store.TokenStorer, jw
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
+	const (
+		lockoutThreshold = 5
+		lockoutWindow    = 15 * time.Minute
+	)
+
 	req, ok := bindJSON[models.LoginRequest](c)
 	if !ok {
 		return
@@ -66,6 +71,14 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	ipAddress := c.ClientIP()
 	userAgent := c.GetHeader("User-Agent")
+
+	// Check for account lockout
+	failedCount, err := h.auditService.CountRecentFailedLogins(c.Request.Context(), req.Email, lockoutWindow)
+	if err == nil && failedCount >= lockoutThreshold {
+		h.auditService.LogLoginFailed(req.Email, ipAddress, userAgent, "account locked - too many failed attempts")
+		respondError(c, apperror.TooManyRequests("too many failed login attempts, please try again later"))
+		return
+	}
 
 	user, err := h.userStore.FindByEmail(c.Request.Context(), req.Email)
 	if err != nil {
