@@ -6,7 +6,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 )
@@ -68,26 +67,17 @@ func (h *ChildHandler) List(c *gin.Context) {
 	}
 
 	// Parse optional date filters
-	var activeOn *time.Time
-	var contractAfter *time.Time
-
-	if contractAfterStr := c.Query("contract_after"); contractAfterStr != "" {
-		date, err := time.Parse(models.DateFormat, contractAfterStr)
-		if err != nil {
-			respondError(c, apperror.BadRequest("invalid contract_after date format, expected YYYY-MM-DD"))
-			return
-		}
-		contractAfter = &date
+	contractAfter, ok := parseOptionalDatePtr(c, "contract_after")
+	if !ok {
+		return
 	}
 
-	if activeOnStr := c.Query("active_on"); activeOnStr != "" {
-		date, err := time.Parse(models.DateFormat, activeOnStr)
-		if err != nil {
-			respondError(c, apperror.BadRequest("invalid date format, expected YYYY-MM-DD"))
-			return
-		}
-		activeOn = &date
-	} else if contractAfter == nil {
+	activeOn, ok := parseOptionalDatePtr(c, "active_on")
+	if !ok {
+		return
+	}
+
+	if activeOn == nil && contractAfter == nil {
 		// Default active_on to today when neither filter is specified
 		now := time.Now()
 		activeOn = &now

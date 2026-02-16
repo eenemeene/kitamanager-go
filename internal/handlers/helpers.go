@@ -118,6 +118,22 @@ func parseOptionalDate(c *gin.Context, param string) (time.Time, bool) {
 	return date, true
 }
 
+// parseOptionalDatePtr parses an optional date query parameter.
+// Returns nil if param is empty, or a pointer to the parsed date.
+// Returns (date, ok). If ok is false, error response has been sent.
+func parseOptionalDatePtr(c *gin.Context, param string) (*time.Time, bool) {
+	dateStr := c.Query(param)
+	if dateStr == "" {
+		return nil, true
+	}
+	date, err := time.Parse(models.DateFormat, dateStr)
+	if err != nil {
+		respondError(c, apperror.BadRequest("invalid "+param+" date format, expected YYYY-MM-DD"))
+		return nil, false
+	}
+	return &date, true
+}
+
 // parseOptionalInt parses an optional integer query parameter.
 // Returns defaultValue if param is empty.
 // Returns (value, ok). If ok is false, error response has been sent.

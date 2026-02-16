@@ -94,13 +94,17 @@ export default function EmployeesPage() {
   const sections = useMemo(() => sectionsData?.data ?? [], [sectionsData?.data]);
 
   // Collect unique payplan IDs from employee contracts to fetch details for salary calc
-  const payPlanIds = Array.from(
-    new Set(
-      (employees ?? [])
-        .flatMap((e) => e.contracts ?? [])
-        .map((c) => c.payplan_id)
-        .filter((id) => id > 0)
-    )
+  const payPlanIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (employees ?? [])
+            .flatMap((e) => e.contracts ?? [])
+            .map((c) => c.payplan_id)
+            .filter((id) => id > 0)
+        )
+      ),
+    [employees]
   );
 
   const payPlanDetailsQueries = useQuery({
