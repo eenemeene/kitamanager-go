@@ -18,27 +18,27 @@ func NewUserStore(db *gorm.DB) *UserStore {
 	return &UserStore{db: db}
 }
 
+// userSearchScope returns a GORM scope that filters users by name or email.
+func userSearchScope(search string) func(*gorm.DB) *gorm.DB {
+	return func(q *gorm.DB) *gorm.DB {
+		if search == "" {
+			return q
+		}
+		pattern := "%" + strings.ToLower(search) + "%"
+		return q.Where("LOWER(users.name) LIKE ? OR LOWER(users.email) LIKE ?", pattern, pattern)
+	}
+}
+
 func (s *UserStore) FindAll(ctx context.Context, search string, limit, offset int) ([]models.User, int64, error) {
 	var users []models.User
 	var total int64
+	scope := userSearchScope(search)
 
-	query := DBFromContext(ctx, s.db).Model(&models.User{})
-	if search != "" {
-		pattern := "%" + strings.ToLower(search) + "%"
-		query = query.Where("LOWER(users.name) LIKE ? OR LOWER(users.email) LIKE ?", pattern, pattern)
-	}
-
-	if err := query.Count(&total).Error; err != nil {
+	if err := DBFromContext(ctx, s.db).Model(&models.User{}).Scopes(scope).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	dataQuery := DBFromContext(ctx, s.db).Preload("Groups")
-	if search != "" {
-		pattern := "%" + strings.ToLower(search) + "%"
-		dataQuery = dataQuery.Where("LOWER(users.name) LIKE ? OR LOWER(users.email) LIKE ?", pattern, pattern)
-	}
-
-	if err := dataQuery.Limit(limit).Offset(offset).Find(&users).Error; err != nil {
+	if err := DBFromContext(ctx, s.db).Preload("Groups").Scopes(scope).Limit(limit).Offset(offset).Find(&users).Error; err != nil {
 		return nil, 0, err
 	}
 
@@ -48,33 +48,22 @@ func (s *UserStore) FindAll(ctx context.Context, search string, limit, offset in
 func (s *UserStore) FindByOrganization(ctx context.Context, orgID uint, search string, limit, offset int) ([]models.User, int64, error) {
 	var users []models.User
 	var total int64
+	scope := userSearchScope(search)
 
-	// Count distinct users in the organization
-	countQuery := DBFromContext(ctx, s.db).Model(&models.User{}).
-		Distinct().
-		Joins("JOIN user_groups ON user_groups.user_id = users.id").
-		Joins("JOIN groups ON groups.id = user_groups.group_id").
-		Where("groups.organization_id = ?", orgID)
-	if search != "" {
-		pattern := "%" + strings.ToLower(search) + "%"
-		countQuery = countQuery.Where("LOWER(users.name) LIKE ? OR LOWER(users.email) LIKE ?", pattern, pattern)
+	orgJoin := func(q *gorm.DB) *gorm.DB {
+		return q.Distinct().
+			Joins("JOIN user_groups ON user_groups.user_id = users.id").
+			Joins("JOIN groups ON groups.id = user_groups.group_id").
+			Where("groups.organization_id = ?", orgID)
 	}
-	if err := countQuery.Count(&total).Error; err != nil {
+
+	if err := DBFromContext(ctx, s.db).Model(&models.User{}).Scopes(orgJoin, scope).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Get users with their groups (filtered to this org's groups)
-	dataQuery := DBFromContext(ctx, s.db).
-		Distinct().
-		Joins("JOIN user_groups ON user_groups.user_id = users.id").
-		Joins("JOIN groups ON groups.id = user_groups.group_id").
-		Where("groups.organization_id = ?", orgID).
-		Preload("Groups", "organization_id = ?", orgID)
-	if search != "" {
-		pattern := "%" + strings.ToLower(search) + "%"
-		dataQuery = dataQuery.Where("LOWER(users.name) LIKE ? OR LOWER(users.email) LIKE ?", pattern, pattern)
-	}
-	if err := dataQuery.Limit(limit).Offset(offset).Find(&users).Error; err != nil {
+	if err := DBFromContext(ctx, s.db).Scopes(orgJoin, scope).
+		Preload("Groups", "organization_id = ?", orgID).
+		Limit(limit).Offset(offset).Find(&users).Error; err != nil {
 		return nil, 0, err
 	}
 
@@ -167,24 +156,20 @@ func (s *UserStore) GetUserOrganizations(ctx context.Context, userID uint) ([]mo
 func (s *UserStore) FindByOrganizations(ctx context.Context, orgIDs []uint, search string, limit, offset int) ([]models.User, int64, error) {
 	var users []models.User
 	var total int64
+	scope := userSearchScope(search)
 
-	baseQuery := func(q *gorm.DB) *gorm.DB {
-		q = q.Distinct().
+	orgsJoin := func(q *gorm.DB) *gorm.DB {
+		return q.Distinct().
 			Joins("JOIN user_groups ON user_groups.user_id = users.id").
 			Joins("JOIN groups ON groups.id = user_groups.group_id").
 			Where("groups.organization_id IN ?", orgIDs)
-		if search != "" {
-			pattern := "%" + strings.ToLower(search) + "%"
-			q = q.Where("LOWER(users.name) LIKE ? OR LOWER(users.email) LIKE ?", pattern, pattern)
-		}
-		return q
 	}
 
-	if err := baseQuery(DBFromContext(ctx, s.db).Model(&models.User{})).Count(&total).Error; err != nil {
+	if err := DBFromContext(ctx, s.db).Model(&models.User{}).Scopes(orgsJoin, scope).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	if err := baseQuery(DBFromContext(ctx, s.db).Preload("Groups")).Limit(limit).Offset(offset).Find(&users).Error; err != nil {
+	if err := DBFromContext(ctx, s.db).Preload("Groups").Scopes(orgsJoin, scope).Limit(limit).Offset(offset).Find(&users).Error; err != nil {
 		return nil, 0, err
 	}
 
