@@ -17,14 +17,8 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
 import { DeleteConfirmDialog } from '@/components/crud/delete-confirm-dialog';
+import { CrudFormDialog } from '@/components/crud/crud-form-dialog';
 import { QueryError } from '@/components/crud/query-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -382,91 +376,75 @@ export default function ChildContractsPage() {
         </CardContent>
       </Card>
 
-      {/* Contract Create/Edit Dialog */}
-      <Dialog open={isContractDialogOpen} onOpenChange={setIsContractDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {editingContract ? t('contracts.edit') : t('contracts.create')}
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="from">{t('contracts.startDate')}</Label>
-                <Input id="from" type="date" {...register('from')} />
-                {errors.from && (
-                  <p className="text-sm text-destructive">{t('contracts.startDateRequired')}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="to">{t('contracts.endDateOptional')}</Label>
-                <Input id="to" type="date" {...register('to')} />
-                {!editingContract && child && orgState && (
-                  <p className="text-xs text-muted-foreground">{t('children.contractEndHint')}</p>
-                )}
-              </div>
-            </div>
-
-            {sectionsData && sectionsData.data.length > 0 && (
-              <div className="space-y-2">
-                <Label htmlFor="contract_section">{t('sections.title')} *</Label>
-                <Select
-                  value={watch('section_id')?.toString() || ''}
-                  onValueChange={(val) => setValue('section_id', val ? Number(val) : 0)}
-                >
-                  <SelectTrigger id="contract_section">
-                    <SelectValue placeholder={t('sections.selectSection')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sectionsData.data.map((section) => (
-                      <SelectItem key={section.id} value={section.id.toString()}>
-                        {section.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.section_id && (
-                  <p className="text-sm text-destructive">{t('validation.sectionRequired')}</p>
-                )}
-              </div>
+      <CrudFormDialog
+        open={isContractDialogOpen}
+        onOpenChange={setIsContractDialogOpen}
+        isEditing={!!editingContract}
+        translationPrefix="contracts"
+        onSubmit={handleSubmit(onSubmit)}
+        isSaving={createMutation.isPending || updateMutation.isPending}
+      >
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="from">{t('contracts.startDate')}</Label>
+            <Input id="from" type="date" {...register('from')} />
+            {errors.from && (
+              <p className="text-sm text-destructive">{t('contracts.startDateRequired')}</p>
             )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="to">{t('contracts.endDateOptional')}</Label>
+            <Input id="to" type="date" {...register('to')} />
+            {!editingContract && child && orgState && (
+              <p className="text-xs text-muted-foreground">{t('children.contractEndHint')}</p>
+            )}
+          </div>
+        </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="properties">{t('contracts.propertiesLabel')}</Label>
-              <Controller
-                name="properties"
-                control={control}
-                render={({ field }) => (
-                  <PropertyTagInput
-                    id="properties"
-                    value={field.value}
-                    onChange={field.onChange}
-                    fundingAttributes={fundingAttributes}
-                    attributesByKey={attributesByKey}
-                    placeholder={t('contracts.propertiesPlaceholder')}
-                    suggestionsLabel={t('contracts.suggestedProperties')}
-                  />
-                )}
+        {sectionsData && sectionsData.data.length > 0 && (
+          <div className="space-y-2">
+            <Label htmlFor="contract_section">{t('sections.title')} *</Label>
+            <Select
+              value={watch('section_id')?.toString() || ''}
+              onValueChange={(val) => setValue('section_id', val ? Number(val) : 0)}
+            >
+              <SelectTrigger id="contract_section">
+                <SelectValue placeholder={t('sections.selectSection')} />
+              </SelectTrigger>
+              <SelectContent>
+                {sectionsData.data.map((section) => (
+                  <SelectItem key={section.id} value={section.id.toString()}>
+                    {section.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.section_id && (
+              <p className="text-sm text-destructive">{t('validation.sectionRequired')}</p>
+            )}
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <Label htmlFor="properties">{t('contracts.propertiesLabel')}</Label>
+          <Controller
+            name="properties"
+            control={control}
+            render={({ field }) => (
+              <PropertyTagInput
+                id="properties"
+                value={field.value}
+                onChange={field.onChange}
+                fundingAttributes={fundingAttributes}
+                attributesByKey={attributesByKey}
+                placeholder={t('contracts.propertiesPlaceholder')}
+                suggestionsLabel={t('contracts.suggestedProperties')}
               />
-              <p className="text-xs text-muted-foreground">{t('contracts.propertiesHelp')}</p>
-            </div>
-
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsContractDialogOpen(false)}
-              >
-                {t('common.cancel')}
-              </Button>
-              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-                {t('common.save')}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+            )}
+          />
+          <p className="text-xs text-muted-foreground">{t('contracts.propertiesHelp')}</p>
+        </div>
+      </CrudFormDialog>
 
       <DeleteConfirmDialog
         open={isDeleteDialogOpen}

@@ -4,11 +4,11 @@ import { useState, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Search } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Input } from '@/components/ui/input';
+import { SearchInput } from '@/components/ui/search-input';
 import {
   Select,
   SelectContent,
@@ -296,22 +296,14 @@ export default function EmployeesPage() {
       </div>
 
       <div className="flex items-center gap-4">
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <label htmlFor="search-employees" className="sr-only">
-            {t('common.search')}
-          </label>
-          <Input
-            id="search-employees"
-            placeholder={t('common.search')}
-            value={searchInput}
-            onChange={(e) => {
-              setSearchInput(e.target.value);
-              setPage(1);
-            }}
-            className="pl-9"
-          />
-        </div>
+        <SearchInput
+          id="search-employees"
+          value={searchInput}
+          onChange={(value) => {
+            setSearchInput(value);
+            setPage(1);
+          }}
+        />
         <Select
           value={staffCategoryFilter}
           onValueChange={(value) => {
