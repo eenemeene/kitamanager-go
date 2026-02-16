@@ -95,17 +95,15 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 		}
 
 		// Verify this is an access token (not a refresh token)
-		// For backwards compatibility, accept tokens without type claim
-		if tokenType, exists := claims["type"]; exists {
-			if tokenType != "access" {
-				slog.Warn("Auth failed: invalid token type", "ip", c.ClientIP(), "path", c.Request.URL.Path, "type", tokenType)
-				c.JSON(http.StatusUnauthorized, models.ErrorResponse{
-					Code:    apperror.CodeUnauthorized,
-					Message: "invalid token type",
-				})
-				c.Abort()
-				return
-			}
+		tokenType, _ := claims["type"].(string)
+		if tokenType != "access" {
+			slog.Warn("Auth failed: invalid token type", "ip", c.ClientIP(), "path", c.Request.URL.Path, "type", tokenType)
+			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+				Code:    apperror.CodeUnauthorized,
+				Message: "invalid token type",
+			})
+			c.Abort()
+			return
 		}
 
 		// JWT numbers are parsed as float64, convert to uint

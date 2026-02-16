@@ -1,6 +1,9 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -136,25 +139,50 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 // generateAccessToken creates a short-lived JWT for API access
 func (h *AuthHandler) generateAccessToken(userID uint, email string) (string, error) {
+	now := time.Now()
+	jti, err := generateJTI()
+	if err != nil {
+		return "", err
+	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub":     fmt.Sprintf("%d", userID),
 		"user_id": userID,
 		"email":   email,
 		"type":    "access",
-		"exp":     time.Now().Add(accessTokenExpiry).Unix(),
-		"iat":     time.Now().Unix(),
+		"jti":     jti,
+		"exp":     now.Add(accessTokenExpiry).Unix(),
+		"nbf":     now.Unix(),
+		"iat":     now.Unix(),
 	})
 	return token.SignedString([]byte(h.jwtSecret))
 }
 
 // generateRefreshToken creates a long-lived JWT for token refresh
 func (h *AuthHandler) generateRefreshToken(userID uint) (string, error) {
+	now := time.Now()
+	jti, err := generateJTI()
+	if err != nil {
+		return "", err
+	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub":     fmt.Sprintf("%d", userID),
 		"user_id": userID,
 		"type":    "refresh",
-		"exp":     time.Now().Add(refreshTokenExpiry).Unix(),
-		"iat":     time.Now().Unix(),
+		"jti":     jti,
+		"exp":     now.Add(refreshTokenExpiry).Unix(),
+		"nbf":     now.Unix(),
+		"iat":     now.Unix(),
 	})
 	return token.SignedString([]byte(h.jwtSecret))
+}
+
+// generateJTI generates a unique JWT ID (jti claim).
+func generateJTI() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
 }
 
 // Refresh godoc

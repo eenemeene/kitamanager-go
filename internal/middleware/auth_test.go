@@ -20,6 +20,7 @@ func TestAuthMiddleware_RequireAuth_UserIDConversion(t *testing.T) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": 42, // This becomes float64 when parsed from JSON
 		"email":   "test@example.com",
+		"type":    "access",
 		"exp":     time.Now().Add(time.Hour).Unix(),
 	})
 	tokenString, err := token.SignedString([]byte(jwtSecret))
@@ -225,17 +226,17 @@ func TestAuthMiddleware_RequireAuth_AcceptsAccessToken(t *testing.T) {
 	}
 }
 
-func TestAuthMiddleware_RequireAuth_AcceptsLegacyTokenWithoutType(t *testing.T) {
+func TestAuthMiddleware_RequireAuth_RejectsTokenWithoutType(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	jwtSecret := "test-secret"
 	middleware := NewAuthMiddleware(jwtSecret)
 
-	// Create a token WITHOUT type claim (backwards compatibility)
+	// Create a token WITHOUT type claim (must be rejected)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": 42,
 		"email":   "test@example.com",
-		// No "type" claim - should still be accepted for backwards compatibility
+		// No "type" claim
 		"exp": time.Now().Add(time.Hour).Unix(),
 	})
 	tokenString, err := token.SignedString([]byte(jwtSecret))
@@ -254,8 +255,8 @@ func TestAuthMiddleware_RequireAuth_AcceptsLegacyTokenWithoutType(t *testing.T) 
 
 	router.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Errorf("expected status %d for legacy token without type, got %d", http.StatusOK, w.Code)
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected status %d for token without type, got %d", http.StatusUnauthorized, w.Code)
 	}
 }
 
