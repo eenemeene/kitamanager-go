@@ -66,7 +66,7 @@ func (s *UserGroupStore) FindByUserAndGroup(ctx context.Context, userID, groupID
 	var ug models.UserGroup
 	err := DBFromContext(ctx, s.db).Where("user_id = ? AND group_id = ?", userID, groupID).First(&ug).Error
 	if err != nil {
-		return nil, err
+		return nil, WrapNotFound(err)
 	}
 	return &ug, nil
 }

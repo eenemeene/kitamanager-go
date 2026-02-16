@@ -31,7 +31,7 @@ func (s *ChildAttendanceService) Create(ctx context.Context, orgID, childID uint
 	// Verify child exists and belongs to org
 	child, err := s.childStore.FindByIDMinimal(ctx, childID)
 	if err != nil {
-		return nil, apperror.NotFound("child")
+		return nil, classifyStoreError(err, "child")
 	}
 	if child.OrganizationID != orgID {
 		return nil, apperror.NotFound("child")
@@ -105,7 +105,7 @@ func (s *ChildAttendanceService) Create(ctx context.Context, orgID, childID uint
 func (s *ChildAttendanceService) GetByID(ctx context.Context, id, orgID, childID uint) (*models.ChildAttendanceResponse, error) {
 	attendance, err := s.store.FindByID(ctx, id)
 	if err != nil {
-		return nil, apperror.NotFound("attendance record")
+		return nil, classifyStoreError(err, "attendance record")
 	}
 	if attendance.OrganizationID != orgID {
 		return nil, apperror.NotFound("attendance record")
@@ -122,7 +122,7 @@ func (s *ChildAttendanceService) GetByID(ctx context.Context, id, orgID, childID
 func (s *ChildAttendanceService) Update(ctx context.Context, id, orgID, childID uint, req *models.ChildAttendanceUpdateRequest) (*models.ChildAttendanceResponse, error) {
 	attendance, err := s.store.FindByID(ctx, id)
 	if err != nil {
-		return nil, apperror.NotFound("attendance record")
+		return nil, classifyStoreError(err, "attendance record")
 	}
 	if attendance.OrganizationID != orgID {
 		return nil, apperror.NotFound("attendance record")
@@ -159,7 +159,7 @@ func (s *ChildAttendanceService) Update(ctx context.Context, id, orgID, childID 
 func (s *ChildAttendanceService) Delete(ctx context.Context, id, orgID, childID uint) error {
 	attendance, err := s.store.FindByID(ctx, id)
 	if err != nil {
-		return apperror.NotFound("attendance record")
+		return classifyStoreError(err, "attendance record")
 	}
 	if attendance.OrganizationID != orgID {
 		return apperror.NotFound("attendance record")
@@ -179,7 +179,7 @@ func (s *ChildAttendanceService) ListByChild(ctx context.Context, childID, orgID
 	// Verify child belongs to org
 	child, err := s.childStore.FindByIDMinimal(ctx, childID)
 	if err != nil {
-		return nil, 0, apperror.NotFound("child")
+		return nil, 0, classifyStoreError(err, "child")
 	}
 	if child.OrganizationID != orgID {
 		return nil, 0, apperror.NotFound("child")

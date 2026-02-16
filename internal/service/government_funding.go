@@ -207,7 +207,7 @@ func (s *GovernmentFundingService) validatePeriodNoOverlap(ctx context.Context, 
 func (s *GovernmentFundingService) CreatePeriod(ctx context.Context, governmentFundingID uint, req *models.GovernmentFundingPeriodCreateRequest) (*models.GovernmentFundingPeriodResponse, error) {
 	// Verify government funding exists
 	if _, err := s.store.FindByID(ctx, governmentFundingID); err != nil {
-		return nil, apperror.NotFound("government funding")
+		return nil, classifyStoreError(err, "government funding")
 	}
 
 	var resp models.GovernmentFundingPeriodResponse

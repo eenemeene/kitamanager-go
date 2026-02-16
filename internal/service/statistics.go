@@ -77,7 +77,7 @@ func (s *StatisticsService) GetStaffingHours(ctx context.Context, orgID uint, fr
 	// Fetch organization for state
 	org, err := s.orgStore.FindByID(ctx, orgID)
 	if err != nil {
-		return nil, apperror.NotFound("organization")
+		return nil, classifyStoreError(err, "organization")
 	}
 
 	// Fetch government funding with all periods and properties
@@ -162,7 +162,7 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 	// Fetch organization for state
 	org, err := s.orgStore.FindByID(ctx, orgID)
 	if err != nil {
-		return nil, apperror.NotFound("organization")
+		return nil, classifyStoreError(err, "organization")
 	}
 
 	// Fetch government funding with all periods and properties
@@ -310,7 +310,7 @@ func (s *StatisticsService) GetOccupancy(ctx context.Context, orgID uint, from, 
 	// Fetch organization for state
 	org, err := s.orgStore.FindByID(ctx, orgID)
 	if err != nil {
-		return nil, apperror.NotFound("organization")
+		return nil, classifyStoreError(err, "organization")
 	}
 
 	// Fetch government funding with all periods and properties

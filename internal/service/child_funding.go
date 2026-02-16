@@ -15,7 +15,7 @@ func (s *ChildService) CalculateFunding(ctx context.Context, orgID uint, date ti
 	// Get organization to determine state
 	org, err := s.orgStore.FindByID(ctx, orgID)
 	if err != nil {
-		return nil, apperror.NotFound("organization")
+		return nil, classifyStoreError(err, "organization")
 	}
 
 	// Get children with active contracts on this date

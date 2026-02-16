@@ -52,7 +52,7 @@ func (s *SectionService) ListByOrganization(ctx context.Context, orgID uint, sea
 func (s *SectionService) GetByIDAndOrg(ctx context.Context, id, orgID uint) (*models.SectionResponse, error) {
 	section, err := s.store.FindByID(ctx, id)
 	if err != nil {
-		return nil, apperror.NotFound("section")
+		return nil, classifyStoreError(err, "section")
 	}
 	if err := verifyOrgOwnership(section, orgID, "section"); err != nil {
 		return nil, err
@@ -99,7 +99,7 @@ func (s *SectionService) Create(ctx context.Context, orgID uint, req *models.Sec
 func (s *SectionService) UpdateByIDAndOrg(ctx context.Context, id, orgID uint, req *models.SectionUpdateRequest) (*models.SectionResponse, error) {
 	section, err := s.store.FindByID(ctx, id)
 	if err != nil {
-		return nil, apperror.NotFound("section")
+		return nil, classifyStoreError(err, "section")
 	}
 	if err := verifyOrgOwnership(section, orgID, "section"); err != nil {
 		return nil, err
@@ -144,7 +144,7 @@ func (s *SectionService) UpdateByIDAndOrg(ctx context.Context, id, orgID uint, r
 func (s *SectionService) DeleteByIDAndOrg(ctx context.Context, id, orgID uint) error {
 	section, err := s.store.FindByID(ctx, id)
 	if err != nil {
-		return apperror.NotFound("section")
+		return classifyStoreError(err, "section")
 	}
 	if err := verifyOrgOwnership(section, orgID, "section"); err != nil {
 		return err

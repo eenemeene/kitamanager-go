@@ -60,7 +60,7 @@ func (s *SectionStore) FindByOrganizationPaginated(ctx context.Context, orgID ui
 func (s *SectionStore) FindDefaultSection(ctx context.Context, orgID uint) (*models.Section, error) {
 	var section models.Section
 	if err := DBFromContext(ctx, s.db).Where("organization_id = ? AND is_default = ?", orgID, true).First(&section).Error; err != nil {
-		return nil, err
+		return nil, WrapNotFound(err)
 	}
 	return &section, nil
 }
@@ -68,7 +68,7 @@ func (s *SectionStore) FindDefaultSection(ctx context.Context, orgID uint) (*mod
 func (s *SectionStore) FindByNameAndOrg(ctx context.Context, name string, orgID uint) (*models.Section, error) {
 	var section models.Section
 	if err := DBFromContext(ctx, s.db).Where("organization_id = ? AND name = ?", orgID, name).First(&section).Error; err != nil {
-		return nil, err
+		return nil, WrapNotFound(err)
 	}
 	return &section, nil
 }

@@ -35,13 +35,13 @@ func (s *UserGroupService) AddUserToGroup(ctx context.Context, userID, groupID u
 	// Verify user exists
 	_, err := s.userStore.FindByID(ctx, userID)
 	if err != nil {
-		return nil, apperror.NotFound("user")
+		return nil, classifyStoreError(err, "user")
 	}
 
 	// Verify group exists
 	group, err := s.groupStore.FindByID(ctx, groupID)
 	if err != nil {
-		return nil, apperror.NotFound("group")
+		return nil, classifyStoreError(err, "group")
 	}
 
 	// Verify requester has admin access to the group's organization
@@ -81,13 +81,13 @@ func (s *UserGroupService) UpdateUserGroupRole(ctx context.Context, userID, grou
 	// Verify membership exists
 	ug, err := s.userGroupStore.FindByUserAndGroup(ctx, userID, groupID)
 	if err != nil {
-		return nil, apperror.NotFound("user-group membership")
+		return nil, classifyStoreError(err, "user-group membership")
 	}
 
 	// Load group to check org access
 	group, err := s.groupStore.FindByID(ctx, groupID)
 	if err != nil {
-		return nil, apperror.NotFound("group")
+		return nil, classifyStoreError(err, "group")
 	}
 
 	// Verify requester has admin access to the group's organization
@@ -112,7 +112,7 @@ func (s *UserGroupService) RemoveUserFromGroup(ctx context.Context, userID, grou
 	// Verify group exists and get org
 	group, err := s.groupStore.FindByID(ctx, groupID)
 	if err != nil {
-		return apperror.NotFound("group")
+		return classifyStoreError(err, "group")
 	}
 
 	// Verify requester has admin access to the group's organization
@@ -140,7 +140,7 @@ func (s *UserGroupService) GetUserMemberships(ctx context.Context, userID uint) 
 	// Verify user exists
 	_, err := s.userStore.FindByID(ctx, userID)
 	if err != nil {
-		return nil, apperror.NotFound("user")
+		return nil, classifyStoreError(err, "user")
 	}
 
 	memberships, err := s.userGroupStore.FindByUser(ctx, userID)
@@ -182,7 +182,7 @@ func (s *UserGroupService) SetSuperAdmin(ctx context.Context, userID uint, isSup
 	// Verify user exists
 	_, err := s.userStore.FindByID(ctx, userID)
 	if err != nil {
-		return apperror.NotFound("user")
+		return classifyStoreError(err, "user")
 	}
 
 	if err := s.userGroupStore.SetSuperAdmin(ctx, userID, isSuperAdmin); err != nil {
@@ -202,7 +202,7 @@ func (s *UserGroupService) AddUserToOrganization(ctx context.Context, userID, or
 	// Find default group for organization
 	defaultGroup, err := s.groupStore.FindDefaultGroup(ctx, orgID)
 	if err != nil {
-		return nil, apperror.NotFound("organization or default group")
+		return nil, classifyStoreError(err, "organization or default group")
 	}
 
 	return s.AddUserToGroup(ctx, userID, defaultGroup.ID, models.RoleMember, createdBy, requesterID)
@@ -219,7 +219,7 @@ func (s *UserGroupService) RemoveUserFromOrganization(ctx context.Context, userI
 	// Verify user exists
 	_, err := s.userStore.FindByID(ctx, userID)
 	if err != nil {
-		return apperror.NotFound("user")
+		return classifyStoreError(err, "user")
 	}
 
 	if err := s.userGroupStore.RemoveUserFromOrg(ctx, userID, orgID); err != nil {

@@ -77,7 +77,7 @@ func (s *UserService) ListByOrganization(ctx context.Context, orgID uint, search
 func (s *UserService) GetByID(ctx context.Context, id uint, requesterID uint) (*models.UserResponse, error) {
 	user, err := s.store.FindByID(ctx, id)
 	if err != nil {
-		return nil, apperror.NotFound("user")
+		return nil, classifyStoreError(err, "user")
 	}
 
 	if err := s.verifyRequesterCanAccessUser(ctx, requesterID, id); err != nil {
@@ -125,7 +125,7 @@ func (s *UserService) Update(ctx context.Context, id uint, req *models.UserUpdat
 
 	user, err := s.store.FindByID(ctx, id)
 	if err != nil {
-		return nil, apperror.NotFound("user")
+		return nil, classifyStoreError(err, "user")
 	}
 
 	// Trim and validate input
@@ -165,7 +165,7 @@ func (s *UserService) Update(ctx context.Context, id uint, req *models.UserUpdat
 func (s *UserService) ResetPassword(ctx context.Context, userID uint, newPassword string) error {
 	user, err := s.store.FindByID(ctx, userID)
 	if err != nil {
-		return apperror.NotFound("user")
+		return classifyStoreError(err, "user")
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
@@ -222,12 +222,12 @@ func (s *UserService) verifyRequesterCanAccessUser(ctx context.Context, requeste
 func (s *UserService) AddToGroup(ctx context.Context, userID, groupID uint) error {
 	_, err := s.store.FindByID(ctx, userID)
 	if err != nil {
-		return apperror.NotFound("user")
+		return classifyStoreError(err, "user")
 	}
 
 	_, err = s.groupStore.FindByID(ctx, groupID)
 	if err != nil {
-		return apperror.NotFound("group")
+		return classifyStoreError(err, "group")
 	}
 
 	if err := s.store.AddToGroup(ctx, userID, groupID); err != nil {
@@ -248,13 +248,13 @@ func (s *UserService) RemoveFromGroup(ctx context.Context, userID, groupID uint)
 func (s *UserService) AddToOrganization(ctx context.Context, userID, orgID uint) error {
 	_, err := s.store.FindByID(ctx, userID)
 	if err != nil {
-		return apperror.NotFound("user")
+		return classifyStoreError(err, "user")
 	}
 
 	// Find the default group for the organization
 	defaultGroup, err := s.groupStore.FindDefaultGroup(ctx, orgID)
 	if err != nil {
-		return apperror.NotFound("organization or default group")
+		return classifyStoreError(err, "organization or default group")
 	}
 
 	if err := s.store.AddToGroup(ctx, userID, defaultGroup.ID); err != nil {

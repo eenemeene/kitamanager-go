@@ -146,7 +146,7 @@ func (s *AuthService) Logout(ctx context.Context, accessTokenStr, refreshTokenSt
 func (s *AuthService) ChangePassword(ctx context.Context, userID uint, currentPassword, newPassword, ipAddress string) (*AuthResult, error) {
 	user, err := s.userStore.FindByID(ctx, userID)
 	if err != nil {
-		return nil, apperror.NotFound("user")
+		return nil, classifyStoreError(err, "user")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(currentPassword)); err != nil {
@@ -177,7 +177,7 @@ func (s *AuthService) ChangePassword(ctx context.Context, userID uint, currentPa
 func (s *AuthService) GetCurrentUser(ctx context.Context, userID uint) (*models.User, error) {
 	user, err := s.userStore.FindByID(ctx, userID)
 	if err != nil {
-		return nil, apperror.NotFound("user")
+		return nil, classifyStoreError(err, "user")
 	}
 	return user, nil
 }

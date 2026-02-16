@@ -34,7 +34,7 @@ func (s *GroupService) ListByOrganization(ctx context.Context, orgID uint, searc
 func (s *GroupService) GetByIDAndOrg(ctx context.Context, id, orgID uint) (*models.GroupResponse, error) {
 	group, err := s.store.FindByID(ctx, id)
 	if err != nil {
-		return nil, apperror.NotFound("group")
+		return nil, classifyStoreError(err, "group")
 	}
 	if err := verifyOrgOwnership(group, orgID, "group"); err != nil {
 		return nil, err
@@ -72,7 +72,7 @@ func (s *GroupService) Create(ctx context.Context, orgID uint, req *models.Group
 func (s *GroupService) UpdateByIDAndOrg(ctx context.Context, id, orgID uint, req *models.GroupUpdateRequest) (*models.GroupResponse, error) {
 	group, err := s.store.FindByID(ctx, id)
 	if err != nil {
-		return nil, apperror.NotFound("group")
+		return nil, classifyStoreError(err, "group")
 	}
 	if err := verifyOrgOwnership(group, orgID, "group"); err != nil {
 		return nil, err
@@ -106,7 +106,7 @@ func (s *GroupService) UpdateByIDAndOrg(ctx context.Context, id, orgID uint, req
 func (s *GroupService) DeleteByIDAndOrg(ctx context.Context, id, orgID uint) error {
 	group, err := s.store.FindByID(ctx, id)
 	if err != nil {
-		return apperror.NotFound("group")
+		return classifyStoreError(err, "group")
 	}
 	if err := verifyOrgOwnership(group, orgID, "group"); err != nil {
 		return err

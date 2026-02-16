@@ -84,7 +84,7 @@ func (s *UserStore) FindByOrganization(ctx context.Context, orgID uint, search s
 func (s *UserStore) FindByID(ctx context.Context, id uint) (*models.User, error) {
 	var user models.User
 	if err := DBFromContext(ctx, s.db).Preload("Groups").Preload("Groups.Organization").First(&user, id).Error; err != nil {
-		return nil, err
+		return nil, WrapNotFound(err)
 	}
 	return &user, nil
 }
@@ -92,7 +92,7 @@ func (s *UserStore) FindByID(ctx context.Context, id uint) (*models.User, error)
 func (s *UserStore) FindByEmail(ctx context.Context, email string) (*models.User, error) {
 	var user models.User
 	if err := DBFromContext(ctx, s.db).Where("email = ?", email).First(&user).Error; err != nil {
-		return nil, err
+		return nil, WrapNotFound(err)
 	}
 	return &user, nil
 }

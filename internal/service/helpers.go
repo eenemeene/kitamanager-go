@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
@@ -9,6 +10,14 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/store"
 	"github.com/eenemeene/kitamanager-go/internal/validation"
 )
+
+// classifyStoreError returns NotFound for store.ErrNotFound, InternalWrap for all other errors.
+func classifyStoreError(err error, resourceName string) error {
+	if errors.Is(err, store.ErrNotFound) {
+		return apperror.NotFound(resourceName)
+	}
+	return apperror.InternalWrap(err, "failed to fetch "+resourceName)
+}
 
 // OrgOwned is implemented by entities that belong to an organization.
 type OrgOwned interface {

@@ -75,7 +75,7 @@ func (s *GroupStore) FindByOrganizationPaginated(ctx context.Context, orgID uint
 func (s *GroupStore) FindDefaultGroup(ctx context.Context, orgID uint) (*models.Group, error) {
 	var group models.Group
 	if err := DBFromContext(ctx, s.db).Where("organization_id = ? AND is_default = ?", orgID, true).First(&group).Error; err != nil {
-		return nil, err
+		return nil, WrapNotFound(err)
 	}
 	return &group, nil
 }

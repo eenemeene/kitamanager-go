@@ -84,7 +84,7 @@ func (s *OrganizationService) List(ctx context.Context, search string, limit, of
 func (s *OrganizationService) GetByID(ctx context.Context, id uint) (*models.OrganizationResponse, error) {
 	org, err := s.store.FindByID(ctx, id)
 	if err != nil {
-		return nil, apperror.NotFound("organization")
+		return nil, classifyStoreError(err, "organization")
 	}
 	resp := org.ToResponse()
 	return &resp, nil
@@ -141,7 +141,7 @@ func (s *OrganizationService) Create(ctx context.Context, req *models.Organizati
 func (s *OrganizationService) Update(ctx context.Context, id uint, req *models.OrganizationUpdateRequest) (*models.OrganizationResponse, error) {
 	org, err := s.store.FindByID(ctx, id)
 	if err != nil {
-		return nil, apperror.NotFound("organization")
+		return nil, classifyStoreError(err, "organization")
 	}
 
 	// Trim and validate input

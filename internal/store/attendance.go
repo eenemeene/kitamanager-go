@@ -22,7 +22,7 @@ func NewChildAttendanceStore(db *gorm.DB) *ChildAttendanceStore {
 func (s *ChildAttendanceStore) FindByID(ctx context.Context, id uint) (*models.ChildAttendance, error) {
 	var attendance models.ChildAttendance
 	if err := DBFromContext(ctx, s.db).Preload("Child").First(&attendance, id).Error; err != nil {
-		return nil, err
+		return nil, WrapNotFound(err)
 	}
 	return &attendance, nil
 }
@@ -54,7 +54,7 @@ func (s *ChildAttendanceStore) FindByChildAndDate(ctx context.Context, childID u
 	if err := DBFromContext(ctx, s.db).Preload("Child").
 		Where("child_id = ? AND date = ?", childID, date).
 		First(&attendance).Error; err != nil {
-		return nil, err
+		return nil, WrapNotFound(err)
 	}
 	return &attendance, nil
 }

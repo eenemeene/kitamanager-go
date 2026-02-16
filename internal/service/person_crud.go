@@ -34,7 +34,7 @@ func personGetByID[T any, R any](
 ) (*R, error) {
 	entity, err := findByIDAndOrg(ctx, id, orgID)
 	if err != nil {
-		return nil, apperror.NotFound(resourceName)
+		return nil, classifyStoreError(err, resourceName)
 	}
 	resp := toResponse(entity)
 	return &resp, nil
@@ -84,7 +84,7 @@ func personUpdate[T any, R any](
 ) (*R, error) {
 	entity, err := findByIDAndOrg(ctx, id, orgID)
 	if err != nil {
-		return nil, apperror.NotFound(resourceName)
+		return nil, classifyStoreError(err, resourceName)
 	}
 
 	if err := applyPersonUpdates(getPerson(entity), fields); err != nil {
@@ -116,7 +116,7 @@ func personDelete[T any](
 ) error {
 	return transactor.InTransaction(ctx, func(txCtx context.Context) error {
 		if _, err := findByIDAndOrg(txCtx, id, orgID); err != nil {
-			return apperror.NotFound(resourceName)
+			return classifyStoreError(err, resourceName)
 		}
 		if err := deleteFn(txCtx, id); err != nil {
 			return apperror.InternalWrap(err, "failed to delete "+resourceName)

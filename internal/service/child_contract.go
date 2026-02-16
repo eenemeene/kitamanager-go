@@ -16,7 +16,7 @@ func (s *ChildService) ListContracts(ctx context.Context, childID, orgID uint, l
 	// Verify child exists and belongs to org (use minimal query - no preloads needed)
 	child, err := s.store.FindByIDMinimal(ctx, childID)
 	if err != nil {
-		return nil, 0, apperror.NotFound("child")
+		return nil, 0, classifyStoreError(err, "child")
 	}
 	if err := verifyOrgOwnership(child, orgID, "child"); err != nil {
 		return nil, 0, err
@@ -35,7 +35,7 @@ func (s *ChildService) GetCurrentRecord(ctx context.Context, childID, orgID uint
 	// Security: Validate child belongs to the specified organization (use minimal query - no preloads needed)
 	child, err := s.store.FindByIDMinimal(ctx, childID)
 	if err != nil {
-		return nil, apperror.NotFound("child")
+		return nil, classifyStoreError(err, "child")
 	}
 	if err := verifyOrgOwnership(child, orgID, "child"); err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func (s *ChildService) GetContractByID(ctx context.Context, contractID, childID,
 	// Security: Validate child belongs to the specified organization (use minimal query - no preloads needed)
 	child, err := s.store.FindByIDMinimal(ctx, childID)
 	if err != nil {
-		return nil, apperror.NotFound("child")
+		return nil, classifyStoreError(err, "child")
 	}
 	if err := verifyOrgOwnership(child, orgID, "child"); err != nil {
 		return nil, err
@@ -66,7 +66,7 @@ func (s *ChildService) GetContractByID(ctx context.Context, contractID, childID,
 	// Get contract
 	contract, err := s.store.FindContractByID(ctx, contractID)
 	if err != nil {
-		return nil, apperror.NotFound("contract")
+		return nil, classifyStoreError(err, "contract")
 	}
 	if err := verifyRecordOwnership(contract, childID, "contract"); err != nil {
 		return nil, err
@@ -87,7 +87,7 @@ func (s *ChildService) CreateContract(ctx context.Context, childID, orgID uint, 
 	// Verify child exists and belongs to org (use minimal query - no preloads needed)
 	child, err := s.store.FindByIDMinimal(ctx, childID)
 	if err != nil {
-		return nil, apperror.NotFound("child")
+		return nil, classifyStoreError(err, "child")
 	}
 	if err := verifyOrgOwnership(child, orgID, "child"); err != nil {
 		return nil, err
@@ -143,7 +143,7 @@ func (s *ChildService) UpdateContract(ctx context.Context, contractID, childID, 
 	// Security: Validate child belongs to the specified organization (use minimal query - no preloads needed)
 	child, err := s.store.FindByIDMinimal(ctx, childID)
 	if err != nil {
-		return nil, apperror.NotFound("child")
+		return nil, classifyStoreError(err, "child")
 	}
 	if err := verifyOrgOwnership(child, orgID, "child"); err != nil {
 		return nil, err
@@ -152,7 +152,7 @@ func (s *ChildService) UpdateContract(ctx context.Context, contractID, childID, 
 	// Validate contract belongs to the child
 	contract, err := s.store.FindContractByID(ctx, contractID)
 	if err != nil {
-		return nil, apperror.NotFound("contract")
+		return nil, classifyStoreError(err, "contract")
 	}
 	if err := verifyRecordOwnership(contract, childID, "contract"); err != nil {
 		return nil, err
@@ -280,7 +280,7 @@ func (s *ChildService) DeleteContract(ctx context.Context, contractID, childID, 
 	// Security: Validate child belongs to the specified organization (use minimal query - no preloads needed)
 	child, err := s.store.FindByIDMinimal(ctx, childID)
 	if err != nil {
-		return apperror.NotFound("child")
+		return classifyStoreError(err, "child")
 	}
 	if err := verifyOrgOwnership(child, orgID, "child"); err != nil {
 		return err
@@ -289,7 +289,7 @@ func (s *ChildService) DeleteContract(ctx context.Context, contractID, childID, 
 	// Validate contract belongs to the child
 	contract, err := s.store.FindContractByID(ctx, contractID)
 	if err != nil {
-		return apperror.NotFound("contract")
+		return classifyStoreError(err, "contract")
 	}
 	if err := verifyRecordOwnership(contract, childID, "contract"); err != nil {
 		return err

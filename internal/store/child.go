@@ -163,7 +163,7 @@ func (s *ChildStore) CreateContract(ctx context.Context, contract *models.ChildC
 func (s *ChildStore) FindContractByID(ctx context.Context, id uint) (*models.ChildContract, error) {
 	var contract models.ChildContract
 	if err := DBFromContext(ctx, s.db).Preload("Section").First(&contract, id).Error; err != nil {
-		return nil, err
+		return nil, WrapNotFound(err)
 	}
 	return &contract, nil
 }

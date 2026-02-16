@@ -17,7 +17,7 @@ func (s *EmployeeService) ListContracts(ctx context.Context, employeeID, orgID u
 	// Verify employee exists and belongs to org (use minimal query - no preloads needed)
 	employee, err := s.store.FindByIDMinimal(ctx, employeeID)
 	if err != nil {
-		return nil, 0, apperror.NotFound("employee")
+		return nil, 0, classifyStoreError(err, "employee")
 	}
 	if err := verifyOrgOwnership(employee, orgID, "employee"); err != nil {
 		return nil, 0, err
@@ -36,7 +36,7 @@ func (s *EmployeeService) GetCurrentRecord(ctx context.Context, employeeID, orgI
 	// Security: Validate employee belongs to the specified organization (use minimal query - no preloads needed)
 	employee, err := s.store.FindByIDMinimal(ctx, employeeID)
 	if err != nil {
-		return nil, apperror.NotFound("employee")
+		return nil, classifyStoreError(err, "employee")
 	}
 	if err := verifyOrgOwnership(employee, orgID, "employee"); err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func (s *EmployeeService) CreateContract(ctx context.Context, employeeID, orgID 
 	// Verify employee exists and belongs to org (use minimal query - no preloads needed)
 	employee, err := s.store.FindByIDMinimal(ctx, employeeID)
 	if err != nil {
-		return nil, apperror.NotFound("employee")
+		return nil, classifyStoreError(err, "employee")
 	}
 	if err := verifyOrgOwnership(employee, orgID, "employee"); err != nil {
 		return nil, err
@@ -129,7 +129,7 @@ func (s *EmployeeService) DeleteContract(ctx context.Context, contractID, employ
 	// Security: Validate employee belongs to the specified organization (use minimal query - no preloads needed)
 	employee, err := s.store.FindByIDMinimal(ctx, employeeID)
 	if err != nil {
-		return apperror.NotFound("employee")
+		return classifyStoreError(err, "employee")
 	}
 	if err := verifyOrgOwnership(employee, orgID, "employee"); err != nil {
 		return err
@@ -138,7 +138,7 @@ func (s *EmployeeService) DeleteContract(ctx context.Context, contractID, employ
 	// Validate contract belongs to the employee
 	contract, err := s.store.FindContractByID(ctx, contractID)
 	if err != nil {
-		return apperror.NotFound("contract")
+		return classifyStoreError(err, "contract")
 	}
 	if err := verifyRecordOwnership(contract, employeeID, "contract"); err != nil {
 		return err
@@ -155,7 +155,7 @@ func (s *EmployeeService) GetContractByID(ctx context.Context, contractID, emplo
 	// Security: Validate employee belongs to the specified organization (use minimal query - no preloads needed)
 	employee, err := s.store.FindByIDMinimal(ctx, employeeID)
 	if err != nil {
-		return nil, apperror.NotFound("employee")
+		return nil, classifyStoreError(err, "employee")
 	}
 	if err := verifyOrgOwnership(employee, orgID, "employee"); err != nil {
 		return nil, err
@@ -164,7 +164,7 @@ func (s *EmployeeService) GetContractByID(ctx context.Context, contractID, emplo
 	// Get contract
 	contract, err := s.store.FindContractByID(ctx, contractID)
 	if err != nil {
-		return nil, apperror.NotFound("contract")
+		return nil, classifyStoreError(err, "contract")
 	}
 	if err := verifyRecordOwnership(contract, employeeID, "contract"); err != nil {
 		return nil, err
@@ -182,7 +182,7 @@ func (s *EmployeeService) UpdateContract(ctx context.Context, contractID, employ
 	// Security: Validate employee belongs to the specified organization (use minimal query - no preloads needed)
 	employee, err := s.store.FindByIDMinimal(ctx, employeeID)
 	if err != nil {
-		return nil, apperror.NotFound("employee")
+		return nil, classifyStoreError(err, "employee")
 	}
 	if err := verifyOrgOwnership(employee, orgID, "employee"); err != nil {
 		return nil, err
@@ -191,7 +191,7 @@ func (s *EmployeeService) UpdateContract(ctx context.Context, contractID, employ
 	// Get contract
 	contract, err := s.store.FindContractByID(ctx, contractID)
 	if err != nil {
-		return nil, apperror.NotFound("contract")
+		return nil, classifyStoreError(err, "contract")
 	}
 	if err := verifyRecordOwnership(contract, employeeID, "contract"); err != nil {
 		return nil, err
