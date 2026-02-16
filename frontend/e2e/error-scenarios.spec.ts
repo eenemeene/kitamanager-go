@@ -1,5 +1,12 @@
 import { test, expect } from '@playwright/test';
-import { login, getApiToken, getFirstOrganization, uniqueName } from './utils/test-helpers';
+import {
+  login,
+  getApiToken,
+  getFirstOrganization,
+  getOrganizationsViaApi,
+  deleteOrganizationViaApi,
+  uniqueName,
+} from './utils/test-helpers';
 
 // Ensure English locale for all tests
 test.use({ locale: 'en-US' });
@@ -184,30 +191,11 @@ test.describe('Duplicate Resource Errors', () => {
     await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10000 });
 
     // Cleanup: delete the duplicate org
-    const orgs = await page.evaluate(
-      async ({ token }) => {
-        const res = await fetch('/api/v1/organizations?limit=100', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        return data.data || [];
-      },
-      { token }
-    );
-    // Delete the last org with the matching name (the one we just created)
-    const duplicates = orgs.filter((o: { name: string }) => o.name === org.name);
+    const orgs = await getOrganizationsViaApi(page, token);
+    const duplicates = orgs.filter((o) => o.name === org.name);
     if (duplicates.length > 1) {
       const newest = duplicates[duplicates.length - 1];
-      await page.evaluate(
-        async ({ token, orgId }) => {
-          const csrfMatch = document.cookie.match(/csrf_token=([^;]+)/);
-          const csrfToken = csrfMatch ? csrfMatch[1] : null;
-          const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
-          if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
-          await fetch(`/api/v1/organizations/${orgId}`, { method: 'DELETE', headers });
-        },
-        { token, orgId: newest.id }
-      );
+      await deleteOrganizationViaApi(page, token, newest.id);
     }
   });
 });

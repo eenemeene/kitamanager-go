@@ -4,6 +4,7 @@ import {
   getApiToken,
   createOrganizationViaApi,
   deleteOrganizationViaApi,
+  getOrganizationsViaApi,
   uniqueName,
 } from './utils/test-helpers';
 
@@ -62,15 +63,8 @@ test.describe('Organizations', () => {
 
     // Cleanup: delete the org via API
     const token = await getApiToken(page);
-    const orgs = await page.evaluate(async ({ token }) => {
-      const res = await fetch('/api/v1/organizations?limit=100', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      return data.data || [];
-    }, { token });
-
-    const createdOrg = orgs.find((o: { name: string }) => o.name === orgName);
+    const orgs = await getOrganizationsViaApi(page, token);
+    const createdOrg = orgs.find((o) => o.name === orgName);
     if (createdOrg) {
       await deleteOrganizationViaApi(page, token, createdOrg.id);
     }
