@@ -27,8 +27,6 @@ export function AppHeader() {
   const { sidebarCollapsed } = useUiStore();
 
   const handleLogout = () => {
-    // Clear token cookie
-    document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     logout();
     router.push('/login');
   };
