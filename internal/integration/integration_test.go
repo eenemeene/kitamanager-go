@@ -161,12 +161,28 @@ func setupRouter() *gin.Engine {
 }
 
 func cleanupDatabase() {
+	// truncation order: leaf tables first, then parents (must match testutil.truncateTables)
 	tables := []string{
-		"child_contracts", "employee_contracts",
-		"children", "employees",
-		"sections", "user_groups", "groups",
-		"users", "organizations",
-		"government_funding_properties", "government_funding_periods", "government_fundings",
+		"revoked_tokens",
+		"audit_logs",
+		"budget_item_entries",
+		"budget_items",
+		"child_attendances",
+		"pay_plan_entries",
+		"pay_plan_periods",
+		"pay_plans",
+		"government_funding_properties",
+		"government_funding_periods",
+		"government_fundings",
+		"child_contracts",
+		"children",
+		"employee_contracts",
+		"employees",
+		"sections",
+		"user_groups",
+		"groups",
+		"users",
+		"organizations",
 	}
 	for _, table := range tables {
 		testDB.Exec(fmt.Sprintf("TRUNCATE TABLE %s RESTART IDENTITY CASCADE", table))
