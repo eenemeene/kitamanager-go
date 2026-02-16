@@ -343,10 +343,11 @@ export interface PaginatedResponse<T> {
   total_pages: number;
 }
 
-// Pagination params for API calls
+// Pagination params for API calls (index signature allows arbitrary filter params)
 export interface PaginationParams {
   page?: number;
   limit?: number;
+  [key: string]: string | number | boolean | undefined;
 }
 
 export const DEFAULT_PAGE_SIZE = 30;
