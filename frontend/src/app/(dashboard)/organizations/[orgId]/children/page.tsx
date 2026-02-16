@@ -104,7 +104,7 @@ export default function ChildrenPage() {
     queryKey: queryKeys.children.funding(orgId),
     queryFn: () => apiClient.getChildrenFunding(orgId),
     enabled: !!orgId,
-    staleTime: 60 * 1000, // 1 minute - funding doesn't change often
+    staleTime: 5 * 60 * 1000, // 5 minutes - funding data changes infrequently
   });
 
   // Create a map for quick lookup of funding by child ID
