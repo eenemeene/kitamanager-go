@@ -9,7 +9,7 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/testutil"
 )
 
-// setupTestDB creates an in-memory SQLite database for testing.
+// setupTestDB creates a PostgreSQL test database using testcontainers.
 func setupTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	return testutil.SetupTestDB(t)
@@ -43,4 +43,14 @@ func createTestGroupWithOrg(t *testing.T, db *gorm.DB, name string, orgID uint) 
 func createTestUserGroup(t *testing.T, db *gorm.DB, userID, groupID uint, role models.Role) *models.UserGroup {
 	t.Helper()
 	return testutil.CreateTestUserGroup(t, db, userID, groupID, role)
+}
+
+// getDefaultSectionID returns the ID of the default section for an organization.
+func getDefaultSectionID(t *testing.T, db *gorm.DB, orgID uint) uint {
+	t.Helper()
+	var section models.Section
+	if err := db.Where("organization_id = ? AND is_default = ?", orgID, true).First(&section).Error; err != nil {
+		t.Fatalf("failed to get default section for org %d: %v", orgID, err)
+	}
+	return section.ID
 }

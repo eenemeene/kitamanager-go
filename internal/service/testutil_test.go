@@ -11,7 +11,7 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/testutil"
 )
 
-// setupTestDB creates an in-memory SQLite database for testing.
+// setupTestDB creates a PostgreSQL test database using testcontainers.
 func setupTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	return testutil.SetupTestDB(t)
@@ -209,10 +209,18 @@ func createTestPayPlanEntry(t *testing.T, db *gorm.DB, periodID uint, grade stri
 func createTestEmployeeContract(t *testing.T, db *gorm.DB, employeeID uint, payplanID uint, from time.Time, to *time.Time, grade string, step int, weeklyHours float64) *models.EmployeeContract {
 	t.Helper()
 
+	// Look up the employee's org to find the default section
+	var emp models.Employee
+	if err := db.First(&emp, employeeID).Error; err != nil {
+		t.Fatalf("failed to find employee %d: %v", employeeID, err)
+	}
+	section := getDefaultSection(t, db, emp.OrganizationID)
+
 	contract := &models.EmployeeContract{
 		EmployeeID: employeeID,
 		BaseContract: models.BaseContract{
-			Period: models.Period{From: from, To: to},
+			SectionID: section.ID,
+			Period:    models.Period{From: from, To: to},
 		},
 		StaffCategory: "qualified",
 		Grade:         grade,

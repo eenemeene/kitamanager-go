@@ -10,12 +10,12 @@ import (
 	"github.com/casbin/casbin/v3/model"
 	fileadapter "github.com/casbin/casbin/v3/persist/file-adapter"
 	"github.com/gin-gonic/gin"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/rbac"
 	"github.com/eenemeene/kitamanager-go/internal/store"
+	"github.com/eenemeene/kitamanager-go/internal/testutil"
 )
 
 func init() {
@@ -43,23 +43,7 @@ func getModelPath(t *testing.T) string {
 
 func setupTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("failed to connect to test database: %v", err)
-	}
-
-	err = db.AutoMigrate(
-		&models.Organization{},
-		&models.User{},
-		&models.Group{},
-		&models.UserGroup{},
-	)
-	if err != nil {
-		t.Fatalf("failed to migrate test database: %v", err)
-	}
-
-	return db
+	return testutil.SetupTestDB(t)
 }
 
 func setupTestEnforcer(t *testing.T) *rbac.Enforcer {

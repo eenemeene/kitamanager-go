@@ -4,6 +4,7 @@ package contract
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,21 +12,25 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/getkin/kin-openapi/routers"
 	"github.com/getkin/kin-openapi/routers/gorillamux"
 	"github.com/gin-gonic/gin"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/postgres"
+	"github.com/testcontainers/testcontainers-go/wait"
+	gormpostgres "gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 
+	"github.com/eenemeene/kitamanager-go/internal/database"
 	"github.com/eenemeene/kitamanager-go/internal/handlers"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 	"github.com/eenemeene/kitamanager-go/internal/store"
-	"gorm.io/driver/postgres"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 var (
@@ -53,49 +58,42 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	// Get database connection
-	dbType := getEnv("TEST_DB_TYPE", "sqlite")
+	ctx := context.Background()
 
-	if dbType == "postgres" {
-		dsn := fmt.Sprintf(
-			"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-			getEnv("TEST_DB_HOST", "localhost"),
-			getEnv("TEST_DB_PORT", "5432"),
-			getEnv("TEST_DB_USER", "kitamanager"),
-			getEnv("TEST_DB_PASSWORD", "kitamanager"),
-			getEnv("TEST_DB_NAME", "kitamanager_test"),
-		)
-		testDB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-			Logger: logger.Default.LogMode(logger.Silent),
-		})
-	} else {
-		// SQLite in-memory database for fast local testing
-		testDB, err = gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
-			Logger: logger.Default.LogMode(logger.Silent),
-		})
-	}
-
+	pgContainer, err := postgres.Run(ctx,
+		"postgres:18-alpine",
+		postgres.WithDatabase("kitamanager_contract"),
+		postgres.WithUsername("test"),
+		postgres.WithPassword("test"),
+		testcontainers.WithWaitStrategy(
+			wait.ForLog("database system is ready to accept connections").
+				WithOccurrence(2).
+				WithStartupTimeout(30*time.Second),
+		),
+	)
 	if err != nil {
-		fmt.Printf("Failed to connect to test database: %v\n", err)
+		fmt.Printf("Failed to start PostgreSQL container: %v\n", err)
+		os.Exit(1)
+	}
+	defer pgContainer.Terminate(ctx) //nolint:errcheck
+
+	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
+	if err != nil {
+		fmt.Printf("Failed to get connection string: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Run migrations
-	if err := testDB.AutoMigrate(
-		&models.GovernmentFunding{},
-		&models.GovernmentFundingPeriod{},
-		&models.GovernmentFundingProperty{},
-		&models.Organization{},
-		&models.User{},
-		&models.Group{},
-		&models.Section{},
-		&models.UserGroup{},
-		&models.Employee{},
-		&models.EmployeeContract{},
-		&models.Child{},
-		&models.ChildContract{},
-	); err != nil {
+	// Run production migrations
+	if err := database.RunMigrationsWithURL(connStr); err != nil {
 		fmt.Printf("Failed to run migrations: %v\n", err)
+		os.Exit(1)
+	}
+
+	testDB, err = gorm.Open(gormpostgres.Open(connStr), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
+	if err != nil {
+		fmt.Printf("Failed to connect to test database: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -104,15 +102,7 @@ func TestMain(m *testing.M) {
 
 	code := m.Run()
 
-	cleanupDatabase()
 	os.Exit(code)
-}
-
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
 }
 
 func setupRouter() *gin.Engine {
@@ -170,18 +160,16 @@ func setupRouter() *gin.Engine {
 }
 
 func cleanupDatabase() {
-	// Clean up in reverse order of dependencies
-	testDB.Exec("DELETE FROM child_contracts")
-	testDB.Exec("DELETE FROM employee_contracts")
-	testDB.Exec("DELETE FROM children")
-	testDB.Exec("DELETE FROM employees")
-	testDB.Exec("DELETE FROM user_groups")
-	testDB.Exec("DELETE FROM groups")
-	testDB.Exec("DELETE FROM users")
-	testDB.Exec("DELETE FROM organizations")
-	testDB.Exec("DELETE FROM government_funding_properties")
-	testDB.Exec("DELETE FROM government_funding_periods")
-	testDB.Exec("DELETE FROM government_fundings")
+	tables := []string{
+		"child_contracts", "employee_contracts",
+		"children", "employees",
+		"user_groups", "groups",
+		"users", "organizations",
+		"government_funding_properties", "government_funding_periods", "government_fundings",
+	}
+	for _, table := range tables {
+		testDB.Exec(fmt.Sprintf("TRUNCATE TABLE %s RESTART IDENTITY CASCADE", table))
+	}
 }
 
 func cleanupBetweenTests() {

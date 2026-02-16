@@ -23,12 +23,9 @@ func WrapNotFound(err error) error {
 }
 
 // IsDuplicateKeyError checks if the error is a unique constraint violation.
-// Works with both PostgreSQL and SQLite.
 func IsDuplicateKeyError(err error) bool {
 	if err == nil {
 		return false
 	}
-	msg := err.Error()
-	return strings.Contains(msg, "duplicate key") || // PostgreSQL
-		strings.Contains(msg, "UNIQUE constraint failed") // SQLite
+	return strings.Contains(err.Error(), "duplicate key")
 }

@@ -1,59 +1,110 @@
 package testutil
 
 import (
+	"context"
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
-	"gorm.io/driver/sqlite"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/postgres"
+	"github.com/testcontainers/testcontainers-go/wait"
+	gormpostgres "gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 
+	"github.com/eenemeene/kitamanager-go/internal/database"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
-// SetupTestDB creates an in-memory SQLite database for testing with all models migrated.
+var (
+	once         sync.Once
+	pgContainer  *postgres.PostgresContainer
+	containerDSN string
+	sharedDB     *gorm.DB
+	initErr      error
+)
+
+// truncation order: leaf tables first, then parents
+var truncateTables = []string{
+	"revoked_tokens",
+	"audit_logs",
+	"budget_item_entries",
+	"budget_items",
+	"child_attendances",
+	"pay_plan_entries",
+	"pay_plan_periods",
+	"pay_plans",
+	"government_funding_properties",
+	"government_funding_periods",
+	"government_fundings",
+	"child_contracts",
+	"children",
+	"employee_contracts",
+	"employees",
+	"sections",
+	"user_groups",
+	"groups",
+	"users",
+	"organizations",
+}
+
+func startContainer() {
+	ctx := context.Background()
+
+	pgContainer, initErr = postgres.Run(ctx,
+		"postgres:18-alpine",
+		postgres.WithDatabase("kitamanager_test"),
+		postgres.WithUsername("test"),
+		postgres.WithPassword("test"),
+		testcontainers.WithWaitStrategy(
+			wait.ForLog("database system is ready to accept connections").
+				WithOccurrence(2).
+				WithStartupTimeout(30*time.Second),
+		),
+	)
+	if initErr != nil {
+		return
+	}
+
+	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
+	if err != nil {
+		initErr = fmt.Errorf("failed to get connection string: %w", err)
+		return
+	}
+	containerDSN = connStr
+
+	// Run production migrations
+	initErr = database.RunMigrationsWithURL(connStr)
+	if initErr != nil {
+		return
+	}
+
+	// Open a shared GORM connection pool (reused across all tests)
+	sharedDB, initErr = gorm.Open(gormpostgres.Open(containerDSN), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
+}
+
+// SetupTestDB starts a shared PostgreSQL testcontainer (once per process),
+// returns a GORM *gorm.DB, and truncates all tables before the test runs.
 func SetupTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("failed to connect to test database: %v", err)
+	once.Do(startContainer)
+	if initErr != nil {
+		t.Fatalf("failed to start test database container: %v", initErr)
 	}
 
-	// SQLite :memory: databases are per-connection. Limit to 1 connection
-	// so all operations use the same database with the migrated schema.
-	sqlDB, err := db.DB()
-	if err != nil {
-		t.Fatalf("failed to get underlying sql.DB: %v", err)
-	}
-	sqlDB.SetMaxOpenConns(1)
-
-	err = db.AutoMigrate(
-		&models.Organization{},
-		&models.User{},
-		&models.Group{},
-		&models.Section{},
-		&models.UserGroup{},
-		&models.Employee{},
-		&models.EmployeeContract{},
-		&models.Child{},
-		&models.ChildContract{},
-		&models.GovernmentFunding{},
-		&models.GovernmentFundingPeriod{},
-		&models.GovernmentFundingProperty{},
-		&models.PayPlan{},
-		&models.PayPlanPeriod{},
-		&models.PayPlanEntry{},
-		&models.AuditLog{},
-		&models.ChildAttendance{},
-		&models.BudgetItem{},
-		&models.BudgetItemEntry{},
-		&models.RevokedToken{},
-	)
-	if err != nil {
-		t.Fatalf("failed to migrate test database: %v", err)
+	// Truncate all tables for test isolation
+	for _, table := range truncateTables {
+		if err := sharedDB.Exec(fmt.Sprintf("TRUNCATE TABLE %s RESTART IDENTITY CASCADE", table)).Error; err != nil {
+			t.Fatalf("failed to truncate table %s: %v", table, err)
+		}
 	}
 
-	return db
+	return sharedDB
 }
 
 // CreateTestOrganization creates an organization for testing.

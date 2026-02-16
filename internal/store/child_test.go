@@ -174,6 +174,7 @@ func TestChildStore_CreateContract(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewChildStore(db)
 	org := createTestOrganization(t, db, "Test Org")
+	sectionID := getDefaultSectionID(t, db, org.ID)
 
 	child := &models.Child{
 		Person: models.Person{
@@ -188,6 +189,7 @@ func TestChildStore_CreateContract(t *testing.T) {
 	contract := &models.ChildContract{
 		ChildID: child.ID,
 		BaseContract: models.BaseContract{
+			SectionID: sectionID,
 			Period: models.Period{
 				From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 				To:   nil,
@@ -210,6 +212,7 @@ func TestChildStore_DeleteContract(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewChildStore(db)
 	org := createTestOrganization(t, db, "Test Org")
+	sectionID := getDefaultSectionID(t, db, org.ID)
 
 	child := &models.Child{
 		Person: models.Person{
@@ -224,6 +227,7 @@ func TestChildStore_DeleteContract(t *testing.T) {
 	contract := &models.ChildContract{
 		ChildID: child.ID,
 		BaseContract: models.BaseContract{
+			SectionID: sectionID,
 			Period: models.Period{
 				From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 			},
@@ -246,6 +250,7 @@ func TestChildStore_DeleteAlsoDeletesContracts(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewChildStore(db)
 	org := createTestOrganization(t, db, "Test Org")
+	sectionID := getDefaultSectionID(t, db, org.ID)
 
 	child := &models.Child{
 		Person: models.Person{
@@ -260,6 +265,7 @@ func TestChildStore_DeleteAlsoDeletesContracts(t *testing.T) {
 	contract := &models.ChildContract{
 		ChildID: child.ID,
 		BaseContract: models.BaseContract{
+			SectionID: sectionID,
 			Period: models.Period{
 				From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 			},
@@ -284,6 +290,7 @@ func TestChildStore_ContractOverlapValidation(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewChildStore(db)
 	org := createTestOrganization(t, db, "Test Org")
+	sectionID := getDefaultSectionID(t, db, org.ID)
 
 	child := &models.Child{
 		Person: models.Person{
@@ -299,6 +306,7 @@ func TestChildStore_ContractOverlapValidation(t *testing.T) {
 	existing := &models.ChildContract{
 		ChildID: child.ID,
 		BaseContract: models.BaseContract{
+			SectionID: sectionID,
 			Period: models.Period{
 				From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				To:   datePtr(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)),
@@ -337,6 +345,8 @@ func TestChildStore_FindByOrganizationWithActiveOn(t *testing.T) {
 	store := NewChildStore(db)
 	org := createTestOrganization(t, db, "Test Org")
 	org2 := createTestOrganization(t, db, "Other Org")
+	sectionID := getDefaultSectionID(t, db, org.ID)
+	otherSectionID := getDefaultSectionID(t, db, org2.ID)
 
 	refDate := time.Date(2025, 1, 27, 0, 0, 0, 0, time.UTC)
 
@@ -353,6 +363,7 @@ func TestChildStore_FindByOrganizationWithActiveOn(t *testing.T) {
 	db.Create(&models.ChildContract{
 		ChildID: childActive.ID,
 		BaseContract: models.BaseContract{
+			SectionID:  sectionID,
 			Period:     models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
 			Properties: models.ContractProperties{"care_type": "ganztag"},
 		},
@@ -371,6 +382,7 @@ func TestChildStore_FindByOrganizationWithActiveOn(t *testing.T) {
 	db.Create(&models.ChildContract{
 		ChildID: childOngoing.ID,
 		BaseContract: models.BaseContract{
+			SectionID:  sectionID,
 			Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
 			Properties: models.ContractProperties{"care_type": "halbtag", "supplements": []string{"ndh"}},
 		},
@@ -389,6 +401,7 @@ func TestChildStore_FindByOrganizationWithActiveOn(t *testing.T) {
 	db.Create(&models.ChildContract{
 		ChildID: childExpired.ID,
 		BaseContract: models.BaseContract{
+			SectionID: sectionID,
 			Period: models.Period{
 				From: time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC),
 				To:   datePtr(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)),
@@ -409,7 +422,8 @@ func TestChildStore_FindByOrganizationWithActiveOn(t *testing.T) {
 	db.Create(&models.ChildContract{
 		ChildID: childFuture.ID,
 		BaseContract: models.BaseContract{
-			Period: models.Period{From: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)},
+			SectionID: sectionID,
+			Period:    models.Period{From: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)},
 		},
 	})
 
@@ -437,7 +451,8 @@ func TestChildStore_FindByOrganizationWithActiveOn(t *testing.T) {
 	db.Create(&models.ChildContract{
 		ChildID: childOtherOrg.ID,
 		BaseContract: models.BaseContract{
-			Period: models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
+			SectionID: otherSectionID,
+			Period:    models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
 		},
 	})
 
@@ -476,6 +491,7 @@ func TestChildStore_FindByOrganizationAndSection_ActiveOn(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewChildStore(db)
 	org := createTestOrganization(t, db, "Test Org")
+	sectionID := getDefaultSectionID(t, db, org.ID)
 
 	refDate := time.Date(2025, 1, 27, 0, 0, 0, 0, time.UTC)
 
@@ -486,7 +502,7 @@ func TestChildStore_FindByOrganizationAndSection_ActiveOn(t *testing.T) {
 	db.Create(childActive)
 	db.Create(&models.ChildContract{
 		ChildID:      childActive.ID,
-		BaseContract: models.BaseContract{Period: models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)}},
+		BaseContract: models.BaseContract{SectionID: sectionID, Period: models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)}},
 	})
 
 	// Child with expired contract (before refDate)
@@ -496,7 +512,7 @@ func TestChildStore_FindByOrganizationAndSection_ActiveOn(t *testing.T) {
 	db.Create(childExpired)
 	db.Create(&models.ChildContract{
 		ChildID:      childExpired.ID,
-		BaseContract: models.BaseContract{Period: models.Period{From: time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), To: datePtr(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC))}},
+		BaseContract: models.BaseContract{SectionID: sectionID, Period: models.Period{From: time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), To: datePtr(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC))}},
 	})
 
 	// Child with future contract (after refDate)
@@ -506,7 +522,7 @@ func TestChildStore_FindByOrganizationAndSection_ActiveOn(t *testing.T) {
 	db.Create(childFuture)
 	db.Create(&models.ChildContract{
 		ChildID:      childFuture.ID,
-		BaseContract: models.BaseContract{Period: models.Period{From: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)}},
+		BaseContract: models.BaseContract{SectionID: sectionID, Period: models.Period{From: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)}},
 	})
 
 	// Child with no contract
@@ -554,6 +570,7 @@ func TestChildStore_FindByOrganizationAndSection_ActiveOn_Pagination(t *testing.
 	db := setupTestDB(t)
 	store := NewChildStore(db)
 	org := createTestOrganization(t, db, "Test Org")
+	sectionID := getDefaultSectionID(t, db, org.ID)
 
 	refDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
 
@@ -565,7 +582,7 @@ func TestChildStore_FindByOrganizationAndSection_ActiveOn_Pagination(t *testing.
 		db.Create(child)
 		db.Create(&models.ChildContract{
 			ChildID:      child.ID,
-			BaseContract: models.BaseContract{Period: models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)}},
+			BaseContract: models.BaseContract{SectionID: sectionID, Period: models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)}},
 		})
 	}
 
@@ -701,13 +718,14 @@ func TestChildStore_FindByOrganizationAndSection_SearchWithActiveOn(t *testing.T
 	db := setupTestDB(t)
 	store := NewChildStore(db)
 	org := createTestOrganization(t, db, "Test Org")
+	sectionID := getDefaultSectionID(t, db, org.ID)
 
 	refDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
 
 	// Emma with active contract
 	emma := &models.Child{Person: models.Person{OrganizationID: org.ID, FirstName: "Emma", LastName: "Schmidt", Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)}}
 	db.Create(emma)
-	db.Create(&models.ChildContract{ChildID: emma.ID, BaseContract: models.BaseContract{Period: models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)}}})
+	db.Create(&models.ChildContract{ChildID: emma.ID, BaseContract: models.BaseContract{SectionID: sectionID, Period: models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)}}})
 
 	// Emilia without contract
 	db.Create(&models.Child{Person: models.Person{OrganizationID: org.ID, FirstName: "Emilia", LastName: "Fischer", Birthdate: time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)}})
@@ -729,6 +747,7 @@ func TestChildStore_ContractProperties_JSONSerialization(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewChildStore(db)
 	org := createTestOrganization(t, db, "Test Org")
+	sectionID := getDefaultSectionID(t, db, org.ID)
 
 	child := &models.Child{
 		Person: models.Person{
@@ -771,6 +790,7 @@ func TestChildStore_ContractProperties_JSONSerialization(t *testing.T) {
 			contract := &models.ChildContract{
 				ChildID: child.ID,
 				BaseContract: models.BaseContract{
+					SectionID: sectionID,
 					Period: models.Period{
 						From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 					},

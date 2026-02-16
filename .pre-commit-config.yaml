@@ -34,14 +34,14 @@ repos:
         pass_filenames: false
 
       - id: go-integration-test
-        name: go integration test (sqlite)
+        name: go integration test
         entry: go test -tags=integration ./internal/integration/...
         language: system
         types: [go]
         pass_filenames: false
 
       - id: go-contract-test
-        name: go contract test (sqlite)
+        name: go contract test
         entry: go test -tags=contract ./internal/contract/...
         language: system
         types: [go]

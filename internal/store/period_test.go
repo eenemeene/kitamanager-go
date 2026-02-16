@@ -13,6 +13,7 @@ import (
 func TestPeriodStore_GetCurrentRecord(t *testing.T) {
 	db := setupTestDB(t)
 	org := createTestOrganization(t, db, "Test Org")
+	sectionID := getDefaultSectionID(t, db, org.ID)
 
 	employee := &models.Employee{
 		Person: models.Person{
@@ -30,6 +31,7 @@ func TestPeriodStore_GetCurrentRecord(t *testing.T) {
 	contract := &models.EmployeeContract{
 		EmployeeID: employee.ID,
 		BaseContract: models.BaseContract{
+			SectionID: sectionID,
 			Period: models.Period{
 				From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				To:   nil,
@@ -84,6 +86,7 @@ func TestPeriodStore_GetCurrentRecord_NoContract(t *testing.T) {
 func TestPeriodStore_GetRecordOn(t *testing.T) {
 	db := setupTestDB(t)
 	org := createTestOrganization(t, db, "Test Org")
+	sectionID := getDefaultSectionID(t, db, org.ID)
 
 	employee := &models.Employee{
 		Person: models.Person{
@@ -101,6 +104,7 @@ func TestPeriodStore_GetRecordOn(t *testing.T) {
 	contract := &models.EmployeeContract{
 		EmployeeID: employee.ID,
 		BaseContract: models.BaseContract{
+			SectionID: sectionID,
 			Period: models.Period{
 				From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				To:   datePtr(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)),
@@ -170,6 +174,7 @@ func TestPeriodStore_GetRecordOn(t *testing.T) {
 func TestPeriodStore_ListRecords(t *testing.T) {
 	db := setupTestDB(t)
 	org := createTestOrganization(t, db, "Test Org")
+	sectionID := getDefaultSectionID(t, db, org.ID)
 
 	employee := &models.Employee{
 		Person: models.Person{
@@ -187,6 +192,7 @@ func TestPeriodStore_ListRecords(t *testing.T) {
 	contract2 := &models.EmployeeContract{
 		EmployeeID: employee.ID,
 		BaseContract: models.BaseContract{
+			SectionID: sectionID,
 			Period: models.Period{
 				From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 				To:   nil,
@@ -199,6 +205,7 @@ func TestPeriodStore_ListRecords(t *testing.T) {
 	contract1 := &models.EmployeeContract{
 		EmployeeID: employee.ID,
 		BaseContract: models.BaseContract{
+			SectionID: sectionID,
 			Period: models.Period{
 				From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				To:   datePtr(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)),
@@ -257,6 +264,7 @@ func TestPeriodStore_ValidateNoOverlap_NoExisting(t *testing.T) {
 func TestPeriodStore_ValidateNoOverlap_Overlapping(t *testing.T) {
 	db := setupTestDB(t)
 	org := createTestOrganization(t, db, "Test Org")
+	sectionID := getDefaultSectionID(t, db, org.ID)
 
 	employee := &models.Employee{
 		Person: models.Person{
@@ -272,6 +280,7 @@ func TestPeriodStore_ValidateNoOverlap_Overlapping(t *testing.T) {
 	existing := &models.EmployeeContract{
 		EmployeeID: employee.ID,
 		BaseContract: models.BaseContract{
+			SectionID: sectionID,
 			Period: models.Period{
 				From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				To:   datePtr(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)),
@@ -371,6 +380,7 @@ func TestPeriodStore_ValidateNoOverlap_Overlapping(t *testing.T) {
 func TestPeriodStore_ValidateNoOverlap_ExcludeID(t *testing.T) {
 	db := setupTestDB(t)
 	org := createTestOrganization(t, db, "Test Org")
+	sectionID := getDefaultSectionID(t, db, org.ID)
 
 	employee := &models.Employee{
 		Person: models.Person{
@@ -386,6 +396,7 @@ func TestPeriodStore_ValidateNoOverlap_ExcludeID(t *testing.T) {
 	existing := &models.EmployeeContract{
 		EmployeeID: employee.ID,
 		BaseContract: models.BaseContract{
+			SectionID: sectionID,
 			Period: models.Period{
 				From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				To:   datePtr(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)),
@@ -413,6 +424,7 @@ func TestPeriodStore_ValidateNoOverlap_ExcludeID(t *testing.T) {
 func TestPeriodStore_ValidateNoOverlap_OngoingContracts(t *testing.T) {
 	db := setupTestDB(t)
 	org := createTestOrganization(t, db, "Test Org")
+	sectionID := getDefaultSectionID(t, db, org.ID)
 
 	employee := &models.Employee{
 		Person: models.Person{
@@ -428,6 +440,7 @@ func TestPeriodStore_ValidateNoOverlap_OngoingContracts(t *testing.T) {
 	existing := &models.EmployeeContract{
 		EmployeeID: employee.ID,
 		BaseContract: models.BaseContract{
+			SectionID: sectionID,
 			Period: models.Period{
 				From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				To:   nil, // ongoing
@@ -488,6 +501,7 @@ func TestPeriodStore_ValidateNoOverlap_OngoingContracts(t *testing.T) {
 func TestPeriodStore_HasActiveRecord(t *testing.T) {
 	db := setupTestDB(t)
 	org := createTestOrganization(t, db, "Test Org")
+	sectionID := getDefaultSectionID(t, db, org.ID)
 
 	employee := &models.Employee{
 		Person: models.Person{
@@ -503,6 +517,7 @@ func TestPeriodStore_HasActiveRecord(t *testing.T) {
 	contract := &models.EmployeeContract{
 		EmployeeID: employee.ID,
 		BaseContract: models.BaseContract{
+			SectionID: sectionID,
 			Period: models.Period{
 				From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				To:   datePtr(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)),
@@ -553,6 +568,7 @@ func TestPeriodStore_HasActiveRecord(t *testing.T) {
 func TestPeriodStore_GetRecordOn_ConsecutiveContracts(t *testing.T) {
 	db := setupTestDB(t)
 	org := createTestOrganization(t, db, "Test Org")
+	sectionID := getDefaultSectionID(t, db, org.ID)
 
 	employee := &models.Employee{
 		Person: models.Person{
@@ -570,6 +586,7 @@ func TestPeriodStore_GetRecordOn_ConsecutiveContracts(t *testing.T) {
 	contractA := &models.EmployeeContract{
 		EmployeeID: employee.ID,
 		BaseContract: models.BaseContract{
+			SectionID: sectionID,
 			Period: models.Period{
 				From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				To:   datePtr(time.Date(2024, 1, 10, 0, 0, 0, 0, time.UTC)),
@@ -585,6 +602,7 @@ func TestPeriodStore_GetRecordOn_ConsecutiveContracts(t *testing.T) {
 	contractB := &models.EmployeeContract{
 		EmployeeID: employee.ID,
 		BaseContract: models.BaseContract{
+			SectionID: sectionID,
 			Period: models.Period{
 				From: time.Date(2024, 1, 11, 0, 0, 0, 0, time.UTC),
 				To:   nil,
@@ -654,6 +672,7 @@ func TestPeriodStore_GetRecordOn_ConsecutiveContracts(t *testing.T) {
 func TestPeriodStore_GetRecordOn_GapBetweenContracts(t *testing.T) {
 	db := setupTestDB(t)
 	org := createTestOrganization(t, db, "Test Org")
+	sectionID := getDefaultSectionID(t, db, org.ID)
 
 	employee := &models.Employee{
 		Person: models.Person{
@@ -671,6 +690,7 @@ func TestPeriodStore_GetRecordOn_GapBetweenContracts(t *testing.T) {
 	contractA := &models.EmployeeContract{
 		EmployeeID: employee.ID,
 		BaseContract: models.BaseContract{
+			SectionID: sectionID,
 			Period: models.Period{
 				From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				To:   datePtr(time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC)),
@@ -686,6 +706,7 @@ func TestPeriodStore_GetRecordOn_GapBetweenContracts(t *testing.T) {
 	contractB := &models.EmployeeContract{
 		EmployeeID: employee.ID,
 		BaseContract: models.BaseContract{
+			SectionID: sectionID,
 			Period: models.Period{
 				From: time.Date(2024, 1, 4, 0, 0, 0, 0, time.UTC),
 				To:   nil,
@@ -755,6 +776,7 @@ func TestPeriodStore_GetRecordOn_GapBetweenContracts(t *testing.T) {
 func TestPeriodStore_HasActiveRecord_GapBetweenContracts(t *testing.T) {
 	db := setupTestDB(t)
 	org := createTestOrganization(t, db, "Test Org")
+	sectionID := getDefaultSectionID(t, db, org.ID)
 
 	employee := &models.Employee{
 		Person: models.Person{
@@ -770,6 +792,7 @@ func TestPeriodStore_HasActiveRecord_GapBetweenContracts(t *testing.T) {
 	db.Create(&models.EmployeeContract{
 		EmployeeID: employee.ID,
 		BaseContract: models.BaseContract{
+			SectionID: sectionID,
 			Period: models.Period{
 				From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				To:   datePtr(time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC)),
@@ -782,6 +805,7 @@ func TestPeriodStore_HasActiveRecord_GapBetweenContracts(t *testing.T) {
 	db.Create(&models.EmployeeContract{
 		EmployeeID: employee.ID,
 		BaseContract: models.BaseContract{
+			SectionID: sectionID,
 			Period: models.Period{
 				From: time.Date(2024, 1, 4, 0, 0, 0, 0, time.UTC),
 				To:   nil,
@@ -818,6 +842,7 @@ func TestPeriodStore_HasActiveRecord_GapBetweenContracts(t *testing.T) {
 func TestPeriodStore_CloseCurrentRecord(t *testing.T) {
 	db := setupTestDB(t)
 	org := createTestOrganization(t, db, "Test Org")
+	sectionID := getDefaultSectionID(t, db, org.ID)
 
 	employee := &models.Employee{
 		Person: models.Person{
@@ -833,6 +858,7 @@ func TestPeriodStore_CloseCurrentRecord(t *testing.T) {
 	contract := &models.EmployeeContract{
 		EmployeeID: employee.ID,
 		BaseContract: models.BaseContract{
+			SectionID: sectionID,
 			Period: models.Period{
 				From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				To:   nil, // ongoing

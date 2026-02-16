@@ -8,28 +8,16 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/store"
+	"github.com/eenemeene/kitamanager-go/internal/testutil"
 )
 
 func setupTestDB(t *testing.T) *gorm.DB {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
-	})
-	require.NoError(t, err)
-
-	err = db.AutoMigrate(
-		&models.GovernmentFunding{},
-		&models.GovernmentFundingPeriod{},
-		&models.GovernmentFundingProperty{},
-	)
-	require.NoError(t, err)
-
-	return db
+	t.Helper()
+	return testutil.SetupTestDB(t)
 }
 
 func createTestYAMLFile(t *testing.T, content string) string {

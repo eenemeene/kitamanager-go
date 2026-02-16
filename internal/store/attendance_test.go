@@ -11,9 +11,6 @@ import (
 func setupChildAttendanceTestDB(t *testing.T) *ChildAttendanceStore {
 	t.Helper()
 	db := setupTestDB(t)
-	if err := db.AutoMigrate(&models.ChildAttendance{}); err != nil {
-		t.Fatalf("failed to migrate: %v", err)
-	}
 	return NewChildAttendanceStore(db)
 }
 

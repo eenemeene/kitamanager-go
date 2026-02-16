@@ -14,9 +14,6 @@ import (
 func setupChildAttendanceTest(t *testing.T) (*ChildAttendanceService, *store.ChildAttendanceStore, *store.ChildStore, *models.Organization, *models.Child) {
 	t.Helper()
 	db := setupTestDB(t)
-	if err := db.AutoMigrate(&models.ChildAttendance{}); err != nil {
-		t.Fatalf("failed to migrate: %v", err)
-	}
 
 	attendanceStore := store.NewChildAttendanceStore(db)
 	childStore := store.NewChildStore(db)
@@ -723,24 +720,30 @@ func TestChildAttendanceService_ListByChild_ChildNotFound(t *testing.T) {
 // ============================================================
 
 func TestChildAttendanceService_GetDailySummary(t *testing.T) {
-	svc, attendanceStore, _, org, _ := setupChildAttendanceTest(t)
-	ctx := context.Background()
+	// Set up from scratch with a single DB reference so we don't re-truncate
+	// between child creations.
+	db := setupTestDB(t)
+	attendanceStore := store.NewChildAttendanceStore(db)
+	childStore := store.NewChildStore(db)
+	svc := NewChildAttendanceService(attendanceStore, childStore)
+	_ = childStore
 
+	org := createTestOrganization(t, db, "Test Org")
+	child1 := createTestChild(t, db, "C1", "L", org.ID)
+	child2 := createTestChild(t, db, "C2", "L", org.ID)
+	child3 := createTestChild(t, db, "C3", "L", org.ID)
+
+	ctx := context.Background()
 	today := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
 	now := time.Now()
-	db := attendanceStore
 
-	child1 := &models.Child{Person: models.Person{FirstName: "C1", LastName: "L", OrganizationID: org.ID, Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)}}
-	child2 := &models.Child{Person: models.Person{FirstName: "C2", LastName: "L", OrganizationID: org.ID, Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)}}
-	child3 := &models.Child{Person: models.Person{FirstName: "C3", LastName: "L", OrganizationID: org.ID, Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)}}
-
-	if err := db.Create(ctx, &models.ChildAttendance{ChildID: child1.ID, OrganizationID: org.ID, Date: today, Status: models.ChildAttendanceStatusPresent, RecordedBy: 1, CheckInTime: &now}); err != nil {
+	if err := attendanceStore.Create(ctx, &models.ChildAttendance{ChildID: child1.ID, OrganizationID: org.ID, Date: today, Status: models.ChildAttendanceStatusPresent, RecordedBy: 1, CheckInTime: &now}); err != nil {
 		t.Fatalf("failed to create attendance: %v", err)
 	}
-	if err := db.Create(ctx, &models.ChildAttendance{ChildID: child2.ID, OrganizationID: org.ID, Date: today, Status: models.ChildAttendanceStatusPresent, RecordedBy: 1, CheckInTime: &now}); err != nil {
+	if err := attendanceStore.Create(ctx, &models.ChildAttendance{ChildID: child2.ID, OrganizationID: org.ID, Date: today, Status: models.ChildAttendanceStatusPresent, RecordedBy: 1, CheckInTime: &now}); err != nil {
 		t.Fatalf("failed to create attendance: %v", err)
 	}
-	if err := db.Create(ctx, &models.ChildAttendance{ChildID: child3.ID, OrganizationID: org.ID, Date: today, Status: models.ChildAttendanceStatusSick, RecordedBy: 1}); err != nil {
+	if err := attendanceStore.Create(ctx, &models.ChildAttendance{ChildID: child3.ID, OrganizationID: org.ID, Date: today, Status: models.ChildAttendanceStatusSick, RecordedBy: 1}); err != nil {
 		t.Fatalf("failed to create attendance: %v", err)
 	}
 

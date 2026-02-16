@@ -21,7 +21,7 @@ func init() {
 	gin.SetMode(gin.TestMode)
 }
 
-// setupTestDB creates an in-memory SQLite database for testing.
+// setupTestDB creates a PostgreSQL test database using testcontainers.
 func setupTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	return testutil.SetupTestDB(t)
@@ -84,8 +84,9 @@ func createTestUser(t *testing.T, db *gorm.DB, name, email, password string) *mo
 	return testutil.CreateTestUser(t, db, name, email, password)
 }
 
-// createTestSuperAdmin creates a superadmin user with ID 1 for testing.
-// This is used when tests need a user to exist for setupTestRouter's default userID.
+// createTestSuperAdmin creates a superadmin user for testing.
+// Must be the first user created after SetupTestDB truncation so it gets ID 1,
+// matching the userID set in setupTestRouter.
 func createTestSuperAdmin(t *testing.T, db *gorm.DB) *models.User {
 	t.Helper()
 
@@ -96,9 +97,11 @@ func createTestSuperAdmin(t *testing.T, db *gorm.DB) *models.User {
 		Active:       true,
 		IsSuperAdmin: true,
 	}
-	user.ID = 1 // Match the userID set in setupTestRouter
 	if err := db.Create(user).Error; err != nil {
 		t.Fatalf("failed to create test superadmin: %v", err)
+	}
+	if user.ID != 1 {
+		t.Fatalf("expected superadmin to get ID 1 (must be first user created), got %d", user.ID)
 	}
 	return user
 }

@@ -184,6 +184,7 @@ func TestEmployeeStore_CreateContract(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewEmployeeStore(db)
 	org := createTestOrganization(t, db, "Test Org")
+	sectionID := getDefaultSectionID(t, db, org.ID)
 
 	employee := &models.Employee{
 		Person: models.Person{
@@ -198,6 +199,7 @@ func TestEmployeeStore_CreateContract(t *testing.T) {
 	contract := &models.EmployeeContract{
 		EmployeeID: employee.ID,
 		BaseContract: models.BaseContract{
+			SectionID: sectionID,
 			Period: models.Period{
 				From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 				To:   nil,
@@ -222,6 +224,7 @@ func TestEmployeeStore_DeleteContract(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewEmployeeStore(db)
 	org := createTestOrganization(t, db, "Test Org")
+	sectionID := getDefaultSectionID(t, db, org.ID)
 
 	employee := &models.Employee{
 		Person: models.Person{
@@ -236,6 +239,7 @@ func TestEmployeeStore_DeleteContract(t *testing.T) {
 	contract := &models.EmployeeContract{
 		EmployeeID: employee.ID,
 		BaseContract: models.BaseContract{
+			SectionID: sectionID,
 			Period: models.Period{
 				From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 			},
@@ -261,6 +265,7 @@ func TestEmployeeStore_FindByOrganizationAndSection_ActiveOn(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewEmployeeStore(db)
 	org := createTestOrganization(t, db, "Test Org")
+	sectionID := getDefaultSectionID(t, db, org.ID)
 
 	refDate := time.Date(2025, 1, 27, 0, 0, 0, 0, time.UTC)
 
@@ -271,7 +276,7 @@ func TestEmployeeStore_FindByOrganizationAndSection_ActiveOn(t *testing.T) {
 	db.Create(empActive)
 	db.Create(&models.EmployeeContract{
 		EmployeeID:    empActive.ID,
-		BaseContract:  models.BaseContract{Period: models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)}},
+		BaseContract:  models.BaseContract{SectionID: sectionID, Period: models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)}},
 		StaffCategory: "qualified",
 		WeeklyHours:   40,
 	})
@@ -284,7 +289,7 @@ func TestEmployeeStore_FindByOrganizationAndSection_ActiveOn(t *testing.T) {
 	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
 	db.Create(&models.EmployeeContract{
 		EmployeeID:    empExpired.ID,
-		BaseContract:  models.BaseContract{Period: models.Period{From: time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), To: &to}},
+		BaseContract:  models.BaseContract{SectionID: sectionID, Period: models.Period{From: time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), To: &to}},
 		StaffCategory: "qualified",
 		WeeklyHours:   40,
 	})
@@ -296,7 +301,7 @@ func TestEmployeeStore_FindByOrganizationAndSection_ActiveOn(t *testing.T) {
 	db.Create(empFuture)
 	db.Create(&models.EmployeeContract{
 		EmployeeID:    empFuture.ID,
-		BaseContract:  models.BaseContract{Period: models.Period{From: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)}},
+		BaseContract:  models.BaseContract{SectionID: sectionID, Period: models.Period{From: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)}},
 		StaffCategory: "qualified",
 		WeeklyHours:   40,
 	})
@@ -437,13 +442,14 @@ func TestEmployeeStore_FindByOrganizationAndSection_SearchWithActiveOn(t *testin
 	db := setupTestDB(t)
 	store := NewEmployeeStore(db)
 	org := createTestOrganization(t, db, "Test Org")
+	sectionID := getDefaultSectionID(t, db, org.ID)
 
 	refDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
 
 	// Max with active contract
 	max := &models.Employee{Person: models.Person{OrganizationID: org.ID, FirstName: "Max", LastName: "Mustermann", Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC)}}
 	db.Create(max)
-	db.Create(&models.EmployeeContract{EmployeeID: max.ID, BaseContract: models.BaseContract{Period: models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)}}, StaffCategory: "qualified", WeeklyHours: 40})
+	db.Create(&models.EmployeeContract{EmployeeID: max.ID, BaseContract: models.BaseContract{SectionID: sectionID, Period: models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)}}, StaffCategory: "qualified", WeeklyHours: 40})
 
 	// Maria without contract
 	db.Create(&models.Employee{Person: models.Person{OrganizationID: org.ID, FirstName: "Maria", LastName: "Mueller", Birthdate: time.Date(1985, 1, 1, 0, 0, 0, 0, time.UTC)}})
@@ -465,6 +471,7 @@ func TestEmployeeStore_DeleteAlsoDeletesContracts(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewEmployeeStore(db)
 	org := createTestOrganization(t, db, "Test Org")
+	sectionID := getDefaultSectionID(t, db, org.ID)
 
 	employee := &models.Employee{
 		Person: models.Person{
@@ -479,6 +486,7 @@ func TestEmployeeStore_DeleteAlsoDeletesContracts(t *testing.T) {
 	contract := &models.EmployeeContract{
 		EmployeeID: employee.ID,
 		BaseContract: models.BaseContract{
+			SectionID: sectionID,
 			Period: models.Period{
 				From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 			},

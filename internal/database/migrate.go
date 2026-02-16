@@ -50,6 +50,29 @@ func BuildMigrateURL(cfg *config.Config) string {
 	)
 }
 
+// RunMigrationsWithURL applies all pending database migrations against the given database URL.
+func RunMigrationsWithURL(databaseURL string) error {
+	source, err := iofs.New(migrationsFS, "migrations")
+	if err != nil {
+		return fmt.Errorf("failed to open migrations source: %w", err)
+	}
+
+	m, err := migrate.NewWithSourceInstance("iofs", source, databaseURL)
+	if err != nil {
+		return fmt.Errorf("failed to create migrate instance: %w", err)
+	}
+	defer m.Close()
+
+	if err := m.Up(); err != nil {
+		if errors.Is(err, migrate.ErrNoChange) {
+			return nil
+		}
+		return fmt.Errorf("failed to run migrations: %w", err)
+	}
+
+	return nil
+}
+
 // RunMigrations applies all pending database migrations using the embedded SQL files.
 func RunMigrations(cfg *config.Config) error {
 	source, err := iofs.New(migrationsFS, "migrations")
