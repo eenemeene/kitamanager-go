@@ -79,16 +79,21 @@ func parseResponse(t *testing.T, w *httptest.ResponseRecorder, v interface{}) {
 	}
 }
 
-// setupTestRouter creates a gin router with auth context middleware for testing.
-func setupTestRouter() *gin.Engine {
+// setupTestRouterWithUser creates a gin router with the given user ID in auth context.
+func setupTestRouterWithUser(userID uint) *gin.Engine {
 	r := gin.New()
-	// Add middleware to set user context (simulating authenticated user)
 	r.Use(func(c *gin.Context) {
-		c.Set(ctxkeys.UserID, uint(1))
+		c.Set(ctxkeys.UserID, userID)
 		c.Set(ctxkeys.UserEmail, "test@example.com")
 		c.Next()
 	})
 	return r
+}
+
+// setupTestRouter creates a gin router with userID=1 in auth context.
+// Use setupTestRouterWithUser when the test creates a real user whose ID matters.
+func setupTestRouter() *gin.Engine {
+	return setupTestRouterWithUser(1)
 }
 
 // createTestOrganization creates an organization for testing.
@@ -104,8 +109,7 @@ func createTestUser(t *testing.T, db *gorm.DB, name, email, password string) *mo
 }
 
 // createTestSuperAdmin creates a superadmin user for testing.
-// Must be the first user created after SetupTestDB truncation so it gets ID 1,
-// matching the userID set in setupTestRouter.
+// Callers that need the router to match should use setupTestRouterWithUser(admin.ID).
 func createTestSuperAdmin(t *testing.T, db *gorm.DB) *models.User {
 	t.Helper()
 
@@ -118,9 +122,6 @@ func createTestSuperAdmin(t *testing.T, db *gorm.DB) *models.User {
 	}
 	if err := db.Create(user).Error; err != nil {
 		t.Fatalf("failed to create test superadmin: %v", err)
-	}
-	if user.ID != 1 {
-		t.Fatalf("expected superadmin to get ID 1 (must be first user created), got %d", user.ID)
 	}
 	return user
 }

@@ -10,7 +10,7 @@ import (
 
 func TestUserHandler_List(t *testing.T) {
 	db := setupTestDB(t)
-	createTestSuperAdmin(t, db) // requester (userID=1 from setupTestRouter)
+	admin := createTestSuperAdmin(t, db)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
 	handler := NewUserHandler(userService, userGroupService, nil, nil)
@@ -18,7 +18,7 @@ func TestUserHandler_List(t *testing.T) {
 	createTestUser(t, db, "User 1", "user1@example.com", "password")
 	createTestUser(t, db, "User 2", "user2@example.com", "password")
 
-	r := setupTestRouter()
+	r := setupTestRouterWithUser(admin.ID)
 	r.GET("/users", handler.List)
 
 	w := performRequest(r, "GET", "/users", nil)
@@ -312,7 +312,7 @@ func TestUserHandler_Delete(t *testing.T) {
 
 func TestUserHandler_AddToGroup(t *testing.T) {
 	db := setupTestDB(t)
-	createTestSuperAdmin(t, db) // requester (userID=1 from setupTestRouter)
+	admin := createTestSuperAdmin(t, db)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
 	handler := NewUserHandler(userService, userGroupService, nil, nil)
@@ -323,7 +323,7 @@ func TestUserHandler_AddToGroup(t *testing.T) {
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 	_ = org // org is used to create the group
 
-	r := setupTestRouter()
+	r := setupTestRouterWithUser(admin.ID)
 	r.POST("/users/:userId/groups", handler.AddToGroup)
 
 	body := models.UserGroupAddRequest{
@@ -347,7 +347,7 @@ func TestUserHandler_AddToGroup(t *testing.T) {
 
 func TestUserHandler_RemoveFromGroup(t *testing.T) {
 	db := setupTestDB(t)
-	createTestSuperAdmin(t, db) // requester (userID=1 from setupTestRouter)
+	admin := createTestSuperAdmin(t, db)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
 	handler := NewUserHandler(userService, userGroupService, nil, nil)
@@ -363,7 +363,7 @@ func TestUserHandler_RemoveFromGroup(t *testing.T) {
 		t.Fatalf("failed to add user to group: %v", err)
 	}
 
-	r := setupTestRouter()
+	r := setupTestRouterWithUser(admin.ID)
 	r.DELETE("/users/:userId/groups/:groupId", handler.RemoveFromGroup)
 
 	w := performRequest(r, "DELETE", fmt.Sprintf("/users/%d/groups/%d", user.ID, group.ID), nil)
@@ -382,7 +382,7 @@ func TestUserHandler_RemoveFromGroup(t *testing.T) {
 
 func TestUserHandler_AddToOrganization(t *testing.T) {
 	db := setupTestDB(t)
-	createTestSuperAdmin(t, db) // requester (userID=1 from setupTestRouter)
+	admin := createTestSuperAdmin(t, db)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
 	handler := NewUserHandler(userService, userGroupService, nil, nil)
@@ -392,7 +392,7 @@ func TestUserHandler_AddToOrganization(t *testing.T) {
 	// Create a default group for the organization
 	defaultGroup := createTestGroupWithOrgAndDefault(t, db, "Members", org.ID, true)
 
-	r := setupTestRouter()
+	r := setupTestRouterWithUser(admin.ID)
 	r.POST("/users/:userId/organizations", handler.AddToOrganization)
 
 	body := models.UserOrganizationAddRequest{
@@ -418,7 +418,7 @@ func TestUserHandler_AddToOrganization(t *testing.T) {
 
 func TestUserHandler_RemoveFromOrganization(t *testing.T) {
 	db := setupTestDB(t)
-	createTestSuperAdmin(t, db) // requester (userID=1 from setupTestRouter)
+	admin := createTestSuperAdmin(t, db)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
 	handler := NewUserHandler(userService, userGroupService, nil, nil)
@@ -431,7 +431,7 @@ func TestUserHandler_RemoveFromOrganization(t *testing.T) {
 		t.Fatalf("failed to add user to group: %v", err)
 	}
 
-	r := setupTestRouter()
+	r := setupTestRouterWithUser(admin.ID)
 	r.DELETE("/users/:userId/organizations/:orgId", handler.RemoveFromOrganization)
 
 	w := performRequest(r, "DELETE", "/users/1/organizations/1", nil)
@@ -796,14 +796,14 @@ func TestUserHandler_AddToOrganization_InvalidUserID(t *testing.T) {
 
 func TestUserHandler_AddToOrganization_UserNotFound(t *testing.T) {
 	db := setupTestDB(t)
-	createTestSuperAdmin(t, db) // requester (userID=1 from setupTestRouter)
+	admin := createTestSuperAdmin(t, db)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
 	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
-	r := setupTestRouter()
+	r := setupTestRouterWithUser(admin.ID)
 	r.POST("/users/:userId/organizations", handler.AddToOrganization)
 
 	body := models.UserOrganizationAddRequest{
@@ -961,7 +961,7 @@ func TestUserHandler_Create_PasswordTooLong(t *testing.T) {
 
 func TestUserHandler_UpdateGroupRole(t *testing.T) {
 	db := setupTestDB(t)
-	createTestSuperAdmin(t, db) // requester (userID=1 from setupTestRouter)
+	admin := createTestSuperAdmin(t, db)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
 	handler := NewUserHandler(userService, userGroupService, nil, nil)
@@ -979,7 +979,7 @@ func TestUserHandler_UpdateGroupRole(t *testing.T) {
 	}
 	db.Create(ug)
 
-	r := setupTestRouter()
+	r := setupTestRouterWithUser(admin.ID)
 	r.PUT("/users/:userId/groups/:groupId", handler.UpdateGroupRole)
 
 	body := models.UserGroupRoleUpdateRequest{
@@ -1373,14 +1373,14 @@ func TestUserHandler_SetSuperAdmin_MissingBody(t *testing.T) {
 
 func TestUserHandler_AddToOrganization_OrgNotFound(t *testing.T) {
 	db := setupTestDB(t)
-	createTestSuperAdmin(t, db) // requester (userID=1 from setupTestRouter)
+	admin := createTestSuperAdmin(t, db)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
 	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 
-	r := setupTestRouter()
+	r := setupTestRouterWithUser(admin.ID)
 	r.POST("/users/:userId/organizations", handler.AddToOrganization)
 
 	body := models.UserOrganizationAddRequest{
@@ -1398,14 +1398,14 @@ func TestUserHandler_AddToOrganization_OrgNotFound(t *testing.T) {
 
 func TestUserHandler_RemoveFromOrganization_UserNotFound(t *testing.T) {
 	db := setupTestDB(t)
-	createTestSuperAdmin(t, db) // requester (userID=1 from setupTestRouter)
+	admin := createTestSuperAdmin(t, db)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
 	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
 	org := createTestOrganization(t, db, "Test Org")
 
-	r := setupTestRouter()
+	r := setupTestRouterWithUser(admin.ID)
 	r.DELETE("/users/:userId/organizations/:orgId", handler.RemoveFromOrganization)
 
 	w := performRequest(r, "DELETE", fmt.Sprintf("/users/999/organizations/%d", org.ID), nil)
@@ -1417,7 +1417,7 @@ func TestUserHandler_RemoveFromOrganization_UserNotFound(t *testing.T) {
 
 func TestUserHandler_List_Search(t *testing.T) {
 	db := setupTestDB(t)
-	createTestSuperAdmin(t, db) // requester (userID=1 from setupTestRouter)
+	admin := createTestSuperAdmin(t, db)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
 	handler := NewUserHandler(userService, userGroupService, nil, nil)
@@ -1426,7 +1426,7 @@ func TestUserHandler_List_Search(t *testing.T) {
 	createTestUser(t, db, "Bob Jones", "bob@example.com", "password")
 	createTestUser(t, db, "Charlie Admin", "admin@company.com", "password")
 
-	r := setupTestRouter()
+	r := setupTestRouterWithUser(admin.ID)
 	r.GET("/users", handler.List)
 
 	// Search by name

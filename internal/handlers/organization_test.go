@@ -12,13 +12,12 @@ func TestOrganizationHandler_List(t *testing.T) {
 	orgService := createOrganizationService(db)
 	handler := NewOrganizationHandler(orgService, nil)
 
-	// Create superadmin user for the test (setupTestRouter sets userID=1)
-	createTestSuperAdmin(t, db)
+	admin := createTestSuperAdmin(t, db)
 
 	createTestOrganization(t, db, "Org 1")
 	createTestOrganization(t, db, "Org 2")
 
-	r := setupTestRouter()
+	r := setupTestRouterWithUser(admin.ID)
 	r.GET("/organizations", handler.List)
 
 	w := performRequest(r, "GET", "/organizations", nil)
@@ -400,10 +399,9 @@ func TestOrganizationHandler_List_Empty(t *testing.T) {
 	orgService := createOrganizationService(db)
 	handler := NewOrganizationHandler(orgService, nil)
 
-	// Create superadmin user for the test (setupTestRouter sets userID=1)
-	createTestSuperAdmin(t, db)
+	admin := createTestSuperAdmin(t, db)
 
-	r := setupTestRouter()
+	r := setupTestRouterWithUser(admin.ID)
 	r.GET("/organizations", handler.List)
 
 	w := performRequest(r, "GET", "/organizations", nil)
