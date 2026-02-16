@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { useQuery, useQueries } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ChartErrorBoundary } from '@/components/charts/chart-error-boundary';
 import {
   Select,
   SelectContent,
@@ -125,7 +126,9 @@ export default function StaffingPage() {
           {isLoadingStaffing ? (
             <Skeleton className="h-[300px] w-full" />
           ) : staffingHours ? (
-            <StaffingHoursChart data={staffingHours} />
+            <ChartErrorBoundary>
+              <StaffingHoursChart data={staffingHours} />
+            </ChartErrorBoundary>
           ) : (
             <p className="text-muted-foreground">{t('statistics.chartError')}</p>
           )}
@@ -142,7 +145,9 @@ export default function StaffingPage() {
             {isLoadingSectionStaffing ? (
               <Skeleton className="h-[300px] w-full" />
             ) : sectionStaffingData.length > 0 ? (
-              <SectionStaffingChart data={sectionStaffingData} />
+              <ChartErrorBoundary>
+                <SectionStaffingChart data={sectionStaffingData} />
+              </ChartErrorBoundary>
             ) : (
               <p className="text-muted-foreground">{t('statistics.chartError')}</p>
             )}

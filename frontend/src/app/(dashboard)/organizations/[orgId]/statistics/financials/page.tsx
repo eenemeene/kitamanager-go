@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ChartErrorBoundary } from '@/components/charts/chart-error-boundary';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { formatCurrency, getCurrentMonthStart } from '@/lib/utils/formatting';
@@ -100,7 +101,9 @@ export default function FinancialsPage() {
           {isLoadingFinancials ? (
             <Skeleton className="h-[350px] w-full" />
           ) : financials ? (
-            <FinancialsChart data={financials} />
+            <ChartErrorBoundary>
+              <FinancialsChart data={financials} />
+            </ChartErrorBoundary>
           ) : (
             <p className="text-muted-foreground">{t('statistics.chartError')}</p>
           )}

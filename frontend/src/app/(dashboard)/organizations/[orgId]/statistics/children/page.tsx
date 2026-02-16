@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ChartErrorBoundary } from '@/components/charts/chart-error-boundary';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 
@@ -67,7 +68,9 @@ export default function ChildrenStatisticsPage() {
           {isLoadingContracts ? (
             <Skeleton className="h-[350px] w-full" />
           ) : staffingHours ? (
-            <MonthlyContractChart data={staffingHours} />
+            <ChartErrorBoundary>
+              <MonthlyContractChart data={staffingHours} />
+            </ChartErrorBoundary>
           ) : (
             <p className="text-muted-foreground">{t('statistics.chartError')}</p>
           )}
@@ -84,7 +87,9 @@ export default function ChildrenStatisticsPage() {
             {isLoadingAge ? (
               <Skeleton className="h-[300px] w-full" />
             ) : ageDistribution ? (
-              <AgeDistributionChart data={ageDistribution} />
+              <ChartErrorBoundary>
+                <AgeDistributionChart data={ageDistribution} />
+              </ChartErrorBoundary>
             ) : (
               <p className="text-muted-foreground">{t('statistics.chartError')}</p>
             )}
@@ -100,7 +105,9 @@ export default function ChildrenStatisticsPage() {
             {isLoadingContractProperties ? (
               <Skeleton className="h-[300px] w-full" />
             ) : contractProperties ? (
-              <ContractPropertiesChart data={contractProperties} />
+              <ChartErrorBoundary>
+                <ContractPropertiesChart data={contractProperties} />
+              </ChartErrorBoundary>
             ) : (
               <p className="text-muted-foreground">{t('statistics.chartError')}</p>
             )}

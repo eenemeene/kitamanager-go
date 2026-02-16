@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ChartErrorBoundary } from '@/components/charts/chart-error-boundary';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { LOOKUP_FETCH_LIMIT } from '@/lib/api/types';
@@ -75,7 +76,9 @@ export default function OccupancyPage() {
           {isLoading ? (
             <Skeleton className="h-[300px] w-full" />
           ) : occupancy ? (
-            <OccupancyTable data={occupancy} />
+            <ChartErrorBoundary>
+              <OccupancyTable data={occupancy} />
+            </ChartErrorBoundary>
           ) : (
             <p className="text-muted-foreground">{t('statistics.chartError')}</p>
           )}
