@@ -17,6 +17,7 @@ import {
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { LOOKUP_FETCH_LIMIT } from '@/lib/api/types';
+import { getCurrentMonthStart } from '@/lib/utils/formatting';
 
 const StaffingHoursChart = dynamic(
   () => import('@/components/charts/staffing-hours-chart').then((mod) => mod.StaffingHoursChart),
@@ -60,8 +61,7 @@ export default function StaffingPage() {
     if (!sections?.data) return [];
 
     // Find the data point closest to the 1st of the current month
-    const now = new Date();
-    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    const currentMonth = getCurrentMonthStart();
 
     return sections.data
       .map((section, i) => {

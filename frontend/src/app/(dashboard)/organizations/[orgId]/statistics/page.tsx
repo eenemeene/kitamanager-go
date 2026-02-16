@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
-import { formatCurrency } from '@/lib/utils/formatting';
+import { formatCurrency, getCurrentMonthStart } from '@/lib/utils/formatting';
 
 export default function StatisticsPage() {
   const params = useParams();
@@ -26,8 +26,7 @@ export default function StatisticsPage() {
   // Get the current month's financial data point for summary cards
   const currentFinancials = useMemo(() => {
     if (!financials?.data_points?.length) return null;
-    const now = new Date();
-    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    const currentMonth = getCurrentMonthStart();
     const exact = financials.data_points.find((dp) => dp.date === currentMonth);
     return exact ?? financials.data_points[financials.data_points.length - 1];
   }, [financials]);

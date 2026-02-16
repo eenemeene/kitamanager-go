@@ -1,6 +1,5 @@
 'use client';
 
-import { useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
@@ -11,6 +10,7 @@ import { UpcomingChildrenWidget } from '@/components/dashboard/upcoming-children
 import { SectionAgeAlertsWidget } from '@/components/dashboard/section-age-alerts-widget';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
+import { getCurrentMonthRange } from '@/lib/utils/formatting';
 import { useAuthStore } from '@/stores/auth-store';
 
 export default function OrgDashboardPage() {
@@ -19,17 +19,7 @@ export default function OrgDashboardPage() {
   const t = useTranslations();
   const { user } = useAuthStore();
 
-  const { from, to } = useMemo(() => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = now.getMonth();
-    const first = new Date(y, m, 1);
-    const last = new Date(y, m + 1, 0);
-    return {
-      from: first.toISOString().slice(0, 10),
-      to: last.toISOString().slice(0, 10),
-    };
-  }, []);
+  const { from, to } = getCurrentMonthRange();
 
   const { data: employeesData, isLoading: employeesLoading } = useQuery({
     queryKey: [...queryKeys.employees.list(orgId, 1), 'count'],

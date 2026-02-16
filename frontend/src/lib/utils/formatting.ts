@@ -139,6 +139,29 @@ export function formatMonthRange(min?: number | null, max?: number | null): stri
   return `0\u2013${max}`;
 }
 
+/**
+ * Returns the first day of the current month as a YYYY-MM-DD string.
+ */
+export function getCurrentMonthStart(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+}
+
+/**
+ * Returns the first and last day of the current month as YYYY-MM-DD strings.
+ */
+export function getCurrentMonthRange(): { from: string; to: string } {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const first = new Date(y, m, 1);
+  const last = new Date(y, m + 1, 0);
+  return {
+    from: first.toISOString().slice(0, 10),
+    to: last.toISOString().slice(0, 10),
+  };
+}
+
 // Re-export contract properties utilities for backwards compatibility
 export {
   propertiesToValues,
