@@ -1,27 +1,13 @@
 package handlers
 
 import (
-	"crypto/rand"
-	"encoding/hex"
-	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/crypto/bcrypt"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
-	"github.com/eenemeene/kitamanager-go/internal/middleware"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
-	"github.com/eenemeene/kitamanager-go/internal/store"
-)
-
-// Token expiration settings
-const (
-	accessTokenExpiry  = 1 * time.Hour      // Access tokens expire in 1 hour
-	refreshTokenExpiry = 7 * 24 * time.Hour // Refresh tokens expire in 7 days
 )
 
 // Cookie names
@@ -35,19 +21,11 @@ const (
 const refreshCookiePath = "/api/v1/refresh"
 
 type AuthHandler struct {
-	userStore    store.UserStorer
-	tokenStore   store.TokenStorer
-	jwtSecret    string
-	auditService *service.AuditService
+	authService *service.AuthService
 }
 
-func NewAuthHandler(userStore store.UserStorer, tokenStore store.TokenStorer, jwtSecret string, auditService *service.AuditService) *AuthHandler {
-	return &AuthHandler{
-		userStore:    userStore,
-		tokenStore:   tokenStore,
-		jwtSecret:    jwtSecret,
-		auditService: auditService,
-	}
+func NewAuthHandler(authService *service.AuthService) *AuthHandler {
+	return &AuthHandler{authService: authService}
 }
 
 // Login godoc
@@ -60,132 +38,26 @@ func NewAuthHandler(userStore store.UserStorer, tokenStore store.TokenStorer, jw
 // @Success 200 {object} models.LoginResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
+// @Failure 429 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
-	const (
-		lockoutThreshold = 5
-		lockoutWindow    = 15 * time.Minute
-	)
-
 	req, ok := bindJSON[models.LoginRequest](c)
 	if !ok {
 		return
 	}
 
-	ipAddress := c.ClientIP()
-	userAgent := c.GetHeader("User-Agent")
-
-	// Check for account lockout
-	failedCount, err := h.auditService.CountRecentFailedLogins(c.Request.Context(), req.Email, lockoutWindow)
-	if err == nil && failedCount >= lockoutThreshold {
-		h.auditService.LogLoginFailed(req.Email, ipAddress, userAgent, "account locked - too many failed attempts")
-		respondError(c, apperror.TooManyRequests("too many failed login attempts, please try again later"))
-		return
-	}
-
-	user, err := h.userStore.FindByEmail(c.Request.Context(), req.Email)
+	result, err := h.authService.Login(c.Request.Context(), req.Email, req.Password, c.ClientIP(), c.GetHeader("User-Agent"))
 	if err != nil {
-		// Log failed login attempt
-		h.auditService.LogLoginFailed(req.Email, ipAddress, userAgent, "user not found")
-		// Use generic message to prevent user enumeration
-		respondError(c, apperror.Unauthorized("invalid credentials"))
+		respondError(c, err)
 		return
 	}
 
-	if !user.Active {
-		h.auditService.LogLoginFailed(req.Email, ipAddress, userAgent, "user inactive")
-		respondError(c, apperror.Unauthorized("invalid credentials"))
-		return
-	}
-
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		h.auditService.LogLoginFailed(req.Email, ipAddress, userAgent, "invalid password")
-		// Use generic message to prevent password guessing
-		respondError(c, apperror.Unauthorized("invalid credentials"))
-		return
-	}
-
-	// Update last login timestamp
-	if err := h.userStore.UpdateLastLogin(c.Request.Context(), user.ID); err != nil {
-		// Log but don't fail login if last_login update fails
-		_ = c.Error(err)
-	}
-
-	// Generate access token
-	accessToken, err := h.generateAccessToken(user.ID, user.Email)
-	if err != nil {
-		respondError(c, apperror.Internal("failed to generate access token"))
-		return
-	}
-
-	// Generate refresh token
-	refreshToken, err := h.generateRefreshToken(user.ID)
-	if err != nil {
-		respondError(c, apperror.Internal("failed to generate refresh token"))
-		return
-	}
-
-	// Log successful login
-	h.auditService.LogLogin(user.ID, user.Email, ipAddress, userAgent)
-
-	// Derive CSRF token from access token (binds CSRF to session)
-	csrfToken := middleware.ComputeCSRFToken(accessToken, h.jwtSecret)
-
-	// Set HttpOnly cookies for tokens
-	h.setAuthCookies(c, accessToken, refreshToken, csrfToken)
+	h.setAuthCookies(c, result)
 
 	c.JSON(http.StatusOK, models.LoginResponse{
-		ExpiresIn: int64(accessTokenExpiry.Seconds()),
+		ExpiresIn: result.ExpiresIn,
 	})
-}
-
-// generateAccessToken creates a short-lived JWT for API access
-func (h *AuthHandler) generateAccessToken(userID uint, email string) (string, error) {
-	now := time.Now()
-	jti, err := generateJTI()
-	if err != nil {
-		return "", err
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub":     fmt.Sprintf("%d", userID),
-		"user_id": userID,
-		"email":   email,
-		"type":    "access",
-		"jti":     jti,
-		"exp":     now.Add(accessTokenExpiry).Unix(),
-		"nbf":     now.Unix(),
-		"iat":     now.Unix(),
-	})
-	return token.SignedString([]byte(h.jwtSecret))
-}
-
-// generateRefreshToken creates a long-lived JWT for token refresh
-func (h *AuthHandler) generateRefreshToken(userID uint) (string, error) {
-	now := time.Now()
-	jti, err := generateJTI()
-	if err != nil {
-		return "", err
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub":     fmt.Sprintf("%d", userID),
-		"user_id": userID,
-		"type":    "refresh",
-		"jti":     jti,
-		"exp":     now.Add(refreshTokenExpiry).Unix(),
-		"nbf":     now.Unix(),
-		"iat":     now.Unix(),
-	})
-	return token.SignedString([]byte(h.jwtSecret))
-}
-
-// generateJTI generates a unique JWT ID (jti claim).
-func generateJTI() (string, error) {
-	b := make([]byte, 16)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(b), nil
 }
 
 // Refresh godoc
@@ -198,106 +70,22 @@ func generateJTI() (string, error) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/refresh [post]
 func (h *AuthHandler) Refresh(c *gin.Context) {
-	// Read refresh token from HttpOnly cookie
 	refreshTokenStr, err := c.Cookie(refreshTokenCookie)
 	if err != nil || refreshTokenStr == "" {
 		respondError(c, apperror.Unauthorized("missing refresh token"))
 		return
 	}
 
-	// Parse and validate the refresh token
-	token, err := jwt.Parse(refreshTokenStr, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, jwt.ErrSignatureInvalid
-		}
-		return []byte(h.jwtSecret), nil
-	})
-
-	if err != nil || !token.Valid {
-		respondError(c, apperror.Unauthorized("invalid refresh token"))
+	result, authErr := h.authService.Refresh(c.Request.Context(), refreshTokenStr)
+	if authErr != nil {
+		respondError(c, authErr)
 		return
 	}
 
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		respondError(c, apperror.Unauthorized("invalid token claims"))
-		return
-	}
-
-	// Verify this is a refresh token
-	tokenType, _ := claims["type"].(string)
-	if tokenType != "refresh" {
-		respondError(c, apperror.Unauthorized("invalid token type"))
-		return
-	}
-
-	// Get user ID from claims
-	userIDFloat, ok := claims["user_id"].(float64)
-	if !ok {
-		respondError(c, apperror.Unauthorized("invalid user ID in token"))
-		return
-	}
-	userID := uint(userIDFloat)
-
-	// Check for token replay before processing
-	if h.tokenStore != nil {
-		oldHash := middleware.HashToken(refreshTokenStr)
-		revoked, err := h.tokenStore.IsRevoked(c.Request.Context(), oldHash)
-		if err == nil && revoked {
-			// Replay detected — revoke all tokens for this user as precaution
-			_ = h.tokenStore.RevokeAllForUser(c.Request.Context(), userID)
-			respondError(c, apperror.Unauthorized("token reuse detected, all sessions have been revoked"))
-			return
-		}
-
-		userRevoked, err := h.tokenStore.IsUserRevoked(c.Request.Context(), userID)
-		if err == nil && userRevoked {
-			respondError(c, apperror.Unauthorized("all sessions have been revoked, please login again"))
-			return
-		}
-	}
-
-	// Verify user still exists and is active
-	user, err := h.userStore.FindByID(c.Request.Context(), userID)
-	if err != nil {
-		respondError(c, apperror.Unauthorized("invalid refresh token"))
-		return
-	}
-
-	if !user.Active {
-		respondError(c, apperror.Unauthorized("invalid refresh token"))
-		return
-	}
-
-	// Revoke the old refresh token
-	if h.tokenStore != nil {
-		expFloat, _ := claims["exp"].(float64)
-		oldExpiresAt := time.Unix(int64(expFloat), 0)
-		oldHash := middleware.HashToken(refreshTokenStr)
-		_ = h.tokenStore.RevokeToken(c.Request.Context(), oldHash, user.ID, oldExpiresAt)
-	}
-
-	// Generate new tokens
-	accessToken, err := h.generateAccessToken(user.ID, user.Email)
-	if err != nil {
-		respondError(c, apperror.Internal("failed to generate access token"))
-		return
-	}
-
-	refreshToken, err := h.generateRefreshToken(user.ID)
-	if err != nil {
-		respondError(c, apperror.Internal("failed to generate refresh token"))
-		return
-	}
-
-	// Derive CSRF token from access token (binds CSRF to session)
-	csrfToken := middleware.ComputeCSRFToken(accessToken, h.jwtSecret)
-
-	// Set HttpOnly cookies for tokens
-	h.setAuthCookies(c, accessToken, refreshToken, csrfToken)
+	h.setAuthCookies(c, result)
 
 	c.JSON(http.StatusOK, models.RefreshResponse{
-		ExpiresIn: int64(accessTokenExpiry.Seconds()),
+		ExpiresIn: result.ExpiresIn,
 	})
 }
 
@@ -310,99 +98,16 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
-	// Revoke current tokens if token store is available
-	if h.tokenStore != nil {
-		// Revoke access token
-		if cookie, err := c.Cookie(accessTokenCookie); err == nil && cookie != "" {
-			h.revokeTokenString(c, cookie)
-		}
-		// Revoke refresh token
-		if cookie, err := c.Cookie(refreshTokenCookie); err == nil && cookie != "" {
-			h.revokeTokenString(c, cookie)
-		}
-	}
+	accessTokenStr, _ := c.Cookie(accessTokenCookie)
+	refreshTokenStr, _ := c.Cookie(refreshTokenCookie)
 
-	// Clear all auth cookies
+	h.authService.Logout(c.Request.Context(), accessTokenStr, refreshTokenStr)
+
 	h.clearAuthCookies(c)
 
 	c.JSON(http.StatusOK, models.MessageResponse{
 		Message: "logged out successfully",
 	})
-}
-
-// revokeTokenString parses a JWT to extract user_id and exp, then revokes it.
-func (h *AuthHandler) revokeTokenString(c *gin.Context, tokenStr string) {
-	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-		return []byte(h.jwtSecret), nil
-	})
-	if err != nil || !token.Valid {
-		return // Can't revoke invalid tokens
-	}
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		return
-	}
-	userIDFloat, _ := claims["user_id"].(float64)
-	expFloat, _ := claims["exp"].(float64)
-	expiresAt := time.Unix(int64(expFloat), 0)
-	tokenHash := middleware.HashToken(tokenStr)
-	_ = h.tokenStore.RevokeToken(c.Request.Context(), tokenHash, uint(userIDFloat), expiresAt)
-}
-
-// setAuthCookies sets the authentication cookies (access token, refresh token, CSRF token)
-func (h *AuthHandler) setAuthCookies(c *gin.Context, accessToken, refreshToken, csrfToken string) {
-	// Determine if we should use secure cookies (HTTPS)
-	secure := c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https"
-
-	// Access token cookie - HttpOnly (not accessible from JavaScript)
-	c.SetSameSite(http.SameSiteStrictMode)
-	c.SetCookie(
-		accessTokenCookie,
-		accessToken,
-		int(accessTokenExpiry.Seconds()),
-		"/",
-		"",     // domain - empty uses request host
-		secure, // secure
-		true,   // httpOnly
-	)
-
-	// Refresh token cookie - HttpOnly, scoped to refresh endpoint only
-	c.SetCookie(
-		refreshTokenCookie,
-		refreshToken,
-		int(refreshTokenExpiry.Seconds()),
-		refreshCookiePath,
-		"",
-		secure,
-		true, // httpOnly
-	)
-
-	// CSRF token cookie - NOT HttpOnly (must be readable by JavaScript)
-	c.SetCookie(
-		csrfTokenCookie,
-		csrfToken,
-		int(accessTokenExpiry.Seconds()),
-		"/",
-		"",
-		secure,
-		false, // NOT httpOnly - JS needs to read this
-	)
-}
-
-// clearAuthCookies clears all authentication cookies
-func (h *AuthHandler) clearAuthCookies(c *gin.Context) {
-	secure := c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https"
-
-	c.SetSameSite(http.SameSiteStrictMode)
-
-	// Clear access token
-	c.SetCookie(accessTokenCookie, "", -1, "/", "", secure, true)
-
-	// Clear refresh token (must match the path used when setting)
-	c.SetCookie(refreshTokenCookie, "", -1, refreshCookiePath, "", secure, true)
-
-	// Clear CSRF token
-	c.SetCookie(csrfTokenCookie, "", -1, "/", "", secure, false)
 }
 
 // Me godoc
@@ -416,7 +121,6 @@ func (h *AuthHandler) clearAuthCookies(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/me [get]
 func (h *AuthHandler) Me(c *gin.Context) {
-	// Get user ID from context (set by auth middleware)
 	userIDValue, exists := c.Get("userID")
 	if !exists {
 		respondError(c, apperror.Unauthorized("not authenticated"))
@@ -429,23 +133,13 @@ func (h *AuthHandler) Me(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userStore.FindByID(c.Request.Context(), userID)
+	user, err := h.authService.GetCurrentUser(c.Request.Context(), userID)
 	if err != nil {
-		respondError(c, apperror.NotFound("user not found"))
+		respondError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, models.UserResponse{
-		ID:           user.ID,
-		Name:         user.Name,
-		Email:        user.Email,
-		Active:       user.Active,
-		IsSuperAdmin: user.IsSuperAdmin,
-		LastLogin:    user.LastLogin,
-		CreatedAt:    user.CreatedAt,
-		CreatedBy:    user.CreatedBy,
-		UpdatedAt:    user.UpdatedAt,
-	})
+	c.JSON(http.StatusOK, user.ToResponse())
 }
 
 // ChangePassword godoc
@@ -473,54 +167,35 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userStore.FindByID(c.Request.Context(), userID)
+	result, err := h.authService.ChangePassword(c.Request.Context(), userID, req.CurrentPassword, req.NewPassword, c.ClientIP())
 	if err != nil {
-		respondError(c, apperror.NotFound("user not found"))
+		respondError(c, err)
 		return
 	}
 
-	// Verify current password
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.CurrentPassword)); err != nil {
-		respondError(c, apperror.Unauthorized("current password is incorrect"))
-		return
-	}
-
-	// Hash new password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
-	if err != nil {
-		respondError(c, apperror.Internal("failed to hash password"))
-		return
-	}
-
-	user.Password = string(hashedPassword)
-	if err := h.userStore.Update(c.Request.Context(), user); err != nil {
-		respondError(c, apperror.Internal("failed to update password"))
-		return
-	}
-
-	// Revoke all existing tokens for this user
-	if h.tokenStore != nil {
-		_ = h.tokenStore.RevokeAllForUser(c.Request.Context(), userID)
-	}
-
-	// Generate new tokens so the user stays logged in
-	accessToken, err := h.generateAccessToken(user.ID, user.Email)
-	if err != nil {
-		respondError(c, apperror.Internal("failed to generate access token"))
-		return
-	}
-	refreshToken, err := h.generateRefreshToken(user.ID)
-	if err != nil {
-		respondError(c, apperror.Internal("failed to generate refresh token"))
-		return
-	}
-	csrfToken := middleware.ComputeCSRFToken(accessToken, h.jwtSecret)
-
-	h.setAuthCookies(c, accessToken, refreshToken, csrfToken)
-
-	h.auditService.LogResourceUpdate(userID, "user_password", userID, user.Email, c.ClientIP())
+	h.setAuthCookies(c, result)
 
 	c.JSON(http.StatusOK, models.LoginResponse{
-		ExpiresIn: int64(accessTokenExpiry.Seconds()),
+		ExpiresIn: result.ExpiresIn,
 	})
+}
+
+// setAuthCookies sets the authentication cookies from an AuthResult.
+func (h *AuthHandler) setAuthCookies(c *gin.Context, result *service.AuthResult) {
+	secure := c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https"
+
+	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetCookie(accessTokenCookie, result.AccessToken, int(service.AccessTokenExpiry.Seconds()), "/", "", secure, true)
+	c.SetCookie(refreshTokenCookie, result.RefreshToken, int(service.RefreshTokenExpiry.Seconds()), refreshCookiePath, "", secure, true)
+	c.SetCookie(csrfTokenCookie, result.CSRFToken, int(service.AccessTokenExpiry.Seconds()), "/", "", secure, false)
+}
+
+// clearAuthCookies clears all authentication cookies.
+func (h *AuthHandler) clearAuthCookies(c *gin.Context) {
+	secure := c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https"
+
+	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetCookie(accessTokenCookie, "", -1, "/", "", secure, true)
+	c.SetCookie(refreshTokenCookie, "", -1, refreshCookiePath, "", secure, true)
+	c.SetCookie(csrfTokenCookie, "", -1, "/", "", secure, false)
 }

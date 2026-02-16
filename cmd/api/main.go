@@ -131,6 +131,7 @@ func main() {
 
 	// Initialize services
 	auditService := service.NewAuditService(auditStore)
+	authService := service.NewAuthService(userStore, tokenStore, cfg.JWTSecret, auditService)
 	userService := service.NewUserService(userStore, groupStore, userGroupStore)
 	userGroupService := service.NewUserGroupService(userGroupStore, userStore, groupStore)
 	orgService := service.NewOrganizationService(orgStore, groupStore, userStore)
@@ -146,7 +147,7 @@ func main() {
 	statisticsService := service.NewStatisticsService(childStore, employeeStore, orgStore, governmentFundingStore, payPlanStore, budgetItemStore)
 
 	// Initialize handlers
-	authHandler := handlers.NewAuthHandler(userStore, tokenStore, cfg.JWTSecret, auditService)
+	authHandler := handlers.NewAuthHandler(authService)
 	userHandler := handlers.NewUserHandler(userService, userGroupService, auditService, tokenStore)
 	groupHandler := handlers.NewGroupHandler(groupService, auditService)
 	sectionHandler := handlers.NewSectionHandler(sectionService, auditService)

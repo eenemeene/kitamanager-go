@@ -238,6 +238,19 @@ func createAuditService(db *gorm.DB) *service.AuditService {
 	return service.NewAuditService(auditStore)
 }
 
+// createAuthService creates an auth service for testing.
+func createAuthService(db *gorm.DB) *service.AuthService {
+	userStore := store.NewUserStore(db)
+	tokenStore := store.NewTokenStore(db)
+	auditService := createAuditService(db)
+	return service.NewAuthService(userStore, tokenStore, "test-jwt-secret", auditService)
+}
+
+// createAuthHandler creates an auth handler for testing.
+func createAuthHandler(db *gorm.DB) *AuthHandler {
+	return NewAuthHandler(createAuthService(db))
+}
+
 // createAttendanceService creates a child attendance service for testing.
 func createAttendanceService(db *gorm.DB) *service.ChildAttendanceService {
 	attendanceStore := store.NewChildAttendanceStore(db)
