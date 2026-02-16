@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -17,6 +15,12 @@ type GroupHandler struct {
 func NewGroupHandler(service *service.GroupService, auditService *service.AuditService) *GroupHandler {
 	return &GroupHandler{service: service, auditService: auditService}
 }
+
+func (h *GroupHandler) audit() auditConfig {
+	return auditConfig{auditService: h.auditService, resourceType: "group"}
+}
+
+func groupAuditInfo(g *models.GroupResponse) (uint, string) { return g.ID, g.Name }
 
 // List godoc
 // @Summary List groups in an organization
@@ -35,25 +39,7 @@ func NewGroupHandler(service *service.GroupService, auditService *service.AuditS
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/groups [get]
 func (h *GroupHandler) List(c *gin.Context) {
-	orgID, ok := parseOrgID(c)
-	if !ok {
-		return
-	}
-
-	params, ok := parsePagination(c)
-	if !ok {
-		return
-	}
-
-	search := c.Query("search")
-
-	groups, total, err := h.service.ListByOrganization(c.Request.Context(), orgID, search, params.Limit, params.Offset())
-	if err != nil {
-		respondError(c, err)
-		return
-	}
-
-	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(groups, params.Page, params.Limit, total, c.Request.URL.Path))
+	handleOrgList(c, h.service.ListByOrganization)
 }
 
 // Get godoc
@@ -72,18 +58,7 @@ func (h *GroupHandler) List(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/groups/{groupId} [get]
 func (h *GroupHandler) Get(c *gin.Context) {
-	orgID, groupID, ok := parseOrgAndResourceID(c, "groupId")
-	if !ok {
-		return
-	}
-
-	group, err := h.service.GetByIDAndOrg(c.Request.Context(), groupID, orgID)
-	if err != nil {
-		respondError(c, err)
-		return
-	}
-
-	c.JSON(http.StatusOK, group)
+	handleOrgGet(c, "groupId", h.service.GetByIDAndOrg)
 }
 
 // Create godoc
@@ -101,25 +76,7 @@ func (h *GroupHandler) Get(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/groups [post]
 func (h *GroupHandler) Create(c *gin.Context) {
-	orgID, ok := parseOrgID(c)
-	if !ok {
-		return
-	}
-
-	req, ok := bindJSON[models.GroupCreateRequest](c)
-	if !ok {
-		return
-	}
-
-	group, err := h.service.Create(c.Request.Context(), orgID, req, getCreatedBy(c))
-	if err != nil {
-		respondError(c, err)
-		return
-	}
-
-	auditCreate(c, h.auditService, "group", group.ID, group.Name)
-
-	c.JSON(http.StatusCreated, group)
+	handleOrgCreate(c, h.audit(), h.service.Create, groupAuditInfo)
 }
 
 // Update godoc
@@ -139,25 +96,7 @@ func (h *GroupHandler) Create(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/groups/{groupId} [put]
 func (h *GroupHandler) Update(c *gin.Context) {
-	orgID, groupID, ok := parseOrgAndResourceID(c, "groupId")
-	if !ok {
-		return
-	}
-
-	req, ok := bindJSON[models.GroupUpdateRequest](c)
-	if !ok {
-		return
-	}
-
-	group, err := h.service.UpdateByIDAndOrg(c.Request.Context(), groupID, orgID, req)
-	if err != nil {
-		respondError(c, err)
-		return
-	}
-
-	auditUpdate(c, h.auditService, "group", group.ID, group.Name)
-
-	c.JSON(http.StatusOK, group)
+	handleOrgUpdate(c, "groupId", h.audit(), h.service.UpdateByIDAndOrg, groupAuditInfo)
 }
 
 // Delete godoc
@@ -176,24 +115,5 @@ func (h *GroupHandler) Update(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/groups/{groupId} [delete]
 func (h *GroupHandler) Delete(c *gin.Context) {
-	orgID, groupID, ok := parseOrgAndResourceID(c, "groupId")
-	if !ok {
-		return
-	}
-
-	// Get group info before deletion for audit log
-	group, err := h.service.GetByIDAndOrg(c.Request.Context(), groupID, orgID)
-	if err != nil {
-		respondError(c, err)
-		return
-	}
-
-	if err := h.service.DeleteByIDAndOrg(c.Request.Context(), groupID, orgID); err != nil {
-		respondError(c, err)
-		return
-	}
-
-	auditDelete(c, h.auditService, "group", groupID, group.Name)
-
-	c.Status(http.StatusNoContent)
+	handleOrgDelete(c, "groupId", h.audit(), h.service.GetByIDAndOrg, h.service.DeleteByIDAndOrg, groupAuditInfo)
 }

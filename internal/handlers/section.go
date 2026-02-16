@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -17,6 +15,12 @@ type SectionHandler struct {
 func NewSectionHandler(service *service.SectionService, auditService *service.AuditService) *SectionHandler {
 	return &SectionHandler{service: service, auditService: auditService}
 }
+
+func (h *SectionHandler) audit() auditConfig {
+	return auditConfig{auditService: h.auditService, resourceType: "section"}
+}
+
+func sectionAuditInfo(s *models.SectionResponse) (uint, string) { return s.ID, s.Name }
 
 // List godoc
 // @Summary List sections in an organization
@@ -35,25 +39,7 @@ func NewSectionHandler(service *service.SectionService, auditService *service.Au
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/sections [get]
 func (h *SectionHandler) List(c *gin.Context) {
-	orgID, ok := parseOrgID(c)
-	if !ok {
-		return
-	}
-
-	params, ok := parsePagination(c)
-	if !ok {
-		return
-	}
-
-	search := c.Query("search")
-
-	sections, total, err := h.service.ListByOrganization(c.Request.Context(), orgID, search, params.Limit, params.Offset())
-	if err != nil {
-		respondError(c, err)
-		return
-	}
-
-	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(sections, params.Page, params.Limit, total, c.Request.URL.Path))
+	handleOrgList(c, h.service.ListByOrganization)
 }
 
 // Get godoc
@@ -72,18 +58,7 @@ func (h *SectionHandler) List(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/sections/{sectionId} [get]
 func (h *SectionHandler) Get(c *gin.Context) {
-	orgID, sectionID, ok := parseOrgAndResourceID(c, "sectionId")
-	if !ok {
-		return
-	}
-
-	section, err := h.service.GetByIDAndOrg(c.Request.Context(), sectionID, orgID)
-	if err != nil {
-		respondError(c, err)
-		return
-	}
-
-	c.JSON(http.StatusOK, section)
+	handleOrgGet(c, "sectionId", h.service.GetByIDAndOrg)
 }
 
 // Create godoc
@@ -101,25 +76,7 @@ func (h *SectionHandler) Get(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/sections [post]
 func (h *SectionHandler) Create(c *gin.Context) {
-	orgID, ok := parseOrgID(c)
-	if !ok {
-		return
-	}
-
-	req, ok := bindJSON[models.SectionCreateRequest](c)
-	if !ok {
-		return
-	}
-
-	section, err := h.service.Create(c.Request.Context(), orgID, req, getCreatedBy(c))
-	if err != nil {
-		respondError(c, err)
-		return
-	}
-
-	auditCreate(c, h.auditService, "section", section.ID, section.Name)
-
-	c.JSON(http.StatusCreated, section)
+	handleOrgCreate(c, h.audit(), h.service.Create, sectionAuditInfo)
 }
 
 // Update godoc
@@ -139,25 +96,7 @@ func (h *SectionHandler) Create(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/sections/{sectionId} [put]
 func (h *SectionHandler) Update(c *gin.Context) {
-	orgID, sectionID, ok := parseOrgAndResourceID(c, "sectionId")
-	if !ok {
-		return
-	}
-
-	req, ok := bindJSON[models.SectionUpdateRequest](c)
-	if !ok {
-		return
-	}
-
-	section, err := h.service.UpdateByIDAndOrg(c.Request.Context(), sectionID, orgID, req)
-	if err != nil {
-		respondError(c, err)
-		return
-	}
-
-	auditUpdate(c, h.auditService, "section", section.ID, section.Name)
-
-	c.JSON(http.StatusOK, section)
+	handleOrgUpdate(c, "sectionId", h.audit(), h.service.UpdateByIDAndOrg, sectionAuditInfo)
 }
 
 // Delete godoc
@@ -176,24 +115,5 @@ func (h *SectionHandler) Update(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/sections/{sectionId} [delete]
 func (h *SectionHandler) Delete(c *gin.Context) {
-	orgID, sectionID, ok := parseOrgAndResourceID(c, "sectionId")
-	if !ok {
-		return
-	}
-
-	// Get section info before deletion for audit log
-	section, err := h.service.GetByIDAndOrg(c.Request.Context(), sectionID, orgID)
-	if err != nil {
-		respondError(c, err)
-		return
-	}
-
-	if err := h.service.DeleteByIDAndOrg(c.Request.Context(), sectionID, orgID); err != nil {
-		respondError(c, err)
-		return
-	}
-
-	auditDelete(c, h.auditService, "section", sectionID, section.Name)
-
-	c.Status(http.StatusNoContent)
+	handleOrgDelete(c, "sectionId", h.audit(), h.service.GetByIDAndOrg, h.service.DeleteByIDAndOrg, sectionAuditInfo)
 }
