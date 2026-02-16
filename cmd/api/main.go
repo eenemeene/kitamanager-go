@@ -209,11 +209,13 @@ func main() {
 	}
 	r.Use(cors.New(corsConfig))
 
-	// Health check and metrics endpoints (no auth required)
+	// Health check endpoints (no auth required)
 	r.GET("/api/v1/health", healthHandler.Check)
 	r.GET("/api/v1/ready", healthHandler.Ready)
 	r.GET("/api/v1/live", healthHandler.Live)
-	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
+	// Metrics endpoint (requires authentication to prevent information disclosure)
+	r.GET("/metrics", authMiddleware.RequireAuth(), gin.WrapH(promhttp.Handler()))
 
 	// Swagger UI — require auth in non-development environments
 	if cfg.IsDevelopment() {

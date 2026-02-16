@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -36,10 +37,12 @@ func (h *HealthHandler) Check(c *gin.Context) {
 	// Check database connectivity
 	sqlDB, err := h.db.DB()
 	if err != nil {
-		services["database"] = "unhealthy: " + err.Error()
+		slog.Error("Health check: failed to get database connection", "error", err)
+		services["database"] = "unhealthy"
 		healthy = false
 	} else if err := sqlDB.Ping(); err != nil {
-		services["database"] = "unhealthy: " + err.Error()
+		slog.Error("Health check: database ping failed", "error", err)
+		services["database"] = "unhealthy"
 		healthy = false
 	} else {
 		services["database"] = "healthy"
@@ -71,11 +74,13 @@ func (h *HealthHandler) Ready(c *gin.Context) {
 	// Check database connectivity
 	sqlDB, err := h.db.DB()
 	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, models.StatusResponse{Status: "not ready", Error: err.Error()})
+		slog.Error("Readiness check: failed to get database connection", "error", err)
+		c.JSON(http.StatusServiceUnavailable, models.StatusResponse{Status: "not ready", Error: "database unavailable"})
 		return
 	}
 	if err := sqlDB.Ping(); err != nil {
-		c.JSON(http.StatusServiceUnavailable, models.StatusResponse{Status: "not ready", Error: err.Error()})
+		slog.Error("Readiness check: database ping failed", "error", err)
+		c.JSON(http.StatusServiceUnavailable, models.StatusResponse{Status: "not ready", Error: "database unavailable"})
 		return
 	}
 
