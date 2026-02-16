@@ -91,7 +91,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	if !user.Active {
 		h.auditService.LogLoginFailed(req.Email, ipAddress, userAgent, "user inactive")
-		respondError(c, apperror.Unauthorized("user is inactive"))
+		respondError(c, apperror.Unauthorized("invalid credentials"))
 		return
 	}
 
@@ -238,12 +238,12 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	// Verify user still exists and is active
 	user, err := h.userStore.FindByID(c.Request.Context(), userID)
 	if err != nil {
-		respondError(c, apperror.Unauthorized("user not found"))
+		respondError(c, apperror.Unauthorized("invalid refresh token"))
 		return
 	}
 
 	if !user.Active {
-		respondError(c, apperror.Unauthorized("user is inactive"))
+		respondError(c, apperror.Unauthorized("invalid refresh token"))
 		return
 	}
 
