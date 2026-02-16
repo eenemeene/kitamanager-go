@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 	"strconv"
@@ -72,6 +73,9 @@ type Config struct {
 	DBConnMaxLifeMin int // connection max lifetime in minutes, default = 60
 	DBConnMaxIdleMin int // idle connection max lifetime in minutes, default = 10
 
+	// Database SSL
+	DBSSLMode string // default = "disable", options: disable, require, verify-ca, verify-full
+
 	// Trusted Proxies
 	TrustedProxies []string // TRUSTED_PROXIES env var, comma-separated
 }
@@ -136,6 +140,15 @@ func (c *Config) Validate() error {
 		if _, err := url.ParseRequestURI(origin); err != nil {
 			errs = append(errs, fmt.Errorf("%w: %s", ErrInvalidCORSOrigin, origin))
 		}
+	}
+
+	// Database SSL mode validation
+	validSSLModes := map[string]bool{"disable": true, "require": true, "verify-ca": true, "verify-full": true}
+	if !validSSLModes[c.DBSSLMode] {
+		errs = append(errs, fmt.Errorf("DB_SSLMODE must be one of: disable, require, verify-ca, verify-full"))
+	}
+	if c.DBSSLMode == "disable" && c.IsProduction() {
+		slog.Warn("Database SSL is disabled in production — consider using 'require' or 'verify-full'")
 	}
 
 	// Admin seeding validation
@@ -230,6 +243,9 @@ func Load() (*Config, error) {
 		DBMaxOpenConns:   getEnvInt("DB_MAX_OPEN_CONNS", 100),
 		DBConnMaxLifeMin: getEnvInt("DB_CONN_MAX_LIFE_MIN", 60),
 		DBConnMaxIdleMin: getEnvInt("DB_CONN_MAX_IDLE_MIN", 10),
+
+		// Database SSL
+		DBSSLMode: getEnv("DB_SSLMODE", "disable"),
 
 		// Trusted Proxies
 		TrustedProxies: trustedProxies,

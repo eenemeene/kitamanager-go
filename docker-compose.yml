@@ -9,6 +9,7 @@ services:
       - DB_USER=kitamanager
       - DB_PASSWORD=kitamanager
       - DB_NAME=kitamanager
+      - DB_SSLMODE=disable
       - JWT_SECRET=your-super-secret-jwt-key-change-in-production
       - SERVER_PORT=8080
       # Admin seeding - set these to create initial admin user

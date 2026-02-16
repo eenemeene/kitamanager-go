@@ -18,25 +18,35 @@ var migrationsFS embed.FS
 
 // BuildDSN constructs a PostgreSQL connection string from config.
 func BuildDSN(cfg *config.Config) string {
+	sslmode := cfg.DBSSLMode
+	if sslmode == "" {
+		sslmode = "disable"
+	}
 	return fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable connect_timeout=10",
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s connect_timeout=10",
 		cfg.DBHost,
 		cfg.DBPort,
 		cfg.DBUser,
 		cfg.DBPassword,
 		cfg.DBName,
+		sslmode,
 	)
 }
 
 // BuildMigrateURL constructs a postgres:// URL for golang-migrate.
 func BuildMigrateURL(cfg *config.Config) string {
+	sslmode := cfg.DBSSLMode
+	if sslmode == "" {
+		sslmode = "disable"
+	}
 	return fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
 		cfg.DBUser,
 		cfg.DBPassword,
 		cfg.DBHost,
 		cfg.DBPort,
 		cfg.DBName,
+		sslmode,
 	)
 }
 
