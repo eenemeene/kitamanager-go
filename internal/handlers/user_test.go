@@ -310,6 +310,7 @@ func TestUserHandler_Delete(t *testing.T) {
 
 func TestUserHandler_AddToGroup(t *testing.T) {
 	db := setupTestDB(t)
+	createTestSuperAdmin(t, db) // requester (userID=1 from setupTestRouter)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
 	handler := NewUserHandler(userService, userGroupService, nil, nil)
@@ -328,7 +329,7 @@ func TestUserHandler_AddToGroup(t *testing.T) {
 		Role:    models.RoleMember,
 	}
 
-	w := performRequest(r, "POST", "/users/1/groups", body)
+	w := performRequest(r, "POST", fmt.Sprintf("/users/%d/groups", user.ID), body)
 
 	if w.Code != http.StatusCreated {
 		t.Errorf("expected status %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
@@ -344,6 +345,7 @@ func TestUserHandler_AddToGroup(t *testing.T) {
 
 func TestUserHandler_RemoveFromGroup(t *testing.T) {
 	db := setupTestDB(t)
+	createTestSuperAdmin(t, db) // requester (userID=1 from setupTestRouter)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
 	handler := NewUserHandler(userService, userGroupService, nil, nil)
@@ -378,6 +380,7 @@ func TestUserHandler_RemoveFromGroup(t *testing.T) {
 
 func TestUserHandler_AddToOrganization(t *testing.T) {
 	db := setupTestDB(t)
+	createTestSuperAdmin(t, db) // requester (userID=1 from setupTestRouter)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
 	handler := NewUserHandler(userService, userGroupService, nil, nil)
@@ -413,6 +416,7 @@ func TestUserHandler_AddToOrganization(t *testing.T) {
 
 func TestUserHandler_RemoveFromOrganization(t *testing.T) {
 	db := setupTestDB(t)
+	createTestSuperAdmin(t, db) // requester (userID=1 from setupTestRouter)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
 	handler := NewUserHandler(userService, userGroupService, nil, nil)
@@ -790,6 +794,7 @@ func TestUserHandler_AddToOrganization_InvalidUserID(t *testing.T) {
 
 func TestUserHandler_AddToOrganization_UserNotFound(t *testing.T) {
 	db := setupTestDB(t)
+	createTestSuperAdmin(t, db) // requester (userID=1 from setupTestRouter)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
 	handler := NewUserHandler(userService, userGroupService, nil, nil)
@@ -954,6 +959,7 @@ func TestUserHandler_Create_PasswordTooLong(t *testing.T) {
 
 func TestUserHandler_UpdateGroupRole(t *testing.T) {
 	db := setupTestDB(t)
+	createTestSuperAdmin(t, db) // requester (userID=1 from setupTestRouter)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
 	handler := NewUserHandler(userService, userGroupService, nil, nil)
@@ -1365,11 +1371,12 @@ func TestUserHandler_SetSuperAdmin_MissingBody(t *testing.T) {
 
 func TestUserHandler_AddToOrganization_OrgNotFound(t *testing.T) {
 	db := setupTestDB(t)
+	createTestSuperAdmin(t, db) // requester (userID=1 from setupTestRouter)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
 	handler := NewUserHandler(userService, userGroupService, nil, nil)
 
-	createTestUser(t, db, "Test User", "test@example.com", "password")
+	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 
 	r := setupTestRouter()
 	r.POST("/users/:userId/organizations", handler.AddToOrganization)
@@ -1378,7 +1385,7 @@ func TestUserHandler_AddToOrganization_OrgNotFound(t *testing.T) {
 		OrganizationID: 999, // Non-existent
 	}
 
-	w := performRequest(r, "POST", "/users/1/organizations", body)
+	w := performRequest(r, "POST", fmt.Sprintf("/users/%d/organizations", user.ID), body)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d for non-existent org, got %d", http.StatusNotFound, w.Code)
@@ -1389,6 +1396,7 @@ func TestUserHandler_AddToOrganization_OrgNotFound(t *testing.T) {
 
 func TestUserHandler_RemoveFromOrganization_UserNotFound(t *testing.T) {
 	db := setupTestDB(t)
+	createTestSuperAdmin(t, db) // requester (userID=1 from setupTestRouter)
 	userService := createUserService(db)
 	userGroupService := createUserGroupService(db)
 	handler := NewUserHandler(userService, userGroupService, nil, nil)

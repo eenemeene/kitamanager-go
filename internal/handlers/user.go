@@ -260,7 +260,7 @@ func (h *UserHandler) AddToGroup(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.userGroupService.AddUserToGroup(c.Request.Context(), userID, req.GroupID, req.Role, getCreatedBy(c))
+	resp, err := h.userGroupService.AddUserToGroup(c.Request.Context(), userID, req.GroupID, req.Role, getCreatedBy(c), getUserID(c))
 	if err != nil {
 		respondError(c, err)
 		return
@@ -318,7 +318,7 @@ func (h *UserHandler) UpdateGroupRole(c *gin.Context) {
 		}
 	}
 
-	resp, err := h.userGroupService.UpdateUserGroupRole(c.Request.Context(), userID, groupID, req.Role)
+	resp, err := h.userGroupService.UpdateUserGroupRole(c.Request.Context(), userID, groupID, req.Role, getUserID(c))
 	if err != nil {
 		respondError(c, err)
 		return
@@ -357,7 +357,7 @@ func (h *UserHandler) RemoveFromGroup(c *gin.Context) {
 		return
 	}
 
-	if err := h.userGroupService.RemoveUserFromGroup(c.Request.Context(), userID, groupID); err != nil {
+	if err := h.userGroupService.RemoveUserFromGroup(c.Request.Context(), userID, groupID, getUserID(c)); err != nil {
 		respondError(c, err)
 		return
 	}
@@ -478,7 +478,7 @@ func (h *UserHandler) AddToOrganization(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.userGroupService.AddUserToOrganization(c.Request.Context(), userID, req.OrganizationID, getCreatedBy(c))
+	resp, err := h.userGroupService.AddUserToOrganization(c.Request.Context(), userID, req.OrganizationID, getCreatedBy(c), getUserID(c))
 	if err != nil {
 		respondError(c, err)
 		return
@@ -517,7 +517,7 @@ func (h *UserHandler) RemoveFromOrganization(c *gin.Context) {
 		return
 	}
 
-	if err := h.userGroupService.RemoveUserFromOrganization(c.Request.Context(), userID, orgID); err != nil {
+	if err := h.userGroupService.RemoveUserFromOrganization(c.Request.Context(), userID, orgID, getUserID(c)); err != nil {
 		respondError(c, err)
 		return
 	}

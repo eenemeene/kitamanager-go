@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"log/slog"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -25,8 +24,9 @@ func NewUserGroupService(userGroupStore store.UserGroupStorer, userStore store.U
 	}
 }
 
-// AddUserToGroup adds a user to a group with a specific role
-func (s *UserGroupService) AddUserToGroup(ctx context.Context, userID, groupID uint, role models.Role, createdBy string) (*models.UserGroupResponse, error) {
+// AddUserToGroup adds a user to a group with a specific role.
+// requesterID is the user performing the operation (for authorization check).
+func (s *UserGroupService) AddUserToGroup(ctx context.Context, userID, groupID uint, role models.Role, createdBy string, requesterID uint) (*models.UserGroupResponse, error) {
 	// Validate role
 	if !role.IsValid() {
 		return nil, apperror.BadRequest("invalid role: must be admin, manager, or member")
@@ -42,6 +42,11 @@ func (s *UserGroupService) AddUserToGroup(ctx context.Context, userID, groupID u
 	group, err := s.groupStore.FindByID(ctx, groupID)
 	if err != nil {
 		return nil, apperror.NotFound("group")
+	}
+
+	// Verify requester has admin access to the group's organization
+	if err := s.verifyRequesterOrgAccess(ctx, requesterID, group.OrganizationID); err != nil {
+		return nil, err
 	}
 
 	// Check if already a member
@@ -65,8 +70,9 @@ func (s *UserGroupService) AddUserToGroup(ctx context.Context, userID, groupID u
 	return &resp, nil
 }
 
-// UpdateUserGroupRole updates a user's role in a group
-func (s *UserGroupService) UpdateUserGroupRole(ctx context.Context, userID, groupID uint, role models.Role) (*models.UserGroupResponse, error) {
+// UpdateUserGroupRole updates a user's role in a group.
+// requesterID is the user performing the operation (for authorization check).
+func (s *UserGroupService) UpdateUserGroupRole(ctx context.Context, userID, groupID uint, role models.Role, requesterID uint) (*models.UserGroupResponse, error) {
 	// Validate role
 	if !role.IsValid() {
 		return nil, apperror.BadRequest("invalid role: must be admin, manager, or member")
@@ -78,24 +84,42 @@ func (s *UserGroupService) UpdateUserGroupRole(ctx context.Context, userID, grou
 		return nil, apperror.NotFound("user-group membership")
 	}
 
+	// Load group to check org access
+	group, err := s.groupStore.FindByID(ctx, groupID)
+	if err != nil {
+		return nil, apperror.NotFound("group")
+	}
+
+	// Verify requester has admin access to the group's organization
+	if err := s.verifyRequesterOrgAccess(ctx, requesterID, group.OrganizationID); err != nil {
+		return nil, err
+	}
+
 	// Update role
 	if err := s.userGroupStore.UpdateRole(ctx, userID, groupID, role); err != nil {
 		return nil, apperror.InternalWrap(err, "failed to update role")
 	}
 
-	// Load group for response
-	group, err := s.groupStore.FindByID(ctx, groupID)
-	if err != nil {
-		slog.Warn("failed to load group for response", "group_id", groupID, "error", err)
-	}
 	ug.Role = role
 	ug.Group = group
 	resp := ug.ToResponse()
 	return &resp, nil
 }
 
-// RemoveUserFromGroup removes a user from a group
-func (s *UserGroupService) RemoveUserFromGroup(ctx context.Context, userID, groupID uint) error {
+// RemoveUserFromGroup removes a user from a group.
+// requesterID is the user performing the operation (for authorization check).
+func (s *UserGroupService) RemoveUserFromGroup(ctx context.Context, userID, groupID uint, requesterID uint) error {
+	// Verify group exists and get org
+	group, err := s.groupStore.FindByID(ctx, groupID)
+	if err != nil {
+		return apperror.NotFound("group")
+	}
+
+	// Verify requester has admin access to the group's organization
+	if err := s.verifyRequesterOrgAccess(ctx, requesterID, group.OrganizationID); err != nil {
+		return err
+	}
+
 	// Check if membership exists
 	exists, err := s.userGroupStore.Exists(ctx, userID, groupID)
 	if err != nil {
@@ -167,19 +191,31 @@ func (s *UserGroupService) SetSuperAdmin(ctx context.Context, userID uint, isSup
 	return nil
 }
 
-// AddUserToOrganization adds a user to an organization's default group with member role
-func (s *UserGroupService) AddUserToOrganization(ctx context.Context, userID, orgID uint, createdBy string) (*models.UserGroupResponse, error) {
+// AddUserToOrganization adds a user to an organization's default group with member role.
+// requesterID is the user performing the operation (for authorization check).
+func (s *UserGroupService) AddUserToOrganization(ctx context.Context, userID, orgID uint, createdBy string, requesterID uint) (*models.UserGroupResponse, error) {
+	// Verify requester has admin access to the target organization
+	if err := s.verifyRequesterOrgAccess(ctx, requesterID, orgID); err != nil {
+		return nil, err
+	}
+
 	// Find default group for organization
 	defaultGroup, err := s.groupStore.FindDefaultGroup(ctx, orgID)
 	if err != nil {
 		return nil, apperror.NotFound("organization or default group")
 	}
 
-	return s.AddUserToGroup(ctx, userID, defaultGroup.ID, models.RoleMember, createdBy)
+	return s.AddUserToGroup(ctx, userID, defaultGroup.ID, models.RoleMember, createdBy, requesterID)
 }
 
-// RemoveUserFromOrganization removes a user from all groups in an organization
-func (s *UserGroupService) RemoveUserFromOrganization(ctx context.Context, userID, orgID uint) error {
+// RemoveUserFromOrganization removes a user from all groups in an organization.
+// requesterID is the user performing the operation (for authorization check).
+func (s *UserGroupService) RemoveUserFromOrganization(ctx context.Context, userID, orgID uint, requesterID uint) error {
+	// Verify requester has admin access to the target organization
+	if err := s.verifyRequesterOrgAccess(ctx, requesterID, orgID); err != nil {
+		return err
+	}
+
 	// Verify user exists
 	_, err := s.userStore.FindByID(ctx, userID)
 	if err != nil {
@@ -188,6 +224,27 @@ func (s *UserGroupService) RemoveUserFromOrganization(ctx context.Context, userI
 
 	if err := s.userGroupStore.RemoveUserFromOrg(ctx, userID, orgID); err != nil {
 		return apperror.InternalWrap(err, "failed to remove user from organization")
+	}
+	return nil
+}
+
+// verifyRequesterOrgAccess checks that the requester is a superadmin or has admin role
+// in the given organization. Returns apperror.Forbidden if not authorized.
+func (s *UserGroupService) verifyRequesterOrgAccess(ctx context.Context, requesterID, orgID uint) error {
+	isSuperAdmin, err := s.userGroupStore.IsSuperAdmin(ctx, requesterID)
+	if err != nil {
+		return apperror.InternalWrap(err, "failed to check superadmin status")
+	}
+	if isSuperAdmin {
+		return nil
+	}
+
+	role, err := s.userGroupStore.GetEffectiveRoleInOrg(ctx, requesterID, orgID)
+	if err != nil {
+		return apperror.InternalWrap(err, "failed to check organization access")
+	}
+	if role != models.RoleAdmin {
+		return apperror.Forbidden("insufficient permissions for this organization")
 	}
 	return nil
 }

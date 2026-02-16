@@ -14,10 +14,11 @@ func TestUserGroupService_AddUserToGroup(t *testing.T) {
 	svc := createUserGroupService(db)
 	ctx := context.Background()
 
+	admin := createTestSuperAdmin(t, db)
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 	group := createTestGroup(t, db, "Test Group")
 
-	resp, err := svc.AddUserToGroup(ctx, user.ID, group.ID, models.RoleMember, "creator@example.com")
+	resp, err := svc.AddUserToGroup(ctx, user.ID, group.ID, models.RoleMember, "creator@example.com", admin.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -45,10 +46,11 @@ func TestUserGroupService_AddUserToGroup_AllRoles(t *testing.T) {
 			svc := createUserGroupService(db)
 			ctx := context.Background()
 
+			admin := createTestSuperAdmin(t, db)
 			user := createTestUser(t, db, "Test User", "test@example.com", "password")
 			group := createTestGroup(t, db, "Test Group")
 
-			resp, err := svc.AddUserToGroup(ctx, user.ID, group.ID, role, "test@example.com")
+			resp, err := svc.AddUserToGroup(ctx, user.ID, group.ID, role, "test@example.com", admin.ID)
 			if err != nil {
 				t.Fatalf("expected no error, got %v", err)
 			}
@@ -64,10 +66,11 @@ func TestUserGroupService_AddUserToGroup_InvalidRole(t *testing.T) {
 	svc := createUserGroupService(db)
 	ctx := context.Background()
 
+	admin := createTestSuperAdmin(t, db)
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 	group := createTestGroup(t, db, "Test Group")
 
-	_, err := svc.AddUserToGroup(ctx, user.ID, group.ID, models.Role("invalid"), "test@example.com")
+	_, err := svc.AddUserToGroup(ctx, user.ID, group.ID, models.Role("invalid"), "test@example.com", admin.ID)
 	if err == nil {
 		t.Fatal("expected error for invalid role, got nil")
 	}
@@ -86,9 +89,10 @@ func TestUserGroupService_AddUserToGroup_UserNotFound(t *testing.T) {
 	svc := createUserGroupService(db)
 	ctx := context.Background()
 
+	admin := createTestSuperAdmin(t, db)
 	group := createTestGroup(t, db, "Test Group")
 
-	_, err := svc.AddUserToGroup(ctx, 999, group.ID, models.RoleMember, "test@example.com")
+	_, err := svc.AddUserToGroup(ctx, 999, group.ID, models.RoleMember, "test@example.com", admin.ID)
 	if err == nil {
 		t.Fatal("expected error for non-existent user, got nil")
 	}
@@ -107,9 +111,10 @@ func TestUserGroupService_AddUserToGroup_GroupNotFound(t *testing.T) {
 	svc := createUserGroupService(db)
 	ctx := context.Background()
 
+	admin := createTestSuperAdmin(t, db)
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 
-	_, err := svc.AddUserToGroup(ctx, user.ID, 999, models.RoleMember, "test@example.com")
+	_, err := svc.AddUserToGroup(ctx, user.ID, 999, models.RoleMember, "test@example.com", admin.ID)
 	if err == nil {
 		t.Fatal("expected error for non-existent group, got nil")
 	}
@@ -128,17 +133,18 @@ func TestUserGroupService_AddUserToGroup_AlreadyMember(t *testing.T) {
 	svc := createUserGroupService(db)
 	ctx := context.Background()
 
+	admin := createTestSuperAdmin(t, db)
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 	group := createTestGroup(t, db, "Test Group")
 
 	// First add
-	_, err := svc.AddUserToGroup(ctx, user.ID, group.ID, models.RoleMember, "test@example.com")
+	_, err := svc.AddUserToGroup(ctx, user.ID, group.ID, models.RoleMember, "test@example.com", admin.ID)
 	if err != nil {
 		t.Fatalf("first add: expected no error, got %v", err)
 	}
 
 	// Second add should fail
-	_, err = svc.AddUserToGroup(ctx, user.ID, group.ID, models.RoleAdmin, "test@example.com")
+	_, err = svc.AddUserToGroup(ctx, user.ID, group.ID, models.RoleAdmin, "test@example.com", admin.ID)
 	if err == nil {
 		t.Fatal("expected error for already member, got nil")
 	}
@@ -157,11 +163,12 @@ func TestUserGroupService_UpdateUserGroupRole(t *testing.T) {
 	svc := createUserGroupService(db)
 	ctx := context.Background()
 
+	admin := createTestSuperAdmin(t, db)
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 	group := createTestGroup(t, db, "Test Group")
 	createTestUserGroup(t, db, user.ID, group.ID, models.RoleMember)
 
-	resp, err := svc.UpdateUserGroupRole(ctx, user.ID, group.ID, models.RoleAdmin)
+	resp, err := svc.UpdateUserGroupRole(ctx, user.ID, group.ID, models.RoleAdmin, admin.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -176,11 +183,12 @@ func TestUserGroupService_UpdateUserGroupRole_InvalidRole(t *testing.T) {
 	svc := createUserGroupService(db)
 	ctx := context.Background()
 
+	admin := createTestSuperAdmin(t, db)
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 	group := createTestGroup(t, db, "Test Group")
 	createTestUserGroup(t, db, user.ID, group.ID, models.RoleMember)
 
-	_, err := svc.UpdateUserGroupRole(ctx, user.ID, group.ID, models.Role("invalid"))
+	_, err := svc.UpdateUserGroupRole(ctx, user.ID, group.ID, models.Role("invalid"), admin.ID)
 	if err == nil {
 		t.Fatal("expected error for invalid role, got nil")
 	}
@@ -199,11 +207,12 @@ func TestUserGroupService_UpdateUserGroupRole_NotMember(t *testing.T) {
 	svc := createUserGroupService(db)
 	ctx := context.Background()
 
+	admin := createTestSuperAdmin(t, db)
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 	group := createTestGroup(t, db, "Test Group")
 	// No membership created
 
-	_, err := svc.UpdateUserGroupRole(ctx, user.ID, group.ID, models.RoleAdmin)
+	_, err := svc.UpdateUserGroupRole(ctx, user.ID, group.ID, models.RoleAdmin, admin.ID)
 	if err == nil {
 		t.Fatal("expected error for non-member, got nil")
 	}
@@ -222,11 +231,12 @@ func TestUserGroupService_RemoveUserFromGroup(t *testing.T) {
 	svc := createUserGroupService(db)
 	ctx := context.Background()
 
+	admin := createTestSuperAdmin(t, db)
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 	group := createTestGroup(t, db, "Test Group")
 	createTestUserGroup(t, db, user.ID, group.ID, models.RoleMember)
 
-	err := svc.RemoveUserFromGroup(ctx, user.ID, group.ID)
+	err := svc.RemoveUserFromGroup(ctx, user.ID, group.ID, admin.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -237,11 +247,12 @@ func TestUserGroupService_RemoveUserFromGroup_NotMember(t *testing.T) {
 	svc := createUserGroupService(db)
 	ctx := context.Background()
 
+	admin := createTestSuperAdmin(t, db)
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 	group := createTestGroup(t, db, "Test Group")
 	// No membership
 
-	err := svc.RemoveUserFromGroup(ctx, user.ID, group.ID)
+	err := svc.RemoveUserFromGroup(ctx, user.ID, group.ID, admin.ID)
 	if err == nil {
 		t.Fatal("expected error for non-member, got nil")
 	}
@@ -447,11 +458,12 @@ func TestUserGroupService_AddUserToOrganization(t *testing.T) {
 	svc := createUserGroupService(db)
 	ctx := context.Background()
 
+	admin := createTestSuperAdmin(t, db)
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 	org := createTestOrganization(t, db, "Test Org")
 	createTestGroupWithOrgAndDefault(t, db, "Members", org.ID, true)
 
-	resp, err := svc.AddUserToOrganization(ctx, user.ID, org.ID, "creator@example.com")
+	resp, err := svc.AddUserToOrganization(ctx, user.ID, org.ID, "creator@example.com", admin.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -467,11 +479,12 @@ func TestUserGroupService_AddUserToOrganization_NoDefaultGroup(t *testing.T) {
 	svc := createUserGroupService(db)
 	ctx := context.Background()
 
+	admin := createTestSuperAdmin(t, db)
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 	org := createTestOrganization(t, db, "Test Org")
 	// No default group
 
-	_, err := svc.AddUserToOrganization(ctx, user.ID, org.ID, "creator@example.com")
+	_, err := svc.AddUserToOrganization(ctx, user.ID, org.ID, "creator@example.com", admin.ID)
 	if err == nil {
 		t.Fatal("expected error for org without default group, got nil")
 	}
@@ -490,6 +503,7 @@ func TestUserGroupService_RemoveUserFromOrganization(t *testing.T) {
 	svc := createUserGroupService(db)
 	ctx := context.Background()
 
+	admin := createTestSuperAdmin(t, db)
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 	org := createTestOrganization(t, db, "Test Org")
 	group1 := createTestGroupWithOrg(t, db, "Group 1", org.ID)
@@ -498,7 +512,7 @@ func TestUserGroupService_RemoveUserFromOrganization(t *testing.T) {
 	createTestUserGroup(t, db, user.ID, group1.ID, models.RoleAdmin)
 	createTestUserGroup(t, db, user.ID, group2.ID, models.RoleMember)
 
-	err := svc.RemoveUserFromOrganization(ctx, user.ID, org.ID)
+	err := svc.RemoveUserFromOrganization(ctx, user.ID, org.ID, admin.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -515,9 +529,10 @@ func TestUserGroupService_RemoveUserFromOrganization_UserNotFound(t *testing.T) 
 	svc := createUserGroupService(db)
 	ctx := context.Background()
 
+	admin := createTestSuperAdmin(t, db)
 	org := createTestOrganization(t, db, "Test Org")
 
-	err := svc.RemoveUserFromOrganization(ctx, 999, org.ID)
+	err := svc.RemoveUserFromOrganization(ctx, 999, org.ID, admin.ID)
 	if err == nil {
 		t.Fatal("expected error for non-existent user, got nil")
 	}

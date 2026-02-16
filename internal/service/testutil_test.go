@@ -111,6 +111,17 @@ func createTestChildWithContract(t *testing.T, db *gorm.DB, firstName, lastName 
 	return child
 }
 
+// createTestSuperAdmin creates a superadmin user for authorization tests.
+func createTestSuperAdmin(t *testing.T, db *gorm.DB) *models.User {
+	t.Helper()
+	user := testutil.CreateTestUser(t, db, "Super Admin", "superadmin@example.com", "password")
+	if err := db.Model(user).Update("is_superadmin", true).Error; err != nil {
+		t.Fatalf("failed to set superadmin: %v", err)
+	}
+	user.IsSuperAdmin = true
+	return user
+}
+
 // Service creation helpers
 
 func createOrganizationService(db *gorm.DB) *OrganizationService {
