@@ -217,6 +217,24 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	}
 	userID := uint(userIDFloat)
 
+	// Check for token replay before processing
+	if h.tokenStore != nil {
+		oldHash := middleware.HashToken(req.RefreshToken)
+		revoked, err := h.tokenStore.IsRevoked(c.Request.Context(), oldHash)
+		if err == nil && revoked {
+			// Replay detected — revoke all tokens for this user as precaution
+			_ = h.tokenStore.RevokeAllForUser(c.Request.Context(), userID)
+			respondError(c, apperror.Unauthorized("token reuse detected, all sessions have been revoked"))
+			return
+		}
+
+		userRevoked, err := h.tokenStore.IsUserRevoked(c.Request.Context(), userID)
+		if err == nil && userRevoked {
+			respondError(c, apperror.Unauthorized("all sessions have been revoked, please login again"))
+			return
+		}
+	}
+
 	// Verify user still exists and is active
 	user, err := h.userStore.FindByID(c.Request.Context(), userID)
 	if err != nil {
