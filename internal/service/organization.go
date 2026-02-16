@@ -98,7 +98,7 @@ func (s *OrganizationService) Create(ctx context.Context, req *models.Organizati
 	}
 
 	if !models.IsValidState(req.State) {
-		return nil, apperror.BadRequest("invalid state, must be one of: berlin")
+		return nil, apperror.BadRequest("invalid state, must be one of: " + models.ValidStatesString())
 	}
 
 	sectionName, err := validateRequiredName(req.DefaultSectionName)
@@ -158,7 +158,7 @@ func (s *OrganizationService) Update(ctx context.Context, id uint, req *models.O
 	}
 	if req.State != nil {
 		if !models.IsValidState(*req.State) {
-			return nil, apperror.BadRequest("invalid state, must be one of: berlin")
+			return nil, apperror.BadRequest("invalid state, must be one of: " + models.ValidStatesString())
 		}
 		org.State = *req.State
 	}

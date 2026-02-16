@@ -1,5 +1,7 @@
 package models
 
+import "strings"
+
 // State represents a German Bundesland
 type State string
 
@@ -19,6 +21,15 @@ func IsValidState(s string) bool {
 		}
 	}
 	return false
+}
+
+// ValidStatesString returns a comma-separated list of valid states for error messages.
+func ValidStatesString() string {
+	strs := make([]string, len(ValidStates))
+	for i, s := range ValidStates {
+		strs[i] = string(s)
+	}
+	return strings.Join(strs, ", ")
 }
 
 // Stichtag returns the school enrollment cutoff date (month, day) for a state.

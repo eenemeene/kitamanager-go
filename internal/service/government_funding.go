@@ -107,7 +107,7 @@ func (s *GovernmentFundingService) Create(ctx context.Context, req *models.Gover
 	}
 
 	if !models.IsValidState(req.State) {
-		return nil, apperror.BadRequest("invalid state, must be one of: berlin")
+		return nil, apperror.BadRequest("invalid state, must be one of: " + models.ValidStatesString())
 	}
 
 	funding := &models.GovernmentFunding{

@@ -16,10 +16,11 @@ import {
 } from '@/components/ui/select';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
-import type {
-  GovernmentFunding,
-  GovernmentFundingCreateRequest,
-  GovernmentFundingUpdateRequest,
+import {
+  type GovernmentFunding,
+  type GovernmentFundingCreateRequest,
+  type GovernmentFundingUpdateRequest,
+  VALID_STATES,
 } from '@/lib/api/types';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -35,11 +36,9 @@ import { useCrudDialogs } from '@/lib/hooks/use-crud-dialogs';
 import { useCrudMutations } from '@/lib/hooks/use-crud-mutations';
 import { governmentFundingSchema, type GovernmentFundingFormData } from '@/lib/schemas';
 
-const states = [{ value: 'berlin', label: 'Berlin' }];
-
 const defaultValues: GovernmentFundingFormData = {
   name: '',
-  state: 'berlin',
+  state: VALID_STATES[0],
 };
 
 export default function GovernmentFundingsPage() {
@@ -173,9 +172,9 @@ export default function GovernmentFundingsPage() {
                 <SelectValue placeholder={t('states.selectState')} />
               </SelectTrigger>
               <SelectContent>
-                {states.map((state) => (
-                  <SelectItem key={state.value} value={state.value}>
-                    {t(`states.${state.value}`)}
+                {VALID_STATES.map((state) => (
+                  <SelectItem key={state} value={state}>
+                    {t(`states.${state}`)}
                   </SelectItem>
                 ))}
               </SelectContent>

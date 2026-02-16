@@ -25,10 +25,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
-import type {
-  Organization,
-  OrganizationCreateRequest,
-  OrganizationUpdateRequest,
+import {
+  type Organization,
+  type OrganizationCreateRequest,
+  type OrganizationUpdateRequest,
+  DEFAULT_PAGE_SIZE,
+  VALID_STATES,
 } from '@/lib/api/types';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -36,14 +38,11 @@ import { useCrudMutations } from '@/lib/hooks/use-crud-mutations';
 import { useCrudDialogs } from '@/lib/hooks/use-crud-dialogs';
 import { CrudPageHeader, ResourceTable, DeleteConfirmDialog, Column } from '@/components/crud';
 import { Pagination } from '@/components/ui/pagination';
-import { DEFAULT_PAGE_SIZE } from '@/lib/api/types';
 import { organizationSchema, type OrganizationFormData } from '@/lib/schemas';
-
-const states = [{ value: 'berlin', label: 'Berlin' }];
 
 const defaultValues: OrganizationFormData = {
   name: '',
-  state: 'berlin',
+  state: VALID_STATES[0],
   active: true,
   default_section_name: '',
 };
@@ -180,9 +179,9 @@ export default function OrganizationsPage() {
                   <SelectValue placeholder={t('states.selectState')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {states.map((state) => (
-                    <SelectItem key={state.value} value={state.value}>
-                      {t(`states.${state.value}`)}
+                  {VALID_STATES.map((state) => (
+                    <SelectItem key={state} value={state}>
+                      {t(`states.${state}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
