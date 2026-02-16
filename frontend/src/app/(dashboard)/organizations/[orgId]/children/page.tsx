@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { useCrudDialogs } from '@/lib/hooks/use-crud-dialogs';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, FileText, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,8 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useToast } from '@/lib/hooks/use-toast';
-import { apiClient, getErrorMessage } from '@/lib/api/client';
+import { useCrudMutations } from '@/lib/hooks/use-crud-mutations';
+import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import {
   type Child,
@@ -71,9 +71,6 @@ export default function ChildrenPage() {
   const router = useRouter();
   const orgId = Number(params.orgId);
   const t = useTranslations();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
   const [isContractDialogOpen, setIsContractDialogOpen] = useState(false);
   const [contractChild, setContractChild] = useState<Child | null>(null);
   const [page, setPage] = useState(1);
@@ -124,8 +121,10 @@ export default function ChildrenPage() {
   // Get org state for school enrollment date calculation
   const orgState = useUiStore((state) => state.organizations.find((o) => o.id === orgId)?.state);
 
-  const createWithContractMutation = useMutation({
-    mutationFn: async (data: ChildWithContractFormData) => {
+  const mutations = useCrudMutations<Child, ChildWithContractFormData, Partial<ChildFormData>>({
+    resourceName: 'children',
+    queryKey: queryKeys.children.all(orgId),
+    createFn: async (data) => {
       const child = await apiClient.createChild(orgId, {
         first_name: data.first_name,
         last_name: data.last_name,
@@ -140,51 +139,10 @@ export default function ChildrenPage() {
       });
       return child;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.children.all(orgId) });
-      toast({ title: t('children.createSuccess') });
-      dialogs.closeDialog();
-    },
-    onError: (error) => {
-      toast({
-        title: t('common.error'),
-        description: getErrorMessage(error, t('common.failedToCreate', { resource: 'child' })),
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<ChildFormData> }) =>
-      apiClient.updateChild(orgId, id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.children.all(orgId) });
-      toast({ title: t('children.updateSuccess') });
-      dialogs.closeDialog();
-    },
-    onError: (error) => {
-      toast({
-        title: t('common.error'),
-        description: getErrorMessage(error, t('common.failedToSave', { resource: 'child' })),
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiClient.deleteChild(orgId, id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.children.all(orgId) });
-      toast({ title: t('children.deleteSuccess') });
-      dialogs.closeDeleteDialog();
-    },
-    onError: (error) => {
-      toast({
-        title: t('common.error'),
-        description: getErrorMessage(error, t('common.failedToDelete', { resource: 'child' })),
-        variant: 'destructive',
-      });
-    },
+    updateFn: (id, data) => apiClient.updateChild(orgId, id, data),
+    deleteFn: (id) => apiClient.deleteChild(orgId, id),
+    onSuccess: () => dialogs.closeDialog(),
+    onDeleteSuccess: () => dialogs.closeDeleteDialog(),
   });
 
   const createContractMutation = useContractMutation<
@@ -247,17 +205,17 @@ export default function ChildrenPage() {
   const onSubmitChild = useCallback(
     (data: ChildFormData) => {
       if (dialogs.editingItem) {
-        updateMutation.mutate({ id: dialogs.editingItem.id, data });
+        mutations.updateMutation.mutate({ id: dialogs.editingItem.id, data });
       }
     },
-    [dialogs.editingItem, updateMutation]
+    [dialogs.editingItem, mutations.updateMutation]
   );
 
   const onSubmitCreate = useCallback(
     (data: ChildWithContractFormData) => {
-      createWithContractMutation.mutate(data);
+      mutations.createMutation.mutate(data);
     },
-    [createWithContractMutation]
+    [mutations.createMutation]
   );
 
   const onSubmitContract = useCallback(
@@ -484,7 +442,7 @@ export default function ChildrenPage() {
           errors={errorsChild}
           watch={watchChild}
           setValue={setValueChild}
-          isSaving={updateMutation.isPending}
+          isSaving={mutations.updateMutation.isPending}
           translationPrefix="children"
         />
       )}
@@ -497,7 +455,7 @@ export default function ChildrenPage() {
           orgId={orgId}
           orgState={orgState}
           sections={sections}
-          isSaving={createWithContractMutation.isPending}
+          isSaving={mutations.createMutation.isPending}
           onSubmit={onSubmitCreate}
         />
       )}
@@ -518,8 +476,10 @@ export default function ChildrenPage() {
       <DeleteConfirmDialog
         open={dialogs.isDeleteDialogOpen}
         onOpenChange={dialogs.setIsDeleteDialogOpen}
-        onConfirm={() => dialogs.deletingItem && deleteMutation.mutate(dialogs.deletingItem.id)}
-        isLoading={deleteMutation.isPending}
+        onConfirm={() =>
+          dialogs.deletingItem && mutations.deleteMutation.mutate(dialogs.deletingItem.id)
+        }
+        isLoading={mutations.deleteMutation.isPending}
         resourceName="children"
         description={t('children.confirmDeleteMessage', {
           name: dialogs.deletingItem
