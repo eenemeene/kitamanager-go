@@ -6641,10 +6641,7 @@ const docTemplate = `{
         },
         "/api/v1/refresh": {
             "post": {
-                "description": "Exchange a valid refresh token for new access and refresh tokens",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Exchange a valid refresh token (from HttpOnly cookie) for new access and refresh tokens",
                 "produces": [
                     "application/json"
                 ],
@@ -6652,28 +6649,11 @@ const docTemplate = `{
                     "auth"
                 ],
                 "summary": "Refresh access token",
-                "parameters": [
-                    {
-                        "description": "Refresh token",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.RefreshRequest"
-                        }
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.LoginResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.RefreshResponse"
                         }
                     },
                     "401": {
@@ -9099,14 +9079,6 @@ const docTemplate = `{
                 "expires_in": {
                     "type": "integer",
                     "example": 3600
-                },
-                "refresh_token": {
-                    "type": "string",
-                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                },
-                "token": {
-                    "type": "string",
-                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                 }
             }
         },
@@ -10011,15 +9983,12 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_eenemeene_kitamanager-go_internal_models.RefreshRequest": {
+        "github_com_eenemeene_kitamanager-go_internal_models.RefreshResponse": {
             "type": "object",
-            "required": [
-                "refresh_token"
-            ],
             "properties": {
-                "refresh_token": {
-                    "type": "string",
-                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                "expires_in": {
+                    "type": "integer",
+                    "example": 3600
                 }
             }
         },

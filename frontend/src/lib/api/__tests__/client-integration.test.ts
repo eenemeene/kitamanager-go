@@ -17,7 +17,6 @@ process.env.NEXT_PUBLIC_API_URL = 'http://localhost';
 
 // Track handler invocations
 let refreshCallCount: number;
-let lastRefreshBody: { refresh_token?: string } | null;
 
 const server = setupServer();
 
@@ -25,7 +24,6 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => {
   server.resetHandlers();
   refreshCallCount = 0;
-  lastRefreshBody = null;
 });
 afterAll(() => server.close());
 
@@ -43,13 +41,11 @@ async function createFreshClient() {
 }
 
 describe('ApiClient integration (MSW)', () => {
-  describe('login and token storage', () => {
-    it('stores refresh token from login response', async () => {
+  describe('login', () => {
+    it('returns expires_in from login response', async () => {
       server.use(
         http.post(`${API_BASE}/login`, () => {
           return HttpResponse.json({
-            token: 'access-token-123',
-            refresh_token: 'refresh-token-456',
             expires_in: 3600,
           });
         })
@@ -58,21 +54,18 @@ describe('ApiClient integration (MSW)', () => {
       const client = await createFreshClient();
       const result = await client.login({ email: 'test@example.com', password: 'pass' });
 
-      expect(result.token).toBe('access-token-123');
-      expect(result.refresh_token).toBe('refresh-token-456');
+      expect(result.expires_in).toBe(3600);
     });
   });
 
   describe('token refresh on 401', () => {
-    it('refreshes token and retries the original request on 401', async () => {
+    it('refreshes token via cookie and retries the original request on 401', async () => {
       let meCallCount = 0;
 
       server.use(
         // Login
         http.post(`${API_BASE}/login`, () => {
           return HttpResponse.json({
-            token: 'access-token-1',
-            refresh_token: 'refresh-token-1',
             expires_in: 3600,
           });
         }),
@@ -91,13 +84,10 @@ describe('ApiClient integration (MSW)', () => {
             name: 'Test User',
           });
         }),
-        // Refresh endpoint
-        http.post(`${API_BASE}/refresh`, async ({ request }) => {
+        // Refresh endpoint - no body expected, refresh token comes via cookie
+        http.post(`${API_BASE}/refresh`, () => {
           refreshCallCount++;
-          lastRefreshBody = (await request.json()) as { refresh_token?: string };
           return HttpResponse.json({
-            token: 'access-token-2',
-            refresh_token: 'refresh-token-2',
             expires_in: 3600,
           });
         })
@@ -105,7 +95,7 @@ describe('ApiClient integration (MSW)', () => {
 
       const client = await createFreshClient();
 
-      // Login to store refresh token
+      // Login to establish session
       await client.login({ email: 'test@example.com', password: 'pass' });
 
       // Call /me which will 401 -> refresh -> retry
@@ -113,7 +103,6 @@ describe('ApiClient integration (MSW)', () => {
 
       expect(user.name).toBe('Test User');
       expect(refreshCallCount).toBe(1);
-      expect(lastRefreshBody?.refresh_token).toBe('refresh-token-1');
       expect(meCallCount).toBe(2); // First 401, then retry succeeds
     });
 
@@ -123,8 +112,6 @@ describe('ApiClient integration (MSW)', () => {
       server.use(
         http.post(`${API_BASE}/login`, () => {
           return HttpResponse.json({
-            token: 'access-token-1',
-            refresh_token: 'refresh-token-1',
             expires_in: 3600,
           });
         }),
@@ -151,7 +138,7 @@ describe('ApiClient integration (MSW)', () => {
       expect(onUnauthorized).toHaveBeenCalled();
     });
 
-    it('calls onUnauthorized immediately when no refresh token is available', async () => {
+    it('calls onUnauthorized immediately when no session is available', async () => {
       const onUnauthorized = jest.fn();
 
       server.use(
@@ -212,15 +199,13 @@ describe('ApiClient integration (MSW)', () => {
     });
   });
 
-  describe('logout clears refresh token', () => {
-    it('clears refresh token on logout so 401 triggers onUnauthorized', async () => {
+  describe('logout clears session', () => {
+    it('clears session on logout so 401 triggers onUnauthorized', async () => {
       const onUnauthorized = jest.fn();
 
       server.use(
         http.post(`${API_BASE}/login`, () => {
           return HttpResponse.json({
-            token: 'access-token-1',
-            refresh_token: 'refresh-token-1',
             expires_in: 3600,
           });
         }),
@@ -241,7 +226,7 @@ describe('ApiClient integration (MSW)', () => {
       await client.login({ email: 'test@example.com', password: 'pass' });
       await client.logout();
 
-      // After logout, refresh token should be cleared, so 401 triggers onUnauthorized directly
+      // After logout, session should be cleared, so 401 triggers onUnauthorized directly
       await expect(client.getCurrentUser()).rejects.toThrow();
       expect(onUnauthorized).toHaveBeenCalled();
     });

@@ -39,8 +39,8 @@ func TestAuthHandler_Login_Success(t *testing.T) {
 	var result models.LoginResponse
 	parseResponse(t, w, &result)
 
-	if result.Token == "" {
-		t.Error("expected token to be set")
+	if result.ExpiresIn <= 0 {
+		t.Error("expected expires_in to be positive")
 	}
 }
 
@@ -176,7 +176,7 @@ func TestAuthHandler_Login_UpdatesLastLogin(t *testing.T) {
 	}
 }
 
-func TestAuthHandler_Login_ReturnsRefreshToken(t *testing.T) {
+func TestAuthHandler_Login_TokensOnlyInCookies(t *testing.T) {
 	db := setupTestDB(t)
 	userStore := store.NewUserStore(db)
 
@@ -202,15 +202,45 @@ func TestAuthHandler_Login_ReturnsRefreshToken(t *testing.T) {
 	var result models.LoginResponse
 	parseResponse(t, w, &result)
 
-	if result.Token == "" {
-		t.Error("expected access token to be set")
-	}
-	if result.RefreshToken == "" {
-		t.Error("expected refresh token to be set")
-	}
 	if result.ExpiresIn <= 0 {
 		t.Error("expected expires_in to be positive")
 	}
+
+	// Verify tokens are in cookies, not in JSON body
+	cookies := w.Result().Cookies()
+	cookieNames := make(map[string]bool)
+	for _, cookie := range cookies {
+		cookieNames[cookie.Name] = true
+	}
+	if !cookieNames["access_token"] {
+		t.Error("expected access_token cookie to be set")
+	}
+	if !cookieNames["refresh_token"] {
+		t.Error("expected refresh_token cookie to be set")
+	}
+
+	// Verify JSON body does NOT contain token fields
+	bodyStr := w.Body.String()
+	if contains(bodyStr, `"token"`) {
+		t.Error("JSON body should not contain token field")
+	}
+	if contains(bodyStr, `"refresh_token"`) {
+		t.Error("JSON body should not contain refresh_token field")
+	}
+}
+
+// contains checks if s contains substr (simple helper for test assertions).
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && searchString(s, substr)
+}
+
+func searchString(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }
 
 func TestAuthHandler_Refresh_Success(t *testing.T) {
@@ -226,34 +256,38 @@ func TestAuthHandler_Refresh_Success(t *testing.T) {
 	r.POST("/login", handler.Login)
 	r.POST("/refresh", handler.Refresh)
 
-	// First login to get tokens
+	// First login to get cookies
 	loginBody := models.LoginRequest{
 		Email:    "test@example.com",
 		Password: "password123",
 	}
 	loginResp := performRequest(r, "POST", "/login", loginBody)
 
-	var loginResult models.LoginResponse
-	parseResponse(t, loginResp, &loginResult)
-
-	// Use refresh token to get new tokens
-	refreshBody := models.RefreshRequest{
-		RefreshToken: loginResult.RefreshToken,
-	}
-	w := performRequest(r, "POST", "/refresh", refreshBody)
+	// Use cookies from login for refresh request
+	w := performRequestWithCookies(r, "POST", "/refresh", nil, loginResp.Result().Cookies())
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
 	}
 
-	var result models.LoginResponse
+	var result models.RefreshResponse
 	parseResponse(t, w, &result)
 
-	if result.Token == "" {
-		t.Error("expected new access token to be set")
+	if result.ExpiresIn <= 0 {
+		t.Error("expected expires_in to be positive")
 	}
-	if result.RefreshToken == "" {
-		t.Error("expected new refresh token to be set")
+
+	// Verify new tokens are set in cookies
+	cookies := w.Result().Cookies()
+	cookieNames := make(map[string]bool)
+	for _, cookie := range cookies {
+		cookieNames[cookie.Name] = true
+	}
+	if !cookieNames["access_token"] {
+		t.Error("expected new access_token cookie to be set")
+	}
+	if !cookieNames["refresh_token"] {
+		t.Error("expected new refresh_token cookie to be set")
 	}
 }
 
@@ -265,10 +299,11 @@ func TestAuthHandler_Refresh_InvalidToken(t *testing.T) {
 	r := gin.New()
 	r.POST("/refresh", handler.Refresh)
 
-	body := models.RefreshRequest{
-		RefreshToken: "invalid-token",
+	// Set an invalid refresh_token cookie
+	cookies := []*http.Cookie{
+		{Name: "refresh_token", Value: "invalid-token"},
 	}
-	w := performRequest(r, "POST", "/refresh", body)
+	w := performRequestWithCookies(r, "POST", "/refresh", nil, cookies)
 
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("expected status %d, got %d", http.StatusUnauthorized, w.Code)
@@ -295,14 +330,20 @@ func TestAuthHandler_Refresh_WithAccessToken(t *testing.T) {
 	}
 	loginResp := performRequest(r, "POST", "/login", loginBody)
 
-	var loginResult models.LoginResponse
-	parseResponse(t, loginResp, &loginResult)
-
-	// Try to use ACCESS token for refresh (should fail)
-	refreshBody := models.RefreshRequest{
-		RefreshToken: loginResult.Token, // Using access token instead of refresh token
+	// Extract the access_token cookie value and use it as refresh_token cookie
+	var accessTokenValue string
+	for _, cookie := range loginResp.Result().Cookies() {
+		if cookie.Name == "access_token" {
+			accessTokenValue = cookie.Value
+			break
+		}
 	}
-	w := performRequest(r, "POST", "/refresh", refreshBody)
+
+	// Try to use ACCESS token as refresh token cookie (should fail)
+	cookies := []*http.Cookie{
+		{Name: "refresh_token", Value: accessTokenValue},
+	}
+	w := performRequestWithCookies(r, "POST", "/refresh", nil, cookies)
 
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("expected status %d when using access token for refresh, got %d", http.StatusUnauthorized, w.Code)
@@ -322,25 +363,19 @@ func TestAuthHandler_Refresh_InactiveUser(t *testing.T) {
 	r.POST("/login", handler.Login)
 	r.POST("/refresh", handler.Refresh)
 
-	// Login to get tokens
+	// Login to get cookies
 	loginBody := models.LoginRequest{
 		Email:    "test@example.com",
 		Password: "password123",
 	}
 	loginResp := performRequest(r, "POST", "/login", loginBody)
 
-	var loginResult models.LoginResponse
-	parseResponse(t, loginResp, &loginResult)
-
 	// Deactivate the user
 	user.Active = false
 	db.Save(user)
 
 	// Try to refresh (should fail because user is now inactive)
-	refreshBody := models.RefreshRequest{
-		RefreshToken: loginResult.RefreshToken,
-	}
-	w := performRequest(r, "POST", "/refresh", refreshBody)
+	w := performRequestWithCookies(r, "POST", "/refresh", nil, loginResp.Result().Cookies())
 
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("expected status %d for inactive user, got %d", http.StatusUnauthorized, w.Code)
@@ -355,12 +390,11 @@ func TestAuthHandler_Refresh_MissingToken(t *testing.T) {
 	r := gin.New()
 	r.POST("/refresh", handler.Refresh)
 
-	// Missing refresh_token field
-	body := map[string]interface{}{}
-	w := performRequest(r, "POST", "/refresh", body)
+	// No cookies set at all
+	w := performRequest(r, "POST", "/refresh", nil)
 
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected status %d, got %d", http.StatusUnauthorized, w.Code)
 	}
 }
 

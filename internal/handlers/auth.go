@@ -136,9 +136,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	h.setAuthCookies(c, accessToken, refreshToken, csrfToken)
 
 	c.JSON(http.StatusOK, models.LoginResponse{
-		Token:        accessToken,
-		RefreshToken: refreshToken,
-		ExpiresIn:    int64(accessTokenExpiry.Seconds()),
+		ExpiresIn: int64(accessTokenExpiry.Seconds()),
 	})
 }
 
@@ -167,24 +165,23 @@ func (h *AuthHandler) generateRefreshToken(userID uint) (string, error) {
 
 // Refresh godoc
 // @Summary Refresh access token
-// @Description Exchange a valid refresh token for new access and refresh tokens
+// @Description Exchange a valid refresh token (from HttpOnly cookie) for new access and refresh tokens
 // @Tags auth
-// @Accept json
 // @Produce json
-// @Param request body models.RefreshRequest true "Refresh token"
-// @Success 200 {object} models.LoginResponse
-// @Failure 400 {object} models.ErrorResponse
+// @Success 200 {object} models.RefreshResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/refresh [post]
 func (h *AuthHandler) Refresh(c *gin.Context) {
-	req, ok := bindJSON[models.RefreshRequest](c)
-	if !ok {
+	// Read refresh token from HttpOnly cookie
+	refreshTokenStr, err := c.Cookie(refreshTokenCookie)
+	if err != nil || refreshTokenStr == "" {
+		respondError(c, apperror.Unauthorized("missing refresh token"))
 		return
 	}
 
 	// Parse and validate the refresh token
-	token, err := jwt.Parse(req.RefreshToken, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.Parse(refreshTokenStr, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, jwt.ErrSignatureInvalid
 		}
@@ -219,7 +216,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 
 	// Check for token replay before processing
 	if h.tokenStore != nil {
-		oldHash := middleware.HashToken(req.RefreshToken)
+		oldHash := middleware.HashToken(refreshTokenStr)
 		revoked, err := h.tokenStore.IsRevoked(c.Request.Context(), oldHash)
 		if err == nil && revoked {
 			// Replay detected — revoke all tokens for this user as precaution
@@ -251,7 +248,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	if h.tokenStore != nil {
 		expFloat, _ := claims["exp"].(float64)
 		oldExpiresAt := time.Unix(int64(expFloat), 0)
-		oldHash := middleware.HashToken(req.RefreshToken)
+		oldHash := middleware.HashToken(refreshTokenStr)
 		_ = h.tokenStore.RevokeToken(c.Request.Context(), oldHash, user.ID, oldExpiresAt)
 	}
 
@@ -278,10 +275,8 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	// Set HttpOnly cookies for tokens
 	h.setAuthCookies(c, accessToken, refreshToken, csrfToken)
 
-	c.JSON(http.StatusOK, models.LoginResponse{
-		Token:        accessToken,
-		RefreshToken: refreshToken,
-		ExpiresIn:    int64(accessTokenExpiry.Seconds()),
+	c.JSON(http.StatusOK, models.RefreshResponse{
+		ExpiresIn: int64(accessTokenExpiry.Seconds()),
 	})
 }
 
@@ -518,8 +513,6 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	h.auditService.LogResourceUpdate(userID, "user_password", userID, user.Email, c.ClientIP())
 
 	c.JSON(http.StatusOK, models.LoginResponse{
-		Token:        accessToken,
-		RefreshToken: refreshToken,
-		ExpiresIn:    int64(accessTokenExpiry.Seconds()),
+		ExpiresIn: int64(accessTokenExpiry.Seconds()),
 	})
 }

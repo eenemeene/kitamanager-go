@@ -109,8 +109,8 @@ if (typeof window !== 'undefined') {
 
 // Set up unauthorized callback
 apiClient.setOnUnauthorized(() => {
-  // Clear refresh token (refresh already failed or unavailable)
-  apiClient.setRefreshToken(null);
+  // Clear session flag (refresh already failed or unavailable)
+  apiClient.setHasSession(false);
   // Clear local state without calling logout endpoint (already unauthorized)
   if (typeof window !== 'undefined') {
     localStorage.removeItem('selectedOrgId');

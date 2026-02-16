@@ -73,8 +73,7 @@ describe('useAuthStore', () => {
   describe('login', () => {
     it('calls login API and fetches user data on success', async () => {
       (apiClient.login as jest.Mock).mockResolvedValue({
-        token: 'mock-token',
-        refresh_token: 'mock-refresh',
+        expires_in: 3600,
       });
       (apiClient.getCurrentUser as jest.Mock).mockResolvedValue({
         id: 1,
@@ -100,7 +99,7 @@ describe('useAuthStore', () => {
 
     it('sets userLoaded even if getCurrentUser fails', async () => {
       (apiClient.login as jest.Mock).mockResolvedValue({
-        token: 'mock-token',
+        expires_in: 3600,
       });
       (apiClient.getCurrentUser as jest.Mock).mockRejectedValue(new Error('Network error'));
 
@@ -240,7 +239,7 @@ describe('useAuthStore', () => {
 
   describe('no localStorage token usage', () => {
     it('should not store token in localStorage on login', async () => {
-      (apiClient.login as jest.Mock).mockResolvedValue({ token: 'mock-token' });
+      (apiClient.login as jest.Mock).mockResolvedValue({ expires_in: 3600 });
       (apiClient.getCurrentUser as jest.Mock).mockResolvedValue({ id: 1, email: 'test@test.com' });
 
       await useAuthStore.getState().login({ email: 'test@test.com', password: 'password' });

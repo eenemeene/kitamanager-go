@@ -79,7 +79,7 @@ function getCSRFToken(): string | null {
 class ApiClient {
   private client: AxiosInstance;
   private onUnauthorized?: () => void;
-  private refreshToken: string | null = null;
+  private hasSession = false;
   private isRefreshing = false;
   private refreshQueue: Array<{
     resolve: (value?: unknown) => void;
@@ -136,7 +136,7 @@ class ApiClient {
         }
 
         if (error.response?.status === 401 && !isAuthEndpoint && !originalRequest?._retry) {
-          if (this.refreshToken) {
+          if (this.hasSession) {
             if (this.isRefreshing) {
               // Queue this request while refresh is in progress
               return new Promise((resolve, reject) => {
@@ -150,10 +150,8 @@ class ApiClient {
             originalRequest!._retry = true;
 
             try {
-              const response = await this.client.post<LoginResponse>('/refresh', {
-                refresh_token: this.refreshToken,
-              });
-              this.refreshToken = response.data.refresh_token || null;
+              // Refresh token is sent automatically via HttpOnly cookie
+              await this.client.post('/refresh');
 
               // Resolve all queued requests
               this.refreshQueue.forEach((pending) => pending.resolve());
@@ -165,7 +163,7 @@ class ApiClient {
               // Refresh failed - clear queue and log out
               this.refreshQueue.forEach((pending) => pending.reject(error));
               this.refreshQueue = [];
-              this.refreshToken = null;
+              this.hasSession = false;
 
               if (this.onUnauthorized) {
                 this.onUnauthorized();
@@ -176,7 +174,7 @@ class ApiClient {
             }
           }
 
-          // No refresh token available - log out
+          // No session available - log out
           if (this.onUnauthorized) {
             this.onUnauthorized();
           }
@@ -190,8 +188,8 @@ class ApiClient {
     this.onUnauthorized = callback;
   }
 
-  setRefreshToken(token: string | null) {
-    this.refreshToken = token;
+  setHasSession(value: boolean) {
+    this.hasSession = value;
   }
 
   private topLevelCrud<T, TCreate, TUpdate>(resource: string) {
@@ -253,13 +251,13 @@ class ApiClient {
   // Auth
   async login(request: LoginRequest): Promise<LoginResponse> {
     const response = await this.client.post<LoginResponse>('/login', request);
-    // Store refresh token for automatic token refresh on 401
-    this.refreshToken = response.data.refresh_token || null;
+    // Mark session as active (tokens are in HttpOnly cookies)
+    this.hasSession = true;
     return response.data;
   }
 
   async logout(): Promise<void> {
-    this.refreshToken = null;
+    this.hasSession = false;
     await this.client.post('/logout');
   }
 

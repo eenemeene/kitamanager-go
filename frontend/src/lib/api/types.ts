@@ -13,13 +13,7 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  token: string;
-  refresh_token?: string;
-  expires_in?: number;
-  user?: {
-    id: number;
-    email: string;
-  };
+  expires_in: number;
 }
 
 export interface ErrorResponse {
