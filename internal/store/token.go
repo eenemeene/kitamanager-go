@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"gorm.io/gorm"
@@ -81,19 +82,7 @@ const refreshTokenMaxExpiry = 8 * 24 * time.Hour // 8 days (> 7-day refresh toke
 
 // revokeAllSentinel returns the sentinel token hash for revoking all tokens for a user.
 func revokeAllSentinel(userID uint) string {
-	return "revoke_all_" + uintToStr(userID)
-}
-
-func uintToStr(n uint) string {
-	s := ""
-	if n == 0 {
-		return "0"
-	}
-	for n > 0 {
-		s = string(rune('0'+n%10)) + s
-		n /= 10
-	}
-	return s
+	return "revoke_all_" + strconv.FormatUint(uint64(userID), 10)
 }
 
 // IsRevoked checks if a specific token hash is revoked, or if all tokens
