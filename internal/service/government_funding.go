@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -26,7 +27,10 @@ func NewGovernmentFundingService(store store.GovernmentFundingStorer, transactor
 func (s *GovernmentFundingService) verifyPeriodOwnership(ctx context.Context, periodID, fundingID uint) (*models.GovernmentFundingPeriod, error) {
 	period, err := s.store.FindPeriodByID(ctx, periodID)
 	if err != nil {
-		return nil, apperror.NotFound("period")
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, apperror.NotFound("period")
+		}
+		return nil, apperror.InternalWrap(err, "failed to fetch period")
 	}
 	if period.GovernmentFundingID != fundingID {
 		return nil, apperror.NotFound("period")
@@ -38,7 +42,10 @@ func (s *GovernmentFundingService) verifyPeriodOwnership(ctx context.Context, pe
 func (s *GovernmentFundingService) verifyPropertyOwnership(ctx context.Context, propertyID, periodID uint) (*models.GovernmentFundingProperty, error) {
 	property, err := s.store.FindPropertyByID(ctx, propertyID)
 	if err != nil {
-		return nil, apperror.NotFound("property")
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, apperror.NotFound("property")
+		}
+		return nil, apperror.InternalWrap(err, "failed to fetch property")
 	}
 	if property.PeriodID != periodID {
 		return nil, apperror.NotFound("property")
@@ -60,7 +67,10 @@ func (s *GovernmentFundingService) List(ctx context.Context, limit, offset int) 
 func (s *GovernmentFundingService) GetByID(ctx context.Context, id uint) (*models.GovernmentFundingResponse, error) {
 	funding, err := s.store.FindByID(ctx, id)
 	if err != nil {
-		return nil, apperror.NotFound("government funding")
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, apperror.NotFound("government funding")
+		}
+		return nil, apperror.InternalWrap(err, "failed to fetch government funding")
 	}
 	resp := funding.ToResponse()
 	return &resp, nil
@@ -72,7 +82,10 @@ func (s *GovernmentFundingService) GetByID(ctx context.Context, id uint) (*model
 func (s *GovernmentFundingService) GetByIDWithDetails(ctx context.Context, id uint, periodsLimit int, activeOn *time.Time) (*models.GovernmentFundingWithDetailsResponse, error) {
 	funding, err := s.store.FindByIDWithDetails(ctx, id, periodsLimit, activeOn)
 	if err != nil {
-		return nil, apperror.NotFound("government funding")
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, apperror.NotFound("government funding")
+		}
+		return nil, apperror.InternalWrap(err, "failed to fetch government funding")
 	}
 
 	totalPeriods, err := s.store.CountPeriods(ctx, id)
@@ -114,7 +127,10 @@ func (s *GovernmentFundingService) Create(ctx context.Context, req *models.Gover
 func (s *GovernmentFundingService) Update(ctx context.Context, id uint, req *models.GovernmentFundingUpdateRequest) (*models.GovernmentFundingResponse, error) {
 	funding, err := s.store.FindByID(ctx, id)
 	if err != nil {
-		return nil, apperror.NotFound("government funding")
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, apperror.NotFound("government funding")
+		}
+		return nil, apperror.InternalWrap(err, "failed to fetch government funding")
 	}
 
 	if req.Name != nil {
@@ -225,7 +241,10 @@ func (s *GovernmentFundingService) CreatePeriod(ctx context.Context, governmentF
 func (s *GovernmentFundingService) GetPeriodByID(ctx context.Context, id uint) (*models.GovernmentFundingPeriodResponse, error) {
 	period, err := s.store.FindPeriodByID(ctx, id)
 	if err != nil {
-		return nil, apperror.NotFound("period")
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, apperror.NotFound("period")
+		}
+		return nil, apperror.InternalWrap(err, "failed to fetch period")
 	}
 	resp := period.ToResponse()
 	return &resp, nil
@@ -332,7 +351,10 @@ func (s *GovernmentFundingService) CreateProperty(ctx context.Context, fundingID
 func (s *GovernmentFundingService) GetPropertyByID(ctx context.Context, id uint) (*models.GovernmentFundingPropertyResponse, error) {
 	property, err := s.store.FindPropertyByID(ctx, id)
 	if err != nil {
-		return nil, apperror.NotFound("property")
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, apperror.NotFound("property")
+		}
+		return nil, apperror.InternalWrap(err, "failed to fetch property")
 	}
 	resp := property.ToResponse()
 	return &resp, nil

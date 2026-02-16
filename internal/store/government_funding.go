@@ -45,7 +45,7 @@ func (s *GovernmentFundingStore) FindByID(ctx context.Context, id uint) (*models
 func (s *GovernmentFundingStore) FindByName(ctx context.Context, name string) (*models.GovernmentFunding, error) {
 	var funding models.GovernmentFunding
 	if err := DBFromContext(ctx, s.db).Where("name = ?", name).First(&funding).Error; err != nil {
-		return nil, err
+		return nil, WrapNotFound(err)
 	}
 	return &funding, nil
 }
@@ -53,7 +53,7 @@ func (s *GovernmentFundingStore) FindByName(ctx context.Context, name string) (*
 func (s *GovernmentFundingStore) FindByState(ctx context.Context, state string) (*models.GovernmentFunding, error) {
 	var funding models.GovernmentFunding
 	if err := DBFromContext(ctx, s.db).Where("state = ?", state).First(&funding).Error; err != nil {
-		return nil, err
+		return nil, WrapNotFound(err)
 	}
 	return &funding, nil
 }
@@ -76,7 +76,7 @@ func (s *GovernmentFundingStore) FindByStateWithDetails(ctx context.Context, sta
 		}).
 		Where("state = ?", state).
 		First(&funding).Error; err != nil {
-		return nil, err
+		return nil, WrapNotFound(err)
 	}
 	return &funding, nil
 }
@@ -98,7 +98,7 @@ func (s *GovernmentFundingStore) FindByIDWithDetails(ctx context.Context, id uin
 			return db.Order("key ASC, value ASC, min_age ASC NULLS LAST")
 		}).
 		First(&funding, id).Error; err != nil {
-		return nil, err
+		return nil, WrapNotFound(err)
 	}
 	return &funding, nil
 }
@@ -132,7 +132,7 @@ func (s *GovernmentFundingStore) FindPeriodByID(ctx context.Context, id uint) (*
 			return db.Order("key ASC, value ASC, min_age ASC NULLS LAST")
 		}).
 		First(&period, id).Error; err != nil {
-		return nil, err
+		return nil, WrapNotFound(err)
 	}
 	return &period, nil
 }
@@ -162,7 +162,7 @@ func (s *GovernmentFundingStore) DeletePeriod(ctx context.Context, id uint) erro
 func (s *GovernmentFundingStore) FindPropertyByID(ctx context.Context, id uint) (*models.GovernmentFundingProperty, error) {
 	var property models.GovernmentFundingProperty
 	if err := DBFromContext(ctx, s.db).First(&property, id).Error; err != nil {
-		return nil, err
+		return nil, WrapNotFound(err)
 	}
 	return &property, nil
 }

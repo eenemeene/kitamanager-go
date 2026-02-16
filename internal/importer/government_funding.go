@@ -45,7 +45,7 @@ func (i *GovernmentFundingImporter) ImportGovernmentFundingFromFile(ctx context.
 		slog.Info("Government funding for state already exists, skipping import", "state", state, "id", existingFunding.ID)
 		return existingFunding.ID, ErrGovernmentFundingExists
 	}
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
 		return 0, fmt.Errorf("failed to check existing government funding: %w", err)
 	}
 
