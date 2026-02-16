@@ -78,6 +78,9 @@ type Config struct {
 
 	// Trusted Proxies
 	TrustedProxies []string // TRUSTED_PROXIES env var, comma-separated
+
+	// Security
+	SecureCookies bool // SECURE_COOKIES env var, default = true in production/staging
 }
 
 // IsProduction returns true if running in production mode
@@ -249,6 +252,13 @@ func Load() (*Config, error) {
 
 		// Trusted Proxies
 		TrustedProxies: trustedProxies,
+	}
+
+	// SecureCookies: explicit env var wins, otherwise default to non-development
+	if v := os.Getenv("SECURE_COOKIES"); v != "" {
+		cfg.SecureCookies = v == "true"
+	} else {
+		cfg.SecureCookies = !cfg.IsDevelopment()
 	}
 
 	if err := cfg.Validate(); err != nil {

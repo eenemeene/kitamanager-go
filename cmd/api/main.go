@@ -147,7 +147,7 @@ func main() {
 	statisticsService := service.NewStatisticsService(childStore, employeeStore, orgStore, governmentFundingStore, payPlanStore, budgetItemStore)
 
 	// Initialize handlers
-	authHandler := handlers.NewAuthHandler(authService)
+	authHandler := handlers.NewAuthHandler(authService, cfg.SecureCookies)
 	userHandler := handlers.NewUserHandler(userService, userGroupService, auditService, tokenStore)
 	groupHandler := handlers.NewGroupHandler(groupService, auditService)
 	sectionHandler := handlers.NewSectionHandler(sectionService, auditService)

@@ -266,7 +266,7 @@ func createAuthService(db *gorm.DB) *service.AuthService {
 
 // createAuthHandler creates an auth handler for testing.
 func createAuthHandler(db *gorm.DB) *AuthHandler {
-	return NewAuthHandler(createAuthService(db))
+	return NewAuthHandler(createAuthService(db), false)
 }
 
 // createAttendanceService creates a child attendance service for testing.

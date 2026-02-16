@@ -22,11 +22,12 @@ const (
 const refreshCookiePath = "/api/v1/refresh"
 
 type AuthHandler struct {
-	authService *service.AuthService
+	authService   *service.AuthService
+	secureCookies bool
 }
 
-func NewAuthHandler(authService *service.AuthService) *AuthHandler {
-	return &AuthHandler{authService: authService}
+func NewAuthHandler(authService *service.AuthService, secureCookies bool) *AuthHandler {
+	return &AuthHandler{authService: authService, secureCookies: secureCookies}
 }
 
 // Login godoc
@@ -183,20 +184,16 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 
 // setAuthCookies sets the authentication cookies from an AuthResult.
 func (h *AuthHandler) setAuthCookies(c *gin.Context, result *service.AuthResult) {
-	secure := c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https"
-
 	c.SetSameSite(http.SameSiteStrictMode)
-	c.SetCookie(accessTokenCookie, result.AccessToken, int(service.AccessTokenExpiry.Seconds()), "/", "", secure, true)
-	c.SetCookie(refreshTokenCookie, result.RefreshToken, int(service.RefreshTokenExpiry.Seconds()), refreshCookiePath, "", secure, true)
-	c.SetCookie(csrfTokenCookie, result.CSRFToken, int(service.AccessTokenExpiry.Seconds()), "/", "", secure, false)
+	c.SetCookie(accessTokenCookie, result.AccessToken, int(service.AccessTokenExpiry.Seconds()), "/", "", h.secureCookies, true)
+	c.SetCookie(refreshTokenCookie, result.RefreshToken, int(service.RefreshTokenExpiry.Seconds()), refreshCookiePath, "", h.secureCookies, true)
+	c.SetCookie(csrfTokenCookie, result.CSRFToken, int(service.AccessTokenExpiry.Seconds()), "/", "", h.secureCookies, false)
 }
 
 // clearAuthCookies clears all authentication cookies.
 func (h *AuthHandler) clearAuthCookies(c *gin.Context) {
-	secure := c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https"
-
 	c.SetSameSite(http.SameSiteStrictMode)
-	c.SetCookie(accessTokenCookie, "", -1, "/", "", secure, true)
-	c.SetCookie(refreshTokenCookie, "", -1, refreshCookiePath, "", secure, true)
-	c.SetCookie(csrfTokenCookie, "", -1, "/", "", secure, false)
+	c.SetCookie(accessTokenCookie, "", -1, "/", "", h.secureCookies, true)
+	c.SetCookie(refreshTokenCookie, "", -1, refreshCookiePath, "", h.secureCookies, true)
+	c.SetCookie(csrfTokenCookie, "", -1, "/", "", h.secureCookies, false)
 }
