@@ -352,6 +352,9 @@ export interface PaginationParams {
 
 export const DEFAULT_PAGE_SIZE = 30;
 
+/** Fetch limit for lookup/dropdown data (sections, pay plans, etc.) where all items are needed. */
+export const LOOKUP_FETCH_LIMIT = 100;
+
 // Dashboard stats
 export interface DashboardStats {
   total_organizations: number;

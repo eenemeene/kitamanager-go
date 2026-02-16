@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
+import { LOOKUP_FETCH_LIMIT } from '@/lib/api/types';
 import { OccupancyTable } from '@/components/charts/occupancy-table';
 
 export default function OccupancyPage() {
@@ -25,7 +26,7 @@ export default function OccupancyPage() {
 
   const { data: sections } = useQuery({
     queryKey: queryKeys.sections.list(orgId),
-    queryFn: () => apiClient.getSections(orgId, { limit: 100 }),
+    queryFn: () => apiClient.getSections(orgId, { limit: LOOKUP_FETCH_LIMIT }),
     enabled: !!orgId,
   });
 

@@ -40,11 +40,12 @@ import { useResourceMutation } from '@/lib/hooks/use-resource-mutation';
 import { useFundingAttributes } from '@/lib/hooks/use-funding-attributes';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
-import type {
-  ChildContract,
-  ChildContractCreateRequest,
-  ChildContractUpdateRequest,
-  ContractProperties,
+import {
+  type ChildContract,
+  type ChildContractCreateRequest,
+  type ChildContractUpdateRequest,
+  type ContractProperties,
+  LOOKUP_FETCH_LIMIT,
 } from '@/lib/api/types';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -98,7 +99,7 @@ export default function ChildContractsPage() {
   // Fetch sections for section selector
   const { data: sectionsData } = useQuery({
     queryKey: queryKeys.sections.list(orgId),
-    queryFn: () => apiClient.getSections(orgId, { limit: 100 }),
+    queryFn: () => apiClient.getSections(orgId, { limit: LOOKUP_FETCH_LIMIT }),
     enabled: !!orgId,
   });
 

@@ -22,10 +22,11 @@ import { QueryError } from '@/components/crud/query-error';
 import { useResourceMutation } from '@/lib/hooks/use-resource-mutation';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
-import type {
-  EmployeeContract,
-  EmployeeContractCreateRequest,
-  EmployeeContractUpdateRequest,
+import {
+  type EmployeeContract,
+  type EmployeeContractCreateRequest,
+  type EmployeeContractUpdateRequest,
+  LOOKUP_FETCH_LIMIT,
 } from '@/lib/api/types';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -70,14 +71,14 @@ export default function EmployeeContractsPage() {
 
   const { data: payPlansData } = useQuery({
     queryKey: queryKeys.payPlans.all(orgId),
-    queryFn: () => apiClient.getPayPlans(orgId, { limit: 100 }),
+    queryFn: () => apiClient.getPayPlans(orgId, { limit: LOOKUP_FETCH_LIMIT }),
     enabled: !!orgId,
   });
   const payPlans = payPlansData?.data ?? [];
 
   const { data: sectionsData } = useQuery({
     queryKey: queryKeys.sections.list(orgId),
-    queryFn: () => apiClient.getSections(orgId, { limit: 100 }),
+    queryFn: () => apiClient.getSections(orgId, { limit: LOOKUP_FETCH_LIMIT }),
     enabled: !!orgId,
   });
   const sections = sectionsData?.data ?? [];

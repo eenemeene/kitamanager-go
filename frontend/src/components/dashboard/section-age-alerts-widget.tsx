@@ -18,7 +18,7 @@ import {
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { getActiveContract } from '@/lib/utils/contracts';
-import type { Section } from '@/lib/api/types';
+import { type Section, LOOKUP_FETCH_LIMIT } from '@/lib/api/types';
 
 interface AgeAlert {
   childId: number;
@@ -69,7 +69,7 @@ export function SectionAgeAlertsWidget({ orgId }: SectionAgeAlertsWidgetProps) {
 
   const { data: sectionsData } = useQuery({
     queryKey: queryKeys.sections.list(orgId),
-    queryFn: () => apiClient.getSections(orgId, { limit: 100 }),
+    queryFn: () => apiClient.getSections(orgId, { limit: LOOKUP_FETCH_LIMIT }),
     enabled: !!orgId,
   });
 

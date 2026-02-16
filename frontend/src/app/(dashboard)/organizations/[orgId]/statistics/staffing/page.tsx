@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
+import { LOOKUP_FETCH_LIMIT } from '@/lib/api/types';
 
 const StaffingHoursChart = dynamic(
   () => import('@/components/charts/staffing-hours-chart').then((mod) => mod.StaffingHoursChart),
@@ -36,7 +37,7 @@ export default function StaffingPage() {
 
   const { data: sections } = useQuery({
     queryKey: queryKeys.sections.list(orgId),
-    queryFn: () => apiClient.getSections(orgId, { limit: 100 }),
+    queryFn: () => apiClient.getSections(orgId, { limit: LOOKUP_FETCH_LIMIT }),
     enabled: !!orgId,
   });
 

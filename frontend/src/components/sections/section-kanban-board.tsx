@@ -18,7 +18,7 @@ import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useMoveContractMutation } from '@/lib/hooks/use-move-contract-mutation';
-import type { Child, Employee } from '@/lib/api/types';
+import { type Child, type Employee, LOOKUP_FETCH_LIMIT } from '@/lib/api/types';
 import { getActiveContract } from '@/lib/utils/contracts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SectionColumn } from './section-column';
@@ -52,7 +52,7 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
 
   const { data: sectionsData, isLoading: sectionsLoading } = useQuery({
     queryKey: queryKeys.sections.list(orgId),
-    queryFn: () => apiClient.getSections(orgId, { limit: 100 }),
+    queryFn: () => apiClient.getSections(orgId, { limit: LOOKUP_FETCH_LIMIT }),
     enabled: !!orgId,
   });
 

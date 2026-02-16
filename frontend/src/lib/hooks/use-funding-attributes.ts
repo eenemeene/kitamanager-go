@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
+import { LOOKUP_FETCH_LIMIT } from '@/lib/api/types';
 import { useUiStore } from '@/stores/ui-store';
 
 export interface FundingAttribute {
@@ -24,7 +25,7 @@ export function useFundingAttributes(orgId: number, fromDate?: string, toDate?: 
   // Fetch all government fundings (cached by React Query)
   const { data: fundingsResponse } = useQuery({
     queryKey: queryKeys.governmentFundings.allCached(),
-    queryFn: () => apiClient.getGovernmentFundings({ page: 1, limit: 100 }),
+    queryFn: () => apiClient.getGovernmentFundings({ page: 1, limit: LOOKUP_FETCH_LIMIT }),
     staleTime: 5 * 60 * 1000, // 5 minutes - funding configs rarely change
     enabled: !!state,
   });
