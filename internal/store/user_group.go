@@ -74,7 +74,7 @@ func (s *UserGroupStore) FindByUserAndGroup(ctx context.Context, userID, groupID
 // FindByUser returns all group memberships for a user
 func (s *UserGroupStore) FindByUser(ctx context.Context, userID uint) ([]models.UserGroup, error) {
 	var memberships []models.UserGroup
-	err := s.db.
+	err := DBFromContext(ctx, s.db).
 		Preload("Group").
 		Preload("Group.Organization").
 		Where("user_id = ?", userID).
@@ -85,7 +85,7 @@ func (s *UserGroupStore) FindByUser(ctx context.Context, userID uint) ([]models.
 // FindByGroup returns all user memberships in a group
 func (s *UserGroupStore) FindByGroup(ctx context.Context, groupID uint) ([]models.UserGroup, error) {
 	var memberships []models.UserGroup
-	err := s.db.
+	err := DBFromContext(ctx, s.db).
 		Preload("User").
 		Where("group_id = ?", groupID).
 		Find(&memberships).Error
@@ -95,7 +95,7 @@ func (s *UserGroupStore) FindByGroup(ctx context.Context, groupID uint) ([]model
 // FindByUserAndOrg returns all user-group memberships for a user in a specific organization
 func (s *UserGroupStore) FindByUserAndOrg(ctx context.Context, userID, orgID uint) ([]models.UserGroup, error) {
 	var memberships []models.UserGroup
-	err := s.db.
+	err := DBFromContext(ctx, s.db).
 		Preload("Group").
 		Preload("Group.Organization").
 		Joins("JOIN groups ON groups.id = user_groups.group_id").
