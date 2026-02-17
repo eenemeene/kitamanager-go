@@ -512,6 +512,94 @@ export async function getGovernmentFundingsViaApi(
 }
 
 /**
+ * Get government funding details (with periods) via the API
+ */
+export async function getGovernmentFundingViaApi(
+  page: Page,
+  fundingId: number
+): Promise<{ id: number; name: string; periods?: Array<{ id: number; properties?: Array<{ key: string; value: string }> }> }> {
+  return apiRequest(page, 'GET', `/api/v1/government-fundings/${fundingId}?periods_limit=0`);
+}
+
+/**
+ * Create a government funding period via the API
+ */
+export async function createFundingPeriodViaApi(
+  page: Page,
+  fundingId: number,
+  data: { from: string; to?: string; full_time_weekly_hours?: number }
+): Promise<{ id: number }> {
+  // API expects RFC3339 dates (time.Time)
+  const body = {
+    full_time_weekly_hours: 39,
+    ...data,
+    from: data.from.includes('T') ? data.from : `${data.from}T00:00:00Z`,
+    ...(data.to ? { to: data.to.includes('T') ? data.to : `${data.to}T00:00:00Z` } : {}),
+  };
+  return apiRequest(
+    page,
+    'POST',
+    `/api/v1/government-fundings/${fundingId}/periods`,
+    body
+  );
+}
+
+/**
+ * Create a government funding property via the API
+ */
+export async function createFundingPropertyViaApi(
+  page: Page,
+  fundingId: number,
+  periodId: number,
+  data: { key: string; value: string; payment: number; requirement: number; min_age?: number; max_age?: number }
+): Promise<{ id: number }> {
+  return apiRequest(
+    page,
+    'POST',
+    `/api/v1/government-fundings/${fundingId}/periods/${periodId}/properties`,
+    data
+  );
+}
+
+/**
+ * Ensure the Berlin government funding has at least one period with properties.
+ * Used by contract tests that depend on property suggestions being available.
+ */
+export async function ensureFundingHasProperties(page: Page): Promise<void> {
+  const fundings = await getGovernmentFundingsViaApi(page);
+  if (fundings.length === 0) return;
+
+  const funding = fundings[0];
+  const details = await getGovernmentFundingViaApi(page, funding.id);
+
+  // Check if funding already has periods with properties
+  if (details.periods && details.periods.length > 0) {
+    const hasProperties = details.periods.some(
+      (p) => p.properties && p.properties.length > 0
+    );
+    if (hasProperties) return;
+  }
+
+  // Create a period covering a wide date range
+  const period = await createFundingPeriodViaApi(page, funding.id, {
+    from: '2020-01-01',
+    full_time_weekly_hours: 39,
+  });
+
+  // Add care_type properties
+  const properties = [
+    { key: 'care_type', value: 'ganztag', payment: 100000, requirement: 0.301, min_age: 0, max_age: 8 },
+    { key: 'care_type', value: 'halbtag', payment: 70000, requirement: 0.15, min_age: 0, max_age: 8 },
+    { key: 'care_type', value: 'teilzeit', payment: 85000, requirement: 0.217, min_age: 0, max_age: 8 },
+    { key: 'ndh', value: 'ndh', payment: 10000, requirement: 0.017, min_age: 0, max_age: 8 },
+  ];
+
+  for (const prop of properties) {
+    await createFundingPropertyViaApi(page, funding.id, period.id, prop);
+  }
+}
+
+/**
  * Create a budget item via the API
  */
 export async function createBudgetItemViaApi(
