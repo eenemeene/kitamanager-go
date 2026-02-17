@@ -72,16 +72,82 @@ export function createKitaYearBackgroundLayer(
                   opacity={0.04}
                 />
               )}
-              <text
-                x={clampedX0 + width / 2}
-                y={10}
-                textAnchor="middle"
-                fontSize={10}
-                fill="currentColor"
-                opacity={0.35}
-              >
-                {kitaYearText(band.label)}
-              </text>
+              {/* Vertical separator line at kita year boundary */}
+              {i > 0 && (
+                <line
+                  x1={clampedX0}
+                  x2={clampedX0}
+                  y1={0}
+                  y2={innerHeight}
+                  stroke="currentColor"
+                  strokeWidth={1}
+                  strokeDasharray="4 3"
+                  opacity={0.2}
+                />
+              )}
+              {/* Spanning bracket with kita year label below the x-axis */}
+              {(() => {
+                const bracketY = innerHeight + 48;
+                const tickH = 4;
+                const midX = clampedX0 + width / 2;
+                const labelY = bracketY + 14;
+                return (
+                  <>
+                    {/* Horizontal spanning line */}
+                    <line
+                      x1={clampedX0 + 4}
+                      x2={clampedX1 - 4}
+                      y1={bracketY}
+                      y2={bracketY}
+                      stroke="currentColor"
+                      strokeWidth={1}
+                      opacity={0.3}
+                    />
+                    {/* Left tick */}
+                    <line
+                      x1={clampedX0 + 4}
+                      x2={clampedX0 + 4}
+                      y1={bracketY - tickH}
+                      y2={bracketY}
+                      stroke="currentColor"
+                      strokeWidth={1}
+                      opacity={0.3}
+                    />
+                    {/* Right tick */}
+                    <line
+                      x1={clampedX1 - 4}
+                      x2={clampedX1 - 4}
+                      y1={bracketY - tickH}
+                      y2={bracketY}
+                      stroke="currentColor"
+                      strokeWidth={1}
+                      opacity={0.3}
+                    />
+                    {/* Center connector down to label */}
+                    <line
+                      x1={midX}
+                      x2={midX}
+                      y1={bracketY}
+                      y2={bracketY + 4}
+                      stroke="currentColor"
+                      strokeWidth={1}
+                      opacity={0.3}
+                    />
+                    {/* Label */}
+                    <text
+                      x={midX}
+                      y={labelY}
+                      textAnchor="middle"
+                      fontSize={11}
+                      fontWeight={500}
+                      fill="currentColor"
+                      opacity={0.5}
+                    >
+                      {kitaYearText(band.label)}
+                    </text>
+                  </>
+                );
+              })()}
             </g>
           );
         })}

@@ -142,7 +142,7 @@ export function StaffingHoursChart({ data }: StaffingHoursChartProps) {
     <div className="h-[350px]">
       <ResponsiveLine
         data={chartData}
-        margin={{ top: 20, right: 60, bottom: 50, left: 60 }}
+        margin={{ top: 20, right: 60, bottom: 80, left: 60 }}
         xScale={{ type: 'point' }}
         yScale={{ type: 'linear', min: 'auto', max: 'auto', stacked: false }}
         layers={[

@@ -49,7 +49,7 @@ export function MonthlyContractChart({ data }: MonthlyContractChartProps) {
     <div className="h-[350px]">
       <ResponsiveLine
         data={chartData}
-        margin={{ top: 20, right: 30, bottom: 50, left: 60 }}
+        margin={{ top: 20, right: 30, bottom: 80, left: 60 }}
         xScale={{ type: 'point' }}
         yScale={{ type: 'linear', min: 'auto', max: 'auto', stacked: false }}
         layers={[

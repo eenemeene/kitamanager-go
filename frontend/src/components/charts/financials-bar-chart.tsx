@@ -88,7 +88,7 @@ export function FinancialsChart({ data }: FinancialsChartProps) {
                   <line
                     x1={clampedX0}
                     x2={clampedX0}
-                    y1={-20}
+                    y1={0}
                     y2={innerHeight}
                     stroke="currentColor"
                     strokeWidth={1}
@@ -96,18 +96,64 @@ export function FinancialsChart({ data }: FinancialsChartProps) {
                     opacity={0.2}
                   />
                 )}
-                {/* Kita year label above the chart area */}
-                <text
-                  x={clampedX0 + width / 2}
-                  y={-22}
-                  textAnchor="middle"
-                  fontSize={11}
-                  fontWeight={500}
-                  fill="currentColor"
-                  opacity={0.5}
-                >
-                  {t('statistics.kitaYear', { year: band.label })}
-                </text>
+                {/* Spanning bracket with kita year label below the x-axis */}
+                {(() => {
+                  const bracketY = innerHeight + 48;
+                  const tickH = 4;
+                  const midX = clampedX0 + width / 2;
+                  const labelY = bracketY + 14;
+                  return (
+                    <>
+                      <line
+                        x1={clampedX0 + 4}
+                        x2={clampedX1 - 4}
+                        y1={bracketY}
+                        y2={bracketY}
+                        stroke="currentColor"
+                        strokeWidth={1}
+                        opacity={0.3}
+                      />
+                      <line
+                        x1={clampedX0 + 4}
+                        x2={clampedX0 + 4}
+                        y1={bracketY - tickH}
+                        y2={bracketY}
+                        stroke="currentColor"
+                        strokeWidth={1}
+                        opacity={0.3}
+                      />
+                      <line
+                        x1={clampedX1 - 4}
+                        x2={clampedX1 - 4}
+                        y1={bracketY - tickH}
+                        y2={bracketY}
+                        stroke="currentColor"
+                        strokeWidth={1}
+                        opacity={0.3}
+                      />
+                      <line
+                        x1={midX}
+                        x2={midX}
+                        y1={bracketY}
+                        y2={bracketY + 4}
+                        stroke="currentColor"
+                        strokeWidth={1}
+                        opacity={0.3}
+                      />
+                      <text
+                        x={midX}
+                        y={labelY}
+                        textAnchor="middle"
+                        fontSize={11}
+                        fontWeight={500}
+                        fill="currentColor"
+                        opacity={0.5}
+                      >
+                        {t('statistics.kitaYear', { year: band.label })}
+                      </text>
+                    </>
+                  );
+                })()}
               </g>
             );
           })}
@@ -232,7 +278,7 @@ export function FinancialsChart({ data }: FinancialsChartProps) {
         data={chartData}
         keys={keys}
         indexBy="date"
-        margin={{ top: 60, right: 30, bottom: 50, left: 80 }}
+        margin={{ top: 60, right: 30, bottom: 80, left: 80 }}
         padding={0.3}
         groupMode="stacked"
         minValue="auto"
