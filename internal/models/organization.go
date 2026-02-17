@@ -6,7 +6,7 @@ import (
 
 type Organization struct {
 	ID        uint      `gorm:"primaryKey" json:"id" example:"1"`
-	Name      string    `gorm:"size:255;not null" json:"name" binding:"required" example:"Acme Corp"`
+	Name      string    `gorm:"size:255;not null" json:"name" example:"Acme Corp"`
 	Active    bool      `gorm:"default:true" json:"active" example:"true"`
 	State     string    `gorm:"size:50;not null;default:'berlin'" json:"state" example:"berlin"`
 	CreatedAt time.Time `json:"created_at" example:"2024-01-15T10:30:00Z"`

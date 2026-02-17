@@ -9020,9 +9020,6 @@ const docTemplate = `{
         },
         "github_com_eenemeene_kitamanager-go_internal_models.Group": {
             "type": "object",
-            "required": [
-                "name"
-            ],
             "properties": {
                 "active": {
                     "type": "boolean",
@@ -9304,9 +9301,6 @@ const docTemplate = `{
         },
         "github_com_eenemeene_kitamanager-go_internal_models.Organization": {
             "type": "object",
-            "required": [
-                "name"
-            ],
             "properties": {
                 "active": {
                     "type": "boolean",
@@ -10326,10 +10320,6 @@ const docTemplate = `{
         },
         "github_com_eenemeene_kitamanager-go_internal_models.User": {
             "type": "object",
-            "required": [
-                "email",
-                "name"
-            ],
             "properties": {
                 "active": {
                     "type": "boolean",

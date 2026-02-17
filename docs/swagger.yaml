@@ -1100,8 +1100,6 @@ definitions:
         items:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.User'
         type: array
-    required:
-    - name
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.GroupCreateRequest:
     properties:
@@ -1293,8 +1291,6 @@ definitions:
       updated_at:
         example: "2024-01-15T10:30:00Z"
         type: string
-    required:
-    - name
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.OrganizationCreateRequest:
     properties:
@@ -2028,9 +2024,6 @@ definitions:
       updated_at:
         example: "2024-01-15T10:30:00Z"
         type: string
-    required:
-    - email
-    - name
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.UserCreateRequest:
     properties:
