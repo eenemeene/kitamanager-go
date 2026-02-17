@@ -149,6 +149,62 @@ func TestBudgetItemHandler_List(t *testing.T) {
 	}
 }
 
+func TestBudgetItemHandler_List_ActiveAmountCents(t *testing.T) {
+	db := setupTestDB(t)
+	org := createTestOrganization(t, db, "Test Org")
+
+	svc := createBudgetItemService(db)
+	handler := NewBudgetItemHandler(svc, createAuditService(db))
+
+	// Item with active entry (open-ended from the past)
+	itemActive := &models.BudgetItem{OrganizationID: org.ID, Name: "Active Item", Category: "income"}
+	db.Create(itemActive)
+	db.Create(&models.BudgetItemEntry{
+		BudgetItemID: itemActive.ID,
+		Period:       models.Period{From: parseTime(t, "2020-01-01T00:00:00Z")},
+		AmountCents:  42000,
+	})
+
+	// Item without entries
+	db.Create(&models.BudgetItem{OrganizationID: org.ID, Name: "No Entries", Category: "expense"})
+
+	r := setupTestRouter()
+	r.GET("/api/v1/organizations/:orgId/budget-items", handler.List)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/api/v1/organizations/%d/budget-items", org.ID), nil)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var response models.PaginatedResponse[models.BudgetItemResponse]
+	parseResponse(t, w, &response)
+
+	if len(response.Data) != 2 {
+		t.Fatalf("expected 2 budget items, got %d", len(response.Data))
+	}
+
+	// Ordered by name: "Active Item" first, "No Entries" second
+	activeItem := response.Data[0]
+	if activeItem.Name != "Active Item" {
+		t.Fatalf("expected first item 'Active Item', got '%s'", activeItem.Name)
+	}
+	if activeItem.ActiveAmountCents == nil {
+		t.Fatal("expected ActiveAmountCents to be set for Active Item")
+	}
+	if *activeItem.ActiveAmountCents != 42000 {
+		t.Errorf("ActiveAmountCents = %d, want 42000", *activeItem.ActiveAmountCents)
+	}
+
+	noEntriesItem := response.Data[1]
+	if noEntriesItem.Name != "No Entries" {
+		t.Fatalf("expected second item 'No Entries', got '%s'", noEntriesItem.Name)
+	}
+	if noEntriesItem.ActiveAmountCents != nil {
+		t.Errorf("expected ActiveAmountCents nil for No Entries, got %d", *noEntriesItem.ActiveAmountCents)
+	}
+}
+
 func TestBudgetItemHandler_List_CrossOrgIsolation(t *testing.T) {
 	db := setupTestDB(t)
 	org1 := createTestOrganization(t, db, "Org 1")

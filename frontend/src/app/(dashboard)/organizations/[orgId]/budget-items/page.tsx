@@ -30,7 +30,7 @@ import {
 } from '@/components/crud';
 import { Pagination } from '@/components/ui/pagination';
 import { budgetItemWithEntrySchema, type BudgetItemWithEntryFormData } from '@/lib/schemas';
-import { formatDateForApi, eurosToCents } from '@/lib/utils/formatting';
+import { formatDateForApi, eurosToCents, formatCurrency } from '@/lib/utils/formatting';
 
 const today = new Date().toISOString().slice(0, 10);
 
@@ -124,6 +124,12 @@ export default function BudgetItemsPage() {
         header: 'budgetItems.perChild',
         render: (item) =>
           item.per_child ? <Check className="h-4 w-4 text-muted-foreground" /> : null,
+      },
+      {
+        key: 'active_amount',
+        header: 'budgetItems.activeAmount',
+        render: (item) =>
+          item.active_amount_cents != null ? formatCurrency(item.active_amount_cents) : '—',
       },
     ],
     [t]

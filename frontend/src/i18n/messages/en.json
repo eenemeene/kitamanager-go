@@ -592,7 +592,8 @@
     "deleteEntryConfirm": "Are you sure you want to delete this entry?",
     "noEntriesDefined": "No entries defined. Click \"Add Entry\" to get started.",
     "firstEntry": "First Entry",
-    "amountMustBePositive": "Amount must be greater than 0"
+    "amountMustBePositive": "Amount must be greater than 0",
+    "activeAmount": "Active Amount"
   },
   "sectionAgeAlerts": {
     "title": "Children Over Section Age Limit",

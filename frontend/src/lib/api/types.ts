@@ -517,6 +517,7 @@ export interface BudgetItem {
   name: string;
   category: 'income' | 'expense';
   per_child: boolean;
+  active_amount_cents?: number | null;
   entries?: BudgetItemEntry[];
   created_at: string;
   updated_at: string;

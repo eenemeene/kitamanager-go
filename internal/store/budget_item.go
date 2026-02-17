@@ -70,6 +70,7 @@ func (s *BudgetItemStore) FindByOrganization(ctx context.Context, orgID uint, li
 	}
 
 	err := query.
+		Preload("Entries").
 		Order("name ASC").
 		Limit(limit).
 		Offset(offset).

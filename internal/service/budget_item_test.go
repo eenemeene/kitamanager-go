@@ -270,6 +270,281 @@ func TestBudgetItemService_List_Empty(t *testing.T) {
 	}
 }
 
+func TestBudgetItemService_List_ActiveAmountCents_NoEntries(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createBudgetItemService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	_, _ = svc.Create(ctx, org.ID, &models.BudgetItemCreateRequest{Name: "No Entries", Category: "income"})
+
+	items, _, err := svc.List(ctx, org.ID, 10, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(items))
+	}
+	if items[0].ActiveAmountCents != nil {
+		t.Errorf("expected ActiveAmountCents nil for item with no entries, got %d", *items[0].ActiveAmountCents)
+	}
+}
+
+func TestBudgetItemService_List_ActiveAmountCents_OneActiveOpenEnded(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createBudgetItemService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	item, _ := svc.Create(ctx, org.ID, &models.BudgetItemCreateRequest{Name: "Open Ended", Category: "income"})
+
+	// Entry from the past with no end date — should be active
+	_, _ = svc.CreateEntry(ctx, item.ID, org.ID, &models.BudgetItemEntryCreateRequest{
+		From:        time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		AmountCents: 12345,
+	})
+
+	items, _, err := svc.List(ctx, org.ID, 10, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if items[0].ActiveAmountCents == nil {
+		t.Fatal("expected ActiveAmountCents to be set")
+	}
+	if *items[0].ActiveAmountCents != 12345 {
+		t.Errorf("ActiveAmountCents = %d, want 12345", *items[0].ActiveAmountCents)
+	}
+}
+
+func TestBudgetItemService_List_ActiveAmountCents_OneActiveBounded(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createBudgetItemService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	item, _ := svc.Create(ctx, org.ID, &models.BudgetItemCreateRequest{Name: "Bounded", Category: "expense"})
+
+	// Entry from past to far future — should be active
+	to := time.Date(2099, 12, 31, 0, 0, 0, 0, time.UTC)
+	_, _ = svc.CreateEntry(ctx, item.ID, org.ID, &models.BudgetItemEntryCreateRequest{
+		From:        time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		To:          &to,
+		AmountCents: 99900,
+	})
+
+	items, _, err := svc.List(ctx, org.ID, 10, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if items[0].ActiveAmountCents == nil {
+		t.Fatal("expected ActiveAmountCents to be set")
+	}
+	if *items[0].ActiveAmountCents != 99900 {
+		t.Errorf("ActiveAmountCents = %d, want 99900", *items[0].ActiveAmountCents)
+	}
+}
+
+func TestBudgetItemService_List_ActiveAmountCents_AllExpired(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createBudgetItemService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	item, _ := svc.Create(ctx, org.ID, &models.BudgetItemCreateRequest{Name: "Expired", Category: "income"})
+
+	// Entry entirely in the past
+	to := time.Date(2020, 12, 31, 0, 0, 0, 0, time.UTC)
+	_, _ = svc.CreateEntry(ctx, item.ID, org.ID, &models.BudgetItemEntryCreateRequest{
+		From:        time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		To:          &to,
+		AmountCents: 50000,
+	})
+
+	items, _, err := svc.List(ctx, org.ID, 10, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if items[0].ActiveAmountCents != nil {
+		t.Errorf("expected ActiveAmountCents nil for expired entries, got %d", *items[0].ActiveAmountCents)
+	}
+}
+
+func TestBudgetItemService_List_ActiveAmountCents_AllFuture(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createBudgetItemService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	item, _ := svc.Create(ctx, org.ID, &models.BudgetItemCreateRequest{Name: "Future", Category: "income"})
+
+	// Entry entirely in the future
+	to := time.Date(2099, 12, 31, 0, 0, 0, 0, time.UTC)
+	_, _ = svc.CreateEntry(ctx, item.ID, org.ID, &models.BudgetItemEntryCreateRequest{
+		From:        time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC),
+		To:          &to,
+		AmountCents: 50000,
+	})
+
+	items, _, err := svc.List(ctx, org.ID, 10, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if items[0].ActiveAmountCents != nil {
+		t.Errorf("expected ActiveAmountCents nil for future entries, got %d", *items[0].ActiveAmountCents)
+	}
+}
+
+func TestBudgetItemService_List_ActiveAmountCents_MultipleEntriesOneActive(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createBudgetItemService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	item, _ := svc.Create(ctx, org.ID, &models.BudgetItemCreateRequest{Name: "Multi", Category: "income"})
+
+	// Past entry
+	to1 := time.Date(2020, 12, 31, 0, 0, 0, 0, time.UTC)
+	_, _ = svc.CreateEntry(ctx, item.ID, org.ID, &models.BudgetItemEntryCreateRequest{
+		From:        time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		To:          &to1,
+		AmountCents: 10000,
+	})
+
+	// Active entry (ongoing from a date in the past)
+	_, _ = svc.CreateEntry(ctx, item.ID, org.ID, &models.BudgetItemEntryCreateRequest{
+		From:        time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC),
+		AmountCents: 20000,
+	})
+
+	items, _, err := svc.List(ctx, org.ID, 10, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if items[0].ActiveAmountCents == nil {
+		t.Fatal("expected ActiveAmountCents to be set")
+	}
+	if *items[0].ActiveAmountCents != 20000 {
+		t.Errorf("ActiveAmountCents = %d, want 20000", *items[0].ActiveAmountCents)
+	}
+}
+
+func TestBudgetItemService_List_ActiveAmountCents_BoundaryFromToday(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createBudgetItemService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	item, _ := svc.Create(ctx, org.ID, &models.BudgetItemCreateRequest{Name: "FromToday", Category: "income"})
+
+	// Entry starting today
+	today := models.TruncateToDate(time.Now())
+	_, _ = svc.CreateEntry(ctx, item.ID, org.ID, &models.BudgetItemEntryCreateRequest{
+		From:        today,
+		AmountCents: 77700,
+	})
+
+	items, _, err := svc.List(ctx, org.ID, 10, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if items[0].ActiveAmountCents == nil {
+		t.Fatal("expected ActiveAmountCents to be set for entry starting today")
+	}
+	if *items[0].ActiveAmountCents != 77700 {
+		t.Errorf("ActiveAmountCents = %d, want 77700", *items[0].ActiveAmountCents)
+	}
+}
+
+func TestBudgetItemService_List_ActiveAmountCents_BoundaryToToday(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createBudgetItemService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	item, _ := svc.Create(ctx, org.ID, &models.BudgetItemCreateRequest{Name: "ToToday", Category: "expense"})
+
+	// Entry ending today (inclusive)
+	today := models.TruncateToDate(time.Now())
+	_, _ = svc.CreateEntry(ctx, item.ID, org.ID, &models.BudgetItemEntryCreateRequest{
+		From:        time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		To:          &today,
+		AmountCents: 88800,
+	})
+
+	items, _, err := svc.List(ctx, org.ID, 10, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if items[0].ActiveAmountCents == nil {
+		t.Fatal("expected ActiveAmountCents to be set for entry ending today (inclusive)")
+	}
+	if *items[0].ActiveAmountCents != 88800 {
+		t.Errorf("ActiveAmountCents = %d, want 88800", *items[0].ActiveAmountCents)
+	}
+}
+
+func TestBudgetItemService_List_ActiveAmountCents_MixedItems(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createBudgetItemService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	// Item A: has active entry
+	itemA, _ := svc.Create(ctx, org.ID, &models.BudgetItemCreateRequest{Name: "AAA Active", Category: "income"})
+	_, _ = svc.CreateEntry(ctx, itemA.ID, org.ID, &models.BudgetItemEntryCreateRequest{
+		From:        time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		AmountCents: 11100,
+	})
+
+	// Item B: no entries
+	_, _ = svc.Create(ctx, org.ID, &models.BudgetItemCreateRequest{Name: "BBB No Entries", Category: "expense"})
+
+	// Item C: only expired entry
+	itemC, _ := svc.Create(ctx, org.ID, &models.BudgetItemCreateRequest{Name: "CCC Expired", Category: "income"})
+	to := time.Date(2020, 12, 31, 0, 0, 0, 0, time.UTC)
+	_, _ = svc.CreateEntry(ctx, itemC.ID, org.ID, &models.BudgetItemEntryCreateRequest{
+		From:        time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		To:          &to,
+		AmountCents: 22200,
+	})
+
+	items, total, err := svc.List(ctx, org.ID, 10, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if total != 3 {
+		t.Fatalf("expected 3 items, got %d", total)
+	}
+
+	// Items ordered by name ASC: AAA Active, BBB No Entries, CCC Expired
+	// AAA Active: should have active amount
+	if items[0].ActiveAmountCents == nil {
+		t.Error("expected AAA Active to have ActiveAmountCents set")
+	} else if *items[0].ActiveAmountCents != 11100 {
+		t.Errorf("AAA Active: ActiveAmountCents = %d, want 11100", *items[0].ActiveAmountCents)
+	}
+
+	// BBB No Entries: no active amount
+	if items[1].ActiveAmountCents != nil {
+		t.Errorf("expected BBB No Entries to have nil ActiveAmountCents, got %d", *items[1].ActiveAmountCents)
+	}
+
+	// CCC Expired: no active amount
+	if items[2].ActiveAmountCents != nil {
+		t.Errorf("expected CCC Expired to have nil ActiveAmountCents, got %d", *items[2].ActiveAmountCents)
+	}
+}
+
 func TestBudgetItemService_Update(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createBudgetItemService(db)

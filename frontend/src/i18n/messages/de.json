@@ -592,7 +592,8 @@
     "deleteEntryConfirm": "Möchten Sie diesen Eintrag wirklich löschen?",
     "noEntriesDefined": "Keine Einträge definiert. Klicken Sie auf \"Eintrag hinzufügen\", um zu beginnen.",
     "firstEntry": "Erster Eintrag",
-    "amountMustBePositive": "Betrag muss größer als 0 sein"
+    "amountMustBePositive": "Betrag muss größer als 0 sein",
+    "activeAmount": "Aktiver Betrag"
   },
   "sectionAgeAlerts": {
     "title": "Kinder über Altersgrenze des Bereichs",

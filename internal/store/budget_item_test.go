@@ -688,6 +688,50 @@ func TestBudgetItemStore_Entries_ValidateNoOverlap(t *testing.T) {
 	}
 }
 
+func TestBudgetItemStore_FindByOrganization_PreloadsEntries(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewBudgetItemStore(db)
+	org := createTestOrganization(t, db, "Test Org")
+
+	item := &models.BudgetItem{
+		OrganizationID: org.ID,
+		Name:           "Elternbeiträge",
+		Category:       "income",
+	}
+	db.Create(item)
+
+	// Create entries
+	to := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
+	db.Create(&models.BudgetItemEntry{
+		BudgetItemID: item.ID,
+		Period: models.Period{
+			From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			To:   &to,
+		},
+		AmountCents: 50000,
+	})
+	db.Create(&models.BudgetItemEntry{
+		BudgetItemID: item.ID,
+		Period: models.Period{
+			From: time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC),
+		},
+		AmountCents: 60000,
+	})
+
+	items, _, err := store.FindByOrganization(ctx, org.ID, 100, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(items))
+	}
+
+	if len(items[0].Entries) != 2 {
+		t.Errorf("expected 2 entries preloaded, got %d", len(items[0].Entries))
+	}
+}
+
 func TestBudgetItemStore_PerChild_Persisted(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewBudgetItemStore(db)

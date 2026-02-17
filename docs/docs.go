@@ -1343,7 +1343,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get all budget items for an organization",
+                "description": "Get all budget items for an organization. Each item includes active_amount_cents when an entry is currently active.",
                 "consumes": [
                     "application/json"
                 ],
@@ -7753,6 +7753,10 @@ const docTemplate = `{
         "github_com_eenemeene_kitamanager-go_internal_models.BudgetItemResponse": {
             "type": "object",
             "properties": {
+                "active_amount_cents": {
+                    "type": "integer",
+                    "example": 50000
+                },
                 "category": {
                     "type": "string",
                     "example": "income"

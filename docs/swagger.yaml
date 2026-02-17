@@ -147,6 +147,9 @@ definitions:
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.BudgetItemResponse:
     properties:
+      active_amount_cents:
+        example: 50000
+        type: integer
       category:
         example: income
         type: string
@@ -3001,7 +3004,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: Get all budget items for an organization
+      description: Get all budget items for an organization. Each item includes active_amount_cents
+        when an entry is currently active.
       parameters:
       - description: Organization ID
         in: path

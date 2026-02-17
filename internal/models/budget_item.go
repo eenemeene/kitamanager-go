@@ -71,13 +71,14 @@ type BudgetItemUpdateRequest struct {
 
 // BudgetItemResponse is the response for a budget item.
 type BudgetItemResponse struct {
-	ID             uint      `json:"id" example:"1"`
-	OrganizationID uint      `json:"organization_id" example:"1"`
-	Name           string    `json:"name" example:"Elternbeiträge"`
-	Category       string    `json:"category" example:"income"`
-	PerChild       bool      `json:"per_child" example:"true"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	ID                uint      `json:"id" example:"1"`
+	OrganizationID    uint      `json:"organization_id" example:"1"`
+	Name              string    `json:"name" example:"Elternbeiträge"`
+	Category          string    `json:"category" example:"income"`
+	PerChild          bool      `json:"per_child" example:"true"`
+	ActiveAmountCents *int      `json:"active_amount_cents,omitempty" example:"50000"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
 }
 
 // BudgetItemDetailResponse includes entries for detail view.
@@ -122,7 +123,7 @@ type BudgetItemEntryResponse struct {
 
 // ToResponse converts a BudgetItem to BudgetItemResponse.
 func (b *BudgetItem) ToResponse() BudgetItemResponse {
-	return BudgetItemResponse{
+	resp := BudgetItemResponse{
 		ID:             b.ID,
 		OrganizationID: b.OrganizationID,
 		Name:           b.Name,
@@ -131,6 +132,17 @@ func (b *BudgetItem) ToResponse() BudgetItemResponse {
 		CreatedAt:      b.CreatedAt,
 		UpdatedAt:      b.UpdatedAt,
 	}
+
+	now := time.Now()
+	for i := range b.Entries {
+		if b.Entries[i].IsActiveOn(now) {
+			amount := b.Entries[i].AmountCents
+			resp.ActiveAmountCents = &amount
+			break
+		}
+	}
+
+	return resp
 }
 
 // ToDetailResponse converts a BudgetItem to BudgetItemDetailResponse.

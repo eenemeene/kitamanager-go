@@ -22,7 +22,7 @@ func NewBudgetItemHandler(service *service.BudgetItemService, auditService *serv
 
 // List godoc
 // @Summary List budget items
-// @Description Get all budget items for an organization
+// @Description Get all budget items for an organization. Each item includes active_amount_cents when an entry is currently active.
 // @Tags budget-items
 // @Accept json
 // @Produce json
