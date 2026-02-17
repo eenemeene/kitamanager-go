@@ -145,7 +145,6 @@ type GovernmentFundingStorer interface {
 	FindByState(ctx context.Context, state string) (*models.GovernmentFunding, error)
 	FindByStateWithDetails(ctx context.Context, state string, periodsLimit int, activeOn *time.Time) (*models.GovernmentFunding, error)
 	CountPeriods(ctx context.Context, fundingID uint) (int64, error)
-	FindByName(ctx context.Context, name string) (*models.GovernmentFunding, error)
 	Create(ctx context.Context, funding *models.GovernmentFunding) error
 	Update(ctx context.Context, funding *models.GovernmentFunding) error
 	Delete(ctx context.Context, id uint) error

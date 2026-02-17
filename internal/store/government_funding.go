@@ -42,14 +42,6 @@ func (s *GovernmentFundingStore) FindByID(ctx context.Context, id uint) (*models
 	return &funding, nil
 }
 
-func (s *GovernmentFundingStore) FindByName(ctx context.Context, name string) (*models.GovernmentFunding, error) {
-	var funding models.GovernmentFunding
-	if err := DBFromContext(ctx, s.db).Where("name = ?", name).First(&funding).Error; err != nil {
-		return nil, WrapNotFound(err)
-	}
-	return &funding, nil
-}
-
 func (s *GovernmentFundingStore) FindByState(ctx context.Context, state string) (*models.GovernmentFunding, error) {
 	var funding models.GovernmentFunding
 	if err := DBFromContext(ctx, s.db).Where("state = ?", state).First(&funding).Error; err != nil {
