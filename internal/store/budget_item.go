@@ -63,13 +63,14 @@ func (s *BudgetItemStore) FindByOrganization(ctx context.Context, orgID uint, li
 	var items []models.BudgetItem
 	var total int64
 
-	query := DBFromContext(ctx, s.db).Model(&models.BudgetItem{}).Where("organization_id = ?", orgID)
+	db := DBFromContext(ctx, s.db)
 
-	if err := query.Count(&total).Error; err != nil {
+	if err := db.Model(&models.BudgetItem{}).Where("organization_id = ?", orgID).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	err := query.
+	err := db.
+		Where("organization_id = ?", orgID).
 		Preload("Entries").
 		Order("name ASC").
 		Limit(limit).

@@ -732,6 +732,48 @@ func TestBudgetItemStore_FindByOrganization_PreloadsEntries(t *testing.T) {
 	}
 }
 
+func TestBudgetItemStore_FindByOrganization_ActiveAmountCents(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewBudgetItemStore(db)
+	org := createTestOrganization(t, db, "Test Org")
+
+	item := &models.BudgetItem{
+		OrganizationID: org.ID,
+		Name:           "Garten",
+		Category:       "expense",
+	}
+	db.Create(item)
+
+	// Create an open-ended entry starting in the past (should be active today)
+	db.Create(&models.BudgetItemEntry{
+		BudgetItemID: item.ID,
+		Period: models.Period{
+			From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		},
+		AmountCents: 100000,
+	})
+
+	items, total, err := store.FindByOrganization(ctx, org.ID, 20, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if total != 1 {
+		t.Fatalf("expected total 1, got %d", total)
+	}
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(items))
+	}
+
+	// Convert to response — this calls ToResponse() which relies on preloaded entries
+	resp := items[0].ToResponse()
+	if resp.ActiveAmountCents == nil {
+		t.Fatal("expected ActiveAmountCents to be set, got nil (entries not preloaded?)")
+	}
+	if *resp.ActiveAmountCents != 100000 {
+		t.Errorf("ActiveAmountCents = %d, want 100000", *resp.ActiveAmountCents)
+	}
+}
+
 func TestBudgetItemStore_PerChild_Persisted(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewBudgetItemStore(db)
