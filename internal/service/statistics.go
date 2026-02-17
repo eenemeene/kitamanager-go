@@ -214,6 +214,7 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 		// Income: government funding for active children
 		fundingIncome := 0
 		childCount := 0
+		fundingDetailMap := make(map[string]int) // "key:value" → total cents
 		fundingPeriod := findPeriodForDate(fundingPeriods, date)
 		for i := range children {
 			child := &children[i]
@@ -222,12 +223,39 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 				if contract.IsActiveOn(date) {
 					childCount++
 					age := validation.CalculateAgeOnDate(child.Birthdate, date)
-					payment, _ := sumChildFundingMatch(age, contract.Properties, fundingPeriod)
-					fundingIncome += payment
+					if fundingPeriod != nil {
+						for _, fp := range fundingPeriod.Properties {
+							if !fp.MatchesAge(age) {
+								continue
+							}
+							if contract.Properties.HasValue(fp.Key, fp.Value) {
+								fundingIncome += fp.Payment
+								mapKey := fp.Key + ":" + fp.Value
+								fundingDetailMap[mapKey] += fp.Payment
+							}
+						}
+					}
 					break
 				}
 			}
 		}
+
+		// Convert funding detail map to sorted slice
+		var fundingDetails []models.FinancialFundingDetail
+		for mapKey, amount := range fundingDetailMap {
+			parts := strings.SplitN(mapKey, ":", 2)
+			fundingDetails = append(fundingDetails, models.FinancialFundingDetail{
+				Key:         parts[0],
+				Value:       parts[1],
+				AmountCents: amount,
+			})
+		}
+		sort.Slice(fundingDetails, func(i, j int) bool {
+			if fundingDetails[i].Key != fundingDetails[j].Key {
+				return fundingDetails[i].Key < fundingDetails[j].Key
+			}
+			return fundingDetails[i].Value < fundingDetails[j].Value
+		})
 
 		// Expenses: employee salaries
 		grossSalary := 0
@@ -266,6 +294,7 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 		// Budget items: income and expenses from budget items
 		budgetIncome := 0
 		budgetExpenses := 0
+		var budgetItemDetails []models.FinancialBudgetItemDetail
 		for i := range budgetItems {
 			item := &budgetItems[i]
 			for j := range item.Entries {
@@ -280,6 +309,11 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 					} else {
 						budgetExpenses += amount
 					}
+					budgetItemDetails = append(budgetItemDetails, models.FinancialBudgetItemDetail{
+						Name:        item.Name,
+						Category:    item.Category,
+						AmountCents: amount,
+					})
 					break // only first active entry per item
 				}
 			}
@@ -295,6 +329,8 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 		dp.Balance = dp.TotalIncome - dp.TotalExpenses
 		dp.ChildCount = childCount
 		dp.StaffCount = staffCount
+		dp.BudgetItemDetails = budgetItemDetails
+		dp.FundingDetails = fundingDetails
 		dataPoints = append(dataPoints, dp)
 	}
 

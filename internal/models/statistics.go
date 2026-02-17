@@ -14,13 +14,27 @@ type StaffingHoursResponse struct {
 	DataPoints []StaffingHoursDataPoint `json:"data_points"`
 }
 
+// FinancialBudgetItemDetail provides a breakdown of a single budget item's contribution
+type FinancialBudgetItemDetail struct {
+	Name        string `json:"name" example:"Elternbeiträge"`
+	Category    string `json:"category" example:"income"`
+	AmountCents int    `json:"amount_cents" example:"50000"`
+}
+
+// FinancialFundingDetail provides a breakdown of a single funding property's contribution
+type FinancialFundingDetail struct {
+	Key         string `json:"key" example:"care_type"`
+	Value       string `json:"value" example:"ganztag"`
+	AmountCents int    `json:"amount_cents" example:"166847"`
+}
+
 // FinancialDataPoint represents a single monthly data point for financial overview
 type FinancialDataPoint struct {
 	Date string `json:"date" example:"2025-01-01"`
 	// Income
 	FundingIncome int `json:"funding_income" example:"5000000"` // cents
 	// Expenses
-	GrossSalary   int `json:"gross_salary" example:"3500000"`  // cents
+	GrossSalary    int `json:"gross_salary" example:"3500000"`   // cents
 	EmployerCosts  int `json:"employer_costs" example:"770000"`  // cents
 	BudgetIncome   int `json:"budget_income" example:"200000"`   // cents
 	BudgetExpenses int `json:"budget_expenses" example:"300000"` // cents
@@ -31,6 +45,9 @@ type FinancialDataPoint struct {
 	// Counts
 	ChildCount int `json:"child_count" example:"45"`
 	StaffCount int `json:"staff_count" example:"12"`
+	// Breakdowns
+	BudgetItemDetails []FinancialBudgetItemDetail `json:"budget_item_details,omitempty"`
+	FundingDetails    []FinancialFundingDetail    `json:"funding_details,omitempty"`
 }
 
 // FinancialResponse represents the response for financial statistics

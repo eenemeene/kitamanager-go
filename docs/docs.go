@@ -6336,7 +6336,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns monthly data points with income (government funding), expenses (salaries, employer costs, operating costs), and balance.\nIncome is calculated from children's contract properties matched against government funding.\nSalary costs use pay plan entries pro-rated by weekly hours. Employer costs apply the period's contribution rate.\nOperating costs sum active cost entries for the organization.",
+                "description": "Returns monthly data points with income (government funding), expenses (salaries, employer costs, operating costs), and balance.\nIncome is calculated from children's contract properties matched against government funding.\nSalary costs use pay plan entries pro-rated by weekly hours. Employer costs apply the period's contribution rate.\nOperating costs sum active cost entries for the organization.\nEach data point includes optional breakdowns: funding_details (per funding property) and budget_item_details (per budget item).",
                 "consumes": [
                     "application/json"
                 ],
@@ -8473,6 +8473,23 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.FinancialBudgetItemDetail": {
+            "type": "object",
+            "properties": {
+                "amount_cents": {
+                    "type": "integer",
+                    "example": 50000
+                },
+                "category": {
+                    "type": "string",
+                    "example": "income"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Elternbeiträge"
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.FinancialDataPoint": {
             "type": "object",
             "properties": {
@@ -8491,6 +8508,13 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 200000
                 },
+                "budget_item_details": {
+                    "description": "Breakdowns",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FinancialBudgetItemDetail"
+                    }
+                },
                 "child_count": {
                     "description": "Counts",
                     "type": "integer",
@@ -8504,6 +8528,12 @@ const docTemplate = `{
                     "description": "cents",
                     "type": "integer",
                     "example": 770000
+                },
+                "funding_details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FinancialFundingDetail"
+                    }
                 },
                 "funding_income": {
                     "description": "Income",
@@ -8528,6 +8558,23 @@ const docTemplate = `{
                     "description": "Totals",
                     "type": "integer",
                     "example": 5000000
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.FinancialFundingDetail": {
+            "type": "object",
+            "properties": {
+                "amount_cents": {
+                    "type": "integer",
+                    "example": 166847
+                },
+                "key": {
+                    "type": "string",
+                    "example": "care_type"
+                },
+                "value": {
+                    "type": "string",
+                    "example": "ganztag"
                 }
             }
         },

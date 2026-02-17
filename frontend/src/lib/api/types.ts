@@ -583,6 +583,18 @@ export interface StepPromotionsResponse {
 }
 
 // Financial statistics
+export interface FinancialBudgetItemDetail {
+  name: string;
+  category: string;
+  amount_cents: number;
+}
+
+export interface FinancialFundingDetail {
+  key: string;
+  value: string;
+  amount_cents: number;
+}
+
 export interface FinancialDataPoint {
   date: string;
   funding_income: number;
@@ -595,6 +607,8 @@ export interface FinancialDataPoint {
   balance: number;
   child_count: number;
   staff_count: number;
+  budget_item_details?: FinancialBudgetItemDetail[];
+  funding_details?: FinancialFundingDetail[];
 }
 
 export interface FinancialResponse {

@@ -166,9 +166,21 @@ export function FinancialsChart({ data }: FinancialsChartProps) {
                   <div>
                     {t('statistics.fundingIncome')}: {formatEur(dp.funding_income)}
                   </div>
+                  {dp.funding_details?.map((fd) => (
+                    <div key={`${fd.key}:${fd.value}`} style={{ paddingLeft: 12, opacity: 0.85 }}>
+                      {fd.value}: {formatEur(fd.amount_cents)}
+                    </div>
+                  ))}
                   <div>
                     {t('statistics.budgetIncome')}: {formatEur(dp.budget_income)}
                   </div>
+                  {dp.budget_item_details
+                    ?.filter((bi) => bi.category === 'income')
+                    .map((bi) => (
+                      <div key={bi.name} style={{ paddingLeft: 12, opacity: 0.85 }}>
+                        {bi.name}: {formatEur(bi.amount_cents)}
+                      </div>
+                    ))}
                   <div>
                     {t('statistics.grossSalary')}: {formatEur(dp.gross_salary)}
                   </div>
@@ -178,6 +190,13 @@ export function FinancialsChart({ data }: FinancialsChartProps) {
                   <div>
                     {t('statistics.budgetExpenses')}: {formatEur(dp.budget_expenses)}
                   </div>
+                  {dp.budget_item_details
+                    ?.filter((bi) => bi.category === 'expense')
+                    .map((bi) => (
+                      <div key={bi.name} style={{ paddingLeft: 12, opacity: 0.85 }}>
+                        {bi.name}: {formatEur(bi.amount_cents)}
+                      </div>
+                    ))}
                 </div>
               )}
             </div>

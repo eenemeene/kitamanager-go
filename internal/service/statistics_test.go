@@ -1849,3 +1849,263 @@ func TestGetFinancials_BudgetEntryTransition(t *testing.T) {
 		}
 	}
 }
+
+func TestGetFinancials_BudgetItemDetails_SingleIncome(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	db.Model(org).Update("state", "berlin")
+
+	item := createTestBudgetItem(t, db, "Donations", org.ID, "income", false)
+	createTestBudgetItemEntry(t, db, item.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 100000, "")
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	dp := result.DataPoints[0]
+	if len(dp.BudgetItemDetails) != 1 {
+		t.Fatalf("expected 1 budget item detail, got %d", len(dp.BudgetItemDetails))
+	}
+	d := dp.BudgetItemDetails[0]
+	if d.Name != "Donations" {
+		t.Errorf("Name = %q, want %q", d.Name, "Donations")
+	}
+	if d.Category != "income" {
+		t.Errorf("Category = %q, want %q", d.Category, "income")
+	}
+	if d.AmountCents != 100000 {
+		t.Errorf("AmountCents = %d, want 100000", d.AmountCents)
+	}
+}
+
+func TestGetFinancials_BudgetItemDetails_MixedIncomeExpense(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	db.Model(org).Update("state", "berlin")
+
+	incomeItem := createTestBudgetItem(t, db, "Donations", org.ID, "income", false)
+	createTestBudgetItemEntry(t, db, incomeItem.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 80000, "")
+
+	expenseItem := createTestBudgetItem(t, db, "Rent", org.ID, "expense", false)
+	createTestBudgetItemEntry(t, db, expenseItem.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 50000, "")
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	dp := result.DataPoints[0]
+	if len(dp.BudgetItemDetails) != 2 {
+		t.Fatalf("expected 2 budget item details, got %d", len(dp.BudgetItemDetails))
+	}
+	if dp.BudgetIncome != 80000 {
+		t.Errorf("BudgetIncome = %d, want 80000", dp.BudgetIncome)
+	}
+	if dp.BudgetExpenses != 50000 {
+		t.Errorf("BudgetExpenses = %d, want 50000", dp.BudgetExpenses)
+	}
+
+	// Verify each detail has the correct category
+	incomeFound, expenseFound := false, false
+	for _, d := range dp.BudgetItemDetails {
+		if d.Name == "Donations" && d.Category == "income" && d.AmountCents == 80000 {
+			incomeFound = true
+		}
+		if d.Name == "Rent" && d.Category == "expense" && d.AmountCents == 50000 {
+			expenseFound = true
+		}
+	}
+	if !incomeFound {
+		t.Error("missing income budget item detail for Donations")
+	}
+	if !expenseFound {
+		t.Error("missing expense budget item detail for Rent")
+	}
+}
+
+func TestGetFinancials_BudgetItemDetails_PerChild(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	db.Model(org).Update("state", "berlin")
+	section := getDefaultSection(t, db, org.ID)
+
+	// 2 children
+	child1 := createTestChild(t, db, "Child", "One", org.ID)
+	child2 := createTestChild(t, db, "Child", "Two", org.ID)
+	createTestChildContract(t, db, child1.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, section.ID, nil)
+	createTestChildContract(t, db, child2.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, section.ID, nil)
+
+	// Per-child expense: 3000 cents/child/month
+	item := createTestBudgetItem(t, db, "Meals", org.ID, "expense", true)
+	createTestBudgetItemEntry(t, db, item.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 3000, "")
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	dp := result.DataPoints[0]
+	if len(dp.BudgetItemDetails) != 1 {
+		t.Fatalf("expected 1 budget item detail, got %d", len(dp.BudgetItemDetails))
+	}
+	d := dp.BudgetItemDetails[0]
+	// 2 children * 3000 = 6000
+	if d.AmountCents != 6000 {
+		t.Errorf("AmountCents = %d, want 6000", d.AmountCents)
+	}
+	if d.Name != "Meals" {
+		t.Errorf("Name = %q, want %q", d.Name, "Meals")
+	}
+}
+
+func TestGetFinancials_FundingDetails_SingleProperty(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	db.Model(org).Update("state", "berlin")
+	section := getDefaultSection(t, db, org.ID)
+
+	// Government funding with one property
+	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
+	toDate := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	period := createTestFundingPeriod(t, db, funding.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &toDate, 39.0)
+	createTestFundingProperty(t, db, period.ID, "care_type", "ganztag", 166847, 0, 6)
+
+	// 1 child with matching contract
+	child := createTestChild(t, db, "Child", "One", org.ID)
+	props := models.ContractProperties{"care_type": "ganztag"}
+	createTestChildContract(t, db, child.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, section.ID, props)
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	dp := result.DataPoints[0]
+	if len(dp.FundingDetails) != 1 {
+		t.Fatalf("expected 1 funding detail, got %d", len(dp.FundingDetails))
+	}
+	fd := dp.FundingDetails[0]
+	if fd.Key != "care_type" || fd.Value != "ganztag" {
+		t.Errorf("FundingDetail key/value = %q/%q, want care_type/ganztag", fd.Key, fd.Value)
+	}
+	if fd.AmountCents != 166847 {
+		t.Errorf("AmountCents = %d, want 166847", fd.AmountCents)
+	}
+	if dp.FundingIncome != 166847 {
+		t.Errorf("FundingIncome = %d, want 166847", dp.FundingIncome)
+	}
+}
+
+func TestGetFinancials_FundingDetails_MultipleProperties(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	db.Model(org).Update("state", "berlin")
+	section := getDefaultSection(t, db, org.ID)
+
+	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
+	toDate := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	period := createTestFundingPeriod(t, db, funding.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &toDate, 39.0)
+	createTestFundingProperty(t, db, period.ID, "care_type", "ganztag", 100000, 0, 6)
+	createTestFundingProperty(t, db, period.ID, "integration", "integration a", 50000, -1, -1)
+
+	// 1 child with both properties
+	child := createTestChild(t, db, "Child", "One", org.ID)
+	props := models.ContractProperties{"care_type": "ganztag", "integration": "integration a"}
+	createTestChildContract(t, db, child.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, section.ID, props)
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	dp := result.DataPoints[0]
+	if len(dp.FundingDetails) != 2 {
+		t.Fatalf("expected 2 funding details, got %d", len(dp.FundingDetails))
+	}
+
+	// Total should be 100000 + 50000 = 150000
+	if dp.FundingIncome != 150000 {
+		t.Errorf("FundingIncome = %d, want 150000", dp.FundingIncome)
+	}
+
+	// Check both details exist (sorted by key then value)
+	detailMap := make(map[string]int)
+	for _, fd := range dp.FundingDetails {
+		detailMap[fd.Key+":"+fd.Value] = fd.AmountCents
+	}
+	if detailMap["care_type:ganztag"] != 100000 {
+		t.Errorf("care_type:ganztag amount = %d, want 100000", detailMap["care_type:ganztag"])
+	}
+	if detailMap["integration:integration a"] != 50000 {
+		t.Errorf("integration:integration a amount = %d, want 50000", detailMap["integration:integration a"])
+	}
+}
+
+func TestGetFinancials_FundingDetails_MultipleChildren(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	db.Model(org).Update("state", "berlin")
+	section := getDefaultSection(t, db, org.ID)
+
+	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
+	toDate := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	period := createTestFundingPeriod(t, db, funding.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &toDate, 39.0)
+	createTestFundingProperty(t, db, period.ID, "care_type", "ganztag", 80000, 0, 6)
+
+	// 2 children both matching the same property
+	props := models.ContractProperties{"care_type": "ganztag"}
+	child1 := createTestChild(t, db, "Child", "One", org.ID)
+	child2 := createTestChild(t, db, "Child", "Two", org.ID)
+	createTestChildContract(t, db, child1.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, section.ID, props)
+	createTestChildContract(t, db, child2.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, section.ID, props)
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	dp := result.DataPoints[0]
+	if len(dp.FundingDetails) != 1 {
+		t.Fatalf("expected 1 funding detail, got %d", len(dp.FundingDetails))
+	}
+
+	fd := dp.FundingDetails[0]
+	// 2 children * 80000 = 160000
+	if fd.AmountCents != 160000 {
+		t.Errorf("AmountCents = %d, want 160000", fd.AmountCents)
+	}
+	if dp.FundingIncome != 160000 {
+		t.Errorf("FundingIncome = %d, want 160000", dp.FundingIncome)
+	}
+}

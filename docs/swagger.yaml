@@ -668,6 +668,18 @@ definitions:
         example: resource not found
         type: string
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.FinancialBudgetItemDetail:
+    properties:
+      amount_cents:
+        example: 50000
+        type: integer
+      category:
+        example: income
+        type: string
+      name:
+        example: Elternbeiträge
+        type: string
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.FinancialDataPoint:
     properties:
       balance:
@@ -682,6 +694,11 @@ definitions:
         description: cents
         example: 200000
         type: integer
+      budget_item_details:
+        description: Breakdowns
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FinancialBudgetItemDetail'
+        type: array
       child_count:
         description: Counts
         example: 45
@@ -693,6 +710,10 @@ definitions:
         description: cents
         example: 770000
         type: integer
+      funding_details:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FinancialFundingDetail'
+        type: array
       funding_income:
         description: Income
         example: 5000000
@@ -712,6 +733,18 @@ definitions:
         description: Totals
         example: 5000000
         type: integer
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.FinancialFundingDetail:
+    properties:
+      amount_cents:
+        example: 166847
+        type: integer
+      key:
+        example: care_type
+        type: string
+      value:
+        example: ganztag
+        type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.FinancialResponse:
     properties:
@@ -6310,6 +6343,7 @@ paths:
         Income is calculated from children's contract properties matched against government funding.
         Salary costs use pay plan entries pro-rated by weekly hours. Employer costs apply the period's contribution rate.
         Operating costs sum active cost entries for the organization.
+        Each data point includes optional breakdowns: funding_details (per funding property) and budget_item_details (per budget item).
       parameters:
       - description: Organization ID
         in: path
