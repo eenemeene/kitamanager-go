@@ -2,7 +2,6 @@ package validation
 
 import (
 	"fmt"
-	"html"
 	"strings"
 	"time"
 )
@@ -28,11 +27,6 @@ func ValidatePeriod(from time.Time, to *time.Time) error {
 		}
 	}
 	return nil
-}
-
-// SanitizeHTML escapes HTML to prevent XSS
-func SanitizeHTML(s string) string {
-	return html.EscapeString(s)
 }
 
 // MaxWeeklyHours is the maximum number of hours in a week

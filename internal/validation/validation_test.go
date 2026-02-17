@@ -92,52 +92,6 @@ func TestValidatePeriod_NilTo(t *testing.T) {
 	}
 }
 
-func TestSanitizeHTML_ScriptTag(t *testing.T) {
-	input := "<script>alert('xss')</script>"
-	expected := "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;"
-	result := SanitizeHTML(input)
-	if result != expected {
-		t.Errorf("expected %q, got %q", expected, result)
-	}
-}
-
-func TestSanitizeHTML_PlainText(t *testing.T) {
-	input := "hello world"
-	result := SanitizeHTML(input)
-	if result != input {
-		t.Errorf("expected %q, got %q", input, result)
-	}
-}
-
-func TestSanitizeHTML_HTMLEntities(t *testing.T) {
-	input := `<img src="x" onerror="alert('xss')">`
-	result := SanitizeHTML(input)
-	if result == input {
-		t.Error("expected HTML to be escaped")
-	}
-	// Verify it doesn't contain unescaped angle brackets
-	if result == input {
-		t.Error("expected angle brackets to be escaped")
-	}
-}
-
-func TestSanitizeHTML_EmptyString(t *testing.T) {
-	input := ""
-	result := SanitizeHTML(input)
-	if result != "" {
-		t.Errorf("expected empty string, got %q", result)
-	}
-}
-
-func TestSanitizeHTML_SpecialChars(t *testing.T) {
-	input := `a < b && c > d "test" 'value'`
-	result := SanitizeHTML(input)
-	// Should escape <, >, &, ", '
-	if result == input {
-		t.Error("expected special characters to be escaped")
-	}
-}
-
 func TestCalculateAgeOnDate(t *testing.T) {
 	tests := []struct {
 		name          string
