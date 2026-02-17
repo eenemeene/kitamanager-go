@@ -7,6 +7,7 @@ import { useUiStore } from '@/stores/ui-store';
 export interface FundingAttribute {
   key: string;
   value: string;
+  label: string;
 }
 
 /**
@@ -61,7 +62,7 @@ export function useFundingAttributes(orgId: number, fromDate?: string, toDate?: 
           const key = prop.key?.toLowerCase();
           const value = prop.value?.toLowerCase();
           if (key && value && !attributeMap.has(value)) {
-            attributeMap.set(value, { key, value });
+            attributeMap.set(value, { key, value, label: prop.label || value });
           }
         }
       }

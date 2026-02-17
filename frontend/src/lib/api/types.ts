@@ -51,6 +51,7 @@ export interface GovernmentFundingProperty {
   period_id: number;
   key: string;
   value: string;
+  label: string;
   payment: number;
   requirement: number;
   min_age?: number | null;
@@ -85,6 +86,7 @@ export interface GovernmentFundingPeriodUpdateRequest {
 export interface GovernmentFundingPropertyCreateRequest {
   key: string;
   value: string;
+  label: string;
   payment: number;
   requirement: number;
   min_age?: number | null;
@@ -95,6 +97,7 @@ export interface GovernmentFundingPropertyCreateRequest {
 export interface GovernmentFundingPropertyUpdateRequest {
   key?: string;
   value?: string;
+  label?: string;
   payment?: number;
   requirement?: number;
   min_age?: number | null;
@@ -592,6 +595,7 @@ export interface FinancialBudgetItemDetail {
 export interface FinancialFundingDetail {
   key: string;
   value: string;
+  label: string;
   amount_cents: number;
 }
 

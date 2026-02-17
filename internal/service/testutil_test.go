@@ -1,6 +1,7 @@
 package service
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -283,7 +284,7 @@ func createTestBudgetItemEntry(t *testing.T, db *gorm.DB, budgetItemID uint, fro
 }
 
 // createTestFundingPropertyFull creates a funding property with both payment and requirement.
-func createTestFundingPropertyFull(t *testing.T, db *gorm.DB, periodID uint, key, value string, payment int, requirement float64, minAge, maxAge int) *models.GovernmentFundingProperty {
+func createTestFundingPropertyFull(t *testing.T, db *gorm.DB, periodID uint, key, value, label string, payment int, requirement float64, minAge, maxAge int) *models.GovernmentFundingProperty {
 	t.Helper()
 	var minAgePtr, maxAgePtr *int
 	if minAge >= 0 {
@@ -296,6 +297,7 @@ func createTestFundingPropertyFull(t *testing.T, db *gorm.DB, periodID uint, key
 		PeriodID:    periodID,
 		Key:         key,
 		Value:       value,
+		Label:       label,
 		Payment:     payment,
 		Requirement: requirement,
 		MinAge:      minAgePtr,
@@ -367,6 +369,7 @@ func createTestFundingProperty(t *testing.T, db *gorm.DB, periodID uint, key, va
 		PeriodID:    periodID,
 		Key:         key,
 		Value:       value,
+		Label:       strings.ToUpper(value[:1]) + value[1:],
 		Payment:     payment,
 		Requirement: 0.1,
 		MinAge:      minAgePtr,

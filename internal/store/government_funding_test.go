@@ -42,6 +42,7 @@ func TestGovernmentFundingStore_FindByIDWithDetails_ActiveOn(t *testing.T) {
 		PeriodID: period2.ID,
 		Key:      "care_type",
 		Value:    "fulltime",
+		Label:    "Fulltime",
 		Payment:  100000,
 	})
 

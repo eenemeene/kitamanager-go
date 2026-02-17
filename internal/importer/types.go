@@ -18,9 +18,10 @@ type YAMLGovernmentFundingEntry struct {
 // YAMLGovernmentFundingProperty represents a property with payment and requirement.
 // Key/Value structure enables matching against child contract properties.
 type YAMLGovernmentFundingProperty struct {
-	Key         string  `yaml:"key"`     // Property category (e.g., "care_type", "supplements")
-	Value       string  `yaml:"value"`   // Specific value (e.g., "ganztag", "ndh")
-	Payment     float64 `yaml:"payment"` // EUR amount (converted to cents on import)
+	Key         string  `yaml:"key"`             // Property category (e.g., "care_type", "supplements")
+	Value       string  `yaml:"value"`           // Specific value (e.g., "ganztag", "ndh")
+	Label       string  `yaml:"label,omitempty"` // Human-readable display name (auto-generated from value if empty)
+	Payment     float64 `yaml:"payment"`         // EUR amount (converted to cents on import)
 	Requirement float64 `yaml:"requirement"`
 	Comment     string  `yaml:"comment,omitempty"`
 }

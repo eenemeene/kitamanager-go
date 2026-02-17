@@ -440,7 +440,7 @@ export function FinancialsChart({ data }: FinancialsChartProps) {
             </div>
             {hoveredDp.funding_details?.map((fd) => (
               <div key={`${fd.key}:${fd.value}`} style={{ paddingLeft: 12, opacity: 0.85 }}>
-                {fd.value}: {formatEur(fd.amount_cents)}
+                {fd.label}: {formatEur(fd.amount_cents)}
               </div>
             ))}
             <div>

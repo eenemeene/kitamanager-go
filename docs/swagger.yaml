@@ -746,6 +746,9 @@ definitions:
       key:
         example: care_type
         type: string
+      label:
+        example: Ganztag
+        type: string
       value:
         example: ganztag
         type: string
@@ -905,6 +908,9 @@ definitions:
       key:
         example: care_type
         type: string
+      label:
+        example: Ganztag
+        type: string
       max_age:
         example: 3
         type: integer
@@ -934,6 +940,10 @@ definitions:
         example: care_type
         maxLength: 100
         type: string
+      label:
+        example: Ganztag
+        maxLength: 255
+        type: string
       max_age:
         example: 3
         minimum: 0
@@ -956,6 +966,7 @@ definitions:
         type: string
     required:
     - key
+    - label
     - value
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPropertyResponse:
@@ -971,6 +982,9 @@ definitions:
         type: integer
       key:
         example: care_type
+        type: string
+      label:
+        example: Ganztag
         type: string
       max_age:
         example: 3
@@ -1000,6 +1014,10 @@ definitions:
       key:
         example: care_type
         maxLength: 100
+        type: string
+      label:
+        example: Ganztag
+        maxLength: 255
         type: string
       max_age:
         example: 3

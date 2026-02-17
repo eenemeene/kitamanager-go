@@ -55,6 +55,7 @@ type GovernmentFundingProperty struct {
 	PeriodID    uint      `gorm:"not null;index" json:"period_id" example:"1"`
 	Key         string    `gorm:"size:100;not null" json:"key" example:"care_type"`
 	Value       string    `gorm:"size:255;not null" json:"value" example:"ganztag"`
+	Label       string    `gorm:"size:255;not null" json:"label" example:"Ganztag"`
 	Payment     int       `gorm:"not null" json:"payment" example:"166847"`
 	Requirement float64   `gorm:"not null" json:"requirement" example:"0.261"`
 	MinAge      *int      `json:"min_age,omitempty" example:"0"`
@@ -118,6 +119,7 @@ type GovernmentFundingPeriodUpdateRequest struct {
 type GovernmentFundingPropertyCreateRequest struct {
 	Key         string  `json:"key" binding:"required,max=100" example:"care_type"`
 	Value       string  `json:"value" binding:"required,max=255" example:"ganztag"`
+	Label       string  `json:"label" binding:"required,max=255" example:"Ganztag"`
 	Payment     int     `json:"payment" binding:"gte=0" example:"166847"`
 	Requirement float64 `json:"requirement" binding:"gte=0" example:"0.261"`
 	MinAge      *int    `json:"min_age" binding:"omitempty,gte=0" example:"0"`
@@ -129,6 +131,7 @@ type GovernmentFundingPropertyCreateRequest struct {
 type GovernmentFundingPropertyUpdateRequest struct {
 	Key         *string  `json:"key" binding:"omitempty,max=100" example:"care_type"`
 	Value       *string  `json:"value" binding:"omitempty,max=255" example:"ganztag"`
+	Label       *string  `json:"label" binding:"omitempty,max=255" example:"Ganztag"`
 	Payment     *int     `json:"payment" binding:"omitempty,gte=0" example:"166847"`
 	Requirement *float64 `json:"requirement" binding:"omitempty,gte=0" example:"0.261"`
 	MinAge      *int     `json:"min_age" binding:"omitempty,gte=0" example:"0"`
@@ -191,6 +194,7 @@ type GovernmentFundingPropertyResponse struct {
 	PeriodID    uint      `json:"period_id" example:"1"`
 	Key         string    `json:"key" example:"care_type"`
 	Value       string    `json:"value" example:"ganztag"`
+	Label       string    `json:"label" example:"Ganztag"`
 	Payment     int       `json:"payment" example:"166847"`
 	Requirement float64   `json:"requirement" example:"0.261"`
 	MinAge      *int      `json:"min_age,omitempty" example:"0"`
@@ -205,6 +209,7 @@ func (p *GovernmentFundingProperty) ToResponse() GovernmentFundingPropertyRespon
 		PeriodID:    p.PeriodID,
 		Key:         p.Key,
 		Value:       p.Value,
+		Label:       p.Label,
 		Payment:     p.Payment,
 		Requirement: p.Requirement,
 		MinAge:      p.MinAge,

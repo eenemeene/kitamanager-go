@@ -109,7 +109,9 @@ function PropertiesGroupedByKey({
           <div className="mt-2 space-y-3 pl-4">
             {valueGroups.map(([value, properties]) => (
               <div key={value}>
-                <p className="mb-1 text-sm text-muted-foreground">{value}</p>
+                <p className="mb-1 text-sm text-muted-foreground">
+                  {properties[0]?.label || value}
+                </p>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -248,6 +250,7 @@ export default function GovernmentFundingDetailPage() {
     defaultValues: {
       key: '',
       value: '',
+      label: '',
       payment_euros: 0,
       requirement: 0,
       min_age: null,
@@ -266,6 +269,7 @@ export default function GovernmentFundingDetailPage() {
     resetProperty({
       key: '',
       value: '',
+      label: '',
       payment_euros: 0,
       requirement: 0,
       min_age: null,
@@ -290,6 +294,7 @@ export default function GovernmentFundingDetailPage() {
         data: {
           key: data.key,
           value: data.value,
+          label: data.label,
           payment: eurosToCents(data.payment_euros),
           requirement: data.requirement,
           min_age: data.min_age ?? null,
@@ -456,6 +461,14 @@ export default function GovernmentFundingDetailPage() {
             <DialogTitle>{t('governmentFundings.addProperty')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmitProperty(onSubmitProperty)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="label">{t('governmentFundings.label')}</Label>
+              <Input id="label" placeholder="Ganztag" {...registerProperty('label')} />
+              {errorsProperty.label && (
+                <p className="text-sm text-destructive">{t('validation.labelRequired')}</p>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="key">{t('governmentFundings.key')}</Label>

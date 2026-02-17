@@ -325,6 +325,7 @@ func (s *GovernmentFundingService) CreateProperty(ctx context.Context, fundingID
 		PeriodID:    periodID,
 		Key:         strings.TrimSpace(req.Key),
 		Value:       strings.TrimSpace(req.Value),
+		Label:       strings.TrimSpace(req.Label),
 		Payment:     req.Payment,
 		Requirement: req.Requirement,
 		MinAge:      req.MinAge,
@@ -383,6 +384,13 @@ func (s *GovernmentFundingService) UpdateProperty(ctx context.Context, fundingID
 			return nil, apperror.BadRequest("value cannot be empty or whitespace only")
 		}
 		property.Value = value
+	}
+	if req.Label != nil {
+		label := strings.TrimSpace(*req.Label)
+		if validation.IsWhitespaceOnly(label) {
+			return nil, apperror.BadRequest("label cannot be empty or whitespace only")
+		}
+		property.Label = label
 	}
 	if req.Payment != nil {
 		property.Payment = *req.Payment

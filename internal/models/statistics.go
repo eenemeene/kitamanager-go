@@ -25,6 +25,7 @@ type FinancialBudgetItemDetail struct {
 type FinancialFundingDetail struct {
 	Key         string `json:"key" example:"care_type"`
 	Value       string `json:"value" example:"ganztag"`
+	Label       string `json:"label" example:"Ganztag"`
 	AmountCents int    `json:"amount_cents" example:"166847"`
 }
 

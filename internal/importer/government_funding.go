@@ -150,10 +150,15 @@ func (i *GovernmentFundingImporter) importPropertiesFromEntry(tx *gorm.DB, perio
 
 	// Import properties with the age range from the entry
 	for _, yamlProp := range yamlEntry.Properties {
+		label := strings.TrimSpace(yamlProp.Label)
+		if label == "" {
+			label = formatLabel(yamlProp.Value)
+		}
 		property := &models.GovernmentFundingProperty{
 			PeriodID:    periodID,
 			Key:         strings.TrimSpace(yamlProp.Key),
 			Value:       strings.TrimSpace(yamlProp.Value),
+			Label:       label,
 			Payment:     euroToCents(yamlProp.Payment),
 			Requirement: yamlProp.Requirement,
 			MinAge:      &minAge,
@@ -177,4 +182,18 @@ func parseDate(s string) (time.Time, error) {
 // euroToCents converts a EUR amount to cents.
 func euroToCents(eur float64) int {
 	return int(math.Round(eur * 100))
+}
+
+// formatLabel generates a human-readable label from a property value.
+// It splits on underscores, slashes, and hyphens and capitalizes each word.
+func formatLabel(value string) string {
+	words := strings.FieldsFunc(value, func(r rune) bool {
+		return r == '_' || r == '/' || r == '-'
+	})
+	for i, w := range words {
+		if len(w) > 0 {
+			words[i] = strings.ToUpper(w[:1]) + w[1:]
+		}
+	}
+	return strings.Join(words, " ")
 }

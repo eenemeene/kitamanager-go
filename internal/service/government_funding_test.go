@@ -560,6 +560,7 @@ func TestGovernmentFundingService_CreateProperty(t *testing.T) {
 	req := &models.GovernmentFundingPropertyCreateRequest{
 		Key:         "care_type",
 		Value:       "ganztag",
+		Label:       "Ganztag",
 		Payment:     100000,
 		Requirement: 0.1,
 		MinAge:      &minAge,
@@ -580,6 +581,9 @@ func TestGovernmentFundingService_CreateProperty(t *testing.T) {
 	if result.Payment != 100000 {
 		t.Errorf("Payment = %d, want 100000", result.Payment)
 	}
+	if result.Label != "Ganztag" {
+		t.Errorf("Label = %q, want %q", result.Label, "Ganztag")
+	}
 }
 
 func TestGovernmentFundingService_CreateProperty_PeriodNotFound(t *testing.T) {
@@ -591,6 +595,7 @@ func TestGovernmentFundingService_CreateProperty_PeriodNotFound(t *testing.T) {
 	req := &models.GovernmentFundingPropertyCreateRequest{
 		Key:         "care_type",
 		Value:       "ganztag",
+		Label:       "Ganztag",
 		Payment:     100000,
 		Requirement: 0.1,
 	}
@@ -630,6 +635,7 @@ func TestGovernmentFundingService_CreateProperty_InvalidAgeRange(t *testing.T) {
 	req := &models.GovernmentFundingPropertyCreateRequest{
 		Key:         "care_type",
 		Value:       "ganztag",
+		Label:       "Ganztag",
 		Payment:     100000,
 		Requirement: 0.1,
 		MinAge:      &minAge,
@@ -668,6 +674,7 @@ func TestGovernmentFundingService_CreateProperty_WhitespaceKey(t *testing.T) {
 	req := &models.GovernmentFundingPropertyCreateRequest{
 		Key:         "   ",
 		Value:       "ganztag",
+		Label:       "Ganztag",
 		Payment:     100000,
 		Requirement: 0.1,
 	}
@@ -705,6 +712,7 @@ func TestGovernmentFundingService_UpdateProperty(t *testing.T) {
 		PeriodID:    period.ID,
 		Key:         "care_type",
 		Value:       "ganztag",
+		Label:       "Ganztag",
 		Payment:     100000,
 		Requirement: 0.1,
 	}
@@ -769,6 +777,7 @@ func TestGovernmentFundingService_DeleteProperty(t *testing.T) {
 		PeriodID:    period.ID,
 		Key:         "care_type",
 		Value:       "ganztag",
+		Label:       "Ganztag",
 		Payment:     100000,
 		Requirement: 0.1,
 	}
@@ -872,7 +881,7 @@ func TestGovernmentFundingService_CreateProperty_WrongFunding(t *testing.T) {
 	db.Create(period)
 
 	req := &models.GovernmentFundingPropertyCreateRequest{
-		Key: "care_type", Value: "ganztag", Payment: 100000, Requirement: 0.1,
+		Key: "care_type", Value: "ganztag", Label: "Ganztag", Payment: 100000, Requirement: 0.1,
 	}
 
 	// Try to create property via wrong funding ID
@@ -908,7 +917,7 @@ func TestGovernmentFundingService_UpdateProperty_WrongPeriod(t *testing.T) {
 	db.Create(period2)
 
 	property := &models.GovernmentFundingProperty{
-		PeriodID: period1.ID, Key: "care_type", Value: "ganztag", Payment: 100000, Requirement: 0.1,
+		PeriodID: period1.ID, Key: "care_type", Value: "ganztag", Label: "Ganztag", Payment: 100000, Requirement: 0.1,
 	}
 	db.Create(property)
 
@@ -948,7 +957,7 @@ func TestGovernmentFundingService_DeleteProperty_WrongPeriod(t *testing.T) {
 	db.Create(period2)
 
 	property := &models.GovernmentFundingProperty{
-		PeriodID: period1.ID, Key: "care_type", Value: "ganztag", Payment: 100000, Requirement: 0.1,
+		PeriodID: period1.ID, Key: "care_type", Value: "ganztag", Label: "Ganztag", Payment: 100000, Requirement: 0.1,
 	}
 	db.Create(property)
 

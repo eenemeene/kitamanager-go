@@ -2464,6 +2464,7 @@ func TestChildHandler_GetFunding(t *testing.T) {
 		PeriodID:    period.ID,
 		Key:         "care_type",
 		Value:       "ganztag",
+		Label:       "Ganztag",
 		Payment:     166847,
 		Requirement: 0.261,
 	})

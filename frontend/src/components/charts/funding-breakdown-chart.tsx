@@ -32,7 +32,7 @@ export function FundingBreakdownChart({ data }: FundingBreakdownChartProps) {
       if (fd.amount_cents > 0) {
         slices.push({
           id: `funding_${fd.key}_${fd.value}`,
-          label: fd.value,
+          label: fd.label,
           value: fd.amount_cents / 100,
           color: COLORS[colorIdx++ % COLORS.length],
         });

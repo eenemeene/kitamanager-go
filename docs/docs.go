@@ -8578,6 +8578,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "care_type"
                 },
+                "label": {
+                    "type": "string",
+                    "example": "Ganztag"
+                },
                 "value": {
                     "type": "string",
                     "example": "ganztag"
@@ -8801,6 +8805,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "care_type"
                 },
+                "label": {
+                    "type": "string",
+                    "example": "Ganztag"
+                },
                 "max_age": {
                     "type": "integer",
                     "example": 3
@@ -8831,6 +8839,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "key",
+                "label",
                 "value"
             ],
             "properties": {
@@ -8843,6 +8852,11 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 100,
                     "example": "care_type"
+                },
+                "label": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "Ganztag"
                 },
                 "max_age": {
                     "type": "integer",
@@ -8890,6 +8904,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "care_type"
                 },
+                "label": {
+                    "type": "string",
+                    "example": "Ganztag"
+                },
                 "max_age": {
                     "type": "integer",
                     "example": 3
@@ -8928,6 +8946,11 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 100,
                     "example": "care_type"
+                },
+                "label": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "Ganztag"
                 },
                 "max_age": {
                     "type": "integer",

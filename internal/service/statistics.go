@@ -214,7 +214,11 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 		// Income: government funding for active children
 		fundingIncome := 0
 		childCount := 0
-		fundingDetailMap := make(map[string]int) // "key:value" → total cents
+		type fundingDetailAccum struct {
+			amount int
+			label  string
+		}
+		fundingDetailMap := make(map[string]fundingDetailAccum) // "key:value" → {amount, label}
 		fundingPeriod := findPeriodForDate(fundingPeriods, date)
 		for i := range children {
 			child := &children[i]
@@ -231,7 +235,11 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 							if contract.Properties.HasValue(fp.Key, fp.Value) {
 								fundingIncome += fp.Payment
 								mapKey := fp.Key + ":" + fp.Value
-								fundingDetailMap[mapKey] += fp.Payment
+								existing := fundingDetailMap[mapKey]
+								fundingDetailMap[mapKey] = fundingDetailAccum{
+									amount: existing.amount + fp.Payment,
+									label:  fp.Label,
+								}
 							}
 						}
 					}
@@ -242,12 +250,13 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 
 		// Convert funding detail map to sorted slice
 		var fundingDetails []models.FinancialFundingDetail
-		for mapKey, amount := range fundingDetailMap {
+		for mapKey, accum := range fundingDetailMap {
 			parts := strings.SplitN(mapKey, ":", 2)
 			fundingDetails = append(fundingDetails, models.FinancialFundingDetail{
 				Key:         parts[0],
 				Value:       parts[1],
-				AmountCents: amount,
+				Label:       accum.label,
+				AmountCents: accum.amount,
 			})
 		}
 		sort.Slice(fundingDetails, func(i, j int) bool {
@@ -470,7 +479,7 @@ func extractOccupancyStructure(periods []models.GovernmentFundingPeriod) ([]mode
 				supplementSet[prop.Value] = models.OccupancySupplementType{
 					Key:   prop.Key,
 					Value: prop.Value,
-					Label: formatSupplementLabel(prop.Value),
+					Label: prop.Label,
 				}
 			}
 		}
@@ -523,20 +532,6 @@ func formatAgeGroupLabel(minAge, maxAge int) string {
 		parts = append(parts, fmt.Sprintf("%d", i))
 	}
 	return strings.Join(parts, "/")
-}
-
-// formatSupplementLabel formats a supplement value into a display label.
-// Capitalizes words and replaces separators.
-func formatSupplementLabel(value string) string {
-	words := strings.FieldsFunc(value, func(r rune) bool {
-		return r == '_' || r == '/' || r == '-'
-	})
-	for i, w := range words {
-		if len(w) > 0 {
-			words[i] = strings.ToUpper(w[:1]) + w[1:]
-		}
-	}
-	return strings.Join(words, " ")
 }
 
 // findAgeGroupLabel returns the label of the age group that matches the given age.

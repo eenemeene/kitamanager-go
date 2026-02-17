@@ -382,6 +382,7 @@ func TestGovernmentFundingHandler_Property_AgeRange(t *testing.T) {
 			body := map[string]interface{}{
 				"key":         "care_type",
 				"value":       "ganztag",
+				"label":       "Ganztag",
 				"payment":     100000,
 				"requirement": 0.1,
 			}
@@ -836,6 +837,7 @@ func TestGovernmentFundingHandler_CreateProperty_Validation(t *testing.T) {
 		body := map[string]interface{}{
 			"key":         "",
 			"value":       "ganztag",
+			"label":       "Ganztag",
 			"payment":     100000,
 			"requirement": 0.1,
 		}
@@ -850,6 +852,7 @@ func TestGovernmentFundingHandler_CreateProperty_Validation(t *testing.T) {
 		body := map[string]interface{}{
 			"key":         "   ",
 			"value":       "ganztag",
+			"label":       "Ganztag",
 			"payment":     100000,
 			"requirement": 0.1,
 		}
@@ -864,6 +867,7 @@ func TestGovernmentFundingHandler_CreateProperty_Validation(t *testing.T) {
 		body := map[string]interface{}{
 			"key":         "care_type",
 			"value":       "",
+			"label":       "Ganztag",
 			"payment":     100000,
 			"requirement": 0.1,
 		}
@@ -878,6 +882,7 @@ func TestGovernmentFundingHandler_CreateProperty_Validation(t *testing.T) {
 		body := map[string]interface{}{
 			"key":         "care_type",
 			"value":       "ganztag",
+			"label":       "Ganztag",
 			"payment":     100000,
 			"requirement": 0.1,
 		}
@@ -887,6 +892,80 @@ func TestGovernmentFundingHandler_CreateProperty_Validation(t *testing.T) {
 			t.Errorf("expected status %d, got %d: %s", http.StatusNotFound, w.Code, w.Body.String())
 		}
 	})
+}
+
+func TestGovernmentFundingHandler_CreateProperty_WithLabel(t *testing.T) {
+	db := setupTestDB(t)
+	fundingStore := store.NewGovernmentFundingStore(db)
+	svc := service.NewGovernmentFundingService(fundingStore, store.NewTransactor(db))
+	handler := NewGovernmentFundingHandler(svc, createAuditService(db))
+
+	funding := &models.GovernmentFunding{Name: "Test Funding", State: "berlin"}
+	db.Create(funding)
+	period := &models.GovernmentFundingPeriod{
+		GovernmentFundingID: funding.ID,
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(period)
+
+	r := setupTestRouter()
+	r.POST("/fundings/:id/periods/:periodId/properties", handler.CreateProperty)
+
+	body := map[string]interface{}{
+		"key":         "care_type",
+		"value":       "ganztag",
+		"label":       "Ganztag (bis 9h)",
+		"payment":     166847,
+		"requirement": 0.261,
+	}
+	w := performRequest(r, "POST", fmt.Sprintf("/fundings/%d/periods/%d/properties", funding.ID, period.ID), body)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
+	}
+
+	var result models.GovernmentFundingPropertyResponse
+	parseResponse(t, w, &result)
+	if result.Label != "Ganztag (bis 9h)" {
+		t.Errorf("Label = %q, want %q", result.Label, "Ganztag (bis 9h)")
+	}
+	if result.Key != "care_type" {
+		t.Errorf("Key = %q, want %q", result.Key, "care_type")
+	}
+	if result.Value != "ganztag" {
+		t.Errorf("Value = %q, want %q", result.Value, "ganztag")
+	}
+}
+
+func TestGovernmentFundingHandler_CreateProperty_MissingLabel(t *testing.T) {
+	db := setupTestDB(t)
+	fundingStore := store.NewGovernmentFundingStore(db)
+	svc := service.NewGovernmentFundingService(fundingStore, store.NewTransactor(db))
+	handler := NewGovernmentFundingHandler(svc, createAuditService(db))
+
+	funding := &models.GovernmentFunding{Name: "Test Funding", State: "berlin"}
+	db.Create(funding)
+	period := &models.GovernmentFundingPeriod{
+		GovernmentFundingID: funding.ID,
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(period)
+
+	r := setupTestRouter()
+	r.POST("/fundings/:id/periods/:periodId/properties", handler.CreateProperty)
+
+	// No label field
+	body := map[string]interface{}{
+		"key":         "care_type",
+		"value":       "ganztag",
+		"payment":     166847,
+		"requirement": 0.261,
+	}
+	w := performRequest(r, "POST", fmt.Sprintf("/fundings/%d/periods/%d/properties", funding.ID, period.ID), body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for missing label, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
 }
 
 func TestGovernmentFundingHandler_UpdateProperty_Validation(t *testing.T) {
@@ -907,6 +986,7 @@ func TestGovernmentFundingHandler_UpdateProperty_Validation(t *testing.T) {
 		PeriodID:    period.ID,
 		Key:         "care_type",
 		Value:       "ganztag",
+		Label:       "Ganztag",
 		Payment:     100000,
 		Requirement: 0.1,
 	}
@@ -976,6 +1056,7 @@ func TestGovernmentFundingHandler_DeleteProperty(t *testing.T) {
 		PeriodID:    period.ID,
 		Key:         "care_type",
 		Value:       "ganztag",
+		Label:       "Ganztag",
 		Payment:     100000,
 		Requirement: 0.1,
 	}

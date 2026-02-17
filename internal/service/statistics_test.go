@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"math"
+	"strings"
 	"testing"
 	"time"
 
@@ -69,6 +70,7 @@ func createTestFundingPropertyWithRequirement(t *testing.T, db *gorm.DB, periodI
 		PeriodID:    periodID,
 		Key:         key,
 		Value:       value,
+		Label:       strings.ToUpper(value[:1]) + value[1:],
 		Payment:     10000,
 		Requirement: requirement,
 		MinAge:      minAgePtr,
@@ -617,7 +619,7 @@ func TestStatisticsService_GetFinancials_Basic(t *testing.T) {
 	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
 	toDate := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
 	fundingPeriod := createTestFundingPeriod(t, db, funding.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &toDate, 39.0)
-	createTestFundingPropertyFull(t, db, fundingPeriod.ID, "care_type", "ganztag", 166847, 0.25, 0, 6)
+	createTestFundingPropertyFull(t, db, fundingPeriod.ID, "care_type", "ganztag", "Ganztag", 166847, 0.25, 0, 6)
 
 	section := getDefaultSection(t, db, org.ID)
 
@@ -968,7 +970,7 @@ func TestStatisticsService_GetFinancials_ContractStartsMidRange(t *testing.T) {
 	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
 	toDate := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
 	fundingPeriod := createTestFundingPeriod(t, db, funding.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &toDate, 39.0)
-	createTestFundingPropertyFull(t, db, fundingPeriod.ID, "care_type", "ganztag", 100000, 0.25, 0, 6)
+	createTestFundingPropertyFull(t, db, fundingPeriod.ID, "care_type", "ganztag", "Ganztag", 100000, 0.25, 0, 6)
 
 	section := getDefaultSection(t, db, org.ID)
 
@@ -1015,8 +1017,8 @@ func TestStatisticsService_GetFinancials_MultipleChildren(t *testing.T) {
 	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
 	toDate := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
 	fundingPeriod := createTestFundingPeriod(t, db, funding.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &toDate, 39.0)
-	createTestFundingPropertyFull(t, db, fundingPeriod.ID, "care_type", "ganztag", 80000, 0.25, 0, 6)
-	createTestFundingPropertyFull(t, db, fundingPeriod.ID, "care_type", "halbtag", 40000, 0.12, 0, 6)
+	createTestFundingPropertyFull(t, db, fundingPeriod.ID, "care_type", "ganztag", "Ganztag", 80000, 0.25, 0, 6)
+	createTestFundingPropertyFull(t, db, fundingPeriod.ID, "care_type", "halbtag", "Halbtag", 40000, 0.12, 0, 6)
 
 	section := getDefaultSection(t, db, org.ID)
 	contractFrom := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -1187,7 +1189,7 @@ func TestStatisticsService_GetFinancials_UnmatchedChildProperty(t *testing.T) {
 	toDate := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
 	fundingPeriod := createTestFundingPeriod(t, db, funding.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &toDate, 39.0)
 	// Funding only covers "ganztag"
-	createTestFundingPropertyFull(t, db, fundingPeriod.ID, "care_type", "ganztag", 100000, 0.25, 0, 6)
+	createTestFundingPropertyFull(t, db, fundingPeriod.ID, "care_type", "ganztag", "Ganztag", 100000, 0.25, 0, 6)
 
 	section := getDefaultSection(t, db, org.ID)
 
@@ -1638,7 +1640,7 @@ func TestGetFinancials_BudgetWithSalariesAndFunding(t *testing.T) {
 	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
 	toDate := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
 	fundingPeriod := createTestFundingPeriod(t, db, funding.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &toDate, 39.0)
-	createTestFundingPropertyFull(t, db, fundingPeriod.ID, "care_type", "ganztag", 100000, 0.25, 0, 6)
+	createTestFundingPropertyFull(t, db, fundingPeriod.ID, "care_type", "ganztag", "Ganztag", 100000, 0.25, 0, 6)
 
 	section := getDefaultSection(t, db, org.ID)
 
@@ -2009,6 +2011,9 @@ func TestGetFinancials_FundingDetails_SingleProperty(t *testing.T) {
 	if fd.Key != "care_type" || fd.Value != "ganztag" {
 		t.Errorf("FundingDetail key/value = %q/%q, want care_type/ganztag", fd.Key, fd.Value)
 	}
+	if fd.Label != "Ganztag" {
+		t.Errorf("FundingDetail label = %q, want %q", fd.Label, "Ganztag")
+	}
 	if fd.AmountCents != 166847 {
 		t.Errorf("AmountCents = %d, want 166847", fd.AmountCents)
 	}
@@ -2107,6 +2112,53 @@ func TestGetFinancials_FundingDetails_MultipleChildren(t *testing.T) {
 	}
 	if dp.FundingIncome != 160000 {
 		t.Errorf("FundingIncome = %d, want 160000", dp.FundingIncome)
+	}
+}
+
+func TestGetFinancials_FundingDetails_Label(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	db.Model(org).Update("state", "berlin")
+	section := getDefaultSection(t, db, org.ID)
+
+	// Government funding with explicit labels
+	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
+	toDate := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	period := createTestFundingPeriod(t, db, funding.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &toDate, 39.0)
+	createTestFundingPropertyFull(t, db, period.ID, "care_type", "ganztag", "Ganztag (bis 9h)", 100000, 0.25, 0, 6)
+	createTestFundingPropertyFull(t, db, period.ID, "integration", "integration a", "Integration A", 50000, 0.1, -1, -1)
+
+	// 1 child with both properties
+	child := createTestChild(t, db, "Child", "One", org.ID)
+	props := models.ContractProperties{"care_type": "ganztag", "integration": "integration a"}
+	createTestChildContract(t, db, child.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, section.ID, props)
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	dp := result.DataPoints[0]
+	if len(dp.FundingDetails) != 2 {
+		t.Fatalf("expected 2 funding details, got %d", len(dp.FundingDetails))
+	}
+
+	// Build a label map by key:value
+	labelMap := make(map[string]string)
+	for _, fd := range dp.FundingDetails {
+		labelMap[fd.Key+":"+fd.Value] = fd.Label
+	}
+
+	if labelMap["care_type:ganztag"] != "Ganztag (bis 9h)" {
+		t.Errorf("care_type:ganztag label = %q, want %q", labelMap["care_type:ganztag"], "Ganztag (bis 9h)")
+	}
+	if labelMap["integration:integration a"] != "Integration A" {
+		t.Errorf("integration:integration a label = %q, want %q", labelMap["integration:integration a"], "Integration A")
 	}
 }
 

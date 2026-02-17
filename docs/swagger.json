@@ -8572,6 +8572,10 @@
                     "type": "string",
                     "example": "care_type"
                 },
+                "label": {
+                    "type": "string",
+                    "example": "Ganztag"
+                },
                 "value": {
                     "type": "string",
                     "example": "ganztag"
@@ -8795,6 +8799,10 @@
                     "type": "string",
                     "example": "care_type"
                 },
+                "label": {
+                    "type": "string",
+                    "example": "Ganztag"
+                },
                 "max_age": {
                     "type": "integer",
                     "example": 3
@@ -8825,6 +8833,7 @@
             "type": "object",
             "required": [
                 "key",
+                "label",
                 "value"
             ],
             "properties": {
@@ -8837,6 +8846,11 @@
                     "type": "string",
                     "maxLength": 100,
                     "example": "care_type"
+                },
+                "label": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "Ganztag"
                 },
                 "max_age": {
                     "type": "integer",
@@ -8884,6 +8898,10 @@
                     "type": "string",
                     "example": "care_type"
                 },
+                "label": {
+                    "type": "string",
+                    "example": "Ganztag"
+                },
                 "max_age": {
                     "type": "integer",
                     "example": 3
@@ -8922,6 +8940,11 @@
                     "type": "string",
                     "maxLength": 100,
                     "example": "care_type"
+                },
+                "label": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "Ganztag"
                 },
                 "max_age": {
                     "type": "integer",
