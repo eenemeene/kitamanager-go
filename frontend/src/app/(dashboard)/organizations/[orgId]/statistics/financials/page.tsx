@@ -17,6 +17,11 @@ const FinancialsChart = dynamic(
   { ssr: false, loading: () => <Skeleton className="h-[350px] w-full" /> }
 );
 
+const FinancialsBarChart = dynamic(
+  () => import('@/components/charts/financials-bar-chart').then((mod) => mod.FinancialsBarChart),
+  { ssr: false, loading: () => <Skeleton className="h-[350px] w-full" /> }
+);
+
 export default function FinancialsPage() {
   const params = useParams();
   const orgId = Number(params.orgId);
@@ -103,6 +108,27 @@ export default function FinancialsPage() {
           ) : financials ? (
             <ChartErrorBoundary>
               <FinancialsChart data={financials} />
+            </ChartErrorBoundary>
+          ) : (
+            <p className="text-muted-foreground">{t('statistics.chartError')}</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Income & Expenses Breakdown Bar Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('statistics.financialBreakdown')}</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            {t('statistics.financialBreakdownDescription')}
+          </p>
+        </CardHeader>
+        <CardContent>
+          {isLoadingFinancials ? (
+            <Skeleton className="h-[350px] w-full" />
+          ) : financials ? (
+            <ChartErrorBoundary>
+              <FinancialsBarChart data={financials} />
             </ChartErrorBoundary>
           ) : (
             <p className="text-muted-foreground">{t('statistics.chartError')}</p>

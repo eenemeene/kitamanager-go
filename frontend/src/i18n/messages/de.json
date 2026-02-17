@@ -132,6 +132,8 @@
     "contractProperties": "Kinder-Vertragseigenschaften (Heute)",
     "financialOverview": "Finanzübersicht (Verlauf)",
     "financialOverviewDescription": "Monatliche Einnahmen, Ausgaben und Bilanz basierend auf aktiven Verträgen",
+    "financialBreakdown": "Einnahmen- & Ausgabenaufschlüsselung",
+    "financialBreakdownDescription": "Monatliche Einnahmen- und Ausgabenkomponenten nach Kategorie gestapelt",
     "totalIncome": "Gesamteinnahmen",
     "totalExpenses": "Gesamtausgaben",
     "balance": "Bilanz",
@@ -581,7 +583,7 @@
     "deleteEntry": "Eintrag löschen",
     "fromDate": "Von-Datum",
     "toDateOptional": "Bis-Datum (leer lassen für laufend)",
-    "amountInEuros": "Betrag (EUR)",
+    "amountInEuros": "Betrag pro Monat (EUR)",
     "notes": "Notizen",
     "entryCreated": "Eintrag erstellt",
     "entryUpdated": "Eintrag aktualisiert",
@@ -593,7 +595,7 @@
     "noEntriesDefined": "Keine Einträge definiert. Klicken Sie auf \"Eintrag hinzufügen\", um zu beginnen.",
     "firstEntry": "Erster Eintrag",
     "amountMustBePositive": "Betrag muss größer als 0 sein",
-    "activeAmount": "Aktiver Betrag"
+    "activeAmount": "Aktiver Betrag / Monat"
   },
   "sectionAgeAlerts": {
     "title": "Kinder über Altersgrenze des Bereichs",

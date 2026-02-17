@@ -313,9 +313,10 @@ func SeedTestData(cfg *config.Config, db *gorm.DB, fundingStore *store.Governmen
 	}
 	periodStart := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	payPeriod := &models.PayPlanPeriod{
-		PayPlanID:   payPlan.ID,
-		Period:      models.Period{From: periodStart},
-		WeeklyHours: 39.0,
+		PayPlanID:                payPlan.ID,
+		Period:                   models.Period{From: periodStart},
+		WeeklyHours:              39.0,
+		EmployerContributionRate: 2200, // 22.00%
 	}
 	if err := db.Create(payPeriod).Error; err != nil {
 		return err
@@ -348,6 +349,26 @@ func SeedTestData(cfg *config.Config, db *gorm.DB, fundingStore *store.Governmen
 		}
 	}
 	slog.Info("Created PayPlan", "name", payPlan.Name, "entries", len(payEntries))
+
+	// Seed budget item: Garden maintenance expense (1000 EUR/month)
+	gardenItem := &models.BudgetItem{
+		OrganizationID: org.ID,
+		Name:           "Garten",
+		Category:       string(models.BudgetItemCategoryExpense),
+		PerChild:       false,
+	}
+	if err := db.Create(gardenItem).Error; err != nil {
+		return err
+	}
+	gardenEntry := &models.BudgetItemEntry{
+		BudgetItemID: gardenItem.ID,
+		Period:       models.Period{From: periodStart},
+		AmountCents:  100000, // 1000.00 EUR
+	}
+	if err := db.Create(gardenEntry).Error; err != nil {
+		return err
+	}
+	slog.Info("Created BudgetItem", "name", gardenItem.Name, "amount_eur", "1000.00")
 
 	// Seed children with realistic contract histories spanning 3 years
 	childCount, contractCount, err := seedChildren(db, org.ID, sections)

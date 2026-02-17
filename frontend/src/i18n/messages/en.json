@@ -132,6 +132,8 @@
     "contractProperties": "Children Contract Properties (Today)",
     "financialOverview": "Financial Overview (History)",
     "financialOverviewDescription": "Monthly income, expenses, and balance based on active contracts",
+    "financialBreakdown": "Income & Expenses Breakdown",
+    "financialBreakdownDescription": "Monthly income and expense components stacked by category",
     "totalIncome": "Total Income",
     "totalExpenses": "Total Expenses",
     "balance": "Balance",
@@ -581,7 +583,7 @@
     "deleteEntry": "Delete Entry",
     "fromDate": "From Date",
     "toDateOptional": "To Date (leave empty for ongoing)",
-    "amountInEuros": "Amount (EUR)",
+    "amountInEuros": "Amount per Month (EUR)",
     "notes": "Notes",
     "entryCreated": "Entry created",
     "entryUpdated": "Entry updated",
@@ -593,7 +595,7 @@
     "noEntriesDefined": "No entries defined. Click \"Add Entry\" to get started.",
     "firstEntry": "First Entry",
     "amountMustBePositive": "Amount must be greater than 0",
-    "activeAmount": "Active Amount"
+    "activeAmount": "Active Amount / Month"
   },
   "sectionAgeAlerts": {
     "title": "Children Over Section Age Limit",
