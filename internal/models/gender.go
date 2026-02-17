@@ -22,11 +22,3 @@ func IsValidGender(g string) bool {
 	return false
 }
 
-// ValidGenderStrings returns the valid gender values as strings
-func ValidGenderStrings() []string {
-	result := make([]string, len(ValidGenders))
-	for i, g := range ValidGenders {
-		result[i] = string(g)
-	}
-	return result
-}
