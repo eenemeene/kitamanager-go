@@ -454,7 +454,7 @@ func (s *StatisticsService) GetOccupancy(ctx context.Context, orgID uint, from, 
 
 // extractOccupancyStructure derives age groups, care types, and supplement types
 // from the government funding periods' properties.
-func extractOccupancyStructure(periods []models.GovernmentFundingPeriod) ([]models.OccupancyAgeGroup, []string, []models.OccupancySupplementType) {
+func extractOccupancyStructure(periods []models.GovernmentFundingPeriod) ([]models.OccupancyAgeGroup, []models.OccupancyCareType, []models.OccupancySupplementType) {
 	// Use the most recent period (periods are ordered DESC by from_date)
 	if len(periods) == 0 {
 		return nil, nil, nil
@@ -465,12 +465,17 @@ func extractOccupancyStructure(periods []models.GovernmentFundingPeriod) ([]mode
 		minAge, maxAge int
 	}
 	ageGroupSet := make(map[ageKey]bool)
-	careTypeSet := make(map[string]bool)
+	careTypeSet := make(map[string]models.OccupancyCareType)
 	supplementSet := make(map[string]models.OccupancySupplementType)
 
 	for _, prop := range period.Properties {
 		if prop.Key == "care_type" {
-			careTypeSet[prop.Value] = true
+			if _, exists := careTypeSet[prop.Value]; !exists {
+				careTypeSet[prop.Value] = models.OccupancyCareType{
+					Value: prop.Value,
+					Label: prop.Label,
+				}
+			}
 			if prop.MinAge != nil && prop.MaxAge != nil {
 				ageGroupSet[ageKey{*prop.MinAge, *prop.MaxAge}] = true
 			}
@@ -499,11 +504,13 @@ func extractOccupancyStructure(periods []models.GovernmentFundingPeriod) ([]mode
 	})
 
 	// Build sorted care types
-	var careTypes []string
-	for ct := range careTypeSet {
+	var careTypes []models.OccupancyCareType
+	for _, ct := range careTypeSet {
 		careTypes = append(careTypes, ct)
 	}
-	sort.Strings(careTypes)
+	sort.Slice(careTypes, func(i, j int) bool {
+		return careTypes[i].Value < careTypes[j].Value
+	})
 
 	// Build sorted supplement types
 	var supplements []models.OccupancySupplementType

@@ -28,11 +28,13 @@ export function OccupancyTable({ data }: OccupancyTableProps) {
 
   // Build rows: one per (age group × care type) combination
   const matrixRows = useMemo(() => {
-    const rows: { ageLabel: string; careType: string; values: number[] }[] = [];
+    const rows: { ageLabel: string; careTypeLabel: string; values: number[] }[] = [];
     for (const ag of data.age_groups) {
       for (const ct of data.care_types) {
-        const values = data.data_points.map((dp) => dp.by_age_and_care_type?.[ag.label]?.[ct] ?? 0);
-        rows.push({ ageLabel: ag.label, careType: ct, values });
+        const values = data.data_points.map(
+          (dp) => dp.by_age_and_care_type?.[ag.label]?.[ct.value] ?? 0
+        );
+        rows.push({ ageLabel: ag.label, careTypeLabel: ct.label || ct.value, values });
       }
     }
     return rows;
@@ -75,7 +77,7 @@ export function OccupancyTable({ data }: OccupancyTableProps) {
             const rowsInGroup = matrixRows.filter((r) => r.ageLabel === row.ageLabel).length;
 
             return (
-              <TableRow key={`${row.ageLabel}-${row.careType}`}>
+              <TableRow key={`${row.ageLabel}-${row.careTypeLabel}`}>
                 {isFirstInGroup ? (
                   <TableCell
                     className="sticky left-0 z-10 bg-background font-medium"
@@ -85,7 +87,7 @@ export function OccupancyTable({ data }: OccupancyTableProps) {
                   </TableCell>
                 ) : null}
                 <TableCell className="sticky left-[80px] z-10 bg-background">
-                  {row.careType}
+                  {row.careTypeLabel}
                 </TableCell>
                 {row.values.map((val, i) => (
                   <TableCell key={months[i]} className="text-center tabular-nums">

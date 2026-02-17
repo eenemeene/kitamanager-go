@@ -659,9 +659,14 @@ export interface OccupancyDataPoint {
   by_supplement: Record<string, number>;
 }
 
+export interface OccupancyCareType {
+  value: string;
+  label: string;
+}
+
 export interface OccupancyResponse {
   age_groups: OccupancyAgeGroup[];
-  care_types: string[];
+  care_types: OccupancyCareType[];
   supplement_types: OccupancySupplementType[];
   data_points: OccupancyDataPoint[];
 }

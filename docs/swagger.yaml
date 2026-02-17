@@ -1207,6 +1207,15 @@ definitions:
         example: 0
         type: integer
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.OccupancyCareType:
+    properties:
+      label:
+        example: Ganztag (bis 9h)
+        type: string
+      value:
+        example: ganztag
+        type: string
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.OccupancyDataPoint:
     properties:
       by_age_and_care_type:
@@ -1234,7 +1243,7 @@ definitions:
         type: array
       care_types:
         items:
-          type: string
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.OccupancyCareType'
         type: array
       data_points:
         items:

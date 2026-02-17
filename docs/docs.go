@@ -9215,6 +9215,19 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.OccupancyCareType": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string",
+                    "example": "Ganztag (bis 9h)"
+                },
+                "value": {
+                    "type": "string",
+                    "example": "ganztag"
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.OccupancyDataPoint": {
             "type": "object",
             "properties": {
@@ -9255,7 +9268,7 @@ const docTemplate = `{
                 "care_types": {
                     "type": "array",
                     "items": {
-                        "type": "string"
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.OccupancyCareType"
                     }
                 },
                 "data_points": {

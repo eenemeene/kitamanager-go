@@ -71,6 +71,12 @@ type OccupancyAgeGroup struct {
 	MaxAge int    `json:"max_age" example:"1"`
 }
 
+// OccupancyCareType describes a care_type funding property (e.g. ganztag, halbtag)
+type OccupancyCareType struct {
+	Value string `json:"value" example:"ganztag"`
+	Label string `json:"label" example:"Ganztag (bis 9h)"`
+}
+
 // OccupancySupplementType describes a non-care_type funding property (e.g. integration, ndh)
 type OccupancySupplementType struct {
 	Key   string `json:"key" example:"integration"`
@@ -89,7 +95,7 @@ type OccupancyDataPoint struct {
 // OccupancyResponse represents the full occupancy matrix response
 type OccupancyResponse struct {
 	AgeGroups       []OccupancyAgeGroup       `json:"age_groups"`
-	CareTypes       []string                  `json:"care_types"`
+	CareTypes       []OccupancyCareType       `json:"care_types"`
 	SupplementTypes []OccupancySupplementType `json:"supplement_types"`
 	DataPoints      []OccupancyDataPoint      `json:"data_points"`
 }
