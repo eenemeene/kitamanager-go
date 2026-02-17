@@ -88,11 +88,10 @@ func (s *PayPlanStore) Update(ctx context.Context, payplan *models.PayPlan) erro
 func (s *PayPlanStore) Delete(ctx context.Context, id uint) error {
 	db := DBFromContext(ctx, s.db)
 
-	// Delete entries first
-	if err := db.Exec(`
-		DELETE FROM pay_plan_entries
-		WHERE period_id IN (SELECT id FROM pay_plan_periods WHERE pay_plan_id = ?)
-	`, id).Error; err != nil {
+	// Delete entries first (via subquery on periods)
+	if err := db.Where("period_id IN (?)",
+		db.Model(&models.PayPlanPeriod{}).Select("id").Where("pay_plan_id = ?", id),
+	).Delete(&models.PayPlanEntry{}).Error; err != nil {
 		return err
 	}
 
