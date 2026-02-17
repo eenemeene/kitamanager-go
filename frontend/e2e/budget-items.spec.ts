@@ -45,10 +45,13 @@ test.describe('Budget Items', () => {
     await page.getByRole('button', { name: /new budget item/i }).click();
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
 
-    await page.getByLabel(/name/i).fill(itemName);
+    await page.getByLabel(/^name$/i).fill(itemName);
 
     await page.getByRole('dialog').getByRole('combobox').click();
     await page.getByRole('option', { name: /income/i }).click();
+
+    await page.getByLabel(/amount/i).clear();
+    await page.getByLabel(/amount/i).fill('100');
 
     await page.getByRole('button', { name: /save/i }).click();
 

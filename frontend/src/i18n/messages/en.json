@@ -590,7 +590,9 @@
     "failedToDeleteEntry": "Failed to delete entry",
     "failedToLoadBudgetItem": "Failed to load budget item",
     "deleteEntryConfirm": "Are you sure you want to delete this entry?",
-    "noEntriesDefined": "No entries defined. Click \"Add Entry\" to get started."
+    "noEntriesDefined": "No entries defined. Click \"Add Entry\" to get started.",
+    "firstEntry": "First Entry",
+    "amountMustBePositive": "Amount must be greater than 0"
   },
   "sectionAgeAlerts": {
     "title": "Children Over Section Age Limit",

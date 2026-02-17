@@ -11,6 +11,7 @@ import type {
   UseFormHandleSubmit,
   FieldErrors,
   UseFormSetValue,
+  UseFormSetError,
   UseFormWatch,
   DefaultValues,
 } from 'react-hook-form';
@@ -56,6 +57,7 @@ interface UseCrudPageResult<
   handleSubmit: UseFormHandleSubmit<TFormData>;
   errors: FieldErrors<TFormData>;
   setValue: UseFormSetValue<TFormData>;
+  setError: UseFormSetError<TFormData>;
   watch: UseFormWatch<TFormData>;
   dialogs: UseCrudDialogsResult<TItem>;
   mutations: UseCrudMutationsResult<TItem, TCreate, TUpdate>;
@@ -79,6 +81,7 @@ export function useCrudPage<
     handleSubmit,
     reset,
     setValue,
+    setError,
     watch,
     formState: { errors },
   } = useForm<TFormData>({
@@ -139,6 +142,7 @@ export function useCrudPage<
     handleSubmit,
     errors,
     setValue,
+    setError,
     watch,
     dialogs,
     mutations,

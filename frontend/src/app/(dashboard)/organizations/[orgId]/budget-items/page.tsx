@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
 import {
   Select,
   SelectContent,
@@ -28,12 +29,19 @@ import {
   Column,
 } from '@/components/crud';
 import { Pagination } from '@/components/ui/pagination';
-import { budgetItemSchema, type BudgetItemFormData } from '@/lib/schemas';
+import { budgetItemWithEntrySchema, type BudgetItemWithEntryFormData } from '@/lib/schemas';
+import { formatDateForApi, eurosToCents } from '@/lib/utils/formatting';
 
-const defaultValues: BudgetItemFormData = {
+const today = new Date().toISOString().slice(0, 10);
+
+const defaultValues: BudgetItemWithEntryFormData = {
   name: '',
   category: 'expense',
   per_child: false,
+  entry_from: today,
+  entry_to: undefined,
+  entry_amount_euros: 0,
+  entry_notes: undefined,
 };
 
 export default function BudgetItemsPage() {
@@ -44,20 +52,43 @@ export default function BudgetItemsPage() {
 
   const crud = useCrudPage<
     BudgetItem,
-    BudgetItemFormData,
+    BudgetItemWithEntryFormData,
     BudgetItemCreateRequest,
     BudgetItemUpdateRequest
   >({
     resourceName: 'budgetItems',
-    schema: budgetItemSchema,
+    schema: budgetItemWithEntrySchema,
     defaultValues,
     itemToFormData: (item) => ({
       name: item.name,
       category: item.category,
       per_child: item.per_child,
+      // Entry fields are not used for editing — provide defaults
+      entry_from: today,
+      entry_to: undefined,
+      entry_amount_euros: 0,
+      entry_notes: undefined,
     }),
     listFn: (orgId, params) => apiClient.getBudgetItems(orgId, params),
-    createFn: (orgId, data) => apiClient.createBudgetItem(orgId, data),
+    createFn: async (orgId, data) => {
+      // Create the budget item first
+      const budgetItem = await apiClient.createBudgetItem(orgId, {
+        name: data.name,
+        category: data.category,
+        per_child: data.per_child,
+      });
+      // Create the first entry
+      const entryData = data as unknown as BudgetItemWithEntryFormData;
+      if (entryData.entry_from) {
+        await apiClient.createBudgetItemEntry(orgId, budgetItem.id, {
+          from: formatDateForApi(entryData.entry_from) || entryData.entry_from,
+          to: formatDateForApi(entryData.entry_to) || null,
+          amount_cents: eurosToCents(entryData.entry_amount_euros),
+          notes: entryData.entry_notes || '',
+        });
+      }
+      return budgetItem;
+    },
     updateFn: (orgId, id, data) => apiClient.updateBudgetItem(orgId, id, data),
     deleteFn: (orgId, id) => apiClient.deleteBudgetItem(orgId, id),
     queryKeys: {
@@ -98,6 +129,19 @@ export default function BudgetItemsPage() {
     [t]
   );
 
+  const isEditing = crud.dialogs.isEditing;
+
+  const onSubmit = (data: BudgetItemWithEntryFormData) => {
+    if (!isEditing && data.entry_amount_euros <= 0) {
+      crud.setError('entry_amount_euros', {
+        type: 'manual',
+        message: t('budgetItems.amountMustBePositive'),
+      });
+      return;
+    }
+    crud.onSubmit(data);
+  };
+
   return (
     <div className="space-y-6">
       <CrudPageHeader
@@ -136,9 +180,9 @@ export default function BudgetItemsPage() {
       <CrudFormDialog
         open={crud.dialogs.isDialogOpen}
         onOpenChange={crud.dialogs.setIsDialogOpen}
-        isEditing={crud.dialogs.isEditing}
+        isEditing={isEditing}
         translationPrefix="budgetItems"
-        onSubmit={crud.handleSubmit(crud.onSubmit)}
+        onSubmit={crud.handleSubmit(onSubmit)}
         isSaving={crud.mutations.isMutating}
       >
         <div className="space-y-4">
@@ -178,6 +222,53 @@ export default function BudgetItemsPage() {
             />
             <Label htmlFor="per_child">{t('budgetItems.perChild')}</Label>
           </div>
+
+          {!isEditing && (
+            <>
+              <Separator />
+              <h4 className="text-sm font-medium">{t('budgetItems.firstEntry')}</h4>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="entry_from">{t('budgetItems.fromDate')}</Label>
+                  <Input id="entry_from" type="date" {...crud.register('entry_from')} />
+                  {crud.errors.entry_from && (
+                    <p className="text-sm text-destructive">{t('validation.fromDateRequired')}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="entry_to">{t('budgetItems.toDateOptional')}</Label>
+                  <Input id="entry_to" type="date" {...crud.register('entry_to')} />
+                  {crud.errors.entry_to && (
+                    <p className="text-sm text-destructive">
+                      {t('validation.toDateMustBeAfterFromDate')}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="entry_amount_euros">{t('budgetItems.amountInEuros')}</Label>
+                <Input
+                  id="entry_amount_euros"
+                  type="number"
+                  min={0.01}
+                  step={0.01}
+                  {...crud.register('entry_amount_euros', { valueAsNumber: true })}
+                />
+                {crud.errors.entry_amount_euros && (
+                  <p className="text-sm text-destructive">
+                    {t('budgetItems.amountMustBePositive')}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="entry_notes">{t('budgetItems.notes')}</Label>
+                <Input id="entry_notes" {...crud.register('entry_notes')} />
+              </div>
+            </>
+          )}
         </div>
       </CrudFormDialog>
 

@@ -40,8 +40,10 @@ export {
 export {
   budgetItemSchema,
   budgetItemEntrySchema,
+  budgetItemWithEntrySchema,
   type BudgetItemFormData,
   type BudgetItemEntryFormData,
+  type BudgetItemWithEntryFormData,
 } from './budget-item';
 export {
   governmentFundingSchema,
