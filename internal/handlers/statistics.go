@@ -154,7 +154,7 @@ func (h *StatisticsHandler) GetOccupancy(c *gin.Context) {
 // @Description Income is calculated from children's contract properties matched against government funding.
 // @Description Salary costs use pay plan entries pro-rated by weekly hours. Employer costs apply the period's contribution rate.
 // @Description Operating costs sum active cost entries for the organization.
-// @Description Each data point includes optional breakdowns: funding_details (per funding property) and budget_item_details (per budget item).
+// @Description Each data point includes optional breakdowns: funding_details (per funding property), budget_item_details (per budget item), and salary_details (per staff category).
 // @Tags statistics
 // @Accept json
 // @Produce json

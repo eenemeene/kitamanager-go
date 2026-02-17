@@ -595,6 +595,12 @@ export interface FinancialFundingDetail {
   amount_cents: number;
 }
 
+export interface FinancialSalaryDetail {
+  staff_category: string;
+  gross_salary: number;
+  employer_costs: number;
+}
+
 export interface FinancialDataPoint {
   date: string;
   funding_income: number;
@@ -609,6 +615,7 @@ export interface FinancialDataPoint {
   staff_count: number;
   budget_item_details?: FinancialBudgetItemDetail[];
   funding_details?: FinancialFundingDetail[];
+  salary_details?: FinancialSalaryDetail[];
 }
 
 export interface FinancialResponse {

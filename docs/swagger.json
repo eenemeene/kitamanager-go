@@ -6330,7 +6330,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns monthly data points with income (government funding), expenses (salaries, employer costs, operating costs), and balance.\nIncome is calculated from children's contract properties matched against government funding.\nSalary costs use pay plan entries pro-rated by weekly hours. Employer costs apply the period's contribution rate.\nOperating costs sum active cost entries for the organization.\nEach data point includes optional breakdowns: funding_details (per funding property) and budget_item_details (per budget item).",
+                "description": "Returns monthly data points with income (government funding), expenses (salaries, employer costs, operating costs), and balance.\nIncome is calculated from children's contract properties matched against government funding.\nSalary costs use pay plan entries pro-rated by weekly hours. Employer costs apply the period's contribution rate.\nOperating costs sum active cost entries for the organization.\nEach data point includes optional breakdowns: funding_details (per funding property), budget_item_details (per budget item), and salary_details (per staff category).",
                 "consumes": [
                     "application/json"
                 ],
@@ -8539,6 +8539,12 @@
                     "type": "integer",
                     "example": 3500000
                 },
+                "salary_details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FinancialSalaryDetail"
+                    }
+                },
                 "staff_count": {
                     "type": "integer",
                     "example": 12
@@ -8580,6 +8586,23 @@
                     "items": {
                         "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FinancialDataPoint"
                     }
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.FinancialSalaryDetail": {
+            "type": "object",
+            "properties": {
+                "employer_costs": {
+                    "type": "integer",
+                    "example": 66000
+                },
+                "gross_salary": {
+                    "type": "integer",
+                    "example": 300000
+                },
+                "staff_category": {
+                    "type": "string",
+                    "example": "qualified"
                 }
             }
         },

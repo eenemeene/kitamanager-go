@@ -28,6 +28,13 @@ type FinancialFundingDetail struct {
 	AmountCents int    `json:"amount_cents" example:"166847"`
 }
 
+// FinancialSalaryDetail provides a breakdown of salary costs by staff category
+type FinancialSalaryDetail struct {
+	StaffCategory string `json:"staff_category" example:"qualified"`
+	GrossSalary   int    `json:"gross_salary" example:"300000"`
+	EmployerCosts int    `json:"employer_costs" example:"66000"`
+}
+
 // FinancialDataPoint represents a single monthly data point for financial overview
 type FinancialDataPoint struct {
 	Date string `json:"date" example:"2025-01-01"`
@@ -48,6 +55,7 @@ type FinancialDataPoint struct {
 	// Breakdowns
 	BudgetItemDetails []FinancialBudgetItemDetail `json:"budget_item_details,omitempty"`
 	FundingDetails    []FinancialFundingDetail    `json:"funding_details,omitempty"`
+	SalaryDetails     []FinancialSalaryDetail     `json:"salary_details,omitempty"`
 }
 
 // FinancialResponse represents the response for financial statistics

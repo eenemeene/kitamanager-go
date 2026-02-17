@@ -722,6 +722,10 @@ definitions:
         description: Expenses
         example: 3500000
         type: integer
+      salary_details:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FinancialSalaryDetail'
+        type: array
       staff_count:
         example: 12
         type: integer
@@ -752,6 +756,18 @@ definitions:
         items:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FinancialDataPoint'
         type: array
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.FinancialSalaryDetail:
+    properties:
+      employer_costs:
+        example: 66000
+        type: integer
+      gross_salary:
+        example: 300000
+        type: integer
+      staff_category:
+        example: qualified
+        type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingCreateRequest:
     properties:
@@ -6343,7 +6359,7 @@ paths:
         Income is calculated from children's contract properties matched against government funding.
         Salary costs use pay plan entries pro-rated by weekly hours. Employer costs apply the period's contribution rate.
         Operating costs sum active cost entries for the organization.
-        Each data point includes optional breakdowns: funding_details (per funding property) and budget_item_details (per budget item).
+        Each data point includes optional breakdowns: funding_details (per funding property), budget_item_details (per budget item), and salary_details (per staff category).
       parameters:
       - description: Organization ID
         in: path

@@ -262,6 +262,7 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 		employerCosts := 0
 		staffCount := 0
 		employeeSeen := make(map[uint]bool)
+		salaryByCategory := make(map[string][2]int) // [0]=gross, [1]=contrib
 		for i := range employeeContracts {
 			ec := &employeeContracts[i]
 			if !ec.IsActiveOn(date) {
@@ -289,7 +290,26 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 			contrib := int(math.Round(float64(gross) * float64(period.EmployerContributionRate) / 10000.0))
 			grossSalary += gross
 			employerCosts += contrib
+
+			cat := ec.StaffCategory
+			pair := salaryByCategory[cat]
+			pair[0] += gross
+			pair[1] += contrib
+			salaryByCategory[cat] = pair
 		}
+
+		// Convert salary-by-category map to sorted slice
+		var salaryDetails []models.FinancialSalaryDetail
+		for cat, pair := range salaryByCategory {
+			salaryDetails = append(salaryDetails, models.FinancialSalaryDetail{
+				StaffCategory: cat,
+				GrossSalary:   pair[0],
+				EmployerCosts: pair[1],
+			})
+		}
+		sort.Slice(salaryDetails, func(i, j int) bool {
+			return salaryDetails[i].StaffCategory < salaryDetails[j].StaffCategory
+		})
 
 		// Budget items: income and expenses from budget items
 		budgetIncome := 0
@@ -331,6 +351,7 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 		dp.StaffCount = staffCount
 		dp.BudgetItemDetails = budgetItemDetails
 		dp.FundingDetails = fundingDetails
+		dp.SalaryDetails = salaryDetails
 		dataPoints = append(dataPoints, dp)
 	}
 

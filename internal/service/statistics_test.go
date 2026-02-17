@@ -2109,3 +2109,226 @@ func TestGetFinancials_FundingDetails_MultipleChildren(t *testing.T) {
 		t.Errorf("FundingIncome = %d, want 160000", dp.FundingIncome)
 	}
 }
+
+func TestGetFinancials_SalaryDetails_SingleCategory(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	db.Model(org).Update("state", "berlin")
+	section := getDefaultSection(t, db, org.ID)
+
+	// Pay plan: S8a step 3, 350000 cents/month, 39h full-time, 22% employer contrib
+	payplan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
+	ppPeriod := createTestPayPlanPeriodWithContrib(t, db, payplan.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0, 2200)
+	createTestPayPlanEntry(t, db, ppPeriod.ID, "S8a", 3, 350000, nil)
+
+	emp := createTestEmployee(t, db, "Emp", "One", org.ID)
+	contractFrom := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	createTestEmployeeContractWithCategory(t, db, emp.ID, payplan.ID, contractFrom, nil, 39.0, "qualified", section.ID)
+	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]interface{}{"grade": "S8a", "step": 3})
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	dp := result.DataPoints[0]
+	if len(dp.SalaryDetails) != 1 {
+		t.Fatalf("expected 1 salary detail, got %d", len(dp.SalaryDetails))
+	}
+	sd := dp.SalaryDetails[0]
+	if sd.StaffCategory != "qualified" {
+		t.Errorf("StaffCategory = %q, want %q", sd.StaffCategory, "qualified")
+	}
+	if sd.GrossSalary != 350000 {
+		t.Errorf("GrossSalary = %d, want 350000", sd.GrossSalary)
+	}
+	// Employer: 350000 * 2200/10000 = 77000
+	if sd.EmployerCosts != 77000 {
+		t.Errorf("EmployerCosts = %d, want 77000", sd.EmployerCosts)
+	}
+}
+
+func TestGetFinancials_SalaryDetails_MultipleCategories(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	db.Model(org).Update("state", "berlin")
+	section := getDefaultSection(t, db, org.ID)
+
+	payplan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
+	ppPeriod := createTestPayPlanPeriodWithContrib(t, db, payplan.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0, 2200)
+	createTestPayPlanEntry(t, db, ppPeriod.ID, "S8a", 3, 350000, nil)
+	createTestPayPlanEntry(t, db, ppPeriod.ID, "S4", 2, 280000, nil)
+	createTestPayPlanEntry(t, db, ppPeriod.ID, "S3", 1, 250000, nil)
+
+	categories := []struct {
+		firstName     string
+		staffCategory string
+		grade         string
+		step          int
+		monthly       int
+	}{
+		{"Emp", "qualified", "S8a", 3, 350000},
+		{"Sup", "supplementary", "S4", 2, 280000},
+		{"Non", "non_pedagogical", "S3", 1, 250000},
+	}
+
+	contractFrom := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	for _, c := range categories {
+		emp := createTestEmployee(t, db, c.firstName, "Test", org.ID)
+		createTestEmployeeContractWithCategory(t, db, emp.ID, payplan.ID, contractFrom, nil, 39.0, c.staffCategory, section.ID)
+		db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]interface{}{"grade": c.grade, "step": c.step})
+	}
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	dp := result.DataPoints[0]
+	if len(dp.SalaryDetails) != 3 {
+		t.Fatalf("expected 3 salary details, got %d", len(dp.SalaryDetails))
+	}
+
+	// Should be sorted alphabetically by staff_category
+	expectedOrder := []string{"non_pedagogical", "qualified", "supplementary"}
+	for i, sd := range dp.SalaryDetails {
+		if sd.StaffCategory != expectedOrder[i] {
+			t.Errorf("SalaryDetails[%d].StaffCategory = %q, want %q", i, sd.StaffCategory, expectedOrder[i])
+		}
+	}
+
+	// Verify aggregates match sum of details
+	totalGross := 0
+	totalEmployer := 0
+	for _, sd := range dp.SalaryDetails {
+		totalGross += sd.GrossSalary
+		totalEmployer += sd.EmployerCosts
+	}
+	if totalGross != dp.GrossSalary {
+		t.Errorf("sum of detail GrossSalary = %d, want %d (aggregate)", totalGross, dp.GrossSalary)
+	}
+	if totalEmployer != dp.EmployerCosts {
+		t.Errorf("sum of detail EmployerCosts = %d, want %d (aggregate)", totalEmployer, dp.EmployerCosts)
+	}
+}
+
+func TestGetFinancials_SalaryDetails_SameCategory(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	db.Model(org).Update("state", "berlin")
+	section := getDefaultSection(t, db, org.ID)
+
+	payplan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
+	ppPeriod := createTestPayPlanPeriodWithContrib(t, db, payplan.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0, 2200)
+	createTestPayPlanEntry(t, db, ppPeriod.ID, "S8a", 3, 350000, nil)
+	createTestPayPlanEntry(t, db, ppPeriod.ID, "S8a", 4, 380000, nil)
+
+	contractFrom := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	emp1 := createTestEmployee(t, db, "Emp", "One", org.ID)
+	createTestEmployeeContractWithCategory(t, db, emp1.ID, payplan.ID, contractFrom, nil, 39.0, "qualified", section.ID)
+	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp1.ID).Updates(map[string]interface{}{"grade": "S8a", "step": 3})
+
+	emp2 := createTestEmployee(t, db, "Emp", "Two", org.ID)
+	createTestEmployeeContractWithCategory(t, db, emp2.ID, payplan.ID, contractFrom, nil, 39.0, "qualified", section.ID)
+	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp2.ID).Updates(map[string]interface{}{"grade": "S8a", "step": 4})
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	dp := result.DataPoints[0]
+	if len(dp.SalaryDetails) != 1 {
+		t.Fatalf("expected 1 salary detail (same category summed), got %d", len(dp.SalaryDetails))
+	}
+	sd := dp.SalaryDetails[0]
+	if sd.StaffCategory != "qualified" {
+		t.Errorf("StaffCategory = %q, want %q", sd.StaffCategory, "qualified")
+	}
+	// 350000 + 380000 = 730000
+	if sd.GrossSalary != 730000 {
+		t.Errorf("GrossSalary = %d, want 730000", sd.GrossSalary)
+	}
+	// Employer: round(350000*0.22) + round(380000*0.22) = 77000 + 83600 = 160600
+	expectedEmployer := int(math.Round(350000.0*2200.0/10000.0)) + int(math.Round(380000.0*2200.0/10000.0))
+	if sd.EmployerCosts != expectedEmployer {
+		t.Errorf("EmployerCosts = %d, want %d", sd.EmployerCosts, expectedEmployer)
+	}
+}
+
+func TestGetFinancials_SalaryDetails_ProRata(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	db.Model(org).Update("state", "berlin")
+	section := getDefaultSection(t, db, org.ID)
+
+	payplan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
+	ppPeriod := createTestPayPlanPeriodWithContrib(t, db, payplan.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0, 2200)
+	createTestPayPlanEntry(t, db, ppPeriod.ID, "S8a", 3, 350000, nil)
+
+	emp := createTestEmployee(t, db, "Emp", "Part", org.ID)
+	contractFrom := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	createTestEmployeeContractWithCategory(t, db, emp.ID, payplan.ID, contractFrom, nil, 20.0, "qualified", section.ID)
+	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]interface{}{"grade": "S8a", "step": 3})
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	dp := result.DataPoints[0]
+	if len(dp.SalaryDetails) != 1 {
+		t.Fatalf("expected 1 salary detail, got %d", len(dp.SalaryDetails))
+	}
+	sd := dp.SalaryDetails[0]
+	// Pro-rated: 350000 * 20/39
+	expectedGross := int(math.Round(350000.0 * 20.0 / 39.0))
+	if sd.GrossSalary != expectedGross {
+		t.Errorf("GrossSalary = %d, want %d", sd.GrossSalary, expectedGross)
+	}
+	expectedEmployer := int(math.Round(float64(expectedGross) * 2200.0 / 10000.0))
+	if sd.EmployerCosts != expectedEmployer {
+		t.Errorf("EmployerCosts = %d, want %d", sd.EmployerCosts, expectedEmployer)
+	}
+}
+
+func TestGetFinancials_SalaryDetails_NoEmployees(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	db.Model(org).Update("state", "berlin")
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	dp := result.DataPoints[0]
+	if len(dp.SalaryDetails) != 0 {
+		t.Errorf("expected no salary details, got %d", len(dp.SalaryDetails))
+	}
+}
