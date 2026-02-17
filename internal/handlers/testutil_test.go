@@ -248,7 +248,8 @@ func createUserGroupService(db *gorm.DB) *service.UserGroupService {
 	userGroupStore := store.NewUserGroupStore(db)
 	userStore := store.NewUserStore(db)
 	groupStore := store.NewGroupStore(db)
-	return service.NewUserGroupService(userGroupStore, userStore, groupStore)
+	transactor := store.NewTransactor(db)
+	return service.NewUserGroupService(userGroupStore, userStore, groupStore, transactor)
 }
 
 // createGroupService creates a group service for testing.

@@ -108,11 +108,11 @@ func setupRouter() *gin.Engine {
 	// Setup services
 	orgService := service.NewOrganizationService(orgStore, groupStore, userStore)
 	userService := service.NewUserService(userStore, groupStore, userGroupStore)
-	userGroupService := service.NewUserGroupService(userGroupStore, userStore, groupStore)
 	groupService := service.NewGroupService(groupStore)
 	payPlanStore := store.NewPayPlanStore(testDB)
 	sectionStore := store.NewSectionStore(testDB)
 	transactor := store.NewTransactor(testDB)
+	userGroupService := service.NewUserGroupService(userGroupStore, userStore, groupStore, transactor)
 	employeeService := service.NewEmployeeService(employeeStore, payPlanStore, sectionStore, transactor)
 	childService := service.NewChildService(childStore, orgStore, fundingStore, sectionStore, transactor)
 

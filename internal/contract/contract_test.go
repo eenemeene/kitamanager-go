@@ -126,7 +126,8 @@ func setupRouter() *gin.Engine {
 	// Setup services
 	orgService := service.NewOrganizationService(orgStore, groupStore, userStore)
 	userService := service.NewUserService(userStore, groupStore, userGroupStore)
-	userGroupService := service.NewUserGroupService(userGroupStore, userStore, groupStore)
+	transactor := store.NewTransactor(testDB)
+	userGroupService := service.NewUserGroupService(userGroupStore, userStore, groupStore, transactor)
 	groupService := service.NewGroupService(groupStore)
 
 	// Setup audit service

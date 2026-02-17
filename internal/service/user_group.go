@@ -13,14 +13,16 @@ type UserGroupService struct {
 	userGroupStore store.UserGroupStorer
 	userStore      store.UserStorer
 	groupStore     store.GroupStorer
+	transactor     store.Transactor
 }
 
 // NewUserGroupService creates a new UserGroupService
-func NewUserGroupService(userGroupStore store.UserGroupStorer, userStore store.UserStorer, groupStore store.GroupStorer) *UserGroupService {
+func NewUserGroupService(userGroupStore store.UserGroupStorer, userStore store.UserStorer, groupStore store.GroupStorer, transactor store.Transactor) *UserGroupService {
 	return &UserGroupService{
 		userGroupStore: userGroupStore,
 		userStore:      userStore,
 		groupStore:     groupStore,
+		transactor:     transactor,
 	}
 }
 
@@ -49,19 +51,24 @@ func (s *UserGroupService) AddUserToGroup(ctx context.Context, userID, groupID u
 		return nil, err
 	}
 
-	// Check if already a member
-	exists, err := s.userGroupStore.Exists(ctx, userID, groupID)
-	if err != nil {
-		return nil, apperror.InternalWrap(err, "failed to check existing membership")
-	}
-	if exists {
-		return nil, apperror.BadRequest("user is already a member of this group")
-	}
+	// Check + create in a single transaction to prevent race conditions
+	var ug *models.UserGroup
+	if err := s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
+		exists, err := s.userGroupStore.Exists(txCtx, userID, groupID)
+		if err != nil {
+			return apperror.InternalWrap(err, "failed to check existing membership")
+		}
+		if exists {
+			return apperror.BadRequest("user is already a member of this group")
+		}
 
-	// Create membership
-	ug, err := s.userGroupStore.AddUserToGroup(ctx, userID, groupID, role, createdBy)
-	if err != nil {
-		return nil, apperror.InternalWrap(err, "failed to add user to group")
+		ug, err = s.userGroupStore.AddUserToGroup(txCtx, userID, groupID, role, createdBy)
+		if err != nil {
+			return apperror.InternalWrap(err, "failed to add user to group")
+		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	// Load group data for response
@@ -120,19 +127,21 @@ func (s *UserGroupService) RemoveUserFromGroup(ctx context.Context, userID, grou
 		return err
 	}
 
-	// Check if membership exists
-	exists, err := s.userGroupStore.Exists(ctx, userID, groupID)
-	if err != nil {
-		return apperror.InternalWrap(err, "failed to check membership")
-	}
-	if !exists {
-		return apperror.NotFound("user-group membership")
-	}
+	// Check + delete in a single transaction to prevent race conditions
+	return s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
+		exists, err := s.userGroupStore.Exists(txCtx, userID, groupID)
+		if err != nil {
+			return apperror.InternalWrap(err, "failed to check membership")
+		}
+		if !exists {
+			return apperror.NotFound("user-group membership")
+		}
 
-	if err := s.userGroupStore.RemoveUserFromGroup(ctx, userID, groupID); err != nil {
-		return apperror.InternalWrap(err, "failed to remove user from group")
-	}
-	return nil
+		if err := s.userGroupStore.RemoveUserFromGroup(txCtx, userID, groupID); err != nil {
+			return apperror.InternalWrap(err, "failed to remove user from group")
+		}
+		return nil
+	})
 }
 
 // GetUserMemberships returns all group memberships for a user with effective org roles

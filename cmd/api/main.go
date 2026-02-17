@@ -133,7 +133,7 @@ func main() {
 	auditService := service.NewAuditService(auditStore)
 	authService := service.NewAuthService(userStore, tokenStore, cfg.JWTSecret, auditService)
 	userService := service.NewUserService(userStore, groupStore, userGroupStore)
-	userGroupService := service.NewUserGroupService(userGroupStore, userStore, groupStore)
+	userGroupService := service.NewUserGroupService(userGroupStore, userStore, groupStore, transactor)
 	orgService := service.NewOrganizationService(orgStore, groupStore, userStore)
 	groupService := service.NewGroupService(groupStore)
 	sectionService := service.NewSectionService(sectionStore)
