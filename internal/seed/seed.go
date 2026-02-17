@@ -370,6 +370,26 @@ func SeedTestData(cfg *config.Config, db *gorm.DB, fundingStore *store.Governmen
 	}
 	slog.Info("Created BudgetItem", "name", gardenItem.Name, "amount_eur", "1000.00")
 
+	// Seed budget item: Parent contribution income (90 EUR/month per child)
+	elternbeitragItem := &models.BudgetItem{
+		OrganizationID: org.ID,
+		Name:           "Elternbeitrag",
+		Category:       string(models.BudgetItemCategoryIncome),
+		PerChild:       true,
+	}
+	if err := db.Create(elternbeitragItem).Error; err != nil {
+		return err
+	}
+	elternbeitragEntry := &models.BudgetItemEntry{
+		BudgetItemID: elternbeitragItem.ID,
+		Period:       models.Period{From: periodStart},
+		AmountCents:  9000, // 90.00 EUR
+	}
+	if err := db.Create(elternbeitragEntry).Error; err != nil {
+		return err
+	}
+	slog.Info("Created BudgetItem", "name", elternbeitragItem.Name, "amount_eur", "90.00", "per_child", true)
+
 	// Seed children with realistic contract histories spanning 3 years
 	childCount, contractCount, err := seedChildren(db, org.ID, sections)
 	if err != nil {
