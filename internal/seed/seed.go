@@ -69,7 +69,7 @@ func SeedAdmin(cfg *config.Config, userStore *store.UserStore, userGroupStore *s
 		return nil
 	}
 
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
 		return err
 	}
 
