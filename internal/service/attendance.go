@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -73,6 +74,9 @@ func (s *ChildAttendanceService) Create(ctx context.Context, orgID, childID uint
 
 	// Check if attendance record already exists for this child on this date
 	existing, findErr := s.store.FindByChildAndDate(ctx, childID, date)
+	if findErr != nil && !errors.Is(findErr, store.ErrNotFound) {
+		return nil, apperror.InternalWrap(findErr, "failed to check existing attendance")
+	}
 	if findErr == nil && existing != nil {
 		return nil, apperror.Conflict("attendance record already exists for this child on this date")
 	}
