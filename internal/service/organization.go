@@ -145,13 +145,12 @@ func (s *OrganizationService) Update(ctx context.Context, id uint, req *models.O
 	}
 
 	// Trim and validate input
-	req.Name = strings.TrimSpace(req.Name)
-
-	if req.Name != "" {
-		if validation.IsWhitespaceOnly(req.Name) {
+	if req.Name != nil {
+		trimmed := strings.TrimSpace(*req.Name)
+		if validation.IsWhitespaceOnly(trimmed) {
 			return nil, apperror.BadRequest("name cannot be empty or whitespace only")
 		}
-		org.Name = req.Name
+		org.Name = trimmed
 	}
 	if req.Active != nil {
 		org.Active = *req.Active

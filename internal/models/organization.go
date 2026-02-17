@@ -48,7 +48,7 @@ type OrganizationCreateRequest struct {
 
 // OrganizationUpdateRequest represents the request body for updating an organization
 type OrganizationUpdateRequest struct {
-	Name   string  `json:"name" binding:"omitempty,max=255" example:"Acme Corp Updated"`
+	Name   *string `json:"name" binding:"omitempty,max=255" example:"Acme Corp Updated"`
 	Active *bool   `json:"active" example:"false"`
 	State  *string `json:"state" binding:"omitempty" example:"berlin"`
 }

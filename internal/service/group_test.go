@@ -208,7 +208,7 @@ func TestGroupService_UpdateByIDAndOrg(t *testing.T) {
 	group := createTestGroupWithOrg(t, db, "Original Name", org.ID)
 
 	req := &models.GroupUpdateRequest{
-		Name: "Updated Name",
+		Name: strPtr("Updated Name"),
 	}
 
 	updated, err := svc.UpdateByIDAndOrg(ctx, group.ID, org.ID, req)
@@ -231,7 +231,7 @@ func TestGroupService_UpdateByIDAndOrg_WrongOrg(t *testing.T) {
 	group := createTestGroupWithOrg(t, db, "Test Group", org1.ID)
 
 	req := &models.GroupUpdateRequest{
-		Name: "Hacked Name",
+		Name: strPtr("Hacked Name"),
 	}
 
 	// Try to update group from wrong org (security boundary)
@@ -266,7 +266,7 @@ func TestGroupService_UpdateByIDAndOrg_NotFound(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	req := &models.GroupUpdateRequest{
-		Name: "New Name",
+		Name: strPtr("New Name"),
 	}
 
 	_, err := svc.UpdateByIDAndOrg(ctx, 999, org.ID, req)

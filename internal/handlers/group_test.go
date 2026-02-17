@@ -165,7 +165,7 @@ func TestGroupHandler_Update(t *testing.T) {
 	r.PUT("/organizations/:orgId/groups/:groupId", handler.Update)
 
 	body := models.GroupUpdateRequest{
-		Name: "Updated Name",
+		Name: strPtr("Updated Name"),
 	}
 
 	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/groups/%d", org.ID, group.ID), body)
@@ -195,7 +195,7 @@ func TestGroupHandler_Update_WrongOrg(t *testing.T) {
 	r.PUT("/organizations/:orgId/groups/:groupId", handler.Update)
 
 	body := models.GroupUpdateRequest{
-		Name: "Updated Name",
+		Name: strPtr("Updated Name"),
 	}
 
 	// Try to update group from org1 using org2's URL
@@ -286,7 +286,7 @@ func TestGroupHandler_Update_InvalidID(t *testing.T) {
 	r.PUT("/organizations/:orgId/groups/:groupId", handler.Update)
 
 	body := models.GroupUpdateRequest{
-		Name: "Updated Name",
+		Name: strPtr("Updated Name"),
 	}
 
 	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/groups/invalid", org.ID), body)
@@ -307,7 +307,7 @@ func TestGroupHandler_Update_NotFound(t *testing.T) {
 	r.PUT("/organizations/:orgId/groups/:groupId", handler.Update)
 
 	body := models.GroupUpdateRequest{
-		Name: "Updated Name",
+		Name: strPtr("Updated Name"),
 	}
 
 	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/groups/999", org.ID), body)

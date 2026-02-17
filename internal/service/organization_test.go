@@ -297,7 +297,7 @@ func TestOrganizationService_Update(t *testing.T) {
 	org := createTestOrganization(t, db, "Original Name")
 
 	req := &models.OrganizationUpdateRequest{
-		Name: "Updated Name",
+		Name: strPtr("Updated Name"),
 	}
 
 	updated, err := svc.Update(ctx, org.ID, req)
@@ -344,7 +344,7 @@ func TestOrganizationService_Update_Both(t *testing.T) {
 
 	active := false
 	req := &models.OrganizationUpdateRequest{
-		Name:   "New Name",
+		Name:   strPtr("New Name"),
 		Active: &active,
 	}
 
@@ -361,7 +361,7 @@ func TestOrganizationService_Update_Both(t *testing.T) {
 	}
 }
 
-func TestOrganizationService_Update_EmptyNameKeepsOriginal(t *testing.T) {
+func TestOrganizationService_Update_NilNameKeepsOriginal(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createOrganizationService(db)
 	ctx := context.Background()
@@ -369,7 +369,7 @@ func TestOrganizationService_Update_EmptyNameKeepsOriginal(t *testing.T) {
 	org := createTestOrganization(t, db, "Original Name")
 
 	req := &models.OrganizationUpdateRequest{
-		Name: "", // Empty, should keep original
+		Name: nil, // nil means "don't update"
 	}
 
 	updated, err := svc.Update(ctx, org.ID, req)
@@ -389,20 +389,22 @@ func TestOrganizationService_Update_WhitespaceOnlyName(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 
-	// Note: After trimming, whitespace becomes empty string which keeps original
-	// Let's test a scenario where name is explicitly whitespace
+	// Non-nil whitespace-only name is an explicit update attempt that should be rejected
 	req := &models.OrganizationUpdateRequest{
-		Name: "   ", // Whitespace only - after trim becomes empty, keeps original
+		Name: strPtr("   "),
 	}
 
-	updated, err := svc.Update(ctx, org.ID, req)
-	if err != nil {
-		t.Fatalf("expected no error for whitespace (trimmed to empty), got %v", err)
+	_, err := svc.Update(ctx, org.ID, req)
+	if err == nil {
+		t.Fatal("expected error for whitespace-only name, got nil")
 	}
 
-	// Should keep original name since trimmed name is empty
-	if updated.Name != "Test Org" {
-		t.Errorf("Name = %v, want Test Org (unchanged)", updated.Name)
+	var appErr *apperror.AppError
+	if !errors.As(err, &appErr) {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
 	}
 }
 
@@ -412,7 +414,7 @@ func TestOrganizationService_Update_NotFound(t *testing.T) {
 	ctx := context.Background()
 
 	req := &models.OrganizationUpdateRequest{
-		Name: "New Name",
+		Name: strPtr("New Name"),
 	}
 
 	_, err := svc.Update(ctx, 999, req)

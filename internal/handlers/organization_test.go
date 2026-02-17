@@ -154,7 +154,7 @@ func TestOrganizationHandler_Update(t *testing.T) {
 	r.PUT("/organizations/:orgId", handler.Update)
 
 	body := models.OrganizationUpdateRequest{
-		Name: "Updated Name",
+		Name: strPtr("Updated Name"),
 	}
 
 	w := performRequest(r, "PUT", "/organizations/1", body)
@@ -305,7 +305,7 @@ func TestOrganizationHandler_Update_NotFound(t *testing.T) {
 	r.PUT("/organizations/:orgId", handler.Update)
 
 	body := models.OrganizationUpdateRequest{
-		Name: "Updated Name",
+		Name: strPtr("Updated Name"),
 	}
 
 	w := performRequest(r, "PUT", "/organizations/999", body)
@@ -324,7 +324,7 @@ func TestOrganizationHandler_Update_InvalidID(t *testing.T) {
 	r.PUT("/organizations/:orgId", handler.Update)
 
 	body := models.OrganizationUpdateRequest{
-		Name: "Updated Name",
+		Name: strPtr("Updated Name"),
 	}
 
 	w := performRequest(r, "PUT", "/organizations/abc", body)

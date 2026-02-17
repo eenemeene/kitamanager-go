@@ -45,8 +45,8 @@ type GroupCreateRequest struct {
 
 // GroupUpdateRequest represents the request body for updating a group.
 type GroupUpdateRequest struct {
-	Name   string `json:"name" binding:"omitempty,max=255" example:"Administrators Updated"`
-	Active *bool  `json:"active" example:"false"`
+	Name   *string `json:"name" binding:"omitempty,max=255" example:"Administrators Updated"`
+	Active *bool   `json:"active" example:"false"`
 }
 
 func (g *Group) ToResponse() GroupResponse {

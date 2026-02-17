@@ -79,13 +79,12 @@ func (s *GroupService) UpdateByIDAndOrg(ctx context.Context, id, orgID uint, req
 	}
 
 	// Trim and validate input
-	req.Name = strings.TrimSpace(req.Name)
-
-	if req.Name != "" {
-		if validation.IsWhitespaceOnly(req.Name) {
+	if req.Name != nil {
+		trimmed := strings.TrimSpace(*req.Name)
+		if validation.IsWhitespaceOnly(trimmed) {
 			return nil, apperror.BadRequest("name cannot be empty or whitespace only")
 		}
-		group.Name = req.Name
+		group.Name = trimmed
 	}
 	if req.Active != nil {
 		group.Active = *req.Active
