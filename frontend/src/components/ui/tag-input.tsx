@@ -141,7 +141,7 @@ export function PropertyTagInput({
         })}
       </div>
       {availableSuggestions.length > 0 && !disabled && (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1" data-testid="property-suggestions">
           {suggestionsLabel && (
             <span className="mr-1 self-center text-xs text-muted-foreground">
               {suggestionsLabel}

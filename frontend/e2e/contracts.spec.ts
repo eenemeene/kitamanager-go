@@ -78,7 +78,7 @@ test.describe('Child Contracts - CRUD Operations', () => {
       // Wait for property suggestions to load and click on them
       // The PropertyTagInput shows clickable suggestion buttons
       await expect(page.getByText(/Available:/i)).toBeVisible({ timeout: 10000 });
-      const suggestionsArea = page.locator('text=Available:').locator('..');
+      const suggestionsArea = page.getByTestId('property-suggestions');
 
       // Click on ganztag suggestion (or first available suggestion)
       const gantzagSuggestion = suggestionsArea.locator('button', { hasText: 'ganztag' }).first();
@@ -136,7 +136,7 @@ test.describe('Child Contracts - CRUD Operations', () => {
 
       // Click on a suggested property - suggestions are buttons with icon + text
       // Look within the suggestions area (after "Available:" label)
-      const suggestionsArea = page.locator('text=Available:').locator('..');
+      const suggestionsArea = page.getByTestId('property-suggestions');
       const gantzagSuggestion = suggestionsArea.locator('button', { hasText: 'ganztag' }).first();
       await expect(gantzagSuggestion).toBeVisible({ timeout: 5000 });
       await gantzagSuggestion.click();
@@ -196,7 +196,7 @@ test.describe('Child Contracts - CRUD Operations', () => {
       await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
 
       // Add a property by clicking on suggestion
-      const suggestionsArea = page.locator('text=Available:').locator('..');
+      const suggestionsArea = page.getByTestId('property-suggestions');
       const ndhSuggestion = suggestionsArea.locator('button', { hasText: 'ndh' }).first();
       if (await ndhSuggestion.isVisible({ timeout: 5000 }).catch(() => false)) {
         await ndhSuggestion.click();
@@ -313,7 +313,7 @@ test.describe('Child Contract Workflow - create child, add contract, move sectio
 
       // Click on a different property suggestion to make the contract different
       await expect(page.getByText(/Available:/i)).toBeVisible({ timeout: 10000 });
-      const suggestionsArea = page.locator('text=Available:').locator('..');
+      const suggestionsArea = page.getByTestId('property-suggestions');
       const halbtagSuggestion = suggestionsArea.locator('button', { hasText: 'halbtag' }).first();
       if (await halbtagSuggestion.isVisible({ timeout: 3000 }).catch(() => false)) {
         await halbtagSuggestion.click();
