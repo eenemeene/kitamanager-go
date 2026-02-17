@@ -98,6 +98,7 @@ type OccupancyResponse struct {
 type ContractPropertyCount struct {
 	Key   string `json:"key" example:"care_type"`
 	Value string `json:"value" example:"ganztag"`
+	Label string `json:"label" example:"Ganztag (bis 9h)"`
 	Count int    `json:"count" example:"20"`
 }
 

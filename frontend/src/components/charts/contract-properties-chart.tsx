@@ -13,7 +13,7 @@ export function ContractPropertiesChart({ data }: ContractPropertiesChartProps) 
 
   const chartData = data.properties.map((p) => ({
     id: `${p.key}: ${p.value}`,
-    label: `${p.key}: ${p.value}`,
+    label: p.label || `${p.key}: ${p.value}`,
     value: p.count,
   }));
 

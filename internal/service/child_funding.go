@@ -249,6 +249,9 @@ func (s *ChildService) GetContractPropertiesDistribution(ctx context.Context, or
 		return nil, apperror.InternalWrap(err, "failed to fetch children")
 	}
 
+	// Build label map from funding properties: "key:value" → label
+	labelMap := s.buildFundingLabelMap(ctx, orgID)
+
 	// Aggregate: key -> value -> count
 	distribution := make(map[string]map[string]int)
 	totalChildren := len(children)
@@ -292,6 +295,7 @@ func (s *ChildService) GetContractPropertiesDistribution(ctx context.Context, or
 			properties = append(properties, models.ContractPropertyCount{
 				Key:   key,
 				Value: value,
+				Label: labelMap[key+":"+value],
 				Count: distribution[key][value],
 			})
 		}
@@ -302,6 +306,35 @@ func (s *ChildService) GetContractPropertiesDistribution(ctx context.Context, or
 		TotalChildren: totalChildren,
 		Properties:    properties,
 	}, nil
+}
+
+// buildFundingLabelMap looks up funding configuration for the org and returns
+// a map of "key:value" → label for all funding properties across all periods.
+func (s *ChildService) buildFundingLabelMap(ctx context.Context, orgID uint) map[string]string {
+	labelMap := make(map[string]string)
+
+	org, err := s.orgStore.FindByID(ctx, orgID)
+	if err != nil || org.State == "" {
+		return labelMap
+	}
+
+	funding, err := s.fundingStore.FindByStateWithDetails(ctx, org.State, 0, nil)
+	if err != nil {
+		return labelMap
+	}
+
+	for _, period := range funding.Periods {
+		for _, prop := range period.Properties {
+			if prop.Label != "" {
+				key := prop.Key + ":" + prop.Value
+				if _, exists := labelMap[key]; !exists {
+					labelMap[key] = prop.Label
+				}
+			}
+		}
+	}
+
+	return labelMap
 }
 
 // intPtr returns a pointer to an int

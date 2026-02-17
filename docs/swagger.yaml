@@ -471,6 +471,9 @@ definitions:
       key:
         example: care_type
         type: string
+      label:
+        example: Ganztag (bis 9h)
+        type: string
       value:
         example: ganztag
         type: string

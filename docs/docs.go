@@ -8206,6 +8206,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "care_type"
                 },
+                "label": {
+                    "type": "string",
+                    "example": "Ganztag (bis 9h)"
+                },
                 "value": {
                     "type": "string",
                     "example": "ganztag"

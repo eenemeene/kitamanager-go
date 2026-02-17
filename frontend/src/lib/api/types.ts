@@ -670,6 +670,7 @@ export interface OccupancyResponse {
 export interface ContractPropertyCount {
   key: string;
   value: string;
+  label?: string;
   count: number;
 }
 
