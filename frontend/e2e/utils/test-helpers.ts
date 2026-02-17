@@ -592,6 +592,25 @@ export async function deletePayPlanViaApi(
 }
 
 /**
+ * Create a child with an active contract so it appears in the list.
+ * The children list filters by active_on=today, so children without
+ * an active contract won't show up.
+ */
+export async function createChildWithContractViaApi(
+  page: Page,
+  orgId: number,
+  data: { first_name: string; last_name: string; gender: string; birthdate: string }
+): Promise<{ id: number }> {
+  const child = await createChildViaApi(page, orgId, data);
+  const sections = await getSectionsViaApi(page, orgId);
+  await createChildContractViaApi(page, orgId, child.id, {
+    from: '2024-01-01T00:00:00Z',
+    section_id: sections[0].id,
+  });
+  return child;
+}
+
+/**
  * Create an employee with an active contract so it appears in the list.
  * The employee list filters by active_on=today, so employees without
  * an active contract won't show up.
