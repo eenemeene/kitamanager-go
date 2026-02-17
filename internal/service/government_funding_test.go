@@ -979,7 +979,7 @@ func TestGovernmentFundingService_DeleteProperty_WrongPeriod(t *testing.T) {
 
 // Period overlap validation tests
 
-func TestGovernmentFundingPeriodsOverlap(t *testing.T) {
+func TestPeriodsOverlap(t *testing.T) {
 	tests := []struct {
 		name     string
 		from1    string
@@ -1054,9 +1054,9 @@ func TestGovernmentFundingPeriodsOverlap(t *testing.T) {
 				to2 = &parsed
 			}
 
-			result := governmentFundingPeriodsOverlap(from1, to1, from2, to2)
+			result := periodsOverlap(from1, to1, from2, to2)
 			if result != tt.expected {
-				t.Errorf("governmentFundingPeriodsOverlap() = %v, want %v", result, tt.expected)
+				t.Errorf("periodsOverlap() = %v, want %v", result, tt.expected)
 			}
 		})
 	}

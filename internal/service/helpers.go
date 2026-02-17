@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -79,6 +80,18 @@ func validateOptionalSectionOrg(ctx context.Context, sectionStore store.SectionS
 		return nil
 	}
 	return validateSectionOrg(ctx, sectionStore, *sectionID, orgID)
+}
+
+// periodsOverlap checks if two date ranges overlap.
+// A period with nil To extends indefinitely into the future.
+func periodsOverlap(from1 time.Time, to1 *time.Time, from2 time.Time, to2 *time.Time) bool {
+	if to1 != nil && to1.Before(from2) {
+		return false
+	}
+	if to2 != nil && to2.Before(from1) {
+		return false
+	}
+	return true
 }
 
 // personUpdateFields describes the optional fields in a person update request.

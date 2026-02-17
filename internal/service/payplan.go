@@ -154,20 +154,6 @@ func (s *PayPlanService) Delete(ctx context.Context, id, orgID uint) error {
 
 // Period operations
 
-// payPlanPeriodsOverlap checks if two date ranges overlap.
-// A period with nil To date extends indefinitely into the future.
-func payPlanPeriodsOverlap(from1 time.Time, to1 *time.Time, from2 time.Time, to2 *time.Time) bool {
-	// Period 1 ends before period 2 starts (no overlap)
-	if to1 != nil && to1.Before(from2) {
-		return false
-	}
-	// Period 2 ends before period 1 starts (no overlap)
-	if to2 != nil && to2.Before(from1) {
-		return false
-	}
-	return true
-}
-
 // validatePayPlanPeriodNoOverlap checks that the new/updated period doesn't overlap with existing periods.
 // excludeID is used when updating to exclude the period being updated from the check.
 func (s *PayPlanService) validatePayPlanPeriodNoOverlap(ctx context.Context, payplanID uint, from time.Time, to *time.Time, excludeID *uint) error {
@@ -180,7 +166,7 @@ func (s *PayPlanService) validatePayPlanPeriodNoOverlap(ctx context.Context, pay
 		if excludeID != nil && existing.ID == *excludeID {
 			continue
 		}
-		if payPlanPeriodsOverlap(from, to, existing.From, existing.To) {
+		if periodsOverlap(from, to, existing.From, existing.To) {
 			return apperror.BadRequest("period overlaps with existing period")
 		}
 	}

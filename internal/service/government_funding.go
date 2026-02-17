@@ -159,28 +159,6 @@ func (s *GovernmentFundingService) Delete(ctx context.Context, id uint) error {
 
 // Period operations
 
-// governmentFundingPeriodsOverlap checks if two date ranges overlap.
-// A period with nil To date extends indefinitely into the future.
-func governmentFundingPeriodsOverlap(from1 time.Time, to1 *time.Time, from2 time.Time, to2 *time.Time) bool {
-	// Period 1 ends before period 2 starts (no overlap)
-	if to1 != nil && !to1.After(from2) && !to1.Equal(from2) {
-		// to1 < from2, but we need to check if to1 == from2 is allowed
-		// For date-based periods, to1 being equal to from2 means no overlap
-		// (e.g., period 1 ends on 2024-01-31, period 2 starts on 2024-02-01)
-		if to1.Before(from2) {
-			return false
-		}
-	}
-
-	// Period 2 ends before period 1 starts (no overlap)
-	if to2 != nil && to2.Before(from1) {
-		return false
-	}
-
-	// If we reach here, the periods overlap
-	return true
-}
-
 // validatePeriodNoOverlap checks that the new/updated period doesn't overlap with existing periods.
 // excludeID is used when updating to exclude the period being updated from the check.
 func (s *GovernmentFundingService) validatePeriodNoOverlap(ctx context.Context, governmentFundingID uint, from time.Time, to *time.Time, excludeID *uint) error {
@@ -195,7 +173,7 @@ func (s *GovernmentFundingService) validatePeriodNoOverlap(ctx context.Context, 
 			continue
 		}
 
-		if governmentFundingPeriodsOverlap(from, to, existing.From, existing.To) {
+		if periodsOverlap(from, to, existing.From, existing.To) {
 			return apperror.BadRequest("period overlaps with existing period")
 		}
 	}
