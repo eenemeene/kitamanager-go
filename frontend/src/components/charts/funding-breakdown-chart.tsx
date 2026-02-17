@@ -69,6 +69,7 @@ export function FundingBreakdownChart({ data }: FundingBreakdownChartProps) {
         cornerRadius={3}
         activeOuterRadiusOffset={6}
         colors={{ datum: 'data.color' }}
+        arcLinkLabel="label"
         arcLinkLabelsSkipAngle={10}
         arcLinkLabelsTextColor="hsl(var(--foreground))"
         arcLinkLabelsThickness={2}
