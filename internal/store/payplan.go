@@ -56,6 +56,34 @@ func (s *PayPlanStore) FindByIDWithPeriods(ctx context.Context, id uint, activeO
 	return &payplan, nil
 }
 
+// FindByIDsWithPeriods retrieves multiple pay plans by IDs with all periods and entries.
+// Returns a map keyed by pay plan ID. IDs that don't exist are silently omitted.
+func (s *PayPlanStore) FindByIDsWithPeriods(ctx context.Context, ids []uint) (map[uint]*models.PayPlan, error) {
+	result := make(map[uint]*models.PayPlan, len(ids))
+	if len(ids) == 0 {
+		return result, nil
+	}
+
+	var payplans []models.PayPlan
+	err := DBFromContext(ctx, s.db).
+		Preload("Periods", func(db *gorm.DB) *gorm.DB {
+			return db.Order("pay_plan_periods.from_date DESC")
+		}).
+		Preload("Periods.Entries", func(db *gorm.DB) *gorm.DB {
+			return db.Order("pay_plan_entries.grade ASC, pay_plan_entries.step ASC")
+		}).
+		Where("id IN ?", ids).
+		Find(&payplans).Error
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range payplans {
+		result[payplans[i].ID] = &payplans[i]
+	}
+	return result, nil
+}
+
 // GetByOrganization retrieves all pay plans for an organization.
 func (s *PayPlanStore) FindByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.PayPlan, int64, error) {
 	var payplans []models.PayPlan

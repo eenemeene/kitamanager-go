@@ -180,6 +180,7 @@ type PayPlanStorer interface {
 	Create(ctx context.Context, payplan *models.PayPlan) error
 	FindByID(ctx context.Context, id uint) (*models.PayPlan, error)
 	FindByIDWithPeriods(ctx context.Context, id uint, activeOn *time.Time) (*models.PayPlan, error)
+	FindByIDsWithPeriods(ctx context.Context, ids []uint) (map[uint]*models.PayPlan, error)
 	FindByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.PayPlan, int64, error)
 	Update(ctx context.Context, payplan *models.PayPlan) error
 	Delete(ctx context.Context, id uint) error

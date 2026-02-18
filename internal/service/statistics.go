@@ -42,6 +42,65 @@ var pedagogicalCategories = []string{
 	string(models.StaffCategorySupplementary),
 }
 
+// --- Pre-computed index types for O(1) lookups in hot loops ---
+
+// gradeStepKey is used for O(1) lookup of pay plan entries by grade+step.
+type gradeStepKey struct {
+	Grade string
+	Step  int
+}
+
+// resolvedPayPlanPeriod holds a pay plan period plus its pre-built entry index.
+type resolvedPayPlanPeriod struct {
+	period     *models.PayPlanPeriod
+	entryIndex map[gradeStepKey]*models.PayPlanEntry
+}
+
+// buildFundingPeriodIndex pre-computes which funding period is active for each
+// first-of-month in [start, end]. Built once, then O(1) lookup per month.
+func buildFundingPeriodIndex(periods []models.GovernmentFundingPeriod, start, end time.Time) map[time.Time]*models.GovernmentFundingPeriod {
+	idx := make(map[time.Time]*models.GovernmentFundingPeriod)
+	for date := start; !date.After(end); date = date.AddDate(0, 1, 0) {
+		idx[date] = findPeriodForDate(periods, date)
+	}
+	return idx
+}
+
+// buildEntryIndex creates an O(1) lookup map from (grade, step) to entry.
+func buildEntryIndex(entries []models.PayPlanEntry) map[gradeStepKey]*models.PayPlanEntry {
+	idx := make(map[gradeStepKey]*models.PayPlanEntry, len(entries))
+	for i := range entries {
+		e := &entries[i]
+		idx[gradeStepKey{e.Grade, e.Step}] = e
+	}
+	return idx
+}
+
+// buildPayPlanIndex pre-builds per-payplan period+entry indexes for the full
+// date range. Returns map[payPlanID]map[date]*resolvedPayPlanPeriod.
+func buildPayPlanIndex(payPlanMap map[uint]*models.PayPlan, start, end time.Time) map[uint]map[time.Time]*resolvedPayPlanPeriod {
+	idx := make(map[uint]map[time.Time]*resolvedPayPlanPeriod, len(payPlanMap))
+	for ppID, pp := range payPlanMap {
+		// Pre-build entry indexes for all periods
+		entryIndexes := make(map[uint]map[gradeStepKey]*models.PayPlanEntry, len(pp.Periods))
+		for i := range pp.Periods {
+			entryIndexes[pp.Periods[i].ID] = buildEntryIndex(pp.Periods[i].Entries)
+		}
+		dateMap := make(map[time.Time]*resolvedPayPlanPeriod)
+		for date := start; !date.After(end); date = date.AddDate(0, 1, 0) {
+			period := findPayPlanPeriodForDate(pp.Periods, date)
+			if period != nil {
+				dateMap[date] = &resolvedPayPlanPeriod{
+					period:     period,
+					entryIndex: entryIndexes[period.ID],
+				}
+			}
+		}
+		idx[ppID] = dateMap
+	}
+	return idx
+}
+
 // snapDateRange returns a date range snapped to 1st-of-month with defaults.
 // Defaults cover: 1 month before the previous Kita year through the end of the
 // next Kita year. A Kita year runs Aug 1 – Jul 31.
@@ -100,8 +159,11 @@ func (s *StatisticsService) GetStaffingHours(ctx context.Context, orgID uint, fr
 		return nil, apperror.InternalWrap(err, "failed to fetch employee contracts")
 	}
 
+	// Pre-build funding period index: O(1) lookup per month
+	fundingPeriodIdx := buildFundingPeriodIndex(fundingPeriods, rangeStart, rangeEnd)
+
 	// Generate data points for each month
-	var dataPoints []models.StaffingHoursDataPoint
+	dataPoints := make([]models.StaffingHoursDataPoint, 0, monthCount(rangeStart, rangeEnd))
 	for date := rangeStart; !date.After(rangeEnd); date = date.AddDate(0, 1, 0) {
 		dp := models.StaffingHoursDataPoint{
 			Date: date.Format(models.DateFormat),
@@ -110,7 +172,7 @@ func (s *StatisticsService) GetStaffingHours(ctx context.Context, orgID uint, fr
 		// Calculate required hours from children
 		requiredHours := 0.0
 		childCount := 0
-		period := findPeriodForDate(fundingPeriods, date)
+		period := fundingPeriodIdx[date]
 		for i := range children {
 			child := &children[i]
 			// Check if child has a contract active on this date
@@ -131,7 +193,7 @@ func (s *StatisticsService) GetStaffingHours(ctx context.Context, orgID uint, fr
 		// Calculate available hours from employee contracts
 		availableHours := 0.0
 		staffCount := 0
-		employeeSeen := make(map[uint]bool)
+		employeeSeen := make(map[uint]bool, len(employeeContracts))
 		for i := range employeeContracts {
 			ec := &employeeContracts[i]
 			if ec.IsActiveOn(date) {
@@ -184,19 +246,24 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 		return nil, apperror.InternalWrap(err, "failed to fetch employee contracts")
 	}
 
-	// Collect unique PayPlanIDs and fetch pay plans with periods+entries
-	payPlanMap := make(map[uint]*models.PayPlan)
+	// Batch-fetch unique pay plans in a single query
+	payPlanIDs := make([]uint, 0)
+	payPlanIDSeen := make(map[uint]bool)
 	for i := range employeeContracts {
 		ppID := employeeContracts[i].PayPlanID
-		if ppID == 0 || payPlanMap[ppID] != nil {
-			continue
+		if ppID != 0 && !payPlanIDSeen[ppID] {
+			payPlanIDSeen[ppID] = true
+			payPlanIDs = append(payPlanIDs, ppID)
 		}
-		pp, err := s.payPlanStore.FindByIDWithPeriods(ctx, ppID, nil)
-		if err != nil {
-			continue // skip pay plans that can't be loaded
-		}
-		payPlanMap[ppID] = pp
 	}
+	payPlanMap, err := s.payPlanStore.FindByIDsWithPeriods(ctx, payPlanIDs)
+	if err != nil {
+		payPlanMap = make(map[uint]*models.PayPlan) // non-fatal: proceed without pay plans
+	}
+
+	// Pre-build funding period index and pay plan indexes: O(1) lookups in hot loop
+	fundingPeriodIdx := buildFundingPeriodIndex(fundingPeriods, rangeStart, rangeEnd)
+	payPlanIdx := buildPayPlanIndex(payPlanMap, rangeStart, rangeEnd)
 
 	// Fetch budget items with entries for this organization
 	budgetItems, err := s.budgetItemStore.FindByOrganizationWithEntries(ctx, orgID)
@@ -205,7 +272,11 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 	}
 
 	// Generate data points for each month
-	var dataPoints []models.FinancialDataPoint
+	type fundingDetailAccum struct {
+		amount int
+		label  string
+	}
+	dataPoints := make([]models.FinancialDataPoint, 0, monthCount(rangeStart, rangeEnd))
 	for date := rangeStart; !date.After(rangeEnd); date = date.AddDate(0, 1, 0) {
 		dp := models.FinancialDataPoint{
 			Date: date.Format(models.DateFormat),
@@ -214,12 +285,8 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 		// Income: government funding for active children
 		fundingIncome := 0
 		childCount := 0
-		type fundingDetailAccum struct {
-			amount int
-			label  string
-		}
 		fundingDetailMap := make(map[string]fundingDetailAccum) // "key:value" → {amount, label}
-		fundingPeriod := findPeriodForDate(fundingPeriods, date)
+		fundingPeriod := fundingPeriodIdx[date]
 		for i := range children {
 			child := &children[i]
 			for j := range child.Contracts {
@@ -266,11 +333,11 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 			return fundingDetails[i].Value < fundingDetails[j].Value
 		})
 
-		// Expenses: employee salaries
+		// Expenses: employee salaries using pre-built pay plan indexes
 		grossSalary := 0
 		employerCosts := 0
 		staffCount := 0
-		employeeSeen := make(map[uint]bool)
+		employeeSeen := make(map[uint]bool, len(employeeContracts))
 		salaryByCategory := make(map[string][2]int) // [0]=gross, [1]=contrib
 		for i := range employeeContracts {
 			ec := &employeeContracts[i]
@@ -282,21 +349,21 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 				staffCount++
 			}
 
-			pp := payPlanMap[ec.PayPlanID]
-			if pp == nil {
+			ppDateMap := payPlanIdx[ec.PayPlanID]
+			if ppDateMap == nil {
 				continue
 			}
-			period := findPayPlanPeriodForDate(pp.Periods, date)
-			if period == nil {
+			resolved := ppDateMap[date]
+			if resolved == nil {
 				continue
 			}
-			entry := findPayPlanEntry(period.Entries, ec.Grade, ec.Step)
+			entry := resolved.entryIndex[gradeStepKey{ec.Grade, ec.Step}]
 			if entry == nil {
 				continue
 			}
 
-			gross := int(math.Round(float64(entry.MonthlyAmount) * ec.WeeklyHours / period.WeeklyHours))
-			contrib := int(math.Round(float64(gross) * float64(period.EmployerContributionRate) / 10000.0))
+			gross := int(math.Round(float64(entry.MonthlyAmount) * ec.WeeklyHours / resolved.period.WeeklyHours))
+			contrib := int(math.Round(float64(gross) * float64(resolved.period.EmployerContributionRate) / 10000.0))
 			grossSalary += gross
 			employerCosts += contrib
 
@@ -396,7 +463,7 @@ func (s *StatisticsService) GetOccupancy(ctx context.Context, orgID uint, from, 
 	}
 
 	// Generate data points for each month
-	var dataPoints []models.OccupancyDataPoint
+	dataPoints := make([]models.OccupancyDataPoint, 0, monthCount(rangeStart, rangeEnd))
 	for date := rangeStart; !date.After(rangeEnd); date = date.AddDate(0, 1, 0) {
 		dp := models.OccupancyDataPoint{
 			Date:             date.Format(models.DateFormat),
@@ -549,6 +616,15 @@ func findAgeGroupLabel(age int, ageGroups []models.OccupancyAgeGroup) string {
 		}
 	}
 	return ""
+}
+
+// monthCount returns the number of months in [start, end] (inclusive on both ends).
+func monthCount(start, end time.Time) int {
+	months := (end.Year()-start.Year())*12 + int(end.Month()-start.Month()) + 1
+	if months < 0 {
+		return 0
+	}
+	return months
 }
 
 // findPayPlanPeriodForDate finds the pay plan period covering a date.
