@@ -239,6 +239,7 @@ test.describe('Government Fundings', () => {
       // Fill property form fields
       await page.locator('#key').fill('care_type');
       await page.locator('#value').fill('e2e_test');
+      await page.locator('#label').fill('E2E Test');
       await page.locator('#payment_euros').fill('1234.56');
       await page.locator('#requirement').fill('0.25');
 
@@ -248,8 +249,9 @@ test.describe('Government Fundings', () => {
       // Dialog should close
       await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10000 });
 
-      // Verify property appears
-      await expect(page.getByText('e2e_test')).toBeVisible({ timeout: 10000 });
+      // Verify property appears (label is shown instead of raw value)
+      // Use exact: true to avoid matching "E2E test period" (case-insensitive substring)
+      await expect(page.getByText('E2E Test', { exact: true })).toBeVisible({ timeout: 10000 });
     });
 
     test('should delete a property via UI', async ({ page }) => {
@@ -257,12 +259,12 @@ test.describe('Government Fundings', () => {
       await page.goto(`/government-fundings/${fundingId}`);
       await page.waitForLoadState('networkidle');
 
-      // Wait for the test property to be visible
-      await expect(page.getByText('e2e_test')).toBeVisible({ timeout: 10000 });
+      // Wait for the test property to be visible (label is shown instead of raw value)
+      await expect(page.getByText('E2E Test', { exact: true })).toBeVisible({ timeout: 10000 });
 
       // Navigate to parent div to find the delete button
       await page
-        .getByText('e2e_test', { exact: true })
+        .getByText('E2E Test', { exact: true })
         .locator('..')
         .locator('table button')
         .click();
@@ -272,7 +274,7 @@ test.describe('Government Fundings', () => {
       await page.getByRole('button', { name: /delete/i }).click();
 
       // Property should disappear
-      await expect(page.getByText('e2e_test')).not.toBeVisible({ timeout: 10000 });
+      await expect(page.getByText('E2E Test', { exact: true })).not.toBeVisible({ timeout: 10000 });
     });
 
     test('should delete a period via UI', async ({ page }) => {

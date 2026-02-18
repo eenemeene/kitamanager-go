@@ -555,7 +555,7 @@ export async function createFundingPropertyViaApi(
   page: Page,
   fundingId: number,
   periodId: number,
-  data: { key: string; value: string; payment: number; requirement: number; min_age?: number; max_age?: number }
+  data: { key: string; value: string; label: string; payment: number; requirement: number; min_age?: number; max_age?: number }
 ): Promise<{ id: number }> {
   return apiRequest(
     page,
@@ -576,10 +576,10 @@ export async function ensureFundingHasProperties(page: Page): Promise<void> {
   const details = await getGovernmentFundingViaApi(page, funding.id);
 
   const defaultProperties = [
-    { key: 'care_type', value: 'ganztag', payment: 100000, requirement: 0.301, min_age: 0, max_age: 8 },
-    { key: 'care_type', value: 'halbtag', payment: 70000, requirement: 0.15, min_age: 0, max_age: 8 },
-    { key: 'care_type', value: 'teilzeit', payment: 85000, requirement: 0.217, min_age: 0, max_age: 8 },
-    { key: 'ndh', value: 'ndh', payment: 10000, requirement: 0.017, min_age: 0, max_age: 8 },
+    { key: 'care_type', value: 'ganztag', label: 'Ganztag', payment: 100000, requirement: 0.301, min_age: 0, max_age: 8 },
+    { key: 'care_type', value: 'halbtag', label: 'Halbtag', payment: 70000, requirement: 0.15, min_age: 0, max_age: 8 },
+    { key: 'care_type', value: 'teilzeit', label: 'Teilzeit', payment: 85000, requirement: 0.217, min_age: 0, max_age: 8 },
+    { key: 'ndh', value: 'ndh', label: 'NdH', payment: 10000, requirement: 0.017, min_age: 0, max_age: 8 },
   ];
 
   if (details.periods && details.periods.length > 0) {
