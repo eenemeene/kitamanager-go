@@ -71,7 +71,7 @@ func (s *TokenStore) RevokeAllForUser(ctx context.Context, userID uint) error {
 	sentinel := &models.RevokedToken{
 		UserID:    userID,
 		TokenHash: revokeAllSentinel(userID),
-		ExpiresAt: time.Now().Add(refreshTokenMaxExpiry),
+		ExpiresAt: time.Now().UTC().Add(refreshTokenMaxExpiry),
 	}
 	return DBFromContext(ctx, s.db).Create(sentinel).Error
 }
@@ -114,7 +114,7 @@ func (s *TokenStore) IsUserRevoked(ctx context.Context, userID uint) (bool, erro
 // CleanupExpired removes expired revocation records.
 func (s *TokenStore) CleanupExpired(ctx context.Context) error {
 	return DBFromContext(ctx, s.db).
-		Where("expires_at < ?", time.Now()).
+		Where("expires_at < ?", time.Now().UTC()).
 		Delete(&models.RevokedToken{}).Error
 }
 

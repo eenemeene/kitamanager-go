@@ -283,7 +283,7 @@ func (s *AuditService) CountRecentFailedLogins(ctx context.Context, email string
 		return 0, nil
 	}
 
-	since := time.Now().Add(-duration)
+	since := time.Now().UTC().Add(-duration)
 	return s.store.CountFailedLoginsSince(ctx, email, since)
 }
 
@@ -294,7 +294,7 @@ func (s *AuditService) log(entry *models.AuditLog) {
 		return
 	}
 
-	entry.Timestamp = time.Now()
+	entry.Timestamp = time.Now().UTC()
 
 	select {
 	case s.logCh <- entry:

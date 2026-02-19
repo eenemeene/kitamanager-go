@@ -22,7 +22,7 @@ func NewAuditStore(db *gorm.DB) *AuditStore {
 // Create creates a new audit log entry
 func (s *AuditStore) Create(ctx context.Context, log *models.AuditLog) error {
 	if log.Timestamp.IsZero() {
-		log.Timestamp = time.Now()
+		log.Timestamp = time.Now().UTC()
 	}
 	return DBFromContext(ctx, s.db).Create(log).Error
 }

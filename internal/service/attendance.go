@@ -42,12 +42,12 @@ func (s *ChildAttendanceService) Create(ctx context.Context, orgID, childID uint
 		return nil, apperror.BadRequest("invalid status, must be one of: present, absent, sick, vacation")
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 	var date time.Time
 	var checkInTime *time.Time
 
 	if req.Status == models.ChildAttendanceStatusPresent {
-		// For present: date defaults to today, check_in_time defaults to now
+		// For present: date defaults to today, check_in_time defaults to now (UTC)
 		if req.Date != "" {
 			date, err = time.Parse(models.DateFormat, req.Date)
 			if err != nil {
@@ -151,10 +151,10 @@ func (s *ChildAttendanceService) Update(ctx context.Context, id, orgID, childID 
 		}
 		attendance.Status = *req.Status
 		if *req.Status == models.ChildAttendanceStatusPresent {
-			// When changing to present, auto-set check-in time to now
+			// When changing to present, auto-set check-in time to now (UTC)
 			// (mirrors Create behavior) unless an explicit time was provided.
 			if attendance.CheckInTime == nil {
-				now := time.Now()
+				now := time.Now().UTC()
 				attendance.CheckInTime = &now
 			}
 		} else {

@@ -133,7 +133,7 @@ func (b *BudgetItem) ToResponse() BudgetItemResponse {
 		UpdatedAt:      b.UpdatedAt,
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 	for i := range b.Entries {
 		if b.Entries[i].IsActiveOn(now) {
 			amount := b.Entries[i].AmountCents

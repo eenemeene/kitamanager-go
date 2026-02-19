@@ -103,7 +103,7 @@ func (s *UserStore) Update(ctx context.Context, user *models.User) error {
 }
 
 func (s *UserStore) UpdateLastLogin(ctx context.Context, userID uint) error {
-	return DBFromContext(ctx, s.db).Model(&models.User{}).Where("id = ?", userID).Update("last_login", time.Now()).Error
+	return DBFromContext(ctx, s.db).Model(&models.User{}).Where("id = ?", userID).Update("last_login", time.Now().UTC()).Error
 }
 
 func (s *UserStore) Delete(ctx context.Context, id uint) error {

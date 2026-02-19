@@ -3,9 +3,14 @@ import {
   login,
   createTestOrg,
   deleteTestOrg,
+  createChildViaApi,
+  createChildContractViaApi,
   createChildWithContractViaApi,
+  createSectionViaApi,
   deleteChildViaApi,
-  clearAttendanceForDate,
+  deleteSectionViaApi,
+  getSectionsViaApi,
+  clearWeekAttendance,
   uniqueName,
 } from './utils/test-helpers';
 
@@ -42,7 +47,7 @@ test.describe('Attendance', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto(`/organizations/${orgId}/attendance`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
   });
 
   test('should display attendance page with heading and week stepper', async ({ page }) => {
@@ -103,15 +108,15 @@ test.describe('Attendance', () => {
   test('should navigate between weeks', async ({ page }) => {
     // Navigate to previous week
     await page.getByRole('button', { name: /previous week/i }).click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Navigate to next week
     await page.getByRole('button', { name: /next week/i }).click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Click "This week" to return
     await page.getByRole('button', { name: /this week/i }).click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Child should still be visible
     await expect(page.getByText(childFirstName)).toBeVisible({ timeout: 10000 });
@@ -148,11 +153,12 @@ test.describe('Attendance Status Transitions', () => {
 
   test.beforeEach(async ({ page }) => {
     await login(page);
-    // Clear any attendance for today so each test starts fresh
-    const today = new Date().toISOString().slice(0, 10);
-    await clearAttendanceForDate(page, orgId, childId, today);
+    // Navigate first so cookies are fully available for API calls
     await page.goto(`/organizations/${orgId}/attendance`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
+    await clearWeekAttendance(page, orgId, childId);
+    await page.reload();
+    await page.waitForLoadState('domcontentloaded');
     await expect(page.getByText(childFirstName)).toBeVisible({ timeout: 10000 });
   });
 
@@ -295,5 +301,364 @@ test.describe('Attendance Status Transitions', () => {
     await expect(row.getByRole('button', { name: /check-out/i }).first()).toBeVisible({
       timeout: 10000,
     });
+  });
+});
+
+test.describe('Attendance Editable Times', () => {
+  let orgId: number;
+  let childId: number;
+  const childFirstName = uniqueName('TimeChild');
+
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    await login(page);
+    const testOrg = await createTestOrg(page, 'AttTime');
+    orgId = testOrg.orgId;
+    const child = await createChildWithContractViaApi(page, orgId, {
+      first_name: childFirstName,
+      last_name: 'Test',
+      gender: 'female',
+      birthdate: '2022-01-20',
+    });
+    childId = child.id;
+    await page.close();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    await login(page);
+    await deleteChildViaApi(page, orgId, childId).catch(() => {});
+    await deleteTestOrg(page, orgId);
+    await page.close();
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+    await page.goto(`/organizations/${orgId}/attendance`);
+    await page.waitForLoadState('domcontentloaded');
+    await clearWeekAttendance(page, orgId, childId);
+    await page.reload();
+    await page.waitForLoadState('domcontentloaded');
+    await expect(page.getByText(childFirstName)).toBeVisible({ timeout: 10000 });
+  });
+
+  test('click check-in time opens editable input', async ({ page }) => {
+    const row = page.getByRole('row').filter({ hasText: childFirstName });
+
+    // Check-in first
+    await row.getByRole('button', { name: /check-in/i }).first().click();
+    await expect(row.getByRole('button', { name: /check-out/i }).first()).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Click the check-in time text (it's a button with aria-label "Check-in")
+    // The EditableTime renders as a <button> showing the time
+    const timeButton = row.locator('button[aria-label="Check-in"]').filter({ hasText: /\d{2}:\d{2}/ });
+    await timeButton.click();
+
+    // Should show a time input
+    const timeInput = row.locator('input[type="time"][aria-label="Check-in"]');
+    await expect(timeInput).toBeVisible();
+  });
+
+  test('edit check-in time and save via Enter', async ({ page }) => {
+    const row = page.getByRole('row').filter({ hasText: childFirstName });
+
+    // Check-in
+    await row.getByRole('button', { name: /check-in/i }).first().click();
+    await expect(row.getByRole('button', { name: /check-out/i }).first()).toBeVisible({
+      timeout: 10000,
+    });
+
+    // The time may render as a button (view mode) or input (edit mode).
+    const timeButton = row
+      .locator('button[aria-label="Check-in"]')
+      .filter({ hasText: /\d{2}:\d{2}/ });
+    const timeInput = row.locator('input[type="time"][aria-label="Check-in"]');
+    await expect(timeButton.or(timeInput)).toBeVisible({ timeout: 10000 });
+    if (await timeButton.isVisible()) {
+      await timeButton.click();
+    }
+
+    // Change the time
+    await expect(timeInput).toBeVisible();
+    await timeInput.fill('08:30');
+    await timeInput.press('Enter');
+
+    // Should show "Attendance updated" toast (confirms save succeeded)
+    await expect(page.getByText('Attendance updated', { exact: true })).toBeVisible({ timeout: 10000 });
+
+    // Input should be gone, replaced by a time button again
+    await expect(timeInput).toBeHidden({ timeout: 5000 });
+    await expect(
+      row.locator('button[aria-label="Check-in"]').filter({ hasText: /\d{2}:\d{2}/ })
+    ).toBeVisible({ timeout: 10000 });
+  });
+
+  test('edit check-out time after full check-in/out', async ({ page }) => {
+    const row = page.getByRole('row').filter({ hasText: childFirstName });
+
+    // Check-in then check-out
+    await row.getByRole('button', { name: /check-in/i }).first().click();
+    await expect(row.getByRole('button', { name: /check-out/i }).first()).toBeVisible({
+      timeout: 10000,
+    });
+    await row.getByRole('button', { name: /check-out/i }).first().click();
+    await expect(row.locator('text=/\\d{2}:\\d{2}\\s*–\\s*\\d{2}:\\d{2}/')).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Click the check-out time to edit it
+    const checkOutButton = row
+      .locator('button[aria-label="Check-out"]')
+      .filter({ hasText: /\d{2}:\d{2}/ });
+    await checkOutButton.click();
+
+    // Change the time
+    const timeInput = row.locator('input[type="time"][aria-label="Check-out"]');
+    await expect(timeInput).toBeVisible();
+    await timeInput.fill('16:45');
+    await timeInput.press('Enter');
+
+    // Should show toast (confirms save succeeded)
+    await expect(page.getByText('Attendance updated', { exact: true })).toBeVisible({ timeout: 10000 });
+
+    // Input should be gone, replaced by a time button again
+    await expect(timeInput).toBeHidden({ timeout: 5000 });
+    await expect(
+      row.locator('button[aria-label="Check-out"]').filter({ hasText: /\d{2}:\d{2}/ })
+    ).toBeVisible({ timeout: 10000 });
+  });
+
+  test('escape cancels time edit without saving', async ({ page }) => {
+    const row = page.getByRole('row').filter({ hasText: childFirstName });
+
+    // Check-in
+    await row.getByRole('button', { name: /check-in/i }).first().click();
+    await expect(row.getByRole('button', { name: /check-out/i }).first()).toBeVisible({
+      timeout: 10000,
+    });
+
+    // The time may render as a button (view mode) or input (edit mode).
+    const timeButton = row.locator('button[aria-label="Check-in"]').filter({ hasText: /\d{2}:\d{2}/ });
+    const timeInput = row.locator('input[type="time"][aria-label="Check-in"]');
+    await expect(timeButton.or(timeInput)).toBeVisible({ timeout: 10000 });
+
+    // Get the original time from whichever element is showing
+    let originalTime: string;
+    if (await timeButton.isVisible()) {
+      originalTime = (await timeButton.textContent())!;
+      await timeButton.click();
+    } else {
+      originalTime = await timeInput.inputValue();
+    }
+
+    // Change value, then press Escape
+    await expect(timeInput).toBeVisible();
+    await timeInput.fill('06:00');
+    await timeInput.press('Escape');
+
+    // Should revert to original time (no toast)
+    await expect(row.locator('button[aria-label="Check-in"]').filter({ hasText: originalTime })).toBeVisible({
+      timeout: 5000,
+    });
+  });
+});
+
+test.describe('Attendance Note Saving', () => {
+  let orgId: number;
+  let childId: number;
+  const childFirstName = uniqueName('NoteChild');
+
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    await login(page);
+    const testOrg = await createTestOrg(page, 'AttNote');
+    orgId = testOrg.orgId;
+    const child = await createChildWithContractViaApi(page, orgId, {
+      first_name: childFirstName,
+      last_name: 'Test',
+      gender: 'male',
+      birthdate: '2022-05-10',
+    });
+    childId = child.id;
+    await page.close();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    await login(page);
+    await deleteChildViaApi(page, orgId, childId).catch(() => {});
+    await deleteTestOrg(page, orgId);
+    await page.close();
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+    // Navigate first so cookies are fully available for API calls
+    await page.goto(`/organizations/${orgId}/attendance`);
+    await page.waitForLoadState('domcontentloaded');
+    await clearWeekAttendance(page, orgId, childId);
+    // Reload to reflect cleared data
+    await page.reload();
+    await page.waitForLoadState('domcontentloaded');
+    await expect(page.getByText(childFirstName)).toBeVisible({ timeout: 10000 });
+  });
+
+  test('note textarea not shown when no attendance record exists', async ({ page }) => {
+    const row = page.getByRole('row').filter({ hasText: childFirstName });
+
+    // Open popover without checking in first
+    await row.getByRole('button', { name: /quick mark/i }).first().click();
+
+    // Status buttons should be visible
+    await expect(page.getByRole('button', { name: /^Present$/i })).toBeVisible();
+
+    // Note textarea should NOT be visible (no attendance record yet)
+    await expect(page.locator('textarea[placeholder="Note"]')).toBeHidden();
+  });
+
+  test('save note via popover after check-in', async ({ page }) => {
+    const row = page.getByRole('row').filter({ hasText: childFirstName });
+
+    // Check-in first (note textarea only shows when attendance record exists)
+    await row.getByRole('button', { name: /check-in/i }).first().click();
+    await expect(row.getByRole('button', { name: /check-out/i }).first()).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Open popover
+    await row.getByRole('button', { name: /quick mark/i }).first().click();
+
+    // Type a note
+    const noteTextarea = page.locator('textarea[placeholder="Note"]');
+    await expect(noteTextarea).toBeVisible();
+    await noteTextarea.fill('Arrived late, picked up by grandma');
+
+    // Click save
+    await page.getByRole('button', { name: /^Save$/i }).click();
+
+    // Should show success toast
+    await expect(page.getByText('Attendance updated', { exact: true })).toBeVisible({ timeout: 10000 });
+  });
+
+  test('note textarea appears after setting status via popover', async ({ page }) => {
+    const row = page.getByRole('row').filter({ hasText: childFirstName });
+
+    // Mark sick (creates a record without check-in)
+    await row.getByRole('button', { name: /quick mark/i }).first().click();
+    await page.getByRole('button', { name: /^Sick$/i }).click();
+    await expect(row.getByText('Sick')).toBeVisible({ timeout: 10000 });
+
+    // Reopen popover — note textarea should now be visible
+    await row.getByRole('button', { name: /quick mark/i }).first().click();
+    await expect(page.locator('textarea[placeholder="Note"]')).toBeVisible();
+
+    // Save a note
+    await page.locator('textarea[placeholder="Note"]').fill('Has fever');
+    await page.getByRole('button', { name: /^Save$/i }).click();
+    await expect(page.getByText('Attendance updated', { exact: true })).toBeVisible({ timeout: 10000 });
+  });
+});
+
+test.describe('Attendance Section Filter', () => {
+  let orgId: number;
+  let section1Id: number;
+  let section2Id: number;
+  let child1Id: number;
+  let child2Id: number;
+  const child1FirstName = uniqueName('SecChild1');
+  const child2FirstName = uniqueName('SecChild2');
+  const section2Name = uniqueName('Section2');
+
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    await login(page);
+    const testOrg = await createTestOrg(page, 'AttFilter');
+    orgId = testOrg.orgId;
+    section1Id = testOrg.sectionId; // default section from createTestOrg
+
+    // Create a second section
+    const section2 = await createSectionViaApi(page, orgId, section2Name);
+    section2Id = section2.id;
+
+    // Create child1 in section1 (default)
+    const child1 = await createChildViaApi(page, orgId, {
+      first_name: child1FirstName,
+      last_name: 'Test',
+      gender: 'female',
+      birthdate: '2021-03-01',
+    });
+    child1Id = child1.id;
+    await createChildContractViaApi(page, orgId, child1.id, {
+      from: '2024-01-01T00:00:00Z',
+      section_id: section1Id,
+    });
+
+    // Create child2 in section2
+    const child2 = await createChildViaApi(page, orgId, {
+      first_name: child2FirstName,
+      last_name: 'Test',
+      gender: 'male',
+      birthdate: '2022-07-15',
+    });
+    child2Id = child2.id;
+    await createChildContractViaApi(page, orgId, child2.id, {
+      from: '2024-01-01T00:00:00Z',
+      section_id: section2Id,
+    });
+
+    await page.close();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    await login(page);
+    await deleteChildViaApi(page, orgId, child1Id).catch(() => {});
+    await deleteChildViaApi(page, orgId, child2Id).catch(() => {});
+    await deleteSectionViaApi(page, orgId, section2Id).catch(() => {});
+    await deleteTestOrg(page, orgId);
+    await page.close();
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+    await page.goto(`/organizations/${orgId}/attendance`);
+    await page.waitForLoadState('domcontentloaded');
+  });
+
+  test('shows all children when no section filter is selected', async ({ page }) => {
+    await expect(page.getByText(child1FirstName)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(child2FirstName)).toBeVisible({ timeout: 10000 });
+  });
+
+  test('filter by section shows only children in that section', async ({ page }) => {
+    await expect(page.getByText(child1FirstName)).toBeVisible({ timeout: 10000 });
+
+    // Open section filter dropdown and select section2
+    await page.getByRole('combobox').click();
+    await page.getByRole('option', { name: section2Name }).click();
+
+    // Only child2 should be visible
+    await expect(page.getByText(child2FirstName)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(child1FirstName)).toBeHidden();
+  });
+
+  test('switching back to All Sections shows all children', async ({ page }) => {
+    await expect(page.getByText(child1FirstName)).toBeVisible({ timeout: 10000 });
+
+    // Filter by section2
+    await page.getByRole('combobox').click();
+    await page.getByRole('option', { name: section2Name }).click();
+    await expect(page.getByText(child2FirstName)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(child1FirstName)).toBeHidden();
+
+    // Switch back to "All Sections"
+    await page.getByRole('combobox').click();
+    await page.getByRole('option', { name: /all sections/i }).click();
+
+    // Both children should be visible
+    await expect(page.getByText(child1FirstName)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(child2FirstName)).toBeVisible({ timeout: 10000 });
   });
 });

@@ -57,9 +57,9 @@ export async function login(
   email: string = ADMIN_EMAIL,
   password: string = ADMIN_PASSWORD
 ) {
-  // Go to login page first to initialize browser context
-  await page.goto('/login');
-  await page.waitForLoadState('networkidle');
+  // Navigate to a non-redirecting API endpoint to set up the browser context
+  // on the correct origin without HMR or auto-redirect issues
+  await page.goto('/api/v1/health', { waitUntil: 'load' });
 
   // Login via API - cookies are set automatically by the browser
   await page.evaluate(
@@ -77,10 +77,6 @@ export async function login(
     },
     { email, password }
   );
-
-  // Navigate to dashboard to confirm authentication
-  await page.goto('/');
-  await expect(page).not.toHaveURL(/.*login/, { timeout: 10000 });
 }
 
 /**
@@ -101,7 +97,7 @@ export async function loginViaForm(
   await expect(emailInput).toBeVisible({ timeout: 10000 });
   await expect(passwordInput).toBeVisible();
   await expect(submitButton).toBeVisible();
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   // Wait for React hydration by ensuring submit button is enabled/interactive
   await expect(submitButton).toBeEnabled({ timeout: 5000 });
@@ -868,6 +864,25 @@ export async function clearAttendanceForDate(
     if (rec.child_id === childId) {
       await deleteAttendanceViaApi(page, orgId, childId, rec.id);
     }
+  }
+}
+
+/**
+ * Clear attendance for all weekdays (Mon-Fri) of the current week
+ */
+export async function clearWeekAttendance(
+  page: Page,
+  orgId: number,
+  childId: number
+): Promise<void> {
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - ((dayOfWeek + 6) % 7));
+  for (let i = 0; i < 5; i++) {
+    const day = new Date(monday);
+    day.setDate(monday.getDate() + i);
+    await clearAttendanceForDate(page, orgId, childId, day.toISOString().slice(0, 10));
   }
 }
 

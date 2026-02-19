@@ -213,7 +213,7 @@ func (s *AuthService) issueTokens(userID uint, email string) (*AuthResult, error
 
 // generateAccessToken creates a short-lived JWT for API access.
 func (s *AuthService) generateAccessToken(userID uint, email string) (string, error) {
-	now := time.Now()
+	now := time.Now().UTC()
 	jti, err := generateJTI()
 	if err != nil {
 		return "", err
@@ -233,7 +233,7 @@ func (s *AuthService) generateAccessToken(userID uint, email string) (string, er
 
 // generateRefreshToken creates a long-lived JWT for token refresh.
 func (s *AuthService) generateRefreshToken(userID uint) (string, error) {
-	now := time.Now()
+	now := time.Now().UTC()
 	jti, err := generateJTI()
 	if err != nil {
 		return "", err
