@@ -237,3 +237,79 @@ func TestParseSearch_ExactlyMaxLength(t *testing.T) {
 		t.Errorf("expected length %d, got %d", MaxSearchLength, len(search))
 	}
 }
+
+func TestParseOptionalDatePair(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/?from=2024-01-01&to=2024-06-01", nil)
+
+	from, to, ok := parseOptionalDatePair(c)
+	if !ok {
+		t.Fatal("expected ok to be true")
+	}
+	if from == nil || to == nil {
+		t.Fatal("expected both from and to to be non-nil")
+	}
+	if from.Format("2006-01-02") != "2024-01-01" {
+		t.Errorf("from = %v, want 2024-01-01", from)
+	}
+	if to.Format("2006-01-02") != "2024-06-01" {
+		t.Errorf("to = %v, want 2024-06-01", to)
+	}
+}
+
+func TestParseOptionalDatePair_Empty(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/", nil)
+
+	from, to, ok := parseOptionalDatePair(c)
+	if !ok {
+		t.Fatal("expected ok to be true")
+	}
+	if from != nil || to != nil {
+		t.Error("expected both from and to to be nil when not provided")
+	}
+}
+
+func TestParseOptionalDatePair_InvalidFrom(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/?from=not-a-date", nil)
+
+	_, _, ok := parseOptionalDatePair(c)
+	if ok {
+		t.Fatal("expected ok to be false for invalid from date")
+	}
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestParseOptionalDatePair_InvalidTo(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/?to=2024-13-99", nil)
+
+	_, _, ok := parseOptionalDatePair(c)
+	if ok {
+		t.Fatal("expected ok to be false for invalid to date")
+	}
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestParseOptionalDatePair_RangeExceeded(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/?from=2020-01-01&to=2028-01-01", nil)
+
+	_, _, ok := parseOptionalDatePair(c)
+	if ok {
+		t.Fatal("expected ok to be false when range exceeds max")
+	}
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}

@@ -2,12 +2,10 @@ package handlers
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/eenemeene/kitamanager-go/internal/apperror"
-	"github.com/eenemeene/kitamanager-go/internal/models"
+	_ "github.com/eenemeene/kitamanager-go/internal/models" // imported for swag annotation resolution
 	"github.com/eenemeene/kitamanager-go/internal/service"
 )
 
@@ -45,31 +43,9 @@ func (h *StatisticsHandler) GetStaffingHours(c *gin.Context) {
 		return
 	}
 
-	// Parse optional date parameters
-	var from, to *time.Time
-	if fromStr := c.Query("from"); fromStr != "" {
-		parsed, err := time.Parse(models.DateFormat, fromStr)
-		if err != nil {
-			respondError(c, apperror.BadRequest("invalid date format for from, expected YYYY-MM-DD"))
-			return
-		}
-		from = &parsed
-	}
-	if toStr := c.Query("to"); toStr != "" {
-		parsed, err := time.Parse(models.DateFormat, toStr)
-		if err != nil {
-			respondError(c, apperror.BadRequest("invalid date format for to, expected YYYY-MM-DD"))
-			return
-		}
-		to = &parsed
-	}
-
-	// Validate date range if both dates are provided
-	if from != nil && to != nil {
-		if err := validateDateRange(*from, *to, MaxDateRangeMonths); err != nil {
-			respondError(c, err)
-			return
-		}
+	from, to, ok := parseOptionalDatePair(c)
+	if !ok {
+		return
 	}
 
 	sectionID, ok := parseOptionalUint(c, "section_id")
@@ -108,29 +84,9 @@ func (h *StatisticsHandler) GetEmployeeStaffingHours(c *gin.Context) {
 		return
 	}
 
-	var from, to *time.Time
-	if fromStr := c.Query("from"); fromStr != "" {
-		parsed, err := time.Parse(models.DateFormat, fromStr)
-		if err != nil {
-			respondError(c, apperror.BadRequest("invalid date format for from, expected YYYY-MM-DD"))
-			return
-		}
-		from = &parsed
-	}
-	if toStr := c.Query("to"); toStr != "" {
-		parsed, err := time.Parse(models.DateFormat, toStr)
-		if err != nil {
-			respondError(c, apperror.BadRequest("invalid date format for to, expected YYYY-MM-DD"))
-			return
-		}
-		to = &parsed
-	}
-
-	if from != nil && to != nil {
-		if err := validateDateRange(*from, *to, MaxDateRangeMonths); err != nil {
-			respondError(c, err)
-			return
-		}
+	from, to, ok := parseOptionalDatePair(c)
+	if !ok {
+		return
 	}
 
 	sectionID, ok := parseOptionalUint(c, "section_id")
@@ -170,29 +126,9 @@ func (h *StatisticsHandler) GetOccupancy(c *gin.Context) {
 		return
 	}
 
-	var from, to *time.Time
-	if fromStr := c.Query("from"); fromStr != "" {
-		parsed, err := time.Parse(models.DateFormat, fromStr)
-		if err != nil {
-			respondError(c, apperror.BadRequest("invalid date format for from, expected YYYY-MM-DD"))
-			return
-		}
-		from = &parsed
-	}
-	if toStr := c.Query("to"); toStr != "" {
-		parsed, err := time.Parse(models.DateFormat, toStr)
-		if err != nil {
-			respondError(c, apperror.BadRequest("invalid date format for to, expected YYYY-MM-DD"))
-			return
-		}
-		to = &parsed
-	}
-
-	if from != nil && to != nil {
-		if err := validateDateRange(*from, *to, MaxDateRangeMonths); err != nil {
-			respondError(c, err)
-			return
-		}
+	from, to, ok := parseOptionalDatePair(c)
+	if !ok {
+		return
 	}
 
 	sectionID, ok := parseOptionalUint(c, "section_id")
@@ -234,29 +170,9 @@ func (h *StatisticsHandler) GetFinancials(c *gin.Context) {
 		return
 	}
 
-	var from, to *time.Time
-	if fromStr := c.Query("from"); fromStr != "" {
-		parsed, err := time.Parse(models.DateFormat, fromStr)
-		if err != nil {
-			respondError(c, apperror.BadRequest("invalid date format for from, expected YYYY-MM-DD"))
-			return
-		}
-		from = &parsed
-	}
-	if toStr := c.Query("to"); toStr != "" {
-		parsed, err := time.Parse(models.DateFormat, toStr)
-		if err != nil {
-			respondError(c, apperror.BadRequest("invalid date format for to, expected YYYY-MM-DD"))
-			return
-		}
-		to = &parsed
-	}
-
-	if from != nil && to != nil {
-		if err := validateDateRange(*from, *to, MaxDateRangeMonths); err != nil {
-			respondError(c, err)
-			return
-		}
+	from, to, ok := parseOptionalDatePair(c)
+	if !ok {
+		return
 	}
 
 	result, err := h.service.GetFinancials(c.Request.Context(), orgID, from, to)

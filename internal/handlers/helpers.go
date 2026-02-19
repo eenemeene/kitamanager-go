@@ -281,6 +281,26 @@ func auditDelete(c *gin.Context, svc *service.AuditService, resourceType string,
 	svc.LogResourceDelete(getUserID(c), resourceType, id, name, c.ClientIP())
 }
 
+// parseOptionalDatePair parses optional "from" and "to" query parameters and validates the range.
+// Returns (from, to, ok). If ok is false, error response has been sent.
+func parseOptionalDatePair(c *gin.Context) (*time.Time, *time.Time, bool) {
+	from, ok := parseOptionalDatePtr(c, "from")
+	if !ok {
+		return nil, nil, false
+	}
+	to, ok := parseOptionalDatePtr(c, "to")
+	if !ok {
+		return nil, nil, false
+	}
+	if from != nil && to != nil {
+		if err := validateDateRange(*from, *to, MaxDateRangeMonths); err != nil {
+			respondError(c, err)
+			return nil, nil, false
+		}
+	}
+	return from, to, true
+}
+
 // validateDateRange checks that a date range is valid: to >= from, and the range does not exceed maxMonths.
 func validateDateRange(from, to time.Time, maxMonths int) error {
 	if to.Before(from) {
