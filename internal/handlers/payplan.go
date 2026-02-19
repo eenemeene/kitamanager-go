@@ -53,7 +53,7 @@ func (h *PayPlanHandler) List(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(payplans, params.Page, params.Limit, total, c.Request.URL.Path))
+	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(payplans, params.Page, params.Limit, total, c.Request.URL.Path, c.Request.URL.RawQuery))
 }
 
 // Get godoc

@@ -31,7 +31,7 @@ func handleListContracts[Resp any](
 		return
 	}
 
-	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(contracts, params.Page, params.Limit, total, c.Request.URL.Path))
+	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(contracts, params.Page, params.Limit, total, c.Request.URL.Path, c.Request.URL.RawQuery))
 }
 
 // handleGetCurrentRecord handles fetching the currently active contract.

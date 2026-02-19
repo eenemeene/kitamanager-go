@@ -133,20 +133,84 @@ func TestPaginationParams_ValidateThenSetDefaults(t *testing.T) {
 
 func TestPaginatedResponse_TotalPagesCalculation(t *testing.T) {
 	// Edge case: exactly divisible
-	resp := NewPaginatedResponseWithLinks([]int{}, 1, 25, 100, "/test")
+	resp := NewPaginatedResponseWithLinks([]int{}, 1, 25, 100, "/test", "")
 	if resp.TotalPages != 4 {
 		t.Errorf("100/25 should give 4 total pages, got %d", resp.TotalPages)
 	}
 
 	// Edge case: not exactly divisible (ceiling)
-	resp = NewPaginatedResponseWithLinks([]int{}, 1, 25, 101, "/test")
+	resp = NewPaginatedResponseWithLinks([]int{}, 1, 25, 101, "/test", "")
 	if resp.TotalPages != 5 {
 		t.Errorf("101/25 should give 5 total pages (ceiling), got %d", resp.TotalPages)
 	}
 
 	// Edge case: single item
-	resp = NewPaginatedResponseWithLinks([]int{}, 1, 20, 1, "/test")
+	resp = NewPaginatedResponseWithLinks([]int{}, 1, 20, 1, "/test", "")
 	if resp.TotalPages != 1 {
 		t.Errorf("1 item should give 1 total page, got %d", resp.TotalPages)
 	}
+}
+
+func TestPaginatedResponse_PreservesFilterParams(t *testing.T) {
+	resp := NewPaginatedResponseWithLinks(
+		[]int{1, 2, 3}, 2, 10, 50, "/api/v1/children",
+		"search=alice&section_id=5&page=2&limit=10",
+	)
+
+	// Links should contain filter params
+	if resp.Links == nil {
+		t.Fatal("expected links to be set")
+	}
+
+	// Check that self link preserves filters
+	assertContains(t, resp.Links.Self, "search=alice")
+	assertContains(t, resp.Links.Self, "section_id=5")
+	assertContains(t, resp.Links.Self, "page=2")
+	assertContains(t, resp.Links.Self, "limit=10")
+
+	// Check that first link preserves filters with page=1
+	assertContains(t, resp.Links.First, "search=alice")
+	assertContains(t, resp.Links.First, "section_id=5")
+	assertContains(t, resp.Links.First, "page=1")
+
+	// Check prev link (page 2 -> page 1)
+	if resp.Links.Prev == nil {
+		t.Fatal("expected prev link on page 2")
+	}
+	assertContains(t, *resp.Links.Prev, "search=alice")
+	assertContains(t, *resp.Links.Prev, "page=1")
+
+	// Check next link (page 2 -> page 3)
+	if resp.Links.Next == nil {
+		t.Fatal("expected next link on page 2 of 5")
+	}
+	assertContains(t, *resp.Links.Next, "search=alice")
+	assertContains(t, *resp.Links.Next, "page=3")
+}
+
+func TestPaginatedResponse_NoFilters(t *testing.T) {
+	resp := NewPaginatedResponseWithLinks([]int{1}, 1, 20, 1, "/api/v1/users", "")
+
+	assertContains(t, resp.Links.Self, "page=1")
+	assertContains(t, resp.Links.Self, "limit=20")
+}
+
+func assertContains(t *testing.T, s, substr string) {
+	t.Helper()
+	if !contains(s, substr) {
+		t.Errorf("expected %q to contain %q", s, substr)
+	}
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && searchString(s, substr)
+}
+
+func searchString(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }

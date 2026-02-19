@@ -54,7 +54,7 @@ func (h *OrganizationHandler) List(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(organizations, params.Page, params.Limit, total, c.Request.URL.Path))
+	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(organizations, params.Page, params.Limit, total, c.Request.URL.Path, c.Request.URL.RawQuery))
 }
 
 // Get godoc

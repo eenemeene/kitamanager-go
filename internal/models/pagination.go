@@ -1,6 +1,9 @@
 package models
 
-import "fmt"
+import (
+	"fmt"
+	"net/url"
+)
 
 // PaginationParams holds pagination request parameters
 type PaginationParams struct {
@@ -59,28 +62,33 @@ type PaginatedResponse[T any] struct {
 	Links      *PaginationLinks `json:"_links,omitempty"`
 }
 
-// NewPaginatedResponseWithLinks creates a new paginated response with HATEOAS links
-func NewPaginatedResponseWithLinks[T any](data []T, page, limit int, total int64, basePath string) PaginatedResponse[T] {
+// NewPaginatedResponseWithLinks creates a new paginated response with HATEOAS links.
+// It preserves any filter query parameters (search, section_id, etc.) from rawQuery
+// in the generated links, replacing only page and limit.
+func NewPaginatedResponseWithLinks[T any](data []T, page, limit int, total int64, basePath string, rawQuery string) PaginatedResponse[T] {
 	totalPages := int(total) / limit
 	if int(total)%limit > 0 {
 		totalPages++
 	}
 
+	// Parse existing query params and strip pagination keys
+	filterParams := stripPaginationParams(rawQuery)
+
 	links := &PaginationLinks{
-		Self:  fmt.Sprintf("%s?page=%d&limit=%d", basePath, page, limit),
-		First: fmt.Sprintf("%s?page=1&limit=%d", basePath, limit),
-		Last:  fmt.Sprintf("%s?page=%d&limit=%d", basePath, totalPages, limit),
+		Self:  buildPaginatedURL(basePath, filterParams, page, limit),
+		First: buildPaginatedURL(basePath, filterParams, 1, limit),
+		Last:  buildPaginatedURL(basePath, filterParams, totalPages, limit),
 	}
 
 	// Add prev link if not on first page
 	if page > 1 {
-		prev := fmt.Sprintf("%s?page=%d&limit=%d", basePath, page-1, limit)
+		prev := buildPaginatedURL(basePath, filterParams, page-1, limit)
 		links.Prev = &prev
 	}
 
 	// Add next link if not on last page
 	if page < totalPages {
-		next := fmt.Sprintf("%s?page=%d&limit=%d", basePath, page+1, limit)
+		next := buildPaginatedURL(basePath, filterParams, page+1, limit)
 		links.Next = &next
 	}
 
@@ -92,4 +100,24 @@ func NewPaginatedResponseWithLinks[T any](data []T, page, limit int, total int64
 		TotalPages: totalPages,
 		Links:      links,
 	}
+}
+
+// stripPaginationParams removes page and limit from a raw query string
+// and returns the remaining parameters as url.Values.
+func stripPaginationParams(rawQuery string) url.Values {
+	params, _ := url.ParseQuery(rawQuery)
+	params.Del("page")
+	params.Del("limit")
+	return params
+}
+
+// buildPaginatedURL constructs a URL with filter params plus page/limit.
+func buildPaginatedURL(basePath string, filterParams url.Values, page, limit int) string {
+	q := make(url.Values, len(filterParams)+2)
+	for k, v := range filterParams {
+		q[k] = v
+	}
+	q.Set("page", fmt.Sprintf("%d", page))
+	q.Set("limit", fmt.Sprintf("%d", limit))
+	return basePath + "?" + q.Encode()
 }

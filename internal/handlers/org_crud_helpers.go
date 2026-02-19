@@ -35,7 +35,7 @@ func handleOrgList[R any](
 		return
 	}
 
-	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(items, params.Page, params.Limit, total, c.Request.URL.Path))
+	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(items, params.Page, params.Limit, total, c.Request.URL.Path, c.Request.URL.RawQuery))
 }
 
 // handleOrgGet handles fetching a single org-scoped resource by ID.

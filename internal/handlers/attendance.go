@@ -222,7 +222,7 @@ func (h *ChildAttendanceHandler) ListByChild(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(records, params.Page, params.Limit, total, c.Request.URL.Path))
+	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(records, params.Page, params.Limit, total, c.Request.URL.Path, c.Request.URL.RawQuery))
 }
 
 // ListByDate godoc
@@ -263,7 +263,7 @@ func (h *ChildAttendanceHandler) ListByDate(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(records, params.Page, params.Limit, total, c.Request.URL.Path))
+	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(records, params.Page, params.Limit, total, c.Request.URL.Path, c.Request.URL.RawQuery))
 }
 
 // GetDailySummary godoc
