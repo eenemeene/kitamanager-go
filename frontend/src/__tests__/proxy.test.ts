@@ -1,13 +1,13 @@
 /**
- * Middleware tests
+ * Proxy tests
  *
- * Note: Next.js middleware uses edge runtime APIs that aren't fully available
- * in Jest's Node.js environment. These tests verify the middleware logic
+ * Note: Next.js proxy uses edge runtime APIs that aren't fully available
+ * in Jest's Node.js environment. These tests verify the proxy logic
  * by testing the core functionality in isolation.
  */
 
 // Test the path matching logic
-describe('middleware path matching', () => {
+describe('proxy path matching', () => {
   const publicPaths = ['/login'];
 
   function isPublicPath(pathname: string): boolean {

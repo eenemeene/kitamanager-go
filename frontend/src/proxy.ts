@@ -20,7 +20,7 @@ function isValidRedirectPath(path: string): boolean {
   return true;
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Check if the path is public

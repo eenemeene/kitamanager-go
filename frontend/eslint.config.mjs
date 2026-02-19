@@ -15,7 +15,7 @@ const config = [
     },
   },
   {
-    ignores: ['.next/', 'node_modules/', 'coverage/', 'jest.config.js', 'jest.setup.js'],
+    ignores: ['.next/', 'node_modules/', 'coverage/', 'jest.config.cjs', 'jest.setup.js'],
   },
 ];
 
