@@ -49,7 +49,7 @@ export function PropertiesGroupedByKey({
 
   if (!period.properties?.length) {
     return (
-      <p className="py-4 text-center text-muted-foreground">
+      <p className="text-muted-foreground py-4 text-center">
         {t('governmentFundings.noPropertiesDefined')}
       </p>
     );
@@ -63,7 +63,7 @@ export function PropertiesGroupedByKey({
           <div className="mt-2 space-y-3 pl-4">
             {valueGroups.map(([value, properties]) => (
               <div key={value}>
-                <p className="mb-1 text-sm text-muted-foreground">
+                <p className="text-muted-foreground mb-1 text-sm">
                   {properties[0]?.label || value}
                 </p>
                 <Table>

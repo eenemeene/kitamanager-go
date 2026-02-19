@@ -141,7 +141,7 @@ export default function SectionsPage() {
                 {...crud.register('name')}
               />
               {crud.errors.name && (
-                <p id="name-error" className="text-sm text-destructive">
+                <p id="name-error" className="text-destructive text-sm">
                   {t('validation.nameRequired')}
                 </p>
               )}
@@ -180,7 +180,7 @@ export default function SectionsPage() {
                   })}
                 />
                 {crud.errors.max_age_months && (
-                  <p id="max-age-error" className="text-sm text-destructive">
+                  <p id="max-age-error" className="text-destructive text-sm">
                     {t('sections.ageRangeError')}
                   </p>
                 )}

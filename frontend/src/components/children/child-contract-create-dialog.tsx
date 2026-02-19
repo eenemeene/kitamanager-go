@@ -148,7 +148,7 @@ export function ChildContractCreateDialog({
             <Alert>
               <AlertDescription className="space-y-3">
                 <p className="font-medium">{t('contracts.hasActiveContract')}</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   {t('contracts.activeSince', {
                     date: formatDate(activeContract.from),
                     attrs:
@@ -165,7 +165,7 @@ export function ChildContractCreateDialog({
                   />
                   <label
                     htmlFor="endCurrentContract"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    className="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
                     {t('contracts.endCurrentContract')}
                   </label>
@@ -179,14 +179,14 @@ export function ChildContractCreateDialog({
               <Label htmlFor="from">{t('contracts.startDate')}</Label>
               <Input id="from" type="date" {...register('from')} />
               {errors.from && (
-                <p className="text-sm text-destructive">{t('contracts.startDateRequired')}</p>
+                <p className="text-destructive text-sm">{t('contracts.startDateRequired')}</p>
               )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="to">{t('contracts.endDateOptional')}</Label>
               <Input id="to" type="date" {...register('to')} />
               {child && orgState && (
-                <p className="text-xs text-muted-foreground">{t('children.contractEndHint')}</p>
+                <p className="text-muted-foreground text-xs">{t('children.contractEndHint')}</p>
               )}
             </div>
           </div>
@@ -210,7 +210,7 @@ export function ChildContractCreateDialog({
                 </SelectContent>
               </Select>
               {errors.section_id && (
-                <p className="text-sm text-destructive">{t('validation.sectionRequired')}</p>
+                <p className="text-destructive text-sm">{t('validation.sectionRequired')}</p>
               )}
             </div>
           )}
@@ -223,7 +223,7 @@ export function ChildContractCreateDialog({
               render={({ field }) => (
                 <PropertyTagInput
                   id="properties"
-                  value={field.value}
+                  value={field.value as Record<string, string> | undefined}
                   onChange={field.onChange}
                   fundingAttributes={fundingAttributes}
                   attributesByKey={attributesByKey}
@@ -232,7 +232,7 @@ export function ChildContractCreateDialog({
                 />
               )}
             />
-            <p className="text-xs text-muted-foreground">{t('contracts.propertiesHelp')}</p>
+            <p className="text-muted-foreground text-xs">{t('contracts.propertiesHelp')}</p>
           </div>
 
           <DialogFooter>

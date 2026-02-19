@@ -58,7 +58,7 @@ export default function FinancialsPage() {
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+              <CardTitle className="text-muted-foreground text-sm font-medium">
                 {t('statistics.totalIncome')}
               </CardTitle>
             </CardHeader>
@@ -70,7 +70,7 @@ export default function FinancialsPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+              <CardTitle className="text-muted-foreground text-sm font-medium">
                 {t('statistics.totalExpenses')}
               </CardTitle>
             </CardHeader>
@@ -82,7 +82,7 @@ export default function FinancialsPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+              <CardTitle className="text-muted-foreground text-sm font-medium">
                 {t('statistics.balance')}
               </CardTitle>
             </CardHeader>
@@ -105,7 +105,7 @@ export default function FinancialsPage() {
       <Card>
         <CardHeader>
           <CardTitle>{t('statistics.financialOverview')}</CardTitle>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             {t('statistics.financialOverviewDescription')}
           </p>
         </CardHeader>

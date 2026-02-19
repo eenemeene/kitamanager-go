@@ -124,7 +124,7 @@ export default function BudgetItemsPage() {
         key: 'per_child',
         header: 'budgetItems.perChild',
         render: (item) =>
-          item.per_child ? <Check className="h-4 w-4 text-muted-foreground" /> : null,
+          item.per_child ? <Check className="text-muted-foreground h-4 w-4" /> : null,
       },
       {
         key: 'active_amount',
@@ -197,7 +197,7 @@ export default function BudgetItemsPage() {
             <Label htmlFor="name">{t('common.name')}</Label>
             <Input id="name" {...crud.register('name')} />
             {crud.errors.name && (
-              <p className="text-sm text-destructive">{t('validation.nameRequired')}</p>
+              <p className="text-destructive text-sm">{t('validation.nameRequired')}</p>
             )}
           </div>
 
@@ -240,14 +240,14 @@ export default function BudgetItemsPage() {
                   <Label htmlFor="entry_from">{t('budgetItems.fromDate')}</Label>
                   <Input id="entry_from" type="date" {...crud.register('entry_from')} />
                   {crud.errors.entry_from && (
-                    <p className="text-sm text-destructive">{t('validation.fromDateRequired')}</p>
+                    <p className="text-destructive text-sm">{t('validation.fromDateRequired')}</p>
                   )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="entry_to">{t('budgetItems.toDateOptional')}</Label>
                   <Input id="entry_to" type="date" {...crud.register('entry_to')} />
                   {crud.errors.entry_to && (
-                    <p className="text-sm text-destructive">
+                    <p className="text-destructive text-sm">
                       {t('validation.toDateMustBeAfterFromDate')}
                     </p>
                   )}
@@ -264,7 +264,7 @@ export default function BudgetItemsPage() {
                   {...crud.register('entry_amount_euros', { valueAsNumber: true })}
                 />
                 {crud.errors.entry_amount_euros && (
-                  <p className="text-sm text-destructive">
+                  <p className="text-destructive text-sm">
                     {t('budgetItems.amountMustBePositive')}
                   </p>
                 )}

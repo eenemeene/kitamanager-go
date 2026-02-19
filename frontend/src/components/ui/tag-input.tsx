@@ -105,7 +105,7 @@ export function PropertyTagInput({
     <div className="space-y-2">
       <div
         className={cn(
-          'flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2',
+          'border-input bg-background ring-offset-background focus-within:ring-ring flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-md border px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-offset-2',
           disabled && 'cursor-not-allowed opacity-50',
           className
         )}
@@ -130,7 +130,7 @@ export function PropertyTagInput({
                     e.stopPropagation();
                     removeAttribute(val);
                   }}
-                  className="ml-1 rounded-full outline-none ring-offset-background hover:bg-muted focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  className="ring-offset-background hover:bg-muted focus:ring-ring ml-1 rounded-full outline-none focus:ring-2 focus:ring-offset-2"
                   aria-label={`Remove ${val}`}
                 >
                   <X className="h-3 w-3" />
@@ -143,7 +143,7 @@ export function PropertyTagInput({
       {availableSuggestions.length > 0 && !disabled && (
         <div className="flex flex-wrap gap-1" data-testid="property-suggestions">
           {suggestionsLabel && (
-            <span className="mr-1 self-center text-xs text-muted-foreground">
+            <span className="text-muted-foreground mr-1 self-center text-xs">
               {suggestionsLabel}
             </span>
           )}
@@ -236,7 +236,7 @@ export function TagInput({
     <div className="space-y-2">
       <div
         className={cn(
-          'flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2',
+          'border-input bg-background ring-offset-background focus-within:ring-ring flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-md border px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-offset-2',
           disabled && 'cursor-not-allowed opacity-50',
           className
         )}
@@ -252,7 +252,7 @@ export function TagInput({
                   e.stopPropagation();
                   removeTag(tag);
                 }}
-                className="ml-1 rounded-full outline-none ring-offset-background hover:bg-muted focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                className="ring-offset-background hover:bg-muted focus:ring-ring ml-1 rounded-full outline-none focus:ring-2 focus:ring-offset-2"
                 aria-label={`Remove ${tag}`}
               >
                 <X className="h-3 w-3" />
@@ -270,14 +270,14 @@ export function TagInput({
           onBlur={handleBlur}
           placeholder={value.length === 0 ? placeholder : ''}
           disabled={disabled}
-          className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+          className="placeholder:text-muted-foreground flex-1 bg-transparent outline-none disabled:cursor-not-allowed"
           style={{ minWidth: '80px' }}
         />
       </div>
       {availableSuggestions.length > 0 && !disabled && (
         <div className="flex flex-wrap gap-1">
           {suggestionsLabel && (
-            <span className="mr-1 self-center text-xs text-muted-foreground">
+            <span className="text-muted-foreground mr-1 self-center text-xs">
               {suggestionsLabel}
             </span>
           )}
@@ -286,7 +286,7 @@ export function TagInput({
               key={suggestion}
               type="button"
               onClick={() => addTag(suggestion)}
-              className="inline-flex items-center gap-1 rounded-full border border-dashed border-muted-foreground/50 px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+              className="border-muted-foreground/50 text-muted-foreground hover:border-primary hover:text-primary inline-flex items-center gap-1 rounded-full border border-dashed px-2 py-0.5 text-xs transition-colors"
             >
               <Plus className="h-3 w-3" />
               {suggestion}

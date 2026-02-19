@@ -72,7 +72,7 @@ export function EmployeeStaffingHoursTable({ data }: EmployeeStaffingHoursTableP
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="sticky left-0 z-10 min-w-[180px] bg-background">
+            <TableHead className="bg-background sticky left-0 z-10 min-w-[180px]">
               {t('employeeName')}
             </TableHead>
             {dates.map((d) => (
@@ -86,13 +86,13 @@ export function EmployeeStaffingHoursTable({ data }: EmployeeStaffingHoursTableP
         <TableBody>
           {employees.map((emp, empIdx) => (
             <TableRow key={emp.employee_id}>
-              <TableCell className="sticky left-0 z-10 bg-background">
+              <TableCell className="bg-background sticky left-0 z-10">
                 <div className="flex items-center gap-2">
                   <span className="font-medium">
                     {emp.last_name}, {emp.first_name}
                   </span>
                   {emp.staff_category && (
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-muted-foreground text-xs">
                       {STAFF_CATEGORY_LABELS[emp.staff_category] ?? emp.staff_category}
                     </span>
                   )}
@@ -111,7 +111,7 @@ export function EmployeeStaffingHoursTable({ data }: EmployeeStaffingHoursTableP
 
           {/* Total row */}
           <TableRow className="border-t-2">
-            <TableCell className="sticky left-0 z-10 bg-background font-bold">
+            <TableCell className="bg-background sticky left-0 z-10 font-bold">
               {t('total')}
             </TableCell>
             {totals.map((val, i) => (

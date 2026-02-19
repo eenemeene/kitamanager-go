@@ -37,7 +37,7 @@ export default function BudgetPage() {
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div>
             <CardTitle>{t('statistics.budgetOverview')}</CardTitle>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="text-muted-foreground mt-1 text-sm">
               {t('statistics.budgetDescription')}
             </p>
           </div>

@@ -53,7 +53,7 @@ export function MonthlyContractChart({ data }: MonthlyContractChartProps) {
         xScale={{ type: 'point' }}
         yScale={{ type: 'linear', min: 'auto', max: 'auto', stacked: false }}
         layers={[
-          KitaYearBackgroundLayer,
+          KitaYearBackgroundLayer as any,
           'grid',
           'markers',
           'axes',

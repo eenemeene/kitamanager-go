@@ -160,7 +160,7 @@ export default function GovernmentFundingsPage() {
           <Label htmlFor="name">{t('common.name')}</Label>
           <Input id="name" {...register('name')} />
           {errors.name && (
-            <p className="text-sm text-destructive">{t('validation.nameRequired')}</p>
+            <p className="text-destructive text-sm">{t('validation.nameRequired')}</p>
           )}
         </div>
 
@@ -180,7 +180,7 @@ export default function GovernmentFundingsPage() {
               </SelectContent>
             </Select>
             {errors.state && (
-              <p className="text-sm text-destructive">{t('validation.stateRequired')}</p>
+              <p className="text-destructive text-sm">{t('validation.stateRequired')}</p>
             )}
           </div>
         )}

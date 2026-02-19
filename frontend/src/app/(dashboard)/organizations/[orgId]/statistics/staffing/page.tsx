@@ -180,7 +180,7 @@ export default function StaffingPage() {
       <Card>
         <CardHeader>
           <CardTitle>{t('statistics.staffingHours')}</CardTitle>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="text-muted-foreground mt-1 text-sm">
             {t('statistics.staffingHoursDescription')}
           </p>
         </CardHeader>

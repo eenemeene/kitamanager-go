@@ -216,7 +216,7 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
 
   return (
     <div className="space-y-3">
-      <p className="flex items-center gap-2 text-sm text-muted-foreground">
+      <p className="text-muted-foreground flex items-center gap-2 text-sm">
         <GripVertical className="h-4 w-4" />
         {t('sections.dragHint')}
       </p>

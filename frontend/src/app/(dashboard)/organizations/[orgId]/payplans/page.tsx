@@ -114,7 +114,7 @@ export default function PayPlansPage() {
           <Label htmlFor="name">{t('common.name')}</Label>
           <Input id="name" {...crud.register('name')} />
           {crud.errors.name && (
-            <p className="text-sm text-destructive">{t('validation.nameRequired')}</p>
+            <p className="text-destructive text-sm">{t('validation.nameRequired')}</p>
           )}
         </div>
       </CrudFormDialog>

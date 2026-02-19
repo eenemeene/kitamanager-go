@@ -119,14 +119,14 @@ export function ChildCreateDialog({
               <Label htmlFor="create_first_name">{t('children.firstName')}</Label>
               <Input id="create_first_name" {...register('first_name')} />
               {errors.first_name && (
-                <p className="text-sm text-destructive">{t('validation.firstNameRequired')}</p>
+                <p className="text-destructive text-sm">{t('validation.firstNameRequired')}</p>
               )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="create_last_name">{t('children.lastName')}</Label>
               <Input id="create_last_name" {...register('last_name')} />
               {errors.last_name && (
-                <p className="text-sm text-destructive">{t('validation.lastNameRequired')}</p>
+                <p className="text-destructive text-sm">{t('validation.lastNameRequired')}</p>
               )}
             </div>
           </div>
@@ -138,7 +138,7 @@ export function ChildCreateDialog({
               onValueChange={(value: Gender) => setValue('gender', value)}
             />
             {errors.gender && (
-              <p className="text-sm text-destructive">{t('validation.genderRequired')}</p>
+              <p className="text-destructive text-sm">{t('validation.genderRequired')}</p>
             )}
           </div>
 
@@ -146,7 +146,7 @@ export function ChildCreateDialog({
             <Label htmlFor="create_birthdate">{t('children.birthdate')}</Label>
             <Input id="create_birthdate" type="date" {...register('birthdate')} />
             {errors.birthdate && (
-              <p className="text-sm text-destructive">{t('validation.birthdateRequired')}</p>
+              <p className="text-destructive text-sm">{t('validation.birthdateRequired')}</p>
             )}
           </div>
 
@@ -158,7 +158,7 @@ export function ChildCreateDialog({
                 <Label htmlFor="create_contract_from">{t('contracts.startDate')}</Label>
                 <Input id="create_contract_from" type="date" {...register('contract_from')} />
                 {errors.contract_from && (
-                  <p className="text-sm text-destructive">
+                  <p className="text-destructive text-sm">
                     {errors.contract_from.type === 'custom'
                       ? t('validation.contractBeforeBirthdate')
                       : t('contracts.startDateRequired')}
@@ -169,7 +169,7 @@ export function ChildCreateDialog({
                 <Label htmlFor="create_contract_to">{t('contracts.endDateOptional')}</Label>
                 <Input id="create_contract_to" type="date" {...register('contract_to')} />
                 {birthdate && orgState && (
-                  <p className="text-xs text-muted-foreground">{t('children.contractEndHint')}</p>
+                  <p className="text-muted-foreground text-xs">{t('children.contractEndHint')}</p>
                 )}
               </div>
             </div>
@@ -193,7 +193,7 @@ export function ChildCreateDialog({
                   </SelectContent>
                 </Select>
                 {errors.section_id && (
-                  <p className="text-sm text-destructive">{t('validation.sectionRequired')}</p>
+                  <p className="text-destructive text-sm">{t('validation.sectionRequired')}</p>
                 )}
               </div>
             )}
@@ -206,7 +206,7 @@ export function ChildCreateDialog({
                 render={({ field }) => (
                   <PropertyTagInput
                     id="create_properties"
-                    value={field.value}
+                    value={field.value as Record<string, string> | undefined}
                     onChange={field.onChange}
                     fundingAttributes={fundingAttributes}
                     attributesByKey={attributesByKey}
@@ -215,7 +215,7 @@ export function ChildCreateDialog({
                   />
                 )}
               />
-              <p className="text-xs text-muted-foreground">{t('contracts.propertiesHelp')}</p>
+              <p className="text-muted-foreground text-xs">{t('contracts.propertiesHelp')}</p>
             </div>
           </div>
 

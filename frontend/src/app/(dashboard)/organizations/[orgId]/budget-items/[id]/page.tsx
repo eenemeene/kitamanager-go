@@ -166,7 +166,7 @@ export default function BudgetItemDetailPage() {
 
   if (!budgetItem) {
     return (
-      <div className="text-center text-muted-foreground">
+      <div className="text-muted-foreground text-center">
         {t('budgetItems.failedToLoadBudgetItem')}
       </div>
     );
@@ -183,7 +183,7 @@ export default function BudgetItemDetailPage() {
           {t(`budgetItems.category${budgetItem.category === 'income' ? 'Income' : 'Expense'}`)}
         </Badge>
         {budgetItem.per_child && (
-          <span className="flex items-center gap-1 text-sm text-muted-foreground">
+          <span className="text-muted-foreground flex items-center gap-1 text-sm">
             <Check className="h-4 w-4" />
             {t('budgetItems.perChild')}
           </span>
@@ -200,7 +200,7 @@ export default function BudgetItemDetailPage() {
         </CardHeader>
         <CardContent>
           {!budgetItem.entries?.length ? (
-            <p className="py-8 text-center text-muted-foreground">
+            <p className="text-muted-foreground py-8 text-center">
               {t('budgetItems.noEntriesDefined')}
             </p>
           ) : (
@@ -258,14 +258,14 @@ export default function BudgetItemDetailPage() {
                 <Label htmlFor="from">{t('budgetItems.fromDate')}</Label>
                 <Input id="from" type="date" {...register('from')} />
                 {errors.from && (
-                  <p className="text-sm text-destructive">{t('validation.fromDateRequired')}</p>
+                  <p className="text-destructive text-sm">{t('validation.fromDateRequired')}</p>
                 )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="to">{t('budgetItems.toDateOptional')}</Label>
                 <Input id="to" type="date" {...register('to')} />
                 {errors.to && (
-                  <p className="text-sm text-destructive">
+                  <p className="text-destructive text-sm">
                     {t('validation.toDateMustBeAfterFromDate')}
                   </p>
                 )}
@@ -282,7 +282,7 @@ export default function BudgetItemDetailPage() {
                 {...register('amount_euros', { valueAsNumber: true })}
               />
               {errors.amount_euros && (
-                <p className="text-sm text-destructive">{t('validation.required')}</p>
+                <p className="text-destructive text-sm">{t('validation.required')}</p>
               )}
             </div>
 

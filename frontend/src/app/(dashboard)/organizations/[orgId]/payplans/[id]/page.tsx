@@ -239,7 +239,7 @@ export default function PayPlanDetailPage() {
 
   if (!payPlan) {
     return (
-      <div className="text-center text-muted-foreground">{t('payPlans.failedToLoadPayPlan')}</div>
+      <div className="text-muted-foreground text-center">{t('payPlans.failedToLoadPayPlan')}</div>
     );
   }
 
@@ -286,7 +286,7 @@ export default function PayPlanDetailPage() {
         </CardHeader>
         <CardContent>
           {payPlan.periods?.length === 0 ? (
-            <p className="py-8 text-center text-muted-foreground">
+            <p className="text-muted-foreground py-8 text-center">
               {view === 'panels' ? t('payPlans.noPeriodsDefined') : t('payPlans.noDataDefined')}
             </p>
           ) : view === 'table' ? (
@@ -314,7 +314,7 @@ export default function PayPlanDetailPage() {
                       <CardTitle className="text-base">
                         {formatPeriod(period.from, period.to, 'en', t('common.ongoing'))}
                       </CardTitle>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-muted-foreground text-sm">
                         {period.weekly_hours}h / {t('payPlans.weeklyHours')}
                         {' \u2014 '}
                         {t('payPlans.employerContributionRate')}:{' '}
@@ -343,7 +343,7 @@ export default function PayPlanDetailPage() {
                   </CardHeader>
                   <CardContent>
                     {period.entries?.length === 0 ? (
-                      <p className="py-4 text-center text-muted-foreground">
+                      <p className="text-muted-foreground py-4 text-center">
                         {t('payPlans.noEntriesDefined')}
                       </p>
                     ) : (
@@ -407,7 +407,7 @@ export default function PayPlanDetailPage() {
                 <Label htmlFor="from">{t('payPlans.fromDate')}</Label>
                 <Input id="from" type="date" {...registerPeriod('from')} />
                 {errorsPeriod.from && (
-                  <p className="text-sm text-destructive">{t('validation.fromDateRequired')}</p>
+                  <p className="text-destructive text-sm">{t('validation.fromDateRequired')}</p>
                 )}
               </div>
               <div className="space-y-2">
@@ -428,7 +428,7 @@ export default function PayPlanDetailPage() {
                   {...registerPeriod('weekly_hours', { valueAsNumber: true })}
                 />
                 {errorsPeriod.weekly_hours && (
-                  <p className="text-sm text-destructive">{t('payPlans.weeklyHoursRequired')}</p>
+                  <p className="text-destructive text-sm">{t('payPlans.weeklyHoursRequired')}</p>
                 )}
               </div>
               <div className="space-y-2">
@@ -444,7 +444,7 @@ export default function PayPlanDetailPage() {
                   {...registerPeriod('employer_contribution_rate', { valueAsNumber: true })}
                 />
                 {errorsPeriod.employer_contribution_rate && (
-                  <p className="text-sm text-destructive">
+                  <p className="text-destructive text-sm">
                     {t('payPlans.employerContributionRateRequired')}
                   </p>
                 )}
@@ -478,7 +478,7 @@ export default function PayPlanDetailPage() {
                 <Label htmlFor="grade">{t('payPlans.gradeLabel')}</Label>
                 <Input id="grade" {...registerEntry('grade')} placeholder="S8a" />
                 {errorsEntry.grade && (
-                  <p className="text-sm text-destructive">{t('payPlans.gradeRequired')}</p>
+                  <p className="text-destructive text-sm">{t('payPlans.gradeRequired')}</p>
                 )}
               </div>
               <div className="space-y-2">
@@ -491,7 +491,7 @@ export default function PayPlanDetailPage() {
                   {...registerEntry('step', { valueAsNumber: true })}
                 />
                 {errorsEntry.step && (
-                  <p className="text-sm text-destructive">{t('payPlans.stepRequired')}</p>
+                  <p className="text-destructive text-sm">{t('payPlans.stepRequired')}</p>
                 )}
               </div>
             </div>
@@ -506,7 +506,7 @@ export default function PayPlanDetailPage() {
                 {...registerEntry('monthly_amount_euros', { valueAsNumber: true })}
               />
               {errorsEntry.monthly_amount_euros && (
-                <p className="text-sm text-destructive">{t('payPlans.monthlyAmountRequired')}</p>
+                <p className="text-destructive text-sm">{t('payPlans.monthlyAmountRequired')}</p>
               )}
             </div>
 

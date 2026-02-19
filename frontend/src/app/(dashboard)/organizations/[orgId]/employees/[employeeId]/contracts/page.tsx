@@ -313,7 +313,7 @@ export default function EmployeeContractsPage() {
                         {contract.section_name ? (
                           <Badge variant="outline">{contract.section_name}</Badge>
                         ) : (
-                          <span className="text-sm text-muted-foreground">
+                          <span className="text-muted-foreground text-sm">
                             {t('sections.unassigned')}
                           </span>
                         )}
@@ -352,7 +352,7 @@ export default function EmployeeContractsPage() {
                 })}
                 {sortedContracts.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground">
+                    <TableCell colSpan={8} className="text-muted-foreground text-center">
                       {t('employees.noContractsFound')}
                     </TableCell>
                   </TableRow>

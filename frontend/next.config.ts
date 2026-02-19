@@ -1,11 +1,11 @@
-const createNextIntlPlugin = require('next-intl/plugin');
+import createNextIntlPlugin from 'next-intl/plugin';
+import type { NextConfig } from 'next';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 const isDev = process.env.NODE_ENV === 'development';
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+const nextConfig: NextConfig = {
   // Proxy API requests to the Go backend during development
   async rewrites() {
     return [
@@ -69,4 +69,4 @@ const nextConfig = {
   },
 };
 
-module.exports = withNextIntl(nextConfig);
+export default withNextIntl(nextConfig);

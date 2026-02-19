@@ -47,12 +47,12 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
         <Card className="mx-auto mt-8 max-w-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <AlertTriangle className="text-destructive h-5 w-5" />
               {this.props.title || 'Something went wrong'}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               {this.props.message || 'An unexpected error occurred'}
             </p>
             <Button onClick={this.handleRetry}>{this.props.retryLabel || 'Try Again'}</Button>

@@ -79,7 +79,7 @@ export function PropertyFormDialog({
             <Label htmlFor="label">{t('governmentFundings.label')}</Label>
             <Input id="label" placeholder="Ganztag" {...register('label')} />
             {errors.label && (
-              <p className="text-sm text-destructive">{t('validation.labelRequired')}</p>
+              <p className="text-destructive text-sm">{t('validation.labelRequired')}</p>
             )}
           </div>
 
@@ -88,14 +88,14 @@ export function PropertyFormDialog({
               <Label htmlFor="key">{t('governmentFundings.key')}</Label>
               <Input id="key" placeholder="care_type" {...register('key')} />
               {errors.key && (
-                <p className="text-sm text-destructive">{t('validation.keyRequired')}</p>
+                <p className="text-destructive text-sm">{t('validation.keyRequired')}</p>
               )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="value">{t('governmentFundings.value')}</Label>
               <Input id="value" placeholder="ganztag" {...register('value')} />
               {errors.value && (
-                <p className="text-sm text-destructive">{t('validation.valueRequired')}</p>
+                <p className="text-destructive text-sm">{t('validation.valueRequired')}</p>
               )}
             </div>
           </div>
@@ -143,7 +143,7 @@ export function PropertyFormDialog({
               />
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">{t('governmentFundings.ageRangeHelp')}</p>
+          <p className="text-muted-foreground text-xs">{t('governmentFundings.ageRangeHelp')}</p>
 
           <div className="space-y-2">
             <Label htmlFor="comment">{t('common.comment')}</Label>

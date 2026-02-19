@@ -15,7 +15,7 @@ import type {
   UseFormWatch,
   DefaultValues,
 } from 'react-hook-form';
-import type { z } from 'zod';
+import type { z, ZodType } from 'zod';
 import type { PaginatedResponse, PaginationParams } from '@/lib/api/types';
 import { useCrudDialogs, type UseCrudDialogsResult } from './use-crud-dialogs';
 import { useCrudMutations, type UseCrudMutationsResult } from './use-crud-mutations';
@@ -27,7 +27,7 @@ interface UseCrudPageConfig<
   TUpdate,
 > {
   resourceName: string;
-  schema: z.ZodType<TFormData, z.ZodTypeDef, unknown>;
+  schema: ZodType<TFormData>;
   defaultValues: TFormData;
   itemToFormData: (item: TItem) => TFormData;
   listFn: (orgId: number, params: PaginationParams) => Promise<PaginatedResponse<TItem>>;
@@ -56,7 +56,8 @@ interface UseCrudPageResult<
   page: number;
   setPage: (page: number) => void;
   register: UseFormRegister<TFormData>;
-  handleSubmit: UseFormHandleSubmit<TFormData>;
+
+  handleSubmit: UseFormHandleSubmit<TFormData, any>;
   errors: FieldErrors<TFormData>;
   setValue: UseFormSetValue<TFormData>;
   setError: UseFormSetError<TFormData>;
@@ -87,7 +88,7 @@ export function useCrudPage<
     watch,
     formState: { errors },
   } = useForm<TFormData>({
-    resolver: zodResolver(config.schema),
+    resolver: zodResolver(config.schema as any),
     defaultValues: config.defaultValues as DefaultValues<TFormData>,
   });
 

@@ -65,7 +65,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+    <div className="bg-muted/40 flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold">{t('common.appName')}</CardTitle>
@@ -74,7 +74,7 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             {error && (
-              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+              <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
                 {error}
               </div>
             )}
@@ -91,7 +91,7 @@ export default function LoginPage() {
                 disabled={isLoading}
               />
               {errors.email && (
-                <p id="email-error" className="text-sm text-destructive">
+                <p id="email-error" className="text-destructive text-sm">
                   {t('validation.invalidEmail')}
                 </p>
               )}
@@ -108,7 +108,7 @@ export default function LoginPage() {
                 disabled={isLoading}
               />
               {errors.password && (
-                <p id="password-error" className="text-sm text-destructive">
+                <p id="password-error" className="text-destructive text-sm">
                   {t('validation.passwordRequired')}
                 </p>
               )}

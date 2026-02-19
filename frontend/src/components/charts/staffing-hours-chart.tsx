@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { ResponsiveLine, type CustomLayerProps } from '@nivo/line';
+import { ResponsiveLine } from '@nivo/line';
 import { scaleLinear } from 'd3-scale';
 import type { StaffingHoursResponse } from '@/lib/api/types';
 import {
@@ -46,7 +46,15 @@ export function StaffingHoursChart({ data }: StaffingHoursChartProps) {
 
   // Custom layer that draws balance percentage bars behind the lines
   const BalanceBarsLayer = useMemo(() => {
-    return function BalanceBars({ xScale, innerHeight, innerWidth }: CustomLayerProps) {
+    return function BalanceBars({
+      xScale,
+      innerHeight,
+      innerWidth,
+    }: {
+      xScale: (value: string) => number;
+      innerHeight: number;
+      innerWidth: number;
+    }) {
       const scale = xScale as unknown as (value: string) => number;
       const step = xLabels.length > 1 ? scale(xLabels[1]) - scale(xLabels[0]) : innerWidth;
       const barWidth = step * 0.5;
@@ -146,8 +154,9 @@ export function StaffingHoursChart({ data }: StaffingHoursChartProps) {
         xScale={{ type: 'point' }}
         yScale={{ type: 'linear', min: 'auto', max: 'auto', stacked: false }}
         layers={[
-          KitaYearBackgroundLayer,
-          BalanceBarsLayer,
+          KitaYearBackgroundLayer as any,
+
+          BalanceBarsLayer as any,
           'grid',
           'markers',
           'axes',
@@ -205,11 +214,11 @@ export function StaffingHoursChart({ data }: StaffingHoursChartProps) {
                       width: 10,
                       height: 10,
                       borderRadius: '50%',
-                      background: point.serieColor,
+                      background: point.seriesColor,
                       display: 'inline-block',
                     }}
                   />
-                  {point.serieId}: {point.data.yFormatted}h
+                  {point.seriesId}: {point.data.yFormatted}h
                 </div>
               ))}
               {pct !== null && (

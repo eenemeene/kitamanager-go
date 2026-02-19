@@ -48,7 +48,7 @@ export function AppHeader() {
   return (
     <header
       className={cn(
-        'fixed right-0 top-0 z-30 flex h-16 items-center justify-end gap-4 border-b bg-background px-6 transition-all duration-300',
+        'bg-background fixed top-0 right-0 z-30 flex h-16 items-center justify-end gap-4 border-b px-6 transition-all duration-300',
         sidebarCollapsed ? 'left-16' : 'left-64'
       )}
     >
@@ -59,8 +59,8 @@ export function AppHeader() {
         onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
         aria-label={theme === 'dark' ? t('settings.lightMode') : t('settings.darkMode')}
       >
-        <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-        <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+        <Sun className="h-5 w-5 scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
+        <Moon className="absolute h-5 w-5 scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
       </Button>
 
       {/* Language Selector */}
@@ -93,10 +93,10 @@ export function AppHeader() {
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">
+              <p className="text-sm leading-none font-medium">
                 {user?.name || t('common.unknown')}
               </p>
-              <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+              <p className="text-muted-foreground text-xs leading-none">{user?.email}</p>
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />

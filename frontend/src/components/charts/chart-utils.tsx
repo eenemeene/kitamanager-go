@@ -1,4 +1,9 @@
-import type { CustomLayerProps } from '@nivo/line';
+/** Minimal props used by custom Nivo layers — avoids complex generic constraints. */
+interface ChartLayerProps {
+  xScale: (value: string) => number;
+  innerHeight: number;
+  innerWidth: number;
+}
 
 export interface KitaYearBand {
   label: string;
@@ -47,8 +52,8 @@ export function createKitaYearBackgroundLayer(
   xLabels: string[],
   kitaYearText: (label: string) => string
 ) {
-  return function KitaYearBg({ xScale, innerHeight, innerWidth }: CustomLayerProps) {
-    const scale = xScale as unknown as (value: string) => number;
+  return function KitaYearBg({ xScale, innerHeight, innerWidth }: ChartLayerProps) {
+    const scale = xScale;
     const step = xLabels.length > 1 ? scale(xLabels[1]) - scale(xLabels[0]) : innerWidth;
 
     return (

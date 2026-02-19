@@ -37,7 +37,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!hasHydrated) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
+        <div className="border-primary h-8 w-8 animate-spin rounded-full border-b-2"></div>
       </div>
     );
   }
@@ -47,7 +47,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background min-h-screen">
       <AppSidebar />
       <AppHeader />
       <main

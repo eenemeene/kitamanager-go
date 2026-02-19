@@ -59,7 +59,7 @@ export default function OrganizationsPage() {
     watch,
     formState: { errors },
   } = useForm<OrganizationFormData>({
-    resolver: zodResolver(organizationSchema),
+    resolver: zodResolver(organizationSchema) as any,
     defaultValues,
   });
 
@@ -163,7 +163,7 @@ export default function OrganizationsPage() {
               {dialogs.isEditing ? t('organizations.edit') : t('organizations.create')}
             </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit as never)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">{t('common.name')}</Label>
               <Input
@@ -173,7 +173,7 @@ export default function OrganizationsPage() {
                 {...register('name')}
               />
               {errors.name && (
-                <p id="name-error" className="text-sm text-destructive">
+                <p id="name-error" className="text-destructive text-sm">
                   {t('validation.nameRequired')}
                 </p>
               )}
@@ -197,7 +197,7 @@ export default function OrganizationsPage() {
                 </SelectContent>
               </Select>
               {errors.state && (
-                <p id="state-error" className="text-sm text-destructive">
+                <p id="state-error" className="text-destructive text-sm">
                   {t('validation.stateRequired')}
                 </p>
               )}
@@ -223,7 +223,7 @@ export default function OrganizationsPage() {
                   placeholder={t('organizations.defaultSectionNamePlaceholder')}
                 />
                 {errors.default_section_name && (
-                  <p className="text-sm text-destructive">
+                  <p className="text-destructive text-sm">
                     {t('validation.defaultSectionNameRequired')}
                   </p>
                 )}

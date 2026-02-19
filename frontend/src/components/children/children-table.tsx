@@ -93,7 +93,7 @@ export function ChildrenTable({
                     )}
                   </div>
                 ) : (
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-muted-foreground text-sm">
                     {t('contracts.noProperties')}
                   </span>
                 )}
@@ -102,7 +102,7 @@ export function ChildrenTable({
                 {(() => {
                   const funding = fundingByChildId.get(child.id);
                   if (!funding || funding.funding === 0) {
-                    return <span className="text-sm text-muted-foreground">-</span>;
+                    return <span className="text-muted-foreground text-sm">-</span>;
                   }
                   return <span className="font-medium">{formatCurrency(funding.funding)}</span>;
                 })()}
@@ -111,7 +111,7 @@ export function ChildrenTable({
                 {(() => {
                   const funding = fundingByChildId.get(child.id);
                   if (!funding || funding.requirement === 0) {
-                    return <span className="text-sm text-muted-foreground">-</span>;
+                    return <span className="text-muted-foreground text-sm">-</span>;
                   }
                   return <span className="font-medium">{formatFte(funding.requirement)}</span>;
                 })()}
@@ -157,7 +157,7 @@ export function ChildrenTable({
         })}
         {items.length === 0 && (
           <TableRow>
-            <TableCell colSpan={9} className="text-center text-muted-foreground">
+            <TableCell colSpan={9} className="text-muted-foreground text-center">
               {t('common.noResults')}
             </TableCell>
           </TableRow>

@@ -68,7 +68,7 @@ export function PersonFormDialog({
                 {...register('first_name')}
               />
               {errors.first_name && (
-                <p id="first-name-error" className="text-sm text-destructive">
+                <p id="first-name-error" className="text-destructive text-sm">
                   {t('validation.firstNameRequired')}
                 </p>
               )}
@@ -82,7 +82,7 @@ export function PersonFormDialog({
                 {...register('last_name')}
               />
               {errors.last_name && (
-                <p id="last-name-error" className="text-sm text-destructive">
+                <p id="last-name-error" className="text-destructive text-sm">
                   {t('validation.lastNameRequired')}
                 </p>
               )}
@@ -98,7 +98,7 @@ export function PersonFormDialog({
               aria-describedby={errors.gender ? 'gender-error' : undefined}
             />
             {errors.gender && (
-              <p id="gender-error" className="text-sm text-destructive">
+              <p id="gender-error" className="text-destructive text-sm">
                 {t('validation.genderRequired')}
               </p>
             )}
@@ -114,7 +114,7 @@ export function PersonFormDialog({
               {...register('birthdate')}
             />
             {errors.birthdate && (
-              <p id="birthdate-error" className="text-sm text-destructive">
+              <p id="birthdate-error" className="text-destructive text-sm">
                 {t('validation.birthdateRequired')}
               </p>
             )}

@@ -24,7 +24,7 @@ export function AgeDistributionChart({ data }: AgeDistributionChartProps) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-sm">
         {t('statistics.totalChildren', { count: data.total_count })}
       </p>
       <div className="h-[300px]">

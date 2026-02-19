@@ -66,7 +66,7 @@ export default function UsersPage() {
     watch: watchCreate,
     formState: { errors: errorsCreate },
   } = useForm<UserCreateFormData>({
-    resolver: zodResolver(userCreateSchema),
+    resolver: zodResolver(userCreateSchema) as any,
     defaultValues: createDefaultValues,
   });
 
@@ -78,7 +78,7 @@ export default function UsersPage() {
     watch: watchUpdate,
     formState: { errors: errorsUpdate },
   } = useForm<UserUpdateFormData>({
-    resolver: zodResolver(userUpdateSchema),
+    resolver: zodResolver(userUpdateSchema) as any,
     defaultValues: updateDefaultValues,
   });
 
@@ -240,8 +240,8 @@ export default function UsersPage() {
         translationPrefix="users"
         onSubmit={
           dialogs.isEditing
-            ? handleSubmitUpdate(onSubmitUpdate)
-            : handleSubmitCreate(onSubmitCreate)
+            ? handleSubmitUpdate(onSubmitUpdate as never)
+            : handleSubmitCreate(onSubmitCreate as never)
         }
         isSaving={mutations.isMutating}
       >
@@ -251,7 +251,7 @@ export default function UsersPage() {
               <Label htmlFor="name">{t('common.name')}</Label>
               <Input id="name" {...registerUpdate('name')} />
               {errorsUpdate.name && (
-                <p className="text-sm text-destructive">{t('validation.nameRequired')}</p>
+                <p className="text-destructive text-sm">{t('validation.nameRequired')}</p>
               )}
             </div>
 
@@ -259,7 +259,7 @@ export default function UsersPage() {
               <Label htmlFor="email">{t('common.email')}</Label>
               <Input id="email" type="email" {...registerUpdate('email')} />
               {errorsUpdate.email && (
-                <p className="text-sm text-destructive">{t('validation.invalidEmail')}</p>
+                <p className="text-destructive text-sm">{t('validation.invalidEmail')}</p>
               )}
             </div>
 
@@ -278,7 +278,7 @@ export default function UsersPage() {
               <Label htmlFor="name">{t('common.name')}</Label>
               <Input id="name" {...registerCreate('name')} />
               {errorsCreate.name && (
-                <p className="text-sm text-destructive">{t('validation.nameRequired')}</p>
+                <p className="text-destructive text-sm">{t('validation.nameRequired')}</p>
               )}
             </div>
 
@@ -286,7 +286,7 @@ export default function UsersPage() {
               <Label htmlFor="email">{t('common.email')}</Label>
               <Input id="email" type="email" {...registerCreate('email')} />
               {errorsCreate.email && (
-                <p className="text-sm text-destructive">{t('validation.invalidEmail')}</p>
+                <p className="text-destructive text-sm">{t('validation.invalidEmail')}</p>
               )}
             </div>
 
@@ -294,7 +294,7 @@ export default function UsersPage() {
               <Label htmlFor="password">{t('users.password')}</Label>
               <Input id="password" type="password" {...registerCreate('password')} />
               {errorsCreate.password && (
-                <p className="text-sm text-destructive">{t('validation.passwordTooShort')}</p>
+                <p className="text-destructive text-sm">{t('validation.passwordTooShort')}</p>
               )}
             </div>
 

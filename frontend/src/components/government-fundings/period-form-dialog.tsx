@@ -59,7 +59,7 @@ export function PeriodFormDialog({
               <Label htmlFor="from">{t('governmentFundings.fromDate')}</Label>
               <Input id="from" type="date" {...register('from')} />
               {errors.from && (
-                <p className="text-sm text-destructive">{t('validation.fromDateRequired')}</p>
+                <p className="text-destructive text-sm">{t('validation.fromDateRequired')}</p>
               )}
             </div>
             <div className="space-y-2">
@@ -81,7 +81,7 @@ export function PeriodFormDialog({
               {...register('full_time_weekly_hours', { valueAsNumber: true })}
             />
             {errors.full_time_weekly_hours && (
-              <p className="text-sm text-destructive">
+              <p className="text-destructive text-sm">
                 {t('validation.fullTimeWeeklyHoursRequired')}
               </p>
             )}

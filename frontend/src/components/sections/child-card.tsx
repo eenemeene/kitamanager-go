@@ -34,7 +34,7 @@ export function ChildCard({ child }: ChildCardProps) {
             {child.gender === 'male' ? 'M' : child.gender === 'female' ? 'F' : 'D'}
           </Badge>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="text-muted-foreground mt-1 text-xs">
           {age} {age === 1 ? 'year' : 'years'}
         </p>
       </CardContent>

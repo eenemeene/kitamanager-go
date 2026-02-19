@@ -281,8 +281,6 @@ export function FinancialsChart({ data }: FinancialsChartProps) {
         margin={{ top: 60, right: 30, bottom: 80, left: 80 }}
         padding={0.3}
         groupMode="stacked"
-        minValue="auto"
-        maxValue="auto"
         colors={colors}
         layers={[
           KitaYearBackground,

@@ -57,7 +57,7 @@ export function PayPlanGrid({ period }: PayPlanGridProps) {
             <TableHead key={step} className="text-right">
               {step}
               {stepMinYearsMap.get(step) != null && (
-                <span className="ml-1 text-xs text-muted-foreground">
+                <span className="text-muted-foreground ml-1 text-xs">
                   ({stepMinYearsMap.get(step)}y)
                 </span>
               )}

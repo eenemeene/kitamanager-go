@@ -36,7 +36,7 @@ function PaginationInner({
       aria-label={t('pagination.navigation')}
       className="flex items-center justify-between px-2 py-4"
     >
-      <div className="text-sm text-muted-foreground">
+      <div className="text-muted-foreground text-sm">
         {t('pagination.showing', { start: startItem, end: endItem, total })}
       </div>
       <div className="flex items-center gap-1">

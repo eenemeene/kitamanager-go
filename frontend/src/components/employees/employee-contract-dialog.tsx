@@ -73,7 +73,7 @@ export function EmployeeContractDialog({
             <Alert>
               <AlertDescription className="space-y-3">
                 <p className="font-medium">{t('contracts.hasActiveContractEmployee')}</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   {t('contracts.activeSinceEmployee', {
                     date: formatDate(activeContractInfo.contract.from),
                     staffCategory: t(
@@ -93,7 +93,7 @@ export function EmployeeContractDialog({
                   />
                   <label
                     htmlFor="endCurrentContract"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    className="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
                     {t('contracts.endCurrentContract')}
                   </label>
@@ -107,7 +107,7 @@ export function EmployeeContractDialog({
               <Label htmlFor="from">{t('contracts.startDate')}</Label>
               <Input id="from" type="date" {...register('from')} />
               {errors.from && (
-                <p className="text-sm text-destructive">{t('contracts.startDateRequired')}</p>
+                <p className="text-destructive text-sm">{t('contracts.startDateRequired')}</p>
               )}
             </div>
             <div className="space-y-2">
@@ -135,7 +135,7 @@ export function EmployeeContractDialog({
                 </SelectContent>
               </Select>
               {errors.section_id && (
-                <p className="text-sm text-destructive">{t('validation.sectionRequired')}</p>
+                <p className="text-destructive text-sm">{t('validation.sectionRequired')}</p>
               )}
             </div>
           )}
@@ -158,7 +158,7 @@ export function EmployeeContractDialog({
               </SelectContent>
             </Select>
             {errors.payplan_id && (
-              <p className="text-sm text-destructive">{t('employees.selectPayPlan')}</p>
+              <p className="text-destructive text-sm">{t('employees.selectPayPlan')}</p>
             )}
           </div>
 
@@ -184,7 +184,7 @@ export function EmployeeContractDialog({
               </SelectContent>
             </Select>
             {errors.staff_category && (
-              <p className="text-sm text-destructive">{t('validation.staffCategoryRequired')}</p>
+              <p className="text-destructive text-sm">{t('validation.staffCategoryRequired')}</p>
             )}
           </div>
 
@@ -193,7 +193,7 @@ export function EmployeeContractDialog({
               <Label htmlFor="grade">{t('employees.grade')}</Label>
               <Input id="grade" {...register('grade')} placeholder="S8a" />
               {errors.grade && (
-                <p className="text-sm text-destructive">{t('payPlans.gradeRequired')}</p>
+                <p className="text-destructive text-sm">{t('payPlans.gradeRequired')}</p>
               )}
             </div>
             <div className="space-y-2">
@@ -206,7 +206,7 @@ export function EmployeeContractDialog({
                 {...register('step', { valueAsNumber: true })}
               />
               {errors.step && (
-                <p className="text-sm text-destructive">{t('payPlans.stepRequired')}</p>
+                <p className="text-destructive text-sm">{t('payPlans.stepRequired')}</p>
               )}
             </div>
           </div>
@@ -222,7 +222,7 @@ export function EmployeeContractDialog({
               {...register('weekly_hours', { valueAsNumber: true })}
             />
             {errors.weekly_hours && (
-              <p className="text-sm text-destructive">{t('validation.weeklyHoursRequired')}</p>
+              <p className="text-destructive text-sm">{t('validation.weeklyHoursRequired')}</p>
             )}
           </div>
 

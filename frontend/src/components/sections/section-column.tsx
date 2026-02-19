@@ -38,7 +38,7 @@ export function SectionColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        'flex w-72 shrink-0 flex-col rounded-lg border bg-muted/50 transition-colors',
+        'bg-muted/50 flex w-72 shrink-0 flex-col rounded-lg border transition-colors',
         isOver && 'border-primary bg-primary/5'
       )}
     >
@@ -53,7 +53,7 @@ export function SectionColumn({
             )}
           </div>
           {ageRange && (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-muted-foreground text-xs">
               {ageRange} {t('sections.months')}
             </span>
           )}
@@ -64,7 +64,7 @@ export function SectionColumn({
       </div>
       <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-2">
         {totalCount === 0 ? (
-          <p className="py-4 text-center text-xs text-muted-foreground">{t('common.noResults')}</p>
+          <p className="text-muted-foreground py-4 text-center text-xs">{t('common.noResults')}</p>
         ) : (
           <>
             {employees.map((employee) => (

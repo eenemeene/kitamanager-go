@@ -88,7 +88,7 @@ export default function StatisticsPage() {
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+              <CardTitle className="text-muted-foreground text-sm font-medium">
                 {t('statistics.totalIncome')}
               </CardTitle>
             </CardHeader>
@@ -100,7 +100,7 @@ export default function StatisticsPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+              <CardTitle className="text-muted-foreground text-sm font-medium">
                 {t('statistics.totalExpenses')}
               </CardTitle>
             </CardHeader>
@@ -112,7 +112,7 @@ export default function StatisticsPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+              <CardTitle className="text-muted-foreground text-sm font-medium">
                 {t('statistics.balance')}
               </CardTitle>
             </CardHeader>
@@ -137,15 +137,15 @@ export default function StatisticsPage() {
           const Icon = page.icon;
           return (
             <Link key={page.href} href={page.href}>
-              <Card className="transition-colors hover:bg-muted/50">
+              <Card className="hover:bg-muted/50 transition-colors">
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <Icon className="h-5 w-5 text-muted-foreground" />
+                    <Icon className="text-muted-foreground h-5 w-5" />
                     <CardTitle className="text-base">{page.title}</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground">{page.description}</p>
+                  <p className="text-muted-foreground text-sm">{page.description}</p>
                 </CardContent>
               </Card>
             </Link>

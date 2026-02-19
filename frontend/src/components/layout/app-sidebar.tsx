@@ -141,7 +141,7 @@ export function AppSidebar() {
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 flex h-screen flex-col border-r bg-background transition-all duration-300',
+        'bg-background fixed top-0 left-0 z-40 flex h-screen flex-col border-r transition-all duration-300',
         sidebarCollapsed ? 'w-16' : 'w-64'
       )}
     >
@@ -231,7 +231,7 @@ export function AppSidebar() {
                       </Link>
                       <button
                         onClick={() => toggleExpanded(item.name)}
-                        className="mr-1 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        className="text-muted-foreground hover:bg-muted hover:text-foreground mr-1 rounded-md p-1"
                       >
                         <ChevronDown
                           className={cn('h-4 w-4 transition-transform', isExpanded && 'rotate-180')}
@@ -240,7 +240,7 @@ export function AppSidebar() {
                     </div>
                     {/* Children */}
                     {isExpanded && (
-                      <ul className="ml-6 mt-1 space-y-1">
+                      <ul className="mt-1 ml-6 space-y-1">
                         {item.children!.map((child) => {
                           const childHref = getOrgHref(child.href);
                           const childActive = isChildActive(child);

@@ -1,12 +1,11 @@
 // We store mock functions on a shared object so that jest.mock factory
 // (which is hoisted above all const declarations) can reference them.
 // Using 'var' avoids the temporal dead zone that 'const'/'let' would cause.
-/* eslint-disable no-var */
+
 var __mockGet: jest.Mock;
 var __mockPost: jest.Mock;
 var __mockPut: jest.Mock;
 var __mockDel: jest.Mock;
-/* eslint-enable no-var */
 
 jest.mock('axios', () => {
   __mockGet = jest.fn();

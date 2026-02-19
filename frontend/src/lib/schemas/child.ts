@@ -9,7 +9,7 @@ export const childContractSchema = z
     from: z.string().min(1),
     to: z.string().optional(),
     section_id: z.number().min(1, 'Section is required'),
-    properties: z.record(z.string()).optional(),
+    properties: z.record(z.string(), z.string()).optional(),
   })
   .refine((data) => !data.to || !isDateBefore(data.to, data.from), {
     path: ['to'],
@@ -26,7 +26,7 @@ export const childWithContractSchema = z
     contract_from: z.string().min(1),
     contract_to: z.string().optional(),
     section_id: z.number().min(1, 'Section is required'),
-    properties: z.record(z.string()).optional(),
+    properties: z.record(z.string(), z.string()).optional(),
   })
   .refine((data) => !data.contract_to || !isDateBefore(data.contract_to, data.contract_from), {
     path: ['contract_to'],

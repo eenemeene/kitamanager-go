@@ -98,7 +98,7 @@ export function StaffingHoursTable({ data }: StaffingHoursTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="sticky left-0 z-10 min-w-[120px] bg-background" />
+            <TableHead className="bg-background sticky left-0 z-10 min-w-[120px]" />
             {months.map((m) => (
               <TableHead key={m} className="min-w-[80px] text-right">
                 {formatMonthHeader(m)}
@@ -110,7 +110,7 @@ export function StaffingHoursTable({ data }: StaffingHoursTableProps) {
         <TableBody>
           {/* Required */}
           <TableRow>
-            <TableCell className="sticky left-0 z-10 bg-background font-medium">
+            <TableCell className="bg-background sticky left-0 z-10 font-medium">
               {t('staffingRequired')}
             </TableCell>
             {computed.required.map((val, i) => (
@@ -125,7 +125,7 @@ export function StaffingHoursTable({ data }: StaffingHoursTableProps) {
 
           {/* Available */}
           <TableRow>
-            <TableCell className="sticky left-0 z-10 bg-background font-medium">
+            <TableCell className="bg-background sticky left-0 z-10 font-medium">
               {t('staffingAvailable')}
             </TableCell>
             {computed.available.map((val, i) => (
@@ -140,7 +140,7 @@ export function StaffingHoursTable({ data }: StaffingHoursTableProps) {
 
           {/* Balance */}
           <TableRow className="border-t-2">
-            <TableCell className="sticky left-0 z-10 bg-background font-medium">
+            <TableCell className="bg-background sticky left-0 z-10 font-medium">
               {t('staffingBalance')}
             </TableCell>
             {computed.balance.map((val, i) => (
@@ -160,7 +160,7 @@ export function StaffingHoursTable({ data }: StaffingHoursTableProps) {
 
           {/* Balance % */}
           <TableRow>
-            <TableCell className="sticky left-0 z-10 bg-background font-medium">
+            <TableCell className="bg-background sticky left-0 z-10 font-medium">
               {t('staffingBalancePercent')}
             </TableCell>
             {computed.balancePercent.map((val, i) => (
@@ -180,7 +180,7 @@ export function StaffingHoursTable({ data }: StaffingHoursTableProps) {
 
           {/* Children */}
           <TableRow className="border-t-2">
-            <TableCell className="sticky left-0 z-10 bg-background font-medium">
+            <TableCell className="bg-background sticky left-0 z-10 font-medium">
               {t('childrenContractCount')}
             </TableCell>
             {computed.children.map((val, i) => (
@@ -195,7 +195,7 @@ export function StaffingHoursTable({ data }: StaffingHoursTableProps) {
 
           {/* Staff */}
           <TableRow>
-            <TableCell className="sticky left-0 z-10 bg-background font-medium">
+            <TableCell className="bg-background sticky left-0 z-10 font-medium">
               {t('staffCount')}
             </TableCell>
             {computed.staff.map((val, i) => (

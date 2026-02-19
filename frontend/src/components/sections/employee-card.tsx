@@ -42,7 +42,7 @@ export function EmployeeCard({ employee }: EmployeeCardProps) {
           </Badge>
         </div>
         {weeklyHours != null && (
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="text-muted-foreground mt-1 text-xs">
             {weeklyHours}h / {t('employees.weeklyHours').toLowerCase()}
           </p>
         )}

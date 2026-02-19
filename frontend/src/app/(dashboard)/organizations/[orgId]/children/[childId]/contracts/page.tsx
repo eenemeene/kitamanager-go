@@ -207,7 +207,7 @@ export default function ChildContractsPage() {
         data: {
           from: formatDateForApi(data.from) || undefined,
           to: formatDateForApi(data.to) || undefined,
-          properties: data.properties,
+          properties: data.properties as ContractProperties | undefined,
         },
       });
     } else {
@@ -215,7 +215,7 @@ export default function ChildContractsPage() {
         from: formatDateForApi(data.from) || data.from,
         to: formatDateForApi(data.to),
         section_id: data.section_id,
-        properties: data.properties,
+        properties: data.properties as ContractProperties | undefined,
       });
     }
   };
@@ -316,7 +316,7 @@ export default function ChildContractsPage() {
                         {contract.section_name ? (
                           <Badge variant="outline">{contract.section_name}</Badge>
                         ) : (
-                          <span className="text-sm text-muted-foreground">
+                          <span className="text-muted-foreground text-sm">
                             {t('sections.unassigned')}
                           </span>
                         )}
@@ -337,7 +337,7 @@ export default function ChildContractsPage() {
                             )}
                           </div>
                         ) : (
-                          <span className="text-sm text-muted-foreground">
+                          <span className="text-muted-foreground text-sm">
                             {t('contracts.noProperties')}
                           </span>
                         )}
@@ -365,7 +365,7 @@ export default function ChildContractsPage() {
                 })}
                 {sortedContracts.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                    <TableCell colSpan={6} className="text-muted-foreground text-center">
                       {t('children.noContractsFound')}
                     </TableCell>
                   </TableRow>
@@ -389,14 +389,14 @@ export default function ChildContractsPage() {
             <Label htmlFor="from">{t('contracts.startDate')}</Label>
             <Input id="from" type="date" {...register('from')} />
             {errors.from && (
-              <p className="text-sm text-destructive">{t('contracts.startDateRequired')}</p>
+              <p className="text-destructive text-sm">{t('contracts.startDateRequired')}</p>
             )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="to">{t('contracts.endDateOptional')}</Label>
             <Input id="to" type="date" {...register('to')} />
             {!editingContract && child && orgState && (
-              <p className="text-xs text-muted-foreground">{t('children.contractEndHint')}</p>
+              <p className="text-muted-foreground text-xs">{t('children.contractEndHint')}</p>
             )}
           </div>
         </div>
@@ -420,7 +420,7 @@ export default function ChildContractsPage() {
               </SelectContent>
             </Select>
             {errors.section_id && (
-              <p className="text-sm text-destructive">{t('validation.sectionRequired')}</p>
+              <p className="text-destructive text-sm">{t('validation.sectionRequired')}</p>
             )}
           </div>
         )}
@@ -433,7 +433,7 @@ export default function ChildContractsPage() {
             render={({ field }) => (
               <PropertyTagInput
                 id="properties"
-                value={field.value}
+                value={field.value as Record<string, string> | undefined}
                 onChange={field.onChange}
                 fundingAttributes={fundingAttributes}
                 attributesByKey={attributesByKey}
@@ -442,7 +442,7 @@ export default function ChildContractsPage() {
               />
             )}
           />
-          <p className="text-xs text-muted-foreground">{t('contracts.propertiesHelp')}</p>
+          <p className="text-muted-foreground text-xs">{t('contracts.propertiesHelp')}</p>
         </div>
       </CrudFormDialog>
 

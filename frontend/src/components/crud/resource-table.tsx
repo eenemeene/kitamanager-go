@@ -151,7 +151,7 @@ export function ResourceTable<TItem>({
         ))}
         {(!items || items.length === 0) && (
           <TableRow>
-            <TableCell colSpan={totalColumns} className="text-center text-muted-foreground">
+            <TableCell colSpan={totalColumns} className="text-muted-foreground text-center">
               {t('common.noResults')}
             </TableCell>
           </TableRow>

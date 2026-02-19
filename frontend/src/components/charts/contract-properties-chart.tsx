@@ -18,7 +18,7 @@ export function ContractPropertiesChart({ data }: ContractPropertiesChartProps) 
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-sm">
         {t('statistics.totalChildren', { count: data.total_children })}
       </p>
       <div className="h-[400px]">

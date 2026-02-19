@@ -28,6 +28,7 @@ import {
   type ChildContractCreateRequest,
   type ChildContractUpdateRequest,
   type ChildFundingResponse,
+  type ContractProperties,
   LOOKUP_FETCH_LIMIT,
 } from '@/lib/api/types';
 import { useForm } from 'react-hook-form';
@@ -144,7 +145,7 @@ export default function ChildrenPage() {
         from: formatDateForApi(data.contract_from) || data.contract_from,
         to: formatDateForApi(data.contract_to),
         section_id: data.section_id,
-        properties: data.properties,
+        properties: data.properties as ContractProperties | undefined,
       });
       return child;
     },
@@ -235,7 +236,7 @@ export default function ChildrenPage() {
           from: formatDateForApi(data.from) || data.from,
           to: formatDateForApi(data.to),
           section_id: data.section_id,
-          properties: data.properties,
+          properties: data.properties as ContractProperties | undefined,
         },
         entity: child,
         endCurrentContract,

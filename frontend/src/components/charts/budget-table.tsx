@@ -112,7 +112,7 @@ export function BudgetTable({ data }: BudgetTableProps) {
         <TableHeader>
           {/* Group header row */}
           <TableRow>
-            <TableHead className="sticky left-0 z-10 bg-background" rowSpan={2} />
+            <TableHead className="bg-background sticky left-0 z-10" rowSpan={2} />
             <TableHead
               colSpan={incomeColCount}
               className="text-center text-green-700 dark:text-green-400"
@@ -153,7 +153,7 @@ export function BudgetTable({ data }: BudgetTableProps) {
           {/* Monthly rows */}
           {rows.map((row) => (
             <TableRow key={row.date}>
-              <TableCell className="sticky left-0 z-10 bg-background font-medium">
+              <TableCell className="bg-background sticky left-0 z-10 font-medium">
                 {formatMonthHeader(row.date)}
               </TableCell>
               {/* Income columns */}
@@ -165,7 +165,7 @@ export function BudgetTable({ data }: BudgetTableProps) {
                   {formatCurrencyCell(val)}
                 </TableCell>
               ))}
-              <TableCell className="text-right font-bold tabular-nums text-green-700 dark:text-green-400">
+              <TableCell className="text-right font-bold text-green-700 tabular-nums dark:text-green-400">
                 {formatCurrencyCell(row.totalIncome)}
               </TableCell>
               {/* Expense columns */}
@@ -177,7 +177,7 @@ export function BudgetTable({ data }: BudgetTableProps) {
                   {formatCurrencyCell(val)}
                 </TableCell>
               ))}
-              <TableCell className="text-right font-bold tabular-nums text-red-700 dark:text-red-400">
+              <TableCell className="text-right font-bold text-red-700 tabular-nums dark:text-red-400">
                 {formatCurrencyCell(row.totalExpenses)}
               </TableCell>
               {/* Balance */}
@@ -195,7 +195,7 @@ export function BudgetTable({ data }: BudgetTableProps) {
 
           {/* Annual total row */}
           <TableRow className="border-t-2 font-bold">
-            <TableCell className="sticky left-0 z-10 bg-background">{t('annualTotal')}</TableCell>
+            <TableCell className="bg-background sticky left-0 z-10">{t('annualTotal')}</TableCell>
             <TableCell className="text-right tabular-nums">
               {formatCurrencyCell(totals.fundingIncome)}
             </TableCell>
@@ -204,7 +204,7 @@ export function BudgetTable({ data }: BudgetTableProps) {
                 {formatCurrencyCell(val)}
               </TableCell>
             ))}
-            <TableCell className="text-right tabular-nums text-green-700 dark:text-green-400">
+            <TableCell className="text-right text-green-700 tabular-nums dark:text-green-400">
               {formatCurrencyCell(totals.totalIncome)}
             </TableCell>
             <TableCell className="text-right tabular-nums">
@@ -215,7 +215,7 @@ export function BudgetTable({ data }: BudgetTableProps) {
                 {formatCurrencyCell(val)}
               </TableCell>
             ))}
-            <TableCell className="text-right tabular-nums text-red-700 dark:text-red-400">
+            <TableCell className="text-right text-red-700 tabular-nums dark:text-red-400">
               {formatCurrencyCell(totals.totalExpenses)}
             </TableCell>
             <TableCell

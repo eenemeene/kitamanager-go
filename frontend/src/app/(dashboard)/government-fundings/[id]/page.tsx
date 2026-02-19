@@ -151,7 +151,7 @@ export default function GovernmentFundingDetailPage() {
 
   if (!funding) {
     return (
-      <div className="text-center text-muted-foreground">
+      <div className="text-muted-foreground text-center">
         {t('governmentFundings.failedToLoadFunding')}
       </div>
     );
@@ -179,7 +179,7 @@ export default function GovernmentFundingDetailPage() {
         </CardHeader>
         <CardContent>
           {funding.periods?.length === 0 ? (
-            <p className="py-8 text-center text-muted-foreground">
+            <p className="text-muted-foreground py-8 text-center">
               {t('governmentFundings.noPeriodsDefined')}
             </p>
           ) : (
@@ -190,12 +190,12 @@ export default function GovernmentFundingDetailPage() {
                     <div>
                       <CardTitle className="text-base">
                         {formatPeriod(period.from, period.to, 'en', t('common.ongoing'))}{' '}
-                        <span className="text-sm font-normal text-muted-foreground">
+                        <span className="text-muted-foreground text-sm font-normal">
                           ({period.full_time_weekly_hours}h/FTE)
                         </span>
                       </CardTitle>
                       {period.comment && (
-                        <p className="text-sm text-muted-foreground">{period.comment}</p>
+                        <p className="text-muted-foreground text-sm">{period.comment}</p>
                       )}
                     </div>
                     <div className="flex gap-2">
