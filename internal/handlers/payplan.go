@@ -64,7 +64,7 @@ func (h *PayPlanHandler) List(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Pay Plan ID"
+// @Param payplanId path int true "Pay Plan ID"
 // @Param active_on query string false "Filter periods active on date (YYYY-MM-DD, defaults to today)"
 // @Success 200 {object} models.PayPlanDetailResponse
 // @Failure 400 {object} models.ErrorResponse
@@ -72,9 +72,9 @@ func (h *PayPlanHandler) List(c *gin.Context) {
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/payplans/{id} [get]
+// @Router /api/v1/organizations/{orgId}/payplans/{payplanId} [get]
 func (h *PayPlanHandler) Get(c *gin.Context) {
-	orgID, id, ok := parseOrgAndResourceID(c, "id")
+	orgID, id, ok := parseOrgAndResourceID(c, "payplanId")
 	if !ok {
 		return
 	}
@@ -139,7 +139,7 @@ func (h *PayPlanHandler) Create(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Pay Plan ID"
+// @Param payplanId path int true "Pay Plan ID"
 // @Param request body models.PayPlanUpdateRequest true "Pay plan data"
 // @Success 200 {object} models.PayPlanResponse
 // @Failure 400 {object} models.ErrorResponse
@@ -147,9 +147,9 @@ func (h *PayPlanHandler) Create(c *gin.Context) {
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/payplans/{id} [put]
+// @Router /api/v1/organizations/{orgId}/payplans/{payplanId} [put]
 func (h *PayPlanHandler) Update(c *gin.Context) {
-	orgID, id, ok := parseOrgAndResourceID(c, "id")
+	orgID, id, ok := parseOrgAndResourceID(c, "payplanId")
 	if !ok {
 		return
 	}
@@ -178,16 +178,16 @@ func (h *PayPlanHandler) Update(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Pay Plan ID"
+// @Param payplanId path int true "Pay Plan ID"
 // @Success 204 "No Content"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/payplans/{id} [delete]
+// @Router /api/v1/organizations/{orgId}/payplans/{payplanId} [delete]
 func (h *PayPlanHandler) Delete(c *gin.Context) {
-	orgID, id, ok := parseOrgAndResourceID(c, "id")
+	orgID, id, ok := parseOrgAndResourceID(c, "payplanId")
 	if !ok {
 		return
 	}
@@ -220,7 +220,7 @@ func (h *PayPlanHandler) Delete(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Pay Plan ID"
+// @Param payplanId path int true "Pay Plan ID"
 // @Param request body models.PayPlanPeriodCreateRequest true "Period data"
 // @Success 201 {object} models.PayPlanPeriodResponse
 // @Failure 400 {object} models.ErrorResponse
@@ -228,9 +228,9 @@ func (h *PayPlanHandler) Delete(c *gin.Context) {
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/payplans/{id}/periods [post]
+// @Router /api/v1/organizations/{orgId}/payplans/{payplanId}/periods [post]
 func (h *PayPlanHandler) CreatePeriod(c *gin.Context) {
-	handleOrgNestedCreate(c,
+	handleOrgNestedCreate(c, "payplanId",
 		auditConfig{h.auditService, "pay_plan_period", "payplan"},
 		h.service.CreatePeriod,
 		func(r *models.PayPlanPeriodResponse) uint { return r.ID },
@@ -245,7 +245,7 @@ func (h *PayPlanHandler) CreatePeriod(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Pay Plan ID"
+// @Param payplanId path int true "Pay Plan ID"
 // @Param periodId path int true "Period ID"
 // @Success 200 {object} models.PayPlanPeriodResponse
 // @Failure 400 {object} models.ErrorResponse
@@ -253,9 +253,9 @@ func (h *PayPlanHandler) CreatePeriod(c *gin.Context) {
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/payplans/{id}/periods/{periodId} [get]
+// @Router /api/v1/organizations/{orgId}/payplans/{payplanId}/periods/{periodId} [get]
 func (h *PayPlanHandler) GetPeriod(c *gin.Context) {
-	handleOrgNestedGet(c, "periodId", h.service.GetPeriod)
+	handleOrgNestedGet(c, "payplanId", "periodId", h.service.GetPeriod)
 }
 
 // UpdatePeriod godoc
@@ -266,7 +266,7 @@ func (h *PayPlanHandler) GetPeriod(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Pay Plan ID"
+// @Param payplanId path int true "Pay Plan ID"
 // @Param periodId path int true "Period ID"
 // @Param request body models.PayPlanPeriodUpdateRequest true "Period data"
 // @Success 200 {object} models.PayPlanPeriodResponse
@@ -275,9 +275,9 @@ func (h *PayPlanHandler) GetPeriod(c *gin.Context) {
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/payplans/{id}/periods/{periodId} [put]
+// @Router /api/v1/organizations/{orgId}/payplans/{payplanId}/periods/{periodId} [put]
 func (h *PayPlanHandler) UpdatePeriod(c *gin.Context) {
-	handleOrgNestedUpdate(c, "periodId",
+	handleOrgNestedUpdate(c, "payplanId", "periodId",
 		auditConfig{h.auditService, "pay_plan_period", "payplan"},
 		h.service.UpdatePeriod,
 		func(r *models.PayPlanPeriodResponse) uint { return r.ID },
@@ -292,7 +292,7 @@ func (h *PayPlanHandler) UpdatePeriod(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Pay Plan ID"
+// @Param payplanId path int true "Pay Plan ID"
 // @Param periodId path int true "Period ID"
 // @Success 204 "No Content"
 // @Failure 400 {object} models.ErrorResponse
@@ -300,9 +300,9 @@ func (h *PayPlanHandler) UpdatePeriod(c *gin.Context) {
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/payplans/{id}/periods/{periodId} [delete]
+// @Router /api/v1/organizations/{orgId}/payplans/{payplanId}/periods/{periodId} [delete]
 func (h *PayPlanHandler) DeletePeriod(c *gin.Context) {
-	handleOrgNestedDelete(c, "periodId",
+	handleOrgNestedDelete(c, "payplanId", "periodId",
 		auditConfig{h.auditService, "pay_plan_period", "payplan"},
 		h.service.DeletePeriod,
 	)
@@ -318,7 +318,7 @@ func (h *PayPlanHandler) DeletePeriod(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Pay Plan ID"
+// @Param payplanId path int true "Pay Plan ID"
 // @Param periodId path int true "Period ID"
 // @Param request body models.PayPlanEntryCreateRequest true "Entry data"
 // @Success 201 {object} models.PayPlanEntryResponse
@@ -327,9 +327,9 @@ func (h *PayPlanHandler) DeletePeriod(c *gin.Context) {
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/payplans/{id}/periods/{periodId}/entries [post]
+// @Router /api/v1/organizations/{orgId}/payplans/{payplanId}/periods/{periodId}/entries [post]
 func (h *PayPlanHandler) CreateEntry(c *gin.Context) {
-	handleOrgDeepNestedCreate(c, "periodId",
+	handleOrgDeepNestedCreate(c, "payplanId", "periodId",
 		auditConfig{h.auditService, "pay_plan_entry", "period"},
 		h.service.CreateEntry,
 		func(r *models.PayPlanEntryResponse) uint { return r.ID },
@@ -344,7 +344,7 @@ func (h *PayPlanHandler) CreateEntry(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Pay Plan ID"
+// @Param payplanId path int true "Pay Plan ID"
 // @Param periodId path int true "Period ID"
 // @Param entryId path int true "Entry ID"
 // @Success 200 {object} models.PayPlanEntryResponse
@@ -353,9 +353,9 @@ func (h *PayPlanHandler) CreateEntry(c *gin.Context) {
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/payplans/{id}/periods/{periodId}/entries/{entryId} [get]
+// @Router /api/v1/organizations/{orgId}/payplans/{payplanId}/periods/{periodId}/entries/{entryId} [get]
 func (h *PayPlanHandler) GetEntry(c *gin.Context) {
-	handleOrgDeepNestedGet(c, "periodId", "entryId", h.service.GetEntry)
+	handleOrgDeepNestedGet(c, "payplanId", "periodId", "entryId", h.service.GetEntry)
 }
 
 // UpdateEntry godoc
@@ -366,7 +366,7 @@ func (h *PayPlanHandler) GetEntry(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Pay Plan ID"
+// @Param payplanId path int true "Pay Plan ID"
 // @Param periodId path int true "Period ID"
 // @Param entryId path int true "Entry ID"
 // @Param request body models.PayPlanEntryUpdateRequest true "Entry data"
@@ -376,9 +376,9 @@ func (h *PayPlanHandler) GetEntry(c *gin.Context) {
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/payplans/{id}/periods/{periodId}/entries/{entryId} [put]
+// @Router /api/v1/organizations/{orgId}/payplans/{payplanId}/periods/{periodId}/entries/{entryId} [put]
 func (h *PayPlanHandler) UpdateEntry(c *gin.Context) {
-	handleOrgDeepNestedUpdate(c, "periodId", "entryId",
+	handleOrgDeepNestedUpdate(c, "payplanId", "periodId", "entryId",
 		auditConfig{h.auditService, "pay_plan_entry", "period"},
 		h.service.UpdateEntry,
 		func(r *models.PayPlanEntryResponse) uint { return r.ID },
@@ -393,7 +393,7 @@ func (h *PayPlanHandler) UpdateEntry(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Pay Plan ID"
+// @Param payplanId path int true "Pay Plan ID"
 // @Param periodId path int true "Period ID"
 // @Param entryId path int true "Entry ID"
 // @Success 204 "No Content"
@@ -402,9 +402,9 @@ func (h *PayPlanHandler) UpdateEntry(c *gin.Context) {
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/payplans/{id}/periods/{periodId}/entries/{entryId} [delete]
+// @Router /api/v1/organizations/{orgId}/payplans/{payplanId}/periods/{periodId}/entries/{entryId} [delete]
 func (h *PayPlanHandler) DeleteEntry(c *gin.Context) {
-	handleOrgDeepNestedDelete(c, "periodId", "entryId",
+	handleOrgDeepNestedDelete(c, "payplanId", "periodId", "entryId",
 		auditConfig{h.auditService, "pay_plan_entry", "period"},
 		h.service.DeleteEntry,
 	)

@@ -112,15 +112,15 @@ func (h *ChildHandler) List(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Child ID"
+// @Param childId path int true "Child ID"
 // @Success 200 {object} models.ChildResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/{id} [get]
+// @Router /api/v1/organizations/{orgId}/children/{childId} [get]
 func (h *ChildHandler) Get(c *gin.Context) {
-	orgID, id, ok := parseOrgAndResourceID(c, "id")
+	orgID, id, ok := parseOrgAndResourceID(c, "childId")
 	if !ok {
 		return
 	}
@@ -178,16 +178,16 @@ func (h *ChildHandler) Create(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Child ID"
+// @Param childId path int true "Child ID"
 // @Param request body models.ChildUpdateRequest true "Child data"
 // @Success 200 {object} models.ChildResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/{id} [put]
+// @Router /api/v1/organizations/{orgId}/children/{childId} [put]
 func (h *ChildHandler) Update(c *gin.Context) {
-	orgID, id, ok := parseOrgAndResourceID(c, "id")
+	orgID, id, ok := parseOrgAndResourceID(c, "childId")
 	if !ok {
 		return
 	}
@@ -216,15 +216,15 @@ func (h *ChildHandler) Update(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Child ID"
+// @Param childId path int true "Child ID"
 // @Success 204 "No Content"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/{id} [delete]
+// @Router /api/v1/organizations/{orgId}/children/{childId} [delete]
 func (h *ChildHandler) Delete(c *gin.Context) {
-	orgID, id, ok := parseOrgAndResourceID(c, "id")
+	orgID, id, ok := parseOrgAndResourceID(c, "childId")
 	if !ok {
 		return
 	}
@@ -254,7 +254,7 @@ func (h *ChildHandler) Delete(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Child ID"
+// @Param childId path int true "Child ID"
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(20) maximum(100)
 // @Success 200 {object} models.PaginatedResponse[models.ChildContractResponse]
@@ -262,9 +262,9 @@ func (h *ChildHandler) Delete(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/{id}/contracts [get]
+// @Router /api/v1/organizations/{orgId}/children/{childId}/contracts [get]
 func (h *ChildHandler) ListContracts(c *gin.Context) {
-	handleListContracts(c, h.service.ListContracts)
+	handleListContracts(c, "childId", h.service.ListContracts)
 }
 
 // GetCurrentRecord godoc
@@ -275,15 +275,15 @@ func (h *ChildHandler) ListContracts(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Child ID"
+// @Param childId path int true "Child ID"
 // @Success 200 {object} models.ChildContractResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/{id}/contracts/current [get]
+// @Router /api/v1/organizations/{orgId}/children/{childId}/contracts/current [get]
 func (h *ChildHandler) GetCurrentRecord(c *gin.Context) {
-	handleGetCurrentRecord(c, h.service.GetCurrentRecord)
+	handleGetCurrentRecord(c, "childId", h.service.GetCurrentRecord)
 }
 
 // GetContract godoc
@@ -294,16 +294,16 @@ func (h *ChildHandler) GetCurrentRecord(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Child ID"
+// @Param childId path int true "Child ID"
 // @Param contractId path int true "Contract ID"
 // @Success 200 {object} models.ChildContractResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/{id}/contracts/{contractId} [get]
+// @Router /api/v1/organizations/{orgId}/children/{childId}/contracts/{contractId} [get]
 func (h *ChildHandler) GetContract(c *gin.Context) {
-	handleGetContract(c, h.service.GetContractByID)
+	handleGetContract(c, "childId", h.service.GetContractByID)
 }
 
 // CreateContract godoc
@@ -323,7 +323,7 @@ func (h *ChildHandler) GetContract(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Child ID"
+// @Param childId path int true "Child ID"
 // @Param request body models.ChildContractCreateRequest true "Contract data"
 // @Success 201 {object} models.ChildContractResponse
 // @Failure 400 {object} models.ErrorResponse "Invalid request (e.g., from date after to date)"
@@ -331,9 +331,9 @@ func (h *ChildHandler) GetContract(c *gin.Context) {
 // @Failure 404 {object} models.ErrorResponse "Child not found"
 // @Failure 409 {object} models.ErrorResponse "Contract overlaps with existing contract"
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/{id}/contracts [post]
+// @Router /api/v1/organizations/{orgId}/children/{childId}/contracts [post]
 func (h *ChildHandler) CreateContract(c *gin.Context) {
-	handleCreateContract(c, h.contractAudit(), h.service.CreateContract,
+	handleCreateContract(c, "childId", h.contractAudit(), h.service.CreateContract,
 		func(r *models.ChildContractResponse) (uint, uint) { return r.ID, r.ChildID })
 }
 
@@ -346,7 +346,7 @@ func (h *ChildHandler) CreateContract(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Child ID"
+// @Param childId path int true "Child ID"
 // @Param contractId path int true "Contract ID"
 // @Param request body models.ChildContractUpdateRequest true "Contract data"
 // @Success 200 {object} models.ChildContractResponse
@@ -355,9 +355,9 @@ func (h *ChildHandler) CreateContract(c *gin.Context) {
 // @Failure 404 {object} models.ErrorResponse "Contract not found"
 // @Failure 409 {object} models.ErrorResponse "Updated dates would overlap with another contract"
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/{id}/contracts/{contractId} [put]
+// @Router /api/v1/organizations/{orgId}/children/{childId}/contracts/{contractId} [put]
 func (h *ChildHandler) UpdateContract(c *gin.Context) {
-	handleUpdateContract(c, h.contractAudit(), h.service.UpdateContract,
+	handleUpdateContract(c, "childId", h.contractAudit(), h.service.UpdateContract,
 		func(r *models.ChildContractResponse) (uint, uint) { return r.ID, r.ChildID })
 }
 
@@ -369,16 +369,16 @@ func (h *ChildHandler) UpdateContract(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Child ID"
+// @Param childId path int true "Child ID"
 // @Param contractId path int true "Contract ID"
 // @Success 204 "No Content"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/{id}/contracts/{contractId} [delete]
+// @Router /api/v1/organizations/{orgId}/children/{childId}/contracts/{contractId} [delete]
 func (h *ChildHandler) DeleteContract(c *gin.Context) {
-	handleDeleteContract(c, h.contractAudit(), h.service.DeleteContract)
+	handleDeleteContract(c, "childId", h.contractAudit(), h.service.DeleteContract)
 }
 
 // =============================================================================

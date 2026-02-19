@@ -13,9 +13,10 @@ import (
 // handleListContracts handles paginated listing of contracts for a parent resource.
 func handleListContracts[Resp any](
 	c *gin.Context,
+	parentParam string,
 	listFn func(context.Context, uint, uint, int, int) ([]Resp, int64, error),
 ) {
-	orgID, id, ok := parseOrgAndResourceID(c, "id")
+	orgID, id, ok := parseOrgAndResourceID(c, parentParam)
 	if !ok {
 		return
 	}
@@ -37,9 +38,10 @@ func handleListContracts[Resp any](
 // handleGetCurrentRecord handles fetching the currently active contract.
 func handleGetCurrentRecord[Resp any](
 	c *gin.Context,
+	parentParam string,
 	getFn func(context.Context, uint, uint) (*Resp, error),
 ) {
-	orgID, id, ok := parseOrgAndResourceID(c, "id")
+	orgID, id, ok := parseOrgAndResourceID(c, parentParam)
 	if !ok {
 		return
 	}
@@ -56,9 +58,10 @@ func handleGetCurrentRecord[Resp any](
 // handleGetContract handles fetching a single contract by ID.
 func handleGetContract[Resp any](
 	c *gin.Context,
+	parentParam string,
 	getFn func(context.Context, uint, uint, uint) (*Resp, error),
 ) {
-	orgID, resourceID, contractID, ok := parseOrgResourceAndContractID(c)
+	orgID, resourceID, contractID, ok := parseOrgResourceAndContractID(c, parentParam)
 	if !ok {
 		return
 	}
@@ -75,11 +78,12 @@ func handleGetContract[Resp any](
 // handleCreateContract handles creating a new contract with audit logging.
 func handleCreateContract[Req any, Resp any](
 	c *gin.Context,
+	parentParam string,
 	audit auditConfig,
 	createFn func(context.Context, uint, uint, *Req) (*Resp, error),
 	getAuditInfo func(*Resp) (uint, uint), // returns (contractID, parentID)
 ) {
-	orgID, resourceID, ok := parseOrgAndResourceID(c, "id")
+	orgID, resourceID, ok := parseOrgAndResourceID(c, parentParam)
 	if !ok {
 		return
 	}
@@ -104,11 +108,12 @@ func handleCreateContract[Req any, Resp any](
 // handleUpdateContract handles updating an existing contract with audit logging.
 func handleUpdateContract[Req any, Resp any](
 	c *gin.Context,
+	parentParam string,
 	audit auditConfig,
 	updateFn func(context.Context, uint, uint, uint, *Req) (*Resp, error),
 	getAuditInfo func(*Resp) (uint, uint), // returns (contractID, parentID)
 ) {
-	orgID, resourceID, contractID, ok := parseOrgResourceAndContractID(c)
+	orgID, resourceID, contractID, ok := parseOrgResourceAndContractID(c, parentParam)
 	if !ok {
 		return
 	}
@@ -133,10 +138,11 @@ func handleUpdateContract[Req any, Resp any](
 // handleDeleteContract handles deleting a contract with audit logging.
 func handleDeleteContract(
 	c *gin.Context,
+	parentParam string,
 	audit auditConfig,
 	deleteFn func(context.Context, uint, uint, uint) error,
 ) {
-	orgID, resourceID, contractID, ok := parseOrgResourceAndContractID(c)
+	orgID, resourceID, contractID, ok := parseOrgResourceAndContractID(c, parentParam)
 	if !ok {
 		return
 	}

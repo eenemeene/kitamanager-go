@@ -65,11 +65,11 @@ func newTestContext(method, path string, params gin.Params, body interface{}) (*
 func TestHandleOrgNestedCreate_Success(t *testing.T) {
 	c, w := newTestContext("POST", "/organizations/1/items/2/sub", gin.Params{
 		{Key: "orgId", Value: "1"},
-		{Key: "id", Value: "2"},
+		{Key: "parentId", Value: "2"},
 	}, testNestedReq{Name: "test"})
 
 	called := false
-	handleOrgNestedCreate(c, testAuditConfig(t, "test", "item"), func(_ context.Context, parentID, orgID uint, req *testNestedReq) (*testNestedResp, error) {
+	handleOrgNestedCreate(c, "parentId", testAuditConfig(t, "test", "item"), func(_ context.Context, parentID, orgID uint, req *testNestedReq) (*testNestedResp, error) {
 		called = true
 		if orgID != 1 {
 			t.Errorf("orgID = %d, want 1", orgID)
@@ -94,10 +94,10 @@ func TestHandleOrgNestedCreate_Success(t *testing.T) {
 func TestHandleOrgNestedCreate_InvalidOrgID(t *testing.T) {
 	c, w := newTestContext("POST", "/organizations/abc/items/2/sub", gin.Params{
 		{Key: "orgId", Value: "abc"},
-		{Key: "id", Value: "2"},
+		{Key: "parentId", Value: "2"},
 	}, testNestedReq{Name: "test"})
 
-	handleOrgNestedCreate(c, auditConfig{}, func(_ context.Context, _, _ uint, _ *testNestedReq) (*testNestedResp, error) {
+	handleOrgNestedCreate(c, "parentId", auditConfig{}, func(_ context.Context, _, _ uint, _ *testNestedReq) (*testNestedResp, error) {
 		t.Fatal("createFn should not be called")
 		return nil, nil
 	}, func(r *testNestedResp) uint { return r.ID })
@@ -110,10 +110,10 @@ func TestHandleOrgNestedCreate_InvalidOrgID(t *testing.T) {
 func TestHandleOrgNestedCreate_InvalidParentID(t *testing.T) {
 	c, w := newTestContext("POST", "/organizations/1/items/abc/sub", gin.Params{
 		{Key: "orgId", Value: "1"},
-		{Key: "id", Value: "abc"},
+		{Key: "parentId", Value: "abc"},
 	}, testNestedReq{Name: "test"})
 
-	handleOrgNestedCreate(c, auditConfig{}, func(_ context.Context, _, _ uint, _ *testNestedReq) (*testNestedResp, error) {
+	handleOrgNestedCreate(c, "parentId", auditConfig{}, func(_ context.Context, _, _ uint, _ *testNestedReq) (*testNestedResp, error) {
 		t.Fatal("createFn should not be called")
 		return nil, nil
 	}, func(r *testNestedResp) uint { return r.ID })
@@ -126,11 +126,11 @@ func TestHandleOrgNestedCreate_InvalidParentID(t *testing.T) {
 func TestHandleOrgNestedCreate_InvalidJSON(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Params = gin.Params{{Key: "orgId", Value: "1"}, {Key: "id", Value: "2"}}
+	c.Params = gin.Params{{Key: "orgId", Value: "1"}, {Key: "parentId", Value: "2"}}
 	c.Request = httptest.NewRequest("POST", "/", bytes.NewBufferString(`{invalid`))
 	c.Request.Header.Set("Content-Type", "application/json")
 
-	handleOrgNestedCreate(c, auditConfig{}, func(_ context.Context, _, _ uint, _ *testNestedReq) (*testNestedResp, error) {
+	handleOrgNestedCreate(c, "parentId", auditConfig{}, func(_ context.Context, _, _ uint, _ *testNestedReq) (*testNestedResp, error) {
 		t.Fatal("createFn should not be called")
 		return nil, nil
 	}, func(r *testNestedResp) uint { return r.ID })
@@ -143,10 +143,10 @@ func TestHandleOrgNestedCreate_InvalidJSON(t *testing.T) {
 func TestHandleOrgNestedCreate_ServiceError(t *testing.T) {
 	c, w := newTestContext("POST", "/organizations/1/items/2/sub", gin.Params{
 		{Key: "orgId", Value: "1"},
-		{Key: "id", Value: "2"},
+		{Key: "parentId", Value: "2"},
 	}, testNestedReq{Name: "test"})
 
-	handleOrgNestedCreate(c, auditConfig{}, func(_ context.Context, _, _ uint, _ *testNestedReq) (*testNestedResp, error) {
+	handleOrgNestedCreate(c, "parentId", auditConfig{}, func(_ context.Context, _, _ uint, _ *testNestedReq) (*testNestedResp, error) {
 		return nil, apperror.NotFound("item")
 	}, func(r *testNestedResp) uint { return r.ID })
 
@@ -160,12 +160,12 @@ func TestHandleOrgNestedCreate_ServiceError(t *testing.T) {
 func TestHandleOrgNestedGet_Success(t *testing.T) {
 	c, w := newTestContext("GET", "/organizations/1/items/2/sub/3", gin.Params{
 		{Key: "orgId", Value: "1"},
-		{Key: "id", Value: "2"},
+		{Key: "parentId", Value: "2"},
 		{Key: "subId", Value: "3"},
 	}, nil)
 
 	called := false
-	handleOrgNestedGet(c, "subId", func(_ context.Context, nestedID, parentID, orgID uint) (*testNestedResp, error) {
+	handleOrgNestedGet(c, "parentId", "subId", func(_ context.Context, nestedID, parentID, orgID uint) (*testNestedResp, error) {
 		called = true
 		if orgID != 1 || parentID != 2 || nestedID != 3 {
 			t.Errorf("IDs = (%d, %d, %d), want (1, 2, 3)", orgID, parentID, nestedID)
@@ -184,11 +184,11 @@ func TestHandleOrgNestedGet_Success(t *testing.T) {
 func TestHandleOrgNestedGet_InvalidNestedID(t *testing.T) {
 	c, w := newTestContext("GET", "/organizations/1/items/2/sub/abc", gin.Params{
 		{Key: "orgId", Value: "1"},
-		{Key: "id", Value: "2"},
+		{Key: "parentId", Value: "2"},
 		{Key: "subId", Value: "abc"},
 	}, nil)
 
-	handleOrgNestedGet(c, "subId", func(_ context.Context, _, _, _ uint) (*testNestedResp, error) {
+	handleOrgNestedGet(c, "parentId", "subId", func(_ context.Context, _, _, _ uint) (*testNestedResp, error) {
 		t.Fatal("getFn should not be called")
 		return nil, nil
 	})
@@ -201,11 +201,11 @@ func TestHandleOrgNestedGet_InvalidNestedID(t *testing.T) {
 func TestHandleOrgNestedGet_NotFound(t *testing.T) {
 	c, w := newTestContext("GET", "/organizations/1/items/2/sub/999", gin.Params{
 		{Key: "orgId", Value: "1"},
-		{Key: "id", Value: "2"},
+		{Key: "parentId", Value: "2"},
 		{Key: "subId", Value: "999"},
 	}, nil)
 
-	handleOrgNestedGet(c, "subId", func(_ context.Context, _, _, _ uint) (*testNestedResp, error) {
+	handleOrgNestedGet(c, "parentId", "subId", func(_ context.Context, _, _, _ uint) (*testNestedResp, error) {
 		return nil, apperror.NotFound("sub item")
 	})
 
@@ -219,12 +219,12 @@ func TestHandleOrgNestedGet_NotFound(t *testing.T) {
 func TestHandleOrgNestedUpdate_Success(t *testing.T) {
 	c, w := newTestContext("PUT", "/organizations/1/items/2/sub/3", gin.Params{
 		{Key: "orgId", Value: "1"},
-		{Key: "id", Value: "2"},
+		{Key: "parentId", Value: "2"},
 		{Key: "subId", Value: "3"},
 	}, testNestedReq{Name: "updated"})
 
 	called := false
-	handleOrgNestedUpdate(c, "subId", testAuditConfig(t, "test", "item"), func(_ context.Context, nestedID, parentID, orgID uint, req *testNestedReq) (*testNestedResp, error) {
+	handleOrgNestedUpdate(c, "parentId", "subId", testAuditConfig(t, "test", "item"), func(_ context.Context, nestedID, parentID, orgID uint, req *testNestedReq) (*testNestedResp, error) {
 		called = true
 		if orgID != 1 || parentID != 2 || nestedID != 3 {
 			t.Errorf("IDs = (%d, %d, %d), want (1, 2, 3)", orgID, parentID, nestedID)
@@ -245,12 +245,12 @@ func TestHandleOrgNestedUpdate_Success(t *testing.T) {
 func TestHandleOrgNestedDelete_Success(t *testing.T) {
 	c, _ := newTestContext("DELETE", "/organizations/1/items/2/sub/3", gin.Params{
 		{Key: "orgId", Value: "1"},
-		{Key: "id", Value: "2"},
+		{Key: "parentId", Value: "2"},
 		{Key: "subId", Value: "3"},
 	}, nil)
 
 	called := false
-	handleOrgNestedDelete(c, "subId", testAuditConfig(t, "test", "item"), func(_ context.Context, nestedID, parentID, orgID uint) error {
+	handleOrgNestedDelete(c, "parentId", "subId", testAuditConfig(t, "test", "item"), func(_ context.Context, nestedID, parentID, orgID uint) error {
 		called = true
 		if orgID != 1 || parentID != 2 || nestedID != 3 {
 			t.Errorf("IDs = (%d, %d, %d), want (1, 2, 3)", orgID, parentID, nestedID)
@@ -270,11 +270,11 @@ func TestHandleOrgNestedDelete_Success(t *testing.T) {
 func TestHandleOrgNestedDelete_ServiceError(t *testing.T) {
 	c, w := newTestContext("DELETE", "/organizations/1/items/2/sub/3", gin.Params{
 		{Key: "orgId", Value: "1"},
-		{Key: "id", Value: "2"},
+		{Key: "parentId", Value: "2"},
 		{Key: "subId", Value: "3"},
 	}, nil)
 
-	handleOrgNestedDelete(c, "subId", auditConfig{}, func(_ context.Context, _, _, _ uint) error {
+	handleOrgNestedDelete(c, "parentId", "subId", auditConfig{}, func(_ context.Context, _, _, _ uint) error {
 		return apperror.NotFound("sub item")
 	})
 
@@ -288,12 +288,12 @@ func TestHandleOrgNestedDelete_ServiceError(t *testing.T) {
 func TestHandleOrgNestedList_Success(t *testing.T) {
 	c, w := newTestContext("GET", "/organizations/1/items/2/sub?page=1&limit=10", gin.Params{
 		{Key: "orgId", Value: "1"},
-		{Key: "id", Value: "2"},
+		{Key: "parentId", Value: "2"},
 	}, nil)
 	c.Request = httptest.NewRequest("GET", "/organizations/1/items/2/sub?page=1&limit=10", nil)
 
 	called := false
-	handleOrgNestedList(c, func(_ context.Context, parentID, orgID uint, limit, offset int) ([]testNestedResp, int64, error) {
+	handleOrgNestedList(c, "parentId", func(_ context.Context, parentID, orgID uint, limit, offset int) ([]testNestedResp, int64, error) {
 		called = true
 		if orgID != 1 || parentID != 2 {
 			t.Errorf("IDs = (%d, %d), want (1, 2)", orgID, parentID)
@@ -322,12 +322,12 @@ func TestHandleOrgNestedList_Success(t *testing.T) {
 func TestHandleOrgDeepNestedCreate_Success(t *testing.T) {
 	c, w := newTestContext("POST", "/organizations/1/items/2/mid/3/sub", gin.Params{
 		{Key: "orgId", Value: "1"},
-		{Key: "id", Value: "2"},
+		{Key: "parentId", Value: "2"},
 		{Key: "midId", Value: "3"},
 	}, testNestedReq{Name: "deep"})
 
 	called := false
-	handleOrgDeepNestedCreate(c, "midId", testAuditConfig(t, "test", "item"), func(_ context.Context, midID, parentID, orgID uint, req *testNestedReq) (*testNestedResp, error) {
+	handleOrgDeepNestedCreate(c, "parentId", "midId", testAuditConfig(t, "test", "item"), func(_ context.Context, midID, parentID, orgID uint, req *testNestedReq) (*testNestedResp, error) {
 		called = true
 		if orgID != 1 || parentID != 2 || midID != 3 {
 			t.Errorf("IDs = (%d, %d, %d), want (1, 2, 3)", orgID, parentID, midID)
@@ -346,11 +346,11 @@ func TestHandleOrgDeepNestedCreate_Success(t *testing.T) {
 func TestHandleOrgDeepNestedCreate_InvalidMidID(t *testing.T) {
 	c, w := newTestContext("POST", "/organizations/1/items/2/mid/abc/sub", gin.Params{
 		{Key: "orgId", Value: "1"},
-		{Key: "id", Value: "2"},
+		{Key: "parentId", Value: "2"},
 		{Key: "midId", Value: "abc"},
 	}, testNestedReq{Name: "deep"})
 
-	handleOrgDeepNestedCreate(c, "midId", auditConfig{}, func(_ context.Context, _, _, _ uint, _ *testNestedReq) (*testNestedResp, error) {
+	handleOrgDeepNestedCreate(c, "parentId", "midId", auditConfig{}, func(_ context.Context, _, _, _ uint, _ *testNestedReq) (*testNestedResp, error) {
 		t.Fatal("createFn should not be called")
 		return nil, nil
 	}, func(r *testNestedResp) uint { return r.ID })
@@ -365,13 +365,13 @@ func TestHandleOrgDeepNestedCreate_InvalidMidID(t *testing.T) {
 func TestHandleOrgDeepNestedDelete_Success(t *testing.T) {
 	c, _ := newTestContext("DELETE", "/organizations/1/items/2/mid/3/sub/4", gin.Params{
 		{Key: "orgId", Value: "1"},
-		{Key: "id", Value: "2"},
+		{Key: "parentId", Value: "2"},
 		{Key: "midId", Value: "3"},
 		{Key: "subId", Value: "4"},
 	}, nil)
 
 	called := false
-	handleOrgDeepNestedDelete(c, "midId", "subId", testAuditConfig(t, "test", "item"), func(_ context.Context, nestedID, midID, parentID, orgID uint) error {
+	handleOrgDeepNestedDelete(c, "parentId", "midId", "subId", testAuditConfig(t, "test", "item"), func(_ context.Context, nestedID, midID, parentID, orgID uint) error {
 		called = true
 		if orgID != 1 || parentID != 2 || midID != 3 || nestedID != 4 {
 			t.Errorf("IDs = (%d, %d, %d, %d), want (1, 2, 3, 4)", orgID, parentID, midID, nestedID)
@@ -391,11 +391,11 @@ func TestHandleOrgDeepNestedDelete_Success(t *testing.T) {
 
 func TestHandleGlobalNestedCreate_Success(t *testing.T) {
 	c, w := newTestContext("POST", "/items/5/sub", gin.Params{
-		{Key: "id", Value: "5"},
+		{Key: "parentId", Value: "5"},
 	}, testNestedReq{Name: "global"})
 
 	called := false
-	handleGlobalNestedCreate(c, testAuditConfig(t, "test", "item"), func(_ context.Context, parentID uint, req *testNestedReq) (*testNestedResp, error) {
+	handleGlobalNestedCreate(c, "parentId", testAuditConfig(t, "test", "item"), func(_ context.Context, parentID uint, req *testNestedReq) (*testNestedResp, error) {
 		called = true
 		if parentID != 5 {
 			t.Errorf("parentID = %d, want 5", parentID)
@@ -413,10 +413,10 @@ func TestHandleGlobalNestedCreate_Success(t *testing.T) {
 
 func TestHandleGlobalNestedCreate_InvalidID(t *testing.T) {
 	c, w := newTestContext("POST", "/items/abc/sub", gin.Params{
-		{Key: "id", Value: "abc"},
+		{Key: "parentId", Value: "abc"},
 	}, testNestedReq{Name: "global"})
 
-	handleGlobalNestedCreate(c, auditConfig{}, func(_ context.Context, _ uint, _ *testNestedReq) (*testNestedResp, error) {
+	handleGlobalNestedCreate(c, "parentId", auditConfig{}, func(_ context.Context, _ uint, _ *testNestedReq) (*testNestedResp, error) {
 		t.Fatal("createFn should not be called")
 		return nil, nil
 	}, func(r *testNestedResp) uint { return r.ID })
@@ -430,12 +430,12 @@ func TestHandleGlobalNestedCreate_InvalidID(t *testing.T) {
 
 func TestHandleGlobalNestedDelete_Success(t *testing.T) {
 	c, _ := newTestContext("DELETE", "/items/5/sub/6", gin.Params{
-		{Key: "id", Value: "5"},
+		{Key: "parentId", Value: "5"},
 		{Key: "subId", Value: "6"},
 	}, nil)
 
 	called := false
-	handleGlobalNestedDelete(c, "subId", testAuditConfig(t, "test", "item"), func(_ context.Context, parentID, nestedID uint) error {
+	handleGlobalNestedDelete(c, "parentId", "subId", testAuditConfig(t, "test", "item"), func(_ context.Context, parentID, nestedID uint) error {
 		called = true
 		if parentID != 5 || nestedID != 6 {
 			t.Errorf("IDs = (%d, %d), want (5, 6)", parentID, nestedID)
@@ -455,12 +455,12 @@ func TestHandleGlobalNestedDelete_Success(t *testing.T) {
 
 func TestHandleGlobalDeepNestedCreate_Success(t *testing.T) {
 	c, w := newTestContext("POST", "/items/5/mid/6/sub", gin.Params{
-		{Key: "id", Value: "5"},
+		{Key: "parentId", Value: "5"},
 		{Key: "midId", Value: "6"},
 	}, testNestedReq{Name: "deep-global"})
 
 	called := false
-	handleGlobalDeepNestedCreate(c, "midId", testAuditConfig(t, "test", "item"), func(_ context.Context, parentID, midID uint, req *testNestedReq) (*testNestedResp, error) {
+	handleGlobalDeepNestedCreate(c, "parentId", "midId", testAuditConfig(t, "test", "item"), func(_ context.Context, parentID, midID uint, req *testNestedReq) (*testNestedResp, error) {
 		called = true
 		if parentID != 5 || midID != 6 {
 			t.Errorf("IDs = (%d, %d), want (5, 6)", parentID, midID)
@@ -480,13 +480,13 @@ func TestHandleGlobalDeepNestedCreate_Success(t *testing.T) {
 
 func TestHandleGlobalDeepNestedDelete_Success(t *testing.T) {
 	c, _ := newTestContext("DELETE", "/items/5/mid/6/sub/7", gin.Params{
-		{Key: "id", Value: "5"},
+		{Key: "parentId", Value: "5"},
 		{Key: "midId", Value: "6"},
 		{Key: "subId", Value: "7"},
 	}, nil)
 
 	called := false
-	handleGlobalDeepNestedDelete(c, "midId", "subId", testAuditConfig(t, "test", "item"), func(_ context.Context, parentID, midID, nestedID uint) error {
+	handleGlobalDeepNestedDelete(c, "parentId", "midId", "subId", testAuditConfig(t, "test", "item"), func(_ context.Context, parentID, midID, nestedID uint) error {
 		called = true
 		if parentID != 5 || midID != 6 || nestedID != 7 {
 			t.Errorf("IDs = (%d, %d, %d), want (5, 6, 7)", parentID, midID, nestedID)
@@ -507,10 +507,10 @@ func TestHandleGlobalDeepNestedDelete_Success(t *testing.T) {
 func TestHandleOrgNestedCreate_ResponseBody(t *testing.T) {
 	c, w := newTestContext("POST", "/organizations/1/items/2/sub", gin.Params{
 		{Key: "orgId", Value: "1"},
-		{Key: "id", Value: "2"},
+		{Key: "parentId", Value: "2"},
 	}, testNestedReq{Name: "verify-body"})
 
-	handleOrgNestedCreate(c, testAuditConfig(t, "test", "item"), func(_ context.Context, _, _ uint, req *testNestedReq) (*testNestedResp, error) {
+	handleOrgNestedCreate(c, "parentId", testAuditConfig(t, "test", "item"), func(_ context.Context, _, _ uint, req *testNestedReq) (*testNestedResp, error) {
 		return &testNestedResp{ID: 42, Name: req.Name}, nil
 	}, func(r *testNestedResp) uint { return r.ID })
 
@@ -532,11 +532,11 @@ func TestHandleOrgNestedCreate_ResponseBody(t *testing.T) {
 func TestHandleOrgNestedDelete_ErrorMessagePreserved(t *testing.T) {
 	c, w := newTestContext("DELETE", "/organizations/1/items/2/sub/3", gin.Params{
 		{Key: "orgId", Value: "1"},
-		{Key: "id", Value: "2"},
+		{Key: "parentId", Value: "2"},
 		{Key: "subId", Value: "3"},
 	}, nil)
 
-	handleOrgNestedDelete(c, "subId", auditConfig{}, func(_ context.Context, _, _, _ uint) error {
+	handleOrgNestedDelete(c, "parentId", "subId", auditConfig{}, func(_ context.Context, _, _, _ uint) error {
 		return apperror.Conflict("period overlaps")
 	})
 
@@ -558,10 +558,10 @@ func TestHandleOrgNestedDelete_ErrorMessagePreserved(t *testing.T) {
 func TestHandleOrgNestedCreate_MissingRequiredField(t *testing.T) {
 	c, w := newTestContext("POST", "/organizations/1/items/2/sub", gin.Params{
 		{Key: "orgId", Value: "1"},
-		{Key: "id", Value: "2"},
+		{Key: "parentId", Value: "2"},
 	}, map[string]string{}) // empty body, missing required "name"
 
-	handleOrgNestedCreate(c, auditConfig{}, func(_ context.Context, _, _ uint, _ *testNestedReq) (*testNestedResp, error) {
+	handleOrgNestedCreate(c, "parentId", auditConfig{}, func(_ context.Context, _, _ uint, _ *testNestedReq) (*testNestedResp, error) {
 		t.Fatal("createFn should not be called for validation failure")
 		return nil, nil
 	}, func(r *testNestedResp) uint { return r.ID })
@@ -575,12 +575,12 @@ func TestHandleOrgNestedCreate_MissingRequiredField(t *testing.T) {
 
 func TestHandleGlobalNestedUpdate_Success(t *testing.T) {
 	c, w := newTestContext("PUT", "/items/5/sub/6", gin.Params{
-		{Key: "id", Value: "5"},
+		{Key: "parentId", Value: "5"},
 		{Key: "subId", Value: "6"},
 	}, testNestedReq{Name: "updated"})
 
 	called := false
-	handleGlobalNestedUpdate(c, "subId", testAuditConfig(t, "test", "item"), func(_ context.Context, parentID, nestedID uint, req *testNestedReq) (*testNestedResp, error) {
+	handleGlobalNestedUpdate(c, "parentId", "subId", testAuditConfig(t, "test", "item"), func(_ context.Context, parentID, nestedID uint, req *testNestedReq) (*testNestedResp, error) {
 		called = true
 		if parentID != 5 || nestedID != 6 {
 			t.Errorf("IDs = (%d, %d), want (5, 6)", parentID, nestedID)
@@ -605,7 +605,7 @@ func TestHandleOrgNestedCreate_WithAuditService(t *testing.T) {
 
 	c, w := newTestContext("POST", "/organizations/1/items/2/sub", gin.Params{
 		{Key: "orgId", Value: "1"},
-		{Key: "id", Value: "2"},
+		{Key: "parentId", Value: "2"},
 	}, testNestedReq{Name: "audited"})
 
 	audit := auditConfig{
@@ -614,7 +614,7 @@ func TestHandleOrgNestedCreate_WithAuditService(t *testing.T) {
 		parentLabel:  "item",
 	}
 
-	handleOrgNestedCreate(c, audit, func(_ context.Context, _, _ uint, req *testNestedReq) (*testNestedResp, error) {
+	handleOrgNestedCreate(c, "parentId", audit, func(_ context.Context, _, _ uint, req *testNestedReq) (*testNestedResp, error) {
 		return &testNestedResp{ID: 99, Name: req.Name}, nil
 	}, func(r *testNestedResp) uint { return r.ID })
 

@@ -38,11 +38,11 @@ func setupAttendanceTest(t *testing.T) (*models.Organization, *models.Child, *Ch
 	// Register non-parameterized routes BEFORE parameterized ones to avoid gin routing conflicts
 	r.GET("/organizations/:orgId/children/attendance", handler.ListByDate)
 	r.GET("/organizations/:orgId/children/attendance/summary", handler.GetDailySummary)
-	r.POST("/organizations/:orgId/children/:id/attendance", handler.Create)
-	r.GET("/organizations/:orgId/children/:id/attendance", handler.ListByChild)
-	r.GET("/organizations/:orgId/children/:id/attendance/:attendanceId", handler.Get)
-	r.PUT("/organizations/:orgId/children/:id/attendance/:attendanceId", handler.Update)
-	r.DELETE("/organizations/:orgId/children/:id/attendance/:attendanceId", handler.Delete)
+	r.POST("/organizations/:orgId/children/:childId/attendance", handler.Create)
+	r.GET("/organizations/:orgId/children/:childId/attendance", handler.ListByChild)
+	r.GET("/organizations/:orgId/children/:childId/attendance/:attendanceId", handler.Get)
+	r.PUT("/organizations/:orgId/children/:childId/attendance/:attendanceId", handler.Update)
+	r.DELETE("/organizations/:orgId/children/:childId/attendance/:attendanceId", handler.Delete)
 
 	return org, child, handler, r, db
 }

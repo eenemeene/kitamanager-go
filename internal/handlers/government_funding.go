@@ -55,7 +55,7 @@ func (h *GovernmentFundingHandler) List(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "GovernmentFunding ID"
+// @Param fundingId path int true "GovernmentFunding ID"
 // @Param periods_limit query int false "Limit number of periods returned (0 = all, default 1 for latest only)"
 // @Param active_on query string false "Filter periods active on date (YYYY-MM-DD, defaults to today)"
 // @Success 200 {object} models.GovernmentFundingDetailResponse
@@ -63,9 +63,9 @@ func (h *GovernmentFundingHandler) List(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/government-fundings/{id} [get]
+// @Router /api/v1/government-fundings/{fundingId} [get]
 func (h *GovernmentFundingHandler) Get(c *gin.Context) {
-	id, err := parseID(c, "id")
+	id, err := parseID(c, "fundingId")
 	if err != nil {
 		respondError(c, err)
 		return
@@ -137,7 +137,7 @@ func (h *GovernmentFundingHandler) Create(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "GovernmentFunding ID"
+// @Param fundingId path int true "GovernmentFunding ID"
 // @Param request body models.GovernmentFundingUpdateRequest true "GovernmentFunding data"
 // @Success 200 {object} models.GovernmentFundingResponse
 // @Failure 400 {object} models.ErrorResponse
@@ -145,9 +145,9 @@ func (h *GovernmentFundingHandler) Create(c *gin.Context) {
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/government-fundings/{id} [put]
+// @Router /api/v1/government-fundings/{fundingId} [put]
 func (h *GovernmentFundingHandler) Update(c *gin.Context) {
-	id, err := parseID(c, "id")
+	id, err := parseID(c, "fundingId")
 	if err != nil {
 		respondError(c, err)
 		return
@@ -176,15 +176,15 @@ func (h *GovernmentFundingHandler) Update(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "GovernmentFunding ID"
+// @Param fundingId path int true "GovernmentFunding ID"
 // @Success 204 "No Content"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/government-fundings/{id} [delete]
+// @Router /api/v1/government-fundings/{fundingId} [delete]
 func (h *GovernmentFundingHandler) Delete(c *gin.Context) {
-	id, err := parseID(c, "id")
+	id, err := parseID(c, "fundingId")
 	if err != nil {
 		respondError(c, err)
 		return
@@ -216,7 +216,7 @@ func (h *GovernmentFundingHandler) Delete(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "GovernmentFunding ID"
+// @Param fundingId path int true "GovernmentFunding ID"
 // @Param request body models.GovernmentFundingPeriodCreateRequest true "Period data"
 // @Success 201 {object} models.GovernmentFundingPeriodResponse
 // @Failure 400 {object} models.ErrorResponse
@@ -224,9 +224,9 @@ func (h *GovernmentFundingHandler) Delete(c *gin.Context) {
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/government-fundings/{id}/periods [post]
+// @Router /api/v1/government-fundings/{fundingId}/periods [post]
 func (h *GovernmentFundingHandler) CreatePeriod(c *gin.Context) {
-	handleGlobalNestedCreate(c,
+	handleGlobalNestedCreate(c, "fundingId",
 		auditConfig{h.auditService, "gov_funding_period", "funding"},
 		h.service.CreatePeriod,
 		func(r *models.GovernmentFundingPeriodResponse) uint { return r.ID },
@@ -240,7 +240,7 @@ func (h *GovernmentFundingHandler) CreatePeriod(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "GovernmentFunding ID"
+// @Param fundingId path int true "GovernmentFunding ID"
 // @Param periodId path int true "Period ID"
 // @Param request body models.GovernmentFundingPeriodUpdateRequest true "Period data"
 // @Success 200 {object} models.GovernmentFundingPeriodResponse
@@ -249,9 +249,9 @@ func (h *GovernmentFundingHandler) CreatePeriod(c *gin.Context) {
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/government-fundings/{id}/periods/{periodId} [put]
+// @Router /api/v1/government-fundings/{fundingId}/periods/{periodId} [put]
 func (h *GovernmentFundingHandler) UpdatePeriod(c *gin.Context) {
-	handleGlobalNestedUpdate(c, "periodId",
+	handleGlobalNestedUpdate(c, "fundingId", "periodId",
 		auditConfig{h.auditService, "gov_funding_period", "funding"},
 		h.service.UpdatePeriod,
 		func(r *models.GovernmentFundingPeriodResponse) uint { return r.ID },
@@ -265,16 +265,16 @@ func (h *GovernmentFundingHandler) UpdatePeriod(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "GovernmentFunding ID"
+// @Param fundingId path int true "GovernmentFunding ID"
 // @Param periodId path int true "Period ID"
 // @Success 204 "No Content"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/government-fundings/{id}/periods/{periodId} [delete]
+// @Router /api/v1/government-fundings/{fundingId}/periods/{periodId} [delete]
 func (h *GovernmentFundingHandler) DeletePeriod(c *gin.Context) {
-	handleGlobalNestedDelete(c, "periodId",
+	handleGlobalNestedDelete(c, "fundingId", "periodId",
 		auditConfig{h.auditService, "gov_funding_period", "funding"},
 		h.service.DeletePeriod,
 	)
@@ -289,7 +289,7 @@ func (h *GovernmentFundingHandler) DeletePeriod(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "GovernmentFunding ID"
+// @Param fundingId path int true "GovernmentFunding ID"
 // @Param periodId path int true "Period ID"
 // @Param request body models.GovernmentFundingPropertyCreateRequest true "Property data"
 // @Success 201 {object} models.GovernmentFundingPropertyResponse
@@ -298,9 +298,9 @@ func (h *GovernmentFundingHandler) DeletePeriod(c *gin.Context) {
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/government-fundings/{id}/periods/{periodId}/properties [post]
+// @Router /api/v1/government-fundings/{fundingId}/periods/{periodId}/properties [post]
 func (h *GovernmentFundingHandler) CreateProperty(c *gin.Context) {
-	handleGlobalDeepNestedCreate(c, "periodId",
+	handleGlobalDeepNestedCreate(c, "fundingId", "periodId",
 		auditConfig{h.auditService, "gov_funding_property", "period"},
 		h.service.CreateProperty,
 		func(r *models.GovernmentFundingPropertyResponse) uint { return r.ID },
@@ -314,7 +314,7 @@ func (h *GovernmentFundingHandler) CreateProperty(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "GovernmentFunding ID"
+// @Param fundingId path int true "GovernmentFunding ID"
 // @Param periodId path int true "Period ID"
 // @Param propId path int true "Property ID"
 // @Param request body models.GovernmentFundingPropertyUpdateRequest true "Property data"
@@ -324,9 +324,9 @@ func (h *GovernmentFundingHandler) CreateProperty(c *gin.Context) {
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/government-fundings/{id}/periods/{periodId}/properties/{propId} [put]
+// @Router /api/v1/government-fundings/{fundingId}/periods/{periodId}/properties/{propId} [put]
 func (h *GovernmentFundingHandler) UpdateProperty(c *gin.Context) {
-	handleGlobalDeepNestedUpdate(c, "periodId", "propId",
+	handleGlobalDeepNestedUpdate(c, "fundingId", "periodId", "propId",
 		auditConfig{h.auditService, "gov_funding_property", "period"},
 		h.service.UpdateProperty,
 		func(r *models.GovernmentFundingPropertyResponse) uint { return r.ID },
@@ -340,7 +340,7 @@ func (h *GovernmentFundingHandler) UpdateProperty(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "GovernmentFunding ID"
+// @Param fundingId path int true "GovernmentFunding ID"
 // @Param periodId path int true "Period ID"
 // @Param propId path int true "Property ID"
 // @Success 204 "No Content"
@@ -348,9 +348,9 @@ func (h *GovernmentFundingHandler) UpdateProperty(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/government-fundings/{id}/periods/{periodId}/properties/{propId} [delete]
+// @Router /api/v1/government-fundings/{fundingId}/periods/{periodId}/properties/{propId} [delete]
 func (h *GovernmentFundingHandler) DeleteProperty(c *gin.Context) {
-	handleGlobalDeepNestedDelete(c, "periodId", "propId",
+	handleGlobalDeepNestedDelete(c, "fundingId", "periodId", "propId",
 		auditConfig{h.auditService, "gov_funding_property", "period"},
 		h.service.DeleteProperty,
 	)

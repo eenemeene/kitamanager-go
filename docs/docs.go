@@ -141,7 +141,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/government-fundings/{id}": {
+        "/api/v1/government-fundings/{fundingId}": {
             "get": {
                 "security": [
                     {
@@ -163,7 +163,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "GovernmentFunding ID",
-                        "name": "id",
+                        "name": "fundingId",
                         "in": "path",
                         "required": true
                     },
@@ -234,7 +234,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "GovernmentFunding ID",
-                        "name": "id",
+                        "name": "fundingId",
                         "in": "path",
                         "required": true
                     },
@@ -308,7 +308,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "GovernmentFunding ID",
-                        "name": "id",
+                        "name": "fundingId",
                         "in": "path",
                         "required": true
                     }
@@ -344,7 +344,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/government-fundings/{id}/periods": {
+        "/api/v1/government-fundings/{fundingId}/periods": {
             "post": {
                 "security": [
                     {
@@ -366,7 +366,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "GovernmentFunding ID",
-                        "name": "id",
+                        "name": "fundingId",
                         "in": "path",
                         "required": true
                     },
@@ -420,7 +420,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/government-fundings/{id}/periods/{periodId}": {
+        "/api/v1/government-fundings/{fundingId}/periods/{periodId}": {
             "put": {
                 "security": [
                     {
@@ -442,7 +442,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "GovernmentFunding ID",
-                        "name": "id",
+                        "name": "fundingId",
                         "in": "path",
                         "required": true
                     },
@@ -523,7 +523,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "GovernmentFunding ID",
-                        "name": "id",
+                        "name": "fundingId",
                         "in": "path",
                         "required": true
                     },
@@ -566,7 +566,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/government-fundings/{id}/periods/{periodId}/properties": {
+        "/api/v1/government-fundings/{fundingId}/periods/{periodId}/properties": {
             "post": {
                 "security": [
                     {
@@ -588,7 +588,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "GovernmentFunding ID",
-                        "name": "id",
+                        "name": "fundingId",
                         "in": "path",
                         "required": true
                     },
@@ -649,7 +649,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/government-fundings/{id}/periods/{periodId}/properties/{propId}": {
+        "/api/v1/government-fundings/{fundingId}/periods/{periodId}/properties/{propId}": {
             "put": {
                 "security": [
                     {
@@ -671,7 +671,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "GovernmentFunding ID",
-                        "name": "id",
+                        "name": "fundingId",
                         "in": "path",
                         "required": true
                     },
@@ -759,7 +759,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "GovernmentFunding ID",
-                        "name": "id",
+                        "name": "fundingId",
                         "in": "path",
                         "required": true
                     },
@@ -1486,7 +1486,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/organizations/{orgId}/budget-items/{id}": {
+        "/api/v1/organizations/{orgId}/budget-items/{budgetItemId}": {
             "get": {
                 "security": [
                     {
@@ -1515,7 +1515,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Budget Item ID",
-                        "name": "id",
+                        "name": "budgetItemId",
                         "in": "path",
                         "required": true
                     }
@@ -1587,7 +1587,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Budget Item ID",
-                        "name": "id",
+                        "name": "budgetItemId",
                         "in": "path",
                         "required": true
                     },
@@ -1674,7 +1674,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Budget Item ID",
-                        "name": "id",
+                        "name": "budgetItemId",
                         "in": "path",
                         "required": true
                     }
@@ -1716,7 +1716,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/organizations/{orgId}/budget-items/{id}/entries": {
+        "/api/v1/organizations/{orgId}/budget-items/{budgetItemId}/entries": {
             "get": {
                 "security": [
                     {
@@ -1745,7 +1745,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Budget Item ID",
-                        "name": "id",
+                        "name": "budgetItemId",
                         "in": "path",
                         "required": true
                     },
@@ -1832,7 +1832,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Budget Item ID",
-                        "name": "id",
+                        "name": "budgetItemId",
                         "in": "path",
                         "required": true
                     },
@@ -1892,7 +1892,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/organizations/{orgId}/budget-items/{id}/entries/{entryId}": {
+        "/api/v1/organizations/{orgId}/budget-items/{budgetItemId}/entries/{entryId}": {
             "get": {
                 "security": [
                     {
@@ -1921,7 +1921,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Budget Item ID",
-                        "name": "id",
+                        "name": "budgetItemId",
                         "in": "path",
                         "required": true
                     },
@@ -2000,7 +2000,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Budget Item ID",
-                        "name": "id",
+                        "name": "budgetItemId",
                         "in": "path",
                         "required": true
                     },
@@ -2094,7 +2094,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Budget Item ID",
-                        "name": "id",
+                        "name": "budgetItemId",
                         "in": "path",
                         "required": true
                     },
@@ -2701,7 +2701,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/organizations/{orgId}/children/{id}": {
+        "/api/v1/organizations/{orgId}/children/{childId}": {
             "get": {
                 "security": [
                     {
@@ -2730,7 +2730,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Child ID",
-                        "name": "id",
+                        "name": "childId",
                         "in": "path",
                         "required": true
                     }
@@ -2796,7 +2796,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Child ID",
-                        "name": "id",
+                        "name": "childId",
                         "in": "path",
                         "required": true
                     },
@@ -2871,7 +2871,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Child ID",
-                        "name": "id",
+                        "name": "childId",
                         "in": "path",
                         "required": true
                     }
@@ -2907,7 +2907,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/organizations/{orgId}/children/{id}/attendance": {
+        "/api/v1/organizations/{orgId}/children/{childId}/attendance": {
             "get": {
                 "security": [
                     {
@@ -2936,7 +2936,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Child ID",
-                        "name": "id",
+                        "name": "childId",
                         "in": "path",
                         "required": true
                     },
@@ -3031,7 +3031,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Child ID",
-                        "name": "id",
+                        "name": "childId",
                         "in": "path",
                         "required": true
                     },
@@ -3085,7 +3085,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/organizations/{orgId}/children/{id}/attendance/{attendanceId}": {
+        "/api/v1/organizations/{orgId}/children/{childId}/attendance/{attendanceId}": {
             "get": {
                 "security": [
                     {
@@ -3114,7 +3114,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Child ID",
-                        "name": "id",
+                        "name": "childId",
                         "in": "path",
                         "required": true
                     },
@@ -3187,7 +3187,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Child ID",
-                        "name": "id",
+                        "name": "childId",
                         "in": "path",
                         "required": true
                     },
@@ -3269,7 +3269,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Child ID",
-                        "name": "id",
+                        "name": "childId",
                         "in": "path",
                         "required": true
                     },
@@ -3312,7 +3312,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/organizations/{orgId}/children/{id}/contracts": {
+        "/api/v1/organizations/{orgId}/children/{childId}/contracts": {
             "get": {
                 "security": [
                     {
@@ -3341,7 +3341,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Child ID",
-                        "name": "id",
+                        "name": "childId",
                         "in": "path",
                         "required": true
                     },
@@ -3422,7 +3422,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Child ID",
-                        "name": "id",
+                        "name": "childId",
                         "in": "path",
                         "required": true
                     },
@@ -3476,7 +3476,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/organizations/{orgId}/children/{id}/contracts/current": {
+        "/api/v1/organizations/{orgId}/children/{childId}/contracts/current": {
             "get": {
                 "security": [
                     {
@@ -3505,7 +3505,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Child ID",
-                        "name": "id",
+                        "name": "childId",
                         "in": "path",
                         "required": true
                     }
@@ -3544,7 +3544,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/organizations/{orgId}/children/{id}/contracts/{contractId}": {
+        "/api/v1/organizations/{orgId}/children/{childId}/contracts/{contractId}": {
             "get": {
                 "security": [
                     {
@@ -3573,7 +3573,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Child ID",
-                        "name": "id",
+                        "name": "childId",
                         "in": "path",
                         "required": true
                     },
@@ -3646,7 +3646,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Child ID",
-                        "name": "id",
+                        "name": "childId",
                         "in": "path",
                         "required": true
                     },
@@ -3734,7 +3734,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Child ID",
-                        "name": "id",
+                        "name": "childId",
                         "in": "path",
                         "required": true
                     },
@@ -4064,7 +4064,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/organizations/{orgId}/employees/{id}": {
+        "/api/v1/organizations/{orgId}/employees/{employeeId}": {
             "get": {
                 "security": [
                     {
@@ -4093,7 +4093,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Employee ID",
-                        "name": "id",
+                        "name": "employeeId",
                         "in": "path",
                         "required": true
                     }
@@ -4159,7 +4159,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Employee ID",
-                        "name": "id",
+                        "name": "employeeId",
                         "in": "path",
                         "required": true
                     },
@@ -4234,7 +4234,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Employee ID",
-                        "name": "id",
+                        "name": "employeeId",
                         "in": "path",
                         "required": true
                     }
@@ -4270,7 +4270,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/organizations/{orgId}/employees/{id}/contracts": {
+        "/api/v1/organizations/{orgId}/employees/{employeeId}/contracts": {
             "get": {
                 "security": [
                     {
@@ -4299,7 +4299,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Employee ID",
-                        "name": "id",
+                        "name": "employeeId",
                         "in": "path",
                         "required": true
                     },
@@ -4380,7 +4380,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Employee ID",
-                        "name": "id",
+                        "name": "employeeId",
                         "in": "path",
                         "required": true
                     },
@@ -4434,7 +4434,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/organizations/{orgId}/employees/{id}/contracts/current": {
+        "/api/v1/organizations/{orgId}/employees/{employeeId}/contracts/current": {
             "get": {
                 "security": [
                     {
@@ -4463,7 +4463,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Employee ID",
-                        "name": "id",
+                        "name": "employeeId",
                         "in": "path",
                         "required": true
                     }
@@ -4502,7 +4502,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/organizations/{orgId}/employees/{id}/contracts/{contractId}": {
+        "/api/v1/organizations/{orgId}/employees/{employeeId}/contracts/{contractId}": {
             "get": {
                 "security": [
                     {
@@ -4531,7 +4531,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Employee ID",
-                        "name": "id",
+                        "name": "employeeId",
                         "in": "path",
                         "required": true
                     },
@@ -4604,7 +4604,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Employee ID",
-                        "name": "id",
+                        "name": "employeeId",
                         "in": "path",
                         "required": true
                     },
@@ -4692,7 +4692,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Employee ID",
-                        "name": "id",
+                        "name": "employeeId",
                         "in": "path",
                         "required": true
                     },
@@ -4857,7 +4857,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/organizations/{orgId}/government-funding-bills/{id}": {
+        "/api/v1/organizations/{orgId}/government-funding-bills/{billId}": {
             "get": {
                 "security": [
                     {
@@ -4883,7 +4883,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Bill Period ID",
-                        "name": "id",
+                        "name": "billId",
                         "in": "path",
                         "required": true
                     }
@@ -4940,7 +4940,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Bill Period ID",
-                        "name": "id",
+                        "name": "billId",
                         "in": "path",
                         "required": true
                     }
@@ -5458,7 +5458,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/organizations/{orgId}/payplans/{id}": {
+        "/api/v1/organizations/{orgId}/payplans/{payplanId}": {
             "get": {
                 "security": [
                     {
@@ -5487,7 +5487,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Pay Plan ID",
-                        "name": "id",
+                        "name": "payplanId",
                         "in": "path",
                         "required": true
                     },
@@ -5565,7 +5565,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Pay Plan ID",
-                        "name": "id",
+                        "name": "payplanId",
                         "in": "path",
                         "required": true
                     },
@@ -5646,7 +5646,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Pay Plan ID",
-                        "name": "id",
+                        "name": "payplanId",
                         "in": "path",
                         "required": true
                     }
@@ -5688,7 +5688,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/organizations/{orgId}/payplans/{id}/periods": {
+        "/api/v1/organizations/{orgId}/payplans/{payplanId}/periods": {
             "post": {
                 "security": [
                     {
@@ -5717,7 +5717,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Pay Plan ID",
-                        "name": "id",
+                        "name": "payplanId",
                         "in": "path",
                         "required": true
                     },
@@ -5771,7 +5771,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/organizations/{orgId}/payplans/{id}/periods/{periodId}": {
+        "/api/v1/organizations/{orgId}/payplans/{payplanId}/periods/{periodId}": {
             "get": {
                 "security": [
                     {
@@ -5800,7 +5800,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Pay Plan ID",
-                        "name": "id",
+                        "name": "payplanId",
                         "in": "path",
                         "required": true
                     },
@@ -5879,7 +5879,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Pay Plan ID",
-                        "name": "id",
+                        "name": "payplanId",
                         "in": "path",
                         "required": true
                     },
@@ -5967,7 +5967,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Pay Plan ID",
-                        "name": "id",
+                        "name": "payplanId",
                         "in": "path",
                         "required": true
                     },
@@ -6016,7 +6016,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/organizations/{orgId}/payplans/{id}/periods/{periodId}/entries": {
+        "/api/v1/organizations/{orgId}/payplans/{payplanId}/periods/{periodId}/entries": {
             "post": {
                 "security": [
                     {
@@ -6045,7 +6045,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Pay Plan ID",
-                        "name": "id",
+                        "name": "payplanId",
                         "in": "path",
                         "required": true
                     },
@@ -6106,7 +6106,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/organizations/{orgId}/payplans/{id}/periods/{periodId}/entries/{entryId}": {
+        "/api/v1/organizations/{orgId}/payplans/{payplanId}/periods/{periodId}/entries/{entryId}": {
             "get": {
                 "security": [
                     {
@@ -6135,7 +6135,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Pay Plan ID",
-                        "name": "id",
+                        "name": "payplanId",
                         "in": "path",
                         "required": true
                     },
@@ -6221,7 +6221,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Pay Plan ID",
-                        "name": "id",
+                        "name": "payplanId",
                         "in": "path",
                         "required": true
                     },
@@ -6316,7 +6316,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Pay Plan ID",
-                        "name": "id",
+                        "name": "payplanId",
                         "in": "path",
                         "required": true
                     },

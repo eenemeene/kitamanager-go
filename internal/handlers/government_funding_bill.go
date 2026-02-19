@@ -122,14 +122,14 @@ func (h *GovernmentFundingBillHandler) List(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Bill Period ID"
+// @Param billId path int true "Bill Period ID"
 // @Success 200 {object} models.GovernmentFundingBillPeriodResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/government-funding-bills/{id} [get]
+// @Router /api/v1/organizations/{orgId}/government-funding-bills/{billId} [get]
 func (h *GovernmentFundingBillHandler) Get(c *gin.Context) {
-	orgID, id, ok := parseOrgAndResourceID(c, "id")
+	orgID, id, ok := parseOrgAndResourceID(c, "billId")
 	if !ok {
 		return
 	}
@@ -150,14 +150,14 @@ func (h *GovernmentFundingBillHandler) Get(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Bill Period ID"
+// @Param billId path int true "Bill Period ID"
 // @Success 204
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/government-funding-bills/{id} [delete]
+// @Router /api/v1/organizations/{orgId}/government-funding-bills/{billId} [delete]
 func (h *GovernmentFundingBillHandler) Delete(c *gin.Context) {
-	orgID, id, ok := parseOrgAndResourceID(c, "id")
+	orgID, id, ok := parseOrgAndResourceID(c, "billId")
 	if !ok {
 		return
 	}

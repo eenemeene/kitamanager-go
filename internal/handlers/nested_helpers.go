@@ -15,9 +15,10 @@ import (
 // handleOrgNestedList handles paginated listing of nested resources.
 func handleOrgNestedList[Resp any](
 	c *gin.Context,
+	parentParam string,
 	listFn func(context.Context, uint, uint, int, int) ([]Resp, int64, error),
 ) {
-	orgID, parentID, ok := parseOrgAndResourceID(c, "id")
+	orgID, parentID, ok := parseOrgAndResourceID(c, parentParam)
 	if !ok {
 		return
 	}
@@ -39,11 +40,12 @@ func handleOrgNestedList[Resp any](
 // handleOrgNestedCreate handles creating a nested resource with audit logging.
 func handleOrgNestedCreate[Req any, Resp any](
 	c *gin.Context,
+	parentParam string,
 	audit auditConfig,
 	createFn func(context.Context, uint, uint, *Req) (*Resp, error),
 	getID func(*Resp) uint,
 ) {
-	orgID, parentID, ok := parseOrgAndResourceID(c, "id")
+	orgID, parentID, ok := parseOrgAndResourceID(c, parentParam)
 	if !ok {
 		return
 	}
@@ -67,10 +69,11 @@ func handleOrgNestedCreate[Req any, Resp any](
 // handleOrgNestedGet handles fetching a single nested resource.
 func handleOrgNestedGet[Resp any](
 	c *gin.Context,
+	parentParam string,
 	nestedParam string,
 	getFn func(context.Context, uint, uint, uint) (*Resp, error),
 ) {
-	orgID, parentID, ok := parseOrgAndResourceID(c, "id")
+	orgID, parentID, ok := parseOrgAndResourceID(c, parentParam)
 	if !ok {
 		return
 	}
@@ -93,12 +96,13 @@ func handleOrgNestedGet[Resp any](
 // handleOrgNestedUpdate handles updating a nested resource with audit logging.
 func handleOrgNestedUpdate[Req any, Resp any](
 	c *gin.Context,
+	parentParam string,
 	nestedParam string,
 	audit auditConfig,
 	updateFn func(context.Context, uint, uint, uint, *Req) (*Resp, error),
 	getID func(*Resp) uint,
 ) {
-	orgID, parentID, ok := parseOrgAndResourceID(c, "id")
+	orgID, parentID, ok := parseOrgAndResourceID(c, parentParam)
 	if !ok {
 		return
 	}
@@ -128,11 +132,12 @@ func handleOrgNestedUpdate[Req any, Resp any](
 // handleOrgNestedDelete handles deleting a nested resource with audit logging.
 func handleOrgNestedDelete(
 	c *gin.Context,
+	parentParam string,
 	nestedParam string,
 	audit auditConfig,
 	deleteFn func(context.Context, uint, uint, uint) error,
 ) {
-	orgID, parentID, ok := parseOrgAndResourceID(c, "id")
+	orgID, parentID, ok := parseOrgAndResourceID(c, parentParam)
 	if !ok {
 		return
 	}
@@ -158,12 +163,13 @@ func handleOrgNestedDelete(
 // handleOrgDeepNestedCreate handles creating a deep nested resource with audit logging.
 func handleOrgDeepNestedCreate[Req any, Resp any](
 	c *gin.Context,
+	parentParam string,
 	midParam string,
 	audit auditConfig,
 	createFn func(context.Context, uint, uint, uint, *Req) (*Resp, error),
 	getID func(*Resp) uint,
 ) {
-	orgID, parentID, ok := parseOrgAndResourceID(c, "id")
+	orgID, parentID, ok := parseOrgAndResourceID(c, parentParam)
 	if !ok {
 		return
 	}
@@ -193,11 +199,12 @@ func handleOrgDeepNestedCreate[Req any, Resp any](
 // handleOrgDeepNestedGet handles fetching a single deep nested resource.
 func handleOrgDeepNestedGet[Resp any](
 	c *gin.Context,
+	parentParam string,
 	midParam string,
 	nestedParam string,
 	getFn func(context.Context, uint, uint, uint, uint) (*Resp, error),
 ) {
-	orgID, parentID, ok := parseOrgAndResourceID(c, "id")
+	orgID, parentID, ok := parseOrgAndResourceID(c, parentParam)
 	if !ok {
 		return
 	}
@@ -226,13 +233,14 @@ func handleOrgDeepNestedGet[Resp any](
 // handleOrgDeepNestedUpdate handles updating a deep nested resource with audit logging.
 func handleOrgDeepNestedUpdate[Req any, Resp any](
 	c *gin.Context,
+	parentParam string,
 	midParam string,
 	nestedParam string,
 	audit auditConfig,
 	updateFn func(context.Context, uint, uint, uint, uint, *Req) (*Resp, error),
 	getID func(*Resp) uint,
 ) {
-	orgID, parentID, ok := parseOrgAndResourceID(c, "id")
+	orgID, parentID, ok := parseOrgAndResourceID(c, parentParam)
 	if !ok {
 		return
 	}
@@ -268,12 +276,13 @@ func handleOrgDeepNestedUpdate[Req any, Resp any](
 // handleOrgDeepNestedDelete handles deleting a deep nested resource with audit logging.
 func handleOrgDeepNestedDelete(
 	c *gin.Context,
+	parentParam string,
 	midParam string,
 	nestedParam string,
 	audit auditConfig,
 	deleteFn func(context.Context, uint, uint, uint, uint) error,
 ) {
-	orgID, parentID, ok := parseOrgAndResourceID(c, "id")
+	orgID, parentID, ok := parseOrgAndResourceID(c, parentParam)
 	if !ok {
 		return
 	}
@@ -305,11 +314,12 @@ func handleOrgDeepNestedDelete(
 // handleGlobalNestedCreate handles creating a nested resource under a global parent.
 func handleGlobalNestedCreate[Req any, Resp any](
 	c *gin.Context,
+	parentParam string,
 	audit auditConfig,
 	createFn func(context.Context, uint, *Req) (*Resp, error),
 	getID func(*Resp) uint,
 ) {
-	parentID, err := parseID(c, "id")
+	parentID, err := parseID(c, parentParam)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -334,12 +344,13 @@ func handleGlobalNestedCreate[Req any, Resp any](
 // handleGlobalNestedUpdate handles updating a nested resource under a global parent.
 func handleGlobalNestedUpdate[Req any, Resp any](
 	c *gin.Context,
+	parentParam string,
 	nestedParam string,
 	audit auditConfig,
 	updateFn func(context.Context, uint, uint, *Req) (*Resp, error),
 	getID func(*Resp) uint,
 ) {
-	parentID, err := parseID(c, "id")
+	parentID, err := parseID(c, parentParam)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -370,11 +381,12 @@ func handleGlobalNestedUpdate[Req any, Resp any](
 // handleGlobalNestedDelete handles deleting a nested resource under a global parent.
 func handleGlobalNestedDelete(
 	c *gin.Context,
+	parentParam string,
 	nestedParam string,
 	audit auditConfig,
 	deleteFn func(context.Context, uint, uint) error,
 ) {
-	parentID, err := parseID(c, "id")
+	parentID, err := parseID(c, parentParam)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -401,12 +413,13 @@ func handleGlobalNestedDelete(
 // handleGlobalDeepNestedCreate handles creating a deep nested resource under a global parent.
 func handleGlobalDeepNestedCreate[Req any, Resp any](
 	c *gin.Context,
+	parentParam string,
 	midParam string,
 	audit auditConfig,
 	createFn func(context.Context, uint, uint, *Req) (*Resp, error),
 	getID func(*Resp) uint,
 ) {
-	parentID, err := parseID(c, "id")
+	parentID, err := parseID(c, parentParam)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -437,13 +450,14 @@ func handleGlobalDeepNestedCreate[Req any, Resp any](
 // handleGlobalDeepNestedUpdate handles updating a deep nested resource under a global parent.
 func handleGlobalDeepNestedUpdate[Req any, Resp any](
 	c *gin.Context,
+	parentParam string,
 	midParam string,
 	nestedParam string,
 	audit auditConfig,
 	updateFn func(context.Context, uint, uint, uint, *Req) (*Resp, error),
 	getID func(*Resp) uint,
 ) {
-	parentID, err := parseID(c, "id")
+	parentID, err := parseID(c, parentParam)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -480,12 +494,13 @@ func handleGlobalDeepNestedUpdate[Req any, Resp any](
 // handleGlobalDeepNestedDelete handles deleting a deep nested resource under a global parent.
 func handleGlobalDeepNestedDelete(
 	c *gin.Context,
+	parentParam string,
 	midParam string,
 	nestedParam string,
 	audit auditConfig,
 	deleteFn func(context.Context, uint, uint, uint) error,
 ) {
-	parentID, err := parseID(c, "id")
+	parentID, err := parseID(c, parentParam)
 	if err != nil {
 		respondError(c, err)
 		return

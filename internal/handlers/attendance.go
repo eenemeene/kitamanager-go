@@ -29,7 +29,7 @@ func NewChildAttendanceHandler(service *service.ChildAttendanceService, auditSer
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Child ID"
+// @Param childId path int true "Child ID"
 // @Param request body models.ChildAttendanceCreateRequest true "Attendance data"
 // @Success 201 {object} models.ChildAttendanceResponse
 // @Failure 400 {object} models.ErrorResponse
@@ -37,9 +37,9 @@ func NewChildAttendanceHandler(service *service.ChildAttendanceService, auditSer
 // @Failure 404 {object} models.ErrorResponse "Child not found"
 // @Failure 409 {object} models.ErrorResponse "Record already exists for this date"
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/{id}/attendance [post]
+// @Router /api/v1/organizations/{orgId}/children/{childId}/attendance [post]
 func (h *ChildAttendanceHandler) Create(c *gin.Context) {
-	orgID, childID, ok := parseOrgAndResourceID(c, "id")
+	orgID, childID, ok := parseOrgAndResourceID(c, "childId")
 	if !ok {
 		return
 	}
@@ -69,16 +69,16 @@ func (h *ChildAttendanceHandler) Create(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Child ID"
+// @Param childId path int true "Child ID"
 // @Param attendanceId path int true "Attendance record ID"
 // @Success 200 {object} models.ChildAttendanceResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/{id}/attendance/{attendanceId} [get]
+// @Router /api/v1/organizations/{orgId}/children/{childId}/attendance/{attendanceId} [get]
 func (h *ChildAttendanceHandler) Get(c *gin.Context) {
-	orgID, childID, attendanceID, ok := parseOrgResourceAndSubID(c, "attendanceId")
+	orgID, childID, attendanceID, ok := parseOrgResourceAndSubID(c, "childId", "attendanceId")
 	if !ok {
 		return
 	}
@@ -102,7 +102,7 @@ func (h *ChildAttendanceHandler) Get(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Child ID"
+// @Param childId path int true "Child ID"
 // @Param attendanceId path int true "Attendance record ID"
 // @Param request body models.ChildAttendanceUpdateRequest true "Update data"
 // @Success 200 {object} models.ChildAttendanceResponse
@@ -110,9 +110,9 @@ func (h *ChildAttendanceHandler) Get(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/{id}/attendance/{attendanceId} [put]
+// @Router /api/v1/organizations/{orgId}/children/{childId}/attendance/{attendanceId} [put]
 func (h *ChildAttendanceHandler) Update(c *gin.Context) {
-	orgID, childID, attendanceID, ok := parseOrgResourceAndSubID(c, "attendanceId")
+	orgID, childID, attendanceID, ok := parseOrgResourceAndSubID(c, "childId", "attendanceId")
 	if !ok {
 		return
 	}
@@ -141,16 +141,16 @@ func (h *ChildAttendanceHandler) Update(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Child ID"
+// @Param childId path int true "Child ID"
 // @Param attendanceId path int true "Attendance record ID"
 // @Success 204 "No Content"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/{id}/attendance/{attendanceId} [delete]
+// @Router /api/v1/organizations/{orgId}/children/{childId}/attendance/{attendanceId} [delete]
 func (h *ChildAttendanceHandler) Delete(c *gin.Context) {
-	orgID, childID, attendanceID, ok := parseOrgResourceAndSubID(c, "attendanceId")
+	orgID, childID, attendanceID, ok := parseOrgResourceAndSubID(c, "childId", "attendanceId")
 	if !ok {
 		return
 	}
@@ -180,7 +180,7 @@ func (h *ChildAttendanceHandler) Delete(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Child ID"
+// @Param childId path int true "Child ID"
 // @Param from query string true "Start date (YYYY-MM-DD)"
 // @Param to query string true "End date (YYYY-MM-DD)"
 // @Param page query int false "Page number" default(1)
@@ -190,9 +190,9 @@ func (h *ChildAttendanceHandler) Delete(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/{id}/attendance [get]
+// @Router /api/v1/organizations/{orgId}/children/{childId}/attendance [get]
 func (h *ChildAttendanceHandler) ListByChild(c *gin.Context) {
-	orgID, childID, ok := parseOrgAndResourceID(c, "id")
+	orgID, childID, ok := parseOrgAndResourceID(c, "childId")
 	if !ok {
 		return
 	}

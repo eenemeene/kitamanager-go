@@ -41,9 +41,9 @@ func setupBillRouterWithUser(db *gorm.DB, userID uint) (*gin.Engine, *Government
 	org := r.Group("/organizations/:orgId/government-funding-bills")
 	{
 		org.GET("", handler.List)
-		org.GET("/:id", handler.Get)
+		org.GET("/:billId", handler.Get)
 		org.POST("/isbj", handler.UploadISBJ)
-		org.DELETE("/:id", handler.Delete)
+		org.DELETE("/:billId", handler.Delete)
 	}
 	return r, handler
 }

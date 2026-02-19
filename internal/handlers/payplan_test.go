@@ -24,10 +24,10 @@ func TestPayPlanHandler_CRUD(t *testing.T) {
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/payplans", handler.List)
-	r.GET("/organizations/:orgId/payplans/:id", handler.Get)
+	r.GET("/organizations/:orgId/payplans/:payplanId", handler.Get)
 	r.POST("/organizations/:orgId/payplans", handler.Create)
-	r.PUT("/organizations/:orgId/payplans/:id", handler.Update)
-	r.DELETE("/organizations/:orgId/payplans/:id", handler.Delete)
+	r.PUT("/organizations/:orgId/payplans/:payplanId", handler.Update)
+	r.DELETE("/organizations/:orgId/payplans/:payplanId", handler.Delete)
 
 	var createdID uint
 
@@ -143,7 +143,7 @@ func TestPayPlanHandler_OrgIsolation(t *testing.T) {
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/payplans", handler.List)
-	r.GET("/organizations/:orgId/payplans/:id", handler.Get)
+	r.GET("/organizations/:orgId/payplans/:payplanId", handler.Get)
 	r.POST("/organizations/:orgId/payplans", handler.Create)
 
 	// Create payplan in org1
@@ -193,10 +193,10 @@ func TestPayPlanHandler_Period_CRUD(t *testing.T) {
 	handler := NewPayPlanHandler(svc, createAuditService(db))
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/payplans/:id/periods", handler.CreatePeriod)
-	r.GET("/organizations/:orgId/payplans/:id/periods/:periodId", handler.GetPeriod)
-	r.PUT("/organizations/:orgId/payplans/:id/periods/:periodId", handler.UpdatePeriod)
-	r.DELETE("/organizations/:orgId/payplans/:id/periods/:periodId", handler.DeletePeriod)
+	r.POST("/organizations/:orgId/payplans/:payplanId/periods", handler.CreatePeriod)
+	r.GET("/organizations/:orgId/payplans/:payplanId/periods/:periodId", handler.GetPeriod)
+	r.PUT("/organizations/:orgId/payplans/:payplanId/periods/:periodId", handler.UpdatePeriod)
+	r.DELETE("/organizations/:orgId/payplans/:payplanId/periods/:periodId", handler.DeletePeriod)
 
 	var periodID uint
 
@@ -301,10 +301,10 @@ func TestPayPlanHandler_Entry_CRUD(t *testing.T) {
 	handler := NewPayPlanHandler(svc, createAuditService(db))
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/payplans/:id/periods/:periodId/entries", handler.CreateEntry)
-	r.GET("/organizations/:orgId/payplans/:id/periods/:periodId/entries/:entryId", handler.GetEntry)
-	r.PUT("/organizations/:orgId/payplans/:id/periods/:periodId/entries/:entryId", handler.UpdateEntry)
-	r.DELETE("/organizations/:orgId/payplans/:id/periods/:periodId/entries/:entryId", handler.DeleteEntry)
+	r.POST("/organizations/:orgId/payplans/:payplanId/periods/:periodId/entries", handler.CreateEntry)
+	r.GET("/organizations/:orgId/payplans/:payplanId/periods/:periodId/entries/:entryId", handler.GetEntry)
+	r.PUT("/organizations/:orgId/payplans/:payplanId/periods/:periodId/entries/:entryId", handler.UpdateEntry)
+	r.DELETE("/organizations/:orgId/payplans/:payplanId/periods/:periodId/entries/:entryId", handler.DeleteEntry)
 
 	var entryID uint
 
@@ -424,7 +424,7 @@ func TestPayPlanHandler_GetWithPeriodsAndEntries(t *testing.T) {
 	handler := NewPayPlanHandler(svc, createAuditService(db))
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/payplans/:id", handler.Get)
+	r.GET("/organizations/:orgId/payplans/:payplanId", handler.Get)
 
 	t.Run("GetWithNestedData", func(t *testing.T) {
 		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/payplans/%d", org.ID, payplan.ID), nil)
@@ -471,7 +471,7 @@ func TestPayPlanHandler_DeleteCascade(t *testing.T) {
 	handler := NewPayPlanHandler(svc, createAuditService(db))
 
 	r := setupTestRouter()
-	r.DELETE("/organizations/:orgId/payplans/:id", handler.Delete)
+	r.DELETE("/organizations/:orgId/payplans/:payplanId", handler.Delete)
 
 	t.Run("DeletePayPlanCascades", func(t *testing.T) {
 		w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/payplans/%d", org.ID, payplan.ID), nil)
@@ -506,8 +506,8 @@ func TestPayPlanHandler_InvalidRequests(t *testing.T) {
 
 	r := setupTestRouter()
 	r.POST("/organizations/:orgId/payplans", handler.Create)
-	r.GET("/organizations/:orgId/payplans/:id", handler.Get)
-	r.POST("/organizations/:orgId/payplans/:id/periods", handler.CreatePeriod)
+	r.GET("/organizations/:orgId/payplans/:payplanId", handler.Get)
+	r.POST("/organizations/:orgId/payplans/:payplanId/periods", handler.CreatePeriod)
 
 	t.Run("CreateWithEmptyName", func(t *testing.T) {
 		body := models.PayPlanCreateRequest{Name: ""}
@@ -611,17 +611,17 @@ func setupPayPlanTestFull(t *testing.T) (*models.Organization, *PayPlanHandler, 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/payplans", handler.List)
 	r.POST("/organizations/:orgId/payplans", handler.Create)
-	r.GET("/organizations/:orgId/payplans/:id", handler.Get)
-	r.PUT("/organizations/:orgId/payplans/:id", handler.Update)
-	r.DELETE("/organizations/:orgId/payplans/:id", handler.Delete)
-	r.POST("/organizations/:orgId/payplans/:id/periods", handler.CreatePeriod)
-	r.GET("/organizations/:orgId/payplans/:id/periods/:periodId", handler.GetPeriod)
-	r.PUT("/organizations/:orgId/payplans/:id/periods/:periodId", handler.UpdatePeriod)
-	r.DELETE("/organizations/:orgId/payplans/:id/periods/:periodId", handler.DeletePeriod)
-	r.POST("/organizations/:orgId/payplans/:id/periods/:periodId/entries", handler.CreateEntry)
-	r.GET("/organizations/:orgId/payplans/:id/periods/:periodId/entries/:entryId", handler.GetEntry)
-	r.PUT("/organizations/:orgId/payplans/:id/periods/:periodId/entries/:entryId", handler.UpdateEntry)
-	r.DELETE("/organizations/:orgId/payplans/:id/periods/:periodId/entries/:entryId", handler.DeleteEntry)
+	r.GET("/organizations/:orgId/payplans/:payplanId", handler.Get)
+	r.PUT("/organizations/:orgId/payplans/:payplanId", handler.Update)
+	r.DELETE("/organizations/:orgId/payplans/:payplanId", handler.Delete)
+	r.POST("/organizations/:orgId/payplans/:payplanId/periods", handler.CreatePeriod)
+	r.GET("/organizations/:orgId/payplans/:payplanId/periods/:periodId", handler.GetPeriod)
+	r.PUT("/organizations/:orgId/payplans/:payplanId/periods/:periodId", handler.UpdatePeriod)
+	r.DELETE("/organizations/:orgId/payplans/:payplanId/periods/:periodId", handler.DeletePeriod)
+	r.POST("/organizations/:orgId/payplans/:payplanId/periods/:periodId/entries", handler.CreateEntry)
+	r.GET("/organizations/:orgId/payplans/:payplanId/periods/:periodId/entries/:entryId", handler.GetEntry)
+	r.PUT("/organizations/:orgId/payplans/:payplanId/periods/:periodId/entries/:entryId", handler.UpdateEntry)
+	r.DELETE("/organizations/:orgId/payplans/:payplanId/periods/:periodId/entries/:entryId", handler.DeleteEntry)
 
 	return org, handler, r, db
 }

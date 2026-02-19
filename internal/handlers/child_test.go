@@ -56,7 +56,7 @@ func TestChildHandler_Get(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/:id", handler.Get)
+	r.GET("/organizations/:orgId/children/:childId", handler.Get)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/%d", org.ID, child.ID), nil)
 
@@ -118,7 +118,7 @@ func TestChildHandler_Update(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/children/:id", handler.Update)
+	r.PUT("/organizations/:orgId/children/:childId", handler.Update)
 
 	newName := "Updated"
 	body := models.ChildUpdateRequest{
@@ -151,7 +151,7 @@ func TestChildHandler_Delete(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.DELETE("/organizations/:orgId/children/:id", handler.Delete)
+	r.DELETE("/organizations/:orgId/children/:childId", handler.Delete)
 
 	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/children/%d", org.ID, child.ID), nil)
 
@@ -181,7 +181,7 @@ func TestChildHandler_ListContracts(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/:id/contracts", handler.ListContracts)
+	r.GET("/organizations/:orgId/children/:childId/contracts", handler.ListContracts)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/%d/contracts", org.ID, child.ID), nil)
 
@@ -219,7 +219,7 @@ func TestChildHandler_GetCurrentRecord(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/:id/contracts/current", handler.GetCurrentRecord)
+	r.GET("/organizations/:orgId/children/:childId/contracts/current", handler.GetCurrentRecord)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/%d/contracts/current", org.ID, child.ID), nil)
 
@@ -247,7 +247,7 @@ func TestChildHandler_GetCurrentRecord_NotFound(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/:id/contracts/current", handler.GetCurrentRecord)
+	r.GET("/organizations/:orgId/children/:childId/contracts/current", handler.GetCurrentRecord)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/%d/contracts/current", org.ID, child.ID), nil)
 
@@ -269,7 +269,7 @@ func TestChildHandler_CreateContract(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/children/:childId/contracts", handler.CreateContract)
 
 	body := models.ChildContractCreateRequest{
 		SectionID:  sectionID,
@@ -305,7 +305,7 @@ func TestChildHandler_CreateContract_SameDay(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/children/:childId/contracts", handler.CreateContract)
 
 	// Create a same-day contract (from == to)
 	sameDay := time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC)
@@ -356,7 +356,7 @@ func TestChildHandler_CreateContract_Overlap(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/children/:childId/contracts", handler.CreateContract)
 
 	// Try to create overlapping contract
 	body := models.ChildContractCreateRequest{
@@ -395,7 +395,7 @@ func TestChildHandler_DeleteContract(t *testing.T) {
 	db.Create(contract)
 
 	r := setupTestRouter()
-	r.DELETE("/organizations/:orgId/children/:id/contracts/:contractId", handler.DeleteContract)
+	r.DELETE("/organizations/:orgId/children/:childId/contracts/:contractId", handler.DeleteContract)
 
 	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org.ID, child.ID, contract.ID), nil)
 
@@ -414,7 +414,7 @@ func TestChildHandler_Get_NotFound(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/:id", handler.Get)
+	r.GET("/organizations/:orgId/children/:childId", handler.Get)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/999", org.ID), nil)
 
@@ -431,7 +431,7 @@ func TestChildHandler_Get_InvalidID(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/:id", handler.Get)
+	r.GET("/organizations/:orgId/children/:childId", handler.Get)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/invalid", org.ID), nil)
 
@@ -448,7 +448,7 @@ func TestChildHandler_Get_ZeroID(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/:id", handler.Get)
+	r.GET("/organizations/:orgId/children/:childId", handler.Get)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/0", org.ID), nil)
 
@@ -532,7 +532,7 @@ func TestChildHandler_Update_NotFound(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/children/:id", handler.Update)
+	r.PUT("/organizations/:orgId/children/:childId", handler.Update)
 
 	newName := "Updated"
 	body := models.ChildUpdateRequest{
@@ -554,7 +554,7 @@ func TestChildHandler_Update_InvalidID(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/children/:id", handler.Update)
+	r.PUT("/organizations/:orgId/children/:childId", handler.Update)
 
 	newName := "Updated"
 	body := models.ChildUpdateRequest{
@@ -576,7 +576,7 @@ func TestChildHandler_Delete_NotFound(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.DELETE("/organizations/:orgId/children/:id", handler.Delete)
+	r.DELETE("/organizations/:orgId/children/:childId", handler.Delete)
 
 	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/children/999", org.ID), nil)
 
@@ -593,7 +593,7 @@ func TestChildHandler_Delete_InvalidID(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.DELETE("/organizations/:orgId/children/:id", handler.Delete)
+	r.DELETE("/organizations/:orgId/children/:childId", handler.Delete)
 
 	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/children/invalid", org.ID), nil)
 
@@ -634,7 +634,7 @@ func TestChildHandler_ListContracts_ChildNotFound(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/:id/contracts", handler.ListContracts)
+	r.GET("/organizations/:orgId/children/:childId/contracts", handler.ListContracts)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/999/contracts", org.ID), nil)
 
@@ -655,7 +655,7 @@ func TestChildHandler_ListContracts_Empty(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/:id/contracts", handler.ListContracts)
+	r.GET("/organizations/:orgId/children/:childId/contracts", handler.ListContracts)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/%d/contracts", org.ID, child.ID), nil)
 
@@ -680,7 +680,7 @@ func TestChildHandler_CreateContract_ChildNotFound(t *testing.T) {
 	sectionID := ensureTestSection(t, db, org.ID)
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/children/:childId/contracts", handler.CreateContract)
 
 	body := models.ChildContractCreateRequest{
 		SectionID: sectionID,
@@ -703,7 +703,7 @@ func TestChildHandler_CreateContract_InvalidChildID(t *testing.T) {
 	sectionID := ensureTestSection(t, db, org.ID)
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/children/:childId/contracts", handler.CreateContract)
 
 	body := models.ChildContractCreateRequest{
 		SectionID: sectionID,
@@ -743,7 +743,7 @@ func TestChildHandler_CreateContract_ContractBoundaryTouch(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/children/:childId/contracts", handler.CreateContract)
 
 	// Create contract starting Jan 1, 2025 (day after previous ends) - should succeed
 	body := models.ChildContractCreateRequest{
@@ -787,7 +787,7 @@ func TestChildHandler_CreateContract_SameDayTransitionRejected(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/children/:childId/contracts", handler.CreateContract)
 
 	// Try to create contract starting Jan 31, 2025 (same day as previous ends) - should fail
 	body := models.ChildContractCreateRequest{
@@ -816,7 +816,7 @@ func TestChildHandler_DeleteContract_NotFound(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.DELETE("/organizations/:orgId/children/:id/contracts/:contractId", handler.DeleteContract)
+	r.DELETE("/organizations/:orgId/children/:childId/contracts/:contractId", handler.DeleteContract)
 
 	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/children/%d/contracts/999", org.ID, child.ID), nil)
 
@@ -837,7 +837,7 @@ func TestChildHandler_DeleteContract_InvalidContractID(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.DELETE("/organizations/:orgId/children/:id/contracts/:contractId", handler.DeleteContract)
+	r.DELETE("/organizations/:orgId/children/:childId/contracts/:contractId", handler.DeleteContract)
 
 	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/children/%d/contracts/invalid", org.ID, child.ID), nil)
 
@@ -854,7 +854,7 @@ func TestChildHandler_GetCurrentRecord_InvalidID(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/:id/contracts/current", handler.GetCurrentRecord)
+	r.GET("/organizations/:orgId/children/:childId/contracts/current", handler.GetCurrentRecord)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/invalid/contracts/current", org.ID), nil)
 
@@ -950,7 +950,7 @@ func TestChildHandler_CreateContract_FromAfterTo(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/children/:childId/contracts", handler.CreateContract)
 
 	toDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	body := models.ChildContractCreateRequest{
@@ -983,7 +983,7 @@ func TestChildHandler_Get_WrongOrg(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/:id", handler.Get)
+	r.GET("/organizations/:orgId/children/:childId", handler.Get)
 
 	// Try to access org1's child via org2's URL
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/%d", org2.ID, child.ID), nil)
@@ -1008,7 +1008,7 @@ func TestChildHandler_Update_WrongOrg(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/children/:id", handler.Update)
+	r.PUT("/organizations/:orgId/children/:childId", handler.Update)
 
 	newName := "Hacker"
 	body := models.ChildUpdateRequest{
@@ -1038,7 +1038,7 @@ func TestChildHandler_Delete_WrongOrg(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.DELETE("/organizations/:orgId/children/:id", handler.Delete)
+	r.DELETE("/organizations/:orgId/children/:childId", handler.Delete)
 
 	// Try to delete org1's child via org2's URL
 	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/children/%d", org2.ID, child.ID), nil)
@@ -1063,7 +1063,7 @@ func TestChildHandler_ListContracts_WrongOrg(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/:id/contracts", handler.ListContracts)
+	r.GET("/organizations/:orgId/children/:childId/contracts", handler.ListContracts)
 
 	// Try to list contracts for org1's child via org2's URL
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/%d/contracts", org2.ID, child.ID), nil)
@@ -1089,7 +1089,7 @@ func TestChildHandler_CreateContract_WrongOrg(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/children/:childId/contracts", handler.CreateContract)
 
 	body := models.ChildContractCreateRequest{
 		SectionID: sectionID,
@@ -1130,7 +1130,7 @@ func TestChildHandler_DeleteContract_WrongOrg(t *testing.T) {
 	db.Create(contract)
 
 	r := setupTestRouter()
-	r.DELETE("/organizations/:orgId/children/:id/contracts/:contractId", handler.DeleteContract)
+	r.DELETE("/organizations/:orgId/children/:childId/contracts/:contractId", handler.DeleteContract)
 
 	// Try to delete contract for org1's child via org2's URL
 	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org2.ID, child.ID, contract.ID), nil)
@@ -1165,7 +1165,7 @@ func TestChildHandler_GetCurrentRecord_WrongOrg(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/:id/contracts/current", handler.GetCurrentRecord)
+	r.GET("/organizations/:orgId/children/:childId/contracts/current", handler.GetCurrentRecord)
 
 	// Try to get current contract for org1's child via org2's URL
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/%d/contracts/current", org2.ID, child.ID), nil)
@@ -1193,7 +1193,7 @@ func TestChildHandler_CreateContract_SectionFromWrongOrg(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/children/:childId/contracts", handler.CreateContract)
 
 	// Try to create contract with org2's section for org1's child
 	body := models.ChildContractCreateRequest{
@@ -1235,7 +1235,7 @@ func TestChildHandler_UpdateContract_SectionFromWrongOrg(t *testing.T) {
 	db.Create(contract)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/children/:id/contracts/:contractId", handler.UpdateContract)
+	r.PUT("/organizations/:orgId/children/:childId/contracts/:contractId", handler.UpdateContract)
 
 	// Try to update contract to use org2's section
 	body := models.ChildContractUpdateRequest{
@@ -1262,7 +1262,7 @@ func TestChildHandler_CreateContract_MissingSectionID(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/children/:childId/contracts", handler.CreateContract)
 
 	// Send request without section_id (required field)
 	body := map[string]interface{}{
@@ -1288,7 +1288,7 @@ func TestChildHandler_CreateContract_NonExistentSection(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/children/:childId/contracts", handler.CreateContract)
 
 	body := models.ChildContractCreateRequest{
 		SectionID: 99999, // Non-existent section
@@ -2165,7 +2165,7 @@ func TestChildHandler_GetContract(t *testing.T) {
 	db.Create(contract)
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/:id/contracts/:contractId", handler.GetContract)
+	r.GET("/organizations/:orgId/children/:childId/contracts/:contractId", handler.GetContract)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org.ID, child.ID, contract.ID), nil)
 
@@ -2193,7 +2193,7 @@ func TestChildHandler_GetContract_NotFound(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/:id/contracts/:contractId", handler.GetContract)
+	r.GET("/organizations/:orgId/children/:childId/contracts/:contractId", handler.GetContract)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/%d/contracts/999", org.ID, child.ID), nil)
 
@@ -2214,7 +2214,7 @@ func TestChildHandler_GetContract_InvalidContractID(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/:id/contracts/:contractId", handler.GetContract)
+	r.GET("/organizations/:orgId/children/:childId/contracts/:contractId", handler.GetContract)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/%d/contracts/abc", org.ID, child.ID), nil)
 
@@ -2251,7 +2251,7 @@ func TestChildHandler_GetContract_WrongChild(t *testing.T) {
 	db.Create(contract)
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/:id/contracts/:contractId", handler.GetContract)
+	r.GET("/organizations/:orgId/children/:childId/contracts/:contractId", handler.GetContract)
 
 	// Try to get child1's contract via child2's URL
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org.ID, child2.ID, contract.ID), nil)
@@ -2289,7 +2289,7 @@ func TestChildHandler_UpdateContract(t *testing.T) {
 	db.Create(contract)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/children/:id/contracts/:contractId", handler.UpdateContract)
+	r.PUT("/organizations/:orgId/children/:childId/contracts/:contractId", handler.UpdateContract)
 
 	newFrom := today.AddDate(0, 2, 0)
 	body := models.ChildContractUpdateRequest{
@@ -2322,7 +2322,7 @@ func TestChildHandler_UpdateContract_NotFound(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/children/:id/contracts/:contractId", handler.UpdateContract)
+	r.PUT("/organizations/:orgId/children/:childId/contracts/:contractId", handler.UpdateContract)
 
 	newFrom := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
 	body := models.ChildContractUpdateRequest{
@@ -2369,7 +2369,7 @@ func TestChildHandler_UpdateContract_Overlap(t *testing.T) {
 	db.Create(contract2)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/children/:id/contracts/:contractId", handler.UpdateContract)
+	r.PUT("/organizations/:orgId/children/:childId/contracts/:contractId", handler.UpdateContract)
 
 	// Update contract2's From to overlap with contract1
 	newFrom := today.AddDate(0, 3, 0)
@@ -2406,7 +2406,7 @@ func TestChildHandler_UpdateContract_InvalidBody(t *testing.T) {
 	db.Create(contract)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/children/:id/contracts/:contractId", handler.UpdateContract)
+	r.PUT("/organizations/:orgId/children/:childId/contracts/:contractId", handler.UpdateContract)
 
 	body := map[string]interface{}{
 		"from": "not-a-date",
@@ -2436,7 +2436,7 @@ func TestChildHandler_CreateContract_WithVoucherNumber(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/children/:childId/contracts", handler.CreateContract)
 
 	voucher := "GB-12345678901-02"
 	body := models.ChildContractCreateRequest{
@@ -2476,7 +2476,7 @@ func TestChildHandler_CreateContract_WithoutVoucherNumber(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/children/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/children/:childId/contracts", handler.CreateContract)
 
 	body := models.ChildContractCreateRequest{
 		SectionID:  sectionID,
@@ -2522,7 +2522,7 @@ func TestChildHandler_UpdateContract_SetVoucherNumber(t *testing.T) {
 	db.Create(contract)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/children/:id/contracts/:contractId", handler.UpdateContract)
+	r.PUT("/organizations/:orgId/children/:childId/contracts/:contractId", handler.UpdateContract)
 
 	voucher := "GB-99999999999-01"
 	body := models.ChildContractUpdateRequest{
@@ -2572,7 +2572,7 @@ func TestChildHandler_UpdateContract_ClearVoucherNumber(t *testing.T) {
 	db.Create(contract)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/children/:id/contracts/:contractId", handler.UpdateContract)
+	r.PUT("/organizations/:orgId/children/:childId/contracts/:contractId", handler.UpdateContract)
 
 	empty := ""
 	body := models.ChildContractUpdateRequest{

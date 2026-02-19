@@ -56,7 +56,7 @@ func TestEmployeeHandler_Get(t *testing.T) {
 	db.Create(employee)
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/employees/:id", handler.Get)
+	r.GET("/organizations/:orgId/employees/:employeeId", handler.Get)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/%d", org.ID, employee.ID), nil)
 
@@ -87,7 +87,7 @@ func TestEmployeeHandler_Get_WrongOrg(t *testing.T) {
 	db.Create(employee)
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/employees/:id", handler.Get)
+	r.GET("/organizations/:orgId/employees/:employeeId", handler.Get)
 
 	// Try to access employee from org2 (should fail with 404)
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/%d", org2.ID, employee.ID), nil)
@@ -143,7 +143,7 @@ func TestEmployeeHandler_Update(t *testing.T) {
 	db.Create(employee)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/employees/:id", handler.Update)
+	r.PUT("/organizations/:orgId/employees/:employeeId", handler.Update)
 
 	newName := "Updated"
 	body := models.EmployeeUpdateRequest{
@@ -179,7 +179,7 @@ func TestEmployeeHandler_Update_WrongOrg(t *testing.T) {
 	db.Create(employee)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/employees/:id", handler.Update)
+	r.PUT("/organizations/:orgId/employees/:employeeId", handler.Update)
 
 	newName := "Hacked"
 	body := models.EmployeeUpdateRequest{
@@ -213,7 +213,7 @@ func TestEmployeeHandler_Delete(t *testing.T) {
 	db.Create(employee)
 
 	r := setupTestRouter()
-	r.DELETE("/organizations/:orgId/employees/:id", handler.Delete)
+	r.DELETE("/organizations/:orgId/employees/:employeeId", handler.Delete)
 
 	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d", org.ID, employee.ID), nil)
 
@@ -237,7 +237,7 @@ func TestEmployeeHandler_Delete_WrongOrg(t *testing.T) {
 	db.Create(employee)
 
 	r := setupTestRouter()
-	r.DELETE("/organizations/:orgId/employees/:id", handler.Delete)
+	r.DELETE("/organizations/:orgId/employees/:employeeId", handler.Delete)
 
 	// Try to delete employee from org2 (should fail with 404)
 	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d", org2.ID, employee.ID), nil)
@@ -278,7 +278,7 @@ func TestEmployeeHandler_ListContracts(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/employees/:id/contracts", handler.ListContracts)
+	r.GET("/organizations/:orgId/employees/:employeeId/contracts", handler.ListContracts)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/%d/contracts", org.ID, employee.ID), nil)
 
@@ -322,7 +322,7 @@ func TestEmployeeHandler_ListContracts_WrongOrg(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/employees/:id/contracts", handler.ListContracts)
+	r.GET("/organizations/:orgId/employees/:employeeId/contracts", handler.ListContracts)
 
 	// Try to list contracts from org2 (should fail with 404)
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/%d/contracts", org2.ID, employee.ID), nil)
@@ -357,7 +357,7 @@ func TestEmployeeHandler_GetCurrentRecord(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/employees/:id/contracts/current", handler.GetCurrentRecord)
+	r.GET("/organizations/:orgId/employees/:employeeId/contracts/current", handler.GetCurrentRecord)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/%d/contracts/current", org.ID, employee.ID), nil)
 
@@ -401,7 +401,7 @@ func TestEmployeeHandler_GetCurrentRecord_WrongOrg(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/employees/:id/contracts/current", handler.GetCurrentRecord)
+	r.GET("/organizations/:orgId/employees/:employeeId/contracts/current", handler.GetCurrentRecord)
 
 	// Try to get current contract from org2 (should fail with 404)
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/%d/contracts/current", org2.ID, employee.ID), nil)
@@ -423,7 +423,7 @@ func TestEmployeeHandler_GetCurrentRecord_NotFound(t *testing.T) {
 	db.Create(employee)
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/employees/:id/contracts/current", handler.GetCurrentRecord)
+	r.GET("/organizations/:orgId/employees/:employeeId/contracts/current", handler.GetCurrentRecord)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/%d/contracts/current", org.ID, employee.ID), nil)
 
@@ -448,7 +448,7 @@ func TestEmployeeHandler_CreateContract(t *testing.T) {
 	db.Create(payPlan)
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:employeeId/contracts", handler.CreateContract)
 
 	body := models.EmployeeContractCreateRequest{
 		SectionID:     sectionID,
@@ -490,7 +490,7 @@ func TestEmployeeHandler_CreateContract_SameDay(t *testing.T) {
 	db.Create(payPlan)
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:employeeId/contracts", handler.CreateContract)
 
 	// Create a same-day contract (from == to)
 	sameDay := time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC)
@@ -544,7 +544,7 @@ func TestEmployeeHandler_CreateContract_WrongOrg(t *testing.T) {
 	db.Create(payPlan)
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:employeeId/contracts", handler.CreateContract)
 
 	body := models.EmployeeContractCreateRequest{
 		SectionID:     sectionID,
@@ -598,7 +598,7 @@ func TestEmployeeHandler_CreateContract_Overlap(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:employeeId/contracts", handler.CreateContract)
 
 	// Try to create overlapping contract
 	body := models.EmployeeContractCreateRequest{
@@ -643,7 +643,7 @@ func TestEmployeeHandler_DeleteContract(t *testing.T) {
 	db.Create(contract)
 
 	r := setupTestRouter()
-	r.DELETE("/organizations/:orgId/employees/:id/contracts/:contractId", handler.DeleteContract)
+	r.DELETE("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.DeleteContract)
 
 	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d/contracts/%d", org.ID, employee.ID, contract.ID), nil)
 
@@ -680,7 +680,7 @@ func TestEmployeeHandler_DeleteContract_WrongOrg(t *testing.T) {
 	db.Create(contract)
 
 	r := setupTestRouter()
-	r.DELETE("/organizations/:orgId/employees/:id/contracts/:contractId", handler.DeleteContract)
+	r.DELETE("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.DeleteContract)
 
 	// Try to delete contract from org2 (should fail with 404)
 	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d/contracts/%d", org2.ID, employee.ID, contract.ID), nil)
@@ -729,7 +729,7 @@ func TestEmployeeHandler_DeleteContract_WrongEmployee(t *testing.T) {
 	db.Create(contract)
 
 	r := setupTestRouter()
-	r.DELETE("/organizations/:orgId/employees/:id/contracts/:contractId", handler.DeleteContract)
+	r.DELETE("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.DeleteContract)
 
 	// Try to delete contract via employee2 URL (should fail with 404)
 	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d/contracts/%d", org.ID, employee2.ID, contract.ID), nil)
@@ -767,7 +767,7 @@ func TestEmployeeHandler_CreateContract_SectionFromWrongOrg(t *testing.T) {
 	db.Create(payPlan)
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:employeeId/contracts", handler.CreateContract)
 
 	// Try to create contract with org2's section for org1's employee
 	body := models.EmployeeContractCreateRequest{
@@ -818,7 +818,7 @@ func TestEmployeeHandler_UpdateContract_SectionFromWrongOrg(t *testing.T) {
 	db.Create(contract)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/employees/:id/contracts/:contractId", handler.UpdateContract)
+	r.PUT("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.UpdateContract)
 
 	// Try to update contract to use org2's section
 	body := models.EmployeeContractUpdateRequest{
@@ -848,7 +848,7 @@ func TestEmployeeHandler_CreateContract_MissingSectionID(t *testing.T) {
 	db.Create(payPlan)
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:employeeId/contracts", handler.CreateContract)
 
 	// Send request without section_id (required field)
 	body := map[string]interface{}{
@@ -882,7 +882,7 @@ func TestEmployeeHandler_CreateContract_NonExistentSection(t *testing.T) {
 	db.Create(payPlan)
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:employeeId/contracts", handler.CreateContract)
 
 	body := models.EmployeeContractCreateRequest{
 		SectionID:     99999, // Non-existent section
@@ -911,7 +911,7 @@ func TestEmployeeHandler_Get_NotFound(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/employees/:id", handler.Get)
+	r.GET("/organizations/:orgId/employees/:employeeId", handler.Get)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/999", org.ID), nil)
 
@@ -928,7 +928,7 @@ func TestEmployeeHandler_Get_InvalidID(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/employees/:id", handler.Get)
+	r.GET("/organizations/:orgId/employees/:employeeId", handler.Get)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/invalid", org.ID), nil)
 
@@ -945,7 +945,7 @@ func TestEmployeeHandler_Get_ZeroID(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/employees/:id", handler.Get)
+	r.GET("/organizations/:orgId/employees/:employeeId", handler.Get)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/0", org.ID), nil)
 
@@ -960,7 +960,7 @@ func TestEmployeeHandler_Get_InvalidOrgID(t *testing.T) {
 	handler := NewEmployeeHandler(employeeService, createAuditService(db))
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/employees/:id", handler.Get)
+	r.GET("/organizations/:orgId/employees/:employeeId", handler.Get)
 
 	w := performRequest(r, "GET", "/organizations/invalid/employees/1", nil)
 
@@ -1060,7 +1060,7 @@ func TestEmployeeHandler_Update_NotFound(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/employees/:id", handler.Update)
+	r.PUT("/organizations/:orgId/employees/:employeeId", handler.Update)
 
 	newName := "Updated"
 	body := models.EmployeeUpdateRequest{
@@ -1082,7 +1082,7 @@ func TestEmployeeHandler_Update_InvalidID(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/employees/:id", handler.Update)
+	r.PUT("/organizations/:orgId/employees/:employeeId", handler.Update)
 
 	newName := "Updated"
 	body := models.EmployeeUpdateRequest{
@@ -1108,7 +1108,7 @@ func TestEmployeeHandler_Update_EmptyBody(t *testing.T) {
 	db.Create(employee)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/employees/:id", handler.Update)
+	r.PUT("/organizations/:orgId/employees/:employeeId", handler.Update)
 
 	// Empty update
 	body := models.EmployeeUpdateRequest{}
@@ -1135,7 +1135,7 @@ func TestEmployeeHandler_Delete_NotFound(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.DELETE("/organizations/:orgId/employees/:id", handler.Delete)
+	r.DELETE("/organizations/:orgId/employees/:employeeId", handler.Delete)
 
 	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/999", org.ID), nil)
 
@@ -1153,7 +1153,7 @@ func TestEmployeeHandler_Delete_InvalidID(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.DELETE("/organizations/:orgId/employees/:id", handler.Delete)
+	r.DELETE("/organizations/:orgId/employees/:employeeId", handler.Delete)
 
 	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/invalid", org.ID), nil)
 
@@ -1258,7 +1258,7 @@ func TestEmployeeHandler_ListContracts_EmployeeNotFound(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/employees/:id/contracts", handler.ListContracts)
+	r.GET("/organizations/:orgId/employees/:employeeId/contracts", handler.ListContracts)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/999/contracts", org.ID), nil)
 
@@ -1279,7 +1279,7 @@ func TestEmployeeHandler_ListContracts_Empty(t *testing.T) {
 	db.Create(employee)
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/employees/:id/contracts", handler.ListContracts)
+	r.GET("/organizations/:orgId/employees/:employeeId/contracts", handler.ListContracts)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/%d/contracts", org.ID, employee.ID), nil)
 
@@ -1307,7 +1307,7 @@ func TestEmployeeHandler_CreateContract_EmployeeNotFound(t *testing.T) {
 	db.Create(payPlan)
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:employeeId/contracts", handler.CreateContract)
 
 	body := models.EmployeeContractCreateRequest{
 		SectionID:     sectionID,
@@ -1337,7 +1337,7 @@ func TestEmployeeHandler_CreateContract_InvalidEmployeeID(t *testing.T) {
 	db.Create(payPlan)
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:employeeId/contracts", handler.CreateContract)
 
 	body := models.EmployeeContractCreateRequest{
 		SectionID:     sectionID,
@@ -1367,7 +1367,7 @@ func TestEmployeeHandler_CreateContract_MissingStaffCategory(t *testing.T) {
 	db.Create(employee)
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:employeeId/contracts", handler.CreateContract)
 
 	body := map[string]interface{}{
 		"from":         "2025-01-01T00:00:00Z",
@@ -1398,7 +1398,7 @@ func TestEmployeeHandler_CreateContract_ZeroWeeklyHours(t *testing.T) {
 	db.Create(payPlan)
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:employeeId/contracts", handler.CreateContract)
 
 	body := models.EmployeeContractCreateRequest{
 		SectionID:     sectionID,
@@ -1445,7 +1445,7 @@ func TestEmployeeHandler_CreateContract_ContractBoundaryTouch(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:employeeId/contracts", handler.CreateContract)
 
 	// Create contract starting Jan 1, 2025 (day after previous ends) - should succeed
 	body := models.EmployeeContractCreateRequest{
@@ -1496,7 +1496,7 @@ func TestEmployeeHandler_CreateContract_SameDayTransitionRejected(t *testing.T) 
 	})
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:employeeId/contracts", handler.CreateContract)
 
 	// Try to create contract starting Jan 31, 2025 (same day as previous ends) - should fail
 	body := models.EmployeeContractCreateRequest{
@@ -1528,7 +1528,7 @@ func TestEmployeeHandler_DeleteContract_NotFound(t *testing.T) {
 	db.Create(employee)
 
 	r := setupTestRouter()
-	r.DELETE("/organizations/:orgId/employees/:id/contracts/:contractId", handler.DeleteContract)
+	r.DELETE("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.DeleteContract)
 
 	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d/contracts/999", org.ID, employee.ID), nil)
 
@@ -1550,7 +1550,7 @@ func TestEmployeeHandler_DeleteContract_InvalidContractID(t *testing.T) {
 	db.Create(employee)
 
 	r := setupTestRouter()
-	r.DELETE("/organizations/:orgId/employees/:id/contracts/:contractId", handler.DeleteContract)
+	r.DELETE("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.DeleteContract)
 
 	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d/contracts/invalid", org.ID, employee.ID), nil)
 
@@ -1567,7 +1567,7 @@ func TestEmployeeHandler_GetCurrentRecord_InvalidID(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/employees/:id/contracts/current", handler.GetCurrentRecord)
+	r.GET("/organizations/:orgId/employees/:employeeId/contracts/current", handler.GetCurrentRecord)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/invalid/contracts/current", org.ID), nil)
 
@@ -1666,7 +1666,7 @@ func TestEmployeeHandler_CreateContract_FromAfterTo(t *testing.T) {
 	db.Create(payPlan)
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:employeeId/contracts", handler.CreateContract)
 
 	toDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	body := models.EmployeeContractCreateRequest{
@@ -1702,7 +1702,7 @@ func TestEmployeeHandler_CreateContract_NegativeWeeklyHours(t *testing.T) {
 	db.Create(payPlan)
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:employeeId/contracts", handler.CreateContract)
 
 	body := models.EmployeeContractCreateRequest{
 		SectionID:     sectionID,
@@ -1736,7 +1736,7 @@ func TestEmployeeHandler_CreateContract_WeeklyHoursOver168(t *testing.T) {
 	db.Create(payPlan)
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:employeeId/contracts", handler.CreateContract)
 
 	body := models.EmployeeContractCreateRequest{
 		SectionID:     sectionID,
@@ -1770,7 +1770,7 @@ func TestEmployeeHandler_CreateContract_InvalidStaffCategory(t *testing.T) {
 	db.Create(payPlan)
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/employees/:id/contracts", handler.CreateContract)
+	r.POST("/organizations/:orgId/employees/:employeeId/contracts", handler.CreateContract)
 
 	body := models.EmployeeContractCreateRequest{
 		SectionID:     sectionID,
@@ -1932,7 +1932,7 @@ func TestEmployeeHandler_GetContract(t *testing.T) {
 	db.Create(contract)
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/employees/:id/contracts/:contractId", handler.GetContract)
+	r.GET("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.GetContract)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/%d/contracts/%d", org.ID, employee.ID, contract.ID), nil)
 
@@ -1963,7 +1963,7 @@ func TestEmployeeHandler_GetContract_NotFound(t *testing.T) {
 	db.Create(employee)
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/employees/:id/contracts/:contractId", handler.GetContract)
+	r.GET("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.GetContract)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/%d/contracts/999", org.ID, employee.ID), nil)
 
@@ -1984,7 +1984,7 @@ func TestEmployeeHandler_GetContract_InvalidContractID(t *testing.T) {
 	db.Create(employee)
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/employees/:id/contracts/:contractId", handler.GetContract)
+	r.GET("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.GetContract)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/%d/contracts/abc", org.ID, employee.ID), nil)
 
@@ -2025,7 +2025,7 @@ func TestEmployeeHandler_GetContract_WrongEmployee(t *testing.T) {
 	db.Create(contract)
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/employees/:id/contracts/:contractId", handler.GetContract)
+	r.GET("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.GetContract)
 
 	// Try to get emp1's contract via emp2's URL
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/%d/contracts/%d", org.ID, emp2.ID, contract.ID), nil)
@@ -2065,7 +2065,7 @@ func TestEmployeeHandler_UpdateContract(t *testing.T) {
 	db.Create(contract)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/employees/:id/contracts/:contractId", handler.UpdateContract)
+	r.PUT("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.UpdateContract)
 
 	newStaffCategory := "non_pedagogical"
 	body := models.EmployeeContractUpdateRequest{
@@ -2098,7 +2098,7 @@ func TestEmployeeHandler_UpdateContract_NotFound(t *testing.T) {
 	db.Create(employee)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/employees/:id/contracts/:contractId", handler.UpdateContract)
+	r.PUT("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.UpdateContract)
 
 	newStaffCategory := "non_pedagogical"
 	body := models.EmployeeContractUpdateRequest{
@@ -2152,7 +2152,7 @@ func TestEmployeeHandler_UpdateContract_Overlap(t *testing.T) {
 	db.Create(contract2)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/employees/:id/contracts/:contractId", handler.UpdateContract)
+	r.PUT("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.UpdateContract)
 
 	// Update contract2's From to overlap with contract1
 	newFrom := today.AddDate(0, 3, 0)
@@ -2193,7 +2193,7 @@ func TestEmployeeHandler_UpdateContract_InvalidBody(t *testing.T) {
 	db.Create(contract)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/employees/:id/contracts/:contractId", handler.UpdateContract)
+	r.PUT("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.UpdateContract)
 
 	body := map[string]interface{}{
 		"from": "not-a-date",

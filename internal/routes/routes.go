@@ -111,20 +111,20 @@ func Setup(r *gin.Engine, d Deps) {
 			governmentFundings := protected.Group("/government-fundings")
 			{
 				governmentFundings.GET("", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.List)
-				governmentFundings.GET("/:id", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.Get)
+				governmentFundings.GET("/:fundingId", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.Get)
 				governmentFundings.POST("", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.Create)
-				governmentFundings.PUT("/:id", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.Update)
-				governmentFundings.DELETE("/:id", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.Delete)
+				governmentFundings.PUT("/:fundingId", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.Update)
+				governmentFundings.DELETE("/:fundingId", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.Delete)
 
 				// Period management
-				governmentFundings.POST("/:id/periods", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.CreatePeriod)
-				governmentFundings.PUT("/:id/periods/:periodId", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.UpdatePeriod)
-				governmentFundings.DELETE("/:id/periods/:periodId", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.DeletePeriod)
+				governmentFundings.POST("/:fundingId/periods", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.CreatePeriod)
+				governmentFundings.PUT("/:fundingId/periods/:periodId", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.UpdatePeriod)
+				governmentFundings.DELETE("/:fundingId/periods/:periodId", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.DeletePeriod)
 
 				// Property management (directly under periods)
-				governmentFundings.POST("/:id/periods/:periodId/properties", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.CreateProperty)
-				governmentFundings.PUT("/:id/periods/:periodId/properties/:propId", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.UpdateProperty)
-				governmentFundings.DELETE("/:id/periods/:periodId/properties/:propId", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.DeleteProperty)
+				governmentFundings.POST("/:fundingId/periods/:periodId/properties", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.CreateProperty)
+				governmentFundings.PUT("/:fundingId/periods/:periodId/properties/:propId", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.UpdateProperty)
+				governmentFundings.DELETE("/:fundingId/periods/:periodId/properties/:propId", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.DeleteProperty)
 			}
 
 			// ============================================================
@@ -176,7 +176,7 @@ func Setup(r *gin.Engine, d Deps) {
 
 			// ============================================================
 			// Organization-scoped resources
-			// All routes under /organizations/:id/... require org access
+			// All routes under /organizations/:orgId/... require org access
 			// ============================================================
 			orgScoped := protected.Group("/organizations/:orgId")
 			{
@@ -250,12 +250,12 @@ func Setup(r *gin.Engine, d Deps) {
 				// Employees
 				employees := orgScoped.Group("/employees")
 				{
-					// Export (must be before /:id to avoid route conflict)
+					// Export (must be before /:employeeId to avoid route conflict)
 					employees.GET("/export/excel",
 						authzMiddleware.RequirePermission(rbac.ResourceEmployees, rbac.ActionRead),
 						exportHandler.ExportEmployees)
 
-					// Step promotions (must be before /:id to avoid route conflict)
+					// Step promotions (must be before /:employeeId to avoid route conflict)
 					employees.GET("/step-promotions",
 						authzMiddleware.RequirePermission(rbac.ResourceEmployees, rbac.ActionRead),
 						stepPromotionHandler.GetStepPromotions)
@@ -263,36 +263,36 @@ func Setup(r *gin.Engine, d Deps) {
 					employees.GET("",
 						authzMiddleware.RequirePermission(rbac.ResourceEmployees, rbac.ActionRead),
 						employeeHandler.List)
-					employees.GET("/:id",
+					employees.GET("/:employeeId",
 						authzMiddleware.RequirePermission(rbac.ResourceEmployees, rbac.ActionRead),
 						employeeHandler.Get)
 					employees.POST("",
 						authzMiddleware.RequirePermission(rbac.ResourceEmployees, rbac.ActionCreate),
 						employeeHandler.Create)
-					employees.PUT("/:id",
+					employees.PUT("/:employeeId",
 						authzMiddleware.RequirePermission(rbac.ResourceEmployees, rbac.ActionUpdate),
 						employeeHandler.Update)
-					employees.DELETE("/:id",
+					employees.DELETE("/:employeeId",
 						authzMiddleware.RequirePermission(rbac.ResourceEmployees, rbac.ActionDelete),
 						employeeHandler.Delete)
 
 					// Employee contracts
-					employees.GET("/:id/contracts",
+					employees.GET("/:employeeId/contracts",
 						authzMiddleware.RequirePermission(rbac.ResourceEmployeeContracts, rbac.ActionRead),
 						employeeHandler.ListContracts)
-					employees.GET("/:id/contracts/current",
+					employees.GET("/:employeeId/contracts/current",
 						authzMiddleware.RequirePermission(rbac.ResourceEmployeeContracts, rbac.ActionRead),
 						employeeHandler.GetCurrentRecord)
-					employees.POST("/:id/contracts",
+					employees.POST("/:employeeId/contracts",
 						authzMiddleware.RequirePermission(rbac.ResourceEmployeeContracts, rbac.ActionCreate),
 						employeeHandler.CreateContract)
-					employees.GET("/:id/contracts/:contractId",
+					employees.GET("/:employeeId/contracts/:contractId",
 						authzMiddleware.RequirePermission(rbac.ResourceEmployeeContracts, rbac.ActionRead),
 						employeeHandler.GetContract)
-					employees.PUT("/:id/contracts/:contractId",
+					employees.PUT("/:employeeId/contracts/:contractId",
 						authzMiddleware.RequirePermission(rbac.ResourceEmployeeContracts, rbac.ActionUpdate),
 						employeeHandler.UpdateContract)
-					employees.DELETE("/:id/contracts/:contractId",
+					employees.DELETE("/:employeeId/contracts/:contractId",
 						authzMiddleware.RequirePermission(rbac.ResourceEmployeeContracts, rbac.ActionDelete),
 						employeeHandler.DeleteContract)
 				}
@@ -305,13 +305,13 @@ func Setup(r *gin.Engine, d Deps) {
 					fundingBills.GET("",
 						authzMiddleware.RequirePermission(rbac.ResourceGovernmentFundingBills, rbac.ActionRead),
 						governmentFundingBillHandler.List)
-					fundingBills.GET("/:id",
+					fundingBills.GET("/:billId",
 						authzMiddleware.RequirePermission(rbac.ResourceGovernmentFundingBills, rbac.ActionRead),
 						governmentFundingBillHandler.Get)
 					fundingBills.POST("/isbj",
 						authzMiddleware.RequirePermission(rbac.ResourceGovernmentFundingBills, rbac.ActionCreate),
 						governmentFundingBillHandler.UploadISBJ)
-					fundingBills.DELETE("/:id",
+					fundingBills.DELETE("/:billId",
 						authzMiddleware.RequirePermission(rbac.ResourceGovernmentFundingBills, rbac.ActionDelete),
 						governmentFundingBillHandler.Delete)
 				}
@@ -319,13 +319,13 @@ func Setup(r *gin.Engine, d Deps) {
 				// Children
 				children := orgScoped.Group("/children")
 				{
-					// Export (must be before /:id to avoid route conflict)
+					// Export (must be before /:childId to avoid route conflict)
 					children.GET("/export/excel",
 						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
 						exportHandler.ExportChildren)
 
 					// ============================================================
-					// Org-wide child attendance endpoints (must come before /:id)
+					// Org-wide child attendance endpoints (must come before /:childId)
 					// ============================================================
 					children.GET("/attendance",
 						authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionRead),
@@ -334,7 +334,7 @@ func Setup(r *gin.Engine, d Deps) {
 						authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionRead),
 						childAttendanceHandler.GetDailySummary)
 
-					// Statistics endpoint (must be before /:id to avoid conflict)
+					// Statistics endpoint (must be before /:childId to avoid conflict)
 					children.GET("/statistics/age-distribution",
 						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
 						childHandler.GetAgeDistribution)
@@ -343,7 +343,7 @@ func Setup(r *gin.Engine, d Deps) {
 						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
 						childHandler.GetContractPropertiesDistribution)
 
-					// Funding calculation endpoint (must be before /:id to avoid conflict)
+					// Funding calculation endpoint (must be before /:childId to avoid conflict)
 					children.GET("/funding",
 						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
 						childHandler.GetFunding)
@@ -351,46 +351,46 @@ func Setup(r *gin.Engine, d Deps) {
 					children.GET("",
 						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
 						childHandler.List)
-					children.GET("/:id",
+					children.GET("/:childId",
 						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
 						childHandler.Get)
 					children.POST("",
 						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionCreate),
 						childHandler.Create)
-					children.PUT("/:id",
+					children.PUT("/:childId",
 						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionUpdate),
 						childHandler.Update)
-					children.DELETE("/:id",
+					children.DELETE("/:childId",
 						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionDelete),
 						childHandler.Delete)
 
 					// Child contracts
-					children.GET("/:id/contracts",
+					children.GET("/:childId/contracts",
 						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionRead),
 						childHandler.ListContracts)
-					children.GET("/:id/contracts/current",
+					children.GET("/:childId/contracts/current",
 						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionRead),
 						childHandler.GetCurrentRecord)
-					children.POST("/:id/contracts",
+					children.POST("/:childId/contracts",
 						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionCreate),
 						childHandler.CreateContract)
-					children.GET("/:id/contracts/:contractId",
+					children.GET("/:childId/contracts/:contractId",
 						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionRead),
 						childHandler.GetContract)
-					children.PUT("/:id/contracts/:contractId",
+					children.PUT("/:childId/contracts/:contractId",
 						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionUpdate),
 						childHandler.UpdateContract)
-					children.DELETE("/:id/contracts/:contractId",
+					children.DELETE("/:childId/contracts/:contractId",
 						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionDelete),
 						childHandler.DeleteContract)
 
 					// ============================================================
 					// Per-child attendance tracking
-					// Routes: /children/:id/attendance/...
-					// Uses same :id param as children resource (Gin resolves
+					// Routes: /children/:childId/attendance/...
+					// Uses same :childId param as children resource (Gin resolves
 					// based on route structure). Sub-resource uses :attendanceId.
 					// ============================================================
-					childAttendance := children.Group("/:id/attendance")
+					childAttendance := children.Group("/:childId/attendance")
 					{
 						childAttendance.POST("",
 							authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionCreate),
@@ -418,44 +418,44 @@ func Setup(r *gin.Engine, d Deps) {
 					payplans.GET("",
 						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionRead),
 						payPlanHandler.List)
-					payplans.GET("/:id",
+					payplans.GET("/:payplanId",
 						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionRead),
 						payPlanHandler.Get)
 					payplans.POST("",
 						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionCreate),
 						payPlanHandler.Create)
-					payplans.PUT("/:id",
+					payplans.PUT("/:payplanId",
 						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionUpdate),
 						payPlanHandler.Update)
-					payplans.DELETE("/:id",
+					payplans.DELETE("/:payplanId",
 						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionDelete),
 						payPlanHandler.Delete)
 
 					// Period management
-					payplans.POST("/:id/periods",
+					payplans.POST("/:payplanId/periods",
 						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionCreate),
 						payPlanHandler.CreatePeriod)
-					payplans.GET("/:id/periods/:periodId",
+					payplans.GET("/:payplanId/periods/:periodId",
 						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionRead),
 						payPlanHandler.GetPeriod)
-					payplans.PUT("/:id/periods/:periodId",
+					payplans.PUT("/:payplanId/periods/:periodId",
 						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionUpdate),
 						payPlanHandler.UpdatePeriod)
-					payplans.DELETE("/:id/periods/:periodId",
+					payplans.DELETE("/:payplanId/periods/:periodId",
 						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionDelete),
 						payPlanHandler.DeletePeriod)
 
 					// Entry management
-					payplans.POST("/:id/periods/:periodId/entries",
+					payplans.POST("/:payplanId/periods/:periodId/entries",
 						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionCreate),
 						payPlanHandler.CreateEntry)
-					payplans.GET("/:id/periods/:periodId/entries/:entryId",
+					payplans.GET("/:payplanId/periods/:periodId/entries/:entryId",
 						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionRead),
 						payPlanHandler.GetEntry)
-					payplans.PUT("/:id/periods/:periodId/entries/:entryId",
+					payplans.PUT("/:payplanId/periods/:periodId/entries/:entryId",
 						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionUpdate),
 						payPlanHandler.UpdateEntry)
-					payplans.DELETE("/:id/periods/:periodId/entries/:entryId",
+					payplans.DELETE("/:payplanId/periods/:periodId/entries/:entryId",
 						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionDelete),
 						payPlanHandler.DeleteEntry)
 				}
@@ -468,33 +468,33 @@ func Setup(r *gin.Engine, d Deps) {
 					budgetItems.GET("",
 						authzMiddleware.RequirePermission(rbac.ResourceBudgetItems, rbac.ActionRead),
 						budgetItemHandler.List)
-					budgetItems.GET("/:id",
+					budgetItems.GET("/:budgetItemId",
 						authzMiddleware.RequirePermission(rbac.ResourceBudgetItems, rbac.ActionRead),
 						budgetItemHandler.Get)
 					budgetItems.POST("",
 						authzMiddleware.RequirePermission(rbac.ResourceBudgetItems, rbac.ActionCreate),
 						budgetItemHandler.Create)
-					budgetItems.PUT("/:id",
+					budgetItems.PUT("/:budgetItemId",
 						authzMiddleware.RequirePermission(rbac.ResourceBudgetItems, rbac.ActionUpdate),
 						budgetItemHandler.Update)
-					budgetItems.DELETE("/:id",
+					budgetItems.DELETE("/:budgetItemId",
 						authzMiddleware.RequirePermission(rbac.ResourceBudgetItems, rbac.ActionDelete),
 						budgetItemHandler.Delete)
 
 					// Budget item entry management
-					budgetItems.GET("/:id/entries",
+					budgetItems.GET("/:budgetItemId/entries",
 						authzMiddleware.RequirePermission(rbac.ResourceBudgetItemEntries, rbac.ActionRead),
 						budgetItemHandler.ListEntries)
-					budgetItems.POST("/:id/entries",
+					budgetItems.POST("/:budgetItemId/entries",
 						authzMiddleware.RequirePermission(rbac.ResourceBudgetItemEntries, rbac.ActionCreate),
 						budgetItemHandler.CreateEntry)
-					budgetItems.GET("/:id/entries/:entryId",
+					budgetItems.GET("/:budgetItemId/entries/:entryId",
 						authzMiddleware.RequirePermission(rbac.ResourceBudgetItemEntries, rbac.ActionRead),
 						budgetItemHandler.GetEntry)
-					budgetItems.PUT("/:id/entries/:entryId",
+					budgetItems.PUT("/:budgetItemId/entries/:entryId",
 						authzMiddleware.RequirePermission(rbac.ResourceBudgetItemEntries, rbac.ActionUpdate),
 						budgetItemHandler.UpdateEntry)
-					budgetItems.DELETE("/:id/entries/:entryId",
+					budgetItems.DELETE("/:budgetItemId/entries/:entryId",
 						authzMiddleware.RequirePermission(rbac.ResourceBudgetItemEntries, rbac.ActionDelete),
 						budgetItemHandler.DeleteEntry)
 				}

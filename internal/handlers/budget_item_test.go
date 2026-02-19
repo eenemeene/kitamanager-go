@@ -286,7 +286,7 @@ func TestBudgetItemHandler_Get(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/api/v1/organizations/:orgId/budget-items/:id", handler.Get)
+	r.GET("/api/v1/organizations/:orgId/budget-items/:budgetItemId", handler.Get)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/api/v1/organizations/%d/budget-items/%d", org.ID, item.ID), nil)
 
@@ -315,7 +315,7 @@ func TestBudgetItemHandler_Get_NotFound(t *testing.T) {
 	handler := NewBudgetItemHandler(svc, createAuditService(db))
 
 	r := setupTestRouter()
-	r.GET("/api/v1/organizations/:orgId/budget-items/:id", handler.Get)
+	r.GET("/api/v1/organizations/:orgId/budget-items/:budgetItemId", handler.Get)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/api/v1/organizations/%d/budget-items/9999", org.ID), nil)
 
@@ -331,7 +331,7 @@ func TestBudgetItemHandler_Get_InvalidOrgID(t *testing.T) {
 	handler := NewBudgetItemHandler(svc, createAuditService(db))
 
 	r := setupTestRouter()
-	r.GET("/api/v1/organizations/:orgId/budget-items/:id", handler.Get)
+	r.GET("/api/v1/organizations/:orgId/budget-items/:budgetItemId", handler.Get)
 
 	w := performRequest(r, "GET", "/api/v1/organizations/abc/budget-items/1", nil)
 
@@ -348,7 +348,7 @@ func TestBudgetItemHandler_Get_InvalidResourceID(t *testing.T) {
 	handler := NewBudgetItemHandler(svc, createAuditService(db))
 
 	r := setupTestRouter()
-	r.GET("/api/v1/organizations/:orgId/budget-items/:id", handler.Get)
+	r.GET("/api/v1/organizations/:orgId/budget-items/:budgetItemId", handler.Get)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/api/v1/organizations/%d/budget-items/abc", org.ID), nil)
 
@@ -369,7 +369,7 @@ func TestBudgetItemHandler_Update(t *testing.T) {
 	db.Create(item)
 
 	r := setupTestRouter()
-	r.PUT("/api/v1/organizations/:orgId/budget-items/:id", handler.Update)
+	r.PUT("/api/v1/organizations/:orgId/budget-items/:budgetItemId", handler.Update)
 
 	updName := "Office Rent"
 	updCategory := "expense"
@@ -399,7 +399,7 @@ func TestBudgetItemHandler_Update_InvalidCategory(t *testing.T) {
 	db.Create(item)
 
 	r := setupTestRouter()
-	r.PUT("/api/v1/organizations/:orgId/budget-items/:id", handler.Update)
+	r.PUT("/api/v1/organizations/:orgId/budget-items/:budgetItemId", handler.Update)
 
 	bogusName := "Rent"
 	bogusCategory := "bogus"
@@ -423,7 +423,7 @@ func TestBudgetItemHandler_Delete(t *testing.T) {
 	db.Create(item)
 
 	r := setupTestRouter()
-	r.DELETE("/api/v1/organizations/:orgId/budget-items/:id", handler.Delete)
+	r.DELETE("/api/v1/organizations/:orgId/budget-items/:budgetItemId", handler.Delete)
 
 	w := performRequest(r, "DELETE", fmt.Sprintf("/api/v1/organizations/%d/budget-items/%d", org.ID, item.ID), nil)
 
@@ -440,7 +440,7 @@ func TestBudgetItemHandler_Delete_NotFound(t *testing.T) {
 	handler := NewBudgetItemHandler(svc, createAuditService(db))
 
 	r := setupTestRouter()
-	r.DELETE("/api/v1/organizations/:orgId/budget-items/:id", handler.Delete)
+	r.DELETE("/api/v1/organizations/:orgId/budget-items/:budgetItemId", handler.Delete)
 
 	w := performRequest(r, "DELETE", fmt.Sprintf("/api/v1/organizations/%d/budget-items/9999", org.ID), nil)
 
@@ -461,7 +461,7 @@ func TestBudgetItemHandler_CreateEntry(t *testing.T) {
 	db.Create(item)
 
 	r := setupTestRouter()
-	r.POST("/api/v1/organizations/:orgId/budget-items/:id/entries", handler.CreateEntry)
+	r.POST("/api/v1/organizations/:orgId/budget-items/:budgetItemId/entries", handler.CreateEntry)
 
 	body := map[string]interface{}{
 		"from":         "2024-01-01T00:00:00Z",
@@ -508,7 +508,7 @@ func TestBudgetItemHandler_CreateEntry_Overlap(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.POST("/api/v1/organizations/:orgId/budget-items/:id/entries", handler.CreateEntry)
+	r.POST("/api/v1/organizations/:orgId/budget-items/:budgetItemId/entries", handler.CreateEntry)
 
 	// Try to create an overlapping entry
 	body := map[string]interface{}{
@@ -534,7 +534,7 @@ func TestBudgetItemHandler_CreateEntry_InvalidJSON(t *testing.T) {
 	db.Create(item)
 
 	r := setupTestRouter()
-	r.POST("/api/v1/organizations/:orgId/budget-items/:id/entries", handler.CreateEntry)
+	r.POST("/api/v1/organizations/:orgId/budget-items/:budgetItemId/entries", handler.CreateEntry)
 
 	w := performRequestRaw(r, "POST", fmt.Sprintf("/api/v1/organizations/%d/budget-items/%d/entries", org.ID, item.ID), `{invalid json}`)
 
@@ -567,7 +567,7 @@ func TestBudgetItemHandler_ListEntries(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/api/v1/organizations/:orgId/budget-items/:id/entries", handler.ListEntries)
+	r.GET("/api/v1/organizations/:orgId/budget-items/:budgetItemId/entries", handler.ListEntries)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/api/v1/organizations/%d/budget-items/%d/entries", org.ID, item.ID), nil)
 
@@ -605,7 +605,7 @@ func TestBudgetItemHandler_GetEntry(t *testing.T) {
 	db.Create(entry)
 
 	r := setupTestRouter()
-	r.GET("/api/v1/organizations/:orgId/budget-items/:id/entries/:entryId", handler.GetEntry)
+	r.GET("/api/v1/organizations/:orgId/budget-items/:budgetItemId/entries/:entryId", handler.GetEntry)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/api/v1/organizations/%d/budget-items/%d/entries/%d", org.ID, item.ID, entry.ID), nil)
 
@@ -634,7 +634,7 @@ func TestBudgetItemHandler_GetEntry_NotFound(t *testing.T) {
 	db.Create(item)
 
 	r := setupTestRouter()
-	r.GET("/api/v1/organizations/:orgId/budget-items/:id/entries/:entryId", handler.GetEntry)
+	r.GET("/api/v1/organizations/:orgId/budget-items/:budgetItemId/entries/:entryId", handler.GetEntry)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/api/v1/organizations/%d/budget-items/%d/entries/9999", org.ID, item.ID), nil)
 
@@ -663,7 +663,7 @@ func TestBudgetItemHandler_UpdateEntry(t *testing.T) {
 	db.Create(entry)
 
 	r := setupTestRouter()
-	r.PUT("/api/v1/organizations/:orgId/budget-items/:id/entries/:entryId", handler.UpdateEntry)
+	r.PUT("/api/v1/organizations/:orgId/budget-items/:budgetItemId/entries/:entryId", handler.UpdateEntry)
 
 	body := map[string]interface{}{
 		"from":         "2024-01-01T00:00:00Z",
@@ -706,7 +706,7 @@ func TestBudgetItemHandler_DeleteEntry(t *testing.T) {
 	db.Create(entry)
 
 	r := setupTestRouter()
-	r.DELETE("/api/v1/organizations/:orgId/budget-items/:id/entries/:entryId", handler.DeleteEntry)
+	r.DELETE("/api/v1/organizations/:orgId/budget-items/:budgetItemId/entries/:entryId", handler.DeleteEntry)
 
 	w := performRequest(r, "DELETE", fmt.Sprintf("/api/v1/organizations/%d/budget-items/%d/entries/%d", org.ID, item.ID, entry.ID), nil)
 
@@ -726,7 +726,7 @@ func TestBudgetItemHandler_DeleteEntry_NotFound(t *testing.T) {
 	db.Create(item)
 
 	r := setupTestRouter()
-	r.DELETE("/api/v1/organizations/:orgId/budget-items/:id/entries/:entryId", handler.DeleteEntry)
+	r.DELETE("/api/v1/organizations/:orgId/budget-items/:budgetItemId/entries/:entryId", handler.DeleteEntry)
 
 	w := performRequest(r, "DELETE", fmt.Sprintf("/api/v1/organizations/%d/budget-items/%d/entries/9999", org.ID, item.ID), nil)
 

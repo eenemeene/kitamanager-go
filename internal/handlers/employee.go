@@ -107,15 +107,15 @@ func (h *EmployeeHandler) List(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Employee ID"
+// @Param employeeId path int true "Employee ID"
 // @Success 200 {object} models.EmployeeResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/employees/{id} [get]
+// @Router /api/v1/organizations/{orgId}/employees/{employeeId} [get]
 func (h *EmployeeHandler) Get(c *gin.Context) {
-	orgID, id, ok := parseOrgAndResourceID(c, "id")
+	orgID, id, ok := parseOrgAndResourceID(c, "employeeId")
 	if !ok {
 		return
 	}
@@ -173,16 +173,16 @@ func (h *EmployeeHandler) Create(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Employee ID"
+// @Param employeeId path int true "Employee ID"
 // @Param request body models.EmployeeUpdateRequest true "Employee data"
 // @Success 200 {object} models.EmployeeResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/employees/{id} [put]
+// @Router /api/v1/organizations/{orgId}/employees/{employeeId} [put]
 func (h *EmployeeHandler) Update(c *gin.Context) {
-	orgID, id, ok := parseOrgAndResourceID(c, "id")
+	orgID, id, ok := parseOrgAndResourceID(c, "employeeId")
 	if !ok {
 		return
 	}
@@ -211,15 +211,15 @@ func (h *EmployeeHandler) Update(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Employee ID"
+// @Param employeeId path int true "Employee ID"
 // @Success 204 "No Content"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/employees/{id} [delete]
+// @Router /api/v1/organizations/{orgId}/employees/{employeeId} [delete]
 func (h *EmployeeHandler) Delete(c *gin.Context) {
-	orgID, id, ok := parseOrgAndResourceID(c, "id")
+	orgID, id, ok := parseOrgAndResourceID(c, "employeeId")
 	if !ok {
 		return
 	}
@@ -249,7 +249,7 @@ func (h *EmployeeHandler) Delete(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Employee ID"
+// @Param employeeId path int true "Employee ID"
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(20) maximum(100)
 // @Success 200 {object} models.PaginatedResponse[models.EmployeeContractResponse]
@@ -257,9 +257,9 @@ func (h *EmployeeHandler) Delete(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/employees/{id}/contracts [get]
+// @Router /api/v1/organizations/{orgId}/employees/{employeeId}/contracts [get]
 func (h *EmployeeHandler) ListContracts(c *gin.Context) {
-	handleListContracts(c, h.service.ListContracts)
+	handleListContracts(c, "employeeId", h.service.ListContracts)
 }
 
 // GetCurrentRecord godoc
@@ -270,15 +270,15 @@ func (h *EmployeeHandler) ListContracts(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Employee ID"
+// @Param employeeId path int true "Employee ID"
 // @Success 200 {object} models.EmployeeContractResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/employees/{id}/contracts/current [get]
+// @Router /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/current [get]
 func (h *EmployeeHandler) GetCurrentRecord(c *gin.Context) {
-	handleGetCurrentRecord(c, h.service.GetCurrentRecord)
+	handleGetCurrentRecord(c, "employeeId", h.service.GetCurrentRecord)
 }
 
 // CreateContract godoc
@@ -298,7 +298,7 @@ func (h *EmployeeHandler) GetCurrentRecord(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Employee ID"
+// @Param employeeId path int true "Employee ID"
 // @Param request body models.EmployeeContractCreateRequest true "Contract data"
 // @Success 201 {object} models.EmployeeContractResponse
 // @Failure 400 {object} models.ErrorResponse "Invalid request (e.g., from date after to date)"
@@ -306,9 +306,9 @@ func (h *EmployeeHandler) GetCurrentRecord(c *gin.Context) {
 // @Failure 404 {object} models.ErrorResponse "Employee not found"
 // @Failure 409 {object} models.ErrorResponse "Contract overlaps with existing contract"
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/employees/{id}/contracts [post]
+// @Router /api/v1/organizations/{orgId}/employees/{employeeId}/contracts [post]
 func (h *EmployeeHandler) CreateContract(c *gin.Context) {
-	handleCreateContract(c, h.contractAudit(), h.service.CreateContract,
+	handleCreateContract(c, "employeeId", h.contractAudit(), h.service.CreateContract,
 		func(r *models.EmployeeContractResponse) (uint, uint) { return r.ID, r.EmployeeID })
 }
 
@@ -320,16 +320,16 @@ func (h *EmployeeHandler) CreateContract(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Employee ID"
+// @Param employeeId path int true "Employee ID"
 // @Param contractId path int true "Contract ID"
 // @Success 200 {object} models.EmployeeContractResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/employees/{id}/contracts/{contractId} [get]
+// @Router /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/{contractId} [get]
 func (h *EmployeeHandler) GetContract(c *gin.Context) {
-	handleGetContract(c, h.service.GetContractByID)
+	handleGetContract(c, "employeeId", h.service.GetContractByID)
 }
 
 // UpdateContract godoc
@@ -341,7 +341,7 @@ func (h *EmployeeHandler) GetContract(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Employee ID"
+// @Param employeeId path int true "Employee ID"
 // @Param contractId path int true "Contract ID"
 // @Param request body models.EmployeeContractUpdateRequest true "Contract data"
 // @Success 200 {object} models.EmployeeContractResponse
@@ -350,9 +350,9 @@ func (h *EmployeeHandler) GetContract(c *gin.Context) {
 // @Failure 404 {object} models.ErrorResponse "Contract not found"
 // @Failure 409 {object} models.ErrorResponse "Updated dates would overlap with another contract"
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/employees/{id}/contracts/{contractId} [put]
+// @Router /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/{contractId} [put]
 func (h *EmployeeHandler) UpdateContract(c *gin.Context) {
-	handleUpdateContract(c, h.contractAudit(), h.service.UpdateContract,
+	handleUpdateContract(c, "employeeId", h.contractAudit(), h.service.UpdateContract,
 		func(r *models.EmployeeContractResponse) (uint, uint) { return r.ID, r.EmployeeID })
 }
 
@@ -364,14 +364,14 @@ func (h *EmployeeHandler) UpdateContract(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Employee ID"
+// @Param employeeId path int true "Employee ID"
 // @Param contractId path int true "Contract ID"
 // @Success 204 "No Content"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/employees/{id}/contracts/{contractId} [delete]
+// @Router /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/{contractId} [delete]
 func (h *EmployeeHandler) DeleteContract(c *gin.Context) {
-	handleDeleteContract(c, h.contractAudit(), h.service.DeleteContract)
+	handleDeleteContract(c, "employeeId", h.contractAudit(), h.service.DeleteContract)
 }

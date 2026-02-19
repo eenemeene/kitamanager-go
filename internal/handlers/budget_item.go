@@ -64,16 +64,16 @@ func (h *BudgetItemHandler) List(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Budget Item ID"
+// @Param budgetItemId path int true "Budget Item ID"
 // @Success 200 {object} models.BudgetItemDetailResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/budget-items/{id} [get]
+// @Router /api/v1/organizations/{orgId}/budget-items/{budgetItemId} [get]
 func (h *BudgetItemHandler) Get(c *gin.Context) {
-	orgID, id, ok := parseOrgAndResourceID(c, "id")
+	orgID, id, ok := parseOrgAndResourceID(c, "budgetItemId")
 	if !ok {
 		return
 	}
@@ -133,7 +133,7 @@ func (h *BudgetItemHandler) Create(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Budget Item ID"
+// @Param budgetItemId path int true "Budget Item ID"
 // @Param request body models.BudgetItemUpdateRequest true "Budget item data"
 // @Success 200 {object} models.BudgetItemResponse
 // @Failure 400 {object} models.ErrorResponse
@@ -142,9 +142,9 @@ func (h *BudgetItemHandler) Create(c *gin.Context) {
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 409 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/budget-items/{id} [put]
+// @Router /api/v1/organizations/{orgId}/budget-items/{budgetItemId} [put]
 func (h *BudgetItemHandler) Update(c *gin.Context) {
-	orgID, id, ok := parseOrgAndResourceID(c, "id")
+	orgID, id, ok := parseOrgAndResourceID(c, "budgetItemId")
 	if !ok {
 		return
 	}
@@ -173,16 +173,16 @@ func (h *BudgetItemHandler) Update(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Budget Item ID"
+// @Param budgetItemId path int true "Budget Item ID"
 // @Success 204 "No Content"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/budget-items/{id} [delete]
+// @Router /api/v1/organizations/{orgId}/budget-items/{budgetItemId} [delete]
 func (h *BudgetItemHandler) Delete(c *gin.Context) {
-	orgID, id, ok := parseOrgAndResourceID(c, "id")
+	orgID, id, ok := parseOrgAndResourceID(c, "budgetItemId")
 	if !ok {
 		return
 	}
@@ -215,7 +215,7 @@ func (h *BudgetItemHandler) Delete(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Budget Item ID"
+// @Param budgetItemId path int true "Budget Item ID"
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(20) maximum(100)
 // @Success 200 {object} models.PaginatedResponse[models.BudgetItemEntryResponse]
@@ -224,9 +224,9 @@ func (h *BudgetItemHandler) Delete(c *gin.Context) {
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/budget-items/{id}/entries [get]
+// @Router /api/v1/organizations/{orgId}/budget-items/{budgetItemId}/entries [get]
 func (h *BudgetItemHandler) ListEntries(c *gin.Context) {
-	handleOrgNestedList(c, h.service.ListEntries)
+	handleOrgNestedList(c, "budgetItemId", h.service.ListEntries)
 }
 
 // CreateEntry godoc
@@ -237,7 +237,7 @@ func (h *BudgetItemHandler) ListEntries(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Budget Item ID"
+// @Param budgetItemId path int true "Budget Item ID"
 // @Param request body models.BudgetItemEntryCreateRequest true "Entry data"
 // @Success 201 {object} models.BudgetItemEntryResponse
 // @Failure 400 {object} models.ErrorResponse
@@ -246,9 +246,9 @@ func (h *BudgetItemHandler) ListEntries(c *gin.Context) {
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 409 {object} models.ErrorResponse "Entry overlaps with existing entry"
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/budget-items/{id}/entries [post]
+// @Router /api/v1/organizations/{orgId}/budget-items/{budgetItemId}/entries [post]
 func (h *BudgetItemHandler) CreateEntry(c *gin.Context) {
-	handleOrgNestedCreate(c,
+	handleOrgNestedCreate(c, "budgetItemId",
 		auditConfig{h.auditService, "budget_item_entry", "budget_item"},
 		h.service.CreateEntry,
 		func(r *models.BudgetItemEntryResponse) uint { return r.ID },
@@ -263,7 +263,7 @@ func (h *BudgetItemHandler) CreateEntry(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Budget Item ID"
+// @Param budgetItemId path int true "Budget Item ID"
 // @Param entryId path int true "Entry ID"
 // @Success 200 {object} models.BudgetItemEntryResponse
 // @Failure 400 {object} models.ErrorResponse
@@ -271,9 +271,9 @@ func (h *BudgetItemHandler) CreateEntry(c *gin.Context) {
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/budget-items/{id}/entries/{entryId} [get]
+// @Router /api/v1/organizations/{orgId}/budget-items/{budgetItemId}/entries/{entryId} [get]
 func (h *BudgetItemHandler) GetEntry(c *gin.Context) {
-	handleOrgNestedGet(c, "entryId", h.service.GetEntryByID)
+	handleOrgNestedGet(c, "budgetItemId", "entryId", h.service.GetEntryByID)
 }
 
 // UpdateEntry godoc
@@ -284,7 +284,7 @@ func (h *BudgetItemHandler) GetEntry(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Budget Item ID"
+// @Param budgetItemId path int true "Budget Item ID"
 // @Param entryId path int true "Entry ID"
 // @Param request body models.BudgetItemEntryUpdateRequest true "Entry data"
 // @Success 200 {object} models.BudgetItemEntryResponse
@@ -294,9 +294,9 @@ func (h *BudgetItemHandler) GetEntry(c *gin.Context) {
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 409 {object} models.ErrorResponse "Entry overlaps with existing entry"
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/budget-items/{id}/entries/{entryId} [put]
+// @Router /api/v1/organizations/{orgId}/budget-items/{budgetItemId}/entries/{entryId} [put]
 func (h *BudgetItemHandler) UpdateEntry(c *gin.Context) {
-	handleOrgNestedUpdate(c, "entryId",
+	handleOrgNestedUpdate(c, "budgetItemId", "entryId",
 		auditConfig{h.auditService, "budget_item_entry", "budget_item"},
 		h.service.UpdateEntry,
 		func(r *models.BudgetItemEntryResponse) uint { return r.ID },
@@ -311,7 +311,7 @@ func (h *BudgetItemHandler) UpdateEntry(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param id path int true "Budget Item ID"
+// @Param budgetItemId path int true "Budget Item ID"
 // @Param entryId path int true "Entry ID"
 // @Success 204 "No Content"
 // @Failure 400 {object} models.ErrorResponse
@@ -319,9 +319,9 @@ func (h *BudgetItemHandler) UpdateEntry(c *gin.Context) {
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/budget-items/{id}/entries/{entryId} [delete]
+// @Router /api/v1/organizations/{orgId}/budget-items/{budgetItemId}/entries/{entryId} [delete]
 func (h *BudgetItemHandler) DeleteEntry(c *gin.Context) {
-	handleOrgNestedDelete(c, "entryId",
+	handleOrgNestedDelete(c, "budgetItemId", "entryId",
 		auditConfig{h.auditService, "budget_item_entry", "budget_item"},
 		h.service.DeleteEntry,
 	)

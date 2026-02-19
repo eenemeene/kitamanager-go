@@ -2519,7 +2519,7 @@ paths:
       summary: Create a new government funding
       tags:
       - government-fundings
-  /api/v1/government-fundings/{id}:
+  /api/v1/government-fundings/{fundingId}:
     delete:
       consumes:
       - application/json
@@ -2527,7 +2527,7 @@ paths:
       parameters:
       - description: GovernmentFunding ID
         in: path
-        name: id
+        name: fundingId
         required: true
         type: integer
       produces:
@@ -2564,7 +2564,7 @@ paths:
       parameters:
       - description: GovernmentFunding ID
         in: path
-        name: id
+        name: fundingId
         required: true
         type: integer
       - description: Limit number of periods returned (0 = all, default 1 for latest
@@ -2611,7 +2611,7 @@ paths:
       parameters:
       - description: GovernmentFunding ID
         in: path
-        name: id
+        name: fundingId
         required: true
         type: integer
       - description: GovernmentFunding data
@@ -2652,7 +2652,7 @@ paths:
       summary: Update a government funding
       tags:
       - government-fundings
-  /api/v1/government-fundings/{id}/periods:
+  /api/v1/government-fundings/{fundingId}/periods:
     post:
       consumes:
       - application/json
@@ -2660,7 +2660,7 @@ paths:
       parameters:
       - description: GovernmentFunding ID
         in: path
-        name: id
+        name: fundingId
         required: true
         type: integer
       - description: Period data
@@ -2701,7 +2701,7 @@ paths:
       summary: Create a new period
       tags:
       - government-fundings
-  /api/v1/government-fundings/{id}/periods/{periodId}:
+  /api/v1/government-fundings/{fundingId}/periods/{periodId}:
     delete:
       consumes:
       - application/json
@@ -2709,7 +2709,7 @@ paths:
       parameters:
       - description: GovernmentFunding ID
         in: path
-        name: id
+        name: fundingId
         required: true
         type: integer
       - description: Period ID
@@ -2750,7 +2750,7 @@ paths:
       parameters:
       - description: GovernmentFunding ID
         in: path
-        name: id
+        name: fundingId
         required: true
         type: integer
       - description: Period ID
@@ -2796,7 +2796,7 @@ paths:
       summary: Update a period
       tags:
       - government-fundings
-  /api/v1/government-fundings/{id}/periods/{periodId}/properties:
+  /api/v1/government-fundings/{fundingId}/periods/{periodId}/properties:
     post:
       consumes:
       - application/json
@@ -2804,7 +2804,7 @@ paths:
       parameters:
       - description: GovernmentFunding ID
         in: path
-        name: id
+        name: fundingId
         required: true
         type: integer
       - description: Period ID
@@ -2850,7 +2850,7 @@ paths:
       summary: Create a new property
       tags:
       - government-fundings
-  /api/v1/government-fundings/{id}/periods/{periodId}/properties/{propId}:
+  /api/v1/government-fundings/{fundingId}/periods/{periodId}/properties/{propId}:
     delete:
       consumes:
       - application/json
@@ -2858,7 +2858,7 @@ paths:
       parameters:
       - description: GovernmentFunding ID
         in: path
-        name: id
+        name: fundingId
         required: true
         type: integer
       - description: Period ID
@@ -2904,7 +2904,7 @@ paths:
       parameters:
       - description: GovernmentFunding ID
         in: path
-        name: id
+        name: fundingId
         required: true
         type: integer
       - description: Period ID
@@ -3396,7 +3396,7 @@ paths:
       summary: Create budget item
       tags:
       - budget-items
-  /api/v1/organizations/{orgId}/budget-items/{id}:
+  /api/v1/organizations/{orgId}/budget-items/{budgetItemId}:
     delete:
       consumes:
       - application/json
@@ -3409,7 +3409,7 @@ paths:
         type: integer
       - description: Budget Item ID
         in: path
-        name: id
+        name: budgetItemId
         required: true
         type: integer
       produces:
@@ -3454,7 +3454,7 @@ paths:
         type: integer
       - description: Budget Item ID
         in: path
-        name: id
+        name: budgetItemId
         required: true
         type: integer
       produces:
@@ -3501,7 +3501,7 @@ paths:
         type: integer
       - description: Budget Item ID
         in: path
-        name: id
+        name: budgetItemId
         required: true
         type: integer
       - description: Budget item data
@@ -3546,7 +3546,7 @@ paths:
       summary: Update budget item
       tags:
       - budget-items
-  /api/v1/organizations/{orgId}/budget-items/{id}/entries:
+  /api/v1/organizations/{orgId}/budget-items/{budgetItemId}/entries:
     get:
       consumes:
       - application/json
@@ -3559,7 +3559,7 @@ paths:
         type: integer
       - description: Budget Item ID
         in: path
-        name: id
+        name: budgetItemId
         required: true
         type: integer
       - default: 1
@@ -3618,7 +3618,7 @@ paths:
         type: integer
       - description: Budget Item ID
         in: path
-        name: id
+        name: budgetItemId
         required: true
         type: integer
       - description: Entry data
@@ -3663,7 +3663,7 @@ paths:
       summary: Create budget item entry
       tags:
       - budget-items
-  /api/v1/organizations/{orgId}/budget-items/{id}/entries/{entryId}:
+  /api/v1/organizations/{orgId}/budget-items/{budgetItemId}/entries/{entryId}:
     delete:
       consumes:
       - application/json
@@ -3676,7 +3676,7 @@ paths:
         type: integer
       - description: Budget Item ID
         in: path
-        name: id
+        name: budgetItemId
         required: true
         type: integer
       - description: Entry ID
@@ -3726,7 +3726,7 @@ paths:
         type: integer
       - description: Budget Item ID
         in: path
-        name: id
+        name: budgetItemId
         required: true
         type: integer
       - description: Entry ID
@@ -3778,7 +3778,7 @@ paths:
         type: integer
       - description: Budget Item ID
         in: path
-        name: id
+        name: budgetItemId
         required: true
         type: integer
       - description: Entry ID
@@ -3932,7 +3932,7 @@ paths:
       summary: Create a new child
       tags:
       - children
-  /api/v1/organizations/{orgId}/children/{id}:
+  /api/v1/organizations/{orgId}/children/{childId}:
     delete:
       consumes:
       - application/json
@@ -3945,7 +3945,7 @@ paths:
         type: integer
       - description: Child ID
         in: path
-        name: id
+        name: childId
         required: true
         type: integer
       produces:
@@ -3986,7 +3986,7 @@ paths:
         type: integer
       - description: Child ID
         in: path
-        name: id
+        name: childId
         required: true
         type: integer
       produces:
@@ -4029,7 +4029,7 @@ paths:
         type: integer
       - description: Child ID
         in: path
-        name: id
+        name: childId
         required: true
         type: integer
       - description: Child data
@@ -4066,7 +4066,7 @@ paths:
       summary: Update a child
       tags:
       - children
-  /api/v1/organizations/{orgId}/children/{id}/attendance:
+  /api/v1/organizations/{orgId}/children/{childId}/attendance:
     get:
       consumes:
       - application/json
@@ -4079,7 +4079,7 @@ paths:
         type: integer
       - description: Child ID
         in: path
-        name: id
+        name: childId
         required: true
         type: integer
       - description: Start date (YYYY-MM-DD)
@@ -4144,7 +4144,7 @@ paths:
         type: integer
       - description: Child ID
         in: path
-        name: id
+        name: childId
         required: true
         type: integer
       - description: Attendance data
@@ -4185,7 +4185,7 @@ paths:
       summary: Create an attendance record
       tags:
       - child-attendance
-  /api/v1/organizations/{orgId}/children/{id}/attendance/{attendanceId}:
+  /api/v1/organizations/{orgId}/children/{childId}/attendance/{attendanceId}:
     delete:
       consumes:
       - application/json
@@ -4198,7 +4198,7 @@ paths:
         type: integer
       - description: Child ID
         in: path
-        name: id
+        name: childId
         required: true
         type: integer
       - description: Attendance record ID
@@ -4244,7 +4244,7 @@ paths:
         type: integer
       - description: Child ID
         in: path
-        name: id
+        name: childId
         required: true
         type: integer
       - description: Attendance record ID
@@ -4295,7 +4295,7 @@ paths:
         type: integer
       - description: Child ID
         in: path
-        name: id
+        name: childId
         required: true
         type: integer
       - description: Attendance record ID
@@ -4337,7 +4337,7 @@ paths:
       summary: Update an attendance record
       tags:
       - child-attendance
-  /api/v1/organizations/{orgId}/children/{id}/contracts:
+  /api/v1/organizations/{orgId}/children/{childId}/contracts:
     get:
       consumes:
       - application/json
@@ -4350,7 +4350,7 @@ paths:
         type: integer
       - description: Child ID
         in: path
-        name: id
+        name: childId
         required: true
         type: integer
       - default: 1
@@ -4414,7 +4414,7 @@ paths:
         type: integer
       - description: Child ID
         in: path
-        name: id
+        name: childId
         required: true
         type: integer
       - description: Contract data
@@ -4455,7 +4455,7 @@ paths:
       summary: Create child contract
       tags:
       - children
-  /api/v1/organizations/{orgId}/children/{id}/contracts/{contractId}:
+  /api/v1/organizations/{orgId}/children/{childId}/contracts/{contractId}:
     delete:
       consumes:
       - application/json
@@ -4468,7 +4468,7 @@ paths:
         type: integer
       - description: Child ID
         in: path
-        name: id
+        name: childId
         required: true
         type: integer
       - description: Contract ID
@@ -4514,7 +4514,7 @@ paths:
         type: integer
       - description: Child ID
         in: path
-        name: id
+        name: childId
         required: true
         type: integer
       - description: Contract ID
@@ -4564,7 +4564,7 @@ paths:
         type: integer
       - description: Child ID
         in: path
-        name: id
+        name: childId
         required: true
         type: integer
       - description: Contract ID
@@ -4610,7 +4610,7 @@ paths:
       summary: Update child contract
       tags:
       - children
-  /api/v1/organizations/{orgId}/children/{id}/contracts/current:
+  /api/v1/organizations/{orgId}/children/{childId}/contracts/current:
     get:
       consumes:
       - application/json
@@ -4623,7 +4623,7 @@ paths:
         type: integer
       - description: Child ID
         in: path
-        name: id
+        name: childId
         required: true
         type: integer
       produces:
@@ -5021,7 +5021,7 @@ paths:
       summary: Create a new employee
       tags:
       - employees
-  /api/v1/organizations/{orgId}/employees/{id}:
+  /api/v1/organizations/{orgId}/employees/{employeeId}:
     delete:
       consumes:
       - application/json
@@ -5034,7 +5034,7 @@ paths:
         type: integer
       - description: Employee ID
         in: path
-        name: id
+        name: employeeId
         required: true
         type: integer
       produces:
@@ -5075,7 +5075,7 @@ paths:
         type: integer
       - description: Employee ID
         in: path
-        name: id
+        name: employeeId
         required: true
         type: integer
       produces:
@@ -5118,7 +5118,7 @@ paths:
         type: integer
       - description: Employee ID
         in: path
-        name: id
+        name: employeeId
         required: true
         type: integer
       - description: Employee data
@@ -5155,7 +5155,7 @@ paths:
       summary: Update an employee
       tags:
       - employees
-  /api/v1/organizations/{orgId}/employees/{id}/contracts:
+  /api/v1/organizations/{orgId}/employees/{employeeId}/contracts:
     get:
       consumes:
       - application/json
@@ -5168,7 +5168,7 @@ paths:
         type: integer
       - description: Employee ID
         in: path
-        name: id
+        name: employeeId
         required: true
         type: integer
       - default: 1
@@ -5232,7 +5232,7 @@ paths:
         type: integer
       - description: Employee ID
         in: path
-        name: id
+        name: employeeId
         required: true
         type: integer
       - description: Contract data
@@ -5273,7 +5273,7 @@ paths:
       summary: Create employee contract
       tags:
       - employees
-  /api/v1/organizations/{orgId}/employees/{id}/contracts/{contractId}:
+  /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/{contractId}:
     delete:
       consumes:
       - application/json
@@ -5286,7 +5286,7 @@ paths:
         type: integer
       - description: Employee ID
         in: path
-        name: id
+        name: employeeId
         required: true
         type: integer
       - description: Contract ID
@@ -5332,7 +5332,7 @@ paths:
         type: integer
       - description: Employee ID
         in: path
-        name: id
+        name: employeeId
         required: true
         type: integer
       - description: Contract ID
@@ -5382,7 +5382,7 @@ paths:
         type: integer
       - description: Employee ID
         in: path
-        name: id
+        name: employeeId
         required: true
         type: integer
       - description: Contract ID
@@ -5428,7 +5428,7 @@ paths:
       summary: Update employee contract
       tags:
       - employees
-  /api/v1/organizations/{orgId}/employees/{id}/contracts/current:
+  /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/current:
     get:
       consumes:
       - application/json
@@ -5441,7 +5441,7 @@ paths:
         type: integer
       - description: Employee ID
         in: path
-        name: id
+        name: employeeId
         required: true
         type: integer
       produces:
@@ -5597,7 +5597,7 @@ paths:
       summary: List government funding bill periods
       tags:
       - government-funding-bills
-  /api/v1/organizations/{orgId}/government-funding-bills/{id}:
+  /api/v1/organizations/{orgId}/government-funding-bills/{billId}:
     delete:
       description: Delete a government funding bill period and all associated children
         and payments
@@ -5609,7 +5609,7 @@ paths:
         type: integer
       - description: Bill Period ID
         in: path
-        name: id
+        name: billId
         required: true
         type: integer
       produces:
@@ -5645,7 +5645,7 @@ paths:
         type: integer
       - description: Bill Period ID
         in: path
-        name: id
+        name: billId
         required: true
         type: integer
       produces:
@@ -6031,7 +6031,7 @@ paths:
       summary: Create pay plan
       tags:
       - payplans
-  /api/v1/organizations/{orgId}/payplans/{id}:
+  /api/v1/organizations/{orgId}/payplans/{payplanId}:
     delete:
       consumes:
       - application/json
@@ -6044,7 +6044,7 @@ paths:
         type: integer
       - description: Pay Plan ID
         in: path
-        name: id
+        name: payplanId
         required: true
         type: integer
       produces:
@@ -6089,7 +6089,7 @@ paths:
         type: integer
       - description: Pay Plan ID
         in: path
-        name: id
+        name: payplanId
         required: true
         type: integer
       - description: Filter periods active on date (YYYY-MM-DD, defaults to today)
@@ -6140,7 +6140,7 @@ paths:
         type: integer
       - description: Pay Plan ID
         in: path
-        name: id
+        name: payplanId
         required: true
         type: integer
       - description: Pay plan data
@@ -6181,7 +6181,7 @@ paths:
       summary: Update pay plan
       tags:
       - payplans
-  /api/v1/organizations/{orgId}/payplans/{id}/periods:
+  /api/v1/organizations/{orgId}/payplans/{payplanId}/periods:
     post:
       consumes:
       - application/json
@@ -6194,7 +6194,7 @@ paths:
         type: integer
       - description: Pay Plan ID
         in: path
-        name: id
+        name: payplanId
         required: true
         type: integer
       - description: Period data
@@ -6235,7 +6235,7 @@ paths:
       summary: Create period
       tags:
       - payplans
-  /api/v1/organizations/{orgId}/payplans/{id}/periods/{periodId}:
+  /api/v1/organizations/{orgId}/payplans/{payplanId}/periods/{periodId}:
     delete:
       consumes:
       - application/json
@@ -6248,7 +6248,7 @@ paths:
         type: integer
       - description: Pay Plan ID
         in: path
-        name: id
+        name: payplanId
         required: true
         type: integer
       - description: Period ID
@@ -6298,7 +6298,7 @@ paths:
         type: integer
       - description: Pay Plan ID
         in: path
-        name: id
+        name: payplanId
         required: true
         type: integer
       - description: Period ID
@@ -6350,7 +6350,7 @@ paths:
         type: integer
       - description: Pay Plan ID
         in: path
-        name: id
+        name: payplanId
         required: true
         type: integer
       - description: Period ID
@@ -6396,7 +6396,7 @@ paths:
       summary: Update period
       tags:
       - payplans
-  /api/v1/organizations/{orgId}/payplans/{id}/periods/{periodId}/entries:
+  /api/v1/organizations/{orgId}/payplans/{payplanId}/periods/{periodId}/entries:
     post:
       consumes:
       - application/json
@@ -6409,7 +6409,7 @@ paths:
         type: integer
       - description: Pay Plan ID
         in: path
-        name: id
+        name: payplanId
         required: true
         type: integer
       - description: Period ID
@@ -6455,7 +6455,7 @@ paths:
       summary: Create entry
       tags:
       - payplans
-  /api/v1/organizations/{orgId}/payplans/{id}/periods/{periodId}/entries/{entryId}:
+  /api/v1/organizations/{orgId}/payplans/{payplanId}/periods/{periodId}/entries/{entryId}:
     delete:
       consumes:
       - application/json
@@ -6468,7 +6468,7 @@ paths:
         type: integer
       - description: Pay Plan ID
         in: path
-        name: id
+        name: payplanId
         required: true
         type: integer
       - description: Period ID
@@ -6523,7 +6523,7 @@ paths:
         type: integer
       - description: Pay Plan ID
         in: path
-        name: id
+        name: payplanId
         required: true
         type: integer
       - description: Period ID
@@ -6580,7 +6580,7 @@ paths:
         type: integer
       - description: Pay Plan ID
         in: path
-        name: id
+        name: payplanId
         required: true
         type: integer
       - description: Period ID
