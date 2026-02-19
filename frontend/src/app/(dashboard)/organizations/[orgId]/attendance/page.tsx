@@ -6,13 +6,21 @@ import { useTranslations } from 'next-intl';
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
 import { startOfWeek, addDays, eachDayOfInterval } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WeekStepper } from '@/components/ui/week-stepper';
 import { AttendanceWeekTable } from '@/components/attendance/attendance-week-table';
 import { QueryError } from '@/components/crud/query-error';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
-import type { ChildAttendanceResponse, ChildAttendanceStatus } from '@/lib/api/types';
+import type { ChildAttendanceResponse, ChildAttendanceStatus, Section } from '@/lib/api/types';
+import { LOOKUP_FETCH_LIMIT } from '@/lib/api/types';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useState } from 'react';
 
@@ -20,10 +28,12 @@ export default function AttendancePage() {
   const params = useParams();
   const orgId = Number(params.orgId);
   const t = useTranslations('attendance');
+  const tStats = useTranslations('statistics');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [sectionFilter, setSectionFilter] = useState<number | undefined>(undefined);
 
   // Compute Mon-Fri dates
   const weekMonday = useMemo(() => startOfWeek(selectedDate, { weekStartsOn: 1 }), [selectedDate]);
@@ -37,6 +47,14 @@ export default function AttendancePage() {
   );
   const weekMondayStr = weekMonday.toISOString().slice(0, 10);
 
+  // Fetch sections for filter dropdown
+  const { data: sectionsData } = useQuery({
+    queryKey: queryKeys.sections.list(orgId),
+    queryFn: () => apiClient.getSections(orgId, { limit: LOOKUP_FETCH_LIMIT }),
+    enabled: !!orgId,
+  });
+  const sections: Section[] = sectionsData?.data ?? [];
+
   // Fetch children with active contracts for the week
   const {
     data: weekChildren,
@@ -44,8 +62,8 @@ export default function AttendancePage() {
     error: childrenError,
     refetch: refetchChildren,
   } = useQuery({
-    queryKey: [...queryKeys.children.allUnpaginated(orgId), weekMondayStr],
-    queryFn: () => apiClient.getChildrenAllForDate(orgId, weekMondayStr),
+    queryKey: [...queryKeys.children.allUnpaginated(orgId), weekMondayStr, sectionFilter],
+    queryFn: () => apiClient.getChildrenAllForDate(orgId, weekMondayStr, sectionFilter),
     enabled: !!orgId,
   });
 
@@ -253,7 +271,25 @@ export default function AttendancePage() {
     <div className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
 
-      <WeekStepper value={selectedDate} onChange={setSelectedDate} />
+      <div className="flex flex-wrap items-center gap-4">
+        <WeekStepper value={selectedDate} onChange={setSelectedDate} />
+        <Select
+          value={sectionFilter ? String(sectionFilter) : 'all'}
+          onValueChange={(value) => setSectionFilter(value === 'all' ? undefined : Number(value))}
+        >
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder={tStats('filterBySection')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{tStats('allSections')}</SelectItem>
+            {sections.map((section) => (
+              <SelectItem key={section.id} value={String(section.id)}>
+                {section.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       <Card>
         <CardHeader>

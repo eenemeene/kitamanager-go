@@ -892,8 +892,10 @@ class ApiClient {
   }
 
   // Children - fetch all with active contracts for a specific date
-  async getChildrenAllForDate(orgId: number, date: string): Promise<Child[]> {
-    return this.fetchAllPages<Child>(`/organizations/${orgId}/children?contract_on=${date}`);
+  async getChildrenAllForDate(orgId: number, date: string, sectionId?: number): Promise<Child[]> {
+    let url = `/organizations/${orgId}/children?contract_on=${date}`;
+    if (sectionId) url += `&section_id=${sectionId}`;
+    return this.fetchAllPages<Child>(url);
   }
 
   // Children - fetch upcoming (contracts starting after today)
