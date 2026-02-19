@@ -62,9 +62,6 @@ func Setup(r *gin.Engine, d Deps) {
 			api.POST("/refresh", authHandler.Refresh)
 		}
 
-		// Logout endpoint (no auth required - just clears cookies)
-		api.POST("/logout", authHandler.Logout)
-
 		// Protected endpoints (require authentication and CSRF for cookie-based auth)
 		protected := api.Group("")
 		protected.Use(authMiddleware.RequireAuth())
@@ -74,6 +71,7 @@ func Setup(r *gin.Engine, d Deps) {
 		}
 
 		// Current user endpoints
+		protected.POST("/logout", authHandler.Logout)
 		protected.GET("/me", authHandler.Me)
 		protected.PUT("/me/password", authHandler.ChangePassword)
 		{
