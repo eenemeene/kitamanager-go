@@ -4604,9 +4604,7 @@ const docTemplate = `{
                         }
                     }
                 }
-            }
-        },
-        "/api/v1/organizations/{orgId}/government-funding-bills/isbj": {
+            },
             "post": {
                 "security": [
                     {

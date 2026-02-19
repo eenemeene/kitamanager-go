@@ -907,7 +907,7 @@ class ApiClient {
     formData: FormData
   ): Promise<GovernmentFundingBillResponse> {
     const response = await this.client.post<GovernmentFundingBillResponse>(
-      `/organizations/${orgId}/government-funding-bills/isbj`,
+      `/organizations/${orgId}/government-funding-bills`,
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } }
     );

@@ -36,7 +36,7 @@ func NewGovernmentFundingBillHandler(svc *service.GovernmentFundingBillService, 
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/government-funding-bills/isbj [post]
+// @Router /api/v1/organizations/{orgId}/government-funding-bills [post]
 func (h *GovernmentFundingBillHandler) UploadISBJ(c *gin.Context) {
 	orgID, ok := parseOrgID(c)
 	if !ok {

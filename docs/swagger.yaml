@@ -5473,6 +5473,46 @@ paths:
       summary: List government funding bill periods
       tags:
       - government-funding-bills
+    post:
+      consumes:
+      - multipart/form-data
+      description: Parse an ISBJ Senatsabrechnung Excel file, persist the bill, and
+        return funding bill data enriched with matched child/contract info
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: ISBJ Senatsabrechnung Excel file (.xlsx)
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingBillResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Upload ISBJ government funding bill
+      tags:
+      - government-funding-bills
   /api/v1/organizations/{orgId}/government-funding-bills/{billId}:
     delete:
       description: Delete a government funding bill period and all associated children
@@ -5546,47 +5586,6 @@ paths:
       security:
       - BearerAuth: []
       summary: Get government funding bill period detail
-      tags:
-      - government-funding-bills
-  /api/v1/organizations/{orgId}/government-funding-bills/isbj:
-    post:
-      consumes:
-      - multipart/form-data
-      description: Parse an ISBJ Senatsabrechnung Excel file, persist the bill, and
-        return funding bill data enriched with matched child/contract info
-      parameters:
-      - description: Organization ID
-        in: path
-        name: orgId
-        required: true
-        type: integer
-      - description: ISBJ Senatsabrechnung Excel file (.xlsx)
-        in: formData
-        name: file
-        required: true
-        type: file
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingBillResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Upload ISBJ government funding bill
       tags:
       - government-funding-bills
   /api/v1/organizations/{orgId}/groups:

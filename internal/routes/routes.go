@@ -317,7 +317,7 @@ func Setup(r *gin.Engine, d Deps) {
 					fundingBills.GET("/:billId",
 						authzMiddleware.RequirePermission(rbac.ResourceGovernmentFundingBills, rbac.ActionRead),
 						governmentFundingBillHandler.Get)
-					fundingBills.POST("/isbj",
+					fundingBills.POST("",
 						authzMiddleware.RequirePermission(rbac.ResourceGovernmentFundingBills, rbac.ActionCreate),
 						governmentFundingBillHandler.UploadISBJ)
 					fundingBills.DELETE("/:billId",

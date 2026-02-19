@@ -42,7 +42,7 @@ func setupBillRouterWithUser(db *gorm.DB, userID uint) (*gin.Engine, *Government
 	{
 		org.GET("", handler.List)
 		org.GET("/:billId", handler.Get)
-		org.POST("/isbj", handler.UploadISBJ)
+		org.POST("", handler.UploadISBJ)
 		org.DELETE("/:billId", handler.Delete)
 	}
 	return r, handler
@@ -351,7 +351,7 @@ func TestGovernmentFundingBillHandler_UploadISBJ(t *testing.T) {
 	}
 	writer.Close()
 
-	req, _ := http.NewRequest("POST", fmt.Sprintf("/organizations/%d/government-funding-bills/isbj", org.ID), body)
+	req, _ := http.NewRequest("POST", fmt.Sprintf("/organizations/%d/government-funding-bills", org.ID), body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -388,7 +388,7 @@ func TestGovernmentFundingBillHandler_UploadISBJNoFile(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	// POST without file
-	req, _ := http.NewRequest("POST", fmt.Sprintf("/organizations/%d/government-funding-bills/isbj", org.ID), nil)
+	req, _ := http.NewRequest("POST", fmt.Sprintf("/organizations/%d/government-funding-bills", org.ID), nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -409,7 +409,7 @@ func TestGovernmentFundingBillHandler_UploadISBJInvalidFile(t *testing.T) {
 	_, _ = part.Write([]byte("this is not an excel file"))
 	writer.Close()
 
-	req, _ := http.NewRequest("POST", fmt.Sprintf("/organizations/%d/government-funding-bills/isbj", org.ID), body)
+	req, _ := http.NewRequest("POST", fmt.Sprintf("/organizations/%d/government-funding-bills", org.ID), body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
