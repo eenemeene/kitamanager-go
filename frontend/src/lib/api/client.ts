@@ -475,7 +475,7 @@ class ApiClient {
   async getChildrenFunding(orgId: number, date?: string): Promise<ChildrenFundingResponse> {
     const params = date ? { date } : {};
     const response = await this.client.get<ChildrenFundingResponse>(
-      `/organizations/${orgId}/children/funding`,
+      `/organizations/${orgId}/statistics/funding`,
       { params }
     );
     return response.data;
@@ -484,7 +484,7 @@ class ApiClient {
   async getAgeDistribution(orgId: number, date?: string): Promise<AgeDistributionResponse> {
     const params = date ? { date } : {};
     const response = await this.client.get<AgeDistributionResponse>(
-      `/organizations/${orgId}/children/statistics/age-distribution`,
+      `/organizations/${orgId}/statistics/age-distribution`,
       { params }
     );
     return response.data;
@@ -496,7 +496,7 @@ class ApiClient {
   ): Promise<ContractPropertiesDistributionResponse> {
     const params = date ? { date } : {};
     const response = await this.client.get<ContractPropertiesDistributionResponse>(
-      `/organizations/${orgId}/children/statistics/contract-properties`,
+      `/organizations/${orgId}/statistics/contract-properties`,
       { params }
     );
     return response.data;

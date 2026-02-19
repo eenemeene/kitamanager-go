@@ -246,6 +246,15 @@ func Setup(r *gin.Engine, d Deps) {
 				orgScoped.GET("/statistics/staffing-hours/employees",
 					authzMiddleware.RequirePermission(rbac.ResourceEmployees, rbac.ActionRead),
 					statisticsHandler.GetEmployeeStaffingHours)
+				orgScoped.GET("/statistics/age-distribution",
+					authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
+					childHandler.GetAgeDistribution)
+				orgScoped.GET("/statistics/contract-properties",
+					authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
+					childHandler.GetContractPropertiesDistribution)
+				orgScoped.GET("/statistics/funding",
+					authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
+					childHandler.GetFunding)
 
 				// Employees
 				employees := orgScoped.Group("/employees")
@@ -333,20 +342,6 @@ func Setup(r *gin.Engine, d Deps) {
 					children.GET("/attendance/summary",
 						authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionRead),
 						childAttendanceHandler.GetDailySummary)
-
-					// Statistics endpoint (must be before /:childId to avoid conflict)
-					children.GET("/statistics/age-distribution",
-						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
-						childHandler.GetAgeDistribution)
-
-					children.GET("/statistics/contract-properties",
-						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
-						childHandler.GetContractPropertiesDistribution)
-
-					// Funding calculation endpoint (must be before /:childId to avoid conflict)
-					children.GET("/funding",
-						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
-						childHandler.GetFunding)
 
 					children.GET("",
 						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),

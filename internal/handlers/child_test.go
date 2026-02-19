@@ -1774,9 +1774,9 @@ func TestChildHandler_GetAgeDistribution(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/statistics/age-distribution", handler.GetAgeDistribution)
+	r.GET("/organizations/:orgId/statistics/age-distribution", handler.GetAgeDistribution)
 
-	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/statistics/age-distribution?date=%s", org.ID, refDate.Format("2006-01-02")), nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/statistics/age-distribution?date=%s", org.ID, refDate.Format("2006-01-02")), nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
@@ -1806,10 +1806,10 @@ func TestChildHandler_GetAgeDistribution_DefaultDate(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/statistics/age-distribution", handler.GetAgeDistribution)
+	r.GET("/organizations/:orgId/statistics/age-distribution", handler.GetAgeDistribution)
 
 	// No date parameter - should default to today
-	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/statistics/age-distribution", org.ID), nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/statistics/age-distribution", org.ID), nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
@@ -1832,9 +1832,9 @@ func TestChildHandler_GetAgeDistribution_InvalidDate(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/statistics/age-distribution", handler.GetAgeDistribution)
+	r.GET("/organizations/:orgId/statistics/age-distribution", handler.GetAgeDistribution)
 
-	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/statistics/age-distribution?date=not-a-date", org.ID), nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/statistics/age-distribution?date=not-a-date", org.ID), nil)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for invalid date, got %d", http.StatusBadRequest, w.Code)
@@ -1847,9 +1847,9 @@ func TestChildHandler_GetAgeDistribution_InvalidOrgId(t *testing.T) {
 	handler := NewChildHandler(childService, createAuditService(db))
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/statistics/age-distribution", handler.GetAgeDistribution)
+	r.GET("/organizations/:orgId/statistics/age-distribution", handler.GetAgeDistribution)
 
-	w := performRequest(r, "GET", "/organizations/invalid/children/statistics/age-distribution", nil)
+	w := performRequest(r, "GET", "/organizations/invalid/statistics/age-distribution", nil)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for invalid org ID, got %d", http.StatusBadRequest, w.Code)
@@ -1864,9 +1864,9 @@ func TestChildHandler_GetAgeDistribution_NoChildren(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/statistics/age-distribution", handler.GetAgeDistribution)
+	r.GET("/organizations/:orgId/statistics/age-distribution", handler.GetAgeDistribution)
 
-	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/statistics/age-distribution?date=2025-01-28", org.ID), nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/statistics/age-distribution?date=2025-01-28", org.ID), nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -1916,10 +1916,10 @@ func TestChildHandler_GetAgeDistribution_WrongOrg(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/statistics/age-distribution", handler.GetAgeDistribution)
+	r.GET("/organizations/:orgId/statistics/age-distribution", handler.GetAgeDistribution)
 
 	// Query org2 - should not see org1's children
-	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/statistics/age-distribution?date=2025-01-28", org2.ID), nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/statistics/age-distribution?date=2025-01-28", org2.ID), nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -1964,9 +1964,9 @@ func TestChildHandler_GetAgeDistribution_AllBuckets(t *testing.T) {
 	}
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/statistics/age-distribution", handler.GetAgeDistribution)
+	r.GET("/organizations/:orgId/statistics/age-distribution", handler.GetAgeDistribution)
 
-	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/statistics/age-distribution?date=2025-01-28", org.ID), nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/statistics/age-distribution?date=2025-01-28", org.ID), nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -2026,10 +2026,10 @@ func TestChildHandler_GetAgeDistribution_ExpiredContract(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/statistics/age-distribution", handler.GetAgeDistribution)
+	r.GET("/organizations/:orgId/statistics/age-distribution", handler.GetAgeDistribution)
 
 	// Query date after contract expired
-	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/statistics/age-distribution?date=2025-01-28", org.ID), nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/statistics/age-distribution?date=2025-01-28", org.ID), nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -2070,10 +2070,10 @@ func TestChildHandler_GetAgeDistribution_FutureContract(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/statistics/age-distribution", handler.GetAgeDistribution)
+	r.GET("/organizations/:orgId/statistics/age-distribution", handler.GetAgeDistribution)
 
 	// Query date before contract starts
-	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/statistics/age-distribution?date=2025-01-28", org.ID), nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/statistics/age-distribution?date=2025-01-28", org.ID), nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -2115,10 +2115,10 @@ func TestChildHandler_GetAgeDistribution_HistoricalDate(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/statistics/age-distribution", handler.GetAgeDistribution)
+	r.GET("/organizations/:orgId/statistics/age-distribution", handler.GetAgeDistribution)
 
 	// Query historical date when contract was active
-	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/statistics/age-distribution?date=2023-06-15", org.ID), nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/statistics/age-distribution?date=2023-06-15", org.ID), nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -2649,9 +2649,9 @@ func TestChildHandler_GetFunding(t *testing.T) {
 
 	r := setupTestRouter()
 	// Register funding route BEFORE per-child routes
-	r.GET("/organizations/:orgId/children/funding", handler.GetFunding)
+	r.GET("/organizations/:orgId/statistics/funding", handler.GetFunding)
 
-	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/funding", org.ID), nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/statistics/funding", org.ID), nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
@@ -2666,9 +2666,9 @@ func TestChildHandler_GetFunding_NoContracts(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/funding", handler.GetFunding)
+	r.GET("/organizations/:orgId/statistics/funding", handler.GetFunding)
 
-	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/funding", org.ID), nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/statistics/funding", org.ID), nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
@@ -2683,9 +2683,9 @@ func TestChildHandler_GetFunding_InvalidDate(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/funding", handler.GetFunding)
+	r.GET("/organizations/:orgId/statistics/funding", handler.GetFunding)
 
-	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/funding?date=invalid", org.ID), nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/statistics/funding?date=invalid", org.ID), nil)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
@@ -2757,9 +2757,9 @@ func TestChildHandler_GetContractPropertiesDistribution(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/statistics/contract-properties", handler.GetContractPropertiesDistribution)
+	r.GET("/organizations/:orgId/statistics/contract-properties", handler.GetContractPropertiesDistribution)
 
-	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/statistics/contract-properties?date=%s", org.ID, refDate.Format("2006-01-02")), nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/statistics/contract-properties?date=%s", org.ID, refDate.Format("2006-01-02")), nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
@@ -2803,10 +2803,10 @@ func TestChildHandler_GetContractPropertiesDistribution_DefaultDate(t *testing.T
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/statistics/contract-properties", handler.GetContractPropertiesDistribution)
+	r.GET("/organizations/:orgId/statistics/contract-properties", handler.GetContractPropertiesDistribution)
 
 	// No date parameter - should default to today
-	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/statistics/contract-properties", org.ID), nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/statistics/contract-properties", org.ID), nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
@@ -2828,9 +2828,9 @@ func TestChildHandler_GetContractPropertiesDistribution_CustomDate(t *testing.T)
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/statistics/contract-properties", handler.GetContractPropertiesDistribution)
+	r.GET("/organizations/:orgId/statistics/contract-properties", handler.GetContractPropertiesDistribution)
 
-	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/statistics/contract-properties?date=2025-06-15", org.ID), nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/statistics/contract-properties?date=2025-06-15", org.ID), nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
@@ -2852,9 +2852,9 @@ func TestChildHandler_GetContractPropertiesDistribution_InvalidDate(t *testing.T
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/statistics/contract-properties", handler.GetContractPropertiesDistribution)
+	r.GET("/organizations/:orgId/statistics/contract-properties", handler.GetContractPropertiesDistribution)
 
-	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/statistics/contract-properties?date=not-a-date", org.ID), nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/statistics/contract-properties?date=not-a-date", org.ID), nil)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for invalid date, got %d", http.StatusBadRequest, w.Code)
@@ -2867,9 +2867,9 @@ func TestChildHandler_GetContractPropertiesDistribution_InvalidOrgId(t *testing.
 	handler := NewChildHandler(childService, createAuditService(db))
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/statistics/contract-properties", handler.GetContractPropertiesDistribution)
+	r.GET("/organizations/:orgId/statistics/contract-properties", handler.GetContractPropertiesDistribution)
 
-	w := performRequest(r, "GET", "/organizations/abc/children/statistics/contract-properties", nil)
+	w := performRequest(r, "GET", "/organizations/abc/statistics/contract-properties", nil)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for invalid org ID, got %d", http.StatusBadRequest, w.Code)
@@ -2884,9 +2884,9 @@ func TestChildHandler_GetContractPropertiesDistribution_NoChildren(t *testing.T)
 	org := createTestOrganization(t, db, "Test Org")
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/statistics/contract-properties", handler.GetContractPropertiesDistribution)
+	r.GET("/organizations/:orgId/statistics/contract-properties", handler.GetContractPropertiesDistribution)
 
-	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/statistics/contract-properties?date=2025-06-15", org.ID), nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/statistics/contract-properties?date=2025-06-15", org.ID), nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -2932,10 +2932,10 @@ func TestChildHandler_GetContractPropertiesDistribution_WrongOrg(t *testing.T) {
 	})
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/children/statistics/contract-properties", handler.GetContractPropertiesDistribution)
+	r.GET("/organizations/:orgId/statistics/contract-properties", handler.GetContractPropertiesDistribution)
 
 	// Query org2 - should not see org1's children
-	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/statistics/contract-properties?date=2025-01-28", org2.ID), nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/statistics/contract-properties?date=2025-01-28", org2.ID), nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)

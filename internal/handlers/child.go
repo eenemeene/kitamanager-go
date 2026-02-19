@@ -388,7 +388,7 @@ func (h *ChildHandler) DeleteContract(c *gin.Context) {
 // GetAgeDistribution godoc
 // @Summary Get children age distribution
 // @Description Get age distribution of children with active contracts on the specified date
-// @Tags children
+// @Tags statistics
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -398,7 +398,7 @@ func (h *ChildHandler) DeleteContract(c *gin.Context) {
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/statistics/age-distribution [get]
+// @Router /api/v1/organizations/{orgId}/statistics/age-distribution [get]
 func (h *ChildHandler) GetAgeDistribution(c *gin.Context) {
 	orgID, ok := parseOrgID(c)
 	if !ok {
@@ -422,7 +422,7 @@ func (h *ChildHandler) GetAgeDistribution(c *gin.Context) {
 // GetContractPropertiesDistribution godoc
 // @Summary Get children contract properties distribution
 // @Description Get the distribution of contract properties for children with active contracts on the specified date
-// @Tags children
+// @Tags statistics
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -432,7 +432,7 @@ func (h *ChildHandler) GetAgeDistribution(c *gin.Context) {
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/statistics/contract-properties [get]
+// @Router /api/v1/organizations/{orgId}/statistics/contract-properties [get]
 func (h *ChildHandler) GetContractPropertiesDistribution(c *gin.Context) {
 	orgID, ok := parseOrgID(c)
 	if !ok {
@@ -456,7 +456,7 @@ func (h *ChildHandler) GetContractPropertiesDistribution(c *gin.Context) {
 // GetFunding godoc
 // @Summary Calculate children funding
 // @Description Calculate government funding for all children with active contracts on a given date
-// @Tags children
+// @Tags statistics
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -467,7 +467,7 @@ func (h *ChildHandler) GetContractPropertiesDistribution(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/funding [get]
+// @Router /api/v1/organizations/{orgId}/statistics/funding [get]
 func (h *ChildHandler) GetFunding(c *gin.Context) {
 	orgID, ok := parseOrgID(c)
 	if !ok {
