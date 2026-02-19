@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Table,
   TableBody,
@@ -63,6 +64,14 @@ const STATUS_BUTTONS: {
     activeColor: 'bg-blue-100 text-blue-700 border-blue-300',
   },
 ];
+
+const STATUS_ICON_MAP: Record<ChildAttendanceStatus, { icon: typeof CheckCircle; color: string }> =
+  {
+    present: { icon: CheckCircle, color: 'text-green-600' },
+    absent: { icon: XCircle, color: 'text-red-600' },
+    sick: { icon: Thermometer, color: 'text-orange-600' },
+    vacation: { icon: Palmtree, color: 'text-blue-600' },
+  };
 
 // --- EditableTime ---
 
@@ -259,28 +268,48 @@ function AttendanceCell({
 }: AttendanceCellProps) {
   const t = useTranslations('attendance');
 
+  const noteSnippet = attendance?.note ? (
+    <p className="text-muted-foreground max-w-[8rem] truncate text-[0.65rem] leading-tight">
+      {attendance.note}
+    </p>
+  ) : null;
+
   // No record — show check-in button + more options
   if (!attendance) {
     return (
-      <div className="flex items-center gap-1">
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 gap-1 text-green-600 hover:bg-green-50 hover:text-green-700"
-          onClick={() => onCheckIn(childId, dateStr)}
-          aria-label={t('checkIn')}
-        >
-          <LogIn className="h-4 w-4" />
-          <span className="hidden sm:inline">{t('checkIn')}</span>
-        </Button>
-        <StatusNotePopover
-          attendance={attendance}
-          childId={childId}
-          dateStr={dateStr}
-          onSetStatus={onSetStatus}
-          onSaveNote={onSaveNote}
-        />
-      </div>
+      <TooltipProvider>
+        <div className="flex items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1 text-green-600 hover:bg-green-50 hover:text-green-700"
+                onClick={() => onCheckIn(childId, dateStr)}
+                aria-label={t('checkIn')}
+              >
+                <LogIn className="h-4 w-4" />
+                <span className="hidden sm:inline">{t('checkIn')}</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('checkIn')}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <StatusNotePopover
+                  attendance={attendance}
+                  childId={childId}
+                  dateStr={dateStr}
+                  onSetStatus={onSetStatus}
+                  onSaveNote={onSaveNote}
+                />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>{t('quickMark')}</TooltipContent>
+          </Tooltip>
+        </div>
+      </TooltipProvider>
     );
   }
 
@@ -290,80 +319,124 @@ function AttendanceCell({
   // Checked in but not checked out
   if (checkIn && !checkOut) {
     return (
-      <div className="flex items-center gap-1">
-        <EditableTime
-          value={checkIn}
-          className="text-green-700"
-          onSave={(newTime) =>
-            onUpdateTime(childId, dateStr, attendance.id, 'check_in_time', newTime)
-          }
-          ariaLabel={t('checkIn')}
-        />
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 gap-1 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
-          onClick={() => onCheckOut(childId, dateStr, attendance.id)}
-          aria-label={t('checkOut')}
-        >
-          <LogOut className="h-4 w-4" />
-          <span className="hidden sm:inline">{t('checkOut')}</span>
-        </Button>
-        <StatusNotePopover
-          attendance={attendance}
-          childId={childId}
-          dateStr={dateStr}
-          onSetStatus={onSetStatus}
-          onSaveNote={onSaveNote}
-        />
-      </div>
+      <TooltipProvider>
+        <div>
+          <div className="flex items-center gap-1">
+            <EditableTime
+              value={checkIn}
+              className="text-green-700"
+              onSave={(newTime) =>
+                onUpdateTime(childId, dateStr, attendance.id, 'check_in_time', newTime)
+              }
+              ariaLabel={t('checkIn')}
+            />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
+                  onClick={() => onCheckOut(childId, dateStr, attendance.id)}
+                  aria-label={t('checkOut')}
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span className="hidden sm:inline">{t('checkOut')}</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('checkOut')}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <StatusNotePopover
+                    attendance={attendance}
+                    childId={childId}
+                    dateStr={dateStr}
+                    onSetStatus={onSetStatus}
+                    onSaveNote={onSaveNote}
+                  />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>{t('quickMark')}</TooltipContent>
+            </Tooltip>
+          </div>
+          {noteSnippet}
+        </div>
+      </TooltipProvider>
     );
   }
 
   // Checked out — both times editable
   if (checkIn && checkOut) {
     return (
-      <div className="flex items-center gap-1">
-        <EditableTime
-          value={checkIn}
-          className="text-green-700"
-          onSave={(newTime) =>
-            onUpdateTime(childId, dateStr, attendance.id, 'check_in_time', newTime)
-          }
-          ariaLabel={t('checkIn')}
-        />
-        <span className="text-muted-foreground text-sm">–</span>
-        <EditableTime
-          value={checkOut}
-          className="text-muted-foreground"
-          onSave={(newTime) =>
-            onUpdateTime(childId, dateStr, attendance.id, 'check_out_time', newTime)
-          }
-          ariaLabel={t('checkOut')}
-        />
-        <StatusNotePopover
-          attendance={attendance}
-          childId={childId}
-          dateStr={dateStr}
-          onSetStatus={onSetStatus}
-          onSaveNote={onSaveNote}
-        />
-      </div>
+      <TooltipProvider>
+        <div>
+          <div className="flex items-center gap-1">
+            <EditableTime
+              value={checkIn}
+              className="text-green-700"
+              onSave={(newTime) =>
+                onUpdateTime(childId, dateStr, attendance.id, 'check_in_time', newTime)
+              }
+              ariaLabel={t('checkIn')}
+            />
+            <span className="text-muted-foreground text-sm">–</span>
+            <EditableTime
+              value={checkOut}
+              className="text-muted-foreground"
+              onSave={(newTime) =>
+                onUpdateTime(childId, dateStr, attendance.id, 'check_out_time', newTime)
+              }
+              ariaLabel={t('checkOut')}
+            />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <StatusNotePopover
+                    attendance={attendance}
+                    childId={childId}
+                    dateStr={dateStr}
+                    onSetStatus={onSetStatus}
+                    onSaveNote={onSaveNote}
+                  />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>{t('quickMark')}</TooltipContent>
+            </Tooltip>
+          </div>
+          {noteSnippet}
+        </div>
+      </TooltipProvider>
     );
   }
 
   // Has record but no times (status-only, e.g. marked absent/sick via popover)
+  const StatusIcon = STATUS_ICON_MAP[attendance.status]?.icon;
+  const statusColor = STATUS_ICON_MAP[attendance.status]?.color ?? '';
   return (
-    <div className="flex items-center gap-1">
-      <span className="text-muted-foreground text-sm italic">{t(attendance.status)}</span>
-      <StatusNotePopover
-        attendance={attendance}
-        childId={childId}
-        dateStr={dateStr}
-        onSetStatus={onSetStatus}
-        onSaveNote={onSaveNote}
-      />
-    </div>
+    <TooltipProvider>
+      <div>
+        <div className="flex items-center gap-1">
+          {StatusIcon && <StatusIcon className={`h-3.5 w-3.5 ${statusColor}`} />}
+          <span className={`text-sm italic ${statusColor}`}>{t(attendance.status)}</span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <StatusNotePopover
+                  attendance={attendance}
+                  childId={childId}
+                  dateStr={dateStr}
+                  onSetStatus={onSetStatus}
+                  onSaveNote={onSaveNote}
+                />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>{t('quickMark')}</TooltipContent>
+          </Tooltip>
+        </div>
+        {noteSnippet}
+      </div>
+    </TooltipProvider>
   );
 }
 
