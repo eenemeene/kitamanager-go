@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
-import { Moon, Sun, LogOut, User, Globe } from 'lucide-react';
+import { Moon, Sun, LogOut, User, Globe, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -24,7 +24,7 @@ export function AppHeader() {
   const router = useRouter();
   const { setTheme, theme } = useTheme();
   const { user, logout } = useAuthStore();
-  const { sidebarCollapsed } = useUiStore();
+  const { sidebarCollapsed, toggleMobileSidebar } = useUiStore();
 
   const handleLogout = () => {
     logout();
@@ -48,10 +48,16 @@ export function AppHeader() {
   return (
     <header
       className={cn(
-        'bg-background fixed top-0 right-0 z-30 flex h-16 items-center justify-end gap-4 border-b px-6 transition-all duration-300',
-        sidebarCollapsed ? 'left-16' : 'left-64'
+        'bg-background fixed top-0 right-0 z-30 flex h-16 items-center justify-between gap-4 border-b px-3 transition-all duration-300 md:justify-end md:px-6',
+        'left-0 md:left-16',
+        !sidebarCollapsed && 'lg:left-64'
       )}
     >
+      {/* Mobile hamburger */}
+      <Button variant="ghost" size="icon" onClick={toggleMobileSidebar} className="md:hidden">
+        <Menu className="h-5 w-5" />
+      </Button>
+
       {/* Theme Toggle */}
       <Button
         variant="ghost"

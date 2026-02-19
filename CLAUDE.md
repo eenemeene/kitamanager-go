@@ -287,3 +287,26 @@ resource, err := h.service.GetByID(ctx, id, orgID, parentID)
 // Log the deletion
 h.auditService.LogResourceDelete(actorID, "resource_type", id, resourceName, c.ClientIP())
 ```
+
+## Responsive Design
+
+All frontend components MUST be mobile-friendly. The app is used by teachers on tablets and phones.
+
+### Required Practices
+
+- **Mobile-first layouts**: Use `flex-col` by default, add `md:flex-row` for wider screens
+- **Responsive grids**: Use `grid-cols-1 md:grid-cols-2` instead of fixed `grid-cols-2`
+- **No fixed pixel widths** for layout containers (exception: icon buttons)
+- **Touch targets**: Minimum 44x44px (`h-11 w-11`) for interactive elements on mobile
+- **Content padding**: Use `p-3 md:p-6` to preserve space on small screens
+- **Table columns**: Hide non-essential columns on mobile with `hidden md:table-cell`
+- **Filter bars**: Use `flex flex-wrap gap-2` so controls wrap on narrow screens
+- **Test viewports**: All new pages must work at 375px (phone), 768px (tablet), and 1280px (desktop)
+
+### Breakpoint Reference
+
+| Prefix | Min Width | Use Case |
+|--------|-----------|----------|
+| (none) | 0px       | Mobile phones (default) |
+| `md:`  | 768px     | Tablets, small laptops |
+| `lg:`  | 1024px    | Desktop |

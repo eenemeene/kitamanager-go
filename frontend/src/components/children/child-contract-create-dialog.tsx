@@ -174,7 +174,7 @@ export function ChildContractCreateDialog({
             </Alert>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="from">{t('contracts.startDate')}</Label>
               <Input id="from" type="date" {...register('from')} />

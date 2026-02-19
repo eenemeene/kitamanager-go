@@ -402,7 +402,7 @@ export default function PayPlanDetailPage() {
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmitPeriod(onSubmitPeriod)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="from">{t('payPlans.fromDate')}</Label>
                 <Input id="from" type="date" {...registerPeriod('from')} />
@@ -416,7 +416,7 @@ export default function PayPlanDetailPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="weekly_hours">{t('payPlans.weeklyHoursLabel')}</Label>
                 <Input
@@ -473,7 +473,7 @@ export default function PayPlanDetailPage() {
             <DialogTitle>{t('payPlans.addEntry')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmitEntry(onSubmitEntry)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="grade">{t('payPlans.gradeLabel')}</Label>
                 <Input id="grade" {...registerEntry('grade')} placeholder="S8a" />

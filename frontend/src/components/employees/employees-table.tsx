@@ -41,14 +41,14 @@ export function EmployeesTable({
       <TableHeader>
         <TableRow>
           <TableHead>{t('common.name')}</TableHead>
-          <TableHead>{t('gender.label')}</TableHead>
-          <TableHead>{t('employees.birthdate')}</TableHead>
-          <TableHead>{t('employees.age')}</TableHead>
+          <TableHead className="hidden md:table-cell">{t('gender.label')}</TableHead>
+          <TableHead className="hidden md:table-cell">{t('employees.birthdate')}</TableHead>
+          <TableHead className="hidden md:table-cell">{t('employees.age')}</TableHead>
           <TableHead>{t('employees.staffCategory.label')}</TableHead>
-          <TableHead>{t('employees.grade')}</TableHead>
-          <TableHead>{t('employees.weeklyHours')}</TableHead>
-          <TableHead>{t('employees.salary')}</TableHead>
-          <TableHead>{t('employees.yearsOfService')}</TableHead>
+          <TableHead className="hidden lg:table-cell">{t('employees.grade')}</TableHead>
+          <TableHead className="hidden lg:table-cell">{t('employees.weeklyHours')}</TableHead>
+          <TableHead className="hidden lg:table-cell">{t('employees.salary')}</TableHead>
+          <TableHead className="hidden lg:table-cell">{t('employees.yearsOfService')}</TableHead>
           <TableHead className="text-right">{t('common.actions')}</TableHead>
         </TableRow>
       </TableHeader>
@@ -70,9 +70,15 @@ export function EmployeesTable({
               <TableCell className="font-medium">
                 {employee.first_name} {employee.last_name}
               </TableCell>
-              <TableCell>{t(`gender.${employee.gender}`)}</TableCell>
-              <TableCell>{formatDate(employee.birthdate)}</TableCell>
-              <TableCell>{calculateAge(employee.birthdate)}</TableCell>
+              <TableCell className="hidden md:table-cell">
+                {t(`gender.${employee.gender}`)}
+              </TableCell>
+              <TableCell className="hidden md:table-cell">
+                {formatDate(employee.birthdate)}
+              </TableCell>
+              <TableCell className="hidden md:table-cell">
+                {calculateAge(employee.birthdate)}
+              </TableCell>
               <TableCell>
                 {currentContract ? (
                   t(`employees.staffCategory.${currentContract.staff_category}`)
@@ -80,12 +86,18 @@ export function EmployeesTable({
                   <span className="text-muted-foreground">{t('employees.noContract')}</span>
                 )}
               </TableCell>
-              <TableCell>
+              <TableCell className="hidden lg:table-cell">
                 {currentContract ? `${currentContract.grade} / ${currentContract.step}` : '-'}
               </TableCell>
-              <TableCell>{currentContract?.weekly_hours || '-'}</TableCell>
-              <TableCell>{salary !== null ? formatCurrency(salary) : '-'}</TableCell>
-              <TableCell>{yearsOfService !== null ? yearsOfService.toFixed(1) : '-'}</TableCell>
+              <TableCell className="hidden lg:table-cell">
+                {currentContract?.weekly_hours || '-'}
+              </TableCell>
+              <TableCell className="hidden lg:table-cell">
+                {salary !== null ? formatCurrency(salary) : '-'}
+              </TableCell>
+              <TableCell className="hidden lg:table-cell">
+                {yearsOfService !== null ? yearsOfService.toFixed(1) : '-'}
+              </TableCell>
               <TableCell className="text-right">
                 <Button
                   variant="ghost"
@@ -127,7 +139,7 @@ export function EmployeesTable({
         })}
         {employees.length === 0 && (
           <TableRow>
-            <TableCell colSpan={10} className="text-muted-foreground text-center">
+            <TableCell colSpan={99} className="text-muted-foreground text-center">
               {t('common.noResults')}
             </TableCell>
           </TableRow>

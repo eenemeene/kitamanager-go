@@ -51,9 +51,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <AppSidebar />
       <AppHeader />
       <main
-        className={cn('pt-16 transition-all duration-300', sidebarCollapsed ? 'ml-16' : 'ml-64')}
+        className={cn(
+          'pt-16 transition-all duration-300',
+          'ml-0 md:ml-16',
+          !sidebarCollapsed && 'lg:ml-64'
+        )}
       >
-        <div className="p-6">
+        <div className="p-3 md:p-6">
           <ErrorBoundary
             title={t('somethingWentWrong')}
             message={t('unexpectedError')}

@@ -114,7 +114,7 @@ export default function StaffingPage() {
       value={selectedSectionId?.toString() ?? 'all'}
       onValueChange={(value) => setSelectedSectionId(value === 'all' ? undefined : Number(value))}
     >
-      <SelectTrigger className="w-[200px]">
+      <SelectTrigger className="w-full md:w-[200px]">
         <SelectValue placeholder={t('statistics.filterBySection')} />
       </SelectTrigger>
       <SelectContent>
@@ -140,7 +140,7 @@ export default function StaffingPage() {
           <div>
             <CardTitle>{t('statistics.staffingHoursGrid')}</CardTitle>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-2 md:gap-4">
             {sectionFilter}
             <YearStepper value={year} onChange={setYear} />
           </div>

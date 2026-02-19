@@ -58,7 +58,7 @@ export default function OccupancyPage() {
                 setSelectedSectionId(value === 'all' ? undefined : Number(value))
               }
             >
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-full md:w-[200px]">
                 <SelectValue placeholder={t('statistics.filterBySection')} />
               </SelectTrigger>
               <SelectContent>

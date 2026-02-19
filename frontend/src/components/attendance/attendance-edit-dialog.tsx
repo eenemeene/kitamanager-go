@@ -93,7 +93,7 @@ export function AttendanceEditDialog({
         </Select>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="check_in_time">{t('checkIn')}</Label>
           <Input id="check_in_time" type="time" {...register('check_in_time')} />

@@ -13,10 +13,13 @@ jest.mock('next-intl', () => ({
 }));
 
 const mockToggleSidebar = jest.fn();
+const mockSetMobileSidebarOpen = jest.fn();
 let mockUiStore = {
   sidebarCollapsed: false,
   toggleSidebar: mockToggleSidebar,
   selectedOrganizationId: null as number | null,
+  sidebarMobileOpen: false,
+  setMobileSidebarOpen: mockSetMobileSidebarOpen,
 };
 
 jest.mock('@/stores/ui-store', () => ({
@@ -34,6 +37,8 @@ describe('AppSidebar', () => {
       sidebarCollapsed: false,
       toggleSidebar: mockToggleSidebar,
       selectedOrganizationId: null,
+      sidebarMobileOpen: false,
+      setMobileSidebarOpen: mockSetMobileSidebarOpen,
     };
   });
 
@@ -64,6 +69,8 @@ describe('AppSidebar', () => {
       sidebarCollapsed: false,
       toggleSidebar: mockToggleSidebar,
       selectedOrganizationId: 1,
+      sidebarMobileOpen: false,
+      setMobileSidebarOpen: mockSetMobileSidebarOpen,
     };
 
     render(<AppSidebar />);
@@ -93,6 +100,8 @@ describe('AppSidebar', () => {
       sidebarCollapsed: true,
       toggleSidebar: mockToggleSidebar,
       selectedOrganizationId: null,
+      sidebarMobileOpen: false,
+      setMobileSidebarOpen: mockSetMobileSidebarOpen,
     };
 
     render(<AppSidebar />);

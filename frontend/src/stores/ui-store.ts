@@ -5,12 +5,15 @@ import type { Organization } from '@/lib/api/types';
 
 interface UiState {
   sidebarCollapsed: boolean;
+  sidebarMobileOpen: boolean;
   selectedOrganizationId: number | null;
   organizations: Organization[];
   organizationsLoading: boolean;
 
   toggleSidebar: () => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
+  toggleMobileSidebar: () => void;
+  setMobileSidebarOpen: (open: boolean) => void;
   setSelectedOrganization: (orgId: number | null) => void;
   syncFromRoute: (orgId: number | null) => void;
   isValidOrganization: (orgId: number) => boolean;
@@ -22,6 +25,7 @@ export const useUiStore = create<UiState>()(
   persist(
     (set, get) => ({
       sidebarCollapsed: false,
+      sidebarMobileOpen: false,
       selectedOrganizationId: null,
       organizations: [],
       organizationsLoading: false,
@@ -32,6 +36,14 @@ export const useUiStore = create<UiState>()(
 
       setSidebarCollapsed: (collapsed: boolean) => {
         set({ sidebarCollapsed: collapsed });
+      },
+
+      toggleMobileSidebar: () => {
+        set((state) => ({ sidebarMobileOpen: !state.sidebarMobileOpen }));
+      },
+
+      setMobileSidebarOpen: (open: boolean) => {
+        set({ sidebarMobileOpen: open });
       },
 
       setSelectedOrganization: (orgId: number | null) => {

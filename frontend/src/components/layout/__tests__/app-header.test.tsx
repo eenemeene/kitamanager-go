@@ -26,7 +26,7 @@ jest.mock('@/stores/auth-store', () => ({
 }));
 
 jest.mock('@/stores/ui-store', () => ({
-  useUiStore: () => ({ sidebarCollapsed: false }),
+  useUiStore: () => ({ sidebarCollapsed: false, toggleMobileSidebar: jest.fn() }),
 }));
 
 jest.mock('@/i18n/config', () => ({

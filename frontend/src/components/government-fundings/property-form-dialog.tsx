@@ -83,7 +83,7 @@ export function PropertyFormDialog({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="key">{t('governmentFundings.key')}</Label>
               <Input id="key" placeholder="care_type" {...register('key')} />
@@ -100,7 +100,7 @@ export function PropertyFormDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="payment_euros">{t('governmentFundings.paymentInEuros')}</Label>
               <Input
@@ -123,7 +123,7 @@ export function PropertyFormDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="min_age">{t('governmentFundings.minAge')}</Label>
               <Input

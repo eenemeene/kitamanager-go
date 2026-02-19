@@ -235,7 +235,7 @@ export default function BudgetItemsPage() {
               <Separator />
               <h4 className="text-sm font-medium">{t('budgetItems.firstEntry')}</h4>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="entry_from">{t('budgetItems.fromDate')}</Label>
                   <Input id="entry_from" type="date" {...crud.register('entry_from')} />

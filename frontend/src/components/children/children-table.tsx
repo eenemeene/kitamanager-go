@@ -48,13 +48,13 @@ export function ChildrenTable({
       <TableHeader>
         <TableRow>
           <TableHead>{t('common.name')}</TableHead>
-          <TableHead>{t('gender.label')}</TableHead>
-          <TableHead>{t('children.birthdate')}</TableHead>
-          <TableHead>{t('children.age')}</TableHead>
+          <TableHead className="hidden md:table-cell">{t('gender.label')}</TableHead>
+          <TableHead className="hidden md:table-cell">{t('children.birthdate')}</TableHead>
+          <TableHead className="hidden md:table-cell">{t('children.age')}</TableHead>
           <TableHead>{t('sections.title')}</TableHead>
-          <TableHead>{t('children.properties')}</TableHead>
-          <TableHead className="text-right">{t('children.funding')}</TableHead>
-          <TableHead className="text-right">
+          <TableHead className="hidden lg:table-cell">{t('children.properties')}</TableHead>
+          <TableHead className="hidden text-right lg:table-cell">{t('children.funding')}</TableHead>
+          <TableHead className="hidden text-right lg:table-cell">
             {t('children.requirement')}
             {weeklyHoursBasis ? ` (${weeklyHoursBasis}h)` : ''}
           </TableHead>
@@ -69,13 +69,15 @@ export function ChildrenTable({
               <TableCell className="font-medium">
                 {child.first_name} {child.last_name}
               </TableCell>
-              <TableCell>{t(`gender.${child.gender}`)}</TableCell>
-              <TableCell>{formatDate(child.birthdate)}</TableCell>
-              <TableCell>{calculateAge(child.birthdate)}</TableCell>
+              <TableCell className="hidden md:table-cell">{t(`gender.${child.gender}`)}</TableCell>
+              <TableCell className="hidden md:table-cell">{formatDate(child.birthdate)}</TableCell>
+              <TableCell className="hidden md:table-cell">
+                {calculateAge(child.birthdate)}
+              </TableCell>
               <TableCell>
                 {currentContract?.section_name && <span>{currentContract.section_name}</span>}
               </TableCell>
-              <TableCell>
+              <TableCell className="hidden lg:table-cell">
                 {currentContract?.properties &&
                 Object.keys(currentContract.properties).length > 0 ? (
                   <div className="flex flex-wrap gap-1">
@@ -98,7 +100,7 @@ export function ChildrenTable({
                   </span>
                 )}
               </TableCell>
-              <TableCell className="text-right">
+              <TableCell className="hidden text-right lg:table-cell">
                 {(() => {
                   const funding = fundingByChildId.get(child.id);
                   if (!funding || funding.funding === 0) {
@@ -107,7 +109,7 @@ export function ChildrenTable({
                   return <span className="font-medium">{formatCurrency(funding.funding)}</span>;
                 })()}
               </TableCell>
-              <TableCell className="text-right">
+              <TableCell className="hidden text-right lg:table-cell">
                 {(() => {
                   const funding = fundingByChildId.get(child.id);
                   if (!funding || funding.requirement === 0) {
@@ -157,7 +159,7 @@ export function ChildrenTable({
         })}
         {items.length === 0 && (
           <TableRow>
-            <TableCell colSpan={9} className="text-muted-foreground text-center">
+            <TableCell colSpan={99} className="text-muted-foreground text-center">
               {t('common.noResults')}
             </TableCell>
           </TableRow>

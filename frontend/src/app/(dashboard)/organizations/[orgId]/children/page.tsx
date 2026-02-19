@@ -247,7 +247,7 @@ export default function ChildrenPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{t('children.title')}</h1>
         </div>
@@ -274,7 +274,7 @@ export default function ChildrenPage() {
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-2 md:gap-4">
         <MonthStepper
           value={activeOn}
           onChange={(date) => {
@@ -297,7 +297,7 @@ export default function ChildrenPage() {
             setPage(1);
           }}
         >
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-full md:w-[200px]">
             <SelectValue placeholder={t('statistics.filterBySection')} />
           </SelectTrigger>
           <SelectContent>

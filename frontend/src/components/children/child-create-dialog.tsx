@@ -114,7 +114,7 @@ export function ChildCreateDialog({
           <DialogTitle>{t('children.create')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="create_first_name">{t('children.firstName')}</Label>
               <Input id="create_first_name" {...register('first_name')} />
@@ -153,7 +153,7 @@ export function ChildCreateDialog({
           <div className="border-t pt-4">
             <h4 className="mb-3 text-sm font-medium">{t('children.initialContract')}</h4>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="create_contract_from">{t('contracts.startDate')}</Label>
                 <Input id="create_contract_from" type="date" {...register('contract_from')} />

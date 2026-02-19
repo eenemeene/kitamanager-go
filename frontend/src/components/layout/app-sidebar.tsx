@@ -91,7 +91,13 @@ const orgNavigation: NavItem[] = [
 export function AppSidebar() {
   const t = useTranslations();
   const pathname = usePathname();
-  const { sidebarCollapsed, toggleSidebar, selectedOrganizationId } = useUiStore();
+  const {
+    sidebarCollapsed,
+    toggleSidebar,
+    selectedOrganizationId,
+    sidebarMobileOpen,
+    setMobileSidebarOpen,
+  } = useUiStore();
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   const isActive = (href: string) => {
@@ -143,13 +149,13 @@ export function AppSidebar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, selectedOrganizationId]);
 
-  return (
-    <aside
-      className={cn(
-        'bg-background fixed top-0 left-0 z-40 flex h-screen flex-col border-r transition-all duration-300',
-        sidebarCollapsed ? 'w-16' : 'w-64'
-      )}
-    >
+  // Close mobile sidebar on navigation
+  useEffect(() => {
+    setMobileSidebarOpen(false);
+  }, [pathname, setMobileSidebarOpen]);
+
+  const sidebarContent = (
+    <>
       {/* Header */}
       <div className="flex h-16 items-center justify-between border-b px-4">
         {!sidebarCollapsed && (
@@ -162,7 +168,7 @@ export function AppSidebar() {
           size="icon"
           onClick={toggleSidebar}
           aria-label={t('common.toggleSidebar')}
-          className={cn(sidebarCollapsed && 'mx-auto')}
+          className={cn('hidden md:inline-flex', sidebarCollapsed && 'mx-auto')}
         >
           {sidebarCollapsed ? (
             <ChevronRight className="h-4 w-4" />
@@ -292,6 +298,36 @@ export function AppSidebar() {
           </ul>
         )}
       </nav>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside
+        className={cn(
+          'bg-background fixed top-0 left-0 z-40 hidden h-screen flex-col border-r transition-all duration-300 md:flex',
+          sidebarCollapsed ? 'w-16' : 'w-64'
+        )}
+      >
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile sidebar overlay */}
+      {sidebarMobileOpen && (
+        <div className="fixed inset-0 z-50 flex md:hidden">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/50"
+            onClick={() => setMobileSidebarOpen(false)}
+            aria-hidden="true"
+          />
+          {/* Sidebar panel */}
+          <aside className="bg-background relative flex h-screen w-64 flex-col border-r">
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }

@@ -271,13 +271,13 @@ export default function AttendancePage() {
     <div className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
 
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex flex-wrap items-center gap-2 md:gap-4">
         <WeekStepper value={selectedDate} onChange={setSelectedDate} />
         <Select
           value={sectionFilter ? String(sectionFilter) : 'all'}
           onValueChange={(value) => setSectionFilter(value === 'all' ? undefined : Number(value))}
         >
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-full md:w-[200px]">
             <SelectValue placeholder={tStats('filterBySection')} />
           </SelectTrigger>
           <SelectContent>
