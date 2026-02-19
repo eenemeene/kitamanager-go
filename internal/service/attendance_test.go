@@ -908,6 +908,413 @@ func TestChildAttendanceService_Update_TimesClearedPersistsToDatabase(t *testing
 }
 
 // ============================================================
+// Update: check-in before check-out validation
+// ============================================================
+
+func TestChildAttendanceService_Update_CheckOutBeforeCheckIn_Rejected(t *testing.T) {
+	svc, _, _, org, child := setupChildAttendanceTest(t)
+	ctx := context.Background()
+
+	createReq := &models.ChildAttendanceCreateRequest{
+		Status: models.ChildAttendanceStatusPresent,
+	}
+	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+
+	// Set check-in at 15:00 and check-out at 07:00 — invalid
+	checkIn := time.Date(2025, 6, 15, 15, 0, 0, 0, time.UTC)
+	checkOut := time.Date(2025, 6, 15, 7, 0, 0, 0, time.UTC)
+	_, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+		CheckInTime:  &checkIn,
+		CheckOutTime: &checkOut,
+	})
+	if err == nil {
+		t.Fatal("expected error when check-out is before check-in, got nil")
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+}
+
+func TestChildAttendanceService_Update_EqualCheckInAndCheckOut_Rejected(t *testing.T) {
+	svc, _, _, org, child := setupChildAttendanceTest(t)
+	ctx := context.Background()
+
+	createReq := &models.ChildAttendanceCreateRequest{
+		Status: models.ChildAttendanceStatusPresent,
+	}
+	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+
+	// Same time for both — invalid (not strictly before)
+	sameTime := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
+	_, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+		CheckInTime:  &sameTime,
+		CheckOutTime: &sameTime,
+	})
+	if err == nil {
+		t.Fatal("expected error when check-in equals check-out, got nil")
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+}
+
+func TestChildAttendanceService_Update_CheckOutBeforeExistingCheckIn_Rejected(t *testing.T) {
+	svc, _, _, org, child := setupChildAttendanceTest(t)
+	ctx := context.Background()
+
+	checkIn := time.Date(2025, 6, 15, 10, 0, 0, 0, time.UTC)
+	createReq := &models.ChildAttendanceCreateRequest{
+		Status:      models.ChildAttendanceStatusPresent,
+		CheckInTime: &checkIn,
+	}
+	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+
+	// Set check-out to 09:00, which is before the existing check-in at 10:00
+	earlyCheckOut := time.Date(2025, 6, 15, 9, 0, 0, 0, time.UTC)
+	_, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+		CheckOutTime: &earlyCheckOut,
+	})
+	if err == nil {
+		t.Fatal("expected error when check-out is before existing check-in, got nil")
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+}
+
+func TestChildAttendanceService_Update_CheckInAfterExistingCheckOut_Rejected(t *testing.T) {
+	svc, _, _, org, child := setupChildAttendanceTest(t)
+	ctx := context.Background()
+
+	checkIn := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
+	createReq := &models.ChildAttendanceCreateRequest{
+		Status:      models.ChildAttendanceStatusPresent,
+		CheckInTime: &checkIn,
+	}
+	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+
+	// First set a valid check-out
+	checkOut := time.Date(2025, 6, 15, 16, 0, 0, 0, time.UTC)
+	_, _ = svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+		CheckOutTime: &checkOut,
+	})
+
+	// Now update check-in to 17:00, which is after the existing check-out at 16:00
+	lateCheckIn := time.Date(2025, 6, 15, 17, 0, 0, 0, time.UTC)
+	_, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+		CheckInTime: &lateCheckIn,
+	})
+	if err == nil {
+		t.Fatal("expected error when check-in is after existing check-out, got nil")
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+}
+
+func TestChildAttendanceService_Update_ValidCheckInBeforeCheckOut_Accepted(t *testing.T) {
+	svc, _, _, org, child := setupChildAttendanceTest(t)
+	ctx := context.Background()
+
+	createReq := &models.ChildAttendanceCreateRequest{
+		Status: models.ChildAttendanceStatusPresent,
+	}
+	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+
+	// Set valid times: check-in at 07:30, check-out at 15:30
+	checkIn := time.Date(2025, 6, 15, 7, 30, 0, 0, time.UTC)
+	checkOut := time.Date(2025, 6, 15, 15, 30, 0, 0, time.UTC)
+	resp, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+		CheckInTime:  &checkIn,
+		CheckOutTime: &checkOut,
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if !resp.CheckInTime.Equal(checkIn) {
+		t.Errorf("expected CheckInTime %v, got %v", checkIn, resp.CheckInTime)
+	}
+	if !resp.CheckOutTime.Equal(checkOut) {
+		t.Errorf("expected CheckOutTime %v, got %v", checkOut, resp.CheckOutTime)
+	}
+}
+
+func TestChildAttendanceService_Update_CheckOutOneMinuteAfterCheckIn_Accepted(t *testing.T) {
+	svc, _, _, org, child := setupChildAttendanceTest(t)
+	ctx := context.Background()
+
+	createReq := &models.ChildAttendanceCreateRequest{
+		Status: models.ChildAttendanceStatusPresent,
+	}
+	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+
+	// Minimal valid gap: 1 minute apart
+	checkIn := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
+	checkOut := time.Date(2025, 6, 15, 8, 1, 0, 0, time.UTC)
+	resp, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+		CheckInTime:  &checkIn,
+		CheckOutTime: &checkOut,
+	})
+	if err != nil {
+		t.Fatalf("expected no error for 1 minute gap, got %v", err)
+	}
+	if !resp.CheckInTime.Equal(checkIn) {
+		t.Errorf("expected CheckInTime %v, got %v", checkIn, resp.CheckInTime)
+	}
+	if !resp.CheckOutTime.Equal(checkOut) {
+		t.Errorf("expected CheckOutTime %v, got %v", checkOut, resp.CheckOutTime)
+	}
+}
+
+func TestChildAttendanceService_Update_CheckOutOneSecondAfterCheckIn_Accepted(t *testing.T) {
+	svc, _, _, org, child := setupChildAttendanceTest(t)
+	ctx := context.Background()
+
+	createReq := &models.ChildAttendanceCreateRequest{
+		Status: models.ChildAttendanceStatusPresent,
+	}
+	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+
+	// Smallest valid gap: 1 second apart
+	checkIn := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
+	checkOut := time.Date(2025, 6, 15, 8, 0, 1, 0, time.UTC)
+	_, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+		CheckInTime:  &checkIn,
+		CheckOutTime: &checkOut,
+	})
+	if err != nil {
+		t.Fatalf("expected no error for 1 second gap, got %v", err)
+	}
+}
+
+func TestChildAttendanceService_Update_CheckOutOneNanosecondBeforeCheckIn_Rejected(t *testing.T) {
+	svc, _, _, org, child := setupChildAttendanceTest(t)
+	ctx := context.Background()
+
+	createReq := &models.ChildAttendanceCreateRequest{
+		Status: models.ChildAttendanceStatusPresent,
+	}
+	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+
+	// Check-out is 1 nanosecond before check-in
+	checkIn := time.Date(2025, 6, 15, 8, 0, 0, 1, time.UTC)
+	checkOut := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
+	_, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+		CheckInTime:  &checkIn,
+		CheckOutTime: &checkOut,
+	})
+	if err == nil {
+		t.Fatal("expected error for nanosecond-before check-out, got nil")
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+}
+
+func TestChildAttendanceService_Update_OnlyCheckInNoCheckOut_NoValidation(t *testing.T) {
+	svc, _, _, org, child := setupChildAttendanceTest(t)
+	ctx := context.Background()
+
+	createReq := &models.ChildAttendanceCreateRequest{
+		Status: models.ChildAttendanceStatusPresent,
+	}
+	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+
+	// Update only check-in time, no check-out — should not trigger validation
+	newCheckIn := time.Date(2025, 6, 15, 23, 59, 0, 0, time.UTC)
+	resp, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+		CheckInTime: &newCheckIn,
+	})
+	if err != nil {
+		t.Fatalf("expected no error when only setting check-in, got %v", err)
+	}
+	if resp.CheckOutTime != nil {
+		t.Error("expected CheckOutTime to remain nil")
+	}
+}
+
+func TestChildAttendanceService_Update_OnlyCheckOutNoExistingCheckIn_NoValidation(t *testing.T) {
+	svc, attendanceStore, _, org, child := setupChildAttendanceTest(t)
+	ctx := context.Background()
+
+	// Create a record directly with no check-in time (non-present status)
+	date := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
+	attendance := &models.ChildAttendance{
+		ChildID:        child.ID,
+		OrganizationID: org.ID,
+		Date:           date,
+		Status:         models.ChildAttendanceStatusPresent,
+		RecordedBy:     1,
+	}
+	if err := attendanceStore.Create(ctx, attendance); err != nil {
+		t.Fatalf("failed to create attendance: %v", err)
+	}
+
+	// Update only check-out, no existing check-in — validation not triggered
+	checkOut := time.Date(2025, 6, 15, 16, 0, 0, 0, time.UTC)
+	resp, err := svc.Update(ctx, attendance.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+		CheckOutTime: &checkOut,
+	})
+	if err != nil {
+		t.Fatalf("expected no error when setting check-out without check-in, got %v", err)
+	}
+	if resp.CheckOutTime == nil {
+		t.Error("expected CheckOutTime to be set")
+	}
+}
+
+func TestChildAttendanceService_Update_NonPresentStatusSkipsTimeValidation(t *testing.T) {
+	svc, _, _, org, child := setupChildAttendanceTest(t)
+	ctx := context.Background()
+
+	createReq := &models.ChildAttendanceCreateRequest{
+		Status: models.ChildAttendanceStatusPresent,
+	}
+	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+
+	// Send invalid times (check-out before check-in) PLUS a non-present status.
+	// The status change clears times, so validation should not trigger.
+	badCheckIn := time.Date(2025, 6, 15, 15, 0, 0, 0, time.UTC)
+	badCheckOut := time.Date(2025, 6, 15, 7, 0, 0, 0, time.UTC)
+	absent := models.ChildAttendanceStatusAbsent
+	resp, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+		CheckInTime:  &badCheckIn,
+		CheckOutTime: &badCheckOut,
+		Status:       &absent,
+	})
+	if err != nil {
+		t.Fatalf("expected no error (non-present status clears times), got %v", err)
+	}
+	if resp.CheckInTime != nil {
+		t.Error("expected CheckInTime to be nil (non-present status)")
+	}
+	if resp.CheckOutTime != nil {
+		t.Error("expected CheckOutTime to be nil (non-present status)")
+	}
+}
+
+func TestChildAttendanceService_Update_ValidTimesNotCorruptedByValidation(t *testing.T) {
+	svc, _, _, org, child := setupChildAttendanceTest(t)
+	ctx := context.Background()
+
+	checkIn := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
+	createReq := &models.ChildAttendanceCreateRequest{
+		Status:      models.ChildAttendanceStatusPresent,
+		CheckInTime: &checkIn,
+	}
+	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+
+	// Set valid check-out — should pass and persist correctly
+	checkOut := time.Date(2025, 6, 15, 16, 0, 0, 0, time.UTC)
+	_, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+		CheckOutTime: &checkOut,
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	// Verify by re-fetching
+	reloaded, err := svc.GetByID(ctx, createResp.ID, org.ID, child.ID)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if !reloaded.CheckInTime.Equal(checkIn) {
+		t.Errorf("check-in was corrupted: expected %v, got %v", checkIn, reloaded.CheckInTime)
+	}
+	if !reloaded.CheckOutTime.Equal(checkOut) {
+		t.Errorf("check-out was corrupted: expected %v, got %v", checkOut, reloaded.CheckOutTime)
+	}
+}
+
+func TestChildAttendanceService_Update_RejectedUpdateDoesNotPersist(t *testing.T) {
+	svc, _, _, org, child := setupChildAttendanceTest(t)
+	ctx := context.Background()
+
+	checkIn := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
+	createReq := &models.ChildAttendanceCreateRequest{
+		Status:      models.ChildAttendanceStatusPresent,
+		CheckInTime: &checkIn,
+	}
+	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+
+	// Try to set an invalid check-out (before check-in)
+	badCheckOut := time.Date(2025, 6, 15, 7, 0, 0, 0, time.UTC)
+	_, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+		CheckOutTime: &badCheckOut,
+	})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	// Verify the original record is unchanged
+	reloaded, err := svc.GetByID(ctx, createResp.ID, org.ID, child.ID)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if !reloaded.CheckInTime.Equal(checkIn) {
+		t.Errorf("check-in should be unchanged, expected %v, got %v", checkIn, reloaded.CheckInTime)
+	}
+	if reloaded.CheckOutTime != nil {
+		t.Error("check-out should still be nil after rejected update")
+	}
+}
+
+func TestChildAttendanceService_Update_SwapTimesInSingleRequest_Rejected(t *testing.T) {
+	svc, _, _, org, child := setupChildAttendanceTest(t)
+	ctx := context.Background()
+
+	checkIn := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
+	checkOut := time.Date(2025, 6, 15, 16, 0, 0, 0, time.UTC)
+	createReq := &models.ChildAttendanceCreateRequest{
+		Status:      models.ChildAttendanceStatusPresent,
+		CheckInTime: &checkIn,
+	}
+	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	_, _ = svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+		CheckOutTime: &checkOut,
+	})
+
+	// Try to swap: check-in = old check-out, check-out = old check-in
+	_, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+		CheckInTime:  &checkOut, // 16:00
+		CheckOutTime: &checkIn,  // 08:00
+	})
+	if err == nil {
+		t.Fatal("expected error when swapping check-in/check-out times, got nil")
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+}
+
+func TestChildAttendanceService_Update_MidnightBoundary_Accepted(t *testing.T) {
+	svc, _, _, org, child := setupChildAttendanceTest(t)
+	ctx := context.Background()
+
+	createReq := &models.ChildAttendanceCreateRequest{
+		Status: models.ChildAttendanceStatusPresent,
+	}
+	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+
+	// Check-in at midnight, check-out at 23:59 — valid full-day
+	checkIn := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
+	checkOut := time.Date(2025, 6, 15, 23, 59, 0, 0, time.UTC)
+	resp, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+		CheckInTime:  &checkIn,
+		CheckOutTime: &checkOut,
+	})
+	if err != nil {
+		t.Fatalf("expected no error for midnight boundary, got %v", err)
+	}
+	if !resp.CheckInTime.Equal(checkIn) {
+		t.Errorf("expected CheckInTime %v, got %v", checkIn, resp.CheckInTime)
+	}
+	if !resp.CheckOutTime.Equal(checkOut) {
+		t.Errorf("expected CheckOutTime %v, got %v", checkOut, resp.CheckOutTime)
+	}
+}
+
+// ============================================================
 // Delete tests
 // ============================================================
 

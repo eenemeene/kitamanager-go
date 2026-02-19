@@ -168,6 +168,13 @@ func (s *ChildAttendanceService) Update(ctx context.Context, id, orgID, childID 
 		attendance.Note = strings.TrimSpace(*req.Note)
 	}
 
+	// Validate check-in is before check-out when both are set
+	if attendance.CheckInTime != nil && attendance.CheckOutTime != nil {
+		if !attendance.CheckInTime.Before(*attendance.CheckOutTime) {
+			return nil, apperror.BadRequest("check-in time must be before check-out time")
+		}
+	}
+
 	if err := s.store.Update(ctx, attendance); err != nil {
 		return nil, apperror.InternalWrap(err, "failed to update attendance record")
 	}
