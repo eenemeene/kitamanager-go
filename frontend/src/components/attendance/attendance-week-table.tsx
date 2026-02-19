@@ -139,6 +139,72 @@ function EditableTime({ value, className, onSave, ariaLabel }: EditableTimeProps
   );
 }
 
+// --- EditableNote ---
+
+interface EditableNoteProps {
+  value: string;
+  onSave: (newNote: string) => void;
+}
+
+function EditableNote({ value, onSave }: EditableNoteProps) {
+  const t = useTranslations('attendance');
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (editing && textareaRef.current) {
+      textareaRef.current.focus();
+      // Place cursor at end
+      textareaRef.current.selectionStart = textareaRef.current.value.length;
+    }
+  }, [editing]);
+
+  const handleSave = () => {
+    setEditing(false);
+    const trimmed = draft.trim();
+    if (trimmed !== value) {
+      onSave(trimmed);
+    }
+  };
+
+  if (editing) {
+    return (
+      <textarea
+        ref={textareaRef}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={handleSave}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            setDraft(value);
+            setEditing(false);
+          }
+        }}
+        rows={2}
+        className="border-primary mt-0.5 w-full rounded border px-1 py-0.5 text-[0.7rem] leading-tight"
+        placeholder={t('note')}
+        aria-label={t('note')}
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className="text-muted-foreground hover:text-foreground mt-0.5 max-w-[8rem] cursor-pointer truncate text-left text-[0.65rem] leading-tight underline decoration-dotted underline-offset-2"
+      onClick={() => {
+        setDraft(value);
+        setEditing(true);
+      }}
+      title={value}
+      aria-label={t('note')}
+    >
+      {value}
+    </button>
+  );
+}
+
 // --- StatusNotePopover ---
 
 interface StatusNotePopoverProps {
@@ -269,9 +335,10 @@ function AttendanceCell({
   const t = useTranslations('attendance');
 
   const noteSnippet = attendance?.note ? (
-    <p className="text-muted-foreground max-w-[8rem] truncate text-[0.65rem] leading-tight">
-      {attendance.note}
-    </p>
+    <EditableNote
+      value={attendance.note}
+      onSave={(newNote) => onSaveNote(childId, dateStr, attendance.id, newNote)}
+    />
   ) : null;
 
   // No record — show check-in button + more options
