@@ -33,21 +33,12 @@ export default defineConfig({
   ...(process.env.CI
     ? {}
     : {
-        webServer: [
-          {
-            // Start the API server
-            command: 'cd .. && make dev',
-            url: 'http://localhost:8080/api/v1/health',
-            reuseExistingServer: true,
-            timeout: 120000,
-          },
-          {
-            // Start Next.js dev server
-            command: 'npm run dev',
-            url: 'http://localhost:3000',
-            reuseExistingServer: true,
-            timeout: 60000,
-          },
-        ],
+        webServer: {
+          // make dev starts DB, API, and Next.js dev server
+          command: 'cd .. && make dev',
+          url: 'http://localhost:3000',
+          reuseExistingServer: true,
+          timeout: 120000,
+        },
       }),
 });
