@@ -1944,6 +1944,81 @@ definitions:
         maxLength: 255
         type: string
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.SettlementAmount:
+    properties:
+      amount:
+        example: 166847
+        type: integer
+      key:
+        example: care_type
+        type: string
+      value:
+        example: ganztag
+        type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.SettlementChildResponse:
+    properties:
+      amounts:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.SettlementAmount'
+        type: array
+      birth_date:
+        example: "01.20"
+        type: string
+      child_id:
+        example: 42
+        type: integer
+      child_name:
+        example: Mustermann, Max
+        type: string
+      contract_id:
+        example: 99
+        type: integer
+      district:
+        example: 1
+        type: integer
+      matched:
+        example: true
+        type: boolean
+      total_amount:
+        example: 166847
+        type: integer
+      voucher_number:
+        example: GB-12345678901-02
+        type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.SettlementUploadResponse:
+    properties:
+      children:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.SettlementChildResponse'
+        type: array
+      children_count:
+        example: 25
+        type: integer
+      contract_booking:
+        example: 480000
+        type: integer
+      correction_booking:
+        example: 20000
+        type: integer
+      facility_name:
+        example: Kita Sonnenschein
+        type: string
+      facility_total:
+        example: 500000
+        type: integer
+      matched_count:
+        example: 23
+        type: integer
+      surcharges:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.SettlementAmount'
+        type: array
+      unmatched_count:
+        example: 2
+        type: integer
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.StaffingHoursDataPoint:
     properties:
       available_hours:
@@ -6515,6 +6590,47 @@ paths:
       summary: Update a section
       tags:
       - sections
+  /api/v1/organizations/{orgId}/settlements/isbj:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Parse an ISBJ Senatsabrechnung Excel file and return settlement
+        data enriched with matched child/contract info
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: ISBJ Senatsabrechnung Excel file (.xlsx)
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.SettlementUploadResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Upload ISBJ settlement file
+      tags:
+      - settlements
   /api/v1/organizations/{orgId}/statistics/financials:
     get:
       consumes:

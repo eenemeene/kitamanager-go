@@ -6481,6 +6481,68 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/organizations/{orgId}/settlements/isbj": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Parse an ISBJ Senatsabrechnung Excel file and return settlement data enriched with matched child/contract info",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "settlements"
+                ],
+                "summary": "Upload ISBJ settlement file",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "ISBJ Senatsabrechnung Excel file (.xlsx)",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.SettlementUploadResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/organizations/{orgId}/statistics/financials": {
             "get": {
                 "security": [
@@ -10475,6 +10537,111 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255,
                     "example": "Kita"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.SettlementAmount": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "integer",
+                    "example": 166847
+                },
+                "key": {
+                    "type": "string",
+                    "example": "care_type"
+                },
+                "value": {
+                    "type": "string",
+                    "example": "ganztag"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.SettlementChildResponse": {
+            "type": "object",
+            "properties": {
+                "amounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.SettlementAmount"
+                    }
+                },
+                "birth_date": {
+                    "type": "string",
+                    "example": "01.20"
+                },
+                "child_id": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "child_name": {
+                    "type": "string",
+                    "example": "Mustermann, Max"
+                },
+                "contract_id": {
+                    "type": "integer",
+                    "example": 99
+                },
+                "district": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "matched": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "total_amount": {
+                    "type": "integer",
+                    "example": 166847
+                },
+                "voucher_number": {
+                    "type": "string",
+                    "example": "GB-12345678901-02"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.SettlementUploadResponse": {
+            "type": "object",
+            "properties": {
+                "children": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.SettlementChildResponse"
+                    }
+                },
+                "children_count": {
+                    "type": "integer",
+                    "example": 25
+                },
+                "contract_booking": {
+                    "type": "integer",
+                    "example": 480000
+                },
+                "correction_booking": {
+                    "type": "integer",
+                    "example": 20000
+                },
+                "facility_name": {
+                    "type": "string",
+                    "example": "Kita Sonnenschein"
+                },
+                "facility_total": {
+                    "type": "integer",
+                    "example": 500000
+                },
+                "matched_count": {
+                    "type": "integer",
+                    "example": 23
+                },
+                "surcharges": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.SettlementAmount"
+                    }
+                },
+                "unmatched_count": {
+                    "type": "integer",
+                    "example": 2
                 }
             }
         },

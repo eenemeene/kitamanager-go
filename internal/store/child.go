@@ -259,6 +259,19 @@ func (s *ChildStore) FindByOrganizationInDateRange(ctx context.Context, orgID ui
 	return children, nil
 }
 
+// FindContractsByVoucherNumbers returns child contracts matching the given voucher numbers within an organization.
+func (s *ChildStore) FindContractsByVoucherNumbers(ctx context.Context, orgID uint, voucherNumbers []string) ([]models.ChildContract, error) {
+	var contracts []models.ChildContract
+	if err := DBFromContext(ctx, s.db).
+		Joins("JOIN children ON children.id = child_contracts.child_id").
+		Where("children.organization_id = ?", orgID).
+		Where("child_contracts.voucher_number IN ?", voucherNumbers).
+		Find(&contracts).Error; err != nil {
+		return nil, err
+	}
+	return contracts, nil
+}
+
 // CountByOrganizationWithActiveOn counts children with active contracts on the given date.
 // A contract is active if: from_date <= date AND (to_date IS NULL OR to_date >= date)
 func (s *ChildStore) CountByOrganizationWithActiveOn(ctx context.Context, orgID uint, date time.Time) (int64, error) {

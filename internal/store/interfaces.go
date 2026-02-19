@@ -110,6 +110,7 @@ type ChildStorer interface {
 	DeleteContract(ctx context.Context, id uint) error
 	Contracts() PeriodStorer[models.ChildContract]
 	FindContractsByChildPaginated(ctx context.Context, childID uint, limit, offset int) ([]models.ChildContract, int64, error)
+	FindContractsByVoucherNumbers(ctx context.Context, orgID uint, voucherNumbers []string) ([]models.ChildContract, error)
 }
 
 // PeriodStorer defines the interface for time-bounded record operations

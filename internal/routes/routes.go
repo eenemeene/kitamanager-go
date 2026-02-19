@@ -24,6 +24,7 @@ type Deps struct {
 	StepPromotion     *handlers.StepPromotionHandler
 	Statistics        *handlers.StatisticsHandler
 	Export            *handlers.ExportHandler
+	Settlement        *handlers.SettlementHandler
 	AuthMiddleware    *middleware.AuthMiddleware
 	AuthzMiddleware   *middleware.AuthorizationMiddleware
 	CSRFMiddleware    *middleware.CSRFMiddleware
@@ -46,6 +47,7 @@ func Setup(r *gin.Engine, d Deps) {
 	stepPromotionHandler := d.StepPromotion
 	statisticsHandler := d.Statistics
 	exportHandler := d.Export
+	settlementHandler := d.Settlement
 	authMiddleware := d.AuthMiddleware
 	authzMiddleware := d.AuthzMiddleware
 	csrfMiddleware := d.CSRFMiddleware
@@ -293,6 +295,16 @@ func Setup(r *gin.Engine, d Deps) {
 					employees.DELETE("/:id/contracts/:contractId",
 						authzMiddleware.RequirePermission(rbac.ResourceEmployeeContracts, rbac.ActionDelete),
 						employeeHandler.DeleteContract)
+				}
+
+				// ============================================================
+				// Settlement uploads (org-scoped)
+				// ============================================================
+				settlements := orgScoped.Group("/settlements")
+				{
+					settlements.POST("/isbj",
+						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
+						settlementHandler.UploadISBJ)
 				}
 
 				// Children
