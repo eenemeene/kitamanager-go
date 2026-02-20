@@ -272,6 +272,22 @@ func (s *ChildStore) FindContractsByVoucherNumbers(ctx context.Context, orgID ui
 	return contracts, nil
 }
 
+// FindByNameBirthdateAndOrg finds a child by name, birthdate, and organization.
+func (s *ChildStore) FindByNameBirthdateAndOrg(ctx context.Context, firstName, lastName string, birthdate time.Time, orgID uint) (*models.Child, error) {
+	var child models.Child
+	if err := DBFromContext(ctx, s.db).
+		Where("first_name = ? AND last_name = ? AND birthdate = ? AND organization_id = ?", firstName, lastName, birthdate, orgID).
+		First(&child).Error; err != nil {
+		return nil, WrapNotFound(err)
+	}
+	return &child, nil
+}
+
+// DeleteContractsByChild deletes all contracts for the given child.
+func (s *ChildStore) DeleteContractsByChild(ctx context.Context, childID uint) error {
+	return DBFromContext(ctx, s.db).Where("child_id = ?", childID).Delete(&models.ChildContract{}).Error
+}
+
 // CountByOrganizationWithActiveOn counts children with active contracts on the given date.
 // A contract is active if: from_date <= date AND (to_date IS NULL OR to_date >= date)
 func (s *ChildStore) CountByOrganizationWithActiveOn(ctx context.Context, orgID uint, date time.Time) (int64, error) {

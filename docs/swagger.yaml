@@ -4841,6 +4841,82 @@ paths:
       summary: Export children as Excel
       tags:
       - children
+  /api/v1/organizations/{orgId}/children/export/yaml:
+    get:
+      description: Download all children with contracts as a YAML file
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      produces:
+      - application/x-yaml
+      responses:
+        "200":
+          description: YAML file
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Export children as YAML
+      tags:
+      - children
+  /api/v1/organizations/{orgId}/children/import:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload a YAML file to create or update children with contracts
+        (upsert by name+birthdate)
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Children YAML file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            items:
+              $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Import children from YAML
+      tags:
+      - children
   /api/v1/organizations/{orgId}/employees:
     get:
       consumes:

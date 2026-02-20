@@ -286,7 +286,11 @@
     "requirement": "FTE",
     "fundingDataUnavailable": "Funding data could not be loaded",
     "initialContract": "Initial Contract",
-    "contractEndHint": "Auto-filled based on birthdate and school enrollment rules"
+    "contractEndHint": "Auto-filled based on birthdate and school enrollment rules",
+    "exportYaml": "Export YAML",
+    "importYaml": "Import YAML",
+    "importing": "Importing...",
+    "importError": "Failed to import children"
   },
   "users": {
     "title": "Users",

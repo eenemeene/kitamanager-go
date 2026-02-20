@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -79,4 +81,105 @@ func (s *ChildService) Update(ctx context.Context, id, orgID uint, req *models.C
 // The ownership check and deletion run in a single transaction.
 func (s *ChildService) Delete(ctx context.Context, id, orgID uint) error {
 	return personDelete(ctx, s.transactor, s.store.FindByIDMinimalAndOrg, s.store.Delete, id, orgID, "child")
+}
+
+// Import creates or updates children with their contracts from a ChildImportExportData.
+// Children are matched by (first_name, last_name, birthdate, org_id).
+// On match, existing contracts are replaced. Sections are auto-created if missing.
+func (s *ChildService) Import(ctx context.Context, orgID uint, data *models.ChildImportExportData) ([]models.ChildResponse, error) {
+	if len(data.Children) == 0 {
+		return nil, apperror.BadRequest("no children in import data")
+	}
+
+	sectionCache := map[string]uint{}
+	var results []models.ChildResponse
+
+	if err := s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
+		for i, ch := range data.Children {
+			if ch.FirstName == "" || ch.LastName == "" {
+				return apperror.BadRequest(fmt.Sprintf("child %d: first_name and last_name are required", i+1))
+			}
+			if ch.Birthdate.IsZero() {
+				return apperror.BadRequest(fmt.Sprintf("child %d (%s %s): birthdate is required", i+1, ch.FirstName, ch.LastName))
+			}
+
+			existing, err := s.store.FindByNameBirthdateAndOrg(txCtx, ch.FirstName, ch.LastName, ch.Birthdate, orgID)
+			var child *models.Child
+			if err == nil {
+				existing.Gender = ch.Gender
+				if err := s.store.Update(txCtx, existing); err != nil {
+					return apperror.InternalWrap(err, fmt.Sprintf("failed to update child %s %s", ch.FirstName, ch.LastName))
+				}
+				if err := s.store.DeleteContractsByChild(txCtx, existing.ID); err != nil {
+					return apperror.InternalWrap(err, "failed to clear existing contracts")
+				}
+				child = existing
+			} else if errors.Is(err, store.ErrNotFound) {
+				child = &models.Child{
+					Person: models.Person{
+						OrganizationID: orgID,
+						FirstName:      ch.FirstName,
+						LastName:       ch.LastName,
+						Gender:         ch.Gender,
+						Birthdate:      ch.Birthdate,
+					},
+				}
+				if err := s.store.Create(txCtx, child); err != nil {
+					return apperror.InternalWrap(err, fmt.Sprintf("failed to create child %s %s", ch.FirstName, ch.LastName))
+				}
+			} else {
+				return apperror.InternalWrap(err, "failed to look up child")
+			}
+
+			for j, c := range ch.Contracts {
+				if c.From.IsZero() {
+					return apperror.BadRequest(fmt.Sprintf("child %d contract %d: from date is required", i+1, j+1))
+				}
+
+				sectionID, err := resolveSection(txCtx, s.sectionStore, c.SectionName, orgID, sectionCache)
+				if err != nil {
+					return err
+				}
+
+				contract := &models.ChildContract{
+					ChildID:       child.ID,
+					VoucherNumber: c.VoucherNumber,
+				}
+				contract.From = c.From
+				contract.To = c.To
+				contract.SectionID = sectionID
+				contract.Properties = c.Properties
+				if err := s.store.CreateContract(txCtx, contract); err != nil {
+					return apperror.InternalWrap(err, "failed to create contract")
+				}
+			}
+
+			fetched, err := s.store.FindByIDAndOrg(txCtx, child.ID, orgID)
+			if err != nil {
+				return apperror.InternalWrap(err, "failed to fetch imported child")
+			}
+			results = append(results, fetched.ToResponse())
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
+// FindAllByOrganization returns all children for an organization (no pagination), with contracts preloaded.
+func (s *ChildService) FindAllByOrganization(ctx context.Context, orgID uint) ([]models.ChildResponse, error) {
+	var all []models.ChildResponse
+	for offset := 0; ; offset += 100 {
+		children, total, err := s.store.FindByOrganizationAndSection(ctx, orgID, nil, nil, nil, "", 100, offset)
+		if err != nil {
+			return nil, apperror.InternalWrap(err, "failed to fetch children for export")
+		}
+		all = append(all, toResponseList(children, (*models.Child).ToResponse)...)
+		if len(all) >= int(total) {
+			break
+		}
+	}
+	return all, nil
 }

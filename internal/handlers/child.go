@@ -1,11 +1,14 @@
 package handlers
 
 import (
+	"io"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gopkg.in/yaml.v3"
 
+	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 )
@@ -379,4 +382,96 @@ func (h *ChildHandler) UpdateContract(c *gin.Context) {
 // @Router /api/v1/organizations/{orgId}/children/{childId}/contracts/{contractId} [delete]
 func (h *ChildHandler) DeleteContract(c *gin.Context) {
 	handleDeleteContract(c, "childId", h.contractAudit(), h.service.DeleteContract)
+}
+
+// ExportYAML godoc
+// @Summary Export children as YAML
+// @Description Download all children with contracts as a YAML file
+// @Tags children
+// @Produce application/x-yaml
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Success 200 {file} file "YAML file"
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/organizations/{orgId}/children/export/yaml [get]
+func (h *ChildHandler) ExportYAML(c *gin.Context) {
+	orgID, ok := parseOrgID(c)
+	if !ok {
+		return
+	}
+
+	all, ok := fetchAllChildren(c, h.service, orgID, models.ChildListFilter{})
+	if !ok {
+		return
+	}
+
+	data := models.ChildImportExportData{Children: all}
+	yamlBytes, err := yaml.Marshal(data)
+	if err != nil {
+		respondError(c, apperror.Internal("failed to marshal YAML"))
+		return
+	}
+
+	c.Header("Content-Type", "application/x-yaml")
+	c.Header("Content-Disposition", `attachment; filename="children.yaml"`)
+	c.Writer.WriteHeader(http.StatusOK)
+	_, _ = c.Writer.Write(yamlBytes)
+}
+
+// Import godoc
+// @Summary Import children from YAML
+// @Description Upload a YAML file to create or update children with contracts (upsert by name+birthdate)
+// @Tags children
+// @Accept multipart/form-data
+// @Produce json
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Param file formData file true "Children YAML file"
+// @Success 201 {array} models.ChildResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/organizations/{orgId}/children/import [post]
+func (h *ChildHandler) Import(c *gin.Context) {
+	orgID, ok := parseOrgID(c)
+	if !ok {
+		return
+	}
+
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		respondError(c, apperror.BadRequest("file is required"))
+		return
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		respondError(c, apperror.BadRequest("failed to read uploaded file"))
+		return
+	}
+	defer file.Close()
+
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		respondError(c, apperror.BadRequest("failed to read uploaded file"))
+		return
+	}
+
+	var data models.ChildImportExportData
+	if err := yaml.Unmarshal(fileBytes, &data); err != nil {
+		respondError(c, apperror.BadRequest("invalid YAML: "+err.Error()))
+		return
+	}
+
+	results, err := h.service.Import(c.Request.Context(), orgID, &data)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	auditCreate(c, h.auditService, "child_import", 0, "YAML import")
+
+	c.JSON(http.StatusCreated, results)
 }

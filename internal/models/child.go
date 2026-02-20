@@ -62,15 +62,20 @@ type ChildUpdateRequest struct {
 
 // ChildResponse represents the child response
 type ChildResponse struct {
-	ID             uint                    `json:"id" example:"1"`
-	OrganizationID uint                    `json:"organization_id" example:"1"`
-	FirstName      string                  `json:"first_name" example:"Emma"`
-	LastName       string                  `json:"last_name" example:"Schmidt"`
-	Gender         string                  `json:"gender" example:"female"`
-	Birthdate      time.Time               `json:"birthdate" example:"2020-03-10"`
-	Contracts      []ChildContractResponse `json:"contracts,omitempty"`
-	CreatedAt      time.Time               `json:"created_at"`
-	UpdatedAt      time.Time               `json:"updated_at"`
+	ID             uint                    `json:"id" yaml:"id" example:"1"`
+	OrganizationID uint                    `json:"organization_id" yaml:"organization_id" example:"1"`
+	FirstName      string                  `json:"first_name" yaml:"first_name" example:"Emma"`
+	LastName       string                  `json:"last_name" yaml:"last_name" example:"Schmidt"`
+	Gender         string                  `json:"gender" yaml:"gender" example:"female"`
+	Birthdate      time.Time               `json:"birthdate" yaml:"birthdate" example:"2020-03-10"`
+	Contracts      []ChildContractResponse `json:"contracts,omitempty" yaml:"contracts"`
+	CreatedAt      time.Time               `json:"created_at" yaml:"created_at"`
+	UpdatedAt      time.Time               `json:"updated_at" yaml:"updated_at"`
+}
+
+// ChildImportExportData wraps a list of children for YAML import/export.
+type ChildImportExportData struct {
+	Children []ChildResponse `json:"children" yaml:"children"`
 }
 
 // FullName returns the full name.
@@ -100,16 +105,16 @@ func (c *Child) ToResponse() ChildResponse {
 
 // ChildContractResponse represents the child contract response
 type ChildContractResponse struct {
-	ID            uint               `json:"id" example:"1"`
-	ChildID       uint               `json:"child_id" example:"1"`
-	From          time.Time          `json:"from" example:"2025-01-01"`
-	To            *time.Time         `json:"to" example:"2025-12-31"`
-	SectionID     uint               `json:"section_id" example:"2"`
-	SectionName   *string            `json:"section_name,omitempty" example:"Krippe"`
-	VoucherNumber *string            `json:"voucher_number,omitempty" example:"GB-12345678901-02"`
-	Properties    ContractProperties `json:"properties,omitempty"`
-	CreatedAt     time.Time          `json:"created_at"`
-	UpdatedAt     time.Time          `json:"updated_at"`
+	ID            uint               `json:"id" yaml:"id" example:"1"`
+	ChildID       uint               `json:"child_id" yaml:"child_id" example:"1"`
+	From          time.Time          `json:"from" yaml:"from" example:"2025-01-01"`
+	To            *time.Time         `json:"to" yaml:"to" example:"2025-12-31"`
+	SectionID     uint               `json:"section_id" yaml:"section_id" example:"2"`
+	SectionName   *string            `json:"section_name,omitempty" yaml:"section_name" example:"Krippe"`
+	VoucherNumber *string            `json:"voucher_number,omitempty" yaml:"voucher_number" example:"GB-12345678901-02"`
+	Properties    ContractProperties `json:"properties,omitempty" yaml:"properties"`
+	CreatedAt     time.Time          `json:"created_at" yaml:"created_at"`
+	UpdatedAt     time.Time          `json:"updated_at" yaml:"updated_at"`
 }
 
 func (c *ChildContract) ToResponse() ChildContractResponse {

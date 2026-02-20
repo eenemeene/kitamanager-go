@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useCrudDialogs } from '@/lib/hooks/use-crud-dialogs';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { useQuery } from '@tanstack/react-query';
-import { Plus, Download } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Plus, Download, Upload } from 'lucide-react';
 import { MonthStepper } from '@/components/ui/month-stepper';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useCrudMutations } from '@/lib/hooks/use-crud-mutations';
-import { apiClient } from '@/lib/api/client';
+import { apiClient, getErrorMessage } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import {
   type Child,
@@ -57,6 +57,27 @@ export default function ChildrenPage() {
   const orgId = Number(params.orgId);
   const t = useTranslations();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const importMutation = useMutation({
+    mutationFn: (file: File) => apiClient.importChildren(orgId, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.children.all(orgId) });
+      toast({
+        title: t('common.success'),
+        description: t('common.createSuccess', { resource: t('children.title') }),
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: t('common.error'),
+        description: getErrorMessage(error, t('children.importError')),
+        variant: 'destructive',
+      });
+    },
+  });
+
   const [isContractDialogOpen, setIsContractDialogOpen] = useState(false);
   const [contractChild, setContractChild] = useState<Child | null>(null);
   const [page, setPage] = useState(1);
@@ -251,7 +272,7 @@ export default function ChildrenPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{t('children.title')}</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             onClick={() => {
@@ -267,6 +288,34 @@ export default function ChildrenPage() {
             <Download className="mr-2 h-4 w-4" />
             {t('common.exportExcel')}
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => window.open(apiClient.getChildrenExportYamlUrl(orgId))}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            {t('children.exportYaml')}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importMutation.isPending}
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            {importMutation.isPending ? t('children.importing') : t('children.importYaml')}
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".yaml,.yml"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                importMutation.mutate(file);
+                e.target.value = '';
+              }
+            }}
+          />
           <Button onClick={dialogs.handleCreate}>
             <Plus className="mr-2 h-4 w-4" />
             {t('children.newChild')}

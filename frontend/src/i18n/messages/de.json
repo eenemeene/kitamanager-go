@@ -286,7 +286,11 @@
     "requirement": "VZÄ",
     "fundingDataUnavailable": "Finanzierungsdaten konnten nicht geladen werden",
     "initialContract": "Erstvertrag",
-    "contractEndHint": "Automatisch berechnet anhand Geburtsdatum und Einschulungsregeln"
+    "contractEndHint": "Automatisch berechnet anhand Geburtsdatum und Einschulungsregeln",
+    "exportYaml": "YAML Export",
+    "importYaml": "YAML Import",
+    "importing": "Wird importiert...",
+    "importError": "Fehler beim Importieren der Kinder"
   },
   "users": {
     "title": "Benutzer",

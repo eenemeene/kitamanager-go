@@ -317,6 +317,14 @@ func Setup(r *gin.Engine, d Deps) {
 					children.GET("/export/excel",
 						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
 						exportHandler.ExportChildren)
+					children.GET("/export/yaml",
+						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
+						childHandler.ExportYAML)
+
+					// Import (must be before /:childId to avoid route conflict)
+					children.POST("/import",
+						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionCreate),
+						childHandler.Import)
 
 					// ============================================================
 					// Org-wide child attendance endpoints (must come before /:childId)

@@ -858,6 +858,21 @@ class ApiClient {
     return `${API_BASE_URL}/organizations/${orgId}/children/export/excel${qs ? `?${qs}` : ''}`;
   }
 
+  getChildrenExportYamlUrl(orgId: number): string {
+    return `${API_BASE_URL}/organizations/${orgId}/children/export/yaml`;
+  }
+
+  async importChildren(orgId: number, file: File): Promise<Child[]> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await this.client.post<Child[]>(
+      `/organizations/${orgId}/children/import`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  }
+
   // Child Attendance
   async getChildAttendanceByDateAll(
     orgId: number,
