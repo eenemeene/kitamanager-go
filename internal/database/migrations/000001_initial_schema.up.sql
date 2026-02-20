@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS organizations (
     created_by VARCHAR(255),
     updated_at TIMESTAMPTZ
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_organizations_name ON organizations(name);
 
 CREATE TABLE IF NOT EXISTS users (
     id BIGSERIAL PRIMARY KEY,
@@ -67,6 +68,7 @@ CREATE TABLE IF NOT EXISTS pay_plans (
     updated_at TIMESTAMPTZ
 );
 CREATE INDEX IF NOT EXISTS idx_pay_plans_organization_id ON pay_plans(organization_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pay_plans_org_name ON pay_plans(organization_id, name);
 
 CREATE TABLE IF NOT EXISTS pay_plan_periods (
     id BIGSERIAL PRIMARY KEY,

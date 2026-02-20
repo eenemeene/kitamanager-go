@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
@@ -56,7 +57,7 @@ func TestOrganizationService_List_Pagination(t *testing.T) {
 	ctx := context.Background()
 
 	for i := 0; i < 5; i++ {
-		createTestOrganization(t, db, "Org")
+		createTestOrganization(t, db, fmt.Sprintf("Org %d", i+1))
 	}
 
 	// First page

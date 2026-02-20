@@ -1157,3 +1157,463 @@ func TestPayPlanService_UpdatePeriod_EmployerContributionRate(t *testing.T) {
 		t.Errorf("EmployerContributionRate = %d, want 2350", resp.EmployerContributionRate)
 	}
 }
+
+// Import tests
+
+func TestPayPlanService_Import_CreatesNew(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createPayPlanService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	stepMin := 2
+	data := &models.PayPlanDetailResponse{
+		Name: "TVöD-SuE",
+		Periods: []models.PayPlanPeriodResponse{
+			{
+				From:                     from,
+				To:                       &to,
+				WeeklyHours:              39.0,
+				EmployerContributionRate: 2100,
+				Entries: []models.PayPlanEntryResponse{
+					{Grade: "S8a", Step: 1, MonthlyAmount: 300000},
+					{Grade: "S8a", Step: 2, MonthlyAmount: 350000, StepMinYears: &stepMin},
+				},
+			},
+		},
+	}
+
+	resp, err := svc.Import(ctx, org.ID, data)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if resp.ID == 0 {
+		t.Error("expected ID to be set")
+	}
+	if resp.Name != "TVöD-SuE" {
+		t.Errorf("Name = %v, want TVöD-SuE", resp.Name)
+	}
+	if resp.OrganizationID != org.ID {
+		t.Errorf("OrganizationID = %d, want %d", resp.OrganizationID, org.ID)
+	}
+	if len(resp.Periods) != 1 {
+		t.Fatalf("expected 1 period, got %d", len(resp.Periods))
+	}
+	if resp.Periods[0].EmployerContributionRate != 2100 {
+		t.Errorf("EmployerContributionRate = %d, want 2100", resp.Periods[0].EmployerContributionRate)
+	}
+	if len(resp.Periods[0].Entries) != 2 {
+		t.Fatalf("expected 2 entries, got %d", len(resp.Periods[0].Entries))
+	}
+}
+
+func TestPayPlanService_Import_UpsertPreservesID(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createPayPlanService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	// First import: create the pay plan.
+	from1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	data1 := &models.PayPlanDetailResponse{
+		Name: "TV eene meene",
+		Periods: []models.PayPlanPeriodResponse{
+			{
+				From:        from1,
+				WeeklyHours: 39.0,
+				Entries: []models.PayPlanEntryResponse{
+					{Grade: "5", Step: 1, MonthlyAmount: 198900},
+				},
+			},
+		},
+	}
+	resp1, err := svc.Import(ctx, org.ID, data1)
+	if err != nil {
+		t.Fatalf("first import: %v", err)
+	}
+	originalID := resp1.ID
+
+	// Second import: same name, different data → should upsert.
+	from2 := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	data2 := &models.PayPlanDetailResponse{
+		Name: "TV eene meene",
+		Periods: []models.PayPlanPeriodResponse{
+			{
+				From:                     from2,
+				WeeklyHours:              39.0,
+				EmployerContributionRate: 2120,
+				Entries: []models.PayPlanEntryResponse{
+					{Grade: "5", Step: 1, MonthlyAmount: 210000},
+					{Grade: "5", Step: 2, MonthlyAmount: 230000},
+				},
+			},
+		},
+	}
+	resp2, err := svc.Import(ctx, org.ID, data2)
+	if err != nil {
+		t.Fatalf("second import: %v", err)
+	}
+
+	// Pay plan ID must be preserved.
+	if resp2.ID != originalID {
+		t.Errorf("ID = %d, want %d (original)", resp2.ID, originalID)
+	}
+	if resp2.Name != "TV eene meene" {
+		t.Errorf("Name = %v, want TV eene meene", resp2.Name)
+	}
+	// New data should be present.
+	if len(resp2.Periods) != 1 {
+		t.Fatalf("expected 1 period, got %d", len(resp2.Periods))
+	}
+	if resp2.Periods[0].EmployerContributionRate != 2120 {
+		t.Errorf("EmployerContributionRate = %d, want 2120", resp2.Periods[0].EmployerContributionRate)
+	}
+	if len(resp2.Periods[0].Entries) != 2 {
+		t.Fatalf("expected 2 entries, got %d", len(resp2.Periods[0].Entries))
+	}
+	if resp2.Periods[0].Entries[0].MonthlyAmount != 210000 {
+		t.Errorf("first entry MonthlyAmount = %d, want 210000", resp2.Periods[0].Entries[0].MonthlyAmount)
+	}
+}
+
+func TestPayPlanService_Import_UpsertReplacesOldPeriods(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createPayPlanService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	// First import: 2 periods with entries.
+	from1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to1 := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
+	from2 := time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC)
+	data1 := &models.PayPlanDetailResponse{
+		Name: "Test Plan",
+		Periods: []models.PayPlanPeriodResponse{
+			{
+				From: from1, To: &to1, WeeklyHours: 39.0,
+				Entries: []models.PayPlanEntryResponse{
+					{Grade: "S8a", Step: 1, MonthlyAmount: 300000},
+					{Grade: "S8a", Step: 2, MonthlyAmount: 320000},
+					{Grade: "S8a", Step: 3, MonthlyAmount: 340000},
+				},
+			},
+			{
+				From: from2, WeeklyHours: 39.0,
+				Entries: []models.PayPlanEntryResponse{
+					{Grade: "S8a", Step: 1, MonthlyAmount: 310000},
+				},
+			},
+		},
+	}
+	resp1, err := svc.Import(ctx, org.ID, data1)
+	if err != nil {
+		t.Fatalf("first import: %v", err)
+	}
+	if len(resp1.Periods) != 2 {
+		t.Fatalf("expected 2 periods after first import, got %d", len(resp1.Periods))
+	}
+
+	// Second import: 1 period with 1 entry → old data must be fully replaced.
+	from3 := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	data2 := &models.PayPlanDetailResponse{
+		Name: "Test Plan",
+		Periods: []models.PayPlanPeriodResponse{
+			{
+				From: from3, WeeklyHours: 40.0,
+				Entries: []models.PayPlanEntryResponse{
+					{Grade: "S11b", Step: 1, MonthlyAmount: 500000},
+				},
+			},
+		},
+	}
+	resp2, err := svc.Import(ctx, org.ID, data2)
+	if err != nil {
+		t.Fatalf("second import: %v", err)
+	}
+
+	if len(resp2.Periods) != 1 {
+		t.Fatalf("expected 1 period after upsert, got %d", len(resp2.Periods))
+	}
+	if resp2.Periods[0].WeeklyHours != 40.0 {
+		t.Errorf("WeeklyHours = %f, want 40.0", resp2.Periods[0].WeeklyHours)
+	}
+	if len(resp2.Periods[0].Entries) != 1 {
+		t.Fatalf("expected 1 entry after upsert, got %d", len(resp2.Periods[0].Entries))
+	}
+	if resp2.Periods[0].Entries[0].Grade != "S11b" {
+		t.Errorf("Grade = %s, want S11b", resp2.Periods[0].Entries[0].Grade)
+	}
+
+	// Verify no stale data remains: list all pay plans, should be exactly 1.
+	plans, total, err := svc.List(ctx, org.ID, 10, 0)
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if total != 1 {
+		t.Errorf("expected 1 pay plan total, got %d", total)
+	}
+	if len(plans) != 1 {
+		t.Errorf("expected 1 pay plan, got %d", len(plans))
+	}
+}
+
+func TestPayPlanService_Import_DifferentOrgsSameName(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createPayPlanService(db)
+	ctx := context.Background()
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	data := &models.PayPlanDetailResponse{
+		Name: "Same Name Plan",
+		Periods: []models.PayPlanPeriodResponse{
+			{From: from, WeeklyHours: 39.0, Entries: []models.PayPlanEntryResponse{
+				{Grade: "S8a", Step: 1, MonthlyAmount: 300000},
+			}},
+		},
+	}
+
+	resp1, err := svc.Import(ctx, org1.ID, data)
+	if err != nil {
+		t.Fatalf("import org1: %v", err)
+	}
+
+	resp2, err := svc.Import(ctx, org2.ID, data)
+	if err != nil {
+		t.Fatalf("import org2: %v", err)
+	}
+
+	// Must be different pay plan records.
+	if resp1.ID == resp2.ID {
+		t.Error("expected different IDs for pay plans in different orgs")
+	}
+	if resp1.OrganizationID != org1.ID {
+		t.Errorf("org1 plan OrganizationID = %d, want %d", resp1.OrganizationID, org1.ID)
+	}
+	if resp2.OrganizationID != org2.ID {
+		t.Errorf("org2 plan OrganizationID = %d, want %d", resp2.OrganizationID, org2.ID)
+	}
+}
+
+func TestPayPlanService_Import_EmptyName(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createPayPlanService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	data := &models.PayPlanDetailResponse{
+		Name: "",
+	}
+
+	_, err := svc.Import(ctx, org.ID, data)
+	if err == nil {
+		t.Fatal("expected error for empty name, got nil")
+	}
+
+	var appErr *apperror.AppError
+	if !errors.As(err, &appErr) {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+}
+
+func TestPayPlanService_Import_WhitespaceName(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createPayPlanService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	data := &models.PayPlanDetailResponse{
+		Name: "   ",
+	}
+
+	_, err := svc.Import(ctx, org.ID, data)
+	if err == nil {
+		t.Fatal("expected error for whitespace name, got nil")
+	}
+
+	var appErr *apperror.AppError
+	if !errors.As(err, &appErr) {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+}
+
+func TestPayPlanService_Import_NoPeriods(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createPayPlanService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	data := &models.PayPlanDetailResponse{
+		Name:    "Empty Plan",
+		Periods: nil,
+	}
+
+	resp, err := svc.Import(ctx, org.ID, data)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if resp.Name != "Empty Plan" {
+		t.Errorf("Name = %v, want Empty Plan", resp.Name)
+	}
+	if len(resp.Periods) != 0 {
+		t.Errorf("expected 0 periods, got %d", len(resp.Periods))
+	}
+}
+
+func TestPayPlanService_Import_UpsertNoPeriodsClearsExisting(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createPayPlanService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	// First import: with periods and entries.
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	data1 := &models.PayPlanDetailResponse{
+		Name: "Wipeable Plan",
+		Periods: []models.PayPlanPeriodResponse{
+			{From: from, WeeklyHours: 39.0, Entries: []models.PayPlanEntryResponse{
+				{Grade: "S8a", Step: 1, MonthlyAmount: 300000},
+			}},
+		},
+	}
+	_, err := svc.Import(ctx, org.ID, data1)
+	if err != nil {
+		t.Fatalf("first import: %v", err)
+	}
+
+	// Second import: same name, no periods → should clear everything.
+	data2 := &models.PayPlanDetailResponse{
+		Name:    "Wipeable Plan",
+		Periods: nil,
+	}
+	resp, err := svc.Import(ctx, org.ID, data2)
+	if err != nil {
+		t.Fatalf("second import: %v", err)
+	}
+
+	if len(resp.Periods) != 0 {
+		t.Errorf("expected 0 periods after upsert with empty data, got %d", len(resp.Periods))
+	}
+}
+
+func TestPayPlanService_Import_MultiplePeriods(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createPayPlanService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	from1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to1 := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
+	from2 := time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC)
+	to2 := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	from3 := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	data := &models.PayPlanDetailResponse{
+		Name: "Multi Period Plan",
+		Periods: []models.PayPlanPeriodResponse{
+			{
+				From: from1, To: &to1, WeeklyHours: 39.0,
+				EmployerContributionRate: 2000,
+				Entries: []models.PayPlanEntryResponse{
+					{Grade: "S8a", Step: 1, MonthlyAmount: 300000},
+				},
+			},
+			{
+				From: from2, To: &to2, WeeklyHours: 39.0,
+				EmployerContributionRate: 2050,
+				Entries: []models.PayPlanEntryResponse{
+					{Grade: "S8a", Step: 1, MonthlyAmount: 310000},
+					{Grade: "S8a", Step: 2, MonthlyAmount: 330000},
+				},
+			},
+			{
+				From: from3, WeeklyHours: 40.0,
+				EmployerContributionRate: 2120,
+				Entries: []models.PayPlanEntryResponse{
+					{Grade: "S8a", Step: 1, MonthlyAmount: 320000},
+				},
+			},
+		},
+	}
+
+	resp, err := svc.Import(ctx, org.ID, data)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(resp.Periods) != 3 {
+		t.Fatalf("expected 3 periods, got %d", len(resp.Periods))
+	}
+
+	// Periods are returned ordered by from_date DESC.
+	totalEntries := 0
+	for _, p := range resp.Periods {
+		totalEntries += len(p.Entries)
+	}
+	if totalEntries != 4 {
+		t.Errorf("expected 4 total entries, got %d", totalEntries)
+	}
+}
+
+func TestPayPlanService_Import_StepMinYearsPreserved(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createPayPlanService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	stepMin2 := 2
+	stepMin4 := 4
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	data := &models.PayPlanDetailResponse{
+		Name: "Step Min Plan",
+		Periods: []models.PayPlanPeriodResponse{
+			{
+				From: from, WeeklyHours: 39.0,
+				Entries: []models.PayPlanEntryResponse{
+					{Grade: "S8a", Step: 1, MonthlyAmount: 300000, StepMinYears: nil},
+					{Grade: "S8a", Step: 2, MonthlyAmount: 320000, StepMinYears: &stepMin2},
+					{Grade: "S8a", Step: 3, MonthlyAmount: 340000, StepMinYears: &stepMin4},
+				},
+			},
+		},
+	}
+
+	resp, err := svc.Import(ctx, org.ID, data)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	entries := resp.Periods[0].Entries
+	if len(entries) != 3 {
+		t.Fatalf("expected 3 entries, got %d", len(entries))
+	}
+	if entries[0].StepMinYears != nil {
+		t.Errorf("entry 0 StepMinYears = %v, want nil", entries[0].StepMinYears)
+	}
+	if entries[1].StepMinYears == nil || *entries[1].StepMinYears != 2 {
+		t.Errorf("entry 1 StepMinYears = %v, want 2", entries[1].StepMinYears)
+	}
+	if entries[2].StepMinYears == nil || *entries[2].StepMinYears != 4 {
+		t.Errorf("entry 2 StepMinYears = %v, want 4", entries[2].StepMinYears)
+	}
+}

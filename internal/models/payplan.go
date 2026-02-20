@@ -6,9 +6,9 @@ import "time"
 // Each organization can have multiple pay plans.
 type PayPlan struct {
 	ID             uint            `gorm:"primaryKey" json:"id" example:"1"`
-	OrganizationID uint            `gorm:"not null;index" json:"organization_id" example:"1"`
+	OrganizationID uint            `gorm:"not null;index;uniqueIndex:idx_pay_plans_org_name" json:"organization_id" example:"1"`
 	Organization   *Organization   `gorm:"foreignKey:OrganizationID" json:"-"`
-	Name           string          `gorm:"not null" json:"name" example:"TVöD-SuE"`
+	Name           string          `gorm:"not null;uniqueIndex:idx_pay_plans_org_name" json:"name" example:"TVöD-SuE"`
 	Periods        []PayPlanPeriod `gorm:"foreignKey:PayPlanID" json:"periods,omitempty"`
 	CreatedAt      time.Time       `json:"created_at"`
 	UpdatedAt      time.Time       `json:"updated_at"`

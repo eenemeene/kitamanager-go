@@ -355,20 +355,38 @@ func (s *PayPlanService) DeleteEntry(ctx context.Context, entryID, periodID, pay
 	return nil
 }
 
-// Import creates a complete pay plan with all periods and entries in a single transaction.
+// Import creates or updates a pay plan with all periods and entries in a single transaction.
+// If a pay plan with the same name already exists in the organization, its periods and entries
+// are replaced with the imported data (upsert). The pay plan ID is preserved so that existing
+// employee contract references remain valid.
 func (s *PayPlanService) Import(ctx context.Context, orgID uint, data *models.PayPlanDetailResponse) (*models.PayPlanDetailResponse, error) {
-	if data.Name == "" {
-		return nil, apperror.BadRequest("name is required")
+	name, err := validateRequiredName(data.Name)
+	if err != nil {
+		return nil, err
 	}
 
 	var result *models.PayPlanDetailResponse
 	if err := s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
-		payplan := &models.PayPlan{
-			OrganizationID: orgID,
-			Name:           data.Name,
-		}
-		if err := s.store.Create(txCtx, payplan); err != nil {
-			return apperror.InternalWrap(err, "failed to create pay plan")
+		// Look for existing pay plan with the same name in this org.
+		existing, err := s.store.FindByNameAndOrg(txCtx, name, orgID)
+		var payplan *models.PayPlan
+		if err == nil {
+			// Upsert: delete old periods/entries, reuse the pay plan record.
+			if err := s.store.DeletePeriodsAndEntries(txCtx, existing.ID); err != nil {
+				return apperror.InternalWrap(err, "failed to clear existing periods")
+			}
+			payplan = existing
+		} else if errors.Is(err, store.ErrNotFound) {
+			// Create new pay plan.
+			payplan = &models.PayPlan{
+				OrganizationID: orgID,
+				Name:           name,
+			}
+			if err := s.store.Create(txCtx, payplan); err != nil {
+				return apperror.InternalWrap(err, "failed to create pay plan")
+			}
+		} else {
+			return apperror.InternalWrap(err, "failed to look up pay plan")
 		}
 
 		for _, p := range data.Periods {

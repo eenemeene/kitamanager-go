@@ -107,6 +107,18 @@ func (s *PayPlanStore) FindByOrganization(ctx context.Context, orgID uint, limit
 	return payplans, total, nil
 }
 
+// FindByNameAndOrg retrieves a pay plan by name within an organization.
+func (s *PayPlanStore) FindByNameAndOrg(ctx context.Context, name string, orgID uint) (*models.PayPlan, error) {
+	var payplan models.PayPlan
+	err := DBFromContext(ctx, s.db).
+		Where("name = ? AND organization_id = ?", name, orgID).
+		First(&payplan).Error
+	if err != nil {
+		return nil, WrapNotFound(err)
+	}
+	return &payplan, nil
+}
+
 // Update updates a pay plan.
 func (s *PayPlanStore) Update(ctx context.Context, payplan *models.PayPlan) error {
 	return DBFromContext(ctx, s.db).Save(payplan).Error
@@ -114,22 +126,25 @@ func (s *PayPlanStore) Update(ctx context.Context, payplan *models.PayPlan) erro
 
 // Delete deletes a pay plan and all related periods and entries.
 func (s *PayPlanStore) Delete(ctx context.Context, id uint) error {
+	if err := s.DeletePeriodsAndEntries(ctx, id); err != nil {
+		return err
+	}
+	return DBFromContext(ctx, s.db).Delete(&models.PayPlan{}, id).Error
+}
+
+// DeletePeriodsAndEntries deletes all periods and entries for a pay plan, but keeps the pay plan itself.
+func (s *PayPlanStore) DeletePeriodsAndEntries(ctx context.Context, payplanID uint) error {
 	db := DBFromContext(ctx, s.db)
 
 	// Delete entries first (via subquery on periods)
 	if err := db.Where("period_id IN (?)",
-		db.Model(&models.PayPlanPeriod{}).Select("id").Where("pay_plan_id = ?", id),
+		db.Model(&models.PayPlanPeriod{}).Select("id").Where("pay_plan_id = ?", payplanID),
 	).Delete(&models.PayPlanEntry{}).Error; err != nil {
 		return err
 	}
 
 	// Delete periods
-	if err := db.Where("pay_plan_id = ?", id).Delete(&models.PayPlanPeriod{}).Error; err != nil {
-		return err
-	}
-
-	// Delete pay plan
-	return db.Delete(&models.PayPlan{}, id).Error
+	return db.Where("pay_plan_id = ?", payplanID).Delete(&models.PayPlanPeriod{}).Error
 }
 
 // Period operations
