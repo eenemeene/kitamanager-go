@@ -151,9 +151,12 @@ func (s *GovernmentFundingBillService) GetByID(ctx context.Context, id, orgID ui
 			})
 			totalAmount += p.Amount
 
-			// Aggregate surcharges
-			if p.Key == "ndh" || p.Key == "qm/mss" || p.Key == "sph" {
-				surchargeMap[p.Key] += p.Amount
+			// Aggregate surcharges (keys defined by ISBJ format)
+			for _, sk := range isbj.SurchargeKeys {
+				if p.Key == sk {
+					surchargeMap[p.Key] += p.Amount
+					break
+				}
 			}
 		}
 
@@ -176,10 +179,11 @@ func (s *GovernmentFundingBillService) GetByID(ctx context.Context, id, orgID ui
 		children = append(children, resp)
 	}
 
-	surcharges := []models.GovernmentFundingBillAmount{
-		{Key: "ndh", Value: "ndh", Amount: surchargeMap["ndh"]},
-		{Key: "qm/mss", Value: "qm/mss", Amount: surchargeMap["qm/mss"]},
-		{Key: "sph", Value: "sph", Amount: surchargeMap["sph"]},
+	surcharges := make([]models.GovernmentFundingBillAmount, 0, len(isbj.SurchargeKeys))
+	for _, sk := range isbj.SurchargeKeys {
+		surcharges = append(surcharges, models.GovernmentFundingBillAmount{
+			Key: sk, Value: sk, Amount: surchargeMap[sk],
+		})
 	}
 
 	childrenCount := len(period.Children)

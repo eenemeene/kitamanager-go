@@ -37,6 +37,10 @@ type ConvertedSettlement struct {
 	Children          []ConvertedChild   `json:"children"`
 }
 
+// SurchargeKeys are the ISBJ payment keys that represent surcharges (Zuschläge).
+// These are fixed by the Berlin billing format.
+var SurchargeKeys = []string{"ndh", "qm/mss", "sph"}
+
 var careScopeMap = map[string]string{
 	"ganztags":  "ganztag",
 	"erweitert": "ganztag erweitert",

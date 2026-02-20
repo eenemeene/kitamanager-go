@@ -11,10 +11,20 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/store"
 )
 
-func setupChildAttendanceTest(t *testing.T) (*ChildAttendanceService, *store.ChildAttendanceStore, *store.ChildStore, *models.Organization, *models.Child) {
+type attendanceTestCtx struct {
+	svc             *ChildAttendanceService
+	attendanceStore *store.ChildAttendanceStore
+	childStore      *store.ChildStore
+	org             *models.Organization
+	child           *models.Child
+	userID          uint
+}
+
+func setupChildAttendanceTest(t *testing.T) *attendanceTestCtx {
 	t.Helper()
 	db := setupTestDB(t)
 
+	user := createTestUser(t, db, "Recorder", "recorder@test.com", "password")
 	attendanceStore := store.NewChildAttendanceStore(db)
 	childStore := store.NewChildStore(db)
 	svc := NewChildAttendanceService(attendanceStore, childStore)
@@ -22,7 +32,14 @@ func setupChildAttendanceTest(t *testing.T) (*ChildAttendanceService, *store.Chi
 	org := createTestOrganization(t, db, "Test Org")
 	child := createTestChild(t, db, "Emma", "Schmidt", org.ID)
 
-	return svc, attendanceStore, childStore, org, child
+	return &attendanceTestCtx{
+		svc:             svc,
+		attendanceStore: attendanceStore,
+		childStore:      childStore,
+		org:             org,
+		child:           child,
+		userID:          user.ID,
+	}
 }
 
 // ============================================================
@@ -30,7 +47,7 @@ func setupChildAttendanceTest(t *testing.T) (*ChildAttendanceService, *store.Chi
 // ============================================================
 
 func TestChildAttendanceService_Create_Present(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	req := &models.ChildAttendanceCreateRequest{
@@ -38,12 +55,12 @@ func TestChildAttendanceService_Create_Present(t *testing.T) {
 		Note:   "Arrived with father",
 	}
 
-	resp, err := svc.Create(ctx, org.ID, child.ID, req, 1)
+	resp, err := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, req, tc.userID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if resp.ChildID != child.ID {
-		t.Errorf("expected ChildID %d, got %d", child.ID, resp.ChildID)
+	if resp.ChildID != tc.child.ID {
+		t.Errorf("expected ChildID %d, got %d", tc.child.ID, resp.ChildID)
 	}
 	if resp.Status != models.ChildAttendanceStatusPresent {
 		t.Errorf("expected status 'present', got '%s'", resp.Status)
@@ -54,13 +71,13 @@ func TestChildAttendanceService_Create_Present(t *testing.T) {
 	if resp.Note != "Arrived with father" {
 		t.Errorf("expected note 'Arrived with father', got '%s'", resp.Note)
 	}
-	if resp.OrganizationID != org.ID {
-		t.Errorf("expected OrganizationID %d, got %d", org.ID, resp.OrganizationID)
+	if resp.OrganizationID != tc.org.ID {
+		t.Errorf("expected OrganizationID %d, got %d", tc.org.ID, resp.OrganizationID)
 	}
 }
 
 func TestChildAttendanceService_Create_Present_WithCustomTime(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	customTime := time.Date(2025, 6, 15, 7, 30, 0, 0, time.UTC)
@@ -69,7 +86,7 @@ func TestChildAttendanceService_Create_Present_WithCustomTime(t *testing.T) {
 		CheckInTime: &customTime,
 	}
 
-	resp, err := svc.Create(ctx, org.ID, child.ID, req, 1)
+	resp, err := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, req, tc.userID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -82,7 +99,7 @@ func TestChildAttendanceService_Create_Present_WithCustomTime(t *testing.T) {
 }
 
 func TestChildAttendanceService_Create_Present_TrimsNote(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	req := &models.ChildAttendanceCreateRequest{
@@ -90,7 +107,7 @@ func TestChildAttendanceService_Create_Present_TrimsNote(t *testing.T) {
 		Note:   "  spaces around  ",
 	}
 
-	resp, err := svc.Create(ctx, org.ID, child.ID, req, 1)
+	resp, err := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, req, tc.userID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -100,13 +117,13 @@ func TestChildAttendanceService_Create_Present_TrimsNote(t *testing.T) {
 }
 
 func TestChildAttendanceService_Create_ChildNotFound(t *testing.T) {
-	svc, _, _, org, _ := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	req := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 	}
-	_, err := svc.Create(ctx, org.ID, 999, req, 1)
+	_, err := tc.svc.Create(ctx, tc.org.ID, 999, req, tc.userID)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -116,13 +133,13 @@ func TestChildAttendanceService_Create_ChildNotFound(t *testing.T) {
 }
 
 func TestChildAttendanceService_Create_WrongOrg(t *testing.T) {
-	svc, _, _, _, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	req := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 	}
-	_, err := svc.Create(ctx, 999, child.ID, req, 1)
+	_, err := tc.svc.Create(ctx, 999, tc.child.ID, req, tc.userID)
 	if err == nil {
 		t.Fatal("expected error for wrong org, got nil")
 	}
@@ -132,7 +149,7 @@ func TestChildAttendanceService_Create_WrongOrg(t *testing.T) {
 }
 
 func TestChildAttendanceService_Create_DuplicateToday(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	req := &models.ChildAttendanceCreateRequest{
@@ -140,13 +157,13 @@ func TestChildAttendanceService_Create_DuplicateToday(t *testing.T) {
 	}
 
 	// First create should succeed
-	_, err := svc.Create(ctx, org.ID, child.ID, req, 1)
+	_, err := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, req, tc.userID)
 	if err != nil {
 		t.Fatalf("first create failed: %v", err)
 	}
 
 	// Second create should fail (duplicate)
-	_, err = svc.Create(ctx, org.ID, child.ID, req, 1)
+	_, err = tc.svc.Create(ctx, tc.org.ID, tc.child.ID, req, tc.userID)
 	if err == nil {
 		t.Fatal("expected error for duplicate, got nil")
 	}
@@ -156,14 +173,14 @@ func TestChildAttendanceService_Create_DuplicateToday(t *testing.T) {
 }
 
 func TestChildAttendanceService_Create_Present_EmptyNote(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	req := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 		Note:   "",
 	}
-	resp, err := svc.Create(ctx, org.ID, child.ID, req, 1)
+	resp, err := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, req, tc.userID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -173,13 +190,13 @@ func TestChildAttendanceService_Create_Present_EmptyNote(t *testing.T) {
 }
 
 func TestChildAttendanceService_Create_Present_ReturnsChildName(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	req := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 	}
-	resp, err := svc.Create(ctx, org.ID, child.ID, req, 1)
+	resp, err := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, req, tc.userID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -193,7 +210,7 @@ func TestChildAttendanceService_Create_Present_ReturnsChildName(t *testing.T) {
 // ============================================================
 
 func TestChildAttendanceService_Create_Absent(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	req := &models.ChildAttendanceCreateRequest{
@@ -202,7 +219,7 @@ func TestChildAttendanceService_Create_Absent(t *testing.T) {
 		Note:   "Has a cold",
 	}
 
-	resp, err := svc.Create(ctx, org.ID, child.ID, req, 1)
+	resp, err := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, req, tc.userID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -226,14 +243,14 @@ func TestChildAttendanceService_Create_AllAbsentStatuses(t *testing.T) {
 
 	for _, status := range statuses {
 		t.Run(status, func(t *testing.T) {
-			svc, _, _, org, child := setupChildAttendanceTest(t)
+			tc := setupChildAttendanceTest(t)
 			ctx := context.Background()
 
 			req := &models.ChildAttendanceCreateRequest{
 				Date:   "2025-06-15",
 				Status: status,
 			}
-			resp, err := svc.Create(ctx, org.ID, child.ID, req, 1)
+			resp, err := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, req, tc.userID)
 			if err != nil {
 				t.Fatalf("expected no error for status %s, got %v", status, err)
 			}
@@ -245,7 +262,7 @@ func TestChildAttendanceService_Create_AllAbsentStatuses(t *testing.T) {
 }
 
 func TestChildAttendanceService_Create_InvalidStatus(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	req := &models.ChildAttendanceCreateRequest{
@@ -253,7 +270,7 @@ func TestChildAttendanceService_Create_InvalidStatus(t *testing.T) {
 		Status: "invalid",
 	}
 
-	_, err := svc.Create(ctx, org.ID, child.ID, req, 1)
+	_, err := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, req, tc.userID)
 	if err == nil {
 		t.Fatal("expected error for invalid status, got nil")
 	}
@@ -263,14 +280,14 @@ func TestChildAttendanceService_Create_InvalidStatus(t *testing.T) {
 }
 
 func TestChildAttendanceService_Create_Absent_RequiresDate(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	req := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusSick,
 	}
 
-	_, err := svc.Create(ctx, org.ID, child.ID, req, 1)
+	_, err := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, req, tc.userID)
 	if err == nil {
 		t.Fatal("expected error when date missing for absent status, got nil")
 	}
@@ -280,7 +297,7 @@ func TestChildAttendanceService_Create_Absent_RequiresDate(t *testing.T) {
 }
 
 func TestChildAttendanceService_Create_InvalidDate(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	req := &models.ChildAttendanceCreateRequest{
@@ -288,7 +305,7 @@ func TestChildAttendanceService_Create_InvalidDate(t *testing.T) {
 		Status: models.ChildAttendanceStatusSick,
 	}
 
-	_, err := svc.Create(ctx, org.ID, child.ID, req, 1)
+	_, err := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, req, tc.userID)
 	if err == nil {
 		t.Fatal("expected error for invalid date, got nil")
 	}
@@ -298,7 +315,7 @@ func TestChildAttendanceService_Create_InvalidDate(t *testing.T) {
 }
 
 func TestChildAttendanceService_Create_DuplicateDate(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	req := &models.ChildAttendanceCreateRequest{
@@ -306,12 +323,12 @@ func TestChildAttendanceService_Create_DuplicateDate(t *testing.T) {
 		Status: models.ChildAttendanceStatusSick,
 	}
 
-	_, err := svc.Create(ctx, org.ID, child.ID, req, 1)
+	_, err := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, req, tc.userID)
 	if err != nil {
 		t.Fatalf("first create failed: %v", err)
 	}
 
-	_, err = svc.Create(ctx, org.ID, child.ID, req, 1)
+	_, err = tc.svc.Create(ctx, tc.org.ID, tc.child.ID, req, tc.userID)
 	if err == nil {
 		t.Fatal("expected conflict error for duplicate date, got nil")
 	}
@@ -321,7 +338,7 @@ func TestChildAttendanceService_Create_DuplicateDate(t *testing.T) {
 }
 
 func TestChildAttendanceService_Create_Absent_ChildNotFound(t *testing.T) {
-	svc, _, _, org, _ := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	req := &models.ChildAttendanceCreateRequest{
@@ -329,7 +346,7 @@ func TestChildAttendanceService_Create_Absent_ChildNotFound(t *testing.T) {
 		Status: models.ChildAttendanceStatusSick,
 	}
 
-	_, err := svc.Create(ctx, org.ID, 999, req, 1)
+	_, err := tc.svc.Create(ctx, tc.org.ID, 999, req, tc.userID)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -339,7 +356,7 @@ func TestChildAttendanceService_Create_Absent_ChildNotFound(t *testing.T) {
 }
 
 func TestChildAttendanceService_Create_Absent_WrongOrg(t *testing.T) {
-	svc, _, _, _, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	req := &models.ChildAttendanceCreateRequest{
@@ -347,14 +364,14 @@ func TestChildAttendanceService_Create_Absent_WrongOrg(t *testing.T) {
 		Status: models.ChildAttendanceStatusSick,
 	}
 
-	_, err := svc.Create(ctx, 999, child.ID, req, 1)
+	_, err := tc.svc.Create(ctx, 999, tc.child.ID, req, tc.userID)
 	if err == nil {
 		t.Fatal("expected error for wrong org, got nil")
 	}
 }
 
 func TestChildAttendanceService_Create_Absent_CheckInTimeIgnored(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	customTime := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
@@ -364,7 +381,7 @@ func TestChildAttendanceService_Create_Absent_CheckInTimeIgnored(t *testing.T) {
 		CheckInTime: &customTime,
 	}
 
-	resp, err := svc.Create(ctx, org.ID, child.ID, req, 1)
+	resp, err := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, req, tc.userID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -378,15 +395,15 @@ func TestChildAttendanceService_Create_Absent_CheckInTimeIgnored(t *testing.T) {
 // ============================================================
 
 func TestChildAttendanceService_GetByID(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	req := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, req, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, req, tc.userID)
 
-	resp, err := svc.GetByID(ctx, createResp.ID, org.ID, child.ID)
+	resp, err := tc.svc.GetByID(ctx, createResp.ID, tc.org.ID, tc.child.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -396,40 +413,40 @@ func TestChildAttendanceService_GetByID(t *testing.T) {
 }
 
 func TestChildAttendanceService_GetByID_WrongOrg(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	req := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, req, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, req, tc.userID)
 
-	_, err := svc.GetByID(ctx, createResp.ID, 999, child.ID)
+	_, err := tc.svc.GetByID(ctx, createResp.ID, 999, tc.child.ID)
 	if err == nil {
 		t.Fatal("expected error for wrong org, got nil")
 	}
 }
 
 func TestChildAttendanceService_GetByID_WrongChild(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	req := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, req, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, req, tc.userID)
 
-	_, err := svc.GetByID(ctx, createResp.ID, org.ID, 999)
+	_, err := tc.svc.GetByID(ctx, createResp.ID, tc.org.ID, 999)
 	if err == nil {
 		t.Fatal("expected error for wrong child, got nil")
 	}
 }
 
 func TestChildAttendanceService_GetByID_NotFound(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
-	_, err := svc.GetByID(ctx, 9999, org.ID, child.ID)
+	_, err := tc.svc.GetByID(ctx, 9999, tc.org.ID, tc.child.ID)
 	if err == nil {
 		t.Fatal("expected error for non-existent record, got nil")
 	}
@@ -443,13 +460,13 @@ func TestChildAttendanceService_GetByID_NotFound(t *testing.T) {
 // ============================================================
 
 func TestChildAttendanceService_Update_Status(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	createReq := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 
 	// Verify the record initially has a check-in time (auto-set by Create for present)
 	if createResp.CheckInTime == nil {
@@ -458,7 +475,7 @@ func TestChildAttendanceService_Update_Status(t *testing.T) {
 
 	newStatus := models.ChildAttendanceStatusSick
 	updateReq := &models.ChildAttendanceUpdateRequest{Status: &newStatus}
-	resp, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, updateReq)
+	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, updateReq)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -475,17 +492,17 @@ func TestChildAttendanceService_Update_Status(t *testing.T) {
 }
 
 func TestChildAttendanceService_Update_Note(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	createReq := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 
 	newNote := "Updated note"
 	updateReq := &models.ChildAttendanceUpdateRequest{Note: &newNote}
-	resp, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, updateReq)
+	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, updateReq)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -495,17 +512,17 @@ func TestChildAttendanceService_Update_Note(t *testing.T) {
 }
 
 func TestChildAttendanceService_Update_InvalidStatus(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	createReq := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 
 	invalid := "invalid"
 	updateReq := &models.ChildAttendanceUpdateRequest{Status: &invalid}
-	_, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, updateReq)
+	_, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, updateReq)
 	if err == nil {
 		t.Fatal("expected error for invalid status, got nil")
 	}
@@ -515,30 +532,30 @@ func TestChildAttendanceService_Update_InvalidStatus(t *testing.T) {
 }
 
 func TestChildAttendanceService_Update_WrongChild(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	createReq := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 
 	newNote := "Updated"
 	updateReq := &models.ChildAttendanceUpdateRequest{Note: &newNote}
-	_, err := svc.Update(ctx, createResp.ID, org.ID, 999, updateReq)
+	_, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, 999, updateReq)
 	if err == nil {
 		t.Fatal("expected error for wrong child, got nil")
 	}
 }
 
 func TestChildAttendanceService_Update_CheckTimes(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	createReq := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 
 	newCheckIn := time.Date(2025, 6, 15, 7, 0, 0, 0, time.UTC)
 	newCheckOut := time.Date(2025, 6, 15, 15, 0, 0, 0, time.UTC)
@@ -546,7 +563,7 @@ func TestChildAttendanceService_Update_CheckTimes(t *testing.T) {
 		CheckInTime:  &newCheckIn,
 		CheckOutTime: &newCheckOut,
 	}
-	resp, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, updateReq)
+	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, updateReq)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -563,7 +580,7 @@ func TestChildAttendanceService_Update_CheckTimes(t *testing.T) {
 // ============================================================
 
 func TestChildAttendanceService_Update_StatusToAbsentClearsTimes(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	checkIn := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
@@ -571,17 +588,17 @@ func TestChildAttendanceService_Update_StatusToAbsentClearsTimes(t *testing.T) {
 		Status:      models.ChildAttendanceStatusPresent,
 		CheckInTime: &checkIn,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 
 	// Add a check-out time first
 	checkOut := time.Date(2025, 6, 15, 16, 0, 0, 0, time.UTC)
-	_, _ = svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	_, _ = tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		CheckOutTime: &checkOut,
 	})
 
 	// Change to absent — both times should be cleared
 	absent := models.ChildAttendanceStatusAbsent
-	resp, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		Status: &absent,
 	})
 	if err != nil {
@@ -596,7 +613,7 @@ func TestChildAttendanceService_Update_StatusToAbsentClearsTimes(t *testing.T) {
 }
 
 func TestChildAttendanceService_Update_StatusToVacationClearsTimes(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	checkIn := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
@@ -604,10 +621,10 @@ func TestChildAttendanceService_Update_StatusToVacationClearsTimes(t *testing.T)
 		Status:      models.ChildAttendanceStatusPresent,
 		CheckInTime: &checkIn,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 
 	vacation := models.ChildAttendanceStatusVacation
-	resp, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		Status: &vacation,
 	})
 	if err != nil {
@@ -619,7 +636,7 @@ func TestChildAttendanceService_Update_StatusToVacationClearsTimes(t *testing.T)
 }
 
 func TestChildAttendanceService_Update_StatusToPresentKeepsTimes(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	checkIn := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
@@ -628,11 +645,11 @@ func TestChildAttendanceService_Update_StatusToPresentKeepsTimes(t *testing.T) {
 		Status:      models.ChildAttendanceStatusPresent,
 		CheckInTime: &checkIn,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 
 	// Set check-out and change to present (explicitly) — times should be preserved
 	present := models.ChildAttendanceStatusPresent
-	resp, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		Status:       &present,
 		CheckOutTime: &checkOut,
 	})
@@ -648,14 +665,14 @@ func TestChildAttendanceService_Update_StatusToPresentKeepsTimes(t *testing.T) {
 }
 
 func TestChildAttendanceService_Update_StatusFromSickToVacationTimesStayNil(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	createReq := &models.ChildAttendanceCreateRequest{
 		Date:   "2025-06-15",
 		Status: models.ChildAttendanceStatusSick,
 	}
-	createResp, err := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, err := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 	if err != nil {
 		t.Fatalf("create failed: %v", err)
 	}
@@ -665,7 +682,7 @@ func TestChildAttendanceService_Update_StatusFromSickToVacationTimesStayNil(t *t
 
 	// Switch from sick to vacation — times should remain nil
 	vacation := models.ChildAttendanceStatusVacation
-	resp, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		Status: &vacation,
 	})
 	if err != nil {
@@ -683,14 +700,14 @@ func TestChildAttendanceService_Update_StatusFromSickToVacationTimesStayNil(t *t
 }
 
 func TestChildAttendanceService_Update_StatusFromSickToPresent_AutoSetsCheckIn(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	createReq := &models.ChildAttendanceCreateRequest{
 		Date:   "2025-06-15",
 		Status: models.ChildAttendanceStatusSick,
 	}
-	createResp, err := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, err := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 	if err != nil {
 		t.Fatalf("create failed: %v", err)
 	}
@@ -701,7 +718,7 @@ func TestChildAttendanceService_Update_StatusFromSickToPresent_AutoSetsCheckIn(t
 	// Switch from sick to present — check-in time should be auto-set to now
 	before := time.Now()
 	present := models.ChildAttendanceStatusPresent
-	resp, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		Status: &present,
 	})
 	after := time.Now()
@@ -723,14 +740,14 @@ func TestChildAttendanceService_Update_StatusFromSickToPresent_AutoSetsCheckIn(t
 }
 
 func TestChildAttendanceService_Update_StatusToPresentWithExplicitTime(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	createReq := &models.ChildAttendanceCreateRequest{
 		Date:   "2025-06-15",
 		Status: models.ChildAttendanceStatusAbsent,
 	}
-	createResp, err := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, err := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 	if err != nil {
 		t.Fatalf("create failed: %v", err)
 	}
@@ -738,7 +755,7 @@ func TestChildAttendanceService_Update_StatusToPresentWithExplicitTime(t *testin
 	// Switch to present with an explicit check-in time — should use the provided time, not now
 	explicitTime := time.Date(2025, 6, 15, 9, 30, 0, 0, time.UTC)
 	present := models.ChildAttendanceStatusPresent
-	resp, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		Status:      &present,
 		CheckInTime: &explicitTime,
 	})
@@ -754,7 +771,7 @@ func TestChildAttendanceService_Update_StatusToPresentWithExplicitTime(t *testin
 }
 
 func TestChildAttendanceService_Update_StatusToPresentAlreadyHasTimes(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	checkIn := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
@@ -762,11 +779,11 @@ func TestChildAttendanceService_Update_StatusToPresentAlreadyHasTimes(t *testing
 		Status:      models.ChildAttendanceStatusPresent,
 		CheckInTime: &checkIn,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 
 	// Explicitly set status to present when already present with times — should preserve existing time
 	present := models.ChildAttendanceStatusPresent
-	resp, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		Status: &present,
 	})
 	if err != nil {
@@ -778,20 +795,20 @@ func TestChildAttendanceService_Update_StatusToPresentAlreadyHasTimes(t *testing
 }
 
 func TestChildAttendanceService_Update_TimesAndNonPresentStatusClearsTimesAfterSetting(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	createReq := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 
 	// Send both times AND a non-present status in the same request.
 	// The status change should take precedence and clear the times.
 	newCheckIn := time.Date(2025, 6, 15, 7, 0, 0, 0, time.UTC)
 	newCheckOut := time.Date(2025, 6, 15, 15, 0, 0, 0, time.UTC)
 	sick := models.ChildAttendanceStatusSick
-	resp, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		CheckInTime:  &newCheckIn,
 		CheckOutTime: &newCheckOut,
 		Status:       &sick,
@@ -820,7 +837,7 @@ func TestChildAttendanceService_Update_AllNonPresentStatusesClearTimes(t *testin
 
 	for _, status := range statuses {
 		t.Run(status, func(t *testing.T) {
-			svc, _, _, org, child := setupChildAttendanceTest(t)
+			tc := setupChildAttendanceTest(t)
 			ctx := context.Background()
 
 			checkIn := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
@@ -829,16 +846,16 @@ func TestChildAttendanceService_Update_AllNonPresentStatusesClearTimes(t *testin
 				Status:      models.ChildAttendanceStatusPresent,
 				CheckInTime: &checkIn,
 			}
-			createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+			createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 
 			// Set check-out time first
-			_, _ = svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+			_, _ = tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 				CheckOutTime: &checkOut,
 			})
 
 			// Change to non-present status
 			s := status
-			resp, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+			resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 				Status: &s,
 			})
 			if err != nil {
@@ -855,18 +872,18 @@ func TestChildAttendanceService_Update_AllNonPresentStatusesClearTimes(t *testin
 }
 
 func TestChildAttendanceService_Update_NotePreservedAfterStatusChange(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	createReq := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 		Note:   "Important note",
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 
 	// Change status — note should be preserved
 	sick := models.ChildAttendanceStatusSick
-	resp, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		Status: &sick,
 	})
 	if err != nil {
@@ -878,7 +895,7 @@ func TestChildAttendanceService_Update_NotePreservedAfterStatusChange(t *testing
 }
 
 func TestChildAttendanceService_Update_TimesClearedPersistsToDatabase(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	checkIn := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
@@ -886,16 +903,16 @@ func TestChildAttendanceService_Update_TimesClearedPersistsToDatabase(t *testing
 		Status:      models.ChildAttendanceStatusPresent,
 		CheckInTime: &checkIn,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 
 	// Change to sick — clear times
 	sick := models.ChildAttendanceStatusSick
-	_, _ = svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	_, _ = tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		Status: &sick,
 	})
 
 	// Re-fetch from database to verify times are actually persisted as NULL
-	reloaded, err := svc.GetByID(ctx, createResp.ID, org.ID, child.ID)
+	reloaded, err := tc.svc.GetByID(ctx, createResp.ID, tc.org.ID, tc.child.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -912,18 +929,18 @@ func TestChildAttendanceService_Update_TimesClearedPersistsToDatabase(t *testing
 // ============================================================
 
 func TestChildAttendanceService_Update_CheckOutBeforeCheckIn_Rejected(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	createReq := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 
 	// Set check-in at 15:00 and check-out at 07:00 — invalid
 	checkIn := time.Date(2025, 6, 15, 15, 0, 0, 0, time.UTC)
 	checkOut := time.Date(2025, 6, 15, 7, 0, 0, 0, time.UTC)
-	_, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	_, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		CheckInTime:  &checkIn,
 		CheckOutTime: &checkOut,
 	})
@@ -936,17 +953,17 @@ func TestChildAttendanceService_Update_CheckOutBeforeCheckIn_Rejected(t *testing
 }
 
 func TestChildAttendanceService_Update_EqualCheckInAndCheckOut_Rejected(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	createReq := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 
 	// Same time for both — invalid (not strictly before)
 	sameTime := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
-	_, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	_, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		CheckInTime:  &sameTime,
 		CheckOutTime: &sameTime,
 	})
@@ -959,7 +976,7 @@ func TestChildAttendanceService_Update_EqualCheckInAndCheckOut_Rejected(t *testi
 }
 
 func TestChildAttendanceService_Update_CheckOutBeforeExistingCheckIn_Rejected(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	checkIn := time.Date(2025, 6, 15, 10, 0, 0, 0, time.UTC)
@@ -967,11 +984,11 @@ func TestChildAttendanceService_Update_CheckOutBeforeExistingCheckIn_Rejected(t 
 		Status:      models.ChildAttendanceStatusPresent,
 		CheckInTime: &checkIn,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 
 	// Set check-out to 09:00, which is before the existing check-in at 10:00
 	earlyCheckOut := time.Date(2025, 6, 15, 9, 0, 0, 0, time.UTC)
-	_, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	_, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		CheckOutTime: &earlyCheckOut,
 	})
 	if err == nil {
@@ -983,7 +1000,7 @@ func TestChildAttendanceService_Update_CheckOutBeforeExistingCheckIn_Rejected(t 
 }
 
 func TestChildAttendanceService_Update_CheckInAfterExistingCheckOut_Rejected(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	checkIn := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
@@ -991,17 +1008,17 @@ func TestChildAttendanceService_Update_CheckInAfterExistingCheckOut_Rejected(t *
 		Status:      models.ChildAttendanceStatusPresent,
 		CheckInTime: &checkIn,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 
 	// First set a valid check-out
 	checkOut := time.Date(2025, 6, 15, 16, 0, 0, 0, time.UTC)
-	_, _ = svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	_, _ = tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		CheckOutTime: &checkOut,
 	})
 
 	// Now update check-in to 17:00, which is after the existing check-out at 16:00
 	lateCheckIn := time.Date(2025, 6, 15, 17, 0, 0, 0, time.UTC)
-	_, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	_, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		CheckInTime: &lateCheckIn,
 	})
 	if err == nil {
@@ -1013,18 +1030,18 @@ func TestChildAttendanceService_Update_CheckInAfterExistingCheckOut_Rejected(t *
 }
 
 func TestChildAttendanceService_Update_ValidCheckInBeforeCheckOut_Accepted(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	createReq := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 
 	// Set valid times: check-in at 07:30, check-out at 15:30
 	checkIn := time.Date(2025, 6, 15, 7, 30, 0, 0, time.UTC)
 	checkOut := time.Date(2025, 6, 15, 15, 30, 0, 0, time.UTC)
-	resp, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		CheckInTime:  &checkIn,
 		CheckOutTime: &checkOut,
 	})
@@ -1040,18 +1057,18 @@ func TestChildAttendanceService_Update_ValidCheckInBeforeCheckOut_Accepted(t *te
 }
 
 func TestChildAttendanceService_Update_CheckOutOneMinuteAfterCheckIn_Accepted(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	createReq := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 
 	// Minimal valid gap: 1 minute apart
 	checkIn := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
 	checkOut := time.Date(2025, 6, 15, 8, 1, 0, 0, time.UTC)
-	resp, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		CheckInTime:  &checkIn,
 		CheckOutTime: &checkOut,
 	})
@@ -1067,18 +1084,18 @@ func TestChildAttendanceService_Update_CheckOutOneMinuteAfterCheckIn_Accepted(t 
 }
 
 func TestChildAttendanceService_Update_CheckOutOneSecondAfterCheckIn_Accepted(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	createReq := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 
 	// Smallest valid gap: 1 second apart
 	checkIn := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
 	checkOut := time.Date(2025, 6, 15, 8, 0, 1, 0, time.UTC)
-	_, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	_, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		CheckInTime:  &checkIn,
 		CheckOutTime: &checkOut,
 	})
@@ -1088,18 +1105,18 @@ func TestChildAttendanceService_Update_CheckOutOneSecondAfterCheckIn_Accepted(t 
 }
 
 func TestChildAttendanceService_Update_CheckOutOneNanosecondBeforeCheckIn_Rejected(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	createReq := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 
 	// Check-out is 1 nanosecond before check-in
 	checkIn := time.Date(2025, 6, 15, 8, 0, 0, 1, time.UTC)
 	checkOut := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
-	_, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	_, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		CheckInTime:  &checkIn,
 		CheckOutTime: &checkOut,
 	})
@@ -1112,17 +1129,17 @@ func TestChildAttendanceService_Update_CheckOutOneNanosecondBeforeCheckIn_Reject
 }
 
 func TestChildAttendanceService_Update_OnlyCheckInNoCheckOut_NoValidation(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	createReq := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 
 	// Update only check-in time, no check-out — should not trigger validation
 	newCheckIn := time.Date(2025, 6, 15, 23, 59, 0, 0, time.UTC)
-	resp, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		CheckInTime: &newCheckIn,
 	})
 	if err != nil {
@@ -1134,25 +1151,25 @@ func TestChildAttendanceService_Update_OnlyCheckInNoCheckOut_NoValidation(t *tes
 }
 
 func TestChildAttendanceService_Update_OnlyCheckOutNoExistingCheckIn_NoValidation(t *testing.T) {
-	svc, attendanceStore, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	// Create a record directly with no check-in time (non-present status)
 	date := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
 	attendance := &models.ChildAttendance{
-		ChildID:        child.ID,
-		OrganizationID: org.ID,
+		ChildID:        tc.child.ID,
+		OrganizationID: tc.org.ID,
 		Date:           date,
 		Status:         models.ChildAttendanceStatusPresent,
-		RecordedBy:     1,
+		RecordedBy:     tc.userID,
 	}
-	if err := attendanceStore.Create(ctx, attendance); err != nil {
+	if err := tc.attendanceStore.Create(ctx, attendance); err != nil {
 		t.Fatalf("failed to create attendance: %v", err)
 	}
 
 	// Update only check-out, no existing check-in — validation not triggered
 	checkOut := time.Date(2025, 6, 15, 16, 0, 0, 0, time.UTC)
-	resp, err := svc.Update(ctx, attendance.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	resp, err := tc.svc.Update(ctx, attendance.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		CheckOutTime: &checkOut,
 	})
 	if err != nil {
@@ -1164,20 +1181,20 @@ func TestChildAttendanceService_Update_OnlyCheckOutNoExistingCheckIn_NoValidatio
 }
 
 func TestChildAttendanceService_Update_NonPresentStatusSkipsTimeValidation(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	createReq := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 
 	// Send invalid times (check-out before check-in) PLUS a non-present status.
 	// The status change clears times, so validation should not trigger.
 	badCheckIn := time.Date(2025, 6, 15, 15, 0, 0, 0, time.UTC)
 	badCheckOut := time.Date(2025, 6, 15, 7, 0, 0, 0, time.UTC)
 	absent := models.ChildAttendanceStatusAbsent
-	resp, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		CheckInTime:  &badCheckIn,
 		CheckOutTime: &badCheckOut,
 		Status:       &absent,
@@ -1194,7 +1211,7 @@ func TestChildAttendanceService_Update_NonPresentStatusSkipsTimeValidation(t *te
 }
 
 func TestChildAttendanceService_Update_ValidTimesNotCorruptedByValidation(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	checkIn := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
@@ -1202,11 +1219,11 @@ func TestChildAttendanceService_Update_ValidTimesNotCorruptedByValidation(t *tes
 		Status:      models.ChildAttendanceStatusPresent,
 		CheckInTime: &checkIn,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 
 	// Set valid check-out — should pass and persist correctly
 	checkOut := time.Date(2025, 6, 15, 16, 0, 0, 0, time.UTC)
-	_, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	_, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		CheckOutTime: &checkOut,
 	})
 	if err != nil {
@@ -1214,7 +1231,7 @@ func TestChildAttendanceService_Update_ValidTimesNotCorruptedByValidation(t *tes
 	}
 
 	// Verify by re-fetching
-	reloaded, err := svc.GetByID(ctx, createResp.ID, org.ID, child.ID)
+	reloaded, err := tc.svc.GetByID(ctx, createResp.ID, tc.org.ID, tc.child.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1227,7 +1244,7 @@ func TestChildAttendanceService_Update_ValidTimesNotCorruptedByValidation(t *tes
 }
 
 func TestChildAttendanceService_Update_RejectedUpdateDoesNotPersist(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	checkIn := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
@@ -1235,11 +1252,11 @@ func TestChildAttendanceService_Update_RejectedUpdateDoesNotPersist(t *testing.T
 		Status:      models.ChildAttendanceStatusPresent,
 		CheckInTime: &checkIn,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 
 	// Try to set an invalid check-out (before check-in)
 	badCheckOut := time.Date(2025, 6, 15, 7, 0, 0, 0, time.UTC)
-	_, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	_, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		CheckOutTime: &badCheckOut,
 	})
 	if err == nil {
@@ -1247,7 +1264,7 @@ func TestChildAttendanceService_Update_RejectedUpdateDoesNotPersist(t *testing.T
 	}
 
 	// Verify the original record is unchanged
-	reloaded, err := svc.GetByID(ctx, createResp.ID, org.ID, child.ID)
+	reloaded, err := tc.svc.GetByID(ctx, createResp.ID, tc.org.ID, tc.child.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1260,7 +1277,7 @@ func TestChildAttendanceService_Update_RejectedUpdateDoesNotPersist(t *testing.T
 }
 
 func TestChildAttendanceService_Update_SwapTimesInSingleRequest_Rejected(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	checkIn := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
@@ -1269,13 +1286,13 @@ func TestChildAttendanceService_Update_SwapTimesInSingleRequest_Rejected(t *test
 		Status:      models.ChildAttendanceStatusPresent,
 		CheckInTime: &checkIn,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
-	_, _ = svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
+	_, _ = tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		CheckOutTime: &checkOut,
 	})
 
 	// Try to swap: check-in = old check-out, check-out = old check-in
-	_, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	_, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		CheckInTime:  &checkOut, // 16:00
 		CheckOutTime: &checkIn,  // 08:00
 	})
@@ -1288,18 +1305,18 @@ func TestChildAttendanceService_Update_SwapTimesInSingleRequest_Rejected(t *test
 }
 
 func TestChildAttendanceService_Update_MidnightBoundary_Accepted(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	createReq := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 	}
-	createResp, _ := svc.Create(ctx, org.ID, child.ID, createReq, 1)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 
 	// Check-in at midnight, check-out at 23:59 — valid full-day
 	checkIn := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
 	checkOut := time.Date(2025, 6, 15, 23, 59, 0, 0, time.UTC)
-	resp, err := svc.Update(ctx, createResp.ID, org.ID, child.ID, &models.ChildAttendanceUpdateRequest{
+	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		CheckInTime:  &checkIn,
 		CheckOutTime: &checkOut,
 	})
@@ -1319,61 +1336,61 @@ func TestChildAttendanceService_Update_MidnightBoundary_Accepted(t *testing.T) {
 // ============================================================
 
 func TestChildAttendanceService_Delete(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	req := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 	}
-	resp, _ := svc.Create(ctx, org.ID, child.ID, req, 1)
+	resp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, req, tc.userID)
 
-	err := svc.Delete(ctx, resp.ID, org.ID, child.ID)
+	err := tc.svc.Delete(ctx, resp.ID, tc.org.ID, tc.child.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
 	// Verify it's gone
-	_, err = svc.GetByID(ctx, resp.ID, org.ID, child.ID)
+	_, err = tc.svc.GetByID(ctx, resp.ID, tc.org.ID, tc.child.ID)
 	if err == nil {
 		t.Fatal("expected error after delete, got nil")
 	}
 }
 
 func TestChildAttendanceService_Delete_WrongOrg(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	req := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 	}
-	resp, _ := svc.Create(ctx, org.ID, child.ID, req, 1)
+	resp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, req, tc.userID)
 
-	err := svc.Delete(ctx, resp.ID, 999, child.ID)
+	err := tc.svc.Delete(ctx, resp.ID, 999, tc.child.ID)
 	if err == nil {
 		t.Fatal("expected error for wrong org, got nil")
 	}
 }
 
 func TestChildAttendanceService_Delete_WrongChild(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	req := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 	}
-	resp, _ := svc.Create(ctx, org.ID, child.ID, req, 1)
+	resp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, req, tc.userID)
 
-	err := svc.Delete(ctx, resp.ID, org.ID, 999)
+	err := tc.svc.Delete(ctx, resp.ID, tc.org.ID, 999)
 	if err == nil {
 		t.Fatal("expected error for wrong child, got nil")
 	}
 }
 
 func TestChildAttendanceService_Delete_NotFound(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
-	err := svc.Delete(ctx, 9999, org.ID, child.ID)
+	err := tc.svc.Delete(ctx, 9999, tc.org.ID, tc.child.ID)
 	if err == nil {
 		t.Fatal("expected error for non-existent record, got nil")
 	}
@@ -1387,7 +1404,7 @@ func TestChildAttendanceService_Delete_NotFound(t *testing.T) {
 // ============================================================
 
 func TestChildAttendanceService_ListByDate(t *testing.T) {
-	svc, _, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	now := time.Now()
@@ -1396,9 +1413,9 @@ func TestChildAttendanceService_ListByDate(t *testing.T) {
 	req := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
 	}
-	_, _ = svc.Create(ctx, org.ID, child.ID, req, 1)
+	_, _ = tc.svc.Create(ctx, tc.org.ID, tc.child.ID, req, tc.userID)
 
-	records, total, err := svc.ListByDate(ctx, org.ID, today, 10, 0)
+	records, total, err := tc.svc.ListByDate(ctx, tc.org.ID, today, 10, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1411,11 +1428,11 @@ func TestChildAttendanceService_ListByDate(t *testing.T) {
 }
 
 func TestChildAttendanceService_ListByDate_EmptyResult(t *testing.T) {
-	svc, _, _, org, _ := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	farFuture := time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC)
-	records, total, err := svc.ListByDate(ctx, org.ID, farFuture, 10, 0)
+	records, total, err := tc.svc.ListByDate(ctx, tc.org.ID, farFuture, 10, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1432,20 +1449,20 @@ func TestChildAttendanceService_ListByDate_EmptyResult(t *testing.T) {
 // ============================================================
 
 func TestChildAttendanceService_ListByChild(t *testing.T) {
-	svc, attendanceStore, _, org, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	day1 := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	day2 := time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC)
 
-	if err := attendanceStore.Create(ctx, &models.ChildAttendance{ChildID: child.ID, OrganizationID: org.ID, Date: day1, Status: models.ChildAttendanceStatusPresent, RecordedBy: 1}); err != nil {
+	if err := tc.attendanceStore.Create(ctx, &models.ChildAttendance{ChildID: tc.child.ID, OrganizationID: tc.org.ID, Date: day1, Status: models.ChildAttendanceStatusPresent, RecordedBy: tc.userID}); err != nil {
 		t.Fatalf("failed to create attendance: %v", err)
 	}
-	if err := attendanceStore.Create(ctx, &models.ChildAttendance{ChildID: child.ID, OrganizationID: org.ID, Date: day2, Status: models.ChildAttendanceStatusSick, RecordedBy: 1}); err != nil {
+	if err := tc.attendanceStore.Create(ctx, &models.ChildAttendance{ChildID: tc.child.ID, OrganizationID: tc.org.ID, Date: day2, Status: models.ChildAttendanceStatusSick, RecordedBy: tc.userID}); err != nil {
 		t.Fatalf("failed to create attendance: %v", err)
 	}
 
-	records, total, err := svc.ListByChild(ctx, child.ID, org.ID, day1, day2, 10, 0)
+	records, total, err := tc.svc.ListByChild(ctx, tc.child.ID, tc.org.ID, day1, day2, 10, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1458,26 +1475,26 @@ func TestChildAttendanceService_ListByChild(t *testing.T) {
 }
 
 func TestChildAttendanceService_ListByChild_WrongOrg(t *testing.T) {
-	svc, _, _, _, child := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC)
 
-	_, _, err := svc.ListByChild(ctx, child.ID, 999, from, to, 10, 0)
+	_, _, err := tc.svc.ListByChild(ctx, tc.child.ID, 999, from, to, 10, 0)
 	if err == nil {
 		t.Fatal("expected error for wrong org, got nil")
 	}
 }
 
 func TestChildAttendanceService_ListByChild_ChildNotFound(t *testing.T) {
-	svc, _, _, org, _ := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC)
 
-	_, _, err := svc.ListByChild(ctx, 999, org.ID, from, to, 10, 0)
+	_, _, err := tc.svc.ListByChild(ctx, 999, tc.org.ID, from, to, 10, 0)
 	if err == nil {
 		t.Fatal("expected error for non-existent child, got nil")
 	}
@@ -1491,10 +1508,10 @@ func TestChildAttendanceService_GetDailySummary(t *testing.T) {
 	// Set up from scratch with a single DB reference so we don't re-truncate
 	// between child creations.
 	db := setupTestDB(t)
+	user := createTestUser(t, db, "Recorder", "recorder@test.com", "password")
 	attendanceStore := store.NewChildAttendanceStore(db)
 	childStore := store.NewChildStore(db)
 	svc := NewChildAttendanceService(attendanceStore, childStore)
-	_ = childStore
 
 	org := createTestOrganization(t, db, "Test Org")
 	child1 := createTestChild(t, db, "C1", "L", org.ID)
@@ -1505,13 +1522,13 @@ func TestChildAttendanceService_GetDailySummary(t *testing.T) {
 	today := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
 	now := time.Now()
 
-	if err := attendanceStore.Create(ctx, &models.ChildAttendance{ChildID: child1.ID, OrganizationID: org.ID, Date: today, Status: models.ChildAttendanceStatusPresent, RecordedBy: 1, CheckInTime: &now}); err != nil {
+	if err := attendanceStore.Create(ctx, &models.ChildAttendance{ChildID: child1.ID, OrganizationID: org.ID, Date: today, Status: models.ChildAttendanceStatusPresent, RecordedBy: user.ID, CheckInTime: &now}); err != nil {
 		t.Fatalf("failed to create attendance: %v", err)
 	}
-	if err := attendanceStore.Create(ctx, &models.ChildAttendance{ChildID: child2.ID, OrganizationID: org.ID, Date: today, Status: models.ChildAttendanceStatusPresent, RecordedBy: 1, CheckInTime: &now}); err != nil {
+	if err := attendanceStore.Create(ctx, &models.ChildAttendance{ChildID: child2.ID, OrganizationID: org.ID, Date: today, Status: models.ChildAttendanceStatusPresent, RecordedBy: user.ID, CheckInTime: &now}); err != nil {
 		t.Fatalf("failed to create attendance: %v", err)
 	}
-	if err := attendanceStore.Create(ctx, &models.ChildAttendance{ChildID: child3.ID, OrganizationID: org.ID, Date: today, Status: models.ChildAttendanceStatusSick, RecordedBy: 1}); err != nil {
+	if err := attendanceStore.Create(ctx, &models.ChildAttendance{ChildID: child3.ID, OrganizationID: org.ID, Date: today, Status: models.ChildAttendanceStatusSick, RecordedBy: user.ID}); err != nil {
 		t.Fatalf("failed to create attendance: %v", err)
 	}
 
@@ -1531,11 +1548,11 @@ func TestChildAttendanceService_GetDailySummary(t *testing.T) {
 }
 
 func TestChildAttendanceService_GetDailySummary_EmptyDay(t *testing.T) {
-	svc, _, _, org, _ := setupChildAttendanceTest(t)
+	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
 	emptyDay := time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC)
-	summary, err := svc.GetDailySummary(ctx, org.ID, emptyDay)
+	summary, err := tc.svc.GetDailySummary(ctx, tc.org.ID, emptyDay)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}

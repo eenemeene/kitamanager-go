@@ -17,6 +17,7 @@ func setupAttendanceTest(t *testing.T) (*models.Organization, *models.Child, *Ch
 	t.Helper()
 
 	db := setupTestDB(t)
+	user := createTestUser(t, db, "Recorder", "recorder@test.com", "password")
 	org := createTestOrganization(t, db, "Test Kita")
 
 	child := &models.Child{
@@ -34,7 +35,7 @@ func setupAttendanceTest(t *testing.T) (*models.Organization, *models.Child, *Ch
 	auditService := createAuditService(db)
 	handler := NewChildAttendanceHandler(attendanceService, auditService)
 
-	r := setupTestRouter()
+	r := setupTestRouterWithUser(user.ID)
 	// Register non-parameterized routes BEFORE parameterized ones to avoid gin routing conflicts
 	r.GET("/organizations/:orgId/children/attendance", handler.ListByDate)
 	r.GET("/organizations/:orgId/children/attendance/summary", handler.GetDailySummary)
