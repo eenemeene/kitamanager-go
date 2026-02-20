@@ -15,6 +15,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"gorm.io/gorm"
 
 	_ "github.com/eenemeene/kitamanager-go/docs"
 	"github.com/eenemeene/kitamanager-go/internal/config"
@@ -48,15 +49,60 @@ import (
 // @name Authorization
 // @description Type "Bearer" followed by a space and JWT token.
 
+// appStores holds all data access layer instances.
+type appStores struct {
+	user                        *store.UserStore
+	group                       *store.GroupStore
+	section                     *store.SectionStore
+	organization                *store.OrganizationStore
+	employee                    *store.EmployeeStore
+	child                       *store.ChildStore
+	userGroup                   *store.UserGroupStore
+	governmentFunding           *store.GovernmentFundingStore
+	payPlan                     *store.PayPlanStore
+	childAttendance             *store.ChildAttendanceStore
+	budgetItem                  *store.BudgetItemStore
+	audit                       *store.AuditStore
+	token                       *store.TokenStore
+	governmentFundingBillPeriod *store.GovernmentFundingBillPeriodStore
+}
+
+// appServices holds all business logic layer instances.
+type appServices struct {
+	audit                 *service.AuditService
+	auth                  *service.AuthService
+	user                  *service.UserService
+	userGroup             *service.UserGroupService
+	organization          *service.OrganizationService
+	group                 *service.GroupService
+	section               *service.SectionService
+	employee              *service.EmployeeService
+	child                 *service.ChildService
+	governmentFunding     *service.GovernmentFundingService
+	payPlan               *service.PayPlanService
+	childAttendance       *service.ChildAttendanceService
+	budgetItem            *service.BudgetItemService
+	stepPromotion         *service.StepPromotionService
+	statistics            *service.StatisticsService
+	governmentFundingBill *service.GovernmentFundingBillService
+}
+
+// appMiddleware holds all middleware instances.
+type appMiddleware struct {
+	auth             *middleware.AuthMiddleware
+	authz            *middleware.AuthorizationMiddleware
+	csrf             *middleware.CSRFMiddleware
+	loginRateLimiter *middleware.RateLimiter
+	apiRateLimiter   *middleware.RateLimiter
+}
+
 func main() {
-	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
 		slog.Error("Failed to load configuration", "error", err)
 		os.Exit(1)
 	}
 
-	// Setup structured logging
 	setupLogging(cfg)
 
 	slog.Info("Starting KitaManager API",
@@ -66,21 +112,18 @@ func main() {
 		"port", cfg.ServerPort,
 	)
 
-	// Connect to database
 	db, err := database.Connect(cfg)
 	if err != nil {
 		slog.Error("Failed to connect to database", "error", err)
 		os.Exit(1)
 	}
 
-	// Initialize RBAC enforcer
 	enforcer, err := rbac.NewEnforcer(db, cfg.RBACModelPath)
 	if err != nil {
 		slog.Error("Failed to initialize RBAC enforcer", "error", err)
 		os.Exit(1)
 	}
 
-	// Seed default policies if requested
 	if os.Getenv("SEED_RBAC_POLICIES") == "true" {
 		slog.Info("Seeding RBAC policies...")
 		if err := enforcer.SeedDefaultPolicies(); err != nil {
@@ -90,91 +133,114 @@ func main() {
 		slog.Info("RBAC policies seeded successfully")
 	}
 
-	// Initialize stores
-	userStore := store.NewUserStore(db)
-	groupStore := store.NewGroupStore(db)
-	sectionStore := store.NewSectionStore(db)
-	orgStore := store.NewOrganizationStore(db)
-	employeeStore := store.NewEmployeeStore(db)
-	childStore := store.NewChildStore(db)
-	userGroupStore := store.NewUserGroupStore(db)
-	governmentFundingStore := store.NewGovernmentFundingStore(db)
-	payPlanStore := store.NewPayPlanStore(db)
-	childAttendanceStore := store.NewChildAttendanceStore(db)
-	budgetItemStore := store.NewBudgetItemStore(db)
-	auditStore := store.NewAuditStore(db)
-	tokenStore := store.NewTokenStore(db)
+	stores := initStores(db)
+	seedData(cfg, db, stores, enforcer)
 
-	// Seed admin user if configured
-	if err := seed.SeedAdmin(cfg, userStore, userGroupStore, enforcer); err != nil {
+	transactor := store.NewTransactor(db)
+	permissionService := rbac.NewPermissionService(stores.userGroup, enforcer)
+
+	svc := initServices(stores, cfg, transactor)
+	mw := initMiddleware(stores, cfg, permissionService)
+	r := setupRouter(cfg, db, stores, svc, mw)
+
+	srv := &http.Server{
+		Addr:         ":" + cfg.ServerPort,
+		Handler:      r,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	tokenCleanupDone := startTokenCleanup(stores.token)
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		slog.Info("Server started",
+			"port", cfg.ServerPort,
+			"swagger", "http://localhost:"+cfg.ServerPort+"/swagger/index.html",
+		)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			slog.Error("Server error", "error", err)
+			quit <- syscall.SIGTERM
+		}
+	}()
+
+	<-quit
+
+	shutdown(srv, tokenCleanupDone, mw, svc, db)
+}
+
+func initStores(db *gorm.DB) *appStores {
+	return &appStores{
+		user:                        store.NewUserStore(db),
+		group:                       store.NewGroupStore(db),
+		section:                     store.NewSectionStore(db),
+		organization:                store.NewOrganizationStore(db),
+		employee:                    store.NewEmployeeStore(db),
+		child:                       store.NewChildStore(db),
+		userGroup:                   store.NewUserGroupStore(db),
+		governmentFunding:           store.NewGovernmentFundingStore(db),
+		payPlan:                     store.NewPayPlanStore(db),
+		childAttendance:             store.NewChildAttendanceStore(db),
+		budgetItem:                  store.NewBudgetItemStore(db),
+		audit:                       store.NewAuditStore(db),
+		token:                       store.NewTokenStore(db),
+		governmentFundingBillPeriod: store.NewGovernmentFundingBillPeriodStore(db),
+	}
+}
+
+func seedData(cfg *config.Config, db *gorm.DB, s *appStores, enforcer *rbac.Enforcer) {
+	if err := seed.SeedAdmin(cfg, s.user, s.userGroup, enforcer); err != nil {
 		slog.Error("Failed to seed admin user", "error", err)
 		os.Exit(1)
 	}
 
-	// Seed government funding if configured
-	if err := seed.SeedGovernmentFunding(cfg, db, governmentFundingStore); err != nil {
+	if err := seed.SeedGovernmentFunding(cfg, db, s.governmentFunding); err != nil {
 		slog.Error("Failed to seed government funding", "error", err)
 		os.Exit(1)
 	}
 
-	// Seed test data if configured
-	if err := seed.SeedTestData(cfg, db, governmentFundingStore); err != nil {
+	if err := seed.SeedTestData(cfg, db, s.governmentFunding); err != nil {
 		slog.Error("Failed to seed test data", "error", err)
 		os.Exit(1)
 	}
+}
 
-	// Initialize RBAC permission service
-	permissionService := rbac.NewPermissionService(userGroupStore, enforcer)
+func initServices(s *appStores, cfg *config.Config, transactor store.Transactor) *appServices {
+	auditService := service.NewAuditService(s.audit)
+	return &appServices{
+		audit:                 auditService,
+		auth:                  service.NewAuthService(s.user, s.token, cfg.JWTSecret, auditService),
+		user:                  service.NewUserService(s.user, s.group, s.userGroup),
+		userGroup:             service.NewUserGroupService(s.userGroup, s.user, s.group, transactor),
+		organization:          service.NewOrganizationService(s.organization, s.group, s.user),
+		group:                 service.NewGroupService(s.group),
+		section:               service.NewSectionService(s.section),
+		employee:              service.NewEmployeeService(s.employee, s.payPlan, s.section, transactor),
+		child:                 service.NewChildService(s.child, s.organization, s.governmentFunding, s.section, transactor),
+		governmentFunding:     service.NewGovernmentFundingService(s.governmentFunding, transactor),
+		payPlan:               service.NewPayPlanService(s.payPlan),
+		childAttendance:       service.NewChildAttendanceService(s.childAttendance, s.child),
+		budgetItem:            service.NewBudgetItemService(s.budgetItem, transactor),
+		stepPromotion:         service.NewStepPromotionService(s.payPlan, s.employee),
+		statistics:            service.NewStatisticsService(s.child, s.employee, s.organization, s.governmentFunding, s.payPlan, s.budgetItem),
+		governmentFundingBill: service.NewGovernmentFundingBillService(s.child, s.governmentFundingBillPeriod),
+	}
+}
 
-	// Initialize transactor for service-layer transactions
-	transactor := store.NewTransactor(db)
+func initMiddleware(s *appStores, cfg *config.Config, permissionService *rbac.PermissionService) *appMiddleware {
+	return &appMiddleware{
+		auth:             middleware.NewAuthMiddleware(cfg.JWTSecret, s.token),
+		authz:            middleware.NewAuthorizationMiddleware(permissionService),
+		csrf:             middleware.NewCSRFMiddleware(cfg.JWTSecret),
+		loginRateLimiter: middleware.LoginRateLimiter(cfg.LoginRateLimitPerMinute),
+		apiRateLimiter:   middleware.APIRateLimiter(cfg.APIRateLimitPerMinute),
+	}
+}
 
-	// Initialize services
-	auditService := service.NewAuditService(auditStore)
-	authService := service.NewAuthService(userStore, tokenStore, cfg.JWTSecret, auditService)
-	userService := service.NewUserService(userStore, groupStore, userGroupStore)
-	userGroupService := service.NewUserGroupService(userGroupStore, userStore, groupStore, transactor)
-	orgService := service.NewOrganizationService(orgStore, groupStore, userStore)
-	groupService := service.NewGroupService(groupStore)
-	sectionService := service.NewSectionService(sectionStore)
-	employeeService := service.NewEmployeeService(employeeStore, payPlanStore, sectionStore, transactor)
-	childService := service.NewChildService(childStore, orgStore, governmentFundingStore, sectionStore, transactor)
-	governmentFundingService := service.NewGovernmentFundingService(governmentFundingStore, transactor)
-	payPlanService := service.NewPayPlanService(payPlanStore)
-	childAttendanceService := service.NewChildAttendanceService(childAttendanceStore, childStore)
-	budgetItemService := service.NewBudgetItemService(budgetItemStore, transactor)
-	stepPromotionService := service.NewStepPromotionService(payPlanStore, employeeStore)
-	statisticsService := service.NewStatisticsService(childStore, employeeStore, orgStore, governmentFundingStore, payPlanStore, budgetItemStore)
-	governmentFundingBillPeriodStore := store.NewGovernmentFundingBillPeriodStore(db)
-	governmentFundingBillService := service.NewGovernmentFundingBillService(childStore, governmentFundingBillPeriodStore)
-
-	// Initialize handlers
-	authHandler := handlers.NewAuthHandler(authService, cfg.SecureCookies)
-	userHandler := handlers.NewUserHandler(userService, userGroupService, auditService, tokenStore)
-	groupHandler := handlers.NewGroupHandler(groupService, auditService)
-	sectionHandler := handlers.NewSectionHandler(sectionService, auditService)
-	orgHandler := handlers.NewOrganizationHandler(orgService, auditService)
-	employeeHandler := handlers.NewEmployeeHandler(employeeService, auditService)
-	childHandler := handlers.NewChildHandler(childService, auditService)
-	childStatisticsHandler := handlers.NewChildStatisticsHandler(childService)
-	governmentFundingHandler := handlers.NewGovernmentFundingHandler(governmentFundingService, auditService)
-	payPlanHandler := handlers.NewPayPlanHandler(payPlanService, auditService)
-	childAttendanceHandler := handlers.NewChildAttendanceHandler(childAttendanceService, auditService)
-	budgetItemHandler := handlers.NewBudgetItemHandler(budgetItemService, auditService)
-	stepPromotionHandler := handlers.NewStepPromotionHandler(stepPromotionService)
-	statisticsHandler := handlers.NewStatisticsHandler(statisticsService)
-	exportHandler := handlers.NewExportHandler(employeeService, childService)
-	governmentFundingBillHandler := handlers.NewGovernmentFundingBillHandler(governmentFundingBillService, auditService)
-	healthHandler := handlers.NewHealthHandler(db)
-
-	// Initialize middleware
-	authMiddleware := middleware.NewAuthMiddleware(cfg.JWTSecret, tokenStore)
-	authzMiddleware := middleware.NewAuthorizationMiddleware(permissionService)
-	csrfMiddleware := middleware.NewCSRFMiddleware(cfg.JWTSecret)
-	loginRateLimiter := middleware.LoginRateLimiter(cfg.LoginRateLimitPerMinute)
-	apiRateLimiter := middleware.APIRateLimiter(cfg.APIRateLimitPerMinute)
-
-	// Create Gin router
+func setupRouter(cfg *config.Config, db *gorm.DB, s *appStores, svc *appServices, mw *appMiddleware) *gin.Engine {
 	r := gin.New()
 
 	// Configure trusted proxies for accurate client IP detection
@@ -184,7 +250,6 @@ func main() {
 			os.Exit(1)
 		}
 	} else if cfg.IsProduction() {
-		// In production, trust no proxies by default for security
 		if err := r.SetTrustedProxies(nil); err != nil {
 			slog.Error("Failed to set trusted proxies", "error", err)
 			os.Exit(1)
@@ -199,7 +264,6 @@ func main() {
 	r.Use(middleware.BodySizeLimit(middleware.MaxRequestBodySize))
 	r.Use(middleware.RequestTimeout(middleware.DefaultRequestTimeout))
 
-	// Configure CORS
 	corsConfig := cors.Config{
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-CSRF-Token"},
@@ -208,7 +272,6 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}
 	if len(cfg.CORSAllowOrigins) == 1 && cfg.CORSAllowOrigins[0] == "*" {
-		// Wildcard with credentials requires AllowOriginFunc instead of AllowOrigins
 		corsConfig.AllowOriginFunc = func(origin string) bool { return true }
 	} else {
 		corsConfig.AllowOrigins = cfg.CORSAllowOrigins
@@ -216,58 +279,53 @@ func main() {
 	r.Use(cors.New(corsConfig))
 
 	// Health check endpoints (no auth required)
+	healthHandler := handlers.NewHealthHandler(db)
 	r.GET("/api/v1/health", healthHandler.Check)
 	r.GET("/api/v1/ready", healthHandler.Ready)
 	r.GET("/api/v1/live", healthHandler.Live)
 
-	// Metrics endpoint (requires authentication to prevent information disclosure)
-	r.GET("/metrics", authMiddleware.RequireAuth(), gin.WrapH(promhttp.Handler()))
+	// Metrics endpoint (requires authentication)
+	r.GET("/metrics", mw.auth.RequireAuth(), gin.WrapH(promhttp.Handler()))
 
-	// Swagger UI — require auth in non-development environments
+	// Swagger UI
 	if cfg.IsDevelopment() {
 		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	} else {
 		swagger := r.Group("/swagger")
-		swagger.Use(authMiddleware.RequireAuth())
+		swagger.Use(mw.auth.RequireAuth())
 		swagger.GET("/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	}
 
-	// Setup API routes
+	// API routes
 	routes.Setup(r, routes.Deps{
-		Auth:              authHandler,
-		User:              userHandler,
-		Group:             groupHandler,
-		Section:           sectionHandler,
-		Organization:      orgHandler,
-		Employee:          employeeHandler,
-		Child:             childHandler,
-		ChildStatistics:   childStatisticsHandler,
-		GovernmentFunding: governmentFundingHandler,
-		PayPlan:           payPlanHandler,
-		ChildAttendance:   childAttendanceHandler,
-		BudgetItem:        budgetItemHandler,
-		StepPromotion:     stepPromotionHandler,
-		Statistics:        statisticsHandler,
-		Export:            exportHandler,
-		GovernmentFundingBill: governmentFundingBillHandler,
-		AuthMiddleware:    authMiddleware,
-		AuthzMiddleware:   authzMiddleware,
-		CSRFMiddleware:    csrfMiddleware,
-		LoginRateLimiter:  loginRateLimiter,
-		APIRateLimiter:    apiRateLimiter,
+		Auth:                  handlers.NewAuthHandler(svc.auth, cfg.SecureCookies),
+		User:                  handlers.NewUserHandler(svc.user, svc.userGroup, svc.audit, s.token),
+		Group:                 handlers.NewGroupHandler(svc.group, svc.audit),
+		Section:               handlers.NewSectionHandler(svc.section, svc.audit),
+		Organization:          handlers.NewOrganizationHandler(svc.organization, svc.audit),
+		Employee:              handlers.NewEmployeeHandler(svc.employee, svc.audit),
+		Child:                 handlers.NewChildHandler(svc.child, svc.audit),
+		ChildStatistics:       handlers.NewChildStatisticsHandler(svc.child),
+		GovernmentFunding:     handlers.NewGovernmentFundingHandler(svc.governmentFunding, svc.audit),
+		PayPlan:               handlers.NewPayPlanHandler(svc.payPlan, svc.audit),
+		ChildAttendance:       handlers.NewChildAttendanceHandler(svc.childAttendance, svc.audit),
+		BudgetItem:            handlers.NewBudgetItemHandler(svc.budgetItem, svc.audit),
+		StepPromotion:         handlers.NewStepPromotionHandler(svc.stepPromotion),
+		Statistics:            handlers.NewStatisticsHandler(svc.statistics),
+		Export:                handlers.NewExportHandler(svc.employee, svc.child),
+		GovernmentFundingBill: handlers.NewGovernmentFundingBillHandler(svc.governmentFundingBill, svc.audit),
+		AuthMiddleware:        mw.auth,
+		AuthzMiddleware:       mw.authz,
+		CSRFMiddleware:        mw.csrf,
+		LoginRateLimiter:      mw.loginRateLimiter,
+		APIRateLimiter:        mw.apiRateLimiter,
 	})
 
-	// Create HTTP server
-	srv := &http.Server{
-		Addr:         ":" + cfg.ServerPort,
-		Handler:      r,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
-	}
+	return r
+}
 
-	// Start token cleanup goroutine (removes expired revocations every hour)
-	tokenCleanupDone := make(chan struct{})
+func startTokenCleanup(tokenStore *store.TokenStore) chan struct{} {
+	done := make(chan struct{})
 	go func() {
 		ticker := time.NewTicker(1 * time.Hour)
 		defer ticker.Stop()
@@ -277,34 +335,17 @@ func main() {
 				if err := tokenStore.CleanupExpired(context.Background()); err != nil {
 					slog.Error("Failed to cleanup expired tokens", "error", err)
 				}
-			case <-tokenCleanupDone:
+			case <-done:
 				return
 			}
 		}
 	}()
+	return done
+}
 
-	// Wait for interrupt signal
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-
-	// Start server in goroutine
-	go func() {
-		slog.Info("Server started",
-			"port", cfg.ServerPort,
-			"swagger", "http://localhost:"+cfg.ServerPort+"/swagger/index.html",
-		)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("Server error", "error", err)
-			// Signal shutdown instead of os.Exit to allow graceful cleanup
-			quit <- syscall.SIGTERM
-		}
-	}()
-
-	<-quit
-
+func shutdown(srv *http.Server, tokenCleanupDone chan struct{}, mw *appMiddleware, svc *appServices, db *gorm.DB) {
 	slog.Info("Shutting down server...")
 
-	// Graceful shutdown with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -315,17 +356,16 @@ func main() {
 
 	close(tokenCleanupDone)
 
-	if loginRateLimiter != nil {
-		loginRateLimiter.Stop()
+	if mw.loginRateLimiter != nil {
+		mw.loginRateLimiter.Stop()
 	}
-	if apiRateLimiter != nil {
-		apiRateLimiter.Stop()
+	if mw.apiRateLimiter != nil {
+		mw.apiRateLimiter.Stop()
 	}
 
 	slog.Info("Draining audit logs...")
-	auditService.Shutdown()
+	svc.audit.Shutdown()
 
-	// Close database connection
 	sqlDB, err := db.DB()
 	if err == nil {
 		_ = sqlDB.Close()
