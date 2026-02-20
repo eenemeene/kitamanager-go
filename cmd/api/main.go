@@ -156,6 +156,7 @@ func main() {
 	orgHandler := handlers.NewOrganizationHandler(orgService, auditService)
 	employeeHandler := handlers.NewEmployeeHandler(employeeService, auditService)
 	childHandler := handlers.NewChildHandler(childService, auditService)
+	childStatisticsHandler := handlers.NewChildStatisticsHandler(childService)
 	governmentFundingHandler := handlers.NewGovernmentFundingHandler(governmentFundingService, auditService)
 	payPlanHandler := handlers.NewPayPlanHandler(payPlanService, auditService)
 	childAttendanceHandler := handlers.NewChildAttendanceHandler(childAttendanceService, auditService)
@@ -240,6 +241,7 @@ func main() {
 		Organization:      orgHandler,
 		Employee:          employeeHandler,
 		Child:             childHandler,
+		ChildStatistics:   childStatisticsHandler,
 		GovernmentFunding: governmentFundingHandler,
 		PayPlan:           payPlanHandler,
 		ChildAttendance:   childAttendanceHandler,

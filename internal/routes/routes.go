@@ -17,6 +17,7 @@ type Deps struct {
 	Organization      *handlers.OrganizationHandler
 	Employee          *handlers.EmployeeHandler
 	Child             *handlers.ChildHandler
+	ChildStatistics   *handlers.ChildStatisticsHandler
 	GovernmentFunding *handlers.GovernmentFundingHandler
 	PayPlan           *handlers.PayPlanHandler
 	ChildAttendance   *handlers.ChildAttendanceHandler
@@ -40,6 +41,7 @@ func Setup(r *gin.Engine, d Deps) {
 	orgHandler := d.Organization
 	employeeHandler := d.Employee
 	childHandler := d.Child
+	childStatisticsHandler := d.ChildStatistics
 	governmentFundingHandler := d.GovernmentFunding
 	payPlanHandler := d.PayPlan
 	childAttendanceHandler := d.ChildAttendance
@@ -250,13 +252,13 @@ func Setup(r *gin.Engine, d Deps) {
 					statisticsHandler.GetEmployeeStaffingHours)
 				orgScoped.GET("/statistics/age-distribution",
 					authzMiddleware.RequirePermission(rbac.ResourceStatistics, rbac.ActionRead),
-					childHandler.GetAgeDistribution)
+					childStatisticsHandler.GetAgeDistribution)
 				orgScoped.GET("/statistics/contract-properties",
 					authzMiddleware.RequirePermission(rbac.ResourceStatistics, rbac.ActionRead),
-					childHandler.GetContractPropertiesDistribution)
+					childStatisticsHandler.GetContractPropertiesDistribution)
 				orgScoped.GET("/statistics/funding",
 					authzMiddleware.RequirePermission(rbac.ResourceStatistics, rbac.ActionRead),
-					childHandler.GetFunding)
+					childStatisticsHandler.GetFunding)
 
 				// Employees
 				employees := orgScoped.Group("/employees")
