@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
+import { useUiStore } from '@/stores/ui-store';
 import {
   type Organization,
   type OrganizationCreateRequest,
@@ -70,6 +71,8 @@ export default function OrganizationsPage() {
 
   const organizations = paginatedData?.data;
 
+  const fetchOrganizations = useUiStore((s) => s.fetchOrganizations);
+
   const dialogs = useCrudDialogs<Organization, OrganizationFormData>({
     reset,
     itemToFormData: (org) => ({ name: org.name, state: org.state, active: org.active }),
@@ -86,8 +89,14 @@ export default function OrganizationsPage() {
     createFn: (data) => apiClient.createOrganization(data),
     updateFn: (id, data) => apiClient.updateOrganization(id, data),
     deleteFn: (id) => apiClient.deleteOrganization(id),
-    onSuccess: dialogs.closeDialog,
-    onDeleteSuccess: dialogs.closeDeleteDialog,
+    onSuccess: () => {
+      dialogs.closeDialog();
+      fetchOrganizations();
+    },
+    onDeleteSuccess: () => {
+      dialogs.closeDeleteDialog();
+      fetchOrganizations();
+    },
   });
 
   const onSubmit = (data: OrganizationFormData) => {
