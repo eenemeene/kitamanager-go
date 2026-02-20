@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import {
   Table,
   TableBody,
@@ -53,15 +54,18 @@ export function PayPlanGrid({ period }: PayPlanGridProps) {
       <TableHeader>
         <TableRow>
           <TableHead />
-          {steps.map((step) => (
-            <TableHead key={step} className="text-right">
-              {step}
-              {stepMinYearsMap.get(step) != null && (
-                <span className="text-muted-foreground ml-1 text-xs">
-                  ({stepMinYearsMap.get(step)}y)
-                </span>
-              )}
-            </TableHead>
+          {steps.map((step, i) => (
+            <React.Fragment key={step}>
+              {i > 0 && <TableHead />}
+              <TableHead className="text-right">
+                {step}
+                {stepMinYearsMap.get(step) != null && (
+                  <span className="text-muted-foreground ml-1 text-xs">
+                    ({stepMinYearsMap.get(step)}y)
+                  </span>
+                )}
+              </TableHead>
+            </React.Fragment>
           ))}
         </TableRow>
       </TableHeader>
@@ -69,12 +73,24 @@ export function PayPlanGrid({ period }: PayPlanGridProps) {
         {grades.map((grade) => (
           <TableRow key={grade}>
             <TableCell className="font-medium">{grade}</TableCell>
-            {steps.map((step) => {
+            {steps.map((step, i) => {
               const amount = entryMap.get(`${grade}-${step}`);
+              const prevAmount = i > 0 ? entryMap.get(`${grade}-${steps[i - 1]}`) : undefined;
+              const pctIncrease =
+                amount !== undefined && prevAmount !== undefined && prevAmount > 0
+                  ? ((amount - prevAmount) / prevAmount) * 100
+                  : undefined;
               return (
-                <TableCell key={step} className="text-right">
-                  {amount !== undefined ? formatCurrency(amount) : ''}
-                </TableCell>
+                <React.Fragment key={step}>
+                  {i > 0 && (
+                    <TableCell className="px-1 text-center text-[0.65rem] leading-tight text-emerald-600 dark:text-emerald-400">
+                      {pctIncrease !== undefined ? `↗${pctIncrease.toFixed(1)}%` : ''}
+                    </TableCell>
+                  )}
+                  <TableCell className="text-right">
+                    {amount !== undefined ? formatCurrency(amount) : ''}
+                  </TableCell>
+                </React.Fragment>
               );
             })}
           </TableRow>
