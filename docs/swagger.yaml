@@ -2250,6 +2250,14 @@ definitions:
         example: "2024-01-15T10:30:00Z"
         type: string
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.UserAddOrganizationRequest:
+    properties:
+      organization_id:
+        example: 1
+        type: integer
+    required:
+    - organization_id
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.UserCreateRequest:
     properties:
       active:
@@ -2343,14 +2351,6 @@ definitions:
         items:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserMembership'
         type: array
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.UserOrganizationAddRequest:
-    properties:
-      organization_id:
-        example: 1
-        type: integer
-    required:
-    - organization_id
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.UserPasswordChangeRequest:
     properties:
@@ -7538,7 +7538,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserOrganizationAddRequest'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserAddOrganizationRequest'
       produces:
       - application/json
       responses:

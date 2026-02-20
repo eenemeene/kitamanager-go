@@ -466,7 +466,7 @@ func (h *UserHandler) SetSuperAdmin(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param userId path int true "User ID"
-// @Param request body models.UserOrganizationAddRequest true "Organization ID"
+// @Param request body models.UserAddOrganizationRequest true "Organization ID"
 // @Success 201 {object} models.UserGroupResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
@@ -480,7 +480,7 @@ func (h *UserHandler) AddToOrganization(c *gin.Context) {
 		return
 	}
 
-	req, ok := bindJSON[models.UserOrganizationAddRequest](c)
+	req, ok := bindJSON[models.UserAddOrganizationRequest](c)
 	if !ok {
 		return
 	}

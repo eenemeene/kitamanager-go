@@ -7753,7 +7753,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserOrganizationAddRequest"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserAddOrganizationRequest"
                         }
                     }
                 ],
@@ -11138,6 +11138,18 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.UserAddOrganizationRequest": {
+            "type": "object",
+            "required": [
+                "organization_id"
+            ],
+            "properties": {
+                "organization_id": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.UserCreateRequest": {
             "type": "object",
             "required": [
@@ -11280,18 +11292,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserMembership"
                     }
-                }
-            }
-        },
-        "github_com_eenemeene_kitamanager-go_internal_models.UserOrganizationAddRequest": {
-            "type": "object",
-            "required": [
-                "organization_id"
-            ],
-            "properties": {
-                "organization_id": {
-                    "type": "integer",
-                    "example": 1
                 }
             }
         },

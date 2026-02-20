@@ -43,7 +43,7 @@ type StatusResponse struct {
 	Error  string `json:"error,omitempty" example:""`
 }
 
-// UserOrganizationAddRequest represents the request body for adding a user to an organization
-type UserOrganizationAddRequest struct {
+// UserAddOrganizationRequest represents the request body for adding a user to an organization
+type UserAddOrganizationRequest struct {
 	OrganizationID uint `json:"organization_id" binding:"required" example:"1"`
 }
