@@ -217,7 +217,7 @@ func initServices(s *appStores, cfg *config.Config, transactor store.Transactor)
 		userGroup:             service.NewUserGroupService(s.userGroup, s.user, s.group, transactor),
 		organization:          service.NewOrganizationService(s.organization, s.group, s.user),
 		group:                 service.NewGroupService(s.group),
-		section:               service.NewSectionService(s.section),
+		section:               service.NewSectionService(s.section, transactor),
 		employee:              service.NewEmployeeService(s.employee, s.payPlan, s.section, transactor),
 		child:                 service.NewChildService(s.child, s.organization, s.governmentFunding, s.section, transactor),
 		governmentFunding:     service.NewGovernmentFundingService(s.governmentFunding, transactor),

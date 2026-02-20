@@ -30,12 +30,13 @@ func validateAgeRange(min, max *int) error {
 
 // SectionService handles business logic for section operations
 type SectionService struct {
-	store store.SectionStorer
+	store      store.SectionStorer
+	transactor store.Transactor
 }
 
 // NewSectionService creates a new section service
-func NewSectionService(store store.SectionStorer) *SectionService {
-	return &SectionService{store: store}
+func NewSectionService(store store.SectionStorer, transactor store.Transactor) *SectionService {
+	return &SectionService{store: store, transactor: transactor}
 }
 
 // ListByOrganization returns a paginated list of sections for a specific organization
@@ -140,42 +141,45 @@ func (s *SectionService) UpdateByIDAndOrg(ctx context.Context, id, orgID uint, r
 	return &resp, nil
 }
 
-// DeleteByIDAndOrg deletes a section if it belongs to the specified organization
+// DeleteByIDAndOrg deletes a section if it belongs to the specified organization.
+// The check-then-delete sequence runs inside a transaction to prevent TOCTOU races.
 func (s *SectionService) DeleteByIDAndOrg(ctx context.Context, id, orgID uint) error {
-	section, err := s.store.FindByID(ctx, id)
-	if err != nil {
-		return classifyStoreError(err, "section")
-	}
-	if err := verifyOrgOwnership(section, orgID, "section"); err != nil {
-		return err
-	}
+	return s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
+		section, err := s.store.FindByID(txCtx, id)
+		if err != nil {
+			return classifyStoreError(err, "section")
+		}
+		if err := verifyOrgOwnership(section, orgID, "section"); err != nil {
+			return err
+		}
 
-	// Prevent deletion of default section
-	if section.IsDefault {
-		return apperror.BadRequest("cannot delete the default section")
-	}
+		// Prevent deletion of default section
+		if section.IsDefault {
+			return apperror.BadRequest("cannot delete the default section")
+		}
 
-	// Check if section has children
-	hasChildren, err := s.store.HasChildren(ctx, id)
-	if err != nil {
-		return apperror.InternalWrap(err, "failed to check section children")
-	}
-	if hasChildren {
-		return apperror.BadRequest("cannot delete section with assigned children")
-	}
+		// Check if section has children
+		hasChildren, err := s.store.HasChildren(txCtx, id)
+		if err != nil {
+			return apperror.InternalWrap(err, "failed to check section children")
+		}
+		if hasChildren {
+			return apperror.BadRequest("cannot delete section with assigned children")
+		}
 
-	// Check if section has employees
-	hasEmployees, err := s.store.HasEmployees(ctx, id)
-	if err != nil {
-		return apperror.InternalWrap(err, "failed to check section employees")
-	}
-	if hasEmployees {
-		return apperror.BadRequest("cannot delete section with assigned employees")
-	}
+		// Check if section has employees
+		hasEmployees, err := s.store.HasEmployees(txCtx, id)
+		if err != nil {
+			return apperror.InternalWrap(err, "failed to check section employees")
+		}
+		if hasEmployees {
+			return apperror.BadRequest("cannot delete section with assigned employees")
+		}
 
-	if err := s.store.Delete(ctx, id); err != nil {
-		return apperror.InternalWrap(err, "failed to delete section")
-	}
-	return nil
+		if err := s.store.Delete(txCtx, id); err != nil {
+			return apperror.InternalWrap(err, "failed to delete section")
+		}
+		return nil
+	})
 }
 

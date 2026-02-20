@@ -15,7 +15,8 @@ import (
 
 func createSectionService(db *gorm.DB) *service.SectionService {
 	sectionStore := store.NewSectionStore(db)
-	return service.NewSectionService(sectionStore)
+	transactor := store.NewTransactor(db)
+	return service.NewSectionService(sectionStore, transactor)
 }
 
 func createTestSectionWithOrg(t *testing.T, db *gorm.DB, name string, orgID uint) *models.Section {
