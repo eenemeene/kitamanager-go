@@ -2443,7 +2443,7 @@ info:
   title: KitaManager API
   version: "1.0"
 paths:
-  /api/v1/government-fundings:
+  /api/v1/government-funding-rates:
     get:
       consumes:
       - application/json
@@ -2479,7 +2479,7 @@ paths:
       - BearerAuth: []
       summary: List all government fundings
       tags:
-      - government-fundings
+      - government-funding-rates
     post:
       consumes:
       - application/json
@@ -2518,8 +2518,8 @@ paths:
       - BearerAuth: []
       summary: Create a new government funding
       tags:
-      - government-fundings
-  /api/v1/government-fundings/{fundingId}:
+      - government-funding-rates
+  /api/v1/government-funding-rates/{fundingId}:
     delete:
       consumes:
       - application/json
@@ -2555,7 +2555,7 @@ paths:
       - BearerAuth: []
       summary: Delete a government funding
       tags:
-      - government-fundings
+      - government-funding-rates
     get:
       consumes:
       - application/json
@@ -2603,7 +2603,7 @@ paths:
       - BearerAuth: []
       summary: Get government funding by ID
       tags:
-      - government-fundings
+      - government-funding-rates
     put:
       consumes:
       - application/json
@@ -2651,8 +2651,8 @@ paths:
       - BearerAuth: []
       summary: Update a government funding
       tags:
-      - government-fundings
-  /api/v1/government-fundings/{fundingId}/periods:
+      - government-funding-rates
+  /api/v1/government-funding-rates/{fundingId}/periods:
     post:
       consumes:
       - application/json
@@ -2700,8 +2700,8 @@ paths:
       - BearerAuth: []
       summary: Create a new period
       tags:
-      - government-fundings
-  /api/v1/government-fundings/{fundingId}/periods/{periodId}:
+      - government-funding-rates
+  /api/v1/government-funding-rates/{fundingId}/periods/{periodId}:
     delete:
       consumes:
       - application/json
@@ -2742,7 +2742,7 @@ paths:
       - BearerAuth: []
       summary: Delete a period
       tags:
-      - government-fundings
+      - government-funding-rates
     get:
       consumes:
       - application/json
@@ -2789,7 +2789,7 @@ paths:
       - BearerAuth: []
       summary: Get a period
       tags:
-      - government-fundings
+      - government-funding-rates
     put:
       consumes:
       - application/json
@@ -2842,8 +2842,8 @@ paths:
       - BearerAuth: []
       summary: Update a period
       tags:
-      - government-fundings
-  /api/v1/government-fundings/{fundingId}/periods/{periodId}/properties:
+      - government-funding-rates
+  /api/v1/government-funding-rates/{fundingId}/periods/{periodId}/properties:
     post:
       consumes:
       - application/json
@@ -2896,8 +2896,8 @@ paths:
       - BearerAuth: []
       summary: Create a new property
       tags:
-      - government-fundings
-  /api/v1/government-fundings/{fundingId}/periods/{periodId}/properties/{propId}:
+      - government-funding-rates
+  /api/v1/government-funding-rates/{fundingId}/periods/{periodId}/properties/{propId}:
     delete:
       consumes:
       - application/json
@@ -2943,7 +2943,7 @@ paths:
       - BearerAuth: []
       summary: Delete a property
       tags:
-      - government-fundings
+      - government-funding-rates
     get:
       consumes:
       - application/json
@@ -2995,7 +2995,7 @@ paths:
       - BearerAuth: []
       summary: Get a property
       tags:
-      - government-fundings
+      - government-funding-rates
     put:
       consumes:
       - application/json
@@ -3053,7 +3053,7 @@ paths:
       - BearerAuth: []
       summary: Update a property
       tags:
-      - government-fundings
+      - government-funding-rates
   /api/v1/health:
     get:
       description: Check the health status of the API and its dependencies

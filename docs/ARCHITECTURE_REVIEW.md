@@ -70,7 +70,7 @@ The org-level statistics endpoints require `children:read` permission for staffi
 
 | Resource | Scope | What It Is |
 |---|---|---|
-| `/government-fundings` | Global (superadmin) | Rate tables — defines how much the government pays per child type |
+| `/government-funding-rates` | Global (superadmin) | Rate tables — defines how much the government pays per child type |
 | `/organizations/:orgId/government-funding-bills` | Org-scoped | Uploaded ISBJ Excel billing documents |
 
 The relationship between them is invisible in the API.
@@ -157,6 +157,6 @@ Some stores have dual methods for the same query (e.g., `FindByOrganization` and
 | 5 | **P2** | Fix RBAC permissions on statistics | Small |
 | 6 | **P3** | Rename `UserOrganizationAddRequest` → `UserAddOrganizationRequest` | Trivial |
 | 7 | **P3** | Add missing GET endpoints for government funding periods/properties | Small |
-| 8 | **P3** | Consider renaming `/government-fundings` to `/government-funding-rates` | Small (breaking) |
+| 8 | **P3** | Consider renaming `/government-funding-rates` to `/government-funding-rates` | Small (breaking) |
 | 9 | **P3** | Extract `ChildStatisticsHandler` from `ChildHandler` | Small |
 | 10 | **P4** | Consolidate store interface dual methods | Medium |

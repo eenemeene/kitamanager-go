@@ -507,7 +507,7 @@ class ApiClient {
     GovernmentFunding,
     GovernmentFundingCreateRequest,
     GovernmentFundingUpdateRequest
-  >('government-fundings');
+  >('government-funding-rates');
   getGovernmentFundings = this._governmentFundings.list;
   createGovernmentFunding = this._governmentFundings.create;
   updateGovernmentFunding = this._governmentFundings.update;
@@ -516,7 +516,7 @@ class ApiClient {
   // Custom getGovernmentFunding with periodsLimit param
   async getGovernmentFunding(id: number, periodsLimit?: number): Promise<GovernmentFunding> {
     const params = periodsLimit !== undefined ? { periods_limit: periodsLimit } : {};
-    const response = await this.client.get<GovernmentFunding>(`/government-fundings/${id}`, {
+    const response = await this.client.get<GovernmentFunding>(`/government-funding-rates/${id}`, {
       params,
     });
     return response.data;
@@ -528,7 +528,7 @@ class ApiClient {
     data: GovernmentFundingPeriodCreateRequest
   ): Promise<GovernmentFundingPeriod> {
     const response = await this.client.post<GovernmentFundingPeriod>(
-      `/government-fundings/${governmentFundingId}/periods`,
+      `/government-funding-rates/${governmentFundingId}/periods`,
       data
     );
     return response.data;
@@ -540,7 +540,7 @@ class ApiClient {
     data: GovernmentFundingPeriodUpdateRequest
   ): Promise<GovernmentFundingPeriod> {
     const response = await this.client.put<GovernmentFundingPeriod>(
-      `/government-fundings/${governmentFundingId}/periods/${periodId}`,
+      `/government-funding-rates/${governmentFundingId}/periods/${periodId}`,
       data
     );
     return response.data;
@@ -550,7 +550,9 @@ class ApiClient {
     governmentFundingId: number,
     periodId: number
   ): Promise<void> {
-    await this.client.delete(`/government-fundings/${governmentFundingId}/periods/${periodId}`);
+    await this.client.delete(
+      `/government-funding-rates/${governmentFundingId}/periods/${periodId}`
+    );
   }
 
   // GovernmentFunding Properties
@@ -560,7 +562,7 @@ class ApiClient {
     data: GovernmentFundingPropertyCreateRequest
   ): Promise<GovernmentFundingProperty> {
     const response = await this.client.post<GovernmentFundingProperty>(
-      `/government-fundings/${governmentFundingId}/periods/${periodId}/properties`,
+      `/government-funding-rates/${governmentFundingId}/periods/${periodId}/properties`,
       data
     );
     return response.data;
@@ -573,7 +575,7 @@ class ApiClient {
     data: GovernmentFundingPropertyUpdateRequest
   ): Promise<GovernmentFundingProperty> {
     const response = await this.client.put<GovernmentFundingProperty>(
-      `/government-fundings/${governmentFundingId}/periods/${periodId}/properties/${propId}`,
+      `/government-funding-rates/${governmentFundingId}/periods/${periodId}/properties/${propId}`,
       data
     );
     return response.data;
@@ -585,7 +587,7 @@ class ApiClient {
     propId: number
   ): Promise<void> {
     await this.client.delete(
-      `/government-fundings/${governmentFundingId}/periods/${periodId}/properties/${propId}`
+      `/government-funding-rates/${governmentFundingId}/periods/${periodId}/properties/${propId}`
     );
   }
 

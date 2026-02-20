@@ -730,13 +730,13 @@ func TestAuthorizationMiddleware_GovernmentFunding_SuperAdminCanList(t *testing.
 		c.Set(ctxkeys.UserID, uint(1))
 		c.Next()
 	})
-	r.GET("/government-fundings",
+	r.GET("/government-funding-rates",
 		middleware.RequireSuperAdmin(),
 		func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
 		})
 
-	req, _ := http.NewRequest("GET", "/government-fundings", nil)
+	req, _ := http.NewRequest("GET", "/government-funding-rates", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -758,13 +758,13 @@ func TestAuthorizationMiddleware_GovernmentFunding_SuperAdminCanCreate(t *testin
 		c.Set(ctxkeys.UserID, uint(1))
 		c.Next()
 	})
-	r.POST("/government-fundings",
+	r.POST("/government-funding-rates",
 		middleware.RequireSuperAdmin(),
 		func(c *gin.Context) {
 			c.JSON(http.StatusCreated, gin.H{"id": 1, "name": "Berlin"})
 		})
 
-	req, _ := http.NewRequest("POST", "/government-fundings", nil)
+	req, _ := http.NewRequest("POST", "/government-funding-rates", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -786,13 +786,13 @@ func TestAuthorizationMiddleware_GovernmentFunding_SuperAdminCanUpdate(t *testin
 		c.Set(ctxkeys.UserID, uint(1))
 		c.Next()
 	})
-	r.PUT("/government-fundings/:id",
+	r.PUT("/government-funding-rates/:id",
 		middleware.RequireSuperAdmin(),
 		func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"id": 1, "name": "Berlin Updated"})
 		})
 
-	req, _ := http.NewRequest("PUT", "/government-fundings/1", nil)
+	req, _ := http.NewRequest("PUT", "/government-funding-rates/1", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -814,13 +814,13 @@ func TestAuthorizationMiddleware_GovernmentFunding_SuperAdminCanDelete(t *testin
 		c.Set(ctxkeys.UserID, uint(1))
 		c.Next()
 	})
-	r.DELETE("/government-fundings/:id",
+	r.DELETE("/government-funding-rates/:id",
 		middleware.RequireSuperAdmin(),
 		func(c *gin.Context) {
 			c.JSON(http.StatusNoContent, nil)
 		})
 
-	req, _ := http.NewRequest("DELETE", "/government-fundings/1", nil)
+	req, _ := http.NewRequest("DELETE", "/government-funding-rates/1", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -842,13 +842,13 @@ func TestAuthorizationMiddleware_GovernmentFunding_AdminCannotList(t *testing.T)
 		c.Set(ctxkeys.UserID, uint(1))
 		c.Next()
 	})
-	r.GET("/government-fundings",
+	r.GET("/government-funding-rates",
 		middleware.RequireSuperAdmin(),
 		func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
 		})
 
-	req, _ := http.NewRequest("GET", "/government-fundings", nil)
+	req, _ := http.NewRequest("GET", "/government-funding-rates", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -870,13 +870,13 @@ func TestAuthorizationMiddleware_GovernmentFunding_AdminCannotCreate(t *testing.
 		c.Set(ctxkeys.UserID, uint(1))
 		c.Next()
 	})
-	r.POST("/government-fundings",
+	r.POST("/government-funding-rates",
 		middleware.RequireSuperAdmin(),
 		func(c *gin.Context) {
 			c.JSON(http.StatusCreated, gin.H{"id": 1})
 		})
 
-	req, _ := http.NewRequest("POST", "/government-fundings", nil)
+	req, _ := http.NewRequest("POST", "/government-funding-rates", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -898,13 +898,13 @@ func TestAuthorizationMiddleware_GovernmentFunding_AdminCannotUpdate(t *testing.
 		c.Set(ctxkeys.UserID, uint(1))
 		c.Next()
 	})
-	r.PUT("/government-fundings/:id",
+	r.PUT("/government-funding-rates/:id",
 		middleware.RequireSuperAdmin(),
 		func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"id": 1})
 		})
 
-	req, _ := http.NewRequest("PUT", "/government-fundings/1", nil)
+	req, _ := http.NewRequest("PUT", "/government-funding-rates/1", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -926,13 +926,13 @@ func TestAuthorizationMiddleware_GovernmentFunding_AdminCannotDelete(t *testing.
 		c.Set(ctxkeys.UserID, uint(1))
 		c.Next()
 	})
-	r.DELETE("/government-fundings/:id",
+	r.DELETE("/government-funding-rates/:id",
 		middleware.RequireSuperAdmin(),
 		func(c *gin.Context) {
 			c.JSON(http.StatusNoContent, nil)
 		})
 
-	req, _ := http.NewRequest("DELETE", "/government-fundings/1", nil)
+	req, _ := http.NewRequest("DELETE", "/government-funding-rates/1", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -954,13 +954,13 @@ func TestAuthorizationMiddleware_GovernmentFunding_ManagerCannotAccess(t *testin
 		c.Set(ctxkeys.UserID, uint(1))
 		c.Next()
 	})
-	r.GET("/government-fundings",
+	r.GET("/government-funding-rates",
 		middleware.RequireSuperAdmin(),
 		func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
 		})
 
-	req, _ := http.NewRequest("GET", "/government-fundings", nil)
+	req, _ := http.NewRequest("GET", "/government-funding-rates", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -982,13 +982,13 @@ func TestAuthorizationMiddleware_GovernmentFunding_MemberCannotAccess(t *testing
 		c.Set(ctxkeys.UserID, uint(1))
 		c.Next()
 	})
-	r.GET("/government-fundings",
+	r.GET("/government-funding-rates",
 		middleware.RequireSuperAdmin(),
 		func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
 		})
 
-	req, _ := http.NewRequest("GET", "/government-fundings", nil)
+	req, _ := http.NewRequest("GET", "/government-funding-rates", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -1006,13 +1006,13 @@ func TestAuthorizationMiddleware_GovernmentFunding_NoUserID(t *testing.T) {
 
 	r := gin.New()
 	// No userID set - simulates unauthenticated request
-	r.GET("/government-fundings",
+	r.GET("/government-funding-rates",
 		middleware.RequireSuperAdmin(),
 		func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
 		})
 
-	req, _ := http.NewRequest("GET", "/government-fundings", nil)
+	req, _ := http.NewRequest("GET", "/government-funding-rates", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -1034,13 +1034,13 @@ func TestAuthorizationMiddleware_GovernmentFunding_SuperAdminCanCreatePeriod(t *
 		c.Set(ctxkeys.UserID, uint(1))
 		c.Next()
 	})
-	r.POST("/government-fundings/:id/periods",
+	r.POST("/government-funding-rates/:id/periods",
 		middleware.RequireSuperAdmin(),
 		func(c *gin.Context) {
 			c.JSON(http.StatusCreated, gin.H{"id": 1})
 		})
 
-	req, _ := http.NewRequest("POST", "/government-fundings/1/periods", nil)
+	req, _ := http.NewRequest("POST", "/government-funding-rates/1/periods", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -1062,13 +1062,13 @@ func TestAuthorizationMiddleware_GovernmentFunding_AdminCannotCreatePeriod(t *te
 		c.Set(ctxkeys.UserID, uint(1))
 		c.Next()
 	})
-	r.POST("/government-fundings/:id/periods",
+	r.POST("/government-funding-rates/:id/periods",
 		middleware.RequireSuperAdmin(),
 		func(c *gin.Context) {
 			c.JSON(http.StatusCreated, gin.H{"id": 1})
 		})
 
-	req, _ := http.NewRequest("POST", "/government-fundings/1/periods", nil)
+	req, _ := http.NewRequest("POST", "/government-funding-rates/1/periods", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 

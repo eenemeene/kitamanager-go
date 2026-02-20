@@ -91,10 +91,10 @@ curl http://localhost:8080/api/v1/organizations \
 
 | Methode | Endpunkt | Beschreibung |
 |---------|----------|--------------|
-| GET | `/api/v1/government-fundings` | Förderungskonfigurationen auflisten |
-| POST | `/api/v1/government-fundings` | Förderungskonfiguration erstellen |
-| GET | `/api/v1/government-fundings/{id}` | Förderungskonfiguration abrufen |
-| DELETE | `/api/v1/government-fundings/{id}` | Förderungskonfiguration löschen |
+| GET | `/api/v1/government-funding-rates` | Förderungskonfigurationen auflisten |
+| POST | `/api/v1/government-funding-rates` | Förderungskonfiguration erstellen |
+| GET | `/api/v1/government-funding-rates/{id}` | Förderungskonfiguration abrufen |
+| DELETE | `/api/v1/government-funding-rates/{id}` | Förderungskonfiguration löschen |
 
 ### Benutzer & Gruppen
 

@@ -110,7 +110,7 @@ func Setup(r *gin.Engine, d Deps) {
 			// ============================================================
 			// Government Funding management (superadmin only)
 			// ============================================================
-			governmentFundings := protected.Group("/government-fundings")
+			governmentFundings := protected.Group("/government-funding-rates")
 			{
 				governmentFundings.GET("", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.List)
 				governmentFundings.GET("/:fundingId", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.Get)

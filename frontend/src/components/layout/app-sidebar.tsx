@@ -42,7 +42,7 @@ const navigation: NavItem[] = [
   { name: 'nav.organizations', href: '/organizations', icon: Building2, requiresOrg: false },
   {
     name: 'nav.governmentFundings',
-    href: '/government-fundings',
+    href: '/government-funding-rates',
     icon: Landmark,
     requiresOrg: false,
   },

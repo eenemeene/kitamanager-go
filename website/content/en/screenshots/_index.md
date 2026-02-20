@@ -61,4 +61,4 @@ The government funding page lets administrators configure the state-level fundin
 
 When a child's contract properties match a funding entry, the corresponding monthly amount is automatically displayed in the children list.
 
-{{< screenshot src="/images/screenshots/government-fundings.png" alt="Government funding" caption="Government funding configurations — define state-level rules for automatic funding calculations." >}}
+{{< screenshot src="/images/screenshots/government-funding-rates.png" alt="Government funding" caption="Government funding configurations — define state-level rules for automatic funding calculations." >}}

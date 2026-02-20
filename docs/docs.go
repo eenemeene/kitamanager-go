@@ -23,7 +23,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/v1/government-fundings": {
+        "/api/v1/government-funding-rates": {
             "get": {
                 "security": [
                     {
@@ -38,7 +38,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "government-fundings"
+                    "government-funding-rates"
                 ],
                 "summary": "List all government fundings",
                 "parameters": [
@@ -93,7 +93,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "government-fundings"
+                    "government-funding-rates"
                 ],
                 "summary": "Create a new government funding",
                 "parameters": [
@@ -141,7 +141,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/government-fundings/{fundingId}": {
+        "/api/v1/government-funding-rates/{fundingId}": {
             "get": {
                 "security": [
                     {
@@ -156,7 +156,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "government-fundings"
+                    "government-funding-rates"
                 ],
                 "summary": "Get government funding by ID",
                 "parameters": [
@@ -227,7 +227,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "government-fundings"
+                    "government-funding-rates"
                 ],
                 "summary": "Update a government funding",
                 "parameters": [
@@ -301,7 +301,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "government-fundings"
+                    "government-funding-rates"
                 ],
                 "summary": "Delete a government funding",
                 "parameters": [
@@ -344,7 +344,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/government-fundings/{fundingId}/periods": {
+        "/api/v1/government-funding-rates/{fundingId}/periods": {
             "post": {
                 "security": [
                     {
@@ -359,7 +359,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "government-fundings"
+                    "government-funding-rates"
                 ],
                 "summary": "Create a new period",
                 "parameters": [
@@ -420,7 +420,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/government-fundings/{fundingId}/periods/{periodId}": {
+        "/api/v1/government-funding-rates/{fundingId}/periods/{periodId}": {
             "get": {
                 "security": [
                     {
@@ -435,7 +435,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "government-fundings"
+                    "government-funding-rates"
                 ],
                 "summary": "Get a period",
                 "parameters": [
@@ -507,7 +507,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "government-fundings"
+                    "government-funding-rates"
                 ],
                 "summary": "Update a period",
                 "parameters": [
@@ -588,7 +588,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "government-fundings"
+                    "government-funding-rates"
                 ],
                 "summary": "Delete a period",
                 "parameters": [
@@ -638,7 +638,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/government-fundings/{fundingId}/periods/{periodId}/properties": {
+        "/api/v1/government-funding-rates/{fundingId}/periods/{periodId}/properties": {
             "post": {
                 "security": [
                     {
@@ -653,7 +653,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "government-fundings"
+                    "government-funding-rates"
                 ],
                 "summary": "Create a new property",
                 "parameters": [
@@ -721,7 +721,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/government-fundings/{fundingId}/periods/{periodId}/properties/{propId}": {
+        "/api/v1/government-funding-rates/{fundingId}/periods/{periodId}/properties/{propId}": {
             "get": {
                 "security": [
                     {
@@ -736,7 +736,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "government-fundings"
+                    "government-funding-rates"
                 ],
                 "summary": "Get a property",
                 "parameters": [
@@ -815,7 +815,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "government-fundings"
+                    "government-funding-rates"
                 ],
                 "summary": "Update a property",
                 "parameters": [
@@ -903,7 +903,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "government-fundings"
+                    "government-funding-rates"
                 ],
                 "summary": "Delete a property",
                 "parameters": [

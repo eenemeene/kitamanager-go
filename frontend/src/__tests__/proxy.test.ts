@@ -31,8 +31,8 @@ describe('proxy path matching', () => {
       expect(isPublicPath('/organizations')).toBe(false);
     });
 
-    it('identifies /government-fundings as protected', () => {
-      expect(isPublicPath('/government-fundings')).toBe(false);
+    it('identifies /government-funding-rates as protected', () => {
+      expect(isPublicPath('/government-funding-rates')).toBe(false);
     });
   });
 

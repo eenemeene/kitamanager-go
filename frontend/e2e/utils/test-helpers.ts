@@ -452,14 +452,14 @@ export async function createGovernmentFundingViaApi(
   page: Page,
   data: { name: string; state: string }
 ): Promise<{ id: number; name: string }> {
-  return apiRequest(page, 'POST', '/api/v1/government-fundings', data);
+  return apiRequest(page, 'POST', '/api/v1/government-funding-rates', data);
 }
 
 /**
  * Delete a government funding via the API
  */
 export async function deleteGovernmentFundingViaApi(page: Page, fundingId: number): Promise<void> {
-  await apiRequest(page, 'DELETE', `/api/v1/government-fundings/${fundingId}`);
+  await apiRequest(page, 'DELETE', `/api/v1/government-funding-rates/${fundingId}`);
 }
 
 /**
@@ -471,7 +471,7 @@ export async function getGovernmentFundingsViaApi(
   const data = await apiRequest<{ data: Array<{ id: number; name: string; state: string }> }>(
     page,
     'GET',
-    '/api/v1/government-fundings?limit=100'
+    '/api/v1/government-funding-rates?limit=100'
   );
   if (!Array.isArray(data.data)) {
     throw new Error('getGovernmentFundingsViaApi: response missing data array');
@@ -498,7 +498,7 @@ export async function getGovernmentFundingViaApi(
   }>;
 }> {
   const params = 'periods_limit=0' + (activeOn ? `&active_on=${activeOn}` : '');
-  return apiRequest(page, 'GET', `/api/v1/government-fundings/${fundingId}?${params}`);
+  return apiRequest(page, 'GET', `/api/v1/government-funding-rates/${fundingId}?${params}`);
 }
 
 /**
@@ -516,7 +516,7 @@ export async function createFundingPeriodViaApi(
     from: data.from.includes('T') ? data.from : `${data.from}T00:00:00Z`,
     ...(data.to ? { to: data.to.includes('T') ? data.to : `${data.to}T00:00:00Z` } : {}),
   };
-  return apiRequest(page, 'POST', `/api/v1/government-fundings/${fundingId}/periods`, body);
+  return apiRequest(page, 'POST', `/api/v1/government-funding-rates/${fundingId}/periods`, body);
 }
 
 /**
@@ -539,7 +539,7 @@ export async function createFundingPropertyViaApi(
   return apiRequest(
     page,
     'POST',
-    `/api/v1/government-fundings/${fundingId}/periods/${periodId}/properties`,
+    `/api/v1/government-funding-rates/${fundingId}/periods/${periodId}/properties`,
     data
   );
 }
@@ -801,7 +801,7 @@ export async function deleteFundingPeriodViaApi(
   fundingId: number,
   periodId: number
 ): Promise<void> {
-  await apiRequest(page, 'DELETE', `/api/v1/government-fundings/${fundingId}/periods/${periodId}`);
+  await apiRequest(page, 'DELETE', `/api/v1/government-funding-rates/${fundingId}/periods/${periodId}`);
 }
 
 /**
@@ -816,7 +816,7 @@ export async function deleteFundingPropertyViaApi(
   await apiRequest(
     page,
     'DELETE',
-    `/api/v1/government-fundings/${fundingId}/periods/${periodId}/properties/${propertyId}`
+    `/api/v1/government-funding-rates/${fundingId}/periods/${periodId}/properties/${propertyId}`
   );
 }
 

@@ -91,10 +91,10 @@ curl http://localhost:8080/api/v1/organizations \
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/v1/government-fundings` | List funding configurations |
-| POST | `/api/v1/government-fundings` | Create funding config |
-| GET | `/api/v1/government-fundings/{id}` | Get funding config |
-| DELETE | `/api/v1/government-fundings/{id}` | Delete funding config |
+| GET | `/api/v1/government-funding-rates` | List funding configurations |
+| POST | `/api/v1/government-funding-rates` | Create funding config |
+| GET | `/api/v1/government-funding-rates/{id}` | Get funding config |
+| DELETE | `/api/v1/government-funding-rates/{id}` | Delete funding config |
 
 ### Users & Groups
 

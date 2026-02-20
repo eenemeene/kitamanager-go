@@ -84,7 +84,7 @@ export default function GovernmentFundingsPage() {
   });
 
   const handleView = (funding: GovernmentFunding) => {
-    router.push(`/government-fundings/${funding.id}`);
+    router.push(`/government-funding-rates/${funding.id}`);
   };
 
   const onSubmit = (data: GovernmentFundingFormData) => {

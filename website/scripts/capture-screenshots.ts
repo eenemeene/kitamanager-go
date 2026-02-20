@@ -135,10 +135,10 @@ async function main(): Promise<void> {
     await capture(page, 'children');
 
     // 7. Government Funding
-    await page.goto(`${BASE_URL}/government-fundings`);
+    await page.goto(`${BASE_URL}/government-funding-rates`);
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(1000);
-    await capture(page, 'government-fundings');
+    await capture(page, 'government-funding-rates');
 
     console.log(`\nDone! Screenshots saved to ${OUTPUT_DIR}`);
   } catch (error) {

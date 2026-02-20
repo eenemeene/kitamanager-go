@@ -17,7 +17,7 @@
     "host": "localhost:8080",
     "basePath": "/",
     "paths": {
-        "/api/v1/government-fundings": {
+        "/api/v1/government-funding-rates": {
             "get": {
                 "security": [
                     {
@@ -32,7 +32,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "government-fundings"
+                    "government-funding-rates"
                 ],
                 "summary": "List all government fundings",
                 "parameters": [
@@ -87,7 +87,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "government-fundings"
+                    "government-funding-rates"
                 ],
                 "summary": "Create a new government funding",
                 "parameters": [
@@ -135,7 +135,7 @@
                 }
             }
         },
-        "/api/v1/government-fundings/{fundingId}": {
+        "/api/v1/government-funding-rates/{fundingId}": {
             "get": {
                 "security": [
                     {
@@ -150,7 +150,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "government-fundings"
+                    "government-funding-rates"
                 ],
                 "summary": "Get government funding by ID",
                 "parameters": [
@@ -221,7 +221,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "government-fundings"
+                    "government-funding-rates"
                 ],
                 "summary": "Update a government funding",
                 "parameters": [
@@ -295,7 +295,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "government-fundings"
+                    "government-funding-rates"
                 ],
                 "summary": "Delete a government funding",
                 "parameters": [
@@ -338,7 +338,7 @@
                 }
             }
         },
-        "/api/v1/government-fundings/{fundingId}/periods": {
+        "/api/v1/government-funding-rates/{fundingId}/periods": {
             "post": {
                 "security": [
                     {
@@ -353,7 +353,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "government-fundings"
+                    "government-funding-rates"
                 ],
                 "summary": "Create a new period",
                 "parameters": [
@@ -414,7 +414,7 @@
                 }
             }
         },
-        "/api/v1/government-fundings/{fundingId}/periods/{periodId}": {
+        "/api/v1/government-funding-rates/{fundingId}/periods/{periodId}": {
             "get": {
                 "security": [
                     {
@@ -429,7 +429,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "government-fundings"
+                    "government-funding-rates"
                 ],
                 "summary": "Get a period",
                 "parameters": [
@@ -501,7 +501,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "government-fundings"
+                    "government-funding-rates"
                 ],
                 "summary": "Update a period",
                 "parameters": [
@@ -582,7 +582,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "government-fundings"
+                    "government-funding-rates"
                 ],
                 "summary": "Delete a period",
                 "parameters": [
@@ -632,7 +632,7 @@
                 }
             }
         },
-        "/api/v1/government-fundings/{fundingId}/periods/{periodId}/properties": {
+        "/api/v1/government-funding-rates/{fundingId}/periods/{periodId}/properties": {
             "post": {
                 "security": [
                     {
@@ -647,7 +647,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "government-fundings"
+                    "government-funding-rates"
                 ],
                 "summary": "Create a new property",
                 "parameters": [
@@ -715,7 +715,7 @@
                 }
             }
         },
-        "/api/v1/government-fundings/{fundingId}/periods/{periodId}/properties/{propId}": {
+        "/api/v1/government-funding-rates/{fundingId}/periods/{periodId}/properties/{propId}": {
             "get": {
                 "security": [
                     {
@@ -730,7 +730,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "government-fundings"
+                    "government-funding-rates"
                 ],
                 "summary": "Get a property",
                 "parameters": [
@@ -809,7 +809,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "government-fundings"
+                    "government-funding-rates"
                 ],
                 "summary": "Update a property",
                 "parameters": [
@@ -897,7 +897,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "government-fundings"
+                    "government-funding-rates"
                 ],
                 "summary": "Delete a property",
                 "parameters": [

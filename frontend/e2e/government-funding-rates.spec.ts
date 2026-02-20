@@ -27,7 +27,7 @@ test.describe('Government Fundings', () => {
   test.describe('CRUD', () => {
     test.beforeEach(async ({ page }) => {
       await login(page);
-      await page.goto('/government-fundings');
+      await page.goto('/government-funding-rates');
       await page.waitForLoadState('networkidle');
     });
 
@@ -188,7 +188,7 @@ test.describe('Government Fundings', () => {
 
     test('should display funding detail page', async ({ page }) => {
       await login(page);
-      await page.goto(`/government-fundings/${fundingId}`);
+      await page.goto(`/government-funding-rates/${fundingId}`);
       await page.waitForLoadState('networkidle');
 
       // Verify heading shows funding name
@@ -199,7 +199,7 @@ test.describe('Government Fundings', () => {
 
     test('should create a period via UI', async ({ page }) => {
       await login(page);
-      await page.goto(`/government-fundings/${fundingId}`);
+      await page.goto(`/government-funding-rates/${fundingId}`);
       await page.waitForLoadState('networkidle');
 
       // Click "Add Period" button
@@ -223,7 +223,7 @@ test.describe('Government Fundings', () => {
 
     test('should create a property within a period via UI', async ({ page }) => {
       await login(page);
-      await page.goto(`/government-fundings/${fundingId}`);
+      await page.goto(`/government-funding-rates/${fundingId}`);
       await page.waitForLoadState('networkidle');
 
       // Wait for the test period to be visible
@@ -256,7 +256,7 @@ test.describe('Government Fundings', () => {
 
     test('should delete a property via UI', async ({ page }) => {
       await login(page);
-      await page.goto(`/government-fundings/${fundingId}`);
+      await page.goto(`/government-funding-rates/${fundingId}`);
       await page.waitForLoadState('networkidle');
 
       // Wait for the test property to be visible (label is shown instead of raw value)
@@ -279,7 +279,7 @@ test.describe('Government Fundings', () => {
 
     test('should delete a period via UI', async ({ page }) => {
       await login(page);
-      await page.goto(`/government-fundings/${fundingId}`);
+      await page.goto(`/government-funding-rates/${fundingId}`);
       await page.waitForLoadState('networkidle');
 
       // Wait for the test period to be visible

@@ -32,9 +32,9 @@ import type {
   GovernmentFundingPeriodFormData,
   GovernmentFundingPropertyFormData,
 } from '@/lib/schemas';
-import { PropertiesGroupedByKey } from '@/components/government-fundings/properties-grouped-by-key';
-import { PeriodFormDialog } from '@/components/government-fundings/period-form-dialog';
-import { PropertyFormDialog } from '@/components/government-fundings/property-form-dialog';
+import { PropertiesGroupedByKey } from '@/components/government-funding-rates/properties-grouped-by-key';
+import { PeriodFormDialog } from '@/components/government-funding-rates/period-form-dialog';
+import { PropertyFormDialog } from '@/components/government-funding-rates/property-form-dialog';
 
 export default function GovernmentFundingDetailPage() {
   const params = useParams();

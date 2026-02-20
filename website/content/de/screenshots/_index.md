@@ -61,4 +61,4 @@ Die Landesförderungsseite ermöglicht es Administratoren, die landesspezifische
 
 Wenn die Vertragseigenschaften eines Kindes mit einem Fördereintrag übereinstimmen, wird der entsprechende Monatsbetrag automatisch in der Kinderliste angezeigt.
 
-{{< screenshot src="/images/screenshots/government-fundings.png" alt="Landesförderung" caption="Landesförderungs-Konfigurationen — definieren Sie landesspezifische Regeln für automatische Förderberechnungen." >}}
+{{< screenshot src="/images/screenshots/government-funding-rates.png" alt="Landesförderung" caption="Landesförderungs-Konfigurationen — definieren Sie landesspezifische Regeln für automatische Förderberechnungen." >}}

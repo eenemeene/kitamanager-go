@@ -23,7 +23,7 @@ func NewGovernmentFundingHandler(service *service.GovernmentFundingService, audi
 // List godoc
 // @Summary List all government fundings
 // @Description Get a paginated list of all government fundings
-// @Tags government-fundings
+// @Tags government-funding-rates
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -32,7 +32,7 @@ func NewGovernmentFundingHandler(service *service.GovernmentFundingService, audi
 // @Success 200 {object} models.PaginatedResponse[models.GovernmentFundingResponse]
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/government-fundings [get]
+// @Router /api/v1/government-funding-rates [get]
 func (h *GovernmentFundingHandler) List(c *gin.Context) {
 	params, ok := parsePagination(c)
 	if !ok {
@@ -51,7 +51,7 @@ func (h *GovernmentFundingHandler) List(c *gin.Context) {
 // Get godoc
 // @Summary Get government funding by ID
 // @Description Get a single government funding by its ID with nested periods and properties
-// @Tags government-fundings
+// @Tags government-funding-rates
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -63,7 +63,7 @@ func (h *GovernmentFundingHandler) List(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/government-fundings/{fundingId} [get]
+// @Router /api/v1/government-funding-rates/{fundingId} [get]
 func (h *GovernmentFundingHandler) Get(c *gin.Context) {
 	id, err := parseID(c, "fundingId")
 	if err != nil {
@@ -102,7 +102,7 @@ func (h *GovernmentFundingHandler) Get(c *gin.Context) {
 // Create godoc
 // @Summary Create a new government funding
 // @Description Create a new government funding (superadmin only)
-// @Tags government-fundings
+// @Tags government-funding-rates
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -112,7 +112,7 @@ func (h *GovernmentFundingHandler) Get(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/government-fundings [post]
+// @Router /api/v1/government-funding-rates [post]
 func (h *GovernmentFundingHandler) Create(c *gin.Context) {
 	req, ok := bindJSON[models.GovernmentFundingCreateRequest](c)
 	if !ok {
@@ -133,7 +133,7 @@ func (h *GovernmentFundingHandler) Create(c *gin.Context) {
 // Update godoc
 // @Summary Update a government funding
 // @Description Update an existing government funding by ID (superadmin only)
-// @Tags government-fundings
+// @Tags government-funding-rates
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -145,7 +145,7 @@ func (h *GovernmentFundingHandler) Create(c *gin.Context) {
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/government-fundings/{fundingId} [put]
+// @Router /api/v1/government-funding-rates/{fundingId} [put]
 func (h *GovernmentFundingHandler) Update(c *gin.Context) {
 	id, err := parseID(c, "fundingId")
 	if err != nil {
@@ -172,7 +172,7 @@ func (h *GovernmentFundingHandler) Update(c *gin.Context) {
 // Delete godoc
 // @Summary Delete a government funding
 // @Description Delete a government funding by ID (superadmin only)
-// @Tags government-fundings
+// @Tags government-funding-rates
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -182,7 +182,7 @@ func (h *GovernmentFundingHandler) Update(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/government-fundings/{fundingId} [delete]
+// @Router /api/v1/government-funding-rates/{fundingId} [delete]
 func (h *GovernmentFundingHandler) Delete(c *gin.Context) {
 	id, err := parseID(c, "fundingId")
 	if err != nil {
@@ -212,7 +212,7 @@ func (h *GovernmentFundingHandler) Delete(c *gin.Context) {
 // CreatePeriod godoc
 // @Summary Create a new period
 // @Description Create a new period for a government funding (superadmin only)
-// @Tags government-fundings
+// @Tags government-funding-rates
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -224,7 +224,7 @@ func (h *GovernmentFundingHandler) Delete(c *gin.Context) {
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/government-fundings/{fundingId}/periods [post]
+// @Router /api/v1/government-funding-rates/{fundingId}/periods [post]
 func (h *GovernmentFundingHandler) CreatePeriod(c *gin.Context) {
 	handleGlobalNestedCreate(c, "fundingId",
 		auditConfig{h.auditService, "gov_funding_period", "funding"},
@@ -236,7 +236,7 @@ func (h *GovernmentFundingHandler) CreatePeriod(c *gin.Context) {
 // GetPeriod godoc
 // @Summary Get a period
 // @Description Get a period by ID (superadmin only)
-// @Tags government-fundings
+// @Tags government-funding-rates
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -248,7 +248,7 @@ func (h *GovernmentFundingHandler) CreatePeriod(c *gin.Context) {
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/government-fundings/{fundingId}/periods/{periodId} [get]
+// @Router /api/v1/government-funding-rates/{fundingId}/periods/{periodId} [get]
 func (h *GovernmentFundingHandler) GetPeriod(c *gin.Context) {
 	handleGlobalNestedGet(c, "fundingId", "periodId", h.service.GetPeriod)
 }
@@ -256,7 +256,7 @@ func (h *GovernmentFundingHandler) GetPeriod(c *gin.Context) {
 // UpdatePeriod godoc
 // @Summary Update a period
 // @Description Update an existing period by ID (superadmin only)
-// @Tags government-fundings
+// @Tags government-funding-rates
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -269,7 +269,7 @@ func (h *GovernmentFundingHandler) GetPeriod(c *gin.Context) {
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/government-fundings/{fundingId}/periods/{periodId} [put]
+// @Router /api/v1/government-funding-rates/{fundingId}/periods/{periodId} [put]
 func (h *GovernmentFundingHandler) UpdatePeriod(c *gin.Context) {
 	handleGlobalNestedUpdate(c, "fundingId", "periodId",
 		auditConfig{h.auditService, "gov_funding_period", "funding"},
@@ -281,7 +281,7 @@ func (h *GovernmentFundingHandler) UpdatePeriod(c *gin.Context) {
 // DeletePeriod godoc
 // @Summary Delete a period
 // @Description Delete a period by ID (superadmin only)
-// @Tags government-fundings
+// @Tags government-funding-rates
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -292,7 +292,7 @@ func (h *GovernmentFundingHandler) UpdatePeriod(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/government-fundings/{fundingId}/periods/{periodId} [delete]
+// @Router /api/v1/government-funding-rates/{fundingId}/periods/{periodId} [delete]
 func (h *GovernmentFundingHandler) DeletePeriod(c *gin.Context) {
 	handleGlobalNestedDelete(c, "fundingId", "periodId",
 		auditConfig{h.auditService, "gov_funding_period", "funding"},
@@ -305,7 +305,7 @@ func (h *GovernmentFundingHandler) DeletePeriod(c *gin.Context) {
 // CreateProperty godoc
 // @Summary Create a new property
 // @Description Create a new property for a period (superadmin only)
-// @Tags government-fundings
+// @Tags government-funding-rates
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -318,7 +318,7 @@ func (h *GovernmentFundingHandler) DeletePeriod(c *gin.Context) {
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/government-fundings/{fundingId}/periods/{periodId}/properties [post]
+// @Router /api/v1/government-funding-rates/{fundingId}/periods/{periodId}/properties [post]
 func (h *GovernmentFundingHandler) CreateProperty(c *gin.Context) {
 	handleGlobalDeepNestedCreate(c, "fundingId", "periodId",
 		auditConfig{h.auditService, "gov_funding_property", "period"},
@@ -330,7 +330,7 @@ func (h *GovernmentFundingHandler) CreateProperty(c *gin.Context) {
 // GetProperty godoc
 // @Summary Get a property
 // @Description Get a property by ID (superadmin only)
-// @Tags government-fundings
+// @Tags government-funding-rates
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -343,7 +343,7 @@ func (h *GovernmentFundingHandler) CreateProperty(c *gin.Context) {
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/government-fundings/{fundingId}/periods/{periodId}/properties/{propId} [get]
+// @Router /api/v1/government-funding-rates/{fundingId}/periods/{periodId}/properties/{propId} [get]
 func (h *GovernmentFundingHandler) GetProperty(c *gin.Context) {
 	handleGlobalDeepNestedGet(c, "fundingId", "periodId", "propId", h.service.GetProperty)
 }
@@ -351,7 +351,7 @@ func (h *GovernmentFundingHandler) GetProperty(c *gin.Context) {
 // UpdateProperty godoc
 // @Summary Update a property
 // @Description Update an existing property by ID (superadmin only)
-// @Tags government-fundings
+// @Tags government-funding-rates
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -365,7 +365,7 @@ func (h *GovernmentFundingHandler) GetProperty(c *gin.Context) {
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/government-fundings/{fundingId}/periods/{periodId}/properties/{propId} [put]
+// @Router /api/v1/government-funding-rates/{fundingId}/periods/{periodId}/properties/{propId} [put]
 func (h *GovernmentFundingHandler) UpdateProperty(c *gin.Context) {
 	handleGlobalDeepNestedUpdate(c, "fundingId", "periodId", "propId",
 		auditConfig{h.auditService, "gov_funding_property", "period"},
@@ -377,7 +377,7 @@ func (h *GovernmentFundingHandler) UpdateProperty(c *gin.Context) {
 // DeleteProperty godoc
 // @Summary Delete a property
 // @Description Delete a property by ID (superadmin only)
-// @Tags government-fundings
+// @Tags government-funding-rates
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -389,7 +389,7 @@ func (h *GovernmentFundingHandler) UpdateProperty(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/government-fundings/{fundingId}/periods/{periodId}/properties/{propId} [delete]
+// @Router /api/v1/government-funding-rates/{fundingId}/periods/{periodId}/properties/{propId} [delete]
 func (h *GovernmentFundingHandler) DeleteProperty(c *gin.Context) {
 	handleGlobalDeepNestedDelete(c, "fundingId", "periodId", "propId",
 		auditConfig{h.auditService, "gov_funding_property", "period"},

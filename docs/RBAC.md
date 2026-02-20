@@ -158,7 +158,7 @@ These use `RequireGlobalPermission` which checks if the user has the required pe
 ```
 POST   /api/v1/organizations      # Create organization
 DELETE /api/v1/organizations/{id} # Delete organization
-POST   /api/v1/government-fundings # Create funding definition
+POST   /api/v1/government-funding-rates # Create funding definition
 ```
 
 ## Data Model
