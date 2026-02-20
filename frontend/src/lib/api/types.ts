@@ -768,6 +768,45 @@ export interface GovernmentFundingBillPeriodResponse {
   created_at: string;
 }
 
+// Funding Bill Comparison
+export interface FundingComparisonAmount {
+  key: string;
+  value: string;
+  label: string;
+  bill_amount: number | null;
+  calculated_amount: number | null;
+  difference: number;
+}
+
+export interface FundingComparisonChild {
+  voucher_number: string;
+  child_name: string;
+  birth_date?: string;
+  child_id?: number;
+  age?: number;
+  bill_total: number;
+  calculated_total?: number;
+  difference?: number;
+  status: 'match' | 'difference' | 'bill_only' | 'calc_only';
+  properties: FundingComparisonAmount[];
+}
+
+export interface FundingComparisonResponse {
+  bill_id: number;
+  bill_from: string;
+  bill_to: string;
+  facility_name: string;
+  bill_total: number;
+  calculated_total: number;
+  difference: number;
+  children_count: number;
+  match_count: number;
+  difference_count: number;
+  bill_only_count: number;
+  calc_only_count: number;
+  children: FundingComparisonChild[];
+}
+
 // Contract properties distribution
 export interface ContractPropertyCount {
   key: string;

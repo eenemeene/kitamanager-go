@@ -47,6 +47,8 @@ export const queryKeys = {
     all: (orgId: number) => ['governmentFundingBillPeriods', orgId] as const,
     list: (orgId: number, page: number) => ['governmentFundingBillPeriods', orgId, page] as const,
     detail: (orgId: number, id: number) => ['governmentFundingBillPeriod', orgId, id] as const,
+    compare: (orgId: number, id: number) =>
+      ['governmentFundingBillPeriodCompare', orgId, id] as const,
   },
   budgetItems: {
     all: (orgId: number) => ['budgetItems', orgId] as const,

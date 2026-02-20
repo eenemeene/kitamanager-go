@@ -42,6 +42,7 @@ import type {
   GovernmentFundingBillResponse,
   GovernmentFundingBillPeriodListItem,
   GovernmentFundingBillPeriodResponse,
+  FundingComparisonResponse,
   PayPlan,
   PayPlanCreateRequest,
   PayPlanUpdateRequest,
@@ -923,6 +924,16 @@ class ApiClient {
 
   async deleteGovernmentFundingBillPeriod(orgId: number, id: number): Promise<void> {
     await this.client.delete(`/organizations/${orgId}/government-funding-bills/${id}`);
+  }
+
+  async compareGovernmentFundingBill(
+    orgId: number,
+    id: number
+  ): Promise<FundingComparisonResponse> {
+    const response = await this.client.get<FundingComparisonResponse>(
+      `/organizations/${orgId}/government-funding-bills/${id}/compare`
+    );
+    return response.data;
   }
 
   // Children - fetch upcoming (contracts starting after today)

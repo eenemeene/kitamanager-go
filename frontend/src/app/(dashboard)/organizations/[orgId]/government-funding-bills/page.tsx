@@ -9,6 +9,7 @@ import { Upload, Trash2, Eye } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -32,6 +33,49 @@ import { queryKeys } from '@/lib/api/queryKeys';
 import type { GovernmentFundingBillPeriodListItem } from '@/lib/api/types';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatCurrency } from '@/lib/utils/formatting';
+
+function BillComparisonCell({ orgId, billId }: { orgId: number; billId: number }) {
+  const { data: comparison, isLoading } = useQuery({
+    queryKey: queryKeys.governmentFundingBillPeriods.compare(orgId, billId),
+    queryFn: () => apiClient.compareGovernmentFundingBill(orgId, billId),
+    retry: false,
+  });
+
+  if (isLoading) {
+    return (
+      <>
+        <TableCell className="hidden md:table-cell">
+          <Skeleton className="h-4 w-20" />
+        </TableCell>
+        <TableCell className="hidden md:table-cell">
+          <Skeleton className="h-4 w-20" />
+        </TableCell>
+      </>
+    );
+  }
+
+  if (!comparison) {
+    return (
+      <>
+        <TableCell className="text-muted-foreground hidden md:table-cell">&mdash;</TableCell>
+        <TableCell className="text-muted-foreground hidden md:table-cell">&mdash;</TableCell>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <TableCell className="hidden md:table-cell">
+        {formatCurrency(comparison.calculated_total)}
+      </TableCell>
+      <TableCell className="hidden md:table-cell">
+        <span className={comparison.difference === 0 ? 'text-green-600' : 'text-red-600'}>
+          {formatCurrency(comparison.difference)}
+        </span>
+      </TableCell>
+    </>
+  );
+}
 
 export default function GovernmentFundingBillsPage() {
   const params = useParams();
@@ -146,6 +190,8 @@ export default function GovernmentFundingBillsPage() {
                   <TableHead>{t('billingMonth')}</TableHead>
                   <TableHead>{t('facilityName')}</TableHead>
                   <TableHead className="hidden md:table-cell">{t('facilityTotal')}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t('calculatedTotal')}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t('difference')}</TableHead>
                   <TableHead className="hidden md:table-cell">{t('fileName')}</TableHead>
                   <TableHead className="hidden md:table-cell">{t('uploadedAt')}</TableHead>
                   <TableHead className="text-right">{tCommon('actions')}</TableHead>
@@ -164,6 +210,7 @@ export default function GovernmentFundingBillsPage() {
                     <TableCell className="hidden md:table-cell">
                       {formatCurrency(item.facility_total)}
                     </TableCell>
+                    <BillComparisonCell orgId={orgId} billId={item.id} />
                     <TableCell className="hidden text-sm md:table-cell">{item.file_name}</TableCell>
                     <TableCell className="hidden text-sm md:table-cell">
                       {new Date(item.created_at).toLocaleDateString('de-DE')}
