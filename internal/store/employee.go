@@ -91,7 +91,7 @@ func (s *EmployeeStore) FindByOrganizationAndSection(ctx context.Context, orgID 
 	}
 
 	dataQuery, needsDistinct := s.applyListFilters(
-		DBFromContext(ctx, s.db).Preload("Contracts").Preload("Contracts.Section"),
+		DBFromContext(ctx, s.db).Preload("Contracts").Preload("Contracts.Section").Preload("Contracts.PayPlan"),
 		orgID, sectionID, activeOn, search, staffCategory,
 	)
 	if needsDistinct {
@@ -111,7 +111,7 @@ func (s *EmployeeStore) Contracts() PeriodStorer[models.EmployeeContract] {
 
 func (s *EmployeeStore) FindByID(ctx context.Context, id uint) (*models.Employee, error) {
 	var employee models.Employee
-	if err := DBFromContext(ctx, s.db).Preload("Organization").Preload("Contracts.Section").Preload("Contracts").First(&employee, id).Error; err != nil {
+	if err := DBFromContext(ctx, s.db).Preload("Organization").Preload("Contracts.Section").Preload("Contracts.PayPlan").Preload("Contracts").First(&employee, id).Error; err != nil {
 		return nil, WrapNotFound(err)
 	}
 	return &employee, nil
@@ -120,7 +120,7 @@ func (s *EmployeeStore) FindByID(ctx context.Context, id uint) (*models.Employee
 // FindByIDAndOrg returns an employee by ID with full preloads, scoped to the given organization.
 func (s *EmployeeStore) FindByIDAndOrg(ctx context.Context, id, orgID uint) (*models.Employee, error) {
 	var employee models.Employee
-	if err := DBFromContext(ctx, s.db).Preload("Organization").Preload("Contracts.Section").Preload("Contracts").
+	if err := DBFromContext(ctx, s.db).Preload("Organization").Preload("Contracts.Section").Preload("Contracts.PayPlan").Preload("Contracts").
 		Where("id = ? AND organization_id = ?", id, orgID).First(&employee).Error; err != nil {
 		return nil, WrapNotFound(err)
 	}
@@ -253,6 +253,22 @@ func (s *EmployeeStore) FindByOrganizationInDateRange(ctx context.Context, orgID
 	}
 
 	return employees, nil
+}
+
+// FindByNameBirthdateAndOrg looks up an employee by first name, last name, birthdate and organization.
+func (s *EmployeeStore) FindByNameBirthdateAndOrg(ctx context.Context, firstName, lastName string, birthdate time.Time, orgID uint) (*models.Employee, error) {
+	var employee models.Employee
+	if err := DBFromContext(ctx, s.db).
+		Where("first_name = ? AND last_name = ? AND birthdate = ? AND organization_id = ?", firstName, lastName, birthdate, orgID).
+		First(&employee).Error; err != nil {
+		return nil, WrapNotFound(err)
+	}
+	return &employee, nil
+}
+
+// DeleteContractsByEmployee deletes all contracts for the given employee.
+func (s *EmployeeStore) DeleteContractsByEmployee(ctx context.Context, employeeID uint) error {
+	return DBFromContext(ctx, s.db).Where("employee_id = ?", employeeID).Delete(&models.EmployeeContract{}).Error
 }
 
 // FindByOrganizationWithContracts fetches employees in an org who have an

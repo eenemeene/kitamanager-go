@@ -68,6 +68,8 @@ type EmployeeStorer interface {
 	FindContractsByEmployeePaginated(ctx context.Context, employeeID uint, limit, offset int) ([]models.EmployeeContract, int64, error)
 	FindContractsByOrganizationInDateRange(ctx context.Context, orgID uint, rangeStart, rangeEnd time.Time, staffCategories []string, sectionID *uint) ([]models.EmployeeContract, error)
 	FindByOrganizationInDateRange(ctx context.Context, orgID uint, rangeStart, rangeEnd time.Time, sectionID *uint) ([]models.Employee, error)
+	FindByNameBirthdateAndOrg(ctx context.Context, firstName, lastName string, birthdate time.Time, orgID uint) (*models.Employee, error)
+	DeleteContractsByEmployee(ctx context.Context, employeeID uint) error
 }
 
 // ChildStorer defines the interface for child storage operations

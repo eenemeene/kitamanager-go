@@ -237,6 +237,14 @@ func Setup(r *gin.Engine, d Deps) {
 					employees.GET("/export/excel",
 						authzMiddleware.RequirePermission(rbac.ResourceEmployees, rbac.ActionRead),
 						exportHandler.ExportEmployees)
+					employees.GET("/export/yaml",
+						authzMiddleware.RequirePermission(rbac.ResourceEmployees, rbac.ActionRead),
+						employeeHandler.ExportYAML)
+
+					// Import (must be before /:employeeId to avoid route conflict)
+					employees.POST("/import",
+						authzMiddleware.RequirePermission(rbac.ResourceEmployees, rbac.ActionCreate),
+						employeeHandler.Import)
 
 					// Step promotions (must be before /:employeeId to avoid route conflict)
 					employees.GET("/step-promotions",

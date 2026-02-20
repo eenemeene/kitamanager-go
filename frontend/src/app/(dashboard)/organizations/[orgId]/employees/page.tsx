@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Download } from 'lucide-react';
+import { Plus, Download, Upload } from 'lucide-react';
 import { MonthStepper } from '@/components/ui/month-stepper';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,10 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCrudMutations } from '@/lib/hooks/use-crud-mutations';
 import { useCrudDialogs } from '@/lib/hooks/use-crud-dialogs';
 import { useContractMutation } from '@/lib/hooks/use-contract-mutation';
-import { apiClient } from '@/lib/api/client';
+import { apiClient, getErrorMessage } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import {
   type Employee,
@@ -55,6 +56,26 @@ export default function EmployeesPage() {
   const orgId = Number(params.orgId);
   const t = useTranslations();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const importMutation = useMutation({
+    mutationFn: (file: File) => apiClient.importEmployees(orgId, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.employees.all(orgId) });
+      toast({
+        title: t('common.success'),
+        description: t('common.createSuccess', { resource: t('employees.title') }),
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: t('common.error'),
+        description: getErrorMessage(error, t('employees.importError')),
+        variant: 'destructive',
+      });
+    },
+  });
 
   const [isContractDialogOpen, setIsContractDialogOpen] = useState(false);
   const [contractEmployee, setContractEmployee] = useState<Employee | null>(null);
@@ -316,7 +337,7 @@ export default function EmployeesPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{t('employees.title')}</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             onClick={() => {
@@ -332,6 +353,34 @@ export default function EmployeesPage() {
             <Download className="mr-2 h-4 w-4" />
             {t('common.exportExcel')}
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => window.open(apiClient.getEmployeesExportYamlUrl(orgId))}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            {t('employees.exportYaml')}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importMutation.isPending}
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            {importMutation.isPending ? t('employees.importing') : t('employees.importYaml')}
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".yaml,.yml"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                importMutation.mutate(file);
+                e.target.value = '';
+              }
+            }}
+          />
           <Button onClick={dialogs.handleCreate}>
             <Plus className="mr-2 h-4 w-4" />
             {t('employees.newEmployee')}

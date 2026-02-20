@@ -244,7 +244,11 @@
     "yearsOfService": "Dienstjahre",
     "monthlyGross": "Monatlich (brutto)",
     "payPlan": "Entgelttabelle",
-    "selectPayPlan": "Entgelttabelle auswählen"
+    "selectPayPlan": "Entgelttabelle auswählen",
+    "exportYaml": "YAML Export",
+    "importYaml": "YAML Import",
+    "importing": "Wird importiert...",
+    "importError": "Fehler beim Importieren der Mitarbeiter"
   },
   "gender": {
     "label": "Geschlecht",

@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"gopkg.in/yaml.v3"
 
+	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 )
@@ -374,4 +377,96 @@ func (h *EmployeeHandler) UpdateContract(c *gin.Context) {
 // @Router /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/{contractId} [delete]
 func (h *EmployeeHandler) DeleteContract(c *gin.Context) {
 	handleDeleteContract(c, "employeeId", h.contractAudit(), h.service.DeleteContract)
+}
+
+// ExportYAML godoc
+// @Summary Export employees as YAML
+// @Description Download all employees with contracts as a YAML file
+// @Tags employees
+// @Produce application/x-yaml
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Success 200 {file} file "YAML file"
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/organizations/{orgId}/employees/export/yaml [get]
+func (h *EmployeeHandler) ExportYAML(c *gin.Context) {
+	orgID, ok := parseOrgID(c)
+	if !ok {
+		return
+	}
+
+	all, ok := fetchAllEmployees(c, h.service, orgID, models.EmployeeListFilter{})
+	if !ok {
+		return
+	}
+
+	data := models.EmployeeImportExportData{Employees: all}
+	yamlBytes, err := yaml.Marshal(data)
+	if err != nil {
+		respondError(c, apperror.Internal("failed to marshal YAML"))
+		return
+	}
+
+	c.Header("Content-Type", "application/x-yaml")
+	c.Header("Content-Disposition", `attachment; filename="employees.yaml"`)
+	c.Writer.WriteHeader(http.StatusOK)
+	_, _ = c.Writer.Write(yamlBytes)
+}
+
+// Import godoc
+// @Summary Import employees from YAML
+// @Description Upload a YAML file to create or update employees with contracts (upsert by name+birthdate)
+// @Tags employees
+// @Accept multipart/form-data
+// @Produce json
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Param file formData file true "Employees YAML file"
+// @Success 201 {array} models.EmployeeResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/organizations/{orgId}/employees/import [post]
+func (h *EmployeeHandler) Import(c *gin.Context) {
+	orgID, ok := parseOrgID(c)
+	if !ok {
+		return
+	}
+
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		respondError(c, apperror.BadRequest("file is required"))
+		return
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		respondError(c, apperror.BadRequest("failed to read uploaded file"))
+		return
+	}
+	defer file.Close()
+
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		respondError(c, apperror.BadRequest("failed to read uploaded file"))
+		return
+	}
+
+	var data models.EmployeeImportExportData
+	if err := yaml.Unmarshal(fileBytes, &data); err != nil {
+		respondError(c, apperror.BadRequest("invalid YAML: "+err.Error()))
+		return
+	}
+
+	results, err := h.service.Import(c.Request.Context(), orgID, &data)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	auditCreate(c, h.auditService, "employee_import", 0, "YAML import")
+
+	c.JSON(http.StatusCreated, results)
 }

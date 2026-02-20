@@ -832,6 +832,21 @@ class ApiClient {
     return `${API_BASE_URL}/organizations/${orgId}/employees/export/excel${qs ? `?${qs}` : ''}`;
   }
 
+  getEmployeesExportYamlUrl(orgId: number): string {
+    return `${API_BASE_URL}/organizations/${orgId}/employees/export/yaml`;
+  }
+
+  async importEmployees(orgId: number, file: File): Promise<Employee[]> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await this.client.post<Employee[]>(
+      `/organizations/${orgId}/employees/import`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  }
+
   getChildrenExportUrl(orgId: number, filters?: Record<string, string | undefined>): string {
     const qp = new URLSearchParams();
     if (filters) {

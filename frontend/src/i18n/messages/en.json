@@ -244,7 +244,11 @@
     "yearsOfService": "Years of Service",
     "monthlyGross": "Monthly (gross)",
     "payPlan": "Pay Plan",
-    "selectPayPlan": "Select Pay Plan"
+    "selectPayPlan": "Select Pay Plan",
+    "exportYaml": "Export YAML",
+    "importYaml": "Import YAML",
+    "importing": "Importing...",
+    "importError": "Failed to import employees"
   },
   "gender": {
     "label": "Gender",

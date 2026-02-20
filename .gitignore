@@ -48,3 +48,4 @@ internal/web/dist/*
 
 # Pay plan data (imported via API, not committed)
 configs/pay-plans/tv-eene-meene.yaml
+configs/employees/eene-meene.yaml

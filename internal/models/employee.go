@@ -77,15 +77,20 @@ type EmployeeUpdateRequest struct {
 
 // EmployeeResponse represents the employee response
 type EmployeeResponse struct {
-	ID             uint                       `json:"id" example:"1"`
-	OrganizationID uint                       `json:"organization_id" example:"1"`
-	FirstName      string                     `json:"first_name" example:"Max"`
-	LastName       string                     `json:"last_name" example:"Mustermann"`
-	Gender         string                     `json:"gender" example:"male"`
-	Birthdate      time.Time                  `json:"birthdate" example:"1990-05-15"`
-	Contracts      []EmployeeContractResponse `json:"contracts,omitempty"`
-	CreatedAt      time.Time                  `json:"created_at"`
-	UpdatedAt      time.Time                  `json:"updated_at"`
+	ID             uint                       `json:"id" yaml:"id" example:"1"`
+	OrganizationID uint                       `json:"organization_id" yaml:"organization_id" example:"1"`
+	FirstName      string                     `json:"first_name" yaml:"first_name" example:"Max"`
+	LastName       string                     `json:"last_name" yaml:"last_name" example:"Mustermann"`
+	Gender         string                     `json:"gender" yaml:"gender" example:"male"`
+	Birthdate      time.Time                  `json:"birthdate" yaml:"birthdate" example:"1990-05-15"`
+	Contracts      []EmployeeContractResponse `json:"contracts,omitempty" yaml:"contracts"`
+	CreatedAt      time.Time                  `json:"created_at" yaml:"created_at"`
+	UpdatedAt      time.Time                  `json:"updated_at" yaml:"updated_at"`
+}
+
+// EmployeeImportExportData wraps a list of employees for YAML import/export.
+type EmployeeImportExportData struct {
+	Employees []EmployeeResponse `json:"employees" yaml:"employees"`
 }
 
 // FullName returns the full name.
@@ -117,20 +122,21 @@ func (e *Employee) ToResponse() EmployeeResponse {
 
 // EmployeeContractResponse represents the employee contract response
 type EmployeeContractResponse struct {
-	ID            uint               `json:"id" example:"1"`
-	EmployeeID    uint               `json:"employee_id" example:"1"`
-	From          time.Time          `json:"from" example:"2025-01-01"`
-	To            *time.Time         `json:"to" example:"2025-12-31"`
-	SectionID     uint               `json:"section_id" example:"2"`
-	SectionName   *string            `json:"section_name,omitempty" example:"Krippe"`
-	StaffCategory string             `json:"staff_category" example:"qualified"`
-	Grade         string             `json:"grade" example:"S8a"`
-	Step          int                `json:"step" example:"3"`
-	WeeklyHours   float64            `json:"weekly_hours" example:"40"`
-	PayPlanID     uint               `json:"payplan_id" example:"1"`
-	Properties    ContractProperties `json:"properties,omitempty"`
-	CreatedAt     time.Time          `json:"created_at"`
-	UpdatedAt     time.Time          `json:"updated_at"`
+	ID            uint               `json:"id" yaml:"id" example:"1"`
+	EmployeeID    uint               `json:"employee_id" yaml:"employee_id" example:"1"`
+	From          time.Time          `json:"from" yaml:"from" example:"2025-01-01"`
+	To            *time.Time         `json:"to" yaml:"to" example:"2025-12-31"`
+	SectionID     uint               `json:"section_id" yaml:"section_id" example:"2"`
+	SectionName   *string            `json:"section_name,omitempty" yaml:"section_name" example:"Krippe"`
+	StaffCategory string             `json:"staff_category" yaml:"staff_category" example:"qualified"`
+	Grade         string             `json:"grade" yaml:"grade" example:"S8a"`
+	Step          int                `json:"step" yaml:"step" example:"3"`
+	WeeklyHours   float64            `json:"weekly_hours" yaml:"weekly_hours" example:"40"`
+	PayPlanID     uint               `json:"payplan_id" yaml:"payplan_id" example:"1"`
+	PayPlanName   *string            `json:"pay_plan_name,omitempty" yaml:"pay_plan_name" example:"TV eene meene"`
+	Properties    ContractProperties `json:"properties,omitempty" yaml:"properties"`
+	CreatedAt     time.Time          `json:"created_at" yaml:"created_at"`
+	UpdatedAt     time.Time          `json:"updated_at" yaml:"updated_at"`
 }
 
 // EmployeeListFilter represents filter options for listing employees.
@@ -167,6 +173,9 @@ func (c *EmployeeContract) ToResponse() EmployeeContractResponse {
 	}
 	if c.Section != nil {
 		resp.SectionName = &c.Section.Name
+	}
+	if c.PayPlan != nil {
+		resp.PayPlanName = &c.PayPlan.Name
 	}
 	return resp
 }
