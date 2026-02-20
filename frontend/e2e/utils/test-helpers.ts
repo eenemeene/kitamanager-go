@@ -331,7 +331,7 @@ export async function getPayPlansViaApi(
   const data = await apiRequest<{ data: Array<{ id: number; name: string }> }>(
     page,
     'GET',
-    `/api/v1/organizations/${orgId}/payplans?limit=100`
+    `/api/v1/organizations/${orgId}/pay-plans?limit=100`
   );
   if (!Array.isArray(data.data)) {
     throw new Error(`getPayPlansViaApi: response missing data array for org ${orgId}`);
@@ -667,7 +667,7 @@ export async function createPayPlanViaApi(
   orgId: number,
   name: string
 ): Promise<{ id: number; name: string }> {
-  return apiRequest(page, 'POST', `/api/v1/organizations/${orgId}/payplans`, { name });
+  return apiRequest(page, 'POST', `/api/v1/organizations/${orgId}/pay-plans`, { name });
 }
 
 /**
@@ -678,7 +678,7 @@ export async function deletePayPlanViaApi(
   orgId: number,
   payPlanId: number
 ): Promise<void> {
-  await apiRequest(page, 'DELETE', `/api/v1/organizations/${orgId}/payplans/${payPlanId}`);
+  await apiRequest(page, 'DELETE', `/api/v1/organizations/${orgId}/pay-plans/${payPlanId}`);
 }
 
 /**
@@ -737,7 +737,7 @@ export async function createPayPlanPeriodViaApi(
   return apiRequest(
     page,
     'POST',
-    `/api/v1/organizations/${orgId}/payplans/${payplanId}/periods`,
+    `/api/v1/organizations/${orgId}/pay-plans/${payplanId}/periods`,
     body
   );
 }
@@ -754,7 +754,7 @@ export async function deletePayPlanPeriodViaApi(
   await apiRequest(
     page,
     'DELETE',
-    `/api/v1/organizations/${orgId}/payplans/${payplanId}/periods/${periodId}`
+    `/api/v1/organizations/${orgId}/pay-plans/${payplanId}/periods/${periodId}`
   );
 }
 
@@ -771,7 +771,7 @@ export async function createPayPlanEntryViaApi(
   return apiRequest(
     page,
     'POST',
-    `/api/v1/organizations/${orgId}/payplans/${payplanId}/periods/${periodId}/entries`,
+    `/api/v1/organizations/${orgId}/pay-plans/${payplanId}/periods/${periodId}/entries`,
     data
   );
 }
@@ -789,7 +789,7 @@ export async function deletePayPlanEntryViaApi(
   await apiRequest(
     page,
     'DELETE',
-    `/api/v1/organizations/${orgId}/payplans/${payplanId}/periods/${periodId}/entries/${entryId}`
+    `/api/v1/organizations/${orgId}/pay-plans/${payplanId}/periods/${periodId}/entries/${entryId}`
   );
 }
 

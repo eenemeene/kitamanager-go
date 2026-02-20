@@ -23,18 +23,18 @@ func TestPayPlanHandler_CRUD(t *testing.T) {
 	handler := NewPayPlanHandler(svc, createAuditService(db))
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/payplans", handler.List)
-	r.GET("/organizations/:orgId/payplans/:payplanId", handler.Get)
-	r.POST("/organizations/:orgId/payplans", handler.Create)
-	r.PUT("/organizations/:orgId/payplans/:payplanId", handler.Update)
-	r.DELETE("/organizations/:orgId/payplans/:payplanId", handler.Delete)
+	r.GET("/organizations/:orgId/pay-plans", handler.List)
+	r.GET("/organizations/:orgId/pay-plans/:payPlanId", handler.Get)
+	r.POST("/organizations/:orgId/pay-plans", handler.Create)
+	r.PUT("/organizations/:orgId/pay-plans/:payPlanId", handler.Update)
+	r.DELETE("/organizations/:orgId/pay-plans/:payPlanId", handler.Delete)
 
 	var createdID uint
 
 	// Test Create
 	t.Run("Create", func(t *testing.T) {
 		body := models.PayPlanCreateRequest{Name: "TVöD-SuE"}
-		w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/payplans", org.ID), body)
+		w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/pay-plans", org.ID), body)
 
 		if w.Code != http.StatusCreated {
 			t.Errorf("expected status %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
@@ -53,7 +53,7 @@ func TestPayPlanHandler_CRUD(t *testing.T) {
 
 	// Test List
 	t.Run("List", func(t *testing.T) {
-		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/payplans", org.ID), nil)
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans", org.ID), nil)
 
 		if w.Code != http.StatusOK {
 			t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -68,7 +68,7 @@ func TestPayPlanHandler_CRUD(t *testing.T) {
 
 	// Test Get
 	t.Run("Get", func(t *testing.T) {
-		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/payplans/%d", org.ID, createdID), nil)
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans/%d", org.ID, createdID), nil)
 
 		if w.Code != http.StatusOK {
 			t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -85,7 +85,7 @@ func TestPayPlanHandler_CRUD(t *testing.T) {
 	t.Run("Update", func(t *testing.T) {
 		updName := "TVöD-VKA"
 		body := models.PayPlanUpdateRequest{Name: &updName}
-		w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/payplans/%d", org.ID, createdID), body)
+		w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/pay-plans/%d", org.ID, createdID), body)
 
 		if w.Code != http.StatusOK {
 			t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
@@ -100,7 +100,7 @@ func TestPayPlanHandler_CRUD(t *testing.T) {
 
 	// Test Get after Update
 	t.Run("GetAfterUpdate", func(t *testing.T) {
-		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/payplans/%d", org.ID, createdID), nil)
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans/%d", org.ID, createdID), nil)
 
 		if w.Code != http.StatusOK {
 			t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -115,7 +115,7 @@ func TestPayPlanHandler_CRUD(t *testing.T) {
 
 	// Test Delete
 	t.Run("Delete", func(t *testing.T) {
-		w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/payplans/%d", org.ID, createdID), nil)
+		w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/pay-plans/%d", org.ID, createdID), nil)
 
 		if w.Code != http.StatusNoContent {
 			t.Errorf("expected status %d, got %d", http.StatusNoContent, w.Code)
@@ -124,7 +124,7 @@ func TestPayPlanHandler_CRUD(t *testing.T) {
 
 	// Test Get after Delete (should 404)
 	t.Run("GetAfterDelete", func(t *testing.T) {
-		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/payplans/%d", org.ID, createdID), nil)
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans/%d", org.ID, createdID), nil)
 
 		if w.Code != http.StatusNotFound {
 			t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
@@ -142,13 +142,13 @@ func TestPayPlanHandler_OrgIsolation(t *testing.T) {
 	handler := NewPayPlanHandler(svc, createAuditService(db))
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/payplans", handler.List)
-	r.GET("/organizations/:orgId/payplans/:payplanId", handler.Get)
-	r.POST("/organizations/:orgId/payplans", handler.Create)
+	r.GET("/organizations/:orgId/pay-plans", handler.List)
+	r.GET("/organizations/:orgId/pay-plans/:payPlanId", handler.Get)
+	r.POST("/organizations/:orgId/pay-plans", handler.Create)
 
 	// Create payplan in org1
 	body := models.PayPlanCreateRequest{Name: "Org1 PayPlan"}
-	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/payplans", org1.ID), body)
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/pay-plans", org1.ID), body)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("failed to create payplan: %s", w.Body.String())
 	}
@@ -157,7 +157,7 @@ func TestPayPlanHandler_OrgIsolation(t *testing.T) {
 
 	// Try to access org1's payplan from org2 - should 404
 	t.Run("CrossOrgAccessDenied", func(t *testing.T) {
-		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/payplans/%d", org2.ID, created.ID), nil)
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans/%d", org2.ID, created.ID), nil)
 
 		if w.Code != http.StatusNotFound {
 			t.Errorf("expected status %d for cross-org access, got %d", http.StatusNotFound, w.Code)
@@ -166,7 +166,7 @@ func TestPayPlanHandler_OrgIsolation(t *testing.T) {
 
 	// List payplans in org2 - should be empty
 	t.Run("ListOtherOrgEmpty", func(t *testing.T) {
-		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/payplans", org2.ID), nil)
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans", org2.ID), nil)
 
 		if w.Code != http.StatusOK {
 			t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -193,10 +193,10 @@ func TestPayPlanHandler_Period_CRUD(t *testing.T) {
 	handler := NewPayPlanHandler(svc, createAuditService(db))
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/payplans/:payplanId/periods", handler.CreatePeriod)
-	r.GET("/organizations/:orgId/payplans/:payplanId/periods/:periodId", handler.GetPeriod)
-	r.PUT("/organizations/:orgId/payplans/:payplanId/periods/:periodId", handler.UpdatePeriod)
-	r.DELETE("/organizations/:orgId/payplans/:payplanId/periods/:periodId", handler.DeletePeriod)
+	r.POST("/organizations/:orgId/pay-plans/:payPlanId/periods", handler.CreatePeriod)
+	r.GET("/organizations/:orgId/pay-plans/:payPlanId/periods/:periodId", handler.GetPeriod)
+	r.PUT("/organizations/:orgId/pay-plans/:payPlanId/periods/:periodId", handler.UpdatePeriod)
+	r.DELETE("/organizations/:orgId/pay-plans/:payPlanId/periods/:periodId", handler.DeletePeriod)
 
 	var periodID uint
 
@@ -208,7 +208,7 @@ func TestPayPlanHandler_Period_CRUD(t *testing.T) {
 			To:          &toDate,
 			WeeklyHours: 39.0,
 		}
-		w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/payplans/%d/periods", org.ID, payplan.ID), body)
+		w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/pay-plans/%d/periods", org.ID, payplan.ID), body)
 
 		if w.Code != http.StatusCreated {
 			t.Errorf("expected status %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
@@ -228,7 +228,7 @@ func TestPayPlanHandler_Period_CRUD(t *testing.T) {
 
 	// Test Get Period
 	t.Run("GetPeriod", func(t *testing.T) {
-		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/payplans/%d/periods/%d", org.ID, payplan.ID, periodID), nil)
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans/%d/periods/%d", org.ID, payplan.ID, periodID), nil)
 
 		if w.Code != http.StatusOK {
 			t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -249,7 +249,7 @@ func TestPayPlanHandler_Period_CRUD(t *testing.T) {
 			To:          &toDate,
 			WeeklyHours: 40.0,
 		}
-		w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/payplans/%d/periods/%d", org.ID, payplan.ID, periodID), body)
+		w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/pay-plans/%d/periods/%d", org.ID, payplan.ID, periodID), body)
 
 		if w.Code != http.StatusOK {
 			t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
@@ -264,7 +264,7 @@ func TestPayPlanHandler_Period_CRUD(t *testing.T) {
 
 	// Test Delete Period
 	t.Run("DeletePeriod", func(t *testing.T) {
-		w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/payplans/%d/periods/%d", org.ID, payplan.ID, periodID), nil)
+		w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/pay-plans/%d/periods/%d", org.ID, payplan.ID, periodID), nil)
 
 		if w.Code != http.StatusNoContent {
 			t.Errorf("expected status %d, got %d", http.StatusNoContent, w.Code)
@@ -273,7 +273,7 @@ func TestPayPlanHandler_Period_CRUD(t *testing.T) {
 
 	// Test Get after Delete (should 404)
 	t.Run("GetPeriodAfterDelete", func(t *testing.T) {
-		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/payplans/%d/periods/%d", org.ID, payplan.ID, periodID), nil)
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans/%d/periods/%d", org.ID, payplan.ID, periodID), nil)
 
 		if w.Code != http.StatusNotFound {
 			t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
@@ -301,10 +301,10 @@ func TestPayPlanHandler_Entry_CRUD(t *testing.T) {
 	handler := NewPayPlanHandler(svc, createAuditService(db))
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/payplans/:payplanId/periods/:periodId/entries", handler.CreateEntry)
-	r.GET("/organizations/:orgId/payplans/:payplanId/periods/:periodId/entries/:entryId", handler.GetEntry)
-	r.PUT("/organizations/:orgId/payplans/:payplanId/periods/:periodId/entries/:entryId", handler.UpdateEntry)
-	r.DELETE("/organizations/:orgId/payplans/:payplanId/periods/:periodId/entries/:entryId", handler.DeleteEntry)
+	r.POST("/organizations/:orgId/pay-plans/:payPlanId/periods/:periodId/entries", handler.CreateEntry)
+	r.GET("/organizations/:orgId/pay-plans/:payPlanId/periods/:periodId/entries/:entryId", handler.GetEntry)
+	r.PUT("/organizations/:orgId/pay-plans/:payPlanId/periods/:periodId/entries/:entryId", handler.UpdateEntry)
+	r.DELETE("/organizations/:orgId/pay-plans/:payPlanId/periods/:periodId/entries/:entryId", handler.DeleteEntry)
 
 	var entryID uint
 
@@ -315,7 +315,7 @@ func TestPayPlanHandler_Entry_CRUD(t *testing.T) {
 			Step:          3,
 			MonthlyAmount: 350000, // 3500.00 EUR in cents
 		}
-		w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/payplans/%d/periods/%d/entries", org.ID, payplan.ID, period.ID), body)
+		w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/pay-plans/%d/periods/%d/entries", org.ID, payplan.ID, period.ID), body)
 
 		if w.Code != http.StatusCreated {
 			t.Errorf("expected status %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
@@ -337,7 +337,7 @@ func TestPayPlanHandler_Entry_CRUD(t *testing.T) {
 
 	// Test Get Entry
 	t.Run("GetEntry", func(t *testing.T) {
-		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/payplans/%d/periods/%d/entries/%d", org.ID, payplan.ID, period.ID, entryID), nil)
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans/%d/periods/%d/entries/%d", org.ID, payplan.ID, period.ID, entryID), nil)
 
 		if w.Code != http.StatusOK {
 			t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -357,7 +357,7 @@ func TestPayPlanHandler_Entry_CRUD(t *testing.T) {
 			Step:          4,
 			MonthlyAmount: 380000, // 3800.00 EUR in cents
 		}
-		w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/payplans/%d/periods/%d/entries/%d", org.ID, payplan.ID, period.ID, entryID), body)
+		w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/pay-plans/%d/periods/%d/entries/%d", org.ID, payplan.ID, period.ID, entryID), body)
 
 		if w.Code != http.StatusOK {
 			t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
@@ -375,7 +375,7 @@ func TestPayPlanHandler_Entry_CRUD(t *testing.T) {
 
 	// Test Delete Entry
 	t.Run("DeleteEntry", func(t *testing.T) {
-		w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/payplans/%d/periods/%d/entries/%d", org.ID, payplan.ID, period.ID, entryID), nil)
+		w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/pay-plans/%d/periods/%d/entries/%d", org.ID, payplan.ID, period.ID, entryID), nil)
 
 		if w.Code != http.StatusNoContent {
 			t.Errorf("expected status %d, got %d", http.StatusNoContent, w.Code)
@@ -384,7 +384,7 @@ func TestPayPlanHandler_Entry_CRUD(t *testing.T) {
 
 	// Test Get after Delete (should 404)
 	t.Run("GetEntryAfterDelete", func(t *testing.T) {
-		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/payplans/%d/periods/%d/entries/%d", org.ID, payplan.ID, period.ID, entryID), nil)
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans/%d/periods/%d/entries/%d", org.ID, payplan.ID, period.ID, entryID), nil)
 
 		if w.Code != http.StatusNotFound {
 			t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
@@ -424,10 +424,10 @@ func TestPayPlanHandler_GetWithPeriodsAndEntries(t *testing.T) {
 	handler := NewPayPlanHandler(svc, createAuditService(db))
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/payplans/:payplanId", handler.Get)
+	r.GET("/organizations/:orgId/pay-plans/:payPlanId", handler.Get)
 
 	t.Run("GetWithNestedData", func(t *testing.T) {
-		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/payplans/%d", org.ID, payplan.ID), nil)
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans/%d", org.ID, payplan.ID), nil)
 
 		if w.Code != http.StatusOK {
 			t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -471,10 +471,10 @@ func TestPayPlanHandler_DeleteCascade(t *testing.T) {
 	handler := NewPayPlanHandler(svc, createAuditService(db))
 
 	r := setupTestRouter()
-	r.DELETE("/organizations/:orgId/payplans/:payplanId", handler.Delete)
+	r.DELETE("/organizations/:orgId/pay-plans/:payPlanId", handler.Delete)
 
 	t.Run("DeletePayPlanCascades", func(t *testing.T) {
-		w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/payplans/%d", org.ID, payplan.ID), nil)
+		w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/pay-plans/%d", org.ID, payplan.ID), nil)
 
 		if w.Code != http.StatusNoContent {
 			t.Errorf("expected status %d, got %d", http.StatusNoContent, w.Code)
@@ -505,13 +505,13 @@ func TestPayPlanHandler_InvalidRequests(t *testing.T) {
 	handler := NewPayPlanHandler(svc, createAuditService(db))
 
 	r := setupTestRouter()
-	r.POST("/organizations/:orgId/payplans", handler.Create)
-	r.GET("/organizations/:orgId/payplans/:payplanId", handler.Get)
-	r.POST("/organizations/:orgId/payplans/:payplanId/periods", handler.CreatePeriod)
+	r.POST("/organizations/:orgId/pay-plans", handler.Create)
+	r.GET("/organizations/:orgId/pay-plans/:payPlanId", handler.Get)
+	r.POST("/organizations/:orgId/pay-plans/:payPlanId/periods", handler.CreatePeriod)
 
 	t.Run("CreateWithEmptyName", func(t *testing.T) {
 		body := models.PayPlanCreateRequest{Name: ""}
-		w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/payplans", org.ID), body)
+		w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/pay-plans", org.ID), body)
 
 		if w.Code != http.StatusBadRequest {
 			t.Errorf("expected status %d for empty name, got %d", http.StatusBadRequest, w.Code)
@@ -519,7 +519,7 @@ func TestPayPlanHandler_InvalidRequests(t *testing.T) {
 	})
 
 	t.Run("GetNonExistent", func(t *testing.T) {
-		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/payplans/99999", org.ID), nil)
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans/99999", org.ID), nil)
 
 		if w.Code != http.StatusNotFound {
 			t.Errorf("expected status %d for non-existent, got %d", http.StatusNotFound, w.Code)
@@ -535,7 +535,7 @@ func TestPayPlanHandler_InvalidRequests(t *testing.T) {
 			"from":         "not-a-date",
 			"weekly_hours": 39.0,
 		}
-		w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/payplans/%d/periods", org.ID, payplan.ID), body)
+		w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/pay-plans/%d/periods", org.ID, payplan.ID), body)
 
 		if w.Code != http.StatusBadRequest {
 			t.Errorf("expected status %d for invalid date, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
@@ -550,7 +550,7 @@ func TestPayPlanHandler_InvalidRequests(t *testing.T) {
 			From:        time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 			WeeklyHours: 0, // Invalid - should be > 0
 		}
-		w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/payplans/%d/periods", org.ID, payplan.ID), body)
+		w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/pay-plans/%d/periods", org.ID, payplan.ID), body)
 
 		if w.Code != http.StatusBadRequest {
 			t.Errorf("expected status %d for zero weekly hours, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
@@ -567,21 +567,21 @@ func TestPayPlanHandler_MultiplePayPlansPerOrg(t *testing.T) {
 	handler := NewPayPlanHandler(svc, createAuditService(db))
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/payplans", handler.List)
-	r.POST("/organizations/:orgId/payplans", handler.Create)
+	r.GET("/organizations/:orgId/pay-plans", handler.List)
+	r.POST("/organizations/:orgId/pay-plans", handler.Create)
 
 	// Create multiple payplans
 	names := []string{"TVöD-SuE", "TVöD-VKA", "AVR-DD"}
 	for _, name := range names {
 		body := models.PayPlanCreateRequest{Name: name}
-		w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/payplans", org.ID), body)
+		w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/pay-plans", org.ID), body)
 		if w.Code != http.StatusCreated {
 			t.Fatalf("failed to create payplan %s: %s", name, w.Body.String())
 		}
 	}
 
 	t.Run("ListAllPayPlans", func(t *testing.T) {
-		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/payplans", org.ID), nil)
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans", org.ID), nil)
 
 		if w.Code != http.StatusOK {
 			t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
@@ -609,19 +609,19 @@ func setupPayPlanTestFull(t *testing.T) (*models.Organization, *PayPlanHandler, 
 	handler := NewPayPlanHandler(svc, createAuditService(db))
 
 	r := setupTestRouter()
-	r.GET("/organizations/:orgId/payplans", handler.List)
-	r.POST("/organizations/:orgId/payplans", handler.Create)
-	r.GET("/organizations/:orgId/payplans/:payplanId", handler.Get)
-	r.PUT("/organizations/:orgId/payplans/:payplanId", handler.Update)
-	r.DELETE("/organizations/:orgId/payplans/:payplanId", handler.Delete)
-	r.POST("/organizations/:orgId/payplans/:payplanId/periods", handler.CreatePeriod)
-	r.GET("/organizations/:orgId/payplans/:payplanId/periods/:periodId", handler.GetPeriod)
-	r.PUT("/organizations/:orgId/payplans/:payplanId/periods/:periodId", handler.UpdatePeriod)
-	r.DELETE("/organizations/:orgId/payplans/:payplanId/periods/:periodId", handler.DeletePeriod)
-	r.POST("/organizations/:orgId/payplans/:payplanId/periods/:periodId/entries", handler.CreateEntry)
-	r.GET("/organizations/:orgId/payplans/:payplanId/periods/:periodId/entries/:entryId", handler.GetEntry)
-	r.PUT("/organizations/:orgId/payplans/:payplanId/periods/:periodId/entries/:entryId", handler.UpdateEntry)
-	r.DELETE("/organizations/:orgId/payplans/:payplanId/periods/:periodId/entries/:entryId", handler.DeleteEntry)
+	r.GET("/organizations/:orgId/pay-plans", handler.List)
+	r.POST("/organizations/:orgId/pay-plans", handler.Create)
+	r.GET("/organizations/:orgId/pay-plans/:payPlanId", handler.Get)
+	r.PUT("/organizations/:orgId/pay-plans/:payPlanId", handler.Update)
+	r.DELETE("/organizations/:orgId/pay-plans/:payPlanId", handler.Delete)
+	r.POST("/organizations/:orgId/pay-plans/:payPlanId/periods", handler.CreatePeriod)
+	r.GET("/organizations/:orgId/pay-plans/:payPlanId/periods/:periodId", handler.GetPeriod)
+	r.PUT("/organizations/:orgId/pay-plans/:payPlanId/periods/:periodId", handler.UpdatePeriod)
+	r.DELETE("/organizations/:orgId/pay-plans/:payPlanId/periods/:periodId", handler.DeletePeriod)
+	r.POST("/organizations/:orgId/pay-plans/:payPlanId/periods/:periodId/entries", handler.CreateEntry)
+	r.GET("/organizations/:orgId/pay-plans/:payPlanId/periods/:periodId/entries/:entryId", handler.GetEntry)
+	r.PUT("/organizations/:orgId/pay-plans/:payPlanId/periods/:periodId/entries/:entryId", handler.UpdateEntry)
+	r.DELETE("/organizations/:orgId/pay-plans/:payPlanId/periods/:periodId/entries/:entryId", handler.DeleteEntry)
 
 	return org, handler, r, db
 }
@@ -629,7 +629,7 @@ func setupPayPlanTestFull(t *testing.T) (*models.Organization, *PayPlanHandler, 
 func TestPayPlanHandler_List_InvalidOrgID(t *testing.T) {
 	_, _, r, _ := setupPayPlanTestFull(t)
 
-	w := performRequest(r, "GET", "/organizations/abc/payplans", nil)
+	w := performRequest(r, "GET", "/organizations/abc/pay-plans", nil)
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}
@@ -638,7 +638,7 @@ func TestPayPlanHandler_List_InvalidOrgID(t *testing.T) {
 func TestPayPlanHandler_Update_InvalidID(t *testing.T) {
 	_, _, r, _ := setupPayPlanTestFull(t)
 
-	w := performRequest(r, "PUT", "/organizations/abc/payplans/1", map[string]string{"name": "x"})
+	w := performRequest(r, "PUT", "/organizations/abc/pay-plans/1", map[string]string{"name": "x"})
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}
@@ -647,7 +647,7 @@ func TestPayPlanHandler_Update_InvalidID(t *testing.T) {
 func TestPayPlanHandler_Update_InvalidBody(t *testing.T) {
 	org, _, r, _ := setupPayPlanTestFull(t)
 
-	w := performRequestRaw(r, "PUT", fmt.Sprintf("/organizations/%d/payplans/1", org.ID), "not json")
+	w := performRequestRaw(r, "PUT", fmt.Sprintf("/organizations/%d/pay-plans/1", org.ID), "not json")
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}
@@ -657,7 +657,7 @@ func TestPayPlanHandler_Update_NotFound(t *testing.T) {
 	org, _, r, _ := setupPayPlanTestFull(t)
 
 	notFoundName := "x"
-	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/payplans/9999", org.ID), models.PayPlanUpdateRequest{Name: &notFoundName})
+	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/pay-plans/9999", org.ID), models.PayPlanUpdateRequest{Name: &notFoundName})
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d, got %d: %s", http.StatusNotFound, w.Code, w.Body.String())
 	}
@@ -666,7 +666,7 @@ func TestPayPlanHandler_Update_NotFound(t *testing.T) {
 func TestPayPlanHandler_Delete_NotFound(t *testing.T) {
 	org, _, r, _ := setupPayPlanTestFull(t)
 
-	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/payplans/9999", org.ID), nil)
+	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/pay-plans/9999", org.ID), nil)
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d, got %d: %s", http.StatusNotFound, w.Code, w.Body.String())
 	}
@@ -675,7 +675,7 @@ func TestPayPlanHandler_Delete_NotFound(t *testing.T) {
 func TestPayPlanHandler_Delete_InvalidID(t *testing.T) {
 	_, _, r, _ := setupPayPlanTestFull(t)
 
-	w := performRequest(r, "DELETE", "/organizations/abc/payplans/1", nil)
+	w := performRequest(r, "DELETE", "/organizations/abc/pay-plans/1", nil)
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}
@@ -684,7 +684,7 @@ func TestPayPlanHandler_Delete_InvalidID(t *testing.T) {
 func TestPayPlanHandler_GetPeriod_InvalidPeriodID(t *testing.T) {
 	org, _, r, _ := setupPayPlanTestFull(t)
 
-	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/payplans/1/periods/abc", org.ID), nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans/1/periods/abc", org.ID), nil)
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}
@@ -696,7 +696,7 @@ func TestPayPlanHandler_GetPeriod_NotFound(t *testing.T) {
 	pp := &models.PayPlan{OrganizationID: org.ID, Name: "Test"}
 	db.Create(pp)
 
-	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/payplans/%d/periods/9999", org.ID, pp.ID), nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans/%d/periods/9999", org.ID, pp.ID), nil)
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d, got %d: %s", http.StatusNotFound, w.Code, w.Body.String())
 	}
@@ -705,7 +705,7 @@ func TestPayPlanHandler_GetPeriod_NotFound(t *testing.T) {
 func TestPayPlanHandler_UpdatePeriod_InvalidPeriodID(t *testing.T) {
 	org, _, r, _ := setupPayPlanTestFull(t)
 
-	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/payplans/1/periods/abc", org.ID), map[string]string{"from": "2024-01-01"})
+	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/pay-plans/1/periods/abc", org.ID), map[string]string{"from": "2024-01-01"})
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}
@@ -714,7 +714,7 @@ func TestPayPlanHandler_UpdatePeriod_InvalidPeriodID(t *testing.T) {
 func TestPayPlanHandler_UpdatePeriod_InvalidBody(t *testing.T) {
 	org, _, r, _ := setupPayPlanTestFull(t)
 
-	w := performRequestRaw(r, "PUT", fmt.Sprintf("/organizations/%d/payplans/1/periods/1", org.ID), "not json")
+	w := performRequestRaw(r, "PUT", fmt.Sprintf("/organizations/%d/pay-plans/1/periods/1", org.ID), "not json")
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}
@@ -726,7 +726,7 @@ func TestPayPlanHandler_UpdatePeriod_NotFound(t *testing.T) {
 	pp := &models.PayPlan{OrganizationID: org.ID, Name: "Test"}
 	db.Create(pp)
 
-	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/payplans/%d/periods/9999", org.ID, pp.ID), models.PayPlanPeriodUpdateRequest{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), WeeklyHours: 39})
+	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/pay-plans/%d/periods/9999", org.ID, pp.ID), models.PayPlanPeriodUpdateRequest{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), WeeklyHours: 39})
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d, got %d: %s", http.StatusNotFound, w.Code, w.Body.String())
 	}
@@ -735,7 +735,7 @@ func TestPayPlanHandler_UpdatePeriod_NotFound(t *testing.T) {
 func TestPayPlanHandler_DeletePeriod_InvalidPeriodID(t *testing.T) {
 	org, _, r, _ := setupPayPlanTestFull(t)
 
-	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/payplans/1/periods/abc", org.ID), nil)
+	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/pay-plans/1/periods/abc", org.ID), nil)
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}
@@ -747,7 +747,7 @@ func TestPayPlanHandler_DeletePeriod_NotFound(t *testing.T) {
 	pp := &models.PayPlan{OrganizationID: org.ID, Name: "Test"}
 	db.Create(pp)
 
-	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/payplans/%d/periods/9999", org.ID, pp.ID), nil)
+	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/pay-plans/%d/periods/9999", org.ID, pp.ID), nil)
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d, got %d: %s", http.StatusNotFound, w.Code, w.Body.String())
 	}
@@ -756,7 +756,7 @@ func TestPayPlanHandler_DeletePeriod_NotFound(t *testing.T) {
 func TestPayPlanHandler_CreateEntry_InvalidPeriodID(t *testing.T) {
 	org, _, r, _ := setupPayPlanTestFull(t)
 
-	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/payplans/1/periods/abc/entries", org.ID), map[string]interface{}{"level": 1, "step": 1, "monthly_salary": 100000})
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/pay-plans/1/periods/abc/entries", org.ID), map[string]interface{}{"level": 1, "step": 1, "monthly_salary": 100000})
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}
@@ -765,7 +765,7 @@ func TestPayPlanHandler_CreateEntry_InvalidPeriodID(t *testing.T) {
 func TestPayPlanHandler_CreateEntry_InvalidBody(t *testing.T) {
 	org, _, r, _ := setupPayPlanTestFull(t)
 
-	w := performRequestRaw(r, "POST", fmt.Sprintf("/organizations/%d/payplans/1/periods/1/entries", org.ID), "not json")
+	w := performRequestRaw(r, "POST", fmt.Sprintf("/organizations/%d/pay-plans/1/periods/1/entries", org.ID), "not json")
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}
@@ -774,7 +774,7 @@ func TestPayPlanHandler_CreateEntry_InvalidBody(t *testing.T) {
 func TestPayPlanHandler_GetEntry_InvalidPeriodID(t *testing.T) {
 	org, _, r, _ := setupPayPlanTestFull(t)
 
-	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/payplans/1/periods/abc/entries/1", org.ID), nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans/1/periods/abc/entries/1", org.ID), nil)
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}
@@ -783,7 +783,7 @@ func TestPayPlanHandler_GetEntry_InvalidPeriodID(t *testing.T) {
 func TestPayPlanHandler_GetEntry_InvalidEntryID(t *testing.T) {
 	org, _, r, _ := setupPayPlanTestFull(t)
 
-	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/payplans/1/periods/1/entries/abc", org.ID), nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans/1/periods/1/entries/abc", org.ID), nil)
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}
@@ -797,7 +797,7 @@ func TestPayPlanHandler_GetEntry_NotFound(t *testing.T) {
 	period := &models.PayPlanPeriod{PayPlanID: pp.ID, Period: models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)}, WeeklyHours: 39}
 	db.Create(period)
 
-	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/payplans/%d/periods/%d/entries/9999", org.ID, pp.ID, period.ID), nil)
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans/%d/periods/%d/entries/9999", org.ID, pp.ID, period.ID), nil)
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d, got %d: %s", http.StatusNotFound, w.Code, w.Body.String())
 	}
@@ -806,7 +806,7 @@ func TestPayPlanHandler_GetEntry_NotFound(t *testing.T) {
 func TestPayPlanHandler_UpdateEntry_InvalidPeriodID(t *testing.T) {
 	org, _, r, _ := setupPayPlanTestFull(t)
 
-	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/payplans/1/periods/abc/entries/1", org.ID), map[string]interface{}{"monthly_salary": 100000})
+	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/pay-plans/1/periods/abc/entries/1", org.ID), map[string]interface{}{"monthly_salary": 100000})
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}
@@ -815,7 +815,7 @@ func TestPayPlanHandler_UpdateEntry_InvalidPeriodID(t *testing.T) {
 func TestPayPlanHandler_UpdateEntry_InvalidEntryID(t *testing.T) {
 	org, _, r, _ := setupPayPlanTestFull(t)
 
-	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/payplans/1/periods/1/entries/abc", org.ID), map[string]interface{}{"monthly_salary": 100000})
+	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/pay-plans/1/periods/1/entries/abc", org.ID), map[string]interface{}{"monthly_salary": 100000})
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}
@@ -824,7 +824,7 @@ func TestPayPlanHandler_UpdateEntry_InvalidEntryID(t *testing.T) {
 func TestPayPlanHandler_UpdateEntry_InvalidBody(t *testing.T) {
 	org, _, r, _ := setupPayPlanTestFull(t)
 
-	w := performRequestRaw(r, "PUT", fmt.Sprintf("/organizations/%d/payplans/1/periods/1/entries/1", org.ID), "not json")
+	w := performRequestRaw(r, "PUT", fmt.Sprintf("/organizations/%d/pay-plans/1/periods/1/entries/1", org.ID), "not json")
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}
@@ -838,7 +838,7 @@ func TestPayPlanHandler_UpdateEntry_NotFound(t *testing.T) {
 	period := &models.PayPlanPeriod{PayPlanID: pp.ID, Period: models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)}, WeeklyHours: 39}
 	db.Create(period)
 
-	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/payplans/%d/periods/%d/entries/9999", org.ID, pp.ID, period.ID), models.PayPlanEntryUpdateRequest{Grade: "S8a", Step: 1, MonthlyAmount: 100000})
+	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/pay-plans/%d/periods/%d/entries/9999", org.ID, pp.ID, period.ID), models.PayPlanEntryUpdateRequest{Grade: "S8a", Step: 1, MonthlyAmount: 100000})
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d, got %d: %s", http.StatusNotFound, w.Code, w.Body.String())
 	}
@@ -847,7 +847,7 @@ func TestPayPlanHandler_UpdateEntry_NotFound(t *testing.T) {
 func TestPayPlanHandler_DeleteEntry_InvalidPeriodID(t *testing.T) {
 	org, _, r, _ := setupPayPlanTestFull(t)
 
-	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/payplans/1/periods/abc/entries/1", org.ID), nil)
+	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/pay-plans/1/periods/abc/entries/1", org.ID), nil)
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}
@@ -856,7 +856,7 @@ func TestPayPlanHandler_DeleteEntry_InvalidPeriodID(t *testing.T) {
 func TestPayPlanHandler_DeleteEntry_InvalidEntryID(t *testing.T) {
 	org, _, r, _ := setupPayPlanTestFull(t)
 
-	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/payplans/1/periods/1/entries/abc", org.ID), nil)
+	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/pay-plans/1/periods/1/entries/abc", org.ID), nil)
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}
@@ -870,7 +870,7 @@ func TestPayPlanHandler_DeleteEntry_NotFound(t *testing.T) {
 	period := &models.PayPlanPeriod{PayPlanID: pp.ID, Period: models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)}, WeeklyHours: 39}
 	db.Create(period)
 
-	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/payplans/%d/periods/%d/entries/9999", org.ID, pp.ID, period.ID), nil)
+	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/pay-plans/%d/periods/%d/entries/9999", org.ID, pp.ID, period.ID), nil)
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d, got %d: %s", http.StatusNotFound, w.Code, w.Body.String())
 	}

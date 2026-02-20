@@ -571,11 +571,11 @@ class ApiClient {
   async updateGovernmentFundingProperty(
     governmentFundingId: number,
     periodId: number,
-    propId: number,
+    propertyId: number,
     data: GovernmentFundingPropertyUpdateRequest
   ): Promise<GovernmentFundingProperty> {
     const response = await this.client.put<GovernmentFundingProperty>(
-      `/government-funding-rates/${governmentFundingId}/periods/${periodId}/properties/${propId}`,
+      `/government-funding-rates/${governmentFundingId}/periods/${periodId}/properties/${propertyId}`,
       data
     );
     return response.data;
@@ -584,16 +584,16 @@ class ApiClient {
   async deleteGovernmentFundingProperty(
     governmentFundingId: number,
     periodId: number,
-    propId: number
+    propertyId: number
   ): Promise<void> {
     await this.client.delete(
-      `/government-funding-rates/${governmentFundingId}/periods/${periodId}/properties/${propId}`
+      `/government-funding-rates/${governmentFundingId}/periods/${periodId}/properties/${propertyId}`
     );
   }
 
   // PayPlans (organization-scoped)
   private _payPlans = this.orgScopedCrud<PayPlan, PayPlanCreateRequest, PayPlanUpdateRequest>(
-    'payplans'
+    'pay-plans'
   );
   getPayPlans = this._payPlans.list;
   getPayPlan = this._payPlans.get;
@@ -608,7 +608,7 @@ class ApiClient {
     data: PayPlanPeriodCreateRequest
   ): Promise<PayPlanPeriod> {
     const response = await this.client.post<PayPlanPeriod>(
-      `/organizations/${orgId}/payplans/${payplanId}/periods`,
+      `/organizations/${orgId}/pay-plans/${payplanId}/periods`,
       data
     );
     return response.data;
@@ -620,7 +620,7 @@ class ApiClient {
     periodId: number
   ): Promise<PayPlanPeriod> {
     const response = await this.client.get<PayPlanPeriod>(
-      `/organizations/${orgId}/payplans/${payplanId}/periods/${periodId}`
+      `/organizations/${orgId}/pay-plans/${payplanId}/periods/${periodId}`
     );
     return response.data;
   }
@@ -632,14 +632,14 @@ class ApiClient {
     data: PayPlanPeriodUpdateRequest
   ): Promise<PayPlanPeriod> {
     const response = await this.client.put<PayPlanPeriod>(
-      `/organizations/${orgId}/payplans/${payplanId}/periods/${periodId}`,
+      `/organizations/${orgId}/pay-plans/${payplanId}/periods/${periodId}`,
       data
     );
     return response.data;
   }
 
   async deletePayPlanPeriod(orgId: number, payplanId: number, periodId: number): Promise<void> {
-    await this.client.delete(`/organizations/${orgId}/payplans/${payplanId}/periods/${periodId}`);
+    await this.client.delete(`/organizations/${orgId}/pay-plans/${payplanId}/periods/${periodId}`);
   }
 
   // PayPlan Entries
@@ -650,7 +650,7 @@ class ApiClient {
     data: PayPlanEntryCreateRequest
   ): Promise<PayPlanEntry> {
     const response = await this.client.post<PayPlanEntry>(
-      `/organizations/${orgId}/payplans/${payplanId}/periods/${periodId}/entries`,
+      `/organizations/${orgId}/pay-plans/${payplanId}/periods/${periodId}/entries`,
       data
     );
     return response.data;
@@ -663,7 +663,7 @@ class ApiClient {
     entryId: number
   ): Promise<PayPlanEntry> {
     const response = await this.client.get<PayPlanEntry>(
-      `/organizations/${orgId}/payplans/${payplanId}/periods/${periodId}/entries/${entryId}`
+      `/organizations/${orgId}/pay-plans/${payplanId}/periods/${periodId}/entries/${entryId}`
     );
     return response.data;
   }
@@ -676,7 +676,7 @@ class ApiClient {
     data: PayPlanEntryUpdateRequest
   ): Promise<PayPlanEntry> {
     const response = await this.client.put<PayPlanEntry>(
-      `/organizations/${orgId}/payplans/${payplanId}/periods/${periodId}/entries/${entryId}`,
+      `/organizations/${orgId}/pay-plans/${payplanId}/periods/${periodId}/entries/${entryId}`,
       data
     );
     return response.data;
@@ -689,7 +689,7 @@ class ApiClient {
     entryId: number
   ): Promise<void> {
     await this.client.delete(
-      `/organizations/${orgId}/payplans/${payplanId}/periods/${periodId}/entries/${entryId}`
+      `/organizations/${orgId}/pay-plans/${payplanId}/periods/${periodId}/entries/${entryId}`
     );
   }
 

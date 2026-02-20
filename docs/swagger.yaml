@@ -2897,7 +2897,7 @@ paths:
       summary: Create a new property
       tags:
       - government-funding-rates
-  /api/v1/government-funding-rates/{fundingId}/periods/{periodId}/properties/{propId}:
+  /api/v1/government-funding-rates/{fundingId}/periods/{periodId}/properties/{propertyId}:
     delete:
       consumes:
       - application/json
@@ -2915,7 +2915,7 @@ paths:
         type: integer
       - description: Property ID
         in: path
-        name: propId
+        name: propertyId
         required: true
         type: integer
       produces:
@@ -2961,7 +2961,7 @@ paths:
         type: integer
       - description: Property ID
         in: path
-        name: propId
+        name: propertyId
         required: true
         type: integer
       produces:
@@ -3013,7 +3013,7 @@ paths:
         type: integer
       - description: Property ID
         in: path
-        name: propId
+        name: propertyId
         required: true
         type: integer
       - description: Property data
@@ -5911,7 +5911,7 @@ paths:
       summary: Update a group
       tags:
       - groups
-  /api/v1/organizations/{orgId}/payplans:
+  /api/v1/organizations/{orgId}/pay-plans:
     get:
       consumes:
       - application/json
@@ -5960,7 +5960,7 @@ paths:
       - BearerAuth: []
       summary: List pay plans
       tags:
-      - payplans
+      - pay-plans
     post:
       consumes:
       - application/json
@@ -6004,8 +6004,8 @@ paths:
       - BearerAuth: []
       summary: Create pay plan
       tags:
-      - payplans
-  /api/v1/organizations/{orgId}/payplans/{payplanId}:
+      - pay-plans
+  /api/v1/organizations/{orgId}/pay-plans/{payPlanId}:
     delete:
       consumes:
       - application/json
@@ -6018,7 +6018,7 @@ paths:
         type: integer
       - description: Pay Plan ID
         in: path
-        name: payplanId
+        name: payPlanId
         required: true
         type: integer
       produces:
@@ -6050,7 +6050,7 @@ paths:
       - BearerAuth: []
       summary: Delete pay plan
       tags:
-      - payplans
+      - pay-plans
     get:
       consumes:
       - application/json
@@ -6063,7 +6063,7 @@ paths:
         type: integer
       - description: Pay Plan ID
         in: path
-        name: payplanId
+        name: payPlanId
         required: true
         type: integer
       - description: Filter periods active on date (YYYY-MM-DD, defaults to today)
@@ -6101,7 +6101,7 @@ paths:
       - BearerAuth: []
       summary: Get pay plan
       tags:
-      - payplans
+      - pay-plans
     put:
       consumes:
       - application/json
@@ -6114,7 +6114,7 @@ paths:
         type: integer
       - description: Pay Plan ID
         in: path
-        name: payplanId
+        name: payPlanId
         required: true
         type: integer
       - description: Pay plan data
@@ -6154,8 +6154,8 @@ paths:
       - BearerAuth: []
       summary: Update pay plan
       tags:
-      - payplans
-  /api/v1/organizations/{orgId}/payplans/{payplanId}/periods:
+      - pay-plans
+  /api/v1/organizations/{orgId}/pay-plans/{payPlanId}/periods:
     post:
       consumes:
       - application/json
@@ -6168,7 +6168,7 @@ paths:
         type: integer
       - description: Pay Plan ID
         in: path
-        name: payplanId
+        name: payPlanId
         required: true
         type: integer
       - description: Period data
@@ -6208,8 +6208,8 @@ paths:
       - BearerAuth: []
       summary: Create period
       tags:
-      - payplans
-  /api/v1/organizations/{orgId}/payplans/{payplanId}/periods/{periodId}:
+      - pay-plans
+  /api/v1/organizations/{orgId}/pay-plans/{payPlanId}/periods/{periodId}:
     delete:
       consumes:
       - application/json
@@ -6222,7 +6222,7 @@ paths:
         type: integer
       - description: Pay Plan ID
         in: path
-        name: payplanId
+        name: payPlanId
         required: true
         type: integer
       - description: Period ID
@@ -6259,7 +6259,7 @@ paths:
       - BearerAuth: []
       summary: Delete period
       tags:
-      - payplans
+      - pay-plans
     get:
       consumes:
       - application/json
@@ -6272,7 +6272,7 @@ paths:
         type: integer
       - description: Pay Plan ID
         in: path
-        name: payplanId
+        name: payPlanId
         required: true
         type: integer
       - description: Period ID
@@ -6311,7 +6311,7 @@ paths:
       - BearerAuth: []
       summary: Get period
       tags:
-      - payplans
+      - pay-plans
     put:
       consumes:
       - application/json
@@ -6324,7 +6324,7 @@ paths:
         type: integer
       - description: Pay Plan ID
         in: path
-        name: payplanId
+        name: payPlanId
         required: true
         type: integer
       - description: Period ID
@@ -6369,8 +6369,8 @@ paths:
       - BearerAuth: []
       summary: Update period
       tags:
-      - payplans
-  /api/v1/organizations/{orgId}/payplans/{payplanId}/periods/{periodId}/entries:
+      - pay-plans
+  /api/v1/organizations/{orgId}/pay-plans/{payPlanId}/periods/{periodId}/entries:
     post:
       consumes:
       - application/json
@@ -6383,7 +6383,7 @@ paths:
         type: integer
       - description: Pay Plan ID
         in: path
-        name: payplanId
+        name: payPlanId
         required: true
         type: integer
       - description: Period ID
@@ -6428,8 +6428,8 @@ paths:
       - BearerAuth: []
       summary: Create entry
       tags:
-      - payplans
-  /api/v1/organizations/{orgId}/payplans/{payplanId}/periods/{periodId}/entries/{entryId}:
+      - pay-plans
+  /api/v1/organizations/{orgId}/pay-plans/{payPlanId}/periods/{periodId}/entries/{entryId}:
     delete:
       consumes:
       - application/json
@@ -6442,7 +6442,7 @@ paths:
         type: integer
       - description: Pay Plan ID
         in: path
-        name: payplanId
+        name: payPlanId
         required: true
         type: integer
       - description: Period ID
@@ -6484,7 +6484,7 @@ paths:
       - BearerAuth: []
       summary: Delete entry
       tags:
-      - payplans
+      - pay-plans
     get:
       consumes:
       - application/json
@@ -6497,7 +6497,7 @@ paths:
         type: integer
       - description: Pay Plan ID
         in: path
-        name: payplanId
+        name: payPlanId
         required: true
         type: integer
       - description: Period ID
@@ -6541,7 +6541,7 @@ paths:
       - BearerAuth: []
       summary: Get entry
       tags:
-      - payplans
+      - pay-plans
     put:
       consumes:
       - application/json
@@ -6554,7 +6554,7 @@ paths:
         type: integer
       - description: Pay Plan ID
         in: path
-        name: payplanId
+        name: payPlanId
         required: true
         type: integer
       - description: Period ID
@@ -6604,7 +6604,7 @@ paths:
       - BearerAuth: []
       summary: Update entry
       tags:
-      - payplans
+      - pay-plans
   /api/v1/organizations/{orgId}/sections:
     get:
       consumes:

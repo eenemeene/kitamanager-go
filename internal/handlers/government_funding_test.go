@@ -993,7 +993,7 @@ func TestGovernmentFundingHandler_UpdateProperty_Validation(t *testing.T) {
 	db.Create(property)
 
 	r := setupTestRouter()
-	r.PUT("/fundings/:fundingId/periods/:periodId/properties/:propId", handler.UpdateProperty)
+	r.PUT("/fundings/:fundingId/periods/:periodId/properties/:propertyId", handler.UpdateProperty)
 
 	t.Run("non-existent property ID", func(t *testing.T) {
 		key := "new_key"
@@ -1063,7 +1063,7 @@ func TestGovernmentFundingHandler_DeleteProperty(t *testing.T) {
 	db.Create(property)
 
 	r := setupTestRouter()
-	r.DELETE("/fundings/:fundingId/periods/:periodId/properties/:propId", handler.DeleteProperty)
+	r.DELETE("/fundings/:fundingId/periods/:periodId/properties/:propertyId", handler.DeleteProperty)
 
 	w := performRequest(r, "DELETE", fmt.Sprintf("/fundings/%d/periods/%d/properties/%d", funding.ID, period.ID, property.ID), nil)
 
@@ -1088,7 +1088,7 @@ func TestGovernmentFundingHandler_DeleteProperty_NotFound(t *testing.T) {
 	db.Create(period)
 
 	r := setupTestRouter()
-	r.DELETE("/fundings/:fundingId/periods/:periodId/properties/:propId", handler.DeleteProperty)
+	r.DELETE("/fundings/:fundingId/periods/:periodId/properties/:propertyId", handler.DeleteProperty)
 
 	w := performRequest(r, "DELETE", fmt.Sprintf("/fundings/%d/periods/%d/properties/999", funding.ID, period.ID), nil)
 
@@ -1105,7 +1105,7 @@ func TestGovernmentFundingHandler_DeleteProperty_InvalidID(t *testing.T) {
 	handler := NewGovernmentFundingHandler(svc, createAuditService(db))
 
 	r := setupTestRouter()
-	r.DELETE("/fundings/:fundingId/periods/:periodId/properties/:propId", handler.DeleteProperty)
+	r.DELETE("/fundings/:fundingId/periods/:periodId/properties/:propertyId", handler.DeleteProperty)
 
 	w := performRequest(r, "DELETE", "/fundings/1/periods/1/properties/abc", nil)
 

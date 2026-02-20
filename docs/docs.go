@@ -721,7 +721,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/government-funding-rates/{fundingId}/periods/{periodId}/properties/{propId}": {
+        "/api/v1/government-funding-rates/{fundingId}/periods/{periodId}/properties/{propertyId}": {
             "get": {
                 "security": [
                     {
@@ -757,7 +757,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Property ID",
-                        "name": "propId",
+                        "name": "propertyId",
                         "in": "path",
                         "required": true
                     }
@@ -836,7 +836,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Property ID",
-                        "name": "propId",
+                        "name": "propertyId",
                         "in": "path",
                         "required": true
                     },
@@ -924,7 +924,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Property ID",
-                        "name": "propId",
+                        "name": "propertyId",
                         "in": "path",
                         "required": true
                     }
@@ -5274,7 +5274,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/organizations/{orgId}/payplans": {
+        "/api/v1/organizations/{orgId}/pay-plans": {
             "get": {
                 "security": [
                     {
@@ -5289,7 +5289,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "payplans"
+                    "pay-plans"
                 ],
                 "summary": "List pay plans",
                 "parameters": [
@@ -5363,7 +5363,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "payplans"
+                    "pay-plans"
                 ],
                 "summary": "Create pay plan",
                 "parameters": [
@@ -5418,7 +5418,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/organizations/{orgId}/payplans/{payplanId}": {
+        "/api/v1/organizations/{orgId}/pay-plans/{payPlanId}": {
             "get": {
                 "security": [
                     {
@@ -5433,7 +5433,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "payplans"
+                    "pay-plans"
                 ],
                 "summary": "Get pay plan",
                 "parameters": [
@@ -5447,7 +5447,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Pay Plan ID",
-                        "name": "payplanId",
+                        "name": "payPlanId",
                         "in": "path",
                         "required": true
                     },
@@ -5511,7 +5511,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "payplans"
+                    "pay-plans"
                 ],
                 "summary": "Update pay plan",
                 "parameters": [
@@ -5525,7 +5525,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Pay Plan ID",
-                        "name": "payplanId",
+                        "name": "payPlanId",
                         "in": "path",
                         "required": true
                     },
@@ -5592,7 +5592,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "payplans"
+                    "pay-plans"
                 ],
                 "summary": "Delete pay plan",
                 "parameters": [
@@ -5606,7 +5606,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Pay Plan ID",
-                        "name": "payplanId",
+                        "name": "payPlanId",
                         "in": "path",
                         "required": true
                     }
@@ -5648,7 +5648,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/organizations/{orgId}/payplans/{payplanId}/periods": {
+        "/api/v1/organizations/{orgId}/pay-plans/{payPlanId}/periods": {
             "post": {
                 "security": [
                     {
@@ -5663,7 +5663,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "payplans"
+                    "pay-plans"
                 ],
                 "summary": "Create period",
                 "parameters": [
@@ -5677,7 +5677,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Pay Plan ID",
-                        "name": "payplanId",
+                        "name": "payPlanId",
                         "in": "path",
                         "required": true
                     },
@@ -5731,7 +5731,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/organizations/{orgId}/payplans/{payplanId}/periods/{periodId}": {
+        "/api/v1/organizations/{orgId}/pay-plans/{payPlanId}/periods/{periodId}": {
             "get": {
                 "security": [
                     {
@@ -5746,7 +5746,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "payplans"
+                    "pay-plans"
                 ],
                 "summary": "Get period",
                 "parameters": [
@@ -5760,7 +5760,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Pay Plan ID",
-                        "name": "payplanId",
+                        "name": "payPlanId",
                         "in": "path",
                         "required": true
                     },
@@ -5825,7 +5825,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "payplans"
+                    "pay-plans"
                 ],
                 "summary": "Update period",
                 "parameters": [
@@ -5839,7 +5839,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Pay Plan ID",
-                        "name": "payplanId",
+                        "name": "payPlanId",
                         "in": "path",
                         "required": true
                     },
@@ -5913,7 +5913,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "payplans"
+                    "pay-plans"
                 ],
                 "summary": "Delete period",
                 "parameters": [
@@ -5927,7 +5927,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Pay Plan ID",
-                        "name": "payplanId",
+                        "name": "payPlanId",
                         "in": "path",
                         "required": true
                     },
@@ -5976,7 +5976,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/organizations/{orgId}/payplans/{payplanId}/periods/{periodId}/entries": {
+        "/api/v1/organizations/{orgId}/pay-plans/{payPlanId}/periods/{periodId}/entries": {
             "post": {
                 "security": [
                     {
@@ -5991,7 +5991,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "payplans"
+                    "pay-plans"
                 ],
                 "summary": "Create entry",
                 "parameters": [
@@ -6005,7 +6005,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Pay Plan ID",
-                        "name": "payplanId",
+                        "name": "payPlanId",
                         "in": "path",
                         "required": true
                     },
@@ -6066,7 +6066,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/organizations/{orgId}/payplans/{payplanId}/periods/{periodId}/entries/{entryId}": {
+        "/api/v1/organizations/{orgId}/pay-plans/{payPlanId}/periods/{periodId}/entries/{entryId}": {
             "get": {
                 "security": [
                     {
@@ -6081,7 +6081,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "payplans"
+                    "pay-plans"
                 ],
                 "summary": "Get entry",
                 "parameters": [
@@ -6095,7 +6095,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Pay Plan ID",
-                        "name": "payplanId",
+                        "name": "payPlanId",
                         "in": "path",
                         "required": true
                     },
@@ -6167,7 +6167,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "payplans"
+                    "pay-plans"
                 ],
                 "summary": "Update entry",
                 "parameters": [
@@ -6181,7 +6181,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Pay Plan ID",
-                        "name": "payplanId",
+                        "name": "payPlanId",
                         "in": "path",
                         "required": true
                     },
@@ -6262,7 +6262,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "payplans"
+                    "pay-plans"
                 ],
                 "summary": "Delete entry",
                 "parameters": [
@@ -6276,7 +6276,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Pay Plan ID",
-                        "name": "payplanId",
+                        "name": "payPlanId",
                         "in": "path",
                         "required": true
                     },

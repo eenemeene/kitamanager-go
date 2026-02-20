@@ -336,16 +336,16 @@ func (h *GovernmentFundingHandler) CreateProperty(c *gin.Context) {
 // @Security BearerAuth
 // @Param fundingId path int true "GovernmentFunding ID"
 // @Param periodId path int true "Period ID"
-// @Param propId path int true "Property ID"
+// @Param propertyId path int true "Property ID"
 // @Success 200 {object} models.GovernmentFundingPropertyResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/government-funding-rates/{fundingId}/periods/{periodId}/properties/{propId} [get]
+// @Router /api/v1/government-funding-rates/{fundingId}/periods/{periodId}/properties/{propertyId} [get]
 func (h *GovernmentFundingHandler) GetProperty(c *gin.Context) {
-	handleGlobalDeepNestedGet(c, "fundingId", "periodId", "propId", h.service.GetProperty)
+	handleGlobalDeepNestedGet(c, "fundingId", "periodId", "propertyId", h.service.GetProperty)
 }
 
 // UpdateProperty godoc
@@ -357,7 +357,7 @@ func (h *GovernmentFundingHandler) GetProperty(c *gin.Context) {
 // @Security BearerAuth
 // @Param fundingId path int true "GovernmentFunding ID"
 // @Param periodId path int true "Period ID"
-// @Param propId path int true "Property ID"
+// @Param propertyId path int true "Property ID"
 // @Param request body models.GovernmentFundingPropertyUpdateRequest true "Property data"
 // @Success 200 {object} models.GovernmentFundingPropertyResponse
 // @Failure 400 {object} models.ErrorResponse
@@ -365,9 +365,9 @@ func (h *GovernmentFundingHandler) GetProperty(c *gin.Context) {
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/government-funding-rates/{fundingId}/periods/{periodId}/properties/{propId} [put]
+// @Router /api/v1/government-funding-rates/{fundingId}/periods/{periodId}/properties/{propertyId} [put]
 func (h *GovernmentFundingHandler) UpdateProperty(c *gin.Context) {
-	handleGlobalDeepNestedUpdate(c, "fundingId", "periodId", "propId",
+	handleGlobalDeepNestedUpdate(c, "fundingId", "periodId", "propertyId",
 		auditConfig{h.auditService, "gov_funding_property", "period"},
 		h.service.UpdateProperty,
 		func(r *models.GovernmentFundingPropertyResponse) uint { return r.ID },
@@ -383,15 +383,15 @@ func (h *GovernmentFundingHandler) UpdateProperty(c *gin.Context) {
 // @Security BearerAuth
 // @Param fundingId path int true "GovernmentFunding ID"
 // @Param periodId path int true "Period ID"
-// @Param propId path int true "Property ID"
+// @Param propertyId path int true "Property ID"
 // @Success 204 "No Content"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/government-funding-rates/{fundingId}/periods/{periodId}/properties/{propId} [delete]
+// @Router /api/v1/government-funding-rates/{fundingId}/periods/{periodId}/properties/{propertyId} [delete]
 func (h *GovernmentFundingHandler) DeleteProperty(c *gin.Context) {
-	handleGlobalDeepNestedDelete(c, "fundingId", "periodId", "propId",
+	handleGlobalDeepNestedDelete(c, "fundingId", "periodId", "propertyId",
 		auditConfig{h.auditService, "gov_funding_property", "period"},
 		h.service.DeleteProperty,
 	)
