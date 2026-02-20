@@ -229,3 +229,80 @@ func TestIsSafeMethod(t *testing.T) {
 		}
 	}
 }
+
+func TestCSRFMiddleware_EmptyAccessTokenCookie(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	middleware := NewCSRFMiddleware(testJWTSecret)
+
+	// ComputeCSRFToken with empty string is deterministic
+	accessToken := ""
+	csrfToken := ComputeCSRFToken(accessToken, testJWTSecret)
+
+	router := gin.New()
+	router.POST("/test", middleware.ValidateCSRF(), func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest("POST", "/test", nil)
+	req.AddCookie(&http.Cookie{Name: "access_token", Value: accessToken})
+	req.Header.Set(CSRFHeaderName, csrfToken)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d for empty access token cookie with matching CSRF, got %d: %s",
+			http.StatusOK, w.Code, w.Body.String())
+	}
+}
+
+func TestCSRFMiddleware_NoCookieNoAuthHeader(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	middleware := NewCSRFMiddleware(testJWTSecret)
+
+	router := gin.New()
+	router.POST("/test", middleware.ValidateCSRF(), func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest("POST", "/test", nil)
+	// No access_token cookie and no Authorization header
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("expected status %d for no cookie and no auth header, got %d: %s",
+			http.StatusForbidden, w.Code, w.Body.String())
+	}
+}
+
+func TestCSRFMiddleware_ExpiredAccessTokenCookie_ValidCSRF(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	middleware := NewCSRFMiddleware(testJWTSecret)
+
+	// The CSRF middleware doesn't validate the JWT itself,
+	// it just checks the CSRF is derived from the cookie value.
+	accessToken := "expired-access-token"
+	csrfToken := ComputeCSRFToken(accessToken, testJWTSecret)
+
+	router := gin.New()
+	router.POST("/test", middleware.ValidateCSRF(), func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest("POST", "/test", nil)
+	req.AddCookie(&http.Cookie{Name: "access_token", Value: accessToken})
+	req.Header.Set(CSRFHeaderName, csrfToken)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d for expired access token with valid CSRF, got %d: %s",
+			http.StatusOK, w.Code, w.Body.String())
+	}
+}

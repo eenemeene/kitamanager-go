@@ -325,3 +325,85 @@ func TestAuthService_GetCurrentUser_NotFound(t *testing.T) {
 		t.Fatal("expected error, got nil")
 	}
 }
+
+func TestAuthService_Login_LockoutWindowExpiry(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	ctx := context.Background()
+
+	createTestUserWithHashedPassword(t, db, "Test User", "lockout-expiry@example.com", "password123")
+
+	// Insert failed login audit entries with timestamps OUTSIDE the lockout window
+	outsideWindow := time.Now().Add(-lockoutWindow - time.Minute)
+	for i := 0; i < lockoutThreshold; i++ {
+		if err := db.Create(&models.AuditLog{
+			UserEmail: "lockout-expiry@example.com",
+			Action:    models.AuditActionLoginFailed,
+			IPAddress: "127.0.0.1",
+			Success:   false,
+			Timestamp: outsideWindow,
+		}).Error; err != nil {
+			t.Fatalf("failed to insert audit log: %v", err)
+		}
+	}
+
+	// Login with correct credentials should succeed because failures are outside the 15-min window
+	result, err := svc.Login(ctx, "lockout-expiry@example.com", "password123", "127.0.0.1", "test-agent")
+	if err != nil {
+		t.Fatalf("expected login to succeed after lockout window expiry, got %v", err)
+	}
+	if result.AccessToken == "" {
+		t.Error("expected non-empty access token")
+	}
+}
+
+func TestAuthService_Refresh_WithAccessTokenInsteadOfRefresh(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	ctx := context.Background()
+
+	createTestUserWithHashedPassword(t, db, "Test User", "access-refresh@example.com", "password123")
+
+	loginResult, err := svc.Login(ctx, "access-refresh@example.com", "password123", "127.0.0.1", "test-agent")
+	if err != nil {
+		t.Fatalf("login failed: %v", err)
+	}
+
+	// Attempt to refresh using the access token instead of the refresh token
+	_, err = svc.Refresh(ctx, loginResult.AccessToken)
+	if err == nil {
+		t.Fatal("expected error when using access token for refresh, got nil")
+	}
+	if !errors.Is(err, apperror.ErrUnauthorized) {
+		t.Errorf("expected ErrUnauthorized, got %v", err)
+	}
+}
+
+func TestAuthService_ChangePassword_TokensRevokedAfterChange(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	ctx := context.Background()
+
+	user := createTestUserWithHashedPassword(t, db, "Test User", "change-pw@example.com", "password123")
+
+	// Login to get tokens
+	loginResult, err := svc.Login(ctx, "change-pw@example.com", "password123", "127.0.0.1", "test-agent")
+	if err != nil {
+		t.Fatalf("login failed: %v", err)
+	}
+
+	// Change password successfully
+	_, err = svc.ChangePassword(ctx, user.ID, "password123", "newpassword456", "127.0.0.1")
+	if err != nil {
+		t.Fatalf("change password failed: %v", err)
+	}
+
+	// Attempt to refresh with the OLD refresh token should fail
+	_, err = svc.Refresh(ctx, loginResult.RefreshToken)
+	if err == nil {
+		t.Fatal("expected error when refreshing with old token after password change, got nil")
+	}
+	if !errors.Is(err, apperror.ErrUnauthorized) {
+		t.Errorf("expected ErrUnauthorized, got %v", err)
+	}
+}

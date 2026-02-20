@@ -107,9 +107,21 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 			return
 		}
 
+		// Defense-in-depth: require exp claim even though jwt.Parse validates it when present.
+		// Without this check, a token crafted without an exp claim would be accepted indefinitely.
+		if _, hasExp := claims["exp"]; !hasExp {
+			slog.Warn("Auth failed: missing exp claim", "ip", c.ClientIP(), "path", c.Request.URL.Path)
+			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+				Code:    apperror.CodeUnauthorized,
+				Message: "invalid token",
+			})
+			c.Abort()
+			return
+		}
+
 		// JWT numbers are parsed as float64, convert to uint
 		userIDFloat, ok := claims["user_id"].(float64)
-		if !ok {
+		if !ok || userIDFloat <= 0 {
 			slog.Warn("Auth failed: invalid user id in token", "ip", c.ClientIP(), "path", c.Request.URL.Path)
 			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
 				Code:    apperror.CodeUnauthorized,

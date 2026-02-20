@@ -424,3 +424,170 @@ func TestUserOrganizationService_SetSuperAdmin_UserNotFound(t *testing.T) {
 		t.Errorf("expected ErrNotFound, got %v", err)
 	}
 }
+
+func TestUserOrganizationService_ManagerCannotAddUsers(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserOrganizationService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	managerUser := createTestUser(t, db, "Manager User", "manager@test.com", "password")
+	createTestUserOrganization(t, db, managerUser.ID, org.ID, models.RoleManager)
+	targetUser := createTestUser(t, db, "Target User", "target@test.com", "password")
+
+	_, err := svc.AddUserToOrganization(ctx, targetUser.ID, org.ID, models.RoleMember, "manager@test.com", managerUser.ID)
+	if err == nil {
+		t.Fatal("expected error when manager tries to add user, got nil")
+	}
+
+	var appErr *apperror.AppError
+	if !errors.As(err, &appErr) {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if !errors.Is(err, apperror.ErrForbidden) {
+		t.Errorf("expected ErrForbidden, got %v", err)
+	}
+}
+
+func TestUserOrganizationService_MemberCannotAddUsers(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserOrganizationService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	memberUser := createTestUser(t, db, "Member User", "member@test.com", "password")
+	createTestUserOrganization(t, db, memberUser.ID, org.ID, models.RoleMember)
+	targetUser := createTestUser(t, db, "Target User", "target@test.com", "password")
+
+	_, err := svc.AddUserToOrganization(ctx, targetUser.ID, org.ID, models.RoleMember, "member@test.com", memberUser.ID)
+	if err == nil {
+		t.Fatal("expected error when member tries to add user, got nil")
+	}
+
+	var appErr *apperror.AppError
+	if !errors.As(err, &appErr) {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if !errors.Is(err, apperror.ErrForbidden) {
+		t.Errorf("expected ErrForbidden, got %v", err)
+	}
+}
+
+func TestUserOrganizationService_ManagerCannotUpdateRoles(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserOrganizationService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	managerUser := createTestUser(t, db, "Manager User", "manager@test.com", "password")
+	createTestUserOrganization(t, db, managerUser.ID, org.ID, models.RoleManager)
+	targetUser := createTestUser(t, db, "Target User", "target@test.com", "password")
+	createTestUserOrganization(t, db, targetUser.ID, org.ID, models.RoleMember)
+
+	_, err := svc.UpdateUserOrganizationRole(ctx, targetUser.ID, org.ID, models.RoleAdmin, managerUser.ID)
+	if err == nil {
+		t.Fatal("expected error when manager tries to update role, got nil")
+	}
+
+	var appErr *apperror.AppError
+	if !errors.As(err, &appErr) {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if !errors.Is(err, apperror.ErrForbidden) {
+		t.Errorf("expected ErrForbidden, got %v", err)
+	}
+}
+
+func TestUserOrganizationService_MemberCannotRemoveUsers(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserOrganizationService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	memberUser := createTestUser(t, db, "Member User", "member@test.com", "password")
+	createTestUserOrganization(t, db, memberUser.ID, org.ID, models.RoleMember)
+	targetUser := createTestUser(t, db, "Target User", "target@test.com", "password")
+	createTestUserOrganization(t, db, targetUser.ID, org.ID, models.RoleMember)
+
+	err := svc.RemoveUserFromOrganization(ctx, targetUser.ID, org.ID, memberUser.ID)
+	if err == nil {
+		t.Fatal("expected error when member tries to remove user, got nil")
+	}
+
+	var appErr *apperror.AppError
+	if !errors.As(err, &appErr) {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if !errors.Is(err, apperror.ErrForbidden) {
+		t.Errorf("expected ErrForbidden, got %v", err)
+	}
+}
+
+func TestUserOrganizationService_AdminCannotModifyOtherOrg(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserOrganizationService(db)
+	ctx := context.Background()
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+	adminUser := createTestUser(t, db, "Admin User", "admin@test.com", "password")
+	createTestUserOrganization(t, db, adminUser.ID, org1.ID, models.RoleAdmin)
+	targetUser := createTestUser(t, db, "Target User", "target@test.com", "password")
+
+	_, err := svc.AddUserToOrganization(ctx, targetUser.ID, org2.ID, models.RoleMember, "admin@test.com", adminUser.ID)
+	if err == nil {
+		t.Fatal("expected error when admin tries to add user to other org, got nil")
+	}
+
+	var appErr *apperror.AppError
+	if !errors.As(err, &appErr) {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if !errors.Is(err, apperror.ErrForbidden) {
+		t.Errorf("expected ErrForbidden, got %v", err)
+	}
+}
+
+func TestUserOrganizationService_AdminCanManageOwnOrg(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserOrganizationService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	adminUser := createTestUser(t, db, "Admin User", "admin@test.com", "password")
+	createTestUserOrganization(t, db, adminUser.ID, org.ID, models.RoleAdmin)
+	targetUser := createTestUser(t, db, "Target User", "target@test.com", "password")
+
+	// Admin should be able to add a user to their own org
+	resp, err := svc.AddUserToOrganization(ctx, targetUser.ID, org.ID, models.RoleMember, "admin@test.com", adminUser.ID)
+	if err != nil {
+		t.Fatalf("expected no error on add, got %v", err)
+	}
+	if resp.Role != models.RoleMember {
+		t.Errorf("Role = %v, want %v", resp.Role, models.RoleMember)
+	}
+
+	// Admin should be able to update a user's role in their own org
+	updateResp, err := svc.UpdateUserOrganizationRole(ctx, targetUser.ID, org.ID, models.RoleManager, adminUser.ID)
+	if err != nil {
+		t.Fatalf("expected no error on update, got %v", err)
+	}
+	if updateResp.Role != models.RoleManager {
+		t.Errorf("Role = %v, want %v", updateResp.Role, models.RoleManager)
+	}
+
+	// Admin should be able to remove a user from their own org
+	err = svc.RemoveUserFromOrganization(ctx, targetUser.ID, org.ID, adminUser.ID)
+	if err != nil {
+		t.Fatalf("expected no error on remove, got %v", err)
+	}
+
+	// Verify user is no longer in org
+	memberships, err := svc.GetUserMemberships(ctx, targetUser.ID)
+	if err != nil {
+		t.Fatalf("expected no error on get memberships, got %v", err)
+	}
+	if len(memberships.Memberships) != 0 {
+		t.Errorf("expected 0 memberships after removal, got %d", len(memberships.Memberships))
+	}
+}

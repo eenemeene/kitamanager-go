@@ -429,6 +429,12 @@ func TestAuthHandler_Login_SetsCookies(t *testing.T) {
 		if cookie.Name == "csrf_token" && cookie.HttpOnly {
 			t.Error("csrf_token cookie should NOT be HttpOnly")
 		}
+		// All auth cookies must use SameSite=Strict
+		if cookie.Name == "access_token" || cookie.Name == "refresh_token" || cookie.Name == "csrf_token" {
+			if cookie.SameSite != http.SameSiteStrictMode {
+				t.Errorf("%s cookie should have SameSite=Strict, got %v", cookie.Name, cookie.SameSite)
+			}
+		}
 	}
 
 	if !cookieNames["access_token"] {

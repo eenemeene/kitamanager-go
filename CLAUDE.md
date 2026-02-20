@@ -123,9 +123,6 @@ authzMiddleware.RequirePermission(rbac.ResourceEmployees, rbac.ActionRead)
 
 // Require superadmin
 authzMiddleware.RequireSuperAdmin()
-
-// Require any role in the organization
-authzMiddleware.RequireOrgAccess()
 ```
 
 ## Database Schema Changes

@@ -334,62 +334,6 @@ func TestAuthorizationMiddleware_RequireSuperAdmin_Forbidden(t *testing.T) {
 	}
 }
 
-func TestAuthorizationMiddleware_RequireOrgAccess_Allowed(t *testing.T) {
-	db := setupTestDB(t)
-	enforcer := setupTestEnforcer(t)
-	assignRole(t, db, 1, models.RoleManager, 1)
-	permissionService := setupTestPermissionService(t, db, enforcer)
-
-	middleware := NewAuthorizationMiddleware(permissionService)
-
-	r := gin.New()
-	r.Use(func(c *gin.Context) {
-		c.Set(ctxkeys.UserID, uint(1))
-		c.Next()
-	})
-	r.GET("/organizations/:orgId",
-		middleware.RequireOrgAccess(),
-		func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"message": "success"})
-		})
-
-	req, _ := http.NewRequest("GET", "/organizations/1", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
-	}
-}
-
-func TestAuthorizationMiddleware_RequireOrgAccess_Forbidden(t *testing.T) {
-	db := setupTestDB(t)
-	enforcer := setupTestEnforcer(t)
-	assignRole(t, db, 1, models.RoleManager, 1) // Only has access to org 1
-	permissionService := setupTestPermissionService(t, db, enforcer)
-
-	middleware := NewAuthorizationMiddleware(permissionService)
-
-	r := gin.New()
-	r.Use(func(c *gin.Context) {
-		c.Set(ctxkeys.UserID, uint(1))
-		c.Next()
-	})
-	r.GET("/organizations/:orgId",
-		middleware.RequireOrgAccess(),
-		func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"message": "success"})
-		})
-
-	req, _ := http.NewRequest("GET", "/organizations/2", nil) // Trying to access org 2
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusForbidden {
-		t.Errorf("expected status %d, got %d", http.StatusForbidden, w.Code)
-	}
-}
-
 func TestAuthorizationMiddleware_OrgIDSetInContext(t *testing.T) {
 	db := setupTestDB(t)
 	enforcer := setupTestEnforcer(t)
