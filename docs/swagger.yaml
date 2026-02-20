@@ -1389,6 +1389,9 @@ definitions:
       status:
         example: healthy
         type: string
+      version:
+        example: a1b2c3d
+        type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.LoginRequest:
     properties:

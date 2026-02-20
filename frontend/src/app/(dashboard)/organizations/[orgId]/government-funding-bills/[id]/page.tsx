@@ -150,7 +150,13 @@ export default function GovernmentFundingBillDetailPage() {
             </p>
             {comparison && (
               <p
-                className={`text-sm ${comparison.difference === 0 ? 'text-green-600' : 'text-red-600'}`}
+                className={`text-sm ${
+                  comparison.difference_count === 0 &&
+                  comparison.bill_only_count === 0 &&
+                  comparison.calc_only_count === 0
+                    ? 'text-green-600'
+                    : 'text-red-600'
+                }`}
               >
                 {t('difference')}: {formatCurrency(comparison.difference)}
               </p>
@@ -179,7 +185,15 @@ export default function GovernmentFundingBillDetailPage() {
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
-                <Badge variant="success">
+                <Badge
+                  variant={
+                    comparison.difference_count === 0 &&
+                    comparison.bill_only_count === 0 &&
+                    comparison.calc_only_count === 0
+                      ? 'success'
+                      : 'destructive'
+                  }
+                >
                   {t('matchCount')}: {comparison.match_count}
                 </Badge>
                 {comparison.difference_count > 0 && (

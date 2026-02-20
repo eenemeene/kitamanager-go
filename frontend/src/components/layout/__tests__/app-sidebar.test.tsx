@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppSidebar } from '../app-sidebar';
 
 jest.mock('next/navigation', () => ({
@@ -40,6 +41,15 @@ jest.mock('../org-selector', () => ({
   OrgSelector: () => <div data-testid="org-selector">OrgSelector</div>,
 }));
 
+jest.mock('@/lib/api/client', () => ({
+  apiClient: { getHealth: jest.fn().mockResolvedValue({ status: 'healthy', version: 'test123' }) },
+}));
+
+function renderWithQueryClient(ui: React.ReactElement) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+}
+
 describe('AppSidebar', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -53,20 +63,20 @@ describe('AppSidebar', () => {
   });
 
   it('renders main navigation links (Organizations, Government Fundings)', () => {
-    render(<AppSidebar />);
+    renderWithQueryClient(<AppSidebar />);
 
     expect(screen.getByText('nav.organizations')).toBeInTheDocument();
     expect(screen.getByText('nav.governmentFundings')).toBeInTheDocument();
   });
 
   it('renders org selector', () => {
-    render(<AppSidebar />);
+    renderWithQueryClient(<AppSidebar />);
 
     expect(screen.getByTestId('org-selector')).toBeInTheDocument();
   });
 
   it('hides org-scoped navigation when no org selected', () => {
-    render(<AppSidebar />);
+    renderWithQueryClient(<AppSidebar />);
 
     expect(screen.queryByText('nav.users')).not.toBeInTheDocument();
     expect(screen.queryByText('nav.employees')).not.toBeInTheDocument();
@@ -82,7 +92,7 @@ describe('AppSidebar', () => {
       setMobileSidebarOpen: mockSetMobileSidebarOpen,
     };
 
-    render(<AppSidebar />);
+    renderWithQueryClient(<AppSidebar />);
 
     expect(screen.getByText('nav.dashboard')).toBeInTheDocument();
     expect(screen.getByText('nav.employees')).toBeInTheDocument();
@@ -97,7 +107,7 @@ describe('AppSidebar', () => {
   });
 
   it('renders collapse/toggle sidebar button', () => {
-    render(<AppSidebar />);
+    renderWithQueryClient(<AppSidebar />);
 
     const toggleButton = screen.getByLabelText('common.toggleSidebar');
     expect(toggleButton).toBeInTheDocument();
@@ -112,7 +122,7 @@ describe('AppSidebar', () => {
       setMobileSidebarOpen: mockSetMobileSidebarOpen,
     };
 
-    render(<AppSidebar />);
+    renderWithQueryClient(<AppSidebar />);
 
     // When collapsed, navigation text labels are hidden
     expect(screen.queryByText('nav.organizations')).not.toBeInTheDocument();

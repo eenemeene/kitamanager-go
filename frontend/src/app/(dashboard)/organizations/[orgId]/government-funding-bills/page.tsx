@@ -69,7 +69,15 @@ function BillComparisonCell({ orgId, billId }: { orgId: number; billId: number }
         {formatCurrency(comparison.calculated_total)}
       </TableCell>
       <TableCell className="hidden md:table-cell">
-        <span className={comparison.difference === 0 ? 'text-green-600' : 'text-red-600'}>
+        <span
+          className={
+            comparison.difference_count === 0 &&
+            comparison.bill_only_count === 0 &&
+            comparison.calc_only_count === 0
+              ? 'text-green-600'
+              : 'text-red-600'
+          }
+        >
           {formatCurrency(comparison.difference)}
         </span>
       </TableCell>

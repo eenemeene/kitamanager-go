@@ -341,6 +341,7 @@ func (s *GovernmentFundingBillService) Compare(ctx context.Context, billID, orgI
 			compChild.Status = "bill_only"
 			compChild.Properties = buildBillOnlyProperties(billChild.Payments, labelMap)
 			response.BillOnlyCount++
+			response.BillTotal += billTotal
 		} else {
 			// Matched: find child in active children for birthdate and age calculation
 			compChild.ChildID = &contract.ChildID
@@ -436,6 +437,7 @@ func (s *GovernmentFundingBillService) Compare(ctx context.Context, billID, orgI
 
 		response.Children = append(response.Children, compChild)
 		response.CalcOnlyCount++
+		response.CalcTotal += calcTotal
 	}
 
 	response.ChildrenCount = len(response.Children)

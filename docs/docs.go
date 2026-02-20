@@ -9651,6 +9651,10 @@ const docTemplate = `{
                 "status": {
                     "type": "string",
                     "example": "healthy"
+                },
+                "version": {
+                    "type": "string",
+                    "example": "a1b2c3d"
                 }
             }
         },

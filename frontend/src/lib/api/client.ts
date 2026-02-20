@@ -936,6 +936,11 @@ class ApiClient {
     return response.data;
   }
 
+  async getHealth(): Promise<{ status: string; version: string }> {
+    const response = await this.client.get<{ status: string; version: string }>('/health');
+    return response.data;
+  }
+
   // Children - fetch upcoming (contracts starting after today)
   async getUpcomingChildren(orgId: number): Promise<Child[]> {
     const today = new Date().toISOString().slice(0, 10);

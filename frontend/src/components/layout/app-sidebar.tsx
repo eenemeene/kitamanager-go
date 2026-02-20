@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard,
   LayoutGrid,
@@ -23,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useUiStore } from '@/stores/ui-store';
 import { useCurrentRole, hasMinimumRole, type EffectiveRole } from '@/hooks/use-current-role';
+import { apiClient } from '@/lib/api/client';
 import { OrgSelector } from './org-selector';
 
 interface NavChild {
@@ -114,6 +116,13 @@ export function AppSidebar() {
   } = useUiStore();
   const currentRole = useCurrentRole();
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+
+  const { data: health } = useQuery({
+    queryKey: ['health'],
+    queryFn: () => apiClient.getHealth(),
+    staleTime: Infinity,
+    retry: false,
+  });
 
   const filteredNavigation = navigation.filter(
     (item) => !item.minRole || hasMinimumRole(currentRole, item.minRole)
@@ -327,6 +336,13 @@ export function AppSidebar() {
           </ul>
         )}
       </nav>
+
+      {/* Version */}
+      {health?.version && !sidebarCollapsed && (
+        <div className="text-muted-foreground border-t px-4 py-2 text-[10px]">
+          version: {health.version}
+        </div>
+      )}
     </>
   );
 
