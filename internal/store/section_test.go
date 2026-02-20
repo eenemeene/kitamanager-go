@@ -97,46 +97,6 @@ func TestSectionStore_Delete(t *testing.T) {
 	}
 }
 
-func TestSectionStore_FindByOrganization(t *testing.T) {
-	db := setupTestDB(t)
-	store := NewSectionStore(db)
-
-	org1 := createTestOrganization(t, db, "Org 1")
-	org2 := createTestOrganization(t, db, "Org 2")
-
-	// Create sections in different organizations
-	createTestSectionWithOrg(t, db, "Section 1", org1.ID)
-	createTestSectionWithOrg(t, db, "Section 2", org1.ID)
-	createTestSectionWithOrg(t, db, "Section 3", org2.ID)
-
-	// Find sections in org1
-	sections, err := store.FindByOrganization(context.Background(), org1.ID)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	if len(sections) != 3 { // 1 auto-created default + 2 manually created
-		t.Errorf("expected 3 sections in org1, got %d", len(sections))
-	}
-
-	// Verify all sections belong to org1
-	for _, section := range sections {
-		if section.OrganizationID != org1.ID {
-			t.Errorf("expected organization_id %d, got %d", org1.ID, section.OrganizationID)
-		}
-	}
-
-	// Find sections in org2
-	sections2, err := store.FindByOrganization(context.Background(), org2.ID)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	if len(sections2) != 2 { // 1 auto-created default + 1 manually created
-		t.Errorf("expected 2 sections in org2, got %d", len(sections2))
-	}
-}
-
 func TestSectionStore_FindByOrganizationPaginated(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewSectionStore(db)

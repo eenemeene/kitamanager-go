@@ -46,15 +46,6 @@ func (s *PeriodStore[T]) GetRecordOn(ctx context.Context, ownerID uint, date tim
 	return &record, nil
 }
 
-// ListRecords returns all records for an owner ordered by from_date.
-func (s *PeriodStore[T]) ListRecords(ctx context.Context, ownerID uint) ([]T, error) {
-	var records []T
-	err := DBFromContext(ctx, s.db).Where(s.ownerIDCol+" = ?", ownerID).
-		Order("from_date ASC").
-		Find(&records).Error
-	return records, err
-}
-
 // ListRecordsPaginated returns paginated records for an owner ordered by from_date desc.
 func (s *PeriodStore[T]) ListRecordsPaginated(ctx context.Context, ownerID uint, limit, offset int) ([]T, int64, error) {
 	var records []T

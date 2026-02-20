@@ -57,7 +57,6 @@ type OrganizationStorer interface {
 type GroupStorer interface {
 	FindAll(ctx context.Context, limit, offset int) ([]models.Group, int64, error)
 	FindByID(ctx context.Context, id uint) (*models.Group, error)
-	FindByOrganization(ctx context.Context, orgID uint) ([]models.Group, error)
 	FindByOrganizationPaginated(ctx context.Context, orgID uint, search string, limit, offset int) ([]models.Group, int64, error)
 	FindDefaultGroup(ctx context.Context, orgID uint) (*models.Group, error)
 	Create(ctx context.Context, group *models.Group) error
@@ -117,7 +116,6 @@ type ChildStorer interface {
 type PeriodStorer[T models.PeriodRecord] interface {
 	GetCurrentRecord(ctx context.Context, ownerID uint) (*T, error)
 	GetRecordOn(ctx context.Context, ownerID uint, date time.Time) (*T, error)
-	ListRecords(ctx context.Context, ownerID uint) ([]T, error)
 	ListRecordsPaginated(ctx context.Context, ownerID uint, limit, offset int) ([]T, int64, error)
 	HasActiveRecord(ctx context.Context, ownerID uint, date time.Time) (bool, error)
 	ValidateNoOverlap(ctx context.Context, ownerID uint, from time.Time, to *time.Time, excludeID *uint) error
@@ -127,7 +125,6 @@ type PeriodStorer[T models.PeriodRecord] interface {
 // SectionStorer defines the interface for section storage operations
 type SectionStorer interface {
 	FindByID(ctx context.Context, id uint) (*models.Section, error)
-	FindByOrganization(ctx context.Context, orgID uint) ([]models.Section, error)
 	FindByOrganizationPaginated(ctx context.Context, orgID uint, search string, limit, offset int) ([]models.Section, int64, error)
 	FindDefaultSection(ctx context.Context, orgID uint) (*models.Section, error)
 	FindByNameAndOrg(ctx context.Context, name string, orgID uint) (*models.Section, error)

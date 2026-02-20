@@ -39,14 +39,6 @@ func (s *GroupStore) FindByID(ctx context.Context, id uint) (*models.Group, erro
 	return &group, nil
 }
 
-func (s *GroupStore) FindByOrganization(ctx context.Context, orgID uint) ([]models.Group, error) {
-	var groups []models.Group
-	if err := DBFromContext(ctx, s.db).Where("organization_id = ?", orgID).Find(&groups).Error; err != nil {
-		return nil, err
-	}
-	return groups, nil
-}
-
 func (s *GroupStore) FindByOrganizationPaginated(ctx context.Context, orgID uint, search string, limit, offset int) ([]models.Group, int64, error) {
 	var groups []models.Group
 	var total int64

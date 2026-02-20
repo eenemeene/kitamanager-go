@@ -116,7 +116,7 @@ func TestGroupStore_Delete(t *testing.T) {
 	}
 }
 
-func TestGroupStore_FindByOrganization(t *testing.T) {
+func TestGroupStore_FindByOrganizationPaginated(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewGroupStore(db)
 
@@ -129,9 +129,13 @@ func TestGroupStore_FindByOrganization(t *testing.T) {
 	createTestGroupWithOrg(t, db, "Group 3", org2.ID)
 
 	// Find groups in org1
-	groups, err := store.FindByOrganization(context.Background(), org1.ID)
+	groups, total, err := store.FindByOrganizationPaginated(context.Background(), org1.ID, "", 100, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if total != 2 {
+		t.Errorf("expected total 2 groups in org1, got %d", total)
 	}
 
 	if len(groups) != 2 {
@@ -146,9 +150,13 @@ func TestGroupStore_FindByOrganization(t *testing.T) {
 	}
 
 	// Find groups in org2
-	groups2, err := store.FindByOrganization(context.Background(), org2.ID)
+	groups2, total2, err := store.FindByOrganizationPaginated(context.Background(), org2.ID, "", 100, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if total2 != 1 {
+		t.Errorf("expected total 1 group in org2, got %d", total2)
 	}
 
 	if len(groups2) != 1 {

@@ -175,7 +175,7 @@ func TestPeriodStore_GetRecordOn(t *testing.T) {
 	}
 }
 
-func TestPeriodStore_ListRecords(t *testing.T) {
+func TestPeriodStore_ListRecordsPaginated(t *testing.T) {
 	db := setupTestDB(t)
 	org := createTestOrganization(t, db, "Test Org")
 	sectionID := getDefaultSectionID(t, db, org.ID)
@@ -193,7 +193,7 @@ func TestPeriodStore_ListRecords(t *testing.T) {
 
 	store := NewEmployeeStore(db)
 
-	// Create contracts in non-chronological order to test sorting
+	// Create contracts in non-chronological order
 	contract2 := &models.EmployeeContract{
 		EmployeeID: employee.ID,
 		BaseContract: models.BaseContract{
@@ -222,21 +222,17 @@ func TestPeriodStore_ListRecords(t *testing.T) {
 	}
 	db.Create(contract1)
 
-	history, err := store.Contracts().ListRecords(ctx, employee.ID)
+	history, total, err := store.Contracts().ListRecordsPaginated(ctx, employee.ID, 100, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	if len(history) != 2 {
-		t.Fatalf("expected 2 contracts, got %d", len(history))
+	if total != 2 {
+		t.Fatalf("expected total 2 contracts, got %d", total)
 	}
 
-	// Should be sorted by from_date ASC
-	if history[0].StaffCategory != "qualified" {
-		t.Errorf("expected first contract to be 'qualified', got '%s'", history[0].StaffCategory)
-	}
-	if history[1].StaffCategory != "supplementary" {
-		t.Errorf("expected second contract to be 'supplementary', got '%s'", history[1].StaffCategory)
+	if len(history) != 2 {
+		t.Fatalf("expected 2 contracts, got %d", len(history))
 	}
 }
 

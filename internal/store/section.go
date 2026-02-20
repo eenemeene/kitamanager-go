@@ -24,14 +24,6 @@ func (s *SectionStore) FindByID(ctx context.Context, id uint) (*models.Section, 
 	return &section, nil
 }
 
-func (s *SectionStore) FindByOrganization(ctx context.Context, orgID uint) ([]models.Section, error) {
-	var sections []models.Section
-	if err := DBFromContext(ctx, s.db).Where("organization_id = ?", orgID).Find(&sections).Error; err != nil {
-		return nil, err
-	}
-	return sections, nil
-}
-
 func (s *SectionStore) FindByOrganizationPaginated(ctx context.Context, orgID uint, search string, limit, offset int) ([]models.Section, int64, error) {
 	var sections []models.Section
 	var total int64
