@@ -235,25 +235,25 @@ func Setup(r *gin.Engine, d Deps) {
 				// Organization-wide statistics
 				// ============================================================
 				orgScoped.GET("/statistics/staffing-hours",
-					authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
+					authzMiddleware.RequirePermission(rbac.ResourceStatistics, rbac.ActionRead),
 					statisticsHandler.GetStaffingHours)
 				orgScoped.GET("/statistics/financials",
-					authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
+					authzMiddleware.RequirePermission(rbac.ResourceStatistics, rbac.ActionRead),
 					statisticsHandler.GetFinancials)
 				orgScoped.GET("/statistics/occupancy",
-					authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
+					authzMiddleware.RequirePermission(rbac.ResourceStatistics, rbac.ActionRead),
 					statisticsHandler.GetOccupancy)
 				orgScoped.GET("/statistics/staffing-hours/employees",
-					authzMiddleware.RequirePermission(rbac.ResourceEmployees, rbac.ActionRead),
+					authzMiddleware.RequirePermission(rbac.ResourceStatistics, rbac.ActionRead),
 					statisticsHandler.GetEmployeeStaffingHours)
 				orgScoped.GET("/statistics/age-distribution",
-					authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
+					authzMiddleware.RequirePermission(rbac.ResourceStatistics, rbac.ActionRead),
 					childHandler.GetAgeDistribution)
 				orgScoped.GET("/statistics/contract-properties",
-					authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
+					authzMiddleware.RequirePermission(rbac.ResourceStatistics, rbac.ActionRead),
 					childHandler.GetContractPropertiesDistribution)
 				orgScoped.GET("/statistics/funding",
-					authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
+					authzMiddleware.RequirePermission(rbac.ResourceStatistics, rbac.ActionRead),
 					childHandler.GetFunding)
 
 				// Employees

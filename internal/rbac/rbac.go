@@ -32,6 +32,7 @@ const (
 	ResourceBudgetItems            = "budget_items"
 	ResourceBudgetItemEntries      = "budget_item_entries"
 	ResourceGovernmentFundingBills = "government_funding_bills"
+	ResourceStatistics             = "statistics"
 )
 
 // Actions
@@ -171,6 +172,7 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleSuperAdmin, "*", ResourceGovernmentFundingBills, ActionCreate},
 		{RoleSuperAdmin, "*", ResourceGovernmentFundingBills, ActionRead},
 		{RoleSuperAdmin, "*", ResourceGovernmentFundingBills, ActionDelete},
+		{RoleSuperAdmin, "*", ResourceStatistics, ActionRead},
 
 		// Admin - full access within their organization (domain is checked at runtime)
 		{RoleAdmin, "*", ResourceOrganizations, ActionRead},
@@ -222,6 +224,7 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleAdmin, "*", ResourceGovernmentFundingBills, ActionCreate},
 		{RoleAdmin, "*", ResourceGovernmentFundingBills, ActionRead},
 		{RoleAdmin, "*", ResourceGovernmentFundingBills, ActionDelete},
+		{RoleAdmin, "*", ResourceStatistics, ActionRead},
 
 		// Manager - manage employees, children, contracts; read-only for users/groups
 		{RoleManager, "*", ResourceOrganizations, ActionRead},
@@ -254,6 +257,7 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleManager, "*", ResourceGovernmentFundingBills, ActionCreate},
 		{RoleManager, "*", ResourceGovernmentFundingBills, ActionRead},
 		{RoleManager, "*", ResourceGovernmentFundingBills, ActionDelete},
+		{RoleManager, "*", ResourceStatistics, ActionRead},
 
 		// Member - read-only access to employees, children, contracts in their org
 		{RoleMember, "*", ResourceOrganizations, ActionRead},
@@ -266,6 +270,7 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleMember, "*", ResourceChildAttendance, ActionRead},
 		{RoleMember, "*", ResourceBudgetItems, ActionRead},
 		{RoleMember, "*", ResourceBudgetItemEntries, ActionRead},
+		{RoleMember, "*", ResourceStatistics, ActionRead},
 	}
 
 	_, err := e.AddPolicies(policies)
