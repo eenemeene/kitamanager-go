@@ -34,6 +34,8 @@ export function MonthlyContractChart({ data }: MonthlyContractChartProps) {
   const todayStr = new Date().toISOString().slice(0, 10);
   const todayLabel = formatDateLabel(todayStr);
 
+  const counts = data.data_points.map((dp) => dp.child_count);
+
   const chartData = [
     {
       id: t('statistics.childrenContractCount'),
@@ -44,6 +46,64 @@ export function MonthlyContractChart({ data }: MonthlyContractChartProps) {
       })),
     },
   ];
+
+  const TrendArrows = useMemo(() => {
+    return function TrendArrowsLayer({
+      xScale,
+      yScale,
+    }: {
+      xScale: (v: string) => number;
+      yScale: (v: number) => number;
+    }) {
+      return (
+        <g>
+          {xLabels.map((label, i) => {
+            if (i === 0) return null;
+            const diff = counts[i] - counts[i - 1];
+            if (diff === 0) return null;
+
+            const x0 = xScale(xLabels[i - 1]);
+            const x1 = xScale(label);
+            const y0 = yScale(counts[i - 1]);
+            const y1 = yScale(counts[i]);
+            const midX = (x0 + x1) / 2;
+            const midY = (y0 + y1) / 2;
+
+            const isUp = diff > 0;
+            const color = isUp ? '#16a34a' : '#dc2626';
+            const arrow = isUp ? '▲' : '▼';
+            const offsetY = isUp ? 14 : -14;
+
+            return (
+              <g key={i}>
+                <text
+                  x={midX}
+                  y={midY + offsetY - 6}
+                  textAnchor="middle"
+                  fontSize={9}
+                  fill={color}
+                  fontWeight={600}
+                >
+                  {arrow}
+                </text>
+                <text
+                  x={midX}
+                  y={midY + offsetY + 8}
+                  textAnchor="middle"
+                  fontSize={10}
+                  fill={color}
+                  fontWeight={600}
+                >
+                  {isUp ? '+' : ''}
+                  {diff}
+                </text>
+              </g>
+            );
+          })}
+        </g>
+      );
+    };
+  }, [xLabels, counts]);
 
   return (
     <div className="h-[350px]">
@@ -60,6 +120,7 @@ export function MonthlyContractChart({ data }: MonthlyContractChartProps) {
           'areas',
           'crosshair',
           'lines',
+          TrendArrows as any,
           'points',
           'slices',
           'mesh',
@@ -80,9 +141,9 @@ export function MonthlyContractChart({ data }: MonthlyContractChartProps) {
         }}
         colors={['#3b82f6']}
         pointSize={8}
-        pointColor={{ theme: 'background' }}
+        pointColor={{ from: 'serieColor' }}
         pointBorderWidth={2}
-        pointBorderColor={{ from: 'serieColor' }}
+        pointBorderColor={{ theme: 'background' }}
         pointLabelYOffset={-12}
         useMesh={true}
         enableSlices="x"

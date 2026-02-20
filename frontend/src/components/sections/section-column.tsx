@@ -31,8 +31,8 @@ export function SectionColumn({
   const t = useTranslations();
   const { setNodeRef, isOver } = useDroppable({ id });
 
-  const totalCount = employees.length + items.length;
   const ageRange = formatMonthRange(minAgeMonths, maxAgeMonths);
+  const isEmpty = employees.length === 0 && items.length === 0;
 
   return (
     <div
@@ -58,12 +58,17 @@ export function SectionColumn({
             </span>
           )}
         </div>
-        <Badge variant="outline" className="text-xs">
-          {totalCount}
-        </Badge>
+        <div className="flex items-center gap-1.5">
+          <Badge variant="outline" className="text-xs" title={t('nav.employees')}>
+            {employees.length}E
+          </Badge>
+          <Badge variant="outline" className="text-xs" title={t('nav.children')}>
+            {items.length}K
+          </Badge>
+        </div>
       </div>
       <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-2">
-        {totalCount === 0 ? (
+        {isEmpty ? (
           <p className="text-muted-foreground py-4 text-center text-xs">{t('common.noResults')}</p>
         ) : (
           <>
