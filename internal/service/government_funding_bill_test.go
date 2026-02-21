@@ -161,7 +161,7 @@ func TestGovernmentFundingBillService_GetByID(t *testing.T) {
 				District:      5,
 				Payments: []models.GovernmentFundingBillPayment{
 					{Key: "care_type", Value: "halbtag", Amount: 90000},
-					{Key: "sph", Value: "sph", Amount: 12000},
+					{Key: "integration", Value: "integration", Amount: 12000},
 				},
 			},
 		},
@@ -211,8 +211,8 @@ func TestGovernmentFundingBillService_GetByID(t *testing.T) {
 	if surchargeMap["qm/mss"] != 5000 {
 		t.Errorf("expected qm/mss surcharge 5000, got %d", surchargeMap["qm/mss"])
 	}
-	if surchargeMap["sph"] != 12000 {
-		t.Errorf("expected sph surcharge 12000, got %d", surchargeMap["sph"])
+	if surchargeMap["integration"] != 12000 {
+		t.Errorf("expected integration surcharge 12000, got %d", surchargeMap["integration"])
 	}
 
 	// Children detail
@@ -513,7 +513,7 @@ func TestGovernmentFundingBillService_GetByIDSurchargesAggregation(t *testing.T)
 				Payments: []models.GovernmentFundingBillPayment{
 					{Key: "care_type", Value: "ganztag", Amount: 110000},
 					{Key: "ndh", Value: "ndh", Amount: 7000},
-					{Key: "sph", Value: "sph", Amount: 15000},
+					{Key: "integration", Value: "integration", Amount: 15000},
 				},
 			},
 			{
@@ -551,9 +551,9 @@ func TestGovernmentFundingBillService_GetByIDSurchargesAggregation(t *testing.T)
 	if surchargeMap["qm/mss"] != 3000 {
 		t.Errorf("expected qm/mss=3000, got %d", surchargeMap["qm/mss"])
 	}
-	// sph: 15000 (only from child B)
-	if surchargeMap["sph"] != 15000 {
-		t.Errorf("expected sph=15000, got %d", surchargeMap["sph"])
+	// integration: 15000 (only from child B)
+	if surchargeMap["integration"] != 15000 {
+		t.Errorf("expected integration=15000, got %d", surchargeMap["integration"])
 	}
 }
 
@@ -846,8 +846,8 @@ func setupFundingRates(t *testing.T, db *gorm.DB) {
 	createTestFundingProperty(t, db, period.ID, "ndh", "ndh", 8000, 0, -1)
 	// qm/mss = 5000
 	createTestFundingProperty(t, db, period.ID, "qm/mss", "qm/mss", 5000, 0, -1)
-	// sph = 12000
-	createTestFundingProperty(t, db, period.ID, "sph", "sph", 12000, 0, -1)
+	// integration = 12000
+	createTestFundingProperty(t, db, period.ID, "integration", "integration", 12000, 0, -1)
 }
 
 // createBillPeriodForCompare creates a bill period with children for compare tests.
@@ -1401,14 +1401,14 @@ func TestGovernmentFundingBillService_Compare_PropertyLevelDetail(t *testing.T) 
 
 	setupFundingRates(t, db)
 
-	// Child with multiple properties: care_type=ganztag, ndh, qm/mss, sph
+	// Child with multiple properties: care_type=ganztag, ndh, qm/mss, integration
 	createChildWithVoucherAndContract(t, db, "Multi", "Props", org.ID,
 		"GB-AABBCCDDEE0-01", time.Date(2021, 5, 1, 0, 0, 0, 0, time.UTC),
 		models.ContractProperties{
 			"care_type": "ganztag",
 			"ndh":       "ndh",
 			"qm/mss":    "qm/mss",
-			"sph":       "sph",
+			"integration":       "integration",
 		})
 
 	period := createBillPeriodForCompare(t, db, org.ID, user.ID, []models.GovernmentFundingBillChild{
@@ -1421,7 +1421,7 @@ func TestGovernmentFundingBillService_Compare_PropertyLevelDetail(t *testing.T) 
 				{Key: "care_type", Value: "ganztag", Amount: 120000},
 				{Key: "ndh", Value: "ndh", Amount: 8000},
 				{Key: "qm/mss", Value: "qm/mss", Amount: 5000},
-				{Key: "sph", Value: "sph", Amount: 12000},
+				{Key: "integration", Value: "integration", Amount: 12000},
 			},
 		},
 	})
@@ -1445,7 +1445,7 @@ func TestGovernmentFundingBillService_Compare_PropertyLevelDetail(t *testing.T) 
 		"care_type:ganztag": 120000,
 		"ndh:ndh":           8000,
 		"qm/mss:qm/mss":     5000,
-		"sph:sph":           12000,
+		"integration:integration":           12000,
 	}
 	for kv, expectedAmt := range expected {
 		prop, ok := propMap[kv]

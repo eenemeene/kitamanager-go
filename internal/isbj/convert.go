@@ -38,8 +38,8 @@ type ConvertedSettlement struct {
 }
 
 // SurchargeKeys are the ISBJ payment keys that represent surcharges (Zuschläge).
-// These are fixed by the Berlin billing format.
-var SurchargeKeys = []string{"ndh", "qm/mss", "sph"}
+// These match the keys in the government funding configuration (berlin.yaml).
+var SurchargeKeys = []string{"ndh", "qm/mss", "integration"}
 
 var careScopeMap = map[string]string{
 	"ganztags":  "ganztag",
@@ -54,18 +54,23 @@ func isFlagActive(flagName, value string) bool {
 		return strings.EqualFold(value, "ja")
 	case "HS":
 		return value != "D" && value != ""
-	case "SPH":
-		return value != "N" && value != ""
 	default:
 		return false
 	}
 }
 
-func validateFlagAmount(childName, flagName string, flagActive bool, amount int) error {
-	if !flagActive && amount != 0 {
-		return fmt.Errorf("child %s: flag %s is inactive but amount is %d", childName, flagName, amount)
+// integrationFlagToValue maps the Excel "SpH" flag column values to
+// government funding property values. The column is labeled "SpH" but
+// actually contains the integration status: A=integration a, B=integration b, N=none.
+func integrationFlagToValue(flag string) string {
+	switch strings.ToUpper(strings.TrimSpace(flag)) {
+	case "A":
+		return "integration a"
+	case "B":
+		return "integration b"
+	default:
+		return ""
 	}
-	return nil
 }
 
 // Convert translates raw SenatsabrechnungOutput into a ConvertedSettlement
@@ -80,7 +85,7 @@ func Convert(output *SenatsabrechnungOutput) (*ConvertedSettlement, error) {
 		Surcharges: []SettlementAmount{
 			{Key: "ndh", Value: "ndh", Amount: output.Einrichtung.ZuschlagNDH},
 			{Key: "qm/mss", Value: "qm/mss", Amount: output.Einrichtung.ZuschlagQM + output.Einrichtung.ZuschlagMSS},
-			{Key: "sph", Value: "sph", Amount: output.Einrichtung.ZuschlagSPH},
+			{Key: "integration", Value: "integration", Amount: output.Einrichtung.ZuschlagIntegration},
 		},
 	}
 
@@ -103,36 +108,32 @@ func convertChild(kind *Kind) (*ConvertedChild, error) {
 	qmActive := isFlagActive("QM", kind.QM)
 	mssActive := isFlagActive("MSS", kind.MSS)
 	ndhActive := isFlagActive("HS", kind.HS)
-	sphActive := isFlagActive("SPH", kind.SPH)
 
 	combinedQMMSS := kind.ZuschlagQM + kind.ZuschlagMSS
-	if err := validateFlagAmount(kind.Name, "QM/MSS", qmActive || mssActive, combinedQMMSS); err != nil {
-		return nil, err
-	}
-	if err := validateFlagAmount(kind.Name, "ndH", ndhActive, kind.ZuschlagNDH); err != nil {
-		return nil, err
-	}
-	if err := validateFlagAmount(kind.Name, "SpH", sphActive, kind.ZuschlagSPH); err != nil {
-		return nil, err
-	}
 
-	flagValue := func(active bool, value string) string {
-		if active {
+	// Derive flag value from amount when flag is inactive but amount is non-zero.
+	// This happens in government data (e.g., retroactive adjustments).
+	flagValue := func(active bool, value string, amount int) string {
+		if active || amount != 0 {
 			return value
 		}
 		return ""
 	}
 
+	// Map integration flag (A/B/N) to property value.
+	// If flag says no integration but there's still an amount, use generic "integration".
+	integrationValue := integrationFlagToValue(kind.Integration)
+	if integrationValue == "" && kind.ZuschlagIntegration != 0 {
+		integrationValue = "integration"
+	}
+
 	amounts := []SettlementAmount{
 		{Key: "care_type", Value: careType, Amount: kind.Basisentgeld},
-		{Key: "ndh", Value: flagValue(ndhActive, "ndh"), Amount: kind.ZuschlagNDH},
-		{Key: "qm/mss", Value: flagValue(qmActive || mssActive, "qm/mss"), Amount: combinedQMMSS},
-		{Key: "sph", Value: flagValue(sphActive, "sph"), Amount: kind.ZuschlagSPH},
-		{Key: "deduction", Value: "om", Amount: kind.AbzugOM},
+		{Key: "ndh", Value: flagValue(ndhActive, "ndh", kind.ZuschlagNDH), Amount: kind.ZuschlagNDH},
+		{Key: "qm/mss", Value: flagValue(qmActive || mssActive, "qm/mss", combinedQMMSS), Amount: combinedQMMSS},
+		{Key: "integration", Value: integrationValue, Amount: kind.ZuschlagIntegration},
 		{Key: "parent", Value: "care", Amount: kind.ElternBetreuung},
 		{Key: "parent", Value: "meals", Amount: kind.ElternEssen},
-		{Key: "but", Value: "but", Amount: kind.BuT},
-		{Key: "district", Value: "share", Amount: kind.AnteilBezirk},
 	}
 
 	return &ConvertedChild{

@@ -10,12 +10,12 @@ import (
 func makeTestOutput() *SenatsabrechnungOutput {
 	return &SenatsabrechnungOutput{
 		Einrichtung: &Einrichtung{
-			Name:        "Kita Sonnenschein",
-			ZuschlagQM:  10000,
-			ZuschlagMSS: 5000,
-			ZuschlagNDH: 20000,
-			ZuschlagSPH: 3000,
-			Summe:       500000,
+			Name:                "Kita Sonnenschein",
+			ZuschlagQM:          10000,
+			ZuschlagMSS:         5000,
+			ZuschlagNDH:         20000,
+			ZuschlagIntegration: 3000,
+			Summe:               500000,
 		},
 		Abrechnung: &Abrechnung{
 			VertragsBuchung:  400000,
@@ -24,26 +24,26 @@ func makeTestOutput() *SenatsabrechnungOutput {
 		Vertrag: &Vertrag{
 			Kinder: []Kind{
 				{
-					Gutscheinnummer:  "GB-12345678901-01",
-					Name:             "Musterkind, Max",
-					Geburtsdatum:     "01.20",
-					QM:               "ja",
-					MSS:              "nein",
-					HS:               "D",
-					SPH:              "N",
-					Betreuungsumfang: "ganztags",
-					Bezirk:           1,
-					Basisentgeld:     89000,
-					AbzugOM:          -500,
-					ElternBetreuung:  5000,
-					ElternEssen:      2300,
-					BuT:              0,
-					AnteilBezirk:     45000,
-					ZuschlagQM:       5531,
-					ZuschlagMSS:      0,
-					ZuschlagNDH:      0,
-					ZuschlagSPH:      0,
-					Summe:            141331,
+					Gutscheinnummer:     "GB-12345678901-01",
+					Name:                "Musterkind, Max",
+					Geburtsdatum:        "01.20",
+					QM:                  "ja",
+					MSS:                 "nein",
+					HS:                  "D",
+					Integration:         "N",
+					Betreuungsumfang:    "ganztags",
+					Bezirk:              1,
+					Basisentgeld:        89000,
+					AbzugOM:             -500,
+					ElternBetreuung:     5000,
+					ElternEssen:         2300,
+					BuT:                 0,
+					AnteilBezirk:        45000,
+					ZuschlagQM:          5531,
+					ZuschlagMSS:         0,
+					ZuschlagNDH:         0,
+					ZuschlagIntegration: 0,
+					Summe:               141331,
 				},
 			},
 		},
@@ -70,16 +70,13 @@ func TestConvert_HappyPath(t *testing.T) {
 	assert.Equal(t, int64(1), child.District)
 	assert.Equal(t, 141331, child.TotalAmount)
 
-	require.Len(t, child.Amounts, 9)
+	require.Len(t, child.Amounts, 6)
 	assert.Equal(t, SettlementAmount{Key: "care_type", Value: "ganztag", Amount: 89000}, child.Amounts[0])
 	assert.Equal(t, SettlementAmount{Key: "ndh", Value: "", Amount: 0}, child.Amounts[1])
 	assert.Equal(t, SettlementAmount{Key: "qm/mss", Value: "qm/mss", Amount: 5531}, child.Amounts[2])
-	assert.Equal(t, SettlementAmount{Key: "sph", Value: "", Amount: 0}, child.Amounts[3])
-	assert.Equal(t, SettlementAmount{Key: "deduction", Value: "om", Amount: -500}, child.Amounts[4])
-	assert.Equal(t, SettlementAmount{Key: "parent", Value: "care", Amount: 5000}, child.Amounts[5])
-	assert.Equal(t, SettlementAmount{Key: "parent", Value: "meals", Amount: 2300}, child.Amounts[6])
-	assert.Equal(t, SettlementAmount{Key: "but", Value: "but", Amount: 0}, child.Amounts[7])
-	assert.Equal(t, SettlementAmount{Key: "district", Value: "share", Amount: 45000}, child.Amounts[8])
+	assert.Equal(t, SettlementAmount{Key: "integration", Value: "", Amount: 0}, child.Amounts[3])
+	assert.Equal(t, SettlementAmount{Key: "parent", Value: "care", Amount: 5000}, child.Amounts[4])
+	assert.Equal(t, SettlementAmount{Key: "parent", Value: "meals", Amount: 2300}, child.Amounts[5])
 }
 
 func TestConvert_CareTypeTranslation(t *testing.T) {
@@ -180,9 +177,9 @@ func TestConvert_FlagToValue(t *testing.T) {
 		assert.Equal(t, 0, ndhAmount.Amount)
 	})
 
-	t.Run("HS=A means ndh active", func(t *testing.T) {
+	t.Run("HS=ND means ndh active", func(t *testing.T) {
 		output := makeTestOutput()
-		output.Vertrag.Kinder[0].HS = "A"
+		output.Vertrag.Kinder[0].HS = "ND"
 		output.Vertrag.Kinder[0].ZuschlagNDH = 10116
 
 		result, err := Convert(output)
@@ -194,32 +191,46 @@ func TestConvert_FlagToValue(t *testing.T) {
 		assert.Equal(t, 10116, ndhAmount.Amount)
 	})
 
-	t.Run("SPH=N means sph inactive", func(t *testing.T) {
+	t.Run("Integration=N means no integration", func(t *testing.T) {
 		output := makeTestOutput()
-		output.Vertrag.Kinder[0].SPH = "N"
-		output.Vertrag.Kinder[0].ZuschlagSPH = 0
+		output.Vertrag.Kinder[0].Integration = "N"
+		output.Vertrag.Kinder[0].ZuschlagIntegration = 0
 
 		result, err := Convert(output)
 		require.NoError(t, err)
 
-		sphAmount := result.Children[0].Amounts[3]
-		assert.Equal(t, "sph", sphAmount.Key)
-		assert.Equal(t, "", sphAmount.Value)
-		assert.Equal(t, 0, sphAmount.Amount)
+		intAmount := result.Children[0].Amounts[3]
+		assert.Equal(t, "integration", intAmount.Key)
+		assert.Equal(t, "", intAmount.Value)
+		assert.Equal(t, 0, intAmount.Amount)
 	})
 
-	t.Run("SPH=J means sph active", func(t *testing.T) {
+	t.Run("Integration=A means integration a", func(t *testing.T) {
 		output := makeTestOutput()
-		output.Vertrag.Kinder[0].SPH = "J"
-		output.Vertrag.Kinder[0].ZuschlagSPH = 7500
+		output.Vertrag.Kinder[0].Integration = "A"
+		output.Vertrag.Kinder[0].ZuschlagIntegration = 165680
 
 		result, err := Convert(output)
 		require.NoError(t, err)
 
-		sphAmount := result.Children[0].Amounts[3]
-		assert.Equal(t, "sph", sphAmount.Key)
-		assert.Equal(t, "sph", sphAmount.Value)
-		assert.Equal(t, 7500, sphAmount.Amount)
+		intAmount := result.Children[0].Amounts[3]
+		assert.Equal(t, "integration", intAmount.Key)
+		assert.Equal(t, "integration a", intAmount.Value)
+		assert.Equal(t, 165680, intAmount.Amount)
+	})
+
+	t.Run("Integration=B means integration b", func(t *testing.T) {
+		output := makeTestOutput()
+		output.Vertrag.Kinder[0].Integration = "B"
+		output.Vertrag.Kinder[0].ZuschlagIntegration = 330641
+
+		result, err := Convert(output)
+		require.NoError(t, err)
+
+		intAmount := result.Children[0].Amounts[3]
+		assert.Equal(t, "integration", intAmount.Key)
+		assert.Equal(t, "integration b", intAmount.Value)
+		assert.Equal(t, 330641, intAmount.Amount)
 	})
 }
 
@@ -241,7 +252,7 @@ func TestConvert_FlagActiveAmountZeroAllowed(t *testing.T) {
 
 	t.Run("ndH active but amount 0 is allowed", func(t *testing.T) {
 		output := makeTestOutput()
-		output.Vertrag.Kinder[0].HS = "A"
+		output.Vertrag.Kinder[0].HS = "ND"
 		output.Vertrag.Kinder[0].ZuschlagNDH = 0
 
 		result, err := Convert(output)
@@ -253,55 +264,77 @@ func TestConvert_FlagActiveAmountZeroAllowed(t *testing.T) {
 		assert.Equal(t, 0, ndh.Amount)
 	})
 
-	t.Run("SpH active but amount 0 is allowed", func(t *testing.T) {
+	t.Run("Integration A but amount 0 is allowed", func(t *testing.T) {
 		output := makeTestOutput()
-		output.Vertrag.Kinder[0].SPH = "J"
-		output.Vertrag.Kinder[0].ZuschlagSPH = 0
+		output.Vertrag.Kinder[0].Integration = "A"
+		output.Vertrag.Kinder[0].ZuschlagIntegration = 0
 
 		result, err := Convert(output)
 		require.NoError(t, err)
 
-		sph := result.Children[0].Amounts[3]
-		assert.Equal(t, "sph", sph.Key)
-		assert.Equal(t, "sph", sph.Value)
-		assert.Equal(t, 0, sph.Amount)
+		intg := result.Children[0].Amounts[3]
+		assert.Equal(t, "integration", intg.Key)
+		assert.Equal(t, "integration a", intg.Value)
+		assert.Equal(t, 0, intg.Amount)
 	})
 }
 
-func TestConvert_FlagValidationErrors(t *testing.T) {
-	t.Run("QM/MSS inactive but amount non-zero", func(t *testing.T) {
+func TestConvert_InactiveFlagWithNonZeroAmount(t *testing.T) {
+	t.Run("QM/MSS inactive but amount non-zero passes through", func(t *testing.T) {
 		output := makeTestOutput()
 		output.Vertrag.Kinder[0].QM = "nein"
 		output.Vertrag.Kinder[0].MSS = "nein"
 		output.Vertrag.Kinder[0].ZuschlagQM = 5000
-		output.Vertrag.Kinder[0].ZuschlagMSS = 0
 
-		_, err := Convert(output)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "QM/MSS")
-		assert.Contains(t, err.Error(), "inactive but amount is")
+		result, err := Convert(output)
+		require.NoError(t, err)
+
+		qmmss := result.Children[0].Amounts[2]
+		assert.Equal(t, "qm/mss", qmmss.Key)
+		assert.Equal(t, "qm/mss", qmmss.Value, "value should be set when amount is non-zero")
+		assert.Equal(t, 5000, qmmss.Amount)
 	})
 
-	t.Run("ndH inactive but amount non-zero", func(t *testing.T) {
+	t.Run("ndH inactive but amount non-zero passes through", func(t *testing.T) {
 		output := makeTestOutput()
 		output.Vertrag.Kinder[0].HS = "D"
 		output.Vertrag.Kinder[0].ZuschlagNDH = 10000
 
-		_, err := Convert(output)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "ndH")
-		assert.Contains(t, err.Error(), "inactive but amount is")
+		result, err := Convert(output)
+		require.NoError(t, err)
+
+		ndh := result.Children[0].Amounts[1]
+		assert.Equal(t, "ndh", ndh.Key)
+		assert.Equal(t, "ndh", ndh.Value, "value should be set when amount is non-zero")
+		assert.Equal(t, 10000, ndh.Amount)
 	})
 
-	t.Run("SpH inactive but amount non-zero", func(t *testing.T) {
+	t.Run("Integration N but amount non-zero uses generic value", func(t *testing.T) {
 		output := makeTestOutput()
-		output.Vertrag.Kinder[0].SPH = "N"
-		output.Vertrag.Kinder[0].ZuschlagSPH = 5000
+		output.Vertrag.Kinder[0].Integration = "N"
+		output.Vertrag.Kinder[0].ZuschlagIntegration = 165680
 
-		_, err := Convert(output)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "SpH")
-		assert.Contains(t, err.Error(), "inactive but amount is")
+		result, err := Convert(output)
+		require.NoError(t, err)
+
+		intg := result.Children[0].Amounts[3]
+		assert.Equal(t, "integration", intg.Key)
+		assert.Equal(t, "integration", intg.Value, "generic value when flag is N but amount is non-zero")
+		assert.Equal(t, 165680, intg.Amount)
+	})
+
+	t.Run("Integration N with zero amount has empty value", func(t *testing.T) {
+		output := makeTestOutput()
+		output.Vertrag.Kinder[0].Integration = "N"
+		output.Vertrag.Kinder[0].ZuschlagIntegration = 0
+
+		result, err := Convert(output)
+		require.NoError(t, err)
+
+		intg := result.Children[0].Amounts[3]
+		assert.Equal(t, "integration", intg.Key)
+		assert.Equal(t, "", intg.Value, "value should be empty when flag N and amount is zero")
+		assert.Equal(t, 0, intg.Amount)
 	})
 }
 
@@ -314,7 +347,7 @@ func TestConvert_FacilitySurcharges(t *testing.T) {
 	require.Len(t, result.Surcharges, 3)
 	assert.Equal(t, SettlementAmount{Key: "ndh", Value: "ndh", Amount: 20000}, result.Surcharges[0])
 	assert.Equal(t, SettlementAmount{Key: "qm/mss", Value: "qm/mss", Amount: 15000}, result.Surcharges[1])
-	assert.Equal(t, SettlementAmount{Key: "sph", Value: "sph", Amount: 3000}, result.Surcharges[2])
+	assert.Equal(t, SettlementAmount{Key: "integration", Value: "integration", Amount: 3000}, result.Surcharges[2])
 }
 
 func TestConvert_OtherLineItems(t *testing.T) {
@@ -325,41 +358,35 @@ func TestConvert_OtherLineItems(t *testing.T) {
 
 	child := result.Children[0]
 
-	// deduction
-	assert.Equal(t, SettlementAmount{Key: "deduction", Value: "om", Amount: -500}, child.Amounts[4])
 	// parent care
-	assert.Equal(t, SettlementAmount{Key: "parent", Value: "care", Amount: 5000}, child.Amounts[5])
+	assert.Equal(t, SettlementAmount{Key: "parent", Value: "care", Amount: 5000}, child.Amounts[4])
 	// parent meals
-	assert.Equal(t, SettlementAmount{Key: "parent", Value: "meals", Amount: 2300}, child.Amounts[6])
-	// BuT
-	assert.Equal(t, SettlementAmount{Key: "but", Value: "but", Amount: 0}, child.Amounts[7])
-	// district share
-	assert.Equal(t, SettlementAmount{Key: "district", Value: "share", Amount: 45000}, child.Amounts[8])
+	assert.Equal(t, SettlementAmount{Key: "parent", Value: "meals", Amount: 2300}, child.Amounts[5])
 }
 
 func TestConvert_MultipleChildren(t *testing.T) {
 	output := makeTestOutput()
 	output.Vertrag.Kinder = append(output.Vertrag.Kinder, Kind{
-		Gutscheinnummer:  "GB-98765432109-02",
-		Name:             "Testkind, Anna",
-		Geburtsdatum:     "06.19",
-		QM:               "nein",
-		MSS:              "ja",
-		HS:               "A",
-		SPH:              "N",
-		Betreuungsumfang: "teilzeit",
-		Bezirk:           5,
-		Basisentgeld:     65000,
-		AbzugOM:          0,
-		ElternBetreuung:  3000,
-		ElternEssen:      1500,
-		BuT:              800,
-		AnteilBezirk:     30000,
-		ZuschlagQM:       0,
-		ZuschlagMSS:      4000,
-		ZuschlagNDH:      10116,
-		ZuschlagSPH:      0,
-		Summe:            114416,
+		Gutscheinnummer:     "GB-98765432109-02",
+		Name:                "Testkind, Anna",
+		Geburtsdatum:        "06.19",
+		QM:                  "nein",
+		MSS:                 "ja",
+		HS:                  "ND",
+		Integration:         "A",
+		Betreuungsumfang:    "teilzeit",
+		Bezirk:              5,
+		Basisentgeld:        65000,
+		AbzugOM:             0,
+		ElternBetreuung:     3000,
+		ElternEssen:         1500,
+		BuT:                 800,
+		AnteilBezirk:        30000,
+		ZuschlagQM:          0,
+		ZuschlagMSS:         4000,
+		ZuschlagNDH:         10116,
+		ZuschlagIntegration: 165680,
+		Summe:               114416,
 	})
 
 	result, err := Convert(output)
@@ -375,12 +402,12 @@ func TestConvert_MultipleChildren(t *testing.T) {
 
 	// care_type = teilzeit
 	assert.Equal(t, SettlementAmount{Key: "care_type", Value: "teilzeit", Amount: 65000}, second.Amounts[0])
-	// ndh active (HS=A)
+	// ndh active (HS=ND)
 	assert.Equal(t, SettlementAmount{Key: "ndh", Value: "ndh", Amount: 10116}, second.Amounts[1])
 	// qm/mss active (MSS=ja)
 	assert.Equal(t, SettlementAmount{Key: "qm/mss", Value: "qm/mss", Amount: 4000}, second.Amounts[2])
-	// sph inactive (SPH=N)
-	assert.Equal(t, SettlementAmount{Key: "sph", Value: "", Amount: 0}, second.Amounts[3])
+	// integration a (Integration=A)
+	assert.Equal(t, SettlementAmount{Key: "integration", Value: "integration a", Amount: 165680}, second.Amounts[3])
 }
 
 func TestIsFlagActive(t *testing.T) {
@@ -398,12 +425,8 @@ func TestIsFlagActive(t *testing.T) {
 		{"MSS", "nein", false},
 		{"HS", "D", false},
 		{"HS", "", false},
-		{"HS", "A", true},
+		{"HS", "ND", true},
 		{"HS", "T", true},
-		{"SPH", "N", false},
-		{"SPH", "", false},
-		{"SPH", "J", true},
-		{"SPH", "X", true},
 		{"UNKNOWN", "ja", false},
 	}
 
@@ -414,11 +437,25 @@ func TestIsFlagActive(t *testing.T) {
 	}
 }
 
-func TestValidateFlagAmount(t *testing.T) {
-	assert.NoError(t, validateFlagAmount("child", "QM", true, 5000))
-	assert.NoError(t, validateFlagAmount("child", "QM", false, 0))
-	assert.NoError(t, validateFlagAmount("child", "QM", true, 0))
-	assert.Error(t, validateFlagAmount("child", "QM", false, 5000))
+func TestIntegrationFlagToValue(t *testing.T) {
+	tests := []struct {
+		flag     string
+		expected string
+	}{
+		{"A", "integration a"},
+		{"a", "integration a"},
+		{"B", "integration b"},
+		{"b", "integration b"},
+		{"N", ""},
+		{"", ""},
+		{"X", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run("flag="+tt.flag, func(t *testing.T) {
+			assert.Equal(t, tt.expected, integrationFlagToValue(tt.flag))
+		})
+	}
 }
 
 func TestConvert_EmptyChildrenList(t *testing.T) {
@@ -456,12 +493,12 @@ func TestConvert_AllFlagsActive(t *testing.T) {
 	k := &output.Vertrag.Kinder[0]
 	k.QM = "ja"
 	k.MSS = "ja"
-	k.HS = "A"
-	k.SPH = "J"
+	k.HS = "ND"
+	k.Integration = "B"
 	k.ZuschlagQM = 3000
 	k.ZuschlagMSS = 2000
 	k.ZuschlagNDH = 10116
-	k.ZuschlagSPH = 7500
+	k.ZuschlagIntegration = 330641
 
 	result, err := Convert(output)
 	require.NoError(t, err)
@@ -471,8 +508,8 @@ func TestConvert_AllFlagsActive(t *testing.T) {
 	assert.Equal(t, 10116, child.Amounts[1].Amount)
 	assert.Equal(t, "qm/mss", child.Amounts[2].Value)
 	assert.Equal(t, 5000, child.Amounts[2].Amount)
-	assert.Equal(t, "sph", child.Amounts[3].Value)
-	assert.Equal(t, 7500, child.Amounts[3].Amount)
+	assert.Equal(t, "integration b", child.Amounts[3].Value)
+	assert.Equal(t, 330641, child.Amounts[3].Amount)
 }
 
 func TestConvert_AllFlagsInactive(t *testing.T) {
@@ -481,11 +518,11 @@ func TestConvert_AllFlagsInactive(t *testing.T) {
 	k.QM = "nein"
 	k.MSS = "nein"
 	k.HS = "D"
-	k.SPH = "N"
+	k.Integration = "N"
 	k.ZuschlagQM = 0
 	k.ZuschlagMSS = 0
 	k.ZuschlagNDH = 0
-	k.ZuschlagSPH = 0
+	k.ZuschlagIntegration = 0
 
 	result, err := Convert(output)
 	require.NoError(t, err)
@@ -524,14 +561,14 @@ func TestConvert_ZeroFacilitySurcharges(t *testing.T) {
 	output.Einrichtung.ZuschlagQM = 0
 	output.Einrichtung.ZuschlagMSS = 0
 	output.Einrichtung.ZuschlagNDH = 0
-	output.Einrichtung.ZuschlagSPH = 0
+	output.Einrichtung.ZuschlagIntegration = 0
 
 	result, err := Convert(output)
 	require.NoError(t, err)
 
 	assert.Equal(t, SettlementAmount{Key: "ndh", Value: "ndh", Amount: 0}, result.Surcharges[0])
 	assert.Equal(t, SettlementAmount{Key: "qm/mss", Value: "qm/mss", Amount: 0}, result.Surcharges[1])
-	assert.Equal(t, SettlementAmount{Key: "sph", Value: "sph", Amount: 0}, result.Surcharges[2])
+	assert.Equal(t, SettlementAmount{Key: "integration", Value: "integration", Amount: 0}, result.Surcharges[2])
 }
 
 func TestConvert_EmptyBetreuungsumfang(t *testing.T) {
@@ -543,28 +580,32 @@ func TestConvert_EmptyBetreuungsumfang(t *testing.T) {
 	assert.Contains(t, err.Error(), "unknown Betreuungsumfang")
 }
 
-func TestConvert_ErrorOnSecondChildIncludesName(t *testing.T) {
+func TestConvert_SecondChildInactiveFlagWithAmount(t *testing.T) {
 	output := makeTestOutput()
 	output.Vertrag.Kinder = append(output.Vertrag.Kinder, Kind{
-		Gutscheinnummer:  "GB-11111111111-01",
-		Name:             "Fehlerkind, Lisa",
-		Geburtsdatum:     "03.21",
-		QM:               "nein",
-		MSS:              "nein",
-		HS:               "D",
-		SPH:              "N",
-		Betreuungsumfang: "ganztags",
-		Bezirk:           3,
-		Basisentgeld:     50000,
-		ZuschlagQM:       5000, // QM/MSS inactive but amount non-zero → error
-		ZuschlagMSS:      0,
-		ZuschlagNDH:      0,
-		ZuschlagSPH:      0,
+		Gutscheinnummer:     "GB-11111111111-01",
+		Name:                "Testkind, Lisa",
+		Geburtsdatum:        "03.21",
+		QM:                  "nein",
+		MSS:                 "nein",
+		HS:                  "D",
+		Integration:         "N",
+		Betreuungsumfang:    "ganztags",
+		Bezirk:              3,
+		Basisentgeld:        50000,
+		ZuschlagQM:          5000, // QM/MSS inactive but amount non-zero → passes through
+		ZuschlagMSS:         0,
+		ZuschlagNDH:         0,
+		ZuschlagIntegration: 0,
 	})
 
-	_, err := Convert(output)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Fehlerkind, Lisa")
+	result, err := Convert(output)
+	require.NoError(t, err)
+	require.Len(t, result.Children, 2)
+
+	qmmss := result.Children[1].Amounts[2]
+	assert.Equal(t, "qm/mss", qmmss.Value)
+	assert.Equal(t, 5000, qmmss.Amount)
 }
 
 func TestConvert_QMActiveAmountOnlyInMSSSurcharge(t *testing.T) {
@@ -584,31 +625,24 @@ func TestConvert_QMActiveAmountOnlyInMSSSurcharge(t *testing.T) {
 	assert.Equal(t, 5000, qm.Amount)
 }
 
-func TestValidateFlagAmount_ErrorMessages(t *testing.T) {
-	err := validateFlagAmount("Musterkind, Max", "QM", true, 0)
-	assert.NoError(t, err)
-
-	err = validateFlagAmount("Testkind, Anna", "ndH", false, 12345)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Testkind, Anna")
-	assert.Contains(t, err.Error(), "ndH")
-	assert.Contains(t, err.Error(), "12345")
-}
-
-func TestConvert_FirstValidationErrorStopsConversion(t *testing.T) {
-	// Both QM/MSS and ndH are invalid (inactive but non-zero amount),
-	// but only QM/MSS error should surface because it's validated first.
+func TestConvert_MultipleInactiveFlagsWithAmountsPassThrough(t *testing.T) {
 	output := makeTestOutput()
 	k := &output.Vertrag.Kinder[0]
 	k.QM = "nein"
 	k.MSS = "nein"
 	k.HS = "D"
-	k.ZuschlagQM = 5000 // QM/MSS inactive but non-zero
+	k.ZuschlagQM = 5000
 	k.ZuschlagMSS = 0
-	k.ZuschlagNDH = 3000 // ndH inactive but non-zero
+	k.ZuschlagNDH = 3000
 
-	_, err := Convert(output)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "QM/MSS")
-	assert.NotContains(t, err.Error(), "ndH")
+	result, err := Convert(output)
+	require.NoError(t, err)
+
+	ndh := result.Children[0].Amounts[1]
+	assert.Equal(t, "ndh", ndh.Value)
+	assert.Equal(t, 3000, ndh.Amount)
+
+	qmmss := result.Children[0].Amounts[2]
+	assert.Equal(t, "qm/mss", qmmss.Value)
+	assert.Equal(t, 5000, qmmss.Amount)
 }
