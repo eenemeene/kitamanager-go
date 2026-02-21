@@ -681,6 +681,7 @@
     "deleteSuccess": "Abrechnung erfolgreich gelöscht",
     "calculatedTotal": "Berechnet",
     "difference": "Differenz",
+    "childrenBillCalc": "Kinder (Abr. / Ber.)",
     "comparisonStatus": "Status",
     "statusMatch": "Stimmt",
     "statusDifference": "Differenz",

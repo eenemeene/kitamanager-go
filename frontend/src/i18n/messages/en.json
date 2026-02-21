@@ -681,6 +681,7 @@
     "deleteSuccess": "Funding bill deleted successfully",
     "calculatedTotal": "Calculated",
     "difference": "Difference",
+    "childrenBillCalc": "Children (Bill / Calc)",
     "comparisonStatus": "Status",
     "statusMatch": "Match",
     "statusDifference": "Difference",

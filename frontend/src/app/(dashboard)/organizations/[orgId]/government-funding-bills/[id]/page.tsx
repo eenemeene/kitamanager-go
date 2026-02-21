@@ -260,7 +260,13 @@ export default function GovernmentFundingBillDetailPage() {
                   className="flex justify-between rounded-md border p-3"
                 >
                   <span className="text-muted-foreground text-sm">
-                    {s.key}: {s.value}
+                    {(
+                      {
+                        ndh: 'NdH',
+                        'qm/mss': 'QM/MSS',
+                        integration: 'Integration',
+                      } as Record<string, string>
+                    )[s.key] ?? s.key}
                   </span>
                   <span className="font-medium">{formatCurrency(s.amount)}</span>
                 </div>
@@ -303,19 +309,21 @@ export default function GovernmentFundingBillDetailPage() {
               {result.children.map((child) => {
                 const comp = comparisonByVoucher.get(child.voucher_number);
                 const isExpanded = expandedChild === child.voucher_number;
+                const hasMultipleRows = child.rows && child.rows.length > 1;
+                const isExpandable = hasMultipleRows || (comp?.properties?.length ?? 0) > 0;
 
                 return (
                   <Fragment key={child.voucher_number}>
                     <TableRow
-                      className={comp?.properties?.length ? 'cursor-pointer' : ''}
+                      className={isExpandable ? 'cursor-pointer' : ''}
                       onClick={() => {
-                        if (comp?.properties?.length) {
+                        if (isExpandable) {
                           setExpandedChild(isExpanded ? null : child.voucher_number);
                         }
                       }}
                     >
                       <TableCell className="font-mono text-sm">
-                        {comp?.properties?.length ? (
+                        {isExpandable ? (
                           <span className="flex items-center gap-1">
                             {isExpanded ? (
                               <ChevronDown className="h-3 w-3" />
@@ -399,55 +407,101 @@ export default function GovernmentFundingBillDetailPage() {
                         </TableCell>
                       )}
                     </TableRow>
-                    {/* Expandable property detail */}
-                    {isExpanded && comp?.properties && (
-                      <TableRow key={`${child.voucher_number}-properties`}>
+                    {/* Expandable detail: rows + comparison properties */}
+                    {isExpanded && (
+                      <TableRow key={`${child.voucher_number}-detail`}>
                         <TableCell colSpan={comparison ? 7 : 5} className="bg-muted/50 p-0">
                           <div className="p-3 md:pl-10">
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead className="text-xs">{t('surcharges')}</TableHead>
-                                  <TableHead className="text-right text-xs">
-                                    {t('billAmount')}
-                                  </TableHead>
-                                  <TableHead className="text-right text-xs">
-                                    {t('calculatedAmount')}
-                                  </TableHead>
-                                  <TableHead className="text-right text-xs">
-                                    {t('difference')}
-                                  </TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {comp.properties.map((prop) => (
-                                  <TableRow key={`${prop.key}-${prop.value}`}>
-                                    <TableCell className="text-sm">
-                                      {prop.label || `${prop.key}: ${prop.value}`}
-                                    </TableCell>
-                                    <TableCell className="text-right text-sm">
-                                      {prop.bill_amount != null
-                                        ? formatCurrency(prop.bill_amount)
-                                        : '\u2014'}
-                                    </TableCell>
-                                    <TableCell className="text-right text-sm">
-                                      {prop.calculated_amount != null
-                                        ? formatCurrency(prop.calculated_amount)
-                                        : '\u2014'}
-                                    </TableCell>
-                                    <TableCell className="text-right text-sm">
-                                      <span
-                                        className={
-                                          prop.difference === 0 ? 'text-green-600' : 'text-red-600'
-                                        }
+                            {/* Row-grouped amounts */}
+                            {hasMultipleRows &&
+                              (() => {
+                                const labelMap = new Map<string, string>();
+                                if (comp?.properties) {
+                                  for (const prop of comp.properties) {
+                                    if (prop.label)
+                                      labelMap.set(`${prop.key}:${prop.value}`, prop.label);
+                                  }
+                                }
+                                return (
+                                  <div>
+                                    {child.rows.map((row, rowIdx) => (
+                                      <div
+                                        key={rowIdx}
+                                        className={rowIdx > 0 ? 'mt-2 border-t pt-2' : ''}
                                       >
-                                        {formatCurrency(prop.difference)}
-                                      </span>
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
+                                        <div className="flex justify-end py-1">
+                                          <span className="text-sm font-bold">
+                                            {formatCurrency(row.total_row_amount)}
+                                          </span>
+                                        </div>
+                                        {row.amounts.map((amt, amtIdx) => (
+                                          <div
+                                            key={amtIdx}
+                                            className="text-muted-foreground flex justify-between py-0.5 text-sm"
+                                          >
+                                            <span>
+                                              {labelMap.get(`${amt.key}:${amt.value}`) ||
+                                                `${amt.key}: ${amt.value}`}
+                                            </span>
+                                            <span>{formatCurrency(amt.amount)}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              })()}
+                            {/* Comparison properties table (only for single-row children) */}
+                            {!hasMultipleRows && comp?.properties && comp.properties.length > 0 && (
+                              <div>
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead className="text-xs">{t('surcharges')}</TableHead>
+                                      <TableHead className="text-right text-xs">
+                                        {t('billAmount')}
+                                      </TableHead>
+                                      <TableHead className="text-right text-xs">
+                                        {t('calculatedAmount')}
+                                      </TableHead>
+                                      <TableHead className="text-right text-xs">
+                                        {t('difference')}
+                                      </TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {comp.properties.map((prop) => (
+                                      <TableRow key={`${prop.key}-${prop.value}`}>
+                                        <TableCell className="text-sm">
+                                          {prop.label || `${prop.key}: ${prop.value}`}
+                                        </TableCell>
+                                        <TableCell className="text-right text-sm">
+                                          {prop.bill_amount != null
+                                            ? formatCurrency(prop.bill_amount)
+                                            : '\u2014'}
+                                        </TableCell>
+                                        <TableCell className="text-right text-sm">
+                                          {prop.calculated_amount != null
+                                            ? formatCurrency(prop.calculated_amount)
+                                            : '\u2014'}
+                                        </TableCell>
+                                        <TableCell className="text-right text-sm">
+                                          <span
+                                            className={
+                                              prop.difference === 0
+                                                ? 'text-green-600'
+                                                : 'text-red-600'
+                                            }
+                                          >
+                                            {formatCurrency(prop.difference)}
+                                          </span>
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

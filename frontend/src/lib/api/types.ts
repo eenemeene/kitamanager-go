@@ -710,13 +710,18 @@ export interface GovernmentFundingBillPayment {
   amount: number;
 }
 
+export interface GovernmentFundingBillRow {
+  total_row_amount: number;
+  amounts: GovernmentFundingBillPayment[];
+}
+
 export interface GovernmentFundingBillChild {
   voucher_number: string;
   child_name: string;
   birth_date: string;
   district: number;
   total_amount: number;
-  amounts: GovernmentFundingBillPayment[];
+  rows: GovernmentFundingBillRow[];
   child_id?: number;
   contract_id?: number;
   matched: boolean;
