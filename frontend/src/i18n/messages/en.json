@@ -120,6 +120,7 @@
     "selectOrgForStats": "Select an organization to view statistics",
     "childrenContractCount": "Children",
     "chartError": "Failed to load chart data",
+    "chartRenderError": "Chart could not be rendered",
     "ageDistribution": "Children Age Distribution (Today)",
     "childrenCount": "Children",
     "totalChildren": "{count} children total",

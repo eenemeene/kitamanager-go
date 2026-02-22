@@ -120,6 +120,7 @@
     "selectOrgForStats": "Wählen Sie eine Organisation, um Statistiken anzuzeigen",
     "childrenContractCount": "Kinder",
     "chartError": "Fehler beim Laden der Diagrammdaten",
+    "chartRenderError": "Diagramm konnte nicht dargestellt werden",
     "ageDistribution": "Kinder-Altersverteilung (Heute)",
     "childrenCount": "Kinder",
     "totalChildren": "{count} Kinder insgesamt",
