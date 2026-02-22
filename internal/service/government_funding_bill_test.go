@@ -1843,3 +1843,157 @@ func TestGovernmentFundingBillService_Compare_MatchedAndBillOnlyTotals(t *testin
 		t.Errorf("expected difference 150000, got %d", result.Difference)
 	}
 }
+
+func TestGovernmentFundingBillService_Compare_MultiRowCorrection(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "compare18@example.com", "password")
+	ctx := context.Background()
+
+	setupFundingRates(t, db)
+
+	// Child with age 4 (born 2021-05-01, bill date 2025-11-01), care_type=ganztag → calc 120000
+	createChildWithVoucherAndContract(t, db, "Multi", "Row", org.ID,
+		"GB-MULTIROW01-01", time.Date(2021, 5, 1, 0, 0, 0, 0, time.UTC),
+		models.ContractProperties{"care_type": "ganztag"})
+
+	// Two payment rows for the same child: original + correction
+	// Row 1: care_type=ganztag 150000 (original, wrong amount)
+	// Row 2: care_type=ganztag -30000 (correction)
+	// Net: 120000 → should match calculated
+	period := createBillPeriodForCompare(t, db, org.ID, user.ID, []models.GovernmentFundingBillChild{
+		{
+			VoucherNumber: "GB-MULTIROW01-01",
+			ChildName:     "Row, Multi",
+			BirthDate:     "05.21",
+			District:      1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 150000, RowIndex: 0},
+				{Key: "care_type", Value: "ganztag", Amount: -30000, RowIndex: 1},
+			},
+		},
+	})
+
+	result, err := svc.Compare(ctx, period.ID, org.ID)
+	if err != nil {
+		t.Fatalf("Compare() error = %v", err)
+	}
+
+	if result.MatchCount != 1 {
+		t.Errorf("expected match_count 1, got %d", result.MatchCount)
+	}
+	if result.DifferenceCount != 0 {
+		t.Errorf("expected difference_count 0, got %d", result.DifferenceCount)
+	}
+
+	child := result.Children[0]
+	if child.Status != "match" {
+		t.Errorf("expected status 'match', got %q", child.Status)
+	}
+	if child.BillTotal != 120000 {
+		t.Errorf("expected bill_total 120000, got %d", child.BillTotal)
+	}
+	if *child.CalcTotal != 120000 {
+		t.Errorf("expected calc_total 120000, got %d", *child.CalcTotal)
+	}
+	if *child.Difference != 0 {
+		t.Errorf("expected difference 0, got %d", *child.Difference)
+	}
+
+	// Property detail should show net bill amount
+	if len(child.Properties) == 0 {
+		t.Fatal("expected properties to be populated")
+	}
+	for _, prop := range child.Properties {
+		if prop.Key == "care_type" && prop.Value == "ganztag" {
+			if prop.BillAmount == nil || *prop.BillAmount != 120000 {
+				t.Errorf("expected care_type bill_amount 120000, got %v", prop.BillAmount)
+			}
+			if prop.CalcAmount == nil || *prop.CalcAmount != 120000 {
+				t.Errorf("expected care_type calc_amount 120000, got %v", prop.CalcAmount)
+			}
+			if prop.Difference != 0 {
+				t.Errorf("expected care_type difference 0, got %d", prop.Difference)
+			}
+		}
+	}
+}
+
+func TestGovernmentFundingBillService_GetByID_MultiRowGrouping(t *testing.T) {
+	db := setupTestDB(t)
+	childStore := store.NewChildStore(db)
+	billPeriodStore := store.NewGovernmentFundingBillPeriodStore(db)
+	svc := NewGovernmentFundingBillService(childStore, billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db))
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "billsvc_multirow@example.com", "password")
+	ctx := context.Background()
+
+	to := time.Date(2025, 11, 30, 0, 0, 0, 0, time.UTC)
+	period := &models.GovernmentFundingBillPeriod{
+		OrganizationID:    org.ID,
+		Period:            models.Period{From: time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC), To: &to},
+		FileName:          "multirow.xlsx",
+		FileSha256:        "multirowsha",
+		FacilityName:      "Kita Multirow",
+		FacilityTotal:     200000,
+		ContractBooking:   180000,
+		CorrectionBooking: 20000,
+		CreatedBy:         user.ID,
+		Children: []models.GovernmentFundingBillChild{
+			{
+				VoucherNumber: "GB-MULTIROW01-01",
+				ChildName:     "Kind, Multi",
+				BirthDate:     "05.19",
+				District:      2,
+				Payments: []models.GovernmentFundingBillPayment{
+					// Row 0: original billing
+					{Key: "care_type", Value: "ganztag", Amount: 120000, RowIndex: 0},
+					{Key: "ndh", Value: "ndh", Amount: 8000, RowIndex: 0},
+					// Row 1: correction
+					{Key: "care_type", Value: "ganztag", Amount: -20000, RowIndex: 1},
+					{Key: "ndh", Value: "ndh", Amount: 0, RowIndex: 1},
+				},
+			},
+		},
+	}
+	if err := db.Create(period).Error; err != nil {
+		t.Fatalf("setup error: %v", err)
+	}
+
+	result, err := svc.GetByID(ctx, period.ID, org.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error = %v", err)
+	}
+
+	if len(result.Children) != 1 {
+		t.Fatalf("expected 1 child, got %d", len(result.Children))
+	}
+
+	child := result.Children[0]
+	// Total should sum all payments across rows
+	if child.TotalAmount != 108000 { // 120000 + 8000 + (-20000) + 0
+		t.Errorf("expected total 108000, got %d", child.TotalAmount)
+	}
+
+	// Should have 2 rows
+	if len(child.Rows) != 2 {
+		t.Fatalf("expected 2 rows, got %d", len(child.Rows))
+	}
+
+	// Row 0
+	if child.Rows[0].TotalRowAmount != 128000 { // 120000 + 8000
+		t.Errorf("expected row 0 total 128000, got %d", child.Rows[0].TotalRowAmount)
+	}
+	if len(child.Rows[0].Amounts) != 2 {
+		t.Errorf("expected row 0 to have 2 amounts, got %d", len(child.Rows[0].Amounts))
+	}
+
+	// Row 1 (correction)
+	if child.Rows[1].TotalRowAmount != -20000 { // -20000 + 0
+		t.Errorf("expected row 1 total -20000, got %d", child.Rows[1].TotalRowAmount)
+	}
+	if len(child.Rows[1].Amounts) != 2 {
+		t.Errorf("expected row 1 to have 2 amounts, got %d", len(child.Rows[1].Amounts))
+	}
+}

@@ -8,11 +8,12 @@ import "time"
 
 // GovernmentFundingBillPayment represents a single financial line item for a child in a bill.
 type GovernmentFundingBillPayment struct {
-	ID      uint   `gorm:"primaryKey" json:"-"`
-	ChildID uint   `gorm:"not null;index" json:"-"`
-	Key     string `gorm:"size:100;not null" json:"key" example:"care_type"`
-	Value   string `gorm:"size:255;not null" json:"value" example:"ganztag"`
-	Amount  int    `gorm:"not null" json:"amount" example:"166847"`
+	ID       uint   `gorm:"primaryKey" json:"-"`
+	ChildID  uint   `gorm:"not null;index" json:"-"`
+	Key      string `gorm:"size:100;not null" json:"key" example:"care_type"`
+	Value    string `gorm:"size:255;not null" json:"value" example:"ganztag"`
+	Amount   int    `gorm:"not null" json:"amount" example:"166847"`
+	RowIndex int    `gorm:"not null;default:0" json:"-"`
 }
 
 // GovernmentFundingBillChild represents one child row in a bill period.
@@ -54,17 +55,23 @@ type GovernmentFundingBillAmount struct {
 	Amount int    `json:"amount" example:"166847"`
 }
 
+// GovernmentFundingBillRowResponse represents one billing row (Excel line) with its amounts.
+type GovernmentFundingBillRowResponse struct {
+	TotalRowAmount int                           `json:"total_row_amount" example:"141331"`
+	Amounts        []GovernmentFundingBillAmount `json:"amounts"`
+}
+
 // GovernmentFundingBillChildResponse represents one child from a bill, enriched with match info.
 type GovernmentFundingBillChildResponse struct {
-	VoucherNumber string                        `json:"voucher_number" example:"GB-12345678901-02"`
-	ChildName     string                        `json:"child_name" example:"Mustermann, Max"`
-	BirthDate     string                        `json:"birth_date" example:"01.20"`
-	District      int64                         `json:"district" example:"1"`
-	TotalAmount   int                           `json:"total_amount" example:"166847"`
-	Amounts       []GovernmentFundingBillAmount `json:"amounts"`
-	ChildID       *uint                         `json:"child_id,omitempty" example:"42"`
-	ContractID    *uint                         `json:"contract_id,omitempty" example:"99"`
-	Matched       bool                          `json:"matched" example:"true"`
+	VoucherNumber string                             `json:"voucher_number" example:"GB-12345678901-02"`
+	ChildName     string                             `json:"child_name" example:"Mustermann, Max"`
+	BirthDate     string                             `json:"birth_date" example:"01.20"`
+	District      int64                              `json:"district" example:"1"`
+	TotalAmount   int                                `json:"total_amount" example:"166847"`
+	Rows          []GovernmentFundingBillRowResponse `json:"rows"`
+	ChildID       *uint                              `json:"child_id,omitempty" example:"42"`
+	ContractID    *uint                              `json:"contract_id,omitempty" example:"99"`
+	Matched       bool                               `json:"matched" example:"true"`
 }
 
 // GovernmentFundingBillPeriodResponse is the full detail response for a single bill period.

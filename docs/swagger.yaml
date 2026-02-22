@@ -933,10 +933,6 @@ definitions:
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingBillChildResponse:
     properties:
-      amounts:
-        items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingBillAmount'
-        type: array
       birth_date:
         example: "01.20"
         type: string
@@ -955,6 +951,10 @@ definitions:
       matched:
         example: true
         type: boolean
+      rows:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingBillRowResponse'
+        type: array
       total_amount:
         example: 166847
         type: integer
@@ -1082,6 +1082,16 @@ definitions:
         type: array
       unmatched_count:
         example: 2
+        type: integer
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingBillRowResponse:
+    properties:
+      amounts:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingBillAmount'
+        type: array
+      total_row_amount:
+        example: 141331
         type: integer
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingCreateRequest:

@@ -9401,12 +9401,6 @@ const docTemplate = `{
         "github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingBillChildResponse": {
             "type": "object",
             "properties": {
-                "amounts": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingBillAmount"
-                    }
-                },
                 "birth_date": {
                     "type": "string",
                     "example": "01.20"
@@ -9430,6 +9424,12 @@ const docTemplate = `{
                 "matched": {
                     "type": "boolean",
                     "example": true
+                },
+                "rows": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingBillRowResponse"
+                    }
                 },
                 "total_amount": {
                     "type": "integer",
@@ -9607,6 +9607,21 @@ const docTemplate = `{
                 "unmatched_count": {
                     "type": "integer",
                     "example": 2
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingBillRowResponse": {
+            "type": "object",
+            "properties": {
+                "amounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingBillAmount"
+                    }
+                },
+                "total_row_amount": {
+                    "type": "integer",
+                    "example": 141331
                 }
             }
         },

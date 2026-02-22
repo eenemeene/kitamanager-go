@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
 	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
@@ -71,12 +72,13 @@ func (s *GovernmentFundingBillService) ProcessISBJ(ctx context.Context, orgID ui
 			BirthDate:     child.BirthDate,
 			District:      child.District,
 		}
-		for _, row := range child.Rows {
+		for rowIdx, row := range child.Rows {
 			for _, amt := range row.Amounts {
 				billChild.Payments = append(billChild.Payments, models.GovernmentFundingBillPayment{
-					Key:    amt.Key,
-					Value:  amt.Value,
-					Amount: amt.Amount,
+					Key:      amt.Key,
+					Value:    amt.Value,
+					Amount:   amt.Amount,
+					RowIndex: rowIdx,
 				})
 			}
 		}
@@ -154,13 +156,11 @@ func (s *GovernmentFundingBillService) GetByID(ctx context.Context, id, orgID ui
 	children := make([]models.GovernmentFundingBillChildResponse, 0, len(period.Children))
 	for _, child := range period.Children {
 		totalAmount := 0
-		amounts := make([]models.GovernmentFundingBillAmount, 0, len(child.Payments))
+
+		// Group payments by RowIndex
+		rowMap := map[int][]models.GovernmentFundingBillPayment{}
 		for _, p := range child.Payments {
-			amounts = append(amounts, models.GovernmentFundingBillAmount{
-				Key:    p.Key,
-				Value:  p.Value,
-				Amount: p.Amount,
-			})
+			rowMap[p.RowIndex] = append(rowMap[p.RowIndex], p)
 			totalAmount += p.Amount
 
 			// Aggregate surcharges (keys defined by ISBJ format)
@@ -172,13 +172,42 @@ func (s *GovernmentFundingBillService) GetByID(ctx context.Context, id, orgID ui
 			}
 		}
 
+		// Build sorted rows
+		maxIdx := 0
+		for idx := range rowMap {
+			if idx > maxIdx {
+				maxIdx = idx
+			}
+		}
+		rows := make([]models.GovernmentFundingBillRowResponse, 0, len(rowMap))
+		for i := 0; i <= maxIdx; i++ {
+			payments, ok := rowMap[i]
+			if !ok {
+				continue
+			}
+			rowTotal := 0
+			amounts := make([]models.GovernmentFundingBillAmount, 0, len(payments))
+			for _, p := range payments {
+				amounts = append(amounts, models.GovernmentFundingBillAmount{
+					Key:    p.Key,
+					Value:  p.Value,
+					Amount: p.Amount,
+				})
+				rowTotal += p.Amount
+			}
+			rows = append(rows, models.GovernmentFundingBillRowResponse{
+				TotalRowAmount: rowTotal,
+				Amounts:        amounts,
+			})
+		}
+
 		resp := models.GovernmentFundingBillChildResponse{
 			VoucherNumber: child.VoucherNumber,
 			ChildName:     child.ChildName,
 			BirthDate:     child.BirthDate,
 			District:      child.District,
 			TotalAmount:   totalAmount,
-			Amounts:       amounts,
+			Rows:          rows,
 		}
 
 		if contract, ok := contractMap[child.VoucherNumber]; ok {
@@ -474,8 +503,14 @@ func buildComparisonProperties(billAmounts, calcAmounts map[string]int, labelMap
 		allKeys[k] = true
 	}
 
-	props := make([]models.FundingComparisonAmount, 0, len(allKeys))
-	for kv := range allKeys {
+	sortedKeys := make([]string, 0, len(allKeys))
+	for k := range allKeys {
+		sortedKeys = append(sortedKeys, k)
+	}
+	sort.Strings(sortedKeys)
+
+	props := make([]models.FundingComparisonAmount, 0, len(sortedKeys))
+	for _, kv := range sortedKeys {
 		parts := splitKeyValue(kv)
 		prop := models.FundingComparisonAmount{
 			Key:   parts[0],
@@ -523,8 +558,15 @@ func buildBillOnlyProperties(payments []models.GovernmentFundingBillPayment, lab
 
 // buildCalcOnlyProperties builds properties for a calc-only child (not in bill).
 func buildCalcOnlyProperties(calcAmounts map[string]int, labelMap map[string]string) []models.FundingComparisonAmount {
+	sortedKeys := make([]string, 0, len(calcAmounts))
+	for k := range calcAmounts {
+		sortedKeys = append(sortedKeys, k)
+	}
+	sort.Strings(sortedKeys)
+
 	props := make([]models.FundingComparisonAmount, 0, len(calcAmounts))
-	for kv, amt := range calcAmounts {
+	for _, kv := range sortedKeys {
+		amt := calcAmounts[kv]
 		parts := splitKeyValue(kv)
 		a := amt
 		props = append(props, models.FundingComparisonAmount{
@@ -573,9 +615,12 @@ func (s *GovernmentFundingBillService) buildResponse(ctx context.Context, orgID,
 	matchedCount := 0
 	children := make([]models.GovernmentFundingBillChildResponse, 0, len(converted.Children))
 	for _, child := range converted.Children {
-		var allAmounts []isbj.SettlementAmount
+		rows := make([]models.GovernmentFundingBillRowResponse, 0, len(child.Rows))
 		for _, row := range child.Rows {
-			allAmounts = append(allAmounts, row.Amounts...)
+			rows = append(rows, models.GovernmentFundingBillRowResponse{
+				TotalRowAmount: row.TotalRowAmount,
+				Amounts:        convertBillAmounts(row.Amounts),
+			})
 		}
 		resp := models.GovernmentFundingBillChildResponse{
 			VoucherNumber: child.VoucherNumber,
@@ -583,7 +628,7 @@ func (s *GovernmentFundingBillService) buildResponse(ctx context.Context, orgID,
 			BirthDate:     child.BirthDate,
 			District:      child.District,
 			TotalAmount:   child.TotalAmount,
-			Amounts:       convertBillAmounts(allAmounts),
+			Rows:          rows,
 		}
 
 		if contract, ok := contractMap[child.VoucherNumber]; ok {
