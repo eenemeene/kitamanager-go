@@ -451,9 +451,9 @@ export default function GovernmentFundingBillDetailPage() {
                                   </div>
                                 );
                               })()}
-                            {/* Comparison properties table (only for single-row children) */}
-                            {!hasMultipleRows && comp?.properties && comp.properties.length > 0 && (
-                              <div>
+                            {/* Comparison properties table */}
+                            {comp?.properties && comp.properties.length > 0 && (
+                              <div className={hasMultipleRows ? 'mt-3 border-t pt-3' : ''}>
                                 <Table>
                                   <TableHeader>
                                     <TableRow>
