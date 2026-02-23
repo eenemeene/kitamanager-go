@@ -116,6 +116,30 @@ func validateNoOverlap[T any](
 	return nil
 }
 
+const fetchAllBatchSize = 100
+
+// fetchAllPaginated fetches all items using the provided paginated query function,
+// converts each batch to response DTOs, and returns the full list.
+func fetchAllPaginated[T any, R any](
+	ctx context.Context,
+	fetchPage func(ctx context.Context, limit, offset int) ([]T, int64, error),
+	toResponse func(*T) R,
+	resourceName string,
+) ([]R, error) {
+	var all []R
+	for offset := 0; ; offset += fetchAllBatchSize {
+		items, total, err := fetchPage(ctx, fetchAllBatchSize, offset)
+		if err != nil {
+			return nil, apperror.InternalWrap(err, "failed to fetch "+resourceName+" for export")
+		}
+		all = append(all, toResponseList(items, toResponse)...)
+		if len(all) >= int(total) {
+			break
+		}
+	}
+	return all, nil
+}
+
 // personUpdateFields describes the optional fields in a person update request.
 type personUpdateFields struct {
 	FirstName *string

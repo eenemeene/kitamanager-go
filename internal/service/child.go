@@ -169,16 +169,9 @@ func (s *ChildService) Import(ctx context.Context, orgID uint, data *models.Chil
 
 // FindAllByOrganization returns all children for an organization (no pagination), with contracts preloaded.
 func (s *ChildService) FindAllByOrganization(ctx context.Context, orgID uint) ([]models.ChildResponse, error) {
-	var all []models.ChildResponse
-	for offset := 0; ; offset += 100 {
-		children, total, err := s.store.FindByOrganizationAndSection(ctx, orgID, nil, nil, nil, "", 100, offset)
-		if err != nil {
-			return nil, apperror.InternalWrap(err, "failed to fetch children for export")
-		}
-		all = append(all, toResponseList(children, (*models.Child).ToResponse)...)
-		if len(all) >= int(total) {
-			break
-		}
-	}
-	return all, nil
+	return fetchAllPaginated(ctx,
+		func(ctx context.Context, limit, offset int) ([]models.Child, int64, error) {
+			return s.store.FindByOrganizationAndSection(ctx, orgID, nil, nil, nil, "", limit, offset)
+		},
+		(*models.Child).ToResponse, "children")
 }

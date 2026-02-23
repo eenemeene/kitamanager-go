@@ -203,16 +203,9 @@ func (s *EmployeeService) resolvePayPlan(ctx context.Context, payPlanName *strin
 
 // FindAllByOrganization returns all employees for an organization (no pagination), with contracts preloaded.
 func (s *EmployeeService) FindAllByOrganization(ctx context.Context, orgID uint) ([]models.EmployeeResponse, error) {
-	var all []models.EmployeeResponse
-	for offset := 0; ; offset += 100 {
-		employees, total, err := s.store.FindByOrganizationAndSection(ctx, orgID, nil, nil, "", nil, 100, offset)
-		if err != nil {
-			return nil, apperror.InternalWrap(err, "failed to fetch employees for export")
-		}
-		all = append(all, toResponseList(employees, (*models.Employee).ToResponse)...)
-		if len(all) >= int(total) {
-			break
-		}
-	}
-	return all, nil
+	return fetchAllPaginated(ctx,
+		func(ctx context.Context, limit, offset int) ([]models.Employee, int64, error) {
+			return s.store.FindByOrganizationAndSection(ctx, orgID, nil, nil, "", nil, limit, offset)
+		},
+		(*models.Employee).ToResponse, "employees")
 }
