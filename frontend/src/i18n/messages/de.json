@@ -707,7 +707,13 @@
     "matchCount": "Stimmt",
     "differenceCount": "Differenzen",
     "billOnlyCount": "Nur Abrechnung",
-    "calcOnlyCount": "Nur System"
+    "calcOnlyCount": "Nur System",
+    "age": "Alter",
+    "systemOnlyChildren": "Kinder nur im System",
+    "contractPeriod": "Vertragszeitraum",
+    "billHistory": "Abrechnungshistorie",
+    "ongoing": "laufend",
+    "neverInBill": "Nie in Abrechnung"
   },
   "sectionAgeAlerts": {
     "title": "Kinder über Altersgrenze des Bereichs",

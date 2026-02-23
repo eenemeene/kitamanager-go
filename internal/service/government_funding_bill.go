@@ -466,6 +466,29 @@ func (s *GovernmentFundingBillService) Compare(ctx context.Context, billID, orgI
 			Properties:    buildCalcOnlyProperties(calcAmounts, labelMap),
 		}
 
+		// Enrich with contract dates
+		contractFrom := contract.From.Format(models.DateFormat)
+		compChild.ContractFrom = &contractFrom
+		if contract.To != nil {
+			contractTo := contract.To.Format(models.DateFormat)
+			compChild.ContractTo = &contractTo
+		}
+
+		// Look up bill appearances by voucher number
+		if contract.VoucherNumber != nil {
+			appearances, err := s.billPeriodStore.FindByOrganizationAndVoucherNumber(ctx, orgID, *contract.VoucherNumber)
+			if err == nil {
+				// Filter out the current bill
+				filtered := make([]models.BillAppearance, 0, len(appearances))
+				for _, a := range appearances {
+					if a.BillID != billID {
+						filtered = append(filtered, a)
+					}
+				}
+				compChild.BillAppearances = filtered
+			}
+		}
+
 		response.Children = append(response.Children, compChild)
 		response.CalcOnlyCount++
 		response.CalcTotal += calcTotal

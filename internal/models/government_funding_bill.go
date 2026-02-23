@@ -119,18 +119,28 @@ type FundingComparisonAmount struct {
 	Difference int    `json:"difference" example:"0"`             // bill - calc (0 if either nil)
 }
 
+// BillAppearance represents a bill that a child appeared in.
+type BillAppearance struct {
+	BillID       uint   `json:"bill_id" example:"1"`
+	BillFrom     string `json:"bill_from" example:"2025-11-01"`
+	FacilityName string `json:"facility_name" example:"Kita Sonnenschein"`
+}
+
 // FundingComparisonChild represents the comparison for one child.
 type FundingComparisonChild struct {
-	VoucherNumber string                    `json:"voucher_number" example:"GB-12345678901-02"`
-	ChildName     string                    `json:"child_name" example:"Mustermann, Max"`
-	BirthDate     string                    `json:"birth_date,omitempty" example:"01.20"`
-	ChildID       *uint                     `json:"child_id,omitempty" example:"42"`
-	Age           *int                      `json:"age,omitempty" example:"3"`
-	BillTotal     int                       `json:"bill_total" example:"166847"`
-	CalcTotal     *int                      `json:"calculated_total,omitempty" example:"166847"`
-	Difference    *int                      `json:"difference,omitempty" example:"0"`
-	Status        string                    `json:"status" example:"match"` // match|difference|bill_only|calc_only
-	Properties    []FundingComparisonAmount `json:"properties"`
+	VoucherNumber   string                    `json:"voucher_number" example:"GB-12345678901-02"`
+	ChildName       string                    `json:"child_name" example:"Mustermann, Max"`
+	BirthDate       string                    `json:"birth_date,omitempty" example:"01.20"`
+	ChildID         *uint                     `json:"child_id,omitempty" example:"42"`
+	Age             *int                      `json:"age,omitempty" example:"3"`
+	BillTotal       int                       `json:"bill_total" example:"166847"`
+	CalcTotal       *int                      `json:"calculated_total,omitempty" example:"166847"`
+	Difference      *int                      `json:"difference,omitempty" example:"0"`
+	Status          string                    `json:"status" example:"match"` // match|difference|bill_only|calc_only
+	Properties      []FundingComparisonAmount `json:"properties"`
+	BillAppearances []BillAppearance          `json:"bill_appearances,omitempty"`
+	ContractFrom    *string                   `json:"contract_from,omitempty" example:"2024-01-01"`
+	ContractTo      *string                   `json:"contract_to,omitempty" example:"2025-12-31"`
 }
 
 // FundingComparisonResponse is the top-level comparison result.

@@ -382,3 +382,173 @@ func TestGovernmentFundingBillPeriodStore_FindByIDChildrenOrdered(t *testing.T) 
 		}
 	}
 }
+
+func TestGovernmentFundingBillPeriodStore_FindByOrganizationAndVoucherNumber(t *testing.T) {
+	db := setupTestDB(t)
+	s := NewGovernmentFundingBillPeriodStore(db)
+	org := createTestOrganization(t, db, "Test Org")
+	org2 := createTestOrganization(t, db, "Other Org")
+	user := createTestUser(t, db, "Test User", "billvoucher@example.com")
+	ctx := context.Background()
+
+	// Create 3 bill periods for org, child "GB-VOUCHER-01" appears in 2 of them
+	toNov := time.Date(2025, 11, 30, 0, 0, 0, 0, time.UTC)
+	period1 := &models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC), To: &toNov},
+		FileName:       "nov.xlsx", FileSha256: "hash1", FacilityName: "Kita A", CreatedBy: user.ID,
+		Children: []models.GovernmentFundingBillChild{
+			{VoucherNumber: "GB-VOUCHER-01", ChildName: "Kind, Eins", BirthDate: "01.20", District: 1},
+			{VoucherNumber: "GB-VOUCHER-02", ChildName: "Kind, Zwei", BirthDate: "03.21", District: 2},
+		},
+	}
+	toDec := time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC)
+	period2 := &models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: time.Date(2025, 12, 1, 0, 0, 0, 0, time.UTC), To: &toDec},
+		FileName:       "dec.xlsx", FileSha256: "hash2", FacilityName: "Kita A", CreatedBy: user.ID,
+		Children: []models.GovernmentFundingBillChild{
+			{VoucherNumber: "GB-VOUCHER-01", ChildName: "Kind, Eins", BirthDate: "01.20", District: 1},
+		},
+	}
+	toOct := time.Date(2025, 10, 31, 0, 0, 0, 0, time.UTC)
+	period3 := &models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: time.Date(2025, 10, 1, 0, 0, 0, 0, time.UTC), To: &toOct},
+		FileName:       "oct.xlsx", FileSha256: "hash3", FacilityName: "Kita B", CreatedBy: user.ID,
+		Children: []models.GovernmentFundingBillChild{
+			{VoucherNumber: "GB-VOUCHER-02", ChildName: "Kind, Zwei", BirthDate: "03.21", District: 2},
+		},
+	}
+	// Bill in different org with same voucher
+	toNov2 := time.Date(2025, 11, 30, 0, 0, 0, 0, time.UTC)
+	periodOtherOrg := &models.GovernmentFundingBillPeriod{
+		OrganizationID: org2.ID,
+		Period:         models.Period{From: time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC), To: &toNov2},
+		FileName:       "other.xlsx", FileSha256: "hash4", FacilityName: "Kita Other", CreatedBy: user.ID,
+		Children: []models.GovernmentFundingBillChild{
+			{VoucherNumber: "GB-VOUCHER-01", ChildName: "Kind, Eins", BirthDate: "01.20", District: 1},
+		},
+	}
+
+	for _, p := range []*models.GovernmentFundingBillPeriod{period1, period2, period3, periodOtherOrg} {
+		if err := s.Create(ctx, p); err != nil {
+			t.Fatalf("setup: Create() error = %v", err)
+		}
+	}
+
+	t.Run("returns bills containing the voucher", func(t *testing.T) {
+		results, err := s.FindByOrganizationAndVoucherNumber(ctx, org.ID, "GB-VOUCHER-01")
+		if err != nil {
+			t.Fatalf("FindByOrganizationAndVoucherNumber() error = %v", err)
+		}
+		if len(results) != 2 {
+			t.Fatalf("expected 2 appearances, got %d", len(results))
+		}
+		// Should be ordered by from_date ASC
+		if results[0].BillFrom != "2025-11-01" {
+			t.Errorf("expected first bill_from '2025-11-01', got %q", results[0].BillFrom)
+		}
+		if results[1].BillFrom != "2025-12-01" {
+			t.Errorf("expected second bill_from '2025-12-01', got %q", results[1].BillFrom)
+		}
+		if results[0].BillID != period1.ID {
+			t.Errorf("expected first bill_id %d, got %d", period1.ID, results[0].BillID)
+		}
+		if results[1].BillID != period2.ID {
+			t.Errorf("expected second bill_id %d, got %d", period2.ID, results[1].BillID)
+		}
+		if results[0].FacilityName != "Kita A" {
+			t.Errorf("expected facility_name 'Kita A', got %q", results[0].FacilityName)
+		}
+	})
+
+	t.Run("does not return bills from other organizations", func(t *testing.T) {
+		results, err := s.FindByOrganizationAndVoucherNumber(ctx, org.ID, "GB-VOUCHER-01")
+		if err != nil {
+			t.Fatalf("FindByOrganizationAndVoucherNumber() error = %v", err)
+		}
+		for _, r := range results {
+			if r.BillID == periodOtherOrg.ID {
+				t.Errorf("should not include bill from other org (ID %d)", periodOtherOrg.ID)
+			}
+		}
+	})
+
+	t.Run("returns only bills with that specific voucher", func(t *testing.T) {
+		results, err := s.FindByOrganizationAndVoucherNumber(ctx, org.ID, "GB-VOUCHER-02")
+		if err != nil {
+			t.Fatalf("FindByOrganizationAndVoucherNumber() error = %v", err)
+		}
+		if len(results) != 2 {
+			t.Fatalf("expected 2 appearances for VOUCHER-02, got %d", len(results))
+		}
+	})
+
+	t.Run("returns empty for unknown voucher", func(t *testing.T) {
+		results, err := s.FindByOrganizationAndVoucherNumber(ctx, org.ID, "GB-NONEXISTENT-01")
+		if err != nil {
+			t.Fatalf("FindByOrganizationAndVoucherNumber() error = %v", err)
+		}
+		if len(results) != 0 {
+			t.Errorf("expected 0 appearances for unknown voucher, got %d", len(results))
+		}
+	})
+
+	t.Run("returns empty for unknown organization", func(t *testing.T) {
+		results, err := s.FindByOrganizationAndVoucherNumber(ctx, 99999, "GB-VOUCHER-01")
+		if err != nil {
+			t.Fatalf("FindByOrganizationAndVoucherNumber() error = %v", err)
+		}
+		if len(results) != 0 {
+			t.Errorf("expected 0 appearances for unknown org, got %d", len(results))
+		}
+	})
+}
+
+// TestGovernmentFundingBillPeriodStore_FindByOrganizationAndVoucherNumber_DuplicateInSameBill
+// tests the edge case where the same voucher number appears multiple times in a single bill
+// (e.g. correction rows). The JOIN will produce one row per child entry, so the query may
+// return duplicate bill IDs. This test verifies the actual behavior.
+func TestGovernmentFundingBillPeriodStore_FindByOrganizationAndVoucherNumber_DuplicateInSameBill(t *testing.T) {
+	db := setupTestDB(t)
+	s := NewGovernmentFundingBillPeriodStore(db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "Test User", "billdup@example.com")
+	ctx := context.Background()
+
+	// Create a bill where the same voucher appears as two separate child rows
+	// (this can happen with correction entries in ISBJ files)
+	toNov := time.Date(2025, 11, 30, 0, 0, 0, 0, time.UTC)
+	period := &models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC), To: &toNov},
+		FileName:       "dup.xlsx", FileSha256: "duphash", FacilityName: "Kita Dup",
+		CreatedBy: user.ID,
+		Children: []models.GovernmentFundingBillChild{
+			{VoucherNumber: "GB-DUPVOUCHER-01", ChildName: "Dup, Child", BirthDate: "01.20", District: 1,
+				Payments: []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 120000}}},
+			{VoucherNumber: "GB-DUPVOUCHER-01", ChildName: "Dup, Child", BirthDate: "01.20", District: 1,
+				Payments: []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: -50000}}},
+		},
+	}
+	if err := s.Create(ctx, period); err != nil {
+		t.Fatalf("setup: Create() error = %v", err)
+	}
+
+	results, err := s.FindByOrganizationAndVoucherNumber(ctx, org.ID, "GB-DUPVOUCHER-01")
+	if err != nil {
+		t.Fatalf("FindByOrganizationAndVoucherNumber() error = %v", err)
+	}
+
+	// DISTINCT in the query should deduplicate: only 1 result for the 1 bill
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result (deduplicated), got %d", len(results))
+	}
+	if results[0].BillID != period.ID {
+		t.Errorf("expected bill_id %d, got %d", period.ID, results[0].BillID)
+	}
+	if results[0].FacilityName != "Kita Dup" {
+		t.Errorf("expected facility_name 'Kita Dup', got %q", results[0].FacilityName)
+	}
+}

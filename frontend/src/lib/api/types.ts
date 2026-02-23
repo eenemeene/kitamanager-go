@@ -786,6 +786,12 @@ export interface FundingComparisonAmount {
   difference: number;
 }
 
+export interface BillAppearance {
+  bill_id: number;
+  bill_from: string;
+  facility_name: string;
+}
+
 export interface FundingComparisonChild {
   voucher_number: string;
   child_name: string;
@@ -797,6 +803,9 @@ export interface FundingComparisonChild {
   difference?: number;
   status: 'match' | 'difference' | 'bill_only' | 'calc_only';
   properties: FundingComparisonAmount[];
+  bill_appearances?: BillAppearance[];
+  contract_from?: string;
+  contract_to?: string;
 }
 
 export interface FundingComparisonResponse {

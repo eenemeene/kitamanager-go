@@ -227,6 +227,7 @@ type GovernmentFundingBillPeriodStorer interface {
 	Create(ctx context.Context, period *models.GovernmentFundingBillPeriod) error
 	FindByID(ctx context.Context, id uint) (*models.GovernmentFundingBillPeriod, error)
 	FindByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.GovernmentFundingBillPeriod, int64, error)
+	FindByOrganizationAndVoucherNumber(ctx context.Context, orgID uint, voucherNumber string) ([]models.BillAppearance, error)
 	Delete(ctx context.Context, id uint) error
 }
 

@@ -8240,6 +8240,23 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.BillAppearance": {
+            "type": "object",
+            "properties": {
+                "bill_from": {
+                    "type": "string",
+                    "example": "2025-11-01"
+                },
+                "bill_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "facility_name": {
+                    "type": "string",
+                    "example": "Kita Sonnenschein"
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.BudgetItemCreateRequest": {
             "type": "object",
             "required": [
@@ -9357,6 +9374,12 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 3
                 },
+                "bill_appearances": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.BillAppearance"
+                    }
+                },
                 "bill_total": {
                     "type": "integer",
                     "example": 166847
@@ -9376,6 +9399,14 @@ const docTemplate = `{
                 "child_name": {
                     "type": "string",
                     "example": "Mustermann, Max"
+                },
+                "contract_from": {
+                    "type": "string",
+                    "example": "2024-01-01"
+                },
+                "contract_to": {
+                    "type": "string",
+                    "example": "2025-12-31"
                 },
                 "difference": {
                     "type": "integer",

@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -48,6 +49,34 @@ func (s *GovernmentFundingBillPeriodStore) FindByOrganization(ctx context.Contex
 	}
 
 	return periods, total, nil
+}
+
+func (s *GovernmentFundingBillPeriodStore) FindByOrganizationAndVoucherNumber(ctx context.Context, orgID uint, voucherNumber string) ([]models.BillAppearance, error) {
+	type row struct {
+		BillID       uint      `gorm:"column:bill_id"`
+		BillFrom     time.Time `gorm:"column:bill_from"`
+		FacilityName string    `gorm:"column:facility_name"`
+	}
+	var rows []row
+	err := DBFromContext(ctx, s.db).
+		Raw(`SELECT DISTINCT p.id AS bill_id, p.from_date AS bill_from, p.facility_name
+			FROM government_funding_bill_periods p
+			JOIN government_funding_bill_children c ON c.period_id = p.id
+			WHERE p.organization_id = ? AND c.voucher_number = ?
+			ORDER BY p.from_date`, orgID, voucherNumber).
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	results := make([]models.BillAppearance, len(rows))
+	for i, r := range rows {
+		results[i] = models.BillAppearance{
+			BillID:       r.BillID,
+			BillFrom:     r.BillFrom.Format(models.DateFormat),
+			FacilityName: r.FacilityName,
+		}
+	}
+	return results, nil
 }
 
 func (s *GovernmentFundingBillPeriodStore) Delete(ctx context.Context, id uint) error {

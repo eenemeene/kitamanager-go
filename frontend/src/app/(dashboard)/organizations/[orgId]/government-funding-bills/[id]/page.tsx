@@ -517,6 +517,98 @@ export default function GovernmentFundingBillDetailPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* System-Only Children Table */}
+      {comparison &&
+        comparison.calc_only_count > 0 &&
+        (() => {
+          const calcOnlyChildren = comparison.children.filter((c) => c.status === 'calc_only');
+          return (
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  {t('systemOnlyChildren')} ({calcOnlyChildren.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t('childName')}</TableHead>
+                      <TableHead className="hidden md:table-cell">{t('voucherNumber')}</TableHead>
+                      <TableHead className="hidden md:table-cell">{t('age')}</TableHead>
+                      <TableHead className="text-right">{t('calculatedAmount')}</TableHead>
+                      <TableHead className="hidden md:table-cell">{t('contractPeriod')}</TableHead>
+                      <TableHead>{t('billHistory')}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {calcOnlyChildren.map((child) => (
+                      <TableRow key={child.voucher_number || child.child_name}>
+                        <TableCell>
+                          {child.child_id ? (
+                            <Link
+                              href={`/organizations/${orgId}/children/${child.child_id}`}
+                              className="text-primary hover:underline"
+                            >
+                              {child.child_name}
+                            </Link>
+                          ) : (
+                            child.child_name
+                          )}
+                        </TableCell>
+                        <TableCell className="hidden font-mono text-sm md:table-cell">
+                          {child.voucher_number || '\u2014'}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {child.age != null ? child.age : '\u2014'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {child.calculated_total != null
+                            ? formatCurrency(child.calculated_total)
+                            : '\u2014'}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {child.contract_from
+                            ? `${new Date(child.contract_from).toLocaleDateString('de-DE')} \u2014 ${
+                                child.contract_to
+                                  ? new Date(child.contract_to).toLocaleDateString('de-DE')
+                                  : t('ongoing')
+                              }`
+                            : '\u2014'}
+                        </TableCell>
+                        <TableCell>
+                          {child.bill_appearances && child.bill_appearances.length > 0 ? (
+                            <span className="text-sm">
+                              {child.bill_appearances.map((a, i) => (
+                                <span key={a.bill_id}>
+                                  {i > 0 && ', '}
+                                  <Link
+                                    href={`/organizations/${orgId}/government-funding-bills/${a.bill_id}`}
+                                    className="text-primary hover:underline"
+                                  >
+                                    {new Date(a.bill_from).toLocaleDateString('de-DE', {
+                                      month: 'short',
+                                      year: '2-digit',
+                                    })}
+                                  </Link>
+                                </span>
+                              ))}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">
+                              {t('neverInBill')}
+                            </span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          );
+        })()}
     </div>
   );
 }

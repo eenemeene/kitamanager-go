@@ -707,7 +707,13 @@
     "matchCount": "Match",
     "differenceCount": "Differences",
     "billOnlyCount": "Bill Only",
-    "calcOnlyCount": "System Only"
+    "calcOnlyCount": "System Only",
+    "age": "Age",
+    "systemOnlyChildren": "System Only Children",
+    "contractPeriod": "Contract Period",
+    "billHistory": "Bill History",
+    "ongoing": "ongoing",
+    "neverInBill": "Never in a bill"
   },
   "sectionAgeAlerts": {
     "title": "Children Over Section Age Limit",

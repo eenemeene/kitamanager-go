@@ -2254,6 +2254,444 @@ func TestProcessISBJ(t *testing.T) {
 	}
 }
 
+// TestGovernmentFundingBillService_Compare_CalcOnlyEnrichment_MixedChildren tests enrichment
+// when multiple calc_only children coexist with different states: one with voucher + bill history,
+// one with voucher + no history, one without voucher. Verifies no state leakage between children
+// and that each child gets independently correct enrichment.
+func TestGovernmentFundingBillService_Compare_CalcOnlyEnrichment_MixedChildren(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "compare_mixed_calc@example.com", "password")
+	ctx := context.Background()
+
+	setupFundingRates(t, db)
+
+	// Child A: has voucher, appeared in an older bill
+	voucherA := "GB-MIXCALC-AAA-01"
+	createChildWithVoucherAndContract(t, db, "ChildA", "WithHistory", org.ID,
+		voucherA, time.Date(2021, 5, 1, 0, 0, 0, 0, time.UTC),
+		models.ContractProperties{"care_type": "ganztag"})
+
+	toOct := time.Date(2025, 10, 31, 0, 0, 0, 0, time.UTC)
+	olderBill := &models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: time.Date(2025, 10, 1, 0, 0, 0, 0, time.UTC), To: &toOct},
+		FileName:       "oct.xlsx", FileSha256: "mixhash1", FacilityName: "Kita Oktober",
+		CreatedBy: user.ID,
+		Children: []models.GovernmentFundingBillChild{
+			{VoucherNumber: voucherA, ChildName: "WithHistory, ChildA", BirthDate: "05.21", District: 1,
+				Payments: []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 120000}}},
+		},
+	}
+	if err := db.Create(olderBill).Error; err != nil {
+		t.Fatalf("setup: create older bill error = %v", err)
+	}
+
+	// Child B: has voucher, never appeared in any bill, contract with end date
+	childB := &models.Child{
+		Person: models.Person{
+			OrganizationID: org.ID,
+			FirstName:      "ChildB",
+			LastName:       "NoHistory",
+			Birthdate:      time.Date(2023, 3, 15, 0, 0, 0, 0, time.UTC), // age 2 (U3)
+		},
+	}
+	if err := db.Create(childB).Error; err != nil {
+		t.Fatalf("setup: create childB error = %v", err)
+	}
+	section := getDefaultSection(t, db, org.ID)
+	voucherB := "GB-MIXCALC-BBB-01"
+	contractBTo := time.Date(2026, 3, 31, 0, 0, 0, 0, time.UTC)
+	contractB := &models.ChildContract{
+		ChildID:       childB.ID,
+		VoucherNumber: &voucherB,
+		BaseContract: models.BaseContract{
+			Period:     models.Period{From: time.Date(2025, 4, 1, 0, 0, 0, 0, time.UTC), To: &contractBTo},
+			SectionID:  section.ID,
+			Properties: models.ContractProperties{"care_type": "ganztag"},
+		},
+	}
+	if err := db.Create(contractB).Error; err != nil {
+		t.Fatalf("setup: create contractB error = %v", err)
+	}
+
+	// Child C: no voucher number at all
+	childC := &models.Child{
+		Person: models.Person{
+			OrganizationID: org.ID,
+			FirstName:      "ChildC",
+			LastName:       "NoVoucher",
+			Birthdate:      time.Date(2020, 7, 1, 0, 0, 0, 0, time.UTC),
+		},
+	}
+	if err := db.Create(childC).Error; err != nil {
+		t.Fatalf("setup: create childC error = %v", err)
+	}
+	contractC := &models.ChildContract{
+		ChildID:       childC.ID,
+		VoucherNumber: nil,
+		BaseContract: models.BaseContract{
+			Period:     models.Period{From: time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)},
+			SectionID:  section.ID,
+			Properties: models.ContractProperties{"care_type": "halbtag"},
+		},
+	}
+	if err := db.Create(contractC).Error; err != nil {
+		t.Fatalf("setup: create contractC error = %v", err)
+	}
+
+	// Empty bill — all three children are calc_only
+	period := createBillPeriodForCompare(t, db, org.ID, user.ID, nil)
+
+	result, err := svc.Compare(ctx, period.ID, org.ID)
+	if err != nil {
+		t.Fatalf("Compare() error = %v", err)
+	}
+
+	if result.CalcOnlyCount != 3 {
+		t.Fatalf("expected 3 calc_only children, got %d", result.CalcOnlyCount)
+	}
+
+	// Build map by child name for stable assertions
+	byName := make(map[string]models.FundingComparisonChild)
+	for _, c := range result.Children {
+		byName[c.ChildName] = c
+	}
+
+	// Child A: has history, open-ended contract
+	a := byName["WithHistory, ChildA"]
+	if a.Status != "calc_only" {
+		t.Errorf("ChildA: expected status calc_only, got %q", a.Status)
+	}
+	if len(a.BillAppearances) != 1 {
+		t.Errorf("ChildA: expected 1 bill appearance, got %d", len(a.BillAppearances))
+	} else if a.BillAppearances[0].FacilityName != "Kita Oktober" {
+		t.Errorf("ChildA: expected facility 'Kita Oktober', got %q", a.BillAppearances[0].FacilityName)
+	}
+	if a.ContractFrom == nil || *a.ContractFrom != "2024-01-01" {
+		t.Errorf("ChildA: expected contract_from '2024-01-01', got %v", a.ContractFrom)
+	}
+	if a.ContractTo != nil {
+		t.Errorf("ChildA: expected nil contract_to (open-ended), got %v", a.ContractTo)
+	}
+
+	// Child B: no history, contract with end date, U3 age
+	b := byName["NoHistory, ChildB"]
+	if len(b.BillAppearances) != 0 {
+		t.Errorf("ChildB: expected 0 bill appearances, got %d", len(b.BillAppearances))
+	}
+	if b.ContractFrom == nil || *b.ContractFrom != "2025-04-01" {
+		t.Errorf("ChildB: expected contract_from '2025-04-01', got %v", b.ContractFrom)
+	}
+	if b.ContractTo == nil || *b.ContractTo != "2026-03-31" {
+		t.Errorf("ChildB: expected contract_to '2026-03-31', got %v", b.ContractTo)
+	}
+	// U3 ganztag = 150000
+	if b.CalcTotal == nil || *b.CalcTotal != 150000 {
+		t.Errorf("ChildB: expected calc_total 150000 (U3), got %v", b.CalcTotal)
+	}
+
+	// Child C: no voucher, appearances should be nil (skipped), contract dates still set
+	c := byName["NoVoucher, ChildC"]
+	if c.BillAppearances != nil {
+		t.Errorf("ChildC: expected nil bill_appearances (no voucher), got %v", c.BillAppearances)
+	}
+	if c.ContractFrom == nil || *c.ContractFrom != "2024-06-01" {
+		t.Errorf("ChildC: expected contract_from '2024-06-01', got %v", c.ContractFrom)
+	}
+	if c.ContractTo != nil {
+		t.Errorf("ChildC: expected nil contract_to (open-ended), got %v", c.ContractTo)
+	}
+	// halbtag all ages = 80000
+	if c.CalcTotal == nil || *c.CalcTotal != 80000 {
+		t.Errorf("ChildC: expected calc_total 80000 (halbtag), got %v", c.CalcTotal)
+	}
+}
+
+// TestGovernmentFundingBillService_Compare_CalcOnlyEnrichment_CrossTenancy verifies that
+// bill appearances are org-scoped: when the same voucher exists in bills for two different orgs,
+// only the current org's bills appear in the history.
+func TestGovernmentFundingBillService_Compare_CalcOnlyEnrichment_CrossTenancy(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	orgA := createTestOrganization(t, db, "Org A")
+	orgB := createTestOrganization(t, db, "Org B")
+	user := createTestUser(t, db, "User", "compare_cross_tenant@example.com", "password")
+	ctx := context.Background()
+
+	setupFundingRates(t, db)
+
+	voucher := "GB-CROSSTENANT-01"
+
+	// Same voucher in both orgs
+	createChildWithVoucherAndContract(t, db, "Shared", "Voucher", orgA.ID,
+		voucher, time.Date(2021, 5, 1, 0, 0, 0, 0, time.UTC),
+		models.ContractProperties{"care_type": "ganztag"})
+
+	createChildWithVoucherAndContract(t, db, "Shared", "Voucher", orgB.ID,
+		voucher, time.Date(2021, 5, 1, 0, 0, 0, 0, time.UTC),
+		models.ContractProperties{"care_type": "ganztag"})
+
+	// Create older bills with same voucher in BOTH orgs
+	toOct := time.Date(2025, 10, 31, 0, 0, 0, 0, time.UTC)
+	billOrgA := &models.GovernmentFundingBillPeriod{
+		OrganizationID: orgA.ID,
+		Period:         models.Period{From: time.Date(2025, 10, 1, 0, 0, 0, 0, time.UTC), To: &toOct},
+		FileName:       "orgA_oct.xlsx", FileSha256: "hashA", FacilityName: "Kita A",
+		CreatedBy: user.ID,
+		Children: []models.GovernmentFundingBillChild{
+			{VoucherNumber: voucher, ChildName: "Voucher, Shared", BirthDate: "05.21", District: 1,
+				Payments: []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 120000}}},
+		},
+	}
+	billOrgB := &models.GovernmentFundingBillPeriod{
+		OrganizationID: orgB.ID,
+		Period:         models.Period{From: time.Date(2025, 10, 1, 0, 0, 0, 0, time.UTC), To: &toOct},
+		FileName:       "orgB_oct.xlsx", FileSha256: "hashB", FacilityName: "Kita B",
+		CreatedBy: user.ID,
+		Children: []models.GovernmentFundingBillChild{
+			{VoucherNumber: voucher, ChildName: "Voucher, Shared", BirthDate: "05.21", District: 1,
+				Payments: []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 120000}}},
+		},
+	}
+	for _, p := range []*models.GovernmentFundingBillPeriod{billOrgA, billOrgB} {
+		if err := db.Create(p).Error; err != nil {
+			t.Fatalf("setup: create bill error = %v", err)
+		}
+	}
+
+	// Current empty bill for orgA — child is calc_only
+	currentBill := createBillPeriodForCompare(t, db, orgA.ID, user.ID, nil)
+
+	result, err := svc.Compare(ctx, currentBill.ID, orgA.ID)
+	if err != nil {
+		t.Fatalf("Compare() error = %v", err)
+	}
+
+	if result.CalcOnlyCount != 1 {
+		t.Fatalf("expected 1 calc_only, got %d", result.CalcOnlyCount)
+	}
+
+	child := result.Children[0]
+	// Should only see orgA's bill, NOT orgB's
+	if len(child.BillAppearances) != 1 {
+		t.Fatalf("expected 1 bill appearance (orgA only), got %d", len(child.BillAppearances))
+	}
+	if child.BillAppearances[0].FacilityName != "Kita A" {
+		t.Errorf("expected facility 'Kita A' (orgA), got %q", child.BillAppearances[0].FacilityName)
+	}
+}
+
+// TestGovernmentFundingBillService_Compare_CalcOnlyEnrichment_ChildWasMatchedBefore tests the
+// real-world scenario: a child was matched (present) in previous bills but dropped from the
+// current bill. The child should be calc_only with bill history showing the previous appearances.
+func TestGovernmentFundingBillService_Compare_CalcOnlyEnrichment_ChildWasMatchedBefore(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "compare_was_matched@example.com", "password")
+	ctx := context.Background()
+
+	setupFundingRates(t, db)
+
+	voucher := "GB-WASMATCHED-01"
+	createChildWithVoucherAndContract(t, db, "Was", "Matched", org.ID,
+		voucher, time.Date(2021, 5, 1, 0, 0, 0, 0, time.UTC),
+		models.ContractProperties{"care_type": "ganztag", "ndh": "ndh"})
+
+	// Create 3 consecutive monthly bills where this child was present
+	months := []struct {
+		from     time.Time
+		to       time.Time
+		facility string
+	}{
+		{time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC), time.Date(2025, 8, 31, 0, 0, 0, 0, time.UTC), "Kita Aug"},
+		{time.Date(2025, 9, 1, 0, 0, 0, 0, time.UTC), time.Date(2025, 9, 30, 0, 0, 0, 0, time.UTC), "Kita Sep"},
+		{time.Date(2025, 10, 1, 0, 0, 0, 0, time.UTC), time.Date(2025, 10, 31, 0, 0, 0, 0, time.UTC), "Kita Oct"},
+	}
+	for _, m := range months {
+		to := m.to
+		bill := &models.GovernmentFundingBillPeriod{
+			OrganizationID: org.ID,
+			Period:         models.Period{From: m.from, To: &to},
+			FileName:       m.facility + ".xlsx", FileSha256: "hash_" + m.facility, FacilityName: m.facility,
+			CreatedBy: user.ID,
+			Children: []models.GovernmentFundingBillChild{
+				{VoucherNumber: voucher, ChildName: "Matched, Was", BirthDate: "05.21", District: 1,
+					Payments: []models.GovernmentFundingBillPayment{
+						{Key: "care_type", Value: "ganztag", Amount: 120000},
+						{Key: "ndh", Value: "ndh", Amount: 8000},
+					}},
+			},
+		}
+		if err := db.Create(bill).Error; err != nil {
+			t.Fatalf("setup: create bill error = %v", err)
+		}
+	}
+
+	// Current bill (November) — child was DROPPED (empty bill)
+	currentBill := createBillPeriodForCompare(t, db, org.ID, user.ID, nil)
+
+	result, err := svc.Compare(ctx, currentBill.ID, org.ID)
+	if err != nil {
+		t.Fatalf("Compare() error = %v", err)
+	}
+
+	if result.CalcOnlyCount != 1 {
+		t.Fatalf("expected 1 calc_only child, got %d", result.CalcOnlyCount)
+	}
+
+	child := result.Children[0]
+	if child.Status != "calc_only" {
+		t.Fatalf("expected status 'calc_only', got %q", child.Status)
+	}
+
+	// Bill appearances should show all 3 previous months, not the current one
+	if len(child.BillAppearances) != 3 {
+		t.Fatalf("expected 3 bill appearances, got %d", len(child.BillAppearances))
+	}
+	expectedDates := []string{"2025-08-01", "2025-09-01", "2025-10-01"}
+	expectedFacilities := []string{"Kita Aug", "Kita Sep", "Kita Oct"}
+	for i, a := range child.BillAppearances {
+		if a.BillFrom != expectedDates[i] {
+			t.Errorf("appearance[%d]: expected date %q, got %q", i, expectedDates[i], a.BillFrom)
+		}
+		if a.FacilityName != expectedFacilities[i] {
+			t.Errorf("appearance[%d]: expected facility %q, got %q", i, expectedFacilities[i], a.FacilityName)
+		}
+	}
+
+	// Calc total: ganztag (120000) + ndh (8000) = 128000
+	if child.CalcTotal == nil || *child.CalcTotal != 128000 {
+		t.Errorf("expected calc_total 128000, got %v", child.CalcTotal)
+	}
+	if child.ContractFrom == nil || *child.ContractFrom != "2024-01-01" {
+		t.Errorf("expected contract_from '2024-01-01', got %v", child.ContractFrom)
+	}
+}
+
+// TestGovernmentFundingBillService_Compare_FullMixedEnrichmentScope verifies that enrichment
+// fields (bill_appearances, contract_from, contract_to) are ONLY set on calc_only children
+// and NOT on match, difference, or bill_only children — even when those other children
+// have extensive bill history.
+func TestGovernmentFundingBillService_Compare_FullMixedEnrichmentScope(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "compare_full_mixed@example.com", "password")
+	ctx := context.Background()
+
+	setupFundingRates(t, db)
+
+	// Matched child — in bill + system
+	createChildWithVoucherAndContract(t, db, "Matched", "Child", org.ID,
+		"GB-FMIX-MATCH-01", time.Date(2021, 5, 1, 0, 0, 0, 0, time.UTC),
+		models.ContractProperties{"care_type": "ganztag"})
+
+	// Difference child — in bill with wrong amount
+	createChildWithVoucherAndContract(t, db, "Diff", "Child", org.ID,
+		"GB-FMIX-DIFF-01", time.Date(2021, 5, 1, 0, 0, 0, 0, time.UTC),
+		models.ContractProperties{"care_type": "ganztag"})
+
+	// Calc-only child — in system only, with voucher and bill history
+	voucherCalc := "GB-FMIX-CALC-01"
+	createChildWithVoucherAndContract(t, db, "CalcOnly", "Child", org.ID,
+		voucherCalc, time.Date(2021, 5, 1, 0, 0, 0, 0, time.UTC),
+		models.ContractProperties{"care_type": "ganztag"})
+
+	// Create older bill with the calc_only child AND the matched child (to ensure
+	// the matched child having history doesn't bleed into its enrichment fields)
+	toOct := time.Date(2025, 10, 31, 0, 0, 0, 0, time.UTC)
+	olderBill := &models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: time.Date(2025, 10, 1, 0, 0, 0, 0, time.UTC), To: &toOct},
+		FileName:       "older.xlsx", FileSha256: "olderhash", FacilityName: "Kita Older",
+		CreatedBy: user.ID,
+		Children: []models.GovernmentFundingBillChild{
+			{VoucherNumber: voucherCalc, ChildName: "Child, CalcOnly", BirthDate: "05.21", District: 1,
+				Payments: []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 120000}}},
+			{VoucherNumber: "GB-FMIX-MATCH-01", ChildName: "Child, Matched", BirthDate: "05.21", District: 1,
+				Payments: []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 120000}}},
+		},
+	}
+	if err := db.Create(olderBill).Error; err != nil {
+		t.Fatalf("setup: create older bill error = %v", err)
+	}
+
+	// Current bill: matched + difference + bill_only (no calc_only child)
+	period := createBillPeriodForCompare(t, db, org.ID, user.ID, []models.GovernmentFundingBillChild{
+		{VoucherNumber: "GB-FMIX-MATCH-01", ChildName: "Child, Matched", BirthDate: "05.21", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 120000}}},
+		{VoucherNumber: "GB-FMIX-DIFF-01", ChildName: "Child, Diff", BirthDate: "05.21", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 999999}}},
+		{VoucherNumber: "GB-FMIX-BILLONLY-01", ChildName: "BillOnly, Child", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 110000}}},
+	})
+
+	result, err := svc.Compare(ctx, period.ID, org.ID)
+	if err != nil {
+		t.Fatalf("Compare() error = %v", err)
+	}
+
+	if result.ChildrenCount != 4 {
+		t.Fatalf("expected 4 children, got %d", result.ChildrenCount)
+	}
+
+	byStatus := make(map[string][]models.FundingComparisonChild)
+	for _, c := range result.Children {
+		byStatus[c.Status] = append(byStatus[c.Status], c)
+	}
+
+	// Matched child: NO enrichment
+	matched := byStatus["match"]
+	if len(matched) != 1 {
+		t.Fatalf("expected 1 match, got %d", len(matched))
+	}
+	if matched[0].BillAppearances != nil {
+		t.Errorf("matched child should have nil bill_appearances, got %v", matched[0].BillAppearances)
+	}
+	if matched[0].ContractFrom != nil {
+		t.Errorf("matched child should have nil contract_from, got %v", matched[0].ContractFrom)
+	}
+
+	// Difference child: NO enrichment
+	diff := byStatus["difference"]
+	if len(diff) != 1 {
+		t.Fatalf("expected 1 difference, got %d", len(diff))
+	}
+	if diff[0].BillAppearances != nil {
+		t.Errorf("difference child should have nil bill_appearances, got %v", diff[0].BillAppearances)
+	}
+	if diff[0].ContractFrom != nil {
+		t.Errorf("difference child should have nil contract_from, got %v", diff[0].ContractFrom)
+	}
+
+	// Bill-only child: NO enrichment
+	billOnly := byStatus["bill_only"]
+	if len(billOnly) != 1 {
+		t.Fatalf("expected 1 bill_only, got %d", len(billOnly))
+	}
+	if billOnly[0].BillAppearances != nil {
+		t.Errorf("bill_only child should have nil bill_appearances, got %v", billOnly[0].BillAppearances)
+	}
+	if billOnly[0].ContractFrom != nil {
+		t.Errorf("bill_only child should have nil contract_from, got %v", billOnly[0].ContractFrom)
+	}
+
+	// Calc-only child: HAS enrichment
+	calcOnly := byStatus["calc_only"]
+	if len(calcOnly) != 1 {
+		t.Fatalf("expected 1 calc_only, got %d", len(calcOnly))
+	}
+	if len(calcOnly[0].BillAppearances) != 1 {
+		t.Errorf("calc_only child should have 1 bill appearance, got %d", len(calcOnly[0].BillAppearances))
+	}
+	if calcOnly[0].ContractFrom == nil {
+		t.Error("calc_only child should have contract_from set")
+	}
+}
+
 func TestProcessISBJ_InvalidExcel(t *testing.T) {
 	db := setupTestDB(t)
 	svc := setupBillCompareService(t, db)

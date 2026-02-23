@@ -39,6 +39,18 @@ definitions:
         example: 50
         type: integer
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.BillAppearance:
+    properties:
+      bill_from:
+        example: "2025-11-01"
+        type: string
+      bill_id:
+        example: 1
+        type: integer
+      facility_name:
+        example: Kita Sonnenschein
+        type: string
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.BudgetItemCreateRequest:
     properties:
       category:
@@ -850,6 +862,10 @@ definitions:
       age:
         example: 3
         type: integer
+      bill_appearances:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.BillAppearance'
+        type: array
       bill_total:
         example: 166847
         type: integer
@@ -864,6 +880,12 @@ definitions:
         type: integer
       child_name:
         example: Mustermann, Max
+        type: string
+      contract_from:
+        example: "2024-01-01"
+        type: string
+      contract_to:
+        example: "2025-12-31"
         type: string
       difference:
         example: 0
