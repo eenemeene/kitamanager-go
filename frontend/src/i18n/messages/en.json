@@ -40,6 +40,7 @@
     "created": "Created",
     "add": "Add",
     "remove": "Remove",
+    "years": "years",
     "organization": "Organization",
     "comment": "Comment",
     "unknown": "Unknown",
@@ -467,8 +468,7 @@
     "noPropertiesDefined": "No properties defined. Click + to add one.",
     "noPeriodsDefined": "No periods defined. Click \"Add Period\" to get started.",
     "showAllPeriods": "Show all {count} periods",
-    "fullTimeWeeklyHours": "Full-Time Weekly Hours",
-    "years": "years"
+    "fullTimeWeeklyHours": "Full-Time Weekly Hours"
   },
   "sections": {
     "title": "Sections",
@@ -649,15 +649,15 @@
     "nextWeek": "Next week"
   },
   "fundingLabels": {
-    "care_type.ganztag erweitert": "Extended Full-Time (>9h)",
-    "care_type.ganztag": "Full-Time (up to 9h)",
-    "care_type.teilzeit": "Part-Time (up to 7h)",
-    "care_type.halbtag": "Half-Day (up to 5h)",
-    "integration.integration a": "Integration A",
-    "integration.integration b": "Integration B",
-    "ndh.ndh": "NdH",
-    "qm/mss.qm/mss": "QM/MSS",
-    "parent_value_meal.parent_value_meal": "Parent Value Meal"
+    "care_type--ganztag erweitert": "Extended Full-Time (>9h)",
+    "care_type--ganztag": "Full-Time (up to 9h)",
+    "care_type--teilzeit": "Part-Time (up to 7h)",
+    "care_type--halbtag": "Half-Day (up to 5h)",
+    "integration--integration a": "Integration A",
+    "integration--integration b": "Integration B",
+    "ndh--ndh": "NdH",
+    "qm/mss--qm/mss": "QM/MSS",
+    "parent_value_meal--parent_value_meal": "Parent Value Meal"
   },
   "governmentFundingBills": {
     "title": "Government Funding Bills",

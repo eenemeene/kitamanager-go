@@ -40,6 +40,7 @@
     "created": "Erstellt",
     "add": "Hinzufügen",
     "remove": "Entfernen",
+    "years": "Jahre",
     "organization": "Organisation",
     "comment": "Kommentar",
     "unknown": "Unbekannt",
@@ -467,8 +468,7 @@
     "noPropertiesDefined": "Keine Eigenschaften definiert. Klicken Sie auf +, um eine hinzuzufügen.",
     "noPeriodsDefined": "Keine Zeiträume definiert. Klicken Sie auf \"Zeitraum hinzufügen\", um zu beginnen.",
     "showAllPeriods": "Alle {count} Zeiträume anzeigen",
-    "fullTimeWeeklyHours": "Vollzeit-Wochenstunden",
-    "years": "Jahre"
+    "fullTimeWeeklyHours": "Vollzeit-Wochenstunden"
   },
   "sections": {
     "title": "Bereiche",
@@ -649,15 +649,15 @@
     "nextWeek": "Nächste Woche"
   },
   "fundingLabels": {
-    "care_type.ganztag erweitert": "Ganztag Erweitert (>9h)",
-    "care_type.ganztag": "Ganztag (bis 9h)",
-    "care_type.teilzeit": "Teilzeit (bis 7h)",
-    "care_type.halbtag": "Halbtag (bis 5h)",
-    "integration.integration a": "Integration A",
-    "integration.integration b": "Integration B",
-    "ndh.ndh": "NdH",
-    "qm/mss.qm/mss": "QM/MSS",
-    "parent_value_meal.parent_value_meal": "Elternwertessen"
+    "care_type--ganztag erweitert": "Ganztag Erweitert (>9h)",
+    "care_type--ganztag": "Ganztag (bis 9h)",
+    "care_type--teilzeit": "Teilzeit (bis 7h)",
+    "care_type--halbtag": "Halbtag (bis 5h)",
+    "integration--integration a": "Integration A",
+    "integration--integration b": "Integration B",
+    "ndh--ndh": "NdH",
+    "qm/mss--qm/mss": "QM/MSS",
+    "parent_value_meal--parent_value_meal": "Elternwertessen"
   },
   "governmentFundingBills": {
     "title": "Senatsabrechnungen",
