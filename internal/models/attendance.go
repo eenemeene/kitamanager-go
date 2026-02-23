@@ -21,6 +21,11 @@ type ChildAttendance struct {
 	UpdatedAt      time.Time     `json:"updated_at"`
 }
 
+// GetOrganizationID returns the organization ID for the OrgOwned interface.
+func (a ChildAttendance) GetOrganizationID() uint {
+	return a.OrganizationID
+}
+
 // Child attendance statuses
 const (
 	ChildAttendanceStatusPresent  = "present"

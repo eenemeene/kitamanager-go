@@ -25,6 +25,17 @@ func NewChildAttendanceService(store store.ChildAttendanceStorer, childStore sto
 	}
 }
 
+// verifyAttendanceOwnership checks that an attendance record belongs to the expected org and child.
+func verifyAttendanceOwnership(attendance *models.ChildAttendance, orgID, childID uint) error {
+	if err := verifyOrgOwnership(attendance, orgID, "attendance record"); err != nil {
+		return err
+	}
+	if attendance.ChildID != childID {
+		return apperror.NotFound("attendance record")
+	}
+	return nil
+}
+
 // Create creates an attendance record for a child.
 // For status "present": date defaults to today, check_in_time defaults to now.
 // For status "absent", "sick", "vacation": date is required, check_in_time is ignored.
@@ -34,8 +45,8 @@ func (s *ChildAttendanceService) Create(ctx context.Context, orgID, childID uint
 	if err != nil {
 		return nil, classifyStoreError(err, "child")
 	}
-	if child.OrganizationID != orgID {
-		return nil, apperror.NotFound("child")
+	if err := verifyOrgOwnership(child, orgID, "child"); err != nil {
+		return nil, err
 	}
 
 	if !models.IsValidChildAttendanceStatus(req.Status) {
@@ -111,11 +122,8 @@ func (s *ChildAttendanceService) GetByID(ctx context.Context, id, orgID, childID
 	if err != nil {
 		return nil, classifyStoreError(err, "attendance record")
 	}
-	if attendance.OrganizationID != orgID {
-		return nil, apperror.NotFound("attendance record")
-	}
-	if attendance.ChildID != childID {
-		return nil, apperror.NotFound("attendance record")
+	if err := verifyAttendanceOwnership(attendance, orgID, childID); err != nil {
+		return nil, err
 	}
 
 	resp := attendance.ToResponse()
@@ -132,11 +140,8 @@ func (s *ChildAttendanceService) Update(ctx context.Context, id, orgID, childID 
 	if err != nil {
 		return nil, classifyStoreError(err, "attendance record")
 	}
-	if attendance.OrganizationID != orgID {
-		return nil, apperror.NotFound("attendance record")
-	}
-	if attendance.ChildID != childID {
-		return nil, apperror.NotFound("attendance record")
+	if err := verifyAttendanceOwnership(attendance, orgID, childID); err != nil {
+		return nil, err
 	}
 
 	if req.CheckInTime != nil {
@@ -189,11 +194,8 @@ func (s *ChildAttendanceService) Delete(ctx context.Context, id, orgID, childID 
 	if err != nil {
 		return classifyStoreError(err, "attendance record")
 	}
-	if attendance.OrganizationID != orgID {
-		return apperror.NotFound("attendance record")
-	}
-	if attendance.ChildID != childID {
-		return apperror.NotFound("attendance record")
+	if err := verifyAttendanceOwnership(attendance, orgID, childID); err != nil {
+		return err
 	}
 
 	if err := s.store.Delete(ctx, id); err != nil {
@@ -209,8 +211,8 @@ func (s *ChildAttendanceService) ListByChild(ctx context.Context, childID, orgID
 	if err != nil {
 		return nil, 0, classifyStoreError(err, "child")
 	}
-	if child.OrganizationID != orgID {
-		return nil, 0, apperror.NotFound("child")
+	if err := verifyOrgOwnership(child, orgID, "child"); err != nil {
+		return nil, 0, err
 	}
 
 	records, total, err := s.store.FindByChildAndDateRange(ctx, childID, from, to, limit, offset)
