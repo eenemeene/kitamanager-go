@@ -57,6 +57,7 @@ export interface GovernmentFundingProperty {
   min_age?: number | null;
   max_age?: number | null;
   comment?: string;
+  apply_to_all_contracts?: boolean;
   created_at: string;
 }
 
@@ -92,6 +93,7 @@ export interface GovernmentFundingPropertyCreateRequest {
   min_age?: number | null;
   max_age?: number | null;
   comment?: string;
+  apply_to_all_contracts?: boolean;
 }
 
 export interface GovernmentFundingPropertyUpdateRequest {
@@ -103,6 +105,7 @@ export interface GovernmentFundingPropertyUpdateRequest {
   min_age?: number | null;
   max_age?: number | null;
   comment?: string;
+  apply_to_all_contracts?: boolean;
 }
 
 // Organization

@@ -34,6 +34,7 @@
       label: Parent Value Meal
       payment: 23.0
       requirement: 0
+      apply_to_all_contracts: true
   - age:
     - 0
     - 1
@@ -142,6 +143,7 @@
       label: Parent Value Meal
       payment: 23.0
       requirement: 0
+      apply_to_all_contracts: true
   - age:
     - 0
     - 1
@@ -251,6 +253,7 @@
       label: Parent Value Meal
       payment: 23.0
       requirement: 0
+      apply_to_all_contracts: true
   - age:
     - 0
     - 1
@@ -360,6 +363,7 @@
       label: Parent Value Meal
       payment: 23.0
       requirement: 0
+      apply_to_all_contracts: true
   - age:
     - 0
     - 1
@@ -469,6 +473,7 @@
       label: Parent Value Meal
       payment: 23.0
       requirement: 0
+      apply_to_all_contracts: true
   - age:
     - 0
     - 1
@@ -578,6 +583,7 @@
       label: Parent Value Meal
       payment: 23.0
       requirement: 0
+      apply_to_all_contracts: true
   - age:
     - 0
     - 1
@@ -687,6 +693,7 @@
       label: Parent Value Meal
       payment: 23.0
       requirement: 0
+      apply_to_all_contracts: true
   - age:
     - 0
     - 1
@@ -799,6 +806,7 @@
       label: Parent Value Meal
       payment: 23.0
       requirement: 0
+      apply_to_all_contracts: true
   - age:
     - 0
     - 1
@@ -904,6 +912,7 @@
       label: Parent Value Meal
       payment: 23.0
       requirement: 0
+      apply_to_all_contracts: true
   - age:
     - 0
     - 1
@@ -1009,6 +1018,7 @@
       label: Parent Value Meal
       payment: 23.0
       requirement: 0
+      apply_to_all_contracts: true
   - age:
     - 0
     - 1
@@ -1114,6 +1124,7 @@
       label: Parent Value Meal
       payment: 23.0
       requirement: 0
+      apply_to_all_contracts: true
   - age:
     - 0
     - 1
@@ -1219,6 +1230,7 @@
       label: Parent Value Meal
       payment: 23.0
       requirement: 0
+      apply_to_all_contracts: true
   - age:
     - 0
     - 1
@@ -1324,6 +1336,7 @@
       label: Parent Value Meal
       payment: 23.0
       requirement: 0
+      apply_to_all_contracts: true
   - age:
     - 0
     - 1

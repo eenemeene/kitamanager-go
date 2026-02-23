@@ -155,15 +155,16 @@ func (i *GovernmentFundingImporter) importPropertiesFromEntry(tx *gorm.DB, perio
 			label = formatLabel(yamlProp.Value)
 		}
 		property := &models.GovernmentFundingProperty{
-			PeriodID:    periodID,
-			Key:         strings.TrimSpace(yamlProp.Key),
-			Value:       strings.TrimSpace(yamlProp.Value),
-			Label:       label,
-			Payment:     euroToCents(yamlProp.Payment),
-			Requirement: yamlProp.Requirement,
-			MinAge:      &minAge,
-			MaxAge:      &maxAge,
-			Comment:     yamlProp.Comment,
+			PeriodID:            periodID,
+			Key:                 strings.TrimSpace(yamlProp.Key),
+			Value:               strings.TrimSpace(yamlProp.Value),
+			Label:               label,
+			Payment:             euroToCents(yamlProp.Payment),
+			Requirement:         yamlProp.Requirement,
+			MinAge:              &minAge,
+			MaxAge:              &maxAge,
+			Comment:             yamlProp.Comment,
+			ApplyToAllContracts: yamlProp.ApplyToAllContracts,
 		}
 
 		if err := tx.Create(property).Error; err != nil {

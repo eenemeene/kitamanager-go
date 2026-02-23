@@ -1,0 +1,1 @@
+ALTER TABLE government_funding_properties DROP COLUMN apply_to_all_contracts;

@@ -123,6 +123,25 @@ func (p ContractProperties) valueMatches(val interface{}, target string) bool {
 	return false
 }
 
+// MergeDefaults merges default properties into the contract properties.
+// Properties already set on the contract take precedence — defaults never overwrite.
+// This is used to auto-apply funding properties marked with ApplyToAllContracts.
+func (p ContractProperties) MergeDefaults(defaults ContractProperties) ContractProperties {
+	if len(defaults) == 0 {
+		return p
+	}
+	merged := p
+	if merged == nil {
+		merged = make(ContractProperties, len(defaults))
+	}
+	for key, val := range defaults {
+		if _, exists := merged[key]; !exists {
+			merged[key] = val
+		}
+	}
+	return merged
+}
+
 // GetAllValues returns all values for a property as a string slice.
 // For scalar properties, returns a slice with one element.
 // For array properties, returns all elements.

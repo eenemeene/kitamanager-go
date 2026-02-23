@@ -45,6 +45,8 @@ export function useFundingAttributes(orgId: number, fromDate?: string, toDate?: 
   // Extract unique attributes with their keys
   // Use value as the unique identifier (same value won't appear twice)
   const attributeMap = new Map<string, FundingAttribute>();
+  // Collect properties that should be auto-applied to every contract
+  const defaultProperties: Record<string, string> = {};
 
   if (fundingDetails?.periods) {
     const contractFrom = fromDate || '';
@@ -63,6 +65,9 @@ export function useFundingAttributes(orgId: number, fromDate?: string, toDate?: 
           const value = prop.value?.toLowerCase();
           if (key && value && !attributeMap.has(value)) {
             attributeMap.set(value, { key, value, label: prop.label || value });
+          }
+          if (key && value && prop.apply_to_all_contracts && !(key in defaultProperties)) {
+            defaultProperties[key] = value;
           }
         }
       }
@@ -86,6 +91,7 @@ export function useFundingAttributes(orgId: number, fromDate?: string, toDate?: 
   return {
     fundingAttributes,
     attributesByKey,
+    defaultProperties,
     isLoading: !fundingDetails && !!state,
     hasNoFunding: !!state && !funding,
   };

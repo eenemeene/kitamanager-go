@@ -9806,6 +9806,11 @@ const docTemplate = `{
         "github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingProperty": {
             "type": "object",
             "properties": {
+                "apply_to_all_contracts": {
+                    "description": "ApplyToAllContracts marks this property as universal — it will be automatically\nadded to every child contract during creation/amendment, without the user needing\nto select it. Example: parent meal contributions (Elternessen) in Berlin apply to\nall children regardless of care type.",
+                    "type": "boolean",
+                    "example": false
+                },
                 "comment": {
                     "type": "string",
                     "example": "Full-day care funding for U3"
@@ -9860,6 +9865,10 @@ const docTemplate = `{
                 "value"
             ],
             "properties": {
+                "apply_to_all_contracts": {
+                    "type": "boolean",
+                    "example": false
+                },
                 "comment": {
                     "type": "string",
                     "maxLength": 500,
@@ -9905,6 +9914,10 @@ const docTemplate = `{
         "github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPropertyResponse": {
             "type": "object",
             "properties": {
+                "apply_to_all_contracts": {
+                    "type": "boolean",
+                    "example": false
+                },
                 "comment": {
                     "type": "string",
                     "example": "Full-day care funding for U3"
@@ -9954,6 +9967,10 @@ const docTemplate = `{
         "github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPropertyUpdateRequest": {
             "type": "object",
             "properties": {
+                "apply_to_all_contracts": {
+                    "type": "boolean",
+                    "example": false
+                },
                 "comment": {
                     "type": "string",
                     "maxLength": 500,

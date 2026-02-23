@@ -300,15 +300,16 @@ func (s *GovernmentFundingService) CreateProperty(ctx context.Context, fundingID
 	}
 
 	property := &models.GovernmentFundingProperty{
-		PeriodID:    periodID,
-		Key:         strings.TrimSpace(req.Key),
-		Value:       strings.TrimSpace(req.Value),
-		Label:       strings.TrimSpace(req.Label),
-		Payment:     req.Payment,
-		Requirement: req.Requirement,
-		MinAge:      req.MinAge,
-		MaxAge:      req.MaxAge,
-		Comment:     strings.TrimSpace(req.Comment),
+		PeriodID:            periodID,
+		Key:                 strings.TrimSpace(req.Key),
+		Value:               strings.TrimSpace(req.Value),
+		Label:               strings.TrimSpace(req.Label),
+		Payment:             req.Payment,
+		Requirement:         req.Requirement,
+		MinAge:              req.MinAge,
+		MaxAge:              req.MaxAge,
+		Comment:             strings.TrimSpace(req.Comment),
+		ApplyToAllContracts: req.ApplyToAllContracts,
 	}
 
 	if validation.IsWhitespaceOnly(property.Key) {
@@ -394,6 +395,9 @@ func (s *GovernmentFundingService) UpdateProperty(ctx context.Context, propertyI
 	property.MaxAge = req.MaxAge
 	if req.Comment != nil {
 		property.Comment = strings.TrimSpace(*req.Comment)
+	}
+	if req.ApplyToAllContracts != nil {
+		property.ApplyToAllContracts = *req.ApplyToAllContracts
 	}
 
 	// Validate age range if both are set

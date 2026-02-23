@@ -254,6 +254,120 @@ describe('useFundingAttributes', () => {
     expect(result.current.isLoading).toBe(true);
   });
 
+  it('returns defaultProperties from properties with apply_to_all_contracts', async () => {
+    mockUseUiStore.mockImplementation(
+      (selector: (state: { organizations: { id: number; state: string }[] }) => unknown) =>
+        selector({ organizations: [{ id: 1, state: 'berlin' }] })
+    );
+
+    mockGetGovernmentFundings.mockResolvedValue({
+      data: [{ id: 10, name: 'Berlin Funding', state: 'berlin' }],
+      total: 1,
+      page: 1,
+      limit: 100,
+      total_pages: 1,
+    });
+
+    mockGetGovernmentFunding.mockResolvedValue({
+      id: 10,
+      name: 'Berlin Funding',
+      state: 'berlin',
+      periods: [
+        {
+          id: 1,
+          government_funding_id: 10,
+          from: '2024-01-01',
+          to: '2024-12-31',
+          created_at: '',
+          properties: [
+            {
+              id: 1,
+              period_id: 1,
+              key: 'care_type',
+              value: 'Ganztag',
+              payment: 100,
+              requirement: 0,
+              created_at: '',
+              apply_to_all_contracts: false,
+            },
+            {
+              id: 2,
+              period_id: 1,
+              key: 'parent',
+              value: 'meals',
+              label: 'Meals',
+              payment: 23,
+              requirement: 0,
+              created_at: '',
+              apply_to_all_contracts: true,
+            },
+          ],
+        },
+      ],
+    });
+
+    const { result } = renderHook(() => useFundingAttributes(1, '2024-06-01', '2024-06-30'), {
+      wrapper,
+    });
+
+    await waitFor(() => {
+      expect(result.current.fundingAttributes.length).toBeGreaterThan(0);
+    });
+
+    expect(result.current.defaultProperties).toEqual({ parent: 'meals' });
+  });
+
+  it('returns empty defaultProperties when no auto-apply properties exist', async () => {
+    mockUseUiStore.mockImplementation(
+      (selector: (state: { organizations: { id: number; state: string }[] }) => unknown) =>
+        selector({ organizations: [{ id: 1, state: 'berlin' }] })
+    );
+
+    mockGetGovernmentFundings.mockResolvedValue({
+      data: [{ id: 10, name: 'Berlin Funding', state: 'berlin' }],
+      total: 1,
+      page: 1,
+      limit: 100,
+      total_pages: 1,
+    });
+
+    mockGetGovernmentFunding.mockResolvedValue({
+      id: 10,
+      name: 'Berlin Funding',
+      state: 'berlin',
+      periods: [
+        {
+          id: 1,
+          government_funding_id: 10,
+          from: '2024-01-01',
+          to: '2024-12-31',
+          created_at: '',
+          properties: [
+            {
+              id: 1,
+              period_id: 1,
+              key: 'care_type',
+              value: 'Ganztag',
+              payment: 100,
+              requirement: 0,
+              created_at: '',
+            },
+          ],
+        },
+      ],
+    });
+
+    const { result } = renderHook(() => useFundingAttributes(1, '2024-06-01', '2024-06-30'), {
+      wrapper,
+    });
+
+    await waitFor(() => {
+      expect(result.current.fundingAttributes.length).toBeGreaterThan(0);
+    });
+
+    expect(result.current.defaultProperties).toEqual({});
+  });
+
   it('returns hasNoFunding=true when state exists but no funding matches', async () => {
     mockUseUiStore.mockImplementation(
       (selector: (state: { organizations: { id: number; state: string }[] }) => unknown) =>

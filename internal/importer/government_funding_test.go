@@ -389,6 +389,58 @@ func TestImportGovernmentFunding_LabelTrimmed(t *testing.T) {
 	assert.Equal(t, "Ganztag", prop.Label, "label should be trimmed of whitespace")
 }
 
+func TestImportGovernmentFunding_ApplyToAllContracts(t *testing.T) {
+	yamlContent := `---
+-
+  from: '2024-01-01'
+  to: ''
+  full_time_weekly_hours: 39
+  entries:
+    - age: [0,8]
+      properties:
+        - key: parent
+          value: meals
+          label: Parent Meals
+          payment: 23.0
+          requirement: 0
+          apply_to_all_contracts: true
+        - key: care_type
+          value: ganztag
+          label: Ganztag
+          payment: 1668.47
+          requirement: 0.261
+`
+	db := setupTestDB(t)
+	fundingStore := store.NewGovernmentFundingStore(db)
+	importer := NewGovernmentFundingImporter(db, fundingStore)
+	filePath := createTestYAMLFile(t, yamlContent)
+
+	fundingID, err := importer.ImportGovernmentFundingFromFile(context.Background(), filePath, "berlin")
+	require.NoError(t, err)
+
+	funding, err := fundingStore.FindByIDWithDetails(context.Background(), fundingID, 0, nil)
+	require.NoError(t, err)
+	require.Len(t, funding.Periods, 1)
+	require.Len(t, funding.Periods[0].Properties, 2)
+
+	var meals, careType *models.GovernmentFundingProperty
+	for i := range funding.Periods[0].Properties {
+		p := &funding.Periods[0].Properties[i]
+		if p.Key == "parent" && p.Value == "meals" {
+			meals = p
+		}
+		if p.Key == "care_type" {
+			careType = p
+		}
+	}
+
+	require.NotNil(t, meals)
+	assert.True(t, meals.ApplyToAllContracts, "parent/meals should have ApplyToAllContracts=true")
+
+	require.NotNil(t, careType)
+	assert.False(t, careType.ApplyToAllContracts, "care_type should have ApplyToAllContracts=false (default)")
+}
+
 func TestImportGovernmentFundingFromFile_InvalidState(t *testing.T) {
 	db := setupTestDB(t)
 	fundingStore := store.NewGovernmentFundingStore(db)

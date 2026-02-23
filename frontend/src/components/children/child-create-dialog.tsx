@@ -75,6 +75,12 @@ export function ChildCreateDialog({
   const contractFrom = watch('contract_from');
   const contractTo = watch('contract_to');
 
+  const { fundingAttributes, attributesByKey, defaultProperties } = useFundingAttributes(
+    orgId,
+    contractFrom,
+    contractTo
+  );
+
   // Auto-fill contract end date based on birthdate + org state
   useEffect(() => {
     if (birthdate && orgState) {
@@ -88,6 +94,8 @@ export function ChildCreateDialog({
   // Reset form when dialog opens
   useEffect(() => {
     if (open) {
+      const initialProps =
+        Object.keys(defaultProperties).length > 0 ? defaultProperties : undefined;
       reset({
         first_name: '',
         last_name: '',
@@ -96,16 +104,10 @@ export function ChildCreateDialog({
         contract_from: '',
         contract_to: '',
         section_id: 0,
-        properties: undefined,
+        properties: initialProps,
       });
     }
-  }, [open, reset]);
-
-  const { fundingAttributes, attributesByKey } = useFundingAttributes(
-    orgId,
-    contractFrom,
-    contractTo
-  );
+  }, [open, reset, defaultProperties]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

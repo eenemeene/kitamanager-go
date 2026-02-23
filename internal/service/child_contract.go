@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
@@ -106,6 +107,10 @@ func (s *ChildService) CreateContract(ctx context.Context, childID, orgID uint, 
 		return nil, err
 	}
 
+	// Merge auto-apply funding properties (e.g. parent meals) into contract
+	defaults := s.getAutoApplyProperties(ctx, orgID, req.From)
+	properties := req.Properties.MergeDefaults(defaults)
+
 	contract := &models.ChildContract{
 		ChildID:       childID,
 		VoucherNumber: req.VoucherNumber,
@@ -115,7 +120,7 @@ func (s *ChildService) CreateContract(ctx context.Context, childID, orgID uint, 
 				To:   req.To,
 			},
 			SectionID:  req.SectionID,
-			Properties: req.Properties,
+			Properties: properties,
 		},
 	}
 
@@ -172,16 +177,16 @@ func (s *ChildService) UpdateContract(ctx context.Context, contractID, childID, 
 
 	switch mode {
 	case amendModeInPlace:
-		return s.updateContractInPlace(ctx, contract, childID, req)
+		return s.updateContractInPlace(ctx, contract, childID, orgID, req)
 	case amendModeAmend:
-		return s.amendContract(ctx, contract, childID, req)
+		return s.amendContract(ctx, contract, childID, orgID, req)
 	default:
 		return nil, apperror.Internal("unexpected amend mode")
 	}
 }
 
 // updateContractInPlace applies changes directly to the existing contract.
-func (s *ChildService) updateContractInPlace(ctx context.Context, contract *models.ChildContract, childID uint, req *models.ChildContractUpdateRequest) (*models.ChildContractResponse, error) {
+func (s *ChildService) updateContractInPlace(ctx context.Context, contract *models.ChildContract, childID, orgID uint, req *models.ChildContractUpdateRequest) (*models.ChildContractResponse, error) {
 	if req.From != nil {
 		contract.From = *req.From
 	}
@@ -191,7 +196,9 @@ func (s *ChildService) updateContractInPlace(ctx context.Context, contract *mode
 		contract.SectionID = *req.SectionID
 		contract.Section = nil
 	}
-	contract.Properties = req.Properties
+	// Merge auto-apply funding properties into updated contract
+	defaults := s.getAutoApplyProperties(ctx, orgID, contract.From)
+	contract.Properties = req.Properties.MergeDefaults(defaults)
 	contract.VoucherNumber = req.VoucherNumber
 
 	if err := validation.ValidatePeriod(contract.From, contract.To); err != nil {
@@ -216,7 +223,7 @@ func (s *ChildService) updateContractInPlace(ctx context.Context, contract *mode
 }
 
 // amendContract closes the old contract and creates a new one with changes applied.
-func (s *ChildService) amendContract(ctx context.Context, contract *models.ChildContract, childID uint, req *models.ChildContractUpdateRequest) (*models.ChildContractResponse, error) {
+func (s *ChildService) amendContract(ctx context.Context, contract *models.ChildContract, childID, orgID uint, req *models.ChildContractUpdateRequest) (*models.ChildContractResponse, error) {
 	today := models.TruncateToDate(time.Now())
 	yesterday := today.AddDate(0, 0, -1)
 
@@ -247,6 +254,10 @@ func (s *ChildService) amendContract(ctx context.Context, contract *models.Child
 	if req.To != nil {
 		newContract.To = req.To
 	}
+
+	// Merge auto-apply funding properties into amended contract
+	defaults := s.getAutoApplyProperties(ctx, orgID, newContract.From)
+	newContract.Properties = newContract.Properties.MergeDefaults(defaults)
 
 	if err := validation.ValidatePeriod(newContract.From, newContract.To); err != nil {
 		return nil, apperror.BadRequest(err.Error())
@@ -302,4 +313,38 @@ func (s *ChildService) DeleteContract(ctx context.Context, contractID, childID, 
 		return apperror.InternalWrap(err, "failed to delete contract")
 	}
 	return nil
+}
+
+// getAutoApplyProperties returns properties marked with ApplyToAllContracts from the
+// government funding period active on the given date for the organization's state.
+// These are merged into every child contract so that universal funding items (e.g. meals)
+// are always included in funding calculations without manual selection.
+func (s *ChildService) getAutoApplyProperties(ctx context.Context, orgID uint, date time.Time) models.ContractProperties {
+	org, err := s.orgStore.FindByID(ctx, orgID)
+	if err != nil || org.State == "" {
+		return nil
+	}
+
+	funding, err := s.fundingStore.FindByStateWithDetails(ctx, org.State, 0, nil)
+	if err != nil {
+		return nil
+	}
+
+	period := findPeriodForDate(funding.Periods, date)
+	if period == nil {
+		return nil
+	}
+
+	defaults := make(models.ContractProperties)
+	for _, prop := range period.Properties {
+		if prop.ApplyToAllContracts {
+			defaults[prop.Key] = prop.Value
+		}
+	}
+	if len(defaults) == 0 {
+		return nil
+	}
+
+	slog.Debug("auto-apply properties", "orgID", orgID, "date", date, "defaults", defaults)
+	return defaults
 }

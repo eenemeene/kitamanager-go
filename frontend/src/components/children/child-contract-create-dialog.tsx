@@ -83,7 +83,7 @@ export function ChildContractCreateDialog({
   const contractFromDate = watch('from');
   const contractToDate = watch('to');
 
-  const { fundingAttributes, attributesByKey } = useFundingAttributes(
+  const { fundingAttributes, attributesByKey, defaultProperties } = useFundingAttributes(
     orgId,
     contractFromDate,
     contractToDate
@@ -113,10 +113,12 @@ export function ChildContractCreateDialog({
           properties: active.properties as Record<string, string> | undefined,
         });
       } else {
-        reset({ from: '', to: suggestedTo, section_id: 0, properties: undefined });
+        const initialProps =
+          Object.keys(defaultProperties).length > 0 ? defaultProperties : undefined;
+        reset({ from: '', to: suggestedTo, section_id: 0, properties: initialProps });
       }
     }
-  }, [open, child, orgState, reset]);
+  }, [open, child, orgState, reset, defaultProperties]);
 
   const handleFormSubmit = useCallback(
     (data: ChildContractFormData) => {
