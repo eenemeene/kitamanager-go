@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"io"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -412,7 +413,9 @@ func (h *EmployeeHandler) ExportYAML(c *gin.Context) {
 	c.Header("Content-Type", "application/x-yaml")
 	c.Header("Content-Disposition", `attachment; filename="employees.yaml"`)
 	c.Writer.WriteHeader(http.StatusOK)
-	_, _ = c.Writer.Write(yamlBytes)
+	if _, err := c.Writer.Write(yamlBytes); err != nil {
+		slog.Error("failed to write YAML export response", "error", err)
+	}
 }
 
 // Import godoc

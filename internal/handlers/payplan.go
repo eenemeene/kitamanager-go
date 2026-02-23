@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -451,7 +452,9 @@ func (h *PayPlanHandler) Export(c *gin.Context) {
 	c.Header("Content-Type", "application/x-yaml")
 	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
 	c.Writer.WriteHeader(http.StatusOK)
-	_, _ = c.Writer.Write(data)
+	if _, err := c.Writer.Write(data); err != nil {
+		slog.Error("failed to write YAML export response", "error", err)
+	}
 }
 
 // Import godoc
