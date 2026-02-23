@@ -110,6 +110,9 @@ func Setup(r *gin.Engine, d Deps) {
 			// ============================================================
 			governmentFundings := protected.Group("/government-funding-rates")
 			{
+				// Import (must be before :fundingId to avoid route conflict)
+				governmentFundings.POST("/import", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.Import)
+
 				governmentFundings.GET("", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.List)
 				governmentFundings.GET("/:fundingId", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.Get)
 				governmentFundings.POST("", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.Create)

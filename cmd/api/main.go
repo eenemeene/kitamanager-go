@@ -21,6 +21,7 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/config"
 	"github.com/eenemeene/kitamanager-go/internal/database"
 	"github.com/eenemeene/kitamanager-go/internal/handlers"
+	"github.com/eenemeene/kitamanager-go/internal/importer"
 	"github.com/eenemeene/kitamanager-go/internal/middleware"
 	"github.com/eenemeene/kitamanager-go/internal/rbac"
 	"github.com/eenemeene/kitamanager-go/internal/routes"
@@ -301,7 +302,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, s *appStores, svc *appServices
 		Employee:              handlers.NewEmployeeHandler(svc.employee, svc.audit),
 		Child:                 handlers.NewChildHandler(svc.child, svc.audit),
 		ChildStatistics:       handlers.NewChildStatisticsHandler(svc.child),
-		GovernmentFunding:     handlers.NewGovernmentFundingHandler(svc.governmentFunding, svc.audit),
+		GovernmentFunding:     handlers.NewGovernmentFundingHandler(svc.governmentFunding, svc.audit, importer.NewGovernmentFundingImporter(db, s.governmentFunding)),
 		PayPlan:               handlers.NewPayPlanHandler(svc.payPlan, svc.audit),
 		ChildAttendance:       handlers.NewChildAttendanceHandler(svc.childAttendance, svc.audit),
 		BudgetItem:            handlers.NewBudgetItemHandler(svc.budgetItem, svc.audit),

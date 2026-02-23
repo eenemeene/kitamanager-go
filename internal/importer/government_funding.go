@@ -39,6 +39,25 @@ func NewGovernmentFundingImporter(db *gorm.DB, fundingStore *store.GovernmentFun
 // If a government funding for the given state already exists, it returns ErrGovernmentFundingExists
 // and the existing government funding's ID.
 func (i *GovernmentFundingImporter) ImportGovernmentFundingFromFile(ctx context.Context, filePath, state string) (uint, error) {
+	if !models.IsValidState(state) {
+		return 0, fmt.Errorf("invalid state: %s", state)
+	}
+
+	// Read YAML file
+	// #nosec G304 -- filePath is from trusted configuration, not user input
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return 0, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	return i.ImportGovernmentFunding(ctx, data, state)
+}
+
+// ImportGovernmentFunding imports government funding data from YAML bytes.
+// The state parameter specifies which Bundesland this funding applies to.
+// If a government funding for the given state already exists, it returns ErrGovernmentFundingExists
+// and the existing government funding's ID.
+func (i *GovernmentFundingImporter) ImportGovernmentFunding(ctx context.Context, data []byte, state string) (uint, error) {
 	// Check if government funding for this state already exists
 	existingFunding, err := i.fundingStore.FindByState(ctx, state)
 	if err == nil && existingFunding != nil {
@@ -52,13 +71,6 @@ func (i *GovernmentFundingImporter) ImportGovernmentFundingFromFile(ctx context.
 	// Validate state
 	if !models.IsValidState(state) {
 		return 0, fmt.Errorf("invalid state: %s", state)
-	}
-
-	// Read YAML file
-	// #nosec G304 -- filePath is from trusted configuration, not user input
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		return 0, fmt.Errorf("failed to read file: %w", err)
 	}
 
 	// Parse YAML

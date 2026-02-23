@@ -1,12 +1,15 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
+	"github.com/eenemeene/kitamanager-go/internal/importer"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 )
@@ -14,10 +17,11 @@ import (
 type GovernmentFundingHandler struct {
 	service      *service.GovernmentFundingService
 	auditService *service.AuditService
+	importer     *importer.GovernmentFundingImporter
 }
 
-func NewGovernmentFundingHandler(service *service.GovernmentFundingService, auditService *service.AuditService) *GovernmentFundingHandler {
-	return &GovernmentFundingHandler{service: service, auditService: auditService}
+func NewGovernmentFundingHandler(service *service.GovernmentFundingService, auditService *service.AuditService, imp *importer.GovernmentFundingImporter) *GovernmentFundingHandler {
+	return &GovernmentFundingHandler{service: service, auditService: auditService, importer: imp}
 }
 
 // List godoc
@@ -395,4 +399,67 @@ func (h *GovernmentFundingHandler) DeleteProperty(c *gin.Context) {
 		auditConfig{h.auditService, "gov_funding_property", "period"},
 		h.service.DeleteProperty,
 	)
+}
+
+// Import godoc
+// @Summary Import government funding from YAML
+// @Description Import government funding rates from a YAML file (superadmin only). If a funding for the given state already exists, returns 409 Conflict.
+// @Tags government-funding-rates
+// @Accept multipart/form-data
+// @Produce json
+// @Security BearerAuth
+// @Param file formData file true "YAML file with government funding data"
+// @Param state query string true "State (Bundesland) this funding applies to" example("berlin")
+// @Success 201 {object} models.GovernmentFundingResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 409 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/government-funding-rates/import [post]
+func (h *GovernmentFundingHandler) Import(c *gin.Context) {
+	state := c.Query("state")
+	if state == "" {
+		respondError(c, apperror.BadRequest("state query parameter is required"))
+		return
+	}
+
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		respondError(c, apperror.BadRequest("file is required"))
+		return
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		respondError(c, apperror.BadRequest("failed to read uploaded file"))
+		return
+	}
+	defer file.Close()
+
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		respondError(c, apperror.BadRequest("failed to read uploaded file"))
+		return
+	}
+
+	fundingID, err := h.importer.ImportGovernmentFunding(c.Request.Context(), fileBytes, state)
+	if err != nil {
+		if errors.Is(err, importer.ErrGovernmentFundingExists) {
+			respondError(c, apperror.Conflict("government funding for state '"+state+"' already exists"))
+			return
+		}
+		respondError(c, apperror.InternalWrap(err, "failed to import government funding"))
+		return
+	}
+
+	resp, err := h.service.GetByID(c.Request.Context(), fundingID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	auditCreate(c, h.auditService, "government_funding", resp.ID, resp.Name)
+
+	c.JSON(http.StatusCreated, resp)
 }
