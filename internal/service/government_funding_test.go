@@ -1168,6 +1168,152 @@ func TestPeriodsOverlap(t *testing.T) {
 	}
 }
 
+func TestGovernmentFundingService_GetProperty(t *testing.T) {
+	db := setupTestDB(t)
+	fundingStore := store.NewGovernmentFundingStore(db)
+	svc := NewGovernmentFundingService(fundingStore, store.NewTransactor(db))
+	ctx := context.Background()
+
+	funding := &models.GovernmentFunding{Name: "Test Funding", State: "berlin"}
+	db.Create(funding)
+
+	period := &models.GovernmentFundingPeriod{
+		GovernmentFundingID: funding.ID,
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(period)
+
+	minAge := 0
+	maxAge := 3
+	prop := &models.GovernmentFundingProperty{
+		PeriodID:    period.ID,
+		Key:         "care_type",
+		Value:       "ganztag",
+		Label:       "Ganztag",
+		Payment:     100000,
+		Requirement: 0.1,
+		MinAge:      &minAge,
+		MaxAge:      &maxAge,
+	}
+	db.Create(prop)
+
+	result, err := svc.GetProperty(ctx, prop.ID, period.ID, funding.ID)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result.ID != prop.ID {
+		t.Errorf("ID = %d, want %d", result.ID, prop.ID)
+	}
+	if result.Key != "care_type" {
+		t.Errorf("Key = %q, want %q", result.Key, "care_type")
+	}
+	if result.Payment != 100000 {
+		t.Errorf("Payment = %d, want 100000", result.Payment)
+	}
+}
+
+func TestGovernmentFundingService_GetProperty_WrongPeriod(t *testing.T) {
+	db := setupTestDB(t)
+	fundingStore := store.NewGovernmentFundingStore(db)
+	svc := NewGovernmentFundingService(fundingStore, store.NewTransactor(db))
+	ctx := context.Background()
+
+	funding := &models.GovernmentFunding{Name: "Test Funding", State: "berlin"}
+	db.Create(funding)
+
+	period1 := &models.GovernmentFundingPeriod{
+		GovernmentFundingID: funding.ID,
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: timePtr(time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC))},
+	}
+	db.Create(period1)
+
+	period2 := &models.GovernmentFundingPeriod{
+		GovernmentFundingID: funding.ID,
+		Period:              models.Period{From: time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(period2)
+
+	prop := &models.GovernmentFundingProperty{
+		PeriodID: period1.ID,
+		Key:      "care_type",
+		Value:    "ganztag",
+		Payment:  100000,
+	}
+	db.Create(prop)
+
+	// Try to get the property via the wrong period.
+	_, err := svc.GetProperty(ctx, prop.ID, period2.ID, funding.ID)
+	if err == nil {
+		t.Fatal("expected error for wrong period, got nil")
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestGovernmentFundingService_GetProperty_WrongFunding(t *testing.T) {
+	db := setupTestDB(t)
+	fundingStore := store.NewGovernmentFundingStore(db)
+	svc := NewGovernmentFundingService(fundingStore, store.NewTransactor(db))
+	ctx := context.Background()
+
+	funding1 := &models.GovernmentFunding{Name: "Funding 1", State: "berlin"}
+	db.Create(funding1)
+	funding2 := &models.GovernmentFunding{Name: "Funding 2", State: "berlin"}
+	db.Create(funding2)
+
+	period := &models.GovernmentFundingPeriod{
+		GovernmentFundingID: funding1.ID,
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(period)
+
+	prop := &models.GovernmentFundingProperty{
+		PeriodID: period.ID,
+		Key:      "care_type",
+		Value:    "ganztag",
+		Payment:  100000,
+	}
+	db.Create(prop)
+
+	// Try to get the property via the wrong funding.
+	_, err := svc.GetProperty(ctx, prop.ID, period.ID, funding2.ID)
+	if err == nil {
+		t.Fatal("expected error for wrong funding, got nil")
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestGovernmentFundingService_GetProperty_NotFound(t *testing.T) {
+	db := setupTestDB(t)
+	fundingStore := store.NewGovernmentFundingStore(db)
+	svc := NewGovernmentFundingService(fundingStore, store.NewTransactor(db))
+	ctx := context.Background()
+
+	funding := &models.GovernmentFunding{Name: "Test Funding", State: "berlin"}
+	db.Create(funding)
+
+	period := &models.GovernmentFundingPeriod{
+		GovernmentFundingID: funding.ID,
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(period)
+
+	_, err := svc.GetProperty(ctx, 99999, period.ID, funding.ID)
+	if err == nil {
+		t.Fatal("expected error for non-existent property, got nil")
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func timePtr(t time.Time) *time.Time {
+	return &t
+}
+
 func strPtr(s string) *string {
 	return &s
 }
