@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"os"
 	"testing"
 	"time"
 
 	"gorm.io/gorm"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
+	"github.com/eenemeene/kitamanager-go/internal/isbj"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/store"
 )
@@ -1995,5 +1997,275 @@ func TestGovernmentFundingBillService_GetByID_MultiRowGrouping(t *testing.T) {
 	}
 	if len(child.Rows[1].Amounts) != 2 {
 		t.Errorf("expected row 1 to have 2 amounts, got %d", len(child.Rows[1].Amounts))
+	}
+}
+
+func TestConvertBillAmounts(t *testing.T) {
+	amounts := []isbj.SettlementAmount{
+		{Key: "care_type", Value: "ganztag", Amount: 89000},
+		{Key: "qm/mss", Value: "qm/mss", Amount: 5531},
+	}
+
+	result := convertBillAmounts(amounts)
+
+	if len(result) != 2 {
+		t.Fatalf("expected 2 amounts, got %d", len(result))
+	}
+	if result[0].Key != "care_type" || result[0].Value != "ganztag" || result[0].Amount != 89000 {
+		t.Errorf("result[0] = %+v, want care_type/ganztag/89000", result[0])
+	}
+	if result[1].Key != "qm/mss" || result[1].Amount != 5531 {
+		t.Errorf("result[1] = %+v, want qm/mss/5531", result[1])
+	}
+}
+
+func TestConvertBillAmounts_Empty(t *testing.T) {
+	result := convertBillAmounts(nil)
+	if len(result) != 0 {
+		t.Errorf("expected 0 amounts for nil input, got %d", len(result))
+	}
+
+	result = convertBillAmounts([]isbj.SettlementAmount{})
+	if len(result) != 0 {
+		t.Errorf("expected 0 amounts for empty input, got %d", len(result))
+	}
+}
+
+func TestBuildResponse_NoChildren(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "buildresp1@example.com", "password")
+	ctx := context.Background()
+
+	// Create a persisted bill period so buildResponse has a valid periodID.
+	to := time.Date(2025, 11, 30, 0, 0, 0, 0, time.UTC)
+	period := &models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC), To: &to},
+		FileName:       "test.xlsx",
+		FileSha256:     "sha256",
+		FacilityName:   "Kita Test",
+		CreatedBy:      user.ID,
+	}
+	if err := db.Create(period).Error; err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+
+	converted := &isbj.ConvertedSettlement{
+		FacilityName:      "Kita Test",
+		FacilityTotal:     100000,
+		ContractBooking:   90000,
+		CorrectionBooking: 10000,
+		ChildrenCount:     0,
+		Children:          nil,
+	}
+
+	resp, err := svc.buildResponse(ctx, org.ID, period.ID, period.From, converted)
+	if err != nil {
+		t.Fatalf("buildResponse() error = %v", err)
+	}
+	if resp.FacilityName != "Kita Test" {
+		t.Errorf("FacilityName = %q, want %q", resp.FacilityName, "Kita Test")
+	}
+	if resp.FacilityTotal != 100000 {
+		t.Errorf("FacilityTotal = %d, want 100000", resp.FacilityTotal)
+	}
+	if resp.ChildrenCount != 0 {
+		t.Errorf("ChildrenCount = %d, want 0", resp.ChildrenCount)
+	}
+	if resp.MatchedCount != 0 {
+		t.Errorf("MatchedCount = %d, want 0", resp.MatchedCount)
+	}
+}
+
+func TestBuildResponse_WithMatchedChild(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "buildresp2@example.com", "password")
+	ctx := context.Background()
+
+	// Create a child with a voucher-numbered contract.
+	childBirthdate := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	createChildWithVoucherAndContract(t, db, "Max", "Musterkind", org.ID, "GB-12345678901-01", childBirthdate, nil)
+
+	to := time.Date(2025, 11, 30, 0, 0, 0, 0, time.UTC)
+	period := &models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC), To: &to},
+		FileName:       "test.xlsx",
+		FileSha256:     "sha256",
+		FacilityName:   "Kita Test",
+		CreatedBy:      user.ID,
+	}
+	if err := db.Create(period).Error; err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+
+	converted := &isbj.ConvertedSettlement{
+		FacilityName:  "Kita Test",
+		FacilityTotal: 141331,
+		ChildrenCount: 1,
+		Children: []isbj.ConvertedChild{
+			{
+				VoucherNumber: "GB-12345678901-01",
+				ChildName:     "Musterkind, Max",
+				BirthDate:     "01.20",
+				District:      1,
+				TotalAmount:   141331,
+				Rows: []isbj.ConvertedChildRow{
+					{
+						TotalRowAmount: 141331,
+						Amounts: []isbj.SettlementAmount{
+							{Key: "care_type", Value: "ganztag", Amount: 89000},
+							{Key: "qm/mss", Value: "qm/mss", Amount: 5531},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	resp, err := svc.buildResponse(ctx, org.ID, period.ID, period.From, converted)
+	if err != nil {
+		t.Fatalf("buildResponse() error = %v", err)
+	}
+
+	if resp.ChildrenCount != 1 {
+		t.Errorf("ChildrenCount = %d, want 1", resp.ChildrenCount)
+	}
+	if resp.MatchedCount != 1 {
+		t.Errorf("MatchedCount = %d, want 1", resp.MatchedCount)
+	}
+	if resp.UnmatchedCount != 0 {
+		t.Errorf("UnmatchedCount = %d, want 0", resp.UnmatchedCount)
+	}
+	if !resp.Children[0].Matched {
+		t.Error("expected child to be matched")
+	}
+	if resp.Children[0].ChildID == nil {
+		t.Error("expected ChildID to be set for matched child")
+	}
+}
+
+func TestBuildResponse_UnmatchedChild(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "buildresp3@example.com", "password")
+	ctx := context.Background()
+
+	to := time.Date(2025, 11, 30, 0, 0, 0, 0, time.UTC)
+	period := &models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC), To: &to},
+		FileName:       "test.xlsx",
+		FileSha256:     "sha256",
+		FacilityName:   "Kita Test",
+		CreatedBy:      user.ID,
+	}
+	if err := db.Create(period).Error; err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+
+	converted := &isbj.ConvertedSettlement{
+		FacilityName:  "Kita Test",
+		FacilityTotal: 50000,
+		ChildrenCount: 1,
+		Children: []isbj.ConvertedChild{
+			{
+				VoucherNumber: "GB-NONEXISTENT-01",
+				ChildName:     "Unknown, Child",
+				TotalAmount:   50000,
+				Rows: []isbj.ConvertedChildRow{
+					{
+						TotalRowAmount: 50000,
+						Amounts: []isbj.SettlementAmount{
+							{Key: "care_type", Value: "ganztag", Amount: 50000},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	resp, err := svc.buildResponse(ctx, org.ID, period.ID, period.From, converted)
+	if err != nil {
+		t.Fatalf("buildResponse() error = %v", err)
+	}
+
+	if resp.MatchedCount != 0 {
+		t.Errorf("MatchedCount = %d, want 0", resp.MatchedCount)
+	}
+	if resp.UnmatchedCount != 1 {
+		t.Errorf("UnmatchedCount = %d, want 1", resp.UnmatchedCount)
+	}
+	if resp.Children[0].Matched {
+		t.Error("expected child to NOT be matched")
+	}
+}
+
+func TestProcessISBJ(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "process_isbj@example.com", "password")
+	ctx := context.Background()
+
+	// Open the test ISBJ Excel fixture.
+	f, err := os.Open("../isbj/testdata/Abrechnung_11-25_0770_anonymized.xlsx")
+	if err != nil {
+		t.Fatalf("open test fixture: %v", err)
+	}
+	defer f.Close()
+
+	resp, err := svc.ProcessISBJ(ctx, org.ID, f, "test.xlsx", "testhash", user.ID)
+	if err != nil {
+		t.Fatalf("ProcessISBJ() error = %v", err)
+	}
+
+	if resp.FacilityName == "" {
+		t.Error("expected non-empty FacilityName")
+	}
+	if resp.FacilityTotal == 0 {
+		t.Error("expected non-zero FacilityTotal")
+	}
+	if resp.ChildrenCount == 0 {
+		t.Error("expected at least 1 child")
+	}
+	if len(resp.Children) != resp.ChildrenCount {
+		t.Errorf("len(Children) = %d, want %d", len(resp.Children), resp.ChildrenCount)
+	}
+
+	// All children should be unmatched (no children in DB with matching vouchers).
+	if resp.MatchedCount != 0 {
+		t.Errorf("MatchedCount = %d, want 0 (no vouchers in DB)", resp.MatchedCount)
+	}
+	if resp.UnmatchedCount != resp.ChildrenCount {
+		t.Errorf("UnmatchedCount = %d, want %d", resp.UnmatchedCount, resp.ChildrenCount)
+	}
+
+	// Verify a bill period was persisted.
+	var count int64
+	db.Model(&models.GovernmentFundingBillPeriod{}).Where("organization_id = ?", org.ID).Count(&count)
+	if count != 1 {
+		t.Errorf("expected 1 persisted bill period, got %d", count)
+	}
+}
+
+func TestProcessISBJ_InvalidExcel(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "process_isbj_invalid@example.com", "password")
+	ctx := context.Background()
+
+	// Pass invalid data that isn't an Excel file.
+	reader := bytes.NewReader([]byte("not an excel file"))
+
+	_, err := svc.ProcessISBJ(ctx, org.ID, reader, "bad.xlsx", "badhash", user.ID)
+	if err == nil {
+		t.Fatal("expected error for invalid Excel data, got nil")
 	}
 }
