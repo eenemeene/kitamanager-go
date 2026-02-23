@@ -148,7 +148,8 @@ func (s *ChildService) Import(ctx context.Context, orgID uint, data *models.Chil
 				contract.From = c.From
 				contract.To = c.To
 				contract.SectionID = sectionID
-				contract.Properties = c.Properties
+				defaults := s.getAutoApplyProperties(txCtx, orgID, c.From)
+				contract.Properties = c.Properties.MergeDefaults(defaults)
 				if err := s.store.CreateContract(txCtx, contract); err != nil {
 					return apperror.InternalWrap(err, "failed to create contract")
 				}
