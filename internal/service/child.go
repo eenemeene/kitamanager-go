@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
@@ -96,39 +95,18 @@ func (s *ChildService) Import(ctx context.Context, orgID uint, data *models.Chil
 
 	if err := s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
 		for i, ch := range data.Children {
-			if ch.FirstName == "" || ch.LastName == "" {
-				return apperror.BadRequest(fmt.Sprintf("child %d: first_name and last_name are required", i+1))
-			}
-			if ch.Birthdate.IsZero() {
-				return apperror.BadRequest(fmt.Sprintf("child %d (%s %s): birthdate is required", i+1, ch.FirstName, ch.LastName))
-			}
-
-			existing, err := s.store.FindByNameBirthdateAndOrg(txCtx, ch.FirstName, ch.LastName, ch.Birthdate, orgID)
-			var child *models.Child
-			if err == nil {
-				existing.Gender = ch.Gender
-				if err := s.store.Update(txCtx, existing); err != nil {
-					return apperror.InternalWrap(err, fmt.Sprintf("failed to update child %s %s", ch.FirstName, ch.LastName))
-				}
-				if err := s.store.DeleteContractsByChild(txCtx, existing.ID); err != nil {
-					return apperror.InternalWrap(err, "failed to clear existing contracts")
-				}
-				child = existing
-			} else if errors.Is(err, store.ErrNotFound) {
-				child = &models.Child{
-					Person: models.Person{
-						OrganizationID: orgID,
-						FirstName:      ch.FirstName,
-						LastName:       ch.LastName,
-						Gender:         ch.Gender,
-						Birthdate:      ch.Birthdate,
-					},
-				}
-				if err := s.store.Create(txCtx, child); err != nil {
-					return apperror.InternalWrap(err, fmt.Sprintf("failed to create child %s %s", ch.FirstName, ch.LastName))
-				}
-			} else {
-				return apperror.InternalWrap(err, "failed to look up child")
+			childID, err := personImportUpsert(txCtx,
+				importPersonItem{Index: i + 1, FirstName: ch.FirstName, LastName: ch.LastName, Gender: ch.Gender, Birthdate: ch.Birthdate},
+				"child",
+				s.store.FindByNameBirthdateAndOrg,
+				func(c *models.Child) *models.Person { return &c.Person },
+				func(c *models.Child) uint { return c.ID },
+				s.store.Update, s.store.DeleteContractsByChild,
+				func(p models.Person) *models.Child { return &models.Child{Person: p} },
+				s.store.Create, orgID,
+			)
+			if err != nil {
+				return err
 			}
 
 			for j, c := range ch.Contracts {
@@ -148,12 +126,12 @@ func (s *ChildService) Import(ctx context.Context, orgID uint, data *models.Chil
 					VoucherNumber: c.VoucherNumber,
 					Properties:    c.Properties,
 				}
-				if _, err := s.CreateContract(txCtx, child.ID, orgID, req); err != nil {
+				if _, err := s.CreateContract(txCtx, childID, orgID, req); err != nil {
 					return err
 				}
 			}
 
-			fetched, err := s.store.FindByIDAndOrg(txCtx, child.ID, orgID)
+			fetched, err := s.store.FindByIDAndOrg(txCtx, childID, orgID)
 			if err != nil {
 				return apperror.InternalWrap(err, "failed to fetch imported child")
 			}

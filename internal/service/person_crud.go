@@ -2,6 +2,9 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -111,6 +114,66 @@ func personUpdate[T any, R any](
 	}
 
 	return &resp, nil
+}
+
+// importPersonItem describes one person in an import batch for validation/upsert.
+type importPersonItem struct {
+	Index     int // 1-based position for error messages
+	FirstName string
+	LastName  string
+	Gender    string
+	Birthdate time.Time
+}
+
+// personImportUpsert validates person fields, then looks up or creates the entity
+// (matched by name+birthdate+org). On match, gender is updated and old contracts
+// are deleted. Returns the entity's ID.
+func personImportUpsert[T any](
+	ctx context.Context,
+	item importPersonItem,
+	resourceName string,
+	findByNameBirthdateAndOrg func(ctx context.Context, firstName, lastName string, birthdate time.Time, orgID uint) (*T, error),
+	getPerson func(*T) *models.Person,
+	getID func(*T) uint,
+	updateFn func(ctx context.Context, entity *T) error,
+	deleteContracts func(ctx context.Context, entityID uint) error,
+	buildNew func(person models.Person) *T,
+	createFn func(ctx context.Context, entity *T) error,
+	orgID uint,
+) (uint, error) {
+	if item.FirstName == "" || item.LastName == "" {
+		return 0, apperror.BadRequest(fmt.Sprintf("%s %d: first_name and last_name are required", resourceName, item.Index))
+	}
+	if item.Birthdate.IsZero() {
+		return 0, apperror.BadRequest(fmt.Sprintf("%s %d (%s %s): birthdate is required", resourceName, item.Index, item.FirstName, item.LastName))
+	}
+
+	existing, err := findByNameBirthdateAndOrg(ctx, item.FirstName, item.LastName, item.Birthdate, orgID)
+	if err == nil {
+		getPerson(existing).Gender = item.Gender
+		if err := updateFn(ctx, existing); err != nil {
+			return 0, apperror.InternalWrap(err, fmt.Sprintf("failed to update %s %s %s", resourceName, item.FirstName, item.LastName))
+		}
+		if err := deleteContracts(ctx, getID(existing)); err != nil {
+			return 0, apperror.InternalWrap(err, "failed to clear existing contracts")
+		}
+		return getID(existing), nil
+	}
+	if !errors.Is(err, store.ErrNotFound) {
+		return 0, apperror.InternalWrap(err, "failed to look up "+resourceName)
+	}
+
+	entity := buildNew(models.Person{
+		OrganizationID: orgID,
+		FirstName:      item.FirstName,
+		LastName:       item.LastName,
+		Gender:         item.Gender,
+		Birthdate:      item.Birthdate,
+	})
+	if err := createFn(ctx, entity); err != nil {
+		return 0, apperror.InternalWrap(err, fmt.Sprintf("failed to create %s %s %s", resourceName, item.FirstName, item.LastName))
+	}
+	return getID(entity), nil
 }
 
 // personDelete validates org ownership at DB level and deletes within a transaction.

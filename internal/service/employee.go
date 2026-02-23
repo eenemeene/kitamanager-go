@@ -93,42 +93,18 @@ func (s *EmployeeService) Import(ctx context.Context, orgID uint, data *models.E
 
 	if err := s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
 		for i, emp := range data.Employees {
-			if emp.FirstName == "" || emp.LastName == "" {
-				return apperror.BadRequest(fmt.Sprintf("employee %d: first_name and last_name are required", i+1))
-			}
-			if emp.Birthdate.IsZero() {
-				return apperror.BadRequest(fmt.Sprintf("employee %d (%s %s): birthdate is required", i+1, emp.FirstName, emp.LastName))
-			}
-
-			// Look up or create employee (upsert by name+birthdate+org).
-			existing, err := s.store.FindByNameBirthdateAndOrg(txCtx, emp.FirstName, emp.LastName, emp.Birthdate, orgID)
-			var employee *models.Employee
-			if err == nil {
-				// Update person fields.
-				existing.Gender = emp.Gender
-				if err := s.store.Update(txCtx, existing); err != nil {
-					return apperror.InternalWrap(err, fmt.Sprintf("failed to update employee %s %s", emp.FirstName, emp.LastName))
-				}
-				// Delete old contracts for replacement.
-				if err := s.store.DeleteContractsByEmployee(txCtx, existing.ID); err != nil {
-					return apperror.InternalWrap(err, "failed to clear existing contracts")
-				}
-				employee = existing
-			} else if errors.Is(err, store.ErrNotFound) {
-				employee = &models.Employee{
-					Person: models.Person{
-						OrganizationID: orgID,
-						FirstName:      emp.FirstName,
-						LastName:       emp.LastName,
-						Gender:         emp.Gender,
-						Birthdate:      emp.Birthdate,
-					},
-				}
-				if err := s.store.Create(txCtx, employee); err != nil {
-					return apperror.InternalWrap(err, fmt.Sprintf("failed to create employee %s %s", emp.FirstName, emp.LastName))
-				}
-			} else {
-				return apperror.InternalWrap(err, "failed to look up employee")
+			employeeID, err := personImportUpsert(txCtx,
+				importPersonItem{Index: i + 1, FirstName: emp.FirstName, LastName: emp.LastName, Gender: emp.Gender, Birthdate: emp.Birthdate},
+				"employee",
+				s.store.FindByNameBirthdateAndOrg,
+				func(e *models.Employee) *models.Person { return &e.Person },
+				func(e *models.Employee) uint { return e.ID },
+				s.store.Update, s.store.DeleteContractsByEmployee,
+				func(p models.Person) *models.Employee { return &models.Employee{Person: p} },
+				s.store.Create, orgID,
+			)
+			if err != nil {
+				return err
 			}
 
 			// Create contracts.
@@ -160,13 +136,13 @@ func (s *EmployeeService) Import(ctx context.Context, orgID uint, data *models.E
 					PayPlanID:     payPlanID,
 					Properties:    c.Properties,
 				}
-				if _, err := s.CreateContract(txCtx, employee.ID, orgID, req); err != nil {
+				if _, err := s.CreateContract(txCtx, employeeID, orgID, req); err != nil {
 					return err
 				}
 			}
 
 			// Re-fetch with preloads for the response.
-			fetched, err := s.store.FindByIDAndOrg(txCtx, employee.ID, orgID)
+			fetched, err := s.store.FindByIDAndOrg(txCtx, employeeID, orgID)
 			if err != nil {
 				return apperror.InternalWrap(err, "failed to fetch imported employee")
 			}
