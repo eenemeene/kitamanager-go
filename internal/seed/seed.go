@@ -15,6 +15,7 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/importer"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/rbac"
+	"github.com/eenemeene/kitamanager-go/internal/service"
 	"github.com/eenemeene/kitamanager-go/internal/store"
 )
 
@@ -406,8 +407,16 @@ func SeedTestData(cfg *config.Config, db *gorm.DB, fundingStore *store.Governmen
 	}
 	slog.Info("Created BudgetItem", "name", elternbeitragItem.Name, "amount_eur", "90.00", "per_child", true)
 
+	// Build ChildService for seeding contracts through the service layer
+	// (ensures auto-apply funding properties are merged into contracts)
+	childStore := store.NewChildStore(db)
+	orgStore := store.NewOrganizationStore(db)
+	sectionStore := store.NewSectionStore(db)
+	transactor := store.NewTransactor(db)
+	childService := service.NewChildService(childStore, orgStore, fundingStore, sectionStore, transactor)
+
 	// Seed children with realistic contract histories spanning 3 years
-	childCount, contractCount, err := seedChildren(db, org.ID, sections)
+	childCount, contractCount, err := seedChildren(db, childService, org.ID, sections)
 	if err != nil {
 		return fmt.Errorf("failed to seed children: %w", err)
 	}
@@ -449,7 +458,7 @@ type childCohort struct {
 //   - ~20 children have multi-contract histories showing section transitions
 //
 //nolint:gosec,cyclop // math/rand is fine for test data; complexity is inherent
-func seedChildren(db *gorm.DB, orgID uint, sections []*models.Section) (int, int, error) {
+func seedChildren(db *gorm.DB, childService *service.ChildService, orgID uint, sections []*models.Section) (int, int, error) {
 	now := time.Now()
 	nest, nestfluechter, grosse := sections[0], sections[1], sections[2]
 
@@ -505,6 +514,7 @@ func seedChildren(db *gorm.DB, orgID uint, sections []*models.Section) (int, int
 			now.AddDate(0, 1, 0), now.AddDate(0, 6, 0), nil, nest.ID},
 	}
 
+	ctx := context.Background()
 	childCount := 0
 	contractCount := 0
 
@@ -516,8 +526,12 @@ func seedChildren(db *gorm.DB, orgID uint, sections []*models.Section) (int, int
 				return 0, 0, err
 			}
 			joinDate := randomJoinDate(c.joinFrom, c.joinTo)
-			contract := makeChildContract(child.ID, joinDate, c.leftDate, c.sectionID)
-			if err := db.Create(&contract).Error; err != nil {
+			if _, err := childService.CreateContract(ctx, child.ID, orgID, &models.ChildContractCreateRequest{
+				SectionID:  c.sectionID,
+				From:       joinDate,
+				To:         c.leftDate,
+				Properties: propertyCombinations[randInt(len(propertyCombinations))],
+			}); err != nil {
 				return 0, 0, err
 			}
 			childCount++
@@ -552,13 +566,13 @@ func seedChildren(db *gorm.DB, orgID uint, sections []*models.Section) (int, int
 		// Große: Aug 1 after Nestflüchter ends, ongoing
 		grosseStart := nfEnd.AddDate(0, 0, 1)
 
-		contracts := []models.ChildContract{
-			makeChildContract(child.ID, nestStart, &nestEnd, nest.ID),
-			makeChildContract(child.ID, nfStart, &nfEnd, nestfluechter.ID),
-			makeChildContract(child.ID, grosseStart, nil, grosse.ID),
+		reqs := []models.ChildContractCreateRequest{
+			{SectionID: nest.ID, From: nestStart, To: &nestEnd, Properties: propertyCombinations[randInt(len(propertyCombinations))]},
+			{SectionID: nestfluechter.ID, From: nfStart, To: &nfEnd, Properties: propertyCombinations[randInt(len(propertyCombinations))]},
+			{SectionID: grosse.ID, From: grosseStart, Properties: propertyCombinations[randInt(len(propertyCombinations))]},
 		}
-		for _, ct := range contracts {
-			if err := db.Create(&ct).Error; err != nil {
+		for _, req := range reqs {
+			if _, err := childService.CreateContract(ctx, child.ID, orgID, &req); err != nil {
 				return 0, 0, err
 			}
 			contractCount++
@@ -584,12 +598,12 @@ func seedChildren(db *gorm.DB, orgID uint, sections []*models.Section) (int, int
 		}
 		grosseStart := nestEnd.AddDate(0, 0, 1)
 
-		contracts := []models.ChildContract{
-			makeChildContract(child.ID, nestStart, &nestEnd, nest.ID),
-			makeChildContract(child.ID, grosseStart, &exitDate, grosse.ID),
+		reqs := []models.ChildContractCreateRequest{
+			{SectionID: nest.ID, From: nestStart, To: &nestEnd, Properties: propertyCombinations[randInt(len(propertyCombinations))]},
+			{SectionID: grosse.ID, From: grosseStart, To: &exitDate, Properties: propertyCombinations[randInt(len(propertyCombinations))]},
 		}
-		for _, ct := range contracts {
-			if err := db.Create(&ct).Error; err != nil {
+		for _, req := range reqs {
+			if _, err := childService.CreateContract(ctx, child.ID, orgID, &req); err != nil {
 				return 0, 0, err
 			}
 			contractCount++
@@ -896,20 +910,6 @@ func newChild(orgID uint, birthdate time.Time) models.Child {
 			LastName:       lastNames[randInt(len(lastNames))],
 			Gender:         randomGender(),
 			Birthdate:      birthdate,
-		},
-	}
-}
-
-func makeChildContract(childID uint, from time.Time, to *time.Time, sectionID uint) models.ChildContract {
-	return models.ChildContract{
-		ChildID: childID,
-		BaseContract: models.BaseContract{
-			Period: models.Period{
-				From: from,
-				To:   to,
-			},
-			SectionID:  sectionID,
-			Properties: propertyCombinations[randInt(len(propertyCombinations))],
 		},
 	}
 }
