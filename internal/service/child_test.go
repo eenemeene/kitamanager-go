@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 )
@@ -3592,5 +3594,222 @@ func TestChildService_GetContractPropertiesDistribution_EmptyStringValue(t *test
 
 	if stats.Properties[0].Key != "care_type" || stats.Properties[0].Value != "" {
 		t.Errorf("expected care_type with empty value, got %s:%s", stats.Properties[0].Key, stats.Properties[0].Value)
+	}
+}
+
+// --- Auto-apply (ApplyToAllContracts) integration tests ---
+
+// setupAutoApplyFunding creates a government funding with an auto-apply property
+// (parent/meals) and a regular property (care_type/ganztag).
+// Returns the funding period so callers can reference dates.
+func setupAutoApplyFunding(t *testing.T, db *gorm.DB) *models.GovernmentFundingPeriod {
+	t.Helper()
+	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
+	period := createTestFundingPeriod(t, db, funding.ID,
+		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0)
+
+	// Regular property (NOT auto-applied)
+	createTestFundingProperty(t, db, period.ID, "care_type", "ganztag", 100000, 0, 7)
+
+	// Auto-apply property
+	prop := createTestFundingProperty(t, db, period.ID, "parent", "meals", 2300, 0, 7)
+	db.Model(prop).Update("apply_to_all_contracts", true)
+
+	return period
+}
+
+func TestChildService_CreateContract_AutoApplyDefaults(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := createTestChild(t, db, "Anna", "Schmidt", org.ID)
+	setupAutoApplyFunding(t, db)
+	section := getDefaultSection(t, db, org.ID)
+
+	from := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
+	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID:  section.ID,
+		From:       from,
+		Properties: models.ContractProperties{"care_type": "ganztag"},
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	// care_type was explicitly set by the user
+	if contract.Properties["care_type"] != "ganztag" {
+		t.Errorf("care_type = %v, want ganztag", contract.Properties["care_type"])
+	}
+	// parent/meals should be auto-applied
+	if contract.Properties["parent"] != "meals" {
+		t.Errorf("parent = %v, want meals (auto-applied)", contract.Properties["parent"])
+	}
+}
+
+func TestChildService_CreateContract_AutoApplyNoOverwrite(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := createTestChild(t, db, "Ben", "Müller", org.ID)
+	setupAutoApplyFunding(t, db)
+	section := getDefaultSection(t, db, org.ID)
+
+	from := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
+	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID:  section.ID,
+		From:       from,
+		Properties: models.ContractProperties{"care_type": "ganztag", "parent": "custom_value"},
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	// Explicit parent value must NOT be overwritten by auto-apply
+	if contract.Properties["parent"] != "custom_value" {
+		t.Errorf("parent = %v, want custom_value (explicit should win over auto-apply)", contract.Properties["parent"])
+	}
+}
+
+func TestChildService_CreateContract_AutoApplyNilProperties(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := createTestChild(t, db, "Clara", "Weber", org.ID)
+	setupAutoApplyFunding(t, db)
+	section := getDefaultSection(t, db, org.ID)
+
+	from := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
+	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID:  section.ID,
+		From:       from,
+		Properties: nil, // no properties at all
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	// Auto-apply should still populate parent/meals even with nil input
+	if contract.Properties["parent"] != "meals" {
+		t.Errorf("parent = %v, want meals (auto-applied into nil properties)", contract.Properties["parent"])
+	}
+}
+
+func TestChildService_CreateContract_NoFundingGraceful(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := createTestChild(t, db, "David", "Fischer", org.ID)
+	// No government funding created
+	section := getDefaultSection(t, db, org.ID)
+
+	from := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
+	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID:  section.ID,
+		From:       from,
+		Properties: models.ContractProperties{"care_type": "ganztag"},
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	// Contract should work fine with just the explicit properties
+	if contract.Properties["care_type"] != "ganztag" {
+		t.Errorf("care_type = %v, want ganztag", contract.Properties["care_type"])
+	}
+	if _, ok := contract.Properties["parent"]; ok {
+		t.Errorf("parent should not be set when no funding exists, got %v", contract.Properties["parent"])
+	}
+}
+
+func TestChildService_UpdateContract_InPlace_AutoApply(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := createTestChild(t, db, "Eva", "Koch", org.ID)
+	setupAutoApplyFunding(t, db)
+	section := getDefaultSection(t, db, org.ID)
+
+	// Create contract starting in the future (update-in-place mode)
+	future := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, 3, 0)
+	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID:  section.ID,
+		From:       future,
+		Properties: models.ContractProperties{"care_type": "ganztag"},
+	})
+	if err != nil {
+		t.Fatalf("failed to create contract: %v", err)
+	}
+
+	// Update in place — change properties but omit parent
+	updated, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
+		Properties: models.ContractProperties{"care_type": "halbtag"},
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	// Same contract (in-place update)
+	if updated.ID != contract.ID {
+		t.Errorf("expected same contract ID (in-place), got %d", updated.ID)
+	}
+	if updated.Properties["care_type"] != "halbtag" {
+		t.Errorf("care_type = %v, want halbtag", updated.Properties["care_type"])
+	}
+	// Auto-apply should fill in parent/meals
+	if updated.Properties["parent"] != "meals" {
+		t.Errorf("parent = %v, want meals (auto-applied on update)", updated.Properties["parent"])
+	}
+}
+
+func TestChildService_UpdateContract_Amend_AutoApply(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := createTestChild(t, db, "Fritz", "Bauer", org.ID)
+	setupAutoApplyFunding(t, db)
+	section1 := getDefaultSection(t, db, org.ID)
+	section2 := createTestSection(t, db, "Elementar", org.ID, false)
+
+	// Create contract starting in the past (triggers amend mode)
+	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID:  section1.ID,
+		From:       past,
+		Properties: models.ContractProperties{"care_type": "ganztag"},
+	})
+	if err != nil {
+		t.Fatalf("failed to create contract: %v", err)
+	}
+
+	// Amend: change section (triggers new contract creation)
+	amended, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
+		SectionID: &section2.ID,
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	// Different contract ID (amend creates new)
+	if amended.ID == contract.ID {
+		t.Error("expected new contract ID (amend creates new contract)")
+	}
+	// Properties carried over + auto-apply merged
+	if amended.Properties["care_type"] != "ganztag" {
+		t.Errorf("care_type = %v, want ganztag (carried over)", amended.Properties["care_type"])
+	}
+	if amended.Properties["parent"] != "meals" {
+		t.Errorf("parent = %v, want meals (auto-applied on amend)", amended.Properties["parent"])
 	}
 }
