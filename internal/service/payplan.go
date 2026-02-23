@@ -175,10 +175,6 @@ func (s *PayPlanService) CreatePeriod(ctx context.Context, payplanID, orgID uint
 		return nil, err
 	}
 
-	if err := s.validatePayPlanPeriodNoOverlap(ctx, payplanID, req.From, req.To, nil); err != nil {
-		return nil, err
-	}
-
 	period := &models.PayPlanPeriod{
 		PayPlanID:                payplanID,
 		Period:                   models.Period{From: req.From, To: req.To},
@@ -186,11 +182,20 @@ func (s *PayPlanService) CreatePeriod(ctx context.Context, payplanID, orgID uint
 		EmployerContributionRate: req.EmployerContributionRate,
 	}
 
-	if err := s.store.CreatePeriod(ctx, period); err != nil {
-		return nil, apperror.InternalWrap(err, "failed to create period")
+	var resp models.PayPlanPeriodResponse
+	if err := s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
+		if err := s.validatePayPlanPeriodNoOverlap(txCtx, payplanID, req.From, req.To, nil); err != nil {
+			return err
+		}
+		if err := s.store.CreatePeriod(txCtx, period); err != nil {
+			return apperror.InternalWrap(err, "failed to create period")
+		}
+		resp = period.ToResponse()
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
-	resp := period.ToResponse()
 	return &resp, nil
 }
 
@@ -227,17 +232,21 @@ func (s *PayPlanService) UpdatePeriod(ctx context.Context, periodID, payplanID, 
 		return nil, err
 	}
 
-	if err := s.validatePayPlanPeriodNoOverlap(ctx, payplanID, req.From, req.To, &periodID); err != nil {
-		return nil, err
-	}
-
 	period.From = req.From
 	period.To = req.To
 	period.WeeklyHours = req.WeeklyHours
 	period.EmployerContributionRate = req.EmployerContributionRate
 
-	if err := s.store.UpdatePeriod(ctx, period); err != nil {
-		return nil, apperror.InternalWrap(err, "failed to update period")
+	if err := s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
+		if err := s.validatePayPlanPeriodNoOverlap(txCtx, payplanID, req.From, req.To, &periodID); err != nil {
+			return err
+		}
+		if err := s.store.UpdatePeriod(txCtx, period); err != nil {
+			return apperror.InternalWrap(err, "failed to update period")
+		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	resp := period.ToResponse()
