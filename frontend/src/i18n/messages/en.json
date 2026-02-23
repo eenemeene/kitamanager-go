@@ -657,7 +657,7 @@
     "integration--integration b": "Integration B",
     "ndh--ndh": "NdH",
     "qm/mss--qm/mss": "QM/MSS",
-    "parent_value_meal--parent_value_meal": "Parent Value Meal"
+    "parent--meals": "Parent Value Meal"
   },
   "governmentFundingBills": {
     "title": "Government Funding Bills",

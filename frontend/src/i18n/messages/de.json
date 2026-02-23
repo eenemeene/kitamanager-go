@@ -657,7 +657,7 @@
     "integration--integration b": "Integration B",
     "ndh--ndh": "NdH",
     "qm/mss--qm/mss": "QM/MSS",
-    "parent_value_meal--parent_value_meal": "Elternwertessen"
+    "parent--meals": "Elternwertessen"
   },
   "governmentFundingBills": {
     "title": "Senatsabrechnungen",
