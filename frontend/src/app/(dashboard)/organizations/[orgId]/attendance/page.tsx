@@ -4,7 +4,7 @@ import { useMemo, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
-import { startOfWeek, addDays, eachDayOfInterval } from 'date-fns';
+import { startOfWeek, addDays, eachDayOfInterval, format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -45,7 +45,7 @@ export default function AttendancePage() {
       }),
     [weekMonday]
   );
-  const weekMondayStr = weekMonday.toISOString().slice(0, 10);
+  const weekMondayStr = format(weekMonday, 'yyyy-MM-dd');
 
   // Fetch sections for filter dropdown
   const { data: sectionsData } = useQuery({
@@ -70,7 +70,7 @@ export default function AttendancePage() {
   // Fetch attendance for all 5 weekdays in parallel
   const weekAttendanceQueries = useQueries({
     queries: weekDays.map((day) => {
-      const dayStr = day.toISOString().slice(0, 10);
+      const dayStr = format(day, 'yyyy-MM-dd');
       return {
         queryKey: queryKeys.attendance.byDate(orgId, dayStr),
         queryFn: () => apiClient.getChildAttendanceByDateAll(orgId, dayStr),
@@ -85,7 +85,7 @@ export default function AttendancePage() {
   const weekAttendanceByDate = useMemo(() => {
     const map = new Map<string, ChildAttendanceResponse[]>();
     weekDays.forEach((day, i) => {
-      const dayStr = day.toISOString().slice(0, 10);
+      const dayStr = format(day, 'yyyy-MM-dd');
       map.set(dayStr, weekAttendanceQueries[i]?.data ?? []);
     });
     return map;
@@ -104,8 +104,7 @@ export default function AttendancePage() {
   // Check-in mutation: create attendance with status=present and check_in_time=now
   const checkInMutation = useMutation({
     mutationFn: async ({ childId, forDate }: { childId: number; forDate: string }) => {
-      const now = new Date();
-      const checkInTime = `${forDate}T${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:00Z`;
+      const checkInTime = new Date().toISOString();
       return apiClient.createChildAttendance(orgId, childId, {
         date: forDate,
         status: 'present',
@@ -131,8 +130,7 @@ export default function AttendancePage() {
       forDate: string;
       attendanceId: number;
     }) => {
-      const now = new Date();
-      const checkOutTime = `${forDate}T${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:00Z`;
+      const checkOutTime = new Date().toISOString();
       return apiClient.updateChildAttendance(orgId, childId, attendanceId, {
         check_out_time: checkOutTime,
       });
@@ -174,7 +172,8 @@ export default function AttendancePage() {
       field: 'check_in_time' | 'check_out_time';
       time: string;
     }) => {
-      const isoTime = `${forDate}T${time}:00Z`;
+      const localDate = new Date(`${forDate}T${time}:00`);
+      const isoTime = localDate.toISOString();
       return apiClient.updateChildAttendance(orgId, childId, attendanceId, {
         [field]: isoTime,
       });

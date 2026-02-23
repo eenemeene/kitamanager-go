@@ -54,7 +54,13 @@ export function AppHeader() {
       )}
     >
       {/* Mobile hamburger */}
-      <Button variant="ghost" size="icon" onClick={toggleMobileSidebar} className="md:hidden">
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={toggleMobileSidebar}
+        className="md:hidden"
+        aria-label="Menu"
+      >
         <Menu className="h-5 w-5" />
       </Button>
 

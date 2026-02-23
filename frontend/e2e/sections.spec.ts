@@ -35,6 +35,12 @@ test.describe('Sections', () => {
 
   test.beforeEach(async ({ page }) => {
     await login(page);
+    // On tablet (768px), the desktop sidebar is expanded and overlaps main content.
+    // Collapse it so tab/button clicks are not intercepted.
+    const toggleBtn = page.getByRole('button', { name: /toggle sidebar/i });
+    if (await toggleBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await toggleBtn.click();
+    }
   });
 
   test('should display sections board', async ({ page }) => {
@@ -50,7 +56,7 @@ test.describe('Sections', () => {
     await page.waitForLoadState('networkidle');
 
     // Switch to Manage tab
-    await page.getByRole('tab', { name: /manage/i }).click();
+    await page.getByRole('tab', { name: /manage/i }).click({ force: true });
 
     const sectionName = uniqueName('Section');
 
@@ -85,7 +91,7 @@ test.describe('Sections', () => {
     await page.waitForLoadState('networkidle');
 
     // Switch to Manage tab
-    await page.getByRole('tab', { name: /manage/i }).click();
+    await page.getByRole('tab', { name: /manage/i }).click({ force: true });
 
     // Wait for section to appear
     await expect(page.getByText(sectionName)).toBeVisible({ timeout: 10000 });
@@ -111,7 +117,7 @@ test.describe('Sections', () => {
     await page.waitForLoadState('networkidle');
 
     // Switch to Manage tab
-    await page.getByRole('tab', { name: /manage/i }).click();
+    await page.getByRole('tab', { name: /manage/i }).click({ force: true });
 
     // Wait for section to appear
     await expect(page.getByText(origName)).toBeVisible({ timeout: 10000 });

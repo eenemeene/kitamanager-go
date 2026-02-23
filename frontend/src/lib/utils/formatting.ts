@@ -155,29 +155,47 @@ export function getCurrentMonthRange(): { from: string; to: string } {
   const m = now.getMonth();
   const first = new Date(y, m, 1);
   const last = new Date(y, m + 1, 0);
+  const pad = (n: number) => n.toString().padStart(2, '0');
   return {
-    from: first.toISOString().slice(0, 10),
-    to: last.toISOString().slice(0, 10),
+    from: `${first.getFullYear()}-${pad(first.getMonth() + 1)}-${pad(first.getDate())}`,
+    to: `${last.getFullYear()}-${pad(last.getMonth() + 1)}-${pad(last.getDate())}`,
   };
 }
 
 /**
- * Format an ISO datetime string to HH:mm.
- * Extracts time directly from the ISO string to avoid timezone conversion.
+ * Format an ISO datetime string to HH:mm in local time.
+ * Parses the ISO string into a Date object so timezone conversion is handled correctly.
  */
 export function formatTime(isoString: string | null | undefined): string {
   if (!isoString) return '';
-  const match = isoString.match(/T(\d{2}:\d{2})/);
-  return match ? match[1] : '';
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return '';
+  const hh = date.getHours().toString().padStart(2, '0');
+  const mm = date.getMinutes().toString().padStart(2, '0');
+  return `${hh}:${mm}`;
 }
 
 /**
  * Combine a date string (YYYY-MM-DD) and time string (HH:mm) into an ISO datetime string.
+ * Parses both as local time and converts to UTC for proper timezone handling.
  * Returns null if time is empty.
  */
 export function combineDateAndTime(dateStr: string, timeStr: string): string | null {
   if (!timeStr) return null;
-  return `${dateStr}T${timeStr}:00Z`;
+  const date = new Date(`${dateStr}T${timeStr}:00`);
+  if (isNaN(date.getTime())) return null;
+  return date.toISOString();
+}
+
+/**
+ * Format a Date object to YYYY-MM-DD using local timezone getters.
+ * This is the timezone-safe replacement for `date.toISOString().slice(0, 10)`.
+ */
+export function toLocalDateString(date: Date): string {
+  const y = date.getFullYear();
+  const m = (date.getMonth() + 1).toString().padStart(2, '0');
+  const d = date.getDate().toString().padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 // Re-export contract properties utilities for backwards compatibility

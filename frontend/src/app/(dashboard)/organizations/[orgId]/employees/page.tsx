@@ -33,7 +33,7 @@ import {
 } from '@/lib/api/types';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { formatDateForInput, formatDateForApi } from '@/lib/utils/formatting';
+import { formatDateForInput, formatDateForApi, toLocalDateString } from '@/lib/utils/formatting';
 import { getActiveContract } from '@/lib/utils/contracts';
 import { Pagination } from '@/components/ui/pagination';
 import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
@@ -97,14 +97,14 @@ export default function EmployeesPage() {
       page,
       search,
       staffCategoryFilter,
-      activeOn.toISOString().slice(0, 10)
+      toLocalDateString(activeOn)
     ),
     queryFn: () =>
       apiClient.getEmployees(orgId, {
         page,
         search: search || undefined,
         staff_category: staffCategoryFilter || undefined,
-        active_on: activeOn.toISOString().slice(0, 10),
+        active_on: toLocalDateString(activeOn),
       }),
     enabled: !!orgId,
   });
@@ -258,7 +258,7 @@ export default function EmployeesPage() {
       if (active) {
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowStr = tomorrow.toISOString().split('T')[0];
+        const tomorrowStr = toLocalDateString(tomorrow);
 
         resetContract({
           from: tomorrowStr,
@@ -345,7 +345,7 @@ export default function EmployeesPage() {
                 apiClient.getEmployeesExportUrl(orgId, {
                   search: search || undefined,
                   staff_category: staffCategoryFilter || undefined,
-                  active_on: activeOn.toISOString().slice(0, 10),
+                  active_on: toLocalDateString(activeOn),
                 })
               );
             }}

@@ -27,7 +27,12 @@ import { PropertyTagInput } from '@/components/ui/tag-input';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useFundingAttributes } from '@/lib/hooks/use-funding-attributes';
 import { childContractSchema, type ChildContractFormData } from '@/lib/schemas';
-import { formatDate, formatDateForInput, propertiesToValues } from '@/lib/utils/formatting';
+import {
+  formatDate,
+  formatDateForInput,
+  propertiesToValues,
+  toLocalDateString,
+} from '@/lib/utils/formatting';
 import { getActiveContract, isDateBefore } from '@/lib/utils/contracts';
 import { calculateContractEndDate } from '@/lib/utils/school-enrollment';
 import type { Child, Section, ContractProperties } from '@/lib/api/types';
@@ -99,7 +104,7 @@ export function ChildContractCreateDialog({
       if (active) {
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowStr = tomorrow.toISOString().split('T')[0];
+        const tomorrowStr = toLocalDateString(tomorrow);
 
         reset({
           from: tomorrowStr,

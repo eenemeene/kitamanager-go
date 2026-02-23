@@ -16,11 +16,11 @@ test.describe('Responsive Layout - Mobile', () => {
     await page.waitForLoadState('networkidle');
 
     // Open mobile sidebar to navigate
-    const hamburger = page.locator('header button.md\\:hidden').first();
+    const hamburger = page.getByRole('button', { name: /menu/i });
     await expect(hamburger).toBeVisible({ timeout: 10000 });
     await hamburger.click();
 
-    const sidebarOverlay = page.locator('.fixed.inset-0.z-50');
+    const sidebarOverlay = page.locator('div.fixed.inset-0.z-50');
     await expect(sidebarOverlay).toBeVisible({ timeout: 5000 });
 
     // Navigate to children via org-scoped nav
@@ -43,11 +43,11 @@ test.describe('Responsive Layout - Mobile', () => {
     // Navigate to children page
     await page.waitForLoadState('networkidle');
 
-    const hamburger = page.locator('header button.md\\:hidden').first();
+    const hamburger = page.getByRole('button', { name: /menu/i });
     await expect(hamburger).toBeVisible({ timeout: 10000 });
     await hamburger.click();
 
-    const sidebarOverlay = page.locator('.fixed.inset-0.z-50');
+    const sidebarOverlay = page.locator('div.fixed.inset-0.z-50');
     await expect(sidebarOverlay).toBeVisible({ timeout: 5000 });
 
     const childrenLink = sidebarOverlay.getByRole('link', { name: /children/i }).first();
@@ -92,8 +92,8 @@ test.describe('Responsive Layout - Desktop', () => {
     const sidebar = page.locator('aside').first();
     await expect(sidebar).toBeVisible({ timeout: 10000 });
 
-    // Hamburger should not be visible
-    const hamburger = page.locator('header button.md\\:hidden');
+    // Hamburger should not be visible on desktop
+    const hamburger = page.getByRole('button', { name: /menu/i });
     await expect(hamburger).not.toBeVisible();
   });
 });

@@ -125,7 +125,7 @@ func parseRequiredDate(c *gin.Context, param string) (time.Time, bool) {
 func parseOptionalDate(c *gin.Context, param string) (time.Time, bool) {
 	dateStr := c.Query(param)
 	if dateStr == "" {
-		return time.Now(), true
+		return time.Now().UTC(), true
 	}
 	date, err := time.Parse(models.DateFormat, dateStr)
 	if err != nil {

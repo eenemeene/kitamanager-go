@@ -86,23 +86,23 @@ test.describe('Attendance', () => {
 
     const row = page.getByRole('row').filter({ hasText: childFirstName });
 
-    // If not checked in yet, check in first
-    const checkOutButton = row.getByRole('button', { name: /check-out/i }).first();
+    // Check in if not already
     const checkInButton = row.getByRole('button', { name: /check-in/i }).first();
-
     if (await checkInButton.isVisible().catch(() => false)) {
       await checkInButton.click();
-      await expect(checkOutButton).toBeVisible({ timeout: 10000 });
+      await expect(row.getByRole('button', { name: /check-out/i }).first()).toBeVisible({
+        timeout: 10000,
+      });
     }
 
     // Click check-out
+    const checkOutButton = row.getByRole('button', { name: /check-out/i }).first();
     await checkOutButton.click();
 
-    // After check-out, the times should be displayed (no more buttons)
-    // The cell should show a time range like "HH:MM – HH:MM"
-    await expect(row.locator('text=/\\d{2}:\\d{2}\\s*–\\s*\\d{2}:\\d{2}/')).toBeVisible({
-      timeout: 10000,
-    });
+    // After check-out, should show a time range (check-in and check-out times displayed)
+    await expect(
+      row.locator('button[aria-label="Check-out"]').filter({ hasText: /\d{2}:\d{2}/ })
+    ).toBeVisible({ timeout: 10000 });
   });
 
   test('should navigate between weeks', async ({ page }) => {
@@ -216,7 +216,7 @@ test.describe('Attendance Status Transitions', () => {
     // Should show "Sick" text, check-out button from today's cell should be gone
     await expect(row.getByText('Sick')).toBeVisible({ timeout: 10000 });
     // Time range should not be visible (times were cleared)
-    await expect(row.locator('text=/\\d{2}:\\d{2}\\s*–\\s*\\d{2}:\\d{2}/')).toBeHidden();
+    await expect(row.locator('button[aria-label="Check-out"]').filter({ hasText: /\d{2}:\d{2}/ })).toBeHidden();
   });
 
   test('mark sick then mark present auto-sets check-in time', async ({ page }) => {
@@ -248,22 +248,30 @@ test.describe('Attendance Status Transitions', () => {
   test('check-in, check-out, then mark vacation clears both times', async ({ page }) => {
     const row = page.getByRole('row').filter({ hasText: childFirstName });
 
-    // Check-in
+    // Check-in — wait for API response to complete
+    const checkInResp = page.waitForResponse(
+      (r) => r.url().includes('/attendance') && r.request().method() === 'POST'
+    );
     await row
       .getByRole('button', { name: /check-in/i })
       .first()
       .click();
+    await checkInResp;
     await expect(row.getByRole('button', { name: /check-out/i }).first()).toBeVisible({
       timeout: 10000,
     });
 
-    // Check-out
+    // Check-out — wait for API response to complete
+    const checkOutResp = page.waitForResponse(
+      (r) => r.url().includes('/attendance') && r.request().method() === 'PUT'
+    );
     await row
       .getByRole('button', { name: /check-out/i })
       .first()
       .click();
-    // Should show time range (HH:MM – HH:MM)
-    await expect(row.locator('text=/\\d{2}:\\d{2}\\s*–\\s*\\d{2}:\\d{2}/')).toBeVisible({
+    await checkOutResp;
+    // Should show editable check-out time
+    await expect(row.locator('button[aria-label="Check-out"]').filter({ hasText: /\d{2}:\d{2}/ })).toBeVisible({
       timeout: 10000,
     });
 
@@ -276,7 +284,7 @@ test.describe('Attendance Status Transitions', () => {
 
     // Should show "Vacation" text, times should be gone
     await expect(row.getByText('Vacation')).toBeVisible({ timeout: 10000 });
-    await expect(row.locator('text=/\\d{2}:\\d{2}\\s*–\\s*\\d{2}:\\d{2}/')).toBeHidden();
+    await expect(row.locator('button[aria-label="Check-out"]').filter({ hasText: /\d{2}:\d{2}/ })).toBeHidden();
   });
 
   test('mark absent then mark present shows check-in time', async ({ page }) => {
@@ -398,13 +406,23 @@ test.describe('Attendance Editable Times', () => {
   test('edit check-out time after full check-in/out', async ({ page }) => {
     const row = page.getByRole('row').filter({ hasText: childFirstName });
 
-    // Check-in then check-out
+    // Check-in: wait for the API response before proceeding
+    const checkInResponse = page.waitForResponse(
+      (resp) => resp.url().includes('/attendance') && resp.request().method() === 'POST'
+    );
     await row.getByRole('button', { name: /check-in/i }).first().click();
+    await checkInResponse;
     await expect(row.getByRole('button', { name: /check-out/i }).first()).toBeVisible({
       timeout: 10000,
     });
+
+    // Check-out: wait for the API response before asserting
+    const checkOutResponse = page.waitForResponse(
+      (resp) => resp.url().includes('/attendance') && resp.request().method() === 'PUT'
+    );
     await row.getByRole('button', { name: /check-out/i }).first().click();
-    await expect(row.locator('text=/\\d{2}:\\d{2}\\s*–\\s*\\d{2}:\\d{2}/')).toBeVisible({
+    await checkOutResponse;
+    await expect(row.locator('button[aria-label="Check-out"]').filter({ hasText: /\d{2}:\d{2}/ })).toBeVisible({
       timeout: 10000,
     });
 

@@ -313,6 +313,17 @@ describe('getDayBefore', () => {
   it('handles leap year', () => {
     expect(getDayBefore('2024-03-01')).toBe('2024-02-29');
   });
+
+  it('handles non-leap year February', () => {
+    expect(getDayBefore('2025-03-01')).toBe('2025-02-28');
+  });
+
+  it('is timezone-safe (no UTC shift)', () => {
+    // getDayBefore should work correctly regardless of timezone
+    // by parsing the date as local time
+    expect(getDayBefore('2026-01-01')).toBe('2025-12-31');
+    expect(getDayBefore('2026-07-01')).toBe('2026-06-30');
+  });
 });
 
 // ---------------------------------------------------------------------------

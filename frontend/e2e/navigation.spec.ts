@@ -59,29 +59,27 @@ test.describe('Mobile Navigation', () => {
 
   test('should show hamburger menu on mobile', async ({ page }) => {
     // Hamburger menu should be visible
-    const hamburger = page.getByRole('button', { name: /menu/i }).or(
-      page.locator('button.md\\:hidden').first()
-    );
+    const hamburger = page.getByRole('button', { name: /menu/i });
     await expect(hamburger).toBeVisible({ timeout: 10000 });
 
-    // Desktop sidebar should not be visible
-    const sidebar = page.locator('aside.md\\:flex').first();
+    // Desktop sidebar should not be visible (it has hidden md:flex)
+    const sidebar = page.locator('aside').first();
     await expect(sidebar).not.toBeVisible();
   });
 
   test('should open and close mobile sidebar', async ({ page }) => {
     // Open sidebar via hamburger
-    const hamburger = page.locator('header button.md\\:hidden').first();
+    const hamburger = page.getByRole('button', { name: /menu/i });
     await expect(hamburger).toBeVisible({ timeout: 10000 });
     await hamburger.click();
 
     // Sidebar overlay should appear
-    const sidebarOverlay = page.locator('.fixed.inset-0.z-50');
+    const sidebarOverlay = page.locator('div.fixed.inset-0.z-50');
     await expect(sidebarOverlay).toBeVisible({ timeout: 5000 });
 
-    // Close by clicking backdrop
-    const backdrop = page.locator('.fixed.inset-0.bg-black\\/50');
-    await backdrop.click();
+    // Close by clicking backdrop (force: true to avoid sidebar panel interception)
+    const backdrop = page.locator('div.fixed.inset-0.bg-black\\/50');
+    await backdrop.click({ force: true });
 
     // Sidebar overlay should disappear
     await expect(sidebarOverlay).not.toBeVisible({ timeout: 5000 });
@@ -89,12 +87,12 @@ test.describe('Mobile Navigation', () => {
 
   test('should navigate via mobile sidebar', async ({ page }) => {
     // Open sidebar
-    const hamburger = page.locator('header button.md\\:hidden').first();
+    const hamburger = page.getByRole('button', { name: /menu/i });
     await expect(hamburger).toBeVisible({ timeout: 10000 });
     await hamburger.click();
 
     // Wait for sidebar overlay
-    const sidebarOverlay = page.locator('.fixed.inset-0.z-50');
+    const sidebarOverlay = page.locator('div.fixed.inset-0.z-50');
     await expect(sidebarOverlay).toBeVisible({ timeout: 5000 });
 
     // Click on Organizations link in the mobile sidebar

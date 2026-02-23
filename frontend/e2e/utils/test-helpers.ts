@@ -77,6 +77,10 @@ export async function login(
     },
     { email, password }
   );
+
+  // Navigate to the app so the browser lands on a real page
+  // (not the health JSON endpoint used to set up cookies above)
+  await page.goto('/', { waitUntil: 'load' });
 }
 
 /**
@@ -843,7 +847,10 @@ export async function clearWeekAttendance(
   for (let i = 0; i < 5; i++) {
     const day = new Date(monday);
     day.setDate(monday.getDate() + i);
-    await clearAttendanceForDate(page, orgId, childId, day.toISOString().slice(0, 10));
+    const yyyy = day.getFullYear();
+    const mm = String(day.getMonth() + 1).padStart(2, '0');
+    const dd = String(day.getDate()).padStart(2, '0');
+    await clearAttendanceForDate(page, orgId, childId, `${yyyy}-${mm}-${dd}`);
   }
 }
 

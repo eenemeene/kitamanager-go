@@ -33,7 +33,7 @@ import {
 } from '@/lib/api/types';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { formatDateForInput, formatDateForApi } from '@/lib/utils/formatting';
+import { formatDateForInput, formatDateForApi, toLocalDateString } from '@/lib/utils/formatting';
 import { useContractMutation } from '@/lib/hooks/use-contract-mutation';
 import { Pagination } from '@/components/ui/pagination';
 import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
@@ -97,14 +97,14 @@ export default function ChildrenPage() {
       page,
       search,
       sectionFilter,
-      activeOn.toISOString().slice(0, 10)
+      toLocalDateString(activeOn)
     ),
     queryFn: () =>
       apiClient.getChildren(orgId, {
         page,
         search: search || undefined,
         section_id: sectionFilter,
-        active_on: activeOn.toISOString().slice(0, 10),
+        active_on: toLocalDateString(activeOn),
       }),
     enabled: !!orgId,
   });
@@ -280,7 +280,7 @@ export default function ChildrenPage() {
                 apiClient.getChildrenExportUrl(orgId, {
                   search: search || undefined,
                   section_id: sectionFilter ? String(sectionFilter) : undefined,
-                  active_on: activeOn.toISOString().slice(0, 10),
+                  active_on: toLocalDateString(activeOn),
                 })
               );
             }}

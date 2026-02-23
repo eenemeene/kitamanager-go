@@ -127,7 +127,7 @@ func (h *ExportHandler) ExportChildren(c *gin.Context) {
 	}
 
 	if activeOn == nil && contractAfter == nil {
-		now := time.Now()
+		now := time.Now().UTC()
 		activeOn = &now
 	}
 

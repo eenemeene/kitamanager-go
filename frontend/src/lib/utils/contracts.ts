@@ -51,9 +51,12 @@ export function getCurrentContract<T extends { from: string; to?: string | null 
  * Get the day before a given date string (YYYY-MM-DD format)
  */
 export function getDayBefore(dateStr: string): string {
-  const date = new Date(dateStr);
+  const date = new Date(`${dateStr}T00:00:00`);
   date.setDate(date.getDate() - 1);
-  return date.toISOString().split('T')[0];
+  const y = date.getFullYear();
+  const m = (date.getMonth() + 1).toString().padStart(2, '0');
+  const d = date.getDate().toString().padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 /**

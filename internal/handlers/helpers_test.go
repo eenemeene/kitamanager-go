@@ -52,6 +52,49 @@ func TestParseRequiredDate_InvalidFormat(t *testing.T) {
 	}
 }
 
+func TestParseOptionalDate_Empty_ReturnsUTC(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/?", nil)
+
+	date, ok := parseOptionalDate(c, "active_on")
+	if !ok {
+		t.Fatal("expected ok=true")
+	}
+	if date.Location() != time.UTC {
+		t.Errorf("expected UTC location, got %v", date.Location())
+	}
+}
+
+func TestParseOptionalDate_WithValue(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/?active_on=2024-06-15", nil)
+
+	date, ok := parseOptionalDate(c, "active_on")
+	if !ok {
+		t.Fatal("expected ok=true")
+	}
+	expected := time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC)
+	if !date.Equal(expected) {
+		t.Errorf("expected %v, got %v", expected, date)
+	}
+}
+
+func TestParseOptionalDate_InvalidFormat(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/?active_on=not-a-date", nil)
+
+	_, ok := parseOptionalDate(c, "active_on")
+	if ok {
+		t.Fatal("expected ok=false for invalid format")
+	}
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
 func TestParseOptionalUint(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)

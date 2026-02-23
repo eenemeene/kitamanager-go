@@ -11,6 +11,7 @@ import {
   formatAgeRange,
   formatTime,
   combineDateAndTime,
+  toLocalDateString,
   propertiesToValues,
   getPropertyValue,
   getScalarPropertyValue,
@@ -117,7 +118,7 @@ describe('calculateAge', () => {
   it('calculates age for a valid birthdate', () => {
     const tenYearsAgo = new Date();
     tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10);
-    const birthdate = tenYearsAgo.toISOString().split('T')[0];
+    const birthdate = toLocalDateString(tenYearsAgo);
     expect(calculateAge(birthdate)).toBe(10);
   });
 
@@ -486,12 +487,17 @@ describe('formatTime', () => {
     expect(formatTime(undefined)).toBe('');
   });
 
-  it('formats an ISO datetime to HH:mm', () => {
-    expect(formatTime('2025-06-15T08:30:00Z')).toBe('08:30');
+  it('formats an ISO datetime to HH:mm in local time', () => {
+    // Parse the UTC string and verify it displays in local time
+    const date = new Date('2025-06-15T08:30:00Z');
+    const expected = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    expect(formatTime('2025-06-15T08:30:00Z')).toBe(expected);
   });
 
   it('formats a datetime with different time', () => {
-    expect(formatTime('2025-06-15T16:45:00Z')).toBe('16:45');
+    const date = new Date('2025-06-15T16:45:00Z');
+    const expected = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    expect(formatTime('2025-06-15T16:45:00Z')).toBe(expected);
   });
 
   it('returns empty string for invalid input', () => {
@@ -507,11 +513,66 @@ describe('combineDateAndTime', () => {
     expect(combineDateAndTime('2025-06-15', '')).toBeNull();
   });
 
-  it('combines date and time into ISO string', () => {
-    expect(combineDateAndTime('2025-06-15', '08:30')).toBe('2025-06-15T08:30:00Z');
+  it('combines date and time into a valid ISO string', () => {
+    const result = combineDateAndTime('2025-06-15', '08:30');
+    expect(result).not.toBeNull();
+    // The result should be a valid ISO string that, when parsed back to local time,
+    // gives the original date and time
+    const parsed = new Date(result!);
+    expect(parsed.getFullYear()).toBe(2025);
+    expect(parsed.getMonth()).toBe(5); // June = 5
+    expect(parsed.getDate()).toBe(15);
+    expect(parsed.getHours()).toBe(8);
+    expect(parsed.getMinutes()).toBe(30);
   });
 
-  it('combines date and different time', () => {
-    expect(combineDateAndTime('2025-12-01', '16:00')).toBe('2025-12-01T16:00:00Z');
+  it('round-trips with formatTime', () => {
+    const result = combineDateAndTime('2025-12-01', '16:00');
+    expect(result).not.toBeNull();
+    expect(formatTime(result!)).toBe('16:00');
+  });
+
+  it('returns null for invalid date', () => {
+    expect(combineDateAndTime('invalid', '08:30')).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// toLocalDateString
+// ---------------------------------------------------------------------------
+describe('toLocalDateString', () => {
+  it('formats a date to YYYY-MM-DD', () => {
+    expect(toLocalDateString(new Date(2026, 0, 5))).toBe('2026-01-05');
+  });
+
+  it('pads single-digit month and day', () => {
+    expect(toLocalDateString(new Date(2025, 2, 3))).toBe('2025-03-03');
+  });
+
+  it('handles Dec 31', () => {
+    expect(toLocalDateString(new Date(2025, 11, 31))).toBe('2025-12-31');
+  });
+
+  it('handles Jan 1', () => {
+    expect(toLocalDateString(new Date(2026, 0, 1))).toBe('2026-01-01');
+  });
+
+  it('uses local timezone, not UTC', () => {
+    // A UTC time of 23:30 on Feb 23 is Feb 24 in CET (UTC+1)
+    // This test is timezone-dependent: it verifies that toLocalDateString
+    // uses local getters, so the result matches the local date.
+    const date = new Date('2026-02-23T23:30:00Z');
+    const result = toLocalDateString(date);
+    // The result should match the local date, not the UTC date
+    const expected = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+    expect(result).toBe(expected);
+  });
+
+  it('round-trips formatTime(combineDateAndTime(date, time)) preserves time', () => {
+    const dateStr = '2026-06-15';
+    const timeStr = '14:30';
+    const combined = combineDateAndTime(dateStr, timeStr);
+    expect(combined).not.toBeNull();
+    expect(formatTime(combined!)).toBe(timeStr);
   });
 });

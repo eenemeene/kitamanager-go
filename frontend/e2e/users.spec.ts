@@ -77,8 +77,9 @@ test.describe('Users', () => {
     await expect(page.getByText(origName)).toBeVisible({ timeout: 10000 });
 
     const row = page.getByRole('row').filter({ hasText: origName });
-    const actionButtons = row.locator('button');
-    await actionButtons.nth(-2).click();
+    // Action buttons are icon-only; skip the toggle switch (role=switch)
+    // Order: edit (pencil), membership (users), delete (trash)
+    await row.locator('button:not([role="switch"])').first().click();
 
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
 

@@ -30,9 +30,14 @@ import {
 } from '@/components/crud';
 import { Pagination } from '@/components/ui/pagination';
 import { budgetItemWithEntrySchema, type BudgetItemWithEntryFormData } from '@/lib/schemas';
-import { formatDateForApi, eurosToCents, formatCurrency } from '@/lib/utils/formatting';
+import {
+  formatDateForApi,
+  eurosToCents,
+  formatCurrency,
+  toLocalDateString,
+} from '@/lib/utils/formatting';
 
-const today = new Date().toISOString().slice(0, 10);
+const today = toLocalDateString(new Date());
 
 const defaultValues: BudgetItemWithEntryFormData = {
   name: '',

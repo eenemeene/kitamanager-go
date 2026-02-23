@@ -76,6 +76,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
   : '/api/v1';
 
 import { getCookie } from '@/lib/utils';
+import { toLocalDateString } from '@/lib/utils/formatting';
 
 // Helper to get CSRF token from cookie
 function getCSRFToken(): string | null {
@@ -749,7 +750,7 @@ class ApiClient {
 
   // Employees - fetch all with active contracts (for kanban board view)
   async getEmployeesAll(orgId: number): Promise<Employee[]> {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = toLocalDateString(new Date());
     return this.fetchAllPages<Employee>(`/organizations/${orgId}/employees?active_on=${today}`);
   }
 
@@ -988,13 +989,13 @@ class ApiClient {
 
   // Children - fetch upcoming (contracts starting after today)
   async getUpcomingChildren(orgId: number): Promise<Child[]> {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = toLocalDateString(new Date());
     return this.fetchAllPages<Child>(`/organizations/${orgId}/children?contract_after=${today}`);
   }
 
   // Children - fetch all with active contracts (for kanban board view)
   async getChildrenAll(orgId: number): Promise<Child[]> {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = toLocalDateString(new Date());
     return this.fetchAllPages<Child>(`/organizations/${orgId}/children?contract_on=${today}`);
   }
 }

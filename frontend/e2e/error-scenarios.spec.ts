@@ -170,13 +170,10 @@ test.describe('Not Found Scenarios', () => {
 });
 
 test.describe('Duplicate Resource Errors', () => {
-  test('should allow creating organization with same name (no unique constraint)', async ({
-    page,
-  }) => {
+  test('should show error when creating organization with duplicate name', async ({ page }) => {
     await login(page);
 
     // Create a temporary org to test duplication against
-    const testOrgName = uniqueName('DupTest');
     const testOrg = await createTestOrg(page, 'DupTest');
 
     try {
@@ -189,23 +186,20 @@ test.describe('Duplicate Resource Errors', () => {
       // Get the test org's actual name for duplication
       const orgs = await getOrganizationsViaApi(page);
       const targetOrg = orgs.find((o) => o.id === testOrg.orgId);
-      const orgName = targetOrg?.name || testOrgName;
+      const orgName = targetOrg!.name;
 
       await page.getByLabel('Name', { exact: true }).fill(orgName);
+      // Explicitly interact with the State combobox inside the dialog
+      const dialog = page.getByRole('dialog');
+      await dialog.locator('[role="combobox"]').first().click();
+      await page.getByRole('option', { name: /berlin/i }).click();
       await page.getByLabel(/Default Section Name/i).fill('Default');
 
       await page.getByRole('button', { name: /save/i }).click();
 
-      // Dialog should close - duplicate names are allowed
-      await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10000 });
-
-      // Cleanup: delete the duplicate org
-      const allOrgs = await getOrganizationsViaApi(page);
-      const duplicates = allOrgs.filter((o) => o.name === orgName);
-      if (duplicates.length > 1) {
-        const newest = duplicates[duplicates.length - 1];
-        await deleteOrganizationViaApi(page, newest.id);
-      }
+      // Should show an error toast (duplicate name causes API error)
+      // and the dialog should remain open
+      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
     } finally {
       await deleteTestOrg(page, testOrg.orgId);
     }

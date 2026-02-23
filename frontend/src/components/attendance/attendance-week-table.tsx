@@ -575,7 +575,7 @@ export function AttendanceWeekTable({
               {child.first_name} {child.last_name}
             </TableCell>
             {days.map((day) => {
-              const dayStr = day.toISOString().slice(0, 10);
+              const dayStr = format(day, 'yyyy-MM-dd');
               const dayRecords = attendanceByDate.get(dayStr) ?? [];
               const attendance = dayRecords.find((a) => a.child_id === child.id);
               return (

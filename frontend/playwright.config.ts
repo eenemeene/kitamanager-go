@@ -13,6 +13,7 @@ export default defineConfig({
   use: {
     // Next.js runs on port 3000
     baseURL: process.env.BASE_URL || 'http://localhost:3000',
+    timezoneId: 'Europe/Berlin',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: process.env.VIDEO ? { mode: 'on', size: { width: 1280, height: 720 } } : 'off',
