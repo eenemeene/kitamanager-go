@@ -8376,6 +8376,7 @@ const docTemplate = `{
                     "example": "2025-06-15T08:00:00Z"
                 },
                 "date": {
+                    "description": "Date is intentionally not binding:\"required\" — for status \"present\" it\ndefaults to today in the service layer; for other statuses the service\nvalidates its presence and returns a clear error.",
                     "type": "string",
                     "example": "2025-06-15"
                 },

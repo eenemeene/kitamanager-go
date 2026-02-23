@@ -189,6 +189,10 @@ definitions:
         example: "2025-06-15T08:00:00Z"
         type: string
       date:
+        description: |-
+          Date is intentionally not binding:"required" — for status "present" it
+          defaults to today in the service layer; for other statuses the service
+          validates its presence and returns a clear error.
         example: "2025-06-15"
         type: string
       note:

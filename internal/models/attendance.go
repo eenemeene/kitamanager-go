@@ -40,6 +40,9 @@ func IsValidChildAttendanceStatus(status string) bool {
 
 // ChildAttendanceCreateRequest represents the request body for creating an attendance record.
 type ChildAttendanceCreateRequest struct {
+	// Date is intentionally not binding:"required" — for status "present" it
+	// defaults to today in the service layer; for other statuses the service
+	// validates its presence and returns a clear error.
 	Date        string     `json:"date" example:"2025-06-15"`
 	Status      string     `json:"status" binding:"required" example:"present"`
 	CheckInTime *time.Time `json:"check_in_time" example:"2025-06-15T08:00:00Z"`
