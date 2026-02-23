@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -497,7 +498,9 @@ func (h *UserHandler) ResetPassword(c *gin.Context) {
 
 	// Revoke all tokens for the target user
 	if h.tokenStore != nil {
-		_ = h.tokenStore.RevokeAllForUser(c.Request.Context(), targetUserID)
+		if err := h.tokenStore.RevokeAllForUser(c.Request.Context(), targetUserID); err != nil {
+			slog.Error("failed to revoke tokens after password reset", "user_id", targetUserID, "error", err)
+		}
 	}
 
 	// Audit log
