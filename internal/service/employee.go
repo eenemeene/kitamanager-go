@@ -149,19 +149,19 @@ func (s *EmployeeService) Import(ctx context.Context, orgID uint, data *models.E
 					return apperror.BadRequest(fmt.Sprintf("employee %d contract %d: %s", i+1, j+1, err.Error()))
 				}
 
-				contract := &models.EmployeeContract{
-					EmployeeID:    employee.ID,
+				req := &models.EmployeeContractCreateRequest{
+					From:          c.From,
+					To:            c.To,
+					SectionID:     sectionID,
 					StaffCategory: c.StaffCategory,
 					Grade:         c.Grade,
 					Step:          c.Step,
 					WeeklyHours:   c.WeeklyHours,
 					PayPlanID:     payPlanID,
+					Properties:    c.Properties,
 				}
-				contract.From = c.From
-				contract.To = c.To
-				contract.SectionID = sectionID
-				if err := s.store.CreateContract(txCtx, contract); err != nil {
-					return apperror.InternalWrap(err, "failed to create contract")
+				if _, err := s.CreateContract(txCtx, employee.ID, orgID, req); err != nil {
+					return err
 				}
 			}
 

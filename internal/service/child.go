@@ -141,17 +141,15 @@ func (s *ChildService) Import(ctx context.Context, orgID uint, data *models.Chil
 					return err
 				}
 
-				contract := &models.ChildContract{
-					ChildID:       child.ID,
+				req := &models.ChildContractCreateRequest{
+					From:          c.From,
+					To:            c.To,
+					SectionID:     sectionID,
 					VoucherNumber: c.VoucherNumber,
+					Properties:    c.Properties,
 				}
-				contract.From = c.From
-				contract.To = c.To
-				contract.SectionID = sectionID
-				defaults := s.getAutoApplyProperties(txCtx, orgID, c.From)
-				contract.Properties = c.Properties.MergeDefaults(defaults)
-				if err := s.store.CreateContract(txCtx, contract); err != nil {
-					return apperror.InternalWrap(err, "failed to create contract")
+				if _, err := s.CreateContract(txCtx, child.ID, orgID, req); err != nil {
+					return err
 				}
 			}
 
