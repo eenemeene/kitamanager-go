@@ -357,3 +357,60 @@ func TestUserService_ListByOrganization(t *testing.T) {
 		t.Errorf("expected total 2, got %d", total)
 	}
 }
+
+func TestUserService_ResetPassword(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserService(db)
+	ctx := context.Background()
+
+	user := createTestUser(t, db, "Test User", "reset@example.com", "oldpassword")
+
+	err := svc.ResetPassword(ctx, user.ID, "newpassword123")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	// Verify the new password works.
+	var updated models.User
+	if err := db.First(&updated, user.ID).Error; err != nil {
+		t.Fatalf("failed to reload user: %v", err)
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(updated.Password), []byte("newpassword123")); err != nil {
+		t.Error("new password does not match after reset")
+	}
+}
+
+func TestUserService_ResetPassword_UserNotFound(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserService(db)
+	ctx := context.Background()
+
+	err := svc.ResetPassword(ctx, 99999, "newpassword123")
+	if err == nil {
+		t.Fatal("expected error for non-existent user, got nil")
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestUserService_ResetPassword_OldPasswordInvalidated(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserService(db)
+	ctx := context.Background()
+
+	user := createTestUser(t, db, "Test User", "reset2@example.com", "oldpassword")
+
+	if err := svc.ResetPassword(ctx, user.ID, "newpassword123"); err != nil {
+		t.Fatalf("ResetPassword: %v", err)
+	}
+
+	// Verify old password no longer works.
+	var updated models.User
+	if err := db.First(&updated, user.ID).Error; err != nil {
+		t.Fatalf("failed to reload user: %v", err)
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(updated.Password), []byte("oldpassword")); err == nil {
+		t.Error("old password should no longer match after reset")
+	}
+}
