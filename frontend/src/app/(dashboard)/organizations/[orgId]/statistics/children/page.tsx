@@ -1,9 +1,11 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
+import { Printer } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChartErrorBoundary } from '@/components/charts/chart-error-boundary';
@@ -55,8 +57,16 @@ export default function ChildrenStatisticsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">{t('nav.statisticsChildren')}</h1>
+        <Link
+          href={`/organizations/${orgId}/statistics/children/print`}
+          target="_blank"
+          className="text-muted-foreground hover:text-foreground inline-flex h-9 w-9 items-center justify-center rounded-md transition-colors"
+          title={t('common.print')}
+        >
+          <Printer className="h-4 w-4" />
+        </Link>
       </div>
 
       {/* Monthly Contract Counts (full width) */}

@@ -58,7 +58,8 @@
     "exportExcel": "Excel Export",
     "previousMonth": "Vorheriger Monat",
     "nextMonth": "Nächster Monat",
-    "notFound": "Nicht gefunden"
+    "notFound": "Nicht gefunden",
+    "print": "Drucken"
   },
   "pagination": {
     "navigation": "Seitennavigation",
