@@ -339,7 +339,7 @@ export default function GovernmentFundingBillDetailPage() {
                         {(child.matched || comp?.child_id) && child.child_id ? (
                           <Link
                             href={`/organizations/${orgId}/children/${child.child_id}`}
-                            className="text-primary hover:underline"
+                            className="hover:text-primary hover:underline"
                             onClick={(e) => e.stopPropagation()}
                           >
                             {child.child_name}
@@ -547,7 +547,7 @@ export default function GovernmentFundingBillDetailPage() {
                           {child.child_id ? (
                             <Link
                               href={`/organizations/${orgId}/children/${child.child_id}`}
-                              className="text-primary hover:underline"
+                              className="hover:text-primary hover:underline"
                             >
                               {child.child_name}
                             </Link>
@@ -583,7 +583,7 @@ export default function GovernmentFundingBillDetailPage() {
                                   {i > 0 && ', '}
                                   <Link
                                     href={`/organizations/${orgId}/government-funding-bills/${a.bill_id}`}
-                                    className="text-primary hover:underline"
+                                    className="hover:text-primary hover:underline"
                                   >
                                     {new Date(a.bill_from).toLocaleDateString('de-DE', {
                                       month: 'short',
