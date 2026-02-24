@@ -283,7 +283,7 @@ export default function GovernmentFundingBillDetailPage() {
       <Card>
         <CardHeader>
           <CardTitle>
-            {t('children')} ({result.children_count})
+            {t('childrenInBill')} ({result.children_count})
           </CardTitle>
         </CardHeader>
         <CardContent>
