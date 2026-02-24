@@ -45,7 +45,9 @@ func NewGenerator(cookies []playwright.OptionalCookie, baseURL string) (*Generat
 
 // GenerateReport navigates to a print page and exports it as a PDF.
 func (g *Generator) GenerateReport(reportType, orgID string, year int, outputDir string) error {
-	ctx, err := g.browser.NewContext()
+	ctx, err := g.browser.NewContext(playwright.BrowserNewContextOptions{
+		Viewport: &playwright.Size{Width: 1600, Height: 900},
+	})
 	if err != nil {
 		return fmt.Errorf("create browser context: %w", err)
 	}
@@ -89,18 +91,37 @@ func (g *Generator) GenerateReport(reportType, orgID string, year int, outputDir
 		return fmt.Errorf("timeout waiting for page to be ready: %w", err)
 	}
 
+	// Inject print-optimized CSS:
+	// - Remove max-width so wide tables aren't clipped by the container
+	// - Remove body margin so content uses the full paper width
+	// - Ensure overflow is visible everywhere
+	if _, err := page.AddStyleTag(playwright.PageAddStyleTagOptions{
+		Content: playwright.String(`
+			body { margin: 0 !important; padding: 0 !important; }
+			[data-print-ready] {
+				max-width: none !important;
+				overflow: visible !important;
+				padding: 0 20px !important;
+			}
+			table { overflow: visible !important; }
+		`),
+	}); err != nil {
+		return fmt.Errorf("inject print CSS: %w", err)
+	}
+
 	// Brief stabilization delay for chart animations
 	time.Sleep(1 * time.Second)
 
 	filename := fmt.Sprintf("%s-%s-%d.pdf", reportType, orgID, year)
 	outputPath := filepath.Join(outputDir, filename)
 
-	marginMM := "15mm"
+	marginMM := "10mm"
 	_, err = page.PDF(playwright.PagePdfOptions{
 		Path:            playwright.String(outputPath),
 		Landscape:       playwright.Bool(true),
 		PrintBackground: playwright.Bool(true),
 		Format:          playwright.String("A4"),
+		Scale:           playwright.Float(0.55),
 		Margin: &playwright.Margin{
 			Top:    &marginMM,
 			Bottom: &marginMM,

@@ -39,6 +39,9 @@ go.work.sum
 # OS
 .DS_Store
 
+# Generated PDF reports
+*.pdf
+
 # Playwright test results
 web/test-results/
 

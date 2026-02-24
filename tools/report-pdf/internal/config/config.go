@@ -3,6 +3,7 @@ package config
 import (
 	"flag"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 )
@@ -46,6 +47,9 @@ func ParseArgs(args []string) (*Config, error) {
 	var reports string
 	fs.StringVar(&reports, "reports", "all", "Comma-separated reports: staffing,financials,occupancy,children")
 
+	if args == nil {
+		args = os.Args[1:]
+	}
 	if err := fs.Parse(args); err != nil {
 		return nil, err
 	}
