@@ -715,6 +715,7 @@
     "differenceCount": "Differenzen",
     "billOnlyCount": "Nur Abrechnung",
     "calcOnlyCount": "Nur System",
+    "childCount": "{count, plural, one {# Kind} other {# Kinder}}",
     "age": "Alter",
     "systemOnlyChildren": "Kinder nur im System",
     "contractPeriod": "Vertragszeitraum",

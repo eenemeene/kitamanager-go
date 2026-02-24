@@ -189,34 +189,62 @@ export default function GovernmentFundingBillDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-wrap gap-2">
-                <Badge
-                  variant={
-                    comparison.difference_count === 0 &&
-                    comparison.bill_only_count === 0 &&
-                    comparison.calc_only_count === 0
-                      ? 'success'
-                      : 'destructive'
-                  }
-                >
-                  {t('matchCount')}: {comparison.match_count}
-                </Badge>
+              <ul className="space-y-1 text-sm">
+                <li className="flex items-center gap-2">
+                  <span
+                    className={`inline-block h-2.5 w-2.5 rounded-full ${
+                      comparison.difference_count === 0 &&
+                      comparison.bill_only_count === 0 &&
+                      comparison.calc_only_count === 0
+                        ? 'bg-green-500'
+                        : 'bg-muted-foreground'
+                    }`}
+                  />
+                  <span className="text-muted-foreground">{t('matchCount')}</span>
+                  <span className="font-medium">
+                    {t('childCount', { count: comparison.match_count })}
+                  </span>
+                </li>
                 {comparison.difference_count > 0 && (
-                  <Badge variant="destructive">
-                    {t('differenceCount')}: {comparison.difference_count}
-                  </Badge>
+                  <li className="flex items-center gap-2">
+                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" />
+                    <span className="text-muted-foreground">{t('differenceCount')}</span>
+                    <span className="font-medium">
+                      {t('childCount', { count: comparison.difference_count })}
+                      {' · '}
+                      {formatCurrency(
+                        comparison.children
+                          .filter((c) => c.status === 'difference')
+                          .reduce((sum, c) => sum + c.bill_total, 0)
+                      )}
+                    </span>
+                  </li>
                 )}
                 {comparison.bill_only_count > 0 && (
-                  <Badge variant="warning">
-                    {t('billOnlyCount')}: {comparison.bill_only_count}
-                  </Badge>
+                  <li className="flex items-center gap-2">
+                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500" />
+                    <span className="text-muted-foreground">{t('billOnlyCount')}</span>
+                    <span className="font-medium">
+                      {t('childCount', { count: comparison.bill_only_count })}
+                    </span>
+                  </li>
                 )}
                 {comparison.calc_only_count > 0 && (
-                  <Badge variant="secondary">
-                    {t('calcOnlyCount')}: {comparison.calc_only_count}
-                  </Badge>
+                  <li className="flex items-center gap-2">
+                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" />
+                    <span className="text-muted-foreground">{t('calcOnlyCount')}</span>
+                    <span className="font-medium">
+                      {t('childCount', { count: comparison.calc_only_count })}
+                      {' · '}
+                      {formatCurrency(
+                        comparison.children
+                          .filter((c) => c.status === 'calc_only')
+                          .reduce((sum, c) => sum + (c.calculated_total || 0), 0)
+                      )}
+                    </span>
+                  </li>
                 )}
-              </div>
+              </ul>
             </CardContent>
           </Card>
         ) : (
