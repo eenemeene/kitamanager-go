@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -8,6 +8,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChartErrorBoundary } from '@/components/charts/chart-error-boundary';
+import { BudgetTable } from '@/components/charts/budget-table';
+import { YearStepper } from '@/components/ui/year-stepper';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { formatCurrency, getCurrentMonthStart } from '@/lib/utils/formatting';
@@ -33,10 +35,20 @@ export default function FinancialsPage() {
   const params = useParams();
   const orgId = Number(params.orgId);
   const t = useTranslations();
+  const [budgetYear, setBudgetYear] = useState(new Date().getFullYear());
+
+  const budgetFrom = `${budgetYear}-01-01`;
+  const budgetTo = `${budgetYear}-12-01`;
 
   const { data: financials, isLoading: isLoadingFinancials } = useQuery({
     queryKey: queryKeys.statistics.financials(orgId),
     queryFn: () => apiClient.getFinancials(orgId),
+    enabled: !!orgId,
+  });
+
+  const { data: budgetFinancials, isLoading: isLoadingBudget } = useQuery({
+    queryKey: queryKeys.statistics.financials(orgId, budgetFrom, budgetTo),
+    queryFn: () => apiClient.getFinancials(orgId, { from: budgetFrom, to: budgetTo }),
     enabled: !!orgId,
   });
 
@@ -149,6 +161,30 @@ export default function FinancialsPage() {
           </Card>
         </div>
       )}
+
+      {/* Budget Table */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <div>
+            <CardTitle>{t('statistics.budgetOverview')}</CardTitle>
+            <p className="text-muted-foreground mt-1 text-sm">
+              {t('statistics.budgetDescription')}
+            </p>
+          </div>
+          <YearStepper value={budgetYear} onChange={setBudgetYear} />
+        </CardHeader>
+        <CardContent>
+          {isLoadingBudget ? (
+            <Skeleton className="h-[300px] w-full" />
+          ) : budgetFinancials ? (
+            <ChartErrorBoundary>
+              <BudgetTable data={budgetFinancials} />
+            </ChartErrorBoundary>
+          ) : (
+            <p className="text-muted-foreground">{t('statistics.chartError')}</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
