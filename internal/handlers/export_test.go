@@ -36,7 +36,7 @@ func TestExportHandler_ExportEmployees_Success(t *testing.T) {
 
 	employeeSvc := createEmployeeService(db)
 	childSvc := createChildService(db)
-	handler := NewExportHandler(employeeSvc, childSvc)
+	handler := NewExportHandler(employeeSvc, childSvc, createAuditService(db))
 
 	r.GET("/api/v1/organizations/:orgId/employees/export/excel", handler.ExportEmployees)
 
@@ -81,7 +81,7 @@ func TestExportHandler_ExportEmployees_Empty(t *testing.T) {
 
 	employeeSvc := createEmployeeService(db)
 	childSvc := createChildService(db)
-	handler := NewExportHandler(employeeSvc, childSvc)
+	handler := NewExportHandler(employeeSvc, childSvc, createAuditService(db))
 
 	r.GET("/api/v1/organizations/:orgId/employees/export/excel", handler.ExportEmployees)
 
@@ -132,7 +132,7 @@ func TestExportHandler_ExportEmployees_WithSectionFilter(t *testing.T) {
 
 	employeeSvc := createEmployeeService(db)
 	childSvc := createChildService(db)
-	handler := NewExportHandler(employeeSvc, childSvc)
+	handler := NewExportHandler(employeeSvc, childSvc, createAuditService(db))
 
 	r.GET("/api/v1/organizations/:orgId/employees/export/excel", handler.ExportEmployees)
 
@@ -163,7 +163,7 @@ func TestExportHandler_ExportEmployees_InvalidOrgID(t *testing.T) {
 
 	employeeSvc := createEmployeeService(db)
 	childSvc := createChildService(db)
-	handler := NewExportHandler(employeeSvc, childSvc)
+	handler := NewExportHandler(employeeSvc, childSvc, createAuditService(db))
 
 	r.GET("/api/v1/organizations/:orgId/employees/export/excel", handler.ExportEmployees)
 
@@ -184,7 +184,7 @@ func TestExportHandler_ExportChildren_Success(t *testing.T) {
 
 	employeeSvc := createEmployeeService(db)
 	childSvc := createChildService(db)
-	handler := NewExportHandler(employeeSvc, childSvc)
+	handler := NewExportHandler(employeeSvc, childSvc, createAuditService(db))
 
 	r.GET("/api/v1/organizations/:orgId/children/export/excel", handler.ExportChildren)
 
@@ -228,7 +228,7 @@ func TestExportHandler_ExportChildren_Empty(t *testing.T) {
 
 	employeeSvc := createEmployeeService(db)
 	childSvc := createChildService(db)
-	handler := NewExportHandler(employeeSvc, childSvc)
+	handler := NewExportHandler(employeeSvc, childSvc, createAuditService(db))
 
 	r.GET("/api/v1/organizations/:orgId/children/export/excel", handler.ExportChildren)
 
@@ -264,7 +264,7 @@ func TestExportHandler_ExportChildren_WithContractAfter(t *testing.T) {
 
 	employeeSvc := createEmployeeService(db)
 	childSvc := createChildService(db)
-	handler := NewExportHandler(employeeSvc, childSvc)
+	handler := NewExportHandler(employeeSvc, childSvc, createAuditService(db))
 
 	r.GET("/api/v1/organizations/:orgId/children/export/excel", handler.ExportChildren)
 
@@ -313,7 +313,7 @@ func TestExportHandler_ExportChildren_DefaultActiveOnToday(t *testing.T) {
 
 	employeeSvc := createEmployeeService(db)
 	childSvc := createChildService(db)
-	handler := NewExportHandler(employeeSvc, childSvc)
+	handler := NewExportHandler(employeeSvc, childSvc, createAuditService(db))
 
 	r.GET("/api/v1/organizations/:orgId/children/export/excel", handler.ExportChildren)
 

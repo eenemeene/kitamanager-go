@@ -3,7 +3,9 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
+	"mime/multipart"
 	"strconv"
 	"strings"
 	"time"
@@ -19,6 +21,9 @@ import (
 
 // MaxDateRangeMonths is the maximum allowed date range for queries.
 const MaxDateRangeMonths = 72
+
+// MaxUploadSize is the maximum allowed file upload size (5MB).
+const MaxUploadSize = 5 << 20
 
 // MaxSearchLength is the maximum allowed length for search query parameters.
 const MaxSearchLength = 255
@@ -280,6 +285,48 @@ func auditUpdate(c *gin.Context, svc *service.AuditService, resourceType string,
 // auditDelete logs a resource deletion audit event.
 func auditDelete(c *gin.Context, svc *service.AuditService, resourceType string, id uint, name string) {
 	svc.LogResourceDelete(getUserID(c), resourceType, id, name, c.ClientIP())
+}
+
+// readUploadFile reads the "file" form field with size validation.
+// Returns (fileBytes, ok). If ok is false, an error response has been sent.
+func readUploadFile(c *gin.Context) ([]byte, bool) {
+	data, _, ok := readUploadFileWithHeader(c)
+	return data, ok
+}
+
+// readUploadFileWithHeader reads the "file" form field with size validation and returns the file header.
+// Returns (fileBytes, fileHeader, ok). If ok is false, an error response has been sent.
+func readUploadFileWithHeader(c *gin.Context) ([]byte, *multipart.FileHeader, bool) {
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		respondError(c, apperror.BadRequest("file is required"))
+		return nil, nil, false
+	}
+
+	if fileHeader.Size > MaxUploadSize {
+		respondError(c, apperror.BadRequest(fmt.Sprintf("file size exceeds maximum of %d MB", MaxUploadSize>>20)))
+		return nil, nil, false
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		respondError(c, apperror.BadRequest("failed to read uploaded file"))
+		return nil, nil, false
+	}
+	defer file.Close()
+
+	limitedReader := io.LimitReader(file, MaxUploadSize+1)
+	fileBytes, err := io.ReadAll(limitedReader)
+	if err != nil {
+		respondError(c, apperror.BadRequest("failed to read uploaded file"))
+		return nil, nil, false
+	}
+	if int64(len(fileBytes)) > MaxUploadSize {
+		respondError(c, apperror.BadRequest(fmt.Sprintf("file size exceeds maximum of %d MB", MaxUploadSize>>20)))
+		return nil, nil, false
+	}
+
+	return fileBytes, fileHeader, true
 }
 
 // parseOptionalDatePair parses optional "from" and "to" query parameters and validates the range.

@@ -249,6 +249,21 @@ func (s *AuditService) LogResourceUpdate(actorID uint, resourceType string, reso
 	})
 }
 
+// LogDataExport logs a bulk data export event
+func (s *AuditService) LogDataExport(actorID uint, resourceType string, orgID uint, recordCount int, ipAddress string) {
+	s.log(&models.AuditLog{
+		UserID:       &actorID,
+		Action:       models.AuditAction(resourceType + "_export"),
+		ResourceType: resourceType,
+		IPAddress:    ipAddress,
+		Details: mustMarshalJSON(map[string]any{
+			"organization_id": orgID,
+			"record_count":    recordCount,
+		}),
+		Success: true,
+	})
+}
+
 // GetLogs returns paginated audit logs
 func (s *AuditService) GetLogs(ctx context.Context, limit, offset int) ([]models.AuditLogResponse, int64, error) {
 	if s == nil || s.store == nil {

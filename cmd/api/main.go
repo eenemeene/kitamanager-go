@@ -284,12 +284,13 @@ func setupRouter(cfg *config.Config, db *gorm.DB, s *appStores, svc *appServices
 	// Metrics endpoint (requires authentication)
 	r.GET("/metrics", mw.auth.RequireAuth(), gin.WrapH(promhttp.Handler()))
 
-	// Swagger UI
+	// Swagger UI — open in development, requires superadmin in other environments
 	if cfg.IsDevelopment() {
 		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	} else {
 		swagger := r.Group("/swagger")
 		swagger.Use(mw.auth.RequireAuth())
+		swagger.Use(mw.authz.RequireSuperAdmin())
 		swagger.GET("/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	}
 
@@ -308,7 +309,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, s *appStores, svc *appServices
 		BudgetItem:            handlers.NewBudgetItemHandler(svc.budgetItem, svc.audit),
 		StepPromotion:         handlers.NewStepPromotionHandler(svc.stepPromotion),
 		Statistics:            handlers.NewStatisticsHandler(svc.statistics),
-		Export:                handlers.NewExportHandler(svc.employee, svc.child),
+		Export:                handlers.NewExportHandler(svc.employee, svc.child, svc.audit),
 		GovernmentFundingBill: handlers.NewGovernmentFundingBillHandler(svc.governmentFundingBill, svc.audit),
 		AuthMiddleware:        mw.auth,
 		AuthzMiddleware:       mw.authz,

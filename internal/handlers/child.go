@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"io"
 	"log/slog"
 	"net/http"
 	"time"
@@ -443,22 +442,8 @@ func (h *ChildHandler) Import(c *gin.Context) {
 		return
 	}
 
-	fileHeader, err := c.FormFile("file")
-	if err != nil {
-		respondError(c, apperror.BadRequest("file is required"))
-		return
-	}
-
-	file, err := fileHeader.Open()
-	if err != nil {
-		respondError(c, apperror.BadRequest("failed to read uploaded file"))
-		return
-	}
-	defer file.Close()
-
-	fileBytes, err := io.ReadAll(file)
-	if err != nil {
-		respondError(c, apperror.BadRequest("failed to read uploaded file"))
+	fileBytes, ok := readUploadFile(c)
+	if !ok {
 		return
 	}
 

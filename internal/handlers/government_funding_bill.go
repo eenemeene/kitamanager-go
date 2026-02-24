@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"bytes"
-	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -43,23 +42,8 @@ func (h *GovernmentFundingBillHandler) UploadISBJ(c *gin.Context) {
 		return
 	}
 
-	fileHeader, err := c.FormFile("file")
-	if err != nil {
-		respondError(c, apperror.BadRequest("file is required"))
-		return
-	}
-
-	file, err := fileHeader.Open()
-	if err != nil {
-		respondError(c, apperror.BadRequest("failed to read uploaded file"))
-		return
-	}
-	defer file.Close()
-
-	// Read file content into memory for hashing and parsing
-	fileBytes, err := io.ReadAll(file)
-	if err != nil {
-		respondError(c, apperror.BadRequest("failed to read uploaded file"))
+	fileBytes, fileHeader, ok := readUploadFileWithHeader(c)
+	if !ok {
 		return
 	}
 

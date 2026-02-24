@@ -192,9 +192,14 @@ func parseDate(s string) (time.Time, error) {
 	return time.Parse(models.DateFormat, s)
 }
 
-// euroToCents converts a EUR amount to cents.
+// euroToCents converts a EUR amount to cents with overflow protection.
 func euroToCents(eur float64) int {
-	return int(math.Round(eur * 100))
+	cents := math.Round(eur * 100)
+	if cents > math.MaxInt32 || cents < math.MinInt32 {
+		slog.Error("Currency value out of range", "eur", eur, "cents", cents)
+		return 0
+	}
+	return int(cents)
 }
 
 // formatLabel generates a human-readable label from a property value.
