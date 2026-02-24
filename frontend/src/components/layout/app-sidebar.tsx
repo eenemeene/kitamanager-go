@@ -229,8 +229,8 @@ export function AppSidebar() {
                   className={cn(
                     'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                     active
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                      ? 'bg-sidebar-active text-sidebar-active-foreground'
+                      : 'text-sidebar-foreground hover:bg-accent hover:text-accent-foreground'
                   )}
                 >
                   <Icon className="h-5 w-5 shrink-0" />
@@ -271,8 +271,8 @@ export function AppSidebar() {
                         className={cn(
                           'flex flex-1 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                           anyChildActive
-                            ? 'bg-primary/10 text-foreground'
-                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                            ? 'bg-sidebar-active/10 text-sidebar-foreground'
+                            : 'text-sidebar-foreground hover:bg-accent hover:text-accent-foreground'
                         )}
                       >
                         <Icon className="h-5 w-5 shrink-0" />
@@ -280,7 +280,7 @@ export function AppSidebar() {
                       </Link>
                       <button
                         onClick={() => toggleExpanded(item.name)}
-                        className="text-muted-foreground hover:bg-muted hover:text-foreground mr-1 rounded-md p-1"
+                        className="text-sidebar-foreground hover:bg-accent hover:text-accent-foreground mr-1 rounded-md p-1"
                       >
                         <ChevronDown
                           className={cn('h-4 w-4 transition-transform', isExpanded && 'rotate-180')}
@@ -300,8 +300,8 @@ export function AppSidebar() {
                                 className={cn(
                                   'flex items-center rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
                                   childActive
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                    ? 'bg-sidebar-active text-sidebar-active-foreground'
+                                    : 'text-sidebar-foreground hover:bg-accent hover:text-accent-foreground'
                                 )}
                               >
                                 {t(child.name)}
@@ -323,8 +323,8 @@ export function AppSidebar() {
                     className={cn(
                       'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                       parentActive
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                        ? 'bg-sidebar-active text-sidebar-active-foreground'
+                        : 'text-sidebar-foreground hover:bg-accent hover:text-accent-foreground'
                     )}
                   >
                     <Icon className="h-5 w-5 shrink-0" />
@@ -339,7 +339,7 @@ export function AppSidebar() {
 
       {/* Version */}
       {health?.version && !sidebarCollapsed && (
-        <div className="text-muted-foreground border-t px-4 py-2 text-[10px]">
+        <div className="text-sidebar-foreground/60 border-sidebar-border border-t px-4 py-2 text-[10px]">
           version: {health.version}
         </div>
       )}
@@ -351,7 +351,7 @@ export function AppSidebar() {
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          'bg-background fixed top-0 left-0 z-40 hidden h-screen flex-col border-r transition-all duration-300 md:flex',
+          'bg-sidebar border-sidebar-border fixed top-0 left-0 z-40 hidden h-screen flex-col border-r transition-all duration-300 md:flex',
           sidebarCollapsed ? 'w-16' : 'w-64'
         )}
       >
@@ -368,7 +368,7 @@ export function AppSidebar() {
             aria-hidden="true"
           />
           {/* Sidebar panel */}
-          <aside className="bg-background relative flex h-screen w-64 flex-col border-r">
+          <aside className="bg-sidebar border-sidebar-border relative flex h-screen w-64 flex-col border-r">
             {sidebarContent}
           </aside>
         </div>

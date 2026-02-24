@@ -65,9 +65,10 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="bg-muted/40 flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+    <div className="via-background dark:via-background flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-50 to-purple-100/50 p-4 dark:from-purple-950/30 dark:to-purple-900/20">
+      <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-1">
+          <div className="bg-primary mx-auto mb-2 h-1.5 w-12 rounded-full" />
           <CardTitle className="text-2xl font-bold">{t('common.appName')}</CardTitle>
           <CardDescription>{t('auth.loginTitle')}</CardDescription>
         </CardHeader>
