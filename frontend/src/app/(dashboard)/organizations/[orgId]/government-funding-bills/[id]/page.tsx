@@ -279,30 +279,6 @@ export default function GovernmentFundingBillDetailPage() {
         </div>
       )}
 
-      {/* Surcharges */}
-      {result.surcharges && result.surcharges.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('surcharges')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
-              {result.surcharges.map((s) => (
-                <div
-                  key={`${s.key}-${s.value}`}
-                  className="flex justify-between rounded-md border p-3"
-                >
-                  <span className="text-muted-foreground text-sm">
-                    {translateLabel(s.key, s.value || s.key)}
-                  </span>
-                  <span className="font-medium">{formatCurrency(s.amount)}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Children Table */}
       <Card>
         <CardHeader>
