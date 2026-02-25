@@ -16,9 +16,11 @@ services:
       - SERVER_PORT=8080
       # Admin seeding - set these to create initial admin user
       - SEED_ADMIN_EMAIL=superadmin@example.com
-      - SEED_ADMIN_PASSWORD=admin
+      - SEED_ADMIN_PASSWORD=supersecret
       - SEED_ADMIN_NAME=Super Admin
       - SEED_RBAC_POLICIES=true
+      - GOVERNMENT_FUNDING_SEED_PATH=configs/government-fundings/berlin.yaml
+      - GOVERNMENT_FUNDING_SEED_NAME=Berlin
       # CORS configuration
       - CORS_ALLOW_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:8080
       - CORS_ALLOW_CREDENTIALS=true
