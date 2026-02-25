@@ -13,11 +13,15 @@ website
 # Test artifacts
 coverage.out
 coverage.html
+test-results/
 
 # Frontend build artifacts
 frontend/node_modules
 frontend/.next
 frontend/out
+
+# Go build artifacts
+bin/
 
 # Misc
 .env

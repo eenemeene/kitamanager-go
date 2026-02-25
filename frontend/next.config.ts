@@ -6,6 +6,7 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 const isDev = process.env.NODE_ENV === 'development';
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   // Proxy API requests to the Go backend during development
   async rewrites() {
     return [
