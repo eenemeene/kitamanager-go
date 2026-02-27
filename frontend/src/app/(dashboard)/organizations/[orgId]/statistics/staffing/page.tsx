@@ -2,24 +2,17 @@
 
 import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery, useQueries } from '@tanstack/react-query';
-import { Printer } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SectionFilter } from '@/components/ui/section-filter';
 import { ChartErrorBoundary } from '@/components/charts/chart-error-boundary';
+import { StatisticsPageHeader } from '@/components/statistics/statistics-page-header';
 import { StaffingHoursTable } from '@/components/charts/staffing-hours-table';
 import { EmployeeStaffingHoursTable } from '@/components/charts/employee-staffing-hours-table';
 import { YearStepper } from '@/components/ui/year-stepper';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { LOOKUP_FETCH_LIMIT } from '@/lib/api/types';
@@ -111,38 +104,20 @@ export default function StaffingPage() {
   const isLoadingSectionStaffing =
     sectionStaffingQueries.length > 0 && sectionStaffingQueries.some((q) => q.isLoading);
 
-  const sectionFilter = sections && sections.data.length > 0 && (
-    <Select
-      value={selectedSectionId?.toString() ?? 'all'}
-      onValueChange={(value) => setSelectedSectionId(value === 'all' ? undefined : Number(value))}
-    >
-      <SelectTrigger className="w-full md:w-[200px]">
-        <SelectValue placeholder={t('statistics.filterBySection')} />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="all">{t('statistics.allSections')}</SelectItem>
-        {sections.data.map((section) => (
-          <SelectItem key={section.id} value={section.id.toString()}>
-            {section.name}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+  const sectionFilterElement = sections && sections.data.length > 0 && (
+    <SectionFilter
+      sections={sections.data}
+      value={selectedSectionId}
+      onChange={setSelectedSectionId}
+    />
   );
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">{t('nav.statisticsStaffing')}</h1>
-        <Link
-          href={`/organizations/${orgId}/statistics/staffing/print`}
-          target="_blank"
-          className="text-muted-foreground hover:text-foreground inline-flex h-9 w-9 items-center justify-center rounded-md transition-colors"
-          title={t('common.print')}
-        >
-          <Printer className="h-4 w-4" />
-        </Link>
-      </div>
+      <StatisticsPageHeader
+        titleKey="nav.statisticsStaffing"
+        printHref={`/organizations/${orgId}/statistics/staffing/print`}
+      />
 
       {/* Staffing Hours Chart */}
       <Card>
@@ -192,7 +167,7 @@ export default function StaffingPage() {
             <CardTitle>{t('statistics.staffingHoursGrid')}</CardTitle>
           </div>
           <div className="flex flex-wrap items-center gap-2 md:gap-4">
-            {sectionFilter}
+            {sectionFilterElement}
             <YearStepper value={year} onChange={setYear} />
           </div>
         </CardHeader>

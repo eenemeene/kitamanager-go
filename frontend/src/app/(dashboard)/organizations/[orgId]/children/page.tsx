@@ -12,13 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChildrenTable } from '@/components/children/children-table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SearchInput } from '@/components/ui/search-input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { SectionFilter } from '@/components/ui/section-filter';
 import { useCrudMutations } from '@/lib/hooks/use-crud-mutations';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
@@ -307,25 +301,14 @@ export default function ChildrenPage() {
       <div className="flex flex-wrap items-center gap-2 md:gap-4">
         <MonthStepper value={activeOn} onChange={setActiveOn} />
         <SearchInput id="search-children" value={searchInput} onChange={setSearchInput} />
-        <Select
-          value={sectionFilter ? String(sectionFilter) : 'all'}
-          onValueChange={(value) => {
-            setSectionFilter(value === 'all' ? undefined : Number(value));
+        <SectionFilter
+          sections={sections}
+          value={sectionFilter}
+          onChange={(id) => {
+            setSectionFilter(id);
             setPage(1);
           }}
-        >
-          <SelectTrigger className="w-full md:w-[200px]">
-            <SelectValue placeholder={t('statistics.filterBySection')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('statistics.allSections')}</SelectItem>
-            {sections.map((section) => (
-              <SelectItem key={section.id} value={String(section.id)}>
-                {section.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        />
       </div>
 
       <Card>

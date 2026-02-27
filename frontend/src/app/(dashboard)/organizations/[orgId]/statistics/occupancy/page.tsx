@@ -1,21 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
-import { Printer } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { SectionFilter } from '@/components/ui/section-filter';
 import { ChartErrorBoundary } from '@/components/charts/chart-error-boundary';
+import { StatisticsPageHeader } from '@/components/statistics/statistics-page-header';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { LOOKUP_FETCH_LIMIT } from '@/lib/api/types';
@@ -41,17 +34,10 @@ export default function OccupancyPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">{t('nav.statisticsOccupancy')}</h1>
-        <Link
-          href={`/organizations/${orgId}/statistics/occupancy/print`}
-          target="_blank"
-          className="text-muted-foreground hover:text-foreground inline-flex h-9 w-9 items-center justify-center rounded-md transition-colors"
-          title={t('common.print')}
-        >
-          <Printer className="h-4 w-4" />
-        </Link>
-      </div>
+      <StatisticsPageHeader
+        titleKey="nav.statisticsOccupancy"
+        printHref={`/organizations/${orgId}/statistics/occupancy/print`}
+      />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -62,24 +48,11 @@ export default function OccupancyPage() {
             </p>
           </div>
           {sections && sections.data.length > 0 && (
-            <Select
-              value={selectedSectionId?.toString() ?? 'all'}
-              onValueChange={(value) =>
-                setSelectedSectionId(value === 'all' ? undefined : Number(value))
-              }
-            >
-              <SelectTrigger className="w-full md:w-[200px]">
-                <SelectValue placeholder={t('statistics.filterBySection')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('statistics.allSections')}</SelectItem>
-                {sections.data.map((section) => (
-                  <SelectItem key={section.id} value={section.id.toString()}>
-                    {section.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SectionFilter
+              sections={sections.data}
+              value={selectedSectionId}
+              onChange={setSelectedSectionId}
+            />
           )}
         </CardHeader>
         <CardContent>
