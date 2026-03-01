@@ -14,7 +14,7 @@ Dieses Handbuch beschreibt die alltäglichen Aufgaben, die Sie in KitaManager au
 
 Falls Sie Ihr Passwort vergessen haben, wenden Sie sich an Ihren Administrator, um es zurücksetzen zu lassen.
 
-{{< screenshot src="/images/screenshots/login.png" alt="Anmeldeseite" caption="Die KitaManager-Anmeldeseite." >}}
+{{< screenshot src="/images/screenshots/de/login.png" alt="Anmeldeseite" caption="Die KitaManager-Anmeldeseite." >}}
 
 ## Navigation in der Oberfläche
 
@@ -26,7 +26,7 @@ Die Anwendung verfügt über folgende Navigationselemente:
 - **Dark-Mode-Umschalter** -- Wechseln Sie zwischen hellem und dunklem Farbschema über den Umschalter in der Kopfzeile.
 - **Sprachumschalter** -- Wechseln Sie die Oberflächensprache zwischen Englisch und Deutsch (EN/DE) über die Sprachauswahl in der Kopfzeile.
 
-{{< screenshot src="/images/screenshots/dashboard.png" alt="Dashboard" caption="Das Dashboard bietet eine Übersicht über Ihre Organisation." >}}
+{{< screenshot src="/images/screenshots/de/dashboard.png" alt="Dashboard" caption="Das Dashboard bietet eine Übersicht über Ihre Organisation." >}}
 
 ## Organisation wechseln
 
@@ -47,7 +47,7 @@ Bereiche repräsentieren Gruppen innerhalb Ihrer Kita, zum Beispiel „Schmetter
 1. Klicken Sie in der Seitenleiste auf **Bereiche**.
 2. Sie sehen eine Liste aller Bereiche in Ihrer Organisation.
 
-{{< screenshot src="/images/screenshots/sections.png" alt="Bereichsliste" caption="Die Bereichsseite mit allen Gruppen Ihrer Organisation." >}}
+{{< screenshot src="/images/screenshots/de/sections.png" alt="Bereichsliste" caption="Die Bereichsseite mit allen Gruppen Ihrer Organisation." >}}
 
 ### Bereich erstellen
 
@@ -71,7 +71,7 @@ Bereiche repräsentieren Gruppen innerhalb Ihrer Kita, zum Beispiel „Schmetter
 1. Klicken Sie in der Seitenleiste auf **Mitarbeiter**.
 2. Sie sehen eine Liste aller Mitarbeiter in Ihrer Organisation.
 
-{{< screenshot src="/images/screenshots/employees.png" alt="Mitarbeiterliste" caption="Die Mitarbeiterseite mit allen Beschäftigten." >}}
+{{< screenshot src="/images/screenshots/de/employees.png" alt="Mitarbeiterliste" caption="Die Mitarbeiterseite mit allen Beschäftigten." >}}
 
 ### Mitarbeiter anlegen
 
@@ -109,9 +109,9 @@ Jeder Mitarbeiter kann einen oder mehrere Arbeitsverträge haben, die seine Arbe
 
 Der aktuelle Vertrag wird auf der Detailseite des Mitarbeiters angezeigt.
 
-{{< screenshot src="/images/screenshots/employee-contract-create.png" alt="Dialog zur Vertragserstellung" caption="Der Dialog zur Erstellung eines neuen Arbeitsvertrags." >}}
+{{< screenshot src="/images/screenshots/de/employee-contract-create.png" alt="Dialog zur Vertragserstellung" caption="Der Dialog zur Erstellung eines neuen Arbeitsvertrags." >}}
 
-{{< screenshot src="/images/screenshots/employee-contracts.png" alt="Arbeitsverträge" caption="Arbeitsverträge eines Mitarbeiters." >}}
+{{< screenshot src="/images/screenshots/de/employee-contracts.png" alt="Arbeitsverträge" caption="Arbeitsverträge eines Mitarbeiters." >}}
 
 ### Stufenaufstiege
 
@@ -128,7 +128,7 @@ KitaManager erfasst, welche Mitarbeiter für einen Aufstieg in die nächste Geha
 1. Klicken Sie in der Seitenleiste auf **Kinder**.
 2. Sie sehen eine Liste aller aufgenommenen Kinder zusammen mit ihren Förderbeträgen.
 
-{{< screenshot src="/images/screenshots/children.png" alt="Kinderliste" caption="Die Kinderseite mit allen aufgenommenen Kindern und ihren Förderbeträgen." >}}
+{{< screenshot src="/images/screenshots/de/children.png" alt="Kinderliste" caption="Die Kinderseite mit allen aufgenommenen Kindern und ihren Förderbeträgen." >}}
 
 ### Kind anlegen
 
@@ -169,9 +169,9 @@ Betreuungsverträge legen fest, wie ein Kind aufgenommen wird, und bestimmen die
 
 Die Vertragseigenschaften bestimmen den Förderbetrag der Landesförderung, den KitaManager für jedes Kind berechnet.
 
-{{< screenshot src="/images/screenshots/child-contract-create.png" alt="Dialog zur Vertragserstellung" caption="Der Dialog zur Erstellung eines neuen Betreuungsvertrags mit Vertragseigenschaften." >}}
+{{< screenshot src="/images/screenshots/de/child-contract-create.png" alt="Dialog zur Vertragserstellung" caption="Der Dialog zur Erstellung eines neuen Betreuungsvertrags mit Vertragseigenschaften." >}}
 
-{{< screenshot src="/images/screenshots/child-contracts.png" alt="Betreuungsverträge" caption="Betreuungsverträge eines aufgenommenen Kindes." >}}
+{{< screenshot src="/images/screenshots/de/child-contracts.png" alt="Betreuungsverträge" caption="Betreuungsverträge eines aufgenommenen Kindes." >}}
 
 ## Tägliche Anwesenheitserfassung
 
@@ -184,7 +184,7 @@ Mitarbeiter können die tägliche Anwesenheit der Kinder erfassen.
 3. Markieren Sie für jedes Kind, ob es an dem jeweiligen Wochentag **anwesend** oder **abwesend** ist.
 4. Ihre Änderungen werden automatisch gespeichert.
 
-{{< screenshot src="/images/screenshots/attendance.png" alt="Anwesenheitserfassung" caption="Die wöchentliche Anwesenheitsübersicht zur Erfassung der täglichen Anwesenheit." >}}
+{{< screenshot src="/images/screenshots/de/attendance.png" alt="Anwesenheitserfassung" caption="Die wöchentliche Anwesenheitsübersicht zur Erfassung der täglichen Anwesenheit." >}}
 
 ### Anwesenheitsübersicht anzeigen
 
@@ -204,7 +204,7 @@ Budgetposten stellen Kategorien von Einnahmen oder Ausgaben dar (zum Beispiel �
 3. Geben Sie den Namen des Budgetpostens und den Gesamtbetrag ein.
 4. Klicken Sie auf **Speichern**.
 
-{{< screenshot src="/images/screenshots/budget-items.png" alt="Budgetposten" caption="Die Budgetübersicht mit allen Budgetposten Ihrer Organisation." >}}
+{{< screenshot src="/images/screenshots/de/budget-items.png" alt="Budgetposten" caption="Die Budgetübersicht mit allen Budgetposten Ihrer Organisation." >}}
 
 ### Einträge zu einem Budgetposten hinzufügen
 
@@ -220,7 +220,7 @@ Jeder Budgetposten kann mehrere Einträge haben, die einzelne Buchungen darstell
 
 Verwenden Sie Einträge, um tatsächliche Ausgaben oder Einnahmen im Vergleich zu Ihren budgetierten Beträgen zu verfolgen.
 
-{{< screenshot src="/images/screenshots/budget-item-detail.png" alt="Budgetposten-Details" caption="Ein Budgetposten mit seinen einzelnen Einträgen." >}}
+{{< screenshot src="/images/screenshots/de/budget-item-detail.png" alt="Budgetposten-Details" caption="Ein Budgetposten mit seinen einzelnen Einträgen." >}}
 
 ## Statistiken anzeigen
 
@@ -238,15 +238,15 @@ KitaManager bietet verschiedene Berichte, um die Daten Ihrer Organisation besser
 4. Verwenden Sie den **Bereichs**-Filter, um die Ergebnisse auf eine bestimmte Gruppe einzugrenzen.
 5. Um einen Bericht zu drucken, klicken Sie auf die Schaltfläche **Drucken**.
 
-{{< screenshot src="/images/screenshots/statistics.png" alt="Statistik-Übersicht" caption="Die Statistik-Übersichtsseite." >}}
+{{< screenshot src="/images/screenshots/de/statistics.png" alt="Statistik-Übersicht" caption="Die Statistik-Übersichtsseite." >}}
 
-{{< screenshot src="/images/screenshots/statistics-staffing.png" alt="Personalstunden-Diagramm" caption="Personalstunden-Bericht mit Soll- und Ist-Stunden im Zeitverlauf." >}}
+{{< screenshot src="/images/screenshots/de/statistics-staffing.png" alt="Personalstunden-Diagramm" caption="Personalstunden-Bericht mit Soll- und Ist-Stunden im Zeitverlauf." >}}
 
-{{< screenshot src="/images/screenshots/statistics-financials.png" alt="Finanzübersicht-Diagramme" caption="Finanzübersicht mit Einnahmen, Ausgaben und Förderungsaufschlüsselung." >}}
+{{< screenshot src="/images/screenshots/de/statistics-financials.png" alt="Finanzübersicht-Diagramme" caption="Finanzübersicht mit Einnahmen, Ausgaben und Förderungsaufschlüsselung." >}}
 
-{{< screenshot src="/images/screenshots/statistics-children.png" alt="Kinder-Statistiken" caption="Kinder-Statistiken mit Altersverteilung und Vertragseigenschaften." >}}
+{{< screenshot src="/images/screenshots/de/statistics-children.png" alt="Kinder-Statistiken" caption="Kinder-Statistiken mit Altersverteilung und Vertragseigenschaften." >}}
 
-{{< screenshot src="/images/screenshots/statistics-occupancy.png" alt="Auslastungstabelle" caption="Auslastungsbericht mit aufgenommenen Kindern im Vergleich zur Kapazität." >}}
+{{< screenshot src="/images/screenshots/de/statistics-occupancy.png" alt="Auslastungstabelle" caption="Auslastungsbericht mit aufgenommenen Kindern im Vergleich zur Kapazität." >}}
 
 ## Abrechnungen der Landesförderung
 
@@ -258,7 +258,7 @@ Sie können Abrechnungen der Landesförderung mit den von KitaManager berechnete
 2. Klicken Sie auf **Hochladen** und wählen Sie die ISBJ-Abrechnungsdatei von Ihrem Computer aus.
 3. Die hochgeladene Abrechnung erscheint in der Liste.
 
-{{< screenshot src="/images/screenshots/government-funding-bills.png" alt="Abrechnungen der Landesförderung" caption="Hochgeladene Abrechnungen der Landesförderung zum Vergleich mit den berechneten Beträgen." >}}
+{{< screenshot src="/images/screenshots/de/government-funding-bills.png" alt="Abrechnungen der Landesförderung" caption="Hochgeladene Abrechnungen der Landesförderung zum Vergleich mit den berechneten Beträgen." >}}
 
 ### Abweichungen prüfen
 

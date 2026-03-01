@@ -14,7 +14,7 @@ This guide walks you through the everyday tasks you can perform in KitaManager. 
 
 If you have forgotten your password, contact your administrator to reset it.
 
-{{< screenshot src="/images/screenshots/login.png" alt="Login page" caption="The KitaManager login page." >}}
+{{< screenshot src="/images/screenshots/en/login.png" alt="Login page" caption="The KitaManager login page." >}}
 
 ## Navigating the Interface
 
@@ -26,7 +26,7 @@ The application has the following navigation elements:
 - **Dark mode toggle** -- Switch between light and dark color themes using the toggle in the header.
 - **Language switcher** -- Switch the interface between English and German (EN/DE) using the language selector in the header.
 
-{{< screenshot src="/images/screenshots/dashboard.png" alt="Dashboard" caption="The dashboard provides an overview of your organization." >}}
+{{< screenshot src="/images/screenshots/en/dashboard.png" alt="Dashboard" caption="The dashboard provides an overview of your organization." >}}
 
 ## Switching Organizations
 
@@ -47,7 +47,7 @@ Sections represent groups within your daycare, such as "Schmetterlinge" or "Sonn
 1. Click **Sections** in the sidebar.
 2. You will see a list of all sections in your organization.
 
-{{< screenshot src="/images/screenshots/sections.png" alt="Sections list" caption="The sections page showing all groups in your organization." >}}
+{{< screenshot src="/images/screenshots/en/sections.png" alt="Sections list" caption="The sections page showing all groups in your organization." >}}
 
 ### Creating a Section
 
@@ -71,7 +71,7 @@ Sections represent groups within your daycare, such as "Schmetterlinge" or "Sonn
 1. Click **Employees** in the sidebar.
 2. You will see a list of all employees in your organization.
 
-{{< screenshot src="/images/screenshots/employees.png" alt="Employees list" caption="The employees page listing all staff members." >}}
+{{< screenshot src="/images/screenshots/en/employees.png" alt="Employees list" caption="The employees page listing all staff members." >}}
 
 ### Creating an Employee
 
@@ -109,9 +109,9 @@ Each employee can have one or more employment contracts that define their workin
 
 The current contract is displayed on the employee's detail page.
 
-{{< screenshot src="/images/screenshots/employee-contract-create.png" alt="Employee contract creation dialog" caption="The dialog for creating a new employment contract." >}}
+{{< screenshot src="/images/screenshots/en/employee-contract-create.png" alt="Employee contract creation dialog" caption="The dialog for creating a new employment contract." >}}
 
-{{< screenshot src="/images/screenshots/employee-contracts.png" alt="Employee contracts" caption="Employment contracts for a staff member." >}}
+{{< screenshot src="/images/screenshots/en/employee-contracts.png" alt="Employee contracts" caption="Employment contracts for a staff member." >}}
 
 ### Step Promotions
 
@@ -128,7 +128,7 @@ KitaManager tracks which employees are eligible for a promotion to the next sala
 1. Click **Children** in the sidebar.
 2. You will see a list of all enrolled children along with their funding amounts.
 
-{{< screenshot src="/images/screenshots/children.png" alt="Children list" caption="The children page showing all enrolled children and their funding amounts." >}}
+{{< screenshot src="/images/screenshots/en/children.png" alt="Children list" caption="The children page showing all enrolled children and their funding amounts." >}}
 
 ### Creating a Child Record
 
@@ -169,9 +169,9 @@ Care contracts define how a child is enrolled and determine the government fundi
 
 The contract properties determine the government funding amount that KitaManager calculates for each child.
 
-{{< screenshot src="/images/screenshots/child-contract-create.png" alt="Child contract creation dialog" caption="The dialog for creating a new care contract with contract properties." >}}
+{{< screenshot src="/images/screenshots/en/child-contract-create.png" alt="Child contract creation dialog" caption="The dialog for creating a new care contract with contract properties." >}}
 
-{{< screenshot src="/images/screenshots/child-contracts.png" alt="Child contracts" caption="Care contracts for an enrolled child." >}}
+{{< screenshot src="/images/screenshots/en/child-contracts.png" alt="Child contracts" caption="Care contracts for an enrolled child." >}}
 
 ## Daily Attendance Tracking
 
@@ -184,7 +184,7 @@ Staff members can track the daily attendance of children.
 3. For each child, mark them as **present** or **absent** for each day of the week.
 4. Your changes are saved automatically.
 
-{{< screenshot src="/images/screenshots/attendance.png" alt="Attendance tracking" caption="The weekly attendance grid for tracking children's daily presence." >}}
+{{< screenshot src="/images/screenshots/en/attendance.png" alt="Attendance tracking" caption="The weekly attendance grid for tracking children's daily presence." >}}
 
 ### Viewing Attendance Summary
 
@@ -204,7 +204,7 @@ Budget items represent categories of income or expenses (for example, "Office Su
 3. Enter the budget item name and the total budget amount.
 4. Click **Save**.
 
-{{< screenshot src="/images/screenshots/budget-items.png" alt="Budget items" caption="The budget overview showing all budget items for your organization." >}}
+{{< screenshot src="/images/screenshots/en/budget-items.png" alt="Budget items" caption="The budget overview showing all budget items for your organization." >}}
 
 ### Adding Entries to a Budget Item
 
@@ -220,7 +220,7 @@ Each budget item can have multiple entries that represent individual transaction
 
 Use entries to track actual spending or income against your budgeted amounts.
 
-{{< screenshot src="/images/screenshots/budget-item-detail.png" alt="Budget item detail" caption="A budget item with its individual entries." >}}
+{{< screenshot src="/images/screenshots/en/budget-item-detail.png" alt="Budget item detail" caption="A budget item with its individual entries." >}}
 
 ## Viewing Statistics
 
@@ -238,15 +238,15 @@ KitaManager provides several reports to help you understand your organization's 
 4. Use the **section** filter to narrow results to a specific group.
 5. To print a report, click the **Print** button.
 
-{{< screenshot src="/images/screenshots/statistics.png" alt="Statistics overview" caption="The statistics overview page." >}}
+{{< screenshot src="/images/screenshots/en/statistics.png" alt="Statistics overview" caption="The statistics overview page." >}}
 
-{{< screenshot src="/images/screenshots/statistics-staffing.png" alt="Staffing hours chart" caption="Staffing hours report showing required vs. available hours over time." >}}
+{{< screenshot src="/images/screenshots/en/statistics-staffing.png" alt="Staffing hours chart" caption="Staffing hours report showing required vs. available hours over time." >}}
 
-{{< screenshot src="/images/screenshots/statistics-financials.png" alt="Financial overview charts" caption="Financial overview with income, expenses, and funding breakdown." >}}
+{{< screenshot src="/images/screenshots/en/statistics-financials.png" alt="Financial overview charts" caption="Financial overview with income, expenses, and funding breakdown." >}}
 
-{{< screenshot src="/images/screenshots/statistics-children.png" alt="Children statistics" caption="Children statistics with age distribution and contract properties." >}}
+{{< screenshot src="/images/screenshots/en/statistics-children.png" alt="Children statistics" caption="Children statistics with age distribution and contract properties." >}}
 
-{{< screenshot src="/images/screenshots/statistics-occupancy.png" alt="Occupancy table" caption="Occupancy report showing enrolled children compared to capacity." >}}
+{{< screenshot src="/images/screenshots/en/statistics-occupancy.png" alt="Occupancy table" caption="Occupancy report showing enrolled children compared to capacity." >}}
 
 ## Government Funding Bills
 
@@ -258,7 +258,7 @@ You can compare government funding bills against the amounts KitaManager calcula
 2. Click **Upload** and select the ISBJ bill file from your computer.
 3. The uploaded bill will appear in the list.
 
-{{< screenshot src="/images/screenshots/government-funding-bills.png" alt="Government funding bills" caption="Uploaded government funding bills for comparison with calculated amounts." >}}
+{{< screenshot src="/images/screenshots/en/government-funding-bills.png" alt="Government funding bills" caption="Uploaded government funding bills for comparison with calculated amounts." >}}
 
 ### Reviewing Discrepancies
 

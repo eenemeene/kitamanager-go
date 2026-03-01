@@ -1,6 +1,8 @@
 /**
  * Screenshot capture script for KitaManager Go website.
  *
+ * Captures screenshots in all supported languages (en, de).
+ *
  * Prerequisites:
  *   - API server running on http://localhost:8080 (with seeded data)
  *   - Next.js frontend running on http://localhost:3000
@@ -16,13 +18,23 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
-const OUTPUT_DIR = path.resolve(__dirname, '../static/images/screenshots');
+const OUTPUT_BASE_DIR = path.resolve(__dirname, '../static/images/screenshots');
 
 const ADMIN_EMAIL = 'admin@example.com';
 const ADMIN_PASSWORD = 'supersecret';
 
+interface LangConfig {
+  code: string;
+  browserLocale: string;
+  newContractButton: RegExp;
+}
+
+const LANGUAGES: LangConfig[] = [
+  { code: 'en', browserLocale: 'en-US', newContractButton: /new contract/i },
+  { code: 'de', browserLocale: 'de-DE', newContractButton: /neuer vertrag/i },
+];
+
 async function login(page: Page): Promise<void> {
-  // Navigate to login page to initialize browser context
   await page.goto(`${BASE_URL}/login`);
   await page.waitForLoadState('networkidle');
 
@@ -40,6 +52,21 @@ async function login(page: Page): Promise<void> {
     },
     { email: ADMIN_EMAIL, password: ADMIN_PASSWORD }
   );
+}
+
+async function setLocale(context: BrowserContext, lang: string): Promise<void> {
+  const domain = new URL(BASE_URL).hostname;
+  await context.addCookies([
+    {
+      name: 'locale',
+      value: lang,
+      domain,
+      path: '/',
+      httpOnly: false,
+      secure: false,
+      sameSite: 'Lax',
+    },
+  ]);
 }
 
 async function getFirstOrgId(page: Page): Promise<number> {
@@ -86,43 +113,45 @@ async function getFirstBudgetItemId(page: Page, orgId: number): Promise<number> 
   }, orgId);
 }
 
-async function capture(page: Page, name: string): Promise<void> {
-  const filepath = path.join(OUTPUT_DIR, `${name}.png`);
+async function capture(page: Page, outputDir: string, name: string): Promise<void> {
+  const filepath = path.join(outputDir, `${name}.png`);
   await page.screenshot({ path: filepath, fullPage: false });
   console.log(`  ✓ ${name}`);
 }
 
-async function main(): Promise<void> {
-  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+async function captureForLanguage(browser: Browser, lang: LangConfig): Promise<void> {
+  const outputDir = path.join(OUTPUT_BASE_DIR, lang.code);
+  fs.mkdirSync(outputDir, { recursive: true });
 
-  const browser: Browser = await chromium.launch({ headless: true });
   const context: BrowserContext = await browser.newContext({
     viewport: { width: 1280, height: 800 },
-    locale: 'en-US',
+    locale: lang.browserLocale,
   });
   const page: Page = await context.newPage();
 
   try {
+    console.log(`\nCapturing screenshots [${lang.code}]...`);
+
     // 1. Login page (before auth)
-    console.log('Capturing screenshots...');
     await page.goto(`${BASE_URL}/login`);
     await page.waitForLoadState('networkidle');
-    await capture(page, 'login');
+    await capture(page, outputDir, 'login');
 
-    // 2. Authenticate
+    // 2. Authenticate and set locale
     await login(page);
+    await setLocale(context, lang.code);
 
     // 3. Dashboard
     await page.goto(`${BASE_URL}/`);
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(1000);
-    await capture(page, 'dashboard');
+    await capture(page, outputDir, 'dashboard');
 
     // 4. Organizations
     await page.goto(`${BASE_URL}/organizations`);
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(1000);
-    await capture(page, 'organizations');
+    await capture(page, outputDir, 'organizations');
 
     // Get first org for scoped pages
     const orgId = await getFirstOrgId(page);
@@ -131,98 +160,98 @@ async function main(): Promise<void> {
     await page.goto(`${BASE_URL}/organizations/${orgId}/employees`);
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(1000);
-    await capture(page, 'employees');
+    await capture(page, outputDir, 'employees');
 
     // 6. Children
     await page.goto(`${BASE_URL}/organizations/${orgId}/children`);
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(1000);
-    await capture(page, 'children');
+    await capture(page, outputDir, 'children');
 
     // 7. Government Funding Rates
     await page.goto(`${BASE_URL}/government-funding-rates`);
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(1000);
-    await capture(page, 'government-funding-rates');
+    await capture(page, outputDir, 'government-funding-rates');
 
     // 8. Sections
     await page.goto(`${BASE_URL}/organizations/${orgId}/sections`);
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(1000);
-    await capture(page, 'sections');
+    await capture(page, outputDir, 'sections');
 
     // 9. Employee Contracts
     const employeeId = await getFirstEmployeeId(page, orgId);
     await page.goto(`${BASE_URL}/organizations/${orgId}/employees/${employeeId}/contracts`);
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(1000);
-    await capture(page, 'employee-contracts');
+    await capture(page, outputDir, 'employee-contracts');
 
     // 10. Child Contracts
     const childId = await getFirstChildId(page, orgId);
     await page.goto(`${BASE_URL}/organizations/${orgId}/children/${childId}/contracts`);
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(1000);
-    await capture(page, 'child-contracts');
+    await capture(page, outputDir, 'child-contracts');
 
     // 11. Attendance
     await page.goto(`${BASE_URL}/organizations/${orgId}/attendance`);
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(1000);
-    await capture(page, 'attendance');
+    await capture(page, outputDir, 'attendance');
 
     // 12. Budget Items
     await page.goto(`${BASE_URL}/organizations/${orgId}/budget-items`);
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(1000);
-    await capture(page, 'budget-items');
+    await capture(page, outputDir, 'budget-items');
 
     // 13. Budget Item Detail
     const budgetItemId = await getFirstBudgetItemId(page, orgId);
     await page.goto(`${BASE_URL}/organizations/${orgId}/budget-items/${budgetItemId}`);
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(1000);
-    await capture(page, 'budget-item-detail');
+    await capture(page, outputDir, 'budget-item-detail');
 
     // 14. Statistics Overview
     await page.goto(`${BASE_URL}/organizations/${orgId}/statistics`);
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(1000);
-    await capture(page, 'statistics');
+    await capture(page, outputDir, 'statistics');
 
     // 15. Statistics: Staffing Hours
     await page.goto(`${BASE_URL}/organizations/${orgId}/statistics/staffing`);
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
-    await capture(page, 'statistics-staffing');
+    await capture(page, outputDir, 'statistics-staffing');
 
     // 16. Statistics: Financial Overview
     await page.goto(`${BASE_URL}/organizations/${orgId}/statistics/financials`);
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
-    await capture(page, 'statistics-financials');
+    await capture(page, outputDir, 'statistics-financials');
 
     // 17. Statistics: Children (Age Distribution & Contract Properties)
     await page.goto(`${BASE_URL}/organizations/${orgId}/statistics/children`);
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
-    await capture(page, 'statistics-children');
+    await capture(page, outputDir, 'statistics-children');
 
     // 18. Statistics: Occupancy
     await page.goto(`${BASE_URL}/organizations/${orgId}/statistics/occupancy`);
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
-    await capture(page, 'statistics-occupancy');
+    await capture(page, outputDir, 'statistics-occupancy');
 
     // 19. Employee Contract Creation Dialog
     await page.goto(`${BASE_URL}/organizations/${orgId}/employees/${employeeId}/contracts`);
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(1000);
-    const employeeCreateBtn = page.locator('button', { hasText: /new contract/i });
+    const employeeCreateBtn = page.locator('button', { hasText: lang.newContractButton });
     if (await employeeCreateBtn.isVisible()) {
       await employeeCreateBtn.click();
       await page.waitForTimeout(1000);
-      await capture(page, 'employee-contract-create');
+      await capture(page, outputDir, 'employee-contract-create');
       await page.keyboard.press('Escape');
       await page.waitForTimeout(500);
     }
@@ -231,11 +260,11 @@ async function main(): Promise<void> {
     await page.goto(`${BASE_URL}/organizations/${orgId}/children/${childId}/contracts`);
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(1000);
-    const childCreateBtn = page.locator('button', { hasText: /new contract/i });
+    const childCreateBtn = page.locator('button', { hasText: lang.newContractButton });
     if (await childCreateBtn.isVisible()) {
       await childCreateBtn.click();
       await page.waitForTimeout(1000);
-      await capture(page, 'child-contract-create');
+      await capture(page, outputDir, 'child-contract-create');
       await page.keyboard.press('Escape');
       await page.waitForTimeout(500);
     }
@@ -244,9 +273,22 @@ async function main(): Promise<void> {
     await page.goto(`${BASE_URL}/organizations/${orgId}/government-funding-bills`);
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(1000);
-    await capture(page, 'government-funding-bills');
+    await capture(page, outputDir, 'government-funding-bills');
 
-    console.log(`\nDone! Screenshots saved to ${OUTPUT_DIR}`);
+    console.log(`  Done [${lang.code}]!`);
+  } finally {
+    await context.close();
+  }
+}
+
+async function main(): Promise<void> {
+  const browser: Browser = await chromium.launch({ headless: true });
+
+  try {
+    for (const lang of LANGUAGES) {
+      await captureForLanguage(browser, lang);
+    }
+    console.log(`\nAll screenshots saved to ${OUTPUT_BASE_DIR}`);
   } catch (error) {
     console.error('Error capturing screenshots:', error);
     throw error;
