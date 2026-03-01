@@ -1,0 +1,10 @@
+{{- $home := .context.Site.Home -}}
+{{- $hash := "" -}}
+{{- with $home.GitInfo -}}
+  {{- $hash = .AbbreviatedHash -}}
+{{- end -}}
+{{- if $hash -}}
+<div class="hx:flex hx:w-full hx:justify-center hx:py-2 hx:text-xs hx:text-gray-400 hx:dark:text-gray-500 hx:sm:justify-start">
+  KitaManager {{ $hash }}
+</div>
+{{- end -}}
