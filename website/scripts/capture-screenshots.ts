@@ -81,6 +81,45 @@ async function getFirstOrgId(page: Page, token: string): Promise<number> {
   }, { token });
 }
 
+async function getFirstEmployeeId(page: Page, token: string, orgId: number): Promise<number> {
+  return page.evaluate(async ({ token, orgId }) => {
+    const response = await fetch(`/api/v1/organizations/${orgId}/employees?limit=1`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await response.json();
+    if (!data.data || data.data.length === 0) {
+      throw new Error('No employees found — is the database seeded?');
+    }
+    return data.data[0].id;
+  }, { token, orgId });
+}
+
+async function getFirstChildId(page: Page, token: string, orgId: number): Promise<number> {
+  return page.evaluate(async ({ token, orgId }) => {
+    const response = await fetch(`/api/v1/organizations/${orgId}/children?limit=1`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await response.json();
+    if (!data.data || data.data.length === 0) {
+      throw new Error('No children found — is the database seeded?');
+    }
+    return data.data[0].id;
+  }, { token, orgId });
+}
+
+async function getFirstBudgetItemId(page: Page, token: string, orgId: number): Promise<number> {
+  return page.evaluate(async ({ token, orgId }) => {
+    const response = await fetch(`/api/v1/organizations/${orgId}/budget-items?limit=1`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await response.json();
+    if (!data.data || data.data.length === 0) {
+      throw new Error('No budget items found — is the database seeded?');
+    }
+    return data.data[0].id;
+  }, { token, orgId });
+}
+
 async function capture(page: Page, name: string): Promise<void> {
   const filepath = path.join(OUTPUT_DIR, `${name}.png`);
   await page.screenshot({ path: filepath, fullPage: false });
@@ -134,11 +173,62 @@ async function main(): Promise<void> {
     await page.waitForTimeout(1000);
     await capture(page, 'children');
 
-    // 7. Government Funding
+    // 7. Government Funding Rates
     await page.goto(`${BASE_URL}/government-funding-rates`);
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(1000);
     await capture(page, 'government-funding-rates');
+
+    // 8. Sections
+    await page.goto(`${BASE_URL}/organizations/${orgId}/sections`);
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
+    await capture(page, 'sections');
+
+    // 9. Employee Contracts
+    const employeeId = await getFirstEmployeeId(page, token, orgId);
+    await page.goto(`${BASE_URL}/organizations/${orgId}/employees/${employeeId}/contracts`);
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
+    await capture(page, 'employee-contracts');
+
+    // 10. Child Contracts
+    const childId = await getFirstChildId(page, token, orgId);
+    await page.goto(`${BASE_URL}/organizations/${orgId}/children/${childId}/contracts`);
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
+    await capture(page, 'child-contracts');
+
+    // 11. Attendance
+    await page.goto(`${BASE_URL}/organizations/${orgId}/attendance`);
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
+    await capture(page, 'attendance');
+
+    // 12. Budget Items
+    await page.goto(`${BASE_URL}/organizations/${orgId}/budget-items`);
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
+    await capture(page, 'budget-items');
+
+    // 13. Budget Item Detail
+    const budgetItemId = await getFirstBudgetItemId(page, token, orgId);
+    await page.goto(`${BASE_URL}/organizations/${orgId}/budget-items/${budgetItemId}`);
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
+    await capture(page, 'budget-item-detail');
+
+    // 14. Statistics
+    await page.goto(`${BASE_URL}/organizations/${orgId}/statistics`);
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
+    await capture(page, 'statistics');
+
+    // 15. Government Funding Bills
+    await page.goto(`${BASE_URL}/organizations/${orgId}/government-funding-bills`);
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
+    await capture(page, 'government-funding-bills');
 
     console.log(`\nDone! Screenshots saved to ${OUTPUT_DIR}`);
   } catch (error) {

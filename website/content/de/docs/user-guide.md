@@ -14,6 +14,8 @@ Dieses Handbuch beschreibt die alltäglichen Aufgaben, die Sie in KitaManager au
 
 Falls Sie Ihr Passwort vergessen haben, wenden Sie sich an Ihren Administrator, um es zurücksetzen zu lassen.
 
+{{< screenshot src="/images/screenshots/login.png" alt="Anmeldeseite" caption="Die KitaManager-Anmeldeseite." >}}
+
 ## Navigation in der Oberfläche
 
 Die Anwendung verfügt über folgende Navigationselemente:
@@ -23,6 +25,8 @@ Die Anwendung verfügt über folgende Navigationselemente:
 - **Brotkrümel-Navigation** -- Wird oben auf jeder Seite angezeigt und zeigt Ihre aktuelle Position in der Anwendung. Klicken Sie auf einen beliebigen Eintrag, um zu dieser Ebene zurückzukehren.
 - **Dark-Mode-Umschalter** -- Wechseln Sie zwischen hellem und dunklem Farbschema über den Umschalter in der Kopfzeile.
 - **Sprachumschalter** -- Wechseln Sie die Oberflächensprache zwischen Englisch und Deutsch (EN/DE) über die Sprachauswahl in der Kopfzeile.
+
+{{< screenshot src="/images/screenshots/dashboard.png" alt="Dashboard" caption="Das Dashboard bietet eine Übersicht über Ihre Organisation." >}}
 
 ## Organisation wechseln
 
@@ -42,6 +46,8 @@ Bereiche repräsentieren Gruppen innerhalb Ihrer Kita, zum Beispiel „Schmetter
 
 1. Klicken Sie in der Seitenleiste auf **Bereiche**.
 2. Sie sehen eine Liste aller Bereiche in Ihrer Organisation.
+
+{{< screenshot src="/images/screenshots/sections.png" alt="Bereichsliste" caption="Die Bereichsseite mit allen Gruppen Ihrer Organisation." >}}
 
 ### Bereich erstellen
 
@@ -64,6 +70,8 @@ Bereiche repräsentieren Gruppen innerhalb Ihrer Kita, zum Beispiel „Schmetter
 
 1. Klicken Sie in der Seitenleiste auf **Mitarbeiter**.
 2. Sie sehen eine Liste aller Mitarbeiter in Ihrer Organisation.
+
+{{< screenshot src="/images/screenshots/employees.png" alt="Mitarbeiterliste" caption="Die Mitarbeiterseite mit allen Beschäftigten." >}}
 
 ### Mitarbeiter anlegen
 
@@ -101,6 +109,8 @@ Jeder Mitarbeiter kann einen oder mehrere Arbeitsverträge haben, die seine Arbe
 
 Der aktuelle Vertrag wird auf der Detailseite des Mitarbeiters angezeigt.
 
+{{< screenshot src="/images/screenshots/employee-contracts.png" alt="Arbeitsverträge" caption="Arbeitsverträge eines Mitarbeiters." >}}
+
 ### Stufenaufstiege
 
 KitaManager erfasst, welche Mitarbeiter für einen Aufstieg in die nächste Gehaltsstufe in Frage kommen, basierend auf der Verweildauer in ihrer aktuellen Stufe.
@@ -115,6 +125,8 @@ KitaManager erfasst, welche Mitarbeiter für einen Aufstieg in die nächste Geha
 
 1. Klicken Sie in der Seitenleiste auf **Kinder**.
 2. Sie sehen eine Liste aller aufgenommenen Kinder zusammen mit ihren Förderbeträgen.
+
+{{< screenshot src="/images/screenshots/children.png" alt="Kinderliste" caption="Die Kinderseite mit allen aufgenommenen Kindern und ihren Förderbeträgen." >}}
 
 ### Kind anlegen
 
@@ -155,6 +167,8 @@ Betreuungsverträge legen fest, wie ein Kind aufgenommen wird, und bestimmen die
 
 Die Vertragseigenschaften bestimmen den Förderbetrag der Landesförderung, den KitaManager für jedes Kind berechnet.
 
+{{< screenshot src="/images/screenshots/child-contracts.png" alt="Betreuungsverträge" caption="Betreuungsverträge eines aufgenommenen Kindes." >}}
+
 ## Tägliche Anwesenheitserfassung
 
 Mitarbeiter können die tägliche Anwesenheit der Kinder erfassen.
@@ -165,6 +179,8 @@ Mitarbeiter können die tägliche Anwesenheit der Kinder erfassen.
 2. Sie sehen eine wöchentliche Rasteransicht mit allen Kindern, die aktive Betreuungsverträge haben.
 3. Markieren Sie für jedes Kind, ob es an dem jeweiligen Wochentag **anwesend** oder **abwesend** ist.
 4. Ihre Änderungen werden automatisch gespeichert.
+
+{{< screenshot src="/images/screenshots/attendance.png" alt="Anwesenheitserfassung" caption="Die wöchentliche Anwesenheitsübersicht zur Erfassung der täglichen Anwesenheit." >}}
 
 ### Anwesenheitsübersicht anzeigen
 
@@ -184,6 +200,8 @@ Budgetposten stellen Kategorien von Einnahmen oder Ausgaben dar (zum Beispiel �
 3. Geben Sie den Namen des Budgetpostens und den Gesamtbetrag ein.
 4. Klicken Sie auf **Speichern**.
 
+{{< screenshot src="/images/screenshots/budget-items.png" alt="Budgetposten" caption="Die Budgetübersicht mit allen Budgetposten Ihrer Organisation." >}}
+
 ### Einträge zu einem Budgetposten hinzufügen
 
 Jeder Budgetposten kann mehrere Einträge haben, die einzelne Buchungen darstellen.
@@ -197,6 +215,8 @@ Jeder Budgetposten kann mehrere Einträge haben, die einzelne Buchungen darstell
 4. Klicken Sie auf **Speichern**.
 
 Verwenden Sie Einträge, um tatsächliche Ausgaben oder Einnahmen im Vergleich zu Ihren budgetierten Beträgen zu verfolgen.
+
+{{< screenshot src="/images/screenshots/budget-item-detail.png" alt="Budgetposten-Details" caption="Ein Budgetposten mit seinen einzelnen Einträgen." >}}
 
 ## Statistiken anzeigen
 
@@ -214,6 +234,8 @@ KitaManager bietet verschiedene Berichte, um die Daten Ihrer Organisation besser
 4. Verwenden Sie den **Bereichs**-Filter, um die Ergebnisse auf eine bestimmte Gruppe einzugrenzen.
 5. Um einen Bericht zu drucken, klicken Sie auf die Schaltfläche **Drucken**.
 
+{{< screenshot src="/images/screenshots/statistics.png" alt="Statistiken" caption="Die Statistikseite mit verschiedenen Berichten über Ihre Organisation." >}}
+
 ## Abrechnungen der Landesförderung
 
 Sie können Abrechnungen der Landesförderung mit den von KitaManager berechneten Beträgen vergleichen, um Abweichungen zu erkennen.
@@ -223,6 +245,8 @@ Sie können Abrechnungen der Landesförderung mit den von KitaManager berechnete
 1. Navigieren Sie zum Bereich **ISBJ-Abrechnungen**.
 2. Klicken Sie auf **Hochladen** und wählen Sie die ISBJ-Abrechnungsdatei von Ihrem Computer aus.
 3. Die hochgeladene Abrechnung erscheint in der Liste.
+
+{{< screenshot src="/images/screenshots/government-funding-bills.png" alt="Abrechnungen der Landesförderung" caption="Hochgeladene Abrechnungen der Landesförderung zum Vergleich mit den berechneten Beträgen." >}}
 
 ### Abweichungen prüfen
 

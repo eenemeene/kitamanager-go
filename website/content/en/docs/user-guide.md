@@ -14,6 +14,8 @@ This guide walks you through the everyday tasks you can perform in KitaManager. 
 
 If you have forgotten your password, contact your administrator to reset it.
 
+{{< screenshot src="/images/screenshots/login.png" alt="Login page" caption="The KitaManager login page." >}}
+
 ## Navigating the Interface
 
 The application has the following navigation elements:
@@ -23,6 +25,8 @@ The application has the following navigation elements:
 - **Breadcrumbs** -- Displayed at the top of each page, showing your current location in the application. Click any breadcrumb to navigate back to that level.
 - **Dark mode toggle** -- Switch between light and dark color themes using the toggle in the header.
 - **Language switcher** -- Switch the interface between English and German (EN/DE) using the language selector in the header.
+
+{{< screenshot src="/images/screenshots/dashboard.png" alt="Dashboard" caption="The dashboard provides an overview of your organization." >}}
 
 ## Switching Organizations
 
@@ -42,6 +46,8 @@ Sections represent groups within your daycare, such as "Schmetterlinge" or "Sonn
 
 1. Click **Sections** in the sidebar.
 2. You will see a list of all sections in your organization.
+
+{{< screenshot src="/images/screenshots/sections.png" alt="Sections list" caption="The sections page showing all groups in your organization." >}}
 
 ### Creating a Section
 
@@ -64,6 +70,8 @@ Sections represent groups within your daycare, such as "Schmetterlinge" or "Sonn
 
 1. Click **Employees** in the sidebar.
 2. You will see a list of all employees in your organization.
+
+{{< screenshot src="/images/screenshots/employees.png" alt="Employees list" caption="The employees page listing all staff members." >}}
 
 ### Creating an Employee
 
@@ -101,6 +109,8 @@ Each employee can have one or more employment contracts that define their workin
 
 The current contract is displayed on the employee's detail page.
 
+{{< screenshot src="/images/screenshots/employee-contracts.png" alt="Employee contracts" caption="Employment contracts for a staff member." >}}
+
 ### Step Promotions
 
 KitaManager tracks which employees are eligible for a promotion to the next salary step based on how long they have been in their current step.
@@ -115,6 +125,8 @@ KitaManager tracks which employees are eligible for a promotion to the next sala
 
 1. Click **Children** in the sidebar.
 2. You will see a list of all enrolled children along with their funding amounts.
+
+{{< screenshot src="/images/screenshots/children.png" alt="Children list" caption="The children page showing all enrolled children and their funding amounts." >}}
 
 ### Creating a Child Record
 
@@ -155,6 +167,8 @@ Care contracts define how a child is enrolled and determine the government fundi
 
 The contract properties determine the government funding amount that KitaManager calculates for each child.
 
+{{< screenshot src="/images/screenshots/child-contracts.png" alt="Child contracts" caption="Care contracts for an enrolled child." >}}
+
 ## Daily Attendance Tracking
 
 Staff members can track the daily attendance of children.
@@ -165,6 +179,8 @@ Staff members can track the daily attendance of children.
 2. You will see a weekly grid view showing all children who have active care contracts.
 3. For each child, mark them as **present** or **absent** for each day of the week.
 4. Your changes are saved automatically.
+
+{{< screenshot src="/images/screenshots/attendance.png" alt="Attendance tracking" caption="The weekly attendance grid for tracking children's daily presence." >}}
 
 ### Viewing Attendance Summary
 
@@ -184,6 +200,8 @@ Budget items represent categories of income or expenses (for example, "Office Su
 3. Enter the budget item name and the total budget amount.
 4. Click **Save**.
 
+{{< screenshot src="/images/screenshots/budget-items.png" alt="Budget items" caption="The budget overview showing all budget items for your organization." >}}
+
 ### Adding Entries to a Budget Item
 
 Each budget item can have multiple entries that represent individual transactions.
@@ -197,6 +215,8 @@ Each budget item can have multiple entries that represent individual transaction
 4. Click **Save**.
 
 Use entries to track actual spending or income against your budgeted amounts.
+
+{{< screenshot src="/images/screenshots/budget-item-detail.png" alt="Budget item detail" caption="A budget item with its individual entries." >}}
 
 ## Viewing Statistics
 
@@ -214,6 +234,8 @@ KitaManager provides several reports to help you understand your organization's 
 4. Use the **section** filter to narrow results to a specific group.
 5. To print a report, click the **Print** button.
 
+{{< screenshot src="/images/screenshots/statistics.png" alt="Statistics" caption="The statistics page with various reports about your organization." >}}
+
 ## Government Funding Bills
 
 You can compare government funding bills against the amounts KitaManager calculates to identify discrepancies.
@@ -223,6 +245,8 @@ You can compare government funding bills against the amounts KitaManager calcula
 1. Navigate to the **ISBJ Bills** section.
 2. Click **Upload** and select the ISBJ bill file from your computer.
 3. The uploaded bill will appear in the list.
+
+{{< screenshot src="/images/screenshots/government-funding-bills.png" alt="Government funding bills" caption="Uploaded government funding bills for comparison with calculated amounts." >}}
 
 ### Reviewing Discrepancies
 
