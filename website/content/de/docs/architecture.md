@@ -33,64 +33,6 @@ graph TB
     Store --> PG
 ```
 
-## Projektstruktur
-
-```
-kitamanager-go/
-├── cmd/api/                 # Anwendungs-Einstiegspunkt
-├── internal/
-│   ├── api/                # HTTP-Request-Handler
-│   ├── models/             # Domänenmodelle
-│   ├── store/              # Datenzugriffsschicht
-│   ├── service/            # Geschäftslogikschicht
-│   ├── middleware/         # Auth, CORS, Logging
-│   ├── rbac/               # Rollenbasierte Zugriffskontrolle
-│   ├── routes/             # API-Routendefinitionen
-│   ├── database/           # Datenbankverbindung
-│   ├── config/             # Konfigurationsverwaltung
-│   ├── seed/               # Testdaten-Initialisierung
-│   ├── isbj/               # ISBJ-Abrechnungsanalyse
-│   ├── export/             # Excel/YAML-Export
-│   ├── importer/           # YAML-Datenimport
-│   ├── audit/              # Audit-Protokollierung
-│   └── validation/         # Eingabevalidierung
-├── frontend/               # Next.js React-Anwendung
-├── docs/                   # Dokumentation
-└── configs/                # Konfigurationsdateien
-```
-
-## Technologie-Stack
-
-### Backend
-
-| Technologie | Zweck |
-|-------------|-------|
-| Go 1.25 | Primäre Sprache |
-| Gin | HTTP-Web-Framework |
-| GORM | ORM für Datenbankzugriff |
-| Casbin | Autorisierungs-Engine |
-| JWT | Authentifizierungs-Token |
-| Swagger | API-Dokumentation |
-
-### Frontend
-
-| Technologie | Zweck |
-|-------------|-------|
-| Next.js 16 | React-Framework |
-| TypeScript | Typsicheres JavaScript |
-| Tailwind CSS | Styling |
-| Radix UI | Komponentenbibliothek |
-| TanStack Query | Datenabruf |
-| Zustand | Zustandsverwaltung |
-
-### Infrastruktur
-
-| Technologie | Zweck |
-|-------------|-------|
-| PostgreSQL | Primäre Datenbank |
-| Docker | Containerisierung |
-| GitHub Actions | CI/CD |
-
 ## RBAC-Architektur
 
 Die Anwendung verwendet ein hybrides RBAC-System:

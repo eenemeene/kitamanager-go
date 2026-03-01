@@ -33,64 +33,6 @@ graph TB
     Store --> PG
 ```
 
-## Project Structure
-
-```
-kitamanager-go/
-├── cmd/api/                 # Application entry point
-├── internal/
-│   ├── api/                # HTTP request handlers
-│   ├── models/             # Domain models
-│   ├── store/              # Data access layer
-│   ├── service/            # Business logic layer
-│   ├── middleware/         # Auth, CORS, logging
-│   ├── rbac/               # Role-based access control
-│   ├── routes/             # API route definitions
-│   ├── database/           # Database connectivity
-│   ├── config/             # Configuration management
-│   ├── seed/               # Test data seeding
-│   ├── isbj/               # ISBJ bill parsing
-│   ├── export/             # Excel/YAML export
-│   ├── importer/           # YAML data import
-│   ├── audit/              # Audit logging
-│   └── validation/         # Input validation
-├── frontend/               # Next.js React application
-├── docs/                   # Documentation
-└── configs/                # Configuration files
-```
-
-## Technology Stack
-
-### Backend
-
-| Technology | Purpose |
-|------------|---------|
-| Go 1.25 | Primary language |
-| Gin | HTTP web framework |
-| GORM | ORM for database access |
-| Casbin | Authorization engine |
-| JWT | Authentication tokens |
-| Swagger | API documentation |
-
-### Frontend
-
-| Technology | Purpose |
-|------------|---------|
-| Next.js 16 | React framework |
-| TypeScript | Type-safe JavaScript |
-| Tailwind CSS | Styling |
-| Radix UI | Component library |
-| TanStack Query | Data fetching |
-| Zustand | State management |
-
-### Infrastructure
-
-| Technology | Purpose |
-|------------|---------|
-| PostgreSQL | Primary database |
-| Docker | Containerization |
-| GitHub Actions | CI/CD |
-
 ## RBAC Architecture
 
 The application uses a hybrid RBAC system:
