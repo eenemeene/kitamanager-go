@@ -1,6 +1,8 @@
-# KitaManager Go
+# KitaManager
 
-A REST API for managing kindergarten (Kita) organizations, employees, children, and contracts.
+A web application for managing kindergarten (Kita) organizations, employees, children, and contracts.
+
+**Documentation:** [eenemeene.github.io/kitamanager-go](https://eenemeene.github.io/kitamanager-go/)
 
 ## Quick Start
 
@@ -14,6 +16,7 @@ docker compose up -d
 
 This starts:
 - **API** at http://localhost:8080
+- **Frontend** at http://localhost:3000
 - **PostgreSQL 18** at localhost:5432
 
 To rebuild after code changes:
@@ -46,40 +49,6 @@ make api-build     # Build API
 make dev           # Start dev environment with hot reload
 ```
 
-## API Endpoints
+## License
 
-### Authentication
-- `POST /api/v1/login` - Login, returns JWT token
-
-### Organizations (Superadmin only for create/delete)
-- `GET /api/v1/organizations` - List all
-- `POST /api/v1/organizations` - Create (superadmin)
-- `GET /api/v1/organizations/:id` - Get by ID
-- `PUT /api/v1/organizations/:id` - Update
-- `DELETE /api/v1/organizations/:id` - Delete (superadmin)
-
-### Employees (Organization-scoped)
-- `GET /api/v1/organizations/:orgId/employees` - List
-- `POST /api/v1/organizations/:orgId/employees` - Create
-- `GET /api/v1/organizations/:orgId/employees/:id` - Get
-- `PUT /api/v1/organizations/:orgId/employees/:id` - Update
-- `DELETE /api/v1/organizations/:orgId/employees/:id` - Delete
-- `POST /api/v1/organizations/:orgId/employees/:id/contracts` - Add contract
-- `DELETE /api/v1/organizations/:orgId/employees/:id/contracts/:contractId` - Remove contract
-
-### Children (Organization-scoped)
-- `GET /api/v1/organizations/:orgId/children` - List
-- `POST /api/v1/organizations/:orgId/children` - Create
-- `GET /api/v1/organizations/:orgId/children/:id` - Get
-- `PUT /api/v1/organizations/:orgId/children/:id` - Update
-- `DELETE /api/v1/organizations/:orgId/children/:id` - Delete
-- `POST /api/v1/organizations/:orgId/children/:id/contracts` - Add contract
-- `DELETE /api/v1/organizations/:orgId/children/:id/contracts/:contractId` - Remove contract
-
-### Users & Groups
-- Standard CRUD at `/api/v1/users` and `/api/v1/groups`
-
-## Documentation
-
-- [RBAC System](docs/RBAC.md) - Role-based access control
-- [Database Schema](docs/schema/README.md) - Auto-generated ER diagram
+[AGPL-3.0](LICENSE)
