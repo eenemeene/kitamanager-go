@@ -31,7 +31,6 @@ test.describe('Statistics Print Pages', () => {
 
   test('financials print page renders without sidebar', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/statistics/financials/print`);
-    await page.waitForLoadState('networkidle');
 
     await expect(page.getByRole('heading', { name: /financials/i }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: /print/i })).toBeVisible();
@@ -44,7 +43,6 @@ test.describe('Statistics Print Pages', () => {
 
   test('occupancy print page renders without sidebar', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/statistics/occupancy/print`);
-    await page.waitForLoadState('networkidle');
 
     await expect(page.getByRole('heading', { name: /occupancy/i }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: /print/i })).toBeVisible();
@@ -56,7 +54,6 @@ test.describe('Statistics Print Pages', () => {
 
   test('children print page renders without sidebar', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/statistics/children/print`);
-    await page.waitForLoadState('networkidle');
 
     await expect(page.getByRole('heading', { name: /children/i }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: /print/i })).toBeVisible();
@@ -77,7 +74,6 @@ test.describe('Statistics Print Pages', () => {
 
   test('dashboard staffing page has print link', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/statistics/staffing`);
-    await page.waitForLoadState('networkidle');
 
     const printLink = page.getByRole('link', { name: /print/i });
     await expect(printLink).toBeVisible();

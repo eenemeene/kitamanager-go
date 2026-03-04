@@ -79,8 +79,7 @@ test.describe('Visual Regression - Dashboard', () => {
 
   test('statistics overview page', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/statistics`);
-    await page.waitForLoadState('networkidle');
-    // Wait for statistics cards to render
+    // Wait for statistics cards to render (avoid networkidle — react-query background requests prevent it)
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10000 });
 
     await expect(page).toHaveScreenshot('statistics-overview.png', {
@@ -90,8 +89,7 @@ test.describe('Visual Regression - Dashboard', () => {
 
   test('statistics financials page', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/statistics/financials`);
-    await page.waitForLoadState('networkidle');
-    // Wait for the financial overview chart card to render
+    // Wait for the financial overview chart card to render (avoid networkidle — react-query background requests prevent it)
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10000 });
 
     // Mask the chart area: SVG rendering has sub-pixel anti-aliasing jitter

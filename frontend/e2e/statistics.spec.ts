@@ -14,12 +14,11 @@ test.describe('Statistics', () => {
 
   test('should display statistics hub page', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/statistics`);
-    await page.waitForLoadState('networkidle');
 
-    // Verify heading
+    // Wait for heading to render (avoid networkidle — react-query background requests prevent it)
     await expect(
       page.getByRole('heading', { name: /statistics/i }).first()
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 10000 });
 
     // Verify financial summary cards
     await expect(page.getByText(/total income/i)).toBeVisible({ timeout: 10000 });
@@ -45,9 +44,8 @@ test.describe('Statistics', () => {
 
   test('should navigate to children statistics', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/statistics/children`);
-    await page.waitForLoadState('networkidle');
 
-    // Verify heading
+    // Wait for heading (avoid networkidle — react-query background requests prevent it)
     await expect(
       page.getByRole('heading', { name: /children/i }).first()
     ).toBeVisible();
@@ -59,9 +57,8 @@ test.describe('Statistics', () => {
 
   test('should navigate to staffing statistics', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/statistics/staffing`);
-    await page.waitForLoadState('networkidle');
 
-    // Verify heading
+    // Wait for heading (avoid networkidle — react-query background requests prevent it)
     await expect(
       page.getByRole('heading', { name: /staffing/i }).first()
     ).toBeVisible();
@@ -72,9 +69,8 @@ test.describe('Statistics', () => {
 
   test('should navigate to financials statistics', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/statistics/financials`);
-    await page.waitForLoadState('networkidle');
 
-    // Verify heading
+    // Wait for heading (avoid networkidle — react-query background requests prevent it)
     await expect(
       page.getByRole('heading', { name: /financials/i }).first()
     ).toBeVisible();
@@ -93,9 +89,8 @@ test.describe('Statistics', () => {
 
   test('should navigate to occupancy statistics', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/statistics/occupancy`);
-    await page.waitForLoadState('networkidle');
 
-    // Verify heading
+    // Wait for heading (avoid networkidle — react-query background requests prevent it)
     await expect(
       page.getByRole('heading', { name: /occupancy/i }).first()
     ).toBeVisible();
