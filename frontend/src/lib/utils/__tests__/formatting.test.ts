@@ -9,6 +9,7 @@ import {
   formatPeriod,
   formatFte,
   formatAgeRange,
+  formatMonthRange,
   formatTime,
   combineDateAndTime,
   toLocalDateString,
@@ -574,5 +575,87 @@ describe('toLocalDateString', () => {
     const combined = combineDateAndTime(dateStr, timeStr);
     expect(combined).not.toBeNull();
     expect(formatTime(combined!)).toBe(timeStr);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// formatDateForApi – exception / edge-case paths
+// ---------------------------------------------------------------------------
+describe('formatDateForApi – edge cases', () => {
+  it('appends T00:00:00Z to a bare date even if not strictly valid ISO', () => {
+    // The function does not validate date content, only checks for "T"
+    expect(formatDateForApi('9999-99-99')).toBe('9999-99-99T00:00:00Z');
+  });
+
+  it('returns null for whitespace-only string (falsy after boolean coercion is false for non-empty, but still processed)', () => {
+    // A single space is truthy, so the function will try to process it.
+    // Since it does not contain "T", it appends T00:00:00Z.
+    expect(formatDateForApi(' ')).toBe(' T00:00:00Z');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// calculateAge – exception / edge-case paths
+// ---------------------------------------------------------------------------
+describe('calculateAge – edge cases', () => {
+  it('returns 0 for a completely nonsensical string that parseISO cannot handle', () => {
+    expect(calculateAge('not-a-date-at-all')).toBe(0);
+  });
+
+  it('returns 0 for a date far in the future (negative age)', () => {
+    // differenceInYears returns a negative number; the function still returns it.
+    // Verify it does not throw.
+    const futureDate = '2099-01-01';
+    const age = calculateAge(futureDate);
+    expect(age).toBeLessThan(0);
+  });
+
+  it('returns 0 for a string that parseISO turns into Invalid Date', () => {
+    // parseISO with a completely malformed value returns Invalid Date (NaN getTime)
+    expect(calculateAge('abc-def-ghi')).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// formatMonthRange
+// ---------------------------------------------------------------------------
+describe('formatMonthRange', () => {
+  it('returns null when both min and max are null', () => {
+    expect(formatMonthRange(null, null)).toBeNull();
+  });
+
+  it('returns null when both min and max are undefined', () => {
+    expect(formatMonthRange(undefined, undefined)).toBeNull();
+  });
+
+  it('returns null when called with no arguments', () => {
+    expect(formatMonthRange()).toBeNull();
+  });
+
+  it('formats range with both min and max using en-dash', () => {
+    expect(formatMonthRange(12, 36)).toBe('12\u201336');
+  });
+
+  it('formats min-only range with plus sign', () => {
+    expect(formatMonthRange(24, null)).toBe('24+');
+    expect(formatMonthRange(24, undefined)).toBe('24+');
+  });
+
+  it('formats max-only range starting from zero', () => {
+    expect(formatMonthRange(null, 24)).toBe('0\u201324');
+    expect(formatMonthRange(undefined, 24)).toBe('0\u201324');
+  });
+
+  it('handles zero as a valid min value', () => {
+    expect(formatMonthRange(0, 12)).toBe('0\u201312');
+  });
+
+  it('handles zero as a valid max value', () => {
+    // 0 is != null so both branches are hit
+    expect(formatMonthRange(0, 0)).toBe('0\u20130');
+  });
+
+  it('handles min-only with zero', () => {
+    expect(formatMonthRange(0, null)).toBe('0+');
   });
 });

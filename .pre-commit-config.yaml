@@ -97,8 +97,8 @@ repos:
         pass_filenames: false
 
       - id: web-test
-        name: web unit tests
-        entry: bash -c 'cd frontend && npm run test'
+        name: web unit tests with coverage
+        entry: bash -c 'cd frontend && npx jest --coverage'
         language: system
         files: ^frontend/.*\.(tsx?|jsx?)$
         pass_filenames: false

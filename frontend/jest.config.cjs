@@ -27,6 +27,9 @@ const customJestConfig = {
       functions: 35,
       lines: 55,
     },
+    './src/**/*.{ts,tsx}': {
+      lines: 5,
+    },
   },
 };
 

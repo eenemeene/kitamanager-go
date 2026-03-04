@@ -8,13 +8,13 @@ import (
 
 // Sentinel errors for domain operations
 var (
-	ErrNotFound       = errors.New("resource not found")
-	ErrBadRequest     = errors.New("bad request")
-	ErrConflict       = errors.New("resource conflict")
-	ErrUnauthorized   = errors.New("unauthorized")
-	ErrForbidden      = errors.New("forbidden")
+	ErrNotFound        = errors.New("resource not found")
+	ErrBadRequest      = errors.New("bad request")
+	ErrConflict        = errors.New("resource conflict")
+	ErrUnauthorized    = errors.New("unauthorized")
+	ErrForbidden       = errors.New("forbidden")
 	ErrTooManyRequests = errors.New("too many requests")
-	ErrInternalServer = errors.New("internal server error")
+	ErrInternalServer  = errors.New("internal server error")
 )
 
 // Error codes for programmatic handling

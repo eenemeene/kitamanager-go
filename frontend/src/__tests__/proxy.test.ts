@@ -1,10 +1,78 @@
-/**
- * Proxy tests
- *
- * Note: Next.js proxy uses edge runtime APIs that aren't fully available
- * in Jest's Node.js environment. These tests verify the proxy logic
- * by testing the core functionality in isolation.
- */
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { proxy, config } from '../proxy';
+
+jest.mock('next/server', () => {
+  const redirect = jest.fn().mockReturnValue({ type: 'redirect' });
+  const next = jest.fn().mockReturnValue({ type: 'next' });
+  return {
+    NextResponse: { redirect, next },
+  };
+});
+
+function createMockRequest(pathname: string, csrfToken?: string): NextRequest {
+  const url = new URL(`http://localhost:3000${pathname}`);
+  return {
+    nextUrl: url,
+    url: url.toString(),
+    cookies: {
+      get: jest.fn((name: string) =>
+        name === 'csrf_token' && csrfToken ? { value: csrfToken } : undefined
+      ),
+    },
+  } as unknown as NextRequest;
+}
+
+describe('proxy function', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('allows authenticated user on protected path', () => {
+    const result = proxy(createMockRequest('/dashboard', 'token'));
+    expect(result).toEqual({ type: 'next' });
+  });
+
+  it('redirects unauthenticated user to login with from param', () => {
+    proxy(createMockRequest('/dashboard'));
+    const redirectUrl = (NextResponse.redirect as jest.Mock).mock.calls[0][0] as URL;
+    expect(redirectUrl.pathname).toBe('/login');
+    expect(redirectUrl.searchParams.get('from')).toBe('/dashboard');
+  });
+
+  it('redirects authenticated user away from login page', () => {
+    proxy(createMockRequest('/login', 'token'));
+    const redirectUrl = (NextResponse.redirect as jest.Mock).mock.calls[0][0] as URL;
+    expect(redirectUrl.pathname).toBe('/');
+  });
+
+  it('allows unauthenticated user on login page', () => {
+    const result = proxy(createMockRequest('/login'));
+    expect(result).toEqual({ type: 'next' });
+  });
+
+  it('does not set from param for protocol-relative paths', () => {
+    proxy(createMockRequest('//evil.com'));
+    const redirectUrl = (NextResponse.redirect as jest.Mock).mock.calls[0][0] as URL;
+    expect(redirectUrl.searchParams.has('from')).toBe(false);
+  });
+
+  it('does not set from param for backslash paths', () => {
+    // URL constructor normalizes backslashes to forward slashes,
+    // so we need to mock nextUrl directly to test isValidRedirectPath
+    const req = createMockRequest('/path');
+    // Override pathname to contain a backslash (bypassing URL normalization)
+    Object.defineProperty(req.nextUrl, 'pathname', { value: '/path\\evil', writable: false });
+    proxy(req);
+    const redirectUrl = (NextResponse.redirect as jest.Mock).mock.calls[0][0] as URL;
+    expect(redirectUrl.searchParams.has('from')).toBe(false);
+  });
+
+  it('exports a matcher config', () => {
+    expect(config.matcher).toBeDefined();
+    expect(config.matcher.length).toBeGreaterThan(0);
+  });
+});
 
 // Test the path matching logic
 describe('proxy path matching', () => {

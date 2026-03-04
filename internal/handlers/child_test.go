@@ -1744,7 +1744,6 @@ func TestChildHandler_List_SearchWithPagination(t *testing.T) {
 	}
 }
 
-
 // =========================================
 // GetContract Tests
 // =========================================
@@ -2202,4 +2201,3 @@ func TestChildHandler_UpdateContract_ClearVoucherNumber(t *testing.T) {
 		t.Errorf("expected voucher_number to be cleared, still got %q", *resp.VoucherNumber)
 	}
 }
-

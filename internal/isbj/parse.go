@@ -80,9 +80,9 @@ type Vertrag struct {
 
 func (v Vertrag) String() string {
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Vertrag mit %d Kindern:\n", len(v.Kinder)))
+	fmt.Fprintf(&sb, "Vertrag mit %d Kindern:\n", len(v.Kinder))
 	for i, k := range v.Kinder {
-		sb.WriteString(fmt.Sprintf("  %d. %s\n", i+1, k.String()))
+		fmt.Fprintf(&sb, "  %d. %s\n", i+1, k.String())
 	}
 	return sb.String()
 }

@@ -233,29 +233,6 @@ func snapshotSchema(t *testing.T, db *gorm.DB) []columnInfo {
 	require.NoError(t, err)
 	return columns
 }
-
-// migrationVersions returns all migration version numbers from the embedded source.
-func migrationVersions(t *testing.T) []uint {
-	t.Helper()
-	source, err := iofs.New(migrationsFS, "migrations")
-	require.NoError(t, err)
-	defer source.Close()
-
-	var versions []uint
-	v, err := source.First()
-	require.NoError(t, err)
-	versions = append(versions, v)
-	for {
-		next, err := source.Next(v)
-		if err != nil {
-			break
-		}
-		versions = append(versions, next)
-		v = next
-	}
-	return versions
-}
-
 // normalizeDataType maps SQL-specific types to what GORM would generate.
 // SQL migrations intentionally use more specific types (integer, double precision, jsonb)
 // while GORM maps Go types differently (int→bigint, float64→numeric, serializer:json→text).

@@ -68,7 +68,7 @@ func (s *EmailService) SendEmail(_ context.Context, to, subject, htmlBody string
 
 	client, err := smtp.NewClient(conn, s.host)
 	if err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return fmt.Errorf("smtp new client: %w", err)
 	}
 	defer client.Close()

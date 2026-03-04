@@ -52,16 +52,16 @@ func (GovernmentFundingPeriod) TableName() string {
 // If set, both MinAge and MaxAge are inclusive (e.g., MinAge=0, MaxAge=2 covers ages 0, 1, and 2).
 // Payment is stored in cents to avoid floating-point issues (e.g., 166847 = 1668.47 EUR).
 type GovernmentFundingProperty struct {
-	ID          uint      `gorm:"primaryKey" json:"id" example:"1"`
-	PeriodID    uint      `gorm:"not null;index" json:"period_id" example:"1"`
-	Key         string    `gorm:"size:100;not null" json:"key" example:"care_type"`
-	Value       string    `gorm:"size:255;not null" json:"value" example:"ganztag"`
-	Label       string    `gorm:"size:255;not null" json:"label" example:"Ganztag"`
-	Payment     int       `gorm:"not null" json:"payment" example:"166847"`
-	Requirement float64   `gorm:"not null" json:"requirement" example:"0.261"`
-	MinAge      *int      `json:"min_age,omitempty" example:"0"`
-	MaxAge      *int      `json:"max_age,omitempty" example:"3"`
-	Comment     string    `gorm:"size:500" json:"comment,omitempty" example:"Full-day care funding for U3"`
+	ID          uint    `gorm:"primaryKey" json:"id" example:"1"`
+	PeriodID    uint    `gorm:"not null;index" json:"period_id" example:"1"`
+	Key         string  `gorm:"size:100;not null" json:"key" example:"care_type"`
+	Value       string  `gorm:"size:255;not null" json:"value" example:"ganztag"`
+	Label       string  `gorm:"size:255;not null" json:"label" example:"Ganztag"`
+	Payment     int     `gorm:"not null" json:"payment" example:"166847"`
+	Requirement float64 `gorm:"not null" json:"requirement" example:"0.261"`
+	MinAge      *int    `json:"min_age,omitempty" example:"0"`
+	MaxAge      *int    `json:"max_age,omitempty" example:"3"`
+	Comment     string  `gorm:"size:500" json:"comment,omitempty" example:"Full-day care funding for U3"`
 	// ApplyToAllContracts marks this property as universal — it will be automatically
 	// added to every child contract during creation/amendment, without the user needing
 	// to select it. Example: parent meal contributions (Elternessen) in Berlin apply to

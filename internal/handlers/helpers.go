@@ -158,22 +158,6 @@ func parseOptionalDatePtr(c *gin.Context, param string) (*time.Time, bool) {
 	return &date, true
 }
 
-// parseOptionalInt parses an optional integer query parameter.
-// Returns defaultValue if param is empty.
-// Returns (value, ok). If ok is false, error response has been sent.
-func parseOptionalInt(c *gin.Context, param string, defaultValue int) (int, bool) {
-	str := c.Query(param)
-	if str == "" {
-		return defaultValue, true
-	}
-	val, err := strconv.Atoi(str)
-	if err != nil {
-		respondError(c, apperror.BadRequest(param+" must be an integer"))
-		return 0, false
-	}
-	return val, true
-}
-
 // parseOptionalUint parses an optional uint query parameter.
 // Returns nil if param is empty, or pointer to parsed value if valid.
 // Returns (value, ok). If ok is false, error response has been sent.
