@@ -699,4 +699,3 @@ func findPayPlanPeriodForDate(periods []models.PayPlanPeriod, date time.Time) *m
 	}
 	return nil
 }
-

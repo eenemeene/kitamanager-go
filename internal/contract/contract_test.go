@@ -363,4 +363,3 @@ func TestContract_UserCreate(t *testing.T) {
 		t.Errorf("expected status 201, got %d: %s", resp.Code, resp.Body.String())
 	}
 }
-

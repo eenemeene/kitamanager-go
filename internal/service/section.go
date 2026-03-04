@@ -180,4 +180,3 @@ func (s *SectionService) DeleteByIDAndOrg(ctx context.Context, id, orgID uint) e
 		return nil
 	})
 }
-

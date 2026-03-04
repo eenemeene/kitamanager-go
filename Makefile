@@ -129,7 +129,7 @@ api-test-coverage:
 
 # Install web dependencies
 web-install:
-	cd frontend && npm install
+	cd frontend && npm ci
 
 # Start web dev server
 web-dev:

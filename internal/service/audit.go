@@ -136,7 +136,7 @@ func (s *AuditService) LogSuperAdminChange(actorID, targetUserID uint, targetEma
 			"target_user_email": targetEmail,
 			"granted":           granted,
 		}),
-		Success:      true,
+		Success: true,
 	})
 }
 

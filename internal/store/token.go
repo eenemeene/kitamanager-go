@@ -108,4 +108,3 @@ func (s *TokenStore) CleanupExpired(ctx context.Context) error {
 		Where("expires_at < ?", time.Now().UTC()).
 		Delete(&models.RevokedToken{}).Error
 }
-

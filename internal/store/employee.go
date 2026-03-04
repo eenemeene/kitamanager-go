@@ -10,13 +10,13 @@ import (
 )
 
 type EmployeeStore struct {
-	db            *gorm.DB
+	db          *gorm.DB
 	periodStore *PeriodStore[models.EmployeeContract]
 }
 
 func NewEmployeeStore(db *gorm.DB) *EmployeeStore {
 	return &EmployeeStore{
-		db:            db,
+		db:          db,
 		periodStore: NewPeriodStore[models.EmployeeContract](db, "employee_id"),
 	}
 }

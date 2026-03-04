@@ -156,7 +156,6 @@ func (s *EmployeeService) Import(ctx context.Context, orgID uint, data *models.E
 	return results, nil
 }
 
-
 // resolvePayPlan looks up a pay plan by name (with caching). Returns an error if not found.
 func (s *EmployeeService) resolvePayPlan(ctx context.Context, payPlanName *string, orgID uint, cache map[string]uint) (uint, error) {
 	if payPlanName == nil || *payPlanName == "" {

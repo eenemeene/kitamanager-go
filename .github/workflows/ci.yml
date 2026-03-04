@@ -354,6 +354,7 @@ jobs:
           SEED_RBAC_POLICIES=true \
           SEED_TEST_DATA=true \
           LOGIN_RATE_LIMIT_PER_MINUTE=0 \
+          API_RATE_LIMIT_PER_MINUTE=0 \
           CORS_ALLOW_ORIGINS="http://localhost:3000" \
           GOVERNMENT_FUNDING_SEED_PATH=configs/government-fundings/berlin.yaml \
           GOVERNMENT_FUNDING_SEED_NAME=Berlin \

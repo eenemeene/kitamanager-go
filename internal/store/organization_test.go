@@ -109,4 +109,3 @@ func TestOrganizationStore_Delete(t *testing.T) {
 		t.Error("expected error finding deleted organization")
 	}
 }
-

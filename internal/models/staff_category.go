@@ -22,4 +22,3 @@ func IsValidStaffCategory(s string) bool {
 	}
 	return false
 }
-

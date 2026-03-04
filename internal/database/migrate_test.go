@@ -233,6 +233,7 @@ func snapshotSchema(t *testing.T, db *gorm.DB) []columnInfo {
 	require.NoError(t, err)
 	return columns
 }
+
 // normalizeDataType maps SQL-specific types to what GORM would generate.
 // SQL migrations intentionally use more specific types (integer, double precision, jsonb)
 // while GORM maps Go types differently (int→bigint, float64→numeric, serializer:json→text).

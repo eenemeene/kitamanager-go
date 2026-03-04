@@ -31,4 +31,3 @@ func ValidStatesString() string {
 	}
 	return strings.Join(strs, ", ")
 }
-
