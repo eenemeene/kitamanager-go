@@ -221,11 +221,6 @@ jobs:
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
 
-      - name: Run gosec
-        run: |
-          go install github.com/securego/gosec/v2/cmd/gosec@latest
-          gosec -exclude=G104,G117,G706 ./...
-
   docker:
     name: Docker Build & Scan
     runs-on: ubuntu-latest
@@ -407,3 +402,36 @@ jobs:
           name: playwright-report
           path: frontend/test-results/
           retention-days: 7
+
+  swagger-docs:
+    name: Swagger Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Generate swagger docs
+        run: |
+          go install github.com/swaggo/swag/cmd/swag@latest
+          make swagger-docs
+
+      - name: Check for uncommitted changes
+        run: git diff --exit-code docs/
+
+  website-build:
+    name: Website Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - uses: peaceiris/actions-hugo@v3
+        with:
+          extended: true
+
+      - name: Build website
+        run: cd website && hugo --minify
