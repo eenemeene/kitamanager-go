@@ -54,13 +54,6 @@ repos:
         types: [go]
         pass_filenames: false
 
-      - id: goreleaser-check
-        name: goreleaser check
-        entry: bash -c 'if command -v goreleaser >/dev/null 2>&1; then goreleaser check; else echo "goreleaser not installed, skipping (validated in CI)"; fi'
-        language: system
-        files: (\.goreleaser\.yaml|go\.mod|cmd/|internal/)
-        pass_filenames: false
-
       - id: govulncheck
         name: govulncheck
         entry: bash -c 'go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./...'

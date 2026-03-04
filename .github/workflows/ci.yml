@@ -178,12 +178,6 @@ jobs:
           go mod tidy
           git diff --exit-code go.mod go.sum
 
-      - name: Check GoReleaser config
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          version: '~> v2'
-          args: check
-
   web-build:
     name: Web Build
     runs-on: ubuntu-latest

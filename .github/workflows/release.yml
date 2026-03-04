@@ -1,63 +1,20 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types: [published]
 
 env:
-  GO_VERSION: '1.25'
-  NODE_VERSION: '22'
   REGISTRY: ghcr.io
 
 permissions:
-  contents: write
+  contents: read
   packages: write
 
 jobs:
-  release:
-    name: Release
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - uses: actions/setup-go@v6
-        with:
-          go-version: ${{ env.GO_VERSION }}
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install web dependencies
-        run: make web-install
-
-      - name: Run web tests
-        run: make web-test
-
-      - name: Run API tests
-        run: make api-test-unit
-
-      - name: Build web
-        run: make web-build
-
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          version: '~> v2'
-          args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   container-images:
     name: Container Images
     runs-on: ubuntu-latest
-    needs: [release]
 
     steps:
       - uses: actions/checkout@v6
@@ -72,9 +29,27 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract version from tag
+      - name: Extract version from release tag
         id: version
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Docker metadata (API)
+        id: meta-api
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/eenemeene/kitamanager
+          tags: |
+            type=semver,pattern={{version}},value=${{ github.event.release.tag_name }}
+            type=raw,value=latest,enable=${{ !github.event.release.prerelease }}
+
+      - name: Docker metadata (Frontend)
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/eenemeene/kitamanager-ui
+          tags: |
+            type=semver,pattern={{version}},value=${{ github.event.release.tag_name }}
+            type=raw,value=latest,enable=${{ !github.event.release.prerelease }}
 
       - name: Build and push API image
         uses: docker/build-push-action@v6
@@ -83,13 +58,12 @@ jobs:
           file: Dockerfile.api
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: |
-            ${{ env.REGISTRY }}/eenemeene/kitamanager:${{ steps.version.outputs.version }}
-            ${{ env.REGISTRY }}/eenemeene/kitamanager:latest
+          tags: ${{ steps.meta-api.outputs.tags }}
+          labels: ${{ steps.meta-api.outputs.labels }}
           build-args: |
             GIT_VERSION=${{ steps.version.outputs.version }}
             GIT_COMMIT=${{ github.sha }}
-            BUILD_TIME=${{ github.event.head_commit.timestamp }}
+            BUILD_TIME=${{ github.event.release.created_at }}
           cache-from: type=gha,scope=api
           cache-to: type=gha,mode=max,scope=api
 
@@ -100,8 +74,7 @@ jobs:
           file: Dockerfile.frontend
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: |
-            ${{ env.REGISTRY }}/eenemeene/kitamanager-ui:${{ steps.version.outputs.version }}
-            ${{ env.REGISTRY }}/eenemeene/kitamanager-ui:latest
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend

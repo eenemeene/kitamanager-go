@@ -136,7 +136,7 @@ authzMiddleware.RequireSuperAdmin()
 - `Dockerfile.api` — Multi-stage build: `cgr.dev/chainguard/go` (builder) + `cgr.dev/chainguard/static` (runtime)
 - `Dockerfile.frontend` — Multi-stage build: `cgr.dev/chainguard/node` (builder + runtime)
 
-GoReleaser does **not** build or publish container images — it only handles binary releases and archives. All container builds (CI, docker-compose, production) must use these two Dockerfiles.
+Container images are the **only release artifacts**. The release workflow builds and pushes multi-arch images to GHCR when a GitHub release is published. No standalone binary artifacts are produced.
 
 ## Database Schema Changes
 
@@ -351,3 +351,16 @@ All frontend components MUST be mobile-friendly. The app is used by teachers on 
 | (none) | 0px       | Mobile phones (default) |
 | `md:`  | 768px     | Tablets, small laptops |
 | `lg:`  | 1024px    | Desktop |
+
+## Releases
+
+**Always create a GitHub release using `gh release create`**, never a bare git tag. Creating a GitHub release automatically creates the underlying git tag and triggers the release workflow to build and push container images.
+
+```bash
+# CORRECT - creates release + tag, triggers container image builds
+gh release create v1.2.3 --generate-notes
+
+# WRONG - bare tag, no GitHub release, container images won't be built
+git tag v1.2.3
+git push origin v1.2.3
+```
