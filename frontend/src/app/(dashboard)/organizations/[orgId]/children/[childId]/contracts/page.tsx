@@ -100,6 +100,9 @@ export default function ChildContractsPage() {
   const invalidateKeys = [
     queryKeys.children.contracts(orgId, childId),
     queryKeys.children.detail(orgId, childId),
+    queryKeys.children.all(orgId),
+    queryKeys.children.allUnpaginated(orgId),
+    queryKeys.statistics.contractProperties(orgId),
   ];
 
   const createMutation = useResourceMutation({

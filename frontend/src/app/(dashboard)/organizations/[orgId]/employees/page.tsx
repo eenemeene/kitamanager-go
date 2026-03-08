@@ -164,7 +164,15 @@ export default function EmployeesPage() {
     updateFn: (employeeId, contractId, data) =>
       apiClient.updateEmployeeContract(orgId, employeeId, contractId, data),
     toUpdateData: ({ from, ...rest }) => rest,
-    invalidateQueryKeys: [queryKeys.employees.all(orgId)],
+    invalidateQueryKeys: [
+      queryKeys.employees.all(orgId),
+      queryKeys.employees.allUnpaginated(orgId),
+      queryKeys.statistics.staffingHours(orgId),
+    ],
+    extraInvalidateKeys: (employeeId) => [
+      queryKeys.employees.contracts(orgId, employeeId),
+      queryKeys.employees.detail(orgId, employeeId),
+    ],
     onSuccess: () => {
       setIsContractDialogOpen(false);
       setContractEmployee(null);

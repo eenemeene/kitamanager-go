@@ -84,12 +84,12 @@ export default function BudgetItemDetailPage() {
   });
 
   const detailQueryKey = queryKeys.budgetItems.detail(orgId, budgetItemId);
-  const financialsKeyPrefix = ['financials', orgId];
+  const financialsKey = queryKeys.statistics.financials(orgId);
 
   const createEntryMutation = useResourceMutation({
     mutationFn: (data: BudgetItemEntryCreateRequest) =>
       apiClient.createBudgetItemEntry(orgId, budgetItemId, data),
-    invalidateQueryKey: [detailQueryKey, financialsKeyPrefix],
+    invalidateQueryKey: [detailQueryKey, financialsKey],
     successMessage: t('budgetItems.entryCreated'),
     errorMessage: t('budgetItems.failedToSaveEntry'),
     onSuccess: () => {
@@ -102,7 +102,7 @@ export default function BudgetItemDetailPage() {
   const updateEntryMutation = useResourceMutation({
     mutationFn: ({ entryId, data }: { entryId: number; data: BudgetItemEntryUpdateRequest }) =>
       apiClient.updateBudgetItemEntry(orgId, budgetItemId, entryId, data),
-    invalidateQueryKey: [detailQueryKey, financialsKeyPrefix],
+    invalidateQueryKey: [detailQueryKey, financialsKey],
     successMessage: t('budgetItems.entryUpdated'),
     errorMessage: t('budgetItems.failedToSaveEntry'),
     onSuccess: () => {
@@ -114,7 +114,7 @@ export default function BudgetItemDetailPage() {
 
   const deleteEntryMutation = useResourceMutation({
     mutationFn: (entryId: number) => apiClient.deleteBudgetItemEntry(orgId, budgetItemId, entryId),
-    invalidateQueryKey: [detailQueryKey, financialsKeyPrefix],
+    invalidateQueryKey: [detailQueryKey, financialsKey],
     successMessage: t('budgetItems.entryDeleted'),
     errorMessage: t('budgetItems.failedToDeleteEntry'),
     onSuccess: () => {

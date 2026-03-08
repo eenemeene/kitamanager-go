@@ -86,6 +86,9 @@ export default function EmployeeContractsPage() {
   const invalidateKeys = [
     queryKeys.employees.contracts(orgId, employeeId),
     queryKeys.employees.detail(orgId, employeeId),
+    queryKeys.employees.all(orgId),
+    queryKeys.employees.allUnpaginated(orgId),
+    queryKeys.statistics.staffingHours(orgId),
   ];
 
   const createMutation = useResourceMutation({

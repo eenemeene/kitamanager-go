@@ -170,8 +170,15 @@ export default function ChildrenPage() {
     updateFn: (childId, contractId, data) =>
       apiClient.updateChildContract(orgId, childId, contractId, data),
     toUpdateData: ({ from, ...rest }) => rest,
-    invalidateQueryKeys: [queryKeys.children.all(orgId)],
-    extraInvalidateKeys: (childId) => [queryKeys.children.contracts(orgId, childId)],
+    invalidateQueryKeys: [
+      queryKeys.children.all(orgId),
+      queryKeys.children.allUnpaginated(orgId),
+      queryKeys.statistics.contractProperties(orgId),
+    ],
+    extraInvalidateKeys: (childId) => [
+      queryKeys.children.contracts(orgId, childId),
+      queryKeys.children.detail(orgId, childId),
+    ],
     onSuccess: () => {
       setIsContractDialogOpen(false);
       setContractChild(null);
