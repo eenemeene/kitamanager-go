@@ -2,7 +2,8 @@
 {{ $lang := .Page.Lang }}
 {{ $baseURL := .Page.Site.BaseURL }}
 {{ $basePath := urls.Parse $baseURL }}
-{{ $langSrc := replaceRE "^/images/screenshots/" (printf "/images/screenshots/%s/" $lang) $src }}
+{{ $langPrefix := printf "/images/screenshots/%s/" $lang }}
+{{ $langSrc := cond (hasPrefix $src $langPrefix) $src (replaceRE "^/images/screenshots/" $langPrefix $src) }}
 {{ $imgSrc := printf "%s%s" $basePath.Path (strings.TrimPrefix "/" $langSrc) }}
 <figure>
     <img src="{{ $imgSrc }}"

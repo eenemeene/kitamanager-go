@@ -77,5 +77,5 @@ Die Entwicklungsumgebung enthält Testdaten mit:
 
 ## Nächste Schritte
 
-- [Architektur-Übersicht](../architecture) - Systemdesign verstehen
-- [API-Referenz](../api) - Die REST-API erkunden
+- [Architektur-Übersicht](../architecture/) - Systemdesign verstehen
+- [API-Referenz](../api/) - Die REST-API erkunden

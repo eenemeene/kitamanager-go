@@ -102,3 +102,10 @@ repos:
         language: system
         files: ^website/
         pass_filenames: false
+
+      - id: website-htmltest
+        name: website htmltest
+        entry: bash -c 'command -v htmltest >/dev/null || go install github.com/wjdp/htmltest@latest && cd website && hugo --quiet && htmltest'
+        language: system
+        files: ^website/
+        pass_filenames: false

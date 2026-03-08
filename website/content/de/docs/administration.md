@@ -222,6 +222,6 @@ Testdaten sind ausschliesslich fuer Entwicklungs- und Testumgebungen vorgesehen.
 
 ## Naechste Schritte
 
-- [Erste Schritte](../getting-started) -- Anwendung einrichten
-- [Architekturuebersicht](../architecture) -- Systemdesign verstehen
-- [API-Referenz](../api) -- REST API erkunden
+- [Erste Schritte](../getting-started/) -- Anwendung einrichten
+- [Architekturuebersicht](../architecture/) -- Systemdesign verstehen
+- [API-Referenz](../api/) -- REST API erkunden

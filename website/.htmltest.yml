@@ -1,0 +1,12 @@
+DirectoryPath: public
+CheckExternal: false
+CheckInternal: true
+CheckImages: true
+CheckScripts: false
+CheckMeta: false
+CheckGenericAttributes: false
+CheckFavicons: false
+CheckDoctype: false
+IgnoreDirectoryMissingTrailingSlash: false
+IgnoreURLs:
+  - "^https?://"

@@ -19,9 +19,9 @@ KitaManager is an enterprise-grade REST API and web application designed to stre
 ## Quick Navigation
 
 {{< cards >}}
-  {{< card link="getting-started" title="Getting Started" icon="play" >}}
-  {{< card link="architecture" title="Architecture" icon="cube" >}}
-  {{< card link="api" title="API Reference" icon="code" >}}
-  {{< card link="user-guide" title="User Guide" icon="book-open" >}}
-  {{< card link="administration" title="Administration" icon="cog" >}}
+  {{< card link="getting-started/" title="Getting Started" icon="play" >}}
+  {{< card link="architecture/" title="Architecture" icon="cube" >}}
+  {{< card link="api/" title="API Reference" icon="code" >}}
+  {{< card link="user-guide/" title="User Guide" icon="book-open" >}}
+  {{< card link="administration/" title="Administration" icon="cog" >}}
 {{< /cards >}}

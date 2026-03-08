@@ -19,9 +19,9 @@ KitaManager ist eine Enterprise-REST-API und Webanwendung zur Optimierung der Ve
 ## Schnellnavigation
 
 {{< cards >}}
-  {{< card link="getting-started" title="Erste Schritte" icon="play" >}}
-  {{< card link="architecture" title="Architektur" icon="cube" >}}
-  {{< card link="api" title="API-Referenz" icon="code" >}}
-  {{< card link="user-guide" title="Benutzerhandbuch" icon="book-open" >}}
-  {{< card link="administration" title="Administration" icon="cog" >}}
+  {{< card link="getting-started/" title="Erste Schritte" icon="play" >}}
+  {{< card link="architecture/" title="Architektur" icon="cube" >}}
+  {{< card link="api/" title="API-Referenz" icon="code" >}}
+  {{< card link="user-guide/" title="Benutzerhandbuch" icon="book-open" >}}
+  {{< card link="administration/" title="Administration" icon="cog" >}}
 {{< /cards >}}

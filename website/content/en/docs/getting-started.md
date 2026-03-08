@@ -77,5 +77,5 @@ The development environment includes seed data with:
 
 ## Next Steps
 
-- [Architecture Overview](../architecture) - Understand the system design
-- [API Reference](../api) - Explore the REST API
+- [Architecture Overview](../architecture/) - Understand the system design
+- [API Reference](../api/) - Explore the REST API

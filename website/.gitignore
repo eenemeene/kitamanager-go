@@ -8,6 +8,9 @@ node_modules/
 # Hugo lock file
 .hugo_build.lock
 
+# htmltest output
+tmp/
+
 # OS files
 .DS_Store
 Thumbs.db

@@ -222,6 +222,6 @@ Seed data is intended for development and testing only. Do not run seeding on pr
 
 ## Next Steps
 
-- [Getting Started](../getting-started) -- Set up the application
-- [Architecture Overview](../architecture) -- Understand the system design
-- [API Reference](../api) -- Explore the REST API
+- [Getting Started](../getting-started/) -- Set up the application
+- [Architecture Overview](../architecture/) -- Understand the system design
+- [API Reference](../api/) -- Explore the REST API
