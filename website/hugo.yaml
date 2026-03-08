@@ -54,7 +54,12 @@ languages:
 params:
   navbar:
     displayTitle: true
-    displayLogo: false
+    displayLogo: true
+    logo:
+      path: images/logo.svg
+      dark: images/logo-dark.svg
+      width: 28
+      height: 28
 
   page:
     width: wide
