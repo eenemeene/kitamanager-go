@@ -1,7 +1,9 @@
 {{ $src := .Get "src" }}
+{{ $lang := .Page.Lang }}
 {{ $baseURL := .Page.Site.BaseURL }}
 {{ $basePath := urls.Parse $baseURL }}
-{{ $imgSrc := printf "%s%s" $basePath.Path (strings.TrimPrefix "/" $src) }}
+{{ $langSrc := replaceRE "^/images/screenshots/" (printf "/images/screenshots/%s/" $lang) $src }}
+{{ $imgSrc := printf "%s%s" $basePath.Path (strings.TrimPrefix "/" $langSrc) }}
 <figure>
     <img src="{{ $imgSrc }}"
          {{- with .Get "alt" }} alt="{{ . }}"{{ end -}}
