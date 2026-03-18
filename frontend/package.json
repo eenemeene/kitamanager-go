@@ -74,7 +74,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.4.25",
-    "eslint": "^10.0.3",
+    "eslint": "^9.39.4",
     "eslint-config-next": "16.1.7",
     "jest": "^30.3.0",
     "jest-axe": "^10.0.0",
