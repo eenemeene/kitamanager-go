@@ -404,24 +404,35 @@ test.describe('Attendance Editable Times', () => {
   });
 
   test('edit check-out time after full check-in/out', async ({ page }) => {
+    // The attendance grid shows Mon-Fri only. On weekends there is no "today" column,
+    // so we navigate to next week and use Monday's column (index 0). This works because
+    // the check-out edit time is constructed as "next-Monday 16:45", which is always
+    // after the check-in time ("now", i.e. this Saturday/Sunday), so backend validation
+    // (check-in < check-out) still passes.
+    const dayOfWeek = new Date().getDay(); // 0=Sun..6=Sat
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+    if (isWeekend) {
+      await page.getByRole('button', { name: 'Next week' }).click();
+      await expect(page.getByText(childFirstName)).toBeVisible({ timeout: 10000 });
+    }
+
     const row = page.getByRole('row').filter({ hasText: childFirstName });
 
-    // Find today's column header (e.g., "Wed 25.02") to determine the column index.
-    // We need to use today's column because check-in sets time to now() which uses
-    // today's date. Editing a time on a different day's column would create a date
-    // mismatch (check-out date != check-in date) causing validation failure.
-    const today = new Date();
-    const dayOfWeek = today.getDay(); // 0=Sun..6=Sat
-    const todayColIndex = ((dayOfWeek + 6) % 7); // 0=Mon..4=Fri
+    // On weekdays use today's column so that check-in time (now) and the edited
+    // check-out time (same date + "16:45") are on the same calendar day.
+    // On weekends we navigated to next week so Monday (index 0) is always in the future
+    // relative to now, ensuring the edited check-out time is after the check-in time.
+    const colIndex = isWeekend ? 0 : (dayOfWeek + 6) % 7; // 0=Mon..4=Fri
 
-    // Get all check-in buttons in the row and click today's
+    // Get all check-in buttons in the row and click the target column's
     const checkInButtons = row.getByRole('button', { name: /check-in/i });
 
     // Check-in: wait for the API response before proceeding
     const checkInResponse = page.waitForResponse(
       (resp) => resp.url().includes('/attendance') && resp.request().method() === 'POST'
     );
-    await checkInButtons.nth(todayColIndex).click();
+    await checkInButtons.nth(colIndex).click();
     await checkInResponse;
 
     // Check-out: the check-out button appears in the same column after check-in
