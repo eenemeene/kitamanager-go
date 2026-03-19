@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -94,11 +93,6 @@ func openDB(t *testing.T, connStr string) *gorm.DB {
 		t.Fatalf("failed to open gorm connection: %v", err)
 	}
 	return db
-}
-
-func scriptPath() string {
-	_, filename, _, _ := runtime.Caller(0)
-	return filepath.Join(filepath.Dir(filename), "backup-db.sh")
 }
 
 // seedData inserts representative data covering the main tables.
@@ -297,60 +291,40 @@ func TestBackupAndRestore(t *testing.T) {
 	srcDB := openDB(t, src.connStr)
 	seedData(t, srcDB)
 
-	// Run the backup script pointing at the source container's mapped port.
-	// The script requires pg_dump on the host; if not available, use docker exec as fallback.
+	// Run pg_dump inside the source container to avoid host pg_dump version mismatches.
 	backupFile := filepath.Join(t.TempDir(), "backup.sql.gz")
 
-	if _, err := exec.LookPath("pg_dump"); err == nil {
-		// pg_dump available on host — test the actual script.
-		cmd := exec.Command("bash", scriptPath(), backupFile)
-		cmd.Env = append(os.Environ(),
-			"DB_HOST="+src.host,
-			"DB_PORT="+src.port,
-			"DB_USER="+src.user,
-			"DB_PASSWORD="+src.password,
-			"DB_NAME="+src.dbName,
-			"DB_SSLMODE=disable",
-		)
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			t.Fatalf("backup script failed: %v\n%s", err, out)
-		}
-	} else {
-		// pg_dump not on host — run pg_dump inside the source container and copy the dump out.
-		t.Log("pg_dump not found on host, using docker exec fallback")
-		dockerExec(t, src.containerID,
-			[]string{"PGPASSWORD=" + src.password},
-			"pg_dump",
-			"--host=localhost",
-			"--username="+src.user,
-			"--dbname="+src.dbName,
-			"--format=plain",
-			"--no-owner",
-			"--no-privileges",
-			"--file=/tmp/backup.sql",
-		)
+	dockerExec(t, src.containerID,
+		[]string{"PGPASSWORD=" + src.password},
+		"pg_dump",
+		"--host=localhost",
+		"--username="+src.user,
+		"--dbname="+src.dbName,
+		"--format=plain",
+		"--no-owner",
+		"--no-privileges",
+		"--file=/tmp/backup.sql",
+	)
 
-		// Copy dump out of container.
-		sqlFile := filepath.Join(t.TempDir(), "backup.sql")
-		cpCmd := exec.Command("docker", "cp", src.containerID+":/tmp/backup.sql", sqlFile)
-		if out, err := cpCmd.CombinedOutput(); err != nil {
-			t.Fatalf("docker cp failed: %v\n%s", err, out)
-		}
-
-		// Gzip it to match the script's output format.
-		gzCmd := exec.Command("gzip", "-c", sqlFile)
-		gzOut, err := os.Create(backupFile)
-		if err != nil {
-			t.Fatalf("failed to create backup file: %v", err)
-		}
-		gzCmd.Stdout = gzOut
-		if err := gzCmd.Run(); err != nil {
-			gzOut.Close()
-			t.Fatalf("gzip failed: %v", err)
-		}
-		gzOut.Close()
+	// Copy dump out of container.
+	sqlFile := filepath.Join(t.TempDir(), "backup.sql")
+	cpCmd := exec.Command("docker", "cp", src.containerID+":/tmp/backup.sql", sqlFile)
+	if out, err := cpCmd.CombinedOutput(); err != nil {
+		t.Fatalf("docker cp failed: %v\n%s", err, out)
 	}
+
+	// Gzip to match the script's output format.
+	gzCmd := exec.Command("gzip", "-c", sqlFile)
+	gzOut, err := os.Create(backupFile)
+	if err != nil {
+		t.Fatalf("failed to create backup file: %v", err)
+	}
+	gzCmd.Stdout = gzOut
+	if err := gzCmd.Run(); err != nil {
+		gzOut.Close()
+		t.Fatalf("gzip failed: %v", err)
+	}
+	gzOut.Close()
 
 	// Verify the backup file exists and is non-empty.
 	info, err := os.Stat(backupFile)
@@ -365,9 +339,9 @@ func TestBackupAndRestore(t *testing.T) {
 	dst := startPostgres(t, ctx, "backup_dst")
 
 	// Restore: gunzip locally, copy into dst container, run psql inside the container.
-	sqlFile := filepath.Join(t.TempDir(), "restore.sql")
+	restoreFile := filepath.Join(t.TempDir(), "restore.sql")
 	gunzipCmd := exec.Command("gunzip", "-c", backupFile)
-	sqlOut, err := os.Create(sqlFile)
+	sqlOut, err := os.Create(restoreFile)
 	if err != nil {
 		t.Fatalf("failed to create restore sql file: %v", err)
 	}
@@ -379,8 +353,8 @@ func TestBackupAndRestore(t *testing.T) {
 	sqlOut.Close()
 
 	// Copy SQL into destination container.
-	cpCmd := exec.Command("docker", "cp", sqlFile, dst.containerID+":/tmp/restore.sql")
-	if out, cpErr := cpCmd.CombinedOutput(); cpErr != nil {
+	cpDstCmd := exec.Command("docker", "cp", restoreFile, dst.containerID+":/tmp/restore.sql")
+	if out, cpErr := cpDstCmd.CombinedOutput(); cpErr != nil {
 		t.Fatalf("docker cp to dst failed: %v\n%s", cpErr, out)
 	}
 
