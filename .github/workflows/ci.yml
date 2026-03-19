@@ -140,6 +140,21 @@ jobs:
           TEST_DB_NAME: kitamanager_test
         run: make api-test-integration
 
+  backup-restore:
+    name: Backup & Restore Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Run backup/restore test
+        run: make api-test-backup
+
   api-fuzz:
     name: API Fuzz Tests
     runs-on: ubuntu-latest
