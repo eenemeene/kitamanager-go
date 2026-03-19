@@ -1,5 +1,5 @@
 .PHONY: build lint test clean ci dev dev-fresh \
-	api-build api-run api-lint api-test-all api-test-unit api-test-integration api-test-contract api-test-fuzz api-test-coverage \
+	api-build api-run api-lint api-test-all api-test-unit api-test-integration api-test-contract api-test-fuzz api-test-coverage api-test-backup \
 	web-install web-dev web-build web-lint web-format web-format-check web-type-check web-test web-test-coverage web-test-e2e web-test-e2e-fresh web-test-e2e-demo \
 	docs schema-docs swagger-docs docker-up docker-down docker-rebuild docker-reset install-hooks uninstall-hooks pre-commit \
 	report-pdf-build report-pdf
@@ -107,6 +107,10 @@ api-test-unit:
 # Run API integration tests (requires database)
 api-test-integration:
 	go test -v -race -tags=integration ./internal/integration/...
+
+# Run database backup/restore test (requires Docker)
+api-test-backup:
+	go test -v -tags=integration -timeout=120s ./scripts/...
 
 # Run API contract tests (requires database)
 api-test-contract:

@@ -39,6 +39,9 @@ go.work.sum
 # OS
 .DS_Store
 
+# Database backups
+backups/
+
 # Generated PDF reports
 *.pdf
 
