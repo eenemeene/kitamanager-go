@@ -480,6 +480,206 @@ func TestAuthHandler_Logout_ClearsCookies(t *testing.T) {
 	}
 }
 
+func TestAuthHandler_ChangePassword_Success(t *testing.T) {
+	db := setupTestDB(t)
+
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+	user := createTestUser(t, db, "Test User", "test@example.com", string(hashedPassword))
+
+	handler := createAuthHandler(db)
+
+	r := setupTestRouterWithUser(user.ID)
+	r.PUT("/me/password", handler.ChangePassword)
+
+	body := models.UserPasswordChangeRequest{
+		CurrentPassword: "password123",
+		NewPassword:     "newpassword456",
+	}
+
+	w := performRequest(r, "PUT", "/me/password", body)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var result models.LoginResponse
+	parseResponse(t, w, &result)
+
+	if result.ExpiresIn <= 0 {
+		t.Error("expected expires_in to be positive")
+	}
+
+	// Verify new auth cookies are set
+	cookies := w.Result().Cookies()
+	cookieNames := make(map[string]bool)
+	for _, cookie := range cookies {
+		cookieNames[cookie.Name] = true
+	}
+	if !cookieNames["access_token"] {
+		t.Error("expected access_token cookie after password change")
+	}
+	if !cookieNames["refresh_token"] {
+		t.Error("expected refresh_token cookie after password change")
+	}
+	if !cookieNames["csrf_token"] {
+		t.Error("expected csrf_token cookie after password change")
+	}
+}
+
+func TestAuthHandler_ChangePassword_WrongCurrentPassword(t *testing.T) {
+	db := setupTestDB(t)
+
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+	user := createTestUser(t, db, "Test User", "test@example.com", string(hashedPassword))
+
+	handler := createAuthHandler(db)
+
+	r := setupTestRouterWithUser(user.ID)
+	r.PUT("/me/password", handler.ChangePassword)
+
+	body := models.UserPasswordChangeRequest{
+		CurrentPassword: "wrongpassword",
+		NewPassword:     "newpassword456",
+	}
+
+	w := performRequest(r, "PUT", "/me/password", body)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected status %d, got %d: %s", http.StatusUnauthorized, w.Code, w.Body.String())
+	}
+}
+
+func TestAuthHandler_ChangePassword_NotAuthenticated(t *testing.T) {
+	db := setupTestDB(t)
+	handler := createAuthHandler(db)
+
+	// No auth middleware — getUserID returns 0
+	r := gin.New()
+	r.PUT("/me/password", handler.ChangePassword)
+
+	body := models.UserPasswordChangeRequest{
+		CurrentPassword: "password123",
+		NewPassword:     "newpassword456",
+	}
+
+	w := performRequest(r, "PUT", "/me/password", body)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected status %d, got %d: %s", http.StatusUnauthorized, w.Code, w.Body.String())
+	}
+}
+
+func TestAuthHandler_ChangePassword_BadRequest_MissingFields(t *testing.T) {
+	db := setupTestDB(t)
+
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+	user := createTestUser(t, db, "Test User", "test@example.com", string(hashedPassword))
+
+	handler := createAuthHandler(db)
+
+	r := setupTestRouterWithUser(user.ID)
+	r.PUT("/me/password", handler.ChangePassword)
+
+	// Missing current_password
+	w := performRequest(r, "PUT", "/me/password", map[string]string{
+		"new_password": "newpassword456",
+	})
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("missing current_password: expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+
+	// Missing new_password
+	w = performRequest(r, "PUT", "/me/password", map[string]string{
+		"current_password": "password123",
+	})
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("missing new_password: expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestAuthHandler_ChangePassword_NewPasswordTooShort(t *testing.T) {
+	db := setupTestDB(t)
+
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+	user := createTestUser(t, db, "Test User", "test@example.com", string(hashedPassword))
+
+	handler := createAuthHandler(db)
+
+	r := setupTestRouterWithUser(user.ID)
+	r.PUT("/me/password", handler.ChangePassword)
+
+	body := models.UserPasswordChangeRequest{
+		CurrentPassword: "password123",
+		NewPassword:     "short",
+	}
+
+	w := performRequest(r, "PUT", "/me/password", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for short password, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestAuthHandler_ChangePassword_UserNotFound(t *testing.T) {
+	db := setupTestDB(t)
+	handler := createAuthHandler(db)
+
+	// Set userID=99999 which doesn't exist
+	r := setupTestRouterWithUser(99999)
+	r.PUT("/me/password", handler.ChangePassword)
+
+	body := models.UserPasswordChangeRequest{
+		CurrentPassword: "password123",
+		NewPassword:     "newpassword456",
+	}
+
+	w := performRequest(r, "PUT", "/me/password", body)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d, got %d: %s", http.StatusNotFound, w.Code, w.Body.String())
+	}
+}
+
+func TestAuthHandler_ChangePassword_VerifyOldPasswordInvalidated(t *testing.T) {
+	db := setupTestDB(t)
+
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+	user := createTestUser(t, db, "Test User", "test@example.com", string(hashedPassword))
+
+	handler := createAuthHandler(db)
+
+	r := setupTestRouterWithUser(user.ID)
+	r.PUT("/me/password", handler.ChangePassword)
+	r.POST("/login", handler.Login)
+
+	// Change password
+	body := models.UserPasswordChangeRequest{
+		CurrentPassword: "password123",
+		NewPassword:     "newpassword456",
+	}
+	w := performRequest(r, "PUT", "/me/password", body)
+	if w.Code != http.StatusOK {
+		t.Fatalf("password change failed: %d: %s", w.Code, w.Body.String())
+	}
+
+	// Old password should no longer work for login
+	loginBody := models.LoginRequest{
+		Email:    "test@example.com",
+		Password: "password123",
+	}
+	w = performRequest(r, "POST", "/login", loginBody)
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected old password login to fail with %d, got %d", http.StatusUnauthorized, w.Code)
+	}
+
+	// New password should work
+	loginBody.Password = "newpassword456"
+	w = performRequest(r, "POST", "/login", loginBody)
+	if w.Code != http.StatusOK {
+		t.Errorf("expected new password login to succeed, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 func TestAuthHandler_Me(t *testing.T) {
 	db := setupTestDB(t)
 

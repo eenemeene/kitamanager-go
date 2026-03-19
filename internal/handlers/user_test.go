@@ -5,7 +5,11 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/eenemeene/kitamanager-go/internal/models"
+	"github.com/eenemeene/kitamanager-go/internal/store"
 )
 
 func TestUserHandler_List(t *testing.T) {
@@ -1257,5 +1261,191 @@ func TestUserHandler_List_Search(t *testing.T) {
 
 	if len(response.Data) != 4 {
 		t.Errorf("expected 4 users without search, got %d", len(response.Data))
+	}
+}
+
+func TestUserHandler_ResetPassword_Success(t *testing.T) {
+	db := setupTestDB(t)
+	admin := createTestSuperAdmin(t, db)
+	targetUser := createTestUser(t, db, "Target User", "target@example.com", "oldpassword")
+
+	userService := createUserService(db)
+	auditService := createAuditService(db)
+	tokenStore := store.NewTokenStore(db)
+	handler := NewUserHandler(userService, nil, auditService, tokenStore)
+
+	r := setupTestRouterWithUser(admin.ID)
+	r.PUT("/users/:userId/password", handler.ResetPassword)
+
+	body := models.UserPasswordResetRequest{
+		NewPassword: "newpassword123",
+	}
+
+	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/password", targetUser.ID), body)
+
+	if w.Code != http.StatusNoContent {
+		t.Errorf("expected status %d, got %d: %s", http.StatusNoContent, w.Code, w.Body.String())
+	}
+}
+
+func TestUserHandler_ResetPassword_UserNotFound(t *testing.T) {
+	db := setupTestDB(t)
+	admin := createTestSuperAdmin(t, db)
+
+	userService := createUserService(db)
+	auditService := createAuditService(db)
+	handler := NewUserHandler(userService, nil, auditService, nil)
+
+	r := setupTestRouterWithUser(admin.ID)
+	r.PUT("/users/:userId/password", handler.ResetPassword)
+
+	body := models.UserPasswordResetRequest{
+		NewPassword: "newpassword123",
+	}
+
+	w := performRequest(r, "PUT", "/users/99999/password", body)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d, got %d: %s", http.StatusNotFound, w.Code, w.Body.String())
+	}
+}
+
+func TestUserHandler_ResetPassword_BadRequest_MissingPassword(t *testing.T) {
+	db := setupTestDB(t)
+	admin := createTestSuperAdmin(t, db)
+	targetUser := createTestUser(t, db, "Target User", "target@example.com", "oldpassword")
+
+	userService := createUserService(db)
+	auditService := createAuditService(db)
+	handler := NewUserHandler(userService, nil, auditService, nil)
+
+	r := setupTestRouterWithUser(admin.ID)
+	r.PUT("/users/:userId/password", handler.ResetPassword)
+
+	// Empty body
+	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/password", targetUser.ID), map[string]string{})
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestUserHandler_ResetPassword_PasswordTooShort(t *testing.T) {
+	db := setupTestDB(t)
+	admin := createTestSuperAdmin(t, db)
+	targetUser := createTestUser(t, db, "Target User", "target@example.com", "oldpassword")
+
+	userService := createUserService(db)
+	auditService := createAuditService(db)
+	handler := NewUserHandler(userService, nil, auditService, nil)
+
+	r := setupTestRouterWithUser(admin.ID)
+	r.PUT("/users/:userId/password", handler.ResetPassword)
+
+	body := models.UserPasswordResetRequest{
+		NewPassword: "short",
+	}
+
+	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/password", targetUser.ID), body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for short password, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestUserHandler_ResetPassword_InvalidUserID(t *testing.T) {
+	db := setupTestDB(t)
+	admin := createTestSuperAdmin(t, db)
+
+	userService := createUserService(db)
+	auditService := createAuditService(db)
+	handler := NewUserHandler(userService, nil, auditService, nil)
+
+	r := setupTestRouterWithUser(admin.ID)
+	r.PUT("/users/:userId/password", handler.ResetPassword)
+
+	body := models.UserPasswordResetRequest{
+		NewPassword: "newpassword123",
+	}
+
+	w := performRequest(r, "PUT", "/users/abc/password", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for invalid userId, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestUserHandler_ResetPassword_NonSuperAdminCannotResetSuperAdmin(t *testing.T) {
+	db := setupTestDB(t)
+
+	org := createTestOrganization(t, db, "Test Org")
+	adminUser := createTestUser(t, db, "Admin User", "admin@example.com", "password")
+	createTestUserOrganization(t, db, adminUser.ID, org.ID, models.RoleAdmin)
+
+	superAdmin := createTestSuperAdmin(t, db)
+
+	userService := createUserService(db)
+	auditService := createAuditService(db)
+	handler := NewUserHandler(userService, nil, auditService, nil)
+
+	r := setupTestRouterWithUser(adminUser.ID)
+	r.PUT("/users/:userId/password", handler.ResetPassword)
+
+	body := models.UserPasswordResetRequest{
+		NewPassword: "hacked12345",
+	}
+
+	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/password", superAdmin.ID), body)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("expected status %d, got %d: %s", http.StatusForbidden, w.Code, w.Body.String())
+	}
+}
+
+func TestUserHandler_ResetPassword_TokensRevoked(t *testing.T) {
+	db := setupTestDB(t)
+	admin := createTestSuperAdmin(t, db)
+
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+	targetUser := createTestUser(t, db, "Target User", "target@example.com", string(hashedPassword))
+
+	authHandler := createAuthHandler(db)
+	userService := createUserService(db)
+	auditService := createAuditService(db)
+	tokenStore := store.NewTokenStore(db)
+	userHandler := NewUserHandler(userService, nil, auditService, tokenStore)
+
+	// Login as the target user to create tokens
+	loginRouter := gin.New()
+	loginRouter.POST("/login", authHandler.Login)
+
+	loginBody := models.LoginRequest{
+		Email:    "target@example.com",
+		Password: "password123",
+	}
+	loginResp := performRequest(loginRouter, "POST", "/login", loginBody)
+	if loginResp.Code != http.StatusOK {
+		t.Fatalf("login failed: %d: %s", loginResp.Code, loginResp.Body.String())
+	}
+
+	// Admin resets the target user's password
+	r := setupTestRouterWithUser(admin.ID)
+	r.PUT("/users/:userId/password", userHandler.ResetPassword)
+
+	resetBody := models.UserPasswordResetRequest{
+		NewPassword: "newpassword456",
+	}
+	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/password", targetUser.ID), resetBody)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("reset failed: %d: %s", w.Code, w.Body.String())
+	}
+
+	// Old refresh token should no longer work
+	refreshRouter := gin.New()
+	refreshRouter.POST("/refresh", authHandler.Refresh)
+
+	refreshResp := performRequestWithCookies(refreshRouter, "POST", "/refresh", nil, loginResp.Result().Cookies())
+	if refreshResp.Code != http.StatusUnauthorized {
+		t.Errorf("expected old refresh token to fail with %d after password reset, got %d", http.StatusUnauthorized, refreshResp.Code)
 	}
 }
