@@ -48,8 +48,8 @@ describe('SectionColumn', () => {
 
   it('renders separate employee and child count badges', () => {
     render(<SectionColumn id="1" title="Krippe" items={mockChildren} employees={[]} />);
-    expect(screen.getByText('0E')).toBeInTheDocument();
-    expect(screen.getByText('2K')).toBeInTheDocument();
+    expect(screen.getByText('0 E')).toBeInTheDocument();
+    expect(screen.getByText('2 K')).toBeInTheDocument();
   });
 
   it('renders children cards', () => {
@@ -65,8 +65,8 @@ describe('SectionColumn', () => {
 
   it('renders zero count badges when empty', () => {
     render(<SectionColumn id="1" title="Krippe" items={[]} employees={[]} />);
-    expect(screen.getByText('0E')).toBeInTheDocument();
-    expect(screen.getByText('0K')).toBeInTheDocument();
+    expect(screen.getByText('0 E')).toBeInTheDocument();
+    expect(screen.getByText('0 K')).toBeInTheDocument();
   });
 
   it('renders default badge when isDefault is true', () => {

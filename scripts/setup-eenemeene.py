@@ -11,6 +11,8 @@ parser = argparse.ArgumentParser(description="Setup the 'Eene Meene' organizatio
 parser.add_argument("base_url", nargs="?", default="http://localhost:8080")
 parser.add_argument("email", nargs="?", default="admin@example.com")
 parser.add_argument("password", nargs="?", default="supersecret")
+parser.add_argument("--data-dir", type=Path, metavar="DIR", required=True,
+                    help="Directory containing pay-plans/, employees/, and children/ subdirs")
 parser.add_argument("--with-funding-bills", type=Path, metavar="DIR",
                     help="Directory with ISBJ Abrechnungen (.xlsx) to upload recursively")
 args = parser.parse_args()
@@ -19,6 +21,7 @@ BASE_URL = args.base_url
 EMAIL = args.email
 PASSWORD = args.password
 PROJECT_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = args.data_dir
 
 API = f"{BASE_URL}/api/v1"
 session = requests.Session()
@@ -68,7 +71,7 @@ print(f"  OK (org_id={org_id})", flush=True)
 
 print("Importing government funding rates from configs/government-fundings/berlin.yaml ...", flush=True)
 with open(PROJECT_DIR / "configs/government-fundings/berlin.yaml", "rb") as f:
-    resp = session.post(f"{API}/government-funding-rates/import", params={"state": "berlin"}, files={"file": f})
+    resp = session.post(f"{API}/government-funding-rates/import", params={"state": "berlin"}, files={"file": ("berlin.yaml", f, "application/x-yaml")})
     if resp.status_code == 409:
         print("  OK (already exists)", flush=True)
     elif not resp.ok:
@@ -79,23 +82,23 @@ with open(PROJECT_DIR / "configs/government-fundings/berlin.yaml", "rb") as f:
 
 # --- 4. Import pay plans ----------------------------------------------
 
-print("Importing pay plans from configs/pay-plans/tv-eene-meene.yaml ...", flush=True)
-with open(PROJECT_DIR / "configs/pay-plans/tv-eene-meene.yaml", "rb") as f:
-    api("POST", f"/organizations/{org_id}/pay-plans/import", files={"file": f})
+print(f"Importing pay plans from {DATA_DIR}/pay-plans/tv-eene-meene.yaml ...", flush=True)
+with open(DATA_DIR / "pay-plans/tv-eene-meene.yaml", "rb") as f:
+    api("POST", f"/organizations/{org_id}/pay-plans/import", files={"file": ("tv-eene-meene.yaml", f, "application/x-yaml")})
 print("  OK", flush=True)
 
 # --- 5. Import employees ----------------------------------------------
 
-print("Importing employees from configs/employees/eene-meene.yaml ...", flush=True)
-with open(PROJECT_DIR / "configs/employees/eene-meene.yaml", "rb") as f:
-    api("POST", f"/organizations/{org_id}/employees/import", files={"file": f})
+print(f"Importing employees from {DATA_DIR}/employees/eene-meene.yaml ...", flush=True)
+with open(DATA_DIR / "employees/eene-meene.yaml", "rb") as f:
+    api("POST", f"/organizations/{org_id}/employees/import", files={"file": ("eene-meene.yaml", f, "application/x-yaml")})
 print("  OK", flush=True)
 
 # --- 6. Import children -----------------------------------------------
 
-print("Importing children from configs/children/eene-meene.yaml ...", flush=True)
-with open(PROJECT_DIR / "configs/children/eene-meene.yaml", "rb") as f:
-    api("POST", f"/organizations/{org_id}/children/import", files={"file": f})
+print(f"Importing children from {DATA_DIR}/children/eene-meene.yaml ...", flush=True)
+with open(DATA_DIR / "children/eene-meene.yaml", "rb") as f:
+    api("POST", f"/organizations/{org_id}/children/import", files={"file": ("eene-meene.yaml", f, "application/x-yaml")})
 print("  OK", flush=True)
 
 # --- 7. Update section age ranges -------------------------------------

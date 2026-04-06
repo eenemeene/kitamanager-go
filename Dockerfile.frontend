@@ -14,6 +14,11 @@ WORKDIR /app
 COPY --from=deps --chown=node:node /app/node_modules ./node_modules
 COPY --chown=node:node frontend/ .
 
+# BACKEND_URL is the server-side proxy target (used by Next.js rewrites at build time).
+# Defaults to the Docker service name; override for other environments.
+ARG BACKEND_URL=http://api:8080
+ENV BACKEND_URL=${BACKEND_URL}
+
 # Build with standalone output
 RUN npm run build
 

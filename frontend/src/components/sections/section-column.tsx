@@ -60,10 +60,10 @@ export function SectionColumn({
         </div>
         <div className="flex items-center gap-1.5">
           <Badge variant="outline" className="text-xs" title={t('nav.employees')}>
-            {employees.length}E
+            {employees.length} E
           </Badge>
           <Badge variant="outline" className="text-xs" title={t('nav.children')}>
-            {items.length}K
+            {items.length} K
           </Badge>
         </div>
       </div>
