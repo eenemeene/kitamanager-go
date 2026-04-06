@@ -352,6 +352,23 @@ All frontend components MUST be mobile-friendly. The app is used by teachers on 
 | `md:`  | 768px     | Tablets, small laptops |
 | `lg:`  | 1024px    | Desktop |
 
+## Git Workflow
+
+**Always work on a feature branch** and submit changes via pull request. Never commit directly to `main`.
+
+```bash
+# CORRECT - feature branch + PR
+git checkout -b feat/my-feature
+# ... make changes ...
+git push -u origin feat/my-feature
+gh pr create --fill
+
+# WRONG - direct commit to main
+git commit -m "..." && git push
+```
+
+Merge the PR only after all GitHub CI checks pass.
+
 ## Releases
 
 **Always create a GitHub release using `gh release create`**, never a bare git tag. Creating a GitHub release automatically creates the underlying git tag and triggers the release workflow to build and push container images.
