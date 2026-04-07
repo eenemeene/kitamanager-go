@@ -111,3 +111,23 @@ export function getKeyForValue(
   }
   return undefined;
 }
+
+/**
+ * Convert contract properties to key--value label keys for i18n lookup.
+ * E.g., {care_type: "ganztag", ndh: "ndh"} → ["care_type--ganztag", "ndh--ndh"]
+ * Handles both scalar strings and string arrays.
+ */
+export function propertiesToLabelKeys(properties?: ContractProperties): string[] {
+  if (!properties) return [];
+  const result: string[] = [];
+  for (const [key, value] of Object.entries(properties)) {
+    if (Array.isArray(value)) {
+      for (const v of value) {
+        result.push(`${key}--${v}`);
+      }
+    } else {
+      result.push(`${key}--${value}`);
+    }
+  }
+  return result;
+}

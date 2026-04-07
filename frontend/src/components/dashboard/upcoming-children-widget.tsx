@@ -15,7 +15,8 @@ import {
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import type { ContractProperties } from '@/lib/api/types';
-import { calculateAge, formatDate, propertiesToValues } from '@/lib/utils/formatting';
+import { calculateAge, formatDate } from '@/lib/utils/formatting';
+import { propertiesToLabelKeys } from '@/lib/utils/contract-properties';
 import { compareDates, toUTCDate } from '@/lib/utils/contracts';
 
 interface UpcomingChildrenWidgetProps {
@@ -26,6 +27,7 @@ export function UpcomingChildrenWidget({ orgId }: UpcomingChildrenWidgetProps) {
   const t = useTranslations('upcomingChildren');
   const tChildren = useTranslations('children');
   const tContracts = useTranslations('contracts');
+  const tLabels = useTranslations('fundingLabels');
   const tGender = useTranslations('gender');
 
   const { data } = useQuery({
@@ -84,11 +86,13 @@ export function UpcomingChildrenWidget({ orgId }: UpcomingChildrenWidgetProps) {
                     {futureContract?.properties &&
                     Object.keys(futureContract.properties).length > 0 ? (
                       <div className="flex flex-wrap gap-1">
-                        {propertiesToValues(futureContract.properties as ContractProperties)
+                        {propertiesToLabelKeys(futureContract.properties as ContractProperties)
                           .slice(0, 3)
-                          .map((value) => (
-                            <Badge key={value} variant="outline" className="text-xs">
-                              {value}
+                          .map((labelKey) => (
+                            <Badge key={labelKey} variant="outline" className="text-xs">
+                              {tLabels.has(labelKey)
+                                ? tLabels(labelKey)
+                                : labelKey.split('--').pop()}
                             </Badge>
                           ))}
                         {Object.keys(futureContract.properties).length > 3 && (

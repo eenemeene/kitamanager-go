@@ -44,12 +44,8 @@ import {
 } from '@/lib/api/types';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  formatDate,
-  formatDateForInput,
-  formatDateForApi,
-  propertiesToValues,
-} from '@/lib/utils/formatting';
+import { formatDate, formatDateForInput, formatDateForApi } from '@/lib/utils/formatting';
+import { propertiesToLabelKeys } from '@/lib/utils/contract-properties';
 import { calculateContractEndDate } from '@/lib/utils/school-enrollment';
 import { getContractStatus, compareDates } from '@/lib/utils/contracts';
 import { childContractSchema, type ChildContractFormData } from '@/lib/schemas';
@@ -60,6 +56,7 @@ export default function ChildContractsPage() {
   const orgId = Number(params.orgId);
   const childId = Number(params.childId);
   const t = useTranslations();
+  const tLabels = useTranslations('fundingLabels');
 
   const [isContractDialogOpen, setIsContractDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -330,10 +327,12 @@ export default function ChildContractsPage() {
                       <TableCell>
                         {contract.properties && Object.keys(contract.properties).length > 0 ? (
                           <div className="flex flex-wrap gap-1">
-                            {propertiesToValues(contract.properties as ContractProperties).map(
-                              (value) => (
-                                <Badge key={value} variant="outline" className="text-xs">
-                                  {value}
+                            {propertiesToLabelKeys(contract.properties as ContractProperties).map(
+                              (labelKey) => (
+                                <Badge key={labelKey} variant="outline" className="text-xs">
+                                  {tLabels.has(labelKey)
+                                    ? tLabels(labelKey)
+                                    : labelKey.split('--').pop()}
                                 </Badge>
                               )
                             )}

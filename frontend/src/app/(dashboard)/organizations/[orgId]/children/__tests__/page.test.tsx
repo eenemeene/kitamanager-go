@@ -10,9 +10,13 @@ jest.mock('next/navigation', () => ({
 }));
 
 jest.mock('next-intl', () => ({
-  useTranslations: () => (key: string, params?: Record<string, unknown>) => {
-    if (params) return `${key}`;
-    return key;
+  useTranslations: () => {
+    const t = (key: string, params?: Record<string, unknown>) => {
+      if (params) return `${key}`;
+      return key;
+    };
+    t.has = () => false;
+    return t;
   },
   useLocale: () => 'en',
 }));

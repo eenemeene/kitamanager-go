@@ -27,12 +27,8 @@ import { PropertyTagInput } from '@/components/ui/tag-input';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useFundingAttributes } from '@/lib/hooks/use-funding-attributes';
 import { childContractSchema, type ChildContractFormData } from '@/lib/schemas';
-import {
-  formatDate,
-  formatDateForInput,
-  propertiesToValues,
-  toLocalDateString,
-} from '@/lib/utils/formatting';
+import { formatDate, formatDateForInput, toLocalDateString } from '@/lib/utils/formatting';
+import { propertiesToLabelKeys } from '@/lib/utils/contract-properties';
 import { getActiveContract, isDateBefore } from '@/lib/utils/contracts';
 import { calculateContractEndDate } from '@/lib/utils/school-enrollment';
 import type { Child, Section, ContractProperties } from '@/lib/api/types';
@@ -59,6 +55,7 @@ export function ChildContractCreateDialog({
   onSubmit,
 }: ChildContractCreateDialogProps) {
   const t = useTranslations();
+  const tLabels = useTranslations('fundingLabels');
   const { toast } = useToast();
   const [endCurrentContract, setEndCurrentContract] = useState(true);
 
@@ -159,9 +156,9 @@ export function ChildContractCreateDialog({
                   {t('contracts.activeSince', {
                     date: formatDate(activeContract.from),
                     attrs:
-                      propertiesToValues(activeContract.properties as ContractProperties).join(
-                        ', '
-                      ) || t('contracts.noAttributes'),
+                      propertiesToLabelKeys(activeContract.properties as ContractProperties)
+                        .map((k) => (tLabels.has(k) ? tLabels(k) : k.split('--').pop()))
+                        .join(', ') || t('contracts.noAttributes'),
                   })}
                 </p>
                 <div className="flex items-center space-x-2">

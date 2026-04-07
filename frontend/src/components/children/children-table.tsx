@@ -13,13 +13,8 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import type { Child, ChildFundingResponse, ContractProperties } from '@/lib/api/types';
-import {
-  formatDate,
-  calculateAge,
-  formatCurrency,
-  formatFte,
-  propertiesToValues,
-} from '@/lib/utils/formatting';
+import { formatDate, calculateAge, formatCurrency, formatFte } from '@/lib/utils/formatting';
+import { propertiesToLabelKeys } from '@/lib/utils/contract-properties';
 import { getCurrentContract } from '@/lib/utils/contracts';
 
 export interface ChildrenTableProps {
@@ -42,6 +37,7 @@ export function ChildrenTable({
   onDelete,
 }: ChildrenTableProps) {
   const t = useTranslations();
+  const tLabels = useTranslations('fundingLabels');
 
   return (
     <Table>
@@ -81,11 +77,11 @@ export function ChildrenTable({
                 {currentContract?.properties &&
                 Object.keys(currentContract.properties).length > 0 ? (
                   <div className="flex flex-wrap gap-1">
-                    {propertiesToValues(currentContract.properties as ContractProperties)
+                    {propertiesToLabelKeys(currentContract.properties as ContractProperties)
                       .slice(0, 3)
-                      .map((value) => (
-                        <Badge key={value} variant="outline" className="text-xs">
-                          {value}
+                      .map((labelKey) => (
+                        <Badge key={labelKey} variant="outline" className="text-xs">
+                          {tLabels.has(labelKey) ? tLabels(labelKey) : labelKey.split('--').pop()}
                         </Badge>
                       ))}
                     {Object.keys(currentContract.properties).length > 3 && (

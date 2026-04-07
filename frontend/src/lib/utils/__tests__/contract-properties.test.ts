@@ -1,5 +1,6 @@
 import {
   propertiesToValues,
+  propertiesToLabelKeys,
   getPropertyValue,
   getScalarPropertyValue,
   setProperty,
@@ -202,5 +203,44 @@ describe('getKeyForValue', () => {
 
   it('returns undefined for empty properties', () => {
     expect(getKeyForValue({}, 'ganztag')).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// propertiesToLabelKeys
+// ---------------------------------------------------------------------------
+describe('propertiesToLabelKeys', () => {
+  it('returns empty array for undefined', () => {
+    expect(propertiesToLabelKeys(undefined)).toEqual([]);
+  });
+
+  it('returns empty array for empty object', () => {
+    expect(propertiesToLabelKeys({})).toEqual([]);
+  });
+
+  it('creates key--value pairs for scalar values', () => {
+    const result = propertiesToLabelKeys({ care_type: 'ganztag', ndh: 'ndh' });
+    expect(result).toEqual(['care_type--ganztag', 'ndh--ndh']);
+  });
+
+  it('creates key--value pairs for array values', () => {
+    const result = propertiesToLabelKeys({ supplements: ['ndh', 'mss'] });
+    expect(result).toEqual(['supplements--ndh', 'supplements--mss']);
+  });
+
+  it('handles mix of scalar and array values', () => {
+    const result = propertiesToLabelKeys({
+      care_type: 'ganztag',
+      supplements: ['ndh', 'mss'],
+    });
+    expect(result).toContain('care_type--ganztag');
+    expect(result).toContain('supplements--ndh');
+    expect(result).toContain('supplements--mss');
+    expect(result).toHaveLength(3);
+  });
+
+  it('handles empty array value', () => {
+    const result = propertiesToLabelKeys({ supplements: [] });
+    expect(result).toEqual([]);
   });
 });
