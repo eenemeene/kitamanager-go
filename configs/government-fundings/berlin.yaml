@@ -108,7 +108,7 @@
       label: Half-Day (up to 5h)
       payment: 839.84
       requirement: 0.07
-- to: '2026-08-01'
+- to: '2026-07-31'
   from: '2026-04-01'
   full_time_weekly_hours: 39
   comment: 'Anlage 1a Nr. XXXVIII - Aufschlag für Praxisunterstützungssystem (45€
@@ -218,7 +218,7 @@
       label: Half-Day (up to 5h)
       payment: 839.84
       requirement: 0.07
-- to: '2026-04-01'
+- to: '2026-03-31'
   from: '2026-01-01'
   full_time_weekly_hours: 39
   comment: 'Anlage 1a Nr. XXXVII-a - Aufschlag für Praxisunterstützungssystem (45€
@@ -328,7 +328,7 @@
       label: Half-Day (up to 5h)
       payment: 827.44
       requirement: 0.07
-- to: '2026-01-01'
+- to: '2025-12-31'
   from: '2025-02-01'
   full_time_weekly_hours: 39
   comment: 'Aufschlag für Praxisunterstützungssystem (45€ pro Kind/Jahr) inklusive
@@ -437,7 +437,7 @@
       label: Half-Day (up to 5h)
       payment: 813.87
       requirement: 0.07
-- to: '2025-02-01'
+- to: '2025-01-31'
   from: '2025-01-01'
   full_time_weekly_hours: 39
   comment: 'Aufschlag für Praxisunterstützungssystem (60€ pro Kind/Jahr) und Digitalisierung
@@ -547,7 +547,7 @@
       label: Half-Day (up to 5h)
       payment: 790.67
       requirement: 0.07
-- to: '2025-01-01'
+- to: '2024-12-31'
   from: '2024-11-01'
   full_time_weekly_hours: 39
   comment: 'Aufschlag für Praxisunterstützungssystem (60€ pro Kind/Jahr) und Digitalisierung
@@ -657,7 +657,7 @@
       label: Half-Day (up to 5h)
       payment: 778.93
       requirement: 0.07
-- to: '2024-11-01'
+- to: '2024-10-31'
   from: '2024-10-01'
   full_time_weekly_hours: 39
   comment: 'Aufschlag für Praxisunterstützungssystem (60€ pro Kind/Jahr) und Digitalisierung
@@ -767,7 +767,7 @@
       label: Half-Day (up to 5h)
       payment: 768.69
       requirement: 0.07
-- to: '2024-10-01'
+- to: '2024-09-30'
   from: '2024-02-01'
   full_time_weekly_hours: 39
   comment: 'Aufschlag für Praxisunterstützungssystem (60€ pro Kind/Jahr) und Digitalisierung
@@ -877,7 +877,7 @@
       label: Half-Day (up to 5h)
       payment: 764.56
       requirement: 0.07
-- to: '2024-02-01'
+- to: '2024-01-31'
   from: '2023-03-01'
   full_time_weekly_hours: 39
   comment: 'Aufschlag für Praxisunterstützungssystem (60€ pro Kind/Jahr) und Digitalisierung
@@ -987,7 +987,7 @@
       label: Half-Day (up to 5h)
       payment: 719.51
       requirement: 0.07
-- to: '2023-03-01'
+- to: '2023-02-28'
   from: '2023-01-01'
   full_time_weekly_hours: 39
   comment: 'Aufschlag für Praxisunterstützungssystem (60€ pro Kind/Jahr) und Digitalisierung
@@ -1100,7 +1100,7 @@
       label: Half-Day (up to 5h)
       payment: 819.51
       requirement: 0.07
-- to: '2023-01-01'
+- to: '2022-12-31'
   from: '2022-01-01'
   full_time_weekly_hours: 39
   entries:
@@ -1206,7 +1206,7 @@
       label: Half-Day (up to 5h)
       payment: 694.36
       requirement: 0.07
-- to: '2022-01-01'
+- to: '2021-12-31'
   from: '2021-01-01'
   full_time_weekly_hours: 39
   entries:
@@ -1312,7 +1312,7 @@
       label: Half-Day (up to 5h)
       payment: 673.13
       requirement: 0.07
-- to: '2021-01-01'
+- to: '2020-12-31'
   from: '2020-08-01'
   full_time_weekly_hours: 39
   entries:
@@ -1418,7 +1418,7 @@
       label: Half-Day (up to 5h)
       payment: 657.83
       requirement: 0.07
-- to: '2020-08-01'
+- to: '2020-07-31'
   from: '2020-01-01'
   full_time_weekly_hours: 39
   entries:
@@ -1524,7 +1524,7 @@
       label: Half-Day (up to 5h)
       payment: 649.39
       requirement: 0.07
-- to: '2020-01-01'
+- to: '2019-12-31'
   from: '2018-10-01'
   full_time_weekly_hours: 39
   entries:
