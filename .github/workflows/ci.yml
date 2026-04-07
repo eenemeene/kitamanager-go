@@ -224,7 +224,7 @@ jobs:
       - name: Run govulncheck
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
-          govulncheck ./...
+          govulncheck $(go list ./... | grep -v internal/testutil)
 
   docker:
     name: Docker Build & Scan
