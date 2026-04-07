@@ -4,7 +4,11 @@ import { apiClient } from '@/lib/api/client';
 import { renderWithProviders } from '@/test-utils';
 
 jest.mock('next-intl', () => ({
-  useTranslations: () => (key: string) => key,
+  useTranslations: () => {
+    const t = (key: string) => key;
+    t.has = () => false;
+    return t;
+  },
 }));
 
 jest.mock('@/lib/api/client', () => ({
