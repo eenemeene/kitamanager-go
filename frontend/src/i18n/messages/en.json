@@ -664,7 +664,7 @@
     "title": "Timeline",
     "tableView": "Table",
     "timelineView": "Timeline",
-    "dragToAdjust": "Drag to adjust boundary",
+    "clickToAdjust": "Click to adjust boundary date",
     "boundaryUpdated": "Contract boundary updated",
     "boundaryUpdateFailed": "Failed to update boundary",
     "gap": "Gap ({days} days)",

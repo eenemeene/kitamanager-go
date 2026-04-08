@@ -18,9 +18,9 @@ describe('BoundaryHandle', () => {
   const defaultProps = {
     upperContract: upper,
     lowerContract: lower,
-    boundaryIndex: 0,
-    onPointerDown: jest.fn(),
-    isDragging: false,
+    minDate: new Date('2024-01-01'),
+    maxDate: new Date('2024-12-30'),
+    onBoundaryChange: jest.fn(),
   };
 
   beforeEach(() => {
@@ -32,53 +32,35 @@ describe('BoundaryHandle', () => {
     expect(screen.getByTestId('boundary-handle')).toBeInTheDocument();
   });
 
-  it('has role="slider" for accessibility', () => {
+  it('renders as a button', () => {
     render(<BoundaryHandle {...defaultProps} />);
-    expect(screen.getByRole('slider')).toBeInTheDocument();
+    expect(screen.getByTestId('boundary-handle').tagName).toBe('BUTTON');
   });
 
   it('has aria-label', () => {
     render(<BoundaryHandle {...defaultProps} />);
-    expect(screen.getByRole('slider')).toHaveAttribute('aria-label', 'timeline.dragToAdjust');
-  });
-
-  it('is focusable (tabIndex=0)', () => {
-    render(<BoundaryHandle {...defaultProps} />);
-    expect(screen.getByRole('slider')).toHaveAttribute('tabindex', '0');
-  });
-
-  it('calls onPointerDown with boundaryIndex on pointer down', () => {
-    render(<BoundaryHandle {...defaultProps} />);
-    const handle = screen.getByTestId('boundary-handle');
-    fireEvent.pointerDown(handle);
-    expect(defaultProps.onPointerDown).toHaveBeenCalledWith(0, expect.any(Object));
+    expect(screen.getByTestId('boundary-handle')).toHaveAttribute(
+      'aria-label',
+      'timeline.clickToAdjust'
+    );
   });
 
   it('shows date labels from both contracts', () => {
     render(<BoundaryHandle {...defaultProps} />);
     const handle = screen.getByTestId('boundary-handle');
-    // The component shows formatted dates. formatDate returns locale-formatted strings.
-    // Since we're not mocking formatDate, we check for the pipe separator.
+    // The component shows formatted dates with a pipe separator
     expect(handle.textContent).toContain('|');
   });
 
-  it('applies dragging class when isDragging is true', () => {
-    render(<BoundaryHandle {...defaultProps} isDragging />);
-    const handle = screen.getByTestId('boundary-handle');
-    expect(handle.className).toContain('cursor-grabbing');
+  it('opens calendar popover on click', () => {
+    render(<BoundaryHandle {...defaultProps} />);
+    fireEvent.click(screen.getByTestId('boundary-handle'));
+    // Calendar should be rendered (react-day-picker renders a table)
+    expect(screen.getByRole('grid')).toBeInTheDocument();
   });
 
-  it('uses drag dates when provided', () => {
-    render(
-      <BoundaryHandle
-        {...defaultProps}
-        isDragging
-        dragEndDate="2024-08-01T00:00:00Z"
-        dragStartDate="2024-08-02T00:00:00Z"
-      />
-    );
-    // Should render the drag dates, not the contract dates
-    const handle = screen.getByTestId('boundary-handle');
-    expect(handle.textContent).toContain('|');
+  it('is disabled when isUpdating is true', () => {
+    render(<BoundaryHandle {...defaultProps} isUpdating />);
+    expect(screen.getByTestId('boundary-handle')).toBeDisabled();
   });
 });

@@ -11,8 +11,6 @@ import {
   deleteEmployeeViaApi,
   createChildContractViaApi,
   createEmployeeContractViaApi,
-  getSectionsViaApi,
-  getPayPlansViaApi,
   uniqueName,
 } from './utils/test-helpers';
 
@@ -147,9 +145,11 @@ test.describe('Child Contract Timeline', () => {
     }
   });
 
-  test('drag boundary shifts dates', async ({ page }) => {
+  test('clicking boundary opens calendar and selecting date updates contracts', async ({
+    page,
+  }) => {
     const child = await createChildViaApi(page, orgId, {
-      first_name: uniqueName('TLDrag'),
+      first_name: uniqueName('TLClick'),
       last_name: 'Test',
       birthdate: '2020-01-01',
       gender: 'male',
@@ -173,26 +173,20 @@ test.describe('Child Contract Timeline', () => {
       await page.getByRole('tab', { name: /Timeline/i }).click();
       await expect(page.getByTestId('boundary-handle')).toBeVisible({ timeout: 5000 });
 
-      // Get the handle's bounding box
-      const handle = page.getByTestId('boundary-handle');
-      const box = await handle.boundingBox();
-      expect(box).toBeTruthy();
+      // Click the boundary handle to open the calendar
+      await page.getByTestId('boundary-handle').click();
 
-      // Drag the handle upward by 60px (shifts boundary later by ~30 days at 2px/day)
-      await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
-      await page.mouse.down();
-      await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2 - 60, {
-        steps: 10,
-      });
-      await page.mouse.up();
+      // Calendar popover should be visible
+      await expect(page.getByRole('grid')).toBeVisible({ timeout: 5000 });
+
+      // Select a different day (e.g., June 15) to shift the boundary
+      await page.getByRole('gridcell', { name: '15' }).first().click();
 
       // Wait for the batch update to complete
       await page.waitForLoadState('networkidle');
 
-      // Switch to Table tab and verify dates changed
+      // Switch to Table tab and verify dates changed — both rows should still exist
       await page.getByRole('tab', { name: /Table/i }).click();
-      // The original boundary was Jun 30 / Jul 1. After dragging up (later),
-      // the boundary should have shifted. We just check that dates are present.
       const tableRows = page.locator('table tbody tr');
       expect(await tableRows.count()).toBe(2);
     } finally {
@@ -234,17 +228,10 @@ test.describe('Child Contract Timeline', () => {
         });
       });
 
-      const handle = page.getByTestId('boundary-handle');
-      const box = await handle.boundingBox();
-      expect(box).toBeTruthy();
-
-      // Drag the handle
-      await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
-      await page.mouse.down();
-      await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2 - 60, {
-        steps: 10,
-      });
-      await page.mouse.up();
+      // Click boundary and select a different date
+      await page.getByTestId('boundary-handle').click();
+      await expect(page.getByRole('grid')).toBeVisible({ timeout: 5000 });
+      await page.getByRole('gridcell', { name: '15' }).first().click();
 
       // Should still have 2 segments (dates reverted after error)
       await expect(page.getByTestId('timeline-segment').first()).toBeVisible({ timeout: 5000 });

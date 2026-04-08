@@ -2,12 +2,13 @@
 
 import { useCallback, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
+import { parseISO, addDays } from 'date-fns';
 import { getContractStatus } from '@/lib/utils/contracts';
+import { formatDateForApi } from '@/lib/utils/formatting';
 import type { ContractBatchUpdateItem } from '@/lib/api/types';
-import { buildTimelineItems, applyDragToContracts, type BaseContract } from './timeline-utils';
+import { buildTimelineItems, type BaseContract } from './timeline-utils';
 import { TimelineSegment } from './timeline-segment';
 import { BoundaryHandle } from './boundary-handle';
-import { useBoundaryDrag } from './use-boundary-drag';
 
 interface ContractTimelineProps<T extends BaseContract> {
   contracts: T[];
@@ -24,17 +25,16 @@ export function ContractTimeline<T extends BaseContract>({
 }: ContractTimelineProps<T>) {
   const t = useTranslations();
 
-  const handleDragEnd = useCallback(
-    (updates: ContractBatchUpdateItem[]) => {
+  const handleBoundaryChange = useCallback(
+    (upperContract: BaseContract, lowerContract: BaseContract, newTo: string, newFrom: string) => {
+      const updates: ContractBatchUpdateItem[] = [
+        { id: lowerContract.id, to: formatDateForApi(newTo) },
+        { id: upperContract.id, from: formatDateForApi(newFrom) ?? undefined },
+      ];
       onBoundaryChange(updates);
     },
     [onBoundaryChange]
   );
-
-  const { dragState, handlePointerDown } = useBoundaryDrag({
-    contracts,
-    onDragEnd: handleDragEnd,
-  });
 
   if (contracts.length === 0) {
     return (
@@ -44,18 +44,7 @@ export function ContractTimeline<T extends BaseContract>({
     );
   }
 
-  // Apply optimistic drag state to contracts for visual preview
-  const displayContracts = dragState
-    ? applyDragToContracts(
-        contracts,
-        dragState.upperIndex,
-        dragState.lowerIndex,
-        dragState.newTo,
-        dragState.newFrom
-      )
-    : contracts;
-
-  const items = buildTimelineItems(displayContracts);
+  const items = buildTimelineItems(contracts);
 
   return (
     <div
@@ -67,7 +56,7 @@ export function ContractTimeline<T extends BaseContract>({
 
       {items.map((item, i) => {
         if (item.type === 'segment') {
-          const contract = displayContracts[item.index] as T;
+          const contract = contracts[item.index] as T;
           const status = getContractStatus(contract) ?? 'ended';
           return (
             <TimelineSegment
@@ -82,19 +71,22 @@ export function ContractTimeline<T extends BaseContract>({
         }
 
         if (item.type === 'boundary') {
-          const upper = displayContracts[item.upperIndex];
-          const lower = displayContracts[item.lowerIndex];
-          const isDragging = dragState?.boundaryIndex === item.upperIndex;
+          const upper = contracts[item.upperIndex];
+          const lower = contracts[item.lowerIndex];
+          // Constraints: lower.to can't go before lower.from, upper.from can't go after upper.to
+          const minDate = parseISO(lower.from);
+          const maxDate = upper.to ? addDays(parseISO(upper.to), -1) : null;
           return (
             <BoundaryHandle
               key={`boundary-${item.upperIndex}-${item.lowerIndex}`}
               upperContract={upper}
               lowerContract={lower}
-              boundaryIndex={item.upperIndex}
-              onPointerDown={handlePointerDown}
-              isDragging={isDragging}
-              dragEndDate={isDragging ? dragState?.newTo : undefined}
-              dragStartDate={isDragging ? dragState?.newFrom : undefined}
+              minDate={minDate}
+              maxDate={maxDate}
+              onBoundaryChange={(newTo, newFrom) =>
+                handleBoundaryChange(upper, lower, newTo, newFrom)
+              }
+              isUpdating={isUpdating}
             />
           );
         }
