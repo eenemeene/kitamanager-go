@@ -49,62 +49,68 @@ export function ContractTimeline<T extends BaseContract>({
   return (
     <div
       data-testid="contract-timeline"
-      className={`relative space-y-1 py-2 ${isUpdating ? 'pointer-events-none opacity-60' : ''}`}
+      className={`relative py-2 ${isUpdating ? 'pointer-events-none opacity-60' : ''}`}
     >
-      {/* Vertical timeline line */}
-      <div className="bg-border absolute top-0 bottom-0 left-6 w-px" />
+      {/* Vertical timeline line — aligned with dots (pl-3 + w-7/2 = 12px + 14px = 26px) */}
+      <div className="bg-border absolute top-0 bottom-0 left-[1.625rem] w-px" />
 
-      {items.map((item, i) => {
-        if (item.type === 'segment') {
-          const contract = contracts[item.index] as T;
-          const status = getContractStatus(contract) ?? 'ended';
-          return (
-            <TimelineSegment
-              key={`seg-${contract.id}`}
-              from={contract.from}
-              to={contract.to}
-              status={status}
-            >
-              {renderSegmentContent(contract)}
-            </TimelineSegment>
-          );
-        }
+      <div className="space-y-2">
+        {items.map((item, i) => {
+          if (item.type === 'segment') {
+            const contract = contracts[item.index] as T;
+            const status = getContractStatus(contract) ?? 'ended';
+            return (
+              <TimelineSegment
+                key={`seg-${contract.id}`}
+                from={contract.from}
+                to={contract.to}
+                status={status}
+              >
+                {renderSegmentContent(contract)}
+              </TimelineSegment>
+            );
+          }
 
-        if (item.type === 'boundary') {
-          const upper = contracts[item.upperIndex];
-          const lower = contracts[item.lowerIndex];
-          // Constraints: lower.to can't go before lower.from, upper.from can't go after upper.to
-          const minDate = parseISO(lower.from);
-          const maxDate = upper.to ? addDays(parseISO(upper.to), -1) : null;
-          return (
-            <BoundaryHandle
-              key={`boundary-${item.upperIndex}-${item.lowerIndex}`}
-              upperContract={upper}
-              lowerContract={lower}
-              minDate={minDate}
-              maxDate={maxDate}
-              onBoundaryChange={(newTo, newFrom) =>
-                handleBoundaryChange(upper, lower, newTo, newFrom)
-              }
-              isUpdating={isUpdating}
-            />
-          );
-        }
+          if (item.type === 'boundary') {
+            const upper = contracts[item.upperIndex];
+            const lower = contracts[item.lowerIndex];
+            const minDate = parseISO(lower.from);
+            const maxDate = upper.to ? addDays(parseISO(upper.to), -1) : null;
+            return (
+              <BoundaryHandle
+                key={`boundary-${item.upperIndex}-${item.lowerIndex}`}
+                upperContract={upper}
+                lowerContract={lower}
+                minDate={minDate}
+                maxDate={maxDate}
+                onBoundaryChange={(newTo, newFrom) =>
+                  handleBoundaryChange(upper, lower, newTo, newFrom)
+                }
+                isUpdating={isUpdating}
+              />
+            );
+          }
 
-        if (item.type === 'gap') {
-          return (
-            <div
-              key={`gap-${i}`}
-              data-testid="timeline-gap"
-              className="text-muted-foreground mx-4 flex items-center justify-center border-y border-dashed py-2 text-xs"
-            >
-              {t('timeline.gap', { days: item.gapDays })}
-            </div>
-          );
-        }
+          if (item.type === 'gap') {
+            return (
+              <div key={`gap-${i}`} className="relative flex gap-4 pl-3">
+                {/* Gap dot */}
+                <div className="relative flex w-7 shrink-0 items-center justify-center">
+                  <div className="border-muted-foreground/40 z-10 h-2 w-2 rounded-full border bg-white dark:bg-gray-950" />
+                </div>
+                <div
+                  data-testid="timeline-gap"
+                  className="text-muted-foreground min-w-0 flex-1 py-1 text-center text-xs"
+                >
+                  {t('timeline.gap', { days: item.gapDays })}
+                </div>
+              </div>
+            );
+          }
 
-        return null;
-      })}
+          return null;
+        })}
+      </div>
     </div>
   );
 }
