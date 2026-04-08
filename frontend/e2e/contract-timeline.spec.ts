@@ -297,7 +297,7 @@ test.describe('Employee Contract Timeline', () => {
       await expect(page.getByTestId('boundary-handle')).toBeVisible();
 
       // Employee-specific content should be visible (staff category, grade)
-      await expect(page.getByText(/S8a/)).toBeVisible();
+      await expect(page.getByText(/S8a/).first()).toBeVisible();
     } finally {
       await deleteEmployeeViaApi(page, orgId, employee.id);
     }
