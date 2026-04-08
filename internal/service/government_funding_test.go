@@ -141,6 +141,103 @@ func TestGovernmentFundingService_GetByIDWithDetails(t *testing.T) {
 	}
 }
 
+func TestGovernmentFundingService_GetByState(t *testing.T) {
+	db := setupTestDB(t)
+	fundingStore := store.NewGovernmentFundingStore(db)
+	svc := NewGovernmentFundingService(fundingStore, store.NewTransactor(db))
+	ctx := context.Background()
+
+	funding := &models.GovernmentFunding{Name: "Berlin Funding", State: "berlin"}
+	db.Create(funding)
+
+	found, err := svc.GetByState(ctx, "berlin")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if found.ID != funding.ID {
+		t.Errorf("expected ID %d, got %d", funding.ID, found.ID)
+	}
+	if found.State != "berlin" {
+		t.Errorf("expected state berlin, got %s", found.State)
+	}
+}
+
+func TestGovernmentFundingService_GetByState_NotFound(t *testing.T) {
+	db := setupTestDB(t)
+	fundingStore := store.NewGovernmentFundingStore(db)
+	svc := NewGovernmentFundingService(fundingStore, store.NewTransactor(db))
+	ctx := context.Background()
+
+	_, err := svc.GetByState(ctx, "berlin")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestGovernmentFundingService_GetByStateWithDetails(t *testing.T) {
+	db := setupTestDB(t)
+	fundingStore := store.NewGovernmentFundingStore(db)
+	svc := NewGovernmentFundingService(fundingStore, store.NewTransactor(db))
+	ctx := context.Background()
+
+	funding := &models.GovernmentFunding{Name: "Berlin Funding", State: "berlin"}
+	db.Create(funding)
+
+	period := &models.GovernmentFundingPeriod{
+		GovernmentFundingID: funding.ID,
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(period)
+
+	minAge := 0
+	maxAge := 3
+	prop := &models.GovernmentFundingProperty{
+		PeriodID: period.ID,
+		Key:      "care_type",
+		Value:    "ganztag",
+		Label:    "Ganztag",
+		Payment:  100000,
+		MinAge:   &minAge,
+		MaxAge:   &maxAge,
+	}
+	db.Create(prop)
+
+	found, err := svc.GetByStateWithDetails(ctx, "berlin")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if found.ID != funding.ID {
+		t.Errorf("expected ID %d, got %d", funding.ID, found.ID)
+	}
+	if len(found.Periods) != 1 {
+		t.Fatalf("expected 1 period, got %d", len(found.Periods))
+	}
+	if len(found.Periods[0].Properties) != 1 {
+		t.Fatalf("expected 1 property, got %d", len(found.Periods[0].Properties))
+	}
+	if found.Periods[0].Properties[0].Key != "care_type" {
+		t.Errorf("expected key care_type, got %s", found.Periods[0].Properties[0].Key)
+	}
+}
+
+func TestGovernmentFundingService_GetByStateWithDetails_NotFound(t *testing.T) {
+	db := setupTestDB(t)
+	fundingStore := store.NewGovernmentFundingStore(db)
+	svc := NewGovernmentFundingService(fundingStore, store.NewTransactor(db))
+	ctx := context.Background()
+
+	_, err := svc.GetByStateWithDetails(ctx, "berlin")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
 func TestGovernmentFundingService_Create(t *testing.T) {
 	db := setupTestDB(t)
 	fundingStore := store.NewGovernmentFundingStore(db)
