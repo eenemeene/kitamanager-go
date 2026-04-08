@@ -291,6 +291,9 @@ func Setup(r *gin.Engine, d Deps) {
 					employees.POST("/:employeeId/contracts",
 						authzMiddleware.RequirePermission(rbac.ResourceEmployeeContracts, rbac.ActionCreate),
 						employeeHandler.CreateContract)
+					employees.PUT("/:employeeId/contracts/batch",
+						authzMiddleware.RequirePermission(rbac.ResourceEmployeeContracts, rbac.ActionUpdate),
+						employeeHandler.BatchUpdateContracts)
 					employees.GET("/:employeeId/contracts/:contractId",
 						authzMiddleware.RequirePermission(rbac.ResourceEmployeeContracts, rbac.ActionRead),
 						employeeHandler.GetContract)
@@ -376,6 +379,9 @@ func Setup(r *gin.Engine, d Deps) {
 					children.POST("/:childId/contracts",
 						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionCreate),
 						childHandler.CreateContract)
+					children.PUT("/:childId/contracts/batch",
+						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionUpdate),
+						childHandler.BatchUpdateContracts)
 					children.GET("/:childId/contracts/:contractId",
 						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionRead),
 						childHandler.GetContract)

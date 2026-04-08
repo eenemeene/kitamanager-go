@@ -3760,6 +3760,92 @@
                 }
             }
         },
+        "/api/v1/organizations/{orgId}/children/{childId}/contracts/batch": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Atomically update multiple contracts for a child. All updates are applied in-place\n(no amend mode). If any update fails, all changes are rolled back.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "children"
+                ],
+                "summary": "Batch update child contracts",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Child ID",
+                        "name": "childId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Batch update data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractBatchUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request (e.g., duplicate IDs, invalid dates)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Child or contract not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Updated dates would overlap",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/organizations/{orgId}/children/{childId}/contracts/current": {
             "get": {
                 "security": [
@@ -4822,6 +4908,92 @@
                     },
                     "409": {
                         "description": "Contract overlaps with existing contract",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/organizations/{orgId}/employees/{employeeId}/contracts/batch": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Atomically update multiple contracts for an employee. All updates are applied in-place\n(no amend mode). If any update fails, all changes are rolled back.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "employees"
+                ],
+                "summary": "Batch update employee contracts",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Employee ID",
+                        "name": "employeeId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Batch update data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractBatchUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request (e.g., duplicate IDs, invalid dates)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Employee or contract not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Updated dates would overlap",
                         "schema": {
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
                         }
@@ -8798,6 +8970,53 @@
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.ChildContractBatchUpdateEntry": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "from": {
+                    "type": "string",
+                    "example": "2025-01-01"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "properties": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties"
+                },
+                "section_id": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "to": {
+                    "type": "string",
+                    "example": "2025-12-31"
+                },
+                "voucher_number": {
+                    "type": "string",
+                    "example": "GB-12345678901-02"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ChildContractBatchUpdateRequest": {
+            "type": "object",
+            "required": [
+                "updates"
+            ],
+            "properties": {
+                "updates": {
+                    "type": "array",
+                    "maxItems": 20,
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractBatchUpdateEntry"
+                    }
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.ChildContractCreateRequest": {
             "type": "object",
             "required": [
@@ -9095,6 +9314,74 @@
                 "value": {
                     "type": "string",
                     "example": "ganztag"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractBatchUpdateEntry": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "from": {
+                    "type": "string",
+                    "example": "2025-01-01"
+                },
+                "grade": {
+                    "type": "string",
+                    "maxLength": 20,
+                    "example": "S8a"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "payplan_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "properties": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties"
+                },
+                "section_id": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "staff_category": {
+                    "type": "string",
+                    "example": "qualified"
+                },
+                "step": {
+                    "type": "integer",
+                    "maximum": 10,
+                    "minimum": 0,
+                    "example": 3
+                },
+                "to": {
+                    "type": "string",
+                    "example": "2025-12-31"
+                },
+                "weekly_hours": {
+                    "type": "number",
+                    "maximum": 168,
+                    "minimum": 0,
+                    "example": 40
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractBatchUpdateRequest": {
+            "type": "object",
+            "required": [
+                "updates"
+            ],
+            "properties": {
+                "updates": {
+                    "type": "array",
+                    "maxItems": 20,
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractBatchUpdateEntry"
+                    }
                 }
             }
         },

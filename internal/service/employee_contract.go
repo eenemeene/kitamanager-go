@@ -124,6 +124,99 @@ func (s *EmployeeService) CreateContract(ctx context.Context, employeeID, orgID 
 	return &resp, nil
 }
 
+// BatchUpdateContracts atomically updates multiple contracts for an employee.
+// Unlike single UpdateContract, batch updates are always in-place (no amend mode).
+func (s *EmployeeService) BatchUpdateContracts(ctx context.Context, employeeID, orgID uint, req *models.EmployeeContractBatchUpdateRequest) ([]models.EmployeeContractResponse, error) {
+	// Verify employee exists and belongs to org
+	employee, err := s.store.FindByIDMinimal(ctx, employeeID)
+	if err != nil {
+		return nil, classifyStoreError(err, "employee")
+	}
+	if err := verifyOrgOwnership(employee, orgID, "employee"); err != nil {
+		return nil, err
+	}
+
+	// Check for duplicate contract IDs in the batch
+	seen := make(map[uint]bool, len(req.Updates))
+	for _, entry := range req.Updates {
+		if seen[entry.ID] {
+			return nil, apperror.BadRequest("duplicate contract ID in batch")
+		}
+		seen[entry.ID] = true
+	}
+
+	// Validate all fields upfront (before transaction)
+	for _, entry := range req.Updates {
+		if err := validateOptionalSectionOrg(ctx, s.sectionStore, entry.SectionID, orgID); err != nil {
+			return nil, err
+		}
+		if entry.PayPlanID != nil {
+			payPlan, err := s.payPlanStore.FindByID(ctx, *entry.PayPlanID)
+			if err != nil {
+				return nil, apperror.BadRequest("payplan_id not found")
+			}
+			if payPlan.OrganizationID != orgID {
+				return nil, apperror.BadRequest("payplan does not belong to this organization")
+			}
+		}
+		if entry.StaffCategory != nil {
+			if !models.IsValidStaffCategory(*entry.StaffCategory) {
+				return nil, apperror.BadRequest("staff_category must be one of: qualified, supplementary, non_pedagogical")
+			}
+		}
+		if entry.WeeklyHours != nil {
+			if err := validation.ValidateWeeklyHours(*entry.WeeklyHours, "weekly_hours"); err != nil {
+				return nil, apperror.BadRequest(err.Error())
+			}
+		}
+	}
+
+	responses := make([]models.EmployeeContractResponse, len(req.Updates))
+
+	if err := s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
+		contracts := make([]*models.EmployeeContract, len(req.Updates))
+
+		// Phase 1: fetch, verify, apply fields, validate period, save
+		for i, entry := range req.Updates {
+			contract, err := s.store.FindContractByID(txCtx, entry.ID)
+			if err != nil {
+				return classifyStoreError(err, "contract")
+			}
+			if err := verifyRecordOwnership(contract, employeeID, "contract"); err != nil {
+				return err
+			}
+
+			applyEmployeeContractFields(contract, &entry.EmployeeContractUpdateRequest)
+
+			if err := validation.ValidatePeriod(contract.From, contract.To); err != nil {
+				return apperror.BadRequest(err.Error())
+			}
+
+			if err := s.store.UpdateContract(txCtx, contract); err != nil {
+				return apperror.InternalWrap(err, "failed to update contract")
+			}
+
+			contracts[i] = contract
+		}
+
+		// Phase 2: validate no overlaps against final state (all saves done)
+		for _, contract := range contracts {
+			if err := s.store.Contracts().ValidateNoOverlap(txCtx, employeeID, contract.From, contract.To, &contract.ID); err != nil {
+				return contractOverlapError(err)
+			}
+		}
+
+		for i, contract := range contracts {
+			responses[i] = contract.ToResponse()
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return responses, nil
+}
+
 // DeleteContract deletes a contract, validating it belongs to an employee in the specified organization
 func (s *EmployeeService) DeleteContract(ctx context.Context, contractID, employeeID, orgID uint) error {
 	// Security: Validate employee belongs to the specified organization (use minimal query - no preloads needed)
@@ -243,8 +336,8 @@ func (s *EmployeeService) UpdateContract(ctx context.Context, contractID, employ
 	}
 }
 
-// updateContractInPlace applies changes directly to the existing employee contract.
-func (s *EmployeeService) updateContractInPlace(ctx context.Context, contract *models.EmployeeContract, employeeID uint, req *models.EmployeeContractUpdateRequest) (*models.EmployeeContractResponse, error) {
+// applyEmployeeContractFields applies update request fields to an employee contract.
+func applyEmployeeContractFields(contract *models.EmployeeContract, req *models.EmployeeContractUpdateRequest) {
 	if req.PayPlanID != nil {
 		contract.PayPlanID = *req.PayPlanID
 	}
@@ -270,6 +363,11 @@ func (s *EmployeeService) updateContractInPlace(ctx context.Context, contract *m
 		contract.From = *req.From
 	}
 	contract.To = req.To
+}
+
+// updateContractInPlace applies changes directly to the existing employee contract.
+func (s *EmployeeService) updateContractInPlace(ctx context.Context, contract *models.EmployeeContract, employeeID uint, req *models.EmployeeContractUpdateRequest) (*models.EmployeeContractResponse, error) {
+	applyEmployeeContractFields(contract, req)
 
 	if err := inPlaceContractUpdate(ctx, s.transactor, s.store.Contracts(), employeeID,
 		contract.From, contract.To, contract.ID,

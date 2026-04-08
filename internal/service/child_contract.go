@@ -185,8 +185,8 @@ func (s *ChildService) UpdateContract(ctx context.Context, contractID, childID, 
 	}
 }
 
-// updateContractInPlace applies changes directly to the existing contract.
-func (s *ChildService) updateContractInPlace(ctx context.Context, contract *models.ChildContract, childID, orgID uint, req *models.ChildContractUpdateRequest) (*models.ChildContractResponse, error) {
+// applyChildContractFields applies update request fields to a child contract.
+func (s *ChildService) applyChildContractFields(ctx context.Context, contract *models.ChildContract, orgID uint, req *models.ChildContractUpdateRequest) {
 	if req.From != nil {
 		contract.From = *req.From
 	}
@@ -200,6 +200,11 @@ func (s *ChildService) updateContractInPlace(ctx context.Context, contract *mode
 	defaults := s.getAutoApplyProperties(ctx, orgID, contract.From)
 	contract.Properties = req.Properties.MergeDefaults(defaults)
 	contract.VoucherNumber = req.VoucherNumber
+}
+
+// updateContractInPlace applies changes directly to the existing contract.
+func (s *ChildService) updateContractInPlace(ctx context.Context, contract *models.ChildContract, childID, orgID uint, req *models.ChildContractUpdateRequest) (*models.ChildContractResponse, error) {
+	s.applyChildContractFields(ctx, contract, orgID, req)
 
 	if err := inPlaceContractUpdate(ctx, s.transactor, s.store.Contracts(), childID,
 		contract.From, contract.To, contract.ID,
@@ -261,6 +266,80 @@ func (s *ChildService) amendContract(ctx context.Context, contract *models.Child
 
 	resp := newContract.ToResponse()
 	return &resp, nil
+}
+
+// BatchUpdateContracts atomically updates multiple contracts for a child.
+// Unlike single UpdateContract, batch updates are always in-place (no amend mode).
+func (s *ChildService) BatchUpdateContracts(ctx context.Context, childID, orgID uint, req *models.ChildContractBatchUpdateRequest) ([]models.ChildContractResponse, error) {
+	// Verify child exists and belongs to org
+	child, err := s.store.FindByIDMinimal(ctx, childID)
+	if err != nil {
+		return nil, classifyStoreError(err, "child")
+	}
+	if err := verifyOrgOwnership(child, orgID, "child"); err != nil {
+		return nil, err
+	}
+
+	// Check for duplicate contract IDs in the batch
+	seen := make(map[uint]bool, len(req.Updates))
+	for _, entry := range req.Updates {
+		if seen[entry.ID] {
+			return nil, apperror.BadRequest("duplicate contract ID in batch")
+		}
+		seen[entry.ID] = true
+	}
+
+	// Validate all sections upfront (before transaction)
+	for _, entry := range req.Updates {
+		if err := validateOptionalSectionOrg(ctx, s.sectionStore, entry.SectionID, orgID); err != nil {
+			return nil, err
+		}
+	}
+
+	responses := make([]models.ChildContractResponse, len(req.Updates))
+
+	if err := s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
+		contracts := make([]*models.ChildContract, len(req.Updates))
+
+		// Phase 1: fetch, verify, apply fields, validate period, save
+		for i, entry := range req.Updates {
+			contract, err := s.store.FindContractByID(txCtx, entry.ID)
+			if err != nil {
+				return classifyStoreError(err, "contract")
+			}
+			if err := verifyRecordOwnership(contract, childID, "contract"); err != nil {
+				return err
+			}
+
+			s.applyChildContractFields(txCtx, contract, orgID, &entry.ChildContractUpdateRequest)
+
+			if err := validation.ValidatePeriod(contract.From, contract.To); err != nil {
+				return apperror.BadRequest(err.Error())
+			}
+
+			if err := s.store.UpdateContract(txCtx, contract); err != nil {
+				return apperror.InternalWrap(err, "failed to update contract")
+			}
+
+			contracts[i] = contract
+		}
+
+		// Phase 2: validate no overlaps against final state (all saves done)
+		for _, contract := range contracts {
+			if err := s.store.Contracts().ValidateNoOverlap(txCtx, childID, contract.From, contract.To, &contract.ID); err != nil {
+				return contractOverlapError(err)
+			}
+		}
+
+		for i, contract := range contracts {
+			responses[i] = contract.ToResponse()
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return responses, nil
 }
 
 // DeleteContract deletes a contract, validating it belongs to a child in the specified organization

@@ -356,6 +356,39 @@ definitions:
         example: present
         type: string
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ChildContractBatchUpdateEntry:
+    properties:
+      from:
+        example: "2025-01-01"
+        type: string
+      id:
+        example: 5
+        type: integer
+      properties:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
+      section_id:
+        example: 2
+        type: integer
+      to:
+        example: "2025-12-31"
+        type: string
+      voucher_number:
+        example: GB-12345678901-02
+        type: string
+    required:
+    - id
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ChildContractBatchUpdateRequest:
+    properties:
+      updates:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractBatchUpdateEntry'
+        maxItems: 20
+        minItems: 1
+        type: array
+    required:
+    - updates
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildContractCreateRequest:
     properties:
       from:
@@ -569,6 +602,56 @@ definitions:
       value:
         example: ganztag
         type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractBatchUpdateEntry:
+    properties:
+      from:
+        example: "2025-01-01"
+        type: string
+      grade:
+        example: S8a
+        maxLength: 20
+        type: string
+      id:
+        example: 5
+        type: integer
+      payplan_id:
+        example: 1
+        type: integer
+      properties:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
+      section_id:
+        example: 2
+        type: integer
+      staff_category:
+        example: qualified
+        type: string
+      step:
+        example: 3
+        maximum: 10
+        minimum: 0
+        type: integer
+      to:
+        example: "2025-12-31"
+        type: string
+      weekly_hours:
+        example: 40
+        maximum: 168
+        minimum: 0
+        type: number
+    required:
+    - id
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractBatchUpdateRequest:
+    properties:
+      updates:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractBatchUpdateEntry'
+        maxItems: 20
+        minItems: 1
+        type: array
+    required:
+    - updates
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractCreateRequest:
     properties:
@@ -4936,6 +5019,64 @@ paths:
       summary: Update child contract
       tags:
       - children
+  /api/v1/organizations/{orgId}/children/{childId}/contracts/batch:
+    put:
+      consumes:
+      - application/json
+      description: |-
+        Atomically update multiple contracts for a child. All updates are applied in-place
+        (no amend mode). If any update fails, all changes are rolled back.
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Child ID
+        in: path
+        name: childId
+        required: true
+        type: integer
+      - description: Batch update data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractBatchUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractResponse'
+            type: array
+        "400":
+          description: Invalid request (e.g., duplicate IDs, invalid dates)
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Child or contract not found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "409":
+          description: Updated dates would overlap
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Batch update child contracts
+      tags:
+      - children
   /api/v1/organizations/{orgId}/children/{childId}/contracts/current:
     get:
       consumes:
@@ -5704,6 +5845,64 @@ paths:
       security:
       - BearerAuth: []
       summary: Update employee contract
+      tags:
+      - employees
+  /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/batch:
+    put:
+      consumes:
+      - application/json
+      description: |-
+        Atomically update multiple contracts for an employee. All updates are applied in-place
+        (no amend mode). If any update fails, all changes are rolled back.
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Employee ID
+        in: path
+        name: employeeId
+        required: true
+        type: integer
+      - description: Batch update data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractBatchUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractResponse'
+            type: array
+        "400":
+          description: Invalid request (e.g., duplicate IDs, invalid dates)
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Employee or contract not found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "409":
+          description: Updated dates would overlap
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Batch update employee contracts
       tags:
       - employees
   /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/current:

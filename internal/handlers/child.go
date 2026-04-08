@@ -364,6 +364,29 @@ func (h *ChildHandler) UpdateContract(c *gin.Context) {
 		func(r *models.ChildContractResponse) (uint, uint) { return r.ID, r.ChildID })
 }
 
+// BatchUpdateContracts godoc
+// @Summary Batch update child contracts
+// @Description Atomically update multiple contracts for a child. All updates are applied in-place
+// @Description (no amend mode). If any update fails, all changes are rolled back.
+// @Tags children
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Param childId path int true "Child ID"
+// @Param request body models.ChildContractBatchUpdateRequest true "Batch update data"
+// @Success 200 {array} models.ChildContractResponse
+// @Failure 400 {object} models.ErrorResponse "Invalid request (e.g., duplicate IDs, invalid dates)"
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse "Child or contract not found"
+// @Failure 409 {object} models.ErrorResponse "Updated dates would overlap"
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/organizations/{orgId}/children/{childId}/contracts/batch [put]
+func (h *ChildHandler) BatchUpdateContracts(c *gin.Context) {
+	handleBatchUpdateContracts(c, "childId", h.contractAudit(), h.service.BatchUpdateContracts,
+		func(r *models.ChildContractResponse) (uint, uint) { return r.ID, r.ChildID })
+}
+
 // DeleteContract godoc
 // @Summary Delete child contract
 // @Description Delete a contract by ID

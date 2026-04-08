@@ -3535,3 +3535,356 @@ func TestEmployeeService_UpdateContract_AmendGradeTrimmed(t *testing.T) {
 		t.Errorf("Grade = %q, want %q (trimmed)", amended.Grade, "S8a")
 	}
 }
+
+// --- Batch Update Contract Tests ---
+
+func TestEmployeeService_BatchUpdateContracts_ShiftBoundary(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	payplan := createTestPayPlan(t, db, "TestPP", org.ID)
+	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
+
+	aTo := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
+	contractA := createTestEmployeeContract(t, db, employee.ID, payplan.ID,
+		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &aTo, "S8a", 3, 39)
+
+	bTo := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	contractB := createTestEmployeeContract(t, db, employee.ID, payplan.ID,
+		time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC), &bTo, "S8a", 3, 39)
+
+	// Shift boundary earlier
+	newATo := time.Date(2024, 5, 31, 0, 0, 0, 0, time.UTC)
+	newBFrom := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
+
+	results, err := svc.BatchUpdateContracts(ctx, employee.ID, org.ID, &models.EmployeeContractBatchUpdateRequest{
+		Updates: []models.EmployeeContractBatchUpdateEntry{
+			{ID: contractA.ID, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{To: &newATo}},
+			{ID: contractB.ID, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{From: &newBFrom, To: &bTo}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("expected 2 results, got %d", len(results))
+	}
+	if !results[0].To.Equal(newATo) {
+		t.Errorf("contract A To = %v, want %v", results[0].To, newATo)
+	}
+	if !results[1].From.Equal(newBFrom) {
+		t.Errorf("contract B From = %v, want %v", results[1].From, newBFrom)
+	}
+}
+
+func TestEmployeeService_BatchUpdateContracts_AllFields(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section2 := createTestSection(t, db, "Section2", org.ID, false)
+	payplan := createTestPayPlan(t, db, "TestPP", org.ID)
+	payplan2 := createTestPayPlan(t, db, "TestPP2", org.ID)
+	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
+
+	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	contract := createTestEmployeeContract(t, db, employee.ID, payplan.ID,
+		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &to, "S8a", 3, 39)
+
+	newFrom := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
+	newTo := time.Date(2025, 6, 30, 0, 0, 0, 0, time.UTC)
+	newCategory := "supplementary"
+	newGrade := "S4"
+	newStep := 5
+	newHours := 30.0
+
+	results, err := svc.BatchUpdateContracts(ctx, employee.ID, org.ID, &models.EmployeeContractBatchUpdateRequest{
+		Updates: []models.EmployeeContractBatchUpdateEntry{
+			{ID: contract.ID, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{
+				From:          &newFrom,
+				To:            &newTo,
+				SectionID:     &section2.ID,
+				StaffCategory: &newCategory,
+				Grade:         &newGrade,
+				Step:          &newStep,
+				WeeklyHours:   &newHours,
+				PayPlanID:     &payplan2.ID,
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	r := results[0]
+	if !r.From.Equal(newFrom) {
+		t.Errorf("From = %v, want %v", r.From, newFrom)
+	}
+	if r.SectionID != section2.ID {
+		t.Errorf("SectionID = %d, want %d", r.SectionID, section2.ID)
+	}
+	if r.StaffCategory != newCategory {
+		t.Errorf("StaffCategory = %q, want %q", r.StaffCategory, newCategory)
+	}
+	if r.Grade != newGrade {
+		t.Errorf("Grade = %q, want %q", r.Grade, newGrade)
+	}
+	if r.Step != newStep {
+		t.Errorf("Step = %d, want %d", r.Step, newStep)
+	}
+	if r.WeeklyHours != newHours {
+		t.Errorf("WeeklyHours = %f, want %f", r.WeeklyHours, newHours)
+	}
+	if r.PayPlanID != payplan2.ID {
+		t.Errorf("PayPlanID = %d, want %d", r.PayPlanID, payplan2.ID)
+	}
+}
+
+func TestEmployeeService_BatchUpdateContracts_PastContracts_NoAmendMode(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	payplan := createTestPayPlan(t, db, "TestPP", org.ID)
+	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
+
+	aTo := time.Date(2020, 6, 30, 0, 0, 0, 0, time.UTC)
+	contract := createTestEmployeeContract(t, db, employee.ID, payplan.ID,
+		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), &aTo, "S8a", 3, 39)
+
+	newTo := time.Date(2020, 8, 31, 0, 0, 0, 0, time.UTC)
+	results, err := svc.BatchUpdateContracts(ctx, employee.ID, org.ID, &models.EmployeeContractBatchUpdateRequest{
+		Updates: []models.EmployeeContractBatchUpdateEntry{
+			{ID: contract.ID, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{To: &newTo}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("expected no error for past contract batch update, got %v", err)
+	}
+	if !results[0].To.Equal(newTo) {
+		t.Errorf("To = %v, want %v", results[0].To, newTo)
+	}
+}
+
+func TestEmployeeService_BatchUpdateContracts_DuplicateIDs(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
+
+	_, err := svc.BatchUpdateContracts(ctx, employee.ID, org.ID, &models.EmployeeContractBatchUpdateRequest{
+		Updates: []models.EmployeeContractBatchUpdateEntry{
+			{ID: 1, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{}},
+			{ID: 1, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{}},
+		},
+	})
+	if err == nil {
+		t.Fatal("expected error for duplicate IDs, got nil")
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+}
+
+func TestEmployeeService_BatchUpdateContracts_ContractNotFound(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
+
+	_, err := svc.BatchUpdateContracts(ctx, employee.ID, org.ID, &models.EmployeeContractBatchUpdateRequest{
+		Updates: []models.EmployeeContractBatchUpdateEntry{
+			{ID: 9999, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{}},
+		},
+	})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestEmployeeService_BatchUpdateContracts_WrongEmployee(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	payplan := createTestPayPlan(t, db, "TestPP", org.ID)
+	emp1 := createTestEmployee(t, db, "John", "Doe", org.ID)
+	emp2 := createTestEmployee(t, db, "Jane", "Doe", org.ID)
+
+	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	contract := createTestEmployeeContract(t, db, emp1.ID, payplan.ID,
+		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &to, "S8a", 3, 39)
+
+	_, err := svc.BatchUpdateContracts(ctx, emp2.ID, org.ID, &models.EmployeeContractBatchUpdateRequest{
+		Updates: []models.EmployeeContractBatchUpdateEntry{
+			{ID: contract.ID, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{}},
+		},
+	})
+	if err == nil {
+		t.Fatal("expected error for wrong employee, got nil")
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestEmployeeService_BatchUpdateContracts_WrongOrg(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+	employee := createTestEmployee(t, db, "John", "Doe", org1.ID)
+
+	_, err := svc.BatchUpdateContracts(ctx, employee.ID, org2.ID, &models.EmployeeContractBatchUpdateRequest{
+		Updates: []models.EmployeeContractBatchUpdateEntry{
+			{ID: 1, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{}},
+		},
+	})
+	if err == nil {
+		t.Fatal("expected error for wrong org, got nil")
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestEmployeeService_BatchUpdateContracts_InvalidPayPlan(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+	payplan1 := createTestPayPlan(t, db, "PP1", org1.ID)
+	payplan2 := createTestPayPlan(t, db, "PP2", org2.ID)
+	employee := createTestEmployee(t, db, "John", "Doe", org1.ID)
+
+	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	contract := createTestEmployeeContract(t, db, employee.ID, payplan1.ID,
+		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &to, "S8a", 3, 39)
+
+	// Try to use pay plan from different org
+	_, err := svc.BatchUpdateContracts(ctx, employee.ID, org1.ID, &models.EmployeeContractBatchUpdateRequest{
+		Updates: []models.EmployeeContractBatchUpdateEntry{
+			{ID: contract.ID, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{PayPlanID: &payplan2.ID, To: &to}},
+		},
+	})
+	if err == nil {
+		t.Fatal("expected error for wrong-org pay plan, got nil")
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+}
+
+func TestEmployeeService_BatchUpdateContracts_InvalidStaffCategory(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	payplan := createTestPayPlan(t, db, "TestPP", org.ID)
+	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
+
+	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	contract := createTestEmployeeContract(t, db, employee.ID, payplan.ID,
+		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &to, "S8a", 3, 39)
+
+	badCategory := "invalid_category"
+	_, err := svc.BatchUpdateContracts(ctx, employee.ID, org.ID, &models.EmployeeContractBatchUpdateRequest{
+		Updates: []models.EmployeeContractBatchUpdateEntry{
+			{ID: contract.ID, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{StaffCategory: &badCategory, To: &to}},
+		},
+	})
+	if err == nil {
+		t.Fatal("expected error for invalid staff category, got nil")
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+}
+
+func TestEmployeeService_BatchUpdateContracts_OverlapConflict(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	payplan := createTestPayPlan(t, db, "TestPP", org.ID)
+	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
+
+	aTo := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
+	contractA := createTestEmployeeContract(t, db, employee.ID, payplan.ID,
+		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &aTo, "S8a", 3, 39)
+
+	bTo := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	contractB := createTestEmployeeContract(t, db, employee.ID, payplan.ID,
+		time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC), &bTo, "S8a", 3, 39)
+
+	// Make them overlap
+	newATo := time.Date(2024, 9, 30, 0, 0, 0, 0, time.UTC)
+	_, err := svc.BatchUpdateContracts(ctx, employee.ID, org.ID, &models.EmployeeContractBatchUpdateRequest{
+		Updates: []models.EmployeeContractBatchUpdateEntry{
+			{ID: contractA.ID, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{To: &newATo}},
+			{ID: contractB.ID, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{To: &bTo}},
+		},
+	})
+	if err == nil {
+		t.Fatal("expected overlap error, got nil")
+	}
+	if !errors.Is(err, apperror.ErrConflict) {
+		t.Errorf("expected ErrConflict, got %v", err)
+	}
+}
+
+func TestEmployeeService_BatchUpdateContracts_TransactionRollback(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	payplan := createTestPayPlan(t, db, "TestPP", org.ID)
+	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
+
+	aTo := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
+	contractA := createTestEmployeeContract(t, db, employee.ID, payplan.ID,
+		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &aTo, "S8a", 3, 39)
+
+	bTo := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	createTestEmployeeContract(t, db, employee.ID, payplan.ID,
+		time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC), &bTo, "S8a", 3, 39)
+
+	// First update valid, second references nonexistent contract
+	newATo := time.Date(2024, 5, 31, 0, 0, 0, 0, time.UTC)
+	_, err := svc.BatchUpdateContracts(ctx, employee.ID, org.ID, &models.EmployeeContractBatchUpdateRequest{
+		Updates: []models.EmployeeContractBatchUpdateEntry{
+			{ID: contractA.ID, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{To: &newATo}},
+			{ID: 9999, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{}},
+		},
+	})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	// Verify contract A was NOT changed (rolled back)
+	resp, err := svc.GetContractByID(ctx, contractA.ID, employee.ID, org.ID)
+	if err != nil {
+		t.Fatalf("failed to get contract A: %v", err)
+	}
+	if !resp.To.Equal(aTo) {
+		t.Errorf("contract A To = %v, want %v (should be unchanged after rollback)", resp.To, aTo)
+	}
+}
