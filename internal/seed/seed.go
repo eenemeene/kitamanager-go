@@ -107,26 +107,25 @@ func SeedAdmin(cfg *config.Config, userStore *store.UserStore, userOrgStore *sto
 }
 
 // SeedGovernmentFunding imports a government funding from YAML if GOVERNMENT_FUNDING_SEED_PATH is set.
-// If the government funding already exists, it will be skipped.
-func SeedGovernmentFunding(cfg *config.Config, db *gorm.DB, fundingStore *store.GovernmentFundingStore) error {
+// If the government funding already exists, it performs an incremental update.
+func SeedGovernmentFunding(cfg *config.Config, imp *importer.GovernmentFundingImporter) error {
 	if cfg.GovernmentFundingSeedPath == "" {
 		slog.Info("Government funding seeding skipped: GOVERNMENT_FUNDING_SEED_PATH not set")
 		return nil
 	}
 
 	ctx := context.Background()
-	governmentFundingImporter := importer.NewGovernmentFundingImporter(db, fundingStore)
-
-	fundingID, err := governmentFundingImporter.ImportGovernmentFundingFromFile(ctx, cfg.GovernmentFundingSeedPath, cfg.GovernmentFundingSeedState)
+	result, err := imp.ImportGovernmentFundingFromFile(ctx, cfg.GovernmentFundingSeedPath, cfg.GovernmentFundingSeedState)
 	if err != nil {
-		if errors.Is(err, importer.ErrGovernmentFundingExists) {
-			slog.Info("Government funding already seeded", "state", cfg.GovernmentFundingSeedState, "id", fundingID)
-			return nil
-		}
 		return err
 	}
 
-	slog.Info("Government funding seeded successfully", "state", cfg.GovernmentFundingSeedState, "id", fundingID, "path", cfg.GovernmentFundingSeedPath)
+	slog.Info("Government funding seeded successfully",
+		"state", cfg.GovernmentFundingSeedState,
+		"id", result.FundingID,
+		"created", result.Created,
+		"path", cfg.GovernmentFundingSeedPath,
+	)
 	return nil
 }
 
@@ -166,7 +165,7 @@ var propertyCombinations = []models.ContractProperties{
 // - Test users with different roles (all with password "supersecret")
 // - 120 currently active children across 3 sections with 3 years of history (~200 total)
 // - ~35 employees (active, former, and upcoming)
-func SeedTestData(cfg *config.Config, db *gorm.DB, fundingStore *store.GovernmentFundingStore) error {
+func SeedTestData(cfg *config.Config, db *gorm.DB, imp *importer.GovernmentFundingImporter) error {
 	if !cfg.SeedTestData {
 		slog.Info("Test data seeding skipped: SEED_TEST_DATA not set to true")
 		return nil
@@ -183,17 +182,11 @@ func SeedTestData(cfg *config.Config, db *gorm.DB, fundingStore *store.Governmen
 
 	// Import Berlin government funding plan
 	ctx := context.Background()
-	governmentFundingImporter := importer.NewGovernmentFundingImporter(db, fundingStore)
-	id, err := governmentFundingImporter.ImportGovernmentFundingFromFile(ctx, "configs/government-fundings/berlin.yaml", "berlin")
+	result, err := imp.ImportGovernmentFundingFromFile(ctx, "configs/government-fundings/berlin.yaml", "berlin")
 	if err != nil {
-		if errors.Is(err, importer.ErrGovernmentFundingExists) {
-			slog.Info("Berlin government funding already exists", "id", id)
-		} else {
-			return fmt.Errorf("failed to import Berlin government funding: %w", err)
-		}
-	} else {
-		slog.Info("Berlin government funding imported", "id", id)
+		return fmt.Errorf("failed to import Berlin government funding: %w", err)
 	}
+	slog.Info("Berlin government funding imported", "id", result.FundingID, "created", result.Created)
 
 	// Create organization with Berlin state
 	org := &models.Organization{
@@ -412,8 +405,9 @@ func SeedTestData(cfg *config.Config, db *gorm.DB, fundingStore *store.Governmen
 	childStore := store.NewChildStore(db)
 	orgStore := store.NewOrganizationStore(db)
 	sectionStore := store.NewSectionStore(db)
+	govFundingStore := store.NewGovernmentFundingStore(db)
 	transactor := store.NewTransactor(db)
-	childService := service.NewChildService(childStore, orgStore, fundingStore, sectionStore, transactor)
+	childService := service.NewChildService(childStore, orgStore, govFundingStore, sectionStore, transactor)
 
 	// Seed children with realistic contract histories spanning 3 years
 	childCount, contractCount, err := seedChildren(db, childService, org.ID, sections)

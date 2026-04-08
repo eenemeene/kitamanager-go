@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 
@@ -424,7 +423,6 @@ func (h *GovernmentFundingHandler) DeleteProperty(c *gin.Context) {
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
-// @Failure 409 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/government-funding-rates/import [post]
 func (h *GovernmentFundingHandler) Import(c *gin.Context) {
@@ -439,23 +437,23 @@ func (h *GovernmentFundingHandler) Import(c *gin.Context) {
 		return
 	}
 
-	fundingID, err := h.importer.ImportGovernmentFunding(c.Request.Context(), fileBytes, state)
+	result, err := h.importer.ImportGovernmentFunding(c.Request.Context(), fileBytes, state)
 	if err != nil {
-		if errors.Is(err, importer.ErrGovernmentFundingExists) {
-			respondError(c, apperror.Conflict("government funding for state '"+state+"' already exists"))
-			return
-		}
 		respondError(c, apperror.InternalWrap(err, "failed to import government funding"))
 		return
 	}
 
-	resp, err := h.service.GetByID(c.Request.Context(), fundingID)
+	resp, err := h.service.GetByID(c.Request.Context(), result.FundingID)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	auditCreate(c, h.auditService, "government_funding", resp.ID, resp.Name)
-
-	c.JSON(http.StatusCreated, resp)
+	if result.Created {
+		auditCreate(c, h.auditService, "government_funding", resp.ID, resp.Name)
+		c.JSON(http.StatusCreated, resp)
+	} else {
+		auditUpdate(c, h.auditService, "government_funding", resp.ID, resp.Name)
+		c.JSON(http.StatusOK, resp)
+	}
 }

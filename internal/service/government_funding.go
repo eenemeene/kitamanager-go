@@ -149,6 +149,30 @@ func (s *GovernmentFundingService) Update(ctx context.Context, id uint, req *mod
 	return &resp, nil
 }
 
+// GetByState returns a government funding by state without nested details.
+func (s *GovernmentFundingService) GetByState(ctx context.Context, state string) (*models.GovernmentFunding, error) {
+	funding, err := s.store.FindByState(ctx, state)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, apperror.NotFound("government funding")
+		}
+		return nil, apperror.InternalWrap(err, "failed to fetch government funding by state")
+	}
+	return funding, nil
+}
+
+// GetByStateWithDetails returns a government funding by state with all periods and properties.
+func (s *GovernmentFundingService) GetByStateWithDetails(ctx context.Context, state string) (*models.GovernmentFunding, error) {
+	funding, err := s.store.FindByStateWithDetails(ctx, state, 0, nil)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, apperror.NotFound("government funding")
+		}
+		return nil, apperror.InternalWrap(err, "failed to fetch government funding by state")
+	}
+	return funding, nil
+}
+
 // Delete deletes a government funding
 func (s *GovernmentFundingService) Delete(ctx context.Context, id uint) error {
 	if err := s.store.Delete(ctx, id); err != nil {
@@ -295,8 +319,8 @@ func (s *GovernmentFundingService) CreateProperty(ctx context.Context, fundingID
 	}
 
 	// Validate age range if both are provided
-	if req.MinAge != nil && req.MaxAge != nil && *req.MinAge >= *req.MaxAge {
-		return nil, apperror.BadRequest("max_age must be greater than min_age")
+	if req.MinAge != nil && req.MaxAge != nil && *req.MinAge > *req.MaxAge {
+		return nil, apperror.BadRequest("max_age must be greater than or equal to min_age")
 	}
 
 	property := &models.GovernmentFundingProperty{
