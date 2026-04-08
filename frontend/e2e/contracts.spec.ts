@@ -141,7 +141,7 @@ test.describe('Child Contracts - CRUD Operations', () => {
       await page.getByRole('button', { name: /Save/i }).click();
       await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10000 });
 
-      await expect(page.getByText(/ganztag/i)).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(/Full-Time/i)).toBeVisible({ timeout: 10000 });
     } finally {
       await deleteChildViaApi(page, orgId, child.id);
     }
@@ -168,7 +168,7 @@ test.describe('Child Contracts - CRUD Operations', () => {
 
       const contractRow = page.locator('tbody tr').first();
       await expect(contractRow).toBeVisible({ timeout: 10000 });
-      await expect(contractRow.getByText(/ganztag/i)).toBeVisible();
+      await expect(contractRow.getByText(/Full-Time/i)).toBeVisible();
 
       await contractRow.getByRole('button', { name: /Edit/i }).click();
       await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
@@ -178,7 +178,7 @@ test.describe('Child Contracts - CRUD Operations', () => {
       await page.getByRole('button', { name: /Save/i }).click();
       await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10000 });
 
-      await expect(page.getByText(/ganztag/i).first()).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(/Full-Time/i).first()).toBeVisible({ timeout: 10000 });
       await expect(page.getByText(/Dec 31, 2026/)).toBeVisible({ timeout: 10000 });
     } finally {
       await deleteChildViaApi(page, orgId, child.id);
@@ -204,7 +204,7 @@ test.describe('Child Contracts - CRUD Operations', () => {
       await page.goto(`/organizations/${orgId}/children/${child.id}/contracts`);
       await page.waitForLoadState('networkidle');
 
-      await expect(page.getByText(/halbtag/i)).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(/Half-Day/i)).toBeVisible({ timeout: 10000 });
 
       const contractRow = page.locator('tbody tr').first();
       await contractRow.getByRole('button', { name: /Delete/i }).click();
@@ -216,7 +216,7 @@ test.describe('Child Contracts - CRUD Operations', () => {
         .getByRole('button', { name: /Delete|Confirm|Yes/i })
         .click();
 
-      await expect(page.getByText(/halbtag/i)).not.toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(/Half-Day/i)).not.toBeVisible({ timeout: 10000 });
       await expect(page.getByText(/No contracts found/i).first()).toBeVisible();
     } finally {
       await deleteChildViaApi(page, orgId, child.id);
@@ -279,7 +279,7 @@ test.describe('Child Contract Workflow - create child, add contract, move sectio
       const contractRows = page.locator('tbody tr');
       await expect(contractRows).toHaveCount(2, { timeout: 10000 });
 
-      await expect(page.getByText(/ganztag/i).first()).toBeVisible();
+      await expect(page.getByText(/Full-Time/i).first()).toBeVisible();
     } finally {
       await deleteChildViaApi(page, orgId, child.id);
     }
