@@ -359,6 +359,29 @@ func (h *EmployeeHandler) UpdateContract(c *gin.Context) {
 		func(r *models.EmployeeContractResponse) (uint, uint) { return r.ID, r.EmployeeID })
 }
 
+// BatchUpdateContracts godoc
+// @Summary Batch update employee contracts
+// @Description Atomically update multiple contracts for an employee. All updates are applied in-place
+// @Description (no amend mode). If any update fails, all changes are rolled back.
+// @Tags employees
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Param employeeId path int true "Employee ID"
+// @Param request body models.EmployeeContractBatchUpdateRequest true "Batch update data"
+// @Success 200 {array} models.EmployeeContractResponse
+// @Failure 400 {object} models.ErrorResponse "Invalid request (e.g., duplicate IDs, invalid dates)"
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse "Employee or contract not found"
+// @Failure 409 {object} models.ErrorResponse "Updated dates would overlap"
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/batch [put]
+func (h *EmployeeHandler) BatchUpdateContracts(c *gin.Context) {
+	handleBatchUpdateContracts(c, "employeeId", h.contractAudit(), h.service.BatchUpdateContracts,
+		func(r *models.EmployeeContractResponse) (uint, uint) { return r.ID, r.EmployeeID })
+}
+
 // DeleteContract godoc
 // @Summary Delete employee contract
 // @Description Delete a contract by ID

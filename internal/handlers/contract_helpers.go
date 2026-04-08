@@ -135,6 +135,38 @@ func handleUpdateContract[Req any, Resp any](
 	c.JSON(http.StatusOK, resp)
 }
 
+// handleBatchUpdateContracts handles atomically updating multiple contracts with audit logging.
+func handleBatchUpdateContracts[Req any, Resp any](
+	c *gin.Context,
+	parentParam string,
+	audit auditConfig,
+	batchUpdateFn func(context.Context, uint, uint, *Req) ([]Resp, error),
+	getAuditInfo func(*Resp) (uint, uint), // returns (contractID, parentID)
+) {
+	orgID, resourceID, ok := parseOrgAndResourceID(c, parentParam)
+	if !ok {
+		return
+	}
+
+	req, ok := bindJSON[Req](c)
+	if !ok {
+		return
+	}
+
+	results, err := batchUpdateFn(c.Request.Context(), resourceID, orgID, req)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	for i := range results {
+		id, parentID := getAuditInfo(&results[i])
+		auditUpdate(c, audit.auditService, audit.resourceType, id, fmt.Sprintf("%s=%d", audit.parentLabel, parentID))
+	}
+
+	c.JSON(http.StatusOK, results)
+}
+
 // handleDeleteContract handles deleting a contract with pre-fetch for audit logging.
 func handleDeleteContract[Resp any](
 	c *gin.Context,

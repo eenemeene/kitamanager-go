@@ -58,6 +58,17 @@ type EmployeeContractUpdateRequest struct {
 	Properties    ContractProperties `json:"properties,omitempty"`
 }
 
+// EmployeeContractBatchUpdateEntry represents a single contract update within a batch.
+type EmployeeContractBatchUpdateEntry struct {
+	ID uint `json:"id" binding:"required" example:"5"`
+	EmployeeContractUpdateRequest
+}
+
+// EmployeeContractBatchUpdateRequest represents a batch of contract updates applied atomically.
+type EmployeeContractBatchUpdateRequest struct {
+	Updates []EmployeeContractBatchUpdateEntry `json:"updates" binding:"required,min=1,max=20"`
+}
+
 // EmployeeCreateRequest represents the request body for creating an employee.
 // OrganizationID is derived from the URL path parameter.
 type EmployeeCreateRequest struct {
