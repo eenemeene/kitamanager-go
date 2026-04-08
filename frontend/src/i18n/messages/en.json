@@ -660,6 +660,16 @@
     "checkedIn": "Checked in",
     "checkedOut": "Checked out"
   },
+  "timeline": {
+    "title": "Timeline",
+    "tableView": "Table",
+    "timelineView": "Timeline",
+    "dragToAdjust": "Drag to adjust boundary",
+    "boundaryUpdated": "Contract boundary updated",
+    "boundaryUpdateFailed": "Failed to update boundary",
+    "gap": "Gap ({days} days)",
+    "noContracts": "No contracts to display"
+  },
   "fundingLabels": {
     "care_type--ganztag erweitert": "Extended Full-Time (>9h)",
     "care_type--ganztag": "Full-Time (up to 9h)",

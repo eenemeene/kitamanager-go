@@ -312,6 +312,17 @@ export interface ChildContractUpdateRequest {
   properties?: ContractProperties;
 }
 
+// Batch contract update types (used for timeline boundary adjustments)
+export interface ContractBatchUpdateItem {
+  id: number;
+  from?: string;
+  to?: string | null;
+}
+
+export interface ContractBatchUpdateRequest {
+  updates: ContractBatchUpdateItem[];
+}
+
 // Pagination response wrapper
 export interface PaginatedResponse<T> {
   data: T[];

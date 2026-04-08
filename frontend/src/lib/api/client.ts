@@ -66,6 +66,7 @@ import type {
   Section,
   SectionCreateRequest,
   SectionUpdateRequest,
+  ContractBatchUpdateRequest,
   PaginatedResponse,
   PaginationParams,
 } from './types';
@@ -409,6 +410,18 @@ class ApiClient {
     );
   }
 
+  async batchUpdateEmployeeContracts(
+    orgId: number,
+    employeeId: number,
+    data: ContractBatchUpdateRequest
+  ): Promise<EmployeeContract[]> {
+    const response = await this.client.put<EmployeeContract[]>(
+      `/organizations/${orgId}/employees/${employeeId}/contracts/batch`,
+      data
+    );
+    return response.data;
+  }
+
   // Children (organization-scoped)
   private _children = this.orgScopedCrud<
     Child,
@@ -456,6 +469,18 @@ class ApiClient {
 
   async deleteChildContract(orgId: number, childId: number, contractId: number): Promise<void> {
     await this.client.delete(`/organizations/${orgId}/children/${childId}/contracts/${contractId}`);
+  }
+
+  async batchUpdateChildContracts(
+    orgId: number,
+    childId: number,
+    data: ContractBatchUpdateRequest
+  ): Promise<ChildContract[]> {
+    const response = await this.client.put<ChildContract[]>(
+      `/organizations/${orgId}/children/${childId}/contracts/batch`,
+      data
+    );
+    return response.data;
   }
 
   async getChildrenFunding(orgId: number, date?: string): Promise<ChildrenFundingResponse> {

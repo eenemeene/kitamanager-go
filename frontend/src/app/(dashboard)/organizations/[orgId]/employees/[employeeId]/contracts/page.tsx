@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Trash2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
@@ -18,8 +18,10 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DeleteConfirmDialog } from '@/components/crud/delete-confirm-dialog';
 import { QueryError } from '@/components/crud/query-error';
+import { ContractTimeline } from '@/components/contracts/contract-timeline';
 import { useResourceMutation } from '@/lib/hooks/use-resource-mutation';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
@@ -27,6 +29,7 @@ import {
   type EmployeeContract,
   type EmployeeContractCreateRequest,
   type EmployeeContractUpdateRequest,
+  type ContractBatchUpdateRequest,
   LOOKUP_FETCH_LIMIT,
 } from '@/lib/api/types';
 import { useForm } from 'react-hook-form';
@@ -35,12 +38,16 @@ import { formatDate, formatDateForInput, formatDateForApi } from '@/lib/utils/fo
 import { getContractStatus, compareDates } from '@/lib/utils/contracts';
 import { EmployeeContractDialog } from '@/components/employees/employee-contract-dialog';
 import { employeeContractSchema, type EmployeeContractFormData } from '@/lib/schemas';
+import { useToast } from '@/lib/hooks/use-toast';
+import { showErrorToast } from '@/lib/utils/show-error-toast';
 
 export default function EmployeeContractsPage() {
   const params = useParams();
   const orgId = Number(params.orgId);
   const employeeId = Number(params.employeeId);
   const t = useTranslations();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const [isContractDialogOpen, setIsContractDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -131,6 +138,44 @@ export default function EmployeeContractsPage() {
     onSuccess: () => {
       setIsDeleteDialogOpen(false);
       setDeletingContract(null);
+    },
+  });
+
+  const contractsQueryKey = queryKeys.employees.contracts(orgId, employeeId);
+
+  const batchUpdateMutation = useMutation({
+    mutationFn: (data: ContractBatchUpdateRequest) =>
+      apiClient.batchUpdateEmployeeContracts(orgId, employeeId, data),
+    onMutate: async (newData) => {
+      await queryClient.cancelQueries({ queryKey: contractsQueryKey });
+      const previous = queryClient.getQueryData<EmployeeContract[]>(contractsQueryKey);
+      queryClient.setQueryData<EmployeeContract[]>(contractsQueryKey, (old) => {
+        if (!old) return old;
+        return old.map((c) => {
+          const update = newData.updates.find((u) => u.id === c.id);
+          if (!update) return c;
+          return {
+            ...c,
+            ...(update.from !== undefined && { from: update.from }),
+            ...(update.to !== undefined && { to: update.to }),
+          };
+        });
+      });
+      return { previous };
+    },
+    onError: (error: unknown, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(contractsQueryKey, context.previous);
+      }
+      showErrorToast(t('common.error'), error, t('timeline.boundaryUpdateFailed'));
+    },
+    onSuccess: () => {
+      toast({ title: t('timeline.boundaryUpdated') });
+    },
+    onSettled: () => {
+      for (const key of invalidateKeys) {
+        queryClient.invalidateQueries({ queryKey: key });
+      }
     },
   });
 
@@ -260,109 +305,146 @@ export default function EmployeeContractsPage() {
       />
 
       <Card>
-        <CardHeader>
-          <CardTitle>{t('contracts.title')}</CardTitle>
-          <CardDescription>
-            {sortedContracts.length > 0
-              ? t('employees.contractHistory')
-              : t('employees.noContractsFound')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-2">
-              {[...Array(3)].map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
+        <Tabs defaultValue="table">
+          <CardHeader>
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div>
+                <CardTitle>{t('contracts.title')}</CardTitle>
+                <CardDescription>
+                  {sortedContracts.length > 0
+                    ? t('employees.contractHistory')
+                    : t('employees.noContractsFound')}
+                </CardDescription>
+              </div>
+              <TabsList>
+                <TabsTrigger value="table">{t('timeline.tableView')}</TabsTrigger>
+                <TabsTrigger value="timeline">{t('timeline.timelineView')}</TabsTrigger>
+              </TabsList>
             </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('common.status')}</TableHead>
-                  <TableHead>{t('sections.title')}</TableHead>
-                  <TableHead>{t('contracts.from')}</TableHead>
-                  <TableHead>{t('contracts.to')}</TableHead>
-                  <TableHead>{t('employees.staffCategory.label')}</TableHead>
-                  <TableHead>{t('employees.grade')}</TableHead>
-                  <TableHead>{t('employees.weeklyHours')}</TableHead>
-                  <TableHead className="text-right">{t('common.actions')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedContracts.map((contract) => {
-                  const status = getContractStatus(contract);
-                  return (
-                    <TableRow key={contract.id}>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            status === 'active'
-                              ? 'success'
-                              : status === 'upcoming'
-                                ? 'warning'
-                                : 'secondary'
-                          }
-                        >
-                          {status === 'active'
-                            ? t('common.active')
-                            : status === 'upcoming'
-                              ? t('common.upcoming')
-                              : t('common.ended')}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {contract.section_name ? (
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-2">
+                {[...Array(3)].map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
+            ) : (
+              <>
+                <TabsContent value="table" className="mt-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t('common.status')}</TableHead>
+                        <TableHead>{t('sections.title')}</TableHead>
+                        <TableHead>{t('contracts.from')}</TableHead>
+                        <TableHead>{t('contracts.to')}</TableHead>
+                        <TableHead>{t('employees.staffCategory.label')}</TableHead>
+                        <TableHead>{t('employees.grade')}</TableHead>
+                        <TableHead>{t('employees.weeklyHours')}</TableHead>
+                        <TableHead className="text-right">{t('common.actions')}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sortedContracts.map((contract) => {
+                        const status = getContractStatus(contract);
+                        return (
+                          <TableRow key={contract.id}>
+                            <TableCell>
+                              <Badge
+                                variant={
+                                  status === 'active'
+                                    ? 'success'
+                                    : status === 'upcoming'
+                                      ? 'warning'
+                                      : 'secondary'
+                                }
+                              >
+                                {status === 'active'
+                                  ? t('common.active')
+                                  : status === 'upcoming'
+                                    ? t('common.upcoming')
+                                    : t('common.ended')}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {contract.section_name ? (
+                                <Badge variant="outline">{contract.section_name}</Badge>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">
+                                  {t('sections.unassigned')}
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell>{formatDate(contract.from)}</TableCell>
+                            <TableCell>
+                              {contract.to ? formatDate(contract.to) : t('common.ongoing')}
+                            </TableCell>
+                            <TableCell>
+                              {t(`employees.staffCategory.${contract.staff_category}`)}
+                            </TableCell>
+                            <TableCell>
+                              {contract.grade} / {contract.step}
+                            </TableCell>
+                            <TableCell>{contract.weekly_hours}h</TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEdit(contract)}
+                                aria-label={t('common.edit')}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDelete(contract)}
+                                aria-label={t('common.delete')}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {sortedContracts.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-muted-foreground text-center">
+                            {t('employees.noContractsFound')}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TabsContent>
+                <TabsContent value="timeline" className="mt-0">
+                  <ContractTimeline
+                    contracts={sortedContracts}
+                    renderSegmentContent={(contract) => (
+                      <div className="flex flex-wrap gap-1">
+                        {contract.section_name && (
                           <Badge variant="outline">{contract.section_name}</Badge>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">
-                            {t('sections.unassigned')}
-                          </span>
                         )}
-                      </TableCell>
-                      <TableCell>{formatDate(contract.from)}</TableCell>
-                      <TableCell>
-                        {contract.to ? formatDate(contract.to) : t('common.ongoing')}
-                      </TableCell>
-                      <TableCell>
-                        {t(`employees.staffCategory.${contract.staff_category}`)}
-                      </TableCell>
-                      <TableCell>
-                        {contract.grade} / {contract.step}
-                      </TableCell>
-                      <TableCell>{contract.weekly_hours}h</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(contract)}
-                          aria-label={t('common.edit')}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(contract)}
-                          aria-label={t('common.delete')}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-                {sortedContracts.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-muted-foreground text-center">
-                      {t('employees.noContractsFound')}
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
+                        <Badge variant="outline" className="text-xs">
+                          {t(`employees.staffCategory.${contract.staff_category}`)}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {contract.grade} / {contract.step}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {contract.weekly_hours}h
+                        </Badge>
+                      </div>
+                    )}
+                    onBoundaryChange={(updates) => batchUpdateMutation.mutateAsync({ updates })}
+                    isUpdating={batchUpdateMutation.isPending}
+                  />
+                </TabsContent>
+              </>
+            )}
+          </CardContent>
+        </Tabs>
       </Card>
 
       <EmployeeContractDialog
