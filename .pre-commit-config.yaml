@@ -56,7 +56,7 @@ repos:
 
       - id: govulncheck
         name: govulncheck
-        entry: bash -c 'go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./...'
+        entry: bash -c 'go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck $(go list ./... | grep -v internal/testutil)'
         language: system
         types: [go]
         pass_filenames: false

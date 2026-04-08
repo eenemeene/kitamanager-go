@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"sort"
 	"time"
 
@@ -76,15 +77,27 @@ func (s *ChildService) CalculateFunding(ctx context.Context, orgID uint, date ti
 	return response, nil
 }
 
-// findPeriodForDate finds the funding period that covers the given date (package-level for reuse)
+// findPeriodForDate finds the funding period that covers the given date (package-level for reuse).
+// Logs a critical warning if multiple periods match (overlapping date ranges).
 func findPeriodForDate(periods []models.GovernmentFundingPeriod, date time.Time) *models.GovernmentFundingPeriod {
+	var matched *models.GovernmentFundingPeriod
+	matchCount := 0
 	for i := range periods {
 		period := &periods[i]
 		if period.IsActiveOn(date) {
-			return period
+			matchCount++
+			if matched == nil {
+				matched = period
+			}
 		}
 	}
-	return nil
+	if matchCount > 1 {
+		slog.Error("overlapping funding periods detected",
+			"date", date.Format("2006-01-02"),
+			"matches", matchCount,
+		)
+	}
+	return matched
 }
 
 // matchFundingProperties returns the funding properties that match a child's age and

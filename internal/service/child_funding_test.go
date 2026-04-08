@@ -1,6 +1,8 @@
 package service
 
 import (
+	"bytes"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -93,6 +95,65 @@ func TestFindPeriodForDate_ExactEnd(t *testing.T) {
 	}
 	if got.ID != 30 {
 		t.Errorf("expected period ID 30, got %d", got.ID)
+	}
+}
+
+func TestFindPeriodForDate_OverlappingPeriodsLogsError(t *testing.T) {
+	// Two periods that overlap on 2025-06-15
+	to1 := time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC)
+	to2 := time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC)
+	periods := []models.GovernmentFundingPeriod{
+		{ID: 1, Period: models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), To: &to1}},
+		{ID: 2, Period: models.Period{From: time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC), To: &to2}},
+	}
+
+	// Capture slog output
+	var buf bytes.Buffer
+	handler := slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelError})
+	oldLogger := slog.Default()
+	slog.SetDefault(slog.New(handler))
+	defer slog.SetDefault(oldLogger)
+
+	got := findPeriodForDate(periods, time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC))
+	switch {
+	case got == nil:
+		t.Fatal("expected a period, got nil")
+	case got.ID != 1:
+		t.Errorf("expected first matching period (ID 1), got %d", got.ID)
+	}
+
+	logOutput := buf.String()
+	if logOutput == "" {
+		t.Error("expected slog.Error for overlapping periods, got no log output")
+	}
+	if !bytes.Contains(buf.Bytes(), []byte("overlapping funding periods detected")) {
+		t.Errorf("expected log message about overlapping periods, got: %s", logOutput)
+	}
+}
+
+func TestFindPeriodForDate_NonOverlappingDoesNotLog(t *testing.T) {
+	to1 := time.Date(2025, 5, 31, 0, 0, 0, 0, time.UTC)
+	periods := []models.GovernmentFundingPeriod{
+		{ID: 1, Period: models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), To: &to1}},
+		{ID: 2, Period: models.Period{From: time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC), To: nil}},
+	}
+
+	var buf bytes.Buffer
+	handler := slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelError})
+	oldLogger := slog.Default()
+	slog.SetDefault(slog.New(handler))
+	defer slog.SetDefault(oldLogger)
+
+	got := findPeriodForDate(periods, time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC))
+	switch {
+	case got == nil:
+		t.Fatal("expected period, got nil")
+	case got.ID != 2:
+		t.Errorf("expected period ID 2, got %d", got.ID)
+	}
+
+	if buf.Len() > 0 {
+		t.Errorf("expected no log output for non-overlapping periods, got: %s", buf.String())
 	}
 }
 

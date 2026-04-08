@@ -1,7 +1,8 @@
 - to: ''
-  from: '2026-01-01'
+  from: '2026-08-01'
   full_time_weekly_hours: 39
-  comment: 'Aufschlag für Praxisunterstützungssystem (45€ pro Kind/Jahr) inklusive
+  comment: 'Anlage 1a Nr. XXXIX - Aufschlag für Praxisunterstützungssystem (45€ pro
+    Kind/Jahr) inklusive
 
     '
   entries:
@@ -12,22 +13,22 @@
     - key: integration
       value: integration a
       label: Integration A
-      payment: 1693.1
+      payment: 1739.01
       requirement: 0.25
     - key: integration
       value: integration b
       label: Integration B
-      payment: 3378.64
+      payment: 3470.45
       requirement: 0.5
     - key: ndh
       value: ndh
       label: NdH
-      payment: 101.16
+      payment: 103.92
       requirement: 0.017
     - key: qm/mss
       value: qm/mss
       label: QM/MSS
-      payment: 59.51
+      payment: 61.13
       requirement: 0.01
     - key: parent
       value: meals
@@ -42,22 +43,132 @@
     - key: care_type
       value: ganztag erweitert
       label: Extended Full-Time (>9h)
-      payment: 2217.23
+      payment: 2582.03
+      requirement: 0.37
+    - key: care_type
+      value: ganztag
+      label: Full-Time (up to 9h)
+      payment: 2494.91
+      requirement: 0.355
+    - key: care_type
+      value: teilzeit
+      label: Part-Time (up to 7h)
+      payment: 1850.31
+      requirement: 0.244
+    - key: care_type
+      value: halbtag
+      label: Half-Day (up to 5h)
+      payment: 1379.92
+      requirement: 0.163
+  - age:
+    - 2
+    - 2
+    properties:
+    - key: care_type
+      value: ganztag erweitert
+      label: Extended Full-Time (>9h)
+      payment: 2036.14
+      requirement: 0.276
+    - key: care_type
+      value: ganztag
+      label: Full-Time (up to 9h)
+      payment: 1949.03
+      requirement: 0.261
+    - key: care_type
+      value: teilzeit
+      label: Part-Time (up to 7h)
+      payment: 1565.75
+      requirement: 0.195
+    - key: care_type
+      value: halbtag
+      label: Half-Day (up to 5h)
+      payment: 1246.35
+      requirement: 0.14
+  - age:
+    - 3
+    - 8
+    properties:
+    - key: care_type
+      value: ganztag erweitert
+      label: Extended Full-Time (>9h)
+      payment: 1153.43
+      requirement: 0.124
+    - key: care_type
+      value: ganztag
+      label: Full-Time (up to 9h)
+      payment: 1066.32
+      requirement: 0.109
+    - key: care_type
+      value: teilzeit
+      label: Part-Time (up to 7h)
+      payment: 950.18
+      requirement: 0.089
+    - key: care_type
+      value: halbtag
+      label: Half-Day (up to 5h)
+      payment: 839.84
+      requirement: 0.07
+- to: '2026-07-31'
+  from: '2026-04-01'
+  full_time_weekly_hours: 39
+  comment: 'Anlage 1a Nr. XXXVIII - Aufschlag für Praxisunterstützungssystem (45€
+    pro Kind/Jahr) inklusive
+
+    '
+  entries:
+  - age:
+    - 0
+    - 8
+    properties:
+    - key: integration
+      value: integration a
+      label: Integration A
+      payment: 1739.01
+      requirement: 0.25
+    - key: integration
+      value: integration b
+      label: Integration B
+      payment: 3470.45
+      requirement: 0.5
+    - key: ndh
+      value: ndh
+      label: NdH
+      payment: 103.92
+      requirement: 0.017
+    - key: qm/mss
+      value: qm/mss
+      label: QM/MSS
+      payment: 61.13
+      requirement: 0.01
+    - key: parent
+      value: meals
+      label: Parent Value Meal
+      payment: 23.0
+      requirement: 0
+      apply_to_all_contracts: true
+  - age:
+    - 0
+    - 1
+    properties:
+    - key: care_type
+      value: ganztag erweitert
+      label: Extended Full-Time (>9h)
+      payment: 2268.43
       requirement: 0.316
     - key: care_type
       value: ganztag
       label: Full-Time (up to 9h)
-      payment: 2132.43
+      payment: 2181.33
       requirement: 0.301
     - key: care_type
       value: teilzeit
       label: Part-Time (up to 7h)
-      payment: 1657.57
+      payment: 1693.51
       requirement: 0.217
     - key: care_type
       value: halbtag
       label: Half-Day (up to 5h)
-      payment: 1278.81
+      payment: 1304.42
       requirement: 0.15
   - age:
     - 2
@@ -66,22 +177,22 @@
     - key: care_type
       value: ganztag erweitert
       label: Extended Full-Time (>9h)
-      payment: 1815.85
+      payment: 1856.11
       requirement: 0.245
     - key: care_type
       value: ganztag
       label: Full-Time (up to 9h)
-      payment: 1731.06
+      payment: 1769.01
       requirement: 0.23
     - key: care_type
       value: teilzeit
       label: Part-Time (up to 7h)
-      payment: 1437.1
+      payment: 1467.02
       requirement: 0.178
     - key: care_type
       value: halbtag
       label: Half-Day (up to 5h)
-      payment: 1165.75
+      payment: 1188.27
       requirement: 0.13
   - age:
     - 3
@@ -90,24 +201,134 @@
     - key: care_type
       value: ganztag erweitert
       label: Extended Full-Time (>9h)
-      payment: 1131.82
+      payment: 1153.43
       requirement: 0.124
     - key: care_type
       value: ganztag
       label: Full-Time (up to 9h)
-      payment: 1047.03
+      payment: 1066.32
       requirement: 0.109
     - key: care_type
       value: teilzeit
       label: Part-Time (up to 7h)
-      payment: 933.97
+      payment: 950.18
       requirement: 0.089
     - key: care_type
       value: halbtag
       label: Half-Day (up to 5h)
-      payment: 826.56
+      payment: 839.84
       requirement: 0.07
-- to: '2026-01-01'
+- to: '2026-03-31'
+  from: '2026-01-01'
+  full_time_weekly_hours: 39
+  comment: 'Anlage 1a Nr. XXXVII-a - Aufschlag für Praxisunterstützungssystem (45€
+    pro Kind/Jahr) inklusive
+
+    '
+  entries:
+  - age:
+    - 0
+    - 8
+    properties:
+    - key: integration
+      value: integration a
+      label: Integration A
+      payment: 1696.24
+      requirement: 0.25
+    - key: integration
+      value: integration b
+      label: Integration B
+      payment: 3384.92
+      requirement: 0.5
+    - key: ndh
+      value: ndh
+      label: NdH
+      payment: 101.35
+      requirement: 0.017
+    - key: qm/mss
+      value: qm/mss
+      label: QM/MSS
+      payment: 59.62
+      requirement: 0.01
+    - key: parent
+      value: meals
+      label: Parent Value Meal
+      payment: 23.0
+      requirement: 0
+      apply_to_all_contracts: true
+  - age:
+    - 0
+    - 1
+    properties:
+    - key: care_type
+      value: ganztag erweitert
+      label: Extended Full-Time (>9h)
+      payment: 2220.71
+      requirement: 0.316
+    - key: care_type
+      value: ganztag
+      label: Full-Time (up to 9h)
+      payment: 2135.75
+      requirement: 0.301
+    - key: care_type
+      value: teilzeit
+      label: Part-Time (up to 7h)
+      payment: 1660.01
+      requirement: 0.217
+    - key: care_type
+      value: halbtag
+      label: Half-Day (up to 5h)
+      payment: 1280.54
+      requirement: 0.15
+  - age:
+    - 2
+    - 2
+    properties:
+    - key: care_type
+      value: ganztag erweitert
+      label: Extended Full-Time (>9h)
+      payment: 1818.6
+      requirement: 0.245
+    - key: care_type
+      value: ganztag
+      label: Full-Time (up to 9h)
+      payment: 1733.64
+      requirement: 0.23
+    - key: care_type
+      value: teilzeit
+      label: Part-Time (up to 7h)
+      payment: 1439.13
+      requirement: 0.178
+    - key: care_type
+      value: halbtag
+      label: Half-Day (up to 5h)
+      payment: 1167.27
+      requirement: 0.13
+  - age:
+    - 3
+    - 8
+    properties:
+    - key: care_type
+      value: ganztag erweitert
+      label: Extended Full-Time (>9h)
+      payment: 1133.29
+      requirement: 0.124
+    - key: care_type
+      value: ganztag
+      label: Full-Time (up to 9h)
+      payment: 1048.33
+      requirement: 0.109
+    - key: care_type
+      value: teilzeit
+      label: Part-Time (up to 7h)
+      payment: 935.06
+      requirement: 0.089
+    - key: care_type
+      value: halbtag
+      label: Half-Day (up to 5h)
+      payment: 827.44
+      requirement: 0.07
+- to: '2025-12-31'
   from: '2025-02-01'
   full_time_weekly_hours: 39
   comment: 'Aufschlag für Praxisunterstützungssystem (45€ pro Kind/Jahr) inklusive
@@ -216,7 +437,7 @@
       label: Half-Day (up to 5h)
       payment: 813.87
       requirement: 0.07
-- to: '2025-02-01'
+- to: '2025-01-31'
   from: '2025-01-01'
   full_time_weekly_hours: 39
   comment: 'Aufschlag für Praxisunterstützungssystem (60€ pro Kind/Jahr) und Digitalisierung
@@ -326,7 +547,7 @@
       label: Half-Day (up to 5h)
       payment: 790.67
       requirement: 0.07
-- to: '2025-01-01'
+- to: '2024-12-31'
   from: '2024-11-01'
   full_time_weekly_hours: 39
   comment: 'Aufschlag für Praxisunterstützungssystem (60€ pro Kind/Jahr) und Digitalisierung
@@ -436,7 +657,7 @@
       label: Half-Day (up to 5h)
       payment: 778.93
       requirement: 0.07
-- to: '2024-11-01'
+- to: '2024-10-31'
   from: '2024-10-01'
   full_time_weekly_hours: 39
   comment: 'Aufschlag für Praxisunterstützungssystem (60€ pro Kind/Jahr) und Digitalisierung
@@ -546,7 +767,7 @@
       label: Half-Day (up to 5h)
       payment: 768.69
       requirement: 0.07
-- to: '2024-10-01'
+- to: '2024-09-30'
   from: '2024-02-01'
   full_time_weekly_hours: 39
   comment: 'Aufschlag für Praxisunterstützungssystem (60€ pro Kind/Jahr) und Digitalisierung
@@ -656,7 +877,7 @@
       label: Half-Day (up to 5h)
       payment: 764.56
       requirement: 0.07
-- to: '2024-02-01'
+- to: '2024-01-31'
   from: '2023-03-01'
   full_time_weekly_hours: 39
   comment: 'Aufschlag für Praxisunterstützungssystem (60€ pro Kind/Jahr) und Digitalisierung
@@ -766,7 +987,7 @@
       label: Half-Day (up to 5h)
       payment: 719.51
       requirement: 0.07
-- to: '2023-03-01'
+- to: '2023-02-28'
   from: '2023-01-01'
   full_time_weekly_hours: 39
   comment: 'Aufschlag für Praxisunterstützungssystem (60€ pro Kind/Jahr) und Digitalisierung
@@ -879,7 +1100,7 @@
       label: Half-Day (up to 5h)
       payment: 819.51
       requirement: 0.07
-- to: '2023-01-01'
+- to: '2022-12-31'
   from: '2022-01-01'
   full_time_weekly_hours: 39
   entries:
@@ -985,7 +1206,7 @@
       label: Half-Day (up to 5h)
       payment: 694.36
       requirement: 0.07
-- to: '2022-01-01'
+- to: '2021-12-31'
   from: '2021-01-01'
   full_time_weekly_hours: 39
   entries:
@@ -1091,7 +1312,7 @@
       label: Half-Day (up to 5h)
       payment: 673.13
       requirement: 0.07
-- to: '2021-01-01'
+- to: '2020-12-31'
   from: '2020-08-01'
   full_time_weekly_hours: 39
   entries:
@@ -1197,7 +1418,7 @@
       label: Half-Day (up to 5h)
       payment: 657.83
       requirement: 0.07
-- to: '2020-08-01'
+- to: '2020-07-31'
   from: '2020-01-01'
   full_time_weekly_hours: 39
   entries:
@@ -1303,7 +1524,7 @@
       label: Half-Day (up to 5h)
       payment: 649.39
       requirement: 0.07
-- to: '2020-01-01'
+- to: '2019-12-31'
   from: '2018-10-01'
   full_time_weekly_hours: 39
   entries:

@@ -134,14 +134,13 @@ func main() {
 	}
 
 	stores := initStores(db)
-	seedData(cfg, db, stores, enforcer)
-
 	transactor := store.NewTransactor(db)
 	permissionService := rbac.NewPermissionService(stores.userOrganization, enforcer)
 
 	svc := initServices(stores, cfg, transactor)
+	seedData(cfg, db, stores, enforcer, svc.governmentFunding, transactor)
 	mw := initMiddleware(stores, cfg, permissionService)
-	r := setupRouter(cfg, db, stores, svc, mw)
+	r := setupRouter(cfg, db, stores, svc, mw, transactor)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.ServerPort,
@@ -190,18 +189,20 @@ func initStores(db *gorm.DB) *appStores {
 	}
 }
 
-func seedData(cfg *config.Config, db *gorm.DB, s *appStores, enforcer *rbac.Enforcer) {
+func seedData(cfg *config.Config, db *gorm.DB, s *appStores, enforcer *rbac.Enforcer, fundingSvc *service.GovernmentFundingService, transactor store.Transactor) {
 	if err := seed.SeedAdmin(cfg, s.user, s.userOrganization, enforcer); err != nil {
 		slog.Error("Failed to seed admin user", "error", err)
 		os.Exit(1)
 	}
 
-	if err := seed.SeedGovernmentFunding(cfg, db, s.governmentFunding); err != nil {
+	fundingImporter := importer.NewGovernmentFundingImporter(fundingSvc, transactor)
+
+	if err := seed.SeedGovernmentFunding(cfg, fundingImporter); err != nil {
 		slog.Error("Failed to seed government funding", "error", err)
 		os.Exit(1)
 	}
 
-	if err := seed.SeedTestData(cfg, db, s.governmentFunding); err != nil {
+	if err := seed.SeedTestData(cfg, db, fundingImporter); err != nil {
 		slog.Error("Failed to seed test data", "error", err)
 		os.Exit(1)
 	}
@@ -243,7 +244,7 @@ func initMiddleware(s *appStores, cfg *config.Config, permissionService *rbac.Pe
 	}
 }
 
-func setupRouter(cfg *config.Config, db *gorm.DB, s *appStores, svc *appServices, mw *appMiddleware) *gin.Engine {
+func setupRouter(cfg *config.Config, db *gorm.DB, s *appStores, svc *appServices, mw *appMiddleware, transactor store.Transactor) *gin.Engine {
 	r := gin.New()
 
 	// Configure trusted proxies for accurate client IP detection
@@ -309,7 +310,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, s *appStores, svc *appServices
 		Employee:              handlers.NewEmployeeHandler(svc.employee, svc.audit),
 		Child:                 handlers.NewChildHandler(svc.child, svc.audit),
 		ChildStatistics:       handlers.NewChildStatisticsHandler(svc.child),
-		GovernmentFunding:     handlers.NewGovernmentFundingHandler(svc.governmentFunding, svc.audit, importer.NewGovernmentFundingImporter(db, s.governmentFunding)),
+		GovernmentFunding:     handlers.NewGovernmentFundingHandler(svc.governmentFunding, svc.audit, importer.NewGovernmentFundingImporter(svc.governmentFunding, transactor)),
 		PayPlan:               handlers.NewPayPlanHandler(svc.payPlan, svc.audit),
 		ChildAttendance:       handlers.NewChildAttendanceHandler(svc.childAttendance, svc.audit),
 		BudgetItem:            handlers.NewBudgetItemHandler(svc.budgetItem, svc.audit),
