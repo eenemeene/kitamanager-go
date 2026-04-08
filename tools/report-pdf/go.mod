@@ -1,6 +1,6 @@
 module github.com/eenemeene/kitamanager-go/tools/report-pdf
 
-go 1.25.8
+go 1.25.9
 
 require github.com/playwright-community/playwright-go v0.5001.0
 
