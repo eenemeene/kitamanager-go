@@ -14,6 +14,10 @@ jest.mock('@/lib/hooks/use-toast', () => ({
   useToast: () => ({ toast: jest.fn() }),
 }));
 
+jest.mock('@/components/charts/payplan-salary-chart', () => ({
+  PayPlanSalaryChart: () => <div data-testid="salary-chart" />,
+}));
+
 jest.mock('@/lib/api/client', () => ({
   apiClient: {
     getPayPlan: jest.fn(),

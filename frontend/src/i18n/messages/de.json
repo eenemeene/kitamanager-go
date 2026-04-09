@@ -567,7 +567,8 @@
     "exportYaml": "YAML Export",
     "importYaml": "YAML Import",
     "importing": "Wird importiert...",
-    "importError": "Fehler beim Importieren der Entgelttabelle"
+    "importError": "Fehler beim Importieren der Entgelttabelle",
+    "salaryChart": "Gehaltsentwicklung"
   },
   "upcomingChildren": {
     "title": "Bevorstehende Aufnahmen",

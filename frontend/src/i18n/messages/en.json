@@ -567,7 +567,8 @@
     "exportYaml": "Export YAML",
     "importYaml": "Import YAML",
     "importing": "Importing...",
-    "importError": "Failed to import pay plan"
+    "importError": "Failed to import pay plan",
+    "salaryChart": "Salary Over Time"
   },
   "upcomingChildren": {
     "title": "Upcoming Children",
