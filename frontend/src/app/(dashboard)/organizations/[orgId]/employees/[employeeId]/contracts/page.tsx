@@ -422,19 +422,26 @@ export default function EmployeeContractsPage() {
                   <ContractTimeline
                     contracts={sortedContracts}
                     renderSegmentContent={(contract) => (
-                      <div className="flex flex-wrap gap-1">
+                      <div className="space-y-1.5">
                         {contract.section_name && (
-                          <Badge variant="outline">{contract.section_name}</Badge>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-muted-foreground text-xs">
+                              {t('sections.title')}:
+                            </span>
+                            <Badge variant="outline">{contract.section_name}</Badge>
+                          </div>
                         )}
-                        <Badge variant="outline" className="text-xs">
-                          {t(`employees.staffCategory.${contract.staff_category}`)}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          {contract.grade} / {contract.step}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          {contract.weekly_hours}h
-                        </Badge>
+                        <div className="flex flex-wrap gap-1">
+                          <Badge variant="outline" className="text-xs">
+                            {t(`employees.staffCategory.${contract.staff_category}`)}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {contract.grade} / {contract.step}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {contract.weekly_hours}h
+                          </Badge>
+                        </div>
                       </div>
                     )}
                     onBoundaryChange={(updates) => batchUpdateMutation.mutateAsync({ updates })}

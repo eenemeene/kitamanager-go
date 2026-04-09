@@ -435,21 +435,28 @@ export default function ChildContractsPage() {
                   <ContractTimeline
                     contracts={sortedContracts}
                     renderSegmentContent={(contract) => (
-                      <div className="flex flex-wrap gap-1">
+                      <div className="space-y-1.5">
                         {contract.section_name && (
-                          <Badge variant="outline">{contract.section_name}</Badge>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-muted-foreground text-xs">
+                              {t('sections.title')}:
+                            </span>
+                            <Badge variant="outline">{contract.section_name}</Badge>
+                          </div>
                         )}
-                        {contract.properties &&
-                          Object.keys(contract.properties).length > 0 &&
-                          propertiesToLabelKeys(contract.properties as ContractProperties).map(
-                            (labelKey) => (
-                              <Badge key={labelKey} variant="outline" className="text-xs">
-                                {tLabels.has(labelKey)
-                                  ? tLabels(labelKey)
-                                  : labelKey.split('--').pop()}
-                              </Badge>
-                            )
-                          )}
+                        {contract.properties && Object.keys(contract.properties).length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {propertiesToLabelKeys(contract.properties as ContractProperties).map(
+                              (labelKey) => (
+                                <Badge key={labelKey} variant="outline" className="text-xs">
+                                  {tLabels.has(labelKey)
+                                    ? tLabels(labelKey)
+                                    : labelKey.split('--').pop()}
+                                </Badge>
+                              )
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
                     onBoundaryChange={(updates) => batchUpdateMutation.mutateAsync({ updates })}

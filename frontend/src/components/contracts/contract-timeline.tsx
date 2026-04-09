@@ -100,7 +100,7 @@ export function ContractTimeline<T extends BaseContract>({
                 </div>
                 <div
                   data-testid="timeline-gap"
-                  className="text-muted-foreground min-w-0 flex-1 py-1 text-center text-xs"
+                  className="text-muted-foreground max-w-lg min-w-0 flex-1 py-1 text-center text-xs"
                 >
                   {t('timeline.gap', { days: item.gapDays })}
                 </div>

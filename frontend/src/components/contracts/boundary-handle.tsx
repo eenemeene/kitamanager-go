@@ -56,7 +56,7 @@ export function BoundaryHandle({
         <div className="bg-primary/60 z-10 h-2 w-2 rounded-full ring-2 ring-white dark:ring-gray-950" />
       </div>
       {/* Handle */}
-      <div className="min-w-0 flex-1">
+      <div className="max-w-lg min-w-0 flex-1">
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <button
