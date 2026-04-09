@@ -13,7 +13,7 @@ import (
 
 // Validation errors
 var (
-	ErrInvalidJWTSecret  = errors.New("JWT_SECRET must be set and not use default value in production")
+	ErrInvalidJWTSecret  = errors.New("JWT_SECRET must be set and not use default value outside development")
 	ErrInvalidServerPort = errors.New("SERVER_PORT must be a valid port number (1-65535)")
 	ErrInvalidDBPort     = errors.New("DB_PORT must be a valid port number (1-65535)")
 	ErrInvalidLogLevel   = errors.New("LOG_LEVEL must be one of: debug, info, warn, error")
@@ -107,13 +107,13 @@ func (c *Config) IsDevelopment() bool {
 func (c *Config) Validate() error {
 	var errs []error
 
-	// JWT Secret validation - critical in production
+	// JWT Secret validation - reject default/empty secret in all environments except development
 	if c.JWTSecret == "default-secret-key" || c.JWTSecret == "" {
-		if c.IsProduction() {
+		if c.Environment != "development" {
 			errs = append(errs, ErrInvalidJWTSecret)
 		}
 	}
-	if len(c.JWTSecret) < 32 && c.IsProduction() {
+	if len(c.JWTSecret) < 32 && c.Environment != "development" {
 		errs = append(errs, fmt.Errorf("JWT_SECRET should be at least 32 characters for security"))
 	}
 
