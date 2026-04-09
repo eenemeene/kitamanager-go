@@ -95,6 +95,49 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
       .filter((series) => series.data.length > 0);
   }, [allGrades, sortedPeriods, selectedStep, periodLabels]);
 
+  // Custom layer that renders % change labels between consecutive data points
+  const PercentChangeLayer = useMemo(() => {
+    return function PercentChangeLabels({
+      series,
+    }: {
+      series: {
+        id: string;
+        color: string;
+        data: { position: { x: number; y: number }; data: { y: number } }[];
+      }[];
+    }) {
+      return (
+        <g>
+          {series.map((s) =>
+            s.data.slice(1).map((point, i) => {
+              const prev = s.data[i];
+              const prevY = prev.data.y;
+              const curY = point.data.y;
+              if (prevY === 0) return null;
+              const pct = ((curY - prevY) / prevY) * 100;
+              const midX = (prev.position.x + point.position.x) / 2;
+              const midY = (prev.position.y + point.position.y) / 2;
+              return (
+                <text
+                  key={`${s.id}-${i}`}
+                  x={midX}
+                  y={midY - 8}
+                  textAnchor="middle"
+                  fontSize={10}
+                  fontWeight={600}
+                  fill={pct >= 0 ? '#22c55e' : '#ef4444'}
+                >
+                  {pct >= 0 ? '+' : ''}
+                  {pct.toFixed(1)}%
+                </text>
+              );
+            })
+          )}
+        </g>
+      );
+    };
+  }, []);
+
   if (sortedPeriods.length < 2 || allGrades.length === 0) {
     return null;
   }
@@ -125,6 +168,19 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
           margin={{ top: 20, right: 120, bottom: 60, left: 80 }}
           xScale={{ type: 'point' }}
           yScale={{ type: 'linear', min: 'auto', max: 'auto' }}
+          layers={[
+            'grid',
+            'markers',
+            'axes',
+            'areas',
+            'crosshair',
+            'lines',
+            'points',
+            PercentChangeLayer as any,
+            'slices',
+            'mesh',
+            'legends',
+          ]}
           curve="monotoneX"
           axisTop={null}
           axisRight={null}
