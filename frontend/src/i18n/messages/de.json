@@ -660,6 +660,16 @@
     "checkedIn": "Eingecheckt",
     "checkedOut": "Ausgecheckt"
   },
+  "timeline": {
+    "title": "Zeitstrahl",
+    "tableView": "Tabelle",
+    "timelineView": "Zeitstrahl",
+    "clickToAdjust": "Klicken, um das Grenzdatum anzupassen",
+    "boundaryUpdated": "Vertragsgrenze aktualisiert",
+    "boundaryUpdateFailed": "Vertragsgrenze konnte nicht aktualisiert werden",
+    "gap": "Lucke ({days} Tage)",
+    "noContracts": "Keine Vertrage vorhanden"
+  },
   "fundingLabels": {
     "care_type--ganztag erweitert": "Ganztag Erweitert (>9h)",
     "care_type--ganztag": "Ganztag (bis 9h)",
