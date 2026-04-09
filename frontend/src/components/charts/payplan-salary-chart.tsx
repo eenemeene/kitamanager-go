@@ -95,7 +95,7 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
       .filter((series) => series.data.length > 0);
   }, [allGrades, sortedPeriods, selectedStep, periodLabels]);
 
-  // Custom layer that renders % change labels between consecutive data points
+  // Custom layer that renders ▲/▼ arrows with % change between consecutive data points
   const PercentChangeLayer = useMemo(() => {
     return function PercentChangeLabels({
       series,
@@ -117,19 +117,34 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
               const pct = ((curY - prevY) / prevY) * 100;
               const midX = (prev.position.x + point.position.x) / 2;
               const midY = (prev.position.y + point.position.y) / 2;
+              const isUp = pct >= 0;
+              const color = isUp ? '#16a34a' : '#dc2626';
+              const arrow = isUp ? '\u25B2' : '\u25BC';
+              const offsetY = isUp ? 14 : -14;
               return (
-                <text
-                  key={`${s.id}-${i}`}
-                  x={midX}
-                  y={midY - 8}
-                  textAnchor="middle"
-                  fontSize={10}
-                  fontWeight={600}
-                  fill={pct >= 0 ? '#22c55e' : '#ef4444'}
-                >
-                  {pct >= 0 ? '+' : ''}
-                  {pct.toFixed(1)}%
-                </text>
+                <g key={`${s.id}-${i}`}>
+                  <text
+                    x={midX}
+                    y={midY + offsetY - 6}
+                    textAnchor="middle"
+                    fontSize={9}
+                    fill={color}
+                    fontWeight={600}
+                  >
+                    {arrow}
+                  </text>
+                  <text
+                    x={midX}
+                    y={midY + offsetY + 8}
+                    textAnchor="middle"
+                    fontSize={10}
+                    fill={color}
+                    fontWeight={600}
+                  >
+                    {isUp ? '+' : ''}
+                    {pct.toFixed(1)}%
+                  </text>
+                </g>
               );
             })
           )}
