@@ -27,7 +27,7 @@ Perform a thorough security review of the code indicated by the user (or, if no 
 ### 1. Authentication & Session Security
 
 - [ ] **All non-public routes** are behind `AuthMiddleware`. Check `internal/routes/routes.go` — no handler group is missing the middleware.
-- [ ] **JWT not stored in localStorage** — frontend must use httpOnly cookies or memory only. Flag any use of `localStorage.setItem` / `sessionStorage.setItem` with tokens in `frontend/src/stores/auth.ts` or `frontend/src/lib/api/client.ts`.
+- [ ] **JWT not stored in localStorage** — frontend must use httpOnly cookies or memory only. Flag any use of `localStorage.setItem` / `sessionStorage.setItem` with tokens in `frontend/src/stores/auth-store.ts` or `frontend/src/lib/api/client.ts`.
 - [ ] **Token expiry** — access tokens should be short-lived (15 min target). Flag if `ExpiresAt` is set to > 1 hour in `internal/handlers/auth.go`.
 - [ ] **Refresh token flow** — check if refresh tokens are properly rotated and invalidated on logout.
 - [ ] **Password validation** — minimum 8 chars, max 72 chars (bcrypt limit). Check `internal/handlers/auth.go` and relevant DTOs.
