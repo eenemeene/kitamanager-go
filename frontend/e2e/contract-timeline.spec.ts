@@ -240,6 +240,133 @@ test.describe('Child Contract Timeline', () => {
       await deleteChildViaApi(page, orgId, child.id);
     }
   });
+
+  test('empty timeline shows no-contracts message', async ({ page }) => {
+    const child = await createChildViaApi(page, orgId, {
+      first_name: uniqueName('TLEmpty'),
+      last_name: 'Test',
+      birthdate: '2020-01-01',
+      gender: 'male',
+    });
+
+    try {
+      await page.goto(`/organizations/${orgId}/children/${child.id}/contracts`);
+      await page.waitForLoadState('networkidle');
+
+      await page.getByRole('tab', { name: /Timeline/i }).click();
+      await expect(page.getByTestId('timeline-empty')).toBeVisible({ timeout: 5000 });
+    } finally {
+      await deleteChildViaApi(page, orgId, child.id);
+    }
+  });
+
+  test('segments show status badges', async ({ page }) => {
+    const child = await createChildViaApi(page, orgId, {
+      first_name: uniqueName('TLStatus'),
+      last_name: 'Test',
+      birthdate: '2020-01-01',
+      gender: 'female',
+    });
+
+    try {
+      // Create an ended contract (past dates)
+      await createChildContractViaApi(page, orgId, child.id, {
+        from: '2020-01-01T00:00:00Z',
+        to: '2020-12-31T00:00:00Z',
+        section_id: defaultSectionId,
+      });
+
+      await page.goto(`/organizations/${orgId}/children/${child.id}/contracts`);
+      await page.waitForLoadState('networkidle');
+
+      await page.getByRole('tab', { name: /Timeline/i }).click();
+      await expect(page.getByTestId('contract-timeline')).toBeVisible({ timeout: 5000 });
+
+      // The segment should show the "Ended" status badge
+      const segment = page.getByTestId('timeline-segment');
+      await expect(segment).toBeVisible();
+      await expect(segment.getByText('Ended')).toBeVisible();
+    } finally {
+      await deleteChildViaApi(page, orgId, child.id);
+    }
+  });
+
+  test('three adjacent contracts show two boundary handles', async ({ page }) => {
+    const child = await createChildViaApi(page, orgId, {
+      first_name: uniqueName('TL3Adj'),
+      last_name: 'Test',
+      birthdate: '2020-01-01',
+      gender: 'diverse',
+    });
+
+    try {
+      await createChildContractViaApi(page, orgId, child.id, {
+        from: '2024-01-01T00:00:00Z',
+        to: '2024-04-30T00:00:00Z',
+        section_id: defaultSectionId,
+      });
+      await createChildContractViaApi(page, orgId, child.id, {
+        from: '2024-05-01T00:00:00Z',
+        to: '2024-08-31T00:00:00Z',
+        section_id: defaultSectionId,
+      });
+      await createChildContractViaApi(page, orgId, child.id, {
+        from: '2024-09-01T00:00:00Z',
+        to: '2024-12-31T00:00:00Z',
+        section_id: defaultSectionId,
+      });
+
+      await page.goto(`/organizations/${orgId}/children/${child.id}/contracts`);
+      await page.waitForLoadState('networkidle');
+
+      await page.getByRole('tab', { name: /Timeline/i }).click();
+      await expect(page.getByTestId('contract-timeline')).toBeVisible({ timeout: 5000 });
+
+      expect(await page.getByTestId('timeline-segment').count()).toBe(3);
+      expect(await page.getByTestId('boundary-handle').count()).toBe(2);
+    } finally {
+      await deleteChildViaApi(page, orgId, child.id);
+    }
+  });
+
+  test('switching between table and timeline tabs preserves data', async ({ page }) => {
+    const child = await createChildViaApi(page, orgId, {
+      first_name: uniqueName('TLSwitch'),
+      last_name: 'Test',
+      birthdate: '2020-01-01',
+      gender: 'male',
+    });
+
+    try {
+      await createChildContractViaApi(page, orgId, child.id, {
+        from: '2024-01-01T00:00:00Z',
+        to: '2024-06-30T00:00:00Z',
+        section_id: defaultSectionId,
+      });
+      await createChildContractViaApi(page, orgId, child.id, {
+        from: '2024-07-01T00:00:00Z',
+        to: '2024-12-31T00:00:00Z',
+        section_id: defaultSectionId,
+      });
+
+      await page.goto(`/organizations/${orgId}/children/${child.id}/contracts`);
+      await page.waitForLoadState('networkidle');
+
+      // Table tab should show 2 rows
+      const tableRows = page.locator('table tbody tr');
+      expect(await tableRows.count()).toBe(2);
+
+      // Switch to Timeline
+      await page.getByRole('tab', { name: /Timeline/i }).click();
+      expect(await page.getByTestId('timeline-segment').count()).toBe(2);
+
+      // Switch back to Table
+      await page.getByRole('tab', { name: /Table/i }).click();
+      expect(await tableRows.count()).toBe(2);
+    } finally {
+      await deleteChildViaApi(page, orgId, child.id);
+    }
+  });
 });
 
 test.describe('Employee Contract Timeline', () => {
