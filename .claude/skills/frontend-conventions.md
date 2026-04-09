@@ -9,7 +9,7 @@
 
 ## Tech Stack
 
-- **Framework**: Next.js 14 (App Router) with TypeScript
+- **Framework**: Next.js 16 (App Router) with TypeScript
 - **UI Components**: shadcn/ui (Radix UI primitives + Tailwind CSS)
 - **State Management**: Zustand (client stores), TanStack React Query (server state)
 - **Forms**: React Hook Form + Zod validation
