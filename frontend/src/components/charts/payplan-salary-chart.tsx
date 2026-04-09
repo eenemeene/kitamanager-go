@@ -145,37 +145,63 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
           pointBorderColor={{ theme: 'background' }}
           useMesh={true}
           enableSlices="x"
-          sliceTooltip={({ slice }) => (
-            <div
-              style={{
-                background: 'hsl(var(--background))',
-                color: 'hsl(var(--foreground))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '6px',
-                padding: '9px 12px',
-                fontSize: 13,
-              }}
-            >
-              <strong>{slice.points[0].data.xFormatted}</strong>
-              {slice.points.map((point) => (
-                <div
-                  key={point.id}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}
-                >
-                  <span
-                    style={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: '50%',
-                      background: point.seriesColor,
-                      display: 'inline-block',
-                    }}
-                  />
-                  {point.seriesId}: {formatCurrency(Number(point.data.yFormatted) * 100)}
-                </div>
-              ))}
-            </div>
-          )}
+          sliceTooltip={({ slice }) => {
+            // Find current x-index to compute % change from previous period
+            const currentX = slice.points[0].data.xFormatted as string;
+            return (
+              <div
+                style={{
+                  background: 'hsl(var(--background))',
+                  color: 'hsl(var(--foreground))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '6px',
+                  padding: '9px 12px',
+                  fontSize: 13,
+                }}
+              >
+                <strong>{currentX}</strong>
+                {slice.points.map((point) => {
+                  const series = chartData.find((s) => s.id === point.seriesId);
+                  const pointIdx = series?.data.findIndex((d) => d.x === currentX) ?? -1;
+                  const prevValue = pointIdx > 0 ? series?.data[pointIdx - 1]?.y : undefined;
+                  const currentValue = Number(point.data.yFormatted);
+                  const pctChange =
+                    prevValue != null && prevValue > 0
+                      ? ((currentValue - prevValue) / prevValue) * 100
+                      : undefined;
+                  return (
+                    <div
+                      key={point.id}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}
+                    >
+                      <span
+                        style={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: '50%',
+                          background: point.seriesColor,
+                          display: 'inline-block',
+                        }}
+                      />
+                      {point.seriesId}: {formatCurrency(currentValue * 100)}
+                      {pctChange != null && (
+                        <span
+                          style={{
+                            color: pctChange >= 0 ? '#22c55e' : '#ef4444',
+                            fontWeight: 600,
+                            marginLeft: 4,
+                          }}
+                        >
+                          {pctChange >= 0 ? '+' : ''}
+                          {pctChange.toFixed(1)}%
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          }}
           legends={[
             {
               anchor: 'right',

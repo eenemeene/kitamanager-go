@@ -70,9 +70,9 @@ describe('PayPlanGrid', () => {
     expect(screen.getByText('S8a')).toBeInTheDocument();
     expect(screen.getByText('S3')).toBeInTheDocument();
 
-    // Steps should appear in header
-    expect(screen.getByText('1')).toBeInTheDocument();
-    expect(screen.getByText('2')).toBeInTheDocument();
+    // Steps should appear in header (prefixed with translated "step" key)
+    expect(screen.getByText(/payPlans\.step 1/)).toBeInTheDocument();
+    expect(screen.getByText(/payPlans\.step 2/)).toBeInTheDocument();
   });
 
   it('renders formatted currency amounts', () => {
