@@ -106,66 +106,6 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
       .filter((series) => series.data.length > 0);
   }, [allGrades, sortedPeriods, selectedStep, periodLabels]);
 
-  // Custom layer: per-line ▲/▼ arrows with % change between consecutive data points
-  const PercentChangeLayer = useMemo(() => {
-    return function PercentChangeLabels({
-      series,
-    }: {
-      series: {
-        id: string;
-        color: string;
-        data: { position: { x: number; y: number }; data: { y: number } }[];
-      }[];
-    }) {
-      return (
-        <g>
-          {series.map((s, seriesIdx) =>
-            s.data.slice(1).map((point, i) => {
-              const prev = s.data[i];
-              const prevY = prev.data.y;
-              const curY = point.data.y;
-              if (prevY === 0) return null;
-              const pct = ((curY - prevY) / prevY) * 100;
-              const midX = (prev.position.x + point.position.x) / 2;
-              const midY = (prev.position.y + point.position.y) / 2;
-              // Alternate left/right offset per series to reduce overlap
-              const xOffset = seriesIdx % 2 === 0 ? -20 : 20;
-              const isUp = pct >= 0;
-              const color = isUp ? '#16a34a' : '#dc2626';
-              const arrow = isUp ? '\u25B2' : '\u25BC';
-              const offsetY = isUp ? 14 : -14;
-              return (
-                <g key={`${s.id}-${i}`}>
-                  <text
-                    x={midX + xOffset}
-                    y={midY + offsetY - 6}
-                    textAnchor="middle"
-                    fontSize={9}
-                    fill={color}
-                    fontWeight={600}
-                  >
-                    {arrow}
-                  </text>
-                  <text
-                    x={midX + xOffset}
-                    y={midY + offsetY + 8}
-                    textAnchor="middle"
-                    fontSize={10}
-                    fill={color}
-                    fontWeight={600}
-                  >
-                    {isUp ? '+' : ''}
-                    {pct.toFixed(1)}%
-                  </text>
-                </g>
-              );
-            })
-          )}
-        </g>
-      );
-    };
-  }, []);
-
   if (sortedPeriods.length < 2 || allGrades.length === 0) {
     return null;
   }
@@ -190,7 +130,7 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
           </Select>
         </div>
       </div>
-      <ExportableChart filename={`payplan-salary-step-${selectedStep}`} className="h-[600px]">
+      <ExportableChart filename={`payplan-salary-step-${selectedStep}`} className="h-[400px]">
         <ResponsiveLine
           data={chartData}
           margin={{ top: 20, right: 120, bottom: 60, left: 80 }}
@@ -204,7 +144,6 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
             'crosshair',
             'lines',
             'points',
-            PercentChangeLayer as any,
             'slices',
             'mesh',
             'legends',
