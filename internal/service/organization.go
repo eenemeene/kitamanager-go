@@ -121,6 +121,9 @@ func (s *OrganizationService) Create(ctx context.Context, req *models.Organizati
 
 	// Create organization and default section in a single transaction
 	if err := s.store.CreateWithDefaultSection(ctx, org, defaultSection); err != nil {
+		if store.IsDuplicateKeyError(err) {
+			return nil, apperror.Conflict("organization with this name already exists")
+		}
 		return nil, apperror.InternalWrap(err, "failed to create organization")
 	}
 

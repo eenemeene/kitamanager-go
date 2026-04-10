@@ -480,6 +480,38 @@ func TestOrganizationService_Create_EmptyState(t *testing.T) {
 	}
 }
 
+func TestOrganizationService_Create_DuplicateName(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createOrganizationService(db)
+	ctx := context.Background()
+
+	req := &models.OrganizationCreateRequest{
+		Name:               "Duplicate Org",
+		Active:             true,
+		State:              "berlin",
+		DefaultSectionName: "Default",
+	}
+
+	_, err := svc.Create(ctx, req, "test@example.com")
+	if err != nil {
+		t.Fatalf("expected no error on first create, got %v", err)
+	}
+
+	// Creating a second org with the same name should return 409 Conflict
+	_, err = svc.Create(ctx, req, "test@example.com")
+	if err == nil {
+		t.Fatal("expected error for duplicate name, got nil")
+	}
+
+	var appErr *apperror.AppError
+	if !errors.As(err, &appErr) {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if !errors.Is(err, apperror.ErrConflict) {
+		t.Errorf("expected ErrConflict, got %v", err)
+	}
+}
+
 func TestOrganizationService_Update_State(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createOrganizationService(db)
