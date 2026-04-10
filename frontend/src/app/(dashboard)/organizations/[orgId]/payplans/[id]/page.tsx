@@ -56,6 +56,7 @@ import {
   eurosToCents,
 } from '@/lib/utils/formatting';
 import { PayPlanGrid } from '@/components/payplans/payplan-grid';
+import { PayPlanSalaryChart } from '@/components/charts/payplan-salary-chart';
 import {
   payPlanPeriodSchema,
   payPlanEntrySchema,
@@ -403,6 +404,14 @@ export default function PayPlanDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {payPlan.periods && payPlan.periods.length >= 2 && (
+        <Card>
+          <CardContent className="pt-6">
+            <PayPlanSalaryChart periods={payPlan.periods} />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Period Dialog */}
       <Dialog open={isPeriodDialogOpen} onOpenChange={setIsPeriodDialogOpen}>

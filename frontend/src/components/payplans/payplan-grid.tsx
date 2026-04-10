@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { useTranslations } from 'next-intl';
 import type { PayPlanPeriod } from '@/lib/api/types';
 import { formatCurrency } from '@/lib/utils/formatting';
 
@@ -22,6 +23,7 @@ interface PayPlanGridProps {
 }
 
 export function PayPlanGrid({ period }: PayPlanGridProps) {
+  const t = useTranslations();
   const entries = period.entries ?? [];
 
   const grades = Array.from(new Set(entries.map((e) => e.grade))).sort((a, b) => {
@@ -53,12 +55,12 @@ export function PayPlanGrid({ period }: PayPlanGridProps) {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead />
+          <TableHead>{t('payPlans.grade')}</TableHead>
           {steps.map((step, i) => (
             <React.Fragment key={step}>
               {i > 0 && <TableHead />}
               <TableHead className="text-right">
-                {step}
+                {t('payPlans.step')} {step}
                 {stepMinYearsMap.get(step) != null && (
                   <span className="text-muted-foreground ml-1 text-xs">
                     ({stepMinYearsMap.get(step)}y)
