@@ -76,35 +76,26 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
     [periods]
   );
 
-  // Build x-axis labels from period start dates
-  const periodLabels = useMemo(
-    () =>
-      sortedPeriods.map((p) => {
-        const d = new Date(p.from);
-        return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-      }),
-    [sortedPeriods]
-  );
-
   // Build chart data: one series per grade, filtered by selected step
+  // Use ISO date strings as x values for proper chronological ordering
   const chartData = useMemo(() => {
     return allGrades
       .map((grade, idx) => ({
         id: grade,
         color: GRADE_COLORS[idx % GRADE_COLORS.length],
         data: sortedPeriods
-          .map((period, periodIdx) => {
+          .map((period) => {
             const entry = period.entries?.find((e) => e.grade === grade && e.step === selectedStep);
             if (!entry) return null;
             return {
-              x: periodLabels[periodIdx],
+              x: new Date(period.from),
               y: entry.monthly_amount / 100, // cents to EUR
             };
           })
-          .filter((d): d is { x: string; y: number } => d !== null),
+          .filter((d): d is { x: Date; y: number } => d !== null),
       }))
       .filter((series) => series.data.length > 0);
-  }, [allGrades, sortedPeriods, selectedStep, periodLabels]);
+  }, [allGrades, sortedPeriods, selectedStep]);
 
   if (sortedPeriods.length < 2 || allGrades.length === 0) {
     return null;
@@ -134,7 +125,7 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
         <ResponsiveLine
           data={chartData}
           margin={{ top: 20, right: 120, bottom: 60, left: 80 }}
-          xScale={{ type: 'point' }}
+          xScale={{ type: 'time', useUTC: false }}
           yScale={{ type: 'linear', min: 'auto', max: 'auto' }}
           layers={[
             'grid',
@@ -151,10 +142,12 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
           curve="monotoneX"
           axisTop={null}
           axisRight={null}
+          xFormat="time:%b %Y"
           axisBottom={{
             tickSize: 5,
             tickPadding: 5,
             tickRotation: -30,
+            format: '%b %Y',
           }}
           axisLeft={{
             tickSize: 5,
@@ -169,8 +162,8 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
           useMesh={true}
           enableSlices="x"
           sliceTooltip={({ slice }) => {
-            // Find current x-index to compute % change from previous period
             const currentX = slice.points[0].data.xFormatted as string;
+            const currentXTime = (slice.points[0].data.x as Date).getTime();
             return (
               <div
                 style={{
@@ -185,7 +178,8 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
                 <strong>{currentX}</strong>
                 {slice.points.map((point) => {
                   const series = chartData.find((s) => s.id === point.seriesId);
-                  const pointIdx = series?.data.findIndex((d) => d.x === currentX) ?? -1;
+                  const pointIdx =
+                    series?.data.findIndex((d) => d.x.getTime() === currentXTime) ?? -1;
                   const prevValue = pointIdx > 0 ? series?.data[pointIdx - 1]?.y : undefined;
                   const currentValue = Number(point.data.yFormatted);
                   const pctChange =
