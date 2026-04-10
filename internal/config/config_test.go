@@ -229,6 +229,30 @@ func TestConfig_Validate(t *testing.T) {
 		}
 	})
 
+	t.Run("fails validation in staging with default JWT secret", func(t *testing.T) {
+		cfg := &Config{
+			DBHost:           "localhost",
+			DBPort:           "5432",
+			DBUser:           "user",
+			DBPassword:       "pass",
+			DBName:           "db",
+			ServerPort:       "8080",
+			JWTSecret:        "default-secret-key",
+			LogLevel:         "info",
+			LogFormat:        "json",
+			Environment:      "staging",
+			CORSAllowOrigins: []string{"https://staging.example.com"},
+			SMTPHost:         "smtp.example.com",
+			SMTPPort:         587,
+			SMTPFrom:         "noreply@example.com",
+		}
+
+		err := cfg.Validate()
+		if err == nil {
+			t.Error("Validate() error = nil, want error for default JWT secret in staging")
+		}
+	})
+
 	t.Run("fails validation with invalid server port", func(t *testing.T) {
 		cfg := &Config{
 			DBHost:           "localhost",
