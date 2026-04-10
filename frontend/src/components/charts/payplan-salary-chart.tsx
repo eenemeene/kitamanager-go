@@ -19,6 +19,12 @@ interface PayPlanSalaryChartProps {
   periods: PayPlanPeriod[];
 }
 
+/** Parse grade string into [number, suffix] for natural sorting (e.g. "S8a" → [8, "a"]) */
+function parseGrade(g: string): [number, string] {
+  const match = g.match(/^[A-Za-z]*(\d+)(.*)$/);
+  return match ? [parseInt(match[1]), match[2]] : [0, g];
+}
+
 /** A distinct color palette for up to 15 grade lines. */
 const GRADE_COLORS = [
   '#3b82f6', // blue
@@ -53,7 +59,12 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
     }
     return {
       allSteps: Array.from(stepSet).sort((a, b) => a - b),
-      allGrades: Array.from(gradeSet).sort(),
+      allGrades: Array.from(gradeSet).sort((a, b) => {
+        const [numA, suffA] = parseGrade(a);
+        const [numB, suffB] = parseGrade(b);
+        if (numA !== numB) return numA - numB;
+        return suffA.localeCompare(suffB);
+      }),
     };
   }, [periods]);
 
@@ -95,7 +106,7 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
       .filter((series) => series.data.length > 0);
   }, [allGrades, sortedPeriods, selectedStep, periodLabels]);
 
-  // Custom layer that renders ▲/▼ arrows with % change between consecutive data points
+  // Custom layer: per-line ▲/▼ arrows with % change between consecutive data points
   const PercentChangeLayer = useMemo(() => {
     return function PercentChangeLabels({
       series,
@@ -108,7 +119,7 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
     }) {
       return (
         <g>
-          {series.map((s) =>
+          {series.map((s, seriesIdx) =>
             s.data.slice(1).map((point, i) => {
               const prev = s.data[i];
               const prevY = prev.data.y;
@@ -117,6 +128,8 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
               const pct = ((curY - prevY) / prevY) * 100;
               const midX = (prev.position.x + point.position.x) / 2;
               const midY = (prev.position.y + point.position.y) / 2;
+              // Alternate left/right offset per series to reduce overlap
+              const xOffset = seriesIdx % 2 === 0 ? -20 : 20;
               const isUp = pct >= 0;
               const color = isUp ? '#16a34a' : '#dc2626';
               const arrow = isUp ? '\u25B2' : '\u25BC';
@@ -124,7 +137,7 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
               return (
                 <g key={`${s.id}-${i}`}>
                   <text
-                    x={midX}
+                    x={midX + xOffset}
                     y={midY + offsetY - 6}
                     textAnchor="middle"
                     fontSize={9}
@@ -134,7 +147,7 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
                     {arrow}
                   </text>
                   <text
-                    x={midX}
+                    x={midX + xOffset}
                     y={midY + offsetY + 8}
                     textAnchor="middle"
                     fontSize={10}
@@ -177,7 +190,7 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
           </Select>
         </div>
       </div>
-      <ExportableChart filename={`payplan-salary-step-${selectedStep}`} className="h-[350px]">
+      <ExportableChart filename={`payplan-salary-step-${selectedStep}`} className="h-[600px]">
         <ResponsiveLine
           data={chartData}
           margin={{ top: 20, right: 120, bottom: 60, left: 80 }}

@@ -55,9 +55,9 @@ describe('PayPlanSalaryChart', () => {
     render(<PayPlanSalaryChart periods={periods} />);
 
     expect(screen.getByTestId('line-chart')).toBeInTheDocument();
-    // Default step is 1, so we should see S8a and S11b
+    // Default step is 1, so we should see S8a and S11b (numerically sorted)
     expect(screen.getByTestId('series-count')).toHaveTextContent('2');
-    expect(screen.getByTestId('series-ids')).toHaveTextContent('S11b,S8a');
+    expect(screen.getByTestId('series-ids')).toHaveTextContent('S8a,S11b');
   });
 
   it('renders step selector with all available steps', () => {
