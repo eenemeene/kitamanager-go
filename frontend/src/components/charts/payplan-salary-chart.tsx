@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { ResponsiveLine } from '@nivo/line';
+import { ResponsiveBar } from '@nivo/bar';
 import { ExportableChart } from './exportable-chart';
 import { chartTheme } from './chart-utils';
 import {
@@ -25,7 +25,7 @@ function parseGrade(g: string): [number, string] {
   return match ? [parseInt(match[1]), match[2]] : [0, g];
 }
 
-/** A distinct color palette for up to 15 grade lines. */
+/** A distinct color palette for up to 15 grade bars. */
 const GRADE_COLORS = [
   '#3b82f6', // blue
   '#ef4444', // red
@@ -76,28 +76,36 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
     [periods]
   );
 
-  // Build chart data: one series per grade, filtered by selected step
-  // Use ISO date strings as x values for proper chronological ordering
-  const chartData = useMemo(() => {
-    return allGrades
-      .map((grade, idx) => ({
-        id: grade,
-        color: GRADE_COLORS[idx % GRADE_COLORS.length],
-        data: sortedPeriods
-          .map((period) => {
-            const entry = period.entries?.find((e) => e.grade === grade && e.step === selectedStep);
-            if (!entry) return null;
-            return {
-              x: new Date(period.from),
-              y: entry.monthly_amount / 100, // cents to EUR
-            };
-          })
-          .filter((d): d is { x: Date; y: number } => d !== null),
-      }))
-      .filter((series) => series.data.length > 0);
+  // Build bar chart data: one object per period, with a key per grade
+  const { barData, gradeColorMap } = useMemo(() => {
+    const colorMap: Record<string, string> = {};
+    allGrades.forEach((grade, idx) => {
+      colorMap[grade] = GRADE_COLORS[idx % GRADE_COLORS.length];
+    });
+
+    const data = sortedPeriods.map((period) => {
+      const d = new Date(period.from);
+      const label = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      const row: Record<string, string | number> = { period: label };
+      for (const grade of allGrades) {
+        const entry = period.entries?.find((e) => e.grade === grade && e.step === selectedStep);
+        if (entry) {
+          row[grade] = entry.monthly_amount / 100; // cents to EUR
+        }
+      }
+      return row;
+    });
+
+    return { barData: data, gradeColorMap: colorMap };
   }, [allGrades, sortedPeriods, selectedStep]);
 
-  if (sortedPeriods.length < 2 || allGrades.length === 0) {
+  // Compute which grades actually have data for the selected step
+  const activeGrades = useMemo(
+    () => allGrades.filter((grade) => barData.some((row) => row[grade] !== undefined)),
+    [allGrades, barData]
+  );
+
+  if (sortedPeriods.length < 2 || activeGrades.length === 0) {
     return null;
   }
 
@@ -121,49 +129,40 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
           </Select>
         </div>
       </div>
-      <ExportableChart filename={`payplan-salary-step-${selectedStep}`} className="h-[400px]">
-        <ResponsiveLine
-          data={chartData}
-          margin={{ top: 20, right: 120, bottom: 60, left: 80 }}
-          xScale={{ type: 'time', useUTC: false }}
-          yScale={{ type: 'linear', min: 'auto', max: 'auto' }}
-          layers={[
-            'grid',
-            'markers',
-            'axes',
-            'areas',
-            'crosshair',
-            'lines',
-            'points',
-            'slices',
-            'mesh',
-            'legends',
-          ]}
-          curve="monotoneX"
+      <ExportableChart filename={`payplan-salary-step-${selectedStep}`} className="h-[600px]">
+        <ResponsiveBar
+          data={barData}
+          keys={activeGrades}
+          indexBy="period"
+          groupMode="grouped"
+          margin={{ top: 20, right: 130, bottom: 60, left: 80 }}
+          padding={0.15}
+          innerPadding={1}
+          enableLabel={false}
+          valueScale={{ type: 'linear' }}
+          indexScale={{ type: 'band', round: true }}
+          colors={(bar) => gradeColorMap[bar.id as string] ?? '#888'}
           axisTop={null}
           axisRight={null}
-          xFormat="time:%b %Y"
           axisBottom={{
             tickSize: 5,
             tickPadding: 5,
             tickRotation: -30,
-            format: '%b %Y',
           }}
           axisLeft={{
             tickSize: 5,
             tickPadding: 5,
             format: (v) => formatCurrency(Number(v) * 100),
           }}
-          colors={chartData.map((s) => s.color)}
-          pointSize={8}
-          pointColor={{ from: 'series.color' }}
-          pointBorderWidth={2}
-          pointBorderColor={{ theme: 'background' }}
-          useMesh={true}
-          enableSlices="x"
-          sliceTooltip={({ slice }) => {
-            const currentX = slice.points[0].data.xFormatted as string;
-            const currentXTime = (slice.points[0].data.x as Date).getTime();
+          tooltip={({ id, value, indexValue }) => {
+            // Find previous period value for % change
+            const periodIdx = barData.findIndex((row) => row.period === indexValue);
+            const prevValue =
+              periodIdx > 0 ? (barData[periodIdx - 1][id] as number | undefined) : undefined;
+            const pctChange =
+              prevValue != null && prevValue > 0
+                ? ((value - prevValue) / prevValue) * 100
+                : undefined;
             return (
               <div
                 style={{
@@ -175,56 +174,41 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
                   fontSize: 13,
                 }}
               >
-                <strong>{currentX}</strong>
-                {slice.points.map((point) => {
-                  const series = chartData.find((s) => s.id === point.seriesId);
-                  const pointIdx =
-                    series?.data.findIndex((d) => d.x.getTime() === currentXTime) ?? -1;
-                  const prevValue = pointIdx > 0 ? series?.data[pointIdx - 1]?.y : undefined;
-                  const currentValue = Number(point.data.yFormatted);
-                  const pctChange =
-                    prevValue != null && prevValue > 0
-                      ? ((currentValue - prevValue) / prevValue) * 100
-                      : undefined;
-                  return (
-                    <div
-                      key={point.id}
-                      style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}
+                <strong>{indexValue}</strong>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                  <span
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: '50%',
+                      background: gradeColorMap[id as string],
+                      display: 'inline-block',
+                    }}
+                  />
+                  {id}: {formatCurrency(value * 100)}
+                  {pctChange != null && (
+                    <span
+                      style={{
+                        color: pctChange >= 0 ? '#22c55e' : '#ef4444',
+                        fontWeight: 600,
+                        marginLeft: 4,
+                      }}
                     >
-                      <span
-                        style={{
-                          width: 10,
-                          height: 10,
-                          borderRadius: '50%',
-                          background: point.seriesColor,
-                          display: 'inline-block',
-                        }}
-                      />
-                      {point.seriesId}: {formatCurrency(currentValue * 100)}
-                      {pctChange != null && (
-                        <span
-                          style={{
-                            color: pctChange >= 0 ? '#22c55e' : '#ef4444',
-                            fontWeight: 600,
-                            marginLeft: 4,
-                          }}
-                        >
-                          {pctChange >= 0 ? '+' : ''}
-                          {pctChange.toFixed(1)}%
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
+                      {pctChange >= 0 ? '+' : ''}
+                      {pctChange.toFixed(1)}%
+                    </span>
+                  )}
+                </div>
               </div>
             );
           }}
           legends={[
             {
+              dataFrom: 'keys',
               anchor: 'right',
               direction: 'column',
               justify: false,
-              translateX: 110,
+              translateX: 120,
               translateY: 0,
               itemsSpacing: 2,
               itemDirection: 'left-to-right',

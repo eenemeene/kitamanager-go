@@ -6,11 +6,12 @@ jest.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
 }));
 
-jest.mock('@nivo/line', () => ({
-  ResponsiveLine: ({ data }: { data: { id: string; data: unknown[] }[] }) => (
-    <div data-testid="line-chart">
-      <span data-testid="series-count">{data.length}</span>
-      <span data-testid="series-ids">{data.map((d) => d.id).join(',')}</span>
+jest.mock('@nivo/bar', () => ({
+  ResponsiveBar: ({ keys, data }: { keys: string[]; data: Record<string, unknown>[] }) => (
+    <div data-testid="bar-chart">
+      <span data-testid="series-count">{keys.length}</span>
+      <span data-testid="series-ids">{keys.join(',')}</span>
+      <span data-testid="period-count">{data.length}</span>
     </div>
   ),
 }));
@@ -54,7 +55,7 @@ describe('PayPlanSalaryChart', () => {
   it('renders the chart with correct number of grade series', () => {
     render(<PayPlanSalaryChart periods={periods} />);
 
-    expect(screen.getByTestId('line-chart')).toBeInTheDocument();
+    expect(screen.getByTestId('bar-chart')).toBeInTheDocument();
     // Default step is 1, so we should see S8a and S11b (numerically sorted)
     expect(screen.getByTestId('series-count')).toHaveTextContent('2');
     expect(screen.getByTestId('series-ids')).toHaveTextContent('S8a,S11b');
