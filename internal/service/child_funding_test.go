@@ -267,9 +267,8 @@ func TestMatchFundingProperties_MultipleMatches(t *testing.T) {
 // --- calculateChildFunding ---
 
 func TestCalculateChildFunding_NilPeriod(t *testing.T) {
-	svc := &ChildService{}
 	props := models.ContractProperties{"care_type": "ganztag", "supplements": []string{"ndh"}}
-	result := svc.calculateChildFunding(3, props, nil)
+	result := calculateChildFunding(3, props, nil)
 
 	if result.Funding != 0 {
 		t.Errorf("expected 0 funding with nil period, got %d", result.Funding)
@@ -283,7 +282,6 @@ func TestCalculateChildFunding_NilPeriod(t *testing.T) {
 }
 
 func TestCalculateChildFunding_AllMatched(t *testing.T) {
-	svc := &ChildService{}
 	period := &models.GovernmentFundingPeriod{
 		Properties: []models.GovernmentFundingProperty{
 			{Key: "care_type", Value: "ganztag", Payment: 10000, MinAge: nil, MaxAge: nil},
@@ -294,7 +292,7 @@ func TestCalculateChildFunding_AllMatched(t *testing.T) {
 		"care_type":   "ganztag",
 		"supplements": []string{"ndh"},
 	}
-	result := svc.calculateChildFunding(3, props, period)
+	result := calculateChildFunding(3, props, period)
 
 	if result.Funding != 15000 {
 		t.Errorf("expected 15000 funding, got %d", result.Funding)
@@ -308,7 +306,6 @@ func TestCalculateChildFunding_AllMatched(t *testing.T) {
 }
 
 func TestCalculateChildFunding_PartialMatch(t *testing.T) {
-	svc := &ChildService{}
 	period := &models.GovernmentFundingPeriod{
 		Properties: []models.GovernmentFundingProperty{
 			{Key: "care_type", Value: "ganztag", Payment: 10000, MinAge: nil, MaxAge: nil},
@@ -318,7 +315,7 @@ func TestCalculateChildFunding_PartialMatch(t *testing.T) {
 		"care_type":   "ganztag",
 		"supplements": []string{"ndh"},
 	}
-	result := svc.calculateChildFunding(3, props, period)
+	result := calculateChildFunding(3, props, period)
 
 	if result.Funding != 10000 {
 		t.Errorf("expected 10000 funding, got %d", result.Funding)
@@ -332,7 +329,6 @@ func TestCalculateChildFunding_PartialMatch(t *testing.T) {
 }
 
 func TestCalculateChildFunding_PaymentAccumulation(t *testing.T) {
-	svc := &ChildService{}
 	period := &models.GovernmentFundingPeriod{
 		Properties: []models.GovernmentFundingProperty{
 			{Key: "care_type", Value: "ganztag", Payment: 166847, MinAge: nil, MaxAge: nil},
@@ -344,7 +340,7 @@ func TestCalculateChildFunding_PaymentAccumulation(t *testing.T) {
 		"care_type":   "ganztag",
 		"supplements": []string{"ndh", "mss"},
 	}
-	result := svc.calculateChildFunding(3, props, period)
+	result := calculateChildFunding(3, props, period)
 
 	expected := 166847 + 3456 + 7890
 	if result.Funding != expected {
@@ -353,7 +349,6 @@ func TestCalculateChildFunding_PaymentAccumulation(t *testing.T) {
 }
 
 func TestCalculateChildFunding_RequirementAccumulation(t *testing.T) {
-	svc := &ChildService{}
 	period := &models.GovernmentFundingPeriod{
 		Properties: []models.GovernmentFundingProperty{
 			{Key: "care_type", Value: "ganztag", Payment: 10000, Requirement: 0.5, MinAge: nil, MaxAge: nil},
@@ -364,7 +359,7 @@ func TestCalculateChildFunding_RequirementAccumulation(t *testing.T) {
 		"care_type":   "ganztag",
 		"supplements": []string{"ndh"},
 	}
-	result := svc.calculateChildFunding(3, props, period)
+	result := calculateChildFunding(3, props, period)
 
 	expectedReq := 0.75
 	if result.Requirement != expectedReq {
@@ -373,7 +368,6 @@ func TestCalculateChildFunding_RequirementAccumulation(t *testing.T) {
 }
 
 func TestCalculateChildFunding_NoPropertyMatch(t *testing.T) {
-	svc := &ChildService{}
 	period := &models.GovernmentFundingPeriod{
 		Properties: []models.GovernmentFundingProperty{
 			{Key: "care_type", Value: "ganztag", Payment: 10000, MinAge: nil, MaxAge: nil},
@@ -381,7 +375,7 @@ func TestCalculateChildFunding_NoPropertyMatch(t *testing.T) {
 	}
 	// Contract has a different value than what funding expects
 	props := models.ContractProperties{"care_type": "teilzeit"}
-	result := svc.calculateChildFunding(3, props, period)
+	result := calculateChildFunding(3, props, period)
 
 	if result.Funding != 0 {
 		t.Errorf("expected 0 funding when property value doesn't match, got %d", result.Funding)
