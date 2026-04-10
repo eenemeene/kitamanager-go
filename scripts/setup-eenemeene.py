@@ -55,17 +55,24 @@ session.headers.update({
 })
 print("  OK", flush=True)
 
-# --- 2. Create organization -------------------------------------------
+# --- 2. Create or find organization ------------------------------------
 
 print("Creating organization 'Eene Meene' ...", flush=True)
-org_resp = api("POST", "/organizations", json={
-    "name": "Eene Meene",
-    "active": True,
-    "state": "berlin",
-    "default_section_name": "Default",
-})
-org_id = org_resp.json()["id"]
-print(f"  OK (org_id={org_id})", flush=True)
+# Check if organization already exists
+orgs = api("GET", "/organizations", params={"limit": 100}).json()
+existing = next((o for o in orgs.get("data", []) if o["name"] == "Eene Meene"), None)
+if existing:
+    org_id = existing["id"]
+    print(f"  OK (already exists, org_id={org_id})", flush=True)
+else:
+    org_resp = api("POST", "/organizations", json={
+        "name": "Eene Meene",
+        "active": True,
+        "state": "berlin",
+        "default_section_name": "Default",
+    })
+    org_id = org_resp.json()["id"]
+    print(f"  OK (org_id={org_id})", flush=True)
 
 # --- 3. Import government funding rates --------------------------------
 

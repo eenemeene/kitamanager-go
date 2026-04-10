@@ -115,6 +115,9 @@ func (s *UserService) Create(ctx context.Context, req *models.UserCreateRequest,
 	}
 
 	if err := s.store.Create(ctx, user); err != nil {
+		if store.IsDuplicateKeyError(err) {
+			return nil, apperror.EmailConflict()
+		}
 		return nil, apperror.InternalWrap(err, "failed to create user")
 	}
 

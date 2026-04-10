@@ -82,6 +82,9 @@ func (s *PayPlanService) Create(ctx context.Context, orgID uint, req *models.Pay
 	}
 
 	if err := s.store.Create(ctx, payplan); err != nil {
+		if store.IsDuplicateKeyError(err) {
+			return nil, apperror.Conflict("pay plan with this name already exists in this organization")
+		}
 		return nil, apperror.InternalWrap(err, "failed to create pay plan")
 	}
 

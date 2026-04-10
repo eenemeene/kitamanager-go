@@ -89,6 +89,9 @@ func (s *SectionService) Create(ctx context.Context, orgID uint, req *models.Sec
 	}
 
 	if err := s.store.Create(ctx, section); err != nil {
+		if store.IsDuplicateKeyError(err) {
+			return nil, apperror.Conflict("section with this name already exists in this organization")
+		}
 		return nil, apperror.InternalWrap(err, "failed to create section")
 	}
 

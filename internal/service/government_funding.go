@@ -116,6 +116,9 @@ func (s *GovernmentFundingService) Create(ctx context.Context, req *models.Gover
 	}
 
 	if err := s.store.Create(ctx, funding); err != nil {
+		if store.IsDuplicateKeyError(err) {
+			return nil, apperror.Conflict("government funding for this state already exists")
+		}
 		return nil, apperror.InternalWrap(err, "failed to create government funding")
 	}
 
