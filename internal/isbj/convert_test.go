@@ -96,8 +96,8 @@ func TestConvert_HappyPath(t *testing.T) {
 	require.Len(t, child.Rows[0].Amounts, 4)
 	assert.Equal(t, SettlementAmount{Key: "care_type", Value: "ganztag", Amount: 89000}, child.Rows[0].Amounts[0])
 	assert.Equal(t, SettlementAmount{Key: "qm/mss", Value: "qm/mss", Amount: 5531}, child.Rows[0].Amounts[1])
-	assert.Equal(t, SettlementAmount{Key: "parent", Value: "care", Amount: 5000}, child.Rows[0].Amounts[2])
-	assert.Equal(t, SettlementAmount{Key: "parent", Value: "meals", Amount: 2300}, child.Rows[0].Amounts[3])
+	assert.Equal(t, SettlementAmount{Key: "parent", Value: "care", Amount: -5000}, child.Rows[0].Amounts[2])
+	assert.Equal(t, SettlementAmount{Key: "parent", Value: "meals", Amount: -2300}, child.Rows[0].Amounts[3])
 }
 
 func TestConvert_CareTypeTranslation(t *testing.T) {
@@ -361,9 +361,9 @@ func TestConvert_OtherLineItems(t *testing.T) {
 	child := result.Children[0]
 
 	// parent care
-	assert.Equal(t, SettlementAmount{Key: "parent", Value: "care", Amount: 5000}, child.Rows[0].Amounts[2])
+	assert.Equal(t, SettlementAmount{Key: "parent", Value: "care", Amount: -5000}, child.Rows[0].Amounts[2])
 	// parent meals
-	assert.Equal(t, SettlementAmount{Key: "parent", Value: "meals", Amount: 2300}, child.Rows[0].Amounts[3])
+	assert.Equal(t, SettlementAmount{Key: "parent", Value: "meals", Amount: -2300}, child.Rows[0].Amounts[3])
 }
 
 func TestConvert_MultipleChildren(t *testing.T) {
