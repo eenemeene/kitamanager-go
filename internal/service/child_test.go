@@ -3631,7 +3631,7 @@ func setupAutoApplyFunding(t *testing.T, db *gorm.DB) *models.GovernmentFundingP
 	createTestFundingProperty(t, db, period.ID, "care_type", "ganztag", 100000, 0, 7)
 
 	// Auto-apply property
-	prop := createTestFundingProperty(t, db, period.ID, "parent", "meals", 2300, 0, 7)
+	prop := createTestFundingProperty(t, db, period.ID, "parent", "meals", -2300, 0, 7)
 	db.Model(prop).Update("apply_to_all_contracts", true)
 
 	return period
