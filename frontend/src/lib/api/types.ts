@@ -848,3 +848,117 @@ export interface ContractPropertiesDistributionResponse {
   total_children: number;
   properties: ContractPropertyCount[];
 }
+
+// Forecast / Planning overlay types
+
+export interface ForecastAddEmployeeContract {
+  employee_id?: number;
+  from: string;
+  to?: string | null;
+  section_id: number;
+  staff_category: string;
+  grade?: string;
+  step?: number;
+  weekly_hours: number;
+  pay_plan_id: number;
+}
+
+export interface ForecastAddEmployee {
+  first_name: string;
+  last_name: string;
+  gender: string;
+  birthdate: string;
+  contracts: ForecastAddEmployeeContract[];
+}
+
+export interface ForecastEndContract {
+  contract_id: number;
+  end_date: string;
+}
+
+export interface ForecastAddChildContract {
+  child_id?: number;
+  from: string;
+  to?: string | null;
+  section_id: number;
+  properties?: ContractProperties;
+}
+
+export interface ForecastAddChild {
+  first_name: string;
+  last_name: string;
+  gender: string;
+  birthdate: string;
+  contracts: ForecastAddChildContract[];
+}
+
+export interface ForecastPayPlanEntry {
+  grade: string;
+  step: number;
+  monthly_amount: number;
+}
+
+export interface ForecastAddPayPlanPeriod {
+  pay_plan_id: number;
+  from: string;
+  to?: string | null;
+  weekly_hours: number;
+  employer_contribution_rate: number;
+  entries: ForecastPayPlanEntry[];
+}
+
+export interface ForecastFundingProperty {
+  key: string;
+  value: string;
+  label: string;
+  payment: number;
+  requirement: number;
+  min_age?: number | null;
+  max_age?: number | null;
+  apply_to_all_contracts?: boolean;
+}
+
+export interface ForecastAddFundingPeriod {
+  from: string;
+  to?: string | null;
+  full_time_weekly_hours: number;
+  properties: ForecastFundingProperty[];
+}
+
+export interface ForecastBudgetItemEntry {
+  from: string;
+  to?: string | null;
+  amount_cents: number;
+}
+
+export interface ForecastAddBudgetItem {
+  name: string;
+  category: string;
+  per_child: boolean;
+  entries: ForecastBudgetItemEntry[];
+}
+
+export interface ForecastRequest {
+  from?: string | null;
+  to?: string | null;
+  section_id?: number | null;
+  add_employees?: ForecastAddEmployee[];
+  remove_employee_ids?: number[];
+  add_employee_contracts?: ForecastAddEmployeeContract[];
+  end_employee_contracts?: ForecastEndContract[];
+  add_children?: ForecastAddChild[];
+  remove_child_ids?: number[];
+  add_child_contracts?: ForecastAddChildContract[];
+  end_child_contracts?: ForecastEndContract[];
+  add_pay_plan_periods?: ForecastAddPayPlanPeriod[];
+  add_funding_periods?: ForecastAddFundingPeriod[];
+  add_budget_items?: ForecastAddBudgetItem[];
+  remove_budget_item_ids?: number[];
+}
+
+export interface ForecastResponse {
+  financials?: FinancialResponse;
+  staffing_hours?: StaffingHoursResponse;
+  occupancy?: OccupancyResponse;
+  employee_staffing_hours?: EmployeeStaffingHoursResponse;
+}

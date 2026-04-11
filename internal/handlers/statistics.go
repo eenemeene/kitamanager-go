@@ -5,7 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	_ "github.com/eenemeene/kitamanager-go/internal/models" // imported for swag annotation resolution
+	"github.com/eenemeene/kitamanager-go/internal/apperror"
+	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 )
 
@@ -279,6 +280,44 @@ func (h *StatisticsHandler) GetFinancials(c *gin.Context) {
 	}
 
 	result, err := h.service.GetFinancials(c.Request.Context(), orgID, from, to)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+// GetForecast godoc
+// @Summary Get financial forecast with hypothetical changes
+// @Description Runs all statistics calculations (financials, staffing hours, occupancy, employee staffing hours)
+// @Description with overlay modifications applied. The overlay allows modeling hypothetical changes such as
+// @Description adding/removing employees or children, modifying contracts, changing pay plan rates,
+// @Description adjusting government funding, and adding/removing budget items.
+// @Tags statistics
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Param request body models.ForecastRequest true "Forecast parameters and overlays"
+// @Success 200 {object} models.ForecastResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/organizations/{orgId}/statistics/forecast [post]
+func (h *StatisticsHandler) GetForecast(c *gin.Context) {
+	orgID, ok := parseOrgID(c)
+	if !ok {
+		return
+	}
+
+	var req models.ForecastRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respondError(c, apperror.BadRequest(sanitizeBindError(err)))
+		return
+	}
+
+	result, err := h.service.GetForecast(c.Request.Context(), orgID, &req)
 	if err != nil {
 		respondError(c, err)
 		return

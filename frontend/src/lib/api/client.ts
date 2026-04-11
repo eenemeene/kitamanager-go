@@ -69,6 +69,8 @@ import type {
   ContractBatchUpdateRequest,
   PaginatedResponse,
   PaginationParams,
+  ForecastRequest,
+  ForecastResponse,
 } from './types';
 import { DEFAULT_PAGE_SIZE } from './types';
 
@@ -843,6 +845,14 @@ class ApiClient {
     const response = await this.client.get<EmployeeStaffingHoursResponse>(
       `/organizations/${orgId}/statistics/staffing-hours/employees`,
       { params }
+    );
+    return response.data;
+  }
+
+  async postForecast(orgId: number, request: ForecastRequest): Promise<ForecastResponse> {
+    const response = await this.client.post<ForecastResponse>(
+      `/organizations/${orgId}/statistics/forecast`,
+      request
     );
     return response.data;
   }

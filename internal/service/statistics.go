@@ -17,10 +17,11 @@ type StatisticsService struct {
 	fundingStore    store.GovernmentFundingStorer
 	payPlanStore    store.PayPlanStorer
 	budgetItemStore store.BudgetItemStorer
+	sectionStore    store.SectionStorer
 }
 
 // NewStatisticsService creates a new statistics service
-func NewStatisticsService(childStore store.ChildStorer, employeeStore store.EmployeeStorer, orgStore store.OrganizationStorer, fundingStore store.GovernmentFundingStorer, payPlanStore store.PayPlanStorer, budgetItemStore store.BudgetItemStorer) *StatisticsService {
+func NewStatisticsService(childStore store.ChildStorer, employeeStore store.EmployeeStorer, orgStore store.OrganizationStorer, fundingStore store.GovernmentFundingStorer, payPlanStore store.PayPlanStorer, budgetItemStore store.BudgetItemStorer, sectionStore store.SectionStorer) *StatisticsService {
 	return &StatisticsService{
 		childStore:      childStore,
 		employeeStore:   employeeStore,
@@ -28,6 +29,7 @@ func NewStatisticsService(childStore store.ChildStorer, employeeStore store.Empl
 		fundingStore:    fundingStore,
 		payPlanStore:    payPlanStore,
 		budgetItemStore: budgetItemStore,
+		sectionStore:    sectionStore,
 	}
 }
 

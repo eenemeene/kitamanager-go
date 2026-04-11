@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
-import { CircleDollarSign, Users, Baby, Table, Wallet } from 'lucide-react';
+import { CircleDollarSign, Users, Baby, Table, Wallet, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FinancialSummaryCards } from '@/components/statistics/financial-summary-cards';
@@ -62,6 +62,12 @@ export default function StatisticsPage() {
       icon: Wallet,
       title: t('nav.statisticsBudget'),
       description: t('statistics.budgetDescription'),
+    },
+    {
+      href: `/organizations/${orgId}/statistics/forecast`,
+      icon: TrendingUp,
+      title: t('nav.statisticsForecast'),
+      description: t('statistics.forecastDescription'),
     },
   ];
 

@@ -224,7 +224,7 @@ func initServices(s *appStores, cfg *config.Config, transactor store.Transactor)
 		childAttendance:       service.NewChildAttendanceService(s.childAttendance, s.child),
 		budgetItem:            service.NewBudgetItemService(s.budgetItem, transactor),
 		stepPromotion:         service.NewStepPromotionService(s.payPlan, s.employee),
-		statistics:            service.NewStatisticsService(s.child, s.employee, s.organization, s.governmentFunding, s.payPlan, s.budgetItem),
+		statistics:            service.NewStatisticsService(s.child, s.employee, s.organization, s.governmentFunding, s.payPlan, s.budgetItem, s.section),
 		governmentFundingBill: service.NewGovernmentFundingBillService(s.child, s.governmentFundingBillPeriod, s.organization, s.governmentFunding),
 		email:                 service.NewEmailService(cfg),
 	}

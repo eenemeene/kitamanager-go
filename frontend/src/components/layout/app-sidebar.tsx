@@ -107,6 +107,7 @@ const orgNavigationGroups: NavGroup[] = [
           { name: 'nav.statisticsStaffing', href: '/statistics/staffing' },
           { name: 'nav.statisticsChildren', href: '/statistics/children' },
           { name: 'nav.statisticsOccupancy', href: '/statistics/occupancy' },
+          { name: 'nav.statisticsForecast', href: '/statistics/forecast' },
         ],
       },
     ],

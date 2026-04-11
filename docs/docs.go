@@ -7336,6 +7336,70 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/organizations/{orgId}/statistics/forecast": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Runs all statistics calculations (financials, staffing hours, occupancy, employee staffing hours)\nwith overlay modifications applied. The overlay allows modeling hypothetical changes such as\nadding/removing employees or children, modifying contracts, changing pay plan rates,\nadjusting government funding, and adding/removing budget items.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "statistics"
+                ],
+                "summary": "Get financial forecast with hypothetical changes",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Forecast parameters and overlays",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/organizations/{orgId}/statistics/funding": {
             "get": {
                 "security": [
@@ -9840,6 +9904,460 @@ const docTemplate = `{
                 "staff_category": {
                     "type": "string",
                     "example": "qualified"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ForecastAddBudgetItem": {
+            "type": "object",
+            "required": [
+                "category",
+                "entries",
+                "name"
+            ],
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "example": "income"
+                },
+                "entries": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastBudgetItemEntry"
+                    }
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Elternbeiträge"
+                },
+                "per_child": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ForecastAddChild": {
+            "type": "object",
+            "required": [
+                "birthdate",
+                "contracts",
+                "first_name",
+                "gender",
+                "last_name"
+            ],
+            "properties": {
+                "birthdate": {
+                    "type": "string",
+                    "example": "2023-03-10"
+                },
+                "contracts": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastAddChildContract"
+                    }
+                },
+                "first_name": {
+                    "type": "string",
+                    "example": "Emma"
+                },
+                "gender": {
+                    "type": "string",
+                    "example": "female"
+                },
+                "last_name": {
+                    "type": "string",
+                    "example": "Schmidt"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ForecastAddChildContract": {
+            "type": "object",
+            "required": [
+                "from",
+                "section_id"
+            ],
+            "properties": {
+                "child_id": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "from": {
+                    "type": "string",
+                    "example": "2026-08-01"
+                },
+                "properties": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties"
+                },
+                "section_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "to": {
+                    "type": "string",
+                    "example": "2027-07-31"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ForecastAddEmployee": {
+            "type": "object",
+            "required": [
+                "birthdate",
+                "contracts",
+                "first_name",
+                "gender",
+                "last_name"
+            ],
+            "properties": {
+                "birthdate": {
+                    "type": "string",
+                    "example": "1990-05-15"
+                },
+                "contracts": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastAddEmployeeContract"
+                    }
+                },
+                "first_name": {
+                    "type": "string",
+                    "example": "Maria"
+                },
+                "gender": {
+                    "type": "string",
+                    "example": "female"
+                },
+                "last_name": {
+                    "type": "string",
+                    "example": "Musterfrau"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ForecastAddEmployeeContract": {
+            "type": "object",
+            "required": [
+                "from",
+                "pay_plan_id",
+                "section_id",
+                "staff_category",
+                "weekly_hours"
+            ],
+            "properties": {
+                "employee_id": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "from": {
+                    "type": "string",
+                    "example": "2026-08-01"
+                },
+                "grade": {
+                    "type": "string",
+                    "example": "S8a"
+                },
+                "pay_plan_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "section_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "staff_category": {
+                    "type": "string",
+                    "example": "qualified"
+                },
+                "step": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "to": {
+                    "type": "string",
+                    "example": "2027-07-31"
+                },
+                "weekly_hours": {
+                    "type": "number",
+                    "example": 39
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ForecastAddFundingPeriod": {
+            "type": "object",
+            "required": [
+                "from",
+                "full_time_weekly_hours",
+                "properties"
+            ],
+            "properties": {
+                "from": {
+                    "type": "string",
+                    "example": "2027-08-01"
+                },
+                "full_time_weekly_hours": {
+                    "type": "number",
+                    "example": 39
+                },
+                "properties": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastFundingProperty"
+                    }
+                },
+                "to": {
+                    "type": "string",
+                    "example": "2028-07-31"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ForecastAddPayPlanPeriod": {
+            "type": "object",
+            "required": [
+                "employer_contribution_rate",
+                "entries",
+                "from",
+                "pay_plan_id",
+                "weekly_hours"
+            ],
+            "properties": {
+                "employer_contribution_rate": {
+                    "type": "integer",
+                    "example": 2200
+                },
+                "entries": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastPayPlanEntry"
+                    }
+                },
+                "from": {
+                    "type": "string",
+                    "example": "2027-01-01"
+                },
+                "pay_plan_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "to": {
+                    "type": "string",
+                    "example": "2027-12-31"
+                },
+                "weekly_hours": {
+                    "type": "number",
+                    "example": 39
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ForecastBudgetItemEntry": {
+            "type": "object",
+            "required": [
+                "amount_cents",
+                "from"
+            ],
+            "properties": {
+                "amount_cents": {
+                    "type": "integer",
+                    "example": 50000
+                },
+                "from": {
+                    "type": "string",
+                    "example": "2027-01-01"
+                },
+                "to": {
+                    "type": "string",
+                    "example": "2027-12-31"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ForecastEndContract": {
+            "type": "object",
+            "required": [
+                "contract_id",
+                "end_date"
+            ],
+            "properties": {
+                "contract_id": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "end_date": {
+                    "type": "string",
+                    "example": "2026-07-31"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ForecastFundingProperty": {
+            "type": "object",
+            "required": [
+                "key",
+                "label",
+                "payment",
+                "value"
+            ],
+            "properties": {
+                "apply_to_all_contracts": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "key": {
+                    "type": "string",
+                    "example": "care_type"
+                },
+                "label": {
+                    "type": "string",
+                    "example": "Ganztag"
+                },
+                "max_age": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "min_age": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "payment": {
+                    "type": "integer",
+                    "example": 166847
+                },
+                "requirement": {
+                    "type": "number",
+                    "example": 0.261
+                },
+                "value": {
+                    "type": "string",
+                    "example": "ganztag"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ForecastPayPlanEntry": {
+            "type": "object",
+            "required": [
+                "grade",
+                "monthly_amount",
+                "step"
+            ],
+            "properties": {
+                "grade": {
+                    "type": "string",
+                    "example": "S8a"
+                },
+                "monthly_amount": {
+                    "type": "integer",
+                    "example": 380000
+                },
+                "step": {
+                    "type": "integer",
+                    "example": 3
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ForecastRequest": {
+            "type": "object",
+            "properties": {
+                "add_budget_items": {
+                    "description": "Budget item overlays",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastAddBudgetItem"
+                    }
+                },
+                "add_child_contracts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastAddChildContract"
+                    }
+                },
+                "add_children": {
+                    "description": "Child overlays",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastAddChild"
+                    }
+                },
+                "add_employee_contracts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastAddEmployeeContract"
+                    }
+                },
+                "add_employees": {
+                    "description": "Employee overlays",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastAddEmployee"
+                    }
+                },
+                "add_funding_periods": {
+                    "description": "Government funding overlays",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastAddFundingPeriod"
+                    }
+                },
+                "add_pay_plan_periods": {
+                    "description": "Pay plan overlays",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastAddPayPlanPeriod"
+                    }
+                },
+                "end_child_contracts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastEndContract"
+                    }
+                },
+                "end_employee_contracts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastEndContract"
+                    }
+                },
+                "from": {
+                    "type": "string"
+                },
+                "remove_budget_item_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "remove_child_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "remove_employee_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "section_id": {
+                    "type": "integer"
+                },
+                "to": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ForecastResponse": {
+            "type": "object",
+            "properties": {
+                "employee_staffing_hours": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeStaffingHoursResponse"
+                },
+                "financials": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FinancialResponse"
+                },
+                "occupancy": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.OccupancyResponse"
+                },
+                "staffing_hours": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.StaffingHoursResponse"
                 }
             }
         },
