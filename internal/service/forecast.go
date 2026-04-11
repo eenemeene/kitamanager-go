@@ -27,8 +27,9 @@ func (s *StatisticsService) GetForecast(ctx context.Context, orgID uint, req *mo
 
 	applyOverlay(ds, req, req.SectionID)
 
-	// Reload pay plans to include any new PayPlanIDs introduced by overlay employees
-	ds.PayPlans = s.loadPayPlans(ctx, ds.Employees)
+	// Load any pay plans referenced by overlay employees that aren't already in the DataSet.
+	// We must NOT reload all pay plans — that would wipe overlay-added periods.
+	s.loadMissingPayPlans(ctx, ds)
 
 	pedEmployees := ds.PedagogicalEmployees()
 
@@ -191,6 +192,33 @@ func collectOverlayPayPlanIDs(req *models.ForecastRequest) []uint {
 		add(req.AddPayPlanPeriods[i].PayPlanID)
 	}
 	return ids
+}
+
+// loadMissingPayPlans loads pay plans referenced by employees but not yet in the DataSet.
+// This is needed when overlay adds employees that reference pay plans not in the original load.
+// It does NOT reload existing pay plans, preserving overlay-added periods.
+func (s *StatisticsService) loadMissingPayPlans(ctx context.Context, ds *DataSet) {
+	var missingIDs []uint
+	for i := range ds.Employees {
+		for j := range ds.Employees[i].Contracts {
+			ppID := ds.Employees[i].Contracts[j].PayPlanID
+			if ppID != 0 {
+				if _, exists := ds.PayPlans[ppID]; !exists {
+					missingIDs = append(missingIDs, ppID)
+				}
+			}
+		}
+	}
+	if len(missingIDs) == 0 {
+		return
+	}
+	loaded, err := s.payPlanStore.FindByIDsWithPeriods(ctx, missingIDs)
+	if err != nil {
+		return // non-fatal
+	}
+	for id, pp := range loaded {
+		ds.PayPlans[id] = pp
+	}
 }
 
 // applyOverlay mutates the DataSet in-place according to the overlay request.
