@@ -670,11 +670,13 @@ func TestCalculateStaffingHours_Basic(t *testing.T) {
 			makeFundingProp("care_type", "ganztag", "Ganztag", 100000, 0.261, nil, nil),
 		}),
 	}
-	contracts := []models.EmployeeContract{
-		makeEmployeeContract(1, 1, date(2024, 1, 1), nil, "qualified", "S8a", 3, 39.0, 1),
+	employees := []models.Employee{
+		makeEmployee(1, "A", "B", []models.EmployeeContract{
+			makeEmployeeContract(1, 1, date(2024, 1, 1), nil, "qualified", "S8a", 3, 39.0, 1),
+		}),
 	}
 
-	result := calculateStaffingHours(children, contracts, periods, start, end)
+	result := calculateStaffingHours(children, employees, periods, start, end)
 
 	if len(result) != 3 {
 		t.Fatalf("expected 3 data points, got %d", len(result))
@@ -703,7 +705,7 @@ func TestCalculateStaffingHours_NoFunding(t *testing.T) {
 			makeChildContract(date(2024, 1, 1), nil, nil),
 		}),
 	}
-	result := calculateStaffingHours(children, nil, nil, date(2025, 1, 1), date(2025, 1, 1))
+	result := calculateStaffingHours(children, nil, nil, date(2025, 1, 1), date(2025, 1, 1)) //nolint:staticcheck
 	if len(result) != 1 {
 		t.Fatalf("expected 1 data point, got %d", len(result))
 	}
@@ -715,13 +717,15 @@ func TestCalculateStaffingHours_NoFunding(t *testing.T) {
 	}
 }
 
-func TestCalculateStaffingHours_MultipleEmployeesDedup(t *testing.T) {
-	// Same employee with two contracts in different periods
-	contracts := []models.EmployeeContract{
-		makeEmployeeContract(1, 10, date(2025, 1, 1), datePtr(2025, 1, 31), "qualified", "S8a", 3, 30.0, 1),
-		makeEmployeeContract(2, 10, date(2025, 2, 1), nil, "qualified", "S8a", 3, 39.0, 1),
+func TestCalculateStaffingHours_MultipleContracts(t *testing.T) {
+	// One employee with two contracts in different periods
+	employees := []models.Employee{
+		makeEmployee(10, "A", "B", []models.EmployeeContract{
+			makeEmployeeContract(1, 10, date(2025, 1, 1), datePtr(2025, 1, 31), "qualified", "S8a", 3, 30.0, 1),
+			makeEmployeeContract(2, 10, date(2025, 2, 1), nil, "qualified", "S8a", 3, 39.0, 1),
+		}),
 	}
-	result := calculateStaffingHours(nil, contracts, nil, date(2025, 1, 1), date(2025, 2, 1))
+	result := calculateStaffingHours(nil, employees, nil, date(2025, 1, 1), date(2025, 2, 1))
 	if len(result) != 2 {
 		t.Fatalf("expected 2 data points, got %d", len(result))
 	}
@@ -952,8 +956,10 @@ func TestCalculateFinancials_Basic(t *testing.T) {
 		}),
 	}
 	ppID := uint(1)
-	employeeContracts := []models.EmployeeContract{
-		makeEmployeeContract(1, 1, date(2024, 1, 1), nil, "qualified", "S8a", 3, 39.0, ppID),
+	employees := []models.Employee{
+		makeEmployee(1, "A", "B", []models.EmployeeContract{
+			makeEmployeeContract(1, 1, date(2024, 1, 1), nil, "qualified", "S8a", 3, 39.0, ppID),
+		}),
 	}
 	payPlans := map[uint]*models.PayPlan{
 		ppID: makePayPlan(ppID, []models.PayPlanPeriod{
@@ -963,7 +969,7 @@ func TestCalculateFinancials_Basic(t *testing.T) {
 		}),
 	}
 
-	result := calculateFinancials(children, employeeContracts, payPlans, fundingPeriods, nil, start, end)
+	result := calculateFinancials(children, employees, payPlans, fundingPeriods, nil, start, end)
 
 	if len(result) != 1 {
 		t.Fatalf("expected 1 data point, got %d", len(result))
@@ -1003,8 +1009,10 @@ func TestCalculateFinancials_PartTimeEmployee(t *testing.T) {
 	end := date(2025, 1, 1)
 
 	ppID := uint(1)
-	employeeContracts := []models.EmployeeContract{
-		makeEmployeeContract(1, 1, date(2024, 1, 1), nil, "qualified", "S8a", 3, 20.0, ppID),
+	employees := []models.Employee{
+		makeEmployee(1, "A", "B", []models.EmployeeContract{
+			makeEmployeeContract(1, 1, date(2024, 1, 1), nil, "qualified", "S8a", 3, 20.0, ppID),
+		}),
 	}
 	payPlans := map[uint]*models.PayPlan{
 		ppID: makePayPlan(ppID, []models.PayPlanPeriod{
@@ -1014,7 +1022,7 @@ func TestCalculateFinancials_PartTimeEmployee(t *testing.T) {
 		}),
 	}
 
-	result := calculateFinancials(nil, employeeContracts, payPlans, nil, nil, start, end)
+	result := calculateFinancials(nil, employees, payPlans, nil, nil, start, end)
 	if len(result) != 1 {
 		t.Fatalf("expected 1 data point, got %d", len(result))
 	}
@@ -1121,9 +1129,13 @@ func TestCalculateFinancials_SalaryDetails(t *testing.T) {
 	end := date(2025, 1, 1)
 
 	ppID := uint(1)
-	contracts := []models.EmployeeContract{
-		makeEmployeeContract(1, 1, date(2024, 1, 1), nil, "qualified", "S8a", 3, 39.0, ppID),
-		makeEmployeeContract(2, 2, date(2024, 1, 1), nil, "supplementary", "S3", 1, 20.0, ppID),
+	employees := []models.Employee{
+		makeEmployee(1, "A", "B", []models.EmployeeContract{
+			makeEmployeeContract(1, 1, date(2024, 1, 1), nil, "qualified", "S8a", 3, 39.0, ppID),
+		}),
+		makeEmployee(2, "C", "D", []models.EmployeeContract{
+			makeEmployeeContract(2, 2, date(2024, 1, 1), nil, "supplementary", "S3", 1, 20.0, ppID),
+		}),
 	}
 	payPlans := map[uint]*models.PayPlan{
 		ppID: makePayPlan(ppID, []models.PayPlanPeriod{
@@ -1134,7 +1146,7 @@ func TestCalculateFinancials_SalaryDetails(t *testing.T) {
 		}),
 	}
 
-	result := calculateFinancials(nil, contracts, payPlans, nil, nil, start, end)
+	result := calculateFinancials(nil, employees, payPlans, nil, nil, start, end)
 	dp := result[0]
 
 	if len(dp.SalaryDetails) != 2 {
@@ -1151,10 +1163,12 @@ func TestCalculateFinancials_SalaryDetails(t *testing.T) {
 
 func TestCalculateFinancials_NoPayPlan(t *testing.T) {
 	// Employee has pay plan ID that doesn't exist in the map
-	contracts := []models.EmployeeContract{
-		makeEmployeeContract(1, 1, date(2024, 1, 1), nil, "qualified", "S8a", 3, 39.0, 999),
+	employees := []models.Employee{
+		makeEmployee(1, "A", "B", []models.EmployeeContract{
+			makeEmployeeContract(1, 1, date(2024, 1, 1), nil, "qualified", "S8a", 3, 39.0, 999),
+		}),
 	}
-	result := calculateFinancials(nil, contracts, nil, nil, nil, date(2025, 1, 1), date(2025, 1, 1))
+	result := calculateFinancials(nil, employees, nil, nil, nil, date(2025, 1, 1), date(2025, 1, 1))
 	if result[0].GrossSalary != 0 {
 		t.Errorf("expected 0 gross when no pay plan, got %d", result[0].GrossSalary)
 	}
