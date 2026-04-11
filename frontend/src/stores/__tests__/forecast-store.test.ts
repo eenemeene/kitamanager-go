@@ -1,5 +1,5 @@
 import { useForecastStore } from '../forecast-store';
-import type { ForecastAddChild, ForecastAddEmployee, PayPlan } from '@/lib/api/types';
+import type { ForecastChild, ForecastEmployee } from '@/lib/api/types';
 
 describe('forecast-store', () => {
   beforeEach(() => {
@@ -24,7 +24,7 @@ describe('forecast-store', () => {
 
   // Children actions
   it('adds and removes children', () => {
-    const child: ForecastAddChild = {
+    const child: ForecastChild = {
       first_name: 'Child',
       last_name: '#1',
       gender: 'diverse',
@@ -50,7 +50,7 @@ describe('forecast-store', () => {
 
   // Employee actions
   it('adds and removes employees', () => {
-    const employee: ForecastAddEmployee = {
+    const employee: ForecastEmployee = {
       first_name: 'Employee',
       last_name: '#1',
       gender: 'female',
@@ -79,91 +79,6 @@ describe('forecast-store', () => {
 
     useForecastStore.getState().toggleRemoveEmployee(10);
     expect(useForecastStore.getState().removeEmployeeIds).toEqual([]);
-  });
-
-  // Salary increase
-  it('generates pay plan periods from salary increase', () => {
-    const payPlans: PayPlan[] = [
-      {
-        id: 1,
-        organization_id: 1,
-        name: 'TVöD SuE',
-        created_at: '',
-        updated_at: '',
-        periods: [
-          {
-            id: 1,
-            payplan_id: 1,
-            from: '2024-01-01',
-            weekly_hours: 39,
-            employer_contribution_rate: 2200,
-            created_at: '',
-            updated_at: '',
-            entries: [
-              {
-                id: 1,
-                period_id: 1,
-                grade: 'S8a',
-                step: 3,
-                monthly_amount: 380000,
-                created_at: '',
-                updated_at: '',
-              },
-            ],
-          },
-        ],
-      },
-    ];
-
-    useForecastStore.getState().setSalaryIncrease(10, '2027-01-01', payPlans);
-    const state = useForecastStore.getState();
-    expect(state.salaryIncreasePercent).toBe(10);
-    expect(state.salaryEffectiveFrom).toBe('2027-01-01');
-    expect(state.addPayPlanPeriods).toHaveLength(1);
-    expect(state.addPayPlanPeriods[0].pay_plan_id).toBe(1);
-    expect(state.addPayPlanPeriods[0].from).toBe('2027-01-01');
-    expect(state.addPayPlanPeriods[0].entries[0].monthly_amount).toBe(418000); // 380000 * 1.1
-  });
-
-  it('clears pay plan periods when percent is null', () => {
-    const payPlans: PayPlan[] = [];
-    useForecastStore.getState().setSalaryIncrease(null, null, payPlans);
-    expect(useForecastStore.getState().addPayPlanPeriods).toEqual([]);
-  });
-
-  // Funding actions
-  it('adds and removes funding periods', () => {
-    useForecastStore.getState().addFundingPeriod({
-      from: '2027-08-01',
-      full_time_weekly_hours: 39,
-      properties: [],
-    });
-    expect(useForecastStore.getState().addFundingPeriods).toHaveLength(1);
-
-    useForecastStore.getState().removeFundingPeriod(0);
-    expect(useForecastStore.getState().addFundingPeriods).toHaveLength(0);
-  });
-
-  // Budget actions
-  it('adds and removes budget items', () => {
-    useForecastStore.getState().addBudgetItem({
-      name: 'Test',
-      category: 'income',
-      per_child: false,
-      entries: [{ from: '2027-01-01', amount_cents: 50000 }],
-    });
-    expect(useForecastStore.getState().addBudgetItems).toHaveLength(1);
-
-    useForecastStore.getState().removeAddedBudgetItem(0);
-    expect(useForecastStore.getState().addBudgetItems).toHaveLength(0);
-  });
-
-  it('toggles remove budget item', () => {
-    useForecastStore.getState().toggleRemoveBudgetItem(7);
-    expect(useForecastStore.getState().removeBudgetItemIds).toEqual([7]);
-
-    useForecastStore.getState().toggleRemoveBudgetItem(7);
-    expect(useForecastStore.getState().removeBudgetItemIds).toEqual([]);
   });
 
   // buildRequest

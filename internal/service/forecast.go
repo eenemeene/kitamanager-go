@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	"time"
+	"fmt"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -47,9 +47,25 @@ func (s *StatisticsService) GetForecast(ctx context.Context, orgID uint, req *mo
 	}, nil
 }
 
-// validateOverlay checks that all referenced IDs in the overlay belong to the given organization.
+// validateOverlay checks overlay fields and that all referenced IDs belong to the organization.
 func (s *StatisticsService) validateOverlay(ctx context.Context, req *models.ForecastRequest, orgID uint) error {
-	// Validate section IDs
+	// Validate overlay children fields
+	if err := validateOverlayChildren(req.AddChildren); err != nil {
+		return err
+	}
+	if err := validateOverlayChildContracts(req.AddChildContracts); err != nil {
+		return err
+	}
+
+	// Validate overlay employee fields
+	if err := validateOverlayEmployees(req.AddEmployees); err != nil {
+		return err
+	}
+	if err := validateOverlayEmployeeContracts(req.AddEmployeeContracts); err != nil {
+		return err
+	}
+
+	// Validate section IDs belong to org
 	sectionIDs := collectOverlaySectionIDs(req)
 	for _, sid := range sectionIDs {
 		if err := validateSectionOrg(ctx, s.sectionStore, sid, orgID); err != nil {
@@ -57,7 +73,7 @@ func (s *StatisticsService) validateOverlay(ctx context.Context, req *models.For
 		}
 	}
 
-	// Validate pay plan IDs
+	// Validate pay plan IDs belong to org
 	payPlanIDs := collectOverlayPayPlanIDs(req)
 	for _, ppID := range payPlanIDs {
 		pp, err := s.payPlanStore.FindByID(ctx, ppID)
@@ -79,21 +95,10 @@ func (s *StatisticsService) validateOverlay(ctx context.Context, req *models.For
 	// Validate employee IDs for standalone contract additions
 	for _, ac := range req.AddEmployeeContracts {
 		if ac.EmployeeID == 0 {
-			continue
+			return apperror.BadRequest("standalone employee contract requires employee_id")
 		}
 		if _, err := s.employeeStore.FindByIDMinimalAndOrg(ctx, ac.EmployeeID, orgID); err != nil {
 			return apperror.BadRequest("employee not found in this organization")
-		}
-	}
-
-	// Validate employee contract IDs to end
-	for _, ec := range req.EndEmployeeContracts {
-		contract, err := s.employeeStore.FindContractByID(ctx, ec.ContractID)
-		if err != nil {
-			return apperror.BadRequest("employee contract not found")
-		}
-		if _, err := s.employeeStore.FindByIDMinimalAndOrg(ctx, contract.EmployeeID, orgID); err != nil {
-			return apperror.BadRequest("employee contract does not belong to this organization")
 		}
 	}
 
@@ -107,35 +112,114 @@ func (s *StatisticsService) validateOverlay(ctx context.Context, req *models.For
 	// Validate child IDs for standalone contract additions
 	for _, ac := range req.AddChildContracts {
 		if ac.ChildID == 0 {
-			continue
+			return apperror.BadRequest("standalone child contract requires child_id")
 		}
 		if _, err := s.childStore.FindByIDMinimalAndOrg(ctx, ac.ChildID, orgID); err != nil {
 			return apperror.BadRequest("child not found in this organization")
 		}
 	}
 
-	// Validate child contract IDs to end
-	for _, ec := range req.EndChildContracts {
-		contract, err := s.childStore.FindContractByID(ctx, ec.ContractID)
-		if err != nil {
-			return apperror.BadRequest("child contract not found")
+	return nil
+}
+
+// validateOverlayChildren validates the calculation-critical fields on overlay children.
+func validateOverlayChildren(children []models.Child) error {
+	for i, c := range children {
+		if c.Birthdate.IsZero() {
+			return apperror.BadRequest(fmt.Sprintf("add_children[%d]: birthdate is required", i))
 		}
-		if _, err := s.childStore.FindByIDMinimalAndOrg(ctx, contract.ChildID, orgID); err != nil {
-			return apperror.BadRequest("child contract does not belong to this organization")
+		if len(c.Contracts) == 0 {
+			return apperror.BadRequest(fmt.Sprintf("add_children[%d]: at least one contract is required", i))
+		}
+		for j, ct := range c.Contracts {
+			if ct.From.IsZero() {
+				return apperror.BadRequest(fmt.Sprintf("add_children[%d].contracts[%d]: from is required", i, j))
+			}
+			if ct.SectionID == 0 {
+				return apperror.BadRequest(fmt.Sprintf("add_children[%d].contracts[%d]: section_id is required", i, j))
+			}
 		}
 	}
+	return nil
+}
 
-	// Validate budget item IDs to remove
-	for _, biID := range req.RemoveBudgetItemIDs {
-		bi, err := s.budgetItemStore.FindByID(ctx, biID)
-		if err != nil {
-			return apperror.BadRequest("budget item not found")
+// validateOverlayChildContracts validates standalone child contract additions.
+func validateOverlayChildContracts(contracts []models.ChildContract) error {
+	for i, ct := range contracts {
+		if ct.ChildID == 0 {
+			return apperror.BadRequest(fmt.Sprintf("add_child_contracts[%d]: child_id is required", i))
 		}
-		if bi.OrganizationID != orgID {
-			return apperror.BadRequest("budget item does not belong to this organization")
+		if ct.From.IsZero() {
+			return apperror.BadRequest(fmt.Sprintf("add_child_contracts[%d]: from is required", i))
+		}
+		if ct.SectionID == 0 {
+			return apperror.BadRequest(fmt.Sprintf("add_child_contracts[%d]: section_id is required", i))
 		}
 	}
+	return nil
+}
 
+// validateOverlayEmployees validates the calculation-critical fields on overlay employees.
+func validateOverlayEmployees(employees []models.Employee) error {
+	for i, e := range employees {
+		if len(e.Contracts) == 0 {
+			return apperror.BadRequest(fmt.Sprintf("add_employees[%d]: at least one contract is required", i))
+		}
+		for j, ct := range e.Contracts {
+			if ct.From.IsZero() {
+				return apperror.BadRequest(fmt.Sprintf("add_employees[%d].contracts[%d]: from is required", i, j))
+			}
+			if ct.SectionID == 0 {
+				return apperror.BadRequest(fmt.Sprintf("add_employees[%d].contracts[%d]: section_id is required", i, j))
+			}
+			if ct.PayPlanID == 0 {
+				return apperror.BadRequest(fmt.Sprintf("add_employees[%d].contracts[%d]: pay_plan_id is required", i, j))
+			}
+			if ct.Grade == "" {
+				return apperror.BadRequest(fmt.Sprintf("add_employees[%d].contracts[%d]: grade is required", i, j))
+			}
+			if ct.Step < 1 {
+				return apperror.BadRequest(fmt.Sprintf("add_employees[%d].contracts[%d]: step must be >= 1", i, j))
+			}
+			if ct.WeeklyHours <= 0 {
+				return apperror.BadRequest(fmt.Sprintf("add_employees[%d].contracts[%d]: weekly_hours must be > 0", i, j))
+			}
+			if ct.StaffCategory == "" {
+				return apperror.BadRequest(fmt.Sprintf("add_employees[%d].contracts[%d]: staff_category is required", i, j))
+			}
+		}
+	}
+	return nil
+}
+
+// validateOverlayEmployeeContracts validates standalone employee contract additions.
+func validateOverlayEmployeeContracts(contracts []models.EmployeeContract) error {
+	for i, ct := range contracts {
+		if ct.EmployeeID == 0 {
+			return apperror.BadRequest(fmt.Sprintf("add_employee_contracts[%d]: employee_id is required", i))
+		}
+		if ct.From.IsZero() {
+			return apperror.BadRequest(fmt.Sprintf("add_employee_contracts[%d]: from is required", i))
+		}
+		if ct.SectionID == 0 {
+			return apperror.BadRequest(fmt.Sprintf("add_employee_contracts[%d]: section_id is required", i))
+		}
+		if ct.PayPlanID == 0 {
+			return apperror.BadRequest(fmt.Sprintf("add_employee_contracts[%d]: pay_plan_id is required", i))
+		}
+		if ct.Grade == "" {
+			return apperror.BadRequest(fmt.Sprintf("add_employee_contracts[%d]: grade is required", i))
+		}
+		if ct.Step < 1 {
+			return apperror.BadRequest(fmt.Sprintf("add_employee_contracts[%d]: step must be >= 1", i))
+		}
+		if ct.WeeklyHours <= 0 {
+			return apperror.BadRequest(fmt.Sprintf("add_employee_contracts[%d]: weekly_hours must be > 0", i))
+		}
+		if ct.StaffCategory == "" {
+			return apperror.BadRequest(fmt.Sprintf("add_employee_contracts[%d]: staff_category is required", i))
+		}
+	}
 	return nil
 }
 
@@ -188,15 +272,10 @@ func collectOverlayPayPlanIDs(req *models.ForecastRequest) []uint {
 	for i := range req.AddEmployeeContracts {
 		add(req.AddEmployeeContracts[i].PayPlanID)
 	}
-	for i := range req.AddPayPlanPeriods {
-		add(req.AddPayPlanPeriods[i].PayPlanID)
-	}
 	return ids
 }
 
 // loadMissingPayPlans loads pay plans referenced by employees but not yet in the DataSet.
-// This is needed when overlay adds employees that reference pay plans not in the original load.
-// It does NOT reload existing pay plans, preserving overlay-added periods.
 func (s *StatisticsService) loadMissingPayPlans(ctx context.Context, ds *DataSet) {
 	var missingIDs []uint
 	for i := range ds.Employees {
@@ -222,7 +301,7 @@ func (s *StatisticsService) loadMissingPayPlans(ctx context.Context, ds *DataSet
 }
 
 // applyOverlay mutates the DataSet in-place according to the overlay request.
-// Order: removes → end dates → add contracts → add entities → pay plan/funding/budget overlays.
+// Order: removes → add contracts to existing → add new virtual entities.
 // If sectionID is non-nil, overlay additions are filtered to that section.
 func applyOverlay(ds *DataSet, req *models.ForecastRequest, sectionID *uint) {
 	// 1. Remove employees
@@ -241,263 +320,68 @@ func applyOverlay(ds *DataSet, req *models.ForecastRequest, sectionID *uint) {
 		})
 	}
 
-	// 3. End employee contracts
-	for _, ec := range req.EndEmployeeContracts {
-		endEmployeeContract(ds.Employees, ec.ContractID, ec.EndDate)
-	}
-
-	// 4. End child contracts
-	for _, ec := range req.EndChildContracts {
-		endChildContract(ds.Children, ec.ContractID, ec.EndDate)
-	}
-
-	// 5. Add contracts to existing employees
+	// 3. Add contracts to existing employees
 	for _, ac := range req.AddEmployeeContracts {
-		if ac.EmployeeID == 0 {
-			continue // belongs to AddEmployee, not standalone
-		}
 		if sectionID != nil && ac.SectionID != *sectionID {
 			continue
 		}
-		addContractToEmployee(ds.Employees, ac)
+		for i := range ds.Employees {
+			if ds.Employees[i].ID == ac.EmployeeID {
+				ds.Employees[i].Contracts = append(ds.Employees[i].Contracts, ac)
+				break
+			}
+		}
 	}
 
-	// 6. Add contracts to existing children
+	// 4. Add contracts to existing children
 	for _, ac := range req.AddChildContracts {
-		if ac.ChildID == 0 {
-			continue
-		}
 		if sectionID != nil && ac.SectionID != *sectionID {
 			continue
 		}
-		addContractToChild(ds.Children, ac)
+		for i := range ds.Children {
+			if ds.Children[i].ID == ac.ChildID {
+				ds.Children[i].Contracts = append(ds.Children[i].Contracts, ac)
+				break
+			}
+		}
 	}
 
-	// 7. Add new virtual employees
-	for i, ae := range req.AddEmployees {
+	// 5. Add new virtual employees
+	for i := range req.AddEmployees {
+		emp := req.AddEmployees[i]
 		virtualID := virtualIDBase + uint(i) //nolint:gosec // index cannot overflow
-		contracts := toEmployeeContracts(ae.Contracts, virtualID, sectionID)
-		if len(contracts) == 0 {
-			continue // all contracts filtered out by section
+		emp.ID = virtualID
+		for j := range emp.Contracts {
+			emp.Contracts[j].ID = virtualIDBase + uint(j) //nolint:gosec // index cannot overflow
+			emp.Contracts[j].EmployeeID = virtualID
 		}
-		emp := models.Employee{
-			Person: models.Person{
-				ID:        virtualID,
-				FirstName: ae.FirstName,
-				LastName:  ae.LastName,
-				Gender:    ae.Gender,
-				Birthdate: ae.Birthdate,
-			},
-			Contracts: contracts,
+		if sectionID != nil {
+			emp.Contracts = filterSlice(emp.Contracts, func(c models.EmployeeContract) bool {
+				return c.SectionID == *sectionID
+			})
 		}
-		ds.Employees = append(ds.Employees, emp)
+		if len(emp.Contracts) > 0 {
+			ds.Employees = append(ds.Employees, emp)
+		}
 	}
 
-	// 8. Add new virtual children (IDs offset from employees to avoid collisions)
+	// 6. Add new virtual children (IDs offset from employees to avoid collisions)
 	childVirtualIDBase := virtualIDBase + uint(len(req.AddEmployees)) //nolint:gosec // length cannot overflow
-	for i, ac := range req.AddChildren {
+	for i := range req.AddChildren {
+		child := req.AddChildren[i]
 		virtualID := childVirtualIDBase + uint(i) //nolint:gosec // index cannot overflow
-		contracts := toChildContracts(ac.Contracts, virtualID, sectionID)
-		if len(contracts) == 0 {
-			continue
+		child.ID = virtualID
+		for j := range child.Contracts {
+			child.Contracts[j].ID = virtualIDBase + uint(j) //nolint:gosec // index cannot overflow
+			child.Contracts[j].ChildID = virtualID
 		}
-		child := models.Child{
-			Person: models.Person{
-				ID:        virtualID,
-				FirstName: ac.FirstName,
-				LastName:  ac.LastName,
-				Gender:    ac.Gender,
-				Birthdate: ac.Birthdate,
-			},
-			Contracts: contracts,
-		}
-		ds.Children = append(ds.Children, child)
-	}
-
-	// 9. Add pay plan periods
-	for _, pp := range req.AddPayPlanPeriods {
-		if existing, ok := ds.PayPlans[pp.PayPlanID]; ok {
-			existing.Periods = append(existing.Periods, toPayPlanPeriod(pp))
-		}
-		// If pay plan not in DataSet, it will be loaded by the pay plan reload after applyOverlay
-	}
-
-	// 10. Add funding periods
-	for _, fp := range req.AddFundingPeriods {
-		ds.FundingPeriods = append(ds.FundingPeriods, toFundingPeriod(fp))
-	}
-
-	// 11. Remove budget items
-	if len(req.RemoveBudgetItemIDs) > 0 {
-		removeSet := toUintSet(req.RemoveBudgetItemIDs)
-		ds.BudgetItems = filterSlice(ds.BudgetItems, func(b models.BudgetItem) bool {
-			return !removeSet[b.ID]
-		})
-	}
-
-	// 12. Add virtual budget items
-	budgetVirtualIDBase := virtualIDBase + uint(len(req.AddEmployees)) + uint(len(req.AddChildren)) //nolint:gosec // lengths cannot overflow
-	for i, bi := range req.AddBudgetItems {
-		ds.BudgetItems = append(ds.BudgetItems, toBudgetItem(bi, budgetVirtualIDBase+uint(i))) //nolint:gosec // index cannot overflow
-	}
-}
-
-// --- Conversion helpers ---
-
-func toEmployeeContracts(fcs []models.ForecastAddEmployeeContract, employeeID uint, sectionID *uint) []models.EmployeeContract {
-	var contracts []models.EmployeeContract
-	for i, fc := range fcs {
-		if sectionID != nil && fc.SectionID != *sectionID {
-			continue
-		}
-		contracts = append(contracts, models.EmployeeContract{
-			ID:         virtualIDBase + uint(i), //nolint:gosec // index cannot overflow
-			EmployeeID: employeeID,
-			BaseContract: models.BaseContract{
-				Period:    models.Period{From: fc.From, To: fc.To},
-				SectionID: fc.SectionID,
-			},
-			StaffCategory: fc.StaffCategory,
-			Grade:         fc.Grade,
-			Step:          fc.Step,
-			WeeklyHours:   fc.WeeklyHours,
-			PayPlanID:     fc.PayPlanID,
-		})
-	}
-	return contracts
-}
-
-func toChildContracts(fcs []models.ForecastAddChildContract, childID uint, sectionID *uint) []models.ChildContract {
-	var contracts []models.ChildContract
-	for i, fc := range fcs {
-		if sectionID != nil && fc.SectionID != *sectionID {
-			continue
-		}
-		contracts = append(contracts, models.ChildContract{
-			ID:      virtualIDBase + uint(i), //nolint:gosec // index cannot overflow
-			ChildID: childID,
-			BaseContract: models.BaseContract{
-				Period:     models.Period{From: fc.From, To: fc.To},
-				SectionID:  fc.SectionID,
-				Properties: fc.Properties,
-			},
-		})
-	}
-	return contracts
-}
-
-func toPayPlanPeriod(fp models.ForecastAddPayPlanPeriod) models.PayPlanPeriod {
-	entries := make([]models.PayPlanEntry, len(fp.Entries))
-	for i, e := range fp.Entries {
-		entries[i] = models.PayPlanEntry{
-			Grade:         e.Grade,
-			Step:          e.Step,
-			MonthlyAmount: e.MonthlyAmount,
-		}
-	}
-	return models.PayPlanPeriod{
-		PayPlanID:                fp.PayPlanID,
-		Period:                   models.Period{From: fp.From, To: fp.To},
-		WeeklyHours:              fp.WeeklyHours,
-		EmployerContributionRate: fp.EmployerContributionRate,
-		Entries:                  entries,
-	}
-}
-
-func toFundingPeriod(fp models.ForecastAddFundingPeriod) models.GovernmentFundingPeriod {
-	props := make([]models.GovernmentFundingProperty, len(fp.Properties))
-	for i, p := range fp.Properties {
-		props[i] = models.GovernmentFundingProperty{
-			Key:                 p.Key,
-			Value:               p.Value,
-			Label:               p.Label,
-			Payment:             p.Payment,
-			Requirement:         p.Requirement,
-			MinAge:              p.MinAge,
-			MaxAge:              p.MaxAge,
-			ApplyToAllContracts: p.ApplyToAllContracts,
-		}
-	}
-	return models.GovernmentFundingPeriod{
-		Period:              models.Period{From: fp.From, To: fp.To},
-		FullTimeWeeklyHours: fp.FullTimeWeeklyHours,
-		Properties:          props,
-	}
-}
-
-func toBudgetItem(bi models.ForecastAddBudgetItem, virtualID uint) models.BudgetItem {
-	entries := make([]models.BudgetItemEntry, len(bi.Entries))
-	for i, e := range bi.Entries {
-		entries[i] = models.BudgetItemEntry{
-			Period:      models.Period{From: e.From, To: e.To},
-			AmountCents: e.AmountCents,
-		}
-	}
-	return models.BudgetItem{
-		ID:       virtualID,
-		Name:     bi.Name,
-		Category: bi.Category,
-		PerChild: bi.PerChild,
-		Entries:  entries,
-	}
-}
-
-// --- Mutation helpers ---
-
-func endEmployeeContract(employees []models.Employee, contractID uint, endDate time.Time) {
-	for i := range employees {
-		for j := range employees[i].Contracts {
-			if employees[i].Contracts[j].ID == contractID {
-				employees[i].Contracts[j].To = &endDate
-				return
-			}
-		}
-	}
-}
-
-func endChildContract(children []models.Child, contractID uint, endDate time.Time) {
-	for i := range children {
-		for j := range children[i].Contracts {
-			if children[i].Contracts[j].ID == contractID {
-				children[i].Contracts[j].To = &endDate
-				return
-			}
-		}
-	}
-}
-
-func addContractToEmployee(employees []models.Employee, ac models.ForecastAddEmployeeContract) {
-	for i := range employees {
-		if employees[i].ID == ac.EmployeeID {
-			employees[i].Contracts = append(employees[i].Contracts, models.EmployeeContract{
-				EmployeeID: ac.EmployeeID,
-				BaseContract: models.BaseContract{
-					Period:    models.Period{From: ac.From, To: ac.To},
-					SectionID: ac.SectionID,
-				},
-				StaffCategory: ac.StaffCategory,
-				Grade:         ac.Grade,
-				Step:          ac.Step,
-				WeeklyHours:   ac.WeeklyHours,
-				PayPlanID:     ac.PayPlanID,
+		if sectionID != nil {
+			child.Contracts = filterSlice(child.Contracts, func(c models.ChildContract) bool {
+				return c.SectionID == *sectionID
 			})
-			return
 		}
-	}
-}
-
-func addContractToChild(children []models.Child, ac models.ForecastAddChildContract) {
-	for i := range children {
-		if children[i].ID == ac.ChildID {
-			children[i].Contracts = append(children[i].Contracts, models.ChildContract{
-				ChildID: ac.ChildID,
-				BaseContract: models.BaseContract{
-					Period:     models.Period{From: ac.From, To: ac.To},
-					SectionID:  ac.SectionID,
-					Properties: ac.Properties,
-				},
-			})
-			return
+		if len(child.Contracts) > 0 {
+			ds.Children = append(ds.Children, child)
 		}
 	}
 }

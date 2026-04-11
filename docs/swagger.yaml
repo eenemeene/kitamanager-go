@@ -262,6 +262,37 @@ definitions:
         example: true
         type: boolean
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.Child:
+    properties:
+      birthdate:
+        example: "1990-05-15"
+        type: string
+      contracts:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContract'
+        type: array
+      created_at:
+        type: string
+      first_name:
+        example: Max
+        type: string
+      gender:
+        example: male
+        type: string
+      id:
+        example: 1
+        type: integer
+      last_name:
+        example: Mustermann
+        type: string
+      organization:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Organization'
+      organization_id:
+        example: 1
+        type: integer
+      updated_at:
+        type: string
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildAttendanceCreateRequest:
     properties:
       check_in_time:
@@ -354,6 +385,37 @@ definitions:
         type: string
       status:
         example: present
+        type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ChildContract:
+    properties:
+      child_id:
+        example: 1
+        type: integer
+      created_at:
+        type: string
+      from:
+        type: string
+      id:
+        example: 1
+        type: integer
+      properties:
+        allOf:
+        - $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
+        description: |-
+          Properties stores flexible key-value data as JSON.
+          For children: {"care_type": "ganztag", "supplements": ["ndh", "mss"]}
+          For employees: {"benefits": ["christmas_bonus"], "employer_type": "normal"}
+      section:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Section'
+      section_id:
+        type: integer
+      to:
+        type: string
+      updated_at:
+        type: string
+      voucher_number:
+        example: GB-12345678901-02
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildContractBatchUpdateEntry:
@@ -602,6 +664,81 @@ definitions:
       value:
         example: ganztag
         type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.Employee:
+    properties:
+      birthdate:
+        example: "1990-05-15"
+        type: string
+      contracts:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContract'
+        type: array
+      created_at:
+        type: string
+      first_name:
+        example: Max
+        type: string
+      gender:
+        example: male
+        type: string
+      id:
+        example: 1
+        type: integer
+      last_name:
+        example: Mustermann
+        type: string
+      organization:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Organization'
+      organization_id:
+        example: 1
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.EmployeeContract:
+    properties:
+      created_at:
+        type: string
+      employee_id:
+        example: 1
+        type: integer
+      from:
+        type: string
+      grade:
+        example: S8a
+        type: string
+      id:
+        example: 1
+        type: integer
+      payplan_id:
+        example: 1
+        type: integer
+      properties:
+        allOf:
+        - $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
+        description: |-
+          Properties stores flexible key-value data as JSON.
+          For children: {"care_type": "ganztag", "supplements": ["ndh", "mss"]}
+          For employees: {"benefits": ["christmas_bonus"], "employer_type": "normal"}
+      section:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Section'
+      section_id:
+        type: integer
+      staff_category:
+        description: Employee-specific typed fields
+        example: qualified
+        type: string
+      step:
+        example: 3
+        type: integer
+      to:
+        type: string
+      updated_at:
+        type: string
+      weekly_hours:
+        example: 40
+        type: number
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractBatchUpdateEntry:
     properties:
@@ -983,309 +1120,28 @@ definitions:
         example: qualified
         type: string
     type: object
-  github_com_eenemeene_kitamanager-go_internal_models.ForecastAddBudgetItem:
-    properties:
-      category:
-        example: income
-        type: string
-      entries:
-        items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastBudgetItemEntry'
-        minItems: 1
-        type: array
-      name:
-        example: Elternbeiträge
-        type: string
-      per_child:
-        example: true
-        type: boolean
-    required:
-    - category
-    - entries
-    - name
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.ForecastAddChild:
-    properties:
-      birthdate:
-        example: "2023-03-10"
-        type: string
-      contracts:
-        items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastAddChildContract'
-        minItems: 1
-        type: array
-      first_name:
-        example: Emma
-        type: string
-      gender:
-        example: female
-        type: string
-      last_name:
-        example: Schmidt
-        type: string
-    required:
-    - birthdate
-    - contracts
-    - first_name
-    - gender
-    - last_name
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.ForecastAddChildContract:
-    properties:
-      child_id:
-        example: 0
-        type: integer
-      from:
-        example: "2026-08-01"
-        type: string
-      properties:
-        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
-      section_id:
-        example: 1
-        type: integer
-      to:
-        example: "2027-07-31"
-        type: string
-    required:
-    - from
-    - section_id
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.ForecastAddEmployee:
-    properties:
-      birthdate:
-        example: "1990-05-15"
-        type: string
-      contracts:
-        items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastAddEmployeeContract'
-        minItems: 1
-        type: array
-      first_name:
-        example: Maria
-        type: string
-      gender:
-        example: female
-        type: string
-      last_name:
-        example: Musterfrau
-        type: string
-    required:
-    - birthdate
-    - contracts
-    - first_name
-    - gender
-    - last_name
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.ForecastAddEmployeeContract:
-    properties:
-      employee_id:
-        example: 0
-        type: integer
-      from:
-        example: "2026-08-01"
-        type: string
-      grade:
-        example: S8a
-        type: string
-      pay_plan_id:
-        example: 1
-        type: integer
-      section_id:
-        example: 1
-        type: integer
-      staff_category:
-        example: qualified
-        type: string
-      step:
-        example: 3
-        type: integer
-      to:
-        example: "2027-07-31"
-        type: string
-      weekly_hours:
-        example: 39
-        type: number
-    required:
-    - from
-    - pay_plan_id
-    - section_id
-    - staff_category
-    - weekly_hours
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.ForecastAddFundingPeriod:
-    properties:
-      from:
-        example: "2027-08-01"
-        type: string
-      full_time_weekly_hours:
-        example: 39
-        type: number
-      properties:
-        items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastFundingProperty'
-        minItems: 1
-        type: array
-      to:
-        example: "2028-07-31"
-        type: string
-    required:
-    - from
-    - full_time_weekly_hours
-    - properties
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.ForecastAddPayPlanPeriod:
-    properties:
-      employer_contribution_rate:
-        example: 2200
-        type: integer
-      entries:
-        items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastPayPlanEntry'
-        minItems: 1
-        type: array
-      from:
-        example: "2027-01-01"
-        type: string
-      pay_plan_id:
-        example: 1
-        type: integer
-      to:
-        example: "2027-12-31"
-        type: string
-      weekly_hours:
-        example: 39
-        type: number
-    required:
-    - employer_contribution_rate
-    - entries
-    - from
-    - pay_plan_id
-    - weekly_hours
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.ForecastBudgetItemEntry:
-    properties:
-      amount_cents:
-        example: 50000
-        type: integer
-      from:
-        example: "2027-01-01"
-        type: string
-      to:
-        example: "2027-12-31"
-        type: string
-    required:
-    - amount_cents
-    - from
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.ForecastEndContract:
-    properties:
-      contract_id:
-        example: 5
-        type: integer
-      end_date:
-        example: "2026-07-31"
-        type: string
-    required:
-    - contract_id
-    - end_date
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.ForecastFundingProperty:
-    properties:
-      apply_to_all_contracts:
-        example: false
-        type: boolean
-      key:
-        example: care_type
-        type: string
-      label:
-        example: Ganztag
-        type: string
-      max_age:
-        example: 3
-        type: integer
-      min_age:
-        example: 0
-        type: integer
-      payment:
-        example: 166847
-        type: integer
-      requirement:
-        example: 0.261
-        type: number
-      value:
-        example: ganztag
-        type: string
-    required:
-    - key
-    - label
-    - payment
-    - value
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.ForecastPayPlanEntry:
-    properties:
-      grade:
-        example: S8a
-        type: string
-      monthly_amount:
-        example: 380000
-        type: integer
-      step:
-        example: 3
-        type: integer
-    required:
-    - grade
-    - monthly_amount
-    - step
-    type: object
   github_com_eenemeene_kitamanager-go_internal_models.ForecastRequest:
     properties:
-      add_budget_items:
-        description: Budget item overlays
-        items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastAddBudgetItem'
-        type: array
       add_child_contracts:
         items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastAddChildContract'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContract'
         type: array
       add_children:
         description: Child overlays
         items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastAddChild'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Child'
         type: array
       add_employee_contracts:
         items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastAddEmployeeContract'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContract'
         type: array
       add_employees:
         description: Employee overlays
         items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastAddEmployee'
-        type: array
-      add_funding_periods:
-        description: Government funding overlays
-        items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastAddFundingPeriod'
-        type: array
-      add_pay_plan_periods:
-        description: Pay plan overlays
-        items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastAddPayPlanPeriod'
-        type: array
-      end_child_contracts:
-        items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastEndContract'
-        type: array
-      end_employee_contracts:
-        items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastEndContract'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Employee'
         type: array
       from:
         type: string
-      remove_budget_item_ids:
-        items:
-          type: integer
-        type: array
       remove_child_ids:
         items:
           type: integer
@@ -2625,6 +2481,38 @@ definitions:
     - RoleManager
     - RoleMember
     - RoleStaff
+  github_com_eenemeene_kitamanager-go_internal_models.Section:
+    properties:
+      created_at:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+      created_by:
+        example: admin@example.com
+        type: string
+      id:
+        example: 1
+        type: integer
+      is_default:
+        example: false
+        type: boolean
+      max_age_months:
+        example: 36
+        type: integer
+      min_age_months:
+        example: 0
+        type: integer
+      name:
+        example: Krippe
+        type: string
+      organization:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Organization'
+      organization_id:
+        example: 1
+        type: integer
+      updated_at:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.SectionCreateRequest:
     properties:
       max_age_months:

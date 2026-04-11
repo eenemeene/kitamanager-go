@@ -159,21 +159,53 @@ export function ForecastChildrenTab() {
         </Button>
       </div>
 
-      {/* Added children list */}
+      {/* Added children table */}
       {store.addChildren.length > 0 && (
         <div className="space-y-2">
           <h4 className="text-sm font-medium">
             {t('statistics.forecastAdded')} ({store.addChildren.length})
           </h4>
-          <div className="flex flex-wrap gap-2">
-            {store.addChildren.map((child, i) => (
-              <Badge key={i} variant="secondary" className="gap-1">
-                {child.first_name} {child.last_name} ({child.birthdate})
-                <button onClick={() => store.removeAddedChild(i)} className="ml-1">
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left">
+                  <th className="px-2 py-1 font-medium">#</th>
+                  <th className="px-2 py-1 font-medium">{t('children.age')}</th>
+                  <th className="px-2 py-1 font-medium">{t('contracts.from')}</th>
+                  <th className="px-2 py-1 font-medium">{t('sections.title')}</th>
+                  <th className="px-2 py-1 font-medium">{t('contracts.propertiesLabel')}</th>
+                  <th className="px-2 py-1"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {store.addChildren.map((child, i) => {
+                  const contract = child.contracts[0];
+                  const birthYear = new Date(child.birthdate).getFullYear();
+                  const childAge = new Date().getFullYear() - birthYear;
+                  const sectionName =
+                    sections?.data.find((s) => s.id === contract?.section_id)?.name ?? '';
+                  const props = contract?.properties
+                    ? Object.entries(contract.properties)
+                        .map(([k, v]) => `${k}: ${v}`)
+                        .join(', ')
+                    : '';
+                  return (
+                    <tr key={i} className="border-b">
+                      <td className="px-2 py-1">{i + 1}</td>
+                      <td className="px-2 py-1">{childAge}</td>
+                      <td className="px-2 py-1">{contract?.from}</td>
+                      <td className="px-2 py-1">{sectionName}</td>
+                      <td className="px-2 py-1 text-xs">{props}</td>
+                      <td className="px-2 py-1">
+                        <button onClick={() => store.removeAddedChild(i)}>
+                          <X className="h-3 w-3" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
