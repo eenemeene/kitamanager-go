@@ -75,15 +75,17 @@ func (s *StatisticsService) loadFundingPeriods(ctx context.Context, state string
 	return funding.Periods
 }
 
-// loadPayPlans batch-fetches pay plans referenced by the given contracts.
-func (s *StatisticsService) loadPayPlans(ctx context.Context, contracts []models.EmployeeContract) map[uint]*models.PayPlan {
+// loadPayPlans batch-fetches pay plans referenced by the given employees' contracts.
+func (s *StatisticsService) loadPayPlans(ctx context.Context, employees []models.Employee) map[uint]*models.PayPlan {
 	payPlanIDs := make([]uint, 0)
 	seen := make(map[uint]bool)
-	for i := range contracts {
-		ppID := contracts[i].PayPlanID
-		if ppID != 0 && !seen[ppID] {
-			seen[ppID] = true
-			payPlanIDs = append(payPlanIDs, ppID)
+	for i := range employees {
+		for j := range employees[i].Contracts {
+			ppID := employees[i].Contracts[j].PayPlanID
+			if ppID != 0 && !seen[ppID] {
+				seen[ppID] = true
+				payPlanIDs = append(payPlanIDs, ppID)
+			}
 		}
 	}
 	payPlanMap, err := s.payPlanStore.FindByIDsWithPeriods(ctx, payPlanIDs)
@@ -109,12 +111,12 @@ func (s *StatisticsService) GetStaffingHours(ctx context.Context, orgID uint, fr
 		return nil, apperror.InternalWrap(err, "failed to fetch children")
 	}
 
-	employeeContracts, err := s.employeeStore.FindContractsByOrganizationInDateRange(ctx, orgID, rangeStart, rangeEnd, pedagogicalCategories, sectionID)
+	employees, err := s.employeeStore.FindByOrganizationInDateRange(ctx, orgID, rangeStart, rangeEnd, pedagogicalCategories, sectionID)
 	if err != nil {
-		return nil, apperror.InternalWrap(err, "failed to fetch employee contracts")
+		return nil, apperror.InternalWrap(err, "failed to fetch employees")
 	}
 
-	dataPoints := calculateStaffingHours(children, employeeContracts, fundingPeriods, rangeStart, rangeEnd)
+	dataPoints := calculateStaffingHours(children, employees, fundingPeriods, rangeStart, rangeEnd)
 	return &models.StaffingHoursResponse{DataPoints: dataPoints}, nil
 }
 
@@ -147,19 +149,19 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 		return nil, apperror.InternalWrap(err, "failed to fetch children")
 	}
 
-	employeeContracts, err := s.employeeStore.FindContractsByOrganizationInDateRange(ctx, orgID, rangeStart, rangeEnd, nil, nil)
+	employees, err := s.employeeStore.FindByOrganizationInDateRange(ctx, orgID, rangeStart, rangeEnd, []string(nil), nil)
 	if err != nil {
-		return nil, apperror.InternalWrap(err, "failed to fetch employee contracts")
+		return nil, apperror.InternalWrap(err, "failed to fetch employees")
 	}
 
-	payPlans := s.loadPayPlans(ctx, employeeContracts)
+	payPlans := s.loadPayPlans(ctx, employees)
 
 	budgetItems, err := s.budgetItemStore.FindByOrganizationWithEntries(ctx, orgID)
 	if err != nil {
 		budgetItems = nil // non-fatal: proceed without budget items
 	}
 
-	dataPoints := calculateFinancials(children, employeeContracts, payPlans, fundingPeriods, budgetItems, rangeStart, rangeEnd)
+	dataPoints := calculateFinancials(children, employees, payPlans, fundingPeriods, budgetItems, rangeStart, rangeEnd)
 	return &models.FinancialResponse{DataPoints: dataPoints}, nil
 }
 

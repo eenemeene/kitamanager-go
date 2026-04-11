@@ -105,7 +105,7 @@ func findPayPlanPeriodForDate(periods []models.PayPlanPeriod, date time.Time) *m
 // A child/employee is counted if their contract IsActiveOn that date.
 func calculateFinancials(
 	children []models.Child,
-	employeeContracts []models.EmployeeContract,
+	employees []models.Employee,
 	payPlans map[uint]*models.PayPlan,
 	fundingPeriods []models.GovernmentFundingPeriod,
 	budgetItems []models.BudgetItem,
@@ -173,41 +173,41 @@ func calculateFinancials(
 		grossSalary := 0
 		employerCosts := 0
 		staffCount := 0
-		employeeSeen := make(map[uint]bool, len(employeeContracts))
 		salaryByCategory := make(map[string][2]int) // [0]=gross, [1]=contrib
-		for i := range employeeContracts {
-			ec := &employeeContracts[i]
-			if !ec.IsActiveOn(date) {
-				continue
-			}
-			if !employeeSeen[ec.EmployeeID] {
-				employeeSeen[ec.EmployeeID] = true
+		for i := range employees {
+			emp := &employees[i]
+			for j := range emp.Contracts {
+				ec := &emp.Contracts[j]
+				if !ec.IsActiveOn(date) {
+					continue
+				}
 				staffCount++
-			}
 
-			ppDateMap := payPlanIdx[ec.PayPlanID]
-			if ppDateMap == nil {
-				continue
-			}
-			resolved := ppDateMap[date]
-			if resolved == nil {
-				continue
-			}
-			entry := resolved.entryIndex[gradeStepKey{ec.Grade, ec.Step}]
-			if entry == nil {
-				continue
-			}
+				ppDateMap := payPlanIdx[ec.PayPlanID]
+				if ppDateMap == nil {
+					break
+				}
+				resolved := ppDateMap[date]
+				if resolved == nil {
+					break
+				}
+				entry := resolved.entryIndex[gradeStepKey{ec.Grade, ec.Step}]
+				if entry == nil {
+					break
+				}
 
-			gross := int(math.Round(float64(entry.MonthlyAmount) * ec.WeeklyHours / resolved.period.WeeklyHours))
-			contrib := int(math.Round(float64(gross) * float64(resolved.period.EmployerContributionRate) / 10000.0))
-			grossSalary += gross
-			employerCosts += contrib
+				gross := int(math.Round(float64(entry.MonthlyAmount) * ec.WeeklyHours / resolved.period.WeeklyHours))
+				contrib := int(math.Round(float64(gross) * float64(resolved.period.EmployerContributionRate) / 10000.0))
+				grossSalary += gross
+				employerCosts += contrib
 
-			cat := ec.StaffCategory
-			pair := salaryByCategory[cat]
-			pair[0] += gross
-			pair[1] += contrib
-			salaryByCategory[cat] = pair
+				cat := ec.StaffCategory
+				pair := salaryByCategory[cat]
+				pair[0] += gross
+				pair[1] += contrib
+				salaryByCategory[cat] = pair
+				break // one active contract per employee per month
+			}
 		}
 
 		// Convert salary-by-category map to sorted slice
@@ -284,7 +284,7 @@ func calculateFinancials(
 // Each month uses the first-of-month as reference date.
 func calculateStaffingHours(
 	children []models.Child,
-	employeeContracts []models.EmployeeContract,
+	employees []models.Employee,
 	fundingPeriods []models.GovernmentFundingPeriod,
 	start, end time.Time,
 ) []models.StaffingHoursDataPoint {
@@ -319,15 +319,18 @@ func calculateStaffingHours(
 		// Calculate available hours from employee contracts
 		availableHours := 0.0
 		staffCount := 0
-		employeeSeen := make(map[uint]bool, len(employeeContracts))
-		for i := range employeeContracts {
-			ec := &employeeContracts[i]
-			if ec.IsActiveOn(date) {
-				availableHours += ec.WeeklyHours
-				if !employeeSeen[ec.EmployeeID] {
-					employeeSeen[ec.EmployeeID] = true
-					staffCount++
+		for i := range employees {
+			emp := &employees[i]
+			hasActive := false
+			for j := range emp.Contracts {
+				if emp.Contracts[j].IsActiveOn(date) {
+					availableHours += emp.Contracts[j].WeeklyHours
+					hasActive = true
+					break // one active contract per employee per month
 				}
+			}
+			if hasActive {
+				staffCount++
 			}
 		}
 
