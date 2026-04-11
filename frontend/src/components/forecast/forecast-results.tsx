@@ -24,6 +24,18 @@ const StaffingHoursChart = dynamic(
   { ssr: false, loading: () => <Skeleton className="h-[300px] w-full" /> }
 );
 
+const MonthlyContractChart = dynamic(
+  () =>
+    import('@/components/charts/monthly-contract-chart').then((mod) => mod.MonthlyContractChart),
+  { ssr: false, loading: () => <Skeleton className="h-[350px] w-full" /> }
+);
+
+const FinancialSummaryChart = dynamic(
+  () =>
+    import('@/components/charts/financial-summary-chart').then((mod) => mod.FinancialSummaryChart),
+  { ssr: false, loading: () => <Skeleton className="h-[350px] w-full" /> }
+);
+
 interface BaselineData {
   financials?: ForecastResponse['financials'];
   staffingHours?: ForecastResponse['staffing_hours'];
@@ -59,11 +71,50 @@ export function ForecastResults({ data, baseline }: ForecastResultsProps) {
       <CardContent>
         <Tabs defaultValue="financials">
           <TabsList className="flex flex-wrap">
+            <TabsTrigger value="summary">{t('financialSummary')}</TabsTrigger>
             <TabsTrigger value="financials">{t('forecastTabFinancials')}</TabsTrigger>
+            <TabsTrigger value="children">{t('forecastTabChildren')}</TabsTrigger>
             <TabsTrigger value="staffing">{t('forecastTabStaffing')}</TabsTrigger>
             <TabsTrigger value="occupancy">{t('forecastTabOccupancy')}</TabsTrigger>
             <TabsTrigger value="employeeHours">{t('forecastTabEmployeeHours')}</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="summary">
+            {showBaseline && hasBaseline ? (
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div>
+                  <h4 className="text-muted-foreground mb-2 text-sm font-medium">
+                    {t('forecastBaseline')}
+                  </h4>
+                  {baseline.financials ? (
+                    <ChartErrorBoundary>
+                      <FinancialSummaryChart data={baseline.financials} />
+                    </ChartErrorBoundary>
+                  ) : (
+                    <p className="text-muted-foreground">{t('chartError')}</p>
+                  )}
+                </div>
+                <div>
+                  <h4 className="text-muted-foreground mb-2 text-sm font-medium">
+                    {t('forecastScenario')}
+                  </h4>
+                  {data.financials ? (
+                    <ChartErrorBoundary>
+                      <FinancialSummaryChart data={data.financials} />
+                    </ChartErrorBoundary>
+                  ) : (
+                    <p className="text-muted-foreground">{t('chartError')}</p>
+                  )}
+                </div>
+              </div>
+            ) : data.financials ? (
+              <ChartErrorBoundary>
+                <FinancialSummaryChart data={data.financials} />
+              </ChartErrorBoundary>
+            ) : (
+              <p className="text-muted-foreground">{t('chartError')}</p>
+            )}
+          </TabsContent>
 
           <TabsContent value="financials">
             {showBaseline && hasBaseline ? (
@@ -96,6 +147,43 @@ export function ForecastResults({ data, baseline }: ForecastResultsProps) {
             ) : data.financials ? (
               <ChartErrorBoundary>
                 <FinancialsChart data={data.financials} />
+              </ChartErrorBoundary>
+            ) : (
+              <p className="text-muted-foreground">{t('chartError')}</p>
+            )}
+          </TabsContent>
+
+          <TabsContent value="children">
+            {showBaseline && hasBaseline ? (
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div>
+                  <h4 className="text-muted-foreground mb-2 text-sm font-medium">
+                    {t('forecastBaseline')}
+                  </h4>
+                  {baseline.staffingHours ? (
+                    <ChartErrorBoundary>
+                      <MonthlyContractChart data={baseline.staffingHours} />
+                    </ChartErrorBoundary>
+                  ) : (
+                    <p className="text-muted-foreground">{t('chartError')}</p>
+                  )}
+                </div>
+                <div>
+                  <h4 className="text-muted-foreground mb-2 text-sm font-medium">
+                    {t('forecastScenario')}
+                  </h4>
+                  {data.staffing_hours ? (
+                    <ChartErrorBoundary>
+                      <MonthlyContractChart data={data.staffing_hours} />
+                    </ChartErrorBoundary>
+                  ) : (
+                    <p className="text-muted-foreground">{t('chartError')}</p>
+                  )}
+                </div>
+              </div>
+            ) : data.staffing_hours ? (
+              <ChartErrorBoundary>
+                <MonthlyContractChart data={data.staffing_hours} />
               </ChartErrorBoundary>
             ) : (
               <p className="text-muted-foreground">{t('chartError')}</p>

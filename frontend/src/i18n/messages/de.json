@@ -150,6 +150,10 @@
     "contractProperties": "Kinder-Vertragseigenschaften (Heute)",
     "financialOverview": "Finanzübersicht",
     "financialOverviewDescription": "Monatliche Einnahmen- und Ausgabenaufschlüsselung mit Bilanzverlauf",
+    "financialSummary": "Kumuliertes Saldo",
+    "financialSummaryDescription": "Laufende Summe des monatlichen Saldos, wird zu Beginn jedes Kitajahres (August) auf Null zurückgesetzt",
+    "cumulativeBalance": "Kumuliertes Saldo",
+    "monthlyChange": "(monatlich)",
     "employerCostsTooltip": "Arbeitgeberanteile zur Sozialversicherung (Prozentsatz aus dem Vergütungsplan)",
     "totalIncome": "Gesamteinnahmen",
     "totalExpenses": "Gesamtausgaben",
@@ -219,6 +223,7 @@
     "forecastOptimizeSections": "Bereiche zum Belegen",
     "forecastOptimizeRunning": "Optimierung läuft...",
     "forecastOptimizeResult": "Ergebnis: {count} Kinder benötigt für ein kumuliertes Saldo von {balance}.",
+    "forecastOptimizeNotReached": "Zielsaldo mit den aktuellen Einschränkungen nicht erreichbar (max. {max} Kinder möglich).",
     "forecastOptimizeAddedToStore": "Die Kinder wurden im Kinder-Tab hinzugefügt. Sie können sie vor der Berechnung überprüfen und anpassen.",
     "forecastOptimizeNoImpact": "Das Hinzufügen von Kindern verbessert das Saldo nicht. Prüfen Sie die Förderungskonfiguration und Vertragseigenschaften."
   },

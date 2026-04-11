@@ -21,6 +21,12 @@ const FinancialsChart = dynamic(
   { ssr: false, loading: () => <Skeleton className="h-[580px] w-full" /> }
 );
 
+const FinancialSummaryChart = dynamic(
+  () =>
+    import('@/components/charts/financial-summary-chart').then((mod) => mod.FinancialSummaryChart),
+  { ssr: false, loading: () => <Skeleton className="h-[350px] w-full" /> }
+);
+
 const FundingBreakdownChart = dynamic(
   () =>
     import('@/components/charts/funding-breakdown-chart').then((mod) => mod.FundingBreakdownChart),
@@ -91,6 +97,27 @@ export default function FinancialsPage() {
           ) : financials ? (
             <ChartErrorBoundary>
               <FinancialsChart data={financials} />
+            </ChartErrorBoundary>
+          ) : (
+            <p className="text-muted-foreground">{t('statistics.chartError')}</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Annual Summary Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('statistics.financialSummary')}</CardTitle>
+          <p className="text-muted-foreground text-sm">
+            {t('statistics.financialSummaryDescription')}
+          </p>
+        </CardHeader>
+        <CardContent>
+          {isLoadingFinancials ? (
+            <Skeleton className="h-[350px] w-full" />
+          ) : financials ? (
+            <ChartErrorBoundary>
+              <FinancialSummaryChart data={financials} />
             </ChartErrorBoundary>
           ) : (
             <p className="text-muted-foreground">{t('statistics.chartError')}</p>

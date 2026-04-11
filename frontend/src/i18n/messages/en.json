@@ -150,6 +150,10 @@
     "contractProperties": "Children Contract Properties (Today)",
     "financialOverview": "Financial Overview",
     "financialOverviewDescription": "Monthly income and expense breakdown with balance trend",
+    "financialSummary": "Cumulative Balance",
+    "financialSummaryDescription": "Running total of monthly balance, resetting to zero at the start of each Kita year (August)",
+    "cumulativeBalance": "Cumulative Balance",
+    "monthlyChange": "(monthly)",
     "employerCostsTooltip": "Employer social security contributions (percentage from pay plan)",
     "totalIncome": "Total Income",
     "totalExpenses": "Total Expenses",
@@ -219,6 +223,7 @@
     "forecastOptimizeSections": "Sections to Fill",
     "forecastOptimizeRunning": "Optimizing...",
     "forecastOptimizeResult": "Result: {count} children needed to reach a cumulative balance of {balance}.",
+    "forecastOptimizeNotReached": "Target balance not reachable with the current constraints (max {max} children possible).",
     "forecastOptimizeAddedToStore": "The children have been added to the Children tab. You can review and adjust them before calculating.",
     "forecastOptimizeNoImpact": "Adding children does not improve the balance. Check funding configuration and contract properties."
   },

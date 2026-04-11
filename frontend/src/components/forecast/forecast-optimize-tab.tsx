@@ -210,7 +210,7 @@ export function ForecastOptimizeTab() {
 
       let low = 1;
       let high = Math.min(estimate * 2, maxPossibleChildren);
-      let bestCount = high;
+      let bestCount = -1;
       let bestBalance = 0;
 
       // Binary search for minimum children needed
@@ -233,10 +233,19 @@ export function ForecastOptimizeTab() {
         }
       }
 
+      if (bestCount < 0) {
+        // Target not reachable within constraints
+        setOptimizeError(
+          t('statistics.forecastOptimizeNotReached', {
+            max: maxPossibleChildren,
+          })
+        );
+        setIsOptimizing(false);
+        return;
+      }
+
       // Populate the store with the optimal children
       const optimalChildren = buildChildren(bestCount);
-      // Clear any previously optimizer-added children (keep manually added ones)
-      // We add them to the store so the user can see and edit them
       for (const child of optimalChildren) {
         store.addChild(child);
       }
