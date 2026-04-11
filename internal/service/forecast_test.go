@@ -276,7 +276,6 @@ func TestGetForecast_RemoveChild(t *testing.T) {
 	}
 }
 
-
 func TestGetForecast_ValidateOverlay_WrongOrg(t *testing.T) {
 	svc, td := setupForecastTestData(t)
 	ctx := context.Background()
