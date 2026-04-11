@@ -984,6 +984,7 @@ func TestChildService_UpdateContract_ClearNullableProperties(t *testing.T) {
 func TestChildService_CalculateFunding_BasicCalculation(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	// Create org with government funding
@@ -1018,7 +1019,7 @@ func TestChildService_CalculateFunding_BasicCalculation(t *testing.T) {
 
 	// Calculate funding
 	refDate := time.Date(2025, 1, 27, 0, 0, 0, 0, time.UTC)
-	result, err := svc.CalculateFunding(ctx, org.ID, refDate)
+	result, err := statsSvc.CalculateFunding(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1053,6 +1054,7 @@ func TestChildService_CalculateFunding_BasicCalculation(t *testing.T) {
 func TestChildService_CalculateFunding_NoFundingAssigned(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	// Create org WITHOUT government funding
@@ -1075,7 +1077,7 @@ func TestChildService_CalculateFunding_NoFundingAssigned(t *testing.T) {
 
 	// Calculate funding
 	refDate := time.Date(2025, 1, 27, 0, 0, 0, 0, time.UTC)
-	result, err := svc.CalculateFunding(ctx, org.ID, refDate)
+	result, err := statsSvc.CalculateFunding(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1096,6 +1098,7 @@ func TestChildService_CalculateFunding_NoFundingAssigned(t *testing.T) {
 func TestChildService_CalculateFunding_NoMatchingPeriod(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	// Create org with funding
@@ -1121,7 +1124,7 @@ func TestChildService_CalculateFunding_NoMatchingPeriod(t *testing.T) {
 
 	// Calculate funding for date outside period
 	refDate := time.Date(2025, 1, 27, 0, 0, 0, 0, time.UTC)
-	result, err := svc.CalculateFunding(ctx, org.ID, refDate)
+	result, err := statsSvc.CalculateFunding(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1135,6 +1138,7 @@ func TestChildService_CalculateFunding_NoMatchingPeriod(t *testing.T) {
 func TestChildService_CalculateFunding_NoMatchingAgeProperty(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	// Create org with funding
@@ -1161,7 +1165,7 @@ func TestChildService_CalculateFunding_NoMatchingAgeProperty(t *testing.T) {
 	})
 
 	refDate := time.Date(2025, 1, 27, 0, 0, 0, 0, time.UTC)
-	result, err := svc.CalculateFunding(ctx, org.ID, refDate)
+	result, err := statsSvc.CalculateFunding(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1178,6 +1182,7 @@ func TestChildService_CalculateFunding_NoMatchingAgeProperty(t *testing.T) {
 func TestChildService_CalculateFunding_PartialAttributeMatch(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	// Create org with funding
@@ -1201,7 +1206,7 @@ func TestChildService_CalculateFunding_PartialAttributeMatch(t *testing.T) {
 	})
 
 	refDate := time.Date(2025, 1, 27, 0, 0, 0, 0, time.UTC)
-	result, err := svc.CalculateFunding(ctx, org.ID, refDate)
+	result, err := statsSvc.CalculateFunding(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1221,6 +1226,7 @@ func TestChildService_CalculateFunding_PartialAttributeMatch(t *testing.T) {
 func TestChildService_CalculateFunding_SingleProperty(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
@@ -1242,7 +1248,7 @@ func TestChildService_CalculateFunding_SingleProperty(t *testing.T) {
 	})
 
 	refDate := time.Date(2025, 1, 27, 0, 0, 0, 0, time.UTC)
-	result, err := svc.CalculateFunding(ctx, org.ID, refDate)
+	result, err := statsSvc.CalculateFunding(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1259,6 +1265,7 @@ func TestChildService_CalculateFunding_SingleProperty(t *testing.T) {
 func TestChildService_CalculateFunding_ChildNoActiveOnDate(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
@@ -1285,7 +1292,7 @@ func TestChildService_CalculateFunding_ChildNoActiveOnDate(t *testing.T) {
 	db.Save(childNoContract)
 
 	refDate := time.Date(2025, 1, 27, 0, 0, 0, 0, time.UTC)
-	result, err := svc.CalculateFunding(ctx, org.ID, refDate)
+	result, err := statsSvc.CalculateFunding(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1303,6 +1310,7 @@ func TestChildService_CalculateFunding_ChildNoActiveOnDate(t *testing.T) {
 func TestChildService_CalculateFunding_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org1 := createTestOrganization(t, db, "Org 1")
@@ -1337,7 +1345,7 @@ func TestChildService_CalculateFunding_WrongOrg(t *testing.T) {
 
 	// Calculate funding for org1 - should NOT include org2's child
 	refDate := time.Date(2025, 1, 27, 0, 0, 0, 0, time.UTC)
-	result, err := svc.CalculateFunding(ctx, org1.ID, refDate)
+	result, err := statsSvc.CalculateFunding(ctx, org1.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1356,6 +1364,7 @@ func TestChildService_CalculateFunding_WrongOrg(t *testing.T) {
 func TestChildService_CalculateFunding_WeeklyHoursFromFundingPeriod(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
@@ -1380,7 +1389,7 @@ func TestChildService_CalculateFunding_WeeklyHoursFromFundingPeriod(t *testing.T
 	}
 
 	refDate := time.Date(2025, 1, 27, 0, 0, 0, 0, time.UTC)
-	result, err := svc.CalculateFunding(ctx, org.ID, refDate)
+	result, err := statsSvc.CalculateFunding(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1393,6 +1402,7 @@ func TestChildService_CalculateFunding_WeeklyHoursFromFundingPeriod(t *testing.T
 func TestChildService_CalculateFunding_NoMatchingPeriod_WeeklyHoursZero(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
@@ -1414,7 +1424,7 @@ func TestChildService_CalculateFunding_NoMatchingPeriod_WeeklyHoursZero(t *testi
 	})
 
 	refDate := time.Date(2025, 1, 27, 0, 0, 0, 0, time.UTC)
-	result, err := svc.CalculateFunding(ctx, org.ID, refDate)
+	result, err := statsSvc.CalculateFunding(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1431,6 +1441,7 @@ func TestChildService_CalculateFunding_NoMatchingPeriod_WeeklyHoursZero(t *testi
 func TestChildService_GetAgeDistribution_BasicDistribution(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
@@ -1464,7 +1475,7 @@ func TestChildService_GetAgeDistribution_BasicDistribution(t *testing.T) {
 		}
 	}
 
-	stats, err := svc.GetAgeDistribution(ctx, org.ID, refDate)
+	stats, err := statsSvc.GetAgeDistribution(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1502,13 +1513,13 @@ func TestChildService_GetAgeDistribution_BasicDistribution(t *testing.T) {
 
 func TestChildService_GetAgeDistribution_NoChildren(t *testing.T) {
 	db := setupTestDB(t)
-	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
 	refDate := time.Date(2025, 1, 28, 0, 0, 0, 0, time.UTC)
 
-	stats, err := svc.GetAgeDistribution(ctx, org.ID, refDate)
+	stats, err := statsSvc.GetAgeDistribution(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1527,7 +1538,7 @@ func TestChildService_GetAgeDistribution_NoChildren(t *testing.T) {
 
 func TestChildService_GetAgeDistribution_ChildWithNoContract(t *testing.T) {
 	db := setupTestDB(t)
-	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
@@ -1538,7 +1549,7 @@ func TestChildService_GetAgeDistribution_ChildWithNoContract(t *testing.T) {
 	child.Birthdate = time.Date(2022, 1, 28, 0, 0, 0, 0, time.UTC)
 	db.Save(child)
 
-	stats, err := svc.GetAgeDistribution(ctx, org.ID, refDate)
+	stats, err := statsSvc.GetAgeDistribution(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1551,6 +1562,7 @@ func TestChildService_GetAgeDistribution_ChildWithNoContract(t *testing.T) {
 func TestChildService_GetAgeDistribution_ContractExpiredBeforeDate(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
@@ -1572,7 +1584,7 @@ func TestChildService_GetAgeDistribution_ContractExpiredBeforeDate(t *testing.T)
 		t.Fatalf("failed to create contract: %v", err)
 	}
 
-	stats, err := svc.GetAgeDistribution(ctx, org.ID, refDate)
+	stats, err := statsSvc.GetAgeDistribution(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1585,6 +1597,7 @@ func TestChildService_GetAgeDistribution_ContractExpiredBeforeDate(t *testing.T)
 func TestChildService_GetAgeDistribution_ContractStartsAfterDate(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
@@ -1604,7 +1617,7 @@ func TestChildService_GetAgeDistribution_ContractStartsAfterDate(t *testing.T) {
 		t.Fatalf("failed to create contract: %v", err)
 	}
 
-	stats, err := svc.GetAgeDistribution(ctx, org.ID, refDate)
+	stats, err := statsSvc.GetAgeDistribution(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1617,6 +1630,7 @@ func TestChildService_GetAgeDistribution_ContractStartsAfterDate(t *testing.T) {
 func TestChildService_GetAgeDistribution_OldestBucket(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
@@ -1640,7 +1654,7 @@ func TestChildService_GetAgeDistribution_OldestBucket(t *testing.T) {
 		}
 	}
 
-	stats, err := svc.GetAgeDistribution(ctx, org.ID, refDate)
+	stats, err := statsSvc.GetAgeDistribution(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1674,6 +1688,7 @@ func TestChildService_GetAgeDistribution_OldestBucket(t *testing.T) {
 func TestChildService_GetAgeDistribution_YoungestBucket(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
@@ -1693,7 +1708,7 @@ func TestChildService_GetAgeDistribution_YoungestBucket(t *testing.T) {
 		t.Fatalf("failed to create contract: %v", err)
 	}
 
-	stats, err := svc.GetAgeDistribution(ctx, org.ID, refDate)
+	stats, err := statsSvc.GetAgeDistribution(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1719,6 +1734,7 @@ func TestChildService_GetAgeDistribution_YoungestBucket(t *testing.T) {
 func TestChildService_GetAgeDistribution_BirthdayEdgeCase(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
@@ -1736,7 +1752,7 @@ func TestChildService_GetAgeDistribution_BirthdayEdgeCase(t *testing.T) {
 
 	// Test day before birthday - should be age 2
 	dayBefore := time.Date(2025, 1, 27, 0, 0, 0, 0, time.UTC)
-	stats, _ := svc.GetAgeDistribution(ctx, org.ID, dayBefore)
+	stats, _ := statsSvc.GetAgeDistribution(ctx, org.ID, dayBefore)
 
 	age2Count := 0
 	age3Count := 0
@@ -1757,7 +1773,7 @@ func TestChildService_GetAgeDistribution_BirthdayEdgeCase(t *testing.T) {
 
 	// Test on birthday - should be age 3
 	onBirthday := time.Date(2025, 1, 28, 0, 0, 0, 0, time.UTC)
-	stats, _ = svc.GetAgeDistribution(ctx, org.ID, onBirthday)
+	stats, _ = statsSvc.GetAgeDistribution(ctx, org.ID, onBirthday)
 
 	for _, bucket := range stats.Distribution {
 		if bucket.AgeLabel == "2" {
@@ -1779,6 +1795,7 @@ func TestChildService_GetAgeDistribution_BirthdayEdgeCase(t *testing.T) {
 func TestChildService_GetAgeDistribution_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org1 := createTestOrganization(t, db, "Org 1")
@@ -1797,7 +1814,7 @@ func TestChildService_GetAgeDistribution_WrongOrg(t *testing.T) {
 	})
 
 	// Query stats for org2 - should not include org1's children
-	stats, err := svc.GetAgeDistribution(ctx, org2.ID, refDate)
+	stats, err := statsSvc.GetAgeDistribution(ctx, org2.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1810,6 +1827,7 @@ func TestChildService_GetAgeDistribution_WrongOrg(t *testing.T) {
 func TestChildService_GetAgeDistribution_MultipleChildrenSameAge(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
@@ -1828,7 +1846,7 @@ func TestChildService_GetAgeDistribution_MultipleChildrenSameAge(t *testing.T) {
 		})
 	}
 
-	stats, err := svc.GetAgeDistribution(ctx, org.ID, refDate)
+	stats, err := statsSvc.GetAgeDistribution(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1850,13 +1868,13 @@ func TestChildService_GetAgeDistribution_MultipleChildrenSameAge(t *testing.T) {
 
 func TestChildService_GetAgeDistribution_BucketMetadata(t *testing.T) {
 	db := setupTestDB(t)
-	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
 	refDate := time.Date(2025, 1, 28, 0, 0, 0, 0, time.UTC)
 
-	stats, err := svc.GetAgeDistribution(ctx, org.ID, refDate)
+	stats, err := statsSvc.GetAgeDistribution(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1899,6 +1917,7 @@ func TestChildService_GetAgeDistribution_BucketMetadata(t *testing.T) {
 func TestChildService_GetAgeDistribution_HistoricalDate(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
@@ -1919,7 +1938,7 @@ func TestChildService_GetAgeDistribution_HistoricalDate(t *testing.T) {
 
 	// Query for a date when contract was active
 	refDate := time.Date(2023, 6, 15, 0, 0, 0, 0, time.UTC)
-	stats, err := svc.GetAgeDistribution(ctx, org.ID, refDate)
+	stats, err := statsSvc.GetAgeDistribution(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -3079,7 +3098,7 @@ func TestChildService_CreateContract_SameDay(t *testing.T) {
 
 func TestChildService_GetContractPropertiesDistribution_BasicScalar(t *testing.T) {
 	db := setupTestDB(t)
-	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
@@ -3097,7 +3116,7 @@ func TestChildService_GetContractPropertiesDistribution_BasicScalar(t *testing.T
 	child3 := createTestChild(t, db, "Child3", "C", org.ID)
 	createTestChildContract(t, db, child3.ID, from, nil, section.ID, models.ContractProperties{"care_type": "halbtag"})
 
-	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
+	stats, err := statsSvc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -3125,7 +3144,7 @@ func TestChildService_GetContractPropertiesDistribution_BasicScalar(t *testing.T
 
 func TestChildService_GetContractPropertiesDistribution_ArrayProperties(t *testing.T) {
 	db := setupTestDB(t)
-	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
@@ -3139,7 +3158,7 @@ func TestChildService_GetContractPropertiesDistribution_ArrayProperties(t *testi
 		"supplements": []string{"ndh", "mss"},
 	})
 
-	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
+	stats, err := statsSvc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -3167,7 +3186,7 @@ func TestChildService_GetContractPropertiesDistribution_ArrayProperties(t *testi
 
 func TestChildService_GetContractPropertiesDistribution_MixedScalarAndArray(t *testing.T) {
 	db := setupTestDB(t)
-	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
@@ -3189,7 +3208,7 @@ func TestChildService_GetContractPropertiesDistribution_MixedScalarAndArray(t *t
 		"supplements": []string{"ndh"},
 	})
 
-	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
+	stats, err := statsSvc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -3218,13 +3237,13 @@ func TestChildService_GetContractPropertiesDistribution_MixedScalarAndArray(t *t
 
 func TestChildService_GetContractPropertiesDistribution_NoChildren(t *testing.T) {
 	db := setupTestDB(t)
-	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
 	refDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
 
-	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
+	stats, err := statsSvc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -3240,7 +3259,7 @@ func TestChildService_GetContractPropertiesDistribution_NoChildren(t *testing.T)
 
 func TestChildService_GetContractPropertiesDistribution_ChildWithNoContract(t *testing.T) {
 	db := setupTestDB(t)
-	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
@@ -3249,7 +3268,7 @@ func TestChildService_GetContractPropertiesDistribution_ChildWithNoContract(t *t
 	// Create child without contract
 	createTestChild(t, db, "NoContract", "Child", org.ID)
 
-	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
+	stats, err := statsSvc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -3262,7 +3281,7 @@ func TestChildService_GetContractPropertiesDistribution_ChildWithNoContract(t *t
 
 func TestChildService_GetContractPropertiesDistribution_ContractWithNoProperties(t *testing.T) {
 	db := setupTestDB(t)
-	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
@@ -3274,7 +3293,7 @@ func TestChildService_GetContractPropertiesDistribution_ContractWithNoProperties
 	child := createTestChild(t, db, "NoProps", "Child", org.ID)
 	createTestChildContract(t, db, child.ID, from, nil, section.ID, nil)
 
-	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
+	stats, err := statsSvc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -3290,7 +3309,7 @@ func TestChildService_GetContractPropertiesDistribution_ContractWithNoProperties
 
 func TestChildService_GetContractPropertiesDistribution_ExpiredContract(t *testing.T) {
 	db := setupTestDB(t)
-	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
@@ -3303,7 +3322,7 @@ func TestChildService_GetContractPropertiesDistribution_ExpiredContract(t *testi
 	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
 	createTestChildContract(t, db, child.ID, from, &to, section.ID, models.ContractProperties{"care_type": "ganztag"})
 
-	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
+	stats, err := statsSvc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -3315,7 +3334,7 @@ func TestChildService_GetContractPropertiesDistribution_ExpiredContract(t *testi
 
 func TestChildService_GetContractPropertiesDistribution_FutureContract(t *testing.T) {
 	db := setupTestDB(t)
-	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
@@ -3327,7 +3346,7 @@ func TestChildService_GetContractPropertiesDistribution_FutureContract(t *testin
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	createTestChildContract(t, db, child.ID, from, nil, section.ID, models.ContractProperties{"care_type": "ganztag"})
 
-	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
+	stats, err := statsSvc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -3339,7 +3358,7 @@ func TestChildService_GetContractPropertiesDistribution_FutureContract(t *testin
 
 func TestChildService_GetContractPropertiesDistribution_MultipleChildrenSameValue(t *testing.T) {
 	db := setupTestDB(t)
-	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
@@ -3353,7 +3372,7 @@ func TestChildService_GetContractPropertiesDistribution_MultipleChildrenSameValu
 		createTestChildContract(t, db, child.ID, from, nil, section.ID, models.ContractProperties{"care_type": "ganztag"})
 	}
 
-	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
+	stats, err := statsSvc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -3373,7 +3392,7 @@ func TestChildService_GetContractPropertiesDistribution_MultipleChildrenSameValu
 
 func TestChildService_GetContractPropertiesDistribution_MultiplePropertiesPerChild(t *testing.T) {
 	db := setupTestDB(t)
-	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
@@ -3389,7 +3408,7 @@ func TestChildService_GetContractPropertiesDistribution_MultiplePropertiesPerChi
 		"lunch":       "yes",
 	})
 
-	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
+	stats, err := statsSvc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -3419,7 +3438,7 @@ func TestChildService_GetContractPropertiesDistribution_MultiplePropertiesPerChi
 
 func TestChildService_GetContractPropertiesDistribution_CrossOrgIsolation(t *testing.T) {
 	db := setupTestDB(t)
-	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org1 := createTestOrganization(t, db, "Org 1")
@@ -3434,7 +3453,7 @@ func TestChildService_GetContractPropertiesDistribution_CrossOrgIsolation(t *tes
 	createTestChildContract(t, db, child.ID, from, nil, section1.ID, models.ContractProperties{"care_type": "ganztag"})
 
 	// Query org2 - should not see org1's children
-	stats, err := svc.GetContractPropertiesDistribution(ctx, org2.ID, refDate)
+	stats, err := statsSvc.GetContractPropertiesDistribution(ctx, org2.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -3446,7 +3465,7 @@ func TestChildService_GetContractPropertiesDistribution_CrossOrgIsolation(t *tes
 
 func TestChildService_GetContractPropertiesDistribution_HistoricalDate(t *testing.T) {
 	db := setupTestDB(t)
-	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
@@ -3460,7 +3479,7 @@ func TestChildService_GetContractPropertiesDistribution_HistoricalDate(t *testin
 
 	// Query during active period
 	activeDate := time.Date(2024, 3, 15, 0, 0, 0, 0, time.UTC)
-	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, activeDate)
+	stats, err := statsSvc.GetContractPropertiesDistribution(ctx, org.ID, activeDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -3471,7 +3490,7 @@ func TestChildService_GetContractPropertiesDistribution_HistoricalDate(t *testin
 
 	// Query after contract ended
 	afterDate := time.Date(2024, 7, 15, 0, 0, 0, 0, time.UTC)
-	stats, err = svc.GetContractPropertiesDistribution(ctx, org.ID, afterDate)
+	stats, err = statsSvc.GetContractPropertiesDistribution(ctx, org.ID, afterDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -3483,7 +3502,7 @@ func TestChildService_GetContractPropertiesDistribution_HistoricalDate(t *testin
 
 func TestChildService_GetContractPropertiesDistribution_SortedOutput(t *testing.T) {
 	db := setupTestDB(t)
-	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
@@ -3504,7 +3523,7 @@ func TestChildService_GetContractPropertiesDistribution_SortedOutput(t *testing.
 		"z_key": "alpha",
 	})
 
-	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
+	stats, err := statsSvc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -3532,7 +3551,7 @@ func TestChildService_GetContractPropertiesDistribution_SortedOutput(t *testing.
 
 func TestChildService_GetContractPropertiesDistribution_MultipleActiveContracts(t *testing.T) {
 	db := setupTestDB(t)
-	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
@@ -3546,7 +3565,7 @@ func TestChildService_GetContractPropertiesDistribution_MultipleActiveContracts(
 	from2 := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	createTestChildContract(t, db, child.ID, from2, nil, section.ID, models.ContractProperties{"lunch": "yes"})
 
-	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
+	stats, err := statsSvc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -3567,7 +3586,7 @@ func TestChildService_GetContractPropertiesDistribution_MultipleActiveContracts(
 
 func TestChildService_GetContractPropertiesDistribution_EmptyStringValue(t *testing.T) {
 	db := setupTestDB(t)
-	svc := createChildService(db)
+	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
@@ -3579,7 +3598,7 @@ func TestChildService_GetContractPropertiesDistribution_EmptyStringValue(t *test
 	child := createTestChild(t, db, "Empty", "Value", org.ID)
 	createTestChildContract(t, db, child.ID, from, nil, section.ID, models.ContractProperties{"care_type": ""})
 
-	stats, err := svc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
+	stats, err := statsSvc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}

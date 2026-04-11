@@ -1,34 +1,11 @@
 package service
 
 import (
-	"context"
 	"log/slog"
 	"time"
 
-	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 )
-
-// CalculateFunding calculates government funding for all children with active contracts on the given date
-func (s *ChildService) CalculateFunding(ctx context.Context, orgID uint, date time.Time) (*models.ChildrenFundingResponse, error) {
-	org, err := s.orgStore.FindByID(ctx, orgID)
-	if err != nil {
-		return nil, classifyStoreError(err, "organization")
-	}
-
-	children, err := s.store.FindByOrganizationWithActiveOn(ctx, orgID, date)
-	if err != nil {
-		return nil, apperror.InternalWrap(err, "failed to fetch children")
-	}
-
-	funding, err := s.fundingStore.FindByStateWithDetails(ctx, org.State, 0, nil)
-	var fundingPeriods []models.GovernmentFundingPeriod
-	if err == nil {
-		fundingPeriods = funding.Periods
-	}
-
-	return calculateFunding(children, fundingPeriods, date), nil
-}
 
 // findPeriodForDate finds the funding period that covers the given date (package-level for reuse).
 // Logs a critical warning if multiple periods match (overlapping date ranges).
@@ -105,32 +82,3 @@ func getAllContractKeyValues(properties models.ContractProperties) []models.Chil
 	return result
 }
 
-// GetAgeDistribution returns age distribution of children with active contracts on the given date
-func (s *ChildService) GetAgeDistribution(ctx context.Context, orgID uint, date time.Time) (*models.AgeDistributionResponse, error) {
-	children, err := s.store.FindByOrganizationWithActiveOn(ctx, orgID, date)
-	if err != nil {
-		return nil, apperror.InternalWrap(err, "failed to fetch children")
-	}
-	return calculateAgeDistribution(children, date), nil
-}
-
-// GetContractPropertiesDistribution returns the distribution of contract properties
-// for children with active contracts on the given date
-func (s *ChildService) GetContractPropertiesDistribution(ctx context.Context, orgID uint, date time.Time) (*models.ContractPropertiesDistributionResponse, error) {
-	children, err := s.store.FindByOrganizationWithActiveOn(ctx, orgID, date)
-	if err != nil {
-		return nil, apperror.InternalWrap(err, "failed to fetch children")
-	}
-
-	org, err := s.orgStore.FindByID(ctx, orgID)
-	if err != nil {
-		return calculateContractPropertiesDistribution(children, nil, date), nil
-	}
-
-	funding, err := s.fundingStore.FindByStateWithDetails(ctx, org.State, 0, nil)
-	if err != nil {
-		return calculateContractPropertiesDistribution(children, nil, date), nil
-	}
-
-	return calculateContractPropertiesDistribution(children, funding.Periods, date), nil
-}

@@ -11,13 +11,12 @@ import (
 
 // StatisticsHandler handles statistics-related HTTP requests
 type StatisticsHandler struct {
-	service      *service.StatisticsService
-	childService *service.ChildService
+	service *service.StatisticsService
 }
 
 // NewStatisticsHandler creates a new statistics handler
-func NewStatisticsHandler(service *service.StatisticsService, childService *service.ChildService) *StatisticsHandler {
-	return &StatisticsHandler{service: service, childService: childService}
+func NewStatisticsHandler(service *service.StatisticsService) *StatisticsHandler {
+	return &StatisticsHandler{service: service}
 }
 
 // GetStaffingHours godoc
@@ -171,7 +170,7 @@ func (h *StatisticsHandler) GetAgeDistribution(c *gin.Context) {
 		return
 	}
 
-	stats, err := h.childService.GetAgeDistribution(c.Request.Context(), orgID, date)
+	stats, err := h.service.GetAgeDistribution(c.Request.Context(), orgID, date)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -205,7 +204,7 @@ func (h *StatisticsHandler) GetContractPropertiesDistribution(c *gin.Context) {
 		return
 	}
 
-	stats, err := h.childService.GetContractPropertiesDistribution(c.Request.Context(), orgID, date)
+	stats, err := h.service.GetContractPropertiesDistribution(c.Request.Context(), orgID, date)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -240,7 +239,7 @@ func (h *StatisticsHandler) GetFunding(c *gin.Context) {
 		return
 	}
 
-	funding, err := h.childService.CalculateFunding(c.Request.Context(), orgID, date)
+	funding, err := h.service.CalculateFunding(c.Request.Context(), orgID, date)
 	if err != nil {
 		respondError(c, err)
 		return

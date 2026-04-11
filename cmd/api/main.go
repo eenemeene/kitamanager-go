@@ -314,7 +314,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, s *appStores, svc *appServices
 		ChildAttendance:       handlers.NewChildAttendanceHandler(svc.childAttendance, svc.audit),
 		BudgetItem:            handlers.NewBudgetItemHandler(svc.budgetItem, svc.audit),
 		StepPromotion:         handlers.NewStepPromotionHandler(svc.stepPromotion),
-		Statistics:            handlers.NewStatisticsHandler(svc.statistics, svc.child),
+		Statistics:            handlers.NewStatisticsHandler(svc.statistics),
 		Export:                handlers.NewExportHandler(svc.employee, svc.child, svc.audit),
 		GovernmentFundingBill: handlers.NewGovernmentFundingBillHandler(svc.governmentFundingBill, svc.audit),
 		AuditLog:              handlers.NewAuditLogHandler(svc.audit),

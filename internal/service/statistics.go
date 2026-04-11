@@ -75,6 +75,15 @@ func (s *StatisticsService) loadFundingPeriods(ctx context.Context, state string
 	return funding.Periods
 }
 
+// loadOrgAndFunding fetches the organization and its government funding periods.
+func (s *StatisticsService) loadOrgAndFunding(ctx context.Context, orgID uint) ([]models.GovernmentFundingPeriod, error) {
+	org, err := s.orgStore.FindByID(ctx, orgID)
+	if err != nil {
+		return nil, classifyStoreError(err, "organization")
+	}
+	return s.loadFundingPeriods(ctx, org.State), nil
+}
+
 // loadPayPlans batch-fetches pay plans referenced by the given employees' contracts.
 func (s *StatisticsService) loadPayPlans(ctx context.Context, employees []models.Employee) map[uint]*models.PayPlan {
 	payPlanIDs := make([]uint, 0)
@@ -99,12 +108,10 @@ func (s *StatisticsService) loadPayPlans(ctx context.Context, employees []models
 func (s *StatisticsService) GetStaffingHours(ctx context.Context, orgID uint, from, to *time.Time, sectionID *uint) (*models.StaffingHoursResponse, error) {
 	rangeStart, rangeEnd := snapDateRange(from, to)
 
-	org, err := s.orgStore.FindByID(ctx, orgID)
+	fundingPeriods, err := s.loadOrgAndFunding(ctx, orgID)
 	if err != nil {
-		return nil, classifyStoreError(err, "organization")
+		return nil, err
 	}
-
-	fundingPeriods := s.loadFundingPeriods(ctx, org.State)
 
 	children, err := s.childStore.FindByOrganizationInDateRange(ctx, orgID, rangeStart, rangeEnd, sectionID)
 	if err != nil {
@@ -137,12 +144,10 @@ func (s *StatisticsService) GetEmployeeStaffingHours(ctx context.Context, orgID 
 func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from, to *time.Time) (*models.FinancialResponse, error) {
 	rangeStart, rangeEnd := snapDateRange(from, to)
 
-	org, err := s.orgStore.FindByID(ctx, orgID)
+	fundingPeriods, err := s.loadOrgAndFunding(ctx, orgID)
 	if err != nil {
-		return nil, classifyStoreError(err, "organization")
+		return nil, err
 	}
-
-	fundingPeriods := s.loadFundingPeriods(ctx, org.State)
 
 	children, err := s.childStore.FindByOrganizationInDateRange(ctx, orgID, rangeStart, rangeEnd, nil)
 	if err != nil {
@@ -169,12 +174,10 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 func (s *StatisticsService) GetOccupancy(ctx context.Context, orgID uint, from, to *time.Time, sectionID *uint) (*models.OccupancyResponse, error) {
 	rangeStart, rangeEnd := snapDateRange(from, to)
 
-	org, err := s.orgStore.FindByID(ctx, orgID)
+	fundingPeriods, err := s.loadOrgAndFunding(ctx, orgID)
 	if err != nil {
-		return nil, classifyStoreError(err, "organization")
+		return nil, err
 	}
-
-	fundingPeriods := s.loadFundingPeriods(ctx, org.State)
 
 	children, err := s.childStore.FindByOrganizationInDateRange(ctx, orgID, rangeStart, rangeEnd, sectionID)
 	if err != nil {
@@ -182,4 +185,44 @@ func (s *StatisticsService) GetOccupancy(ctx context.Context, orgID uint, from, 
 	}
 
 	return calculateOccupancy(children, fundingPeriods, rangeStart, rangeEnd), nil
+}
+
+// CalculateFunding calculates government funding for all children with active contracts on the given date
+func (s *StatisticsService) CalculateFunding(ctx context.Context, orgID uint, date time.Time) (*models.ChildrenFundingResponse, error) {
+	fundingPeriods, err := s.loadOrgAndFunding(ctx, orgID)
+	if err != nil {
+		return nil, err
+	}
+
+	children, err := s.childStore.FindByOrganizationWithActiveOn(ctx, orgID, date)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "failed to fetch children")
+	}
+
+	return calculateFunding(children, fundingPeriods, date), nil
+}
+
+// GetAgeDistribution returns age distribution of children with active contracts on the given date
+func (s *StatisticsService) GetAgeDistribution(ctx context.Context, orgID uint, date time.Time) (*models.AgeDistributionResponse, error) {
+	children, err := s.childStore.FindByOrganizationWithActiveOn(ctx, orgID, date)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "failed to fetch children")
+	}
+	return calculateAgeDistribution(children, date), nil
+}
+
+// GetContractPropertiesDistribution returns the distribution of contract properties
+// for children with active contracts on the given date
+func (s *StatisticsService) GetContractPropertiesDistribution(ctx context.Context, orgID uint, date time.Time) (*models.ContractPropertiesDistributionResponse, error) {
+	fundingPeriods, err := s.loadOrgAndFunding(ctx, orgID)
+	if err != nil {
+		return nil, err
+	}
+
+	children, err := s.childStore.FindByOrganizationWithActiveOn(ctx, orgID, date)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "failed to fetch children")
+	}
+
+	return calculateContractPropertiesDistribution(children, fundingPeriods, date), nil
 }
