@@ -66,6 +66,7 @@ export const queryKeys = {
       ['occupancy', orgId, sectionId, from, to] as const,
     employeeStaffingHours: (orgId: number, sectionId?: number, from?: string, to?: string) =>
       ['employeeStaffingHours', orgId, sectionId, from, to] as const,
+    forecast: (orgId: number) => ['forecast', orgId] as const,
   },
   attendance: {
     byDate: (orgId: number, date: string) => ['attendance', orgId, date] as const,
