@@ -219,7 +219,17 @@
     "forecastRemoved": "entfernt",
     "forecastShowBaseline": "Basislinie anzeigen",
     "forecastBaseline": "Basislinie (Aktuell)",
-    "forecastScenario": "Prognose (Szenario)"
+    "forecastScenario": "Prognose (Szenario)",
+    "forecastTabOptimize": "Optimieren",
+    "forecastOptimize": "Optimale Kinderzahl ermitteln",
+    "forecastOptimizeDescription": "Automatisch die minimale Anzahl an Kindern ermitteln, um das Ziel-Saldo über das Kita-Jahr zu erreichen.",
+    "forecastOptimizeTarget": "Ziel-Saldo (EUR)",
+    "forecastOptimizeMaxPerSection": "Max. Kinder pro Bereich pro Monat",
+    "forecastOptimizeSections": "Bereiche zum Belegen",
+    "forecastOptimizeRunning": "Optimierung läuft...",
+    "forecastOptimizeResult": "Ergebnis: {count} Kinder benötigt für ein kumuliertes Saldo von {balance}.",
+    "forecastOptimizeAddedToStore": "Die Kinder wurden im Kinder-Tab hinzugefügt. Sie können sie vor der Berechnung überprüfen und anpassen.",
+    "forecastOptimizeNoImpact": "Das Hinzufügen von Kindern verbessert das Saldo nicht. Prüfen Sie die Förderungskonfiguration und Vertragseigenschaften."
   },
   "months": {
     "jan": "Jan",

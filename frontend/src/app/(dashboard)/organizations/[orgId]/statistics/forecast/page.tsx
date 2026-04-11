@@ -9,8 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { SectionFilter } from '@/components/ui/section-filter';
-import { YearStepper } from '@/components/ui/year-stepper';
+import { KitaYearStepper } from '@/components/ui/kita-year-stepper';
 import { ForecastResults } from '@/components/forecast/forecast-results';
 import { ForecastModificationSummary } from '@/components/forecast/forecast-modification-summary';
 import { ForecastChildrenTab } from '@/components/forecast/forecast-children-tab';
@@ -18,9 +17,9 @@ import { ForecastEmployeesTab } from '@/components/forecast/forecast-employees-t
 import { ForecastSalaryTab } from '@/components/forecast/forecast-salary-tab';
 import { ForecastFundingTab } from '@/components/forecast/forecast-funding-tab';
 import { ForecastBudgetTab } from '@/components/forecast/forecast-budget-tab';
+import { ForecastOptimizeTab } from '@/components/forecast/forecast-optimize-tab';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
-import { LOOKUP_FETCH_LIMIT } from '@/lib/api/types';
 import { useForecastStore } from '@/stores/forecast-store';
 
 export default function ForecastPage() {
@@ -29,24 +28,17 @@ export default function ForecastPage() {
   const t = useTranslations();
   const store = useForecastStore();
 
-  const [year, setYear] = useState(new Date().getFullYear());
-  const from = `${year}-01-01`;
-  const to = `${year}-12-01`;
+  // Kita year runs Aug 1 – Jul 31. Default to the next Kita year.
+  const now = new Date();
+  const nextKitaYear = now.getMonth() >= 7 ? now.getFullYear() + 1 : now.getFullYear();
+  const [year, setYear] = useState(nextKitaYear);
+  const from = `${year}-08-01`;
+  const to = `${year + 1}-07-01`;
 
   // Sync date range to store when year changes
   useEffect(() => {
-    store.setFilters(from, to, store.sectionId);
+    store.setFilters(from, to);
   }, [from, to]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const { data: sections } = useQuery({
-    queryKey: queryKeys.sections.list(orgId),
-    queryFn: () => apiClient.getSections(orgId, { limit: LOOKUP_FETCH_LIMIT }),
-    enabled: !!orgId,
-  });
-
-  const handleSectionChange = (sectionId: number | undefined) => {
-    store.setFilters(from, to, sectionId);
-  };
 
   // Baseline data queries (fetched alongside forecast for comparison)
   const { data: baselineFinancials, isLoading: isLoadingBaselineFinancials } = useQuery({
@@ -56,21 +48,20 @@ export default function ForecastPage() {
   });
 
   const { data: baselineStaffing, isLoading: isLoadingBaselineStaffing } = useQuery({
-    queryKey: queryKeys.statistics.staffingHours(orgId, store.sectionId, from, to),
-    queryFn: () => apiClient.getStaffingHours(orgId, { sectionId: store.sectionId, from, to }),
+    queryKey: queryKeys.statistics.staffingHours(orgId, undefined, from, to),
+    queryFn: () => apiClient.getStaffingHours(orgId, { from, to }),
     enabled: !!orgId,
   });
 
   const { data: baselineOccupancy, isLoading: isLoadingBaselineOccupancy } = useQuery({
-    queryKey: queryKeys.statistics.occupancy(orgId, store.sectionId, from, to),
-    queryFn: () => apiClient.getOccupancy(orgId, { sectionId: store.sectionId, from, to }),
+    queryKey: queryKeys.statistics.occupancy(orgId, undefined, from, to),
+    queryFn: () => apiClient.getOccupancy(orgId, { from, to }),
     enabled: !!orgId,
   });
 
   const { data: baselineEmployeeHours, isLoading: isLoadingBaselineEmployeeHours } = useQuery({
-    queryKey: queryKeys.statistics.employeeStaffingHours(orgId, store.sectionId, from, to),
-    queryFn: () =>
-      apiClient.getEmployeeStaffingHours(orgId, { sectionId: store.sectionId, from, to }),
+    queryKey: queryKeys.statistics.employeeStaffingHours(orgId, undefined, from, to),
+    queryFn: () => apiClient.getEmployeeStaffingHours(orgId, { from, to }),
     enabled: !!orgId,
   });
 
@@ -102,16 +93,9 @@ export default function ForecastPage() {
         <p className="text-muted-foreground mt-1 text-sm">{t('statistics.forecastDescription')}</p>
       </div>
 
-      {/* Filters */}
+      {/* Kita Year Selector */}
       <div className="flex flex-wrap items-center gap-2 md:gap-4">
-        <YearStepper value={year} onChange={setYear} />
-        {sections && sections.data.length > 0 && (
-          <SectionFilter
-            sections={sections.data}
-            value={store.sectionId}
-            onChange={handleSectionChange}
-          />
-        )}
+        <KitaYearStepper value={year} onChange={setYear} />
       </div>
 
       {/* Scenario Configuration */}
@@ -127,6 +111,7 @@ export default function ForecastPage() {
               <TabsTrigger value="salary">{t('statistics.forecastTabSalary')}</TabsTrigger>
               <TabsTrigger value="funding">{t('statistics.forecastTabFunding')}</TabsTrigger>
               <TabsTrigger value="budget">{t('statistics.forecastTabBudget')}</TabsTrigger>
+              <TabsTrigger value="optimize">{t('statistics.forecastTabOptimize')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="children">
@@ -143,6 +128,9 @@ export default function ForecastPage() {
             </TabsContent>
             <TabsContent value="budget">
               <ForecastBudgetTab />
+            </TabsContent>
+            <TabsContent value="optimize">
+              <ForecastOptimizeTab />
             </TabsContent>
           </Tabs>
 

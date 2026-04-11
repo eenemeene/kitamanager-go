@@ -4,6 +4,7 @@ import { ForecastEmployeesTab } from '../forecast-employees-tab';
 import { ForecastSalaryTab } from '../forecast-salary-tab';
 import { ForecastFundingTab } from '../forecast-funding-tab';
 import { ForecastBudgetTab } from '../forecast-budget-tab';
+import { ForecastOptimizeTab } from '../forecast-optimize-tab';
 
 // Mock next-intl
 jest.mock('next-intl', () => ({
@@ -72,6 +73,13 @@ describe('ForecastFundingTab', () => {
 describe('ForecastBudgetTab', () => {
   it('renders without crashing', () => {
     const { container } = renderWithProviders(<ForecastBudgetTab />);
+    expect(container.innerHTML).not.toBe('');
+  });
+});
+
+describe('ForecastOptimizeTab', () => {
+  it('renders without crashing', () => {
+    const { container } = renderWithProviders(<ForecastOptimizeTab />);
     expect(container.innerHTML).not.toBe('');
   });
 });
