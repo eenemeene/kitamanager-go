@@ -81,4 +81,3 @@ func getAllContractKeyValues(properties models.ContractProperties) []models.Chil
 	}
 	return result
 }
-
