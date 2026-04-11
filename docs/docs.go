@@ -9975,6 +9975,11 @@ const docTemplate = `{
         "github_com_eenemeene_kitamanager-go_internal_models.FinancialDataPoint": {
             "type": "object",
             "properties": {
+                "actual_funding": {
+                    "description": "Actual funding from government funding bills",
+                    "type": "integer",
+                    "example": 5100000
+                },
                 "balance": {
                     "description": "cents (income - expenses)",
                     "type": "integer",

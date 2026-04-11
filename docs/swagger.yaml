@@ -1030,6 +1030,10 @@ definitions:
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.FinancialDataPoint:
     properties:
+      actual_funding:
+        description: Actual funding from government funding bills
+        example: 5100000
+        type: integer
       balance:
         description: cents (income - expenses)
         example: 230000

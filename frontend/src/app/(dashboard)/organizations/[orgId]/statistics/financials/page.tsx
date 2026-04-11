@@ -33,6 +33,14 @@ const FundingBreakdownChart = dynamic(
   { ssr: false, loading: () => <Skeleton className="h-[350px] w-full" /> }
 );
 
+const FundingComparisonChart = dynamic(
+  () =>
+    import('@/components/charts/funding-comparison-chart').then(
+      (mod) => mod.FundingComparisonChart
+    ),
+  { ssr: false, loading: () => <Skeleton className="h-[500px] w-full" /> }
+);
+
 const ExpenseBreakdownChart = dynamic(
   () =>
     import('@/components/charts/expense-breakdown-chart').then((mod) => mod.ExpenseBreakdownChart),
@@ -124,6 +132,23 @@ export default function FinancialsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Actual vs Calculated Funding */}
+      {financials?.data_points?.some((dp) => dp.actual_funding != null) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('statistics.fundingActualVsCalculated')}</CardTitle>
+            <p className="text-muted-foreground text-sm">
+              {t('statistics.fundingActualVsCalculatedDescription')}
+            </p>
+          </CardHeader>
+          <CardContent>
+            <ChartErrorBoundary>
+              <FundingComparisonChart data={financials} />
+            </ChartErrorBoundary>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Breakdown Pie Charts */}
       {currentFinancials && (

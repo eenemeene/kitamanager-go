@@ -79,6 +79,29 @@ func (s *GovernmentFundingBillPeriodStore) FindByOrganizationAndVoucherNumber(ct
 	return results, nil
 }
 
+func (s *GovernmentFundingBillPeriodStore) FindFacilityTotalsByOrganizationInDateRange(ctx context.Context, orgID uint, from, to time.Time) (map[time.Time]int, error) {
+	var results []struct {
+		FromDate      time.Time `gorm:"column:from_date"`
+		FacilityTotal int       `gorm:"column:facility_total"`
+	}
+	err := DBFromContext(ctx, s.db).
+		Model(&models.GovernmentFundingBillPeriod{}).
+		Select("from_date, facility_total").
+		Where("organization_id = ? AND from_date >= ? AND from_date <= ?", orgID, from, to).
+		Order("from_date ASC").
+		Find(&results).Error
+	if err != nil {
+		return nil, err
+	}
+	m := make(map[time.Time]int, len(results))
+	for _, r := range results {
+		// Normalize to first of month
+		key := time.Date(r.FromDate.Year(), r.FromDate.Month(), 1, 0, 0, 0, 0, time.UTC)
+		m[key] += r.FacilityTotal // sum if multiple bills for same month
+	}
+	return m, nil
+}
+
 func (s *GovernmentFundingBillPeriodStore) Delete(ctx context.Context, id uint) error {
 	return DBFromContext(ctx, s.db).Delete(&models.GovernmentFundingBillPeriod{}, id).Error
 }

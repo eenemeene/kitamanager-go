@@ -506,6 +506,125 @@ func TestGovernmentFundingBillPeriodStore_FindByOrganizationAndVoucherNumber(t *
 	})
 }
 
+func TestGovernmentFundingBillPeriodStore_FindFacilityTotalsByOrganizationInDateRange(t *testing.T) {
+	db := setupTestDB(t)
+	s := NewGovernmentFundingBillPeriodStore(db)
+	org := createTestOrganization(t, db, "Test Org")
+	org2 := createTestOrganization(t, db, "Other Org")
+	user := createTestUser(t, db, "Test User", "billtotals@example.com")
+	ctx := context.Background()
+
+	// Create bills: Jan, Feb, Mar for org; Jan for org2
+	for _, m := range []time.Month{time.January, time.February, time.March} {
+		to := time.Date(2025, m+1, 0, 0, 0, 0, 0, time.UTC)
+		p := &models.GovernmentFundingBillPeriod{
+			OrganizationID: org.ID,
+			Period:         models.Period{From: time.Date(2025, m, 1, 0, 0, 0, 0, time.UTC), To: &to},
+			FileName:       "file.xlsx", FileSha256: "hash", FacilityName: "Kita",
+			FacilityTotal: int(m) * 100000, // Jan=100000, Feb=200000, Mar=300000
+			CreatedBy:     user.ID,
+		}
+		if err := s.Create(ctx, p); err != nil {
+			t.Fatalf("setup: Create() error = %v", err)
+		}
+	}
+	toJanOrg2 := time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC)
+	if err := s.Create(ctx, &models.GovernmentFundingBillPeriod{
+		OrganizationID: org2.ID,
+		Period:         models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), To: &toJanOrg2},
+		FileName:       "other.xlsx", FileSha256: "otherhash", FacilityName: "Other",
+		FacilityTotal: 999999,
+		CreatedBy:     user.ID,
+	}); err != nil {
+		t.Fatalf("setup: Create() error = %v", err)
+	}
+
+	t.Run("returns all bills in range", func(t *testing.T) {
+		result, err := s.FindFacilityTotalsByOrganizationInDateRange(ctx, org.ID,
+			time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+			time.Date(2025, 3, 31, 0, 0, 0, 0, time.UTC))
+		if err != nil {
+			t.Fatalf("error = %v", err)
+		}
+		if len(result) != 3 {
+			t.Fatalf("expected 3 entries, got %d", len(result))
+		}
+		jan := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+		if result[jan] != 100000 {
+			t.Errorf("expected Jan=100000, got %d", result[jan])
+		}
+		feb := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
+		if result[feb] != 200000 {
+			t.Errorf("expected Feb=200000, got %d", result[feb])
+		}
+		mar := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
+		if result[mar] != 300000 {
+			t.Errorf("expected Mar=300000, got %d", result[mar])
+		}
+	})
+
+	t.Run("partial range", func(t *testing.T) {
+		result, err := s.FindFacilityTotalsByOrganizationInDateRange(ctx, org.ID,
+			time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
+			time.Date(2025, 2, 28, 0, 0, 0, 0, time.UTC))
+		if err != nil {
+			t.Fatalf("error = %v", err)
+		}
+		if len(result) != 1 {
+			t.Fatalf("expected 1 entry, got %d", len(result))
+		}
+	})
+
+	t.Run("excludes other org", func(t *testing.T) {
+		result, err := s.FindFacilityTotalsByOrganizationInDateRange(ctx, org.ID,
+			time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+			time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC))
+		if err != nil {
+			t.Fatalf("error = %v", err)
+		}
+		jan := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+		if result[jan] != 100000 {
+			t.Errorf("expected 100000 (not org2's 999999), got %d", result[jan])
+		}
+	})
+
+	t.Run("empty for no bills in range", func(t *testing.T) {
+		result, err := s.FindFacilityTotalsByOrganizationInDateRange(ctx, org.ID,
+			time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC))
+		if err != nil {
+			t.Fatalf("error = %v", err)
+		}
+		if len(result) != 0 {
+			t.Errorf("expected 0 entries, got %d", len(result))
+		}
+	})
+
+	t.Run("sums multiple bills in same month", func(t *testing.T) {
+		// Add a second bill for January (correction)
+		toJan2 := time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC)
+		if err := s.Create(ctx, &models.GovernmentFundingBillPeriod{
+			OrganizationID: org.ID,
+			Period:         models.Period{From: time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC), To: &toJan2},
+			FileName:       "correction.xlsx", FileSha256: "corrhash", FacilityName: "Kita",
+			FacilityTotal: 50000,
+			CreatedBy:     user.ID,
+		}); err != nil {
+			t.Fatalf("Create() error = %v", err)
+		}
+		result, err := s.FindFacilityTotalsByOrganizationInDateRange(ctx, org.ID,
+			time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+			time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC))
+		if err != nil {
+			t.Fatalf("error = %v", err)
+		}
+		jan := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+		if result[jan] != 150000 {
+			t.Errorf("expected 150000 (100000 + 50000), got %d", result[jan])
+		}
+	})
+}
+
 // TestGovernmentFundingBillPeriodStore_FindByOrganizationAndVoucherNumber_DuplicateInSameBill
 // tests the edge case where the same voucher number appears multiple times in a single bill
 // (e.g. correction rows). The JOIN will produce one row per child entry, so the query may
