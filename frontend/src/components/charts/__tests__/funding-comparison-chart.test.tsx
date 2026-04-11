@@ -79,8 +79,10 @@ describe('FundingComparisonChart', () => {
     expect(container).toBeTruthy();
   });
 
-  it('renders no-data message when no actual funding', () => {
-    const { container } = renderWithProviders(<FundingComparisonChart data={dataWithoutActual} />);
-    expect(container).toBeTruthy();
+  it('renders chart even when no actual funding exists', () => {
+    const { getByTestId } = renderWithProviders(
+      <FundingComparisonChart data={dataWithoutActual} />
+    );
+    expect(getByTestId('nivo-bar')).toBeTruthy();
   });
 });

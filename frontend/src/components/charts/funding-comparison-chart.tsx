@@ -1,10 +1,10 @@
 'use client';
 
-import { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
 import { ResponsiveBar } from '@nivo/bar';
 import type { BarDatum, BarCustomLayerProps } from '@nivo/bar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -40,24 +40,25 @@ export function FundingComparisonChart({ data }: FundingComparisonChartProps) {
   const calculatedKey = t('fundingCalculated');
   const actualKey = t('fundingActual');
 
-  // Only include months that have actual funding data
-  const filteredPoints = useMemo(
-    () => data.data_points.filter((dp) => dp.actual_funding != null),
-    [data]
-  );
+  const allPoints = data.data_points;
 
-  const rawDates = filteredPoints.map((dp) => dp.date);
+  const rawDates = allPoints.map((dp) => dp.date);
   const xLabels = rawDates.map(formatDateLabel);
   const kitaYearBands = useMemo(() => buildKitaYearBands(rawDates), [rawDates]);
 
   const chartData: BarDatum[] = useMemo(
     () =>
-      filteredPoints.map((dp) => ({
-        date: formatDateLabel(dp.date),
-        [calculatedKey]: dp.funding_income / 100,
-        [actualKey]: (dp.actual_funding ?? 0) / 100,
-      })),
-    [filteredPoints, calculatedKey, actualKey]
+      allPoints.map((dp) => {
+        const entry: BarDatum = {
+          date: formatDateLabel(dp.date),
+          [calculatedKey]: dp.funding_income / 100,
+        };
+        if (dp.actual_funding != null) {
+          entry[actualKey] = dp.actual_funding / 100;
+        }
+        return entry;
+      }),
+    [allPoints, calculatedKey, actualKey]
   );
 
   const todayStr = toLocalDateString(new Date());
@@ -190,44 +191,82 @@ export function FundingComparisonChart({ data }: FundingComparisonChartProps) {
         </g>
       );
     };
-  }, [todayLabel, t]);
+  }, [todayLabel, tCommon]);
 
-  // Per-Kita-year summary: only compare months that have actual bill data
+  const [expandedYears, setExpandedYears] = useState<Set<string>>(new Set());
+
+  const toggleYear = (label: string) => {
+    setExpandedYears((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  };
+
+  // Per-Kita-year summary with monthly detail: always show calculated, actual only for months with bills
   const kitaYearSummary = useMemo(() => {
     const map = new Map<
       string,
-      { calculated: number; actual: number; actualMonths: number; totalMonths: number }
+      {
+        calculatedTotal: number;
+        calculatedWithBill: number;
+        actual: number;
+        actualMonths: number;
+        totalMonths: number;
+        months: {
+          date: string;
+          calculated: number;
+          actual: number | null;
+          difference: number | null;
+        }[];
+      }
     >();
     for (const dp of data.data_points) {
       const ky = kitaYearLabel(dp.date);
-      const entry = map.get(ky) ?? { calculated: 0, actual: 0, actualMonths: 0, totalMonths: 0 };
+      const entry = map.get(ky) ?? {
+        calculatedTotal: 0,
+        calculatedWithBill: 0,
+        actual: 0,
+        actualMonths: 0,
+        totalMonths: 0,
+        months: [],
+      };
       entry.totalMonths += 1;
-      if (dp.actual_funding != null) {
-        // Only include calculated amount for months where we have a bill
-        entry.calculated += dp.funding_income;
-        entry.actual += dp.actual_funding;
+      entry.calculatedTotal += dp.funding_income;
+      const hasActual = dp.actual_funding != null;
+      if (hasActual) {
+        entry.calculatedWithBill += dp.funding_income;
+        entry.actual += dp.actual_funding!;
         entry.actualMonths += 1;
       }
+      entry.months.push({
+        date: dp.date,
+        calculated: dp.funding_income,
+        actual: dp.actual_funding ?? null,
+        difference: hasActual ? dp.actual_funding! - dp.funding_income : null,
+      });
       map.set(ky, entry);
     }
-    return Array.from(map.entries())
-      .filter(([, v]) => v.actualMonths > 0)
-      .map(([label, v]) => ({
-        label,
-        calculated: v.calculated,
-        actual: v.actual,
-        difference: v.actual - v.calculated,
-        actualMonths: v.actualMonths,
-        totalMonths: v.totalMonths,
-        complete: v.actualMonths === v.totalMonths,
-      }));
+    return Array.from(map.entries()).map(([label, v]) => ({
+      label,
+      calculatedTotal: v.calculatedTotal,
+      calculatedWithBill: v.calculatedWithBill,
+      actual: v.actual,
+      difference: v.actual - v.calculatedWithBill,
+      actualMonths: v.actualMonths,
+      totalMonths: v.totalMonths,
+      hasBills: v.actualMonths > 0,
+      complete: v.actualMonths === v.totalMonths,
+      months: v.months,
+    }));
   }, [data]);
 
   const currentMonth = getCurrentMonthStart();
   const currentMonthDP = data.data_points.find((dp) => dp.date === currentMonth);
   const missingCurrentBill = currentMonthDP != null && currentMonthDP.actual_funding == null;
 
-  if (chartData.length === 0) {
+  if (allPoints.length === 0) {
     return (
       <div className="space-y-4">
         <p className="text-muted-foreground">{t('fundingNoDataYet')}</p>
@@ -306,7 +345,7 @@ export function FundingComparisonChart({ data }: FundingComparisonChartProps) {
           }}
           enableLabel={false}
           tooltip={({ indexValue, id, value, color }) => {
-            const dp = filteredPoints.find((d) => formatDateLabel(d.date) === indexValue);
+            const dp = allPoints.find((d) => formatDateLabel(d.date) === indexValue);
             const diff =
               dp && dp.actual_funding != null ? dp.actual_funding - dp.funding_income : null;
             return (
@@ -389,35 +428,78 @@ export function FundingComparisonChart({ data }: FundingComparisonChartProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {kitaYearSummary.map((row) => (
-                <TableRow key={row.label}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      {t('kitaYear', { year: row.label })}
-                      {!row.complete && (
-                        <span className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
-                          <AlertTriangle className="h-3 w-3" />
-                          {row.actualMonths}/{row.totalMonths} {t('fundingMonthsCovered')}
-                        </span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatEur(row.calculated)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">{formatEur(row.actual)}</TableCell>
-                  <TableCell
-                    className={`text-right font-medium tabular-nums ${
-                      row.difference >= 0
-                        ? 'text-green-700 dark:text-green-400'
-                        : 'text-red-700 dark:text-red-400'
-                    }`}
-                  >
-                    {row.difference >= 0 ? '+' : ''}
-                    {formatEur(row.difference)}
-                  </TableCell>
-                </TableRow>
-              ))}
+              {kitaYearSummary.map((row) => {
+                const isExpanded = expandedYears.has(row.label);
+                return (
+                  <React.Fragment key={row.label}>
+                    <TableRow
+                      className="hover:bg-muted/50 cursor-pointer"
+                      onClick={() => toggleYear(row.label)}
+                    >
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {isExpanded ? (
+                            <ChevronDown className="h-4 w-4 shrink-0" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 shrink-0" />
+                          )}
+                          {t('kitaYear', { year: row.label })}
+                          {row.hasBills && !row.complete && (
+                            <span className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                              <AlertTriangle className="h-3 w-3" />
+                              {row.actualMonths}/{row.totalMonths} {t('fundingMonthsCovered')}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatEur(row.calculatedTotal)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {row.hasBills ? formatEur(row.actual) : '\u2014'}
+                      </TableCell>
+                      <TableCell
+                        className={`text-right font-medium tabular-nums ${
+                          !row.hasBills
+                            ? 'text-muted-foreground'
+                            : row.difference >= 0
+                              ? 'text-green-700 dark:text-green-400'
+                              : 'text-red-700 dark:text-red-400'
+                        }`}
+                      >
+                        {row.hasBills
+                          ? `${row.difference >= 0 ? '+' : ''}${formatEur(row.difference)}`
+                          : '\u2014'}
+                      </TableCell>
+                    </TableRow>
+                    {isExpanded &&
+                      row.months.map((m) => (
+                        <TableRow key={m.date} className="bg-muted/30">
+                          <TableCell className="pl-10 text-sm">{formatDateLabel(m.date)}</TableCell>
+                          <TableCell className="text-right text-sm tabular-nums">
+                            {formatEur(m.calculated)}
+                          </TableCell>
+                          <TableCell className="text-right text-sm tabular-nums">
+                            {m.actual != null ? formatEur(m.actual) : '\u2014'}
+                          </TableCell>
+                          <TableCell
+                            className={`text-right text-sm tabular-nums ${
+                              m.difference == null
+                                ? 'text-muted-foreground'
+                                : m.difference >= 0
+                                  ? 'text-green-700 dark:text-green-400'
+                                  : 'text-red-700 dark:text-red-400'
+                            }`}
+                          >
+                            {m.difference != null
+                              ? `${m.difference >= 0 ? '+' : ''}${formatEur(m.difference)}`
+                              : '\u2014'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </React.Fragment>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
