@@ -102,6 +102,24 @@ func (s *GovernmentFundingBillPeriodStore) FindFacilityTotalsByOrganizationInDat
 	return m, nil
 }
 
+func (s *GovernmentFundingBillPeriodStore) ExistsByOrgAndHash(ctx context.Context, orgID uint, fileHash string) (bool, error) {
+	var count int64
+	err := DBFromContext(ctx, s.db).
+		Model(&models.GovernmentFundingBillPeriod{}).
+		Where("organization_id = ? AND file_sha256 = ?", orgID, fileHash).
+		Count(&count).Error
+	return count > 0, err
+}
+
+func (s *GovernmentFundingBillPeriodStore) ExistsByOrgAndMonth(ctx context.Context, orgID uint, from time.Time) (bool, error) {
+	var count int64
+	err := DBFromContext(ctx, s.db).
+		Model(&models.GovernmentFundingBillPeriod{}).
+		Where("organization_id = ? AND from_date = ?", orgID, from).
+		Count(&count).Error
+	return count > 0, err
+}
+
 func (s *GovernmentFundingBillPeriodStore) Delete(ctx context.Context, id uint) error {
 	return DBFromContext(ctx, s.db).Delete(&models.GovernmentFundingBillPeriod{}, id).Error
 }

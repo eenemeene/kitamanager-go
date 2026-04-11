@@ -240,6 +240,8 @@ type GovernmentFundingBillPeriodStorer interface {
 	FindByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.GovernmentFundingBillPeriod, int64, error)
 	FindByOrganizationAndVoucherNumber(ctx context.Context, orgID uint, voucherNumber string) ([]models.BillAppearance, error)
 	FindFacilityTotalsByOrganizationInDateRange(ctx context.Context, orgID uint, from, to time.Time) (map[time.Time]int, error)
+	ExistsByOrgAndHash(ctx context.Context, orgID uint, fileHash string) (bool, error)
+	ExistsByOrgAndMonth(ctx context.Context, orgID uint, from time.Time) (bool, error)
 	Delete(ctx context.Context, id uint) error
 }
 

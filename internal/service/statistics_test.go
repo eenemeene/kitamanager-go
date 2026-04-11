@@ -3736,7 +3736,7 @@ func TestStatisticsService_GetFinancials_ActualFunding_BillMatchesMonth(t *testi
 	}
 }
 
-func TestStatisticsService_GetFinancials_ActualFunding_MultipleBillsSameMonth(t *testing.T) {
+func TestStatisticsService_GetFinancials_ActualFunding_SingleBill(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createStatisticsService(db)
 	ctx := context.Background()
@@ -3744,21 +3744,19 @@ func TestStatisticsService_GetFinancials_ActualFunding_MultipleBillsSameMonth(t 
 	org := createTestOrganization(t, db, "Test Org")
 	user := createTestUser(t, db, "Bill User", "bill2@test.com", "password")
 
-	// Create two bills for February (original + correction)
+	// Create a single bill for February (only one bill per month per org is allowed)
 	toFeb := time.Date(2025, 2, 28, 0, 0, 0, 0, time.UTC)
-	for _, total := range []int{300000, 50000} {
-		bill := &models.GovernmentFundingBillPeriod{
-			OrganizationID: org.ID,
-			Period:         models.Period{From: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC), To: &toFeb},
-			FileName:       "feb.xlsx",
-			FileSha256:     "hash",
-			FacilityName:   "Kita",
-			FacilityTotal:  total,
-			CreatedBy:      user.ID,
-		}
-		if err := db.Create(bill).Error; err != nil {
-			t.Fatalf("create bill: %v", err)
-		}
+	bill := &models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC), To: &toFeb},
+		FileName:       "feb.xlsx",
+		FileSha256:     "febhash",
+		FacilityName:   "Kita",
+		FacilityTotal:  350000,
+		CreatedBy:      user.ID,
+	}
+	if err := db.Create(bill).Error; err != nil {
+		t.Fatalf("create bill: %v", err)
 	}
 
 	from := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
@@ -3772,9 +3770,8 @@ func TestStatisticsService_GetFinancials_ActualFunding_MultipleBillsSameMonth(t 
 	if dp.ActualFunding == nil {
 		t.Fatal("expected ActualFunding to be set")
 	}
-	// Should be summed: 300000 + 50000 = 350000
 	if *dp.ActualFunding != 350000 {
-		t.Errorf("ActualFunding = %d, want 350000 (sum of two bills)", *dp.ActualFunding)
+		t.Errorf("ActualFunding = %d, want 350000", *dp.ActualFunding)
 	}
 }
 

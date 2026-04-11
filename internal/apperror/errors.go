@@ -27,8 +27,10 @@ const (
 	CodeForbidden        = "forbidden"
 	CodeTooManyRequests  = "too_many_requests"
 	CodeInternal         = "internal_error"
-	CodeEmailConflict    = "email_conflict"
-	CodeContractConflict = "contract_overlap"
+	CodeEmailConflict       = "email_conflict"
+	CodeContractConflict    = "contract_overlap"
+	CodeDuplicateBillHash   = "duplicate_bill_hash"
+	CodeDuplicateBillMonth  = "duplicate_bill_month"
 )
 
 // AppError wraps errors with HTTP context
