@@ -11,12 +11,13 @@ import (
 
 // StatisticsHandler handles statistics-related HTTP requests
 type StatisticsHandler struct {
-	service *service.StatisticsService
+	service      *service.StatisticsService
+	childService *service.ChildService
 }
 
 // NewStatisticsHandler creates a new statistics handler
-func NewStatisticsHandler(service *service.StatisticsService) *StatisticsHandler {
-	return &StatisticsHandler{service: service}
+func NewStatisticsHandler(service *service.StatisticsService, childService *service.ChildService) *StatisticsHandler {
+	return &StatisticsHandler{service: service, childService: childService}
 }
 
 // GetStaffingHours godoc
@@ -143,6 +144,109 @@ func (h *StatisticsHandler) GetOccupancy(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, result)
+}
+
+// GetAgeDistribution godoc
+// @Summary Get children age distribution
+// @Description Get age distribution of children with active contracts on the specified date
+// @Tags statistics
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Param date query string false "Date for calculation (YYYY-MM-DD format, defaults to today)"
+// @Success 200 {object} models.AgeDistributionResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/organizations/{orgId}/statistics/age-distribution [get]
+func (h *StatisticsHandler) GetAgeDistribution(c *gin.Context) {
+	orgID, ok := parseOrgID(c)
+	if !ok {
+		return
+	}
+
+	date, ok := parseOptionalDate(c, "date")
+	if !ok {
+		return
+	}
+
+	stats, err := h.childService.GetAgeDistribution(c.Request.Context(), orgID, date)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, stats)
+}
+
+// GetContractPropertiesDistribution godoc
+// @Summary Get children contract properties distribution
+// @Description Get the distribution of contract properties for children with active contracts on the specified date
+// @Tags statistics
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Param date query string false "Date for calculation (YYYY-MM-DD format, defaults to today)"
+// @Success 200 {object} models.ContractPropertiesDistributionResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/organizations/{orgId}/statistics/contract-properties [get]
+func (h *StatisticsHandler) GetContractPropertiesDistribution(c *gin.Context) {
+	orgID, ok := parseOrgID(c)
+	if !ok {
+		return
+	}
+
+	date, ok := parseOptionalDate(c, "date")
+	if !ok {
+		return
+	}
+
+	stats, err := h.childService.GetContractPropertiesDistribution(c.Request.Context(), orgID, date)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, stats)
+}
+
+// GetFunding godoc
+// @Summary Calculate children funding
+// @Description Calculate government funding for all children with active contracts on a given date
+// @Tags statistics
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Param date query string false "Date for calculation (YYYY-MM-DD format, defaults to today)"
+// @Success 200 {object} models.ChildrenFundingResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/organizations/{orgId}/statistics/funding [get]
+func (h *StatisticsHandler) GetFunding(c *gin.Context) {
+	orgID, ok := parseOrgID(c)
+	if !ok {
+		return
+	}
+
+	date, ok := parseOptionalDate(c, "date")
+	if !ok {
+		return
+	}
+
+	funding, err := h.childService.CalculateFunding(c.Request.Context(), orgID, date)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, funding)
 }
 
 // GetFinancials godoc

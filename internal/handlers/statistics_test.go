@@ -14,7 +14,7 @@ func TestStatisticsHandler_GetStaffingHours_Success(t *testing.T) {
 	db.Model(org).Update("state", "berlin")
 
 	svc := createStatisticsService(db)
-	handler := NewStatisticsHandler(svc)
+	handler := NewStatisticsHandler(svc, createChildService(db))
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/statistics/staffing-hours", handler.GetStaffingHours)
@@ -37,7 +37,7 @@ func TestStatisticsHandler_GetStaffingHours_WithQueryParams(t *testing.T) {
 	db.Model(org).Update("state", "berlin")
 
 	svc := createStatisticsService(db)
-	handler := NewStatisticsHandler(svc)
+	handler := NewStatisticsHandler(svc, createChildService(db))
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/statistics/staffing-hours", handler.GetStaffingHours)
@@ -59,7 +59,7 @@ func TestStatisticsHandler_GetStaffingHours_InvalidOrgId(t *testing.T) {
 	db := setupTestDB(t)
 
 	svc := createStatisticsService(db)
-	handler := NewStatisticsHandler(svc)
+	handler := NewStatisticsHandler(svc, createChildService(db))
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/statistics/staffing-hours", handler.GetStaffingHours)
@@ -75,7 +75,7 @@ func TestStatisticsHandler_GetStaffingHours_InvalidDates(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	svc := createStatisticsService(db)
-	handler := NewStatisticsHandler(svc)
+	handler := NewStatisticsHandler(svc, createChildService(db))
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/statistics/staffing-hours", handler.GetStaffingHours)
@@ -101,7 +101,7 @@ func TestStatisticsHandler_GetEmployeeStaffingHours_Success(t *testing.T) {
 	db.Model(org).Update("state", "berlin")
 
 	svc := createStatisticsService(db)
-	handler := NewStatisticsHandler(svc)
+	handler := NewStatisticsHandler(svc, createChildService(db))
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/statistics/staffing-hours/employees", handler.GetEmployeeStaffingHours)
@@ -122,7 +122,7 @@ func TestStatisticsHandler_GetEmployeeStaffingHours_InvalidOrgId(t *testing.T) {
 	db := setupTestDB(t)
 
 	svc := createStatisticsService(db)
-	handler := NewStatisticsHandler(svc)
+	handler := NewStatisticsHandler(svc, createChildService(db))
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/statistics/staffing-hours/employees", handler.GetEmployeeStaffingHours)
@@ -138,7 +138,7 @@ func TestStatisticsHandler_GetEmployeeStaffingHours_InvalidDates(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	svc := createStatisticsService(db)
-	handler := NewStatisticsHandler(svc)
+	handler := NewStatisticsHandler(svc, createChildService(db))
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/statistics/staffing-hours/employees", handler.GetEmployeeStaffingHours)
@@ -161,7 +161,7 @@ func TestStatisticsHandler_GetEmployeeStaffingHours_InvalidSectionId(t *testing.
 	org := createTestOrganization(t, db, "Test Org")
 
 	svc := createStatisticsService(db)
-	handler := NewStatisticsHandler(svc)
+	handler := NewStatisticsHandler(svc, createChildService(db))
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/statistics/staffing-hours/employees", handler.GetEmployeeStaffingHours)
@@ -180,7 +180,7 @@ func TestStatisticsHandler_GetOccupancy_Success(t *testing.T) {
 	db.Model(org).Update("state", "berlin")
 
 	svc := createStatisticsService(db)
-	handler := NewStatisticsHandler(svc)
+	handler := NewStatisticsHandler(svc, createChildService(db))
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/statistics/occupancy", handler.GetOccupancy)
@@ -201,7 +201,7 @@ func TestStatisticsHandler_GetOccupancy_InvalidOrgId(t *testing.T) {
 	db := setupTestDB(t)
 
 	svc := createStatisticsService(db)
-	handler := NewStatisticsHandler(svc)
+	handler := NewStatisticsHandler(svc, createChildService(db))
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/statistics/occupancy", handler.GetOccupancy)
@@ -217,7 +217,7 @@ func TestStatisticsHandler_GetOccupancy_InvalidDates(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	svc := createStatisticsService(db)
-	handler := NewStatisticsHandler(svc)
+	handler := NewStatisticsHandler(svc, createChildService(db))
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/statistics/occupancy", handler.GetOccupancy)
@@ -240,7 +240,7 @@ func TestStatisticsHandler_GetOccupancy_InvalidSectionId(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	svc := createStatisticsService(db)
-	handler := NewStatisticsHandler(svc)
+	handler := NewStatisticsHandler(svc, createChildService(db))
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/statistics/occupancy", handler.GetOccupancy)
@@ -259,7 +259,7 @@ func TestStatisticsHandler_GetFinancials_Success(t *testing.T) {
 	db.Model(org).Update("state", "berlin")
 
 	svc := createStatisticsService(db)
-	handler := NewStatisticsHandler(svc)
+	handler := NewStatisticsHandler(svc, createChildService(db))
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/statistics/financials", handler.GetFinancials)
@@ -280,7 +280,7 @@ func TestStatisticsHandler_GetFinancials_InvalidOrgId(t *testing.T) {
 	db := setupTestDB(t)
 
 	svc := createStatisticsService(db)
-	handler := NewStatisticsHandler(svc)
+	handler := NewStatisticsHandler(svc, createChildService(db))
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/statistics/financials", handler.GetFinancials)
@@ -296,7 +296,7 @@ func TestStatisticsHandler_GetFinancials_InvalidDates(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	svc := createStatisticsService(db)
-	handler := NewStatisticsHandler(svc)
+	handler := NewStatisticsHandler(svc, createChildService(db))
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/statistics/financials", handler.GetFinancials)
@@ -320,7 +320,7 @@ func TestStatisticsHandler_GetFinancials_WithQueryParams(t *testing.T) {
 	db.Model(org).Update("state", "berlin")
 
 	svc := createStatisticsService(db)
-	handler := NewStatisticsHandler(svc)
+	handler := NewStatisticsHandler(svc, createChildService(db))
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/statistics/financials", handler.GetFinancials)

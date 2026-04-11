@@ -12,7 +12,7 @@ import (
 func TestChildStatisticsHandler_GetAgeDistribution(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildStatisticsHandler(childService)
+	handler := NewStatisticsHandler(createStatisticsService(db), childService)
 
 	org := createTestOrganization(t, db, "Test Org")
 	sectionID := ensureTestSection(t, db, org.ID)
@@ -66,7 +66,7 @@ func TestChildStatisticsHandler_GetAgeDistribution(t *testing.T) {
 func TestChildStatisticsHandler_GetAgeDistribution_DefaultDate(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildStatisticsHandler(childService)
+	handler := NewStatisticsHandler(createStatisticsService(db), childService)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -92,7 +92,7 @@ func TestChildStatisticsHandler_GetAgeDistribution_DefaultDate(t *testing.T) {
 func TestChildStatisticsHandler_GetAgeDistribution_InvalidDate(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildStatisticsHandler(childService)
+	handler := NewStatisticsHandler(createStatisticsService(db), childService)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -109,7 +109,7 @@ func TestChildStatisticsHandler_GetAgeDistribution_InvalidDate(t *testing.T) {
 func TestChildStatisticsHandler_GetAgeDistribution_InvalidOrgId(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildStatisticsHandler(childService)
+	handler := NewStatisticsHandler(createStatisticsService(db), childService)
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/statistics/age-distribution", handler.GetAgeDistribution)
@@ -124,7 +124,7 @@ func TestChildStatisticsHandler_GetAgeDistribution_InvalidOrgId(t *testing.T) {
 func TestChildStatisticsHandler_GetAgeDistribution_NoChildren(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildStatisticsHandler(childService)
+	handler := NewStatisticsHandler(createStatisticsService(db), childService)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -156,7 +156,7 @@ func TestChildStatisticsHandler_GetAgeDistribution_NoChildren(t *testing.T) {
 func TestChildStatisticsHandler_GetAgeDistribution_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildStatisticsHandler(childService)
+	handler := NewStatisticsHandler(createStatisticsService(db), childService)
 
 	org1 := createTestOrganization(t, db, "Org 1")
 	sectionID := ensureTestSection(t, db, org1.ID)
@@ -201,7 +201,7 @@ func TestChildStatisticsHandler_GetAgeDistribution_WrongOrg(t *testing.T) {
 func TestChildStatisticsHandler_GetAgeDistribution_AllBuckets(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildStatisticsHandler(childService)
+	handler := NewStatisticsHandler(createStatisticsService(db), childService)
 
 	org := createTestOrganization(t, db, "Test Org")
 	sectionID := ensureTestSection(t, db, org.ID)
@@ -266,7 +266,7 @@ func TestChildStatisticsHandler_GetAgeDistribution_AllBuckets(t *testing.T) {
 func TestChildStatisticsHandler_GetAgeDistribution_ExpiredContract(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildStatisticsHandler(childService)
+	handler := NewStatisticsHandler(createStatisticsService(db), childService)
 
 	org := createTestOrganization(t, db, "Test Org")
 	sectionID := ensureTestSection(t, db, org.ID)
@@ -311,7 +311,7 @@ func TestChildStatisticsHandler_GetAgeDistribution_ExpiredContract(t *testing.T)
 func TestChildStatisticsHandler_GetAgeDistribution_FutureContract(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildStatisticsHandler(childService)
+	handler := NewStatisticsHandler(createStatisticsService(db), childService)
 
 	org := createTestOrganization(t, db, "Test Org")
 	sectionID := ensureTestSection(t, db, org.ID)
@@ -355,7 +355,7 @@ func TestChildStatisticsHandler_GetAgeDistribution_FutureContract(t *testing.T) 
 func TestChildStatisticsHandler_GetAgeDistribution_HistoricalDate(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildStatisticsHandler(childService)
+	handler := NewStatisticsHandler(createStatisticsService(db), childService)
 
 	org := createTestOrganization(t, db, "Test Org")
 	sectionID := ensureTestSection(t, db, org.ID)
@@ -411,7 +411,7 @@ func TestChildStatisticsHandler_GetAgeDistribution_HistoricalDate(t *testing.T) 
 func TestChildStatisticsHandler_GetFunding(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildStatisticsHandler(childService)
+	handler := NewStatisticsHandler(createStatisticsService(db), childService)
 
 	org := createTestOrganization(t, db, "Test Org")
 	sectionID := ensureTestSection(t, db, org.ID)
@@ -468,7 +468,7 @@ func TestChildStatisticsHandler_GetFunding(t *testing.T) {
 func TestChildStatisticsHandler_GetFunding_NoContracts(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildStatisticsHandler(childService)
+	handler := NewStatisticsHandler(createStatisticsService(db), childService)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -485,7 +485,7 @@ func TestChildStatisticsHandler_GetFunding_NoContracts(t *testing.T) {
 func TestChildStatisticsHandler_GetFunding_InvalidDate(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildStatisticsHandler(childService)
+	handler := NewStatisticsHandler(createStatisticsService(db), childService)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -506,7 +506,7 @@ func TestChildStatisticsHandler_GetFunding_InvalidDate(t *testing.T) {
 func TestChildStatisticsHandler_GetContractPropertiesDistribution(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildStatisticsHandler(childService)
+	handler := NewStatisticsHandler(createStatisticsService(db), childService)
 
 	org := createTestOrganization(t, db, "Test Org")
 	sectionID := ensureTestSection(t, db, org.ID)
@@ -605,7 +605,7 @@ func TestChildStatisticsHandler_GetContractPropertiesDistribution(t *testing.T) 
 func TestChildStatisticsHandler_GetContractPropertiesDistribution_DefaultDate(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildStatisticsHandler(childService)
+	handler := NewStatisticsHandler(createStatisticsService(db), childService)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -630,7 +630,7 @@ func TestChildStatisticsHandler_GetContractPropertiesDistribution_DefaultDate(t 
 func TestChildStatisticsHandler_GetContractPropertiesDistribution_CustomDate(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildStatisticsHandler(childService)
+	handler := NewStatisticsHandler(createStatisticsService(db), childService)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -654,7 +654,7 @@ func TestChildStatisticsHandler_GetContractPropertiesDistribution_CustomDate(t *
 func TestChildStatisticsHandler_GetContractPropertiesDistribution_InvalidDate(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildStatisticsHandler(childService)
+	handler := NewStatisticsHandler(createStatisticsService(db), childService)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -671,7 +671,7 @@ func TestChildStatisticsHandler_GetContractPropertiesDistribution_InvalidDate(t 
 func TestChildStatisticsHandler_GetContractPropertiesDistribution_InvalidOrgId(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildStatisticsHandler(childService)
+	handler := NewStatisticsHandler(createStatisticsService(db), childService)
 
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/statistics/contract-properties", handler.GetContractPropertiesDistribution)
@@ -686,7 +686,7 @@ func TestChildStatisticsHandler_GetContractPropertiesDistribution_InvalidOrgId(t
 func TestChildStatisticsHandler_GetContractPropertiesDistribution_NoChildren(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildStatisticsHandler(childService)
+	handler := NewStatisticsHandler(createStatisticsService(db), childService)
 
 	org := createTestOrganization(t, db, "Test Org")
 
@@ -715,7 +715,7 @@ func TestChildStatisticsHandler_GetContractPropertiesDistribution_NoChildren(t *
 func TestChildStatisticsHandler_GetContractPropertiesDistribution_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	childService := createChildService(db)
-	handler := NewChildStatisticsHandler(childService)
+	handler := NewStatisticsHandler(createStatisticsService(db), childService)
 
 	org1 := createTestOrganization(t, db, "Org 1")
 	sectionID := ensureTestSection(t, db, org1.ID)
