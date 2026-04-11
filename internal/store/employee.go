@@ -227,13 +227,17 @@ func (s *EmployeeStore) FindContractsByOrganizationInDateRange(ctx context.Conte
 
 // FindByOrganizationInDateRange returns employees that have contracts overlapping the given date range.
 // Employees are returned with their contracts preloaded (only those overlapping the range).
+// Optional staffCategories filters to contracts with a matching staff_category.
 // Optional sectionID filters on the contract's section.
-func (s *EmployeeStore) FindByOrganizationInDateRange(ctx context.Context, orgID uint, rangeStart, rangeEnd time.Time, sectionID *uint) ([]models.Employee, error) {
+func (s *EmployeeStore) FindByOrganizationInDateRange(ctx context.Context, orgID uint, rangeStart, rangeEnd time.Time, staffCategories []string, sectionID *uint) ([]models.Employee, error) {
 	var employees []models.Employee
 
 	query := DBFromContext(ctx, s.db).
 		Preload("Contracts", func(db *gorm.DB) *gorm.DB {
 			q := db.Where("from_date <= ? AND (to_date IS NULL OR to_date >= ?)", rangeEnd, rangeStart)
+			if len(staffCategories) > 0 {
+				q = q.Where("staff_category IN ?", staffCategories)
+			}
 			if sectionID != nil {
 				q = q.Where("section_id = ?", *sectionID)
 			}
@@ -243,6 +247,10 @@ func (s *EmployeeStore) FindByOrganizationInDateRange(ctx context.Context, orgID
 		Where("employees.organization_id = ?", orgID).
 		Where("employee_contracts.from_date <= ?", rangeEnd).
 		Where("employee_contracts.to_date IS NULL OR employee_contracts.to_date >= ?", rangeStart)
+
+	if len(staffCategories) > 0 {
+		query = query.Where("employee_contracts.staff_category IN ?", staffCategories)
+	}
 
 	if sectionID != nil {
 		query = query.Where("employee_contracts.section_id = ?", *sectionID)

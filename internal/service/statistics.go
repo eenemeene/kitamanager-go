@@ -122,7 +122,7 @@ func (s *StatisticsService) GetStaffingHours(ctx context.Context, orgID uint, fr
 func (s *StatisticsService) GetEmployeeStaffingHours(ctx context.Context, orgID uint, from, to *time.Time, sectionID *uint) (*models.EmployeeStaffingHoursResponse, error) {
 	rangeStart, rangeEnd := snapDateRange(from, to)
 
-	employees, err := s.employeeStore.FindByOrganizationInDateRange(ctx, orgID, rangeStart, rangeEnd, sectionID)
+	employees, err := s.employeeStore.FindByOrganizationInDateRange(ctx, orgID, rangeStart, rangeEnd, []string(nil), sectionID)
 	if err != nil {
 		return nil, apperror.InternalWrap(err, "failed to fetch employees")
 	}
