@@ -21,10 +21,24 @@ const FinancialsChart = dynamic(
   { ssr: false, loading: () => <Skeleton className="h-[580px] w-full" /> }
 );
 
+const FinancialSummaryChart = dynamic(
+  () =>
+    import('@/components/charts/financial-summary-chart').then((mod) => mod.FinancialSummaryChart),
+  { ssr: false, loading: () => <Skeleton className="h-[350px] w-full" /> }
+);
+
 const FundingBreakdownChart = dynamic(
   () =>
     import('@/components/charts/funding-breakdown-chart').then((mod) => mod.FundingBreakdownChart),
   { ssr: false, loading: () => <Skeleton className="h-[350px] w-full" /> }
+);
+
+const FundingComparisonChart = dynamic(
+  () =>
+    import('@/components/charts/funding-comparison-chart').then(
+      (mod) => mod.FundingComparisonChart
+    ),
+  { ssr: false, loading: () => <Skeleton className="h-[500px] w-full" /> }
 );
 
 const ExpenseBreakdownChart = dynamic(
@@ -97,6 +111,44 @@ export default function FinancialsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Annual Summary Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('statistics.financialSummary')}</CardTitle>
+          <p className="text-muted-foreground text-sm">
+            {t('statistics.financialSummaryDescription')}
+          </p>
+        </CardHeader>
+        <CardContent>
+          {isLoadingFinancials ? (
+            <Skeleton className="h-[350px] w-full" />
+          ) : financials ? (
+            <ChartErrorBoundary>
+              <FinancialSummaryChart data={financials} />
+            </ChartErrorBoundary>
+          ) : (
+            <p className="text-muted-foreground">{t('statistics.chartError')}</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Actual vs Calculated Funding */}
+      {financials?.data_points?.some((dp) => dp.actual_funding != null) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('statistics.fundingActualVsCalculated')}</CardTitle>
+            <p className="text-muted-foreground text-sm">
+              {t('statistics.fundingActualVsCalculatedDescription')}
+            </p>
+          </CardHeader>
+          <CardContent>
+            <ChartErrorBoundary>
+              <FundingComparisonChart data={financials} />
+            </ChartErrorBoundary>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Breakdown Pie Charts */}
       {currentFinancials && (

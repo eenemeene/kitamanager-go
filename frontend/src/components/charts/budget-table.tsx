@@ -51,6 +51,8 @@ export function BudgetTable({ data }: BudgetTableProps) {
     };
   }, [dataPoints]);
 
+  const hasActualFunding = dataPoints.some((dp) => dp.actual_funding != null);
+
   // Build per-month row data
   const rows = useMemo(() => {
     return dataPoints.map((dp) => {
@@ -61,6 +63,7 @@ export function BudgetTable({ data }: BudgetTableProps) {
       return {
         date: dp.date,
         fundingIncome: dp.funding_income,
+        actualFunding: dp.actual_funding ?? null,
         incomeItemValues: incomeItems.map((name) => budgetMap.get(name) ?? 0),
         totalIncome: dp.total_income,
         salaries: dp.gross_salary + dp.employer_costs,
@@ -75,6 +78,7 @@ export function BudgetTable({ data }: BudgetTableProps) {
   const totals = useMemo(() => {
     const sum = {
       fundingIncome: 0,
+      actualFunding: null as number | null,
       incomeItemValues: incomeItems.map(() => 0),
       totalIncome: 0,
       salaries: 0,
@@ -84,6 +88,9 @@ export function BudgetTable({ data }: BudgetTableProps) {
     };
     for (const row of rows) {
       sum.fundingIncome += row.fundingIncome;
+      if (row.actualFunding != null) {
+        sum.actualFunding = (sum.actualFunding ?? 0) + row.actualFunding;
+      }
       for (let i = 0; i < incomeItems.length; i++) {
         sum.incomeItemValues[i] += row.incomeItemValues[i];
       }
@@ -99,7 +106,7 @@ export function BudgetTable({ data }: BudgetTableProps) {
   }, [rows, incomeItems, expenseItems]);
 
   // Column counts for header spans
-  const incomeColCount = 1 + incomeItems.length + 1; // funding + items + subtotal
+  const incomeColCount = 1 + (hasActualFunding ? 1 : 0) + incomeItems.length + 1; // funding (calc) + funding (actual) + items + subtotal
   const expenseColCount = 1 + expenseItems.length + 1; // salaries + items + subtotal
 
   if (dataPoints.length === 0) {
@@ -133,6 +140,9 @@ export function BudgetTable({ data }: BudgetTableProps) {
           <TableRow>
             {/* Income sub-headers */}
             <TableHead className="text-center">{t('fundingIncomeSub')}</TableHead>
+            {hasActualFunding && (
+              <TableHead className="text-center">{t('fundingActualSub')}</TableHead>
+            )}
             {incomeItems.map((name) => (
               <TableHead key={name} className="text-center">
                 {name}
@@ -160,6 +170,11 @@ export function BudgetTable({ data }: BudgetTableProps) {
               <TableCell className="text-right tabular-nums">
                 {formatCurrencyCell(row.fundingIncome)}
               </TableCell>
+              {hasActualFunding && (
+                <TableCell className="text-right tabular-nums">
+                  {row.actualFunding != null ? formatCurrencyCell(row.actualFunding) : '\u2013'}
+                </TableCell>
+              )}
               {row.incomeItemValues.map((val, i) => (
                 <TableCell key={incomeItems[i]} className="text-right tabular-nums">
                   {formatCurrencyCell(val)}
@@ -199,6 +214,11 @@ export function BudgetTable({ data }: BudgetTableProps) {
             <TableCell className="text-right tabular-nums">
               {formatCurrencyCell(totals.fundingIncome)}
             </TableCell>
+            {hasActualFunding && (
+              <TableCell className="text-right tabular-nums">
+                {totals.actualFunding != null ? formatCurrencyCell(totals.actualFunding) : '\u2013'}
+              </TableCell>
+            )}
             {totals.incomeItemValues.map((val, i) => (
               <TableCell key={incomeItems[i]} className="text-right tabular-nums">
                 {formatCurrencyCell(val)}

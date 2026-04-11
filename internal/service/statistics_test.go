@@ -21,7 +21,8 @@ func createStatisticsService(db *gorm.DB) *StatisticsService {
 	payPlanStore := store.NewPayPlanStore(db)
 	budgetItemStore := store.NewBudgetItemStore(db)
 	sectionStore := store.NewSectionStore(db)
-	return NewStatisticsService(childStore, employeeStore, orgStore, fundingStore, payPlanStore, budgetItemStore, sectionStore)
+	billStore := store.NewGovernmentFundingBillPeriodStore(db)
+	return NewStatisticsService(childStore, employeeStore, orgStore, fundingStore, payPlanStore, budgetItemStore, sectionStore, billStore)
 }
 
 func createTestEmployeeContractWithCategory(t *testing.T, db *gorm.DB, employeeID uint, payplanID uint, from time.Time, to *time.Time, weeklyHours float64, staffCategory string, sectionID uint) *models.EmployeeContract {
@@ -3679,4 +3680,208 @@ func TestStatisticsService_GetEmployeeStaffingHours_MultipleEmployeesTransition(
 			t.Errorf("Beta B month %d: hours = %v, want 25.0", i+1, got)
 		}
 	}
+}
+
+// ========== Actual Funding Integration Tests ==========
+
+func TestStatisticsService_GetFinancials_ActualFunding_BillMatchesMonth(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "Bill User", "bill1@test.com", "password")
+
+	// Create a bill for January 2025
+	toJan := time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC)
+	bill := &models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), To: &toJan},
+		FileName:       "jan.xlsx",
+		FileSha256:     "hash1",
+		FacilityName:   "Kita Test",
+		FacilityTotal:  500000,
+		CreatedBy:      user.ID,
+	}
+	if err := db.Create(bill).Error; err != nil {
+		t.Fatalf("create bill: %v", err)
+	}
+
+	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("GetFinancials() error = %v", err)
+	}
+
+	// January should have actual funding
+	janDP := findDataPoint(t, result.DataPoints, "2025-01-01")
+	if janDP.ActualFunding == nil {
+		t.Fatal("expected ActualFunding to be set for January")
+	}
+	if *janDP.ActualFunding != 500000 {
+		t.Errorf("ActualFunding = %d, want 500000", *janDP.ActualFunding)
+	}
+
+	// February should have no actual funding
+	febDP := findDataPoint(t, result.DataPoints, "2025-02-01")
+	if febDP.ActualFunding != nil {
+		t.Errorf("expected ActualFunding to be nil for February, got %d", *febDP.ActualFunding)
+	}
+
+	// March should have no actual funding
+	marDP := findDataPoint(t, result.DataPoints, "2025-03-01")
+	if marDP.ActualFunding != nil {
+		t.Errorf("expected ActualFunding to be nil for March, got %d", *marDP.ActualFunding)
+	}
+}
+
+func TestStatisticsService_GetFinancials_ActualFunding_MultipleBillsSameMonth(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "Bill User", "bill2@test.com", "password")
+
+	// Create two bills for February (original + correction)
+	toFeb := time.Date(2025, 2, 28, 0, 0, 0, 0, time.UTC)
+	for _, total := range []int{300000, 50000} {
+		bill := &models.GovernmentFundingBillPeriod{
+			OrganizationID: org.ID,
+			Period:         models.Period{From: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC), To: &toFeb},
+			FileName:       "feb.xlsx",
+			FileSha256:     "hash",
+			FacilityName:   "Kita",
+			FacilityTotal:  total,
+			CreatedBy:      user.ID,
+		}
+		if err := db.Create(bill).Error; err != nil {
+			t.Fatalf("create bill: %v", err)
+		}
+	}
+
+	from := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2025, 2, 28, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("GetFinancials() error = %v", err)
+	}
+
+	dp := findDataPoint(t, result.DataPoints, "2025-02-01")
+	if dp.ActualFunding == nil {
+		t.Fatal("expected ActualFunding to be set")
+	}
+	// Should be summed: 300000 + 50000 = 350000
+	if *dp.ActualFunding != 350000 {
+		t.Errorf("ActualFunding = %d, want 350000 (sum of two bills)", *dp.ActualFunding)
+	}
+}
+
+func TestStatisticsService_GetFinancials_ActualFunding_NoBills(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("GetFinancials() error = %v", err)
+	}
+
+	for _, dp := range result.DataPoints {
+		if dp.ActualFunding != nil {
+			t.Errorf("expected ActualFunding nil for %s when no bills exist, got %d", dp.Date, *dp.ActualFunding)
+		}
+	}
+}
+
+func TestStatisticsService_GetFinancials_ActualFunding_BillOutsideRange(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "Bill User", "bill4@test.com", "password")
+
+	// Create a bill for December 2024 — outside the query range
+	toDec := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	bill := &models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: time.Date(2024, 12, 1, 0, 0, 0, 0, time.UTC), To: &toDec},
+		FileName:       "dec.xlsx",
+		FileSha256:     "hash",
+		FacilityName:   "Kita",
+		FacilityTotal:  400000,
+		CreatedBy:      user.ID,
+	}
+	if err := db.Create(bill).Error; err != nil {
+		t.Fatalf("create bill: %v", err)
+	}
+
+	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("GetFinancials() error = %v", err)
+	}
+
+	for _, dp := range result.DataPoints {
+		if dp.ActualFunding != nil {
+			t.Errorf("expected ActualFunding nil for %s (bill is outside range), got %d", dp.Date, *dp.ActualFunding)
+		}
+	}
+}
+
+func TestStatisticsService_GetFinancials_ActualFunding_DifferentOrg(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+	user := createTestUser(t, db, "Bill User", "bill5@test.com", "password")
+
+	// Create bill for org2 in January
+	toJan := time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC)
+	bill := &models.GovernmentFundingBillPeriod{
+		OrganizationID: org2.ID,
+		Period:         models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), To: &toJan},
+		FileName:       "org2.xlsx",
+		FileSha256:     "hash",
+		FacilityName:   "Kita Org2",
+		FacilityTotal:  999999,
+		CreatedBy:      user.ID,
+	}
+	if err := db.Create(bill).Error; err != nil {
+		t.Fatalf("create bill: %v", err)
+	}
+
+	// Query org1 — should not see org2's bill
+	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org1.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("GetFinancials() error = %v", err)
+	}
+
+	for _, dp := range result.DataPoints {
+		if dp.ActualFunding != nil {
+			t.Errorf("expected ActualFunding nil for org1 (bill belongs to org2), got %d", *dp.ActualFunding)
+		}
+	}
+}
+
+func findDataPoint(t *testing.T, dps []models.FinancialDataPoint, date string) models.FinancialDataPoint {
+	t.Helper()
+	for _, dp := range dps {
+		if dp.Date == date {
+			return dp
+		}
+	}
+	t.Fatalf("data point for %s not found", date)
+	return models.FinancialDataPoint{}
 }

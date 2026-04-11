@@ -134,16 +134,20 @@ func TestGetForecast_AddEmployee(t *testing.T) {
 	req := &models.ForecastRequest{
 		From: &from,
 		To:   &to,
-		AddEmployees: []models.ForecastAddEmployee{
+		AddEmployees: []models.Employee{
 			{
-				FirstName: "New",
-				LastName:  "Employee",
-				Gender:    "female",
-				Birthdate: time.Date(1985, 6, 15, 0, 0, 0, 0, time.UTC),
-				Contracts: []models.ForecastAddEmployeeContract{
+				Person: models.Person{
+					FirstName: "New",
+					LastName:  "Employee",
+					Gender:    "female",
+					Birthdate: time.Date(1985, 6, 15, 0, 0, 0, 0, time.UTC),
+				},
+				Contracts: []models.EmployeeContract{
 					{
-						From:          contractFrom,
-						SectionID:     td.section.ID,
+						BaseContract: models.BaseContract{
+							Period:    models.Period{From: contractFrom},
+							SectionID: td.section.ID,
+						},
 						StaffCategory: "qualified",
 						Grade:         "S8a",
 						Step:          3,
@@ -208,17 +212,21 @@ func TestGetForecast_AddChild(t *testing.T) {
 	req := &models.ForecastRequest{
 		From: &from,
 		To:   &to,
-		AddChildren: []models.ForecastAddChild{
+		AddChildren: []models.Child{
 			{
-				FirstName: "New",
-				LastName:  "Child",
-				Gender:    "male",
-				Birthdate: time.Date(2023, 5, 1, 0, 0, 0, 0, time.UTC),
-				Contracts: []models.ForecastAddChildContract{
+				Person: models.Person{
+					FirstName: "New",
+					LastName:  "Child",
+					Gender:    "male",
+					Birthdate: time.Date(2023, 5, 1, 0, 0, 0, 0, time.UTC),
+				},
+				Contracts: []models.ChildContract{
 					{
-						From:       time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
-						SectionID:  td.section.ID,
-						Properties: models.ContractProperties{"care_type": "ganztag"},
+						BaseContract: models.BaseContract{
+							Period:     models.Period{From: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)},
+							SectionID:  td.section.ID,
+							Properties: models.ContractProperties{"care_type": "ganztag"},
+						},
 					},
 				},
 			},
@@ -268,125 +276,6 @@ func TestGetForecast_RemoveChild(t *testing.T) {
 	}
 }
 
-func TestGetForecast_AddFundingPeriod(t *testing.T) {
-	svc, td := setupForecastTestData(t)
-	ctx := context.Background()
-
-	// The existing funding period runs 2025-08-01 to 2027-07-31.
-	// Query AFTER it ends so only the overlay period is active.
-	// Children are born 2020-01-01 (from testutil), so at 2027-08-01 they're age 7.
-	// Use MaxAge=10 so age-7 children still match the overlay funding property.
-	from := time.Date(2027, 8, 1, 0, 0, 0, 0, time.UTC)
-	to := time.Date(2027, 12, 1, 0, 0, 0, 0, time.UTC)
-
-	req := &models.ForecastRequest{
-		From: &from,
-		To:   &to,
-		AddFundingPeriods: []models.ForecastAddFundingPeriod{
-			{
-				From:                time.Date(2027, 8, 1, 0, 0, 0, 0, time.UTC),
-				FullTimeWeeklyHours: 39.0,
-				Properties: []models.ForecastFundingProperty{
-					{
-						Key:         "care_type",
-						Value:       "ganztag",
-						Label:       "Ganztag",
-						Payment:     120000, // 1200.00 EUR (higher than original 1000.00)
-						Requirement: 0.30,   // higher requirement than original 0.25
-						MinAge:      intPtr(0),
-						MaxAge:      intPtr(10),
-					},
-				},
-			},
-		},
-	}
-
-	result, err := svc.GetForecast(ctx, td.org.ID, req)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	if len(result.StaffingHours.DataPoints) == 0 {
-		t.Fatal("no staffing data points returned")
-	}
-	// Only overlay period is active after 2027-07-31.
-	// 2 children * 0.30 * 39.0 = 23.4
-	dp := result.StaffingHours.DataPoints[0]
-	if !almostEqual(dp.RequiredHours, 23.4, 0.01) {
-		t.Errorf("expected required_hours=23.4, got %v", dp.RequiredHours)
-	}
-}
-
-func TestGetForecast_AddBudgetItem(t *testing.T) {
-	svc, td := setupForecastTestData(t)
-	ctx := context.Background()
-
-	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	to := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
-
-	req := &models.ForecastRequest{
-		From: &from,
-		To:   &to,
-		AddBudgetItems: []models.ForecastAddBudgetItem{
-			{
-				Name:     "New Rent",
-				Category: "expense",
-				PerChild: false,
-				Entries: []models.ForecastBudgetItemEntry{
-					{
-						From:        time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
-						AmountCents: 200000, // 2000.00 EUR
-					},
-				},
-			},
-		},
-	}
-
-	result, err := svc.GetForecast(ctx, td.org.ID, req)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	// Budget expenses should include the new 2000.00 EUR rent
-	dp := result.Financials.DataPoints[0]
-	if dp.BudgetExpenses < 200000 {
-		t.Errorf("expected budget_expenses >= 200000, got %d", dp.BudgetExpenses)
-	}
-}
-
-func TestGetForecast_RemoveBudgetItem(t *testing.T) {
-	svc, td := setupForecastTestData(t)
-	ctx := context.Background()
-
-	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	to := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
-
-	// First check baseline has budget income
-	baseReq := &models.ForecastRequest{From: &from, To: &to}
-	baseResult, err := svc.GetForecast(ctx, td.org.ID, baseReq)
-	if err != nil {
-		t.Fatalf("baseline error: %v", err)
-	}
-	baseBudgetIncome := baseResult.Financials.DataPoints[0].BudgetIncome
-
-	// Now remove the budget item
-	req := &models.ForecastRequest{
-		From:                &from,
-		To:                  &to,
-		RemoveBudgetItemIDs: []uint{td.budgetItem.ID},
-	}
-
-	result, err := svc.GetForecast(ctx, td.org.ID, req)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	dp := result.Financials.DataPoints[0]
-	if dp.BudgetIncome >= baseBudgetIncome && baseBudgetIncome > 0 {
-		t.Errorf("expected budget_income to decrease after removing budget item, got %d (baseline %d)", dp.BudgetIncome, baseBudgetIncome)
-	}
-}
-
 func TestGetForecast_ValidateOverlay_WrongOrg(t *testing.T) {
 	svc, td := setupForecastTestData(t)
 	ctx := context.Background()
@@ -419,16 +308,20 @@ func TestGetForecast_ValidateOverlay_InvalidPayPlan(t *testing.T) {
 	req := &models.ForecastRequest{
 		From: &from,
 		To:   &to,
-		AddEmployees: []models.ForecastAddEmployee{
+		AddEmployees: []models.Employee{
 			{
-				FirstName: "Bad",
-				LastName:  "Employee",
-				Gender:    "male",
-				Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC),
-				Contracts: []models.ForecastAddEmployeeContract{
+				Person: models.Person{
+					FirstName: "Bad",
+					LastName:  "Employee",
+					Gender:    "male",
+					Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC),
+				},
+				Contracts: []models.EmployeeContract{
 					{
-						From:          time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
-						SectionID:     td.section.ID,
+						BaseContract: models.BaseContract{
+							Period:    models.Period{From: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)},
+							SectionID: td.section.ID,
+						},
 						StaffCategory: "qualified",
 						WeeklyHours:   39.0,
 						PayPlanID:     999999, // non-existent
@@ -441,64 +334,6 @@ func TestGetForecast_ValidateOverlay_InvalidPayPlan(t *testing.T) {
 	_, err := svc.GetForecast(ctx, td.org.ID, req)
 	if err == nil {
 		t.Fatal("expected error for non-existent pay plan")
-	}
-}
-
-func TestApplyOverlay_EndEmployeeContract(t *testing.T) {
-	endDate := time.Date(2026, 6, 30, 0, 0, 0, 0, time.UTC)
-	ds := &DataSet{
-		Employees: []models.Employee{
-			{
-				Person: models.Person{ID: 1},
-				Contracts: []models.EmployeeContract{
-					{ID: 10, EmployeeID: 1, BaseContract: models.BaseContract{Period: models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)}}},
-				},
-			},
-		},
-	}
-
-	req := &models.ForecastRequest{
-		EndEmployeeContracts: []models.ForecastEndContract{
-			{ContractID: 10, EndDate: endDate},
-		},
-	}
-
-	applyOverlay(ds, req, nil)
-
-	if ds.Employees[0].Contracts[0].To == nil {
-		t.Fatal("expected contract To to be set")
-	}
-	if !ds.Employees[0].Contracts[0].To.Equal(endDate) {
-		t.Errorf("expected contract To=%v, got %v", endDate, *ds.Employees[0].Contracts[0].To)
-	}
-}
-
-func TestApplyOverlay_EndChildContract(t *testing.T) {
-	endDate := time.Date(2026, 6, 30, 0, 0, 0, 0, time.UTC)
-	ds := &DataSet{
-		Children: []models.Child{
-			{
-				Person: models.Person{ID: 1},
-				Contracts: []models.ChildContract{
-					{ID: 20, ChildID: 1, BaseContract: models.BaseContract{Period: models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)}}},
-				},
-			},
-		},
-	}
-
-	req := &models.ForecastRequest{
-		EndChildContracts: []models.ForecastEndContract{
-			{ContractID: 20, EndDate: endDate},
-		},
-	}
-
-	applyOverlay(ds, req, nil)
-
-	if ds.Children[0].Contracts[0].To == nil {
-		t.Fatal("expected contract To to be set")
-	}
-	if !ds.Children[0].Contracts[0].To.Equal(endDate) {
-		t.Errorf("expected contract To=%v, got %v", endDate, *ds.Children[0].Contracts[0].To)
 	}
 }
 
@@ -554,44 +389,6 @@ func TestDataSet_PedagogicalEmployees(t *testing.T) {
 	}
 }
 
-func TestApplyOverlay_AddPayPlanPeriod(t *testing.T) {
-	ds := &DataSet{
-		PayPlans: map[uint]*models.PayPlan{
-			1: {
-				ID:      1,
-				Periods: []models.PayPlanPeriod{},
-			},
-		},
-	}
-
-	req := &models.ForecastRequest{
-		AddPayPlanPeriods: []models.ForecastAddPayPlanPeriod{
-			{
-				PayPlanID:                1,
-				From:                     time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC),
-				WeeklyHours:              39.0,
-				EmployerContributionRate: 2200,
-				Entries: []models.ForecastPayPlanEntry{
-					{Grade: "S8a", Step: 3, MonthlyAmount: 380000},
-				},
-			},
-		},
-	}
-
-	applyOverlay(ds, req, nil)
-
-	pp := ds.PayPlans[1]
-	if len(pp.Periods) != 1 {
-		t.Fatalf("expected 1 period, got %d", len(pp.Periods))
-	}
-	if len(pp.Periods[0].Entries) != 1 {
-		t.Fatalf("expected 1 entry, got %d", len(pp.Periods[0].Entries))
-	}
-	if pp.Periods[0].Entries[0].MonthlyAmount != 380000 {
-		t.Errorf("expected monthly_amount=380000, got %d", pp.Periods[0].Entries[0].MonthlyAmount)
-	}
-}
-
 func TestApplyOverlay_AddContractToExistingEmployee(t *testing.T) {
 	ds := &DataSet{
 		Employees: []models.Employee{
@@ -605,11 +402,13 @@ func TestApplyOverlay_AddContractToExistingEmployee(t *testing.T) {
 	}
 
 	req := &models.ForecastRequest{
-		AddEmployeeContracts: []models.ForecastAddEmployeeContract{
+		AddEmployeeContracts: []models.EmployeeContract{
 			{
-				EmployeeID:    5,
-				From:          time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC),
-				SectionID:     1,
+				EmployeeID: 5,
+				BaseContract: models.BaseContract{
+					Period:    models.Period{From: time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)},
+					SectionID: 1,
+				},
 				StaffCategory: "supplementary",
 				WeeklyHours:   20.0,
 				PayPlanID:     1,
@@ -624,75 +423,6 @@ func TestApplyOverlay_AddContractToExistingEmployee(t *testing.T) {
 	}
 	if ds.Employees[0].Contracts[1].StaffCategory != "supplementary" {
 		t.Errorf("expected supplementary, got %s", ds.Employees[0].Contracts[1].StaffCategory)
-	}
-}
-
-func TestApplyOverlay_AddFundingPeriod_UnitTest(t *testing.T) {
-	// Simulate: 1 child with ganztag, no existing funding, overlay adds a period
-	child := models.Child{
-		Person: models.Person{ID: 1, Birthdate: time.Date(2023, 5, 1, 0, 0, 0, 0, time.UTC)},
-		Contracts: []models.ChildContract{
-			{
-				ID:      1,
-				ChildID: 1,
-				BaseContract: models.BaseContract{
-					Period:     models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
-					Properties: models.ContractProperties{"care_type": "ganztag"},
-				},
-			},
-		},
-	}
-
-	ds := &DataSet{
-		Children:       []models.Child{child},
-		FundingPeriods: []models.GovernmentFundingPeriod{},
-		PayPlans:       make(map[uint]*models.PayPlan),
-	}
-
-	req := &models.ForecastRequest{
-		AddFundingPeriods: []models.ForecastAddFundingPeriod{
-			{
-				From:                time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
-				FullTimeWeeklyHours: 39.0,
-				Properties: []models.ForecastFundingProperty{
-					{
-						Key:         "care_type",
-						Value:       "ganztag",
-						Label:       "Ganztag",
-						Payment:     100000,
-						Requirement: 0.25,
-						MinAge:      intPtr(0),
-						MaxAge:      intPtr(6),
-					},
-				},
-			},
-		},
-	}
-
-	applyOverlay(ds, req, nil)
-
-	if len(ds.FundingPeriods) != 1 {
-		t.Fatalf("expected 1 funding period after overlay, got %d", len(ds.FundingPeriods))
-	}
-
-	if len(ds.FundingPeriods[0].Properties) != 1 {
-		t.Fatalf("expected 1 property, got %d", len(ds.FundingPeriods[0].Properties))
-	}
-
-	// Now call calculateStaffingHours directly
-	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	end := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
-	dataPoints := calculateStaffingHours(ds.Children, nil, ds.FundingPeriods, start, end)
-
-	if len(dataPoints) == 0 {
-		t.Fatal("no data points")
-	}
-
-	dp := dataPoints[0]
-	t.Logf("child_count=%d, required=%v, date=%s", dp.ChildCount, dp.RequiredHours, dp.Date)
-	// 1 child * 0.25 * 39.0 = 9.75
-	if !almostEqual(dp.RequiredHours, 9.75, 0.01) {
-		t.Errorf("expected required_hours=9.75, got %v", dp.RequiredHours)
 	}
 }
 
@@ -718,17 +448,21 @@ func TestGetForecast_RemoveAndReAddChild(t *testing.T) {
 		From:           &from,
 		To:             &to,
 		RemoveChildIDs: []uint{td.child1.ID},
-		AddChildren: []models.ForecastAddChild{
+		AddChildren: []models.Child{
 			{
-				FirstName: "Virtual",
-				LastName:  "Child",
-				Gender:    "female",
-				Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), // same as test children
-				Contracts: []models.ForecastAddChildContract{
+				Person: models.Person{
+					FirstName: "Virtual",
+					LastName:  "Child",
+					Gender:    "female",
+					Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), // same as test children
+				},
+				Contracts: []models.ChildContract{
 					{
-						From:       contractFrom,
-						SectionID:  td.section.ID,
-						Properties: models.ContractProperties{"care_type": "ganztag"},
+						BaseContract: models.BaseContract{
+							Period:     models.Period{From: contractFrom},
+							SectionID:  td.section.ID,
+							Properties: models.ContractProperties{"care_type": "ganztag"},
+						},
 					},
 				},
 			},
@@ -782,16 +516,20 @@ func TestGetForecast_RemoveAndReAddEmployee(t *testing.T) {
 		From:              &from,
 		To:                &to,
 		RemoveEmployeeIDs: []uint{td.emp1.ID},
-		AddEmployees: []models.ForecastAddEmployee{
+		AddEmployees: []models.Employee{
 			{
-				FirstName: "Virtual",
-				LastName:  "Employee",
-				Gender:    "male",
-				Birthdate: time.Date(1985, 1, 1, 0, 0, 0, 0, time.UTC),
-				Contracts: []models.ForecastAddEmployeeContract{
+				Person: models.Person{
+					FirstName: "Virtual",
+					LastName:  "Employee",
+					Gender:    "male",
+					Birthdate: time.Date(1985, 1, 1, 0, 0, 0, 0, time.UTC),
+				},
+				Contracts: []models.EmployeeContract{
 					{
-						From:          contractFrom,
-						SectionID:     td.section.ID,
+						BaseContract: models.BaseContract{
+							Period:    models.Period{From: contractFrom},
+							SectionID: td.section.ID,
+						},
 						StaffCategory: "qualified",
 						Grade:         "S8a",
 						Step:          3,
@@ -847,17 +585,21 @@ func TestGetForecast_FutureChildNoImpact(t *testing.T) {
 	req := &models.ForecastRequest{
 		From: &from,
 		To:   &to,
-		AddChildren: []models.ForecastAddChild{
+		AddChildren: []models.Child{
 			{
-				FirstName: "Future",
-				LastName:  "Child",
-				Gender:    "female",
-				Birthdate: time.Date(2033, 1, 1, 0, 0, 0, 0, time.UTC),
-				Contracts: []models.ForecastAddChildContract{
+				Person: models.Person{
+					FirstName: "Future",
+					LastName:  "Child",
+					Gender:    "female",
+					Birthdate: time.Date(2033, 1, 1, 0, 0, 0, 0, time.UTC),
+				},
+				Contracts: []models.ChildContract{
 					{
-						From:       time.Date(2036, 8, 1, 0, 0, 0, 0, time.UTC),
-						SectionID:  td.section.ID,
-						Properties: models.ContractProperties{"care_type": "ganztag"},
+						BaseContract: models.BaseContract{
+							Period:     models.Period{From: time.Date(2036, 8, 1, 0, 0, 0, 0, time.UTC)},
+							SectionID:  td.section.ID,
+							Properties: models.ContractProperties{"care_type": "ganztag"},
+						},
 					},
 				},
 			},
@@ -899,16 +641,20 @@ func TestGetForecast_FutureEmployeeNoImpact(t *testing.T) {
 	req := &models.ForecastRequest{
 		From: &from,
 		To:   &to,
-		AddEmployees: []models.ForecastAddEmployee{
+		AddEmployees: []models.Employee{
 			{
-				FirstName: "Future",
-				LastName:  "Employee",
-				Gender:    "male",
-				Birthdate: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
-				Contracts: []models.ForecastAddEmployeeContract{
+				Person: models.Person{
+					FirstName: "Future",
+					LastName:  "Employee",
+					Gender:    "male",
+					Birthdate: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
+				},
+				Contracts: []models.EmployeeContract{
 					{
-						From:          time.Date(2036, 8, 1, 0, 0, 0, 0, time.UTC),
-						SectionID:     td.section.ID,
+						BaseContract: models.BaseContract{
+							Period:    models.Period{From: time.Date(2036, 8, 1, 0, 0, 0, 0, time.UTC)},
+							SectionID: td.section.ID,
+						},
 						StaffCategory: "qualified",
 						Grade:         "S8a",
 						Step:          3,
@@ -937,62 +683,6 @@ func TestGetForecast_FutureEmployeeNoImpact(t *testing.T) {
 	}
 }
 
-// TestGetForecast_PayPlanSalaryIncrease adds a new pay plan period with 10% higher salaries.
-// Salary costs in the new period should increase by ~10%.
-func TestGetForecast_PayPlanSalaryIncrease(t *testing.T) {
-	svc, td := setupForecastTestData(t)
-	ctx := context.Background()
-
-	// Query range spanning the boundary: existing period ends 2027-07-31, new starts 2027-08-01
-	from := time.Date(2027, 7, 1, 0, 0, 0, 0, time.UTC)
-	to := time.Date(2027, 9, 1, 0, 0, 0, 0, time.UTC)
-
-	// Original: 350000 cents (3500 EUR). 10% increase: 385000 cents (3850 EUR).
-	req := &models.ForecastRequest{
-		From: &from,
-		To:   &to,
-		AddPayPlanPeriods: []models.ForecastAddPayPlanPeriod{
-			{
-				PayPlanID:                td.payplan.ID,
-				From:                     time.Date(2027, 8, 1, 0, 0, 0, 0, time.UTC),
-				WeeklyHours:              39.0,
-				EmployerContributionRate: 2000, // same 20%
-				Entries: []models.ForecastPayPlanEntry{
-					{Grade: "S8a", Step: 3, MonthlyAmount: 385000}, // +10%
-				},
-			},
-		},
-	}
-
-	result, err := svc.GetForecast(ctx, td.org.ID, req)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	if len(result.Financials.DataPoints) < 2 {
-		t.Fatalf("expected at least 2 data points, got %d", len(result.Financials.DataPoints))
-	}
-
-	// July 2027: still on old period (350000 base)
-	dpJuly := result.Financials.DataPoints[0]
-	// August 2027: new period (385000 base)
-	dpAug := result.Financials.DataPoints[1]
-
-	if dpAug.GrossSalary <= dpJuly.GrossSalary {
-		t.Errorf("expected August salary (%d) > July salary (%d) after 10%% increase",
-			dpAug.GrossSalary, dpJuly.GrossSalary)
-	}
-
-	// Verify ~10% increase: emp1=385000*39/39=385000, emp2=385000*30/39≈296154
-	// Old: emp1=350000, emp2=350000*30/39≈269231. Total old=619231, new=681154
-	// Ratio should be ~1.10
-	ratio := float64(dpAug.GrossSalary) / float64(dpJuly.GrossSalary)
-	if !almostEqual(ratio, 1.10, 0.01) {
-		t.Errorf("expected ~10%% salary increase, got ratio %.4f (july=%d, aug=%d)",
-			ratio, dpJuly.GrossSalary, dpAug.GrossSalary)
-	}
-}
-
 // TestGetForecast_EndEmployeeContractMidRange ends an employee contract in the middle
 // of the queried range. Earlier months should have more available hours than later ones.
 func TestGetForecast_EndEmployeeContractMidRange(t *testing.T) {
@@ -1017,17 +707,20 @@ func TestGetForecast_EndEmployeeContractMidRange(t *testing.T) {
 		From:              &from,
 		To:                &to,
 		RemoveEmployeeIDs: []uint{td.emp2.ID},
-		AddEmployees: []models.ForecastAddEmployee{
+		AddEmployees: []models.Employee{
 			{
-				FirstName: "Temp",
-				LastName:  "Worker",
-				Gender:    "female",
-				Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC),
-				Contracts: []models.ForecastAddEmployeeContract{
+				Person: models.Person{
+					FirstName: "Temp",
+					LastName:  "Worker",
+					Gender:    "female",
+					Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC),
+				},
+				Contracts: []models.EmployeeContract{
 					{
-						From:          contractFrom,
-						To:            &contractTo,
-						SectionID:     td.section.ID,
+						BaseContract: models.BaseContract{
+							Period:    models.Period{From: contractFrom, To: &contractTo},
+							SectionID: td.section.ID,
+						},
 						StaffCategory: "qualified",
 						Grade:         "S8a",
 						Step:          3,
@@ -1075,16 +768,20 @@ func TestGetForecast_AddEmployeeMidRange(t *testing.T) {
 	req := &models.ForecastRequest{
 		From: &from,
 		To:   &to,
-		AddEmployees: []models.ForecastAddEmployee{
+		AddEmployees: []models.Employee{
 			{
-				FirstName: "MidYear",
-				LastName:  "Hire",
-				Gender:    "male",
-				Birthdate: time.Date(1995, 3, 15, 0, 0, 0, 0, time.UTC),
-				Contracts: []models.ForecastAddEmployeeContract{
+				Person: models.Person{
+					FirstName: "MidYear",
+					LastName:  "Hire",
+					Gender:    "male",
+					Birthdate: time.Date(1995, 3, 15, 0, 0, 0, 0, time.UTC),
+				},
+				Contracts: []models.EmployeeContract{
 					{
-						From:          time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC),
-						SectionID:     td.section.ID,
+						BaseContract: models.BaseContract{
+							Period:    models.Period{From: time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)},
+							SectionID: td.section.ID,
+						},
 						StaffCategory: "qualified",
 						Grade:         "S8a",
 						Step:          3,
@@ -1138,16 +835,20 @@ func TestGetForecast_AddNonPedagogicalEmployee(t *testing.T) {
 	req := &models.ForecastRequest{
 		From: &from,
 		To:   &to,
-		AddEmployees: []models.ForecastAddEmployee{
+		AddEmployees: []models.Employee{
 			{
-				FirstName: "Cook",
-				LastName:  "Helper",
-				Gender:    "female",
-				Birthdate: time.Date(1988, 7, 20, 0, 0, 0, 0, time.UTC),
-				Contracts: []models.ForecastAddEmployeeContract{
+				Person: models.Person{
+					FirstName: "Cook",
+					LastName:  "Helper",
+					Gender:    "female",
+					Birthdate: time.Date(1988, 7, 20, 0, 0, 0, 0, time.UTC),
+				},
+				Contracts: []models.EmployeeContract{
 					{
-						From:          time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC),
-						SectionID:     td.section.ID,
+						BaseContract: models.BaseContract{
+							Period:    models.Period{From: time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC)},
+							SectionID: td.section.ID,
+						},
 						StaffCategory: "non_pedagogical",
 						Grade:         "S8a",
 						Step:          3,
@@ -1205,17 +906,21 @@ func TestGetForecast_ChildWithUnmatchedCareType(t *testing.T) {
 	req := &models.ForecastRequest{
 		From: &from,
 		To:   &to,
-		AddChildren: []models.ForecastAddChild{
+		AddChildren: []models.Child{
 			{
-				FirstName: "Halbtag",
-				LastName:  "Child",
-				Gender:    "male",
-				Birthdate: time.Date(2022, 6, 1, 0, 0, 0, 0, time.UTC),
-				Contracts: []models.ForecastAddChildContract{
+				Person: models.Person{
+					FirstName: "Halbtag",
+					LastName:  "Child",
+					Gender:    "male",
+					Birthdate: time.Date(2022, 6, 1, 0, 0, 0, 0, time.UTC),
+				},
+				Contracts: []models.ChildContract{
 					{
-						From:       time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC),
-						SectionID:  td.section.ID,
-						Properties: models.ContractProperties{"care_type": "halbtag"},
+						BaseContract: models.BaseContract{
+							Period:     models.Period{From: time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC)},
+							SectionID:  td.section.ID,
+							Properties: models.ContractProperties{"care_type": "halbtag"},
+						},
 					},
 				},
 			},
@@ -1255,16 +960,20 @@ func TestGetForecast_CombinedOverlay(t *testing.T) {
 		To:                &to,
 		RemoveEmployeeIDs: []uint{td.emp2.ID},   // remove 30h employee
 		RemoveChildIDs:    []uint{td.child1.ID}, // remove 1 child
-		AddEmployees: []models.ForecastAddEmployee{
+		AddEmployees: []models.Employee{
 			{
-				FirstName: "New",
-				LastName:  "Staff",
-				Gender:    "female",
-				Birthdate: time.Date(1992, 1, 1, 0, 0, 0, 0, time.UTC),
-				Contracts: []models.ForecastAddEmployeeContract{
+				Person: models.Person{
+					FirstName: "New",
+					LastName:  "Staff",
+					Gender:    "female",
+					Birthdate: time.Date(1992, 1, 1, 0, 0, 0, 0, time.UTC),
+				},
+				Contracts: []models.EmployeeContract{
 					{
-						From:          contractFrom,
-						SectionID:     td.section.ID,
+						BaseContract: models.BaseContract{
+							Period:    models.Period{From: contractFrom},
+							SectionID: td.section.ID,
+						},
 						StaffCategory: "qualified",
 						Grade:         "S8a",
 						Step:          3,
@@ -1274,19 +983,23 @@ func TestGetForecast_CombinedOverlay(t *testing.T) {
 				},
 			},
 		},
-		AddChildren: []models.ForecastAddChild{
+		AddChildren: []models.Child{
 			{
-				FirstName: "Extra", LastName: "ChildA", Gender: "female",
-				Birthdate: time.Date(2021, 3, 1, 0, 0, 0, 0, time.UTC),
-				Contracts: []models.ForecastAddChildContract{
-					{From: contractFrom, SectionID: td.section.ID, Properties: models.ContractProperties{"care_type": "ganztag"}},
+				Person: models.Person{
+					FirstName: "Extra", LastName: "ChildA", Gender: "female",
+					Birthdate: time.Date(2021, 3, 1, 0, 0, 0, 0, time.UTC),
+				},
+				Contracts: []models.ChildContract{
+					{BaseContract: models.BaseContract{Period: models.Period{From: contractFrom}, SectionID: td.section.ID, Properties: models.ContractProperties{"care_type": "ganztag"}}},
 				},
 			},
 			{
-				FirstName: "Extra", LastName: "ChildB", Gender: "male",
-				Birthdate: time.Date(2022, 7, 1, 0, 0, 0, 0, time.UTC),
-				Contracts: []models.ForecastAddChildContract{
-					{From: contractFrom, SectionID: td.section.ID, Properties: models.ContractProperties{"care_type": "ganztag"}},
+				Person: models.Person{
+					FirstName: "Extra", LastName: "ChildB", Gender: "male",
+					Birthdate: time.Date(2022, 7, 1, 0, 0, 0, 0, time.UTC),
+				},
+				Contracts: []models.ChildContract{
+					{BaseContract: models.BaseContract{Period: models.Period{From: contractFrom}, SectionID: td.section.ID, Properties: models.ContractProperties{"care_type": "ganztag"}}},
 				},
 			},
 		},
@@ -1337,15 +1050,19 @@ func TestGetForecast_PerChildBudgetItemWithAddedChildren(t *testing.T) {
 	req := &models.ForecastRequest{
 		From: &from,
 		To:   &to,
-		AddChildren: []models.ForecastAddChild{
+		AddChildren: []models.Child{
 			{
-				FirstName: "Third", LastName: "Kid", Gender: "male",
-				Birthdate: time.Date(2021, 6, 1, 0, 0, 0, 0, time.UTC),
-				Contracts: []models.ForecastAddChildContract{
+				Person: models.Person{
+					FirstName: "Third", LastName: "Kid", Gender: "male",
+					Birthdate: time.Date(2021, 6, 1, 0, 0, 0, 0, time.UTC),
+				},
+				Contracts: []models.ChildContract{
 					{
-						From:       time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC),
-						SectionID:  td.section.ID,
-						Properties: models.ContractProperties{"care_type": "ganztag"},
+						BaseContract: models.BaseContract{
+							Period:     models.Period{From: time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC)},
+							SectionID:  td.section.ID,
+							Properties: models.ContractProperties{"care_type": "ganztag"},
+						},
 					},
 				},
 			},
@@ -1371,62 +1088,6 @@ func TestGetForecast_PerChildBudgetItemWithAddedChildren(t *testing.T) {
 	}
 }
 
-// TestGetForecast_EmployerContributionRateChange adds a new pay plan period
-// with the same salary but a higher employer contribution rate.
-func TestGetForecast_EmployerContributionRateChange(t *testing.T) {
-	svc, td := setupForecastTestData(t)
-	ctx := context.Background()
-
-	// Query range spanning the boundary
-	from := time.Date(2027, 7, 1, 0, 0, 0, 0, time.UTC)
-	to := time.Date(2027, 9, 1, 0, 0, 0, 0, time.UTC)
-
-	// Same salary (350000), but employer contribution goes from 20% to 25%
-	req := &models.ForecastRequest{
-		From: &from,
-		To:   &to,
-		AddPayPlanPeriods: []models.ForecastAddPayPlanPeriod{
-			{
-				PayPlanID:                td.payplan.ID,
-				From:                     time.Date(2027, 8, 1, 0, 0, 0, 0, time.UTC),
-				WeeklyHours:              39.0,
-				EmployerContributionRate: 2500, // 25% (was 2000 = 20%)
-				Entries: []models.ForecastPayPlanEntry{
-					{Grade: "S8a", Step: 3, MonthlyAmount: 350000}, // same salary
-				},
-			},
-		},
-	}
-
-	result, err := svc.GetForecast(ctx, td.org.ID, req)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	if len(result.Financials.DataPoints) < 2 {
-		t.Fatalf("expected at least 2 data points, got %d", len(result.Financials.DataPoints))
-	}
-
-	dpJuly := result.Financials.DataPoints[0]
-	dpAug := result.Financials.DataPoints[1]
-
-	// Gross salary should be the same
-	if dpJuly.GrossSalary != dpAug.GrossSalary {
-		t.Errorf("gross salary should be same: july=%d, aug=%d", dpJuly.GrossSalary, dpAug.GrossSalary)
-	}
-
-	// Employer costs should increase: 25% vs 20% = 1.25x
-	if dpAug.EmployerCosts <= dpJuly.EmployerCosts {
-		t.Errorf("expected Aug employer_costs (%d) > July (%d) after rate increase",
-			dpAug.EmployerCosts, dpJuly.EmployerCosts)
-	}
-	ratio := float64(dpAug.EmployerCosts) / float64(dpJuly.EmployerCosts)
-	if !almostEqual(ratio, 1.25, 0.01) {
-		t.Errorf("expected ~25%% increase in employer costs, got ratio %.4f (july=%d, aug=%d)",
-			ratio, dpJuly.EmployerCosts, dpAug.EmployerCosts)
-	}
-}
-
 // TestGetForecast_EndChildContractMidRange ends a child's contract mid-range.
 // Later months should have fewer children and less required staffing.
 func TestGetForecast_EndChildContractMidRange(t *testing.T) {
@@ -1443,16 +1104,19 @@ func TestGetForecast_EndChildContractMidRange(t *testing.T) {
 		From:           &from,
 		To:             &to,
 		RemoveChildIDs: []uint{td.child1.ID},
-		AddChildren: []models.ForecastAddChild{
+		AddChildren: []models.Child{
 			{
-				FirstName: "Leaving", LastName: "Child", Gender: "female",
-				Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
-				Contracts: []models.ForecastAddChildContract{
+				Person: models.Person{
+					FirstName: "Leaving", LastName: "Child", Gender: "female",
+					Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+				},
+				Contracts: []models.ChildContract{
 					{
-						From:       contractFrom,
-						To:         &contractTo,
-						SectionID:  td.section.ID,
-						Properties: models.ContractProperties{"care_type": "ganztag"},
+						BaseContract: models.BaseContract{
+							Period:     models.Period{From: contractFrom, To: &contractTo},
+							SectionID:  td.section.ID,
+							Properties: models.ContractProperties{"care_type": "ganztag"},
+						},
 					},
 				},
 			},

@@ -13,10 +13,6 @@ export function ForecastModificationSummary() {
     { label: t('forecastRemoveChild'), count: store.removeChildIds.length },
     { label: t('forecastAddEmployee'), count: store.addEmployees.length },
     { label: t('forecastRemoveEmployee'), count: store.removeEmployeeIds.length },
-    { label: t('forecastSalaryIncrease'), count: store.addPayPlanPeriods.length > 0 ? 1 : 0 },
-    { label: t('forecastAddFunding'), count: store.addFundingPeriods.length },
-    { label: t('forecastAddBudgetItem'), count: store.addBudgetItems.length },
-    { label: t('forecastRemoveBudgetItem'), count: store.removeBudgetItemIds.length },
   ];
 
   const active = items.filter((i) => i.count > 0);

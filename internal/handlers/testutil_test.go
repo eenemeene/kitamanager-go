@@ -305,7 +305,8 @@ func createStatisticsService(db *gorm.DB) *service.StatisticsService {
 	payPlanStore := store.NewPayPlanStore(db)
 	budgetItemStore := store.NewBudgetItemStore(db)
 	sectionStore := store.NewSectionStore(db)
-	return service.NewStatisticsService(childStore, employeeStore, orgStore, fundingStore, payPlanStore, budgetItemStore, sectionStore)
+	billStore := store.NewGovernmentFundingBillPeriodStore(db)
+	return service.NewStatisticsService(childStore, employeeStore, orgStore, fundingStore, payPlanStore, budgetItemStore, sectionStore, billStore)
 }
 
 func parseTime(t *testing.T, value string) time.Time {

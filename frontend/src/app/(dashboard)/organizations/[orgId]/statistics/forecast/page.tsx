@@ -14,9 +14,6 @@ import { ForecastResults } from '@/components/forecast/forecast-results';
 import { ForecastModificationSummary } from '@/components/forecast/forecast-modification-summary';
 import { ForecastChildrenTab } from '@/components/forecast/forecast-children-tab';
 import { ForecastEmployeesTab } from '@/components/forecast/forecast-employees-tab';
-import { ForecastSalaryTab } from '@/components/forecast/forecast-salary-tab';
-import { ForecastFundingTab } from '@/components/forecast/forecast-funding-tab';
-import { ForecastBudgetTab } from '@/components/forecast/forecast-budget-tab';
 import { ForecastOptimizeTab } from '@/components/forecast/forecast-optimize-tab';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
@@ -104,14 +101,11 @@ export default function ForecastPage() {
           <CardTitle>{t('statistics.forecastConfigTitle')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Tabs defaultValue="children">
+          <Tabs defaultValue="optimize">
             <TabsList className="flex flex-wrap">
+              <TabsTrigger value="optimize">{t('statistics.forecastTabOptimize')}</TabsTrigger>
               <TabsTrigger value="children">{t('statistics.forecastTabChildren')}</TabsTrigger>
               <TabsTrigger value="employees">{t('statistics.forecastTabEmployees')}</TabsTrigger>
-              <TabsTrigger value="salary">{t('statistics.forecastTabSalary')}</TabsTrigger>
-              <TabsTrigger value="funding">{t('statistics.forecastTabFunding')}</TabsTrigger>
-              <TabsTrigger value="budget">{t('statistics.forecastTabBudget')}</TabsTrigger>
-              <TabsTrigger value="optimize">{t('statistics.forecastTabOptimize')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="children">
@@ -119,15 +113,6 @@ export default function ForecastPage() {
             </TabsContent>
             <TabsContent value="employees">
               <ForecastEmployeesTab />
-            </TabsContent>
-            <TabsContent value="salary">
-              <ForecastSalaryTab />
-            </TabsContent>
-            <TabsContent value="funding">
-              <ForecastFundingTab />
-            </TabsContent>
-            <TabsContent value="budget">
-              <ForecastBudgetTab />
             </TabsContent>
             <TabsContent value="optimize">
               <ForecastOptimizeTab />

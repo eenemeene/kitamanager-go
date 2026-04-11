@@ -1,9 +1,6 @@
 import { renderWithProviders } from '@/test-utils';
 import { ForecastChildrenTab } from '../forecast-children-tab';
 import { ForecastEmployeesTab } from '../forecast-employees-tab';
-import { ForecastSalaryTab } from '../forecast-salary-tab';
-import { ForecastFundingTab } from '../forecast-funding-tab';
-import { ForecastBudgetTab } from '../forecast-budget-tab';
 import { ForecastOptimizeTab } from '../forecast-optimize-tab';
 
 // Mock next-intl
@@ -29,7 +26,6 @@ jest.mock('@/lib/api/client', () => ({
     getChildrenAll: jest.fn().mockResolvedValue([]),
     getEmployeesAll: jest.fn().mockResolvedValue([]),
     getPayPlans: jest.fn().mockResolvedValue({ data: [], total: 0 }),
-    getBudgetItems: jest.fn().mockResolvedValue({ data: [], total: 0 }),
   },
 }));
 
@@ -52,27 +48,6 @@ describe('ForecastChildrenTab', () => {
 describe('ForecastEmployeesTab', () => {
   it('renders without crashing', () => {
     const { container } = renderWithProviders(<ForecastEmployeesTab />);
-    expect(container.innerHTML).not.toBe('');
-  });
-});
-
-describe('ForecastSalaryTab', () => {
-  it('renders without crashing', () => {
-    const { container } = renderWithProviders(<ForecastSalaryTab />);
-    expect(container.innerHTML).not.toBe('');
-  });
-});
-
-describe('ForecastFundingTab', () => {
-  it('renders without crashing', () => {
-    const { container } = renderWithProviders(<ForecastFundingTab />);
-    expect(container.innerHTML).not.toBe('');
-  });
-});
-
-describe('ForecastBudgetTab', () => {
-  it('renders without crashing', () => {
-    const { container } = renderWithProviders(<ForecastBudgetTab />);
     expect(container.innerHTML).not.toBe('');
   });
 });

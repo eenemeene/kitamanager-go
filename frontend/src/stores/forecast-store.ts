@@ -1,13 +1,5 @@
 import { create } from 'zustand';
-import type {
-  ForecastRequest,
-  ForecastAddChild,
-  ForecastAddEmployee,
-  ForecastAddPayPlanPeriod,
-  ForecastAddFundingPeriod,
-  ForecastAddBudgetItem,
-  PayPlan,
-} from '@/lib/api/types';
+import type { ForecastRequest, ForecastChild, ForecastEmployee } from '@/lib/api/types';
 import { formatDateForApi } from '@/lib/utils/formatting';
 
 interface ForecastState {
@@ -17,47 +9,23 @@ interface ForecastState {
   sectionId: number | undefined;
 
   // Overlay arrays (mirror ForecastRequest)
-  addChildren: ForecastAddChild[];
+  addChildren: ForecastChild[];
   removeChildIds: number[];
-  addEmployees: ForecastAddEmployee[];
+  addEmployees: ForecastEmployee[];
   removeEmployeeIds: number[];
-  addPayPlanPeriods: ForecastAddPayPlanPeriod[];
-  addFundingPeriods: ForecastAddFundingPeriod[];
-  addBudgetItems: ForecastAddBudgetItem[];
-  removeBudgetItemIds: number[];
-
-  // UI-only state
-  salaryIncreasePercent: number | null;
-  salaryEffectiveFrom: string | null;
 
   // Actions - filters
   setFilters: (from: string | null, to: string | null, sectionId?: number) => void;
 
   // Actions - children
-  addChild: (child: ForecastAddChild) => void;
+  addChild: (child: ForecastChild) => void;
   removeAddedChild: (index: number) => void;
   toggleRemoveChild: (childId: number) => void;
 
   // Actions - employees
-  addEmployee: (employee: ForecastAddEmployee) => void;
+  addEmployee: (employee: ForecastEmployee) => void;
   removeAddedEmployee: (index: number) => void;
   toggleRemoveEmployee: (employeeId: number) => void;
-
-  // Actions - salary
-  setSalaryIncrease: (
-    percent: number | null,
-    effectiveFrom: string | null,
-    payPlans: PayPlan[]
-  ) => void;
-
-  // Actions - funding
-  addFundingPeriod: (period: ForecastAddFundingPeriod) => void;
-  removeFundingPeriod: (index: number) => void;
-
-  // Actions - budget
-  addBudgetItem: (item: ForecastAddBudgetItem) => void;
-  removeAddedBudgetItem: (index: number) => void;
-  toggleRemoveBudgetItem: (budgetItemId: number) => void;
 
   // Helpers
   buildRequest: () => ForecastRequest;
@@ -70,16 +38,10 @@ const initialState = {
   from: null as string | null,
   to: null as string | null,
   sectionId: undefined as number | undefined,
-  addChildren: [] as ForecastAddChild[],
+  addChildren: [] as ForecastChild[],
   removeChildIds: [] as number[],
-  addEmployees: [] as ForecastAddEmployee[],
+  addEmployees: [] as ForecastEmployee[],
   removeEmployeeIds: [] as number[],
-  addPayPlanPeriods: [] as ForecastAddPayPlanPeriod[],
-  addFundingPeriods: [] as ForecastAddFundingPeriod[],
-  addBudgetItems: [] as ForecastAddBudgetItem[],
-  removeBudgetItemIds: [] as number[],
-  salaryIncreasePercent: null as number | null,
-  salaryEffectiveFrom: null as string | null,
 };
 
 export const useForecastStore = create<ForecastState>()((set, get) => ({
@@ -107,67 +69,6 @@ export const useForecastStore = create<ForecastState>()((set, get) => ({
       removeEmployeeIds: s.removeEmployeeIds.includes(employeeId)
         ? s.removeEmployeeIds.filter((id) => id !== employeeId)
         : [...s.removeEmployeeIds, employeeId],
-    })),
-
-  // Salary increase: generates addPayPlanPeriods from current pay plan data
-  setSalaryIncrease: (percent, effectiveFrom, payPlans) => {
-    if (percent === null || !effectiveFrom || payPlans.length === 0) {
-      set({
-        salaryIncreasePercent: percent,
-        salaryEffectiveFrom: effectiveFrom,
-        addPayPlanPeriods: [],
-      });
-      return;
-    }
-
-    const multiplier = 1 + percent / 100;
-    const periods: ForecastAddPayPlanPeriod[] = [];
-
-    for (const pp of payPlans) {
-      if (!pp.periods?.length) continue;
-
-      // Find the latest period (most recent "from" date) as the basis
-      const sorted = [...pp.periods].sort(
-        (a, b) => new Date(b.from).getTime() - new Date(a.from).getTime()
-      );
-      const latestPeriod = sorted[0];
-      if (!latestPeriod.entries?.length) continue;
-
-      periods.push({
-        pay_plan_id: pp.id,
-        from: effectiveFrom,
-        weekly_hours: latestPeriod.weekly_hours,
-        employer_contribution_rate: latestPeriod.employer_contribution_rate,
-        entries: latestPeriod.entries.map((e) => ({
-          grade: e.grade,
-          step: e.step,
-          monthly_amount: Math.round(e.monthly_amount * multiplier),
-        })),
-      });
-    }
-
-    set({
-      salaryIncreasePercent: percent,
-      salaryEffectiveFrom: effectiveFrom,
-      addPayPlanPeriods: periods,
-    });
-  },
-
-  // Funding actions
-  addFundingPeriod: (period) =>
-    set((s) => ({ addFundingPeriods: [...s.addFundingPeriods, period] })),
-  removeFundingPeriod: (index) =>
-    set((s) => ({ addFundingPeriods: s.addFundingPeriods.filter((_, i) => i !== index) })),
-
-  // Budget actions
-  addBudgetItem: (item) => set((s) => ({ addBudgetItems: [...s.addBudgetItems, item] })),
-  removeAddedBudgetItem: (index) =>
-    set((s) => ({ addBudgetItems: s.addBudgetItems.filter((_, i) => i !== index) })),
-  toggleRemoveBudgetItem: (budgetItemId) =>
-    set((s) => ({
-      removeBudgetItemIds: s.removeBudgetItemIds.includes(budgetItemId)
-        ? s.removeBudgetItemIds.filter((id) => id !== budgetItemId)
-        : [...s.removeBudgetItemIds, budgetItemId],
     })),
 
   buildRequest: (): ForecastRequest => {
@@ -204,28 +105,6 @@ export const useForecastStore = create<ForecastState>()((set, get) => ({
         })),
       }));
     if (s.removeEmployeeIds.length > 0) req.remove_employee_ids = s.removeEmployeeIds;
-    if (s.addPayPlanPeriods.length > 0)
-      req.add_pay_plan_periods = s.addPayPlanPeriods.map((p) => ({
-        ...p,
-        from: apiDate(p.from),
-        to: apiDateOptional(p.to),
-      }));
-    if (s.addFundingPeriods.length > 0)
-      req.add_funding_periods = s.addFundingPeriods.map((f) => ({
-        ...f,
-        from: apiDate(f.from),
-        to: apiDateOptional(f.to),
-      }));
-    if (s.addBudgetItems.length > 0)
-      req.add_budget_items = s.addBudgetItems.map((b) => ({
-        ...b,
-        entries: b.entries.map((e) => ({
-          ...e,
-          from: apiDate(e.from),
-          to: apiDateOptional(e.to),
-        })),
-      }));
-    if (s.removeBudgetItemIds.length > 0) req.remove_budget_item_ids = s.removeBudgetItemIds;
 
     return req;
   },
@@ -238,11 +117,7 @@ export const useForecastStore = create<ForecastState>()((set, get) => ({
       s.addChildren.length > 0 ||
       s.removeChildIds.length > 0 ||
       s.addEmployees.length > 0 ||
-      s.removeEmployeeIds.length > 0 ||
-      s.addPayPlanPeriods.length > 0 ||
-      s.addFundingPeriods.length > 0 ||
-      s.addBudgetItems.length > 0 ||
-      s.removeBudgetItemIds.length > 0
+      s.removeEmployeeIds.length > 0
     );
   },
 
@@ -252,11 +127,7 @@ export const useForecastStore = create<ForecastState>()((set, get) => ({
       s.addChildren.length +
       s.removeChildIds.length +
       s.addEmployees.length +
-      s.removeEmployeeIds.length +
-      s.addPayPlanPeriods.length +
-      s.addFundingPeriods.length +
-      s.addBudgetItems.length +
-      s.removeBudgetItemIds.length
+      s.removeEmployeeIds.length
     );
   },
 }));

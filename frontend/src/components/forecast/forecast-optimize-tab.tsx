@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
@@ -14,7 +14,7 @@ import { useFundingAttributes } from '@/lib/hooks/use-funding-attributes';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { LOOKUP_FETCH_LIMIT } from '@/lib/api/types';
-import type { Section, ForecastAddChild } from '@/lib/api/types';
+import type { Section, ForecastChild } from '@/lib/api/types';
 import { useForecastStore } from '@/stores/forecast-store';
 import { useUiStore } from '@/stores/ui-store';
 import { calculateContractEndDate } from '@/lib/utils/school-enrollment';
@@ -55,6 +55,16 @@ export function ForecastOptimizeTab() {
 
   const { fundingAttributes, attributesByKey } = useFundingAttributes(orgId);
 
+  // Pre-select the section with the lowest age range
+  useEffect(() => {
+    if (sections?.data && sections.data.length > 0 && sectionIds.length === 0) {
+      const sorted = [...sections.data].sort(
+        (a, b) => (a.min_age_months ?? 0) - (b.min_age_months ?? 0)
+      );
+      setSectionIds([sorted[0].id]);
+    }
+  }, [sections]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const canOptimize = sectionIds.length > 0 && !!contractStartMonth && !isOptimizing;
 
   const toggleSection = (id: number) => {
@@ -71,11 +81,11 @@ export function ForecastOptimizeTab() {
   }, []);
 
   const buildChildren = useCallback(
-    (count: number): ForecastAddChild[] => {
+    (count: number): ForecastChild[] => {
       const now = new Date();
       const sectionList = sections?.data.filter((s) => sectionIds.includes(s.id)) ?? [];
 
-      const children: ForecastAddChild[] = [];
+      const children: ForecastChild[] = [];
       const startDate = new Date(contractStartMonth + '-01');
       const endDate = store.to ? new Date(store.to) : new Date(startDate.getFullYear(), 11, 31);
 
@@ -158,7 +168,7 @@ export function ForecastOptimizeTab() {
 
       // Step 2: Get per-child impact by adding 1 child
       const oneChildChildren = buildChildren(1);
-      const toApiChildren = (children: ForecastAddChild[]) =>
+      const toApiChildren = (children: ForecastChild[]) =>
         children.map((c) => ({
           ...c,
           birthdate: formatDateForApi(c.birthdate)!,
@@ -200,7 +210,7 @@ export function ForecastOptimizeTab() {
 
       let low = 1;
       let high = Math.min(estimate * 2, maxPossibleChildren);
-      let bestCount = high;
+      let bestCount = -1;
       let bestBalance = 0;
 
       // Binary search for minimum children needed
@@ -223,10 +233,19 @@ export function ForecastOptimizeTab() {
         }
       }
 
+      if (bestCount < 0) {
+        // Target not reachable within constraints
+        setOptimizeError(
+          t('statistics.forecastOptimizeNotReached', {
+            max: maxPossibleChildren,
+          })
+        );
+        setIsOptimizing(false);
+        return;
+      }
+
       // Populate the store with the optimal children
       const optimalChildren = buildChildren(bestCount);
-      // Clear any previously optimizer-added children (keep manually added ones)
-      // We add them to the store so the user can see and edit them
       for (const child of optimalChildren) {
         store.addChild(child);
       }
