@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { ResponsiveLine } from '@nivo/line';
 import { ExportableChart } from './exportable-chart';
-import type { StaffingHoursResponse } from '@/lib/api/types';
+import type { StaffingHoursResponse, OccupancyResponse } from '@/lib/api/types';
 import {
   buildKitaYearBands,
   formatDateLabel,
@@ -16,9 +16,18 @@ import { toLocalDateString } from '@/lib/utils/formatting';
 
 interface MonthlyContractChartProps {
   data: StaffingHoursResponse;
+  occupancy?: OccupancyResponse;
 }
 
-export function MonthlyContractChart({ data }: MonthlyContractChartProps) {
+const AGE_GROUP_COLORS: Record<string, string> = {
+  '0-1': '#f59e0b',
+  '2': '#3b82f6',
+  '3-8': '#10b981',
+};
+
+const DEFAULT_COLORS = ['#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899'];
+
+export function MonthlyContractChart({ data, occupancy }: MonthlyContractChartProps) {
   const t = useTranslations();
 
   const rawDates = data.data_points.map((dp) => dp.date);
@@ -37,6 +46,30 @@ export function MonthlyContractChart({ data }: MonthlyContractChartProps) {
   const todayLabel = formatDateLabel(todayStr);
 
   const counts = data.data_points.map((dp) => dp.child_count);
+
+  // Build age-group breakdown per month label for tooltips
+  const ageByMonth = useMemo(() => {
+    if (!occupancy) return null;
+    const map = new Map<string, { label: string; count: number; color: string }[]>();
+    for (const dp of occupancy.data_points) {
+      const label = formatDateLabel(dp.date);
+      const groups: { label: string; count: number; color: string }[] = [];
+      for (const ag of occupancy.age_groups) {
+        const careTypes = dp.by_age_and_care_type[ag.label] ?? {};
+        const count = Object.values(careTypes).reduce((s, n) => s + n, 0);
+        if (count > 0) {
+          groups.push({
+            label: ag.label,
+            count,
+            color:
+              AGE_GROUP_COLORS[ag.label] ?? DEFAULT_COLORS[groups.length % DEFAULT_COLORS.length],
+          });
+        }
+      }
+      map.set(label, groups);
+    }
+    return map;
+  }, [occupancy]);
 
   const chartData = [
     {
@@ -149,6 +182,49 @@ export function MonthlyContractChart({ data }: MonthlyContractChartProps) {
         pointLabelYOffset={-12}
         useMesh={true}
         enableSlices="x"
+        sliceTooltip={({ slice }) => {
+          const monthLabel = slice.points[0]?.data.xFormatted as string;
+          const total = slice.points[0]?.data.yFormatted;
+          const ageGroups = ageByMonth?.get(monthLabel);
+          return (
+            <div
+              style={{
+                background: 'hsl(var(--background))',
+                color: 'hsl(var(--foreground))',
+                border: '1px solid hsl(var(--border))',
+                borderRadius: '6px',
+                padding: '8px 12px',
+                minWidth: '180px',
+                fontSize: '13px',
+              }}
+            >
+              <div style={{ fontWeight: 600, marginBottom: ageGroups ? 4 : 0 }}>
+                {monthLabel}: {total} {t('statistics.childrenCount')}
+              </div>
+              {ageGroups && ageGroups.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {ageGroups.map((g) => (
+                    <div key={g.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span
+                        style={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: '50%',
+                          background: g.color,
+                          display: 'inline-block',
+                          flexShrink: 0,
+                        }}
+                      />
+                      <span>
+                        {g.label} {t('statistics.ageYears', { age: '' }).trim()}: {g.count}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        }}
         markers={[createTodayMarker(todayLabel, t('common.today'))]}
         legends={[
           {

@@ -131,6 +131,8 @@
     "chartError": "Fehler beim Laden der Diagrammdaten",
     "chartRenderError": "Diagramm konnte nicht dargestellt werden",
     "ageDistribution": "Kinder-Altersverteilung (Heute)",
+    "childrenByAge": "Kinder nach Altersgruppe",
+    "childCount": "Kinder",
     "childrenCount": "Kinder",
     "totalChildren": "{count} Kinder insgesamt",
     "ageYears": "{age} Jahre",
