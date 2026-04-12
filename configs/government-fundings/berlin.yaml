@@ -33,7 +33,7 @@
     - key: parent
       value: meals
       label: Parent Value Meal
-      payment: 23.0
+      payment: -23.0
       requirement: 0
       apply_to_all_contracts: true
   - age:
@@ -143,7 +143,7 @@
     - key: parent
       value: meals
       label: Parent Value Meal
-      payment: 23.0
+      payment: -23.0
       requirement: 0
       apply_to_all_contracts: true
   - age:
@@ -253,7 +253,7 @@
     - key: parent
       value: meals
       label: Parent Value Meal
-      payment: 23.0
+      payment: -23.0
       requirement: 0
       apply_to_all_contracts: true
   - age:
@@ -362,7 +362,7 @@
     - key: parent
       value: meals
       label: Parent Value Meal
-      payment: 23.0
+      payment: -23.0
       requirement: 0
       apply_to_all_contracts: true
   - age:
@@ -472,7 +472,7 @@
     - key: parent
       value: meals
       label: Parent Value Meal
-      payment: 23.0
+      payment: -23.0
       requirement: 0
       apply_to_all_contracts: true
   - age:
@@ -582,7 +582,7 @@
     - key: parent
       value: meals
       label: Parent Value Meal
-      payment: 23.0
+      payment: -23.0
       requirement: 0
       apply_to_all_contracts: true
   - age:
@@ -692,7 +692,7 @@
     - key: parent
       value: meals
       label: Parent Value Meal
-      payment: 23.0
+      payment: -23.0
       requirement: 0
       apply_to_all_contracts: true
   - age:
@@ -802,7 +802,7 @@
     - key: parent
       value: meals
       label: Parent Value Meal
-      payment: 23.0
+      payment: -23.0
       requirement: 0
       apply_to_all_contracts: true
   - age:
@@ -912,7 +912,7 @@
     - key: parent
       value: meals
       label: Parent Value Meal
-      payment: 23.0
+      payment: -23.0
       requirement: 0
       apply_to_all_contracts: true
   - age:
@@ -1025,7 +1025,7 @@
     - key: parent
       value: meals
       label: Parent Value Meal
-      payment: 23.0
+      payment: -23.0
       requirement: 0
       apply_to_all_contracts: true
   - age:
@@ -1131,7 +1131,7 @@
     - key: parent
       value: meals
       label: Parent Value Meal
-      payment: 23.0
+      payment: -23.0
       requirement: 0
       apply_to_all_contracts: true
   - age:
@@ -1237,7 +1237,7 @@
     - key: parent
       value: meals
       label: Parent Value Meal
-      payment: 23.0
+      payment: -23.0
       requirement: 0
       apply_to_all_contracts: true
   - age:
@@ -1343,7 +1343,7 @@
     - key: parent
       value: meals
       label: Parent Value Meal
-      payment: 23.0
+      payment: -23.0
       requirement: 0
       apply_to_all_contracts: true
   - age:
@@ -1449,7 +1449,7 @@
     - key: parent
       value: meals
       label: Parent Value Meal
-      payment: 23.0
+      payment: -23.0
       requirement: 0
       apply_to_all_contracts: true
   - age:
@@ -1555,7 +1555,7 @@
     - key: parent
       value: meals
       label: Parent Value Meal
-      payment: 23.0
+      payment: -23.0
       requirement: 0
       apply_to_all_contracts: true
   - age:
