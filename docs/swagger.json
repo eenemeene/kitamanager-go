@@ -7269,6 +7269,146 @@
                 }
             }
         },
+        "/api/v1/organizations/{orgId}/statistics/estimates/child-funding": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Calculates government funding based on birthdate, date, and contract properties\nwithout requiring an existing child record",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "statistics"
+                ],
+                "summary": "Estimate government funding for a hypothetical child",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Child funding estimate parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildFundingEstimateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildFundingResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/organizations/{orgId}/statistics/estimates/employee-cost": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Calculates gross salary and employer costs based on pay plan, grade, step, and weekly hours\nwithout requiring an existing employee record",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "statistics"
+                ],
+                "summary": "Estimate monthly cost for a hypothetical employee",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Employee cost estimate parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeCostEstimateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeCostEstimateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/organizations/{orgId}/statistics/financials": {
             "get": {
                 "security": [
@@ -9297,6 +9437,26 @@
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.ChildFundingEstimateRequest": {
+            "type": "object",
+            "required": [
+                "birthdate",
+                "properties"
+            ],
+            "properties": {
+                "birthdate": {
+                    "type": "string",
+                    "example": "2022-05-15T00:00:00Z"
+                },
+                "date": {
+                    "type": "string",
+                    "example": "2026-04-01T00:00:00Z"
+                },
+                "properties": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties"
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.ChildFundingMatchedProp": {
             "type": "object",
             "properties": {
@@ -9802,6 +9962,93 @@
                     "maximum": 168,
                     "minimum": 0,
                     "example": 40
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.EmployeeCostEstimateRequest": {
+            "type": "object",
+            "required": [
+                "grade",
+                "pay_plan_id",
+                "step",
+                "weekly_hours"
+            ],
+            "properties": {
+                "date": {
+                    "type": "string",
+                    "example": "2026-04-01T00:00:00Z"
+                },
+                "grade": {
+                    "type": "string",
+                    "maxLength": 20,
+                    "example": "S8a"
+                },
+                "pay_plan_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "staff_category": {
+                    "type": "string",
+                    "example": "qualified"
+                },
+                "step": {
+                    "type": "integer",
+                    "maximum": 10,
+                    "minimum": 1,
+                    "example": 3
+                },
+                "weekly_hours": {
+                    "type": "number",
+                    "example": 39.4
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.EmployeeCostEstimateResponse": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string",
+                    "example": "2026-04-01"
+                },
+                "employer_contribution_rate": {
+                    "type": "integer",
+                    "example": 2200
+                },
+                "employer_costs": {
+                    "type": "integer",
+                    "example": 83600
+                },
+                "full_time_monthly_amount": {
+                    "type": "integer",
+                    "example": 380000
+                },
+                "grade": {
+                    "type": "string",
+                    "example": "S8a"
+                },
+                "gross_salary": {
+                    "type": "integer",
+                    "example": 380000
+                },
+                "pay_plan_weekly_hours": {
+                    "type": "number",
+                    "example": 39.4
+                },
+                "staff_category": {
+                    "type": "string",
+                    "example": "qualified"
+                },
+                "step": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "total_monthly_cost": {
+                    "type": "integer",
+                    "example": 463600
+                },
+                "weekly_hours": {
+                    "type": "number",
+                    "example": 39.4
                 }
             }
         },

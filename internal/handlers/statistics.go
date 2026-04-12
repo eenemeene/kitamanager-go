@@ -325,3 +325,77 @@ func (h *StatisticsHandler) GetForecast(c *gin.Context) {
 
 	c.JSON(http.StatusOK, result)
 }
+
+// EstimateChildFunding godoc
+// @Summary Estimate government funding for a hypothetical child
+// @Description Calculates government funding based on birthdate, date, and contract properties
+// @Description without requiring an existing child record
+// @Tags statistics
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Param request body models.ChildFundingEstimateRequest true "Child funding estimate parameters"
+// @Success 200 {object} models.ChildFundingResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/organizations/{orgId}/statistics/estimates/child-funding [post]
+func (h *StatisticsHandler) EstimateChildFunding(c *gin.Context) {
+	orgID, ok := parseOrgID(c)
+	if !ok {
+		return
+	}
+
+	var req models.ChildFundingEstimateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respondError(c, apperror.BadRequest(sanitizeBindError(err)))
+		return
+	}
+
+	result, err := h.service.EstimateChildFunding(c.Request.Context(), orgID, &req)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+// EstimateEmployeeCost godoc
+// @Summary Estimate monthly cost for a hypothetical employee
+// @Description Calculates gross salary and employer costs based on pay plan, grade, step, and weekly hours
+// @Description without requiring an existing employee record
+// @Tags statistics
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Param request body models.EmployeeCostEstimateRequest true "Employee cost estimate parameters"
+// @Success 200 {object} models.EmployeeCostEstimateResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/organizations/{orgId}/statistics/estimates/employee-cost [post]
+func (h *StatisticsHandler) EstimateEmployeeCost(c *gin.Context) {
+	orgID, ok := parseOrgID(c)
+	if !ok {
+		return
+	}
+
+	var req models.EmployeeCostEstimateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respondError(c, apperror.BadRequest(sanitizeBindError(err)))
+		return
+	}
+
+	result, err := h.service.EstimateEmployeeCost(c.Request.Context(), orgID, &req)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}

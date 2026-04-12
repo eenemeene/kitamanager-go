@@ -2,11 +2,13 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/store"
+	"github.com/eenemeene/kitamanager-go/internal/validation"
 )
 
 // StatisticsService handles cross-resource statistics calculations
@@ -250,4 +252,70 @@ func (s *StatisticsService) GetContractPropertiesDistribution(ctx context.Contex
 	}
 
 	return calculateContractPropertiesDistribution(children, fundingPeriods, date), nil
+}
+
+// EstimateChildFunding calculates government funding for a hypothetical child.
+func (s *StatisticsService) EstimateChildFunding(ctx context.Context, orgID uint, req *models.ChildFundingEstimateRequest) (*models.ChildFundingResponse, error) {
+	date := time.Now()
+	if req.Date != nil {
+		date = *req.Date
+	}
+	date = time.Date(date.Year(), date.Month(), 1, 0, 0, 0, 0, time.UTC)
+
+	fundingPeriods, err := s.loadOrgAndFunding(ctx, orgID)
+	if err != nil {
+		return nil, err
+	}
+
+	period := findPeriodForDate(fundingPeriods, date)
+	age := validation.CalculateAgeOnDate(req.Birthdate, date)
+
+	result := calculateChildFunding(age, req.Properties, period)
+	result.Age = age
+
+	return &result, nil
+}
+
+// EstimateEmployeeCost calculates monthly cost for a hypothetical employee.
+func (s *StatisticsService) EstimateEmployeeCost(ctx context.Context, orgID uint, req *models.EmployeeCostEstimateRequest) (*models.EmployeeCostEstimateResponse, error) {
+	date := time.Now()
+	if req.Date != nil {
+		date = *req.Date
+	}
+	date = time.Date(date.Year(), date.Month(), 1, 0, 0, 0, 0, time.UTC)
+
+	payPlan, err := s.payPlanStore.FindByIDWithPeriods(ctx, req.PayPlanID, &date)
+	if err != nil {
+		return nil, apperror.NotFound("pay plan")
+	}
+	if payPlan.OrganizationID != orgID {
+		return nil, apperror.NotFound("pay plan")
+	}
+
+	period := findPayPlanPeriodForDate(payPlan.Periods, date)
+	if period == nil {
+		return nil, apperror.NotFound("no active pay plan period for the given date")
+	}
+
+	entryIdx := buildEntryIndex(period.Entries)
+	entry := entryIdx[gradeStepKey{req.Grade, req.Step}]
+	if entry == nil {
+		return nil, apperror.NotFound(fmt.Sprintf("no pay plan entry for grade %s step %d", req.Grade, req.Step))
+	}
+
+	gross, contrib := employeeMonthlyCost(entry.MonthlyAmount, req.WeeklyHours, period.WeeklyHours, period.EmployerContributionRate)
+
+	return &models.EmployeeCostEstimateResponse{
+		Date:                     date.Format(models.DateFormat),
+		StaffCategory:            req.StaffCategory,
+		Grade:                    req.Grade,
+		Step:                     req.Step,
+		WeeklyHours:              req.WeeklyHours,
+		PayPlanWeeklyHours:       period.WeeklyHours,
+		FullTimeMonthlyAmount:    entry.MonthlyAmount,
+		GrossSalary:              gross,
+		EmployerContributionRate: period.EmployerContributionRate,
+		EmployerCosts:            contrib,
+		TotalMonthlyCost:         gross + contrib,
+	}, nil
 }
