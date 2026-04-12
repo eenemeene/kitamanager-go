@@ -48,6 +48,12 @@ export default function ChildrenStatisticsPage() {
     enabled: !!orgId,
   });
 
+  const { data: occupancy } = useQuery({
+    queryKey: queryKeys.statistics.occupancy(orgId),
+    queryFn: () => apiClient.getOccupancy(orgId),
+    enabled: !!orgId,
+  });
+
   const { data: contractProperties, isLoading: isLoadingContractProperties } = useQuery({
     queryKey: queryKeys.statistics.contractProperties(orgId),
     queryFn: () => apiClient.getContractPropertiesDistribution(orgId),
@@ -71,7 +77,7 @@ export default function ChildrenStatisticsPage() {
             <Skeleton className="h-[350px] w-full" />
           ) : staffingHours ? (
             <ChartErrorBoundary>
-              <MonthlyContractChart data={staffingHours} />
+              <MonthlyContractChart data={staffingHours} occupancy={occupancy} />
             </ChartErrorBoundary>
           ) : (
             <p className="text-muted-foreground">{t('statistics.chartError')}</p>

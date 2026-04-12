@@ -162,7 +162,10 @@ export function ForecastResults({ data, baseline }: ForecastResultsProps) {
                   </h4>
                   {baseline.staffingHours ? (
                     <ChartErrorBoundary>
-                      <MonthlyContractChart data={baseline.staffingHours} />
+                      <MonthlyContractChart
+                        data={baseline.staffingHours}
+                        occupancy={baseline.occupancy}
+                      />
                     </ChartErrorBoundary>
                   ) : (
                     <p className="text-muted-foreground">{t('chartError')}</p>
@@ -174,7 +177,7 @@ export function ForecastResults({ data, baseline }: ForecastResultsProps) {
                   </h4>
                   {data.staffing_hours ? (
                     <ChartErrorBoundary>
-                      <MonthlyContractChart data={data.staffing_hours} />
+                      <MonthlyContractChart data={data.staffing_hours} occupancy={data.occupancy} />
                     </ChartErrorBoundary>
                   ) : (
                     <p className="text-muted-foreground">{t('chartError')}</p>
@@ -183,7 +186,7 @@ export function ForecastResults({ data, baseline }: ForecastResultsProps) {
               </div>
             ) : data.staffing_hours ? (
               <ChartErrorBoundary>
-                <MonthlyContractChart data={data.staffing_hours} />
+                <MonthlyContractChart data={data.staffing_hours} occupancy={data.occupancy} />
               </ChartErrorBoundary>
             ) : (
               <p className="text-muted-foreground">{t('chartError')}</p>

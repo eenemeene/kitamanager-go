@@ -82,7 +82,6 @@ export function ForecastOptimizeTab() {
 
   const buildChildren = useCallback(
     (count: number): ForecastChild[] => {
-      const now = new Date();
       const sectionList = sections?.data.filter((s) => sectionIds.includes(s.id)) ?? [];
 
       const children: ForecastChild[] = [];
@@ -97,17 +96,27 @@ export function ForecastOptimizeTab() {
         const contractFrom = `${monthStr}-01`;
 
         for (const sec of sectionList) {
-          const childAge = getAgeForSection(sec);
-          const birthYear = now.getFullYear() - childAge;
-          const birthdate = `${birthYear}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-          const contractTo = calculateContractEndDate(birthdate, orgState) ?? undefined;
+          const minMonths = sec.min_age_months ?? 0;
+          const maxMonths = sec.max_age_months ?? 72;
+          const ageRangeMonths = Math.max(maxMonths - minMonths, 1);
 
           for (let j = 0; j < maxPerSectionPerMonth && added < count; j++) {
+            // Distribute birthdates evenly across the section's age range so that
+            // age-group transitions (which affect funding rates) are spread over the
+            // year instead of all happening in the same month.
+            const offsetMonths =
+              minMonths + Math.round((added * ageRangeMonths) / Math.max(count, 1));
+            const birthdate = new Date(currentDate);
+            birthdate.setMonth(birthdate.getMonth() - offsetMonths);
+            birthdate.setDate(1);
+            const birthdateStr = `${birthdate.getFullYear()}-${String(birthdate.getMonth() + 1).padStart(2, '0')}-01`;
+            const contractTo = calculateContractEndDate(birthdateStr, orgState) ?? undefined;
+
             children.push({
               first_name: 'Child',
               last_name: `#${added + 1}`,
               gender: 'diverse',
-              birthdate,
+              birthdate: birthdateStr,
               contracts: [
                 {
                   from: contractFrom,
@@ -133,7 +142,6 @@ export function ForecastOptimizeTab() {
       sections,
       maxPerSectionPerMonth,
       properties,
-      getAgeForSection,
       store.from,
       store.to,
     ]

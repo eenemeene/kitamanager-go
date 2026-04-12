@@ -63,18 +63,18 @@ export function OccupancyTable({ data }: OccupancyTableProps) {
   }, [data]);
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto text-xs">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="bg-background sticky left-0 z-10 min-w-[80px]">
+            <TableHead className="bg-background sticky left-0 z-10 min-w-[60px] px-2 py-1">
               {t('ageGroup')}
             </TableHead>
-            <TableHead className="bg-background sticky left-[80px] z-10 min-w-[100px]">
+            <TableHead className="bg-background sticky left-[60px] z-10 min-w-[80px] px-2 py-1">
               {t('careType')}
             </TableHead>
             {months.map((m) => (
-              <TableHead key={m} className="min-w-[70px] text-center">
+              <TableHead key={m} className="min-w-[50px] px-1 py-1 text-center">
                 {formatMonthHeader(m)}
               </TableHead>
             ))}
@@ -96,17 +96,17 @@ export function OccupancyTable({ data }: OccupancyTableProps) {
               >
                 {isFirstInGroup ? (
                   <TableCell
-                    className={`sticky left-0 z-10 ${rowBg} font-medium`}
+                    className={`sticky left-0 z-10 px-2 py-1 ${rowBg} font-medium`}
                     rowSpan={rowsInGroup}
                   >
                     {row.ageLabel}
                   </TableCell>
                 ) : null}
-                <TableCell className={`sticky left-[80px] z-10 ${rowBg}`}>
+                <TableCell className={`sticky left-[60px] z-10 px-2 py-1 ${rowBg}`}>
                   {row.careTypeLabel}
                 </TableCell>
                 {row.values.map((val, i) => (
-                  <TableCell key={months[i]} className="text-center tabular-nums">
+                  <TableCell key={months[i]} className="px-1 py-1 text-center tabular-nums">
                     {val || '\u2013'}
                   </TableCell>
                 ))}
@@ -116,11 +116,11 @@ export function OccupancyTable({ data }: OccupancyTableProps) {
 
           {/* Total row */}
           <TableRow className="border-t-2 font-bold">
-            <TableCell className="bg-background sticky left-0 z-10" colSpan={2}>
+            <TableCell className="bg-background sticky left-0 z-10 px-2 py-1" colSpan={2}>
               {t('total')}
             </TableCell>
             {totalValues.map((val, i) => (
-              <TableCell key={months[i]} className="text-center tabular-nums">
+              <TableCell key={months[i]} className="px-1 py-1 text-center tabular-nums">
                 {val || '\u2013'}
               </TableCell>
             ))}
@@ -131,7 +131,7 @@ export function OccupancyTable({ data }: OccupancyTableProps) {
             <>
               <TableRow>
                 <TableCell
-                  className="bg-background text-muted-foreground sticky left-0 z-10 pt-4 font-medium"
+                  className="bg-background text-muted-foreground sticky left-0 z-10 px-2 py-2 font-medium"
                   colSpan={2 + months.length}
                 >
                   {t('supplements')}
@@ -139,11 +139,11 @@ export function OccupancyTable({ data }: OccupancyTableProps) {
               </TableRow>
               {supplementRows.map((row) => (
                 <TableRow key={row.label}>
-                  <TableCell className="bg-background sticky left-0 z-10" colSpan={2}>
+                  <TableCell className="bg-background sticky left-0 z-10 px-2 py-1" colSpan={2}>
                     {row.label}
                   </TableCell>
                   {row.values.map((val, i) => (
-                    <TableCell key={months[i]} className="text-center tabular-nums">
+                    <TableCell key={months[i]} className="px-1 py-1 text-center tabular-nums">
                       {val || '\u2013'}
                     </TableCell>
                   ))}
