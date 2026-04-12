@@ -19,18 +19,18 @@ var (
 
 // Error codes for programmatic handling
 const (
-	CodeNotFound         = "not_found"
-	CodeBadRequest       = "bad_request"
-	CodeValidation       = "validation_error"
-	CodeConflict         = "conflict"
-	CodeUnauthorized     = "unauthorized"
-	CodeForbidden        = "forbidden"
-	CodeTooManyRequests  = "too_many_requests"
-	CodeInternal         = "internal_error"
-	CodeEmailConflict       = "email_conflict"
-	CodeContractConflict    = "contract_overlap"
-	CodeDuplicateBillHash   = "duplicate_bill_hash"
-	CodeDuplicateBillMonth  = "duplicate_bill_month"
+	CodeNotFound           = "not_found"
+	CodeBadRequest         = "bad_request"
+	CodeValidation         = "validation_error"
+	CodeConflict           = "conflict"
+	CodeUnauthorized       = "unauthorized"
+	CodeForbidden          = "forbidden"
+	CodeTooManyRequests    = "too_many_requests"
+	CodeInternal           = "internal_error"
+	CodeEmailConflict      = "email_conflict"
+	CodeContractConflict   = "contract_overlap"
+	CodeDuplicateBillHash  = "duplicate_bill_hash"
+	CodeDuplicateBillMonth = "duplicate_bill_month"
 )
 
 // AppError wraps errors with HTTP context
