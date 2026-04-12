@@ -540,6 +540,20 @@ definitions:
     - gender
     - last_name
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ChildFundingEstimateRequest:
+    properties:
+      birthdate:
+        example: "2022-05-15T00:00:00Z"
+        type: string
+      date:
+        example: "2026-04-01T00:00:00Z"
+        type: string
+      properties:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
+    required:
+    - birthdate
+    - properties
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildFundingMatchedProp:
     properties:
       key:
@@ -907,6 +921,71 @@ definitions:
         example: 40
         maximum: 168
         minimum: 0
+        type: number
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.EmployeeCostEstimateRequest:
+    properties:
+      date:
+        example: "2026-04-01T00:00:00Z"
+        type: string
+      grade:
+        example: S8a
+        maxLength: 20
+        type: string
+      pay_plan_id:
+        example: 1
+        type: integer
+      staff_category:
+        example: qualified
+        type: string
+      step:
+        example: 3
+        maximum: 10
+        minimum: 1
+        type: integer
+      weekly_hours:
+        example: 39.4
+        type: number
+    required:
+    - grade
+    - pay_plan_id
+    - step
+    - weekly_hours
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.EmployeeCostEstimateResponse:
+    properties:
+      date:
+        example: "2026-04-01"
+        type: string
+      employer_contribution_rate:
+        example: 2200
+        type: integer
+      employer_costs:
+        example: 83600
+        type: integer
+      full_time_monthly_amount:
+        example: 380000
+        type: integer
+      grade:
+        example: S8a
+        type: string
+      gross_salary:
+        example: 380000
+        type: integer
+      pay_plan_weekly_hours:
+        example: 39.4
+        type: number
+      staff_category:
+        example: qualified
+        type: string
+      step:
+        example: 3
+        type: integer
+      total_monthly_cost:
+        example: 463600
+        type: integer
+      weekly_hours:
+        example: 39.4
         type: number
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.EmployeeCreateRequest:
@@ -7616,6 +7695,100 @@ paths:
       security:
       - BearerAuth: []
       summary: Get children contract properties distribution
+      tags:
+      - statistics
+  /api/v1/organizations/{orgId}/statistics/estimates/child-funding:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Calculates government funding based on birthdate, date, and contract properties
+        without requiring an existing child record
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Child funding estimate parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildFundingEstimateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildFundingResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Estimate government funding for a hypothetical child
+      tags:
+      - statistics
+  /api/v1/organizations/{orgId}/statistics/estimates/employee-cost:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Calculates gross salary and employer costs based on pay plan, grade, step, and weekly hours
+        without requiring an existing employee record
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Employee cost estimate parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeCostEstimateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeCostEstimateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Estimate monthly cost for a hypothetical employee
       tags:
       - statistics
   /api/v1/organizations/{orgId}/statistics/financials:

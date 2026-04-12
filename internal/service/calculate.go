@@ -25,6 +25,14 @@ type resolvedPayPlanPeriod struct {
 	entryIndex map[gradeStepKey]*models.PayPlanEntry
 }
 
+// employeeMonthlyCost computes gross salary and employer contribution for a single
+// employee contract's parameters against a resolved pay plan period + entry.
+func employeeMonthlyCost(monthlyAmount int, weeklyHours, periodWeeklyHours float64, employerContributionRate int) (gross, employerCosts int) {
+	gross = int(math.Round(float64(monthlyAmount) * weeklyHours / periodWeeklyHours))
+	employerCosts = int(math.Round(float64(gross) * float64(employerContributionRate) / 10000.0))
+	return
+}
+
 // buildFundingPeriodIndex pre-computes which funding period is active for each
 // first-of-month in [start, end]. Built once, then O(1) lookup per month.
 func buildFundingPeriodIndex(periods []models.GovernmentFundingPeriod, start, end time.Time) map[time.Time]*models.GovernmentFundingPeriod {
@@ -196,8 +204,7 @@ func calculateFinancials(
 					break
 				}
 
-				gross := int(math.Round(float64(entry.MonthlyAmount) * ec.WeeklyHours / resolved.period.WeeklyHours))
-				contrib := int(math.Round(float64(gross) * float64(resolved.period.EmployerContributionRate) / 10000.0))
+				gross, contrib := employeeMonthlyCost(entry.MonthlyAmount, ec.WeeklyHours, resolved.period.WeeklyHours, resolved.period.EmployerContributionRate)
 				grossSalary += gross
 				employerCosts += contrib
 

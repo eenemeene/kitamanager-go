@@ -244,6 +244,12 @@ func Setup(r *gin.Engine, d Deps) {
 				orgScoped.POST("/statistics/forecast",
 					authzMiddleware.RequirePermission(rbac.ResourceStatistics, rbac.ActionRead),
 					statisticsHandler.GetForecast)
+				orgScoped.POST("/statistics/estimates/child-funding",
+					authzMiddleware.RequirePermission(rbac.ResourceStatistics, rbac.ActionRead),
+					statisticsHandler.EstimateChildFunding)
+				orgScoped.POST("/statistics/estimates/employee-cost",
+					authzMiddleware.RequirePermission(rbac.ResourceStatistics, rbac.ActionRead),
+					statisticsHandler.EstimateEmployeeCost)
 
 				// Employees
 				employees := orgScoped.Group("/employees")
