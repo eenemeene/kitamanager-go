@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -34,6 +35,7 @@ func NewGovernmentFundingBillHandler(svc *service.GovernmentFundingBillService, 
 // @Success 201 {object} models.GovernmentFundingBillResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
+// @Failure 409 {object} models.ErrorResponse "Duplicate file hash or billing month"
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/government-funding-bills [post]
 func (h *GovernmentFundingBillHandler) UploadISBJ(c *gin.Context) {
@@ -58,7 +60,12 @@ func (h *GovernmentFundingBillHandler) UploadISBJ(c *gin.Context) {
 	filename := sanitizeFilename(fileHeader.Filename)
 	result, err := h.service.ProcessISBJ(c.Request.Context(), orgID, bytes.NewReader(fileBytes), filename, fileHash, userID)
 	if err != nil {
-		respondError(c, apperror.BadRequest(err.Error()))
+		var appErr *apperror.AppError
+		if errors.As(err, &appErr) {
+			respondError(c, appErr)
+		} else {
+			respondError(c, apperror.BadRequest(err.Error()))
+		}
 		return
 	}
 

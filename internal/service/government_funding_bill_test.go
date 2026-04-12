@@ -54,7 +54,7 @@ func TestGovernmentFundingBillService_ListWithPeriods(t *testing.T) {
 			OrganizationID:    org.ID,
 			Period:            models.Period{From: time.Date(2025, month, 1, 0, 0, 0, 0, time.UTC), To: &to},
 			FileName:          "file.xlsx",
-			FileSha256:        "hash",
+			FileSha256:        fmt.Sprintf("hash_%d", i),
 			FacilityName:      "Kita",
 			FacilityTotal:     100000 * (i + 1),
 			ContractBooking:   90000 * (i + 1),
@@ -2690,6 +2690,177 @@ func TestGovernmentFundingBillService_Compare_FullMixedEnrichmentScope(t *testin
 	}
 	if calcOnly[0].ContractFrom == nil {
 		t.Error("calc_only child should have contract_from set")
+	}
+}
+
+func TestProcessISBJ_DuplicateHash(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "dup_hash@example.com", "password")
+	ctx := context.Background()
+
+	// First upload succeeds.
+	f1, err := os.Open("../isbj/testdata/Abrechnung_11-25_0770_anonymized.xlsx")
+	if err != nil {
+		t.Fatalf("open fixture: %v", err)
+	}
+	defer f1.Close()
+
+	_, err = svc.ProcessISBJ(ctx, org.ID, f1, "test.xlsx", "samehash123", user.ID)
+	if err != nil {
+		t.Fatalf("first upload: %v", err)
+	}
+
+	// Second upload with same hash must be rejected.
+	f2, err := os.Open("../isbj/testdata/Abrechnung_11-25_0770_anonymized.xlsx")
+	if err != nil {
+		t.Fatalf("open fixture: %v", err)
+	}
+	defer f2.Close()
+
+	_, err = svc.ProcessISBJ(ctx, org.ID, f2, "test2.xlsx", "samehash123", user.ID)
+	if err == nil {
+		t.Fatal("expected duplicate hash error, got nil")
+	}
+
+	var appErr *apperror.AppError
+	if !errors.As(err, &appErr) {
+		t.Fatalf("expected AppError, got %T: %v", err, err)
+	}
+	if appErr.Code != 409 {
+		t.Errorf("expected HTTP 409, got %d", appErr.Code)
+	}
+	if appErr.ErrorCode != apperror.CodeDuplicateBillHash {
+		t.Errorf("expected error code %q, got %q", apperror.CodeDuplicateBillHash, appErr.ErrorCode)
+	}
+
+	// Verify only one bill was persisted.
+	var count int64
+	db.Model(&models.GovernmentFundingBillPeriod{}).Where("organization_id = ?", org.ID).Count(&count)
+	if count != 1 {
+		t.Errorf("expected 1 bill period, got %d", count)
+	}
+}
+
+func TestProcessISBJ_DuplicateMonth(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "dup_month@example.com", "password")
+	ctx := context.Background()
+
+	// First upload succeeds.
+	f1, err := os.Open("../isbj/testdata/Abrechnung_11-25_0770_anonymized.xlsx")
+	if err != nil {
+		t.Fatalf("open fixture: %v", err)
+	}
+	defer f1.Close()
+
+	_, err = svc.ProcessISBJ(ctx, org.ID, f1, "test.xlsx", "hash_a", user.ID)
+	if err != nil {
+		t.Fatalf("first upload: %v", err)
+	}
+
+	// Second upload with different hash but same billing month must be rejected.
+	f2, err := os.Open("../isbj/testdata/Abrechnung_11-25_0770_anonymized.xlsx")
+	if err != nil {
+		t.Fatalf("open fixture: %v", err)
+	}
+	defer f2.Close()
+
+	_, err = svc.ProcessISBJ(ctx, org.ID, f2, "test2.xlsx", "hash_b", user.ID)
+	if err == nil {
+		t.Fatal("expected duplicate month error, got nil")
+	}
+
+	var appErr *apperror.AppError
+	if !errors.As(err, &appErr) {
+		t.Fatalf("expected AppError, got %T: %v", err, err)
+	}
+	if appErr.Code != 409 {
+		t.Errorf("expected HTTP 409, got %d", appErr.Code)
+	}
+	if appErr.ErrorCode != apperror.CodeDuplicateBillMonth {
+		t.Errorf("expected error code %q, got %q", apperror.CodeDuplicateBillMonth, appErr.ErrorCode)
+	}
+
+	// Verify only one bill was persisted.
+	var count int64
+	db.Model(&models.GovernmentFundingBillPeriod{}).Where("organization_id = ?", org.ID).Count(&count)
+	if count != 1 {
+		t.Errorf("expected 1 bill period, got %d", count)
+	}
+}
+
+func TestProcessISBJ_DuplicateHash_DifferentOrg_Allowed(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+	user := createTestUser(t, db, "User", "dup_hash_difforg@example.com", "password")
+	ctx := context.Background()
+
+	// Upload to org1.
+	f1, err := os.Open("../isbj/testdata/Abrechnung_11-25_0770_anonymized.xlsx")
+	if err != nil {
+		t.Fatalf("open fixture: %v", err)
+	}
+	defer f1.Close()
+
+	_, err = svc.ProcessISBJ(ctx, org1.ID, f1, "test.xlsx", "sharedhash", user.ID)
+	if err != nil {
+		t.Fatalf("org1 upload: %v", err)
+	}
+
+	// Upload same hash to org2 must succeed (duplicate check is per-org).
+	f2, err := os.Open("../isbj/testdata/Abrechnung_11-25_0770_anonymized.xlsx")
+	if err != nil {
+		t.Fatalf("open fixture: %v", err)
+	}
+	defer f2.Close()
+
+	_, err = svc.ProcessISBJ(ctx, org2.ID, f2, "test.xlsx", "sharedhash", user.ID)
+	if err != nil {
+		t.Fatalf("org2 upload should succeed but got: %v", err)
+	}
+}
+
+func TestProcessISBJ_ReuploadAfterDelete(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	billStore := store.NewGovernmentFundingBillPeriodStore(db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "reupload@example.com", "password")
+	ctx := context.Background()
+
+	// First upload succeeds.
+	f1, err := os.Open("../isbj/testdata/Abrechnung_11-25_0770_anonymized.xlsx")
+	if err != nil {
+		t.Fatalf("open fixture: %v", err)
+	}
+	defer f1.Close()
+
+	resp, err := svc.ProcessISBJ(ctx, org.ID, f1, "test.xlsx", "deletehash", user.ID)
+	if err != nil {
+		t.Fatalf("first upload: %v", err)
+	}
+
+	// Delete the bill.
+	if err := billStore.Delete(ctx, resp.ID); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+
+	// Re-upload with same hash must now succeed.
+	f2, err := os.Open("../isbj/testdata/Abrechnung_11-25_0770_anonymized.xlsx")
+	if err != nil {
+		t.Fatalf("open fixture: %v", err)
+	}
+	defer f2.Close()
+
+	_, err = svc.ProcessISBJ(ctx, org.ID, f2, "test.xlsx", "deletehash", user.ID)
+	if err != nil {
+		t.Fatalf("re-upload after delete should succeed but got: %v", err)
 	}
 }
 

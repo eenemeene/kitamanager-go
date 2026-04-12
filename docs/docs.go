@@ -5425,6 +5425,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
                         }
                     },
+                    "409": {
+                        "description": "Duplicate file hash or billing month",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {

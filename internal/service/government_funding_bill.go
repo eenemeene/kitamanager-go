@@ -41,9 +41,37 @@ func NewGovernmentFundingBillService(
 
 // ProcessISBJ parses an ISBJ Excel file, persists the bill period, and returns enriched data.
 func (s *GovernmentFundingBillService) ProcessISBJ(ctx context.Context, orgID uint, reader io.Reader, fileName string, fileHash string, userID uint) (*models.GovernmentFundingBillResponse, error) {
+	// Check for duplicate file (same SHA-256 hash for this org)
+	hashExists, err := s.billPeriodStore.ExistsByOrgAndHash(ctx, orgID, fileHash)
+	if err != nil {
+		return nil, fmt.Errorf("checking duplicate hash: %w", err)
+	}
+	if hashExists {
+		return nil, &apperror.AppError{
+			Err:       apperror.ErrConflict,
+			Message:   "a bill with the same file has already been uploaded for this organization",
+			Code:      409,
+			ErrorCode: apperror.CodeDuplicateBillHash,
+		}
+	}
+
 	output, err := isbj.ParseFromReader(reader)
 	if err != nil {
 		return nil, err
+	}
+
+	// Check for duplicate month (same billing month for this org)
+	monthExists, err := s.billPeriodStore.ExistsByOrgAndMonth(ctx, orgID, output.BillingMonth)
+	if err != nil {
+		return nil, fmt.Errorf("checking duplicate month: %w", err)
+	}
+	if monthExists {
+		return nil, &apperror.AppError{
+			Err:       apperror.ErrConflict,
+			Message:   fmt.Sprintf("a bill for %s already exists for this organization; delete the existing bill first", output.BillingMonth.Format("2006-01")),
+			Code:      409,
+			ErrorCode: apperror.CodeDuplicateBillMonth,
+		}
 	}
 
 	converted, err := isbj.Convert(output)

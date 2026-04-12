@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -187,14 +188,14 @@ func TestGovernmentFundingBillPeriodStore_FindByOrganization(t *testing.T) {
 	ctx := context.Background()
 
 	// Create 3 periods for org1, 1 for org2
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		month := time.Month(i + 1)
 		to := time.Date(2025, month+1, 0, 0, 0, 0, 0, time.UTC)
 		p := &models.GovernmentFundingBillPeriod{
 			OrganizationID: org1.ID,
 			Period:         models.Period{From: time.Date(2025, month, 1, 0, 0, 0, 0, time.UTC), To: &to},
-			FileName:       "file.xlsx",
-			FileSha256:     "hash",
+			FileName:       fmt.Sprintf("file_%d.xlsx", i),
+			FileSha256:     fmt.Sprintf("hash_%d", i),
 			FacilityName:   "Kita",
 			CreatedBy:      user.ID,
 		}
@@ -520,7 +521,7 @@ func TestGovernmentFundingBillPeriodStore_FindFacilityTotalsByOrganizationInDate
 		p := &models.GovernmentFundingBillPeriod{
 			OrganizationID: org.ID,
 			Period:         models.Period{From: time.Date(2025, m, 1, 0, 0, 0, 0, time.UTC), To: &to},
-			FileName:       "file.xlsx", FileSha256: "hash", FacilityName: "Kita",
+			FileName:       fmt.Sprintf("file_%d.xlsx", m), FileSha256: fmt.Sprintf("hash_%d", m), FacilityName: "Kita",
 			FacilityTotal: int(m) * 100000, // Jan=100000, Feb=200000, Mar=300000
 			CreatedBy:     user.ID,
 		}
@@ -669,5 +670,206 @@ func TestGovernmentFundingBillPeriodStore_FindByOrganizationAndVoucherNumber_Dup
 	}
 	if results[0].FacilityName != "Kita Dup" {
 		t.Errorf("expected facility_name 'Kita Dup', got %q", results[0].FacilityName)
+	}
+}
+
+func TestGovernmentFundingBillPeriodStore_ExistsByOrgAndHash(t *testing.T) {
+	db := setupTestDB(t)
+	s := NewGovernmentFundingBillPeriodStore(db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "hash_exists@example.com")
+	ctx := context.Background()
+
+	// Initially no bills exist.
+	exists, err := s.ExistsByOrgAndHash(ctx, org.ID, "hashA")
+	if err != nil {
+		t.Fatalf("ExistsByOrgAndHash() error = %v", err)
+	}
+	if exists {
+		t.Error("expected false for non-existent hash")
+	}
+
+	// Create a bill.
+	to := time.Date(2025, 11, 30, 0, 0, 0, 0, time.UTC)
+	period := &models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC), To: &to},
+		FileName:       "test.xlsx",
+		FileSha256:     "hashA",
+		FacilityName:   "Kita",
+		CreatedBy:      user.ID,
+	}
+	if err := s.Create(ctx, period); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	// Now it should exist.
+	exists, err = s.ExistsByOrgAndHash(ctx, org.ID, "hashA")
+	if err != nil {
+		t.Fatalf("ExistsByOrgAndHash() error = %v", err)
+	}
+	if !exists {
+		t.Error("expected true for existing hash")
+	}
+
+	// Different hash should not exist.
+	exists, err = s.ExistsByOrgAndHash(ctx, org.ID, "hashB")
+	if err != nil {
+		t.Fatalf("ExistsByOrgAndHash() error = %v", err)
+	}
+	if exists {
+		t.Error("expected false for different hash")
+	}
+
+	// Same hash, different org should not exist.
+	org2 := createTestOrganization(t, db, "Org 2")
+	exists, err = s.ExistsByOrgAndHash(ctx, org2.ID, "hashA")
+	if err != nil {
+		t.Fatalf("ExistsByOrgAndHash() error = %v", err)
+	}
+	if exists {
+		t.Error("expected false for same hash in different org")
+	}
+}
+
+func TestGovernmentFundingBillPeriodStore_ExistsByOrgAndMonth(t *testing.T) {
+	db := setupTestDB(t)
+	s := NewGovernmentFundingBillPeriodStore(db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "month_exists@example.com")
+	ctx := context.Background()
+
+	nov := time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC)
+	dec := time.Date(2025, 12, 1, 0, 0, 0, 0, time.UTC)
+
+	// Initially no bills exist.
+	exists, err := s.ExistsByOrgAndMonth(ctx, org.ID, nov)
+	if err != nil {
+		t.Fatalf("ExistsByOrgAndMonth() error = %v", err)
+	}
+	if exists {
+		t.Error("expected false for non-existent month")
+	}
+
+	// Create a bill for November.
+	to := time.Date(2025, 11, 30, 0, 0, 0, 0, time.UTC)
+	period := &models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: nov, To: &to},
+		FileName:       "test.xlsx",
+		FileSha256:     "hash1",
+		FacilityName:   "Kita",
+		CreatedBy:      user.ID,
+	}
+	if err := s.Create(ctx, period); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	// November should exist.
+	exists, err = s.ExistsByOrgAndMonth(ctx, org.ID, nov)
+	if err != nil {
+		t.Fatalf("ExistsByOrgAndMonth() error = %v", err)
+	}
+	if !exists {
+		t.Error("expected true for existing month")
+	}
+
+	// December should not exist.
+	exists, err = s.ExistsByOrgAndMonth(ctx, org.ID, dec)
+	if err != nil {
+		t.Fatalf("ExistsByOrgAndMonth() error = %v", err)
+	}
+	if exists {
+		t.Error("expected false for different month")
+	}
+
+	// Same month, different org should not exist.
+	org2 := createTestOrganization(t, db, "Org 2")
+	exists, err = s.ExistsByOrgAndMonth(ctx, org2.ID, nov)
+	if err != nil {
+		t.Fatalf("ExistsByOrgAndMonth() error = %v", err)
+	}
+	if exists {
+		t.Error("expected false for same month in different org")
+	}
+}
+
+func TestGovernmentFundingBillPeriodStore_ExistsByOrgAndHash_AfterDelete(t *testing.T) {
+	db := setupTestDB(t)
+	s := NewGovernmentFundingBillPeriodStore(db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "hash_delete@example.com")
+	ctx := context.Background()
+
+	to := time.Date(2025, 11, 30, 0, 0, 0, 0, time.UTC)
+	period := &models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC), To: &to},
+		FileName:       "test.xlsx",
+		FileSha256:     "delhash",
+		FacilityName:   "Kita",
+		CreatedBy:      user.ID,
+	}
+	if err := s.Create(ctx, period); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	// Exists before delete.
+	exists, err := s.ExistsByOrgAndHash(ctx, org.ID, "delhash")
+	if err != nil {
+		t.Fatalf("ExistsByOrgAndHash() error = %v", err)
+	}
+	if !exists {
+		t.Error("expected true before delete")
+	}
+
+	// Delete.
+	if err := s.Delete(ctx, period.ID); err != nil {
+		t.Fatalf("Delete() error = %v", err)
+	}
+
+	// No longer exists after delete.
+	exists, err = s.ExistsByOrgAndHash(ctx, org.ID, "delhash")
+	if err != nil {
+		t.Fatalf("ExistsByOrgAndHash() error = %v", err)
+	}
+	if exists {
+		t.Error("expected false after delete")
+	}
+}
+
+func TestGovernmentFundingBillPeriodStore_ExistsByOrgAndMonth_AfterDelete(t *testing.T) {
+	db := setupTestDB(t)
+	s := NewGovernmentFundingBillPeriodStore(db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "month_delete@example.com")
+	ctx := context.Background()
+
+	nov := time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2025, 11, 30, 0, 0, 0, 0, time.UTC)
+	period := &models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: nov, To: &to},
+		FileName:       "test.xlsx",
+		FileSha256:     "hash_month_del",
+		FacilityName:   "Kita",
+		CreatedBy:      user.ID,
+	}
+	if err := s.Create(ctx, period); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	// Delete.
+	if err := s.Delete(ctx, period.ID); err != nil {
+		t.Fatalf("Delete() error = %v", err)
+	}
+
+	// No longer exists after delete.
+	exists, err := s.ExistsByOrgAndMonth(ctx, org.ID, nov)
+	if err != nil {
+		t.Fatalf("ExistsByOrgAndMonth() error = %v", err)
+	}
+	if exists {
+		t.Error("expected false after delete")
 	}
 }
