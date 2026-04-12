@@ -112,6 +112,23 @@ export default function FinancialsPage() {
         </CardContent>
       </Card>
 
+      {/* Actual vs Calculated Funding */}
+      {financials?.data_points?.length && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('statistics.fundingActualVsCalculated')}</CardTitle>
+            <p className="text-muted-foreground text-sm">
+              {t('statistics.fundingActualVsCalculatedDescription')}
+            </p>
+          </CardHeader>
+          <CardContent>
+            <ChartErrorBoundary>
+              <FundingComparisonChart data={financials} />
+            </ChartErrorBoundary>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Annual Summary Chart */}
       <Card>
         <CardHeader>
@@ -132,23 +149,6 @@ export default function FinancialsPage() {
           )}
         </CardContent>
       </Card>
-
-      {/* Actual vs Calculated Funding */}
-      {financials?.data_points?.some((dp) => dp.actual_funding != null) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('statistics.fundingActualVsCalculated')}</CardTitle>
-            <p className="text-muted-foreground text-sm">
-              {t('statistics.fundingActualVsCalculatedDescription')}
-            </p>
-          </CardHeader>
-          <CardContent>
-            <ChartErrorBoundary>
-              <FundingComparisonChart data={financials} />
-            </ChartErrorBoundary>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Breakdown Pie Charts */}
       {currentFinancials && (

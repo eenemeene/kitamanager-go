@@ -365,7 +365,11 @@ export default function GovernmentFundingBillDetailPage() {
                           </TableCell>
                           <TableCell className="hidden text-right md:table-cell">
                             <span
-                              className={comp.difference === 0 ? 'text-green-600' : 'text-red-600'}
+                              className={
+                                comp.difference != null && comp.difference >= 0
+                                  ? 'text-green-600'
+                                  : 'text-red-600'
+                              }
                             >
                               {comp.difference != null ? formatCurrency(comp.difference) : '\u2014'}
                             </span>
@@ -494,7 +498,7 @@ export default function GovernmentFundingBillDetailPage() {
                                         <TableCell className="text-right text-sm">
                                           <span
                                             className={
-                                              prop.difference === 0
+                                              prop.difference >= 0
                                                 ? 'text-green-600'
                                                 : 'text-red-600'
                                             }
