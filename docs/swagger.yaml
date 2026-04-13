@@ -292,6 +292,10 @@ definitions:
         type: integer
       updated_at:
         type: string
+      vouchers:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildVoucher'
+        type: array
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildAttendanceCreateRequest:
     properties:
@@ -517,9 +521,6 @@ definitions:
         type: string
       updated_at:
         type: string
-      voucher_number:
-        example: GB-12345678901-02
-        type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildContractBatchUpdateEntry:
     properties:
@@ -536,9 +537,6 @@ definitions:
         type: integer
       to:
         example: "2025-12-31"
-        type: string
-      voucher_number:
-        example: GB-12345678901-02
         type: string
     required:
     - id
@@ -566,9 +564,6 @@ definitions:
         type: integer
       to:
         example: "2025-12-31"
-        type: string
-      voucher_number:
-        example: GB-12345678901-02
         type: string
     required:
     - from
@@ -600,9 +595,6 @@ definitions:
         type: string
       updated_at:
         type: string
-      voucher_number:
-        example: GB-12345678901-02
-        type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildContractUpdateRequest:
     properties:
@@ -616,9 +608,6 @@ definitions:
         type: integer
       to:
         example: "2025-12-31"
-        type: string
-      voucher_number:
-        example: GB-12345678901-02
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildCreateRequest:
@@ -720,6 +709,10 @@ definitions:
         type: integer
       updated_at:
         type: string
+      vouchers:
+        items:
+          type: string
+        type: array
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildUpdateRequest:
     properties:
@@ -736,6 +729,20 @@ definitions:
       last_name:
         example: Schmidt
         maxLength: 255
+        type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ChildVoucher:
+    properties:
+      child_id:
+        type: integer
+      created_at:
+        type: string
+      first_seen:
+        type: string
+      id:
+        type: integer
+      voucher_number:
+        example: GB-12345678901-02
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildrenBillingSummaryResponse:

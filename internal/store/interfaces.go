@@ -94,10 +94,20 @@ type ChildStorer interface {
 	DeleteContract(ctx context.Context, id uint) error
 	Contracts() PeriodStorer[models.ChildContract]
 	FindContractsByChildPaginated(ctx context.Context, childID uint, limit, offset int) ([]models.ChildContract, int64, error)
-	FindContractsByVoucherNumbers(ctx context.Context, orgID uint, voucherNumbers []string, activeOn time.Time) ([]models.ChildContract, error)
-	FindContractsByOrganizationWithVouchers(ctx context.Context, orgID uint) ([]models.ChildContract, error)
 	FindByNameBirthdateAndOrg(ctx context.Context, firstName, lastName string, birthdate time.Time, orgID uint) (*models.Child, error)
 	DeleteContractsByChild(ctx context.Context, childID uint) error
+}
+
+// ChildVoucherStorer defines the interface for child voucher storage operations
+type ChildVoucherStorer interface {
+	FindChildIDsByVoucherNumbers(ctx context.Context, orgID uint, voucherNumbers []string) (map[string]uint, error)
+	FindVouchersByChildID(ctx context.Context, childID uint) ([]models.ChildVoucher, error)
+	FindVouchersByChildIDs(ctx context.Context, childIDs []uint) ([]models.ChildVoucher, error)
+	FindVouchersByOrganization(ctx context.Context, orgID uint) ([]models.ChildVoucher, error)
+	CreateVoucher(ctx context.Context, voucher *models.ChildVoucher) error
+	DeleteVouchersByChild(ctx context.Context, childID uint) error
+	FindActiveContractsByChildIDsAndDate(ctx context.Context, orgID uint, childIDs []uint, date time.Time) (map[uint]models.ChildContract, error)
+	FindChildByNameAndBirthMonth(ctx context.Context, orgID uint, firstName, lastName string, birthMonth time.Month, birthYear int) ([]models.Child, error)
 }
 
 // PeriodStorer defines the interface for time-bounded record operations
@@ -262,6 +272,7 @@ var (
 	_ ChildAttendanceStorer             = (*ChildAttendanceStore)(nil)
 	_ PayPlanStorer                     = (*PayPlanStore)(nil)
 	_ AuditStorer                       = (*AuditStore)(nil)
+	_ ChildVoucherStorer                = (*ChildVoucherStore)(nil)
 	_ BudgetItemStorer                  = (*BudgetItemStore)(nil)
 	_ TokenStorer                       = (*TokenStore)(nil)
 	_ Transactor                        = (*GormTransactor)(nil)

@@ -112,8 +112,7 @@ func (s *ChildService) CreateContract(ctx context.Context, childID, orgID uint, 
 	properties := req.Properties.MergeDefaults(defaults)
 
 	contract := &models.ChildContract{
-		ChildID:       childID,
-		VoucherNumber: req.VoucherNumber,
+		ChildID: childID,
 		BaseContract: models.BaseContract{
 			Period: models.Period{
 				From: req.From,
@@ -199,7 +198,6 @@ func (s *ChildService) applyChildContractFields(ctx context.Context, contract *m
 	// Merge auto-apply funding properties into updated contract
 	defaults := s.getAutoApplyProperties(ctx, orgID, contract.From)
 	contract.Properties = req.Properties.MergeDefaults(defaults)
-	contract.VoucherNumber = req.VoucherNumber
 }
 
 // updateContractInPlace applies changes directly to the existing contract.
@@ -223,8 +221,7 @@ func (s *ChildService) amendContract(ctx context.Context, contract *models.Child
 
 	// Clone contract with current values, new contract starts today
 	newContract := &models.ChildContract{
-		ChildID:       contract.ChildID,
-		VoucherNumber: contract.VoucherNumber,
+		ChildID: contract.ChildID,
 		BaseContract: models.BaseContract{
 			Period: models.Period{
 				From: today,
@@ -241,9 +238,6 @@ func (s *ChildService) amendContract(ctx context.Context, contract *models.Child
 	}
 	if req.Properties != nil {
 		newContract.Properties = req.Properties
-	}
-	if req.VoucherNumber != nil {
-		newContract.VoucherNumber = req.VoucherNumber
 	}
 	if req.To != nil {
 		newContract.To = req.To

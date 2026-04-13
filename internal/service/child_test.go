@@ -890,50 +890,6 @@ func TestChildService_UpdateContract_ClearNullableTo(t *testing.T) {
 	}
 }
 
-func TestChildService_UpdateContract_ClearNullableVoucherNumber(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createChildService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	child := createTestChild(t, db, "John", "Doe", org.ID)
-
-	// Create contract with VoucherNumber set (use future date to trigger in-place update)
-	from := time.Date(2050, 1, 1, 0, 0, 0, 0, time.UTC)
-	voucher := "GB-12345678901-02"
-	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
-		SectionID:     1,
-		From:          from,
-		VoucherNumber: &voucher,
-	})
-	if err != nil {
-		t.Fatalf("setup: %v", err)
-	}
-	if contract.VoucherNumber == nil || *contract.VoucherNumber != voucher {
-		t.Fatal("setup: VoucherNumber should be set")
-	}
-
-	// Clear VoucherNumber by sending nil
-	updated, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
-		VoucherNumber: nil,
-	})
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if updated.VoucherNumber != nil {
-		t.Errorf("VoucherNumber should be nil after clearing, got %v", *updated.VoucherNumber)
-	}
-
-	// Verify persistence
-	refetched, err := svc.GetContractByID(ctx, contract.ID, child.ID, org.ID)
-	if err != nil {
-		t.Fatalf("re-fetch failed: %v", err)
-	}
-	if refetched.VoucherNumber != nil {
-		t.Errorf("VoucherNumber should be nil after re-fetch, got %v", *refetched.VoucherNumber)
-	}
-}
-
 func TestChildService_UpdateContract_ClearNullableProperties(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
@@ -4390,15 +4346,13 @@ func TestChildService_BatchUpdateContracts_AllFields(t *testing.T) {
 
 	newFrom := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
 	newTo := time.Date(2025, 6, 30, 0, 0, 0, 0, time.UTC)
-	voucher := "V-123"
 	results, err := svc.BatchUpdateContracts(ctx, child.ID, org.ID, &models.ChildContractBatchUpdateRequest{
 		Updates: []models.ChildContractBatchUpdateEntry{
 			{ID: contract.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{
-				From:          &newFrom,
-				To:            &newTo,
-				SectionID:     &section2.ID,
-				VoucherNumber: &voucher,
-				Properties:    models.ContractProperties{"care_type": "halbtag"},
+				From:       &newFrom,
+				To:         &newTo,
+				SectionID:  &section2.ID,
+				Properties: models.ContractProperties{"care_type": "halbtag"},
 			}},
 		},
 	})

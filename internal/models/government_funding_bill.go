@@ -6,18 +6,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// VoucherBase extracts the base voucher number (GB-XXXXXXXXXXX) from a full
-// voucher (GB-XXXXXXXXXXX-XX). The suffix is a revision number that changes
-// when the Gutschein is renewed. Matching on the base ensures all revisions
-// of the same child's voucher are linked.
-// For any 17-char string starting with "GB-" and containing a dash at position 15,
-// returns the first 14 characters. Returns the input unchanged otherwise.
-func VoucherBase(voucher string) string {
-	if len(voucher) == 17 && voucher[:3] == "GB-" && voucher[14] == '-' {
-		return voucher[:14]
-	}
-	return voucher
-}
 
 // ============================================================
 // GORM models (stored in database)
