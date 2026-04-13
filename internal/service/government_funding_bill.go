@@ -875,6 +875,17 @@ func (s *GovernmentFundingBillService) ChildBillingHistory(ctx context.Context, 
 		response.Entries[i].RunningDifference = running
 	}
 
+	// Collect all unique full voucher numbers seen across bill entries
+	seenVouchers := make(map[string]bool)
+	allVouchers := make([]string, 0)
+	for _, entry := range response.Entries {
+		if !seenVouchers[entry.VoucherNumber] {
+			seenVouchers[entry.VoucherNumber] = true
+			allVouchers = append(allVouchers, entry.VoucherNumber)
+		}
+	}
+	response.VoucherNumbers = allVouchers
+
 	response.TotalBilled = totalBilled
 	if hasCalc {
 		response.TotalCalculated = totalCalc

@@ -3727,9 +3727,9 @@ func TestChildBillingHistory_MultipleVouchers(t *testing.T) {
 		t.Fatalf("ChildBillingHistory() error = %v", err)
 	}
 
-	// Both vouchers share the same base (GB-66666666666), so only 1 base is reported
-	if len(result.VoucherNumbers) != 1 {
-		t.Errorf("expected 1 voucher base, got %d", len(result.VoucherNumbers))
+	// VoucherNumbers shows all full vouchers seen in bills (both suffixes)
+	if len(result.VoucherNumbers) != 2 {
+		t.Errorf("expected 2 voucher numbers from bills, got %d: %v", len(result.VoucherNumbers), result.VoucherNumbers)
 	}
 	if len(result.Entries) != 2 {
 		t.Fatalf("expected 2 entries, got %d", len(result.Entries))
