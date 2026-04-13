@@ -803,10 +803,17 @@
     "voucherNumbers": "Voucher Numbers",
     "billingMonth": "Billing Month",
     "billTotal": "Billed",
+    "billTotalTooltip": "Regular monthly billing amount from the Senat (excludes corrections)",
     "calcTotal": "Expected",
+    "calcTotalTooltip": "Expected amount based on funding configuration and child's contract",
     "runningDifference": "Cumulative",
+    "runningDifferenceTooltip": "Running total of all differences — shows if corrections have compensated for shortfalls over time",
     "correctionTotal": "Correction",
-    "differenceExplanation": "Positive = billed more than expected, negative = billed less than expected. Only compares months where bills exist."
+    "correctionTotalTooltip": "Retroactive rate adjustments from the Senat for prior months",
+    "differenceTooltip": "Difference between billed and expected for this month",
+    "differenceExplanation": "Positive = billed more than expected, negative = billed less than expected. Only compares months where bills exist.",
+    "missingBillAlert": "No funding bill uploaded for {month}.",
+    "uploadBill": "Upload bill"
   },
   "sectionAgeAlerts": {
     "title": "Children Over Section Age Limit",

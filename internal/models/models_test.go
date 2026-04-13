@@ -362,38 +362,3 @@ func TestUser_ToResponse(t *testing.T) {
 		t.Errorf("ToResponse().CreatedBy = %q, want %q", response.CreatedBy, user.CreatedBy)
 	}
 }
-
-func TestVoucherBase(t *testing.T) {
-	tests := []struct {
-		input string
-		want  string
-	}{
-		{"GB-12345678901-02", "GB-12345678901"},
-		{"GB-56589936966-08", "GB-56589936966"},
-		{"GB-56589936966-02", "GB-56589936966"},
-		{"GB-00000000000-00", "GB-00000000000"},
-		{"000", "000"},                          // non-standard: returned as-is
-		{"abc", "abc"},                          // non-standard: returned as-is
-		{"", ""},                                // empty
-		{"GB-123-45", "GB-123-45"},              // too short
-		{"GB-1234567890X-02", "GB-1234567890X"}, // non-digit in base still matches structural pattern
-	}
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			got := VoucherBase(tt.input)
-			if got != tt.want {
-				t.Errorf("VoucherBase(%q) = %q, want %q", tt.input, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestVoucherBase_SameBaseForDifferentSuffixes(t *testing.T) {
-	base1 := VoucherBase("GB-56589936966-02")
-	base2 := VoucherBase("GB-56589936966-04")
-	base3 := VoucherBase("GB-56589936966-08")
-
-	if base1 != base2 || base2 != base3 {
-		t.Errorf("expected same base for all suffixes, got %q, %q, %q", base1, base2, base3)
-	}
-}

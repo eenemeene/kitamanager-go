@@ -9206,6 +9206,12 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string"
+                },
+                "vouchers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildVoucher"
+                    }
                 }
             }
         },
@@ -9513,10 +9519,6 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string"
-                },
-                "voucher_number": {
-                    "type": "string",
-                    "example": "GB-12345678901-02"
                 }
             }
         },
@@ -9544,10 +9546,6 @@ const docTemplate = `{
                 "to": {
                     "type": "string",
                     "example": "2025-12-31"
-                },
-                "voucher_number": {
-                    "type": "string",
-                    "example": "GB-12345678901-02"
                 }
             }
         },
@@ -9588,10 +9586,6 @@ const docTemplate = `{
                 "to": {
                     "type": "string",
                     "example": "2025-12-31"
-                },
-                "voucher_number": {
-                    "type": "string",
-                    "example": "GB-12345678901-02"
                 }
             }
         },
@@ -9630,10 +9624,6 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string"
-                },
-                "voucher_number": {
-                    "type": "string",
-                    "example": "GB-12345678901-02"
                 }
             }
         },
@@ -9654,10 +9644,6 @@ const docTemplate = `{
                 "to": {
                     "type": "string",
                     "example": "2025-12-31"
-                },
-                "voucher_number": {
-                    "type": "string",
-                    "example": "GB-12345678901-02"
                 }
             }
         },
@@ -9798,6 +9784,12 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string"
+                },
+                "vouchers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -9821,6 +9813,27 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255,
                     "example": "Schmidt"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ChildVoucher": {
+            "type": "object",
+            "properties": {
+                "child_id": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "first_seen": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "voucher_number": {
+                    "type": "string",
+                    "example": "GB-12345678901-02"
                 }
             }
         },

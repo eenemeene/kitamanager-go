@@ -803,10 +803,17 @@
     "voucherNumbers": "Gutscheinnummern",
     "billingMonth": "Abrechnungsmonat",
     "billTotal": "Abgerechnet",
+    "billTotalTooltip": "Regulärer monatlicher Abrechnungsbetrag vom Senat (ohne Korrekturen)",
     "calcTotal": "Erwartet",
+    "calcTotalTooltip": "Erwarteter Betrag basierend auf Finanzierungsconfig und Vertrag des Kindes",
     "runningDifference": "Kumuliert",
+    "runningDifferenceTooltip": "Laufende Summe aller Differenzen — zeigt ob Korrekturen Fehlbeträge über die Zeit ausgeglichen haben",
     "correctionTotal": "Korrektur",
-    "differenceExplanation": "Positiv = mehr abgerechnet als erwartet, negativ = weniger abgerechnet. Nur Monate mit vorhandenen Abrechnungen werden verglichen."
+    "correctionTotalTooltip": "Rückwirkende Korrekturen vom Senat für frühere Monate",
+    "differenceTooltip": "Differenz zwischen abgerechnet und erwartet für diesen Monat",
+    "differenceExplanation": "Positiv = mehr abgerechnet als erwartet, negativ = weniger abgerechnet. Nur Monate mit vorhandenen Abrechnungen werden verglichen.",
+    "missingBillAlert": "Keine Abrechnung für {month} hochgeladen.",
+    "uploadBill": "Abrechnung hochladen"
   },
   "sectionAgeAlerts": {
     "title": "Kinder über Altersgrenze des Bereichs",

@@ -6,8 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"slices"
 	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
@@ -19,24 +22,27 @@ import (
 
 // GovernmentFundingBillService handles government funding bill file processing.
 type GovernmentFundingBillService struct {
-	childStore      store.ChildStorer
-	billPeriodStore store.GovernmentFundingBillPeriodStorer
-	orgStore        store.OrganizationStorer
-	fundingStore    store.GovernmentFundingStorer
+	childStore        store.ChildStorer
+	childVoucherStore store.ChildVoucherStorer
+	billPeriodStore   store.GovernmentFundingBillPeriodStorer
+	orgStore          store.OrganizationStorer
+	fundingStore      store.GovernmentFundingStorer
 }
 
 // NewGovernmentFundingBillService creates a new GovernmentFundingBillService.
 func NewGovernmentFundingBillService(
 	childStore store.ChildStorer,
+	childVoucherStore store.ChildVoucherStorer,
 	billPeriodStore store.GovernmentFundingBillPeriodStorer,
 	orgStore store.OrganizationStorer,
 	fundingStore store.GovernmentFundingStorer,
 ) *GovernmentFundingBillService {
 	return &GovernmentFundingBillService{
-		childStore:      childStore,
-		billPeriodStore: billPeriodStore,
-		orgStore:        orgStore,
-		fundingStore:    fundingStore,
+		childStore:        childStore,
+		childVoucherStore: childVoucherStore,
+		billPeriodStore:   billPeriodStore,
+		orgStore:          orgStore,
+		fundingStore:      fundingStore,
 	}
 }
 
@@ -123,8 +129,100 @@ func (s *GovernmentFundingBillService) ProcessISBJ(ctx context.Context, orgID ui
 		return nil, fmt.Errorf("persisting bill period: %w", err)
 	}
 
+	// Auto-discover vouchers: for bill children whose voucher is unknown,
+	// try to match by name + birth month/year and create child_voucher entries.
+	s.autoDiscoverVouchers(ctx, orgID, period.From, converted)
+
 	// Match vouchers and build response
 	return s.buildResponse(ctx, orgID, period.ID, period.From, converted)
+}
+
+// parseBillChildName splits a bill child name "LastName,FirstName" into first and last name.
+func parseBillChildName(billName string) (firstName, lastName string) {
+	parts := strings.SplitN(billName, ",", 2)
+	if len(parts) == 2 {
+		return strings.TrimSpace(parts[1]), strings.TrimSpace(parts[0])
+	}
+	return "", strings.TrimSpace(billName)
+}
+
+// parseBillBirthMonth parses "MM.YY" format into month and year.
+func parseBillBirthMonth(billDate string) (time.Month, int, error) {
+	parts := strings.SplitN(strings.TrimSpace(billDate), ".", 2)
+	if len(parts) != 2 {
+		return 0, 0, fmt.Errorf("invalid birth date format: %q", billDate)
+	}
+	month, err := strconv.Atoi(parts[0])
+	if err != nil || month < 1 || month > 12 {
+		return 0, 0, fmt.Errorf("invalid month in %q", billDate)
+	}
+	year, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return 0, 0, fmt.Errorf("invalid year in %q", billDate)
+	}
+	if year < 100 {
+		year += 2000
+	}
+	return time.Month(month), year, nil
+}
+
+// autoDiscoverVouchers attempts to match unrecognized bill vouchers to existing
+// children by name + birth month/year. When exactly one child matches, a new
+// child_voucher entry is created so subsequent lookups will find the match.
+func (s *GovernmentFundingBillService) autoDiscoverVouchers(ctx context.Context, orgID uint, billDate time.Time, converted *isbj.ConvertedSettlement) {
+	// Collect all voucher numbers from the bill
+	voucherNumbers := make([]string, 0, len(converted.Children))
+	for _, child := range converted.Children {
+		voucherNumbers = append(voucherNumbers, child.VoucherNumber)
+	}
+
+	// Find which vouchers are already known
+	known, err := s.childVoucherStore.FindChildIDsByVoucherNumbers(ctx, orgID, voucherNumbers)
+	if err != nil {
+		slog.Warn("auto-discover: failed to look up existing vouchers", "error", err)
+		return
+	}
+
+	// For each unknown voucher, try to match by name + birth month/year
+	for _, billChild := range converted.Children {
+		if _, ok := known[billChild.VoucherNumber]; ok {
+			continue // already known
+		}
+
+		firstName, lastName := parseBillChildName(billChild.ChildName)
+		if firstName == "" || lastName == "" {
+			continue
+		}
+
+		birthMonth, birthYear, err := parseBillBirthMonth(billChild.BirthDate)
+		if err != nil {
+			continue
+		}
+
+		matches, err := s.childVoucherStore.FindChildByNameAndBirthMonth(ctx, orgID, firstName, lastName, birthMonth, birthYear)
+		if err != nil || len(matches) != 1 {
+			continue // no match or ambiguous — skip
+		}
+
+		// Exactly one match — create child_voucher entry
+		if err := s.childVoucherStore.CreateVoucher(ctx, &models.ChildVoucher{
+			ChildID:       matches[0].ID,
+			VoucherNumber: billChild.VoucherNumber,
+			FirstSeen:     billDate,
+		}); err != nil {
+			slog.Warn("auto-discover: failed to create voucher",
+				"child_id", matches[0].ID,
+				"voucher", billChild.VoucherNumber,
+				"error", err,
+			)
+		} else {
+			slog.Info("auto-discover: linked voucher to child",
+				"child_id", matches[0].ID,
+				"child_name", firstName+" "+lastName,
+				"voucher", billChild.VoucherNumber,
+			)
+		}
+	}
 }
 
 // List returns a paginated list of bill periods for an organization.
@@ -171,15 +269,26 @@ func (s *GovernmentFundingBillService) GetByID(ctx context.Context, id, orgID ui
 		voucherNumbers = append(voucherNumbers, child.VoucherNumber)
 	}
 
-	contractMap := make(map[string]models.ChildContract)
+	childIDMap := make(map[string]uint)
+	contractByChildID := make(map[uint]models.ChildContract)
 	if len(voucherNumbers) > 0 {
-		contracts, err := s.childStore.FindContractsByVoucherNumbers(ctx, orgID, voucherNumbers, period.From)
+		var err error
+		childIDMap, err = s.childVoucherStore.FindChildIDsByVoucherNumbers(ctx, orgID, voucherNumbers)
 		if err != nil {
 			return nil, err
 		}
-		for _, c := range contracts {
-			if c.VoucherNumber != nil {
-				contractMap[models.VoucherBase(*c.VoucherNumber)] = c
+		if len(childIDMap) > 0 {
+			childIDs := make([]uint, 0, len(childIDMap))
+			seen := make(map[uint]bool)
+			for _, cid := range childIDMap {
+				if !seen[cid] {
+					childIDs = append(childIDs, cid)
+					seen[cid] = true
+				}
+			}
+			contractByChildID, err = s.childVoucherStore.FindActiveContractsByChildIDsAndDate(ctx, orgID, childIDs, period.From)
+			if err != nil {
+				return nil, err
 			}
 		}
 	}
@@ -241,11 +350,13 @@ func (s *GovernmentFundingBillService) GetByID(ctx context.Context, id, orgID ui
 			Rows:          rows,
 		}
 
-		if contract, ok := contractMap[models.VoucherBase(child.VoucherNumber)]; ok {
-			resp.ChildID = &contract.ChildID
-			resp.ContractID = &contract.ID
-			resp.Matched = true
-			matchedCount++
+		if childID, ok := childIDMap[child.VoucherNumber]; ok {
+			if contract, cok := contractByChildID[childID]; cok {
+				resp.ChildID = &contract.ChildID
+				resp.ContractID = &contract.ID
+				resp.Matched = true
+				matchedCount++
+			}
 		}
 
 		children = append(children, resp)
@@ -345,15 +456,26 @@ func (s *GovernmentFundingBillService) Compare(ctx context.Context, billID, orgI
 		voucherNumbers = append(voucherNumbers, child.VoucherNumber)
 	}
 
-	contractMap := make(map[string]models.ChildContract)
+	childIDMap := make(map[string]uint)
+	contractByChildID := make(map[uint]models.ChildContract)
 	if len(voucherNumbers) > 0 {
-		contracts, err := s.childStore.FindContractsByVoucherNumbers(ctx, orgID, voucherNumbers, period.From)
+		var err error
+		childIDMap, err = s.childVoucherStore.FindChildIDsByVoucherNumbers(ctx, orgID, voucherNumbers)
 		if err != nil {
-			return nil, apperror.InternalWrap(err, "failed to fetch contracts")
+			return nil, apperror.InternalWrap(err, "failed to fetch child IDs by voucher")
 		}
-		for _, c := range contracts {
-			if c.VoucherNumber != nil {
-				contractMap[models.VoucherBase(*c.VoucherNumber)] = c
+		if len(childIDMap) > 0 {
+			childIDs := make([]uint, 0, len(childIDMap))
+			seen := make(map[uint]bool)
+			for _, cid := range childIDMap {
+				if !seen[cid] {
+					childIDs = append(childIDs, cid)
+					seen[cid] = true
+				}
+			}
+			contractByChildID, err = s.childVoucherStore.FindActiveContractsByChildIDsAndDate(ctx, orgID, childIDs, period.From)
+			if err != nil {
+				return nil, apperror.InternalWrap(err, "failed to fetch contracts by child IDs")
 			}
 		}
 	}
@@ -367,7 +489,7 @@ func (s *GovernmentFundingBillService) Compare(ctx context.Context, billID, orgI
 	// Build set of vouchers present in the bill
 	billVoucherSet := make(map[string]bool, len(period.Children))
 	for _, child := range period.Children {
-		billVoucherSet[models.VoucherBase(child.VoucherNumber)] = true
+		billVoucherSet[child.VoucherNumber] = true
 	}
 
 	// 6. Build comparison per bill child
@@ -394,7 +516,14 @@ func (s *GovernmentFundingBillService) Compare(ctx context.Context, billID, orgI
 			CorrectionTotal: correctionTotal,
 		}
 
-		contract, matched := contractMap[models.VoucherBase(billChild.VoucherNumber)]
+		var contract models.ChildContract
+		matched := false
+		if childID, ok := childIDMap[billChild.VoucherNumber]; ok {
+			if c, cok := contractByChildID[childID]; cok {
+				contract = c
+				matched = true
+			}
+		}
 		if !matched {
 			// bill_only
 			compChild.Status = "bill_only"
@@ -450,25 +579,48 @@ func (s *GovernmentFundingBillService) Compare(ctx context.Context, billID, orgI
 	}
 
 	// 7. Detect calc-only children
+	// Fetch vouchers for all active children to check against bill vouchers
+	activeChildIDs := make([]uint, 0, len(activeChildren))
+	for _, ac := range activeChildren {
+		if !matchedChildIDs[ac.ID] {
+			activeChildIDs = append(activeChildIDs, ac.ID)
+		}
+	}
+	activeChildVouchers, _ := s.childVoucherStore.FindVouchersByChildIDs(ctx, activeChildIDs)
+	// Build voucher set per child
+	vouchersByChildID := make(map[uint][]models.ChildVoucher)
+	for _, v := range activeChildVouchers {
+		vouchersByChildID[v.ChildID] = append(vouchersByChildID[v.ChildID], v)
+	}
+
 	for _, ac := range activeChildren {
 		if matchedChildIDs[ac.ID] {
 			continue
 		}
 		// Check if this child has a voucher that's already in the bill
+		childVouchers := vouchersByChildID[ac.ID]
+		allInBill := len(childVouchers) > 0
+		for _, v := range childVouchers {
+			if !billVoucherSet[v.VoucherNumber] {
+				allInBill = false
+				break
+			}
+		}
+		if allInBill && len(childVouchers) > 0 {
+			continue
+		}
+
 		if len(ac.Contracts) == 0 {
 			continue
 		}
 		contract := ac.Contracts[0]
-		if contract.VoucherNumber != nil && billVoucherSet[models.VoucherBase(*contract.VoucherNumber)] {
-			continue
-		}
 
 		childAge := validation.CalculateAgeOnDate(ac.Birthdate, period.From)
 		calcAmounts, calcTotal := calcAmountsFromFunding(childAge, contract.Properties, fundingPeriod)
 
 		voucherDisplay := ""
-		if contract.VoucherNumber != nil {
-			voucherDisplay = *contract.VoucherNumber
+		if len(childVouchers) > 0 {
+			voucherDisplay = childVouchers[0].VoucherNumber
 		}
 
 		compChild := models.FundingComparisonChild{
@@ -490,8 +642,8 @@ func (s *GovernmentFundingBillService) Compare(ctx context.Context, billID, orgI
 		}
 
 		// Look up bill appearances by voucher number
-		if contract.VoucherNumber != nil {
-			appearances, err := s.billPeriodStore.FindByOrganizationAndVoucherNumber(ctx, orgID, *contract.VoucherNumber)
+		if len(childVouchers) > 0 {
+			appearances, err := s.billPeriodStore.FindByOrganizationAndVoucherNumber(ctx, orgID, childVouchers[0].VoucherNumber)
 			if err == nil {
 				// Filter out the current bill
 				filtered := make([]models.BillAppearance, 0, len(appearances))
@@ -662,16 +814,27 @@ func (s *GovernmentFundingBillService) buildResponse(ctx context.Context, orgID,
 		voucherNumbers = append(voucherNumbers, child.VoucherNumber)
 	}
 
-	// Look up contracts by voucher number
-	contractMap := make(map[string]models.ChildContract)
+	// Look up children by voucher number, then find active contracts
+	childIDMap := make(map[string]uint)
+	contractByChildID := make(map[uint]models.ChildContract)
 	if len(voucherNumbers) > 0 {
-		contracts, err := s.childStore.FindContractsByVoucherNumbers(ctx, orgID, voucherNumbers, billDate)
+		var err error
+		childIDMap, err = s.childVoucherStore.FindChildIDsByVoucherNumbers(ctx, orgID, voucherNumbers)
 		if err != nil {
 			return nil, err
 		}
-		for _, c := range contracts {
-			if c.VoucherNumber != nil {
-				contractMap[models.VoucherBase(*c.VoucherNumber)] = c
+		if len(childIDMap) > 0 {
+			childIDs := make([]uint, 0, len(childIDMap))
+			seen := make(map[uint]bool)
+			for _, cid := range childIDMap {
+				if !seen[cid] {
+					childIDs = append(childIDs, cid)
+					seen[cid] = true
+				}
+			}
+			contractByChildID, err = s.childVoucherStore.FindActiveContractsByChildIDsAndDate(ctx, orgID, childIDs, billDate)
+			if err != nil {
+				return nil, err
 			}
 		}
 	}
@@ -696,11 +859,13 @@ func (s *GovernmentFundingBillService) buildResponse(ctx context.Context, orgID,
 			Rows:          rows,
 		}
 
-		if contract, ok := contractMap[models.VoucherBase(child.VoucherNumber)]; ok {
-			resp.ChildID = &contract.ChildID
-			resp.ContractID = &contract.ID
-			resp.Matched = true
-			matchedCount++
+		if childID, ok := childIDMap[child.VoucherNumber]; ok {
+			if contract, cok := contractByChildID[childID]; cok {
+				resp.ChildID = &contract.ChildID
+				resp.ContractID = &contract.ID
+				resp.Matched = true
+				matchedCount++
+			}
 		}
 
 		children = append(children, resp)
@@ -743,14 +908,14 @@ func (s *GovernmentFundingBillService) ChildBillingHistory(ctx context.Context, 
 		return nil, apperror.InternalWrap(err, "failed to fetch child")
 	}
 
-	// 2. Collect all voucher numbers across all contracts
-	voucherNumbers := make([]string, 0)
-	voucherSet := make(map[string]bool)
-	for _, contract := range child.Contracts {
-		if contract.VoucherNumber != nil && !voucherSet[models.VoucherBase(*contract.VoucherNumber)] {
-			voucherNumbers = append(voucherNumbers, *contract.VoucherNumber)
-			voucherSet[models.VoucherBase(*contract.VoucherNumber)] = true
-		}
+	// 2. Collect all voucher numbers from child_vouchers
+	childVouchers, err := s.childVoucherStore.FindVouchersByChildID(ctx, childID)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "failed to fetch child vouchers")
+	}
+	voucherNumbers := make([]string, 0, len(childVouchers))
+	for _, v := range childVouchers {
+		voucherNumbers = append(voucherNumbers, v.VoucherNumber)
 	}
 
 	response := &models.ChildBillingHistoryResponse{
@@ -814,13 +979,10 @@ func (s *GovernmentFundingBillService) ChildBillingHistory(ctx context.Context, 
 			CorrectionTotal: correctionTotal,
 		}
 
-		// Find the contract active on this bill date with matching voucher
+		// Find the contract active on this bill date
 		var activeContract *models.ChildContract
 		for i := range child.Contracts {
 			c := &child.Contracts[i]
-			if c.VoucherNumber == nil || models.VoucherBase(*c.VoucherNumber) != models.VoucherBase(entry.Child.VoucherNumber) {
-				continue
-			}
 			if c.IsActiveOn(entry.BillFrom) {
 				activeContract = c
 				break
@@ -915,23 +1077,39 @@ func (s *GovernmentFundingBillService) ChildrenBillingSummary(ctx context.Contex
 		return nil, apperror.InternalWrap(err, "failed to fetch bill date vouchers")
 	}
 
-	// 3. All contracts with voucher numbers for this org
-	contracts, err := s.childStore.FindContractsByOrganizationWithVouchers(ctx, orgID)
+	// 3. All vouchers for this org and their child mappings
+	orgVouchers, err := s.childVoucherStore.FindVouchersByOrganization(ctx, orgID)
 	if err != nil {
-		return nil, apperror.InternalWrap(err, "failed to fetch contracts with vouchers")
+		return nil, apperror.InternalWrap(err, "failed to fetch vouchers for organization")
 	}
 
-	// Build lookup: voucher number → []ChildContract (a voucher belongs to one child,
-	// but we keep a slice because we need to check IsActiveOn for each bill date)
-	contractsByVoucher := make(map[string][]models.ChildContract, len(contracts))
-	childIDByVoucher := make(map[string]uint, len(contracts))
+	// Build lookup: voucher number → childID
+	childIDByVoucher := make(map[string]uint, len(orgVouchers))
 	childIDs := make(map[uint]bool)
-	for _, c := range contracts {
-		if c.VoucherNumber != nil {
-			v := models.VoucherBase(*c.VoucherNumber)
-			contractsByVoucher[v] = append(contractsByVoucher[v], c)
-			childIDByVoucher[v] = c.ChildID
-			childIDs[c.ChildID] = true
+	for _, v := range orgVouchers {
+		childIDByVoucher[v.VoucherNumber] = v.ChildID
+		childIDs[v.ChildID] = true
+	}
+
+	// Load all contracts for children that have vouchers, grouped by child
+	allChildIDs := make([]uint, 0, len(childIDs))
+	for id := range childIDs {
+		allChildIDs = append(allChildIDs, id)
+	}
+	// Fetch contracts for all children with vouchers
+	contractsByChild := make(map[uint][]models.ChildContract)
+	for _, cid := range allChildIDs {
+		c, err := s.childStore.FindByIDAndOrg(ctx, cid, orgID)
+		if err == nil {
+			contractsByChild[c.ID] = c.Contracts
+		}
+	}
+
+	// Build voucher → []ChildContract for active-on lookups
+	contractsByVoucher := make(map[string][]models.ChildContract, len(orgVouchers))
+	for _, v := range orgVouchers {
+		if contracts, ok := contractsByChild[v.ChildID]; ok {
+			contractsByVoucher[v.VoucherNumber] = contracts
 		}
 	}
 
@@ -998,11 +1176,6 @@ func (s *GovernmentFundingBillService) ChildrenBillingSummary(ctx context.Contex
 	// 7. Compute contract months per child (how many months their voucher contracts cover)
 	now := time.Now().UTC()
 	contractMonthsByChild := make(map[uint]int)
-	// Group contracts by child
-	contractsByChild := make(map[uint][]models.ChildContract)
-	for _, c := range contracts {
-		contractsByChild[c.ChildID] = append(contractsByChild[c.ChildID], c)
-	}
 	for childID, childContracts := range contractsByChild {
 		months := 0
 		for _, c := range childContracts {

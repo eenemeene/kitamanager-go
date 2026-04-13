@@ -65,6 +65,7 @@ type appStores struct {
 	audit                       *store.AuditStore
 	token                       *store.TokenStore
 	governmentFundingBillPeriod *store.GovernmentFundingBillPeriodStore
+	childVoucher                *store.ChildVoucherStore
 }
 
 // appServices holds all business logic layer instances.
@@ -186,6 +187,7 @@ func initStores(db *gorm.DB) *appStores {
 		audit:                       store.NewAuditStore(db),
 		token:                       store.NewTokenStore(db),
 		governmentFundingBillPeriod: store.NewGovernmentFundingBillPeriodStore(db),
+		childVoucher:                store.NewChildVoucherStore(db),
 	}
 }
 
@@ -225,7 +227,7 @@ func initServices(s *appStores, cfg *config.Config, transactor store.Transactor)
 		budgetItem:            service.NewBudgetItemService(s.budgetItem, transactor),
 		stepPromotion:         service.NewStepPromotionService(s.payPlan, s.employee),
 		statistics:            service.NewStatisticsService(s.child, s.employee, s.organization, s.governmentFunding, s.payPlan, s.budgetItem, s.section, s.governmentFundingBillPeriod),
-		governmentFundingBill: service.NewGovernmentFundingBillService(s.child, s.governmentFundingBillPeriod, s.organization, s.governmentFunding),
+		governmentFundingBill: service.NewGovernmentFundingBillService(s.child, s.childVoucher, s.governmentFundingBillPeriod, s.organization, s.governmentFunding),
 		email:                 service.NewEmailService(cfg),
 	}
 }

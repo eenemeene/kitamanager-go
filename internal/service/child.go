@@ -120,11 +120,10 @@ func (s *ChildService) Import(ctx context.Context, orgID uint, data *models.Chil
 				}
 
 				req := &models.ChildContractCreateRequest{
-					From:          c.From,
-					To:            c.To,
-					SectionID:     sectionID,
-					VoucherNumber: c.VoucherNumber,
-					Properties:    c.Properties,
+					From:       c.From,
+					To:         c.To,
+					SectionID:  sectionID,
+					Properties: c.Properties,
 				}
 				if _, err := s.CreateContract(txCtx, childID, orgID, req); err != nil {
 					return err

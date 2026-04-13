@@ -90,11 +90,9 @@ func TestChild_ToResponse(t *testing.T) {
 
 func TestChildContract_ToResponse(t *testing.T) {
 	t.Run("without section", func(t *testing.T) {
-		voucher := "GB-12345678901-02"
 		contract := ChildContract{
-			ID:            1,
-			ChildID:       2,
-			VoucherNumber: &voucher,
+			ID:      1,
+			ChildID: 2,
 			BaseContract: BaseContract{
 				Period:    Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
 				SectionID: 3,
@@ -108,9 +106,6 @@ func TestChildContract_ToResponse(t *testing.T) {
 		}
 		if resp.SectionName != nil {
 			t.Errorf("SectionName = %v, want nil", resp.SectionName)
-		}
-		if resp.VoucherNumber == nil || *resp.VoucherNumber != voucher {
-			t.Errorf("VoucherNumber = %v, want %q", resp.VoucherNumber, voucher)
 		}
 	})
 

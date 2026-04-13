@@ -276,6 +276,7 @@ func allModels() []any {
 		&models.GovernmentFundingBillPeriod{},
 		&models.GovernmentFundingBillChild{},
 		&models.GovernmentFundingBillPayment{},
+		&models.ChildVoucher{},
 	}
 }
 
