@@ -102,12 +102,17 @@ func (s *GovernmentFundingBillService) ProcessISBJ(ctx context.Context, orgID ui
 			District:      child.District,
 		}
 		for rowIdx, row := range child.Rows {
+			rowType := models.RowTypeRegular
+			if row.IsCorrection {
+				rowType = models.RowTypeCorrection
+			}
 			for _, amt := range row.Amounts {
 				billChild.Payments = append(billChild.Payments, models.GovernmentFundingBillPayment{
 					Key:      amt.Key,
 					Value:    amt.Value,
 					Amount:   amt.Amount,
 					RowIndex: rowIdx,
+					RowType:  rowType,
 				})
 			}
 		}
@@ -378,13 +383,15 @@ func (s *GovernmentFundingBillService) Compare(ctx context.Context, billID, orgI
 	matchedChildIDs := make(map[uint]bool)
 
 	for _, billChild := range period.Children {
-		billAmounts, billTotal := billPaymentsToAmountMap(billChild.Payments)
+		billAmounts, billTotal := billPaymentsToAmountMap(billChild.Payments, models.RowTypeRegular)
+		_, correctionTotal := billPaymentsToAmountMap(billChild.Payments, models.RowTypeCorrection)
 
 		compChild := models.FundingComparisonChild{
-			VoucherNumber: billChild.VoucherNumber,
-			ChildName:     billChild.ChildName,
-			BirthDate:     billChild.BirthDate,
-			BillTotal:     billTotal,
+			VoucherNumber:   billChild.VoucherNumber,
+			ChildName:       billChild.ChildName,
+			BirthDate:       billChild.BirthDate,
+			BillTotal:       billTotal,
+			CorrectionTotal: correctionTotal,
 		}
 
 		contract, matched := contractMap[billChild.VoucherNumber]
@@ -508,10 +515,14 @@ func (s *GovernmentFundingBillService) Compare(ctx context.Context, billID, orgI
 }
 
 // billPaymentsToAmountMap aggregates bill payments into a "key:value" → total amount map and computes the total.
-func billPaymentsToAmountMap(payments []models.GovernmentFundingBillPayment) (map[string]int, int) {
+// If rowType is non-empty, only payments with that RowType are included.
+func billPaymentsToAmountMap(payments []models.GovernmentFundingBillPayment, rowType string) (map[string]int, int) {
 	amounts := make(map[string]int, len(payments))
 	total := 0
 	for _, p := range payments {
+		if rowType != "" && p.RowType != rowType {
+			continue
+		}
 		amounts[p.Key+":"+p.Value] += p.Amount
 		total += p.Amount
 	}
@@ -786,18 +797,20 @@ func (s *GovernmentFundingBillService) ChildBillingHistory(ctx context.Context, 
 	hasCalc := false
 
 	for _, entry := range billEntries {
-		billAmounts, billTotal := billPaymentsToAmountMap(entry.Child.Payments)
+		billAmounts, billTotal := billPaymentsToAmountMap(entry.Child.Payments, models.RowTypeRegular)
+		_, correctionTotal := billPaymentsToAmountMap(entry.Child.Payments, models.RowTypeCorrection)
 		totalBilled += billTotal
 
 		entryResp := models.ChildBillingHistoryEntryResponse{
-			BillID:        entry.BillPeriodID,
-			BillFrom:      entry.BillFrom.Format(models.DateFormat),
-			BillTo:        formatToDate(entry.BillTo),
-			FacilityName:  entry.FacilityName,
-			VoucherNumber: entry.Child.VoucherNumber,
-			ChildName:     entry.Child.ChildName,
-			BirthDate:     entry.Child.BirthDate,
-			BillTotal:     billTotal,
+			BillID:          entry.BillPeriodID,
+			BillFrom:        entry.BillFrom.Format(models.DateFormat),
+			BillTo:          formatToDate(entry.BillTo),
+			FacilityName:    entry.FacilityName,
+			VoucherNumber:   entry.Child.VoucherNumber,
+			ChildName:       entry.Child.ChildName,
+			BirthDate:       entry.Child.BirthDate,
+			BillTotal:       billTotal,
+			CorrectionTotal: correctionTotal,
 		}
 
 		// Find the contract active on this bill date with matching voucher

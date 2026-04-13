@@ -1,6 +1,7 @@
 package isbj
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -1227,5 +1228,357 @@ func TestParseBillingMonthMergedLabelCells(t *testing.T) {
 	expected := time.Date(2025, 7, 1, 0, 0, 0, 0, time.UTC)
 	if !billingMonth.Equal(expected) {
 		t.Errorf("ParseBillingMonth() = %v, expected %v", billingMonth, expected)
+	}
+}
+
+func TestParseMonatTyp(t *testing.T) {
+	tests := []struct {
+		input   string
+		wantY   int
+		wantM   time.Month
+		wantErr bool
+	}{
+		{"01.24", 2024, 1, false},
+		{"12.20", 2020, 12, false},
+		{"06.99", 2099, 6, false},
+		{"", 0, 0, false}, // empty is ok, returns zero time
+		{"invalid", 0, 0, true},
+		{"13.24", 0, 0, true}, // month > 12
+		{"00.24", 0, 0, true}, // month 0
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got, err := parseMonatTyp(tt.input)
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("parseMonatTyp(%q) expected error, got %v", tt.input, got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("parseMonatTyp(%q) error = %v", tt.input, err)
+			}
+			if tt.input == "" {
+				if !got.IsZero() {
+					t.Errorf("parseMonatTyp(%q) = %v, want zero", tt.input, got)
+				}
+				return
+			}
+			if got.Year() != tt.wantY || got.Month() != tt.wantM || got.Day() != 1 {
+				t.Errorf("parseMonatTyp(%q) = %v, want %d-%02d-01", tt.input, got, tt.wantY, tt.wantM)
+			}
+		})
+	}
+}
+
+func TestParseVertragTypField(t *testing.T) {
+	f, err := OpenSenatsabrechnung(testFile)
+	if err != nil {
+		t.Fatalf("OpenSenatsabrechnung() error = %v", err)
+	}
+	defer func() { _ = f.Close() }()
+
+	v, err := ParseVertrag(f)
+	if err != nil {
+		t.Fatalf("ParseVertrag() error = %v", err)
+	}
+
+	aCount := 0
+	kCount := 0
+	for _, k := range v.Kinder {
+		switch k.Typ {
+		case "A":
+			aCount++
+		case "K":
+			kCount++
+		default:
+			t.Errorf("unexpected Typ %q for %s", k.Typ, k.Gutscheinnummer)
+		}
+	}
+
+	if aCount == 0 {
+		t.Error("expected at least one A (regular) row")
+	}
+	// The test file may or may not have K rows — just verify all rows have a valid type
+	t.Logf("Parsed %d A rows and %d K rows", aCount, kCount)
+}
+
+func TestParseVertragAbrechnungsmonat(t *testing.T) {
+	f, err := OpenSenatsabrechnung(testFile)
+	if err != nil {
+		t.Fatalf("OpenSenatsabrechnung() error = %v", err)
+	}
+	defer func() { _ = f.Close() }()
+
+	v, err := ParseVertrag(f)
+	if err != nil {
+		t.Fatalf("ParseVertrag() error = %v", err)
+	}
+
+	for _, k := range v.Kinder {
+		if k.Abrechnungsmonat.IsZero() {
+			t.Errorf("child %s has zero Abrechnungsmonat", k.Gutscheinnummer)
+		}
+		if k.Abrechnungsmonat.Day() != 1 {
+			t.Errorf("child %s Abrechnungsmonat day = %d, want 1", k.Gutscheinnummer, k.Abrechnungsmonat.Day())
+		}
+	}
+}
+
+func TestParseVertragWithCorrections(t *testing.T) {
+	// Create an Excel file with both A and K rows
+	f := excelize.NewFile()
+	sheet := "Vertragsübersicht"
+	_ = f.SetSheetName("Sheet1", sheet)
+
+	// Header row 6 (matching real file layout)
+	_ = f.SetCellValue(sheet, "C6", "Monat/ Typ")
+	_ = f.MergeCell(sheet, "C6", "D7")
+	_ = f.SetCellValue(sheet, "E6", "GutscheinNr.")
+	_ = f.SetCellValue(sheet, "F6", "Name des Kindes")
+	_ = f.SetCellValue(sheet, "G6", "Geb.-datum")
+	_ = f.SetCellValue(sheet, "I6", "QM")
+	_ = f.SetCellValue(sheet, "J6", "MSS")
+	_ = f.SetCellValue(sheet, "K6", "Hs")
+	_ = f.SetCellValue(sheet, "L6", "SpH")
+	_ = f.SetCellValue(sheet, "M6", "Registr. ab")
+	_ = f.SetCellValue(sheet, "N6", "Betreu.-umfang")
+	_ = f.SetCellValue(sheet, "O6", "Be-zirk")
+	_ = f.SetCellValue(sheet, "P6", "Basis-entgelt")
+	_ = f.SetCellValue(sheet, "Q6", "Abzug o.M.")
+	_ = f.SetCellValue(sheet, "R6", "Anteil Eltern")
+	_ = f.MergeCell(sheet, "R6", "S6")
+	_ = f.SetCellValue(sheet, "R7", "Betr.")
+	_ = f.SetCellValue(sheet, "S7", "Essen")
+	_ = f.SetCellValue(sheet, "T6", "BuT")
+	_ = f.SetCellValue(sheet, "U6", "Anteil Bezirk")
+	_ = f.SetCellValue(sheet, "V6", "Zuschläge")
+	_ = f.MergeCell(sheet, "V6", "Y6")
+	_ = f.SetCellValue(sheet, "V7", "QM")
+	_ = f.SetCellValue(sheet, "W7", "MSS")
+	_ = f.SetCellValue(sheet, "X7", "NdHs")
+	_ = f.SetCellValue(sheet, "Y7", "SpH")
+	_ = f.SetCellValue(sheet, "Z6", "Abrechn.-summe")
+
+	// Facility row 8
+	_ = f.SetCellValue(sheet, "C8", "11170130-Test Kita")
+
+	// K row (correction for January): row 9
+	_ = f.SetCellValue(sheet, "C9", "01.25")
+	_ = f.SetCellValue(sheet, "D9", "K")
+	_ = f.SetCellValue(sheet, "E9", "GB-11111111111-01")
+	_ = f.SetCellValue(sheet, "F9", "Test,Kind")
+	_ = f.SetCellValue(sheet, "G9", "03.20")
+	_ = f.SetCellValue(sheet, "I9", "nein")
+	_ = f.SetCellValue(sheet, "J9", "nein")
+	_ = f.SetCellValue(sheet, "K9", "D")
+	_ = f.SetCellValue(sheet, "L9", "N")
+	_ = f.SetCellValue(sheet, "M9", "01.21")
+	_ = f.SetCellValue(sheet, "N9", "ganztags")
+	_ = f.SetCellValue(sheet, "O9", "11")
+	_ = f.SetCellValue(sheet, "P9", "56.02") // correction amount
+	_ = f.SetCellValue(sheet, "Q9", "0.00")
+	_ = f.SetCellValue(sheet, "R9", "0.00")
+	_ = f.SetCellValue(sheet, "S9", "0.00")
+	_ = f.SetCellValue(sheet, "T9", "0.00")
+	_ = f.SetCellValue(sheet, "U9", "0.00")
+	_ = f.SetCellValue(sheet, "V9", "0.00")
+	_ = f.SetCellValue(sheet, "W9", "0.00")
+	_ = f.SetCellValue(sheet, "X9", "0.00")
+	_ = f.SetCellValue(sheet, "Y9", "0.00")
+	_ = f.SetCellValue(sheet, "Z9", "56.02")
+
+	// A row (regular billing for March): row 10
+	_ = f.SetCellValue(sheet, "C10", "03.25")
+	_ = f.SetCellValue(sheet, "D10", "A")
+	_ = f.SetCellValue(sheet, "E10", "GB-11111111111-01")
+	_ = f.SetCellValue(sheet, "F10", "Test,Kind")
+	_ = f.SetCellValue(sheet, "G10", "03.20")
+	_ = f.SetCellValue(sheet, "I10", "nein")
+	_ = f.SetCellValue(sheet, "J10", "nein")
+	_ = f.SetCellValue(sheet, "K10", "D")
+	_ = f.SetCellValue(sheet, "L10", "N")
+	_ = f.SetCellValue(sheet, "M10", "01.21")
+	_ = f.SetCellValue(sheet, "N10", "ganztags")
+	_ = f.SetCellValue(sheet, "O10", "11")
+	_ = f.SetCellValue(sheet, "P10", "969.50")
+	_ = f.SetCellValue(sheet, "Q10", "0.00")
+	_ = f.SetCellValue(sheet, "R10", "0.00")
+	_ = f.SetCellValue(sheet, "S10", "23.00")
+	_ = f.SetCellValue(sheet, "T10", "0.00")
+	_ = f.SetCellValue(sheet, "U10", "0.00")
+	_ = f.SetCellValue(sheet, "V10", "0.00")
+	_ = f.SetCellValue(sheet, "W10", "0.00")
+	_ = f.SetCellValue(sheet, "X10", "0.00")
+	_ = f.SetCellValue(sheet, "Y10", "0.00")
+	_ = f.SetCellValue(sheet, "Z10", "946.50")
+
+	// Second child, A only: row 11
+	_ = f.SetCellValue(sheet, "C11", "03.25")
+	_ = f.SetCellValue(sheet, "D11", "A")
+	_ = f.SetCellValue(sheet, "E11", "GB-22222222222-01")
+	_ = f.SetCellValue(sheet, "F11", "Andere,Kind")
+	_ = f.SetCellValue(sheet, "G11", "06.21")
+	_ = f.SetCellValue(sheet, "I11", "nein")
+	_ = f.SetCellValue(sheet, "J11", "nein")
+	_ = f.SetCellValue(sheet, "K11", "D")
+	_ = f.SetCellValue(sheet, "L11", "N")
+	_ = f.SetCellValue(sheet, "M11", "02.22")
+	_ = f.SetCellValue(sheet, "N11", "ganztags")
+	_ = f.SetCellValue(sheet, "O11", "11")
+	_ = f.SetCellValue(sheet, "P11", "814.00")
+	_ = f.SetCellValue(sheet, "Q11", "0.00")
+	_ = f.SetCellValue(sheet, "R11", "0.00")
+	_ = f.SetCellValue(sheet, "S11", "23.00")
+	_ = f.SetCellValue(sheet, "T11", "0.00")
+	_ = f.SetCellValue(sheet, "U11", "0.00")
+	_ = f.SetCellValue(sheet, "V11", "0.00")
+	_ = f.SetCellValue(sheet, "W11", "0.00")
+	_ = f.SetCellValue(sheet, "X11", "0.00")
+	_ = f.SetCellValue(sheet, "Y11", "0.00")
+	_ = f.SetCellValue(sheet, "Z11", "791.00")
+
+	v, err := ParseVertrag(f)
+	if err != nil {
+		t.Fatalf("ParseVertrag() error = %v", err)
+	}
+
+	if len(v.Kinder) != 3 {
+		t.Fatalf("expected 3 children rows, got %d", len(v.Kinder))
+	}
+
+	// Row 0: K correction for January
+	k0 := v.Kinder[0]
+	if k0.Typ != "K" {
+		t.Errorf("row 0: expected Typ 'K', got %q", k0.Typ)
+	}
+	if k0.Gutscheinnummer != "GB-11111111111-01" {
+		t.Errorf("row 0: wrong voucher %q", k0.Gutscheinnummer)
+	}
+	if k0.Abrechnungsmonat.Month() != 1 || k0.Abrechnungsmonat.Year() != 2025 {
+		t.Errorf("row 0: expected Abrechnungsmonat 2025-01, got %v", k0.Abrechnungsmonat)
+	}
+	if k0.Summe != 5602 { // 56.02 EUR in cents
+		t.Errorf("row 0: expected Summe 5602, got %d", k0.Summe)
+	}
+
+	// Row 1: A regular for March
+	k1 := v.Kinder[1]
+	if k1.Typ != "A" {
+		t.Errorf("row 1: expected Typ 'A', got %q", k1.Typ)
+	}
+	if k1.Abrechnungsmonat.Month() != 3 || k1.Abrechnungsmonat.Year() != 2025 {
+		t.Errorf("row 1: expected Abrechnungsmonat 2025-03, got %v", k1.Abrechnungsmonat)
+	}
+	if k1.Summe != 94650 { // 946.50 EUR in cents
+		t.Errorf("row 1: expected Summe 94650, got %d", k1.Summe)
+	}
+
+	// Row 2: A regular, different child
+	k2 := v.Kinder[2]
+	if k2.Typ != "A" {
+		t.Errorf("row 2: expected Typ 'A', got %q", k2.Typ)
+	}
+	if k2.Gutscheinnummer != "GB-22222222222-01" {
+		t.Errorf("row 2: wrong voucher %q", k2.Gutscheinnummer)
+	}
+}
+
+func TestParseVertragMultipleCorrections(t *testing.T) {
+	// Test with multiple K rows for same child (like Dec 2023 Praxis correction)
+	f := excelize.NewFile()
+	sheet := "Vertragsübersicht"
+	_ = f.SetSheetName("Sheet1", sheet)
+
+	// Minimal headers
+	_ = f.SetCellValue(sheet, "C6", "Monat/ Typ")
+	_ = f.MergeCell(sheet, "C6", "D7")
+	_ = f.SetCellValue(sheet, "E6", "GutscheinNr.")
+	_ = f.SetCellValue(sheet, "F6", "Name des Kindes")
+	_ = f.SetCellValue(sheet, "G6", "Geb.-datum")
+	_ = f.SetCellValue(sheet, "I6", "QM")
+	_ = f.SetCellValue(sheet, "J6", "MSS")
+	_ = f.SetCellValue(sheet, "K6", "Hs")
+	_ = f.SetCellValue(sheet, "L6", "SpH")
+	_ = f.SetCellValue(sheet, "M6", "Registr. ab")
+	_ = f.SetCellValue(sheet, "N6", "Betreu.-umfang")
+	_ = f.SetCellValue(sheet, "O6", "Be-zirk")
+	_ = f.SetCellValue(sheet, "P6", "Basis-entgelt")
+	_ = f.SetCellValue(sheet, "Q6", "Abzug o.M.")
+	_ = f.SetCellValue(sheet, "R6", "Anteil Eltern")
+	_ = f.MergeCell(sheet, "R6", "S6")
+	_ = f.SetCellValue(sheet, "R7", "Betr.")
+	_ = f.SetCellValue(sheet, "S7", "Essen")
+	_ = f.SetCellValue(sheet, "T6", "BuT")
+	_ = f.SetCellValue(sheet, "U6", "Anteil Bezirk")
+	_ = f.SetCellValue(sheet, "V6", "Zuschläge")
+	_ = f.MergeCell(sheet, "V6", "Y6")
+	_ = f.SetCellValue(sheet, "V7", "QM")
+	_ = f.SetCellValue(sheet, "W7", "MSS")
+	_ = f.SetCellValue(sheet, "X7", "NdHs")
+	_ = f.SetCellValue(sheet, "Y7", "SpH")
+	_ = f.SetCellValue(sheet, "Z6", "Abrechn.-summe")
+
+	_ = f.SetCellValue(sheet, "C8", "11170130-Test Kita")
+
+	// 3 K rows for months Jan-Mar + 1 A row (like Praxis correction pattern)
+	voucher := "GB-33333333333-01"
+	for i, month := range []string{"01.25", "02.25", "03.25"} {
+		row := 9 + i
+		_ = f.SetCellValue(sheet, fmt.Sprintf("C%d", row), month)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("D%d", row), "K")
+		_ = f.SetCellValue(sheet, fmt.Sprintf("E%d", row), voucher)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("F%d", row), "Praxis,Kind")
+		_ = f.SetCellValue(sheet, fmt.Sprintf("G%d", row), "01.20")
+		_ = f.SetCellValue(sheet, fmt.Sprintf("N%d", row), "ganztags")
+		_ = f.SetCellValue(sheet, fmt.Sprintf("O%d", row), "11")
+		_ = f.SetCellValue(sheet, fmt.Sprintf("P%d", row), "1.02")
+		_ = f.SetCellValue(sheet, fmt.Sprintf("Z%d", row), "1.02")
+	}
+	// A row
+	_ = f.SetCellValue(sheet, "C12", "04.25")
+	_ = f.SetCellValue(sheet, "D12", "A")
+	_ = f.SetCellValue(sheet, "E12", voucher)
+	_ = f.SetCellValue(sheet, "F12", "Praxis,Kind")
+	_ = f.SetCellValue(sheet, "G12", "01.20")
+	_ = f.SetCellValue(sheet, "N12", "ganztags")
+	_ = f.SetCellValue(sheet, "O12", "11")
+	_ = f.SetCellValue(sheet, "P12", "969.50")
+	_ = f.SetCellValue(sheet, "S12", "23.00")
+	_ = f.SetCellValue(sheet, "Z12", "946.50")
+
+	v, err := ParseVertrag(f)
+	if err != nil {
+		t.Fatalf("ParseVertrag() error = %v", err)
+	}
+
+	if len(v.Kinder) != 4 {
+		t.Fatalf("expected 4 rows, got %d", len(v.Kinder))
+	}
+
+	// Verify K rows
+	for i := range 3 {
+		if v.Kinder[i].Typ != "K" {
+			t.Errorf("row %d: expected 'K', got %q", i, v.Kinder[i].Typ)
+		}
+		if v.Kinder[i].Summe != 102 {
+			t.Errorf("row %d: expected 102 cents, got %d", i, v.Kinder[i].Summe)
+		}
+	}
+
+	// Verify months on K rows
+	expectedMonths := []time.Month{1, 2, 3}
+	for i, m := range expectedMonths {
+		if v.Kinder[i].Abrechnungsmonat.Month() != m {
+			t.Errorf("row %d: expected month %d, got %d", i, m, v.Kinder[i].Abrechnungsmonat.Month())
+		}
+	}
+
+	// Verify A row
+	if v.Kinder[3].Typ != "A" {
+		t.Errorf("row 3: expected 'A', got %q", v.Kinder[3].Typ)
+	}
+	if v.Kinder[3].Summe != 94650 {
+		t.Errorf("row 3: expected 94650, got %d", v.Kinder[3].Summe)
 	}
 }

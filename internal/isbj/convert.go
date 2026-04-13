@@ -18,6 +18,7 @@ type SettlementAmount struct {
 
 // ConvertedChildRow represents one Excel row (one billing line item).
 type ConvertedChildRow struct {
+	IsCorrection   bool               `json:"is_correction"` // true if this row is a correction (Typ="K"), false for regular billing (Typ="A")
 	TotalRowAmount int                `json:"total_row_amount"`
 	Amounts        []SettlementAmount `json:"amounts"`
 }
@@ -176,6 +177,7 @@ func convertChild(kind *Kind) (*ConvertedChildRow, *convertChildMeta, error) {
 	}
 
 	return &ConvertedChildRow{
+			IsCorrection:   kind.Typ == "K",
 			TotalRowAmount: kind.Summe,
 			Amounts:        amounts,
 		}, &convertChildMeta{
