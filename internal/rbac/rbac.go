@@ -2,6 +2,7 @@ package rbac
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/casbin/casbin/v3"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
@@ -76,7 +77,7 @@ func NewEnforcer(db *gorm.DB, modelPath string) (*Enforcer, error) {
 }
 
 // NewEnforcerWithAdapter creates a new RBAC enforcer with a custom adapter (for testing).
-func NewEnforcerWithAdapter(adapter interface{}, modelPath string) (*Enforcer, error) {
+func NewEnforcerWithAdapter(adapter any, modelPath string) (*Enforcer, error) {
 	e, err := casbin.NewEnforcer(modelPath, adapter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create casbin enforcer: %w", err)
@@ -311,12 +312,7 @@ func (e *Enforcer) IsSuperAdmin(userID uint) (bool, error) {
 	sub := fmt.Sprintf("user:%d", userID)
 	roles := e.GetRolesForUserInDomain(sub, "*")
 
-	for _, role := range roles {
-		if role == RoleSuperAdmin {
-			return true, nil
-		}
-	}
-	return false, nil
+	return slices.Contains(roles, RoleSuperAdmin), nil
 }
 
 // CheckPermission checks if a user has permission via Casbin grouping policies.

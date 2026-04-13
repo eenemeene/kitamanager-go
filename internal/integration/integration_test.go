@@ -200,7 +200,7 @@ func cleanupBetweenTests() {
 }
 
 // Helper functions
-func performRequest(method, path string, body interface{}) *httptest.ResponseRecorder {
+func performRequest(method, path string, body any) *httptest.ResponseRecorder {
 	var reqBody *bytes.Buffer
 	if body != nil {
 		jsonBody, _ := json.Marshal(body)
@@ -217,7 +217,7 @@ func performRequest(method, path string, body interface{}) *httptest.ResponseRec
 	return w
 }
 
-func parseResponse(t *testing.T, w *httptest.ResponseRecorder, v interface{}) {
+func parseResponse(t *testing.T, w *httptest.ResponseRecorder, v any) {
 	t.Helper()
 	if err := json.Unmarshal(w.Body.Bytes(), v); err != nil {
 		t.Fatalf("failed to parse response: %v", err)
@@ -240,7 +240,7 @@ func TestOrganizationCRUD(t *testing.T) {
 	cleanupBetweenTests()
 
 	// Create
-	createResp := performRequest("POST", "/api/v1/organizations", map[string]interface{}{
+	createResp := performRequest("POST", "/api/v1/organizations", map[string]any{
 		"name":                 "Test Organization",
 		"active":               true,
 		"state":                "berlin",
@@ -269,7 +269,7 @@ func TestOrganizationCRUD(t *testing.T) {
 	}
 
 	// Update
-	updateResp := performRequest("PUT", fmt.Sprintf("/api/v1/organizations/%d", created.ID), map[string]interface{}{
+	updateResp := performRequest("PUT", fmt.Sprintf("/api/v1/organizations/%d", created.ID), map[string]any{
 		"name": "Updated Organization",
 	})
 	if updateResp.Code != http.StatusOK {
@@ -311,7 +311,7 @@ func TestUserCreationWithOrganization(t *testing.T) {
 	cleanupBetweenTests()
 
 	// Create organization first
-	orgResp := performRequest("POST", "/api/v1/organizations", map[string]interface{}{
+	orgResp := performRequest("POST", "/api/v1/organizations", map[string]any{
 		"name":                 "User Test Org",
 		"active":               true,
 		"state":                "berlin",
@@ -322,7 +322,7 @@ func TestUserCreationWithOrganization(t *testing.T) {
 	}
 
 	// Create user
-	userResp := performRequest("POST", "/api/v1/users", map[string]interface{}{
+	userResp := performRequest("POST", "/api/v1/users", map[string]any{
 		"name":     "Test User",
 		"email":    "test@example.com",
 		"password": "password123",
@@ -346,7 +346,7 @@ func TestEmployeeWithContracts(t *testing.T) {
 	cleanupBetweenTests()
 
 	// Create organization
-	orgResp := performRequest("POST", "/api/v1/organizations", map[string]interface{}{
+	orgResp := performRequest("POST", "/api/v1/organizations", map[string]any{
 		"name":                 "Employee Test Org",
 		"active":               true,
 		"state":                "berlin",
@@ -356,7 +356,7 @@ func TestEmployeeWithContracts(t *testing.T) {
 	parseResponse(t, orgResp, &org)
 
 	// Create employee (using org-scoped route)
-	empResp := performRequest("POST", fmt.Sprintf("/api/v1/organizations/%d/employees", org.ID), map[string]interface{}{
+	empResp := performRequest("POST", fmt.Sprintf("/api/v1/organizations/%d/employees", org.ID), map[string]any{
 		"first_name": "John",
 		"last_name":  "Doe",
 		"gender":     "male",
@@ -382,7 +382,7 @@ func TestChildWithContracts(t *testing.T) {
 	cleanupBetweenTests()
 
 	// Create organization
-	orgResp := performRequest("POST", "/api/v1/organizations", map[string]interface{}{
+	orgResp := performRequest("POST", "/api/v1/organizations", map[string]any{
 		"name":                 "Child Test Org",
 		"active":               true,
 		"state":                "berlin",
@@ -392,7 +392,7 @@ func TestChildWithContracts(t *testing.T) {
 	parseResponse(t, orgResp, &org)
 
 	// Create child (using org-scoped route)
-	childResp := performRequest("POST", fmt.Sprintf("/api/v1/organizations/%d/children", org.ID), map[string]interface{}{
+	childResp := performRequest("POST", fmt.Sprintf("/api/v1/organizations/%d/children", org.ID), map[string]any{
 		"first_name": "Emma",
 		"last_name":  "Smith",
 		"gender":     "female",
@@ -415,9 +415,9 @@ func TestConcurrentOrganizationCreation(t *testing.T) {
 	// Test concurrent creation to ensure no race conditions
 	done := make(chan bool, 5)
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		go func(idx int) {
-			resp := performRequest("POST", "/api/v1/organizations", map[string]interface{}{
+			resp := performRequest("POST", "/api/v1/organizations", map[string]any{
 				"name":                 fmt.Sprintf("Concurrent Org %d", idx),
 				"active":               true,
 				"state":                "berlin",
@@ -431,7 +431,7 @@ func TestConcurrentOrganizationCreation(t *testing.T) {
 	}
 
 	// Wait for all goroutines
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		<-done
 	}
 

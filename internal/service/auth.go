@@ -261,7 +261,7 @@ func generateJTI() (string, error) {
 
 // parseAndValidateRefreshToken parses a JWT string and validates it is a refresh token.
 func (s *AuthService) parseAndValidateRefreshToken(tokenStr string) (jwt.MapClaims, error) {
-	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, jwt.ErrSignatureInvalid
 		}
@@ -287,7 +287,7 @@ func (s *AuthService) parseAndValidateRefreshToken(tokenStr string) (jwt.MapClai
 
 // revokeTokenString parses a JWT to extract user_id and exp, then revokes it.
 func (s *AuthService) revokeTokenString(ctx context.Context, tokenStr string) {
-	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (any, error) {
 		return []byte(s.jwtSecret), nil
 	})
 	if err != nil || !token.Valid {

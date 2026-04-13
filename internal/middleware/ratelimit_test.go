@@ -14,7 +14,7 @@ func TestRateLimiter_Allow(t *testing.T) {
 	rl := NewRateLimiter(3, time.Minute)
 
 	// First 3 requests should be allowed
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if !rl.Allow("192.168.1.1") {
 			t.Errorf("request %d should be allowed", i+1)
 		}
@@ -93,7 +93,7 @@ func TestRateLimiter_Concurrent(t *testing.T) {
 	allowed := make(chan bool, 200)
 
 	// Launch 200 concurrent requests
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -148,7 +148,7 @@ func TestRateLimitMiddleware(t *testing.T) {
 	})
 
 	// First 2 requests should succeed
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("POST", "/login", nil)
 		req.RemoteAddr = "192.168.1.1:12345"
@@ -214,7 +214,7 @@ func TestLoginRateLimiter(t *testing.T) {
 	rl := LoginRateLimiter(5)
 
 	// Should allow 5 requests
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		if !rl.Allow("192.168.1.1") {
 			t.Errorf("request %d should be allowed (login limiter allows 5)", i+1)
 		}
@@ -258,7 +258,7 @@ func TestAPIRateLimiter(t *testing.T) {
 		t.Fatal("APIRateLimiter(3) should not return nil")
 	}
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if !rl.Allow("192.168.1.1") {
 			t.Errorf("request %d should be allowed", i+1)
 		}
@@ -293,7 +293,7 @@ func TestRateLimitMutations_GETPassesThrough(t *testing.T) {
 	})
 
 	// Multiple GET requests should all pass through (not rate-limited)
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/api/resource", nil)
 		req.RemoteAddr = "192.168.1.1:12345"
@@ -317,7 +317,7 @@ func TestRateLimitMutations_POSTIsRateLimited(t *testing.T) {
 	})
 
 	// First 2 POST requests should succeed
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("POST", "/api/resource", nil)
 		req.RemoteAddr = "192.168.1.1:12345"

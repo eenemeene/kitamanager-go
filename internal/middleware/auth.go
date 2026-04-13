@@ -68,7 +68,7 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 			}
 			tokenString = parts[1]
 		}
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, jwt.ErrSignatureInvalid
 			}

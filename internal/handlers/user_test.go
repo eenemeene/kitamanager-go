@@ -196,7 +196,7 @@ func TestUserHandler_Create_BadRequest(t *testing.T) {
 	r.POST("/users", handler.Create)
 
 	// Missing required fields
-	body := map[string]interface{}{
+	body := map[string]any{
 		"active": true,
 	}
 
@@ -411,7 +411,7 @@ func TestUserHandler_UpdateOrganizationRole_InvalidRole(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/users/:userId/organizations/:orgId", handler.UpdateOrganizationRole)
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"role": "invalid_role",
 	}
 

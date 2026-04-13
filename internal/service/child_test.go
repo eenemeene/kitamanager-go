@@ -1835,7 +1835,7 @@ func TestChildService_GetAgeDistribution_MultipleChildrenSameAge(t *testing.T) {
 
 	// Create 5 children all age 3
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		child := createTestChild(t, db, "Child", "Age3", org.ID)
 		child.Birthdate = time.Date(2022, 1, 28, 0, 0, 0, 0, time.UTC) // Age 3
 		db.Save(child)
@@ -2693,7 +2693,7 @@ func TestChildService_UpdateContract_AmendPreservesProperties(t *testing.T) {
 	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		SectionID:  section1.ID,
 		From:       past,
-		Properties: models.ContractProperties{"care_type": "ganztag", "supplements": []interface{}{"ndh", "sprachfoerderung"}},
+		Properties: models.ContractProperties{"care_type": "ganztag", "supplements": []any{"ndh", "sprachfoerderung"}},
 	})
 	if err != nil {
 		t.Fatalf("failed to create contract: %v", err)
@@ -3367,7 +3367,7 @@ func TestChildService_GetContractPropertiesDistribution_MultipleChildrenSameValu
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	// 5 children all with care_type=ganztag
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		child := createTestChild(t, db, fmt.Sprintf("Child%d", i), "Same", org.ID)
 		createTestChildContract(t, db, child.ID, from, nil, section.ID, models.ContractProperties{"care_type": "ganztag"})
 	}
@@ -4210,7 +4210,7 @@ func TestChildService_FindAllByOrganization(t *testing.T) {
 	section := getDefaultSection(t, db, org.ID)
 
 	// Create several children with contracts.
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		createTestChildWithContract(t, db, fmt.Sprintf("Child%d", i), "Doe", org.ID, section.ID)
 	}
 

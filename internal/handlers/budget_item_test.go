@@ -245,7 +245,7 @@ func TestBudgetItemHandler_List_Pagination(t *testing.T) {
 	handler := NewBudgetItemHandler(svc, createAuditService(db))
 
 	// Create enough items to test pagination
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		db.Create(&models.BudgetItem{OrganizationID: org.ID, Name: fmt.Sprintf("Item %d", i), Category: "expense"})
 	}
 
@@ -463,7 +463,7 @@ func TestBudgetItemHandler_CreateEntry(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/api/v1/organizations/:orgId/budget-items/:budgetItemId/entries", handler.CreateEntry)
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"from":         "2024-01-01T00:00:00Z",
 		"to":           "2024-12-31T00:00:00Z",
 		"amount_cents": 150000,
@@ -511,7 +511,7 @@ func TestBudgetItemHandler_CreateEntry_Overlap(t *testing.T) {
 	r.POST("/api/v1/organizations/:orgId/budget-items/:budgetItemId/entries", handler.CreateEntry)
 
 	// Try to create an overlapping entry
-	body := map[string]interface{}{
+	body := map[string]any{
 		"from":         "2024-06-01T00:00:00Z",
 		"to":           "2025-06-30T00:00:00Z",
 		"amount_cents": 160000,
@@ -665,7 +665,7 @@ func TestBudgetItemHandler_UpdateEntry(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/api/v1/organizations/:orgId/budget-items/:budgetItemId/entries/:entryId", handler.UpdateEntry)
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"from":         "2024-01-01T00:00:00Z",
 		"to":           "2024-12-31T00:00:00Z",
 		"amount_cents": 175000,

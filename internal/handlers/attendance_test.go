@@ -81,7 +81,7 @@ func TestChildAttendanceHandler_Create_InvalidBody(t *testing.T) {
 	org, child, _, r, _ := setupAttendanceTest(t)
 
 	// Empty body - status is required
-	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/children/%d/attendance", org.ID, child.ID), map[string]interface{}{})
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/children/%d/attendance", org.ID, child.ID), map[string]any{})
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())

@@ -531,7 +531,7 @@ func TestPayPlanHandler_InvalidRequests(t *testing.T) {
 		payplan := &models.PayPlan{OrganizationID: org.ID, Name: "Test"}
 		db.Create(payplan)
 
-		body := map[string]interface{}{
+		body := map[string]any{
 			"from":         "not-a-date",
 			"weekly_hours": 39.0,
 		}
@@ -756,7 +756,7 @@ func TestPayPlanHandler_DeletePeriod_NotFound(t *testing.T) {
 func TestPayPlanHandler_CreateEntry_InvalidPeriodID(t *testing.T) {
 	org, _, r, _ := setupPayPlanTestFull(t)
 
-	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/pay-plans/1/periods/abc/entries", org.ID), map[string]interface{}{"level": 1, "step": 1, "monthly_salary": 100000})
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/pay-plans/1/periods/abc/entries", org.ID), map[string]any{"level": 1, "step": 1, "monthly_salary": 100000})
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}
@@ -806,7 +806,7 @@ func TestPayPlanHandler_GetEntry_NotFound(t *testing.T) {
 func TestPayPlanHandler_UpdateEntry_InvalidPeriodID(t *testing.T) {
 	org, _, r, _ := setupPayPlanTestFull(t)
 
-	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/pay-plans/1/periods/abc/entries/1", org.ID), map[string]interface{}{"monthly_salary": 100000})
+	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/pay-plans/1/periods/abc/entries/1", org.ID), map[string]any{"monthly_salary": 100000})
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}
@@ -815,7 +815,7 @@ func TestPayPlanHandler_UpdateEntry_InvalidPeriodID(t *testing.T) {
 func TestPayPlanHandler_UpdateEntry_InvalidEntryID(t *testing.T) {
 	org, _, r, _ := setupPayPlanTestFull(t)
 
-	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/pay-plans/1/periods/1/entries/abc", org.ID), map[string]interface{}{"monthly_salary": 100000})
+	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/pay-plans/1/periods/1/entries/abc", org.ID), map[string]any{"monthly_salary": 100000})
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}

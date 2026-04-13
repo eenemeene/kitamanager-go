@@ -1,11 +1,14 @@
 package models
 
-import "time"
+import (
+	"slices"
+	"time"
+)
 
 // ContractProperties represents the JSON properties for a contract.
 // Keys are property categories (e.g., "care_type", "supplements").
 // Values can be strings (scalar) or []string (array).
-type ContractProperties map[string]interface{}
+type ContractProperties map[string]any
 
 // BaseContract contains fields shared by all contract types.
 // This is embedded by ChildContract and EmployeeContract.
@@ -51,8 +54,8 @@ func (p ContractProperties) GetArrayProperty(key string) []string {
 		return arr
 	}
 
-	// Handle []interface{} (from JSON unmarshaling)
-	if arr, ok := val.([]interface{}); ok {
+	// Handle []any (from JSON unmarshaling)
+	if arr, ok := val.([]any); ok {
 		result := make([]string, 0, len(arr))
 		for _, v := range arr {
 			if str, ok := v.(string); ok {
@@ -96,7 +99,7 @@ func (p ContractProperties) ContainsValue(value string) bool {
 }
 
 // valueMatches checks if a property value matches the target.
-func (p ContractProperties) valueMatches(val interface{}, target string) bool {
+func (p ContractProperties) valueMatches(val any, target string) bool {
 	// Check scalar match
 	if str, ok := val.(string); ok {
 		return str == target
@@ -104,15 +107,11 @@ func (p ContractProperties) valueMatches(val interface{}, target string) bool {
 
 	// Check array contains
 	if arr, ok := val.([]string); ok {
-		for _, v := range arr {
-			if v == target {
-				return true
-			}
-		}
+		return slices.Contains(arr, target)
 	}
 
-	// Handle []interface{} (from JSON unmarshaling)
-	if arr, ok := val.([]interface{}); ok {
+	// Handle []any (from JSON unmarshaling)
+	if arr, ok := val.([]any); ok {
 		for _, v := range arr {
 			if str, ok := v.(string); ok && str == target {
 				return true

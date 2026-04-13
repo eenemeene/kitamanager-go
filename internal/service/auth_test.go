@@ -114,7 +114,7 @@ func TestAuthService_Login_AccountLockout(t *testing.T) {
 
 	// Insert failed login audit entries directly (bypassing async channel)
 	// so they are visible to CountRecentFailedLogins immediately.
-	for i := 0; i < lockoutThreshold; i++ {
+	for range lockoutThreshold {
 		if err := db.Create(&models.AuditLog{
 			UserEmail: "test@example.com",
 			Action:    models.AuditActionLoginFailed,
@@ -335,7 +335,7 @@ func TestAuthService_Login_LockoutWindowExpiry(t *testing.T) {
 
 	// Insert failed login audit entries with timestamps OUTSIDE the lockout window
 	outsideWindow := time.Now().Add(-lockoutWindow - time.Minute)
-	for i := 0; i < lockoutThreshold; i++ {
+	for range lockoutThreshold {
 		if err := db.Create(&models.AuditLog{
 			UserEmail: "lockout-expiry@example.com",
 			Action:    models.AuditActionLoginFailed,

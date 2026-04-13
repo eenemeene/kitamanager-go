@@ -121,7 +121,7 @@ func TestWriteChildrenExcel(t *testing.T) {
 					SectionName: strP("Elementar"),
 					Properties: models.ContractProperties{
 						"care_type":   "ganztag",
-						"supplements": []interface{}{"ndh", "mss"},
+						"supplements": []any{"ndh", "mss"},
 					},
 				},
 			},

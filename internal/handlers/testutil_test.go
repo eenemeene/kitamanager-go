@@ -30,7 +30,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 }
 
 // mustMarshal marshals body to JSON, panicking on failure (test bug).
-func mustMarshal(body interface{}) []byte {
+func mustMarshal(body any) []byte {
 	jsonBody, err := json.Marshal(body)
 	if err != nil {
 		panic(fmt.Sprintf("test bug: failed to marshal request body: %v", err))
@@ -54,7 +54,7 @@ func mustNewRequest(method, path string, body *bytes.Buffer) *http.Request {
 }
 
 // performRequest executes an HTTP request against the router.
-func performRequest(r *gin.Engine, method, path string, body interface{}) *httptest.ResponseRecorder {
+func performRequest(r *gin.Engine, method, path string, body any) *httptest.ResponseRecorder {
 	var req *http.Request
 	if body != nil {
 		jsonBody := mustMarshal(body)
@@ -70,7 +70,7 @@ func performRequest(r *gin.Engine, method, path string, body interface{}) *httpt
 }
 
 // performRequestWithCookies executes an HTTP request with cookies from a previous response.
-func performRequestWithCookies(r *gin.Engine, method, path string, body interface{}, cookies []*http.Cookie) *httptest.ResponseRecorder {
+func performRequestWithCookies(r *gin.Engine, method, path string, body any, cookies []*http.Cookie) *httptest.ResponseRecorder {
 	var req *http.Request
 	if body != nil {
 		jsonBody := mustMarshal(body)
@@ -97,7 +97,7 @@ func performRequestRaw(r *gin.Engine, method, path string, body string) *httptes
 }
 
 // parseResponse parses the JSON response body into the provided interface.
-func parseResponse(t *testing.T, w *httptest.ResponseRecorder, v interface{}) {
+func parseResponse(t *testing.T, w *httptest.ResponseRecorder, v any) {
 	t.Helper()
 	if err := json.Unmarshal(w.Body.Bytes(), v); err != nil {
 		t.Fatalf("failed to parse response: %v", err)

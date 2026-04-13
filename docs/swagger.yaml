@@ -649,7 +649,7 @@ definitions:
         type: number
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ContractProperties:
-    additionalProperties: true
+    additionalProperties: {}
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ContractPropertiesDistributionResponse:
     properties:

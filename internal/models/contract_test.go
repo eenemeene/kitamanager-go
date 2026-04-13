@@ -100,7 +100,7 @@ func TestContractProperties_GetArrayProperty(t *testing.T) {
 	})
 
 	t.Run("interface slice from JSON", func(t *testing.T) {
-		p := ContractProperties{"tags": []interface{}{"ndh", "mss"}}
+		p := ContractProperties{"tags": []any{"ndh", "mss"}}
 		got := p.GetArrayProperty("tags")
 		if len(got) != 2 || got[0] != "ndh" || got[1] != "mss" {
 			t.Errorf("got %v, want [ndh mss]", got)
@@ -129,7 +129,7 @@ func TestContractProperties_HasValue(t *testing.T) {
 		{"scalar no match", ContractProperties{"care_type": "ganztag"}, "care_type", "halbtag", false},
 		{"array contains", ContractProperties{"tags": []string{"ndh", "mss"}}, "tags", "mss", true},
 		{"array not contains", ContractProperties{"tags": []string{"ndh", "mss"}}, "tags", "xyz", false},
-		{"interface array contains", ContractProperties{"tags": []interface{}{"ndh", "mss"}}, "tags", "ndh", true},
+		{"interface array contains", ContractProperties{"tags": []any{"ndh", "mss"}}, "tags", "ndh", true},
 	}
 
 	for _, tt := range tests {
@@ -152,7 +152,7 @@ func TestContractProperties_ContainsValue(t *testing.T) {
 		{"scalar match in any key", ContractProperties{"a": "x", "b": "y"}, "y", true},
 		{"no match", ContractProperties{"a": "x"}, "z", false},
 		{"match in array", ContractProperties{"tags": []string{"ndh", "mss"}}, "mss", true},
-		{"match in interface array", ContractProperties{"tags": []interface{}{"ndh"}}, "ndh", true},
+		{"match in interface array", ContractProperties{"tags": []any{"ndh"}}, "ndh", true},
 	}
 
 	for _, tt := range tests {

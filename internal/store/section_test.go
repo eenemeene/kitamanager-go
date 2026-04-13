@@ -104,7 +104,7 @@ func TestSectionStore_FindByOrganizationPaginated(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 
 	// Create 5 sections with unique names
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		createTestSectionWithOrg(t, db, fmt.Sprintf("Section %d", i+1), org.ID)
 	}
 

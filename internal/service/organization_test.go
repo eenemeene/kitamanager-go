@@ -56,7 +56,7 @@ func TestOrganizationService_List_Pagination(t *testing.T) {
 	svc := createOrganizationService(db)
 	ctx := context.Background()
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		createTestOrganization(t, db, fmt.Sprintf("Org %d", i+1))
 	}
 

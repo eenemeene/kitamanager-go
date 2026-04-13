@@ -514,7 +514,7 @@ func seedChildren(db *gorm.DB, childService *service.ChildService, orgID uint, s
 
 	// Generate single-contract children from cohorts
 	for _, c := range cohorts {
-		for i := 0; i < c.count; i++ {
+		for range c.count {
 			child := newChild(orgID, randomDateBetween(c.birthFrom, c.birthTo))
 			if err := db.Create(&child).Error; err != nil {
 				return 0, 0, err
@@ -539,7 +539,7 @@ func seedChildren(db *gorm.DB, childService *service.ChildService, orgID uint, s
 
 	// Multi-contract children showing section transitions (Nest → Nestflüchter → Große)
 	// Currently active, in Große
-	for i := 0; i < 15; i++ {
+	for range 15 {
 		birthdate := randomDateBetween(now.AddDate(-5, 0, 0), now.AddDate(-3, -6, 0))
 		child := newChild(orgID, birthdate)
 		if err := db.Create(&child).Error; err != nil {
@@ -579,7 +579,7 @@ func seedChildren(db *gorm.DB, childService *service.ChildService, orgID uint, s
 	}
 
 	// Multi-contract children who already left for school
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		exitYear := currentKitaYear.Year() - 1 - randInt(2) // left Jul 2023, 2024, or 2025
 		exitDate := jul(exitYear)
 		birthdate := exitDate.AddDate(-6, -randInt(6), 0)

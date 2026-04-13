@@ -225,7 +225,7 @@ func TestGovernmentFundingHandler_CreatePeriod_NoOverlap(t *testing.T) {
 
 			// Try to create new period
 			newFrom, _ := time.Parse("2006-01-02", tt.newFrom)
-			body := map[string]interface{}{
+			body := map[string]any{
 				"from":                   newFrom.Format(time.RFC3339),
 				"full_time_weekly_hours": 39.0,
 			}
@@ -274,7 +274,7 @@ func TestGovernmentFundingHandler_UpdatePeriod_NoOverlap(t *testing.T) {
 
 		// Try to update period2 to overlap with period1
 		newFrom, _ := time.Parse("2006-01-02", "2024-05-01")
-		body := map[string]interface{}{
+		body := map[string]any{
 			"from": newFrom.Format(time.RFC3339),
 		}
 
@@ -303,7 +303,7 @@ func TestGovernmentFundingHandler_UpdatePeriod_NoOverlap(t *testing.T) {
 
 		// Update period2's end date (no overlap)
 		newTo, _ := time.Parse("2006-01-02", "2025-06-30")
-		body := map[string]interface{}{
+		body := map[string]any{
 			"to": newTo.Format(time.RFC3339),
 		}
 
@@ -380,7 +380,7 @@ func TestGovernmentFundingHandler_Property_AgeRange(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			body := map[string]interface{}{
+			body := map[string]any{
 				"key":         "care_type",
 				"value":       "ganztag",
 				"label":       "Ganztag",
@@ -517,7 +517,7 @@ func TestGovernmentFundingHandler_List_Pagination(t *testing.T) {
 	handler := NewGovernmentFundingHandler(svc, createAuditService(db), importer.NewGovernmentFundingImporter(svc, store.NewTransactor(db)))
 
 	// Create test fundings
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		funding := &models.GovernmentFunding{Name: fmt.Sprintf("Funding %d", i), State: "berlin"}
 		// Note: State is unique, so we need to handle this differently
 		// For this test, we'll just create one
@@ -656,7 +656,7 @@ func TestGovernmentFundingHandler_Create_Validation(t *testing.T) {
 	})
 
 	t.Run("missing required fields", func(t *testing.T) {
-		body := map[string]interface{}{}
+		body := map[string]any{}
 		w := performRequest(r, "POST", "/fundings", body)
 
 		if w.Code != http.StatusBadRequest {
@@ -757,7 +757,7 @@ func TestGovernmentFundingHandler_CreatePeriod_Validation(t *testing.T) {
 	r.POST("/fundings/:fundingId/periods", handler.CreatePeriod)
 
 	t.Run("non-existent funding ID", func(t *testing.T) {
-		body := map[string]interface{}{
+		body := map[string]any{
 			"from":                   "2024-01-01T00:00:00Z",
 			"full_time_weekly_hours": 39.0,
 		}
@@ -769,7 +769,7 @@ func TestGovernmentFundingHandler_CreatePeriod_Validation(t *testing.T) {
 	})
 
 	t.Run("invalid funding ID", func(t *testing.T) {
-		body := map[string]interface{}{
+		body := map[string]any{
 			"from":                   "2024-01-01T00:00:00Z",
 			"full_time_weekly_hours": 39.0,
 		}
@@ -785,7 +785,7 @@ func TestGovernmentFundingHandler_CreatePeriod_Validation(t *testing.T) {
 		funding := &models.GovernmentFunding{Name: "Test Funding", State: "berlin"}
 		db.Create(funding)
 
-		body := map[string]interface{}{}
+		body := map[string]any{}
 		w := performRequest(r, "POST", fmt.Sprintf("/fundings/%d/periods", funding.ID), body)
 
 		if w.Code != http.StatusBadRequest {
@@ -835,7 +835,7 @@ func TestGovernmentFundingHandler_CreateProperty_Validation(t *testing.T) {
 	r.POST("/fundings/:fundingId/periods/:periodId/properties", handler.CreateProperty)
 
 	t.Run("empty key", func(t *testing.T) {
-		body := map[string]interface{}{
+		body := map[string]any{
 			"key":         "",
 			"value":       "ganztag",
 			"label":       "Ganztag",
@@ -850,7 +850,7 @@ func TestGovernmentFundingHandler_CreateProperty_Validation(t *testing.T) {
 	})
 
 	t.Run("whitespace only key", func(t *testing.T) {
-		body := map[string]interface{}{
+		body := map[string]any{
 			"key":         "   ",
 			"value":       "ganztag",
 			"label":       "Ganztag",
@@ -865,7 +865,7 @@ func TestGovernmentFundingHandler_CreateProperty_Validation(t *testing.T) {
 	})
 
 	t.Run("empty value", func(t *testing.T) {
-		body := map[string]interface{}{
+		body := map[string]any{
 			"key":         "care_type",
 			"value":       "",
 			"label":       "Ganztag",
@@ -880,7 +880,7 @@ func TestGovernmentFundingHandler_CreateProperty_Validation(t *testing.T) {
 	})
 
 	t.Run("non-existent period ID", func(t *testing.T) {
-		body := map[string]interface{}{
+		body := map[string]any{
 			"key":         "care_type",
 			"value":       "ganztag",
 			"label":       "Ganztag",
@@ -912,7 +912,7 @@ func TestGovernmentFundingHandler_CreateProperty_WithLabel(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/fundings/:fundingId/periods/:periodId/properties", handler.CreateProperty)
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"key":         "care_type",
 		"value":       "ganztag",
 		"label":       "Ganztag (bis 9h)",
@@ -956,7 +956,7 @@ func TestGovernmentFundingHandler_CreateProperty_MissingLabel(t *testing.T) {
 	r.POST("/fundings/:fundingId/periods/:periodId/properties", handler.CreateProperty)
 
 	// No label field
-	body := map[string]interface{}{
+	body := map[string]any{
 		"key":         "care_type",
 		"value":       "ganztag",
 		"payment":     166847,

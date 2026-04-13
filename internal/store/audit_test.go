@@ -77,7 +77,7 @@ func TestAuditStore_FindByUser_Pagination(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewAuditStore(db)
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		createTestAuditLog(t, store, 1, models.AuditActionLogin)
 	}
 
@@ -227,7 +227,7 @@ func TestAuditStore_CountFailedLoginsSince(t *testing.T) {
 	now := time.Now()
 	email := "attacker@example.com"
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		log := &models.AuditLog{
 			UserEmail: email, Action: models.AuditActionLoginFailed,
 			ResourceType: "auth", Timestamp: now.Add(-time.Duration(i) * time.Minute),
@@ -422,7 +422,7 @@ func TestAuditStore_FindAllFiltered_Pagination(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewAuditStore(db)
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		createTestAuditLog(t, store, 1, models.AuditActionLogin)
 	}
 
