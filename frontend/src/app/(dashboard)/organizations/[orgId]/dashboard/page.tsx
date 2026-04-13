@@ -1,13 +1,17 @@
 'use client';
 
+import { useMemo } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
-import { Users, Baby, Clock } from 'lucide-react';
+import { Users, Baby, Clock, Upload } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { StepPromotionsWidget } from '@/components/dashboard/step-promotions-widget';
 import { UpcomingChildrenWidget } from '@/components/dashboard/upcoming-children-widget';
 import { SectionAgeAlertsWidget } from '@/components/dashboard/section-age-alerts-widget';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { getCurrentMonthRange } from '@/lib/utils/formatting';
@@ -42,6 +46,24 @@ export default function OrgDashboardPage() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Check if previous month's bill exists
+  const { data: billsData } = useQuery({
+    queryKey: queryKeys.governmentFundingBillPeriods.list(orgId, 1),
+    queryFn: () => apiClient.getGovernmentFundingBillPeriods(orgId, { page: 1, limit: 100 }),
+    enabled: !!orgId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const previousMonthMissing = useMemo(() => {
+    if (!billsData?.data) return null;
+    const now = new Date();
+    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonthStr = prevMonth.toISOString().slice(0, 7); // "YYYY-MM"
+    const hasBill = billsData.data.some((b) => b.from.startsWith(prevMonthStr));
+    if (hasBill) return null;
+    return prevMonth.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+  }, [billsData]);
+
   const currentMonth = staffingData?.data_points?.[0];
   const coverageBalance =
     currentMonth && currentMonth.required_hours > 0
@@ -57,6 +79,22 @@ export default function OrgDashboardPage() {
           {user?.name && `, ${user.name}`}
         </p>
       </div>
+
+      {previousMonthMissing && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-base font-medium">
+              {t('governmentFundingBills.missingBillAlert', { month: previousMonthMissing })}
+            </CardTitle>
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/organizations/${orgId}/government-funding-bills`}>
+                <Upload className="mr-1 h-3 w-3" />
+                {t('governmentFundingBills.uploadBill')}
+              </Link>
+            </Button>
+          </CardHeader>
+        </Card>
+      )}
 
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard

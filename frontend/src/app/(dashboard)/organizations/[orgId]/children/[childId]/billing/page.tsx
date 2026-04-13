@@ -25,11 +25,25 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { QueryError } from '@/components/crud/query-error';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import type { ChildBillingHistoryEntry } from '@/lib/api/types';
 import { formatCurrency, formatDate } from '@/lib/utils/formatting';
+
+function HeaderWithTooltip({ label, tooltip }: { label: string; tooltip: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="cursor-help border-b border-dotted border-current">{label}</span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs">
+        <p>{tooltip}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 function StatusBadge({
   status,
@@ -241,143 +255,164 @@ export default function ChildBillingHistoryPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <Breadcrumb items={breadcrumbs} />
+    <TooltipProvider>
+      <div className="space-y-4">
+        <Breadcrumb items={breadcrumbs} />
 
-      {isLoading ? (
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-48" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-64 w-full" />
-          </CardContent>
-        </Card>
-      ) : history ? (
-        <>
-          {/* Summary card */}
+        {isLoading ? (
           <Card>
             <CardHeader>
-              <CardTitle>{tChildren('billingHistory')}</CardTitle>
-              <CardDescription>{history.child_name}</CardDescription>
+              <Skeleton className="h-6 w-48" />
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div>
-                  <p className="text-muted-foreground text-sm">{t('voucherNumbers')}</p>
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {history.voucher_numbers.length > 0 ? (
-                      history.voucher_numbers.map((v) => (
-                        <Badge key={v} variant="outline">
-                          {v}
-                        </Badge>
-                      ))
-                    ) : (
-                      <span className="text-muted-foreground text-sm">
-                        {tChildren('noVoucherNumbers')}
-                      </span>
-                    )}
+              <Skeleton className="h-64 w-full" />
+            </CardContent>
+          </Card>
+        ) : history ? (
+          <>
+            {/* Summary card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>{tChildren('billingHistory')}</CardTitle>
+                <CardDescription>{history.child_name}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div>
+                    <p className="text-muted-foreground text-sm">{t('voucherNumbers')}</p>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {history.voucher_numbers.length > 0 ? (
+                        history.voucher_numbers.map((v) => (
+                          <Badge key={v} variant="outline">
+                            {v}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-muted-foreground text-sm">
+                          {tChildren('noVoucherNumbers')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-sm">{t('billedTotal')}</p>
+                    <p className="text-lg font-semibold">{formatCurrency(history.total_billed)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-sm">{t('difference')}</p>
+                    <p
+                      className={`text-lg font-semibold ${history.total_difference < 0 ? 'text-red-600' : history.total_difference > 0 ? 'text-green-600' : ''}`}
+                    >
+                      {formatCurrency(history.total_difference)}
+                    </p>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      {t('differenceExplanation')}
+                    </p>
                   </div>
                 </div>
-                <div>
-                  <p className="text-muted-foreground text-sm">{t('billedTotal')}</p>
-                  <p className="text-lg font-semibold">{formatCurrency(history.total_billed)}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-sm">{t('difference')}</p>
-                  <p
-                    className={`text-lg font-semibold ${history.total_difference < 0 ? 'text-red-600' : history.total_difference > 0 ? 'text-green-600' : ''}`}
-                  >
-                    {formatCurrency(history.total_difference)}
-                  </p>
-                  <p className="text-muted-foreground mt-1 text-xs">{t('differenceExplanation')}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          {/* Billing entries table */}
-          <Card>
-            <CardContent className="p-0">
-              {history.entries.length === 0 ? (
-                <div className="text-muted-foreground p-6 text-center">
-                  {tChildren('noBillingEntries')}
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t('billingMonth')}</TableHead>
-                      <TableHead className="hidden md:table-cell">{t('facilityName')}</TableHead>
-                      <TableHead className="hidden lg:table-cell">{t('voucherNumber')}</TableHead>
-                      <TableHead className="hidden md:table-cell">{t('age')}</TableHead>
-                      <TableHead className="text-right">{t('billTotal')}</TableHead>
-                      <TableHead className="hidden text-right md:table-cell">
-                        {t('correctionTotal')}
-                      </TableHead>
-                      <TableHead className="hidden text-right md:table-cell">
-                        {t('calcTotal')}
-                      </TableHead>
-                      <TableHead className="hidden text-right md:table-cell">
-                        {t('difference')}
-                      </TableHead>
-                      <TableHead className="hidden text-right md:table-cell">
-                        {t('runningDifference')}
-                      </TableHead>
-                      <TableHead>{tCommon('status')}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {history.entries.map((entry, idx) => (
-                      <BillingRow
-                        key={idx}
-                        entry={entry}
-                        t={t}
-                        tCommon={tCommon}
-                        tLabels={tLabels}
-                      />
-                    ))}
-                  </TableBody>
-
-                  {/* Summary footer */}
-                  {history.entries.length > 1 && (
-                    <tfoot>
-                      <TableRow className="font-semibold">
-                        <TableCell>{tCommon('total')}</TableCell>
-                        <TableCell className="hidden md:table-cell" />
-                        <TableCell className="hidden lg:table-cell" />
-                        <TableCell className="hidden md:table-cell" />
-                        <TableCell className="text-right">
-                          {formatCurrency(history.total_billed)}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell" />
-                        <TableCell className="hidden text-right md:table-cell">
-                          {formatCurrency(history.total_calculated)}
-                        </TableCell>
-                        <TableCell className="hidden text-right md:table-cell">
-                          <span
-                            className={
-                              history.total_difference < 0
-                                ? 'text-red-600'
-                                : history.total_difference > 0
-                                  ? 'text-green-600'
-                                  : ''
-                            }
-                          >
-                            {formatCurrency(history.total_difference)}
-                          </span>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell" />
-                        <TableCell />
+            {/* Billing entries table */}
+            <Card>
+              <CardContent className="p-0">
+                {history.entries.length === 0 ? (
+                  <div className="text-muted-foreground p-6 text-center">
+                    {tChildren('noBillingEntries')}
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t('billingMonth')}</TableHead>
+                        <TableHead className="hidden md:table-cell">{t('facilityName')}</TableHead>
+                        <TableHead className="hidden lg:table-cell">{t('voucherNumber')}</TableHead>
+                        <TableHead className="hidden md:table-cell">{t('age')}</TableHead>
+                        <TableHead className="text-right">
+                          <HeaderWithTooltip
+                            label={t('billTotal')}
+                            tooltip={t('billTotalTooltip')}
+                          />
+                        </TableHead>
+                        <TableHead className="hidden text-right md:table-cell">
+                          <HeaderWithTooltip
+                            label={t('correctionTotal')}
+                            tooltip={t('correctionTotalTooltip')}
+                          />
+                        </TableHead>
+                        <TableHead className="hidden text-right md:table-cell">
+                          <HeaderWithTooltip
+                            label={t('calcTotal')}
+                            tooltip={t('calcTotalTooltip')}
+                          />
+                        </TableHead>
+                        <TableHead className="hidden text-right md:table-cell">
+                          <HeaderWithTooltip
+                            label={t('difference')}
+                            tooltip={t('differenceTooltip')}
+                          />
+                        </TableHead>
+                        <TableHead className="hidden text-right md:table-cell">
+                          <HeaderWithTooltip
+                            label={t('runningDifference')}
+                            tooltip={t('runningDifferenceTooltip')}
+                          />
+                        </TableHead>
+                        <TableHead>{tCommon('status')}</TableHead>
                       </TableRow>
-                    </tfoot>
-                  )}
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </>
-      ) : null}
-    </div>
+                    </TableHeader>
+                    <TableBody>
+                      {history.entries.map((entry, idx) => (
+                        <BillingRow
+                          key={idx}
+                          entry={entry}
+                          t={t}
+                          tCommon={tCommon}
+                          tLabels={tLabels}
+                        />
+                      ))}
+                    </TableBody>
+
+                    {/* Summary footer */}
+                    {history.entries.length > 1 && (
+                      <tfoot>
+                        <TableRow className="font-semibold">
+                          <TableCell>{tCommon('total')}</TableCell>
+                          <TableCell className="hidden md:table-cell" />
+                          <TableCell className="hidden lg:table-cell" />
+                          <TableCell className="hidden md:table-cell" />
+                          <TableCell className="text-right">
+                            {formatCurrency(history.total_billed)}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell" />
+                          <TableCell className="hidden text-right md:table-cell">
+                            {formatCurrency(history.total_calculated)}
+                          </TableCell>
+                          <TableCell className="hidden text-right md:table-cell">
+                            <span
+                              className={
+                                history.total_difference < 0
+                                  ? 'text-red-600'
+                                  : history.total_difference > 0
+                                    ? 'text-green-600'
+                                    : ''
+                              }
+                            >
+                              {formatCurrency(history.total_difference)}
+                            </span>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell" />
+                          <TableCell />
+                        </TableRow>
+                      </tfoot>
+                    )}
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </>
+        ) : null}
+      </div>
+    </TooltipProvider>
   );
 }
