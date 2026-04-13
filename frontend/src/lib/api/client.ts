@@ -43,6 +43,7 @@ import type {
   GovernmentFundingBillPeriodListItem,
   GovernmentFundingBillPeriodResponse,
   FundingComparisonResponse,
+  ChildBillingHistoryResponse,
   PayPlan,
   PayPlanCreateRequest,
   PayPlanUpdateRequest,
@@ -442,6 +443,16 @@ class ApiClient {
       `/organizations/${orgId}/children/${childId}/contracts`
     );
     return response.data.data;
+  }
+
+  async getChildBillingHistory(
+    orgId: number,
+    childId: number
+  ): Promise<ChildBillingHistoryResponse> {
+    const response = await this.client.get<ChildBillingHistoryResponse>(
+      `/organizations/${orgId}/children/${childId}/billing-history`
+    );
+    return response.data;
   }
 
   async createChildContract(
