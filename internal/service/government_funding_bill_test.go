@@ -4840,3 +4840,153 @@ func TestChildrenBillingSummary_ContractMonths(t *testing.T) {
 		t.Errorf("expected contract_months 6, got %d", result.Children[0].ContractMonths)
 	}
 }
+
+func TestChildrenBillingSummary_ContractMonthsCappedAtToday(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	user := createTestUser(t, db, "User", "billsummary_cap@example.com", "password")
+	ctx := context.Background()
+
+	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
+	fundingPeriod := createTestFundingPeriod(t, db, funding.ID, time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0)
+	createTestFundingProperty(t, db, fundingPeriod.ID, "care_type", "ganztag", 120000, -1, -1)
+
+	voucher := "GB-CAP-001"
+	// Contract from Jan 2026 to Dec 2030 (far in the future)
+	contractEnd := time.Date(2030, 12, 31, 0, 0, 0, 0, time.UTC)
+	createChildWithVoucher(t, db, "Future", "Contract", org.ID, section.ID, voucher,
+		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), &contractEnd,
+		models.ContractProperties{"care_type": "ganztag"},
+	)
+
+	createBillFixture(t, db, org.ID, user.ID, 2026, 1, []models.GovernmentFundingBillChild{
+		{VoucherNumber: voucher, ChildName: "Contract, Future", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 120000, RowType: "regular"},
+			}},
+	})
+
+	result, err := svc.ChildrenBillingSummary(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(result.Children) != 1 {
+		t.Fatalf("expected 1 child, got %d", len(result.Children))
+	}
+
+	// Contract is Jan 2026 - Dec 2030 = 60 months total
+	// But today is April 2026, so only ~4 months should be counted (Jan-Apr 2026)
+	// The exact count depends on today's date, but it MUST be less than 60
+	if result.Children[0].ContractMonths >= 60 {
+		t.Errorf("expected contract_months < 60 (capped at today), got %d", result.Children[0].ContractMonths)
+	}
+	if result.Children[0].ContractMonths < 1 {
+		t.Errorf("expected contract_months >= 1, got %d", result.Children[0].ContractMonths)
+	}
+}
+
+func TestChildrenBillingSummary_FutureContractZeroMonths(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	user := createTestUser(t, db, "User", "billsummary_future@example.com", "password")
+	ctx := context.Background()
+
+	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
+	fundingPeriod := createTestFundingPeriod(t, db, funding.ID, time.Date(2028, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0)
+	createTestFundingProperty(t, db, fundingPeriod.ID, "care_type", "ganztag", 120000, -1, -1)
+
+	voucher := "GB-FUTURE-001"
+	// Contract starts in 2028 (future)
+	contractEnd := time.Date(2030, 12, 31, 0, 0, 0, 0, time.UTC)
+	createChildWithVoucher(t, db, "NotYet", "Started", org.ID, section.ID, voucher,
+		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2028, 1, 1, 0, 0, 0, 0, time.UTC), &contractEnd,
+		models.ContractProperties{"care_type": "ganztag"},
+	)
+
+	// Bill in 2028 (even though we can't really have one yet, test the logic)
+	createBillFixture(t, db, org.ID, user.ID, 2028, 1, []models.GovernmentFundingBillChild{
+		{VoucherNumber: voucher, ChildName: "Started, NotYet", BirthDate: "01.24", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 120000, RowType: "regular"},
+			}},
+	})
+
+	result, err := svc.ChildrenBillingSummary(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(result.Children) != 1 {
+		t.Fatalf("expected 1 child, got %d", len(result.Children))
+	}
+	// Contract starts in 2028, today is 2026 — should be 0 months
+	if result.Children[0].ContractMonths != 0 {
+		t.Errorf("expected contract_months 0 for future contract, got %d", result.Children[0].ContractMonths)
+	}
+}
+
+func TestChildrenBillingSummary_ExpiredContractFullMonths(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	user := createTestUser(t, db, "User", "billsummary_expired@example.com", "password")
+	ctx := context.Background()
+
+	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
+	fundingPeriod := createTestFundingPeriod(t, db, funding.ID, time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0)
+	createTestFundingProperty(t, db, fundingPeriod.ID, "care_type", "ganztag", 120000, -1, -1)
+
+	voucher := "GB-EXPIRED-002"
+	// Contract Jan-Jun 2025 (already ended)
+	contractEnd := time.Date(2025, 6, 30, 0, 0, 0, 0, time.UTC)
+	createChildWithVoucher(t, db, "Already", "Done", org.ID, section.ID, voucher,
+		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), &contractEnd,
+		models.ContractProperties{"care_type": "ganztag"},
+	)
+
+	for _, month := range []time.Month{1, 2, 3, 4, 5, 6} {
+		createBillFixture(t, db, org.ID, user.ID, 2025, month, []models.GovernmentFundingBillChild{
+			{VoucherNumber: voucher, ChildName: "Done, Already", BirthDate: "01.20", District: 1,
+				Payments: []models.GovernmentFundingBillPayment{
+					{Key: "care_type", Value: "ganztag", Amount: 120000, RowType: "regular"},
+				}},
+		})
+	}
+
+	result, err := svc.ChildrenBillingSummary(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(result.Children) != 1 {
+		t.Fatalf("expected 1 child, got %d", len(result.Children))
+	}
+	// Contract ended Jun 2025 (in the past), should count full 6 months
+	if result.Children[0].ContractMonths != 6 {
+		t.Errorf("expected contract_months 6 for expired contract, got %d", result.Children[0].ContractMonths)
+	}
+	if result.Children[0].BillCount != 6 {
+		t.Errorf("expected bill_count 6, got %d", result.Children[0].BillCount)
+	}
+}
