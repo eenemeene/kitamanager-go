@@ -205,6 +205,37 @@ type GovernmentFundingBillChildWithPeriod struct {
 	Child        GovernmentFundingBillChild
 }
 
+// ============================================================
+// Bulk billing summary DTOs (org-wide, for children list)
+// ============================================================
+
+// VoucherBilledTotal holds SQL-aggregated billed totals per voucher number.
+type VoucherBilledTotal struct {
+	VoucherNumber string `gorm:"column:voucher_number"`
+	TotalBilled   int    `gorm:"column:total_billed"`
+	BillCount     int    `gorm:"column:bill_count"`
+}
+
+// BillDateVoucher is a lightweight struct for computing expected amounts: just voucher + bill date.
+type BillDateVoucher struct {
+	VoucherNumber string    `gorm:"column:voucher_number"`
+	BillFrom      time.Time `gorm:"column:bill_from"`
+}
+
+// ChildBillingSummaryEntry represents the billing summary for one child.
+type ChildBillingSummaryEntry struct {
+	ChildID         uint `json:"child_id" example:"42"`
+	TotalBilled     int  `json:"total_billed" example:"1500000"`
+	TotalCalculated int  `json:"total_calculated" example:"1500000"`
+	TotalDifference int  `json:"total_difference" example:"0"`
+	BillCount       int  `json:"bill_count" example:"12"`
+}
+
+// ChildrenBillingSummaryResponse is the response for the bulk billing summary endpoint.
+type ChildrenBillingSummaryResponse struct {
+	Children []ChildBillingSummaryEntry `json:"children"`
+}
+
 // GovernmentFundingBillResponse is the full response for the ISBJ upload endpoint (backwards compatible).
 type GovernmentFundingBillResponse struct {
 	ID                uint                                 `json:"id" example:"1"`

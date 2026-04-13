@@ -360,6 +360,11 @@ func Setup(r *gin.Engine, d Deps) {
 						authzMiddleware.RequirePermission(rbac.ResourceChildAttendance, rbac.ActionRead),
 						childAttendanceHandler.GetDailySummary)
 
+					// Billing summary (must be before /:childId to avoid route conflict)
+					children.GET("/billing-summary",
+						authzMiddleware.RequirePermission(rbac.ResourceGovernmentFundingBills, rbac.ActionRead),
+						governmentFundingBillHandler.ChildrenBillingSummary)
+
 					children.GET("",
 						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
 						childHandler.List)

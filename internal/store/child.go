@@ -274,6 +274,20 @@ func (s *ChildStore) FindContractsByVoucherNumbers(ctx context.Context, orgID ui
 	return contracts, nil
 }
 
+// FindContractsByOrganizationWithVouchers returns all child contracts with voucher numbers for an org.
+// Contracts are returned with their ChildID for mapping voucher numbers to children.
+func (s *ChildStore) FindContractsByOrganizationWithVouchers(ctx context.Context, orgID uint) ([]models.ChildContract, error) {
+	var contracts []models.ChildContract
+	if err := DBFromContext(ctx, s.db).
+		Joins("JOIN children ON children.id = child_contracts.child_id").
+		Where("children.organization_id = ? AND child_contracts.voucher_number IS NOT NULL", orgID).
+		Order("child_contracts.child_id, child_contracts.from_date").
+		Find(&contracts).Error; err != nil {
+		return nil, err
+	}
+	return contracts, nil
+}
+
 // FindByNameBirthdateAndOrg finds a child by name, birthdate, and organization.
 func (s *ChildStore) FindByNameBirthdateAndOrg(ctx context.Context, firstName, lastName string, birthdate time.Time, orgID uint) (*models.Child, error) {
 	var child models.Child

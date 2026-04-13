@@ -866,6 +866,19 @@ export interface ChildBillingHistoryResponse {
   entries: ChildBillingHistoryEntry[];
 }
 
+// Bulk billing summary (for children list)
+export interface ChildBillingSummaryEntry {
+  child_id: number;
+  total_billed: number;
+  total_calculated: number;
+  total_difference: number;
+  bill_count: number;
+}
+
+export interface ChildrenBillingSummaryResponse {
+  children: ChildBillingSummaryEntry[];
+}
+
 // Contract properties distribution
 export interface ContractPropertyCount {
   key: string;

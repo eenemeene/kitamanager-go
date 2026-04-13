@@ -22,6 +22,7 @@ import {
   type ChildContractCreateRequest,
   type ChildContractUpdateRequest,
   type ChildFundingResponse,
+  type ChildBillingSummaryEntry,
   type ContractProperties,
   LOOKUP_FETCH_LIMIT,
 } from '@/lib/api/types';
@@ -111,6 +112,22 @@ export default function ChildrenPage() {
         fundingData?.children?.map((f) => [f.child_id, f]) ?? []
       ),
     [fundingData]
+  );
+
+  // Fetch billing summary for all children
+  const { data: billingSummaryData, error: billingSummaryError } = useQuery({
+    queryKey: queryKeys.children.billingSummary(orgId),
+    queryFn: () => apiClient.getChildrenBillingSummary(orgId),
+    enabled: !!orgId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const billingSummaryByChildId = useMemo(
+    () =>
+      new Map<number, ChildBillingSummaryEntry>(
+        billingSummaryData?.children?.map((b) => [b.child_id, b]) ?? []
+      ),
+    [billingSummaryData]
   );
 
   // Fetch sections for section selector in dialogs
@@ -343,6 +360,7 @@ export default function ChildrenPage() {
               items={children ?? []}
               fundingByChildId={fundingByChildId}
               weeklyHoursBasis={fundingData?.weekly_hours_basis}
+              billingSummaryByChildId={billingSummaryByChildId}
               onViewHistory={handleViewContractHistory}
               onViewBilling={handleViewBillingHistory}
               onAddContract={handleAddContract}

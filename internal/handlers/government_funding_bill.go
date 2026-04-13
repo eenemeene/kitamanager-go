@@ -163,6 +163,32 @@ func (h *GovernmentFundingBillHandler) Compare(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// ChildrenBillingSummary godoc
+// @Summary Get billing summary for all children
+// @Description Get aggregated billing totals (billed vs calculated) for all children in an organization
+// @Tags government-funding-bills
+// @Produce json
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Success 200 {object} models.ChildrenBillingSummaryResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Router /api/v1/organizations/{orgId}/children/billing-summary [get]
+func (h *GovernmentFundingBillHandler) ChildrenBillingSummary(c *gin.Context) {
+	orgID, ok := parseOrgID(c)
+	if !ok {
+		return
+	}
+
+	result, err := h.service.ChildrenBillingSummary(c.Request.Context(), orgID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
 // ChildBillingHistory godoc
 // @Summary Get billing history for a child
 // @Description Get complete billing history across all uploaded bills for a child, with comparison to expected funding amounts
