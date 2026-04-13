@@ -346,6 +346,9 @@
     "confirmDeleteMessage": "Are you sure you want to delete {name}?",
     "birthdate": "Birthdate",
     "noContractsFound": "No contracts found for this child.",
+    "billingHistory": "Billing History",
+    "noBillingEntries": "No billing entries found for this child.",
+    "noVoucherNumbers": "This child has no voucher numbers on any contract.",
     "funding": "Funding",
     "requirement": "FTE",
     "fundingDataUnavailable": "Funding data could not be loaded",
@@ -792,7 +795,15 @@
     "contractPeriod": "Contract Period",
     "billHistory": "Bill History",
     "ongoing": "ongoing",
-    "neverInBill": "Never in a bill"
+    "neverInBill": "Never in a bill",
+    "statusNoContract": "No Contract",
+    "statusNoFundingConfig": "No Funding Config",
+    "billedTotal": "Billed Total",
+    "voucherNumbers": "Voucher Numbers",
+    "billingMonth": "Billing Month",
+    "billTotal": "Billed",
+    "calcTotal": "Expected",
+    "runningDifference": "Cumulative"
   },
   "sectionAgeAlerts": {
     "title": "Children Over Section Age Limit",

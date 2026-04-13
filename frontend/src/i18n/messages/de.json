@@ -346,6 +346,9 @@
     "confirmDeleteMessage": "Möchten Sie {name} wirklich löschen?",
     "birthdate": "Geburtsdatum",
     "noContractsFound": "Keine Verträge für dieses Kind gefunden.",
+    "billingHistory": "Abrechnungshistorie",
+    "noBillingEntries": "Keine Abrechnungseinträge für dieses Kind gefunden.",
+    "noVoucherNumbers": "Dieses Kind hat keine Gutscheinnummern in seinen Verträgen.",
     "funding": "Finanzierung",
     "requirement": "VZÄ",
     "fundingDataUnavailable": "Finanzierungsdaten konnten nicht geladen werden",
@@ -792,7 +795,15 @@
     "contractPeriod": "Vertragszeitraum",
     "billHistory": "Abrechnungshistorie",
     "ongoing": "laufend",
-    "neverInBill": "Nie in Abrechnung"
+    "neverInBill": "Nie in Abrechnung",
+    "statusNoContract": "Kein Vertrag",
+    "statusNoFundingConfig": "Keine Finanzierungsconfig",
+    "billedTotal": "Abgerechnet Gesamt",
+    "voucherNumbers": "Gutscheinnummern",
+    "billingMonth": "Abrechnungsmonat",
+    "billTotal": "Abgerechnet",
+    "calcTotal": "Erwartet",
+    "runningDifference": "Kumuliert"
   },
   "sectionAgeAlerts": {
     "title": "Kinder über Altersgrenze des Bereichs",

@@ -873,3 +873,132 @@ func TestGovernmentFundingBillPeriodStore_ExistsByOrgAndMonth_AfterDelete(t *tes
 		t.Error("expected false after delete")
 	}
 }
+
+func TestGovernmentFundingBillPeriodStore_FindChildEntriesByOrgAndVoucherNumbers(t *testing.T) {
+	db := setupTestDB(t)
+	s := NewGovernmentFundingBillPeriodStore(db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "billstore_entries@example.com")
+	ctx := context.Background()
+
+	voucher1 := "GB-11111111111-01"
+	voucher2 := "GB-22222222222-01"
+
+	// Create two bills with overlapping children
+	for _, month := range []time.Month{10, 11} {
+		from := time.Date(2025, month, 1, 0, 0, 0, 0, time.UTC)
+		to := time.Date(2025, month+1, 0, 0, 0, 0, 0, time.UTC)
+		period := &models.GovernmentFundingBillPeriod{
+			OrganizationID: org.ID,
+			Period:         models.Period{From: from, To: &to},
+			FileName:       fmt.Sprintf("bill_%d.xlsx", month),
+			FileSha256:     fmt.Sprintf("hash_%d", month),
+			FacilityName:   "Test Kita",
+			CreatedBy:      user.ID,
+			Children: []models.GovernmentFundingBillChild{
+				{
+					VoucherNumber: voucher1,
+					ChildName:     "Kind Eins",
+					BirthDate:     "01.20",
+					District:      1,
+					Payments: []models.GovernmentFundingBillPayment{
+						{Key: "care_type", Value: "ganztag", Amount: 120000},
+						{Key: "ndh", Value: "ndh", Amount: 8000},
+					},
+				},
+				{
+					VoucherNumber: voucher2,
+					ChildName:     "Kind Zwei",
+					BirthDate:     "06.21",
+					District:      2,
+					Payments: []models.GovernmentFundingBillPayment{
+						{Key: "care_type", Value: "halbtag", Amount: 60000},
+					},
+				},
+			},
+		}
+		if err := db.Create(period).Error; err != nil {
+			t.Fatalf("setup: %v", err)
+		}
+	}
+
+	t.Run("single voucher", func(t *testing.T) {
+		results, err := s.FindChildEntriesByOrgAndVoucherNumbers(ctx, org.ID, []string{voucher1})
+		if err != nil {
+			t.Fatalf("error = %v", err)
+		}
+		if len(results) != 2 {
+			t.Fatalf("expected 2 entries for voucher1, got %d", len(results))
+		}
+		// Should be chronological
+		if results[0].BillFrom.Month() != 10 {
+			t.Errorf("expected first entry month 10, got %d", results[0].BillFrom.Month())
+		}
+		if results[1].BillFrom.Month() != 11 {
+			t.Errorf("expected second entry month 11, got %d", results[1].BillFrom.Month())
+		}
+		// Payments should be preloaded
+		if len(results[0].Child.Payments) != 2 {
+			t.Errorf("expected 2 payments, got %d", len(results[0].Child.Payments))
+		}
+	})
+
+	t.Run("multiple vouchers", func(t *testing.T) {
+		results, err := s.FindChildEntriesByOrgAndVoucherNumbers(ctx, org.ID, []string{voucher1, voucher2})
+		if err != nil {
+			t.Fatalf("error = %v", err)
+		}
+		if len(results) != 4 {
+			t.Fatalf("expected 4 entries total, got %d", len(results))
+		}
+	})
+
+	t.Run("no matching voucher", func(t *testing.T) {
+		results, err := s.FindChildEntriesByOrgAndVoucherNumbers(ctx, org.ID, []string{"GB-00000000000-00"})
+		if err != nil {
+			t.Fatalf("error = %v", err)
+		}
+		if len(results) != 0 {
+			t.Errorf("expected 0 entries, got %d", len(results))
+		}
+	})
+
+	t.Run("empty voucher list", func(t *testing.T) {
+		results, err := s.FindChildEntriesByOrgAndVoucherNumbers(ctx, org.ID, []string{})
+		if err != nil {
+			t.Fatalf("error = %v", err)
+		}
+		if results != nil {
+			t.Errorf("expected nil, got %v", results)
+		}
+	})
+
+	t.Run("org isolation", func(t *testing.T) {
+		org2 := createTestOrganization(t, db, "Other Org")
+		results, err := s.FindChildEntriesByOrgAndVoucherNumbers(ctx, org2.ID, []string{voucher1})
+		if err != nil {
+			t.Fatalf("error = %v", err)
+		}
+		if len(results) != 0 {
+			t.Errorf("expected 0 entries for other org, got %d", len(results))
+		}
+	})
+
+	t.Run("period metadata populated", func(t *testing.T) {
+		results, err := s.FindChildEntriesByOrgAndVoucherNumbers(ctx, org.ID, []string{voucher1})
+		if err != nil {
+			t.Fatalf("error = %v", err)
+		}
+		for _, r := range results {
+			if r.BillPeriodID == 0 {
+				t.Error("expected non-zero BillPeriodID")
+			}
+			if r.FacilityName != "Test Kita" {
+				t.Errorf("expected FacilityName 'Test Kita', got %q", r.FacilityName)
+			}
+			if r.BillTo == nil {
+				t.Error("expected BillTo to be set")
+			}
+		}
+	})
+}

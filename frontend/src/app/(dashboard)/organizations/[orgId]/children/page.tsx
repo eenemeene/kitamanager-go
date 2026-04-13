@@ -225,6 +225,13 @@ export default function ChildrenPage() {
     [router, orgId]
   );
 
+  const handleViewBillingHistory = useCallback(
+    (child: Child) => {
+      router.push(`/organizations/${orgId}/children/${child.id}/billing`);
+    },
+    [router, orgId]
+  );
+
   const onSubmitChild = useCallback(
     (data: ChildFormData) => {
       if (dialogs.editingItem) {
@@ -337,6 +344,7 @@ export default function ChildrenPage() {
               fundingByChildId={fundingByChildId}
               weeklyHoursBasis={fundingData?.weekly_hours_basis}
               onViewHistory={handleViewContractHistory}
+              onViewBilling={handleViewBillingHistory}
               onAddContract={handleAddContract}
               onEdit={dialogs.handleEdit}
               onDelete={dialogs.handleDelete}

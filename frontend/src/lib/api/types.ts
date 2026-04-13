@@ -836,6 +836,36 @@ export interface FundingComparisonResponse {
   children: FundingComparisonChild[];
 }
 
+// Per-child billing history
+export interface ChildBillingHistoryEntry {
+  bill_id: number;
+  bill_from: string;
+  bill_to: string;
+  facility_name: string;
+  voucher_number: string;
+  child_name: string;
+  birth_date: string;
+  age?: number;
+  bill_total: number;
+  calculated_total?: number;
+  difference?: number;
+  status: 'match' | 'difference' | 'bill_only' | 'no_contract' | 'no_funding_config';
+  running_difference: number;
+  properties: FundingComparisonAmount[];
+  contract_id?: number;
+}
+
+export interface ChildBillingHistoryResponse {
+  child_id: number;
+  child_name: string;
+  birthdate: string;
+  voucher_numbers: string[];
+  total_billed: number;
+  total_calculated: number;
+  total_difference: number;
+  entries: ChildBillingHistoryEntry[];
+}
+
 // Contract properties distribution
 export interface ContractPropertyCount {
   key: string;

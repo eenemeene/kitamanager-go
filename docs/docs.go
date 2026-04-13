@@ -3602,6 +3602,65 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/organizations/{orgId}/children/{childId}/billing-history": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get complete billing history across all uploaded bills for a child, with comparison to expected funding amounts",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "government-funding-bills"
+                ],
+                "summary": "Get billing history for a child",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Child ID",
+                        "name": "childId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildBillingHistoryResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/organizations/{orgId}/children/{childId}/contracts": {
             "get": {
                 "security": [
@@ -9227,6 +9286,115 @@ const docTemplate = `{
                 "status": {
                     "type": "string",
                     "example": "present"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ChildBillingHistoryEntryResponse": {
+            "type": "object",
+            "properties": {
+                "age": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "bill_from": {
+                    "type": "string",
+                    "example": "2025-11-01"
+                },
+                "bill_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "bill_to": {
+                    "type": "string",
+                    "example": "2025-11-30"
+                },
+                "bill_total": {
+                    "type": "integer",
+                    "example": 166847
+                },
+                "birth_date": {
+                    "type": "string",
+                    "example": "01.20"
+                },
+                "calculated_total": {
+                    "type": "integer",
+                    "example": 166847
+                },
+                "child_name": {
+                    "type": "string",
+                    "example": "Mustermann, Max"
+                },
+                "contract_id": {
+                    "type": "integer",
+                    "example": 99
+                },
+                "difference": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "facility_name": {
+                    "type": "string",
+                    "example": "Kita Sonnenschein"
+                },
+                "properties": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FundingComparisonAmount"
+                    }
+                },
+                "running_difference": {
+                    "type": "integer",
+                    "example": -102
+                },
+                "status": {
+                    "description": "match|difference|bill_only|no_contract|no_funding_config",
+                    "type": "string",
+                    "example": "match"
+                },
+                "voucher_number": {
+                    "type": "string",
+                    "example": "GB-12345678901-02"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ChildBillingHistoryResponse": {
+            "type": "object",
+            "properties": {
+                "birthdate": {
+                    "type": "string",
+                    "example": "2020-03-10"
+                },
+                "child_id": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "child_name": {
+                    "type": "string",
+                    "example": "Max Mustermann"
+                },
+                "entries": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildBillingHistoryEntryResponse"
+                    }
+                },
+                "total_billed": {
+                    "type": "integer",
+                    "example": 1500000
+                },
+                "total_calculated": {
+                    "type": "integer",
+                    "example": 1500000
+                },
+                "total_difference": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "voucher_numbers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },

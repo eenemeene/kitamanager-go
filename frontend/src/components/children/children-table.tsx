@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { Pencil, Trash2, FileText, History } from 'lucide-react';
+import { Pencil, Trash2, FileText, History, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -22,6 +22,7 @@ export interface ChildrenTableProps {
   fundingByChildId: Map<number, ChildFundingResponse>;
   weeklyHoursBasis?: number;
   onViewHistory: (child: Child) => void;
+  onViewBilling: (child: Child) => void;
   onAddContract: (child: Child) => void;
   onEdit: (child: Child) => void;
   onDelete: (child: Child) => void;
@@ -32,6 +33,7 @@ export function ChildrenTable({
   fundingByChildId,
   weeklyHoursBasis,
   onViewHistory,
+  onViewBilling,
   onAddContract,
   onEdit,
   onDelete,
@@ -123,6 +125,15 @@ export function ChildrenTable({
                   aria-label={t('children.contractHistory')}
                 >
                   <History className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onViewBilling(child)}
+                  title={t('children.billingHistory')}
+                  aria-label={t('children.billingHistory')}
+                >
+                  <Receipt className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="ghost"

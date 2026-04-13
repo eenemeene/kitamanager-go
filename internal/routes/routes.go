@@ -399,6 +399,11 @@ func Setup(r *gin.Engine, d Deps) {
 						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionDelete),
 						childHandler.DeleteContract)
 
+					// Per-child billing history
+					children.GET("/:childId/billing-history",
+						authzMiddleware.RequirePermission(rbac.ResourceGovernmentFundingBills, rbac.ActionRead),
+						governmentFundingBillHandler.ChildBillingHistory)
+
 					// ============================================================
 					// Per-child attendance tracking
 					// Routes: /children/:childId/attendance/...

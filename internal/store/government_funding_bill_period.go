@@ -102,6 +102,65 @@ func (s *GovernmentFundingBillPeriodStore) FindFacilityTotalsByOrganizationInDat
 	return m, nil
 }
 
+func (s *GovernmentFundingBillPeriodStore) FindChildEntriesByOrgAndVoucherNumbers(ctx context.Context, orgID uint, voucherNumbers []string) ([]models.GovernmentFundingBillChildWithPeriod, error) {
+	if len(voucherNumbers) == 0 {
+		return nil, nil
+	}
+
+	// Find matching bill children with period metadata
+	var children []models.GovernmentFundingBillChild
+	err := DBFromContext(ctx, s.db).
+		Preload("Payments").
+		Joins("JOIN government_funding_bill_periods p ON p.id = government_funding_bill_children.period_id").
+		Where("p.organization_id = ? AND government_funding_bill_children.voucher_number IN ?", orgID, voucherNumbers).
+		Order("p.from_date ASC, government_funding_bill_children.id ASC").
+		Find(&children).Error
+	if err != nil {
+		return nil, err
+	}
+
+	if len(children) == 0 {
+		return nil, nil
+	}
+
+	// Collect period IDs to batch-load period metadata
+	periodIDs := make(map[uint]bool, len(children))
+	for _, c := range children {
+		periodIDs[c.PeriodID] = true
+	}
+	ids := make([]uint, 0, len(periodIDs))
+	for id := range periodIDs {
+		ids = append(ids, id)
+	}
+
+	var periods []models.GovernmentFundingBillPeriod
+	if err := DBFromContext(ctx, s.db).Where("id IN ?", ids).Find(&periods).Error; err != nil {
+		return nil, err
+	}
+	periodMap := make(map[uint]*models.GovernmentFundingBillPeriod, len(periods))
+	for i := range periods {
+		periodMap[periods[i].ID] = &periods[i]
+	}
+
+	// Build result
+	result := make([]models.GovernmentFundingBillChildWithPeriod, 0, len(children))
+	for _, child := range children {
+		p := periodMap[child.PeriodID]
+		if p == nil {
+			continue
+		}
+		result = append(result, models.GovernmentFundingBillChildWithPeriod{
+			BillPeriodID: p.ID,
+			BillFrom:     p.From,
+			BillTo:       p.To,
+			FacilityName: p.FacilityName,
+			Child:        child,
+		})
+	}
+
+	return result, nil
+}
+
 func (s *GovernmentFundingBillPeriodStore) ExistsByOrgAndHash(ctx context.Context, orgID uint, fileHash string) (bool, error) {
 	var count int64
 	err := DBFromContext(ctx, s.db).

@@ -163,6 +163,34 @@ func (h *GovernmentFundingBillHandler) Compare(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// ChildBillingHistory godoc
+// @Summary Get billing history for a child
+// @Description Get complete billing history across all uploaded bills for a child, with comparison to expected funding amounts
+// @Tags government-funding-bills
+// @Produce json
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Param childId path int true "Child ID"
+// @Success 200 {object} models.ChildBillingHistoryResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Router /api/v1/organizations/{orgId}/children/{childId}/billing-history [get]
+func (h *GovernmentFundingBillHandler) ChildBillingHistory(c *gin.Context) {
+	orgID, childID, ok := parseOrgAndResourceID(c, "childId")
+	if !ok {
+		return
+	}
+
+	result, err := h.service.ChildBillingHistory(c.Request.Context(), childID, orgID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
 // Delete godoc
 // @Summary Delete a government funding bill period
 // @Description Delete a government funding bill period and all associated children and payments
