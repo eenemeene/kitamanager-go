@@ -47,27 +47,29 @@ func (a Abrechnung) String() string {
 }
 
 type Kind struct {
-	Gutscheinnummer     string `json:"gutscheinnummer"`
-	Name                string `json:"name"`
-	Geburtsdatum        string `json:"geburtsdatum"`
-	QM                  string `json:"qm"`
-	MSS                 string `json:"mss"`
-	HS                  string `json:"hs"`
-	Integration         string `json:"integration"`
-	Registrierdatum     string `json:"registrierdatum"`
-	Betreuungsumfang    string `json:"betreuungsumfang"`
-	Bezirk              int64  `json:"bezirk"`
-	Basisentgeld        int    `json:"basisentgeld"`
-	AbzugOM             int    `json:"abzug_om"`
-	ElternBetreuung     int    `json:"eltern_betreuung"`
-	ElternEssen         int    `json:"eltern_essen"`
-	BuT                 int    `json:"but"`
-	AnteilBezirk        int    `json:"anteil_bezirk"`
-	ZuschlagQM          int    `json:"zuschlag_qm"`
-	ZuschlagMSS         int    `json:"zuschlag_mss"`
-	ZuschlagNDH         int    `json:"zuschlag_ndh"`
-	ZuschlagIntegration int    `json:"zuschlag_integration"`
-	Summe               int    `json:"summe"`
+	Typ                 string    `json:"typ"`              // "A" = Abrechnung (regular), "K" = Korrektur (correction)
+	Abrechnungsmonat    time.Time `json:"abrechnungsmonat"` // Which month this row applies to (first of month)
+	Gutscheinnummer     string    `json:"gutscheinnummer"`
+	Name                string    `json:"name"`
+	Geburtsdatum        string    `json:"geburtsdatum"`
+	QM                  string    `json:"qm"`
+	MSS                 string    `json:"mss"`
+	HS                  string    `json:"hs"`
+	Integration         string    `json:"integration"`
+	Registrierdatum     string    `json:"registrierdatum"`
+	Betreuungsumfang    string    `json:"betreuungsumfang"`
+	Bezirk              int64     `json:"bezirk"`
+	Basisentgeld        int       `json:"basisentgeld"`
+	AbzugOM             int       `json:"abzug_om"`
+	ElternBetreuung     int       `json:"eltern_betreuung"`
+	ElternEssen         int       `json:"eltern_essen"`
+	BuT                 int       `json:"but"`
+	AnteilBezirk        int       `json:"anteil_bezirk"`
+	ZuschlagQM          int       `json:"zuschlag_qm"`
+	ZuschlagMSS         int       `json:"zuschlag_mss"`
+	ZuschlagNDH         int       `json:"zuschlag_ndh"`
+	ZuschlagIntegration int       `json:"zuschlag_integration"`
+	Summe               int       `json:"summe"`
 }
 
 func (k Kind) String() string {
@@ -456,6 +458,8 @@ const (
 
 // vertragColumns holds the dynamically discovered column letters for the Vertragsübersicht sheet.
 type vertragColumns struct {
+	monat               string // Column with month value (e.g., "01.24"), first of merged "Monat/ Typ"
+	typ                 string // Column with K/A type, second of merged "Monat/ Typ"
 	gutscheinNr         string
 	nameDerKinder       string
 	gebDatum            string
@@ -538,6 +542,15 @@ func discoverVertragColumns(f *excelize.File) (*vertragColumns, error) {
 	}
 
 	// Map header names to struct fields
+	// "Monat/ Typ" is a merged cell spanning two columns (e.g., C:D).
+	// The month value is in the first column, K/A type in the second.
+	if monatCol, ok := colMap["Monat/ Typ"]; ok {
+		vc.monat = monatCol
+		monatNum, _ := excelize.ColumnNameToNumber(monatCol)
+		typCol, _ := excelize.ColumnNumberToName(monatNum + 1)
+		vc.typ = typCol
+	}
+
 	vc.nameDerKinder = colMap["Name des Kindes"]
 	vc.gebDatum = colMap["Geb.-datum"]
 	vc.registrAb = colMap["Registr. ab"]
@@ -622,8 +635,43 @@ func discoverVertragColumns(f *excelize.File) (*vertragColumns, error) {
 	return nil, fmt.Errorf("no voucher data rows found after header row %d", row)
 }
 
+// parseMonatTyp parses "MM.YY" format into a time.Time (first of month, UTC).
+func parseMonatTyp(s string) (time.Time, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return time.Time{}, nil
+	}
+	parts := strings.SplitN(s, ".", 2)
+	if len(parts) != 2 {
+		return time.Time{}, fmt.Errorf("invalid month format: %q", s)
+	}
+	month, err := strconv.Atoi(parts[0])
+	if err != nil || month < 1 || month > 12 {
+		return time.Time{}, fmt.Errorf("invalid month in %q: %w", s, err)
+	}
+	year, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return time.Time{}, fmt.Errorf("invalid year in %q: %w", s, err)
+	}
+	if year < 100 {
+		year += 2000
+	}
+	return time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC), nil
+}
+
 func parseKindWithColumns(f *excelize.File, row int, vc *vertragColumns) (*Kind, error) {
 	kind := &Kind{}
+
+	// Read K/A type and billing period month
+	if vc.typ != "" {
+		kind.Typ = strings.TrimSpace(cellAsString(f, SheetVertrag, fmt.Sprintf("%s%d", vc.typ, row)))
+	}
+	if vc.monat != "" {
+		monatStr := cellAsString(f, SheetVertrag, fmt.Sprintf("%s%d", vc.monat, row))
+		if parsed, err := parseMonatTyp(monatStr); err == nil {
+			kind.Abrechnungsmonat = parsed
+		}
+	}
 
 	kind.Gutscheinnummer = cellAsString(f, SheetVertrag, fmt.Sprintf("%s%d", vc.gutscheinNr, row))
 	kind.Name = cellAsString(f, SheetVertrag, fmt.Sprintf("%s%d", vc.nameDerKinder, row))

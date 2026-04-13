@@ -6,6 +6,12 @@ import "time"
 // GORM models (stored in database)
 // ============================================================
 
+// RowType values for GovernmentFundingBillPayment.
+const (
+	RowTypeRegular    = "regular"    // Normal monthly billing (Typ="A" in Excel)
+	RowTypeCorrection = "correction" // Rate correction for a prior month (Typ="K" in Excel)
+)
+
 // GovernmentFundingBillPayment represents a single financial line item for a child in a bill.
 type GovernmentFundingBillPayment struct {
 	ID       uint   `gorm:"primaryKey" json:"-"`
@@ -14,6 +20,7 @@ type GovernmentFundingBillPayment struct {
 	Value    string `gorm:"size:255;not null" json:"value" example:"ganztag"`
 	Amount   int    `gorm:"not null" json:"amount" example:"166847"`
 	RowIndex int    `gorm:"not null;default:0" json:"-"`
+	RowType  string `gorm:"size:20;not null;default:'regular'" json:"row_type" example:"regular"` // "regular" or "correction"
 }
 
 // GovernmentFundingBillChild represents one child row in a bill period.
@@ -134,6 +141,7 @@ type FundingComparisonChild struct {
 	ChildID         *uint                     `json:"child_id,omitempty" example:"42"`
 	Age             *int                      `json:"age,omitempty" example:"3"`
 	BillTotal       int                       `json:"bill_total" example:"166847"`
+	CorrectionTotal int                       `json:"correction_total" example:"0"`
 	CalcTotal       *int                      `json:"calculated_total,omitempty" example:"166847"`
 	Difference      *int                      `json:"difference,omitempty" example:"0"`
 	Status          string                    `json:"status" example:"match"` // match|difference|bill_only|calc_only
@@ -175,6 +183,7 @@ type ChildBillingHistoryEntryResponse struct {
 	BirthDate         string                    `json:"birth_date" example:"01.20"`
 	Age               *int                      `json:"age,omitempty" example:"3"`
 	BillTotal         int                       `json:"bill_total" example:"166847"`
+	CorrectionTotal   int                       `json:"correction_total" example:"0"`
 	CalcTotal         *int                      `json:"calculated_total,omitempty" example:"166847"`
 	Difference        *int                      `json:"difference,omitempty" example:"0"`
 	Status            string                    `json:"status" example:"match"` // match|difference|bill_only|no_contract|no_funding_config

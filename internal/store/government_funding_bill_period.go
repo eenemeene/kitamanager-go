@@ -162,6 +162,7 @@ func (s *GovernmentFundingBillPeriodStore) FindChildEntriesByOrgAndVoucherNumber
 }
 
 // FindBilledTotalsByOrg returns SQL-aggregated billed totals per voucher number for an org.
+// Only includes regular payments (not corrections) for accurate comparison.
 func (s *GovernmentFundingBillPeriodStore) FindBilledTotalsByOrg(ctx context.Context, orgID uint) ([]models.VoucherBilledTotal, error) {
 	var results []models.VoucherBilledTotal
 	err := DBFromContext(ctx, s.db).
@@ -171,8 +172,8 @@ func (s *GovernmentFundingBillPeriodStore) FindBilledTotalsByOrg(ctx context.Con
 			FROM government_funding_bill_periods p
 			JOIN government_funding_bill_children c ON c.period_id = p.id
 			JOIN government_funding_bill_payments pay ON pay.child_id = c.id
-			WHERE p.organization_id = ?
-			GROUP BY c.voucher_number`, orgID).
+			WHERE p.organization_id = ? AND pay.row_type = ?
+			GROUP BY c.voucher_number`, orgID, models.RowTypeRegular).
 		Scan(&results).Error
 	if err != nil {
 		return nil, err

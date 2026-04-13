@@ -9374,6 +9374,10 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 99
                 },
+                "correction_total": {
+                    "type": "integer",
+                    "example": 0
+                },
                 "difference": {
                     "type": "integer",
                     "example": 0
@@ -10751,6 +10755,10 @@ const docTemplate = `{
                 "contract_to": {
                     "type": "string",
                     "example": "2025-12-31"
+                },
+                "correction_total": {
+                    "type": "integer",
+                    "example": 0
                 },
                 "difference": {
                     "type": "integer",

@@ -4055,13 +4055,12 @@ func TestChildBillingHistory_MixedStatuses(t *testing.T) {
 
 func TestBillPaymentsToAmountMap(t *testing.T) {
 	payments := []models.GovernmentFundingBillPayment{
-		{Key: "care_type", Value: "ganztag", Amount: 120000},
-		{Key: "ndh", Value: "ndh", Amount: 8000},
-		{Key: "care_type", Value: "ganztag", Amount: 5000}, // duplicate key, amounts should sum
+		{Key: "care_type", Value: "ganztag", Amount: 120000, RowType: models.RowTypeRegular},
+		{Key: "ndh", Value: "ndh", Amount: 8000, RowType: models.RowTypeRegular},
+		{Key: "care_type", Value: "ganztag", Amount: 5000, RowType: models.RowTypeRegular},
 	}
 
-	amounts, total := billPaymentsToAmountMap(payments)
-
+	amounts, total := billPaymentsToAmountMap(payments, "")
 	if total != 133000 {
 		t.Errorf("expected total 133000, got %d", total)
 	}
@@ -4074,13 +4073,45 @@ func TestBillPaymentsToAmountMap(t *testing.T) {
 }
 
 func TestBillPaymentsToAmountMap_Empty(t *testing.T) {
-	amounts, total := billPaymentsToAmountMap(nil)
-
+	amounts, total := billPaymentsToAmountMap(nil, "")
 	if total != 0 {
 		t.Errorf("expected total 0, got %d", total)
 	}
 	if len(amounts) != 0 {
 		t.Errorf("expected empty map, got %d entries", len(amounts))
+	}
+}
+
+func TestBillPaymentsToAmountMap_FilterByRowType(t *testing.T) {
+	payments := []models.GovernmentFundingBillPayment{
+		{Key: "care_type", Value: "ganztag", Amount: 96950, RowType: models.RowTypeRegular},
+		{Key: "parent", Value: "meals", Amount: -2300, RowType: models.RowTypeRegular},
+		{Key: "care_type", Value: "ganztag", Amount: 23856, RowType: models.RowTypeCorrection},
+		{Key: "care_type", Value: "ganztag", Amount: 3199, RowType: models.RowTypeCorrection},
+	}
+
+	// Regular only
+	regAmounts, regTotal := billPaymentsToAmountMap(payments, models.RowTypeRegular)
+	if regTotal != 94650 { // 96950 - 2300
+		t.Errorf("regular total: expected 94650, got %d", regTotal)
+	}
+	if regAmounts["care_type:ganztag"] != 96950 {
+		t.Errorf("regular care_type:ganztag: expected 96950, got %d", regAmounts["care_type:ganztag"])
+	}
+
+	// Corrections only
+	corrAmounts, corrTotal := billPaymentsToAmountMap(payments, models.RowTypeCorrection)
+	if corrTotal != 27055 { // 23856 + 3199
+		t.Errorf("correction total: expected 27055, got %d", corrTotal)
+	}
+	if corrAmounts["care_type:ganztag"] != 27055 {
+		t.Errorf("correction care_type:ganztag: expected 27055, got %d", corrAmounts["care_type:ganztag"])
+	}
+
+	// All (empty filter)
+	_, allTotal := billPaymentsToAmountMap(payments, "")
+	if allTotal != 121705 { // 96950 - 2300 + 23856 + 3199
+		t.Errorf("all total: expected 121705, got %d", allTotal)
 	}
 }
 
