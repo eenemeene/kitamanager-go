@@ -387,6 +387,82 @@ definitions:
         example: present
         type: string
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ChildBillingHistoryEntryResponse:
+    properties:
+      age:
+        example: 3
+        type: integer
+      bill_from:
+        example: "2025-11-01"
+        type: string
+      bill_id:
+        example: 1
+        type: integer
+      bill_to:
+        example: "2025-11-30"
+        type: string
+      bill_total:
+        example: 166847
+        type: integer
+      birth_date:
+        example: "01.20"
+        type: string
+      calculated_total:
+        example: 166847
+        type: integer
+      child_name:
+        example: Mustermann, Max
+        type: string
+      contract_id:
+        example: 99
+        type: integer
+      difference:
+        example: 0
+        type: integer
+      facility_name:
+        example: Kita Sonnenschein
+        type: string
+      properties:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FundingComparisonAmount'
+        type: array
+      status:
+        description: match|difference|bill_only|no_contract|no_funding_config
+        example: match
+        type: string
+      voucher_number:
+        example: GB-12345678901-02
+        type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ChildBillingHistoryResponse:
+    properties:
+      birthdate:
+        example: "2020-03-10"
+        type: string
+      child_id:
+        example: 42
+        type: integer
+      child_name:
+        example: Max Mustermann
+        type: string
+      entries:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildBillingHistoryEntryResponse'
+        type: array
+      total_billed:
+        example: 1500000
+        type: integer
+      total_calculated:
+        example: 1500000
+        type: integer
+      total_difference:
+        example: 0
+        type: integer
+      voucher_numbers:
+        items:
+          type: string
+        type: array
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildContract:
     properties:
       child_id:
@@ -5044,6 +5120,45 @@ paths:
       summary: Update an attendance record
       tags:
       - child-attendance
+  /api/v1/organizations/{orgId}/children/{childId}/billing-history:
+    get:
+      description: Get complete billing history across all uploaded bills for a child,
+        with comparison to expected funding amounts
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Child ID
+        in: path
+        name: childId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildBillingHistoryResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get billing history for a child
+      tags:
+      - government-funding-bills
   /api/v1/organizations/{orgId}/children/{childId}/contracts:
     get:
       consumes:

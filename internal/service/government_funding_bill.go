@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"sort"
 	"time"
 
@@ -192,11 +193,8 @@ func (s *GovernmentFundingBillService) GetByID(ctx context.Context, id, orgID ui
 			totalAmount += p.Amount
 
 			// Aggregate surcharges (keys defined by ISBJ format)
-			for _, sk := range isbj.SurchargeKeys {
-				if p.Key == sk {
-					surchargeMap[p.Key] += p.Amount
-					break
-				}
+			if slices.Contains(isbj.SurchargeKeys, p.Key) {
+				surchargeMap[p.Key] += p.Amount
 			}
 		}
 
@@ -380,12 +378,7 @@ func (s *GovernmentFundingBillService) Compare(ctx context.Context, billID, orgI
 	matchedChildIDs := make(map[uint]bool)
 
 	for _, billChild := range period.Children {
-		billTotal := 0
-		billAmounts := make(map[string]int) // "key:value" → amount
-		for _, p := range billChild.Payments {
-			billTotal += p.Amount
-			billAmounts[p.Key+":"+p.Value] += p.Amount
-		}
+		billAmounts, billTotal := billPaymentsToAmountMap(billChild.Payments)
 
 		compChild := models.FundingComparisonChild{
 			VoucherNumber: billChild.VoucherNumber,
@@ -417,21 +410,16 @@ func (s *GovernmentFundingBillService) Compare(ctx context.Context, billID, orgI
 			compChild.Age = childAge
 
 			// Calculate funding amounts
-			calcAmounts := make(map[string]int) // "key:value" → amount
+			var calcAmounts map[string]int
+			var calcTotal int
 			if childAge != nil {
-				for _, fp := range matchFundingProperties(*childAge, contract.Properties, fundingPeriod) {
-					calcAmounts[fp.Key+":"+fp.Value] += fp.Payment
-				}
+				calcAmounts, calcTotal = calcAmountsFromFunding(*childAge, contract.Properties, fundingPeriod)
+			} else {
+				calcAmounts = make(map[string]int)
 			}
 
 			// Build property-level comparison
 			compChild.Properties = buildComparisonProperties(billAmounts, calcAmounts, labelMap)
-
-			// Compute totals
-			calcTotal := 0
-			for _, amt := range calcAmounts {
-				calcTotal += amt
-			}
 			compChild.CalcTotal = &calcTotal
 
 			diff := billTotal - calcTotal
@@ -468,16 +456,7 @@ func (s *GovernmentFundingBillService) Compare(ctx context.Context, billID, orgI
 		}
 
 		childAge := validation.CalculateAgeOnDate(ac.Birthdate, period.From)
-
-		calcAmounts := make(map[string]int)
-		for _, fp := range matchFundingProperties(childAge, contract.Properties, fundingPeriod) {
-			calcAmounts[fp.Key+":"+fp.Value] += fp.Payment
-		}
-
-		calcTotal := 0
-		for _, amt := range calcAmounts {
-			calcTotal += amt
-		}
+		calcAmounts, calcTotal := calcAmountsFromFunding(childAge, contract.Properties, fundingPeriod)
 
 		voucherDisplay := ""
 		if contract.VoucherNumber != nil {
@@ -526,6 +505,29 @@ func (s *GovernmentFundingBillService) Compare(ctx context.Context, billID, orgI
 	response.Difference = response.BillTotal - response.CalcTotal
 
 	return response, nil
+}
+
+// billPaymentsToAmountMap aggregates bill payments into a "key:value" → total amount map and computes the total.
+func billPaymentsToAmountMap(payments []models.GovernmentFundingBillPayment) (map[string]int, int) {
+	amounts := make(map[string]int, len(payments))
+	total := 0
+	for _, p := range payments {
+		amounts[p.Key+":"+p.Value] += p.Amount
+		total += p.Amount
+	}
+	return amounts, total
+}
+
+// calcAmountsFromFunding computes calculated amounts from matched funding properties.
+func calcAmountsFromFunding(age int, props models.ContractProperties, period *models.GovernmentFundingPeriod) (map[string]int, int) {
+	amounts := make(map[string]int)
+	total := 0
+	for _, fp := range matchFundingProperties(age, props, period) {
+		key := fp.Key + ":" + fp.Value
+		amounts[key] += fp.Payment
+		total += fp.Payment
+	}
+	return amounts, total
 }
 
 // buildLabelMap builds a map of "key:value" → label from all funding periods.
@@ -716,6 +718,147 @@ func convertBillAmounts(amounts []isbj.SettlementAmount) []models.GovernmentFund
 		}
 	}
 	return result
+}
+
+// ChildBillingHistory returns the complete billing history for a child across all uploaded bills.
+func (s *GovernmentFundingBillService) ChildBillingHistory(ctx context.Context, childID, orgID uint) (*models.ChildBillingHistoryResponse, error) {
+	// 1. Fetch child with contracts
+	child, err := s.childStore.FindByIDAndOrg(ctx, childID, orgID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, apperror.NotFound("child")
+		}
+		return nil, apperror.InternalWrap(err, "failed to fetch child")
+	}
+
+	// 2. Collect all voucher numbers across all contracts
+	voucherNumbers := make([]string, 0)
+	voucherSet := make(map[string]bool)
+	for _, contract := range child.Contracts {
+		if contract.VoucherNumber != nil && !voucherSet[*contract.VoucherNumber] {
+			voucherNumbers = append(voucherNumbers, *contract.VoucherNumber)
+			voucherSet[*contract.VoucherNumber] = true
+		}
+	}
+
+	response := &models.ChildBillingHistoryResponse{
+		ChildID:        child.ID,
+		ChildName:      child.FirstName + " " + child.LastName,
+		Birthdate:      child.Birthdate.Format(models.DateFormat),
+		VoucherNumbers: voucherNumbers,
+		Entries:        []models.ChildBillingHistoryEntryResponse{},
+	}
+
+	// 3. Early exit if no voucher numbers
+	if len(voucherNumbers) == 0 {
+		return response, nil
+	}
+
+	// 4. Fetch all bill entries for these voucher numbers
+	billEntries, err := s.billPeriodStore.FindChildEntriesByOrgAndVoucherNumbers(ctx, orgID, voucherNumbers)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "failed to fetch bill entries")
+	}
+
+	if len(billEntries) == 0 {
+		return response, nil
+	}
+
+	// 5. Fetch funding config for the org's state
+	org, err := s.orgStore.FindByID(ctx, orgID)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "failed to fetch organization")
+	}
+
+	var funding *models.GovernmentFunding
+	var labelMap map[string]string
+	funding, fundingErr := s.fundingStore.FindByStateWithDetails(ctx, org.State, 0, nil)
+	if fundingErr == nil {
+		labelMap = buildLabelMap(funding)
+	}
+	if labelMap == nil {
+		labelMap = make(map[string]string)
+	}
+
+	// 6. For each bill entry, compute comparison
+	totalBilled := 0
+	totalCalc := 0
+	hasCalc := false
+
+	for _, entry := range billEntries {
+		billAmounts, billTotal := billPaymentsToAmountMap(entry.Child.Payments)
+		totalBilled += billTotal
+
+		entryResp := models.ChildBillingHistoryEntryResponse{
+			BillID:        entry.BillPeriodID,
+			BillFrom:      entry.BillFrom.Format(models.DateFormat),
+			BillTo:        formatToDate(entry.BillTo),
+			FacilityName:  entry.FacilityName,
+			VoucherNumber: entry.Child.VoucherNumber,
+			ChildName:     entry.Child.ChildName,
+			BirthDate:     entry.Child.BirthDate,
+			BillTotal:     billTotal,
+		}
+
+		// Find the contract active on this bill date with matching voucher
+		var activeContract *models.ChildContract
+		for i := range child.Contracts {
+			c := &child.Contracts[i]
+			if c.VoucherNumber == nil || *c.VoucherNumber != entry.Child.VoucherNumber {
+				continue
+			}
+			if c.IsActiveOn(entry.BillFrom) {
+				activeContract = c
+				break
+			}
+		}
+
+		if activeContract == nil {
+			// Bill entry exists but no matching contract
+			entryResp.Status = "no_contract"
+			entryResp.Properties = buildBillOnlyProperties(entry.Child.Payments, labelMap)
+		} else {
+			entryResp.ContractID = &activeContract.ID
+			age := validation.CalculateAgeOnDate(child.Birthdate, entry.BillFrom)
+			entryResp.Age = &age
+
+			if funding == nil {
+				// No funding config available
+				entryResp.Status = "no_funding_config"
+				entryResp.Properties = buildBillOnlyProperties(entry.Child.Payments, labelMap)
+			} else {
+				fundingPeriod := findPeriodForDate(funding.Periods, entry.BillFrom)
+				if fundingPeriod == nil {
+					entryResp.Status = "no_funding_config"
+					entryResp.Properties = buildBillOnlyProperties(entry.Child.Payments, labelMap)
+				} else {
+					calcAmounts, calcTotal := calcAmountsFromFunding(age, activeContract.Properties, fundingPeriod)
+					entryResp.CalcTotal = &calcTotal
+					diff := billTotal - calcTotal
+					entryResp.Difference = &diff
+					entryResp.Properties = buildComparisonProperties(billAmounts, calcAmounts, labelMap)
+					totalCalc += calcTotal
+					hasCalc = true
+
+					if diff == 0 {
+						entryResp.Status = "match"
+					} else {
+						entryResp.Status = "difference"
+					}
+				}
+			}
+		}
+
+		response.Entries = append(response.Entries, entryResp)
+	}
+
+	response.TotalBilled = totalBilled
+	if hasCalc {
+		response.TotalCalculated = totalCalc
+		response.TotalDifference = totalBilled - totalCalc
+	}
+
+	return response, nil
 }
 
 func lastDayOfMonth(t time.Time) time.Time {

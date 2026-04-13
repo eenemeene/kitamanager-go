@@ -160,6 +160,50 @@ type FundingComparisonResponse struct {
 	Children        []FundingComparisonChild `json:"children"`
 }
 
+// ============================================================
+// Per-child billing history DTOs
+// ============================================================
+
+// ChildBillingHistoryEntryResponse represents one month's billing data for a child.
+type ChildBillingHistoryEntryResponse struct {
+	BillID        uint                      `json:"bill_id" example:"1"`
+	BillFrom      string                    `json:"bill_from" example:"2025-11-01"`
+	BillTo        string                    `json:"bill_to" example:"2025-11-30"`
+	FacilityName  string                    `json:"facility_name" example:"Kita Sonnenschein"`
+	VoucherNumber string                    `json:"voucher_number" example:"GB-12345678901-02"`
+	ChildName     string                    `json:"child_name" example:"Mustermann, Max"`
+	BirthDate     string                    `json:"birth_date" example:"01.20"`
+	Age           *int                      `json:"age,omitempty" example:"3"`
+	BillTotal     int                       `json:"bill_total" example:"166847"`
+	CalcTotal     *int                      `json:"calculated_total,omitempty" example:"166847"`
+	Difference    *int                      `json:"difference,omitempty" example:"0"`
+	Status        string                    `json:"status" example:"match"` // match|difference|bill_only|no_contract|no_funding_config
+	Properties    []FundingComparisonAmount `json:"properties"`
+	ContractID    *uint                     `json:"contract_id,omitempty" example:"99"`
+}
+
+// ChildBillingHistoryResponse is the top-level billing history for a child.
+type ChildBillingHistoryResponse struct {
+	ChildID         uint                               `json:"child_id" example:"42"`
+	ChildName       string                             `json:"child_name" example:"Max Mustermann"`
+	Birthdate       string                             `json:"birthdate" example:"2020-03-10"`
+	VoucherNumbers  []string                           `json:"voucher_numbers"`
+	TotalBilled     int                                `json:"total_billed" example:"1500000"`
+	TotalCalculated int                                `json:"total_calculated" example:"1500000"`
+	TotalDifference int                                `json:"total_difference" example:"0"`
+	Entries         []ChildBillingHistoryEntryResponse `json:"entries"`
+}
+
+// GovernmentFundingBillChildWithPeriod pairs a bill child with its parent period metadata.
+// Used internally between store and service layers, not exposed via API.
+type GovernmentFundingBillChildWithPeriod struct {
+	BillPeriodID uint
+	BillFrom     time.Time
+	BillTo       *time.Time
+	FacilityName string
+	Child        GovernmentFundingBillChild
+}
+
 // GovernmentFundingBillResponse is the full response for the ISBJ upload endpoint (backwards compatible).
 type GovernmentFundingBillResponse struct {
 	ID                uint                                 `json:"id" example:"1"`
