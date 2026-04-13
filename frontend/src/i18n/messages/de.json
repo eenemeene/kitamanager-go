@@ -805,7 +805,8 @@
     "billTotal": "Abgerechnet",
     "calcTotal": "Erwartet",
     "runningDifference": "Kumuliert",
-    "correctionTotal": "Korrektur"
+    "correctionTotal": "Korrektur",
+    "differenceExplanation": "Positiv = mehr abgerechnet als erwartet, negativ = weniger abgerechnet. Nur Monate mit vorhandenen Abrechnungen werden verglichen."
   },
   "sectionAgeAlerts": {
     "title": "Kinder über Altersgrenze des Bereichs",
