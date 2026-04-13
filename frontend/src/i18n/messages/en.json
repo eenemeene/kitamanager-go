@@ -804,7 +804,8 @@
     "billingMonth": "Billing Month",
     "billTotal": "Billed",
     "calcTotal": "Expected",
-    "runningDifference": "Cumulative"
+    "runningDifference": "Cumulative",
+    "correctionTotal": "Correction"
   },
   "sectionAgeAlerts": {
     "title": "Children Over Section Age Limit",

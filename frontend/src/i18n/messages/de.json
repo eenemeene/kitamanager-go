@@ -804,7 +804,8 @@
     "billingMonth": "Abrechnungsmonat",
     "billTotal": "Abgerechnet",
     "calcTotal": "Erwartet",
-    "runningDifference": "Kumuliert"
+    "runningDifference": "Kumuliert",
+    "correctionTotal": "Korrektur"
   },
   "sectionAgeAlerts": {
     "title": "Kinder über Altersgrenze des Bereichs",

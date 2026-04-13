@@ -811,6 +811,7 @@ export interface FundingComparisonChild {
   child_id?: number;
   age?: number;
   bill_total: number;
+  correction_total: number;
   calculated_total?: number;
   difference?: number;
   status: 'match' | 'difference' | 'bill_only' | 'calc_only';
@@ -847,6 +848,7 @@ export interface ChildBillingHistoryEntry {
   birth_date: string;
   age?: number;
   bill_total: number;
+  correction_total: number;
   calculated_total?: number;
   difference?: number;
   status: 'match' | 'difference' | 'bill_only' | 'no_contract' | 'no_funding_config';

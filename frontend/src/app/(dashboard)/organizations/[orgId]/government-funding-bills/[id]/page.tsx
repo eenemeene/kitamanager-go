@@ -297,6 +297,9 @@ export default function GovernmentFundingBillDetailPage() {
                 {comparison && (
                   <>
                     <TableHead className="hidden text-right md:table-cell">
+                      {t('correctionTotal')}
+                    </TableHead>
+                    <TableHead className="hidden text-right md:table-cell">
                       {t('calculatedAmount')}
                     </TableHead>
                     <TableHead className="hidden text-right md:table-cell">
@@ -359,6 +362,15 @@ export default function GovernmentFundingBillDetailPage() {
                       {comparison && comp && (
                         <>
                           <TableCell className="hidden text-right md:table-cell">
+                            {comp.correction_total ? (
+                              <span className="text-blue-600">
+                                {formatCurrency(comp.correction_total)}
+                              </span>
+                            ) : (
+                              '\u2014'
+                            )}
+                          </TableCell>
+                          <TableCell className="hidden text-right md:table-cell">
                             {comp.calculated_total != null
                               ? formatCurrency(comp.calculated_total)
                               : '\u2014'}
@@ -381,6 +393,9 @@ export default function GovernmentFundingBillDetailPage() {
                       )}
                       {comparison && !comp && (
                         <>
+                          <TableCell className="text-muted-foreground hidden text-right md:table-cell">
+                            &mdash;
+                          </TableCell>
                           <TableCell className="text-muted-foreground hidden text-right md:table-cell">
                             &mdash;
                           </TableCell>
