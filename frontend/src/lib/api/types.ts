@@ -827,6 +827,7 @@ export interface FundingComparisonResponse {
   bill_to: string;
   facility_name: string;
   bill_total: number;
+  correction_total: number;
   calculated_total: number;
   difference: number;
   children_count: number;
