@@ -166,17 +166,17 @@ type FundingComparisonResponse struct {
 
 // ChildBillingHistoryEntryResponse represents one month's billing data for a child.
 type ChildBillingHistoryEntryResponse struct {
-	BillID        uint                      `json:"bill_id" example:"1"`
-	BillFrom      string                    `json:"bill_from" example:"2025-11-01"`
-	BillTo        string                    `json:"bill_to" example:"2025-11-30"`
-	FacilityName  string                    `json:"facility_name" example:"Kita Sonnenschein"`
-	VoucherNumber string                    `json:"voucher_number" example:"GB-12345678901-02"`
-	ChildName     string                    `json:"child_name" example:"Mustermann, Max"`
-	BirthDate     string                    `json:"birth_date" example:"01.20"`
-	Age           *int                      `json:"age,omitempty" example:"3"`
-	BillTotal     int                       `json:"bill_total" example:"166847"`
-	CalcTotal     *int                      `json:"calculated_total,omitempty" example:"166847"`
-	Difference    *int                      `json:"difference,omitempty" example:"0"`
+	BillID            uint                      `json:"bill_id" example:"1"`
+	BillFrom          string                    `json:"bill_from" example:"2025-11-01"`
+	BillTo            string                    `json:"bill_to" example:"2025-11-30"`
+	FacilityName      string                    `json:"facility_name" example:"Kita Sonnenschein"`
+	VoucherNumber     string                    `json:"voucher_number" example:"GB-12345678901-02"`
+	ChildName         string                    `json:"child_name" example:"Mustermann, Max"`
+	BirthDate         string                    `json:"birth_date" example:"01.20"`
+	Age               *int                      `json:"age,omitempty" example:"3"`
+	BillTotal         int                       `json:"bill_total" example:"166847"`
+	CalcTotal         *int                      `json:"calculated_total,omitempty" example:"166847"`
+	Difference        *int                      `json:"difference,omitempty" example:"0"`
 	Status            string                    `json:"status" example:"match"` // match|difference|bill_only|no_contract|no_funding_config
 	RunningDifference int                       `json:"running_difference" example:"-102"`
 	Properties        []FundingComparisonAmount `json:"properties"`
