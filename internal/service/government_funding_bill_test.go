@@ -47,7 +47,7 @@ func TestGovernmentFundingBillService_ListWithPeriods(t *testing.T) {
 	ctx := context.Background()
 
 	// Create test periods directly in DB
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		month := time.Month(i + 1)
 		to := time.Date(2025, month+1, 0, 0, 0, 0, 0, time.UTC)
 		p := &models.GovernmentFundingBillPeriod{
@@ -3070,7 +3070,7 @@ func TestGovernmentFundingBillService_Compare_LargeChildCount(t *testing.T) {
 	const childCount = 50
 	billChildren := make([]models.GovernmentFundingBillChild, childCount)
 
-	for i := 0; i < childCount; i++ {
+	for i := range childCount {
 		voucher := fmt.Sprintf("GB-LARGE%05d-01", i)
 		firstName := fmt.Sprintf("Child%d", i)
 		lastName := fmt.Sprintf("Large%d", i)

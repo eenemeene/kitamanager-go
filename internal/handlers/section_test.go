@@ -189,7 +189,7 @@ func TestSectionHandler_Create_BadRequest(t *testing.T) {
 	r.POST("/organizations/:orgId/sections", handler.Create)
 
 	// Missing required name field
-	body := map[string]interface{}{}
+	body := map[string]any{}
 
 	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/sections", org.ID), body)
 
@@ -530,7 +530,7 @@ func TestSectionHandler_Create_WithAgeRange(t *testing.T) {
 
 	minAge := 0
 	maxAge := 36
-	body := map[string]interface{}{
+	body := map[string]any{
 		"name":           "Krippe",
 		"min_age_months": minAge,
 		"max_age_months": maxAge,
@@ -564,7 +564,7 @@ func TestSectionHandler_Create_InvalidAgeRange(t *testing.T) {
 	r.POST("/organizations/:orgId/sections", handler.Create)
 
 	// min >= max should fail
-	body := map[string]interface{}{
+	body := map[string]any{
 		"name":           "Bad Range",
 		"min_age_months": 36,
 		"max_age_months": 36,
@@ -590,7 +590,7 @@ func TestSectionHandler_Update_WithAgeRange(t *testing.T) {
 
 	minAge := 12
 	maxAge := 48
-	body := map[string]interface{}{
+	body := map[string]any{
 		"min_age_months": minAge,
 		"max_age_months": maxAge,
 	}

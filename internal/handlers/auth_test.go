@@ -119,7 +119,7 @@ func TestAuthHandler_Login_BadRequest(t *testing.T) {
 	r.POST("/login", handler.Login)
 
 	// Missing required fields
-	body := map[string]interface{}{
+	body := map[string]any{
 		"email": "test@example.com",
 		// missing password
 	}

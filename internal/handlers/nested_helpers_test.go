@@ -39,7 +39,7 @@ func testAuditConfig(t *testing.T, resourceType, parentLabel string) auditConfig
 }
 
 // newTestContext creates a gin context with URL params and optional JSON body.
-func newTestContext(method, path string, params gin.Params, body interface{}) (*gin.Context, *httptest.ResponseRecorder) {
+func newTestContext(method, path string, params gin.Params, body any) (*gin.Context, *httptest.ResponseRecorder) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 

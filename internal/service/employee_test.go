@@ -3037,7 +3037,7 @@ func TestEmployeeService_FindAllByOrganization(t *testing.T) {
 	payPlan := createTestPayPlan(t, db, "TV-L", org.ID)
 
 	// Create 3 employees with contracts.
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		emp := createTestEmployee(t, db, fmt.Sprintf("Emp%d", i), "Smith", org.ID)
 		createTestEmployeeContract(t, db, emp.ID, payPlan.ID,
 			time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, "S8a", 1, 39)
@@ -3245,7 +3245,7 @@ func TestEmployeeService_ListContracts_Pagination(t *testing.T) {
 	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
 
 	// Create 5 non-overlapping contracts
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		from := time.Date(2020+i, 1, 1, 0, 0, 0, 0, time.UTC)
 		to := time.Date(2020+i, 12, 31, 0, 0, 0, 0, time.UTC)
 		createTestEmployeeContract(t, db, employee.ID, payPlan.ID, from, &to, "S8a", 3, 40.0)

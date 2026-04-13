@@ -252,8 +252,8 @@ func normalizeDataType(dataType string) string {
 }
 
 // allModels returns every GORM model that maps to a database table.
-func allModels() []interface{} {
-	return []interface{}{
+func allModels() []any {
+	return []any{
 		&models.Organization{},
 		&models.User{},
 		&models.UserOrganization{},

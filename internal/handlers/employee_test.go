@@ -851,7 +851,7 @@ func TestEmployeeHandler_CreateContract_MissingSectionID(t *testing.T) {
 	r.POST("/organizations/:orgId/employees/:employeeId/contracts", handler.CreateContract)
 
 	// Send request without section_id (required field)
-	body := map[string]interface{}{
+	body := map[string]any{
 		"from":           "2025-01-01",
 		"staff_category": "qualified",
 		"grade":          "S8a",
@@ -980,7 +980,7 @@ func TestEmployeeHandler_Create_MissingRequiredFields(t *testing.T) {
 	r.POST("/organizations/:orgId/employees", handler.Create)
 
 	// Missing all required fields
-	body := map[string]interface{}{}
+	body := map[string]any{}
 
 	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/employees", org.ID), body)
 
@@ -1369,7 +1369,7 @@ func TestEmployeeHandler_CreateContract_MissingStaffCategory(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/organizations/:orgId/employees/:employeeId/contracts", handler.CreateContract)
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"from":         "2025-01-01T00:00:00Z",
 		"weekly_hours": 40,
 		// Missing staff_category
@@ -2195,7 +2195,7 @@ func TestEmployeeHandler_UpdateContract_InvalidBody(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.UpdateContract)
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"from": "not-a-date",
 	}
 

@@ -229,7 +229,7 @@ func validateResponse(t *testing.T, req *http.Request, resp *httptest.ResponseRe
 }
 
 // performRequest makes a request and validates it against the OpenAPI spec
-func performRequest(t *testing.T, method, path string, body interface{}) *httptest.ResponseRecorder {
+func performRequest(t *testing.T, method, path string, body any) *httptest.ResponseRecorder {
 	var reqBody *bytes.Buffer
 	if body != nil {
 		jsonBody, _ := json.Marshal(body)
@@ -250,7 +250,7 @@ func performRequest(t *testing.T, method, path string, body interface{}) *httpte
 	return w
 }
 
-func parseResponse(t *testing.T, w *httptest.ResponseRecorder, v interface{}) {
+func parseResponse(t *testing.T, w *httptest.ResponseRecorder, v any) {
 	t.Helper()
 	if err := json.Unmarshal(w.Body.Bytes(), v); err != nil {
 		t.Fatalf("failed to parse response: %v", err)
@@ -276,7 +276,7 @@ func TestContract_OrganizationsList(t *testing.T) {
 func TestContract_OrganizationCreate(t *testing.T) {
 	cleanupBetweenTests()
 
-	resp := performRequest(t, "POST", "/api/v1/organizations", map[string]interface{}{
+	resp := performRequest(t, "POST", "/api/v1/organizations", map[string]any{
 		"name":                 "New Organization",
 		"active":               true,
 		"state":                "berlin",
@@ -307,7 +307,7 @@ func TestContract_OrganizationUpdate(t *testing.T) {
 	org := &models.Organization{Name: "Test Org", Active: true, State: "berlin"}
 	testDB.Create(org)
 
-	resp := performRequest(t, "PUT", fmt.Sprintf("/api/v1/organizations/%d", org.ID), map[string]interface{}{
+	resp := performRequest(t, "PUT", fmt.Sprintf("/api/v1/organizations/%d", org.ID), map[string]any{
 		"name": "Updated Org",
 	})
 
@@ -352,7 +352,7 @@ func TestContract_UsersList(t *testing.T) {
 func TestContract_UserCreate(t *testing.T) {
 	cleanupBetweenTests()
 
-	resp := performRequest(t, "POST", "/api/v1/users", map[string]interface{}{
+	resp := performRequest(t, "POST", "/api/v1/users", map[string]any{
 		"name":     "Test User",
 		"email":    "test@example.com",
 		"password": "password123",

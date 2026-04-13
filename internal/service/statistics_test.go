@@ -459,7 +459,7 @@ func TestStatisticsService_GetStaffingHours_ContractStartsMidRange(t *testing.T)
 	}
 
 	// Jan and Feb: child not yet active
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		if result.DataPoints[i].ChildCount != 0 {
 			t.Errorf("data point %d: ChildCount = %d, want 0 (contract not started)", i, result.DataPoints[i].ChildCount)
 		}
@@ -638,7 +638,7 @@ func TestStatisticsService_GetFinancials_Basic(t *testing.T) {
 	// 1 employee: S8a step 3, 39h (full-time)
 	emp := createTestEmployee(t, db, "Emp", "One", org.ID)
 	createTestEmployeeContractWithCategory(t, db, emp.ID, payplan.ID, contractFrom, nil, 39.0, "qualified", section.ID)
-	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]interface{}{"grade": "S8a", "step": 3})
+	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]any{"grade": "S8a", "step": 3})
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
@@ -751,7 +751,7 @@ func TestStatisticsService_GetFinancials_ProRataSalary(t *testing.T) {
 	emp := createTestEmployee(t, db, "Emp", "PartTime", org.ID)
 	contractFrom := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	createTestEmployeeContractWithCategory(t, db, emp.ID, payplan.ID, contractFrom, nil, 30.0, "qualified", section.ID)
-	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]interface{}{"grade": "S8a", "step": 3})
+	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]any{"grade": "S8a", "step": 3})
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -790,7 +790,7 @@ func TestStatisticsService_GetFinancials_EmployerContribution(t *testing.T) {
 	emp := createTestEmployee(t, db, "Emp", "One", org.ID)
 	contractFrom := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	createTestEmployeeContractWithCategory(t, db, emp.ID, payplan.ID, contractFrom, nil, 39.0, "qualified", section.ID)
-	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]interface{}{"grade": "S11b", "step": 5})
+	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]any{"grade": "S11b", "step": 5})
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -828,7 +828,7 @@ func TestStatisticsService_GetFinancials_MissingPayPlanEntry(t *testing.T) {
 	emp := createTestEmployee(t, db, "Emp", "One", org.ID)
 	contractFrom := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	createTestEmployeeContractWithCategory(t, db, emp.ID, payplan.ID, contractFrom, nil, 39.0, "qualified", section.ID)
-	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]interface{}{"grade": "S9", "step": 1})
+	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]any{"grade": "S9", "step": 1})
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -868,7 +868,7 @@ func TestStatisticsService_GetFinancials_NoPayPlanPeriodForDate(t *testing.T) {
 	emp := createTestEmployee(t, db, "Emp", "One", org.ID)
 	contractFrom := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	createTestEmployeeContractWithCategory(t, db, emp.ID, payplan.ID, contractFrom, nil, 39.0, "qualified", section.ID)
-	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]interface{}{"grade": "S8a", "step": 3})
+	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]any{"grade": "S8a", "step": 3})
 
 	from := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
@@ -937,12 +937,12 @@ func TestStatisticsService_GetFinancials_AllStaffIncluded(t *testing.T) {
 	// Qualified staff
 	emp1 := createTestEmployee(t, db, "Emp", "Qualified", org.ID)
 	createTestEmployeeContractWithCategory(t, db, emp1.ID, payplan.ID, contractFrom, nil, 39.0, "qualified", section.ID)
-	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp1.ID).Updates(map[string]interface{}{"grade": "S8a", "step": 3})
+	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp1.ID).Updates(map[string]any{"grade": "S8a", "step": 3})
 
 	// Non-pedagogical staff (kitchen, admin, etc.)
 	emp2 := createTestEmployee(t, db, "Emp", "Kitchen", org.ID)
 	createTestEmployeeContractWithCategory(t, db, emp2.ID, payplan.ID, contractFrom, nil, 39.0, "non_pedagogical", section.ID)
-	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp2.ID).Updates(map[string]interface{}{"grade": "S8a", "step": 3})
+	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp2.ID).Updates(map[string]any{"grade": "S8a", "step": 3})
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -989,7 +989,7 @@ func TestStatisticsService_GetFinancials_ContractStartsMidRange(t *testing.T) {
 	}
 
 	// Jan, Feb: no child income
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		if result.DataPoints[i].FundingIncome != 0 {
 			t.Errorf("dp %d: FundingIncome = %d, want 0 (contract not started)", i, result.DataPoints[i].FundingIncome)
 		}
@@ -1072,12 +1072,12 @@ func TestStatisticsService_GetFinancials_MultipleEmployees(t *testing.T) {
 	// Employee 1: S8a step 3, 39h
 	emp1 := createTestEmployee(t, db, "Emp", "One", org.ID)
 	createTestEmployeeContractWithCategory(t, db, emp1.ID, payplan.ID, contractFrom, nil, 39.0, "qualified", section.ID)
-	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp1.ID).Updates(map[string]interface{}{"grade": "S8a", "step": 3})
+	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp1.ID).Updates(map[string]any{"grade": "S8a", "step": 3})
 
 	// Employee 2: S11b step 5, 20h (part-time)
 	emp2 := createTestEmployee(t, db, "Emp", "Two", org.ID)
 	createTestEmployeeContractWithCategory(t, db, emp2.ID, payplan.ID, contractFrom, nil, 20.0, "qualified", section.ID)
-	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp2.ID).Updates(map[string]interface{}{"grade": "S11b", "step": 5})
+	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp2.ID).Updates(map[string]any{"grade": "S11b", "step": 5})
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -1122,7 +1122,7 @@ func TestStatisticsService_GetFinancials_BalanceNegative(t *testing.T) {
 
 	emp := createTestEmployee(t, db, "Emp", "One", org.ID)
 	createTestEmployeeContractWithCategory(t, db, emp.ID, payplan.ID, contractFrom, nil, 39.0, "qualified", section.ID)
-	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]interface{}{"grade": "S8a", "step": 1})
+	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]any{"grade": "S8a", "step": 1})
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -1301,7 +1301,7 @@ func TestStatisticsService_GetStaffingHours_FundingPeriodChange(t *testing.T) {
 
 	// Jan-Jun: 1 child * 0.25 * 39.0 = 9.75
 	expectedFirst := 0.25 * 39.0
-	for i := 0; i < 6; i++ {
+	for i := range 6 {
 		if !almostEqual(result.DataPoints[i].RequiredHours, expectedFirst, 0.01) {
 			t.Errorf("data point %d (period 1): RequiredHours = %v, want %v", i, result.DataPoints[i].RequiredHours, expectedFirst)
 		}
@@ -1587,7 +1587,7 @@ func TestGetFinancials_BudgetEntryStartsMidRange(t *testing.T) {
 	}
 
 	// Jan, Feb: 0
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		if result.DataPoints[i].BudgetExpenses != 0 {
 			t.Errorf("dp %d: BudgetExpenses = %d, want 0 (entry not started)", i, result.DataPoints[i].BudgetExpenses)
 		}
@@ -1656,7 +1656,7 @@ func TestGetFinancials_BudgetWithSalariesAndFunding(t *testing.T) {
 	createTestPayPlanEntry(t, db, ppPeriod.ID, "S8a", 3, 300000, nil)
 	emp := createTestEmployee(t, db, "Emp", "One", org.ID)
 	createTestEmployeeContractWithCategory(t, db, emp.ID, payplan.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0, "qualified", section.ID)
-	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]interface{}{"grade": "S8a", "step": 3})
+	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]any{"grade": "S8a", "step": 3})
 
 	// Budget items
 	incomeItem := createTestBudgetItem(t, db, "Parent Fees", org.ID, "income", true)
@@ -1735,7 +1735,7 @@ func TestGetFinancials_BudgetPerChildCountChanges(t *testing.T) {
 	}
 
 	// Jan, Feb: 1 child * 10000 = 10000
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		if result.DataPoints[i].BudgetExpenses != 10000 {
 			t.Errorf("dp %d: BudgetExpenses = %d, want 10000 (1 child)", i, result.DataPoints[i].BudgetExpenses)
 		}
@@ -1775,7 +1775,7 @@ func TestGetFinancials_BudgetEntryEndsMidRange(t *testing.T) {
 	}
 
 	// Jan-Mar: 25000
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if result.DataPoints[i].BudgetExpenses != 25000 {
 			t.Errorf("dp %d: BudgetExpenses = %d, want 25000 (entry active)", i, result.DataPoints[i].BudgetExpenses)
 		}
@@ -1841,7 +1841,7 @@ func TestGetFinancials_BudgetEntryTransition(t *testing.T) {
 	}
 
 	// Jan-Mar: 40000 (first entry)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if result.DataPoints[i].BudgetExpenses != 40000 {
 			t.Errorf("dp %d: BudgetExpenses = %d, want 40000 (old rate)", i, result.DataPoints[i].BudgetExpenses)
 		}
@@ -2181,7 +2181,7 @@ func TestGetFinancials_SalaryDetails_SingleCategory(t *testing.T) {
 	emp := createTestEmployee(t, db, "Emp", "One", org.ID)
 	contractFrom := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	createTestEmployeeContractWithCategory(t, db, emp.ID, payplan.ID, contractFrom, nil, 39.0, "qualified", section.ID)
-	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]interface{}{"grade": "S8a", "step": 3})
+	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]any{"grade": "S8a", "step": 3})
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -2238,7 +2238,7 @@ func TestGetFinancials_SalaryDetails_MultipleCategories(t *testing.T) {
 	for _, c := range categories {
 		emp := createTestEmployee(t, db, c.firstName, "Test", org.ID)
 		createTestEmployeeContractWithCategory(t, db, emp.ID, payplan.ID, contractFrom, nil, 39.0, c.staffCategory, section.ID)
-		db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]interface{}{"grade": c.grade, "step": c.step})
+		db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]any{"grade": c.grade, "step": c.step})
 	}
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -2293,11 +2293,11 @@ func TestGetFinancials_SalaryDetails_SameCategory(t *testing.T) {
 	contractFrom := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	emp1 := createTestEmployee(t, db, "Emp", "One", org.ID)
 	createTestEmployeeContractWithCategory(t, db, emp1.ID, payplan.ID, contractFrom, nil, 39.0, "qualified", section.ID)
-	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp1.ID).Updates(map[string]interface{}{"grade": "S8a", "step": 3})
+	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp1.ID).Updates(map[string]any{"grade": "S8a", "step": 3})
 
 	emp2 := createTestEmployee(t, db, "Emp", "Two", org.ID)
 	createTestEmployeeContractWithCategory(t, db, emp2.ID, payplan.ID, contractFrom, nil, 39.0, "qualified", section.ID)
-	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp2.ID).Updates(map[string]interface{}{"grade": "S8a", "step": 4})
+	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp2.ID).Updates(map[string]any{"grade": "S8a", "step": 4})
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -2341,7 +2341,7 @@ func TestGetFinancials_SalaryDetails_ProRata(t *testing.T) {
 	emp := createTestEmployee(t, db, "Emp", "Part", org.ID)
 	contractFrom := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	createTestEmployeeContractWithCategory(t, db, emp.ID, payplan.ID, contractFrom, nil, 20.0, "qualified", section.ID)
-	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]interface{}{"grade": "S8a", "step": 3})
+	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]any{"grade": "S8a", "step": 3})
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -2608,7 +2608,7 @@ func TestStatisticsService_GetEmployeeStaffingHours_Basic(t *testing.T) {
 	}
 
 	// Check hours for each month
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if !almostEqual(result.Employees[0].MonthlyHours[i], 30.0, 0.01) {
 			t.Errorf("Mueller month %d: got %v, want 30.0", i, result.Employees[0].MonthlyHours[i])
 		}
@@ -2761,7 +2761,7 @@ func TestStatisticsService_GetFinancials_PayPlanPeriodTransition(t *testing.T) {
 	emp := createTestEmployee(t, db, "Emp", "One", org.ID)
 	contractFrom := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	createTestEmployeeContractWithCategory(t, db, emp.ID, payplan.ID, contractFrom, nil, 39.0, "qualified", section.ID)
-	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]interface{}{"grade": "S8a", "step": 3})
+	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]any{"grade": "S8a", "step": 3})
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 12, 1, 0, 0, 0, 0, time.UTC)
@@ -2775,7 +2775,7 @@ func TestStatisticsService_GetFinancials_PayPlanPeriodTransition(t *testing.T) {
 	}
 
 	// Jan-Jun: salary = 300000 (full-time)
-	for i := 0; i < 6; i++ {
+	for i := range 6 {
 		dp := result.DataPoints[i]
 		if dp.GrossSalary != 300000 {
 			t.Errorf("month %d (%s): GrossSalary = %d, want 300000", i+1, dp.Date, dp.GrossSalary)
@@ -2829,7 +2829,7 @@ func TestStatisticsService_GetFinancials_ChildAgeBoundaryChangesRate(t *testing.
 	}
 
 	// Jan-Jun (months 0-5): child is age 2, matches U3 -> 200000 cents
-	for i := 0; i < 6; i++ {
+	for i := range 6 {
 		dp := result.DataPoints[i]
 		if dp.FundingIncome != 200000 {
 			t.Errorf("month %d (%s): FundingIncome = %d, want 200000 (U3 rate)", i+1, dp.Date, dp.FundingIncome)
@@ -2863,7 +2863,7 @@ func TestStatisticsService_GetFinancials_EmployeeZeroWeeklyHours(t *testing.T) {
 	emp := createTestEmployee(t, db, "Emp", "Zero", org.ID)
 	contractFrom := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	createTestEmployeeContractWithCategory(t, db, emp.ID, payplan.ID, contractFrom, nil, 0.0, "qualified", section.ID)
-	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]interface{}{"grade": "S8a", "step": 3})
+	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp.ID).Updates(map[string]any{"grade": "S8a", "step": 3})
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
@@ -2932,7 +2932,7 @@ func TestStatisticsService_GetOccupancy_ChildAgeGroupTransition(t *testing.T) {
 	u6Label := formatAgeGroupLabel(3, 6)
 
 	// Jan-Jun (months 0-5): child is 2 -> counted in U3 age group
-	for i := 0; i < 6; i++ {
+	for i := range 6 {
 		dp := result.DataPoints[i]
 		if dp.Total != 1 {
 			t.Errorf("month %d (%s): Total = %d, want 1", i+1, dp.Date, dp.Total)
@@ -3057,13 +3057,13 @@ func TestStatisticsService_GetStaffingHours_MultipleChildrenDifferentAgeRates(t 
 	contractFrom := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	// 3 children born 2023-01-01 → age 1 on 2024-06-01 (U3)
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		c := &models.Child{Person: models.Person{OrganizationID: org.ID, FirstName: "U3", LastName: "Child", Birthdate: time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)}}
 		db.Create(c)
 		createTestChildContract(t, db, c.ID, contractFrom, nil, section.ID, props)
 	}
 	// 2 children born 2020-01-01 → age 4 on 2024-06-01 (Ü3)
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		c := &models.Child{Person: models.Person{OrganizationID: org.ID, FirstName: "UE3", LastName: "Child", Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)}}
 		db.Create(c)
 		createTestChildContract(t, db, c.ID, contractFrom, nil, section.ID, props)
@@ -3250,7 +3250,7 @@ func TestStatisticsService_GetFinancials_FullIntegration(t *testing.T) {
 	contractFrom := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	// 2 U3 ganztag children (born 2023 → age 1)
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		c := &models.Child{Person: models.Person{OrganizationID: org.ID, FirstName: "U3", LastName: "GZ", Birthdate: time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)}}
 		db.Create(c)
 		createTestChildContract(t, db, c.ID, contractFrom, nil, section.ID, models.ContractProperties{"care_type": "ganztag"})
@@ -3273,12 +3273,12 @@ func TestStatisticsService_GetFinancials_FullIntegration(t *testing.T) {
 	// Employee 1: qualified, S8a/3, 39h (full-time)
 	emp1 := createTestEmployee(t, db, "Emp", "Qualified", org.ID)
 	createTestEmployeeContractWithCategory(t, db, emp1.ID, payplan.ID, contractFrom, nil, 39.0, "qualified", section.ID)
-	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp1.ID).Updates(map[string]interface{}{"grade": "S8a", "step": 3})
+	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp1.ID).Updates(map[string]any{"grade": "S8a", "step": 3})
 
 	// Employee 2: supplementary, S4/2, 20h (part-time)
 	emp2 := createTestEmployee(t, db, "Emp", "Supplementary", org.ID)
 	createTestEmployeeContractWithCategory(t, db, emp2.ID, payplan.ID, contractFrom, nil, 20.0, "supplementary", section.ID)
-	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp2.ID).Updates(map[string]interface{}{"grade": "S4", "step": 2})
+	db.Model(&models.EmployeeContract{}).Where("employee_id = ?", emp2.ID).Updates(map[string]any{"grade": "S4", "step": 2})
 
 	// Budget items
 	rent := createTestBudgetItem(t, db, "Rent", org.ID, "expense", false)
@@ -3379,7 +3379,7 @@ func TestStatisticsService_GetFinancials_FundingPeriodTransitionMidRange(t *test
 	props := models.ContractProperties{"care_type": "ganztag"}
 
 	// 2 children with ganztag
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		child := createTestChild(t, db, "Child", "X", org.ID)
 		createTestChildContract(t, db, child.ID, contractFrom, nil, section.ID, props)
 	}
@@ -3666,7 +3666,7 @@ func TestStatisticsService_GetEmployeeStaffingHours_MultipleEmployeesTransition(
 	}
 
 	// Alpha C: constant 20h
-	for i := 0; i < 6; i++ {
+	for i := range 6 {
 		got := result.Employees[1].MonthlyHours[i]
 		if !almostEqual(got, 20.0, 0.01) {
 			t.Errorf("Alpha C month %d: hours = %v, want 20.0", i+1, got)
@@ -3674,7 +3674,7 @@ func TestStatisticsService_GetEmployeeStaffingHours_MultipleEmployeesTransition(
 	}
 
 	// Beta B: constant 25h
-	for i := 0; i < 6; i++ {
+	for i := range 6 {
 		got := result.Employees[2].MonthlyHours[i]
 		if !almostEqual(got, 25.0, 0.01) {
 			t.Errorf("Beta B month %d: hours = %v, want 25.0", i+1, got)

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -132,7 +133,7 @@ func TestOrganizationHandler_Create_BadRequest(t *testing.T) {
 	r.POST("/organizations", handler.Create)
 
 	// Missing required name field
-	body := map[string]interface{}{
+	body := map[string]any{
 		"active": true,
 	}
 
@@ -278,10 +279,7 @@ func TestOrganizationHandler_Create_NameTooLong(t *testing.T) {
 	r.POST("/organizations", handler.Create)
 
 	// Create a name longer than 255 characters
-	longName := ""
-	for i := 0; i < 256; i++ {
-		longName += "a"
-	}
+	longName := strings.Repeat("a", 256)
 
 	body := models.OrganizationCreateRequest{
 		Name:               longName,
@@ -479,7 +477,7 @@ func TestOrganizationHandler_Create_MissingState(t *testing.T) {
 	r.POST("/organizations", handler.Create)
 
 	// Missing state field
-	body := map[string]interface{}{
+	body := map[string]any{
 		"name":   "New Org",
 		"active": true,
 	}
@@ -500,7 +498,7 @@ func TestOrganizationHandler_Create_MissingDefaultSectionName(t *testing.T) {
 	r.POST("/organizations", handler.Create)
 
 	// Missing default_section_name (required field)
-	body := map[string]interface{}{
+	body := map[string]any{
 		"name":   "New Org",
 		"active": true,
 		"state":  "berlin",

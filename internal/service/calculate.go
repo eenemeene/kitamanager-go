@@ -1,8 +1,11 @@
 package service
 
 import (
+	"cmp"
 	"fmt"
+	"maps"
 	"math"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -170,11 +173,11 @@ func calculateFinancials(
 				AmountCents: accum.amount,
 			})
 		}
-		sort.Slice(fundingDetails, func(i, j int) bool {
-			if fundingDetails[i].Key != fundingDetails[j].Key {
-				return fundingDetails[i].Key < fundingDetails[j].Key
-			}
-			return fundingDetails[i].Value < fundingDetails[j].Value
+		slices.SortFunc(fundingDetails, func(a, b models.FinancialFundingDetail) int {
+			return cmp.Or(
+				cmp.Compare(a.Key, b.Key),
+				cmp.Compare(a.Value, b.Value),
+			)
 		})
 
 		// Expenses: employee salaries using pre-built pay plan indexes
@@ -226,8 +229,8 @@ func calculateFinancials(
 				EmployerCosts: pair[1],
 			})
 		}
-		sort.Slice(salaryDetails, func(i, j int) bool {
-			return salaryDetails[i].StaffCategory < salaryDetails[j].StaffCategory
+		slices.SortFunc(salaryDetails, func(a, b models.FinancialSalaryDetail) int {
+			return cmp.Compare(a.StaffCategory, b.StaffCategory)
 		})
 
 		// Budget items: income and expenses from budget items
@@ -406,11 +409,11 @@ func calculateEmployeeStaffingHours(
 	}
 
 	// Sort by last name, first name
-	sort.Slice(rows, func(i, j int) bool {
-		if rows[i].LastName != rows[j].LastName {
-			return rows[i].LastName < rows[j].LastName
-		}
-		return rows[i].FirstName < rows[j].FirstName
+	slices.SortFunc(rows, func(a, b models.EmployeeStaffingHoursRow) int {
+		return cmp.Or(
+			cmp.Compare(a.LastName, b.LastName),
+			cmp.Compare(a.FirstName, b.FirstName),
+		)
 	})
 
 	return dates, rows
@@ -788,26 +791,20 @@ func extractOccupancyStructure(periods []models.GovernmentFundingPeriod) ([]mode
 			MaxAge: ak.maxAge,
 		})
 	}
-	sort.Slice(ageGroups, func(i, j int) bool {
-		return ageGroups[i].MinAge < ageGroups[j].MinAge
+	slices.SortFunc(ageGroups, func(a, b models.OccupancyAgeGroup) int {
+		return cmp.Compare(a.MinAge, b.MinAge)
 	})
 
 	// Build sorted care types
-	var careTypes []models.OccupancyCareType
-	for _, ct := range careTypeSet {
-		careTypes = append(careTypes, ct)
-	}
-	sort.Slice(careTypes, func(i, j int) bool {
-		return careTypes[i].Value < careTypes[j].Value
+	careTypes := slices.Collect(maps.Values(careTypeSet))
+	slices.SortFunc(careTypes, func(a, b models.OccupancyCareType) int {
+		return cmp.Compare(a.Value, b.Value)
 	})
 
 	// Build sorted supplement types
-	var supplements []models.OccupancySupplementType
-	for _, st := range supplementSet {
-		supplements = append(supplements, st)
-	}
-	sort.Slice(supplements, func(i, j int) bool {
-		return supplements[i].Value < supplements[j].Value
+	supplements := slices.Collect(maps.Values(supplementSet))
+	slices.SortFunc(supplements, func(a, b models.OccupancySupplementType) int {
+		return cmp.Compare(a.Value, b.Value)
 	})
 
 	return ageGroups, careTypes, supplements

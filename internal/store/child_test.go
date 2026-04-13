@@ -575,7 +575,7 @@ func TestChildStore_FindByOrganizationAndSection_ActiveOn_Pagination(t *testing.
 	refDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
 
 	// Create 3 children with active contracts
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		child := &models.Child{
 			Person: models.Person{OrganizationID: org.ID, FirstName: "Active", LastName: "Child", Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)},
 		}

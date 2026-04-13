@@ -668,7 +668,7 @@ func TestAuthorizationMiddleware_GovernmentFunding_SuperAdminCanList(t *testing.
 	r.GET("/government-funding-rates",
 		middleware.RequireSuperAdmin(),
 		func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+			c.JSON(http.StatusOK, gin.H{"data": []any{}})
 		})
 
 	req, _ := http.NewRequest("GET", "/government-funding-rates", nil)
@@ -780,7 +780,7 @@ func TestAuthorizationMiddleware_GovernmentFunding_AdminCannotList(t *testing.T)
 	r.GET("/government-funding-rates",
 		middleware.RequireSuperAdmin(),
 		func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+			c.JSON(http.StatusOK, gin.H{"data": []any{}})
 		})
 
 	req, _ := http.NewRequest("GET", "/government-funding-rates", nil)
@@ -892,7 +892,7 @@ func TestAuthorizationMiddleware_GovernmentFunding_ManagerCannotAccess(t *testin
 	r.GET("/government-funding-rates",
 		middleware.RequireSuperAdmin(),
 		func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+			c.JSON(http.StatusOK, gin.H{"data": []any{}})
 		})
 
 	req, _ := http.NewRequest("GET", "/government-funding-rates", nil)
@@ -920,7 +920,7 @@ func TestAuthorizationMiddleware_GovernmentFunding_MemberCannotAccess(t *testing
 	r.GET("/government-funding-rates",
 		middleware.RequireSuperAdmin(),
 		func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+			c.JSON(http.StatusOK, gin.H{"data": []any{}})
 		})
 
 	req, _ := http.NewRequest("GET", "/government-funding-rates", nil)
@@ -944,7 +944,7 @@ func TestAuthorizationMiddleware_GovernmentFunding_NoUserID(t *testing.T) {
 	r.GET("/government-funding-rates",
 		middleware.RequireSuperAdmin(),
 		func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+			c.JSON(http.StatusOK, gin.H{"data": []any{}})
 		})
 
 	req, _ := http.NewRequest("GET", "/government-funding-rates", nil)
@@ -1087,7 +1087,7 @@ func TestAuthorizationMiddleware_OrganizationList_SuperAdminCanList(t *testing.T
 	r.GET("/organizations",
 		middleware.RequireGlobalPermission(rbac.ResourceOrganizations, rbac.ActionRead),
 		func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+			c.JSON(http.StatusOK, gin.H{"data": []any{}})
 		})
 
 	req, _ := http.NewRequest("GET", "/organizations", nil)
@@ -1115,7 +1115,7 @@ func TestAuthorizationMiddleware_OrganizationList_AdminCanList(t *testing.T) {
 	r.GET("/organizations",
 		middleware.RequireGlobalPermission(rbac.ResourceOrganizations, rbac.ActionRead),
 		func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+			c.JSON(http.StatusOK, gin.H{"data": []any{}})
 		})
 
 	req, _ := http.NewRequest("GET", "/organizations", nil)
@@ -1143,7 +1143,7 @@ func TestAuthorizationMiddleware_OrganizationList_ManagerCanList(t *testing.T) {
 	r.GET("/organizations",
 		middleware.RequireGlobalPermission(rbac.ResourceOrganizations, rbac.ActionRead),
 		func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+			c.JSON(http.StatusOK, gin.H{"data": []any{}})
 		})
 
 	req, _ := http.NewRequest("GET", "/organizations", nil)
@@ -1171,7 +1171,7 @@ func TestAuthorizationMiddleware_OrganizationList_MemberCanList(t *testing.T) {
 	r.GET("/organizations",
 		middleware.RequireGlobalPermission(rbac.ResourceOrganizations, rbac.ActionRead),
 		func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+			c.JSON(http.StatusOK, gin.H{"data": []any{}})
 		})
 
 	req, _ := http.NewRequest("GET", "/organizations", nil)
@@ -1202,7 +1202,7 @@ func TestAuthorizationMiddleware_OrganizationList_NoRoleCannotList(t *testing.T)
 	r.GET("/organizations",
 		middleware.RequireGlobalPermission(rbac.ResourceOrganizations, rbac.ActionRead),
 		func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+			c.JSON(http.StatusOK, gin.H{"data": []any{}})
 		})
 
 	req, _ := http.NewRequest("GET", "/organizations", nil)
@@ -1484,7 +1484,7 @@ func TestAuthorizationMiddleware_OrganizationList_StaffCanList(t *testing.T) {
 	r.GET("/organizations",
 		middleware.RequireGlobalPermission(rbac.ResourceOrganizations, rbac.ActionRead),
 		func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+			c.JSON(http.StatusOK, gin.H{"data": []any{}})
 		})
 
 	req, _ := http.NewRequest("GET", "/organizations", nil)
@@ -1508,7 +1508,7 @@ func TestAuthorizationMiddleware_OrganizationList_UnauthenticatedCannotList(t *t
 	r.GET("/organizations",
 		middleware.RequireGlobalPermission(rbac.ResourceOrganizations, rbac.ActionRead),
 		func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+			c.JSON(http.StatusOK, gin.H{"data": []any{}})
 		})
 
 	req, _ := http.NewRequest("GET", "/organizations", nil)

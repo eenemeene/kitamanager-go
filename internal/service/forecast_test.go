@@ -52,9 +52,9 @@ func setupForecastTestData(t *testing.T) (*StatisticsService, forecastTestData) 
 	emp2 := createTestEmployee(t, db, "Emp", "Two", org.ID)
 	contractFrom := time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC)
 	emp1Contract := createTestEmployeeContractWithCategory(t, db, emp1.ID, payplan.ID, contractFrom, nil, 39.0, "qualified", section.ID)
-	db.Model(emp1Contract).Updates(map[string]interface{}{"grade": "S8a", "step": 3})
+	db.Model(emp1Contract).Updates(map[string]any{"grade": "S8a", "step": 3})
 	emp2Contract := createTestEmployeeContractWithCategory(t, db, emp2.ID, payplan.ID, contractFrom, nil, 30.0, "qualified", section.ID)
-	db.Model(emp2Contract).Updates(map[string]interface{}{"grade": "S8a", "step": 3})
+	db.Model(emp2Contract).Updates(map[string]any{"grade": "S8a", "step": 3})
 
 	// 2 children with ganztag contracts
 	child1 := createTestChild(t, db, "Child", "One", org.ID)

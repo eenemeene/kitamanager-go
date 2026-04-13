@@ -4,6 +4,41 @@
 
 **Always use the latest versions** of all dependencies and tools. This includes Hugo, the Hextra theme, Go, Node.js, and all other libraries. Never pin to older versions or downgrade to work around compatibility issues — instead, upgrade the dependency chain to make everything work with the latest releases.
 
+## Go Best Practices
+
+**Always use the latest Go language features and idioms.** When writing or modifying Go code, prefer modern standard library packages and syntax over older patterns.
+
+### Required Modern Patterns
+
+- **`any` over `interface{}`**: Always use `any` (available since Go 1.18). Never use `interface{}`.
+- **`slices` package over `sort.Slice`**: Use `slices.SortFunc` with `cmp.Compare` and `cmp.Or` for sorting. Use `slices.Contains`, `slices.Index`, etc. instead of manual loops.
+- **`maps` package**: Use `maps.Keys`, `maps.Values`, `maps.Clone` etc. instead of manual map iteration. Combine with `slices.Collect` to collect iterators into slices.
+- **`cmp` package**: Use `cmp.Compare` for comparisons in sort functions. Use `cmp.Or` for multi-field sorting.
+- **`for range N`**: Use `for range N` (Go 1.22+) instead of `for i := 0; i < N; i++` for counting loops. Use `for i := range N` when the index is needed.
+- **`strings.Repeat`**: Use `strings.Repeat(s, n)` instead of loop-based string building for simple repetitions.
+- **`log/slog`**: Use structured logging with `slog` (Go 1.21+). Never use `log.Printf` or `fmt.Printf` for application logging.
+
+### Examples
+
+```go
+// CORRECT - modern Go
+slices.SortFunc(items, func(a, b Item) int {
+    return cmp.Or(
+        cmp.Compare(a.Name, b.Name),
+        cmp.Compare(a.ID, b.ID),
+    )
+})
+values := slices.Collect(maps.Values(myMap))
+if slices.Contains(roles, targetRole) { ... }
+for i := range 10 { ... }
+
+// WRONG - outdated patterns
+sort.Slice(items, func(i, j int) bool { return items[i].Name < items[j].Name })
+var values []V; for _, v := range myMap { values = append(values, v) }
+for _, r := range roles { if r == targetRole { ... } }
+for i := 0; i < 10; i++ { ... }
+```
+
 ## API Handler Documentation
 
 All API handlers MUST be documented using swaggo annotations. This enables automatic OpenAPI/Swagger specification generation.

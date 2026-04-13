@@ -9598,7 +9598,7 @@ const docTemplate = `{
         },
         "github_com_eenemeene_kitamanager-go_internal_models.ContractProperties": {
             "type": "object",
-            "additionalProperties": true
+            "additionalProperties": {}
         },
         "github_com_eenemeene_kitamanager-go_internal_models.ContractPropertiesDistributionResponse": {
             "type": "object",

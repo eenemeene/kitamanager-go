@@ -31,7 +31,7 @@ func TestAuthMiddleware_RequireAuth_UserIDConversion(t *testing.T) {
 	}
 
 	// Set up a test handler that checks the userID type
-	var capturedUserID interface{}
+	var capturedUserID any
 	testHandler := func(c *gin.Context) {
 		capturedUserID, _ = c.Get(ctxkeys.UserID)
 		c.Status(http.StatusOK)
@@ -280,7 +280,7 @@ func TestAuthMiddleware_RequireAuth_AcceptsCookieToken(t *testing.T) {
 		t.Fatalf("failed to sign token: %v", err)
 	}
 
-	var capturedUserID interface{}
+	var capturedUserID any
 	router := gin.New()
 	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
 		capturedUserID, _ = c.Get(ctxkeys.UserID)
@@ -327,7 +327,7 @@ func TestAuthMiddleware_RequireAuth_PrefersCookieOverHeader(t *testing.T) {
 	})
 	headerTokenString, _ := headerToken.SignedString([]byte(jwtSecret))
 
-	var capturedUserID interface{}
+	var capturedUserID any
 	router := gin.New()
 	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
 		capturedUserID, _ = c.Get(ctxkeys.UserID)
@@ -366,7 +366,7 @@ func TestAuthMiddleware_RequireAuth_FallsBackToHeader(t *testing.T) {
 	})
 	tokenString, _ := token.SignedString([]byte(jwtSecret))
 
-	var capturedUserID interface{}
+	var capturedUserID any
 	router := gin.New()
 	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
 		capturedUserID, _ = c.Get(ctxkeys.UserID)

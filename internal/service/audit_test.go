@@ -214,7 +214,7 @@ func TestAuditService_LogUserAddToOrg(t *testing.T) {
 		t.Errorf("ResourceType = %v, want user_organization", log.ResourceType)
 	}
 
-	var details map[string]interface{}
+	var details map[string]any
 	if err := json.Unmarshal([]byte(log.Details), &details); err != nil {
 		t.Fatalf("failed to unmarshal details: %v", err)
 	}
@@ -251,7 +251,7 @@ func TestAuditService_LogUserRemoveFromOrg(t *testing.T) {
 		t.Errorf("ResourceType = %v, want user_organization", log.ResourceType)
 	}
 
-	var details map[string]interface{}
+	var details map[string]any
 	if err := json.Unmarshal([]byte(log.Details), &details); err != nil {
 		t.Fatalf("failed to unmarshal details: %v", err)
 	}
@@ -282,7 +282,7 @@ func TestAuditService_LogRoleChange(t *testing.T) {
 		t.Errorf("Action = %v, want %v", log.Action, models.AuditActionRoleChange)
 	}
 
-	var details map[string]interface{}
+	var details map[string]any
 	if err := json.Unmarshal([]byte(log.Details), &details); err != nil {
 		t.Fatalf("failed to unmarshal details: %v", err)
 	}
@@ -336,7 +336,7 @@ func TestAuditService_LogResourceDelete(t *testing.T) {
 				t.Errorf("ResourceID = %v, want 42", log.ResourceID)
 			}
 
-			var details map[string]interface{}
+			var details map[string]any
 			if err := json.Unmarshal([]byte(log.Details), &details); err != nil {
 				t.Fatalf("failed to unmarshal details: %v", err)
 			}
@@ -427,7 +427,7 @@ func TestAuditService_GetLogs(t *testing.T) {
 	ctx := context.Background()
 
 	// Add multiple logs
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		svc.LogLogin(uint(i+1), "user@example.com", "127.0.0.1", "Agent")
 	}
 	svc.Shutdown()
@@ -770,7 +770,7 @@ func TestAuditService_ShutdownDrainsChannel(t *testing.T) {
 	svc := NewAuditService(mock)
 
 	// Send several entries.
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		svc.log(&models.AuditLog{Action: models.AuditAction("test")})
 	}
 

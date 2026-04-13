@@ -467,7 +467,7 @@ func TestChildHandler_Create_MissingRequiredFields(t *testing.T) {
 	r := setupTestRouter()
 	r.POST("/organizations/:orgId/children", handler.Create)
 
-	body := map[string]interface{}{}
+	body := map[string]any{}
 
 	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/children", org.ID), body)
 
@@ -1265,7 +1265,7 @@ func TestChildHandler_CreateContract_MissingSectionID(t *testing.T) {
 	r.POST("/organizations/:orgId/children/:childId/contracts", handler.CreateContract)
 
 	// Send request without section_id (required field)
-	body := map[string]interface{}{
+	body := map[string]any{
 		"from": "2025-01-01",
 	}
 
@@ -2013,7 +2013,7 @@ func TestChildHandler_UpdateContract_InvalidBody(t *testing.T) {
 	r := setupTestRouter()
 	r.PUT("/organizations/:orgId/children/:childId/contracts/:contractId", handler.UpdateContract)
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"from": "not-a-date",
 	}
 

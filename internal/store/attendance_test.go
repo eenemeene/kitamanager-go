@@ -316,7 +316,7 @@ func TestChildAttendanceStore_FindByOrganizationAndDate_Pagination(t *testing.T)
 	org := createTestOrganization(t, s.store.db, "Test Org")
 	today := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		child := createChildAttendanceTestChild(t, s, org.ID)
 		if err := s.store.Create(context.Background(), &models.ChildAttendance{ChildID: child.ID, OrganizationID: org.ID, Date: today, Status: models.ChildAttendanceStatusPresent, RecordedBy: s.userID}); err != nil {
 			t.Fatalf("failed to create: %v", err)
@@ -551,7 +551,7 @@ func TestChildAttendanceStore_GetDailySummary(t *testing.T) {
 	now := time.Now()
 
 	// 3 present, 1 absent, 1 sick, 1 vacation
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		child := createChildAttendanceTestChild(t, s, org.ID)
 		if err := s.store.Create(context.Background(), &models.ChildAttendance{ChildID: child.ID, OrganizationID: org.ID, Date: today, Status: models.ChildAttendanceStatusPresent, RecordedBy: s.userID, CheckInTime: &now}); err != nil {
 			t.Fatalf("failed to create: %v", err)
