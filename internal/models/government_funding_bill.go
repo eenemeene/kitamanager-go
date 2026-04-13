@@ -177,9 +177,10 @@ type ChildBillingHistoryEntryResponse struct {
 	BillTotal     int                       `json:"bill_total" example:"166847"`
 	CalcTotal     *int                      `json:"calculated_total,omitempty" example:"166847"`
 	Difference    *int                      `json:"difference,omitempty" example:"0"`
-	Status        string                    `json:"status" example:"match"` // match|difference|bill_only|no_contract|no_funding_config
-	Properties    []FundingComparisonAmount `json:"properties"`
-	ContractID    *uint                     `json:"contract_id,omitempty" example:"99"`
+	Status            string                    `json:"status" example:"match"` // match|difference|bill_only|no_contract|no_funding_config
+	RunningDifference int                       `json:"running_difference" example:"-102"`
+	Properties        []FundingComparisonAmount `json:"properties"`
+	ContractID        *uint                     `json:"contract_id,omitempty" example:"99"`
 }
 
 // ChildBillingHistoryResponse is the top-level billing history for a child.

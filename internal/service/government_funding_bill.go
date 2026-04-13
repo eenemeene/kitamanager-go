@@ -852,6 +852,15 @@ func (s *GovernmentFundingBillService) ChildBillingHistory(ctx context.Context, 
 		response.Entries = append(response.Entries, entryResp)
 	}
 
+	// Compute running difference: cumulative sum of computable differences
+	running := 0
+	for i := range response.Entries {
+		if response.Entries[i].Difference != nil {
+			running += *response.Entries[i].Difference
+		}
+		response.Entries[i].RunningDifference = running
+	}
+
 	response.TotalBilled = totalBilled
 	if hasCalc {
 		response.TotalCalculated = totalCalc

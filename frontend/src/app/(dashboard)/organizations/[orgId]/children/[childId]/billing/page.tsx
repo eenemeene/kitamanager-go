@@ -125,13 +125,26 @@ function BillingRow({
             '\u2014'
           )}
         </TableCell>
+        <TableCell className="hidden text-right md:table-cell">
+          <span
+            className={
+              entry.running_difference < 0
+                ? 'font-medium text-red-600'
+                : entry.running_difference > 0
+                  ? 'font-medium text-green-600'
+                  : ''
+            }
+          >
+            {formatCurrency(entry.running_difference)}
+          </span>
+        </TableCell>
         <TableCell>
           <StatusBadge status={entry.status} t={t} />
         </TableCell>
       </TableRow>
       {expanded && (
         <TableRow>
-          <TableCell colSpan={8} className="p-0">
+          <TableCell colSpan={9} className="p-0">
             <div className="bg-muted/30 p-3 md:p-4">
               <Table>
                 <TableHeader>
@@ -297,6 +310,9 @@ export default function ChildBillingHistoryPage() {
                       <TableHead className="hidden text-right md:table-cell">
                         {t('difference')}
                       </TableHead>
+                      <TableHead className="hidden text-right md:table-cell">
+                        {t('runningDifference')}
+                      </TableHead>
                       <TableHead>{tCommon('status')}</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -339,6 +355,7 @@ export default function ChildBillingHistoryPage() {
                             {formatCurrency(history.total_difference)}
                           </span>
                         </TableCell>
+                        <TableCell className="hidden md:table-cell" />
                         <TableCell />
                       </TableRow>
                     </tfoot>

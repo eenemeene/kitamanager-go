@@ -4118,3 +4118,157 @@ func TestCalcAmountsFromFunding_NilPeriod(t *testing.T) {
 		t.Errorf("expected empty map, got %d entries", len(amounts))
 	}
 }
+
+func TestChildBillingHistory_RunningDifference(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	user := createTestUser(t, db, "User", "billing_running@example.com", "password")
+	ctx := context.Background()
+
+	// Funding config: ganztag = 120000
+	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
+	fundingPeriod := createTestFundingPeriod(t, db, funding.ID, time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0)
+	createTestFundingProperty(t, db, fundingPeriod.ID, "care_type", "ganztag", 120000, -1, -1)
+
+	voucher := "GB-77777777777-77"
+	child, _ := createChildWithVoucher(t, db, "Test", "Running", org.ID, section.ID, voucher,
+		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil,
+		models.ContractProperties{"care_type": "ganztag"},
+	)
+
+	// Month 1: underpaid by 100 (bill=119900, calc=120000, diff=-100)
+	createBillFixture(t, db, org.ID, user.ID, 2025, 1, []models.GovernmentFundingBillChild{
+		{VoucherNumber: voucher, ChildName: "Running, Test", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 119900},
+			}},
+	})
+
+	// Month 2: underpaid by 100 again (running = -200)
+	createBillFixture(t, db, org.ID, user.ID, 2025, 2, []models.GovernmentFundingBillChild{
+		{VoucherNumber: voucher, ChildName: "Running, Test", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 119900},
+			}},
+	})
+
+	// Month 3: correction - overpaid by 200 to compensate (running = 0)
+	createBillFixture(t, db, org.ID, user.ID, 2025, 3, []models.GovernmentFundingBillChild{
+		{VoucherNumber: voucher, ChildName: "Running, Test", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 120200},
+			}},
+	})
+
+	// Month 4: exact match (running stays 0)
+	createBillFixture(t, db, org.ID, user.ID, 2025, 4, []models.GovernmentFundingBillChild{
+		{VoucherNumber: voucher, ChildName: "Running, Test", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 120000},
+			}},
+	})
+
+	result, err := svc.ChildBillingHistory(ctx, child.ID, org.ID)
+	if err != nil {
+		t.Fatalf("ChildBillingHistory() error = %v", err)
+	}
+
+	if len(result.Entries) != 4 {
+		t.Fatalf("expected 4 entries, got %d", len(result.Entries))
+	}
+
+	// Verify running differences
+	expectedRunning := []int{-100, -200, 0, 0}
+	for i, expected := range expectedRunning {
+		if result.Entries[i].RunningDifference != expected {
+			t.Errorf("entry[%d]: expected running_difference %d, got %d",
+				i, expected, result.Entries[i].RunningDifference)
+		}
+	}
+}
+
+func TestChildBillingHistory_RunningDifferenceSkipsNoContract(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	user := createTestUser(t, db, "User", "billing_running2@example.com", "password")
+	ctx := context.Background()
+
+	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
+	fundingPeriod := createTestFundingPeriod(t, db, funding.ID, time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0)
+	createTestFundingProperty(t, db, fundingPeriod.ID, "care_type", "ganztag", 120000, -1, -1)
+
+	voucher := "GB-88888888888-88"
+	// Contract only covers Feb onwards
+	contractStart := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
+	child, _ := createChildWithVoucher(t, db, "Test", "Skip", org.ID, section.ID, voucher,
+		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		contractStart, nil,
+		models.ContractProperties{"care_type": "ganztag"},
+	)
+
+	// Month 1: no contract (bill exists but diff is nil → running stays 0)
+	createBillFixture(t, db, org.ID, user.ID, 2025, 1, []models.GovernmentFundingBillChild{
+		{VoucherNumber: voucher, ChildName: "Skip, Test", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 100000},
+			}},
+	})
+
+	// Month 2: has contract, underpaid by 500 (running = -500)
+	createBillFixture(t, db, org.ID, user.ID, 2025, 2, []models.GovernmentFundingBillChild{
+		{VoucherNumber: voucher, ChildName: "Skip, Test", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 119500},
+			}},
+	})
+
+	// Month 3: exact match (running stays -500)
+	createBillFixture(t, db, org.ID, user.ID, 2025, 3, []models.GovernmentFundingBillChild{
+		{VoucherNumber: voucher, ChildName: "Skip, Test", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 120000},
+			}},
+	})
+
+	result, err := svc.ChildBillingHistory(ctx, child.ID, org.ID)
+	if err != nil {
+		t.Fatalf("ChildBillingHistory() error = %v", err)
+	}
+
+	if len(result.Entries) != 3 {
+		t.Fatalf("expected 3 entries, got %d", len(result.Entries))
+	}
+
+	// Entry 0: no_contract → running stays 0
+	if result.Entries[0].Status != "no_contract" {
+		t.Errorf("entry[0]: expected no_contract, got %s", result.Entries[0].Status)
+	}
+	if result.Entries[0].RunningDifference != 0 {
+		t.Errorf("entry[0]: expected running 0, got %d", result.Entries[0].RunningDifference)
+	}
+
+	// Entry 1: diff = -500, running = -500
+	if result.Entries[1].RunningDifference != -500 {
+		t.Errorf("entry[1]: expected running -500, got %d", result.Entries[1].RunningDifference)
+	}
+
+	// Entry 2: diff = 0, running stays -500
+	if result.Entries[2].RunningDifference != -500 {
+		t.Errorf("entry[2]: expected running -500, got %d", result.Entries[2].RunningDifference)
+	}
+}

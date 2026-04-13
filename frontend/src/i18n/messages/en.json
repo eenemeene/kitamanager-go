@@ -802,7 +802,8 @@
     "voucherNumbers": "Voucher Numbers",
     "billingMonth": "Billing Month",
     "billTotal": "Billed",
-    "calcTotal": "Expected"
+    "calcTotal": "Expected",
+    "runningDifference": "Cumulative"
   },
   "sectionAgeAlerts": {
     "title": "Children Over Section Age Limit",

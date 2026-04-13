@@ -802,7 +802,8 @@
     "voucherNumbers": "Gutscheinnummern",
     "billingMonth": "Abrechnungsmonat",
     "billTotal": "Abgerechnet",
-    "calcTotal": "Erwartet"
+    "calcTotal": "Erwartet",
+    "runningDifference": "Kumuliert"
   },
   "sectionAgeAlerts": {
     "title": "Kinder über Altersgrenze des Bereichs",

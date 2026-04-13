@@ -9342,6 +9342,10 @@ const docTemplate = `{
                         "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FundingComparisonAmount"
                     }
                 },
+                "running_difference": {
+                    "type": "integer",
+                    "example": -102
+                },
                 "status": {
                     "description": "match|difference|bill_only|no_contract|no_funding_config",
                     "type": "string",

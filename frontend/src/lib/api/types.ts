@@ -850,6 +850,7 @@ export interface ChildBillingHistoryEntry {
   calculated_total?: number;
   difference?: number;
   status: 'match' | 'difference' | 'bill_only' | 'no_contract' | 'no_funding_config';
+  running_difference: number;
   properties: FundingComparisonAmount[];
   contract_id?: number;
 }
