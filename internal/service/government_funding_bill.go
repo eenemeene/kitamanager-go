@@ -6,8 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"slices"
 	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
@@ -126,8 +129,100 @@ func (s *GovernmentFundingBillService) ProcessISBJ(ctx context.Context, orgID ui
 		return nil, fmt.Errorf("persisting bill period: %w", err)
 	}
 
+	// Auto-discover vouchers: for bill children whose voucher is unknown,
+	// try to match by name + birth month/year and create child_voucher entries.
+	s.autoDiscoverVouchers(ctx, orgID, period.From, converted)
+
 	// Match vouchers and build response
 	return s.buildResponse(ctx, orgID, period.ID, period.From, converted)
+}
+
+// parseBillChildName splits a bill child name "LastName,FirstName" into first and last name.
+func parseBillChildName(billName string) (firstName, lastName string) {
+	parts := strings.SplitN(billName, ",", 2)
+	if len(parts) == 2 {
+		return strings.TrimSpace(parts[1]), strings.TrimSpace(parts[0])
+	}
+	return "", strings.TrimSpace(billName)
+}
+
+// parseBillBirthMonth parses "MM.YY" format into month and year.
+func parseBillBirthMonth(billDate string) (time.Month, int, error) {
+	parts := strings.SplitN(strings.TrimSpace(billDate), ".", 2)
+	if len(parts) != 2 {
+		return 0, 0, fmt.Errorf("invalid birth date format: %q", billDate)
+	}
+	month, err := strconv.Atoi(parts[0])
+	if err != nil || month < 1 || month > 12 {
+		return 0, 0, fmt.Errorf("invalid month in %q", billDate)
+	}
+	year, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return 0, 0, fmt.Errorf("invalid year in %q", billDate)
+	}
+	if year < 100 {
+		year += 2000
+	}
+	return time.Month(month), year, nil
+}
+
+// autoDiscoverVouchers attempts to match unrecognized bill vouchers to existing
+// children by name + birth month/year. When exactly one child matches, a new
+// child_voucher entry is created so subsequent lookups will find the match.
+func (s *GovernmentFundingBillService) autoDiscoverVouchers(ctx context.Context, orgID uint, billDate time.Time, converted *isbj.ConvertedSettlement) {
+	// Collect all voucher numbers from the bill
+	voucherNumbers := make([]string, 0, len(converted.Children))
+	for _, child := range converted.Children {
+		voucherNumbers = append(voucherNumbers, child.VoucherNumber)
+	}
+
+	// Find which vouchers are already known
+	known, err := s.childVoucherStore.FindChildIDsByVoucherNumbers(ctx, orgID, voucherNumbers)
+	if err != nil {
+		slog.Warn("auto-discover: failed to look up existing vouchers", "error", err)
+		return
+	}
+
+	// For each unknown voucher, try to match by name + birth month/year
+	for _, billChild := range converted.Children {
+		if _, ok := known[billChild.VoucherNumber]; ok {
+			continue // already known
+		}
+
+		firstName, lastName := parseBillChildName(billChild.ChildName)
+		if firstName == "" || lastName == "" {
+			continue
+		}
+
+		birthMonth, birthYear, err := parseBillBirthMonth(billChild.BirthDate)
+		if err != nil {
+			continue
+		}
+
+		matches, err := s.childVoucherStore.FindChildByNameAndBirthMonth(ctx, orgID, firstName, lastName, birthMonth, birthYear)
+		if err != nil || len(matches) != 1 {
+			continue // no match or ambiguous — skip
+		}
+
+		// Exactly one match — create child_voucher entry
+		if err := s.childVoucherStore.CreateVoucher(ctx, &models.ChildVoucher{
+			ChildID:       matches[0].ID,
+			VoucherNumber: billChild.VoucherNumber,
+			FirstSeen:     billDate,
+		}); err != nil {
+			slog.Warn("auto-discover: failed to create voucher",
+				"child_id", matches[0].ID,
+				"voucher", billChild.VoucherNumber,
+				"error", err,
+			)
+		} else {
+			slog.Info("auto-discover: linked voucher to child",
+				"child_id", matches[0].ID,
+				"child_name", firstName+" "+lastName,
+				"voucher", billChild.VoucherNumber,
+			)
+		}
+	}
 }
 
 // List returns a paginated list of bill periods for an organization.

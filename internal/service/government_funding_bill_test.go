@@ -5177,3 +5177,199 @@ func TestChildrenBillingSummary_CrossSuffixAggregation(t *testing.T) {
 		t.Errorf("expected bill_count 2, got %d", result.Children[0].BillCount)
 	}
 }
+
+// ============================================================
+// Auto-discovery and name/birth parsing tests
+// ============================================================
+
+func TestParseBillChildName(t *testing.T) {
+	tests := []struct {
+		input     string
+		wantFirst string
+		wantLast  string
+	}{
+		{"Mevissen,Magnus Morgan", "Magnus Morgan", "Mevissen"},
+		{"Hardt,Alva", "Alva", "Hardt"},
+		{"Silva Elgueda,Caetano", "Caetano", "Silva Elgueda"},
+		{"Conde Kleppe,Yanosh Rio", "Yanosh Rio", "Conde Kleppe"},
+		{"Beetz,Wilda", "Wilda", "Beetz"},
+		{"NoComma", "", "NoComma"},
+		{"", "", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			first, last := parseBillChildName(tt.input)
+			if first != tt.wantFirst || last != tt.wantLast {
+				t.Errorf("parseBillChildName(%q) = (%q, %q), want (%q, %q)",
+					tt.input, first, last, tt.wantFirst, tt.wantLast)
+			}
+		})
+	}
+}
+
+func TestParseBillBirthMonth(t *testing.T) {
+	tests := []struct {
+		input     string
+		wantMonth time.Month
+		wantYear  int
+		wantErr   bool
+	}{
+		{"06.20", 6, 2020, false},
+		{"01.23", 1, 2023, false},
+		{"12.99", 12, 2099, false},
+		{"", 0, 0, true},
+		{"invalid", 0, 0, true},
+		{"13.20", 0, 0, true},
+		{"00.20", 0, 0, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			month, year, err := parseBillBirthMonth(tt.input)
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("expected error, got (%d, %d)", month, year)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if month != tt.wantMonth || year != tt.wantYear {
+				t.Errorf("got (%d, %d), want (%d, %d)", month, year, tt.wantMonth, tt.wantYear)
+			}
+		})
+	}
+}
+
+func TestAutoDiscoverVouchers(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewChildVoucherStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	ctx := context.Background()
+
+	// Create child with known voucher
+	child := &models.Child{
+		Person: models.Person{
+			OrganizationID: org.ID,
+			FirstName:      "Max",
+			LastName:       "Mustermann",
+			Birthdate:      time.Date(2020, 6, 15, 0, 0, 0, 0, time.UTC),
+		},
+	}
+	db.Create(child)
+	db.Create(&models.ChildContract{
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+			SectionID:  section.ID,
+			Properties: models.ContractProperties{"care_type": "ganztag"},
+		},
+	})
+	// Known voucher -02
+	db.Create(&models.ChildVoucher{ChildID: child.ID, VoucherNumber: "GB-12345678901-02", FirstSeen: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)})
+
+	// Call autoDiscoverVouchers with a ConvertedSettlement containing a NEW voucher
+	converted := &isbj.ConvertedSettlement{
+		Children: []isbj.ConvertedChild{
+			{
+				VoucherNumber: "GB-12345678901-08", // unknown voucher
+				ChildName:     "Mustermann,Max",
+				BirthDate:     "06.20",
+			},
+		},
+	}
+	billDate := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
+	svc.autoDiscoverVouchers(ctx, org.ID, billDate, converted)
+
+	// Verify the child_voucher entry was created
+	vouchers, err := store.NewChildVoucherStore(db).FindVouchersByChildID(ctx, child.ID)
+	if err != nil {
+		t.Fatalf("FindVouchersByChildID error: %v", err)
+	}
+	if len(vouchers) != 2 {
+		t.Fatalf("expected 2 vouchers (old -02 + new -08), got %d", len(vouchers))
+	}
+	// Check the new voucher
+	found := false
+	for _, v := range vouchers {
+		if v.VoucherNumber == "GB-12345678901-08" {
+			found = true
+			if !v.FirstSeen.Equal(billDate) {
+				t.Errorf("expected first_seen %v, got %v", billDate, v.FirstSeen)
+			}
+		}
+	}
+	if !found {
+		t.Error("new voucher GB-12345678901-08 not found in child_vouchers")
+	}
+}
+
+func TestAutoDiscoverVouchers_NoMatch(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewChildVoucherStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	ctx := context.Background()
+
+	// No children in the system — auto-discovery should do nothing
+	converted := &isbj.ConvertedSettlement{
+		Children: []isbj.ConvertedChild{
+			{VoucherNumber: "GB-99999999999-01", ChildName: "Unknown,Child", BirthDate: "01.20"},
+		},
+	}
+	svc.autoDiscoverVouchers(ctx, org.ID, time.Now(), converted)
+
+	// No voucher entries should have been created
+	vouchers, _ := store.NewChildVoucherStore(db).FindVouchersByOrganization(ctx, org.ID)
+	if len(vouchers) != 0 {
+		t.Errorf("expected 0 vouchers, got %d", len(vouchers))
+	}
+}
+
+func TestAutoDiscoverVouchers_CaseInsensitive(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewChildVoucherStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	ctx := context.Background()
+
+	child := &models.Child{
+		Person: models.Person{
+			OrganizationID: org.ID,
+			FirstName:      "Wilda",
+			LastName:       "Beetz",
+			Birthdate:      time.Date(2023, 6, 10, 0, 0, 0, 0, time.UTC),
+		},
+	}
+	db.Create(child)
+
+	// Bill has "WIlda" (capital I) — should still match via LOWER()
+	converted := &isbj.ConvertedSettlement{
+		Children: []isbj.ConvertedChild{
+			{VoucherNumber: "GB-11111111111-01", ChildName: "Beetz,WIlda", BirthDate: "06.23"},
+		},
+	}
+	svc.autoDiscoverVouchers(ctx, org.ID, time.Now(), converted)
+
+	vouchers, _ := store.NewChildVoucherStore(db).FindVouchersByChildID(ctx, child.ID)
+	if len(vouchers) != 1 {
+		t.Errorf("expected 1 voucher (case-insensitive match), got %d", len(vouchers))
+	}
+}
