@@ -3727,8 +3727,9 @@ func TestChildBillingHistory_MultipleVouchers(t *testing.T) {
 		t.Fatalf("ChildBillingHistory() error = %v", err)
 	}
 
-	if len(result.VoucherNumbers) != 2 {
-		t.Errorf("expected 2 voucher numbers, got %d", len(result.VoucherNumbers))
+	// Both vouchers share the same base (GB-66666666666), so only 1 base is reported
+	if len(result.VoucherNumbers) != 1 {
+		t.Errorf("expected 1 voucher base, got %d", len(result.VoucherNumbers))
 	}
 	if len(result.Entries) != 2 {
 		t.Fatalf("expected 2 entries, got %d", len(result.Entries))
@@ -4449,8 +4450,8 @@ func TestChildrenBillingSummary_MultipleChildren(t *testing.T) {
 	createTestFundingProperty(t, db, fundingPeriod.ID, "care_type", "ganztag", 120000, -1, -1)
 	createTestFundingProperty(t, db, fundingPeriod.ID, "care_type", "halbtag", 60000, -1, -1)
 
-	v1 := "GB-SUMMARY-003A"
-	v2 := "GB-SUMMARY-003B"
+	v1 := "GB-30000000003-01"
+	v2 := "GB-30000000004-01"
 	child1, _ := createChildWithVoucher(t, db, "A", "Child", org.ID, section.ID, v1,
 		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
 		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil,
@@ -4515,8 +4516,8 @@ func TestChildrenBillingSummary_MultipleVouchers(t *testing.T) {
 	fundingPeriod := createTestFundingPeriod(t, db, funding.ID, time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0)
 	createTestFundingProperty(t, db, fundingPeriod.ID, "care_type", "ganztag", 120000, -1, -1)
 
-	v1 := "GB-SUMMARY-004A"
-	v2 := "GB-SUMMARY-004B"
+	v1 := "GB-40000000004-01"
+	v2 := "GB-40000000005-01"
 
 	// Child with two contracts (voucher renewal)
 	child := &models.Child{
@@ -4988,5 +4989,135 @@ func TestChildrenBillingSummary_ExpiredContractFullMonths(t *testing.T) {
 	}
 	if result.Children[0].BillCount != 6 {
 		t.Errorf("expected bill_count 6, got %d", result.Children[0].BillCount)
+	}
+}
+
+func TestChildBillingHistory_CrossSuffixVoucherMatching(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	user := createTestUser(t, db, "User", "billing_cross@example.com", "password")
+	ctx := context.Background()
+
+	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
+	fundingPeriod := createTestFundingPeriod(t, db, funding.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0)
+	createTestFundingProperty(t, db, fundingPeriod.ID, "care_type", "ganztag", 120000, -1, -1)
+
+	// Child has contract with voucher suffix -08
+	currentVoucher := "GB-56589936966-08"
+	child, _ := createChildWithVoucher(t, db, "Cross", "Suffix", org.ID, section.ID, currentVoucher,
+		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC), nil,
+		models.ContractProperties{"care_type": "ganztag"},
+	)
+
+	// Bills exist with OLDER suffix -02 (should still match via base)
+	oldVoucher := "GB-56589936966-02"
+	createBillFixture(t, db, org.ID, user.ID, 2024, 10, []models.GovernmentFundingBillChild{
+		{VoucherNumber: oldVoucher, ChildName: "Suffix, Cross", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 120000, RowType: "regular"},
+			}},
+	})
+
+	// Bill with another suffix -04
+	midVoucher := "GB-56589936966-04"
+	createBillFixture(t, db, org.ID, user.ID, 2025, 1, []models.GovernmentFundingBillChild{
+		{VoucherNumber: midVoucher, ChildName: "Suffix, Cross", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 120000, RowType: "regular"},
+			}},
+	})
+
+	// Bill with current suffix -08
+	createBillFixture(t, db, org.ID, user.ID, 2025, 6, []models.GovernmentFundingBillChild{
+		{VoucherNumber: currentVoucher, ChildName: "Suffix, Cross", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 120000, RowType: "regular"},
+			}},
+	})
+
+	result, err := svc.ChildBillingHistory(ctx, child.ID, org.ID)
+	if err != nil {
+		t.Fatalf("ChildBillingHistory() error = %v", err)
+	}
+
+	// All 3 bills should be found despite different suffixes
+	if len(result.Entries) != 3 {
+		t.Fatalf("expected 3 entries (across suffixes -02, -04, -08), got %d", len(result.Entries))
+	}
+
+	// All should have matched contracts (not no_contract)
+	for i, entry := range result.Entries {
+		if entry.Status == "no_contract" {
+			t.Errorf("entry[%d] (%s, voucher %s): expected matched, got no_contract",
+				i, entry.BillFrom, entry.VoucherNumber)
+		}
+	}
+}
+
+func TestChildrenBillingSummary_CrossSuffixAggregation(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	user := createTestUser(t, db, "User", "summary_cross@example.com", "password")
+	ctx := context.Background()
+
+	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
+	fundingPeriod := createTestFundingPeriod(t, db, funding.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0)
+	createTestFundingProperty(t, db, fundingPeriod.ID, "care_type", "ganztag", 120000, -1, -1)
+
+	currentVoucher := "GB-11111111111-08"
+	child, _ := createChildWithVoucher(t, db, "Agg", "Test", org.ID, section.ID, currentVoucher,
+		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil,
+		models.ContractProperties{"care_type": "ganztag"},
+	)
+
+	// Bill with old suffix
+	createBillFixture(t, db, org.ID, user.ID, 2024, 6, []models.GovernmentFundingBillChild{
+		{VoucherNumber: "GB-11111111111-02", ChildName: "Test, Agg", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 120000, RowType: "regular"},
+			}},
+	})
+	// Bill with current suffix
+	createBillFixture(t, db, org.ID, user.ID, 2025, 1, []models.GovernmentFundingBillChild{
+		{VoucherNumber: currentVoucher, ChildName: "Test, Agg", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 120000, RowType: "regular"},
+			}},
+	})
+
+	result, err := svc.ChildrenBillingSummary(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+
+	if len(result.Children) != 1 {
+		t.Fatalf("expected 1 child (aggregated across suffixes), got %d", len(result.Children))
+	}
+
+	if result.Children[0].ChildID != child.ID {
+		t.Errorf("expected child_id %d, got %d", child.ID, result.Children[0].ChildID)
+	}
+	// Both bills aggregated: 120000 + 120000 = 240000
+	if result.Children[0].TotalBilled != 240000 {
+		t.Errorf("expected total_billed 240000, got %d", result.Children[0].TotalBilled)
+	}
+	if result.Children[0].BillCount != 2 {
+		t.Errorf("expected bill_count 2, got %d", result.Children[0].BillCount)
 	}
 }

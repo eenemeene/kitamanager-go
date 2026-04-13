@@ -260,13 +260,14 @@ func (s *ChildStore) FindByOrganizationInDateRange(ctx context.Context, orgID ui
 }
 
 // FindContractsByVoucherNumbers returns child contracts matching the given voucher numbers within an organization.
-// Only contracts active on the given date are returned to avoid matching stale/historical contracts.
+// Matching is done on the base voucher number (first 14 chars: GB-XXXXXXXXXXX) to handle voucher
+// suffix revisions. Only contracts active on the given date are returned.
 func (s *ChildStore) FindContractsByVoucherNumbers(ctx context.Context, orgID uint, voucherNumbers []string, activeOn time.Time) ([]models.ChildContract, error) {
 	var contracts []models.ChildContract
 	if err := DBFromContext(ctx, s.db).
 		Joins("JOIN children ON children.id = child_contracts.child_id").
 		Where("children.organization_id = ?", orgID).
-		Where("child_contracts.voucher_number IN ?", voucherNumbers).
+		Scopes(scopeVoucherBaseMatch("child_contracts.voucher_number", voucherNumbers)).
 		Scopes(PeriodActiveOn("child_contracts.from_date", "child_contracts.to_date", activeOn)).
 		Find(&contracts).Error; err != nil {
 		return nil, err

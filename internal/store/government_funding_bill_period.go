@@ -58,12 +58,13 @@ func (s *GovernmentFundingBillPeriodStore) FindByOrganizationAndVoucherNumber(ct
 		FacilityName string    `gorm:"column:facility_name"`
 	}
 	var rows []row
+	base := models.VoucherBase(voucherNumber)
 	err := DBFromContext(ctx, s.db).
 		Raw(`SELECT DISTINCT p.id AS bill_id, p.from_date AS bill_from, p.facility_name
 			FROM government_funding_bill_periods p
 			JOIN government_funding_bill_children c ON c.period_id = p.id
-			WHERE p.organization_id = ? AND c.voucher_number = ?
-			ORDER BY p.from_date`, orgID, voucherNumber).
+			WHERE p.organization_id = ? AND c.voucher_number LIKE ?
+			ORDER BY p.from_date`, orgID, base+"%").
 		Scan(&rows).Error
 	if err != nil {
 		return nil, err
@@ -107,12 +108,13 @@ func (s *GovernmentFundingBillPeriodStore) FindChildEntriesByOrgAndVoucherNumber
 		return nil, nil
 	}
 
-	// Find matching bill children with period metadata
+	// Find matching bill children with period metadata (match on base voucher)
 	var children []models.GovernmentFundingBillChild
 	err := DBFromContext(ctx, s.db).
 		Preload("Payments").
 		Joins("JOIN government_funding_bill_periods p ON p.id = government_funding_bill_children.period_id").
-		Where("p.organization_id = ? AND government_funding_bill_children.voucher_number IN ?", orgID, voucherNumbers).
+		Where("p.organization_id = ?", orgID).
+		Scopes(scopeVoucherBaseMatch("government_funding_bill_children.voucher_number", voucherNumbers)).
 		Order("p.from_date ASC, government_funding_bill_children.id ASC").
 		Find(&children).Error
 	if err != nil {
@@ -166,14 +168,14 @@ func (s *GovernmentFundingBillPeriodStore) FindChildEntriesByOrgAndVoucherNumber
 func (s *GovernmentFundingBillPeriodStore) FindBilledTotalsByOrg(ctx context.Context, orgID uint) ([]models.VoucherBilledTotal, error) {
 	var results []models.VoucherBilledTotal
 	err := DBFromContext(ctx, s.db).
-		Raw(`SELECT c.voucher_number,
+		Raw(`SELECT SUBSTRING(c.voucher_number, 1, 14) AS voucher_number,
 				SUM(pay.amount) AS total_billed,
 				COUNT(DISTINCT p.id) AS bill_count
 			FROM government_funding_bill_periods p
 			JOIN government_funding_bill_children c ON c.period_id = p.id
 			JOIN government_funding_bill_payments pay ON pay.child_id = c.id
 			WHERE p.organization_id = ? AND pay.row_type = ?
-			GROUP BY c.voucher_number`, orgID, models.RowTypeRegular).
+			GROUP BY SUBSTRING(c.voucher_number, 1, 14)`, orgID, models.RowTypeRegular).
 		Scan(&results).Error
 	if err != nil {
 		return nil, err
@@ -186,11 +188,12 @@ func (s *GovernmentFundingBillPeriodStore) FindBilledTotalsByOrg(ctx context.Con
 func (s *GovernmentFundingBillPeriodStore) FindAllBillDatesAndVouchersByOrg(ctx context.Context, orgID uint) ([]models.BillDateVoucher, error) {
 	var results []models.BillDateVoucher
 	err := DBFromContext(ctx, s.db).
-		Raw(`SELECT c.voucher_number, p.from_date AS bill_from
+		Raw(`SELECT SUBSTRING(c.voucher_number, 1, 14) AS voucher_number,
+			p.from_date AS bill_from
 			FROM government_funding_bill_periods p
 			JOIN government_funding_bill_children c ON c.period_id = p.id
 			WHERE p.organization_id = ?
-			ORDER BY c.voucher_number, p.from_date`, orgID).
+			ORDER BY 1, p.from_date`, orgID).
 		Scan(&results).Error
 	if err != nil {
 		return nil, err
