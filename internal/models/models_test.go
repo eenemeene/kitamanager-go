@@ -362,4 +362,3 @@ func TestUser_ToResponse(t *testing.T) {
 		t.Errorf("ToResponse().CreatedBy = %q, want %q", response.CreatedBy, user.CreatedBy)
 	}
 }
-

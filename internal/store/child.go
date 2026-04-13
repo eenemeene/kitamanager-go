@@ -259,7 +259,6 @@ func (s *ChildStore) FindByOrganizationInDateRange(ctx context.Context, orgID ui
 	return children, nil
 }
 
-
 // FindByNameBirthdateAndOrg finds a child by name, birthdate, and organization.
 func (s *ChildStore) FindByNameBirthdateAndOrg(ctx context.Context, firstName, lastName string, birthdate time.Time, orgID uint) (*models.Child, error) {
 	var child models.Child

@@ -2023,5 +2023,3 @@ func TestChildHandler_UpdateContract_InvalidBody(t *testing.T) {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
 	}
 }
-
-
