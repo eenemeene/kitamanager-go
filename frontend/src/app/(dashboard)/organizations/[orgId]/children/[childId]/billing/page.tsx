@@ -290,6 +290,7 @@ export default function ChildBillingHistoryPage() {
                   >
                     {formatCurrency(history.total_difference)}
                   </p>
+                  <p className="text-muted-foreground mt-1 text-xs">{t('differenceExplanation')}</p>
                 </div>
               </div>
             </CardContent>

@@ -179,7 +179,7 @@ func (s *GovernmentFundingBillService) GetByID(ctx context.Context, id, orgID ui
 		}
 		for _, c := range contracts {
 			if c.VoucherNumber != nil {
-				contractMap[*c.VoucherNumber] = c
+				contractMap[models.VoucherBase(*c.VoucherNumber)] = c
 			}
 		}
 	}
@@ -241,7 +241,7 @@ func (s *GovernmentFundingBillService) GetByID(ctx context.Context, id, orgID ui
 			Rows:          rows,
 		}
 
-		if contract, ok := contractMap[child.VoucherNumber]; ok {
+		if contract, ok := contractMap[models.VoucherBase(child.VoucherNumber)]; ok {
 			resp.ChildID = &contract.ChildID
 			resp.ContractID = &contract.ID
 			resp.Matched = true
@@ -353,7 +353,7 @@ func (s *GovernmentFundingBillService) Compare(ctx context.Context, billID, orgI
 		}
 		for _, c := range contracts {
 			if c.VoucherNumber != nil {
-				contractMap[*c.VoucherNumber] = c
+				contractMap[models.VoucherBase(*c.VoucherNumber)] = c
 			}
 		}
 	}
@@ -367,7 +367,7 @@ func (s *GovernmentFundingBillService) Compare(ctx context.Context, billID, orgI
 	// Build set of vouchers present in the bill
 	billVoucherSet := make(map[string]bool, len(period.Children))
 	for _, child := range period.Children {
-		billVoucherSet[child.VoucherNumber] = true
+		billVoucherSet[models.VoucherBase(child.VoucherNumber)] = true
 	}
 
 	// 6. Build comparison per bill child
@@ -394,7 +394,7 @@ func (s *GovernmentFundingBillService) Compare(ctx context.Context, billID, orgI
 			CorrectionTotal: correctionTotal,
 		}
 
-		contract, matched := contractMap[billChild.VoucherNumber]
+		contract, matched := contractMap[models.VoucherBase(billChild.VoucherNumber)]
 		if !matched {
 			// bill_only
 			compChild.Status = "bill_only"
@@ -459,7 +459,7 @@ func (s *GovernmentFundingBillService) Compare(ctx context.Context, billID, orgI
 			continue
 		}
 		contract := ac.Contracts[0]
-		if contract.VoucherNumber != nil && billVoucherSet[*contract.VoucherNumber] {
+		if contract.VoucherNumber != nil && billVoucherSet[models.VoucherBase(*contract.VoucherNumber)] {
 			continue
 		}
 
@@ -671,7 +671,7 @@ func (s *GovernmentFundingBillService) buildResponse(ctx context.Context, orgID,
 		}
 		for _, c := range contracts {
 			if c.VoucherNumber != nil {
-				contractMap[*c.VoucherNumber] = c
+				contractMap[models.VoucherBase(*c.VoucherNumber)] = c
 			}
 		}
 	}
@@ -696,7 +696,7 @@ func (s *GovernmentFundingBillService) buildResponse(ctx context.Context, orgID,
 			Rows:          rows,
 		}
 
-		if contract, ok := contractMap[child.VoucherNumber]; ok {
+		if contract, ok := contractMap[models.VoucherBase(child.VoucherNumber)]; ok {
 			resp.ChildID = &contract.ChildID
 			resp.ContractID = &contract.ID
 			resp.Matched = true
@@ -747,9 +747,9 @@ func (s *GovernmentFundingBillService) ChildBillingHistory(ctx context.Context, 
 	voucherNumbers := make([]string, 0)
 	voucherSet := make(map[string]bool)
 	for _, contract := range child.Contracts {
-		if contract.VoucherNumber != nil && !voucherSet[*contract.VoucherNumber] {
+		if contract.VoucherNumber != nil && !voucherSet[models.VoucherBase(*contract.VoucherNumber)] {
 			voucherNumbers = append(voucherNumbers, *contract.VoucherNumber)
-			voucherSet[*contract.VoucherNumber] = true
+			voucherSet[models.VoucherBase(*contract.VoucherNumber)] = true
 		}
 	}
 
@@ -818,7 +818,7 @@ func (s *GovernmentFundingBillService) ChildBillingHistory(ctx context.Context, 
 		var activeContract *models.ChildContract
 		for i := range child.Contracts {
 			c := &child.Contracts[i]
-			if c.VoucherNumber == nil || *c.VoucherNumber != entry.Child.VoucherNumber {
+			if c.VoucherNumber == nil || models.VoucherBase(*c.VoucherNumber) != models.VoucherBase(entry.Child.VoucherNumber) {
 				continue
 			}
 			if c.IsActiveOn(entry.BillFrom) {
@@ -875,6 +875,17 @@ func (s *GovernmentFundingBillService) ChildBillingHistory(ctx context.Context, 
 		response.Entries[i].RunningDifference = running
 	}
 
+	// Collect all unique full voucher numbers seen across bill entries
+	seenVouchers := make(map[string]bool)
+	allVouchers := make([]string, 0)
+	for _, entry := range response.Entries {
+		if !seenVouchers[entry.VoucherNumber] {
+			seenVouchers[entry.VoucherNumber] = true
+			allVouchers = append(allVouchers, entry.VoucherNumber)
+		}
+	}
+	response.VoucherNumbers = allVouchers
+
 	response.TotalBilled = totalBilled
 	if hasCalc {
 		response.TotalCalculated = totalCalc
@@ -917,7 +928,7 @@ func (s *GovernmentFundingBillService) ChildrenBillingSummary(ctx context.Contex
 	childIDs := make(map[uint]bool)
 	for _, c := range contracts {
 		if c.VoucherNumber != nil {
-			v := *c.VoucherNumber
+			v := models.VoucherBase(*c.VoucherNumber)
 			contractsByVoucher[v] = append(contractsByVoucher[v], c)
 			childIDByVoucher[v] = c.ChildID
 			childIDs[c.ChildID] = true

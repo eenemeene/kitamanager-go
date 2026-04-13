@@ -805,7 +805,8 @@
     "billTotal": "Billed",
     "calcTotal": "Expected",
     "runningDifference": "Cumulative",
-    "correctionTotal": "Correction"
+    "correctionTotal": "Correction",
+    "differenceExplanation": "Positive = billed more than expected, negative = billed less than expected. Only compares months where bills exist."
   },
   "sectionAgeAlerts": {
     "title": "Children Over Section Age Limit",

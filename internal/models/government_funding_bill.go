@@ -1,6 +1,23 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
+
+// VoucherBase extracts the base voucher number (GB-XXXXXXXXXXX) from a full
+// voucher (GB-XXXXXXXXXXX-XX). The suffix is a revision number that changes
+// when the Gutschein is renewed. Matching on the base ensures all revisions
+// of the same child's voucher are linked.
+// For any 17-char string starting with "GB-" and containing a dash at position 15,
+// returns the first 14 characters. Returns the input unchanged otherwise.
+func VoucherBase(voucher string) string {
+	if len(voucher) == 17 && voucher[:3] == "GB-" && voucher[14] == '-' {
+		return voucher[:14]
+	}
+	return voucher
+}
 
 // ============================================================
 // GORM models (stored in database)
@@ -21,6 +38,14 @@ type GovernmentFundingBillPayment struct {
 	Amount   int    `gorm:"not null" json:"amount" example:"166847"`
 	RowIndex int    `gorm:"not null;default:0" json:"-"`
 	RowType  string `gorm:"size:20;not null;default:'regular'" json:"row_type" example:"regular"` // "regular" or "correction"
+}
+
+// BeforeCreate sets default RowType to "regular" when not explicitly set.
+func (p *GovernmentFundingBillPayment) BeforeCreate(tx *gorm.DB) error {
+	if p.RowType == "" {
+		p.RowType = RowTypeRegular
+	}
+	return nil
 }
 
 // GovernmentFundingBillChild represents one child row in a bill period.
