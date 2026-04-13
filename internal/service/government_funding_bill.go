@@ -996,13 +996,13 @@ func (s *GovernmentFundingBillService) ChildrenBillingSummary(ctx context.Contex
 		months := 0
 		for _, c := range childContracts {
 			end := now
-			if c.To != nil {
+			if c.To != nil && c.To.Before(now) {
 				end = *c.To
 			}
-			if end.Before(c.From) {
+			if end.Before(c.From) || c.From.After(now) {
 				continue
 			}
-			// Count months: from start month to end month inclusive
+			// Count months: from start month to end month (capped at today) inclusive
 			months += countMonths(c.From, end)
 		}
 		contractMonthsByChild[childID] = months
