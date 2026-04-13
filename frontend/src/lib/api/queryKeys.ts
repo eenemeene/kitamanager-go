@@ -24,6 +24,7 @@ export const queryKeys = {
     contracts: (orgId: number, childId: number) => ['childContracts', orgId, childId] as const,
     billingHistory: (orgId: number, childId: number) =>
       ['childBillingHistory', orgId, childId] as const,
+    billingSummary: (orgId: number) => ['childrenBillingSummary', orgId] as const,
     funding: (orgId: number) => ['childrenFunding', orgId] as const,
     upcoming: (orgId: number) => ['childrenUpcoming', orgId] as const,
   },

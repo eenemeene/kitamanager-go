@@ -2798,6 +2798,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/organizations/{orgId}/children/billing-summary": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get aggregated billing totals (billed vs calculated) for all children in an organization",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "government-funding-bills"
+                ],
+                "summary": "Get billing summary for all children",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildrenBillingSummaryResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/organizations/{orgId}/children/export/excel": {
             "get": {
                 "security": [
@@ -9398,6 +9444,35 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.ChildBillingSummaryEntry": {
+            "type": "object",
+            "properties": {
+                "bill_count": {
+                    "type": "integer",
+                    "example": 12
+                },
+                "child_id": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "contract_months": {
+                    "type": "integer",
+                    "example": 18
+                },
+                "total_billed": {
+                    "type": "integer",
+                    "example": 1500000
+                },
+                "total_calculated": {
+                    "type": "integer",
+                    "example": 1500000
+                },
+                "total_difference": {
+                    "type": "integer",
+                    "example": 0
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.ChildContract": {
             "type": "object",
             "properties": {
@@ -9742,6 +9817,17 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255,
                     "example": "Schmidt"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ChildrenBillingSummaryResponse": {
+            "type": "object",
+            "properties": {
+                "children": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildBillingSummaryEntry"
+                    }
                 }
             }
         },

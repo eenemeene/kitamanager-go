@@ -466,6 +466,27 @@ definitions:
           type: string
         type: array
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ChildBillingSummaryEntry:
+    properties:
+      bill_count:
+        example: 12
+        type: integer
+      child_id:
+        example: 42
+        type: integer
+      contract_months:
+        example: 18
+        type: integer
+      total_billed:
+        example: 1500000
+        type: integer
+      total_calculated:
+        example: 1500000
+        type: integer
+      total_difference:
+        example: 0
+        type: integer
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildContract:
     properties:
       child_id:
@@ -713,6 +734,13 @@ definitions:
         example: Schmidt
         maxLength: 255
         type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ChildrenBillingSummaryResponse:
+    properties:
+      children:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildBillingSummaryEntry'
+        type: array
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildrenFundingResponse:
     properties:
@@ -5627,6 +5655,36 @@ paths:
       summary: Get daily attendance summary
       tags:
       - child-attendance
+  /api/v1/organizations/{orgId}/children/billing-summary:
+    get:
+      description: Get aggregated billing totals (billed vs calculated) for all children
+        in an organization
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildrenBillingSummaryResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get billing summary for all children
+      tags:
+      - government-funding-bills
   /api/v1/organizations/{orgId}/children/export/excel:
     get:
       description: Download all children matching the given filters as an XLSX spreadsheet

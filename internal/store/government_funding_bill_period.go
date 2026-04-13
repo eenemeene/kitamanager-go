@@ -161,6 +161,42 @@ func (s *GovernmentFundingBillPeriodStore) FindChildEntriesByOrgAndVoucherNumber
 	return result, nil
 }
 
+// FindBilledTotalsByOrg returns SQL-aggregated billed totals per voucher number for an org.
+func (s *GovernmentFundingBillPeriodStore) FindBilledTotalsByOrg(ctx context.Context, orgID uint) ([]models.VoucherBilledTotal, error) {
+	var results []models.VoucherBilledTotal
+	err := DBFromContext(ctx, s.db).
+		Raw(`SELECT c.voucher_number,
+				SUM(pay.amount) AS total_billed,
+				COUNT(DISTINCT p.id) AS bill_count
+			FROM government_funding_bill_periods p
+			JOIN government_funding_bill_children c ON c.period_id = p.id
+			JOIN government_funding_bill_payments pay ON pay.child_id = c.id
+			WHERE p.organization_id = ?
+			GROUP BY c.voucher_number`, orgID).
+		Scan(&results).Error
+	if err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
+// FindAllBillDatesAndVouchersByOrg returns lightweight voucher + bill date pairs for an org.
+// Used for computing expected amounts without loading payment data.
+func (s *GovernmentFundingBillPeriodStore) FindAllBillDatesAndVouchersByOrg(ctx context.Context, orgID uint) ([]models.BillDateVoucher, error) {
+	var results []models.BillDateVoucher
+	err := DBFromContext(ctx, s.db).
+		Raw(`SELECT c.voucher_number, p.from_date AS bill_from
+			FROM government_funding_bill_periods p
+			JOIN government_funding_bill_children c ON c.period_id = p.id
+			WHERE p.organization_id = ?
+			ORDER BY c.voucher_number, p.from_date`, orgID).
+		Scan(&results).Error
+	if err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
 func (s *GovernmentFundingBillPeriodStore) ExistsByOrgAndHash(ctx context.Context, orgID uint, fileHash string) (bool, error) {
 	var count int64
 	err := DBFromContext(ctx, s.db).

@@ -351,6 +351,7 @@
     "noVoucherNumbers": "Dieses Kind hat keine Gutscheinnummern in seinen Verträgen.",
     "funding": "Finanzierung",
     "requirement": "VZÄ",
+    "billingDifference": "Abr. Diff.",
     "fundingDataUnavailable": "Finanzierungsdaten konnten nicht geladen werden",
     "initialContract": "Erstvertrag",
     "contractEndHint": "Automatisch berechnet anhand Geburtsdatum und Einschulungsregeln",

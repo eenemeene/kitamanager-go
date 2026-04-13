@@ -351,6 +351,7 @@
     "noVoucherNumbers": "This child has no voucher numbers on any contract.",
     "funding": "Funding",
     "requirement": "FTE",
+    "billingDifference": "Bill diff.",
     "fundingDataUnavailable": "Funding data could not be loaded",
     "initialContract": "Initial Contract",
     "contractEndHint": "Auto-filled based on birthdate and school enrollment rules",

@@ -870,6 +870,197 @@ func (s *GovernmentFundingBillService) ChildBillingHistory(ctx context.Context, 
 	return response, nil
 }
 
+// ChildrenBillingSummary returns billing summaries for all children in an org.
+// Uses SQL aggregation for billed totals and batch Go computation for expected amounts.
+func (s *GovernmentFundingBillService) ChildrenBillingSummary(ctx context.Context, orgID uint) (*models.ChildrenBillingSummaryResponse, error) {
+	// 1. SQL-aggregated billed totals per voucher number
+	billedTotals, err := s.billPeriodStore.FindBilledTotalsByOrg(ctx, orgID)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "failed to fetch billed totals")
+	}
+
+	billedByVoucher := make(map[string]models.VoucherBilledTotal, len(billedTotals))
+	for _, bt := range billedTotals {
+		billedByVoucher[bt.VoucherNumber] = bt
+	}
+
+	// 2. Lightweight bill date + voucher pairs for computing expected amounts
+	billDateVouchers, err := s.billPeriodStore.FindAllBillDatesAndVouchersByOrg(ctx, orgID)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "failed to fetch bill date vouchers")
+	}
+
+	// 3. All contracts with voucher numbers for this org
+	contracts, err := s.childStore.FindContractsByOrganizationWithVouchers(ctx, orgID)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "failed to fetch contracts with vouchers")
+	}
+
+	// Build lookup: voucher number → []ChildContract (a voucher belongs to one child,
+	// but we keep a slice because we need to check IsActiveOn for each bill date)
+	contractsByVoucher := make(map[string][]models.ChildContract, len(contracts))
+	childIDByVoucher := make(map[string]uint, len(contracts))
+	childIDs := make(map[uint]bool)
+	for _, c := range contracts {
+		if c.VoucherNumber != nil {
+			v := *c.VoucherNumber
+			contractsByVoucher[v] = append(contractsByVoucher[v], c)
+			childIDByVoucher[v] = c.ChildID
+			childIDs[c.ChildID] = true
+		}
+	}
+
+	// 4. Load child birthdates for age calculation
+	childBirthdates := make(map[uint]time.Time)
+	if len(childIDs) > 0 {
+		ids := make([]uint, 0, len(childIDs))
+		for id := range childIDs {
+			ids = append(ids, id)
+		}
+		for _, id := range ids {
+			child, err := s.childStore.FindByIDMinimal(ctx, id)
+			if err == nil {
+				childBirthdates[child.ID] = child.Birthdate
+			}
+		}
+	}
+
+	// 5. Load funding config
+	org, err := s.orgStore.FindByID(ctx, orgID)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "failed to fetch organization")
+	}
+
+	var funding *models.GovernmentFunding
+	funding, _ = s.fundingStore.FindByStateWithDetails(ctx, org.State, 0, nil)
+
+	// 6. Compute expected totals per voucher from bill date pairs
+	calcByVoucher := make(map[string]int)
+	for _, bdv := range billDateVouchers {
+		contracts := contractsByVoucher[bdv.VoucherNumber]
+		if len(contracts) == 0 {
+			continue // no contract for this voucher
+		}
+
+		// Find contract active on this bill date
+		var activeContract *models.ChildContract
+		for i := range contracts {
+			if contracts[i].IsActiveOn(bdv.BillFrom) {
+				activeContract = &contracts[i]
+				break
+			}
+		}
+		if activeContract == nil {
+			continue // no active contract on this date
+		}
+
+		childID := activeContract.ChildID
+		birthdate, hasBirthdate := childBirthdates[childID]
+		if !hasBirthdate || funding == nil {
+			continue
+		}
+
+		fundingPeriod := findPeriodForDate(funding.Periods, bdv.BillFrom)
+		if fundingPeriod == nil {
+			continue
+		}
+
+		age := validation.CalculateAgeOnDate(birthdate, bdv.BillFrom)
+		_, calcTotal := calcAmountsFromFunding(age, activeContract.Properties, fundingPeriod)
+		calcByVoucher[bdv.VoucherNumber] += calcTotal
+	}
+
+	// 7. Compute contract months per child (how many months their voucher contracts cover)
+	now := time.Now().UTC()
+	contractMonthsByChild := make(map[uint]int)
+	// Group contracts by child
+	contractsByChild := make(map[uint][]models.ChildContract)
+	for _, c := range contracts {
+		contractsByChild[c.ChildID] = append(contractsByChild[c.ChildID], c)
+	}
+	for childID, childContracts := range contractsByChild {
+		months := 0
+		for _, c := range childContracts {
+			end := now
+			if c.To != nil {
+				end = *c.To
+			}
+			if end.Before(c.From) {
+				continue
+			}
+			// Count months: from start month to end month inclusive
+			months += countMonths(c.From, end)
+		}
+		contractMonthsByChild[childID] = months
+	}
+
+	// 8. Aggregate per child: sum across all vouchers belonging to the same child
+	type childAccum struct {
+		totalBilled     int
+		totalCalculated int
+		billCount       int
+	}
+	perChild := make(map[uint]*childAccum)
+
+	// Add billed totals (from SQL aggregation)
+	for voucher, bt := range billedByVoucher {
+		childID, ok := childIDByVoucher[voucher]
+		if !ok {
+			continue // bill voucher not matched to any child contract
+		}
+		acc := perChild[childID]
+		if acc == nil {
+			acc = &childAccum{}
+			perChild[childID] = acc
+		}
+		acc.totalBilled += bt.TotalBilled
+		acc.billCount += bt.BillCount
+	}
+
+	// Add calculated totals
+	for voucher, calcTotal := range calcByVoucher {
+		childID, ok := childIDByVoucher[voucher]
+		if !ok {
+			continue
+		}
+		acc := perChild[childID]
+		if acc == nil {
+			acc = &childAccum{}
+			perChild[childID] = acc
+		}
+		acc.totalCalculated += calcTotal
+	}
+
+	// Build response
+	children := make([]models.ChildBillingSummaryEntry, 0, len(perChild))
+	for childID, acc := range perChild {
+		children = append(children, models.ChildBillingSummaryEntry{
+			ChildID:         childID,
+			TotalBilled:     acc.totalBilled,
+			TotalCalculated: acc.totalCalculated,
+			TotalDifference: acc.totalBilled - acc.totalCalculated,
+			BillCount:       acc.billCount,
+			ContractMonths:  contractMonthsByChild[childID],
+		})
+	}
+
+	return &models.ChildrenBillingSummaryResponse{
+		Children: children,
+	}, nil
+}
+
+// countMonths returns the number of months between from and to (inclusive of both months).
+func countMonths(from, to time.Time) int {
+	if to.Before(from) {
+		return 0
+	}
+	months := (to.Year()-from.Year())*12 + int(to.Month()) - int(from.Month()) + 1
+	if months < 0 {
+		return 0
+	}
+	return months
+}
+
 func lastDayOfMonth(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month()+1, 0, 0, 0, 0, 0, time.UTC)
 }

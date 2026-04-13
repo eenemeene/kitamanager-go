@@ -12,7 +12,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import type { Child, ChildFundingResponse, ContractProperties } from '@/lib/api/types';
+import type {
+  Child,
+  ChildFundingResponse,
+  ChildBillingSummaryEntry,
+  ContractProperties,
+} from '@/lib/api/types';
 import { formatDate, calculateAge, formatCurrency, formatFte } from '@/lib/utils/formatting';
 import { propertiesToLabelKeys } from '@/lib/utils/contract-properties';
 import { getCurrentContract } from '@/lib/utils/contracts';
@@ -20,6 +25,7 @@ import { getCurrentContract } from '@/lib/utils/contracts';
 export interface ChildrenTableProps {
   items: Child[];
   fundingByChildId: Map<number, ChildFundingResponse>;
+  billingSummaryByChildId: Map<number, ChildBillingSummaryEntry>;
   weeklyHoursBasis?: number;
   onViewHistory: (child: Child) => void;
   onViewBilling: (child: Child) => void;
@@ -31,6 +37,7 @@ export interface ChildrenTableProps {
 export function ChildrenTable({
   items,
   fundingByChildId,
+  billingSummaryByChildId,
   weeklyHoursBasis,
   onViewHistory,
   onViewBilling,
@@ -55,6 +62,9 @@ export function ChildrenTable({
           <TableHead className="hidden text-right lg:table-cell">
             {t('children.requirement')}
             {weeklyHoursBasis ? ` (${weeklyHoursBasis}h)` : ''}
+          </TableHead>
+          <TableHead className="hidden text-right lg:table-cell">
+            {t('children.billingDifference')}
           </TableHead>
           <TableHead className="text-right">{t('common.actions')}</TableHead>
         </TableRow>
@@ -114,6 +124,29 @@ export function ChildrenTable({
                     return <span className="text-muted-foreground text-sm">-</span>;
                   }
                   return <span className="font-medium">{formatFte(funding.requirement)}</span>;
+                })()}
+              </TableCell>
+              <TableCell className="hidden text-right lg:table-cell">
+                {(() => {
+                  const billing = billingSummaryByChildId.get(child.id);
+                  if (!billing || billing.bill_count === 0) {
+                    return <span className="text-muted-foreground text-sm">-</span>;
+                  }
+                  const diff = billing.total_difference;
+                  const coverage =
+                    billing.contract_months > 0
+                      ? `${billing.bill_count}/${billing.contract_months}`
+                      : `${billing.bill_count}`;
+                  return (
+                    <div className="flex flex-col items-end gap-0.5">
+                      <span
+                        className={`font-medium ${diff < 0 ? 'text-red-600' : diff > 0 ? 'text-green-600' : ''}`}
+                      >
+                        {formatCurrency(diff)}
+                      </span>
+                      <span className="text-muted-foreground text-xs">{coverage}</span>
+                    </div>
+                  );
                 })()}
               </TableCell>
               <TableCell className="text-right">

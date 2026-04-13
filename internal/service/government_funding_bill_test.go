@@ -4272,3 +4272,540 @@ func TestChildBillingHistory_RunningDifferenceSkipsNoContract(t *testing.T) {
 		t.Errorf("entry[2]: expected running -500, got %d", result.Entries[2].RunningDifference)
 	}
 }
+
+// ============================================================
+// ChildrenBillingSummary tests
+// ============================================================
+
+func TestChildrenBillingSummary_Empty(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	ctx := context.Background()
+
+	result, err := svc.ChildrenBillingSummary(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("ChildrenBillingSummary() error = %v", err)
+	}
+	if len(result.Children) != 0 {
+		t.Errorf("expected 0 children, got %d", len(result.Children))
+	}
+}
+
+func TestChildrenBillingSummary_SingleChildMatch(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	user := createTestUser(t, db, "User", "billsummary1@example.com", "password")
+	ctx := context.Background()
+
+	// Funding config
+	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
+	fundingPeriod := createTestFundingPeriod(t, db, funding.ID, time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0)
+	createTestFundingProperty(t, db, fundingPeriod.ID, "care_type", "ganztag", 120000, -1, -1)
+
+	voucher := "GB-SUMMARY-001"
+	createChildWithVoucher(t, db, "Max", "Test", org.ID, section.ID, voucher,
+		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil,
+		models.ContractProperties{"care_type": "ganztag"},
+	)
+
+	// Two months of bills, both matching
+	for _, month := range []time.Month{1, 2} {
+		createBillFixture(t, db, org.ID, user.ID, 2025, month, []models.GovernmentFundingBillChild{
+			{VoucherNumber: voucher, ChildName: "Test, Max", BirthDate: "01.20", District: 1,
+				Payments: []models.GovernmentFundingBillPayment{
+					{Key: "care_type", Value: "ganztag", Amount: 120000},
+				}},
+		})
+	}
+
+	result, err := svc.ChildrenBillingSummary(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("ChildrenBillingSummary() error = %v", err)
+	}
+
+	if len(result.Children) != 1 {
+		t.Fatalf("expected 1 child, got %d", len(result.Children))
+	}
+
+	child := result.Children[0]
+	if child.TotalBilled != 240000 {
+		t.Errorf("expected total_billed 240000, got %d", child.TotalBilled)
+	}
+	if child.TotalCalculated != 240000 {
+		t.Errorf("expected total_calculated 240000, got %d", child.TotalCalculated)
+	}
+	if child.TotalDifference != 0 {
+		t.Errorf("expected total_difference 0, got %d", child.TotalDifference)
+	}
+	if child.BillCount != 2 {
+		t.Errorf("expected bill_count 2, got %d", child.BillCount)
+	}
+}
+
+func TestChildrenBillingSummary_Difference(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	user := createTestUser(t, db, "User", "billsummary2@example.com", "password")
+	ctx := context.Background()
+
+	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
+	fundingPeriod := createTestFundingPeriod(t, db, funding.ID, time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0)
+	createTestFundingProperty(t, db, fundingPeriod.ID, "care_type", "ganztag", 120000, -1, -1)
+
+	voucher := "GB-SUMMARY-002"
+	createChildWithVoucher(t, db, "Emma", "Diff", org.ID, section.ID, voucher,
+		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil,
+		models.ContractProperties{"care_type": "ganztag"},
+	)
+
+	// Bill with underpayment
+	createBillFixture(t, db, org.ID, user.ID, 2025, 1, []models.GovernmentFundingBillChild{
+		{VoucherNumber: voucher, ChildName: "Diff, Emma", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 119000},
+			}},
+	})
+
+	result, err := svc.ChildrenBillingSummary(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(result.Children) != 1 {
+		t.Fatalf("expected 1 child, got %d", len(result.Children))
+	}
+	if result.Children[0].TotalDifference != -1000 {
+		t.Errorf("expected total_difference -1000, got %d", result.Children[0].TotalDifference)
+	}
+}
+
+func TestChildrenBillingSummary_MultipleChildren(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	user := createTestUser(t, db, "User", "billsummary3@example.com", "password")
+	ctx := context.Background()
+
+	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
+	fundingPeriod := createTestFundingPeriod(t, db, funding.ID, time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0)
+	createTestFundingProperty(t, db, fundingPeriod.ID, "care_type", "ganztag", 120000, -1, -1)
+	createTestFundingProperty(t, db, fundingPeriod.ID, "care_type", "halbtag", 60000, -1, -1)
+
+	v1 := "GB-SUMMARY-003A"
+	v2 := "GB-SUMMARY-003B"
+	child1, _ := createChildWithVoucher(t, db, "A", "Child", org.ID, section.ID, v1,
+		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil,
+		models.ContractProperties{"care_type": "ganztag"},
+	)
+	child2, _ := createChildWithVoucher(t, db, "B", "Child", org.ID, section.ID, v2,
+		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil,
+		models.ContractProperties{"care_type": "halbtag"},
+	)
+
+	// Both children in same bill
+	createBillFixture(t, db, org.ID, user.ID, 2025, 1, []models.GovernmentFundingBillChild{
+		{VoucherNumber: v1, ChildName: "Child, A", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 120000},
+			}},
+		{VoucherNumber: v2, ChildName: "Child, B", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "halbtag", Amount: 60000},
+			}},
+	})
+
+	result, err := svc.ChildrenBillingSummary(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(result.Children) != 2 {
+		t.Fatalf("expected 2 children, got %d", len(result.Children))
+	}
+
+	// Find each child in results
+	summaryMap := make(map[uint]models.ChildBillingSummaryEntry)
+	for _, c := range result.Children {
+		summaryMap[c.ChildID] = c
+	}
+
+	c1 := summaryMap[child1.ID]
+	if c1.TotalBilled != 120000 || c1.TotalCalculated != 120000 || c1.TotalDifference != 0 {
+		t.Errorf("child1: billed=%d calc=%d diff=%d", c1.TotalBilled, c1.TotalCalculated, c1.TotalDifference)
+	}
+	c2 := summaryMap[child2.ID]
+	if c2.TotalBilled != 60000 || c2.TotalCalculated != 60000 || c2.TotalDifference != 0 {
+		t.Errorf("child2: billed=%d calc=%d diff=%d", c2.TotalBilled, c2.TotalCalculated, c2.TotalDifference)
+	}
+}
+
+func TestChildrenBillingSummary_MultipleVouchers(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	user := createTestUser(t, db, "User", "billsummary4@example.com", "password")
+	ctx := context.Background()
+
+	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
+	fundingPeriod := createTestFundingPeriod(t, db, funding.ID, time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0)
+	createTestFundingProperty(t, db, fundingPeriod.ID, "care_type", "ganztag", 120000, -1, -1)
+
+	v1 := "GB-SUMMARY-004A"
+	v2 := "GB-SUMMARY-004B"
+
+	// Child with two contracts (voucher renewal)
+	child := &models.Child{
+		Person: models.Person{
+			OrganizationID: org.ID,
+			FirstName:      "Multi",
+			LastName:       "Voucher",
+			Birthdate:      time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		},
+	}
+	if err := db.Create(child).Error; err != nil {
+		t.Fatalf("create child: %v", err)
+	}
+
+	c1End := time.Date(2025, 6, 30, 0, 0, 0, 0, time.UTC)
+	db.Create(&models.ChildContract{
+		ChildID:       child.ID,
+		VoucherNumber: &v1,
+		BaseContract: models.BaseContract{
+			Period:     models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), To: &c1End},
+			SectionID:  section.ID,
+			Properties: models.ContractProperties{"care_type": "ganztag"},
+		},
+	})
+	db.Create(&models.ChildContract{
+		ChildID:       child.ID,
+		VoucherNumber: &v2,
+		BaseContract: models.BaseContract{
+			Period:     models.Period{From: time.Date(2025, 7, 1, 0, 0, 0, 0, time.UTC)},
+			SectionID:  section.ID,
+			Properties: models.ContractProperties{"care_type": "ganztag"},
+		},
+	})
+
+	// Bill with v1 in Jan
+	createBillFixture(t, db, org.ID, user.ID, 2025, 1, []models.GovernmentFundingBillChild{
+		{VoucherNumber: v1, ChildName: "Voucher, Multi", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 120000},
+			}},
+	})
+	// Bill with v2 in Aug
+	createBillFixture(t, db, org.ID, user.ID, 2025, 8, []models.GovernmentFundingBillChild{
+		{VoucherNumber: v2, ChildName: "Voucher, Multi", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 120000},
+			}},
+	})
+
+	result, err := svc.ChildrenBillingSummary(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+
+	// Should aggregate both vouchers into one child entry
+	if len(result.Children) != 1 {
+		t.Fatalf("expected 1 child (aggregated), got %d", len(result.Children))
+	}
+	if result.Children[0].ChildID != child.ID {
+		t.Errorf("expected child_id %d, got %d", child.ID, result.Children[0].ChildID)
+	}
+	if result.Children[0].TotalBilled != 240000 {
+		t.Errorf("expected total_billed 240000, got %d", result.Children[0].TotalBilled)
+	}
+	if result.Children[0].TotalCalculated != 240000 {
+		t.Errorf("expected total_calculated 240000, got %d", result.Children[0].TotalCalculated)
+	}
+	if result.Children[0].BillCount != 2 {
+		t.Errorf("expected bill_count 2, got %d", result.Children[0].BillCount)
+	}
+}
+
+func TestChildrenBillingSummary_NoContract(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "billsummary5@example.com", "password")
+	ctx := context.Background()
+
+	// Bill with a voucher that has no matching contract
+	createBillFixture(t, db, org.ID, user.ID, 2025, 1, []models.GovernmentFundingBillChild{
+		{VoucherNumber: "GB-ORPHAN-001", ChildName: "Unknown, Child", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 120000},
+			}},
+	})
+
+	result, err := svc.ChildrenBillingSummary(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	// Orphan voucher should not appear in results (no child mapping)
+	if len(result.Children) != 0 {
+		t.Errorf("expected 0 children for unmatched voucher, got %d", len(result.Children))
+	}
+}
+
+func TestChildrenBillingSummary_OrgIsolation(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+	section1 := getDefaultSection(t, db, org1.ID)
+	user := createTestUser(t, db, "User", "billsummary6@example.com", "password")
+	ctx := context.Background()
+
+	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
+	fundingPeriod := createTestFundingPeriod(t, db, funding.ID, time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0)
+	createTestFundingProperty(t, db, fundingPeriod.ID, "care_type", "ganztag", 120000, -1, -1)
+
+	voucher := "GB-ISO-001"
+	createChildWithVoucher(t, db, "A", "Org1", org1.ID, section1.ID, voucher,
+		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil,
+		models.ContractProperties{"care_type": "ganztag"},
+	)
+
+	createBillFixture(t, db, org1.ID, user.ID, 2025, 1, []models.GovernmentFundingBillChild{
+		{VoucherNumber: voucher, ChildName: "Org1, A", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 120000},
+			}},
+	})
+
+	// Org2 should see nothing
+	result, err := svc.ChildrenBillingSummary(ctx, org2.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(result.Children) != 0 {
+		t.Errorf("expected 0 children for org2, got %d", len(result.Children))
+	}
+}
+
+func TestChildrenBillingSummary_NoFundingConfig(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	user := createTestUser(t, db, "User", "billsummary7@example.com", "password")
+	ctx := context.Background()
+
+	// No funding config!
+	voucher := "GB-NOFUND-001"
+	createChildWithVoucher(t, db, "No", "Funding", org.ID, section.ID, voucher,
+		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil,
+		models.ContractProperties{"care_type": "ganztag"},
+	)
+
+	createBillFixture(t, db, org.ID, user.ID, 2025, 1, []models.GovernmentFundingBillChild{
+		{VoucherNumber: voucher, ChildName: "Funding, No", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 120000},
+			}},
+	})
+
+	result, err := svc.ChildrenBillingSummary(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(result.Children) != 1 {
+		t.Fatalf("expected 1 child, got %d", len(result.Children))
+	}
+	// Billed total exists, calculated is 0 (no funding config)
+	if result.Children[0].TotalBilled != 120000 {
+		t.Errorf("expected total_billed 120000, got %d", result.Children[0].TotalBilled)
+	}
+	if result.Children[0].TotalCalculated != 0 {
+		t.Errorf("expected total_calculated 0, got %d", result.Children[0].TotalCalculated)
+	}
+	if result.Children[0].TotalDifference != 120000 {
+		t.Errorf("expected total_difference 120000, got %d", result.Children[0].TotalDifference)
+	}
+}
+
+func TestChildrenBillingSummary_ExpiredContract(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	user := createTestUser(t, db, "User", "billsummary8@example.com", "password")
+	ctx := context.Background()
+
+	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
+	fundingPeriod := createTestFundingPeriod(t, db, funding.ID, time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0)
+	createTestFundingProperty(t, db, fundingPeriod.ID, "care_type", "ganztag", 120000, -1, -1)
+
+	voucher := "GB-EXPIRED-001"
+	contractEnd := time.Date(2025, 6, 30, 0, 0, 0, 0, time.UTC)
+	createChildWithVoucher(t, db, "Ex", "Pired", org.ID, section.ID, voucher,
+		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &contractEnd,
+		models.ContractProperties{"care_type": "ganztag"},
+	)
+
+	// Bill in Jan (contract active) and Nov (contract expired)
+	createBillFixture(t, db, org.ID, user.ID, 2025, 1, []models.GovernmentFundingBillChild{
+		{VoucherNumber: voucher, ChildName: "Pired, Ex", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 120000},
+			}},
+	})
+	createBillFixture(t, db, org.ID, user.ID, 2025, 11, []models.GovernmentFundingBillChild{
+		{VoucherNumber: voucher, ChildName: "Pired, Ex", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 120000},
+			}},
+	})
+
+	result, err := svc.ChildrenBillingSummary(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(result.Children) != 1 {
+		t.Fatalf("expected 1 child, got %d", len(result.Children))
+	}
+	// Billed 240000 (both months), but calculated only 120000 (Jan only, Nov expired)
+	if result.Children[0].TotalBilled != 240000 {
+		t.Errorf("expected total_billed 240000, got %d", result.Children[0].TotalBilled)
+	}
+	if result.Children[0].TotalCalculated != 120000 {
+		t.Errorf("expected total_calculated 120000, got %d", result.Children[0].TotalCalculated)
+	}
+	if result.Children[0].TotalDifference != 120000 {
+		t.Errorf("expected total_difference 120000, got %d", result.Children[0].TotalDifference)
+	}
+}
+
+func TestCountMonths(t *testing.T) {
+	tests := []struct {
+		name string
+		from time.Time
+		to   time.Time
+		want int
+	}{
+		{"same month", time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC), 1},
+		{"two months", time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2025, 2, 28, 0, 0, 0, 0, time.UTC), 2},
+		{"full year", time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC), 12},
+		{"cross year", time.Date(2024, 11, 1, 0, 0, 0, 0, time.UTC), time.Date(2025, 2, 28, 0, 0, 0, 0, time.UTC), 4},
+		{"to before from", time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC), time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), 0},
+		{"single day", time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC), time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC), 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := countMonths(tt.from, tt.to)
+			if got != tt.want {
+				t.Errorf("countMonths(%v, %v) = %d, want %d", tt.from, tt.to, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestChildrenBillingSummary_ContractMonths(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	user := createTestUser(t, db, "User", "billsummary_months@example.com", "password")
+	ctx := context.Background()
+
+	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
+	fundingPeriod := createTestFundingPeriod(t, db, funding.ID, time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0)
+	createTestFundingProperty(t, db, fundingPeriod.ID, "care_type", "ganztag", 120000, -1, -1)
+
+	voucher := "GB-MONTHS-001"
+	// Contract from Jan 1 to Jun 30 = 6 months
+	contractEnd := time.Date(2025, 6, 30, 0, 0, 0, 0, time.UTC)
+	createChildWithVoucher(t, db, "Coverage", "Test", org.ID, section.ID, voucher,
+		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), &contractEnd,
+		models.ContractProperties{"care_type": "ganztag"},
+	)
+
+	// Only 2 bills (Jan, Feb) out of 6 contract months
+	for _, month := range []time.Month{1, 2} {
+		createBillFixture(t, db, org.ID, user.ID, 2025, month, []models.GovernmentFundingBillChild{
+			{VoucherNumber: voucher, ChildName: "Test, Coverage", BirthDate: "01.20", District: 1,
+				Payments: []models.GovernmentFundingBillPayment{
+					{Key: "care_type", Value: "ganztag", Amount: 120000},
+				}},
+		})
+	}
+
+	result, err := svc.ChildrenBillingSummary(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(result.Children) != 1 {
+		t.Fatalf("expected 1 child, got %d", len(result.Children))
+	}
+	if result.Children[0].BillCount != 2 {
+		t.Errorf("expected bill_count 2, got %d", result.Children[0].BillCount)
+	}
+	if result.Children[0].ContractMonths != 6 {
+		t.Errorf("expected contract_months 6, got %d", result.Children[0].ContractMonths)
+	}
+}

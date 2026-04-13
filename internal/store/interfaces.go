@@ -95,6 +95,7 @@ type ChildStorer interface {
 	Contracts() PeriodStorer[models.ChildContract]
 	FindContractsByChildPaginated(ctx context.Context, childID uint, limit, offset int) ([]models.ChildContract, int64, error)
 	FindContractsByVoucherNumbers(ctx context.Context, orgID uint, voucherNumbers []string, activeOn time.Time) ([]models.ChildContract, error)
+	FindContractsByOrganizationWithVouchers(ctx context.Context, orgID uint) ([]models.ChildContract, error)
 	FindByNameBirthdateAndOrg(ctx context.Context, firstName, lastName string, birthdate time.Time, orgID uint) (*models.Child, error)
 	DeleteContractsByChild(ctx context.Context, childID uint) error
 }
@@ -240,6 +241,8 @@ type GovernmentFundingBillPeriodStorer interface {
 	FindByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.GovernmentFundingBillPeriod, int64, error)
 	FindByOrganizationAndVoucherNumber(ctx context.Context, orgID uint, voucherNumber string) ([]models.BillAppearance, error)
 	FindChildEntriesByOrgAndVoucherNumbers(ctx context.Context, orgID uint, voucherNumbers []string) ([]models.GovernmentFundingBillChildWithPeriod, error)
+	FindBilledTotalsByOrg(ctx context.Context, orgID uint) ([]models.VoucherBilledTotal, error)
+	FindAllBillDatesAndVouchersByOrg(ctx context.Context, orgID uint) ([]models.BillDateVoucher, error)
 	FindFacilityTotalsByOrganizationInDateRange(ctx context.Context, orgID uint, from, to time.Time) (map[time.Time]int, error)
 	ExistsByOrgAndHash(ctx context.Context, orgID uint, fileHash string) (bool, error)
 	ExistsByOrgAndMonth(ctx context.Context, orgID uint, from time.Time) (bool, error)
