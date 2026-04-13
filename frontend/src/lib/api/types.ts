@@ -873,6 +873,7 @@ export interface ChildBillingSummaryEntry {
   total_calculated: number;
   total_difference: number;
   bill_count: number;
+  contract_months: number;
 }
 
 export interface ChildrenBillingSummaryResponse {

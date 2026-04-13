@@ -474,6 +474,9 @@ definitions:
       child_id:
         example: 42
         type: integer
+      contract_months:
+        example: 18
+        type: integer
       total_billed:
         example: 1500000
         type: integer

@@ -229,6 +229,7 @@ type ChildBillingSummaryEntry struct {
 	TotalCalculated int  `json:"total_calculated" example:"1500000"`
 	TotalDifference int  `json:"total_difference" example:"0"`
 	BillCount       int  `json:"bill_count" example:"12"`
+	ContractMonths  int  `json:"contract_months" example:"18"`
 }
 
 // ChildrenBillingSummaryResponse is the response for the bulk billing summary endpoint.

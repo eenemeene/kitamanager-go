@@ -4734,3 +4734,78 @@ func TestChildrenBillingSummary_ExpiredContract(t *testing.T) {
 		t.Errorf("expected total_difference 120000, got %d", result.Children[0].TotalDifference)
 	}
 }
+
+func TestCountMonths(t *testing.T) {
+	tests := []struct {
+		name string
+		from time.Time
+		to   time.Time
+		want int
+	}{
+		{"same month", time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC), 1},
+		{"two months", time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2025, 2, 28, 0, 0, 0, 0, time.UTC), 2},
+		{"full year", time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC), 12},
+		{"cross year", time.Date(2024, 11, 1, 0, 0, 0, 0, time.UTC), time.Date(2025, 2, 28, 0, 0, 0, 0, time.UTC), 4},
+		{"to before from", time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC), time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), 0},
+		{"single day", time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC), time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC), 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := countMonths(tt.from, tt.to)
+			if got != tt.want {
+				t.Errorf("countMonths(%v, %v) = %d, want %d", tt.from, tt.to, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestChildrenBillingSummary_ContractMonths(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	user := createTestUser(t, db, "User", "billsummary_months@example.com", "password")
+	ctx := context.Background()
+
+	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
+	fundingPeriod := createTestFundingPeriod(t, db, funding.ID, time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0)
+	createTestFundingProperty(t, db, fundingPeriod.ID, "care_type", "ganztag", 120000, -1, -1)
+
+	voucher := "GB-MONTHS-001"
+	// Contract from Jan 1 to Jun 30 = 6 months
+	contractEnd := time.Date(2025, 6, 30, 0, 0, 0, 0, time.UTC)
+	createChildWithVoucher(t, db, "Coverage", "Test", org.ID, section.ID, voucher,
+		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), &contractEnd,
+		models.ContractProperties{"care_type": "ganztag"},
+	)
+
+	// Only 2 bills (Jan, Feb) out of 6 contract months
+	for _, month := range []time.Month{1, 2} {
+		createBillFixture(t, db, org.ID, user.ID, 2025, month, []models.GovernmentFundingBillChild{
+			{VoucherNumber: voucher, ChildName: "Test, Coverage", BirthDate: "01.20", District: 1,
+				Payments: []models.GovernmentFundingBillPayment{
+					{Key: "care_type", Value: "ganztag", Amount: 120000},
+				}},
+		})
+	}
+
+	result, err := svc.ChildrenBillingSummary(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(result.Children) != 1 {
+		t.Fatalf("expected 1 child, got %d", len(result.Children))
+	}
+	if result.Children[0].BillCount != 2 {
+		t.Errorf("expected bill_count 2, got %d", result.Children[0].BillCount)
+	}
+	if result.Children[0].ContractMonths != 6 {
+		t.Errorf("expected contract_months 6, got %d", result.Children[0].ContractMonths)
+	}
+}

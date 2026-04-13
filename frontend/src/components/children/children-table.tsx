@@ -133,12 +133,19 @@ export function ChildrenTable({
                     return <span className="text-muted-foreground text-sm">-</span>;
                   }
                   const diff = billing.total_difference;
+                  const coverage =
+                    billing.contract_months > 0
+                      ? `${billing.bill_count}/${billing.contract_months}`
+                      : `${billing.bill_count}`;
                   return (
-                    <span
-                      className={`font-medium ${diff < 0 ? 'text-red-600' : diff > 0 ? 'text-green-600' : ''}`}
-                    >
-                      {formatCurrency(diff)}
-                    </span>
+                    <div className="flex flex-col items-end gap-0.5">
+                      <span
+                        className={`font-medium ${diff < 0 ? 'text-red-600' : diff > 0 ? 'text-green-600' : ''}`}
+                      >
+                        {formatCurrency(diff)}
+                      </span>
+                      <span className="text-muted-foreground text-xs">{coverage}</span>
+                    </div>
                   );
                 })()}
               </TableCell>

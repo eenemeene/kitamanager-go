@@ -970,7 +970,31 @@ func (s *GovernmentFundingBillService) ChildrenBillingSummary(ctx context.Contex
 		calcByVoucher[bdv.VoucherNumber] += calcTotal
 	}
 
-	// 7. Aggregate per child: sum across all vouchers belonging to the same child
+	// 7. Compute contract months per child (how many months their voucher contracts cover)
+	now := time.Now().UTC()
+	contractMonthsByChild := make(map[uint]int)
+	// Group contracts by child
+	contractsByChild := make(map[uint][]models.ChildContract)
+	for _, c := range contracts {
+		contractsByChild[c.ChildID] = append(contractsByChild[c.ChildID], c)
+	}
+	for childID, childContracts := range contractsByChild {
+		months := 0
+		for _, c := range childContracts {
+			end := now
+			if c.To != nil {
+				end = *c.To
+			}
+			if end.Before(c.From) {
+				continue
+			}
+			// Count months: from start month to end month inclusive
+			months += countMonths(c.From, end)
+		}
+		contractMonthsByChild[childID] = months
+	}
+
+	// 8. Aggregate per child: sum across all vouchers belonging to the same child
 	type childAccum struct {
 		totalBilled     int
 		totalCalculated int
@@ -1016,12 +1040,25 @@ func (s *GovernmentFundingBillService) ChildrenBillingSummary(ctx context.Contex
 			TotalCalculated: acc.totalCalculated,
 			TotalDifference: acc.totalBilled - acc.totalCalculated,
 			BillCount:       acc.billCount,
+			ContractMonths:  contractMonthsByChild[childID],
 		})
 	}
 
 	return &models.ChildrenBillingSummaryResponse{
 		Children: children,
 	}, nil
+}
+
+// countMonths returns the number of months between from and to (inclusive of both months).
+func countMonths(from, to time.Time) int {
+	if to.Before(from) {
+		return 0
+	}
+	months := (to.Year()-from.Year())*12 + int(to.Month()) - int(from.Month()) + 1
+	if months < 0 {
+		return 0
+	}
+	return months
 }
 
 func lastDayOfMonth(t time.Time) time.Time {

@@ -9455,6 +9455,10 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 42
                 },
+                "contract_months": {
+                    "type": "integer",
+                    "example": 18
+                },
                 "total_billed": {
                     "type": "integer",
                     "example": 1500000
