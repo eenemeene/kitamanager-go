@@ -10822,6 +10822,10 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 25
                 },
+                "correction_total": {
+                    "type": "integer",
+                    "example": 0
+                },
                 "difference": {
                     "type": "integer",
                     "example": 2000

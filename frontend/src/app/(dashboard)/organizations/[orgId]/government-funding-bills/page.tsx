@@ -50,6 +50,9 @@ function BillComparisonCell({ orgId, billId }: { orgId: number; billId: number }
         <TableCell className="hidden md:table-cell">
           <Skeleton className="h-4 w-20" />
         </TableCell>
+        <TableCell className="hidden md:table-cell">
+          <Skeleton className="h-4 w-20" />
+        </TableCell>
       </>
     );
   }
@@ -59,12 +62,20 @@ function BillComparisonCell({ orgId, billId }: { orgId: number; billId: number }
       <>
         <TableCell className="text-muted-foreground hidden md:table-cell">&mdash;</TableCell>
         <TableCell className="text-muted-foreground hidden md:table-cell">&mdash;</TableCell>
+        <TableCell className="text-muted-foreground hidden md:table-cell">&mdash;</TableCell>
       </>
     );
   }
 
   return (
     <>
+      <TableCell className="hidden md:table-cell">
+        {comparison.correction_total ? (
+          <span className="text-blue-600">{formatCurrency(comparison.correction_total)}</span>
+        ) : (
+          '\u2014'
+        )}
+      </TableCell>
       <TableCell className="hidden md:table-cell">
         {formatCurrency(comparison.calculated_total)}
       </TableCell>
@@ -190,6 +201,7 @@ export default function GovernmentFundingBillsPage() {
                   <TableHead>{t('billingMonth')}</TableHead>
                   <TableHead>{t('facilityName')}</TableHead>
                   <TableHead className="hidden md:table-cell">{t('facilityTotal')}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t('correctionTotal')}</TableHead>
                   <TableHead className="hidden md:table-cell">{t('calculatedTotal')}</TableHead>
                   <TableHead className="hidden md:table-cell">{t('difference')}</TableHead>
                   <TableHead className="hidden md:table-cell">{t('fileName')}</TableHead>

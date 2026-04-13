@@ -158,6 +158,7 @@ type FundingComparisonResponse struct {
 	BillTo          string                   `json:"bill_to" example:"2025-11-30"`
 	FacilityName    string                   `json:"facility_name" example:"Kita Sonnenschein"`
 	BillTotal       int                      `json:"bill_total" example:"500000"`
+	CorrectionTotal int                      `json:"correction_total" example:"0"`
 	CalcTotal       int                      `json:"calculated_total" example:"498000"`
 	Difference      int                      `json:"difference" example:"2000"`
 	ChildrenCount   int                      `json:"children_count" example:"25"`

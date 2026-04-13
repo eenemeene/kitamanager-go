@@ -110,6 +110,13 @@ function BillingRow({
         </TableCell>
         <TableCell className="text-right">{formatCurrency(entry.bill_total)}</TableCell>
         <TableCell className="hidden text-right md:table-cell">
+          {entry.correction_total ? (
+            <span className="text-blue-600">{formatCurrency(entry.correction_total)}</span>
+          ) : (
+            '\u2014'
+          )}
+        </TableCell>
+        <TableCell className="hidden text-right md:table-cell">
           {entry.calculated_total != null ? formatCurrency(entry.calculated_total) : '\u2014'}
         </TableCell>
         <TableCell className="hidden text-right md:table-cell">
@@ -144,7 +151,7 @@ function BillingRow({
       </TableRow>
       {expanded && (
         <TableRow>
-          <TableCell colSpan={9} className="p-0">
+          <TableCell colSpan={10} className="p-0">
             <div className="bg-muted/30 p-3 md:p-4">
               <Table>
                 <TableHeader>
@@ -305,6 +312,9 @@ export default function ChildBillingHistoryPage() {
                       <TableHead className="hidden md:table-cell">{t('age')}</TableHead>
                       <TableHead className="text-right">{t('billTotal')}</TableHead>
                       <TableHead className="hidden text-right md:table-cell">
+                        {t('correctionTotal')}
+                      </TableHead>
+                      <TableHead className="hidden text-right md:table-cell">
                         {t('calcTotal')}
                       </TableHead>
                       <TableHead className="hidden text-right md:table-cell">
@@ -339,6 +349,7 @@ export default function ChildBillingHistoryPage() {
                         <TableCell className="text-right">
                           {formatCurrency(history.total_billed)}
                         </TableCell>
+                        <TableCell className="hidden md:table-cell" />
                         <TableCell className="hidden text-right md:table-cell">
                           {formatCurrency(history.total_calculated)}
                         </TableCell>

@@ -1461,6 +1461,9 @@ definitions:
       children_count:
         example: 25
         type: integer
+      correction_total:
+        example: 0
+        type: integer
       difference:
         example: 2000
         type: integer

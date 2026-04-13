@@ -445,6 +445,7 @@ func (s *GovernmentFundingBillService) Compare(ctx context.Context, billID, orgI
 			response.CalcTotal += calcTotal
 		}
 
+		response.CorrectionTotal += correctionTotal
 		response.Children = append(response.Children, compChild)
 	}
 
