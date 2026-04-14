@@ -123,7 +123,13 @@
     "requiredHours": "Required Hours",
     "availableHours": "Available Hours",
     "staffingCoverage": "Staffing Coverage",
-    "childrenWithoutVouchers": "Children Without Vouchers"
+    "childrenWithoutVouchers": "Children Without Vouchers",
+    "propertyMismatches": "Contract Property Mismatches",
+    "mismatchDifferent": "different",
+    "mismatchMissing": "missing from bill",
+    "mismatchAdditional": "extra in bill",
+    "billValue": "Bill",
+    "contractValue": "Contract"
   },
   "statistics": {
     "title": "Statistics",

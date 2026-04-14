@@ -789,6 +789,8 @@ export interface GovernmentFundingBillPeriodResponse {
 }
 
 // Funding Bill Comparison
+export type MismatchType = 'missing' | 'additional' | 'different';
+
 export interface FundingComparisonAmount {
   key: string;
   value: string;
@@ -796,6 +798,7 @@ export interface FundingComparisonAmount {
   bill_amount: number | null;
   calculated_amount: number | null;
   difference: number;
+  mismatch?: MismatchType;
 }
 
 export interface BillAppearance {

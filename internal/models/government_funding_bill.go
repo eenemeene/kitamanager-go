@@ -128,14 +128,25 @@ type GovernmentFundingBillPeriodListResponse struct {
 	CreatedAt         time.Time `json:"created_at"`
 }
 
+// MismatchType classifies property discrepancies between bill and contract.
+type MismatchType string
+
+const (
+	MismatchNone       MismatchType = ""           // property matches or is present on both sides with same value
+	MismatchMissing    MismatchType = "missing"    // property in contract/calc but NOT in bill
+	MismatchAdditional MismatchType = "additional" // property in bill but NOT in contract/calc
+	MismatchDifferent  MismatchType = "different"  // same key exists in both but with different values
+)
+
 // FundingComparisonAmount represents one property's amounts in the comparison.
 type FundingComparisonAmount struct {
-	Key        string `json:"key" example:"care_type"`
-	Value      string `json:"value" example:"ganztag"`
-	Label      string `json:"label" example:"Ganztag"`
-	BillAmount *int   `json:"bill_amount" example:"166847"`       // nil if not in bill
-	CalcAmount *int   `json:"calculated_amount" example:"166847"` // nil if not calculable
-	Difference int    `json:"difference" example:"0"`             // bill - calc (0 if either nil)
+	Key        string       `json:"key" example:"care_type"`
+	Value      string       `json:"value" example:"ganztag"`
+	Label      string       `json:"label" example:"Ganztag"`
+	BillAmount *int         `json:"bill_amount" example:"166847"`       // nil if not in bill
+	CalcAmount *int         `json:"calculated_amount" example:"166847"` // nil if not calculable
+	Difference int          `json:"difference" example:"0"`             // bill - calc (0 if either nil)
+	Mismatch   MismatchType `json:"mismatch,omitempty"`                 // ""|"missing"|"additional"|"different"
 }
 
 // BillAppearance represents a bill that a child appeared in.

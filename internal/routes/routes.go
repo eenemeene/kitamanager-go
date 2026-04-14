@@ -320,6 +320,10 @@ func Setup(r *gin.Engine, d Deps) {
 					fundingBills.GET("",
 						authzMiddleware.RequirePermission(rbac.ResourceGovernmentFundingBills, rbac.ActionRead),
 						governmentFundingBillHandler.List)
+					// Unified compare (must be before /:billId to avoid route conflict)
+					fundingBills.GET("/compare",
+						authzMiddleware.RequirePermission(rbac.ResourceGovernmentFundingBills, rbac.ActionRead),
+						governmentFundingBillHandler.CompareUnified)
 					fundingBills.GET("/:billId",
 						authzMiddleware.RequirePermission(rbac.ResourceGovernmentFundingBills, rbac.ActionRead),
 						governmentFundingBillHandler.Get)

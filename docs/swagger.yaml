@@ -1394,6 +1394,10 @@ definitions:
       label:
         example: Ganztag
         type: string
+      mismatch:
+        allOf:
+        - $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.MismatchType'
+        description: '""|"missing"|"additional"|"different"'
       value:
         example: ganztag
         type: string
@@ -2020,6 +2024,28 @@ definitions:
         example: operation successful
         type: string
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.MismatchType:
+    enum:
+    - ""
+    - missing
+    - additional
+    - different
+    type: string
+    x-enum-comments:
+      MismatchAdditional: property in bill but NOT in contract/calc
+      MismatchDifferent: same key exists in both but with different values
+      MismatchMissing: property in contract/calc but NOT in bill
+      MismatchNone: property matches or is present on both sides with same value
+    x-enum-descriptions:
+    - property matches or is present on both sides with same value
+    - property in contract/calc but NOT in bill
+    - property in bill but NOT in contract/calc
+    - same key exists in both but with different values
+    x-enum-varnames:
+    - MismatchNone
+    - MismatchMissing
+    - MismatchAdditional
+    - MismatchDifferent
   github_com_eenemeene_kitamanager-go_internal_models.OccupancyAgeGroup:
     properties:
       label:
@@ -6836,6 +6862,54 @@ paths:
       security:
       - BearerAuth: []
       summary: Compare funding bill with calculated funding
+      tags:
+      - government-funding-bills
+  /api/v1/organizations/{orgId}/government-funding-bills/compare:
+    get:
+      description: |-
+        Compare bill data against calculated funding. Supports filtering by bill_id, date, or child_id.
+        Without parameters, compares the latest bill. With child_id, returns billing history for that child.
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Specific bill ID to compare
+        in: query
+        name: bill_id
+        type: integer
+      - description: Bill date (YYYY-MM-DD) to find and compare
+        in: query
+        name: date
+        type: string
+      - description: Child ID — returns billing history across all bills for this
+          child
+        in: query
+        name: child_id
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: When filtering by child_id
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildBillingHistoryResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Compare funding bill with calculated funding (unified)
       tags:
       - government-funding-bills
   /api/v1/organizations/{orgId}/pay-plans:

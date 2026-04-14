@@ -5588,6 +5588,76 @@
                 }
             }
         },
+        "/api/v1/organizations/{orgId}/government-funding-bills/compare": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Compare bill data against calculated funding. Supports filtering by bill_id, date, or child_id.\nWithout parameters, compares the latest bill. With child_id, returns billing history for that child.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "government-funding-bills"
+                ],
+                "summary": "Compare funding bill with calculated funding (unified)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Specific bill ID to compare",
+                        "name": "bill_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Bill date (YYYY-MM-DD) to find and compare",
+                        "name": "date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Child ID — returns billing history across all bills for this child",
+                        "name": "child_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "When filtering by child_id",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildBillingHistoryResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/organizations/{orgId}/government-funding-bills/{billId}": {
             "get": {
                 "security": [
@@ -10775,6 +10845,14 @@
                     "type": "string",
                     "example": "Ganztag"
                 },
+                "mismatch": {
+                    "description": "\"\"|\"missing\"|\"additional\"|\"different\"",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.MismatchType"
+                        }
+                    ]
+                },
                 "value": {
                     "type": "string",
                     "example": "ganztag"
@@ -11630,6 +11708,33 @@
                     "example": "operation successful"
                 }
             }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.MismatchType": {
+            "type": "string",
+            "enum": [
+                "",
+                "missing",
+                "additional",
+                "different"
+            ],
+            "x-enum-comments": {
+                "MismatchAdditional": "property in bill but NOT in contract/calc",
+                "MismatchDifferent": "same key exists in both but with different values",
+                "MismatchMissing": "property in contract/calc but NOT in bill",
+                "MismatchNone": "property matches or is present on both sides with same value"
+            },
+            "x-enum-descriptions": [
+                "property matches or is present on both sides with same value",
+                "property in contract/calc but NOT in bill",
+                "property in bill but NOT in contract/calc",
+                "same key exists in both but with different values"
+            ],
+            "x-enum-varnames": [
+                "MismatchNone",
+                "MismatchMissing",
+                "MismatchAdditional",
+                "MismatchDifferent"
+            ]
         },
         "github_com_eenemeene_kitamanager-go_internal_models.OccupancyAgeGroup": {
             "type": "object",

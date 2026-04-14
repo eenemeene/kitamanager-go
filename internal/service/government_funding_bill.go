@@ -46,6 +46,37 @@ func NewGovernmentFundingBillService(
 	}
 }
 
+// resolveVouchersToContracts matches voucher numbers to system children and their active contracts.
+// Returns childIDMap (voucher_number → child_id) and contractByChildID (child_id → active contract).
+func (s *GovernmentFundingBillService) resolveVouchersToContracts(ctx context.Context, orgID uint, voucherNumbers []string, activeOn time.Time) (map[string]uint, map[uint]models.ChildContract, error) {
+	childIDMap := make(map[string]uint)
+	contractByChildID := make(map[uint]models.ChildContract)
+	if len(voucherNumbers) == 0 {
+		return childIDMap, contractByChildID, nil
+	}
+
+	var err error
+	childIDMap, err = s.childVoucherStore.FindChildIDsByVoucherNumbers(ctx, orgID, voucherNumbers)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(childIDMap) > 0 {
+		childIDs := make([]uint, 0, len(childIDMap))
+		seen := make(map[uint]bool)
+		for _, cid := range childIDMap {
+			if !seen[cid] {
+				childIDs = append(childIDs, cid)
+				seen[cid] = true
+			}
+		}
+		contractByChildID, err = s.childVoucherStore.FindActiveContractsByChildIDsAndDate(ctx, orgID, childIDs, activeOn)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	return childIDMap, contractByChildID, nil
+}
+
 // ProcessISBJ parses an ISBJ Excel file, persists the bill period, and returns enriched data.
 func (s *GovernmentFundingBillService) ProcessISBJ(ctx context.Context, orgID uint, reader io.Reader, fileName string, fileHash string, userID uint) (*models.GovernmentFundingBillResponse, error) {
 	// Check for duplicate file (same SHA-256 hash for this org)
@@ -278,34 +309,14 @@ func (s *GovernmentFundingBillService) GetByID(ctx context.Context, id, orgID ui
 		return nil, apperror.NotFound("bill period")
 	}
 
-	// Collect voucher numbers for matching
+	// Resolve vouchers to children and contracts
 	voucherNumbers := make([]string, 0, len(period.Children))
 	for _, child := range period.Children {
 		voucherNumbers = append(voucherNumbers, child.VoucherNumber)
 	}
-
-	childIDMap := make(map[string]uint)
-	contractByChildID := make(map[uint]models.ChildContract)
-	if len(voucherNumbers) > 0 {
-		var err error
-		childIDMap, err = s.childVoucherStore.FindChildIDsByVoucherNumbers(ctx, orgID, voucherNumbers)
-		if err != nil {
-			return nil, err
-		}
-		if len(childIDMap) > 0 {
-			childIDs := make([]uint, 0, len(childIDMap))
-			seen := make(map[uint]bool)
-			for _, cid := range childIDMap {
-				if !seen[cid] {
-					childIDs = append(childIDs, cid)
-					seen[cid] = true
-				}
-			}
-			contractByChildID, err = s.childVoucherStore.FindActiveContractsByChildIDsAndDate(ctx, orgID, childIDs, period.From)
-			if err != nil {
-				return nil, err
-			}
-		}
+	childIDMap, contractByChildID, err := s.resolveVouchersToContracts(ctx, orgID, voucherNumbers, period.From)
+	if err != nil {
+		return nil, err
 	}
 
 	// Build enriched children + aggregate surcharges
@@ -435,7 +446,6 @@ func ComputeFileHash(r io.Reader) (string, error) {
 
 // Compare compares an uploaded ISBJ bill against calculated funding rates per child and property.
 func (s *GovernmentFundingBillService) Compare(ctx context.Context, billID, orgID uint) (*models.FundingComparisonResponse, error) {
-	// 1. Fetch bill period
 	period, err := s.billPeriodStore.FindByID(ctx, billID)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
@@ -446,8 +456,36 @@ func (s *GovernmentFundingBillService) Compare(ctx context.Context, billID, orgI
 	if period.OrganizationID != orgID {
 		return nil, apperror.NotFound("bill period")
 	}
+	return s.comparePeriod(ctx, period, orgID)
+}
 
-	// 2. Get org state
+// CompareByDate finds the bill for a specific month and runs comparison.
+func (s *GovernmentFundingBillService) CompareByDate(ctx context.Context, orgID uint, date time.Time) (*models.FundingComparisonResponse, error) {
+	period, err := s.billPeriodStore.FindByOrgAndMonth(ctx, orgID, date)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, apperror.NotFound("no bill found for the specified date")
+		}
+		return nil, apperror.InternalWrap(err, "failed to find bill by date")
+	}
+	return s.comparePeriod(ctx, period, orgID)
+}
+
+// CompareLatest finds the most recent bill and runs comparison.
+func (s *GovernmentFundingBillService) CompareLatest(ctx context.Context, orgID uint) (*models.FundingComparisonResponse, error) {
+	period, err := s.billPeriodStore.FindLatestByOrganization(ctx, orgID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, apperror.NotFound("no bills found for this organization")
+		}
+		return nil, apperror.InternalWrap(err, "failed to find latest bill")
+	}
+	return s.comparePeriod(ctx, period, orgID)
+}
+
+// comparePeriod runs the full comparison for a pre-loaded bill period.
+func (s *GovernmentFundingBillService) comparePeriod(ctx context.Context, period *models.GovernmentFundingBillPeriod, orgID uint) (*models.FundingComparisonResponse, error) {
+	// 1. Get org state
 	org, err := s.orgStore.FindByID(ctx, orgID)
 	if err != nil {
 		return nil, apperror.InternalWrap(err, "failed to fetch organization")
@@ -465,34 +503,14 @@ func (s *GovernmentFundingBillService) Compare(ctx context.Context, billID, orgI
 		labelMap = make(map[string]string)
 	}
 
-	// 4. Match vouchers — same logic as GetByID
+	// 4. Resolve vouchers to children and contracts
 	voucherNumbers := make([]string, 0, len(period.Children))
 	for _, child := range period.Children {
 		voucherNumbers = append(voucherNumbers, child.VoucherNumber)
 	}
-
-	childIDMap := make(map[string]uint)
-	contractByChildID := make(map[uint]models.ChildContract)
-	if len(voucherNumbers) > 0 {
-		var err error
-		childIDMap, err = s.childVoucherStore.FindChildIDsByVoucherNumbers(ctx, orgID, voucherNumbers)
-		if err != nil {
-			return nil, apperror.InternalWrap(err, "failed to fetch child IDs by voucher")
-		}
-		if len(childIDMap) > 0 {
-			childIDs := make([]uint, 0, len(childIDMap))
-			seen := make(map[uint]bool)
-			for _, cid := range childIDMap {
-				if !seen[cid] {
-					childIDs = append(childIDs, cid)
-					seen[cid] = true
-				}
-			}
-			contractByChildID, err = s.childVoucherStore.FindActiveContractsByChildIDsAndDate(ctx, orgID, childIDs, period.From)
-			if err != nil {
-				return nil, apperror.InternalWrap(err, "failed to fetch contracts by child IDs")
-			}
-		}
+	childIDMap, contractByChildID, err := s.resolveVouchersToContracts(ctx, orgID, voucherNumbers, period.From)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "failed to resolve vouchers to contracts")
 	}
 
 	// 5. Get children with active contracts for calc-only detection
@@ -516,80 +534,84 @@ func (s *GovernmentFundingBillService) Compare(ctx context.Context, billID, orgI
 		Children:     make([]models.FundingComparisonChild, 0, len(period.Children)),
 	}
 
+	// Build activeChildren lookup by ID for birthdate resolution
+	activeChildByID := make(map[uint]*models.Child, len(activeChildren))
+	for i := range activeChildren {
+		activeChildByID[activeChildren[i].ID] = &activeChildren[i]
+	}
+
 	// Track matched child IDs for calc-only detection
 	matchedChildIDs := make(map[uint]bool)
 
-	for _, billChild := range period.Children {
-		billAmounts, billTotal := billPaymentsToAmountMap(billChild.Payments, models.RowTypeRegular)
-		_, correctionTotal := billPaymentsToAmountMap(billChild.Payments, models.RowTypeCorrection)
+	var fundingPeriods []models.GovernmentFundingPeriod
+	if funding != nil {
+		fundingPeriods = funding.Periods
+	}
 
+	for _, billChild := range period.Children {
 		compChild := models.FundingComparisonChild{
-			VoucherNumber:   billChild.VoucherNumber,
-			ChildName:       billChild.ChildName,
-			BirthDate:       billChild.BirthDate,
-			BillTotal:       billTotal,
-			CorrectionTotal: correctionTotal,
+			VoucherNumber: billChild.VoucherNumber,
+			ChildName:     billChild.ChildName,
+			BirthDate:     billChild.BirthDate,
 		}
 
-		var contract models.ChildContract
-		matched := false
+		// Resolve contract and birthdate for this bill child
+		var contract *models.ChildContract
+		var birthdate *time.Time
 		if childID, ok := childIDMap[billChild.VoucherNumber]; ok {
 			if c, cok := contractByChildID[childID]; cok {
-				contract = c
-				matched = true
-			}
-		}
-		if !matched {
-			// bill_only
-			compChild.Status = "bill_only"
-			compChild.Properties = buildBillOnlyProperties(billChild.Payments, labelMap)
-			response.BillOnlyCount++
-			response.BillTotal += billTotal
-		} else {
-			// Matched: find child in active children for birthdate and age calculation
-			compChild.ChildID = &contract.ChildID
-			matchedChildIDs[contract.ChildID] = true
-
-			var childAge *int
-			for _, ac := range activeChildren {
-				if ac.ID == contract.ChildID {
-					age := validation.CalculateAgeOnDate(ac.Birthdate, period.From)
-					childAge = &age
-					break
+				contract = &c
+				compChild.ChildID = &c.ChildID
+				matchedChildIDs[c.ChildID] = true
+				if ac, ok := activeChildByID[c.ChildID]; ok {
+					birthdate = &ac.Birthdate
 				}
 			}
-			compChild.Age = childAge
-
-			// Calculate funding amounts
-			var calcAmounts map[string]int
-			var calcTotal int
-			if childAge != nil {
-				calcAmounts, calcTotal = calcAmountsFromFunding(*childAge, contract.Properties, fundingPeriod)
-			} else {
-				calcAmounts = make(map[string]int)
-			}
-
-			// Build property-level comparison
-			compChild.Properties = buildComparisonProperties(billAmounts, calcAmounts, labelMap)
-			compChild.CalcTotal = &calcTotal
-
-			diff := billTotal - calcTotal
-			compChild.Difference = &diff
-
-			if diff == 0 {
-				compChild.Status = "match"
-				response.MatchCount++
-			} else {
-				compChild.Status = "difference"
-				response.DifferenceCount++
-			}
-
-			// Aggregate totals (only matched children)
-			response.BillTotal += billTotal
-			response.CalcTotal += calcTotal
 		}
 
-		response.CorrectionTotal += correctionTotal
+		// Compute comparison using shared pure function
+		comp := computeChildComparison(childComparisonInput{
+			BillPayments:   billChild.Payments,
+			Contract:       contract,
+			Birthdate:      birthdate,
+			BillDate:       period.From,
+			FundingPeriods: fundingPeriods,
+			LabelMap:       labelMap,
+		})
+
+		compChild.BillTotal = comp.BillTotal
+		compChild.CorrectionTotal = comp.CorrectionTotal
+		compChild.CalcTotal = comp.CalcTotal
+		compChild.Difference = comp.Difference
+		compChild.Age = comp.Age
+		compChild.Status = comp.Status
+		compChild.Properties = comp.Properties
+
+		// Aggregate response totals
+		switch comp.Status {
+		case "bill_only":
+			response.BillOnlyCount++
+			response.BillTotal += comp.BillTotal
+		case "match":
+			response.MatchCount++
+			response.BillTotal += comp.BillTotal
+			if comp.CalcTotal != nil {
+				response.CalcTotal += *comp.CalcTotal
+			}
+		case "difference":
+			response.DifferenceCount++
+			response.BillTotal += comp.BillTotal
+			if comp.CalcTotal != nil {
+				response.CalcTotal += *comp.CalcTotal
+			}
+		default:
+			response.BillTotal += comp.BillTotal
+			if comp.CalcTotal != nil {
+				response.CalcTotal += *comp.CalcTotal
+			}
+		}
+
+		response.CorrectionTotal += comp.CorrectionTotal
 		response.Children = append(response.Children, compChild)
 	}
 
@@ -663,7 +685,7 @@ func (s *GovernmentFundingBillService) Compare(ctx context.Context, billID, orgI
 				// Filter out the current bill
 				filtered := make([]models.BillAppearance, 0, len(appearances))
 				for _, a := range appearances {
-					if a.BillID != billID {
+					if a.BillID != period.ID {
 						filtered = append(filtered, a)
 					}
 				}
@@ -680,6 +702,78 @@ func (s *GovernmentFundingBillService) Compare(ctx context.Context, billID, orgI
 	response.Difference = response.BillTotal - response.CalcTotal
 
 	return response, nil
+}
+
+// childComparisonInput holds inputs for computing a per-child bill vs contract comparison.
+type childComparisonInput struct {
+	BillPayments   []models.GovernmentFundingBillPayment
+	Contract       *models.ChildContract // nil if no matching contract
+	Birthdate      *time.Time            // nil if unknown
+	BillDate       time.Time
+	FundingPeriods []models.GovernmentFundingPeriod // all funding periods (empty if not loaded)
+	LabelMap       map[string]string
+}
+
+// childComparisonResult holds the output of a per-child bill vs contract comparison.
+type childComparisonResult struct {
+	BillTotal       int
+	CorrectionTotal int
+	CalcTotal       *int
+	Difference      *int
+	Status          string // match|difference|bill_only
+	Age             *int
+	Properties      []models.FundingComparisonAmount
+	NoFundingConfig bool // true when contract matched but no funding config/period available
+}
+
+// computeChildComparison computes the property-level comparison for a single bill child entry.
+// This is a pure function with no database access, making it trivially testable.
+func computeChildComparison(input childComparisonInput) childComparisonResult {
+	billAmounts, billTotal := billPaymentsToAmountMap(input.BillPayments, models.RowTypeRegular)
+	_, correctionTotal := billPaymentsToAmountMap(input.BillPayments, models.RowTypeCorrection)
+
+	result := childComparisonResult{
+		BillTotal:       billTotal,
+		CorrectionTotal: correctionTotal,
+	}
+
+	if input.Contract == nil {
+		result.Status = "bill_only"
+		result.Properties = buildBillOnlyProperties(input.BillPayments, input.LabelMap)
+		return result
+	}
+
+	// Contract matched — compute age if birthdate available
+	if input.Birthdate != nil {
+		age := validation.CalculateAgeOnDate(*input.Birthdate, input.BillDate)
+		result.Age = &age
+	}
+
+	// Find applicable funding period and compute calculated amounts
+	var calcAmounts map[string]int
+	var calcTotal int
+
+	fundingPeriod := findPeriodForDate(input.FundingPeriods, input.BillDate)
+	if fundingPeriod != nil && result.Age != nil {
+		calcAmounts, calcTotal = calcAmountsFromFunding(*result.Age, input.Contract.Properties, fundingPeriod)
+	} else {
+		calcAmounts = make(map[string]int)
+		result.NoFundingConfig = len(input.FundingPeriods) == 0 || fundingPeriod == nil
+	}
+	result.CalcTotal = &calcTotal
+
+	diff := billTotal - calcTotal
+	result.Difference = &diff
+
+	result.Properties = buildComparisonProperties(billAmounts, calcAmounts, input.LabelMap)
+
+	if diff == 0 {
+		result.Status = "match"
+	} else {
+		result.Status = "difference"
+	}
+
+	return result
 }
 
 // billPaymentsToAmountMap aggregates bill payments into a "key:value" → total amount map and computes the total.
@@ -741,13 +835,17 @@ func buildComparisonProperties(billAmounts, calcAmounts map[string]int, labelMap
 	}
 	sort.Strings(sortedKeys)
 
+	// Detect property mismatches between bill and calc
+	mismatchTypes := classifyMismatches(billAmounts, calcAmounts)
+
 	props := make([]models.FundingComparisonAmount, 0, len(sortedKeys))
 	for _, kv := range sortedKeys {
 		parts := splitKeyValue(kv)
 		prop := models.FundingComparisonAmount{
-			Key:   parts[0],
-			Value: parts[1],
-			Label: labelMap[kv],
+			Key:      parts[0],
+			Value:    parts[1],
+			Label:    labelMap[kv],
+			Mismatch: mismatchTypes[kv],
 		}
 
 		if amt, ok := billAmounts[kv]; ok {
@@ -770,6 +868,115 @@ func buildComparisonProperties(billAmounts, calcAmounts map[string]int, labelMap
 		props = append(props, prop)
 	}
 	return props
+}
+
+// contractPropertyKeys lists the base keys that represent actual contract properties.
+// Only these keys are considered for mismatch detection. Surcharges (parent, ndh, qm/mss, but)
+// are excluded because they are facility-level or funding-config-driven, not contract properties.
+//
+// This is a hardcoded list because these keys are a fixed set defined by the Berlin funding
+// model (RV-Tag). The keys come from the ContractProperties JSONB field on child contracts.
+// A more dynamic approach could derive this from the funding config (e.g., properties with
+// apply_to_all_contracts are surcharges), but that would require loading the funding config
+// just to classify mismatches — unnecessary complexity since these keys won't change unless
+// Berlin fundamentally restructures their funding model.
+var contractPropertyKeys = map[string]bool{
+	"care_type":   true,
+	"integration": true,
+}
+
+// classifyMismatches classifies each key:value pair as missing, additional, different, or none.
+// Only contract property keys (care_type, integration) are checked for mismatches.
+//
+// For each base key:
+//   - If a key:value exists in calc but not bill → "missing" (expected but not billed)
+//   - If a key:value exists in bill but not calc → "additional" (billed but not expected)
+//   - If the same base key has DIFFERENT values on each side → "different" on both entries
+//   - If the key:value exists on both sides → "" (no mismatch)
+func classifyMismatches(billAmounts, calcAmounts map[string]int) map[string]models.MismatchType {
+	result := make(map[string]models.MismatchType)
+
+	// Collect values per base key for each side
+	type keyPresence struct {
+		inBill bool
+		inCalc bool
+	}
+	// Track all key:value pairs and which side they appear on
+	allPairs := make(map[string]*keyPresence)
+	for kv := range billAmounts {
+		if allPairs[kv] == nil {
+			allPairs[kv] = &keyPresence{}
+		}
+		allPairs[kv].inBill = true
+	}
+	for kv := range calcAmounts {
+		if allPairs[kv] == nil {
+			allPairs[kv] = &keyPresence{}
+		}
+		allPairs[kv].inCalc = true
+	}
+
+	// Group by base key to detect "different" (same key, different values)
+	// Only consider contract property keys for mismatch detection
+	baseKeyValues := make(map[string][]string) // base_key → list of key:value strings
+	for kv := range allPairs {
+		parts := splitKeyValue(kv)
+		if !contractPropertyKeys[parts[0]] {
+			continue
+		}
+		baseKeyValues[parts[0]] = append(baseKeyValues[parts[0]], kv)
+	}
+
+	for _, kvList := range baseKeyValues {
+		// Check if any pair in this base key group is one-sided
+		hasOneSided := false
+		for _, kv := range kvList {
+			p := allPairs[kv]
+			if p.inBill != p.inCalc {
+				hasOneSided = true
+				break
+			}
+		}
+		if !hasOneSided {
+			continue // all values for this base key exist on both sides — no mismatch
+		}
+
+		// Determine if this is a "different" case (both sides have the key but with different values)
+		// or a pure "missing"/"additional" case (key only on one side)
+		hasBillSide := false
+		hasCalcSide := false
+		for _, kv := range kvList {
+			p := allPairs[kv]
+			if p.inBill {
+				hasBillSide = true
+			}
+			if p.inCalc {
+				hasCalcSide = true
+			}
+		}
+
+		if hasBillSide && hasCalcSide {
+			// Same base key on both sides but with different values → "different"
+			for _, kv := range kvList {
+				p := allPairs[kv]
+				if p.inBill != p.inCalc {
+					result[kv] = models.MismatchDifferent
+				}
+			}
+		} else {
+			// Key only on one side
+			for _, kv := range kvList {
+				p := allPairs[kv]
+				if p.inBill && !p.inCalc {
+					result[kv] = models.MismatchAdditional
+				} else if p.inCalc && !p.inBill {
+					result[kv] = models.MismatchMissing
+				}
+			}
+		}
+	}
+
+	return result
 }
 
 // buildBillOnlyProperties builds properties for a bill-only child (no calculated counterpart).
@@ -823,35 +1030,14 @@ func splitKeyValue(kv string) [2]string {
 }
 
 func (s *GovernmentFundingBillService) buildResponse(ctx context.Context, orgID, periodID uint, billDate time.Time, converted *isbj.ConvertedSettlement) (*models.GovernmentFundingBillResponse, error) {
-	// Collect voucher numbers for matching
+	// Resolve vouchers to children and contracts
 	voucherNumbers := make([]string, 0, len(converted.Children))
 	for _, child := range converted.Children {
 		voucherNumbers = append(voucherNumbers, child.VoucherNumber)
 	}
-
-	// Look up children by voucher number, then find active contracts
-	childIDMap := make(map[string]uint)
-	contractByChildID := make(map[uint]models.ChildContract)
-	if len(voucherNumbers) > 0 {
-		var err error
-		childIDMap, err = s.childVoucherStore.FindChildIDsByVoucherNumbers(ctx, orgID, voucherNumbers)
-		if err != nil {
-			return nil, err
-		}
-		if len(childIDMap) > 0 {
-			childIDs := make([]uint, 0, len(childIDMap))
-			seen := make(map[uint]bool)
-			for _, cid := range childIDMap {
-				if !seen[cid] {
-					childIDs = append(childIDs, cid)
-					seen[cid] = true
-				}
-			}
-			contractByChildID, err = s.childVoucherStore.FindActiveContractsByChildIDsAndDate(ctx, orgID, childIDs, billDate)
-			if err != nil {
-				return nil, err
-			}
-		}
+	childIDMap, contractByChildID, err := s.resolveVouchersToContracts(ctx, orgID, voucherNumbers, billDate)
+	if err != nil {
+		return nil, err
 	}
 
 	// Build response
@@ -972,28 +1158,17 @@ func (s *GovernmentFundingBillService) ChildBillingHistory(ctx context.Context, 
 		labelMap = make(map[string]string)
 	}
 
-	// 6. For each bill entry, compute comparison
+	// 6. For each bill entry, compute comparison using shared logic
 	totalBilled := 0
 	totalCalc := 0
 	hasCalc := false
 
+	var fundingPeriods []models.GovernmentFundingPeriod
+	if funding != nil {
+		fundingPeriods = funding.Periods
+	}
+
 	for _, entry := range billEntries {
-		billAmounts, billTotal := billPaymentsToAmountMap(entry.Child.Payments, models.RowTypeRegular)
-		_, correctionTotal := billPaymentsToAmountMap(entry.Child.Payments, models.RowTypeCorrection)
-		totalBilled += billTotal
-
-		entryResp := models.ChildBillingHistoryEntryResponse{
-			BillID:          entry.BillPeriodID,
-			BillFrom:        entry.BillFrom.Format(models.DateFormat),
-			BillTo:          formatToDate(entry.BillTo),
-			FacilityName:    entry.FacilityName,
-			VoucherNumber:   entry.Child.VoucherNumber,
-			ChildName:       entry.Child.ChildName,
-			BirthDate:       entry.Child.BirthDate,
-			BillTotal:       billTotal,
-			CorrectionTotal: correctionTotal,
-		}
-
 		// Find the contract active on this bill date
 		var activeContract *models.ChildContract
 		for i := range child.Contracts {
@@ -1004,40 +1179,55 @@ func (s *GovernmentFundingBillService) ChildBillingHistory(ctx context.Context, 
 			}
 		}
 
+		// Use "no_contract" status when contract is nil but we know this child exists
+		birthdate := child.Birthdate
+		comp := computeChildComparison(childComparisonInput{
+			BillPayments:   entry.Child.Payments,
+			Contract:       activeContract,
+			Birthdate:      &birthdate,
+			BillDate:       entry.BillFrom,
+			FundingPeriods: fundingPeriods,
+			LabelMap:       labelMap,
+		})
+
+		// Override statuses for billing history context:
+		// - computeChildComparison returns "bill_only" for nil contract,
+		//   but in billing history we know the child exists — it's "no_contract"
+		// - NoFundingConfig flag means we have a contract but can't compute rates;
+		//   in billing history, this means we can't produce CalcTotal/Difference
 		if activeContract == nil {
-			// Bill entry exists but no matching contract
-			entryResp.Status = "no_contract"
-			entryResp.Properties = buildBillOnlyProperties(entry.Child.Payments, labelMap)
-		} else {
+			comp.Status = "no_contract"
+		} else if comp.NoFundingConfig {
+			comp.Status = "no_funding_config"
+			comp.CalcTotal = nil
+			comp.Difference = nil
+			comp.Properties = buildBillOnlyProperties(entry.Child.Payments, labelMap)
+		}
+
+		entryResp := models.ChildBillingHistoryEntryResponse{
+			BillID:          entry.BillPeriodID,
+			BillFrom:        entry.BillFrom.Format(models.DateFormat),
+			BillTo:          formatToDate(entry.BillTo),
+			FacilityName:    entry.FacilityName,
+			VoucherNumber:   entry.Child.VoucherNumber,
+			ChildName:       entry.Child.ChildName,
+			BirthDate:       entry.Child.BirthDate,
+			BillTotal:       comp.BillTotal,
+			CorrectionTotal: comp.CorrectionTotal,
+			CalcTotal:       comp.CalcTotal,
+			Difference:      comp.Difference,
+			Age:             comp.Age,
+			Status:          comp.Status,
+			Properties:      comp.Properties,
+		}
+		if activeContract != nil {
 			entryResp.ContractID = &activeContract.ID
-			age := validation.CalculateAgeOnDate(child.Birthdate, entry.BillFrom)
-			entryResp.Age = &age
+		}
 
-			if funding == nil {
-				// No funding config available
-				entryResp.Status = "no_funding_config"
-				entryResp.Properties = buildBillOnlyProperties(entry.Child.Payments, labelMap)
-			} else {
-				fundingPeriod := findPeriodForDate(funding.Periods, entry.BillFrom)
-				if fundingPeriod == nil {
-					entryResp.Status = "no_funding_config"
-					entryResp.Properties = buildBillOnlyProperties(entry.Child.Payments, labelMap)
-				} else {
-					calcAmounts, calcTotal := calcAmountsFromFunding(age, activeContract.Properties, fundingPeriod)
-					entryResp.CalcTotal = &calcTotal
-					diff := billTotal - calcTotal
-					entryResp.Difference = &diff
-					entryResp.Properties = buildComparisonProperties(billAmounts, calcAmounts, labelMap)
-					totalCalc += calcTotal
-					hasCalc = true
-
-					if diff == 0 {
-						entryResp.Status = "match"
-					} else {
-						entryResp.Status = "difference"
-					}
-				}
-			}
+		totalBilled += comp.BillTotal
+		if comp.CalcTotal != nil {
+			totalCalc += *comp.CalcTotal
+			hasCalc = true
 		}
 
 		response.Entries = append(response.Entries, entryResp)

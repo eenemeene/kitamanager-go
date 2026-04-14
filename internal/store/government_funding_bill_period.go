@@ -258,6 +258,35 @@ func (s *GovernmentFundingBillPeriodStore) ExistsByOrgAndMonth(ctx context.Conte
 	return count > 0, err
 }
 
+func (s *GovernmentFundingBillPeriodStore) FindLatestByOrganization(ctx context.Context, orgID uint) (*models.GovernmentFundingBillPeriod, error) {
+	var period models.GovernmentFundingBillPeriod
+	if err := DBFromContext(ctx, s.db).
+		Preload("Children", func(db *gorm.DB) *gorm.DB {
+			return db.Order("id ASC")
+		}).
+		Preload("Children.Payments").
+		Where("organization_id = ?", orgID).
+		Order("from_date DESC").
+		First(&period).Error; err != nil {
+		return nil, WrapNotFound(err)
+	}
+	return &period, nil
+}
+
+func (s *GovernmentFundingBillPeriodStore) FindByOrgAndMonth(ctx context.Context, orgID uint, from time.Time) (*models.GovernmentFundingBillPeriod, error) {
+	var period models.GovernmentFundingBillPeriod
+	if err := DBFromContext(ctx, s.db).
+		Preload("Children", func(db *gorm.DB) *gorm.DB {
+			return db.Order("id ASC")
+		}).
+		Preload("Children.Payments").
+		Where("organization_id = ? AND from_date = ?", orgID, from).
+		First(&period).Error; err != nil {
+		return nil, WrapNotFound(err)
+	}
+	return &period, nil
+}
+
 func (s *GovernmentFundingBillPeriodStore) Delete(ctx context.Context, id uint) error {
 	return DBFromContext(ctx, s.db).Delete(&models.GovernmentFundingBillPeriod{}, id).Error
 }

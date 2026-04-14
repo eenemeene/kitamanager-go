@@ -75,6 +75,19 @@ export default function OrgDashboardPage() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Property mismatches (latest bill vs contracts)
+  const { data: latestCompare } = useQuery({
+    queryKey: queryKeys.governmentFundingBillPeriods.compareLatest(orgId),
+    queryFn: () => apiClient.compareBills(orgId),
+    enabled: !!orgId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const propertyMismatches = useMemo(() => {
+    if (!latestCompare?.children) return [];
+    return latestCompare.children.filter((child) => child.properties?.some((p) => !!p.mismatch));
+  }, [latestCompare]);
+
   const currentMonth = staffingData?.data_points?.[0];
   const coverageBalance =
     currentMonth && currentMonth.required_hours > 0
@@ -162,6 +175,69 @@ export default function OrgDashboardPage() {
                       >
                         {child.first_name} {child.last_name}
                       </Link>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {propertyMismatches.length > 0 && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-base font-medium">
+              {t('dashboard.propertyMismatches')}
+            </CardTitle>
+            <Badge variant="destructive">{propertyMismatches.length}</Badge>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableBody>
+                {propertyMismatches.map((child) => (
+                  <TableRow key={child.child_id ?? child.voucher_number}>
+                    <TableCell>
+                      <Link
+                        href={
+                          child.child_id
+                            ? `/organizations/${orgId}/children/${child.child_id}/billing`
+                            : `/organizations/${orgId}/government-funding-bills`
+                        }
+                        className="hover:text-primary hover:underline"
+                      >
+                        {child.child_name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {(() => {
+                        const mismatched = child.properties?.filter((p) => !!p.mismatch) ?? [];
+                        // Group "different" mismatches by key to show bill vs contract
+                        const byKey = new Map<string, typeof mismatched>();
+                        for (const p of mismatched) {
+                          const group = byKey.get(p.key) ?? [];
+                          group.push(p);
+                          byKey.set(p.key, group);
+                        }
+                        return Array.from(byKey.entries())
+                          .map(([key, props]) => {
+                            if (props.length >= 2 && props[0].mismatch === 'different') {
+                              const billVal = props.find((p) => p.bill_amount !== null)?.value;
+                              const calcVal = props.find(
+                                (p) => p.calculated_amount !== null
+                              )?.value;
+                              return `${key}: ${billVal ?? '?'} (${t('dashboard.billValue')}) / ${calcVal ?? '?'} (${t('dashboard.contractValue')})`;
+                            }
+                            return props
+                              .map((p) => {
+                                const label = p.label || `${p.key}: ${p.value}`;
+                                const mm = p.mismatch!;
+                                return `${label} (${t(`dashboard.mismatch${mm.charAt(0).toUpperCase() + mm.slice(1)}` as Parameters<typeof t>[0])})`;
+                              })
+                              .join(', ');
+                          })
+                          .join('; ');
+                      })()}
                     </TableCell>
                   </TableRow>
                 ))}
