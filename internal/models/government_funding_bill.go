@@ -140,13 +140,13 @@ const (
 
 // FundingComparisonAmount represents one property's amounts in the comparison.
 type FundingComparisonAmount struct {
-	Key        string `json:"key" example:"care_type"`
-	Value      string `json:"value" example:"ganztag"`
-	Label      string `json:"label" example:"Ganztag"`
-	BillAmount *int   `json:"bill_amount" example:"166847"`       // nil if not in bill
-	CalcAmount *int   `json:"calculated_amount" example:"166847"` // nil if not calculable
-	Difference int    `json:"difference" example:"0"`             // bill - calc (0 if either nil)
-	Mismatch   MismatchType `json:"mismatch,omitempty"`             // ""|"missing"|"additional"|"different"
+	Key        string       `json:"key" example:"care_type"`
+	Value      string       `json:"value" example:"ganztag"`
+	Label      string       `json:"label" example:"Ganztag"`
+	BillAmount *int         `json:"bill_amount" example:"166847"`       // nil if not in bill
+	CalcAmount *int         `json:"calculated_amount" example:"166847"` // nil if not calculable
+	Difference int          `json:"difference" example:"0"`             // bill - calc (0 if either nil)
+	Mismatch   MismatchType `json:"mismatch,omitempty"`                 // ""|"missing"|"additional"|"different"
 }
 
 // BillAppearance represents a bill that a child appeared in.
