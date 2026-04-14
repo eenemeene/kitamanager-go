@@ -264,6 +264,20 @@ export interface Child extends Person {
   contracts?: ChildContract[];
 }
 
+export interface VoucherSuggestion {
+  voucher_number: string;
+  bill_child_name: string;
+  bill_first_name: string;
+  bill_last_name: string;
+  bill_birth_date: string;
+  similarity: number;
+  bill_from: string;
+}
+
+export interface ChildWithoutVoucherResponse extends Child {
+  suggestions?: VoucherSuggestion[];
+}
+
 // ContractProperties is a map of property keys to values.
 // Values can be strings (scalar) or string arrays.
 // Example: {"care_type": "ganztag", "supplements": ["ndh", "mss"]}

@@ -270,6 +270,23 @@ type ChildrenBillingSummaryResponse struct {
 	Children []ChildBillingSummaryEntry `json:"children"`
 }
 
+// VoucherSuggestion represents a fuzzy-matched voucher suggestion from an unmatched bill child.
+type VoucherSuggestion struct {
+	VoucherNumber string  `json:"voucher_number" example:"GB-12345678901-02"`
+	BillChildName string  `json:"bill_child_name" example:"Mustermann, Max"`
+	BillFirstName string  `json:"bill_first_name" example:"Max"`
+	BillLastName  string  `json:"bill_last_name" example:"Mustermann"`
+	BillBirthDate string  `json:"bill_birth_date" example:"03.20"`
+	Similarity    float64 `json:"similarity" example:"0.85"`
+	BillFrom      string  `json:"bill_from" example:"2025-11-01"`
+}
+
+// ChildWithoutVoucherResponse extends ChildResponse with fuzzy match suggestions.
+type ChildWithoutVoucherResponse struct {
+	ChildResponse
+	Suggestions []VoucherSuggestion `json:"suggestions,omitempty"`
+}
+
 // GovernmentFundingBillResponse is the full response for the ISBJ upload endpoint (backwards compatible).
 type GovernmentFundingBillResponse struct {
 	ID                uint                                 `json:"id" example:"1"`

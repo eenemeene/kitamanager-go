@@ -4,8 +4,8 @@ import { useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { useQuery } from '@tanstack/react-query';
-import { Users, Baby, Clock, Upload } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Users, Baby, Clock, Upload, ArrowRight } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { StepPromotionsWidget } from '@/components/dashboard/step-promotions-widget';
 import { UpcomingChildrenWidget } from '@/components/dashboard/upcoming-children-widget';
@@ -24,6 +24,7 @@ export default function OrgDashboardPage() {
   const orgId = Number(params.orgId);
   const t = useTranslations();
   const { user } = useAuthStore();
+  const queryClient = useQueryClient();
 
   const { from, to } = getCurrentMonthRange();
 
@@ -73,6 +74,27 @@ export default function OrgDashboardPage() {
     queryFn: () => apiClient.getChildrenWithoutVouchers(orgId),
     enabled: !!orgId,
     staleTime: 5 * 60 * 1000,
+  });
+
+  // Accept suggestion: rename child to match bill name
+  const acceptSuggestion = useMutation({
+    mutationFn: async ({
+      childId,
+      firstName,
+      lastName,
+    }: {
+      childId: number;
+      firstName: string;
+      lastName: string;
+    }) => {
+      await apiClient.updateChild(orgId, childId, {
+        first_name: firstName,
+        last_name: lastName,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.children.withoutVouchers(orgId) });
+    },
   });
 
   // Property mismatches (latest bill vs contracts)
@@ -169,12 +191,47 @@ export default function OrgDashboardPage() {
                 {childrenWithoutVouchers.map((child) => (
                   <TableRow key={child.id}>
                     <TableCell>
-                      <Link
-                        href={`/organizations/${orgId}/children/${child.id}/billing`}
-                        className="hover:text-primary hover:underline"
-                      >
-                        {child.first_name} {child.last_name}
-                      </Link>
+                      <div>
+                        <Link
+                          href={`/organizations/${orgId}/children/${child.id}`}
+                          className="hover:text-primary hover:underline"
+                        >
+                          {child.first_name} {child.last_name}
+                        </Link>
+                        {child.suggestions && child.suggestions.length > 0 && (
+                          <div className="mt-1 space-y-1">
+                            {child.suggestions.map((s) => (
+                              <div
+                                key={s.voucher_number}
+                                className="text-muted-foreground flex items-center gap-2 text-sm"
+                              >
+                                <ArrowRight className="h-3 w-3" />
+                                <span>
+                                  {s.bill_first_name} {s.bill_last_name}{' '}
+                                  <span className="text-xs">
+                                    ({Math.round(s.similarity * 100)}%)
+                                  </span>
+                                </span>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-6 px-2 text-xs"
+                                  disabled={acceptSuggestion.isPending}
+                                  onClick={() =>
+                                    acceptSuggestion.mutate({
+                                      childId: child.id,
+                                      firstName: s.bill_first_name,
+                                      lastName: s.bill_last_name,
+                                    })
+                                  }
+                                >
+                                  {t('dashboard.acceptSuggestion')}
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
