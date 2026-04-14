@@ -108,7 +108,7 @@ export default function FinancialsPage() {
     const map = new Map<string, FundingComparisonResponse>();
     for (const result of compareResults) {
       if (result.data) {
-        for (const comp of result.data) {
+        for (const comp of result.data.comparisons) {
           map.set(comp.bill_from, comp);
         }
       }

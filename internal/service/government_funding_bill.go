@@ -1,6 +1,7 @@
 package service
 
 import (
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"errors"
@@ -640,6 +641,233 @@ func (s *GovernmentFundingBillService) CompareRange(ctx context.Context, orgID u
 		results = []models.FundingComparisonResponse{}
 	}
 	return results, nil
+}
+
+// BuildComparisonSummary aggregates a slice of FundingComparisonResponse into a summary.
+// It decomposes the total difference into exhaustive, non-overlapping categories:
+// rate_difference + property_mismatch + bill_only + calc_only == total_difference.
+// Corrections are tracked separately and do not affect the difference.
+func BuildComparisonSummary(comparisons []models.FundingComparisonResponse) models.FundingComparisonSummary {
+	const (
+		catRateDiff = "rate_difference"
+		catMismatch = "property_mismatch"
+		catBillOnly = "bill_only"
+		catCalcOnly = "calc_only"
+	)
+
+	var totalBilled, totalCalculated, totalCorrections int
+
+	// Category accumulators: amount + unique child set
+	type catAccum struct {
+		amount   int
+		children map[string]bool
+	}
+	cats := map[string]*catAccum{
+		catRateDiff: {children: make(map[string]bool)},
+		catMismatch: {children: make(map[string]bool)},
+		catBillOnly: {children: make(map[string]bool)},
+		catCalcOnly: {children: make(map[string]bool)},
+	}
+
+	// Issue deduplication: (voucher, propertyKey, issueType) → accumulator
+	type issueAccum struct {
+		issue  models.FundingComparisonIssueSummary
+		months map[string]bool
+		total  int
+	}
+	type issueKey struct {
+		voucher     string
+		propertyKey string
+		issueType   string
+	}
+	issues := make(map[issueKey]*issueAccum)
+
+	for _, comp := range comparisons {
+		totalBilled += comp.BillTotal
+		totalCalculated += comp.CalcTotal
+		totalCorrections += comp.CorrectionTotal
+		month := comp.BillFrom
+
+		for _, child := range comp.Children {
+			vn := child.VoucherNumber
+
+			switch child.Status {
+			case "bill_only":
+				cats[catBillOnly].amount += child.BillTotal
+				cats[catBillOnly].children[vn] = true
+				if child.BillTotal != 0 {
+					key := issueKey{vn, "", "bill_only"}
+					acc := issues[key]
+					if acc == nil {
+						acc = &issueAccum{
+							issue: models.FundingComparisonIssueSummary{
+								VoucherNumber: vn,
+								ChildName:     child.ChildName,
+								ChildID:       child.ChildID,
+								Category:      catBillOnly,
+								Description:   "child in bill but no matching contract in system",
+								Actionable:    true,
+							},
+							months: make(map[string]bool),
+						}
+						issues[key] = acc
+					}
+					acc.total += child.BillTotal
+					acc.months[month] = true
+				}
+
+			case "calc_only":
+				calcAmt := 0
+				if child.CalcTotal != nil {
+					calcAmt = *child.CalcTotal
+				}
+				cats[catCalcOnly].amount -= calcAmt
+				cats[catCalcOnly].children[vn] = true
+				if calcAmt != 0 {
+					key := issueKey{vn, "", "calc_only"}
+					acc := issues[key]
+					if acc == nil {
+						acc = &issueAccum{
+							issue: models.FundingComparisonIssueSummary{
+								VoucherNumber: vn,
+								ChildName:     child.ChildName,
+								ChildID:       child.ChildID,
+								Category:      catCalcOnly,
+								Description:   "child has contract but does not appear in bill",
+								Actionable:    true,
+							},
+							months: make(map[string]bool),
+						}
+						issues[key] = acc
+					}
+					acc.total -= calcAmt
+					acc.months[month] = true
+				}
+
+			case "match", "difference":
+				for _, prop := range child.Properties {
+					if prop.Difference == 0 {
+						continue
+					}
+					if prop.Mismatch == "" || prop.Mismatch == models.MismatchNone {
+						// Rate difference: same key:value, amounts differ
+						cats[catRateDiff].amount += prop.Difference
+						cats[catRateDiff].children[vn] = true
+					} else {
+						// Property mismatch: missing/additional/different
+						cats[catMismatch].amount += prop.Difference
+						cats[catMismatch].children[vn] = true
+
+						key := issueKey{vn, prop.Key, string(prop.Mismatch)}
+						acc := issues[key]
+						if acc == nil {
+							acc = &issueAccum{
+								issue: models.FundingComparisonIssueSummary{
+									VoucherNumber: vn,
+									ChildName:     child.ChildName,
+									ChildID:       child.ChildID,
+									Category:      catMismatch,
+									IssueType:     string(prop.Mismatch),
+									PropertyKey:   prop.Key,
+									Actionable:    true,
+								},
+								months: make(map[string]bool),
+							}
+							issues[key] = acc
+						}
+						acc.total += prop.Difference
+						acc.months[month] = true
+
+						// Track bill/calc values for description
+						switch prop.Mismatch {
+						case models.MismatchMissing:
+							acc.issue.CalcValue = prop.Value
+						case models.MismatchAdditional:
+							acc.issue.BillValue = prop.Value
+						case models.MismatchDifferent:
+							if prop.BillAmount != nil {
+								acc.issue.BillValue = prop.Value
+							}
+							if prop.CalcAmount != nil {
+								acc.issue.CalcValue = prop.Value
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Build category summaries (fixed order, only include non-zero)
+	var categories []models.FundingComparisonCategorySummary
+	for _, cat := range []struct {
+		key        string
+		actionable bool
+	}{
+		{catMismatch, true},
+		{catBillOnly, true},
+		{catCalcOnly, true},
+		{catRateDiff, false},
+	} {
+		acc := cats[cat.key]
+		if acc.amount != 0 || len(acc.children) > 0 {
+			categories = append(categories, models.FundingComparisonCategorySummary{
+				Category:    cat.key,
+				TotalAmount: acc.amount,
+				ChildCount:  len(acc.children),
+				Actionable:  cat.actionable,
+			})
+		}
+	}
+	if categories == nil {
+		categories = []models.FundingComparisonCategorySummary{}
+	}
+
+	// Finalize issues: compute per-month average, generate descriptions, sort by abs(total)
+	issueList := make([]models.FundingComparisonIssueSummary, 0, len(issues))
+	for _, acc := range issues {
+		issue := acc.issue
+		issue.TotalAmount = acc.total
+		issue.MonthCount = len(acc.months)
+		if issue.MonthCount > 0 {
+			issue.AmountPerMonth = acc.total / issue.MonthCount
+		}
+		// Generate description
+		switch {
+		case issue.Category == catBillOnly:
+			// keep default
+		case issue.Category == catCalcOnly:
+			// keep default
+		case issue.IssueType == string(models.MismatchMissing):
+			issue.Description = issue.PropertyKey + ":" + issue.CalcValue + " — in contract but not billed"
+		case issue.IssueType == string(models.MismatchAdditional):
+			issue.Description = issue.PropertyKey + ":" + issue.BillValue + " — billed but not in contract"
+		case issue.IssueType == string(models.MismatchDifferent):
+			issue.Description = issue.PropertyKey + " — bill has '" + issue.BillValue + "', contract has '" + issue.CalcValue + "'"
+		}
+		issueList = append(issueList, issue)
+	}
+	// Sort by absolute impact descending
+	slices.SortFunc(issueList, func(a, b models.FundingComparisonIssueSummary) int {
+		absA, absB := a.TotalAmount, b.TotalAmount
+		if absA < 0 {
+			absA = -absA
+		}
+		if absB < 0 {
+			absB = -absB
+		}
+		return cmp.Compare(absB, absA) // descending
+	})
+
+	return models.FundingComparisonSummary{
+		TotalBilled:      totalBilled,
+		TotalCalculated:  totalCalculated,
+		TotalDifference:  totalBilled - totalCalculated,
+		TotalCorrections: totalCorrections,
+		MonthCount:       len(comparisons),
+		Categories:       categories,
+		Issues:           issueList,
+	}
 }
 
 // comparePeriod runs the full comparison for a pre-loaded bill period.

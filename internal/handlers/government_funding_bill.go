@@ -210,7 +210,7 @@ func (h *GovernmentFundingBillHandler) CompareUnified(c *gin.Context) {
 		return
 	}
 
-	// Single bill by ID — wrap in array
+	// Single bill by ID
 	if billIDStr := c.Query("bill_id"); billIDStr != "" {
 		billID, err := strconv.ParseUint(billIDStr, 10, 64)
 		if err != nil {
@@ -222,7 +222,7 @@ func (h *GovernmentFundingBillHandler) CompareUnified(c *gin.Context) {
 			respondError(c, err)
 			return
 		}
-		c.JSON(http.StatusOK, []models.FundingComparisonResponse{*result})
+		respondWrappedComparison(c, []models.FundingComparisonResponse{*result})
 		return
 	}
 
@@ -249,17 +249,24 @@ func (h *GovernmentFundingBillHandler) CompareUnified(c *gin.Context) {
 			respondError(c, err)
 			return
 		}
-		c.JSON(http.StatusOK, results)
+		respondWrappedComparison(c, results)
 		return
 	}
 
-	// Default: latest bill — wrap in array
+	// Default: latest bill
 	result, err := h.service.CompareLatest(ctx, orgID)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, []models.FundingComparisonResponse{*result})
+	respondWrappedComparison(c, []models.FundingComparisonResponse{*result})
+}
+
+func respondWrappedComparison(c *gin.Context, comparisons []models.FundingComparisonResponse) {
+	c.JSON(http.StatusOK, models.FundingComparisonWrappedResponse{
+		Comparisons: comparisons,
+		Summary:     service.BuildComparisonSummary(comparisons),
+	})
 }
 
 // ChildrenWithoutVouchers godoc

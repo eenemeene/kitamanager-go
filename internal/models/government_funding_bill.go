@@ -195,6 +195,52 @@ type FundingComparisonResponse struct {
 }
 
 // ============================================================
+// Wrapped comparison response (always returned by /compare)
+// ============================================================
+
+// FundingComparisonCategorySummary aggregates one category of difference across all children and months.
+type FundingComparisonCategorySummary struct {
+	Category    string `json:"category" example:"rate_difference"`
+	TotalAmount int    `json:"total_amount" example:"-60100"`
+	ChildCount  int    `json:"child_count" example:"40"`
+	Actionable  bool   `json:"actionable" example:"false"`
+}
+
+// FundingComparisonIssueSummary describes one per-child issue deduplicated across months.
+type FundingComparisonIssueSummary struct {
+	VoucherNumber  string `json:"voucher_number" example:"GB-12345678901-02"`
+	ChildName      string `json:"child_name" example:"Bagus, Nathan Albert"`
+	ChildID        *uint  `json:"child_id,omitempty" example:"42"`
+	Category       string `json:"category" example:"property_mismatch"`
+	IssueType      string `json:"issue_type,omitempty" example:"missing"`
+	Description    string `json:"description" example:"integration:integration b — in contract but not billed"`
+	PropertyKey    string `json:"property_key,omitempty" example:"integration"`
+	CalcValue      string `json:"calc_value,omitempty" example:"integration b"`
+	BillValue      string `json:"bill_value,omitempty" example:""`
+	AmountPerMonth int    `json:"amount_per_month" example:"-33064"`
+	MonthCount     int    `json:"month_count" example:"12"`
+	TotalAmount    int    `json:"total_amount" example:"-396768"`
+	Actionable     bool   `json:"actionable" example:"true"`
+}
+
+// FundingComparisonSummary provides aggregate analysis across all comparisons.
+type FundingComparisonSummary struct {
+	TotalBilled      int                                `json:"total_billed" example:"712387"`
+	TotalCalculated  int                                `json:"total_calculated" example:"783227"`
+	TotalDifference  int                                `json:"total_difference" example:"-70840"`
+	TotalCorrections int                                `json:"total_corrections" example:"37114"`
+	MonthCount       int                                `json:"month_count" example:"12"`
+	Categories       []FundingComparisonCategorySummary `json:"categories"`
+	Issues           []FundingComparisonIssueSummary    `json:"issues"`
+}
+
+// FundingComparisonWrappedResponse wraps per-bill comparisons with aggregate summary.
+type FundingComparisonWrappedResponse struct {
+	Comparisons []FundingComparisonResponse `json:"comparisons"`
+	Summary     FundingComparisonSummary    `json:"summary"`
+}
+
+// ============================================================
 // Per-child billing history DTOs
 // ============================================================
 
