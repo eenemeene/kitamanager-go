@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Table,
   TableBody,
@@ -33,6 +34,19 @@ import { queryKeys } from '@/lib/api/queryKeys';
 import type { GovernmentFundingBillPeriodListItem } from '@/lib/api/types';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatCurrency } from '@/lib/utils/formatting';
+
+function HeaderWithTooltip({ label, tooltip }: { label: string; tooltip: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="cursor-help border-b border-dotted border-current">{label}</span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs">
+        <p>{tooltip}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 function BillComparisonCell({ orgId, billId }: { orgId: number; billId: number }) {
   const { data: comparison, isLoading } = useQuery({
@@ -158,115 +172,136 @@ export default function GovernmentFundingBillsPage() {
   const items = billPeriods?.data ?? [];
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">{t('title')}</h1>
+    <TooltipProvider>
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold">{t('title')}</h1>
 
-      {/* Upload Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('selectFile')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-            <div className="flex-1">
-              <Input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx"
-                onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
-              />
+        {/* Upload Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('selectFile')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+              <div className="flex-1">
+                <Input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx"
+                  onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+                />
+              </div>
+              <Button onClick={handleUpload} disabled={!selectedFile || uploadMutation.isPending}>
+                <Upload className="mr-2 h-4 w-4" />
+                {uploadMutation.isPending ? t('uploading') : t('upload')}
+              </Button>
             </div>
-            <Button onClick={handleUpload} disabled={!selectedFile || uploadMutation.isPending}>
-              <Upload className="mr-2 h-4 w-4" />
-              {uploadMutation.isPending ? t('uploading') : t('upload')}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Bill Periods List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('title')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <p className="text-muted-foreground py-4 text-center">{tCommon('loading')}</p>
-          ) : items.length === 0 ? (
-            <p className="text-muted-foreground py-4 text-center">{t('noBills')}</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('billingMonth')}</TableHead>
-                  <TableHead>{t('facilityName')}</TableHead>
-                  <TableHead className="hidden md:table-cell">{t('facilityTotal')}</TableHead>
-                  <TableHead className="hidden md:table-cell">{t('correctionTotal')}</TableHead>
-                  <TableHead className="hidden md:table-cell">{t('calculatedTotal')}</TableHead>
-                  <TableHead className="hidden md:table-cell">{t('difference')}</TableHead>
-                  <TableHead className="hidden md:table-cell">{t('fileName')}</TableHead>
-                  <TableHead className="hidden md:table-cell">{t('uploadedAt')}</TableHead>
-                  <TableHead className="text-right">{tCommon('actions')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      {new Date(item.from).toLocaleDateString('de-DE', {
-                        month: 'long',
-                        year: 'numeric',
-                      })}
-                    </TableCell>
-                    <TableCell>{item.facility_name}</TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {formatCurrency(item.facility_total)}
-                    </TableCell>
-                    <BillComparisonCell orgId={orgId} billId={item.id} />
-                    <TableCell className="hidden text-sm md:table-cell">{item.file_name}</TableCell>
-                    <TableCell className="hidden text-sm md:table-cell">
-                      {new Date(item.created_at).toLocaleDateString('de-DE')}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" asChild>
-                          <Link
-                            href={`/organizations/${orgId}/government-funding-bills/${item.id}`}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(item)}>
-                          <Trash2 className="text-destructive h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+        {/* Bill Periods List */}
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('title')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <p className="text-muted-foreground py-4 text-center">{tCommon('loading')}</p>
+            ) : items.length === 0 ? (
+              <p className="text-muted-foreground py-4 text-center">{t('noBills')}</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t('billingMonth')}</TableHead>
+                    <TableHead>{t('facilityName')}</TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      <HeaderWithTooltip
+                        label={t('facilityTotal')}
+                        tooltip={t('facilityTotalTooltip')}
+                      />
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      <HeaderWithTooltip
+                        label={t('correctionTotal')}
+                        tooltip={t('correctionTotalTooltip')}
+                      />
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      <HeaderWithTooltip
+                        label={t('calculatedTotal')}
+                        tooltip={t('calculatedTotalTooltip')}
+                      />
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      <HeaderWithTooltip label={t('difference')} tooltip={t('differenceTooltip')} />
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell">{t('fileName')}</TableHead>
+                    <TableHead className="hidden md:table-cell">{t('uploadedAt')}</TableHead>
+                    <TableHead className="text-right">{tCommon('actions')}</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {items.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell>
+                        {new Date(item.from).toLocaleDateString('de-DE', {
+                          month: 'long',
+                          year: 'numeric',
+                        })}
+                      </TableCell>
+                      <TableCell>{item.facility_name}</TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {formatCurrency(item.facility_total)}
+                      </TableCell>
+                      <BillComparisonCell orgId={orgId} billId={item.id} />
+                      <TableCell className="hidden text-sm md:table-cell">
+                        {item.file_name}
+                      </TableCell>
+                      <TableCell className="hidden text-sm md:table-cell">
+                        {new Date(item.created_at).toLocaleDateString('de-DE')}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" asChild>
+                            <Link
+                              href={`/organizations/${orgId}/government-funding-bills/${item.id}`}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(item)}>
+                            <Trash2 className="text-destructive h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('deleteBill')}</AlertDialogTitle>
-            <AlertDialogDescription>{t('deleteConfirm')}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {tCommon('delete')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t('deleteBill')}</AlertDialogTitle>
+              <AlertDialogDescription>{t('deleteConfirm')}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {tCommon('delete')}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </TooltipProvider>
   );
 }
