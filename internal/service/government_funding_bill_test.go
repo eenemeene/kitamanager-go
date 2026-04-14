@@ -6361,3 +6361,162 @@ func TestCompare_NoMismatchWhenMatch(t *testing.T) {
 		}
 	}
 }
+
+// ============================================================
+// AssignVoucher tests
+// ============================================================
+
+func TestAssignVoucher_Success(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewChildVoucherStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	ctx := context.Background()
+
+	child := createTestChildWithContract(t, db, "No", "Voucher", org.ID, section.ID)
+
+	err := svc.AssignVoucher(ctx, child.ID, org.ID, "GB-12345678901-01")
+	if err != nil {
+		t.Fatalf("AssignVoucher() error = %v", err)
+	}
+
+	// Verify voucher was created
+	vouchers, err := store.NewChildVoucherStore(db).FindVouchersByChildID(ctx, child.ID)
+	if err != nil {
+		t.Fatalf("FindVouchersByChildID() error = %v", err)
+	}
+	if len(vouchers) != 1 {
+		t.Fatalf("expected 1 voucher, got %d", len(vouchers))
+	}
+	if vouchers[0].VoucherNumber != "GB-12345678901-01" {
+		t.Errorf("expected voucher GB-12345678901-01, got %s", vouchers[0].VoucherNumber)
+	}
+}
+
+func TestAssignVoucher_Idempotent(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewChildVoucherStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	ctx := context.Background()
+
+	child := createTestChildWithContract(t, db, "Test", "Child", org.ID, section.ID)
+
+	// Assign twice
+	if err := svc.AssignVoucher(ctx, child.ID, org.ID, "GB-12345678901-01"); err != nil {
+		t.Fatalf("first AssignVoucher() error = %v", err)
+	}
+	if err := svc.AssignVoucher(ctx, child.ID, org.ID, "GB-12345678901-01"); err != nil {
+		t.Fatalf("second AssignVoucher() error = %v", err)
+	}
+
+	// Only one voucher entry
+	vouchers, _ := store.NewChildVoucherStore(db).FindVouchersByChildID(ctx, child.ID)
+	if len(vouchers) != 1 {
+		t.Errorf("expected 1 voucher after duplicate assign, got %d", len(vouchers))
+	}
+}
+
+func TestAssignVoucher_ChildNotFound(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewChildVoucherStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	ctx := context.Background()
+
+	err := svc.AssignVoucher(ctx, 99999, org.ID, "GB-12345678901-01")
+	if err == nil {
+		t.Fatal("expected error for non-existent child")
+	}
+	if apperror.HTTPStatus(err) != 404 {
+		t.Errorf("expected HTTP 404, got %d", apperror.HTTPStatus(err))
+	}
+}
+
+func TestAssignVoucher_WrongOrg(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewChildVoucherStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+	section := getDefaultSection(t, db, org1.ID)
+	ctx := context.Background()
+
+	child := createTestChildWithContract(t, db, "Test", "Child", org1.ID, section.ID)
+
+	// Try to assign via wrong org
+	err := svc.AssignVoucher(ctx, child.ID, org2.ID, "GB-12345678901-01")
+	if err == nil {
+		t.Fatal("expected error for wrong org")
+	}
+	if apperror.HTTPStatus(err) != 404 {
+		t.Errorf("expected HTTP 404, got %d", apperror.HTTPStatus(err))
+	}
+
+	// Verify no voucher was created
+	vouchers, _ := store.NewChildVoucherStore(db).FindVouchersByChildID(ctx, child.ID)
+	if len(vouchers) != 0 {
+		t.Errorf("expected 0 vouchers after wrong-org attempt, got %d", len(vouchers))
+	}
+}
+
+func TestAssignVoucher_RemovesFromWithoutVouchersList(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewChildVoucherStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	ctx := context.Background()
+
+	child := createTestChildWithContract(t, db, "No", "Voucher", org.ID, section.ID)
+
+	// Before: child appears in without-vouchers list
+	before, err := svc.ChildrenWithoutVouchers(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("ChildrenWithoutVouchers() error = %v", err)
+	}
+	if len(before) != 1 {
+		t.Fatalf("expected 1 child without voucher, got %d", len(before))
+	}
+
+	// Assign voucher
+	if err := svc.AssignVoucher(ctx, child.ID, org.ID, "GB-12345678901-01"); err != nil {
+		t.Fatalf("AssignVoucher() error = %v", err)
+	}
+
+	// After: child should no longer appear
+	after, err := svc.ChildrenWithoutVouchers(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("ChildrenWithoutVouchers() after error = %v", err)
+	}
+	if len(after) != 0 {
+		t.Errorf("expected 0 children without voucher after assign, got %d", len(after))
+	}
+}
