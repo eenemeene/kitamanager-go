@@ -2927,7 +2927,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Download all children with contracts as a YAML file",
+                "description": "Download children with contracts as a YAML file. Supports the same filters as the list endpoint.\nWithout filters, exports all children (suitable for backup/restore).",
                 "produces": [
                     "application/x-yaml"
                 ],
@@ -2942,6 +2942,30 @@ const docTemplate = `{
                         "name": "orgId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Filter by section ID",
+                        "name": "section_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by active contract date (YYYY-MM-DD). Unlike the list endpoint, does NOT default to today — omit to export all.",
+                        "name": "active_on",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter children with contracts starting after this date (YYYY-MM-DD). Mutually exclusive with active_on.",
+                        "name": "contract_after",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search by first or last name (case-insensitive)",
+                        "name": "search",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -4546,7 +4570,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Download all employees with contracts as a YAML file",
+                "description": "Download employees with contracts as a YAML file. Supports the same filters as the list endpoint.\nWithout filters, exports all employees (suitable for backup/restore).",
                 "produces": [
                     "application/x-yaml"
                 ],
@@ -4561,6 +4585,30 @@ const docTemplate = `{
                         "name": "orgId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Filter by section ID",
+                        "name": "section_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by active contract date (YYYY-MM-DD). Unlike the list endpoint, does NOT default to today — omit to export all.",
+                        "name": "active_on",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search by first or last name (case-insensitive)",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by staff category (qualified, supplementary, non_pedagogical)",
+                        "name": "staff_category",
+                        "in": "query"
                     }
                 ],
                 "responses": {

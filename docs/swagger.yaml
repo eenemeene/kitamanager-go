@@ -5849,13 +5849,33 @@ paths:
       - children
   /api/v1/organizations/{orgId}/children/export/yaml:
     get:
-      description: Download all children with contracts as a YAML file
+      description: |-
+        Download children with contracts as a YAML file. Supports the same filters as the list endpoint.
+        Without filters, exports all children (suitable for backup/restore).
       parameters:
       - description: Organization ID
         in: path
         name: orgId
         required: true
         type: integer
+      - description: Filter by section ID
+        in: query
+        name: section_id
+        type: integer
+      - description: Filter by active contract date (YYYY-MM-DD). Unlike the list
+          endpoint, does NOT default to today — omit to export all.
+        in: query
+        name: active_on
+        type: string
+      - description: Filter children with contracts starting after this date (YYYY-MM-DD).
+          Mutually exclusive with active_on.
+        in: query
+        name: contract_after
+        type: string
+      - description: Search by first or last name (case-insensitive)
+        in: query
+        name: search
+        type: string
       produces:
       - application/x-yaml
       responses:
@@ -6617,13 +6637,32 @@ paths:
       - employees
   /api/v1/organizations/{orgId}/employees/export/yaml:
     get:
-      description: Download all employees with contracts as a YAML file
+      description: |-
+        Download employees with contracts as a YAML file. Supports the same filters as the list endpoint.
+        Without filters, exports all employees (suitable for backup/restore).
       parameters:
       - description: Organization ID
         in: path
         name: orgId
         required: true
         type: integer
+      - description: Filter by section ID
+        in: query
+        name: section_id
+        type: integer
+      - description: Filter by active contract date (YYYY-MM-DD). Unlike the list
+          endpoint, does NOT default to today — omit to export all.
+        in: query
+        name: active_on
+        type: string
+      - description: Search by first or last name (case-insensitive)
+        in: query
+        name: search
+        type: string
+      - description: Filter by staff category (qualified, supplementary, non_pedagogical)
+        in: query
+        name: staff_category
+        type: string
       produces:
       - application/x-yaml
       responses:

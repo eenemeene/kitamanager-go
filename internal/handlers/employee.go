@@ -405,11 +405,16 @@ func (h *EmployeeHandler) DeleteContract(c *gin.Context) {
 
 // ExportYAML godoc
 // @Summary Export employees as YAML
-// @Description Download all employees with contracts as a YAML file
+// @Description Download employees with contracts as a YAML file. Supports the same filters as the list endpoint.
+// @Description Without filters, exports all employees (suitable for backup/restore).
 // @Tags employees
 // @Produce application/x-yaml
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
+// @Param section_id query int false "Filter by section ID"
+// @Param active_on query string false "Filter by active contract date (YYYY-MM-DD). Unlike the list endpoint, does NOT default to today — omit to export all."
+// @Param search query string false "Search by first or last name (case-insensitive)"
+// @Param staff_category query string false "Filter by staff category (qualified, supplementary, non_pedagogical)"
 // @Success 200 {file} file "YAML file"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
@@ -421,7 +426,34 @@ func (h *EmployeeHandler) ExportYAML(c *gin.Context) {
 		return
 	}
 
-	all, ok := fetchAllEmployees(c, h.service, orgID, models.EmployeeListFilter{})
+	sectionID, ok := parseOptionalUint(c, "section_id")
+	if !ok {
+		return
+	}
+
+	activeOn, ok := parseOptionalDatePtr(c, "active_on")
+	if !ok {
+		return
+	}
+
+	var staffCategory *string
+	if sc := c.Query("staff_category"); sc != "" {
+		staffCategory = &sc
+	}
+
+	search, ok := parseSearch(c)
+	if !ok {
+		return
+	}
+
+	filter := models.EmployeeListFilter{
+		SectionID:     sectionID,
+		ActiveOn:      activeOn,
+		Search:        search,
+		StaffCategory: staffCategory,
+	}
+
+	all, ok := fetchAllEmployees(c, h.service, orgID, filter)
 	if !ok {
 		return
 	}
