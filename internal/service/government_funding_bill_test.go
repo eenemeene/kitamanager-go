@@ -5745,6 +5745,34 @@ func TestClassifyMismatches_MixedScenario(t *testing.T) {
 	}
 }
 
+func TestClassifyMismatches_SurchargesExcluded(t *testing.T) {
+	// parent:care exists only in bill — should NOT be flagged because parent is not a contract property
+	// ndh:ndh exists only in bill — should NOT be flagged (surcharge)
+	bill := map[string]int{
+		"care_type:ganztag": 120000,
+		"parent:care":       0,
+		"parent:meals":      -2300,
+		"ndh:ndh":           8000,
+		"qm/mss:qm/mss":     5000,
+	}
+	calc := map[string]int{
+		"care_type:ganztag": 120000,
+		"parent:meals":      -2300,
+	}
+	result := classifyMismatches(bill, calc)
+
+	// None of these surcharge keys should be flagged
+	for _, kv := range []string{"parent:care", "parent:meals", "ndh:ndh", "qm/mss:qm/mss"} {
+		if result[kv] != models.MismatchNone {
+			t.Errorf("%s = %q, want none (surcharges should be excluded)", kv, result[kv])
+		}
+	}
+	// care_type should also be none since both sides agree
+	if result["care_type:ganztag"] != models.MismatchNone {
+		t.Errorf("care_type:ganztag = %q, want none", result["care_type:ganztag"])
+	}
+}
+
 // ============================================================
 // CompareLatest / CompareByDate integration tests
 // ============================================================

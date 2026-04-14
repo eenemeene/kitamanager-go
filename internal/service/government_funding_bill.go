@@ -870,9 +870,18 @@ func buildComparisonProperties(billAmounts, calcAmounts map[string]int, labelMap
 	return props
 }
 
+// contractPropertyKeys lists the base keys that represent actual contract properties.
+// Only these keys are considered for mismatch detection. Surcharges (parent, ndh, qm/mss, but)
+// are excluded because they are facility-level or funding-config-driven, not contract properties.
+var contractPropertyKeys = map[string]bool{
+	"care_type":   true,
+	"integration": true,
+}
+
 // classifyMismatches classifies each key:value pair as missing, additional, different, or none.
+// Only contract property keys (care_type, integration) are checked for mismatches.
 //
-// For each base key (e.g., "care_type"):
+// For each base key:
 //   - If a key:value exists in calc but not bill → "missing" (expected but not billed)
 //   - If a key:value exists in bill but not calc → "additional" (billed but not expected)
 //   - If the same base key has DIFFERENT values on each side → "different" on both entries
@@ -901,9 +910,13 @@ func classifyMismatches(billAmounts, calcAmounts map[string]int) map[string]mode
 	}
 
 	// Group by base key to detect "different" (same key, different values)
+	// Only consider contract property keys for mismatch detection
 	baseKeyValues := make(map[string][]string) // base_key → list of key:value strings
 	for kv := range allPairs {
 		parts := splitKeyValue(kv)
+		if !contractPropertyKeys[parts[0]] {
+			continue
+		}
 		baseKeyValues[parts[0]] = append(baseKeyValues[parts[0]], kv)
 	}
 
