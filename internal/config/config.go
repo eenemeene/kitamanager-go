@@ -296,9 +296,14 @@ func Load() (*Config, error) {
 		cfg.SecureCookies = !cfg.IsDevelopment()
 	}
 
-	// Higher API rate limit in development (600/min vs 60/min default)
-	if cfg.IsDevelopment() && getEnv("API_RATE_LIMIT_PER_MINUTE", "") == "" {
-		cfg.APIRateLimitPerMinute = 600
+	// Higher rate limits in development for E2E tests
+	if cfg.IsDevelopment() {
+		if getEnv("API_RATE_LIMIT_PER_MINUTE", "") == "" {
+			cfg.APIRateLimitPerMinute = 600
+		}
+		if getEnv("LOGIN_RATE_LIMIT_PER_MINUTE", "") == "" {
+			cfg.LoginRateLimitPerMinute = 60
+		}
 	}
 
 	if err := cfg.Validate(); err != nil {
