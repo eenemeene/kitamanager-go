@@ -642,7 +642,7 @@ func TestStatisticsService_GetFinancials_Basic(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -695,7 +695,7 @@ func TestStatisticsService_GetFinancials_Empty(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -755,7 +755,7 @@ func TestStatisticsService_GetFinancials_ProRataSalary(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -794,7 +794,7 @@ func TestStatisticsService_GetFinancials_EmployerContribution(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -832,7 +832,7 @@ func TestStatisticsService_GetFinancials_MissingPayPlanEntry(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -872,7 +872,7 @@ func TestStatisticsService_GetFinancials_NoPayPlanPeriodForDate(t *testing.T) {
 
 	from := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -903,7 +903,7 @@ func TestStatisticsService_GetFinancials_NoFundingForState(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -946,7 +946,7 @@ func TestStatisticsService_GetFinancials_AllStaffIncluded(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -983,7 +983,7 @@ func TestStatisticsService_GetFinancials_ContractStartsMidRange(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1037,7 +1037,7 @@ func TestStatisticsService_GetFinancials_MultipleChildren(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1081,7 +1081,7 @@ func TestStatisticsService_GetFinancials_MultipleEmployees(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1126,7 +1126,7 @@ func TestStatisticsService_GetFinancials_BalanceNegative(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1156,7 +1156,7 @@ func TestStatisticsService_GetFinancials_DefaultDateRange(t *testing.T) {
 	db.Model(org).Update("state", "berlin")
 
 	// nil from/to -> default Kita year range
-	result, err := svc.GetFinancials(ctx, org.ID, nil, nil)
+	result, err := svc.GetFinancials(ctx, org.ID, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1202,7 +1202,7 @@ func TestStatisticsService_GetFinancials_UnmatchedChildProperty(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1249,7 +1249,7 @@ func TestStatisticsService_GetFinancials_EmployeeNoPayPlanEntries(t *testing.T) 
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1334,7 +1334,7 @@ func TestGetFinancials_BudgetExpenseFixed(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1368,7 +1368,7 @@ func TestGetFinancials_BudgetIncomeFixed(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1407,7 +1407,7 @@ func TestGetFinancials_BudgetExpensePerChild(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1443,7 +1443,7 @@ func TestGetFinancials_BudgetIncomePerChild(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1472,7 +1472,7 @@ func TestGetFinancials_BudgetPerChildNoChildren(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1516,7 +1516,7 @@ func TestGetFinancials_BudgetMultipleMixed(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1555,7 +1555,7 @@ func TestGetFinancials_BudgetEntryNotActive(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1581,7 +1581,7 @@ func TestGetFinancials_BudgetEntryStartsMidRange(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1615,7 +1615,7 @@ func TestGetFinancials_BudgetOneEntryPerItem(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1667,7 +1667,7 @@ func TestGetFinancials_BudgetWithSalariesAndFunding(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1729,7 +1729,7 @@ func TestGetFinancials_BudgetPerChildCountChanges(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1769,7 +1769,7 @@ func TestGetFinancials_BudgetEntryEndsMidRange(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	toQuery := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &toQuery)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &toQuery, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1803,7 +1803,7 @@ func TestGetFinancials_BudgetEntryExpiredBeforeRange(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	toQuery := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &toQuery)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &toQuery, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1835,7 +1835,7 @@ func TestGetFinancials_BudgetEntryTransition(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	toQuery := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &toQuery)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &toQuery, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1867,7 +1867,7 @@ func TestGetFinancials_BudgetItemDetails_SingleIncome(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1904,7 +1904,7 @@ func TestGetFinancials_BudgetItemDetails_MixedIncomeExpense(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1959,7 +1959,7 @@ func TestGetFinancials_BudgetItemDetails_PerChild(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -2000,7 +2000,7 @@ func TestGetFinancials_FundingDetails_SingleProperty(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -2046,7 +2046,7 @@ func TestGetFinancials_FundingDetails_MultipleProperties(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -2097,7 +2097,7 @@ func TestGetFinancials_FundingDetails_MultipleChildren(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -2140,7 +2140,7 @@ func TestGetFinancials_FundingDetails_Label(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -2185,7 +2185,7 @@ func TestGetFinancials_SalaryDetails_SingleCategory(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -2243,7 +2243,7 @@ func TestGetFinancials_SalaryDetails_MultipleCategories(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -2301,7 +2301,7 @@ func TestGetFinancials_SalaryDetails_SameCategory(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -2345,7 +2345,7 @@ func TestGetFinancials_SalaryDetails_ProRata(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -2376,7 +2376,7 @@ func TestGetFinancials_SalaryDetails_NoEmployees(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -2765,7 +2765,7 @@ func TestStatisticsService_GetFinancials_PayPlanPeriodTransition(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 12, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -2819,7 +2819,7 @@ func TestStatisticsService_GetFinancials_ChildAgeBoundaryChangesRate(t *testing.
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 12, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -2867,7 +2867,7 @@ func TestStatisticsService_GetFinancials_EmployeeZeroWeeklyHours(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -3290,7 +3290,7 @@ func TestStatisticsService_GetFinancials_FullIntegration(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -3386,7 +3386,7 @@ func TestStatisticsService_GetFinancials_FundingPeriodTransitionMidRange(t *test
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 12, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -3456,7 +3456,7 @@ func TestStatisticsService_GetFinancials_MultipleMatchingProperties(t *testing.T
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -3709,7 +3709,7 @@ func TestStatisticsService_GetFinancials_ActualFunding_BillMatchesMonth(t *testi
 
 	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("GetFinancials() error = %v", err)
 	}
@@ -3761,7 +3761,7 @@ func TestStatisticsService_GetFinancials_ActualFunding_SingleBill(t *testing.T) 
 
 	from := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2025, 2, 28, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("GetFinancials() error = %v", err)
 	}
@@ -3784,7 +3784,7 @@ func TestStatisticsService_GetFinancials_ActualFunding_NoBills(t *testing.T) {
 
 	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("GetFinancials() error = %v", err)
 	}
@@ -3821,7 +3821,7 @@ func TestStatisticsService_GetFinancials_ActualFunding_BillOutsideRange(t *testi
 
 	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("GetFinancials() error = %v", err)
 	}
@@ -3860,7 +3860,7 @@ func TestStatisticsService_GetFinancials_ActualFunding_DifferentOrg(t *testing.T
 	// Query org1 — should not see org2's bill
 	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC)
-	result, err := svc.GetFinancials(ctx, org1.ID, &from, &to)
+	result, err := svc.GetFinancials(ctx, org1.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("GetFinancials() error = %v", err)
 	}

@@ -8221,6 +8221,10 @@ paths:
         in: query
         name: to
         type: string
+      - description: Filter by section ID
+        in: query
+        name: section_id
+        type: integer
       produces:
       - application/json
       responses:

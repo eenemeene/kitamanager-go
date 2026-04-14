@@ -7724,6 +7724,12 @@ const docTemplate = `{
                         "description": "End date (YYYY-MM-DD), defaults to 6 months ahead",
                         "name": "to",
                         "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Filter by section ID",
+                        "name": "section_id",
+                        "in": "query"
                     }
                 ],
                 "responses": {
