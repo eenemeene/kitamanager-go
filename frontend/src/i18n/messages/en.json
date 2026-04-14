@@ -199,7 +199,7 @@
     "fundingCalculatedTooltip": "Expected government funding based on children's contracts and funding rates",
     "fundingRegularTooltip": "Regular monthly payments from government funding bills",
     "fundingCorrectionsTooltip": "Retroactive rate adjustments from government funding bills",
-    "fundingDifferenceTooltip": "Regular payments minus calculated funding. Negative means billed less than expected.",
+    "fundingDifferenceTooltip": "Year totals include corrections. Monthly rows show regular minus calculated only.",
     "fundingMonthsCovered": "months with bills",
     "kitaYearCol": "Kita Year",
     "salaries": "Salaries",

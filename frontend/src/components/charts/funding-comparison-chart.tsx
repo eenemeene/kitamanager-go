@@ -292,7 +292,7 @@ export function FundingComparisonChart({ data, compareData }: FundingComparisonC
       calculatedWithBill: v.calculatedWithBill,
       regular: v.regular,
       correction: v.correction,
-      difference: v.regular - v.calculatedWithBill,
+      difference: v.regular + v.correction - v.calculatedWithBill,
       actualMonths: v.actualMonths,
       totalMonths: v.totalMonths,
       hasBills: v.actualMonths > 0,

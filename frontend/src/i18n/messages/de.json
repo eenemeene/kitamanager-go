@@ -199,7 +199,7 @@
     "fundingCalculatedTooltip": "Erwartete Förderung basierend auf Verträgen der Kinder und Fördersätzen",
     "fundingRegularTooltip": "Reguläre monatliche Zahlungen aus Förderbescheiden",
     "fundingCorrectionsTooltip": "Rückwirkende Satzanpassungen aus Förderbescheiden",
-    "fundingDifferenceTooltip": "Reguläre Zahlungen minus berechnete Förderung. Negativer Wert bedeutet weniger abgerechnet als erwartet.",
+    "fundingDifferenceTooltip": "Jahressummen enthalten Korrekturen. Monatszeilen zeigen nur reguläre minus berechnete Förderung.",
     "fundingMonthsCovered": "Monate mit Bescheid",
     "kitaYearCol": "Kitajahr",
     "salaries": "Geh\u00e4lter",
