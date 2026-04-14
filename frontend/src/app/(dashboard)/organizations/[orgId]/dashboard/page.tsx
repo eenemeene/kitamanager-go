@@ -60,7 +60,8 @@ export default function OrgDashboardPage() {
     if (!billsData?.data) return null;
     const now = new Date();
     const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const prevMonthStr = prevMonth.toISOString().slice(0, 7); // "YYYY-MM"
+    // Use local date components — toISOString() converts to UTC which shifts the month in non-UTC timezones
+    const prevMonthStr = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
     const hasBill = billsData.data.some((b) => b.from.startsWith(prevMonthStr));
     if (hasBill) return null;
     return prevMonth.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
