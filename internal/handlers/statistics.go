@@ -5,7 +5,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 )
@@ -311,13 +310,12 @@ func (h *StatisticsHandler) GetForecast(c *gin.Context) {
 		return
 	}
 
-	var req models.ForecastRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(sanitizeBindError(err)))
+	req, ok := bindJSON[models.ForecastRequest](c)
+	if !ok {
 		return
 	}
 
-	result, err := h.service.GetForecast(c.Request.Context(), orgID, &req)
+	result, err := h.service.GetForecast(c.Request.Context(), orgID, req)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -348,13 +346,12 @@ func (h *StatisticsHandler) EstimateChildFunding(c *gin.Context) {
 		return
 	}
 
-	var req models.ChildFundingEstimateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(sanitizeBindError(err)))
+	req, ok := bindJSON[models.ChildFundingEstimateRequest](c)
+	if !ok {
 		return
 	}
 
-	result, err := h.service.EstimateChildFunding(c.Request.Context(), orgID, &req)
+	result, err := h.service.EstimateChildFunding(c.Request.Context(), orgID, req)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -385,13 +382,12 @@ func (h *StatisticsHandler) EstimateEmployeeCost(c *gin.Context) {
 		return
 	}
 
-	var req models.EmployeeCostEstimateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperror.BadRequest(sanitizeBindError(err)))
+	req, ok := bindJSON[models.EmployeeCostEstimateRequest](c)
+	if !ok {
 		return
 	}
 
-	result, err := h.service.EstimateEmployeeCost(c.Request.Context(), orgID, &req)
+	result, err := h.service.EstimateEmployeeCost(c.Request.Context(), orgID, req)
 	if err != nil {
 		respondError(c, err)
 		return
