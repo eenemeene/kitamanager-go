@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery, useQueries } from '@tanstack/react-query';
-import type { FundingComparisonResponse } from '@/lib/api/types';
+import type { FundingComparisonResponse, FundingComparisonSummary } from '@/lib/api/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChartErrorBoundary } from '@/components/charts/chart-error-boundary';
@@ -116,6 +116,18 @@ export default function FinancialsPage() {
     return map.size > 0 ? map : undefined;
   }, [compareResults]);
 
+  const compareSummaries = useMemo(() => {
+    const map = new Map<string, FundingComparisonSummary>();
+    for (let i = 0; i < compareResults.length; i++) {
+      const result = compareResults[i];
+      if (result.data?.summary && compareWindows[i]) {
+        const w = compareWindows[i];
+        map.set(`${w.from}:${w.to}`, result.data.summary);
+      }
+    }
+    return map.size > 0 ? map : undefined;
+  }, [compareResults, compareWindows]);
+
   const currentFinancials = useMemo(() => {
     if (!financials?.data_points?.length) return null;
     const currentMonth = getCurrentMonthStart();
@@ -171,7 +183,11 @@ export default function FinancialsPage() {
           </CardHeader>
           <CardContent>
             <ChartErrorBoundary>
-              <FundingComparisonChart data={financials} compareData={compareData} />
+              <FundingComparisonChart
+                data={financials}
+                compareData={compareData}
+                compareSummaries={compareSummaries}
+              />
             </ChartErrorBoundary>
           </CardContent>
         </Card>

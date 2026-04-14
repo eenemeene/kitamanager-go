@@ -9,7 +9,12 @@ import { ResponsiveBar } from '@nivo/bar';
 import type { BarDatum, BarCustomLayerProps } from '@nivo/bar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ExportableChart } from './exportable-chart';
-import type { FinancialResponse, FundingComparisonResponse } from '@/lib/api/types';
+import type {
+  FinancialResponse,
+  FundingComparisonResponse,
+  FundingComparisonSummary,
+} from '@/lib/api/types';
+import { FundingDeficitAnalysis } from './funding-deficit-analysis';
 import {
   Table,
   TableBody,
@@ -25,6 +30,7 @@ import { toLocalDateString, getCurrentMonthStart } from '@/lib/utils/formatting'
 interface FundingComparisonChartProps {
   data: FinancialResponse;
   compareData?: Map<string, FundingComparisonResponse>;
+  compareSummaries?: Map<string, FundingComparisonSummary>;
 }
 
 type BandScale = ((v: string) => number | undefined) & { bandwidth(): number };
@@ -51,7 +57,11 @@ function HeaderWithTooltip({ label, tooltip }: { label: string; tooltip: string 
   );
 }
 
-export function FundingComparisonChart({ data, compareData }: FundingComparisonChartProps) {
+export function FundingComparisonChart({
+  data,
+  compareData,
+  compareSummaries,
+}: FundingComparisonChartProps) {
   const t = useTranslations('statistics');
   const tCommon = useTranslations('common');
   const params = useParams();
@@ -300,6 +310,27 @@ export function FundingComparisonChart({ data, compareData }: FundingComparisonC
       months: v.months,
     }));
   }, [data, compareData]);
+
+  // Match each Kita year to the best-overlapping compare summary window
+  const kitaYearDeficitMap = useMemo(() => {
+    if (!compareSummaries) return new Map<string, FundingComparisonSummary>();
+    const result = new Map<string, FundingComparisonSummary>();
+    for (const row of kitaYearSummary) {
+      if (!row.hasBills) continue;
+      let bestKey: string | undefined;
+      let bestOverlap = 0;
+      for (const [key] of compareSummaries) {
+        const [wFrom, wTo] = key.split(':');
+        const overlap = row.months.filter((m) => m.date >= wFrom && m.date <= wTo).length;
+        if (overlap > bestOverlap) {
+          bestOverlap = overlap;
+          bestKey = key;
+        }
+      }
+      if (bestKey) result.set(row.label, compareSummaries.get(bestKey)!);
+    }
+    return result;
+  }, [compareSummaries, kitaYearSummary]);
 
   const currentMonth = getCurrentMonthStart();
   const currentMonthDP = data.data_points.find((dp) => dp.date === currentMonth);
@@ -611,6 +642,12 @@ export function FundingComparisonChart({ data, compareData }: FundingComparisonC
                           </React.Fragment>
                         );
                       })}
+                    {kitaYearDeficitMap.has(row.label) && (
+                      <FundingDeficitAnalysis
+                        summary={kitaYearDeficitMap.get(row.label)!}
+                        orgId={orgId!}
+                      />
+                    )}
                   </React.Fragment>
                 );
               })}
