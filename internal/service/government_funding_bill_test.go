@@ -5497,6 +5497,314 @@ func TestChildrenWithoutVouchers_ExpiredContract(t *testing.T) {
 	}
 }
 
+func TestChildrenWithoutVouchers_FuzzySuggestion(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewChildVoucherStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	user := createTestUser(t, db, "User", "fuzzy1@example.com", "password")
+	ctx := context.Background()
+
+	// Child WITHOUT voucher: "Anna Berger", born Aug 1, 2020
+	child := &models.Child{
+		Person: models.Person{
+			FirstName:      "Anna",
+			LastName:       "Berger",
+			Gender:         "female",
+			Birthdate:      time.Date(2020, 8, 1, 0, 0, 0, 0, time.UTC),
+			OrganizationID: org.ID,
+		},
+	}
+	db.Create(child)
+	// Active contract (no voucher)
+	db.Create(&models.ChildContract{
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+			SectionID:  section.ID,
+			Properties: models.ContractProperties{"care_type": "ganztag"},
+		},
+	})
+
+	// Bill with similar name: "Berger, Anna Lena" (extra middle name), same birth month/year
+	createBillFixture(t, db, org.ID, user.ID, 2025, time.November, []models.GovernmentFundingBillChild{
+		{
+			VoucherNumber: "GB-FUZZY00001-01",
+			ChildName:     "Berger, Anna Lena",
+			BirthDate:     "08.20",
+			District:      1,
+			Payments:      []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 120000}},
+		},
+	})
+
+	result, err := svc.ChildrenWithoutVouchers(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("expected 1 child, got %d", len(result))
+	}
+	if len(result[0].Suggestions) == 0 {
+		t.Fatal("expected at least 1 suggestion")
+	}
+	s := result[0].Suggestions[0]
+	if s.VoucherNumber != "GB-FUZZY00001-01" {
+		t.Errorf("expected voucher GB-FUZZY00001-01, got %s", s.VoucherNumber)
+	}
+	if s.BillFirstName != "Anna Lena" {
+		t.Errorf("expected bill first name 'Anna Lena', got %q", s.BillFirstName)
+	}
+	if s.BillLastName != "Berger" {
+		t.Errorf("expected bill last name 'Berger', got %q", s.BillLastName)
+	}
+	if s.Similarity < 0.65 {
+		t.Errorf("expected similarity >= 0.65, got %f", s.Similarity)
+	}
+}
+
+func TestChildrenWithoutVouchers_NoSuggestionWhenBirthMonthDiffers(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewChildVoucherStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	user := createTestUser(t, db, "User", "fuzzy2@example.com", "password")
+	ctx := context.Background()
+
+	// Child born August 2020
+	child := &models.Child{
+		Person: models.Person{
+			FirstName:      "Anna",
+			LastName:       "Berger",
+			Gender:         "female",
+			Birthdate:      time.Date(2020, 8, 1, 0, 0, 0, 0, time.UTC),
+			OrganizationID: org.ID,
+		},
+	}
+	db.Create(child)
+	db.Create(&models.ChildContract{
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+			SectionID:  section.ID,
+			Properties: models.ContractProperties{"care_type": "ganztag"},
+		},
+	})
+
+	// Bill child: same name but born September 2020 (different month!)
+	createBillFixture(t, db, org.ID, user.ID, 2025, time.November, []models.GovernmentFundingBillChild{
+		{
+			VoucherNumber: "GB-FUZZY00002-01",
+			ChildName:     "Berger, Anna",
+			BirthDate:     "09.20", // different month
+			District:      1,
+			Payments:      []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 120000}},
+		},
+	})
+
+	result, err := svc.ChildrenWithoutVouchers(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("expected 1 child, got %d", len(result))
+	}
+	if len(result[0].Suggestions) != 0 {
+		t.Errorf("expected 0 suggestions (birth month mismatch), got %d", len(result[0].Suggestions))
+	}
+}
+
+func TestChildrenWithoutVouchers_NoSuggestionWhenNamesTooFar(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewChildVoucherStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	user := createTestUser(t, db, "User", "fuzzy3@example.com", "password")
+	ctx := context.Background()
+
+	// Child: "Felix Weber"
+	child := &models.Child{
+		Person: models.Person{
+			FirstName:      "Felix",
+			LastName:       "Weber",
+			Gender:         "male",
+			Birthdate:      time.Date(2020, 3, 15, 0, 0, 0, 0, time.UTC),
+			OrganizationID: org.ID,
+		},
+	}
+	db.Create(child)
+	db.Create(&models.ChildContract{
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+			SectionID:  section.ID,
+			Properties: models.ContractProperties{"care_type": "ganztag"},
+		},
+	})
+
+	// Bill child: completely different name, same birth month
+	createBillFixture(t, db, org.ID, user.ID, 2025, time.November, []models.GovernmentFundingBillChild{
+		{
+			VoucherNumber: "GB-FUZZY00003-01",
+			ChildName:     "Schmidt, Maria",
+			BirthDate:     "03.20",
+			District:      1,
+			Payments:      []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 120000}},
+		},
+	})
+
+	result, err := svc.ChildrenWithoutVouchers(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("expected 1 child, got %d", len(result))
+	}
+	if len(result[0].Suggestions) != 0 {
+		t.Errorf("expected 0 suggestions (names too different), got %d", len(result[0].Suggestions))
+	}
+}
+
+func TestChildrenWithoutVouchers_NoBills(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewChildVoucherStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	ctx := context.Background()
+
+	// Child without voucher, but NO bills exist
+	child := &models.Child{
+		Person: models.Person{
+			FirstName:      "Felix",
+			LastName:       "Weber",
+			Gender:         "male",
+			Birthdate:      time.Date(2020, 3, 15, 0, 0, 0, 0, time.UTC),
+			OrganizationID: org.ID,
+		},
+	}
+	db.Create(child)
+	db.Create(&models.ChildContract{
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+			SectionID:  section.ID,
+			Properties: models.ContractProperties{"care_type": "ganztag"},
+		},
+	})
+
+	result, err := svc.ChildrenWithoutVouchers(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("expected 1 child, got %d", len(result))
+	}
+	if len(result[0].Suggestions) != 0 {
+		t.Errorf("expected 0 suggestions (no bills), got %d", len(result[0].Suggestions))
+	}
+}
+
+func TestChildrenWithoutVouchers_SkipsAlreadyMatchedVouchers(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewChildVoucherStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	user := createTestUser(t, db, "User", "fuzzy5@example.com", "password")
+	ctx := context.Background()
+
+	// Child 1: HAS a voucher (should not appear in results at all)
+	createChildWithVoucher(t, db, "Tom", "Klein", org.ID, section.ID, "GB-MATCHED0001-01",
+		time.Date(2020, 5, 10, 0, 0, 0, 0, time.UTC),
+		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil,
+		models.ContractProperties{"care_type": "ganztag"})
+
+	// Child 2: no voucher, similar name to a bill child
+	child := &models.Child{
+		Person: models.Person{
+			FirstName:      "Tom",
+			LastName:       "Klein",
+			Gender:         "male",
+			Birthdate:      time.Date(2021, 7, 20, 0, 0, 0, 0, time.UTC),
+			OrganizationID: org.ID,
+		},
+	}
+	db.Create(child)
+	db.Create(&models.ChildContract{
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+			SectionID:  section.ID,
+			Properties: models.ContractProperties{"care_type": "ganztag"},
+		},
+	})
+
+	// Bill with two children: one matched, one not
+	createBillFixture(t, db, org.ID, user.ID, 2025, time.November, []models.GovernmentFundingBillChild{
+		{
+			VoucherNumber: "GB-MATCHED0001-01", // already linked to child 1
+			ChildName:     "Klein, Tom",
+			BirthDate:     "05.20",
+			District:      1,
+			Payments:      []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 120000}},
+		},
+		{
+			VoucherNumber: "GB-UNMATCHED001-01", // not linked to anyone
+			ChildName:     "Klein, Tom Rio",
+			BirthDate:     "07.21", // matches child 2's birthdate
+			District:      1,
+			Payments:      []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 120000}},
+		},
+	})
+
+	result, err := svc.ChildrenWithoutVouchers(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	// Only child 2 should appear (child 1 has a voucher)
+	if len(result) != 1 {
+		t.Fatalf("expected 1 child without voucher, got %d", len(result))
+	}
+	if result[0].ID != child.ID {
+		t.Errorf("expected child ID %d, got %d", child.ID, result[0].ID)
+	}
+	// Should have suggestion from the unmatched bill child
+	if len(result[0].Suggestions) == 0 {
+		t.Fatal("expected suggestion from unmatched bill child")
+	}
+	if result[0].Suggestions[0].VoucherNumber != "GB-UNMATCHED001-01" {
+		t.Errorf("expected voucher GB-UNMATCHED001-01, got %s", result[0].Suggestions[0].VoucherNumber)
+	}
+}
+
 // ============================================================
 // computeChildComparison unit tests
 // ============================================================

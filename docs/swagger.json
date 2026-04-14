@@ -3061,7 +3061,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildResponse"
+                                "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildWithoutVoucherResponse"
                             }
                         }
                     },
@@ -9950,6 +9950,59 @@
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.ChildWithoutVoucherResponse": {
+            "type": "object",
+            "properties": {
+                "birthdate": {
+                    "type": "string",
+                    "example": "2020-03-10"
+                },
+                "contracts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractResponse"
+                    }
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string",
+                    "example": "Emma"
+                },
+                "gender": {
+                    "type": "string",
+                    "example": "female"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "last_name": {
+                    "type": "string",
+                    "example": "Schmidt"
+                },
+                "organization_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "suggestions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.VoucherSuggestion"
+                    }
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "vouchers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.ChildrenBillingSummaryResponse": {
             "type": "object",
             "properties": {
@@ -13161,6 +13214,39 @@
                     "type": "string",
                     "maxLength": 255,
                     "example": "John Doe Updated"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.VoucherSuggestion": {
+            "type": "object",
+            "properties": {
+                "bill_birth_date": {
+                    "type": "string",
+                    "example": "03.20"
+                },
+                "bill_child_name": {
+                    "type": "string",
+                    "example": "Mustermann, Max"
+                },
+                "bill_first_name": {
+                    "type": "string",
+                    "example": "Max"
+                },
+                "bill_from": {
+                    "type": "string",
+                    "example": "2025-11-01"
+                },
+                "bill_last_name": {
+                    "type": "string",
+                    "example": "Mustermann"
+                },
+                "similarity": {
+                    "type": "number",
+                    "example": 0.85
+                },
+                "voucher_number": {
+                    "type": "string",
+                    "example": "GB-12345678901-02"
                 }
             }
         }

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
+	"github.com/eenemeene/kitamanager-go/internal/fuzzy"
 	"github.com/eenemeene/kitamanager-go/internal/isbj"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/store"
@@ -168,19 +169,131 @@ func (s *GovernmentFundingBillService) ProcessISBJ(ctx context.Context, orgID ui
 	return s.buildResponse(ctx, orgID, period.ID, period.From, converted)
 }
 
-// ChildrenWithoutVouchers returns children with active contracts but no voucher entries.
-func (s *GovernmentFundingBillService) ChildrenWithoutVouchers(ctx context.Context, orgID uint) ([]models.ChildResponse, error) {
+// minSuggestionSimilarity is the minimum NameSimilarity score to surface a voucher suggestion.
+const minSuggestionSimilarity = 0.65
+
+// ChildrenWithoutVouchers returns children with active contracts but no voucher entries,
+// enriched with fuzzy-matched voucher suggestions from unmatched bill children.
+func (s *GovernmentFundingBillService) ChildrenWithoutVouchers(ctx context.Context, orgID uint) ([]models.ChildWithoutVoucherResponse, error) {
 	now := time.Now().UTC()
 	children, err := s.childVoucherStore.FindChildrenWithoutVouchers(ctx, orgID, now)
 	if err != nil {
 		return nil, apperror.InternalWrap(err, "failed to fetch children without vouchers")
 	}
 
-	result := make([]models.ChildResponse, len(children))
+	result := make([]models.ChildWithoutVoucherResponse, len(children))
 	for i, c := range children {
-		result[i] = c.ToResponse()
+		result[i] = models.ChildWithoutVoucherResponse{
+			ChildResponse: c.ToResponse(),
+		}
 	}
+
+	// Try to find fuzzy suggestions from unmatched bill children
+	suggestions := s.computeVoucherSuggestions(ctx, orgID, children)
+	for childID, suggs := range suggestions {
+		for i := range result {
+			if result[i].ID == childID {
+				result[i].Suggestions = suggs
+				break
+			}
+		}
+	}
+
 	return result, nil
+}
+
+// computeVoucherSuggestions finds fuzzy name matches between children without vouchers
+// and unmatched bill children (bill children whose voucher is not in child_vouchers).
+// Returns suggestions grouped by child ID.
+func (s *GovernmentFundingBillService) computeVoucherSuggestions(ctx context.Context, orgID uint, children []models.Child) map[uint][]models.VoucherSuggestion {
+	if len(children) == 0 {
+		return nil
+	}
+
+	// Get latest bill
+	latestBill, err := s.billPeriodStore.FindLatestByOrganization(ctx, orgID)
+	if err != nil {
+		return nil // no bills — no suggestions
+	}
+
+	// Get all known vouchers for this org
+	knownVouchers, err := s.childVoucherStore.FindVouchersByOrganization(ctx, orgID)
+	if err != nil {
+		return nil
+	}
+	knownSet := make(map[string]bool, len(knownVouchers))
+	for _, v := range knownVouchers {
+		knownSet[v.VoucherNumber] = true
+	}
+
+	// Find bill children whose voucher is not known
+	type unmatchedBillChild struct {
+		child    models.GovernmentFundingBillChild
+		billFrom time.Time
+	}
+	var unmatched []unmatchedBillChild
+	for _, bc := range latestBill.Children {
+		if !knownSet[bc.VoucherNumber] {
+			unmatched = append(unmatched, unmatchedBillChild{child: bc, billFrom: latestBill.From})
+		}
+	}
+
+	if len(unmatched) == 0 {
+		return nil
+	}
+
+	// Fuzzy match each child against unmatched bill children
+	result := make(map[uint][]models.VoucherSuggestion)
+
+	for _, child := range children {
+		for _, ubc := range unmatched {
+			// Hard filter: birth month + year must match
+			billMonth, billYear, err := parseBillBirthMonth(ubc.child.BirthDate)
+			if err != nil {
+				continue
+			}
+			if child.Birthdate.Month() != billMonth || child.Birthdate.Year() != billYear {
+				continue
+			}
+
+			// Compute name similarity
+			billFirst, billLast := parseBillChildName(ubc.child.ChildName)
+			if billFirst == "" && billLast == "" {
+				continue
+			}
+
+			score := fuzzy.NameSimilarity(child.FirstName, child.LastName, billFirst, billLast)
+			if score < minSuggestionSimilarity {
+				continue
+			}
+
+			result[child.ID] = append(result[child.ID], models.VoucherSuggestion{
+				VoucherNumber: ubc.child.VoucherNumber,
+				BillChildName: ubc.child.ChildName,
+				BillFirstName: billFirst,
+				BillLastName:  billLast,
+				BillBirthDate: ubc.child.BirthDate,
+				Similarity:    score,
+				BillFrom:      ubc.billFrom.Format(models.DateFormat),
+			})
+		}
+
+		// Sort suggestions by similarity descending
+		if suggs, ok := result[child.ID]; ok {
+			slices.SortFunc(suggs, func(a, b models.VoucherSuggestion) int {
+				if a.Similarity > b.Similarity {
+					return -1
+				}
+				if a.Similarity < b.Similarity {
+					return 1
+				}
+				return 0
+			})
+			result[child.ID] = suggs
+		}
+	}
+
+	return result
 }
 
 // parseBillChildName splits a bill child name "LastName,FirstName" into first and last name.

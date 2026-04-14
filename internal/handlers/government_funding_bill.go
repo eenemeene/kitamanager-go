@@ -261,7 +261,7 @@ func (h *GovernmentFundingBillHandler) CompareUnified(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Success 200 {array} models.ChildResponse
+// @Success 200 {array} models.ChildWithoutVoucherResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/children/without-vouchers [get]

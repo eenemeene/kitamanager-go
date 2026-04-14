@@ -129,7 +129,8 @@
     "mismatchMissing": "fehlt in Abrechnung",
     "mismatchAdditional": "zusätzlich in Abrechnung",
     "billValue": "Abrechnung",
-    "contractValue": "Vertrag"
+    "contractValue": "Vertrag",
+    "acceptSuggestion": "Umbenennen"
   },
   "statistics": {
     "title": "Statistiken",

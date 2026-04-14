@@ -129,7 +129,8 @@
     "mismatchMissing": "missing from bill",
     "mismatchAdditional": "extra in bill",
     "billValue": "Bill",
-    "contractValue": "Contract"
+    "contractValue": "Contract",
+    "acceptSuggestion": "Rename"
   },
   "statistics": {
     "title": "Statistics",
