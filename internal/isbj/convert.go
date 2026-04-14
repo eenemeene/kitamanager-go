@@ -163,6 +163,7 @@ func convertChild(kind *Kind) (*ConvertedChildRow, *convertChildMeta, error) {
 		{Key: "ndh", Value: flagValue(ndhActive, "ndh", kind.ZuschlagNDH), Amount: kind.ZuschlagNDH},
 		{Key: "qm/mss", Value: flagValue(qmActive || mssActive, "qm/mss", combinedQMMSS), Amount: combinedQMMSS},
 		{Key: "integration", Value: integrationValue, Amount: kind.ZuschlagIntegration},
+		{Key: "but", Value: flagValue(false, "but", kind.BuT), Amount: kind.BuT},
 		{Key: "parent", Value: "care", Amount: -kind.ElternBetreuung},
 		{Key: "parent", Value: "meals", Amount: -kind.ElternEssen},
 	}

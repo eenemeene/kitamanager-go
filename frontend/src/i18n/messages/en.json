@@ -122,7 +122,8 @@
     "activeChildren": "Active Children",
     "requiredHours": "Required Hours",
     "availableHours": "Available Hours",
-    "staffingCoverage": "Staffing Coverage"
+    "staffingCoverage": "Staffing Coverage",
+    "childrenWithoutVouchers": "Children Without Vouchers"
   },
   "statistics": {
     "title": "Statistics",
@@ -178,6 +179,8 @@
     "fundingActualVsCalculated": "Actual vs Calculated Funding",
     "fundingActualVsCalculatedDescription": "Comparison of actual government funding bills against calculated funding amounts",
     "fundingActual": "Actual (Bill)",
+    "fundingActualRegular": "Regular",
+    "fundingActualCorrection": "Correction",
     "fundingCalculated": "Calculated",
     "fundingDifference": "Difference",
     "fundingBillMissing": "No government funding bill has been uploaded for the current month.",

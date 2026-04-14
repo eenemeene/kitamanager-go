@@ -5373,3 +5373,126 @@ func TestAutoDiscoverVouchers_CaseInsensitive(t *testing.T) {
 		t.Errorf("expected 1 voucher (case-insensitive match), got %d", len(vouchers))
 	}
 }
+
+// ============================================================
+// ChildrenWithoutVouchers tests
+// ============================================================
+
+func TestChildrenWithoutVouchers_Empty(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewChildVoucherStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	ctx := context.Background()
+
+	result, err := svc.ChildrenWithoutVouchers(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(result) != 0 {
+		t.Errorf("expected 0, got %d", len(result))
+	}
+}
+
+func TestChildrenWithoutVouchers_ChildWithVoucher(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewChildVoucherStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	ctx := context.Background()
+
+	// Child WITH voucher — should NOT appear
+	createChildWithVoucher(t, db, "Has", "Voucher", org.ID, section.ID, "GB-11111111111-01",
+		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil,
+		models.ContractProperties{"care_type": "ganztag"},
+	)
+
+	result, err := svc.ChildrenWithoutVouchers(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(result) != 0 {
+		t.Errorf("expected 0 (child has voucher), got %d", len(result))
+	}
+}
+
+func TestChildrenWithoutVouchers_ChildWithoutVoucher(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewChildVoucherStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	ctx := context.Background()
+
+	// Child WITHOUT voucher but WITH active contract — should appear
+	child := createTestChildWithContract(t, db, "No", "Voucher", org.ID, section.ID)
+
+	result, err := svc.ChildrenWithoutVouchers(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("expected 1, got %d", len(result))
+	}
+	if result[0].ID != child.ID {
+		t.Errorf("expected child_id %d, got %d", child.ID, result[0].ID)
+	}
+}
+
+func TestChildrenWithoutVouchers_ExpiredContract(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewChildVoucherStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	ctx := context.Background()
+
+	// Child without voucher but contract EXPIRED — should NOT appear
+	child := &models.Child{
+		Person: models.Person{
+			OrganizationID: org.ID,
+			FirstName:      "Old",
+			LastName:       "Child",
+			Birthdate:      time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC),
+		},
+	}
+	db.Create(child)
+	contractEnd := time.Date(2020, 7, 31, 0, 0, 0, 0, time.UTC)
+	db.Create(&models.ChildContract{
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period:    models.Period{From: time.Date(2018, 1, 1, 0, 0, 0, 0, time.UTC), To: &contractEnd},
+			SectionID: section.ID,
+		},
+	})
+
+	result, err := svc.ChildrenWithoutVouchers(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(result) != 0 {
+		t.Errorf("expected 0 (contract expired), got %d", len(result))
+	}
+}

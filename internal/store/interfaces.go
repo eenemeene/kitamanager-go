@@ -107,6 +107,7 @@ type ChildVoucherStorer interface {
 	CreateVoucher(ctx context.Context, voucher *models.ChildVoucher) error
 	DeleteVouchersByChild(ctx context.Context, childID uint) error
 	FindActiveContractsByChildIDsAndDate(ctx context.Context, orgID uint, childIDs []uint, date time.Time) (map[uint]models.ChildContract, error)
+	FindChildrenWithoutVouchers(ctx context.Context, orgID uint, activeOn time.Time) ([]models.Child, error)
 	FindChildByNameAndBirthMonth(ctx context.Context, orgID uint, firstName, lastName string, birthMonth time.Month, birthYear int) ([]models.Child, error)
 }
 
@@ -254,6 +255,7 @@ type GovernmentFundingBillPeriodStorer interface {
 	FindBilledTotalsByOrg(ctx context.Context, orgID uint) ([]models.VoucherBilledTotal, error)
 	FindAllBillDatesAndVouchersByOrg(ctx context.Context, orgID uint) ([]models.BillDateVoucher, error)
 	FindFacilityTotalsByOrganizationInDateRange(ctx context.Context, orgID uint, from, to time.Time) (map[time.Time]int, error)
+	FindBillTotalsByRowTypeInDateRange(ctx context.Context, orgID uint, from, to time.Time) (map[time.Time]BillTotalsByRowType, error)
 	ExistsByOrgAndHash(ctx context.Context, orgID uint, fileHash string) (bool, error)
 	ExistsByOrgAndMonth(ctx context.Context, orgID uint, from time.Time) (bool, error)
 	Delete(ctx context.Context, id uint) error

@@ -38,7 +38,8 @@ export function FundingComparisonChart({ data }: FundingComparisonChartProps) {
   const orgId = params.orgId;
 
   const calculatedKey = t('fundingCalculated');
-  const actualKey = t('fundingActual');
+  const actualRegularKey = t('fundingActualRegular');
+  const actualCorrectionKey = t('fundingActualCorrection');
 
   const allPoints = data.data_points;
 
@@ -53,12 +54,15 @@ export function FundingComparisonChart({ data }: FundingComparisonChartProps) {
           date: formatDateLabel(dp.date),
           [calculatedKey]: dp.funding_income / 100,
         };
-        if (dp.actual_funding != null) {
-          entry[actualKey] = dp.actual_funding / 100;
+        if (dp.actual_funding_regular != null) {
+          entry[actualRegularKey] = dp.actual_funding_regular / 100;
+        }
+        if (dp.actual_funding_correction != null && dp.actual_funding_correction !== 0) {
+          entry[actualCorrectionKey] = dp.actual_funding_correction / 100;
         }
         return entry;
       }),
-    [allPoints, calculatedKey, actualKey]
+    [allPoints, calculatedKey, actualRegularKey, actualCorrectionKey]
   );
 
   const todayStr = toLocalDateString(new Date());
@@ -307,14 +311,14 @@ export function FundingComparisonChart({ data }: FundingComparisonChartProps) {
       <ExportableChart filename="funding-comparison" className="h-[500px]">
         <ResponsiveBar
           data={chartData}
-          keys={[calculatedKey, actualKey]}
+          keys={[calculatedKey, actualRegularKey, actualCorrectionKey]}
           indexBy="date"
           groupMode="grouped"
           margin={{ top: 40, right: 30, bottom: 130, left: 90 }}
           padding={0.3}
           innerPadding={2}
           valueScale={{ type: 'linear' }}
-          colors={['#3b82f6', '#f59e0b']}
+          colors={['#3b82f6', '#f59e0b', '#ef4444']}
           layers={[
             KitaYearBackground,
             'grid',

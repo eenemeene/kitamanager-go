@@ -605,6 +605,8 @@ export interface FinancialDataPoint {
   total_expenses: number;
   balance: number;
   actual_funding?: number | null;
+  actual_funding_regular?: number | null;
+  actual_funding_correction?: number | null;
   child_count: number;
   staff_count: number;
   budget_item_details?: FinancialBudgetItemDetail[];

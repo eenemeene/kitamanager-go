@@ -176,6 +176,7 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 
 	// Merge actual funding from government funding bills
 	if s.billStore != nil {
+		// Total actual funding from facility_total (the definitive total from the bill header)
 		billTotals, err := s.billStore.FindFacilityTotalsByOrganizationInDateRange(ctx, orgID, rangeStart, rangeEnd)
 		if err == nil {
 			for i := range dataPoints {
@@ -186,8 +187,27 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 				}
 				key := time.Date(dpDate.Year(), dpDate.Month(), 1, 0, 0, 0, 0, time.UTC)
 				if total, ok := billTotals[key]; ok {
-					total := total // copy for pointer
+					total := total
 					dp.ActualFunding = &total
+				}
+			}
+		}
+
+		// Regular vs correction breakdown from per-payment row types
+		billByRowType, err := s.billStore.FindBillTotalsByRowTypeInDateRange(ctx, orgID, rangeStart, rangeEnd)
+		if err == nil {
+			for i := range dataPoints {
+				dp := &dataPoints[i]
+				dpDate, parseErr := time.Parse("2006-01-02", dp.Date)
+				if parseErr != nil {
+					continue
+				}
+				key := time.Date(dpDate.Year(), dpDate.Month(), 1, 0, 0, 0, 0, time.UTC)
+				if entry, ok := billByRowType[key]; ok {
+					regular := entry.RegularTotal
+					correction := entry.CorrectionTotal
+					dp.ActualFundingRegular = &regular
+					dp.ActualFundingCorrection = &correction
 				}
 			}
 		}

@@ -137,6 +137,21 @@ func (s *GovernmentFundingBillService) ProcessISBJ(ctx context.Context, orgID ui
 	return s.buildResponse(ctx, orgID, period.ID, period.From, converted)
 }
 
+// ChildrenWithoutVouchers returns children with active contracts but no voucher entries.
+func (s *GovernmentFundingBillService) ChildrenWithoutVouchers(ctx context.Context, orgID uint) ([]models.ChildResponse, error) {
+	now := time.Now().UTC()
+	children, err := s.childVoucherStore.FindChildrenWithoutVouchers(ctx, orgID, now)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "failed to fetch children without vouchers")
+	}
+
+	result := make([]models.ChildResponse, len(children))
+	for i, c := range children {
+		result[i] = c.ToResponse()
+	}
+	return result, nil
+}
+
 // parseBillChildName splits a bill child name "LastName,FirstName" into first and last name.
 func parseBillChildName(billName string) (firstName, lastName string) {
 	parts := strings.SplitN(billName, ",", 2)

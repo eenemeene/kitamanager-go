@@ -3037,6 +3037,55 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/organizations/{orgId}/children/without-vouchers": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns children who have active contracts but no voucher numbers assigned",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "government-funding-bills"
+                ],
+                "summary": "Get children with active contracts but no vouchers",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/organizations/{orgId}/children/{childId}": {
             "get": {
                 "security": [
@@ -10503,6 +10552,16 @@ const docTemplate = `{
                     "description": "Actual funding from government funding bills",
                     "type": "integer",
                     "example": 5100000
+                },
+                "actual_funding_correction": {
+                    "description": "cents, correction rows only",
+                    "type": "integer",
+                    "example": 100000
+                },
+                "actual_funding_regular": {
+                    "description": "cents, regular billing only",
+                    "type": "integer",
+                    "example": 5000000
                 },
                 "balance": {
                     "description": "cents (income - expenses)",
