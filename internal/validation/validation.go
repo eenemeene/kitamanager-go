@@ -51,6 +51,22 @@ func ValidateSalary(salary int) error {
 	return nil
 }
 
+// FundingAgeOnDate calculates the age used for funding rate lookups per the Berlin
+// RV-Tag Kostenblatt rule: "Altersgruppenwechsel ab dem 1. des Folgemonats nach dem
+// 2. und 3. Geburtstag des Kindes" — the age group change takes effect on the 1st of
+// the month FOLLOWING the birthday month.
+//
+// Example: a child born May 1 who turns 2 is still billed at the under-2 rate for May.
+// The age-2 rate applies from June 1.
+//
+// Implementation: calculate age as of the last day of the previous month. Since billing
+// dates are always the 1st, subtracting one day gives the last day of the prior month.
+// This only changes the result for children born on the 1st of a month.
+func FundingAgeOnDate(birthdate, billingDate time.Time) int {
+	refDate := billingDate.AddDate(0, 0, -1)
+	return CalculateAgeOnDate(birthdate, refDate)
+}
+
 // CalculateAgeOnDate calculates the age in complete years on a given reference date.
 // The age is the number of complete years from birthdate to referenceDate.
 func CalculateAgeOnDate(birthdate, referenceDate time.Time) int {

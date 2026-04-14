@@ -147,7 +147,7 @@ func calculateFinancials(
 				contract := &child.Contracts[j]
 				if contract.IsActiveOn(date) {
 					childCount++
-					age := validation.CalculateAgeOnDate(child.Birthdate, date)
+					age := validation.FundingAgeOnDate(child.Birthdate, date)
 					for _, fp := range matchFundingProperties(age, contract.Properties, fundingPeriod) {
 						fundingIncome += fp.Payment
 						mapKey := fp.Key + ":" + fp.Value
@@ -317,7 +317,7 @@ func calculateStaffingHours(
 				if contract.IsActiveOn(date) {
 					childCount++
 					if period != nil {
-						age := validation.CalculateAgeOnDate(child.Birthdate, date)
+						age := validation.FundingAgeOnDate(child.Birthdate, date)
 						requirement := sumChildRequirement(age, contract.Properties, period)
 						requiredHours += requirement * period.FullTimeWeeklyHours
 					}
@@ -456,7 +456,7 @@ func calculateOccupancy(
 				}
 				dp.Total++
 
-				age := validation.CalculateAgeOnDate(child.Birthdate, date)
+				age := validation.FundingAgeOnDate(child.Birthdate, date)
 				ageLabel := findAgeGroupLabel(age, ageGroups)
 
 				// Count by age group × care type
@@ -683,11 +683,11 @@ func calculateFunding(
 			continue
 		}
 
-		childAge := validation.CalculateAgeOnDate(child.Birthdate, date)
-		childFunding := calculateChildFunding(childAge, activeContract.Properties, period)
+		fundingAge := validation.FundingAgeOnDate(child.Birthdate, date)
+		childFunding := calculateChildFunding(fundingAge, activeContract.Properties, period)
 		childFunding.ChildID = child.ID
 		childFunding.ChildName = child.FirstName + " " + child.LastName
-		childFunding.Age = childAge
+		childFunding.Age = validation.CalculateAgeOnDate(child.Birthdate, date)
 
 		response.Children = append(response.Children, childFunding)
 	}

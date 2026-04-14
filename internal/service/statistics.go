@@ -288,10 +288,10 @@ func (s *StatisticsService) EstimateChildFunding(ctx context.Context, orgID uint
 	}
 
 	period := findPeriodForDate(fundingPeriods, date)
-	age := validation.CalculateAgeOnDate(req.Birthdate, date)
+	fundingAge := validation.FundingAgeOnDate(req.Birthdate, date)
 
-	result := calculateChildFunding(age, req.Properties, period)
-	result.Age = age
+	result := calculateChildFunding(fundingAge, req.Properties, period)
+	result.Age = validation.CalculateAgeOnDate(req.Birthdate, date)
 
 	return &result, nil
 }
