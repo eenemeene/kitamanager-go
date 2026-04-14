@@ -51,7 +51,9 @@ type FinancialDataPoint struct {
 	TotalExpenses int `json:"total_expenses" example:"4770000"` // cents
 	Balance       int `json:"balance" example:"230000"`         // cents (income - expenses)
 	// Actual funding from government funding bills
-	ActualFunding *int `json:"actual_funding,omitempty" example:"5100000"` // cents, nil if no bill for this month
+	ActualFunding           *int `json:"actual_funding,omitempty" example:"5100000"`           // cents, nil if no bill for this month
+	ActualFundingRegular    *int `json:"actual_funding_regular,omitempty" example:"5000000"`   // cents, regular billing only
+	ActualFundingCorrection *int `json:"actual_funding_correction,omitempty" example:"100000"` // cents, correction rows only
 	// Counts
 	ChildCount int `json:"child_count" example:"45"`
 	StaffCount int `json:"staff_count" example:"12"`

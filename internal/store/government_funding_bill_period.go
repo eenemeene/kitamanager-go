@@ -102,6 +102,47 @@ func (s *GovernmentFundingBillPeriodStore) FindFacilityTotalsByOrganizationInDat
 	return m, nil
 }
 
+// BillTotalsByRowType holds the regular and correction payment totals for a bill month.
+type BillTotalsByRowType struct {
+	RegularTotal    int
+	CorrectionTotal int
+}
+
+// FindBillTotalsByRowTypeInDateRange returns per-month regular and correction totals for an org.
+func (s *GovernmentFundingBillPeriodStore) FindBillTotalsByRowTypeInDateRange(ctx context.Context, orgID uint, from, to time.Time) (map[time.Time]BillTotalsByRowType, error) {
+	var results []struct {
+		FromDate time.Time `gorm:"column:from_date"`
+		RowType  string    `gorm:"column:row_type"`
+		Total    int       `gorm:"column:total"`
+	}
+	err := DBFromContext(ctx, s.db).
+		Raw(`SELECT p.from_date, pay.row_type, SUM(pay.amount) AS total
+			FROM government_funding_bill_periods p
+			JOIN government_funding_bill_children c ON c.period_id = p.id
+			JOIN government_funding_bill_payments pay ON pay.child_id = c.id
+			WHERE p.organization_id = ? AND p.from_date >= ? AND p.from_date <= ?
+			GROUP BY p.from_date, pay.row_type
+			ORDER BY p.from_date`, orgID, from, to).
+		Scan(&results).Error
+	if err != nil {
+		return nil, err
+	}
+
+	m := make(map[time.Time]BillTotalsByRowType, len(results))
+	for _, r := range results {
+		key := time.Date(r.FromDate.Year(), r.FromDate.Month(), 1, 0, 0, 0, 0, time.UTC)
+		entry := m[key]
+		switch r.RowType {
+		case models.RowTypeCorrection:
+			entry.CorrectionTotal += r.Total
+		default: // "regular" or empty
+			entry.RegularTotal += r.Total
+		}
+		m[key] = entry
+	}
+	return m, nil
+}
+
 func (s *GovernmentFundingBillPeriodStore) FindChildEntriesByOrgAndVoucherNumbers(ctx context.Context, orgID uint, voucherNumbers []string) ([]models.GovernmentFundingBillChildWithPeriod, error) {
 	if len(voucherNumbers) == 0 {
 		return nil, nil

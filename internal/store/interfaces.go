@@ -254,6 +254,7 @@ type GovernmentFundingBillPeriodStorer interface {
 	FindBilledTotalsByOrg(ctx context.Context, orgID uint) ([]models.VoucherBilledTotal, error)
 	FindAllBillDatesAndVouchersByOrg(ctx context.Context, orgID uint) ([]models.BillDateVoucher, error)
 	FindFacilityTotalsByOrganizationInDateRange(ctx context.Context, orgID uint, from, to time.Time) (map[time.Time]int, error)
+	FindBillTotalsByRowTypeInDateRange(ctx context.Context, orgID uint, from, to time.Time) (map[time.Time]BillTotalsByRowType, error)
 	ExistsByOrgAndHash(ctx context.Context, orgID uint, fileHash string) (bool, error)
 	ExistsByOrgAndMonth(ctx context.Context, orgID uint, from time.Time) (bool, error)
 	Delete(ctx context.Context, id uint) error

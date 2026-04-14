@@ -714,3 +714,54 @@ func TestConvert_GroupsPreservesDifferentVouchers(t *testing.T) {
 	require.Len(t, result.Children[0].Rows, 1)
 	require.Len(t, result.Children[1].Rows, 1)
 }
+
+func TestConvert_BuTIncluded(t *testing.T) {
+	output := makeTestOutput()
+	output.Vertrag.Kinder[0].BuT = 1500 // 15.00 EUR
+
+	result, err := Convert(output)
+	require.NoError(t, err)
+
+	child := result.Children[0]
+	// Should now have 5 amounts: care_type, qm/mss, but, parent:care, parent:meals
+	found := false
+	for _, a := range child.Rows[0].Amounts {
+		if a.Key == "but" && a.Value == "but" && a.Amount == 1500 {
+			found = true
+		}
+	}
+	assert.True(t, found, "expected BuT amount in child row, amounts: %v", child.Rows[0].Amounts)
+}
+
+func TestConvert_BuTZeroExcluded(t *testing.T) {
+	output := makeTestOutput()
+	output.Vertrag.Kinder[0].BuT = 0
+
+	result, err := Convert(output)
+	require.NoError(t, err)
+
+	child := result.Children[0]
+	for _, a := range child.Rows[0].Amounts {
+		if a.Key == "but" {
+			t.Errorf("BuT with zero amount should be excluded, but found: %+v", a)
+		}
+	}
+}
+
+func TestConvert_BuTNegative(t *testing.T) {
+	// BuT can theoretically be negative (correction)
+	output := makeTestOutput()
+	output.Vertrag.Kinder[0].BuT = -500
+
+	result, err := Convert(output)
+	require.NoError(t, err)
+
+	child := result.Children[0]
+	found := false
+	for _, a := range child.Rows[0].Amounts {
+		if a.Key == "but" && a.Amount == -500 {
+			found = true
+		}
+	}
+	assert.True(t, found, "expected negative BuT in amounts")
+}

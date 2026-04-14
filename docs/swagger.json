@@ -10498,6 +10498,16 @@
                     "type": "integer",
                     "example": 5100000
                 },
+                "actual_funding_correction": {
+                    "description": "cents, correction rows only",
+                    "type": "integer",
+                    "example": 100000
+                },
+                "actual_funding_regular": {
+                    "description": "cents, regular billing only",
+                    "type": "integer",
+                    "example": 5000000
+                },
                 "balance": {
                     "description": "cents (income - expenses)",
                     "type": "integer",

@@ -1230,6 +1230,14 @@ definitions:
         description: Actual funding from government funding bills
         example: 5100000
         type: integer
+      actual_funding_correction:
+        description: cents, correction rows only
+        example: 100000
+        type: integer
+      actual_funding_regular:
+        description: cents, regular billing only
+        example: 5000000
+        type: integer
       balance:
         description: cents (income - expenses)
         example: 230000
