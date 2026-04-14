@@ -873,6 +873,13 @@ func buildComparisonProperties(billAmounts, calcAmounts map[string]int, labelMap
 // contractPropertyKeys lists the base keys that represent actual contract properties.
 // Only these keys are considered for mismatch detection. Surcharges (parent, ndh, qm/mss, but)
 // are excluded because they are facility-level or funding-config-driven, not contract properties.
+//
+// This is a hardcoded list because these keys are a fixed set defined by the Berlin funding
+// model (RV-Tag). The keys come from the ContractProperties JSONB field on child contracts.
+// A more dynamic approach could derive this from the funding config (e.g., properties with
+// apply_to_all_contracts are surcharges), but that would require loading the funding config
+// just to classify mismatches — unnecessary complexity since these keys won't change unless
+// Berlin fundamentally restructures their funding model.
 var contractPropertyKeys = map[string]bool{
 	"care_type":   true,
 	"integration": true,
