@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -165,15 +164,6 @@ func (h *GovernmentFundingBillHandler) Compare(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-func parseRequiredDateFromString(c *gin.Context, dateStr, paramName string) (time.Time, bool) {
-	date, err := time.Parse(models.DateFormat, dateStr)
-	if err != nil {
-		respondError(c, apperror.BadRequest("invalid date format for "+paramName+", expected YYYY-MM-DD"))
-		return time.Time{}, false
-	}
-	return date, true
-}
-
 // CompareUnified godoc
 // @Summary Compare funding bill with calculated funding (unified)
 // @Description Compare bill data against calculated funding. Supports filtering by bill_id, date, or child_id.
@@ -231,12 +221,12 @@ func (h *GovernmentFundingBillHandler) CompareUnified(c *gin.Context) {
 		return
 	}
 
-	if dateStr := c.Query("date"); dateStr != "" {
-		date, ok := parseRequiredDateFromString(c, dateStr, "date")
-		if !ok {
-			return
-		}
-		result, err := h.service.CompareByDate(ctx, orgID, date)
+	date, ok := parseOptionalDatePtr(c, "date")
+	if !ok {
+		return
+	}
+	if date != nil {
+		result, err := h.service.CompareByDate(ctx, orgID, *date)
 		if err != nil {
 			respondError(c, err)
 			return
