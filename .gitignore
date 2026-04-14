@@ -56,3 +56,6 @@ internal/web/dist/*
 configs/pay-plans/tv-eene-meene.yaml
 configs/employees/eene-meene.yaml
 configs/children/eene-meene.yaml
+
+# Local notes
+TODO.local

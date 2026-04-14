@@ -652,9 +652,10 @@ func (s *GovernmentFundingBillService) comparePeriod(ctx context.Context, period
 		}
 		contract := ac.Contracts[0]
 
-		childAge := validation.CalculateAgeOnDate(ac.Birthdate, period.From)
-		calcAmounts, calcTotal := calcAmountsFromFunding(childAge, contract.Properties, fundingPeriod)
+		fundingAge := validation.FundingAgeOnDate(ac.Birthdate, period.From)
+		calcAmounts, calcTotal := calcAmountsFromFunding(fundingAge, contract.Properties, fundingPeriod)
 
+		displayAge := validation.CalculateAgeOnDate(ac.Birthdate, period.From)
 		voucherDisplay := ""
 		if len(childVouchers) > 0 {
 			voucherDisplay = childVouchers[0].VoucherNumber
@@ -664,7 +665,7 @@ func (s *GovernmentFundingBillService) comparePeriod(ctx context.Context, period
 			VoucherNumber: voucherDisplay,
 			ChildName:     ac.LastName + ", " + ac.FirstName,
 			ChildID:       &ac.ID,
-			Age:           &childAge,
+			Age:           &displayAge,
 			CalcTotal:     &calcTotal,
 			Status:        "calc_only",
 			Properties:    buildCalcOnlyProperties(calcAmounts, labelMap),
@@ -743,10 +744,15 @@ func computeChildComparison(input childComparisonInput) childComparisonResult {
 		return result
 	}
 
-	// Contract matched — compute age if birthdate available
+	// Contract matched — compute ages if birthdate available
+	// Display age: actual age on billing date (for UI)
+	// Funding age: per RV-Tag rule, age group change on 1st of following month (for rate lookup)
+	var fundingAge *int
 	if input.Birthdate != nil {
-		age := validation.CalculateAgeOnDate(*input.Birthdate, input.BillDate)
-		result.Age = &age
+		displayAge := validation.CalculateAgeOnDate(*input.Birthdate, input.BillDate)
+		result.Age = &displayAge
+		fa := validation.FundingAgeOnDate(*input.Birthdate, input.BillDate)
+		fundingAge = &fa
 	}
 
 	// Find applicable funding period and compute calculated amounts
@@ -754,8 +760,8 @@ func computeChildComparison(input childComparisonInput) childComparisonResult {
 	var calcTotal int
 
 	fundingPeriod := findPeriodForDate(input.FundingPeriods, input.BillDate)
-	if fundingPeriod != nil && result.Age != nil {
-		calcAmounts, calcTotal = calcAmountsFromFunding(*result.Age, input.Contract.Properties, fundingPeriod)
+	if fundingPeriod != nil && fundingAge != nil {
+		calcAmounts, calcTotal = calcAmountsFromFunding(*fundingAge, input.Contract.Properties, fundingPeriod)
 	} else {
 		calcAmounts = make(map[string]int)
 		result.NoFundingConfig = len(input.FundingPeriods) == 0 || fundingPeriod == nil
@@ -1373,7 +1379,7 @@ func (s *GovernmentFundingBillService) ChildrenBillingSummary(ctx context.Contex
 			continue
 		}
 
-		age := validation.CalculateAgeOnDate(birthdate, bdv.BillFrom)
+		age := validation.FundingAgeOnDate(birthdate, bdv.BillFrom)
 		_, calcTotal := calcAmountsFromFunding(age, activeContract.Properties, fundingPeriod)
 		calcByVoucher[bdv.VoucherNumber] += calcTotal
 	}

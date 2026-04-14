@@ -155,3 +155,141 @@ func TestCalculateAgeOnDate(t *testing.T) {
 		})
 	}
 }
+
+func TestFundingAgeOnDate(t *testing.T) {
+	d := func(y, m, day int) time.Time {
+		return time.Date(y, time.Month(m), day, 0, 0, 0, 0, time.UTC)
+	}
+
+	tests := []struct {
+		name        string
+		birthdate   time.Time
+		billingDate time.Time
+		expectedAge int
+	}{
+		// === Children born on the 1st — the only case where FundingAge differs from CalculateAge ===
+		{
+			name:        "born 1st, billing on birthday month — funding age is previous year",
+			birthdate:   d(2023, 5, 1), // turns 2 on May 1, 2025
+			billingDate: d(2025, 5, 1), // billing for May
+			expectedAge: 1,             // RV-Tag: age group change on June 1, not May 1
+		},
+		{
+			name:        "born 1st, billing month after birthday — funding age is new",
+			birthdate:   d(2023, 5, 1), // turned 2 on May 1
+			billingDate: d(2025, 6, 1), // billing for June
+			expectedAge: 2,             // RV-Tag: age group change takes effect June 1
+		},
+		{
+			name:        "born Jan 1, billing Jan — still previous age",
+			birthdate:   d(2022, 1, 1), // turns 3 on Jan 1, 2025
+			billingDate: d(2025, 1, 1),
+			expectedAge: 2, // change takes effect Feb 1
+		},
+		{
+			name:        "born Jan 1, billing Feb — new age",
+			birthdate:   d(2022, 1, 1),
+			billingDate: d(2025, 2, 1),
+			expectedAge: 3,
+		},
+
+		// === Children born on other days — FundingAge should match CalculateAge ===
+		{
+			name:        "born 15th, billing before birthday month — same as CalculateAge",
+			birthdate:   d(2023, 5, 15),
+			billingDate: d(2025, 4, 1),
+			expectedAge: 1,
+		},
+		{
+			name:        "born 15th, billing on birthday month — same as CalculateAge",
+			birthdate:   d(2023, 5, 15),
+			billingDate: d(2025, 5, 1), // birthday hasn't happened yet on May 1
+			expectedAge: 1,             // CalculateAge also returns 1 here
+		},
+		{
+			name:        "born 15th, billing month after birthday — same as CalculateAge",
+			birthdate:   d(2023, 5, 15),
+			billingDate: d(2025, 6, 1),
+			expectedAge: 2,
+		},
+		{
+			name:        "born last day of month, billing next month — age incremented",
+			birthdate:   d(2023, 4, 30),
+			billingDate: d(2025, 5, 1),
+			expectedAge: 2, // birthday was April 30, change takes effect May 1
+		},
+
+		// === Edge cases ===
+		{
+			name:        "born Feb 29 leap year, billing March 1 non-leap — age incremented",
+			birthdate:   d(2020, 2, 29),
+			billingDate: d(2025, 3, 1), // Feb 28 is the ref date; birthday Feb 29 hasn't occurred
+			expectedAge: 4,             // Feb 28, 2025 → birthday hasn't happened in 2025 yet
+		},
+		{
+			name:        "born Feb 29, billing March 1 leap year — age incremented",
+			birthdate:   d(2020, 2, 29),
+			billingDate: d(2024, 3, 1), // Feb 29 is the ref date in leap year; birthday happens
+			expectedAge: 4,
+		},
+		{
+			name:        "billing date before birth — age 0",
+			birthdate:   d(2025, 6, 1),
+			billingDate: d(2025, 1, 1),
+			expectedAge: 0,
+		},
+		{
+			name:        "same month and year as birth, born on 1st — age 0",
+			birthdate:   d(2025, 5, 1),
+			billingDate: d(2025, 5, 1),
+			expectedAge: 0, // born today, change happens June 1
+		},
+		{
+			// Max Kaphamel: born Sept 1, 2022. Billing Sept 2024.
+			// CalculateAge would say 2 (birthday today). FundingAge should say 1.
+			name:        "Max Kaphamel real case — born Sept 1, billing Sept",
+			birthdate:   d(2022, 9, 1),
+			billingDate: d(2024, 9, 1),
+			expectedAge: 1, // age group change on Oct 1
+		},
+		{
+			name:        "Max Kaphamel — billing Oct, age 2",
+			birthdate:   d(2022, 9, 1),
+			billingDate: d(2024, 10, 1),
+			expectedAge: 2, // age group change took effect Oct 1
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			age := FundingAgeOnDate(tt.birthdate, tt.billingDate)
+			if age != tt.expectedAge {
+				t.Errorf("FundingAgeOnDate(%s, %s) = %d, want %d",
+					tt.birthdate.Format("2006-01-02"),
+					tt.billingDate.Format("2006-01-02"),
+					age, tt.expectedAge)
+			}
+		})
+	}
+}
+
+func TestFundingAgeOnDate_MatchesCalculateAge_ForNonFirstBirthdays(t *testing.T) {
+	// For children NOT born on the 1st, FundingAgeOnDate should always match
+	// CalculateAgeOnDate when the billing date is the 1st of the month
+	d := func(y, m, day int) time.Time {
+		return time.Date(y, time.Month(m), day, 0, 0, 0, 0, time.UTC)
+	}
+
+	for day := 2; day <= 28; day++ {
+		birthdate := d(2020, 6, day)
+		for month := 1; month <= 12; month++ {
+			billingDate := d(2025, month, 1)
+			funding := FundingAgeOnDate(birthdate, billingDate)
+			actual := CalculateAgeOnDate(birthdate, billingDate)
+			if funding != actual {
+				t.Errorf("day=%d, billing=%s: FundingAge=%d != CalculateAge=%d",
+					day, billingDate.Format("2006-01-02"), funding, actual)
+			}
+		}
+	}
+}
