@@ -1113,6 +1113,55 @@ func TestGovernmentFundingBillService_Compare_BillOnlyChild(t *testing.T) {
 	}
 }
 
+func TestGovernmentFundingBillService_Compare_CorrectionOnlyBillChild(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "compare-corr@example.com", "password")
+	ctx := context.Background()
+
+	setupFundingRates(t, db)
+
+	// Bill child with ONLY correction rows (no regular payments)
+	period := createBillPeriodForCompare(t, db, org.ID, user.ID, []models.GovernmentFundingBillChild{
+		{
+			VoucherNumber: "GB-88888888888-01",
+			ChildName:     "Correction, Only",
+			BirthDate:     "01.20",
+			District:      1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 50000, RowType: models.RowTypeCorrection},
+			},
+		},
+	})
+
+	result, err := svc.Compare(ctx, period.ID, org.ID)
+	if err != nil {
+		t.Fatalf("Compare() error = %v", err)
+	}
+
+	// Correction-only child should NOT count as bill_only
+	if result.BillOnlyCount != 0 {
+		t.Errorf("expected bill_only_count 0 (correction-only child excluded), got %d", result.BillOnlyCount)
+	}
+	if result.BillOnlyAmount != 0 {
+		t.Errorf("expected bill_only_amount 0, got %d", result.BillOnlyAmount)
+	}
+
+	// Child still appears in the response with bill_only status
+	if len(result.Children) != 1 {
+		t.Fatalf("expected 1 child, got %d", len(result.Children))
+	}
+	if result.Children[0].Status != "bill_only" {
+		t.Errorf("expected status 'bill_only', got %q", result.Children[0].Status)
+	}
+
+	// Correction amount is still tracked
+	if result.CorrectionTotal != 50000 {
+		t.Errorf("expected correction_total 50000, got %d", result.CorrectionTotal)
+	}
+}
+
 func TestGovernmentFundingBillService_Compare_CalcOnlyChild(t *testing.T) {
 	db := setupTestDB(t)
 	svc := setupBillCompareService(t, db)

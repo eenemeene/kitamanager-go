@@ -851,7 +851,9 @@ export interface FundingComparisonResponse {
   match_count: number;
   difference_count: number;
   bill_only_count: number;
+  bill_only_amount: number;
   calc_only_count: number;
+  calc_only_amount: number;
   children: FundingComparisonChild[];
 }
 

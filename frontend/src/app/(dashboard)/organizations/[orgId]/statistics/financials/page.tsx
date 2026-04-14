@@ -4,7 +4,8 @@ import { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueries } from '@tanstack/react-query';
+import type { FundingComparisonResponse } from '@/lib/api/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChartErrorBoundary } from '@/components/charts/chart-error-boundary';
@@ -68,6 +69,53 @@ export default function FinancialsPage() {
     enabled: !!orgId,
   });
 
+  // Derive date range from financials data for compare queries (12-month windows)
+  const compareWindows = useMemo(() => {
+    const dps = financials?.data_points;
+    if (!dps?.length) return [];
+    // Only include months that have actual bills
+    const billMonths = dps.filter((dp) => dp.actual_funding != null).map((dp) => dp.date);
+    if (billMonths.length === 0) return [];
+    const first = billMonths[0];
+    const last = billMonths[billMonths.length - 1];
+    // Split into 12-month windows
+    const windows: { from: string; to: string }[] = [];
+    let wFrom = first;
+    while (wFrom <= last) {
+      const fromDate = new Date(wFrom);
+      const toDate = new Date(fromDate);
+      toDate.setMonth(toDate.getMonth() + 11);
+      const wTo =
+        toDate.toISOString().slice(0, 10) > last ? last : toDate.toISOString().slice(0, 10);
+      windows.push({ from: wFrom, to: wTo });
+      const nextDate = new Date(fromDate);
+      nextDate.setMonth(nextDate.getMonth() + 12);
+      wFrom = nextDate.toISOString().slice(0, 10);
+    }
+    return windows;
+  }, [financials]);
+
+  const compareResults = useQueries({
+    queries: compareWindows.map((w) => ({
+      queryKey: queryKeys.governmentFundingBillPeriods.compareRange(orgId, w.from, w.to),
+      queryFn: () => apiClient.compareBills(orgId, { from: w.from, to: w.to }),
+      enabled: !!orgId && compareWindows.length > 0,
+      staleTime: 5 * 60 * 1000,
+    })),
+  });
+
+  const compareData = useMemo(() => {
+    const map = new Map<string, FundingComparisonResponse>();
+    for (const result of compareResults) {
+      if (result.data) {
+        for (const comp of result.data) {
+          map.set(comp.bill_from, comp);
+        }
+      }
+    }
+    return map.size > 0 ? map : undefined;
+  }, [compareResults]);
+
   const currentFinancials = useMemo(() => {
     if (!financials?.data_points?.length) return null;
     const currentMonth = getCurrentMonthStart();
@@ -123,7 +171,7 @@ export default function FinancialsPage() {
           </CardHeader>
           <CardContent>
             <ChartErrorBoundary>
-              <FundingComparisonChart data={financials} />
+              <FundingComparisonChart data={financials} compareData={compareData} />
             </ChartErrorBoundary>
           </CardContent>
         </Card>

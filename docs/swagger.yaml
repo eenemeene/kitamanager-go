@@ -1503,6 +1503,9 @@ definitions:
       bill_id:
         example: 1
         type: integer
+      bill_only_amount:
+        example: 150000
+        type: integer
       bill_only_count:
         example: 1
         type: integer
@@ -1511,6 +1514,9 @@ definitions:
         type: string
       bill_total:
         example: 500000
+        type: integer
+      calc_only_amount:
+        example: 80000
         type: integer
       calc_only_count:
         example: 1

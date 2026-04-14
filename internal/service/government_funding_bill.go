@@ -749,7 +749,10 @@ func (s *GovernmentFundingBillService) comparePeriod(ctx context.Context, period
 		// Aggregate response totals
 		switch comp.Status {
 		case "bill_only":
-			response.BillOnlyCount++
+			if comp.BillTotal > 0 {
+				response.BillOnlyCount++
+				response.BillOnlyAmount += comp.BillTotal
+			}
 			response.BillTotal += comp.BillTotal
 		case "match":
 			response.MatchCount++
@@ -855,6 +858,7 @@ func (s *GovernmentFundingBillService) comparePeriod(ctx context.Context, period
 
 		response.Children = append(response.Children, compChild)
 		response.CalcOnlyCount++
+		response.CalcOnlyAmount += calcTotal
 		response.CalcTotal += calcTotal
 	}
 

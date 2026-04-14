@@ -188,7 +188,9 @@ type FundingComparisonResponse struct {
 	MatchCount      int                      `json:"match_count" example:"20"`
 	DifferenceCount int                      `json:"difference_count" example:"3"`
 	BillOnlyCount   int                      `json:"bill_only_count" example:"1"`
+	BillOnlyAmount  int                      `json:"bill_only_amount" example:"150000"`
 	CalcOnlyCount   int                      `json:"calc_only_count" example:"1"`
+	CalcOnlyAmount  int                      `json:"calc_only_amount" example:"80000"`
 	Children        []FundingComparisonChild `json:"children"`
 }
 

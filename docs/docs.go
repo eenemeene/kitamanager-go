@@ -11144,6 +11144,10 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 1
                 },
+                "bill_only_amount": {
+                    "type": "integer",
+                    "example": 150000
+                },
                 "bill_only_count": {
                     "type": "integer",
                     "example": 1
@@ -11155,6 +11159,10 @@ const docTemplate = `{
                 "bill_total": {
                     "type": "integer",
                     "example": 500000
+                },
+                "calc_only_amount": {
+                    "type": "integer",
+                    "example": 80000
                 },
                 "calc_only_count": {
                     "type": "integer",
