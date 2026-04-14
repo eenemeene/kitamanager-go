@@ -19,6 +19,7 @@ repos:
 
   - repo: local
     hooks:
+      # === Fast checks first (seconds) ===
       - id: go-mod-tidy
         name: go mod tidy
         entry: bash -c 'go mod tidy && git diff --exit-code go.mod go.sum'
@@ -26,37 +27,9 @@ repos:
         types: [go]
         pass_filenames: false
 
-      - id: go-test
-        name: go test
-        entry: go test -race ./...
-        language: system
-        types: [go]
-        pass_filenames: false
-
-      - id: go-integration-test
-        name: go integration test
-        entry: go test -tags=integration ./internal/integration/...
-        language: system
-        types: [go]
-        pass_filenames: false
-
-      - id: go-contract-test
-        name: go contract test
-        entry: go test -tags=contract ./internal/contract/...
-        language: system
-        types: [go]
-        pass_filenames: false
-
       - id: go-build
         name: go build
         entry: make api-build
-        language: system
-        types: [go]
-        pass_filenames: false
-
-      - id: govulncheck
-        name: govulncheck
-        entry: bash -c 'go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck $(go list ./... | grep -v internal/testutil)'
         language: system
         types: [go]
         pass_filenames: false
@@ -87,6 +60,35 @@ repos:
         entry: bash -c 'cd frontend && npm run format:check'
         language: system
         files: ^frontend/.*\.(tsx?|jsx?|css|json)$
+        pass_filenames: false
+
+      # === Slow checks (minutes) ===
+      - id: go-test
+        name: go test
+        entry: go test -race ./...
+        language: system
+        types: [go]
+        pass_filenames: false
+
+      - id: go-integration-test
+        name: go integration test
+        entry: go test -tags=integration ./internal/integration/...
+        language: system
+        types: [go]
+        pass_filenames: false
+
+      - id: go-contract-test
+        name: go contract test
+        entry: go test -tags=contract ./internal/contract/...
+        language: system
+        types: [go]
+        pass_filenames: false
+
+      - id: govulncheck
+        name: govulncheck
+        entry: bash -c 'go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck $(go list ./... | grep -v internal/testutil)'
+        language: system
+        types: [go]
         pass_filenames: false
 
       - id: web-test
