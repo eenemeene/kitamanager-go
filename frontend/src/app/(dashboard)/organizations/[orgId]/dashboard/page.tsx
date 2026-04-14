@@ -10,8 +10,10 @@ import { StatCard } from '@/components/dashboard/stat-card';
 import { StepPromotionsWidget } from '@/components/dashboard/step-promotions-widget';
 import { UpcomingChildrenWidget } from '@/components/dashboard/upcoming-children-widget';
 import { SectionAgeAlertsWidget } from '@/components/dashboard/section-age-alerts-widget';
-import { Card, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { getCurrentMonthRange } from '@/lib/utils/formatting';
@@ -51,7 +53,7 @@ export default function OrgDashboardPage() {
     queryKey: queryKeys.governmentFundingBillPeriods.list(orgId, 1),
     queryFn: () => apiClient.getGovernmentFundingBillPeriods(orgId, { page: 1, limit: 100 }),
     enabled: !!orgId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 1000, // 1 minute — shorter so bill uploads/deletes are reflected quickly
   });
 
   const previousMonthMissing = useMemo(() => {
@@ -63,6 +65,14 @@ export default function OrgDashboardPage() {
     if (hasBill) return null;
     return prevMonth.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
   }, [billsData]);
+
+  // Children without vouchers
+  const { data: childrenWithoutVouchers } = useQuery({
+    queryKey: queryKeys.children.withoutVouchers(orgId),
+    queryFn: () => apiClient.getChildrenWithoutVouchers(orgId),
+    enabled: !!orgId,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const currentMonth = staffingData?.data_points?.[0];
   const coverageBalance =
@@ -130,6 +140,35 @@ export default function OrgDashboardPage() {
           loading={staffingLoading}
         />
       </div>
+
+      {childrenWithoutVouchers && childrenWithoutVouchers.length > 0 && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-base font-medium">
+              {t('dashboard.childrenWithoutVouchers')}
+            </CardTitle>
+            <Badge variant="secondary">{childrenWithoutVouchers.length}</Badge>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableBody>
+                {childrenWithoutVouchers.map((child) => (
+                  <TableRow key={child.id}>
+                    <TableCell>
+                      <Link
+                        href={`/organizations/${orgId}/children/${child.id}/billing`}
+                        className="hover:text-primary hover:underline"
+                      >
+                        {child.first_name} {child.last_name}
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       <StepPromotionsWidget orgId={orgId} />
       <UpcomingChildrenWidget orgId={orgId} />

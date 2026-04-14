@@ -107,6 +107,7 @@ type ChildVoucherStorer interface {
 	CreateVoucher(ctx context.Context, voucher *models.ChildVoucher) error
 	DeleteVouchersByChild(ctx context.Context, childID uint) error
 	FindActiveContractsByChildIDsAndDate(ctx context.Context, orgID uint, childIDs []uint, date time.Time) (map[uint]models.ChildContract, error)
+	FindChildrenWithoutVouchers(ctx context.Context, orgID uint, activeOn time.Time) ([]models.Child, error)
 	FindChildByNameAndBirthMonth(ctx context.Context, orgID uint, firstName, lastName string, birthMonth time.Month, birthYear int) ([]models.Child, error)
 }
 

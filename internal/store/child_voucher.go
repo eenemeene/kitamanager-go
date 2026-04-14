@@ -119,6 +119,20 @@ func (s *ChildVoucherStore) FindActiveContractsByChildIDsAndDate(ctx context.Con
 	return result, nil
 }
 
+// FindChildrenWithoutVouchers returns children with active contracts but no voucher entries.
+func (s *ChildVoucherStore) FindChildrenWithoutVouchers(ctx context.Context, orgID uint, activeOn time.Time) ([]models.Child, error) {
+	var children []models.Child
+	err := DBFromContext(ctx, s.db).
+		Joins("JOIN child_contracts cc ON cc.child_id = children.id").
+		Where("children.organization_id = ?", orgID).
+		Where("cc.from_date <= ? AND (cc.to_date IS NULL OR cc.to_date >= ?)", activeOn, activeOn).
+		Where("NOT EXISTS (SELECT 1 FROM child_vouchers cv WHERE cv.child_id = children.id)").
+		Group("children.id").
+		Order("children.last_name, children.first_name").
+		Find(&children).Error
+	return children, err
+}
+
 // FindChildByNameAndBirthMonth finds children by case-insensitive name and birth month/year.
 func (s *ChildVoucherStore) FindChildByNameAndBirthMonth(ctx context.Context, orgID uint, firstName, lastName string, birthMonth time.Month, birthYear int) ([]models.Child, error) {
 	var children []models.Child

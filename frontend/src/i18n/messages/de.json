@@ -122,7 +122,8 @@
     "activeChildren": "Aktive Kinder",
     "requiredHours": "Benötigte Stunden",
     "availableHours": "Verfügbare Stunden",
-    "staffingCoverage": "Personalabdeckung"
+    "staffingCoverage": "Personalabdeckung",
+    "childrenWithoutVouchers": "Kinder ohne Gutscheinnummer"
   },
   "statistics": {
     "title": "Statistiken",

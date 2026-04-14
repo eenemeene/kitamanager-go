@@ -122,7 +122,8 @@
     "activeChildren": "Active Children",
     "requiredHours": "Required Hours",
     "availableHours": "Available Hours",
-    "staffingCoverage": "Staffing Coverage"
+    "staffingCoverage": "Staffing Coverage",
+    "childrenWithoutVouchers": "Children Without Vouchers"
   },
   "statistics": {
     "title": "Statistics",

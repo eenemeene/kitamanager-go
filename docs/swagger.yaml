@@ -5836,6 +5836,38 @@ paths:
       summary: Import children from YAML
       tags:
       - children
+  /api/v1/organizations/{orgId}/children/without-vouchers:
+    get:
+      description: Returns children who have active contracts but no voucher numbers
+        assigned
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get children with active contracts but no vouchers
+      tags:
+      - government-funding-bills
   /api/v1/organizations/{orgId}/employees:
     get:
       consumes:

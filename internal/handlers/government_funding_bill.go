@@ -163,6 +163,32 @@ func (h *GovernmentFundingBillHandler) Compare(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// ChildrenWithoutVouchers godoc
+// @Summary Get children with active contracts but no vouchers
+// @Description Returns children who have active contracts but no voucher numbers assigned
+// @Tags government-funding-bills
+// @Produce json
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Success 200 {array} models.ChildResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Router /api/v1/organizations/{orgId}/children/without-vouchers [get]
+func (h *GovernmentFundingBillHandler) ChildrenWithoutVouchers(c *gin.Context) {
+	orgID, ok := parseOrgID(c)
+	if !ok {
+		return
+	}
+
+	children, err := h.service.ChildrenWithoutVouchers(c.Request.Context(), orgID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, children)
+}
+
 // ChildrenBillingSummary godoc
 // @Summary Get billing summary for all children
 // @Description Get aggregated billing totals (billed vs calculated) for all children in an organization

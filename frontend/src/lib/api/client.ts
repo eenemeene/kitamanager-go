@@ -463,6 +463,13 @@ class ApiClient {
     return response.data;
   }
 
+  async getChildrenWithoutVouchers(orgId: number): Promise<Child[]> {
+    const response = await this.client.get<Child[]>(
+      `/organizations/${orgId}/children/without-vouchers`
+    );
+    return response.data;
+  }
+
   async createChildContract(
     orgId: number,
     childId: number,
