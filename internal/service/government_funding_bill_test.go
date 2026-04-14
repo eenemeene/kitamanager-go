@@ -5496,3 +5496,532 @@ func TestChildrenWithoutVouchers_ExpiredContract(t *testing.T) {
 		t.Errorf("expected 0 (contract expired), got %d", len(result))
 	}
 }
+
+// ============================================================
+// computeChildComparison unit tests
+// ============================================================
+
+func TestComputeChildComparison_BillOnly(t *testing.T) {
+	payments := []models.GovernmentFundingBillPayment{
+		{Key: "care_type", Value: "ganztag", Amount: 120000, RowType: models.RowTypeRegular},
+	}
+	result := computeChildComparison(childComparisonInput{
+		BillPayments: payments,
+		Contract:     nil,
+		BillDate:     time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC),
+		LabelMap:     make(map[string]string),
+	})
+	if result.Status != "bill_only" {
+		t.Errorf("expected status bill_only, got %q", result.Status)
+	}
+	if result.BillTotal != 120000 {
+		t.Errorf("expected bill_total 120000, got %d", result.BillTotal)
+	}
+	if result.CalcTotal != nil {
+		t.Error("expected calc_total nil for bill_only")
+	}
+	if result.Age != nil {
+		t.Error("expected age nil for bill_only")
+	}
+}
+
+func TestComputeChildComparison_MatchWithFunding(t *testing.T) {
+	payments := []models.GovernmentFundingBillPayment{
+		{Key: "care_type", Value: "ganztag", Amount: 120000, RowType: models.RowTypeRegular},
+	}
+	birthdate := time.Date(2021, 5, 1, 0, 0, 0, 0, time.UTC)
+	contract := &models.ChildContract{
+		BaseContract: models.BaseContract{
+			Properties: models.ContractProperties{"care_type": "ganztag"},
+		},
+	}
+
+	to := time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)
+	fundingPeriod := models.GovernmentFundingPeriod{
+		Period: models.Period{
+			From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+			To:   &to,
+		},
+		Properties: []models.GovernmentFundingProperty{
+			{Key: "care_type", Value: "ganztag", Payment: 120000, MinAge: intPtr(0), MaxAge: intPtr(8)},
+		},
+	}
+
+	result := computeChildComparison(childComparisonInput{
+		BillPayments:   payments,
+		Contract:       contract,
+		Birthdate:      &birthdate,
+		BillDate:       time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC),
+		FundingPeriods: []models.GovernmentFundingPeriod{fundingPeriod},
+		LabelMap:       make(map[string]string),
+	})
+
+	if result.Status != "match" {
+		t.Errorf("expected status match, got %q", result.Status)
+	}
+	if result.CalcTotal == nil || *result.CalcTotal != 120000 {
+		t.Errorf("expected calc_total 120000, got %v", result.CalcTotal)
+	}
+	if result.Difference == nil || *result.Difference != 0 {
+		t.Errorf("expected difference 0, got %v", result.Difference)
+	}
+	if result.Age == nil || *result.Age != 4 {
+		t.Errorf("expected age 4, got %v", result.Age)
+	}
+}
+
+func TestComputeChildComparison_DifferenceWithFunding(t *testing.T) {
+	payments := []models.GovernmentFundingBillPayment{
+		{Key: "care_type", Value: "ganztag", Amount: 100000, RowType: models.RowTypeRegular},
+	}
+	birthdate := time.Date(2021, 5, 1, 0, 0, 0, 0, time.UTC)
+	contract := &models.ChildContract{
+		BaseContract: models.BaseContract{
+			Properties: models.ContractProperties{"care_type": "ganztag"},
+		},
+	}
+	to := time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)
+	fundingPeriod := models.GovernmentFundingPeriod{
+		Period: models.Period{
+			From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+			To:   &to,
+		},
+		Properties: []models.GovernmentFundingProperty{
+			{Key: "care_type", Value: "ganztag", Payment: 120000, MinAge: intPtr(0), MaxAge: intPtr(8)},
+		},
+	}
+
+	result := computeChildComparison(childComparisonInput{
+		BillPayments:   payments,
+		Contract:       contract,
+		Birthdate:      &birthdate,
+		BillDate:       time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC),
+		FundingPeriods: []models.GovernmentFundingPeriod{fundingPeriod},
+		LabelMap:       make(map[string]string),
+	})
+
+	if result.Status != "difference" {
+		t.Errorf("expected status difference, got %q", result.Status)
+	}
+	if result.Difference == nil || *result.Difference != -20000 {
+		t.Errorf("expected difference -20000, got %v", result.Difference)
+	}
+}
+
+func TestComputeChildComparison_NoFundingConfig(t *testing.T) {
+	payments := []models.GovernmentFundingBillPayment{
+		{Key: "care_type", Value: "ganztag", Amount: 120000, RowType: models.RowTypeRegular},
+	}
+	birthdate := time.Date(2021, 5, 1, 0, 0, 0, 0, time.UTC)
+	contract := &models.ChildContract{
+		BaseContract: models.BaseContract{
+			Properties: models.ContractProperties{"care_type": "ganztag"},
+		},
+	}
+
+	result := computeChildComparison(childComparisonInput{
+		BillPayments:   payments,
+		Contract:       contract,
+		Birthdate:      &birthdate,
+		BillDate:       time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC),
+		FundingPeriods: nil, // no funding config
+		LabelMap:       make(map[string]string),
+	})
+
+	if !result.NoFundingConfig {
+		t.Error("expected NoFundingConfig to be true")
+	}
+	// CalcTotal should be set to 0 (contract matched but no rates)
+	if result.CalcTotal == nil || *result.CalcTotal != 0 {
+		t.Errorf("expected calc_total 0, got %v", result.CalcTotal)
+	}
+}
+
+func TestComputeChildComparison_CorrectionSeparated(t *testing.T) {
+	payments := []models.GovernmentFundingBillPayment{
+		{Key: "care_type", Value: "ganztag", Amount: 120000, RowType: models.RowTypeRegular},
+		{Key: "care_type", Value: "ganztag", Amount: 5000, RowType: models.RowTypeCorrection},
+	}
+	result := computeChildComparison(childComparisonInput{
+		BillPayments: payments,
+		Contract:     nil,
+		BillDate:     time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC),
+		LabelMap:     make(map[string]string),
+	})
+	if result.BillTotal != 120000 {
+		t.Errorf("expected bill_total 120000 (regular only), got %d", result.BillTotal)
+	}
+	if result.CorrectionTotal != 5000 {
+		t.Errorf("expected correction_total 5000, got %d", result.CorrectionTotal)
+	}
+}
+
+// ============================================================
+// classifyMismatches unit tests
+// ============================================================
+
+func TestClassifyMismatches_NoMismatch(t *testing.T) {
+	bill := map[string]int{"care_type:ganztag": 120000, "parent:meals": -2300}
+	calc := map[string]int{"care_type:ganztag": 120000, "parent:meals": -2300}
+	result := classifyMismatches(bill, calc)
+	if len(result) != 0 {
+		t.Errorf("expected no mismatches, got %v", result)
+	}
+}
+
+func TestClassifyMismatches_AmountDiffOnly(t *testing.T) {
+	// Same key:value on both sides but different amounts — NOT a property mismatch
+	bill := map[string]int{"care_type:ganztag": 100000}
+	calc := map[string]int{"care_type:ganztag": 120000}
+	result := classifyMismatches(bill, calc)
+	if len(result) != 0 {
+		t.Errorf("expected no mismatches (amount diff only), got %v", result)
+	}
+}
+
+func TestClassifyMismatches_Different(t *testing.T) {
+	// Bill has teilzeit, calc has ganztag for the same base key
+	bill := map[string]int{"care_type:teilzeit": 90000}
+	calc := map[string]int{"care_type:ganztag": 120000}
+	result := classifyMismatches(bill, calc)
+	if result["care_type:teilzeit"] != models.MismatchDifferent {
+		t.Errorf("expected care_type:teilzeit = different, got %q", result["care_type:teilzeit"])
+	}
+	if result["care_type:ganztag"] != models.MismatchDifferent {
+		t.Errorf("expected care_type:ganztag = different, got %q", result["care_type:ganztag"])
+	}
+}
+
+func TestClassifyMismatches_Additional(t *testing.T) {
+	// Bill has integration but calc does not
+	bill := map[string]int{"care_type:ganztag": 120000, "integration:integration b": 330000}
+	calc := map[string]int{"care_type:ganztag": 120000}
+	result := classifyMismatches(bill, calc)
+	if result["integration:integration b"] != models.MismatchAdditional {
+		t.Errorf("expected integration:integration b = additional, got %q", result["integration:integration b"])
+	}
+	// care_type should NOT be a mismatch
+	if result["care_type:ganztag"] != models.MismatchNone {
+		t.Errorf("expected care_type:ganztag = none, got %q", result["care_type:ganztag"])
+	}
+}
+
+func TestClassifyMismatches_Missing(t *testing.T) {
+	// Calc has integration but bill does not
+	bill := map[string]int{"care_type:ganztag": 120000}
+	calc := map[string]int{"care_type:ganztag": 120000, "integration:integration b": 330000}
+	result := classifyMismatches(bill, calc)
+	if result["integration:integration b"] != models.MismatchMissing {
+		t.Errorf("expected integration:integration b = missing, got %q", result["integration:integration b"])
+	}
+}
+
+func TestClassifyMismatches_MixedScenario(t *testing.T) {
+	// care_type: different (bill=teilzeit, calc=ganztag)
+	// integration: additional in bill (not in calc)
+	// parent:meals: same on both — no mismatch
+	bill := map[string]int{
+		"care_type:teilzeit":        90000,
+		"integration:integration a": 165000,
+		"parent:meals":              -2300,
+	}
+	calc := map[string]int{
+		"care_type:ganztag": 120000,
+		"parent:meals":      -2300,
+	}
+	result := classifyMismatches(bill, calc)
+
+	if result["care_type:teilzeit"] != models.MismatchDifferent {
+		t.Errorf("care_type:teilzeit = %q, want different", result["care_type:teilzeit"])
+	}
+	if result["care_type:ganztag"] != models.MismatchDifferent {
+		t.Errorf("care_type:ganztag = %q, want different", result["care_type:ganztag"])
+	}
+	if result["integration:integration a"] != models.MismatchAdditional {
+		t.Errorf("integration:integration a = %q, want additional", result["integration:integration a"])
+	}
+	if result["parent:meals"] != models.MismatchNone {
+		t.Errorf("parent:meals = %q, want none", result["parent:meals"])
+	}
+}
+
+// ============================================================
+// CompareLatest / CompareByDate integration tests
+// ============================================================
+
+func TestCompareLatest_NoBills(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	org := createTestOrganization(t, db, "Test Org")
+	ctx := context.Background()
+
+	_, err := svc.CompareLatest(ctx, org.ID)
+	if err == nil {
+		t.Fatal("expected error for org with no bills")
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected not found error, got %v", err)
+	}
+}
+
+func TestCompareLatest_ReturnsLatestBill(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "latest1@example.com", "password")
+	ctx := context.Background()
+	setupFundingRates(t, db)
+
+	// Create older bill (October 2025)
+	createBillFixture(t, db, org.ID, user.ID, 2025, time.October, []models.GovernmentFundingBillChild{
+		{VoucherNumber: "GB-11111111111-01", ChildName: "Old, Bill", BirthDate: "05.21", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 100000}}},
+	})
+
+	// Create newer bill (November 2025)
+	createBillFixture(t, db, org.ID, user.ID, 2025, time.November, []models.GovernmentFundingBillChild{
+		{VoucherNumber: "GB-22222222222-01", ChildName: "New, Bill", BirthDate: "03.22", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 150000}}},
+	})
+
+	result, err := svc.CompareLatest(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("CompareLatest() error = %v", err)
+	}
+	if result.BillFrom != "2025-11-01" {
+		t.Errorf("expected latest bill from 2025-11-01, got %s", result.BillFrom)
+	}
+}
+
+func TestCompareByDate_Found(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "bydate1@example.com", "password")
+	ctx := context.Background()
+	setupFundingRates(t, db)
+
+	createBillFixture(t, db, org.ID, user.ID, 2025, time.October, []models.GovernmentFundingBillChild{
+		{VoucherNumber: "GB-11111111111-01", ChildName: "Oct, Bill", BirthDate: "05.21", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 100000}}},
+	})
+
+	result, err := svc.CompareByDate(ctx, org.ID, time.Date(2025, 10, 1, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("CompareByDate() error = %v", err)
+	}
+	if result.BillFrom != "2025-10-01" {
+		t.Errorf("expected bill from 2025-10-01, got %s", result.BillFrom)
+	}
+}
+
+func TestCompareByDate_NotFound(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	org := createTestOrganization(t, db, "Test Org")
+	ctx := context.Background()
+
+	_, err := svc.CompareByDate(ctx, org.ID, time.Date(2025, 12, 1, 0, 0, 0, 0, time.UTC))
+	if err == nil {
+		t.Fatal("expected error for non-existent date")
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected not found error, got %v", err)
+	}
+}
+
+// ============================================================
+// Mismatch detection integration tests (via Compare)
+// ============================================================
+
+func TestCompare_MismatchDetection_CareTypeDifferent(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "mismatch1@example.com", "password")
+	ctx := context.Background()
+	setupFundingRates(t, db)
+
+	// Contract says ganztag, bill says teilzeit
+	createChildWithVoucherAndContract(t, db, "Max", "Mismatch", org.ID,
+		"GB-99999999999-01", time.Date(2021, 5, 1, 0, 0, 0, 0, time.UTC),
+		models.ContractProperties{"care_type": "ganztag"})
+
+	period := createBillPeriodForCompare(t, db, org.ID, user.ID, []models.GovernmentFundingBillChild{
+		{
+			VoucherNumber: "GB-99999999999-01",
+			ChildName:     "Mismatch, Max",
+			BirthDate:     "05.21",
+			District:      1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "teilzeit", Amount: 90000},
+			},
+		},
+	})
+
+	result, err := svc.Compare(ctx, period.ID, org.ID)
+	if err != nil {
+		t.Fatalf("Compare() error = %v", err)
+	}
+
+	child := result.Children[0]
+	// Find the care_type properties — should both be "different"
+	foundTeilzeit := false
+	foundGanztag := false
+	for _, p := range child.Properties {
+		if p.Key == "care_type" && p.Value == "teilzeit" {
+			foundTeilzeit = true
+			if p.Mismatch != models.MismatchDifferent {
+				t.Errorf("care_type:teilzeit mismatch = %q, want different", p.Mismatch)
+			}
+			if p.BillAmount == nil {
+				t.Error("care_type:teilzeit should have bill_amount")
+			}
+		}
+		if p.Key == "care_type" && p.Value == "ganztag" {
+			foundGanztag = true
+			if p.Mismatch != models.MismatchDifferent {
+				t.Errorf("care_type:ganztag mismatch = %q, want different", p.Mismatch)
+			}
+			if p.CalcAmount == nil {
+				t.Error("care_type:ganztag should have calculated_amount")
+			}
+		}
+	}
+	if !foundTeilzeit {
+		t.Error("expected care_type:teilzeit in properties")
+	}
+	if !foundGanztag {
+		t.Error("expected care_type:ganztag in properties")
+	}
+}
+
+func TestCompare_MismatchDetection_AdditionalInBill(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "mismatch2@example.com", "password")
+	ctx := context.Background()
+	setupFundingRates(t, db)
+
+	// Contract has NO integration, but bill has integration b
+	createChildWithVoucherAndContract(t, db, "Extra", "Integration", org.ID,
+		"GB-88888888888-01", time.Date(2021, 5, 1, 0, 0, 0, 0, time.UTC),
+		models.ContractProperties{"care_type": "ganztag"})
+
+	period := createBillPeriodForCompare(t, db, org.ID, user.ID, []models.GovernmentFundingBillChild{
+		{
+			VoucherNumber: "GB-88888888888-01",
+			ChildName:     "Integration, Extra",
+			BirthDate:     "05.21",
+			District:      1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 120000},
+				{Key: "integration", Value: "integration b", Amount: 330000},
+			},
+		},
+	})
+
+	result, err := svc.Compare(ctx, period.ID, org.ID)
+	if err != nil {
+		t.Fatalf("Compare() error = %v", err)
+	}
+
+	child := result.Children[0]
+	for _, p := range child.Properties {
+		if p.Key == "integration" && p.Value == "integration b" {
+			if p.Mismatch != models.MismatchAdditional {
+				t.Errorf("integration:integration b mismatch = %q, want additional", p.Mismatch)
+			}
+		}
+		if p.Key == "care_type" && p.Value == "ganztag" {
+			if p.Mismatch != models.MismatchNone {
+				t.Errorf("care_type:ganztag should not be a mismatch, got %q", p.Mismatch)
+			}
+		}
+	}
+}
+
+func TestCompare_MismatchDetection_MissingFromBill(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "mismatch3@example.com", "password")
+	ctx := context.Background()
+	setupFundingRates(t, db)
+
+	// Contract has integration b, but bill does NOT
+	createChildWithVoucherAndContract(t, db, "Missing", "Integration", org.ID,
+		"GB-77777777777-01", time.Date(2021, 5, 1, 0, 0, 0, 0, time.UTC),
+		models.ContractProperties{"care_type": "ganztag", "integration": "integration b"})
+
+	period := createBillPeriodForCompare(t, db, org.ID, user.ID, []models.GovernmentFundingBillChild{
+		{
+			VoucherNumber: "GB-77777777777-01",
+			ChildName:     "Integration, Missing",
+			BirthDate:     "05.21",
+			District:      1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 120000},
+			},
+		},
+	})
+
+	result, err := svc.Compare(ctx, period.ID, org.ID)
+	if err != nil {
+		t.Fatalf("Compare() error = %v", err)
+	}
+
+	child := result.Children[0]
+	for _, p := range child.Properties {
+		if p.Key == "integration" && p.Value == "integration b" {
+			if p.Mismatch != models.MismatchMissing {
+				t.Errorf("integration:integration b mismatch = %q, want missing", p.Mismatch)
+			}
+			if p.BillAmount != nil {
+				t.Error("missing property should have nil bill_amount")
+			}
+			if p.CalcAmount == nil {
+				t.Error("missing property should have calculated_amount set")
+			}
+		}
+	}
+}
+
+func TestCompare_NoMismatchWhenMatch(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "nomismatch1@example.com", "password")
+	ctx := context.Background()
+	setupFundingRates(t, db)
+
+	// Contract and bill agree on all properties
+	createChildWithVoucherAndContract(t, db, "Match", "Perfect", org.ID,
+		"GB-66666666666-01", time.Date(2021, 5, 1, 0, 0, 0, 0, time.UTC),
+		models.ContractProperties{"care_type": "ganztag"})
+
+	period := createBillPeriodForCompare(t, db, org.ID, user.ID, []models.GovernmentFundingBillChild{
+		{
+			VoucherNumber: "GB-66666666666-01",
+			ChildName:     "Perfect, Match",
+			BirthDate:     "05.21",
+			District:      1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 120000},
+			},
+		},
+	})
+
+	result, err := svc.Compare(ctx, period.ID, org.ID)
+	if err != nil {
+		t.Fatalf("Compare() error = %v", err)
+	}
+
+	child := result.Children[0]
+	for _, p := range child.Properties {
+		if p.Mismatch != models.MismatchNone {
+			t.Errorf("property %s:%s has unexpected mismatch %q", p.Key, p.Value, p.Mismatch)
+		}
+	}
+}

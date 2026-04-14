@@ -53,6 +53,7 @@ export const queryKeys = {
     detail: (orgId: number, id: number) => ['governmentFundingBillPeriod', orgId, id] as const,
     compare: (orgId: number, id: number) =>
       ['governmentFundingBillPeriodCompare', orgId, id] as const,
+    compareLatest: (orgId: number) => ['governmentFundingBillCompareLatest', orgId] as const,
   },
   budgetItems: {
     all: (orgId: number) => ['budgetItems', orgId] as const,

@@ -123,7 +123,11 @@
     "requiredHours": "Benötigte Stunden",
     "availableHours": "Verfügbare Stunden",
     "staffingCoverage": "Personalabdeckung",
-    "childrenWithoutVouchers": "Kinder ohne Gutscheinnummer"
+    "childrenWithoutVouchers": "Kinder ohne Gutscheinnummer",
+    "propertyMismatches": "Vertragsabweichungen",
+    "mismatchDifferent": "abweichend",
+    "mismatchMissing": "fehlt in Abrechnung",
+    "mismatchAdditional": "zusätzlich in Abrechnung"
   },
   "statistics": {
     "title": "Statistiken",

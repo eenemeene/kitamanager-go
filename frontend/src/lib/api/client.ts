@@ -463,6 +463,17 @@ class ApiClient {
     return response.data;
   }
 
+  async compareBills(
+    orgId: number,
+    params?: { bill_id?: number; date?: string; child_id?: number }
+  ): Promise<FundingComparisonResponse> {
+    const response = await this.client.get<FundingComparisonResponse>(
+      `/organizations/${orgId}/government-funding-bills/compare`,
+      { params }
+    );
+    return response.data;
+  }
+
   async getChildrenWithoutVouchers(orgId: number): Promise<Child[]> {
     const response = await this.client.get<Child[]>(
       `/organizations/${orgId}/children/without-vouchers`

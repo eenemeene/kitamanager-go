@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -160,6 +162,95 @@ func (h *GovernmentFundingBillHandler) Compare(c *gin.Context) {
 		return
 	}
 
+	c.JSON(http.StatusOK, result)
+}
+
+func parseRequiredDateFromString(c *gin.Context, dateStr, paramName string) (time.Time, bool) {
+	date, err := time.Parse(models.DateFormat, dateStr)
+	if err != nil {
+		respondError(c, apperror.BadRequest("invalid date format for "+paramName+", expected YYYY-MM-DD"))
+		return time.Time{}, false
+	}
+	return date, true
+}
+
+// CompareUnified godoc
+// @Summary Compare funding bill with calculated funding (unified)
+// @Description Compare bill data against calculated funding. Supports filtering by bill_id, date, or child_id.
+// @Description Without parameters, compares the latest bill. With child_id, returns billing history for that child.
+// @Tags government-funding-bills
+// @Produce json
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Param bill_id query int false "Specific bill ID to compare"
+// @Param date query string false "Bill date (YYYY-MM-DD) to find and compare"
+// @Param child_id query int false "Child ID — returns billing history across all bills for this child"
+// @Success 200 {object} models.FundingComparisonResponse "When comparing a bill (bill_id, date, or default)"
+// @Success 200 {object} models.ChildBillingHistoryResponse "When filtering by child_id"
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Router /api/v1/organizations/{orgId}/government-funding-bills/compare [get]
+func (h *GovernmentFundingBillHandler) CompareUnified(c *gin.Context) {
+	orgID, ok := parseOrgID(c)
+	if !ok {
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// If child_id is provided, delegate to billing history
+	if childIDStr := c.Query("child_id"); childIDStr != "" {
+		childID, err := strconv.ParseUint(childIDStr, 10, 64)
+		if err != nil {
+			respondError(c, apperror.BadRequest("invalid child_id parameter"))
+			return
+		}
+		result, err := h.service.ChildBillingHistory(ctx, uint(childID), orgID)
+		if err != nil {
+			respondError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, result)
+		return
+	}
+
+	// Resolve which bill to compare
+	if billIDStr := c.Query("bill_id"); billIDStr != "" {
+		billID, err := strconv.ParseUint(billIDStr, 10, 64)
+		if err != nil {
+			respondError(c, apperror.BadRequest("invalid bill_id parameter"))
+			return
+		}
+		result, err := h.service.Compare(ctx, uint(billID), orgID)
+		if err != nil {
+			respondError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, result)
+		return
+	}
+
+	if dateStr := c.Query("date"); dateStr != "" {
+		date, ok := parseRequiredDateFromString(c, dateStr, "date")
+		if !ok {
+			return
+		}
+		result, err := h.service.CompareByDate(ctx, orgID, date)
+		if err != nil {
+			respondError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, result)
+		return
+	}
+
+	// Default: compare latest bill
+	result, err := h.service.CompareLatest(ctx, orgID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
 	c.JSON(http.StatusOK, result)
 }
 
