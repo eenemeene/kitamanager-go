@@ -2810,7 +2810,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "government-funding-bills"
+                    "children"
                 ],
                 "summary": "Get billing summary for all children",
                 "parameters": [
@@ -3073,7 +3073,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "government-funding-bills"
+                    "children"
                 ],
                 "summary": "Get children with active contracts but no vouchers",
                 "parameters": [
@@ -3733,7 +3733,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "government-funding-bills"
+                    "children"
                 ],
                 "summary": "Get billing history for a child",
                 "parameters": [
@@ -4346,7 +4346,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "government-funding-bills"
+                    "children"
                 ],
                 "summary": "Assign a voucher to a child",
                 "parameters": [
@@ -5726,14 +5726,14 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Compare bill data against calculated funding. Supports filtering by bill_id, date, or child_id.\nWithout parameters, compares the latest bill. With child_id, returns billing history for that child.",
+                "description": "Compare bill data against calculated funding. Always returns an array of comparisons.\nUse from/to for a date range, bill_id for a specific bill, or no params for the latest bill.\nWith child_id, returns billing history for that child (different response type).",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "government-funding-bills"
                 ],
-                "summary": "Compare funding bill with calculated funding (unified)",
+                "summary": "Compare funding bills with calculated funding",
                 "parameters": [
                     {
                         "type": "integer",
@@ -5750,8 +5750,14 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Bill date (YYYY-MM-DD) to find and compare",
-                        "name": "date",
+                        "description": "Range start date (YYYY-MM-DD), requires to",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Range end date (YYYY-MM-DD), requires from",
+                        "name": "to",
                         "in": "query"
                     },
                     {

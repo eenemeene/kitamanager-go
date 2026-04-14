@@ -466,9 +466,9 @@ class ApiClient {
 
   async compareBills(
     orgId: number,
-    params?: { bill_id?: number; date?: string; child_id?: number }
-  ): Promise<FundingComparisonResponse> {
-    const response = await this.client.get<FundingComparisonResponse>(
+    params?: { bill_id?: number; from?: string; to?: string; child_id?: number }
+  ): Promise<FundingComparisonResponse[]> {
+    const response = await this.client.get<FundingComparisonResponse[]>(
       `/organizations/${orgId}/government-funding-bills/compare`,
       { params }
     );

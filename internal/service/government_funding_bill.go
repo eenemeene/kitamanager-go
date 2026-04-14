@@ -618,6 +618,30 @@ func (s *GovernmentFundingBillService) CompareLatest(ctx context.Context, orgID 
 	return s.comparePeriod(ctx, period, orgID)
 }
 
+// CompareRange compares all bills in [from, to] and returns one result per bill found.
+// Months without a bill are silently skipped.
+func (s *GovernmentFundingBillService) CompareRange(ctx context.Context, orgID uint, from, to time.Time) ([]models.FundingComparisonResponse, error) {
+	var results []models.FundingComparisonResponse
+	for date := from; !date.After(to); date = date.AddDate(0, 1, 0) {
+		period, err := s.billPeriodStore.FindByOrgAndMonth(ctx, orgID, date)
+		if err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				continue // no bill for this month
+			}
+			return nil, apperror.InternalWrap(err, "failed to find bill for "+date.Format("2006-01"))
+		}
+		comp, err := s.comparePeriod(ctx, period, orgID)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, *comp)
+	}
+	if results == nil {
+		results = []models.FundingComparisonResponse{}
+	}
+	return results, nil
+}
+
 // comparePeriod runs the full comparison for a pre-loaded bill period.
 func (s *GovernmentFundingBillService) comparePeriod(ctx context.Context, period *models.GovernmentFundingBillPeriod, orgID uint) (*models.FundingComparisonResponse, error) {
 	// 1. Get org state

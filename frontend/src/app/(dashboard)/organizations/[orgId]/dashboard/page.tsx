@@ -101,12 +101,13 @@ export default function OrgDashboardPage() {
   });
 
   // Property mismatches (latest bill vs contracts)
-  const { data: latestCompare } = useQuery({
+  const { data: latestCompareList } = useQuery({
     queryKey: queryKeys.governmentFundingBillPeriods.compareLatest(orgId),
     queryFn: () => apiClient.compareBills(orgId),
     enabled: !!orgId,
     staleTime: 5 * 60 * 1000,
   });
+  const latestCompare = latestCompareList?.[0];
 
   const propertyMismatches = useMemo(() => {
     if (!latestCompare?.children) return [];

@@ -5308,7 +5308,7 @@ paths:
       - BearerAuth: []
       summary: Get billing history for a child
       tags:
-      - government-funding-bills
+      - children
   /api/v1/organizations/{orgId}/children/{childId}/contracts:
     get:
       consumes:
@@ -5734,7 +5734,7 @@ paths:
       - BearerAuth: []
       summary: Assign a voucher to a child
       tags:
-      - government-funding-bills
+      - children
   /api/v1/organizations/{orgId}/children/attendance:
     get:
       consumes:
@@ -5854,7 +5854,7 @@ paths:
       - BearerAuth: []
       summary: Get billing summary for all children
       tags:
-      - government-funding-bills
+      - children
   /api/v1/organizations/{orgId}/children/export/excel:
     get:
       description: Download all children matching the given filters as an XLSX spreadsheet
@@ -6033,7 +6033,7 @@ paths:
       - BearerAuth: []
       summary: Get children with active contracts but no vouchers
       tags:
-      - government-funding-bills
+      - children
   /api/v1/organizations/{orgId}/employees:
     get:
       consumes:
@@ -7026,8 +7026,9 @@ paths:
   /api/v1/organizations/{orgId}/government-funding-bills/compare:
     get:
       description: |-
-        Compare bill data against calculated funding. Supports filtering by bill_id, date, or child_id.
-        Without parameters, compares the latest bill. With child_id, returns billing history for that child.
+        Compare bill data against calculated funding. Always returns an array of comparisons.
+        Use from/to for a date range, bill_id for a specific bill, or no params for the latest bill.
+        With child_id, returns billing history for that child (different response type).
       parameters:
       - description: Organization ID
         in: path
@@ -7038,9 +7039,13 @@ paths:
         in: query
         name: bill_id
         type: integer
-      - description: Bill date (YYYY-MM-DD) to find and compare
+      - description: Range start date (YYYY-MM-DD), requires to
         in: query
-        name: date
+        name: from
+        type: string
+      - description: Range end date (YYYY-MM-DD), requires from
+        in: query
+        name: to
         type: string
       - description: Child ID — returns billing history across all bills for this
           child
@@ -7068,7 +7073,7 @@ paths:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Compare funding bill with calculated funding (unified)
+      summary: Compare funding bills with calculated funding
       tags:
       - government-funding-bills
   /api/v1/organizations/{orgId}/pay-plans:
