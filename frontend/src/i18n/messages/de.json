@@ -127,7 +127,9 @@
     "propertyMismatches": "Vertragsabweichungen",
     "mismatchDifferent": "abweichend",
     "mismatchMissing": "fehlt in Abrechnung",
-    "mismatchAdditional": "zusätzlich in Abrechnung"
+    "mismatchAdditional": "zusätzlich in Abrechnung",
+    "billValue": "Abrechnung",
+    "contractValue": "Vertrag"
   },
   "statistics": {
     "title": "Statistiken",

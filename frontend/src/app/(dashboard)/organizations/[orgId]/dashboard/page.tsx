@@ -210,14 +210,34 @@ export default function OrgDashboardPage() {
                       </Link>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {child.properties
-                        ?.filter((p) => !!p.mismatch)
-                        .map((p) => {
-                          const label = p.label || `${p.key}: ${p.value}`;
-                          const mm = p.mismatch!;
-                          return `${label} (${t(`dashboard.mismatch${mm.charAt(0).toUpperCase() + mm.slice(1)}` as Parameters<typeof t>[0])})`;
-                        })
-                        .join(', ')}
+                      {(() => {
+                        const mismatched = child.properties?.filter((p) => !!p.mismatch) ?? [];
+                        // Group "different" mismatches by key to show bill vs contract
+                        const byKey = new Map<string, typeof mismatched>();
+                        for (const p of mismatched) {
+                          const group = byKey.get(p.key) ?? [];
+                          group.push(p);
+                          byKey.set(p.key, group);
+                        }
+                        return Array.from(byKey.entries())
+                          .map(([key, props]) => {
+                            if (props.length >= 2 && props[0].mismatch === 'different') {
+                              const billVal = props.find((p) => p.bill_amount !== null)?.value;
+                              const calcVal = props.find(
+                                (p) => p.calculated_amount !== null
+                              )?.value;
+                              return `${key}: ${billVal ?? '?'} (${t('dashboard.billValue')}) / ${calcVal ?? '?'} (${t('dashboard.contractValue')})`;
+                            }
+                            return props
+                              .map((p) => {
+                                const label = p.label || `${p.key}: ${p.value}`;
+                                const mm = p.mismatch!;
+                                return `${label} (${t(`dashboard.mismatch${mm.charAt(0).toUpperCase() + mm.slice(1)}` as Parameters<typeof t>[0])})`;
+                              })
+                              .join(', ');
+                          })
+                          .join('; ');
+                      })()}
                     </TableCell>
                   </TableRow>
                 ))}
