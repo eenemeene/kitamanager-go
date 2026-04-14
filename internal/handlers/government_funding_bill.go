@@ -54,7 +54,7 @@ func (h *GovernmentFundingBillHandler) UploadISBJ(c *gin.Context) {
 	// Compute SHA-256 hash
 	fileHash, err := service.ComputeFileHash(bytes.NewReader(fileBytes))
 	if err != nil {
-		respondError(c, apperror.Internal(err.Error()))
+		respondError(c, apperror.InternalWrap(err, "failed to compute file hash"))
 		return
 	}
 
@@ -102,7 +102,7 @@ func (h *GovernmentFundingBillHandler) List(c *gin.Context) {
 
 	items, total, err := h.service.List(c.Request.Context(), orgID, params.Limit, params.Offset())
 	if err != nil {
-		respondError(c, apperror.Internal(err.Error()))
+		respondError(c, err)
 		return
 	}
 
