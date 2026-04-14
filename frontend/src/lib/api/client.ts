@@ -482,6 +482,12 @@ class ApiClient {
     return response.data;
   }
 
+  async assignChildVoucher(orgId: number, childId: number, voucherNumber: string): Promise<void> {
+    await this.client.post(`/organizations/${orgId}/children/${childId}/vouchers`, {
+      voucher_number: voucherNumber,
+    });
+  }
+
   async createChildContract(
     orgId: number,
     childId: number,

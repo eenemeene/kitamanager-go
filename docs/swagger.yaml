@@ -745,6 +745,14 @@ definitions:
         example: GB-12345678901-02
         type: string
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ChildVoucherCreateRequest:
+    properties:
+      voucher_number:
+        example: GB-12345678901-02
+        type: string
+    required:
+    - voucher_number
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildWithoutVoucherResponse:
     properties:
       birthdate:
@@ -5676,6 +5684,57 @@ paths:
       summary: Get current child contract
       tags:
       - children
+  /api/v1/organizations/{orgId}/children/{childId}/vouchers:
+    post:
+      consumes:
+      - application/json
+      description: Link a Gutschein number to a child. Idempotent — assigning an already-known
+        voucher is a no-op.
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Child ID
+        in: path
+        name: childId
+        required: true
+        type: integer
+      - description: Voucher data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildVoucherCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Child not found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Assign a voucher to a child
+      tags:
+      - government-funding-bills
   /api/v1/organizations/{orgId}/children/attendance:
     get:
       consumes:

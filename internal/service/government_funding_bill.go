@@ -202,6 +202,28 @@ func (s *GovernmentFundingBillService) ChildrenWithoutVouchers(ctx context.Conte
 	return result, nil
 }
 
+// AssignVoucher links a voucher number to a child. The child must belong to the given org.
+// Uses ON CONFLICT DO NOTHING so assigning an already-known voucher is a no-op.
+func (s *GovernmentFundingBillService) AssignVoucher(ctx context.Context, childID, orgID uint, voucherNumber string) error {
+	// Verify child belongs to org
+	_, err := s.childStore.FindByIDAndOrg(ctx, childID, orgID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return apperror.NotFound("child")
+		}
+		return apperror.InternalWrap(err, "failed to verify child")
+	}
+
+	if err := s.childVoucherStore.CreateVoucher(ctx, &models.ChildVoucher{
+		ChildID:       childID,
+		VoucherNumber: voucherNumber,
+		FirstSeen:     time.Now().UTC(),
+	}); err != nil {
+		return apperror.InternalWrap(err, "failed to create voucher")
+	}
+	return nil
+}
+
 // computeVoucherSuggestions finds fuzzy name matches between children without vouchers
 // and unmatched bill children (bill children whose voucher is not in child_vouchers).
 // Returns suggestions grouped by child ID.

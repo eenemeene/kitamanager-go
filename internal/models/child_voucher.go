@@ -12,3 +12,8 @@ type ChildVoucher struct {
 	FirstSeen     time.Time `gorm:"type:date;not null" json:"first_seen"`
 	CreatedAt     time.Time `json:"created_at"`
 }
+
+// ChildVoucherCreateRequest is the request body for assigning a voucher to a child.
+type ChildVoucherCreateRequest struct {
+	VoucherNumber string `json:"voucher_number" binding:"required" example:"GB-12345678901-02"`
+}

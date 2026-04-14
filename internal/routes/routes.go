@@ -416,6 +416,11 @@ func Setup(r *gin.Engine, d Deps) {
 						authzMiddleware.RequirePermission(rbac.ResourceGovernmentFundingBills, rbac.ActionRead),
 						governmentFundingBillHandler.ChildBillingHistory)
 
+					// Per-child voucher assignment
+					children.POST("/:childId/vouchers",
+						authzMiddleware.RequirePermission(rbac.ResourceGovernmentFundingBills, rbac.ActionCreate),
+						governmentFundingBillHandler.AssignVoucher)
+
 					// ============================================================
 					// Per-child attendance tracking
 					// Routes: /children/:childId/attendance/...

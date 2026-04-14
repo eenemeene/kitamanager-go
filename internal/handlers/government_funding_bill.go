@@ -353,3 +353,40 @@ func (h *GovernmentFundingBillHandler) Delete(c *gin.Context) {
 
 	c.Status(http.StatusNoContent)
 }
+
+// AssignVoucher godoc
+// @Summary Assign a voucher to a child
+// @Description Link a Gutschein number to a child. Idempotent — assigning an already-known voucher is a no-op.
+// @Tags government-funding-bills
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Param childId path int true "Child ID"
+// @Param request body models.ChildVoucherCreateRequest true "Voucher data"
+// @Success 201 {object} models.MessageResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse "Child not found"
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/organizations/{orgId}/children/{childId}/vouchers [post]
+func (h *GovernmentFundingBillHandler) AssignVoucher(c *gin.Context) {
+	orgID, childID, ok := parseOrgAndResourceID(c, "childId")
+	if !ok {
+		return
+	}
+
+	req, ok := bindJSON[models.ChildVoucherCreateRequest](c)
+	if !ok {
+		return
+	}
+
+	if err := h.service.AssignVoucher(c.Request.Context(), childID, orgID, req.VoucherNumber); err != nil {
+		respondError(c, err)
+		return
+	}
+
+	auditCreate(c, h.auditService, "child_voucher", childID, req.VoucherNumber)
+
+	c.JSON(http.StatusCreated, models.MessageResponse{Message: "voucher assigned"})
+}
