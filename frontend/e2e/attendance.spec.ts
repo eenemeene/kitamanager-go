@@ -451,11 +451,11 @@ test.describe('Attendance Editable Times', () => {
       .filter({ hasText: /\d{2}:\d{2}/ });
     await checkOutButton.click();
 
-    // Change the time
+    // Change the time — use 23:45 to ensure it's always after check-in regardless of timezone
     const timeInput = row.locator('input[type="time"][aria-label="Check-out"]');
     await expect(timeInput).toBeVisible();
-    await timeInput.fill('16:45');
-    await expect(timeInput).toHaveValue('16:45');
+    await timeInput.fill('23:45');
+    await expect(timeInput).toHaveValue('23:45');
     await timeInput.press('Enter');
 
     // Should show toast (confirms save succeeded)
