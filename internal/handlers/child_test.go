@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
@@ -2021,5 +2023,138 @@ func TestChildHandler_UpdateContract_InvalidBody(t *testing.T) {
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestChildHandler_ExportYAML_NoFilters(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService, createAuditService(db))
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	// Create two children: one with active contract, one with expired
+	child1 := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Active", LastName: "Child", Gender: "female", Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(child1)
+	createActiveChildContract(t, db, child1.ID)
+
+	child2 := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Expired", LastName: "Child", Gender: "male", Birthdate: time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(child2)
+	sectionID := ensureTestSection(t, db, org.ID)
+	db.Create(&models.ChildContract{
+		ChildID:      child2.ID,
+		BaseContract: models.BaseContract{Period: models.Period{From: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), To: timePtr(time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC))}, SectionID: sectionID},
+	})
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/children/export/yaml", handler.ExportYAML)
+
+	// No filters → should export ALL children
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/export/yaml", org.ID), nil)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	if ct := w.Header().Get("Content-Type"); ct != "application/x-yaml" {
+		t.Errorf("expected Content-Type application/x-yaml, got %s", ct)
+	}
+
+	var data models.ChildImportExportData
+	if err := yaml.Unmarshal(w.Body.Bytes(), &data); err != nil {
+		t.Fatalf("failed to parse YAML response: %v", err)
+	}
+
+	if len(data.Children) != 2 {
+		t.Errorf("expected 2 children without filters, got %d", len(data.Children))
+	}
+}
+
+func TestChildHandler_ExportYAML_WithActiveOnFilter(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService, createAuditService(db))
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	child1 := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Active", LastName: "Child", Gender: "female", Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(child1)
+	createActiveChildContract(t, db, child1.ID)
+
+	child2 := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Expired", LastName: "Child", Gender: "male", Birthdate: time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(child2)
+	sectionID := ensureTestSection(t, db, org.ID)
+	db.Create(&models.ChildContract{
+		ChildID:      child2.ID,
+		BaseContract: models.BaseContract{Period: models.Period{From: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), To: timePtr(time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC))}, SectionID: sectionID},
+	})
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/children/export/yaml", handler.ExportYAML)
+
+	// Filter by active_on=today → only active child
+	today := time.Now().Format("2006-01-02")
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/export/yaml?active_on=%s", org.ID, today), nil)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var data models.ChildImportExportData
+	if err := yaml.Unmarshal(w.Body.Bytes(), &data); err != nil {
+		t.Fatalf("failed to parse YAML response: %v", err)
+	}
+
+	if len(data.Children) != 1 {
+		t.Errorf("expected 1 child with active_on filter, got %d", len(data.Children))
+	}
+	if len(data.Children) == 1 && data.Children[0].FirstName != "Active" {
+		t.Errorf("expected Active child, got %s", data.Children[0].FirstName)
+	}
+}
+
+func TestChildHandler_ExportYAML_WithSearchFilter(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService, createAuditService(db))
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	child1 := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Alice", LastName: "Smith", Gender: "female", Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(child1)
+	createActiveChildContract(t, db, child1.ID)
+
+	child2 := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Bob", LastName: "Jones", Gender: "male", Birthdate: time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(child2)
+	createActiveChildContract(t, db, child2.ID)
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/children/export/yaml", handler.ExportYAML)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/export/yaml?search=Alice", org.ID), nil)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var data models.ChildImportExportData
+	if err := yaml.Unmarshal(w.Body.Bytes(), &data); err != nil {
+		t.Fatalf("failed to parse YAML response: %v", err)
+	}
+
+	if len(data.Children) != 1 {
+		t.Errorf("expected 1 child with search=Alice, got %d", len(data.Children))
 	}
 }

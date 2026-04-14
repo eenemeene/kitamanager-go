@@ -745,6 +745,14 @@ definitions:
         example: GB-12345678901-02
         type: string
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ChildVoucherCreateRequest:
+    properties:
+      voucher_number:
+        example: GB-12345678901-02
+        type: string
+    required:
+    - voucher_number
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildWithoutVoucherResponse:
     properties:
       birthdate:
@@ -1495,6 +1503,9 @@ definitions:
       bill_id:
         example: 1
         type: integer
+      bill_only_amount:
+        example: 150000
+        type: integer
       bill_only_count:
         example: 1
         type: integer
@@ -1503,6 +1514,9 @@ definitions:
         type: string
       bill_total:
         example: 500000
+        type: integer
+      calc_only_amount:
+        example: 80000
         type: integer
       calc_only_count:
         example: 1
@@ -5300,7 +5314,7 @@ paths:
       - BearerAuth: []
       summary: Get billing history for a child
       tags:
-      - government-funding-bills
+      - children
   /api/v1/organizations/{orgId}/children/{childId}/contracts:
     get:
       consumes:
@@ -5676,6 +5690,57 @@ paths:
       summary: Get current child contract
       tags:
       - children
+  /api/v1/organizations/{orgId}/children/{childId}/vouchers:
+    post:
+      consumes:
+      - application/json
+      description: Link a Gutschein number to a child. Idempotent — assigning an already-known
+        voucher is a no-op.
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Child ID
+        in: path
+        name: childId
+        required: true
+        type: integer
+      - description: Voucher data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildVoucherCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Child not found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Assign a voucher to a child
+      tags:
+      - children
   /api/v1/organizations/{orgId}/children/attendance:
     get:
       consumes:
@@ -5795,7 +5860,7 @@ paths:
       - BearerAuth: []
       summary: Get billing summary for all children
       tags:
-      - government-funding-bills
+      - children
   /api/v1/organizations/{orgId}/children/export/excel:
     get:
       description: Download all children matching the given filters as an XLSX spreadsheet
@@ -5849,13 +5914,33 @@ paths:
       - children
   /api/v1/organizations/{orgId}/children/export/yaml:
     get:
-      description: Download all children with contracts as a YAML file
+      description: |-
+        Download children with contracts as a YAML file. Supports the same filters as the list endpoint.
+        Without filters, exports all children (suitable for backup/restore).
       parameters:
       - description: Organization ID
         in: path
         name: orgId
         required: true
         type: integer
+      - description: Filter by section ID
+        in: query
+        name: section_id
+        type: integer
+      - description: Filter by active contract date (YYYY-MM-DD). Unlike the list
+          endpoint, does NOT default to today — omit to export all.
+        in: query
+        name: active_on
+        type: string
+      - description: Filter children with contracts starting after this date (YYYY-MM-DD).
+          Mutually exclusive with active_on.
+        in: query
+        name: contract_after
+        type: string
+      - description: Search by first or last name (case-insensitive)
+        in: query
+        name: search
+        type: string
       produces:
       - application/x-yaml
       responses:
@@ -5954,7 +6039,7 @@ paths:
       - BearerAuth: []
       summary: Get children with active contracts but no vouchers
       tags:
-      - government-funding-bills
+      - children
   /api/v1/organizations/{orgId}/employees:
     get:
       consumes:
@@ -6617,13 +6702,32 @@ paths:
       - employees
   /api/v1/organizations/{orgId}/employees/export/yaml:
     get:
-      description: Download all employees with contracts as a YAML file
+      description: |-
+        Download employees with contracts as a YAML file. Supports the same filters as the list endpoint.
+        Without filters, exports all employees (suitable for backup/restore).
       parameters:
       - description: Organization ID
         in: path
         name: orgId
         required: true
         type: integer
+      - description: Filter by section ID
+        in: query
+        name: section_id
+        type: integer
+      - description: Filter by active contract date (YYYY-MM-DD). Unlike the list
+          endpoint, does NOT default to today — omit to export all.
+        in: query
+        name: active_on
+        type: string
+      - description: Search by first or last name (case-insensitive)
+        in: query
+        name: search
+        type: string
+      - description: Filter by staff category (qualified, supplementary, non_pedagogical)
+        in: query
+        name: staff_category
+        type: string
       produces:
       - application/x-yaml
       responses:
@@ -6928,8 +7032,9 @@ paths:
   /api/v1/organizations/{orgId}/government-funding-bills/compare:
     get:
       description: |-
-        Compare bill data against calculated funding. Supports filtering by bill_id, date, or child_id.
-        Without parameters, compares the latest bill. With child_id, returns billing history for that child.
+        Compare bill data against calculated funding. Always returns an array of comparisons.
+        Use from/to for a date range, bill_id for a specific bill, or no params for the latest bill.
+        With child_id, returns billing history for that child (different response type).
       parameters:
       - description: Organization ID
         in: path
@@ -6940,9 +7045,13 @@ paths:
         in: query
         name: bill_id
         type: integer
-      - description: Bill date (YYYY-MM-DD) to find and compare
+      - description: Range start date (YYYY-MM-DD), requires to
         in: query
-        name: date
+        name: from
+        type: string
+      - description: Range end date (YYYY-MM-DD), requires from
+        in: query
+        name: to
         type: string
       - description: Child ID — returns billing history across all bills for this
           child
@@ -6970,7 +7079,7 @@ paths:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Compare funding bill with calculated funding (unified)
+      summary: Compare funding bills with calculated funding
       tags:
       - government-funding-bills
   /api/v1/organizations/{orgId}/pay-plans:
@@ -8182,6 +8291,10 @@ paths:
         in: query
         name: to
         type: string
+      - description: Filter by section ID
+        in: query
+        name: section_id
+        type: integer
       produces:
       - application/json
       responses:

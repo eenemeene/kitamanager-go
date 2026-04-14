@@ -6,8 +6,12 @@ import (
 	"testing"
 	"time"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/eenemeene/kitamanager-go/internal/models"
 )
+
+func timePtr(t time.Time) *time.Time { return &t }
 
 func TestEmployeeHandler_List(t *testing.T) {
 	db := setupTestDB(t)
@@ -2296,5 +2300,148 @@ func TestEmployeeHandler_ListByStaffCategory_Invalid(t *testing.T) {
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for invalid staff_category, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestEmployeeHandler_ExportYAML_NoFilters(t *testing.T) {
+	db := setupTestDB(t)
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService, createAuditService(db))
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	// Create two employees: one with active contract, one with expired contract
+	emp1 := &models.Employee{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Active", LastName: "Emp", Gender: "male", Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(emp1)
+	createActiveEmployeeContract(t, db, emp1.ID)
+
+	emp2 := &models.Employee{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Expired", LastName: "Emp", Gender: "female", Birthdate: time.Date(1991, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(emp2)
+	sectionID := ensureTestSection(t, db, org.ID)
+	payPlanID := ensureTestPayPlan(t, db, org.ID)
+	db.Create(&models.EmployeeContract{
+		EmployeeID:    emp2.ID,
+		BaseContract:  models.BaseContract{Period: models.Period{From: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), To: timePtr(time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC))}, SectionID: sectionID},
+		StaffCategory: "qualified",
+		WeeklyHours:   40,
+		PayPlanID:     payPlanID,
+	})
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/employees/export/yaml", handler.ExportYAML)
+
+	// No filters → should export ALL employees
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/export/yaml", org.ID), nil)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	if ct := w.Header().Get("Content-Type"); ct != "application/x-yaml" {
+		t.Errorf("expected Content-Type application/x-yaml, got %s", ct)
+	}
+
+	var data models.EmployeeImportExportData
+	if err := yaml.Unmarshal(w.Body.Bytes(), &data); err != nil {
+		t.Fatalf("failed to parse YAML response: %v", err)
+	}
+
+	if len(data.Employees) != 2 {
+		t.Errorf("expected 2 employees without filters, got %d", len(data.Employees))
+	}
+}
+
+func TestEmployeeHandler_ExportYAML_WithActiveOnFilter(t *testing.T) {
+	db := setupTestDB(t)
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService, createAuditService(db))
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	// Active employee
+	emp1 := &models.Employee{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Active", LastName: "Emp", Gender: "male", Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(emp1)
+	createActiveEmployeeContract(t, db, emp1.ID)
+
+	// Expired employee
+	emp2 := &models.Employee{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Expired", LastName: "Emp", Gender: "female", Birthdate: time.Date(1991, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(emp2)
+	sectionID := ensureTestSection(t, db, org.ID)
+	payPlanID := ensureTestPayPlan(t, db, org.ID)
+	db.Create(&models.EmployeeContract{
+		EmployeeID:    emp2.ID,
+		BaseContract:  models.BaseContract{Period: models.Period{From: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), To: timePtr(time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC))}, SectionID: sectionID},
+		StaffCategory: "qualified",
+		WeeklyHours:   40,
+		PayPlanID:     payPlanID,
+	})
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/employees/export/yaml", handler.ExportYAML)
+
+	// Filter by active_on=today → should only export the active employee
+	today := time.Now().Format("2006-01-02")
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/export/yaml?active_on=%s", org.ID, today), nil)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var data models.EmployeeImportExportData
+	if err := yaml.Unmarshal(w.Body.Bytes(), &data); err != nil {
+		t.Fatalf("failed to parse YAML response: %v", err)
+	}
+
+	if len(data.Employees) != 1 {
+		t.Errorf("expected 1 employee with active_on filter, got %d", len(data.Employees))
+	}
+	if len(data.Employees) == 1 && data.Employees[0].FirstName != "Active" {
+		t.Errorf("expected Active employee, got %s", data.Employees[0].FirstName)
+	}
+}
+
+func TestEmployeeHandler_ExportYAML_WithSearchFilter(t *testing.T) {
+	db := setupTestDB(t)
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService, createAuditService(db))
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	emp1 := &models.Employee{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Alice", LastName: "Smith", Gender: "female", Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(emp1)
+	createActiveEmployeeContract(t, db, emp1.ID)
+
+	emp2 := &models.Employee{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Bob", LastName: "Jones", Gender: "male", Birthdate: time.Date(1991, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(emp2)
+	createActiveEmployeeContract(t, db, emp2.ID)
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/employees/export/yaml", handler.ExportYAML)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/export/yaml?search=Alice", org.ID), nil)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var data models.EmployeeImportExportData
+	if err := yaml.Unmarshal(w.Body.Bytes(), &data); err != nil {
+		t.Fatalf("failed to parse YAML response: %v", err)
+	}
+
+	if len(data.Employees) != 1 {
+		t.Errorf("expected 1 employee with search=Alice, got %d", len(data.Employees))
 	}
 }

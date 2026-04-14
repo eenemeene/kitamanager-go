@@ -2810,7 +2810,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "government-funding-bills"
+                    "children"
                 ],
                 "summary": "Get billing summary for all children",
                 "parameters": [
@@ -2927,7 +2927,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Download all children with contracts as a YAML file",
+                "description": "Download children with contracts as a YAML file. Supports the same filters as the list endpoint.\nWithout filters, exports all children (suitable for backup/restore).",
                 "produces": [
                     "application/x-yaml"
                 ],
@@ -2942,6 +2942,30 @@ const docTemplate = `{
                         "name": "orgId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Filter by section ID",
+                        "name": "section_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by active contract date (YYYY-MM-DD). Unlike the list endpoint, does NOT default to today — omit to export all.",
+                        "name": "active_on",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter children with contracts starting after this date (YYYY-MM-DD). Mutually exclusive with active_on.",
+                        "name": "contract_after",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search by first or last name (case-insensitive)",
+                        "name": "search",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -3049,7 +3073,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "government-funding-bills"
+                    "children"
                 ],
                 "summary": "Get children with active contracts but no vouchers",
                 "parameters": [
@@ -3709,7 +3733,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "government-funding-bills"
+                    "children"
                 ],
                 "summary": "Get billing history for a child",
                 "parameters": [
@@ -4307,6 +4331,83 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/organizations/{orgId}/children/{childId}/vouchers": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Link a Gutschein number to a child. Idempotent — assigning an already-known voucher is a no-op.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "children"
+                ],
+                "summary": "Assign a voucher to a child",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Child ID",
+                        "name": "childId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Voucher data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildVoucherCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Child not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/organizations/{orgId}/employees": {
             "get": {
                 "security": [
@@ -4546,7 +4647,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Download all employees with contracts as a YAML file",
+                "description": "Download employees with contracts as a YAML file. Supports the same filters as the list endpoint.\nWithout filters, exports all employees (suitable for backup/restore).",
                 "produces": [
                     "application/x-yaml"
                 ],
@@ -4561,6 +4662,30 @@ const docTemplate = `{
                         "name": "orgId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Filter by section ID",
+                        "name": "section_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by active contract date (YYYY-MM-DD). Unlike the list endpoint, does NOT default to today — omit to export all.",
+                        "name": "active_on",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search by first or last name (case-insensitive)",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by staff category (qualified, supplementary, non_pedagogical)",
+                        "name": "staff_category",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -5601,14 +5726,14 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Compare bill data against calculated funding. Supports filtering by bill_id, date, or child_id.\nWithout parameters, compares the latest bill. With child_id, returns billing history for that child.",
+                "description": "Compare bill data against calculated funding. Always returns an array of comparisons.\nUse from/to for a date range, bill_id for a specific bill, or no params for the latest bill.\nWith child_id, returns billing history for that child (different response type).",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "government-funding-bills"
                 ],
-                "summary": "Compare funding bill with calculated funding (unified)",
+                "summary": "Compare funding bills with calculated funding",
                 "parameters": [
                     {
                         "type": "integer",
@@ -5625,8 +5750,14 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Bill date (YYYY-MM-DD) to find and compare",
-                        "name": "date",
+                        "description": "Range start date (YYYY-MM-DD), requires to",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Range end date (YYYY-MM-DD), requires from",
+                        "name": "to",
                         "in": "query"
                     },
                     {
@@ -7675,6 +7806,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "End date (YYYY-MM-DD), defaults to 6 months ahead",
                         "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Filter by section ID",
+                        "name": "section_id",
                         "in": "query"
                     }
                 ],
@@ -9956,6 +10093,18 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.ChildVoucherCreateRequest": {
+            "type": "object",
+            "required": [
+                "voucher_number"
+            ],
+            "properties": {
+                "voucher_number": {
+                    "type": "string",
+                    "example": "GB-12345678901-02"
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.ChildWithoutVoucherResponse": {
             "type": "object",
             "properties": {
@@ -10995,6 +11144,10 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 1
                 },
+                "bill_only_amount": {
+                    "type": "integer",
+                    "example": 150000
+                },
                 "bill_only_count": {
                     "type": "integer",
                     "example": 1
@@ -11006,6 +11159,10 @@ const docTemplate = `{
                 "bill_total": {
                     "type": "integer",
                     "example": 500000
+                },
+                "calc_only_amount": {
+                    "type": "integer",
+                    "example": 80000
                 },
                 "calc_only_count": {
                     "type": "integer",

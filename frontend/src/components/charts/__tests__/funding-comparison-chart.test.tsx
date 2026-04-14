@@ -31,6 +31,8 @@ const dataWithActual: FinancialResponse = {
       total_expenses: 0,
       balance: 500000,
       actual_funding: 480000,
+      actual_funding_regular: 470000,
+      actual_funding_correction: 10000,
       child_count: 20,
       staff_count: 5,
     },
@@ -84,5 +86,13 @@ describe('FundingComparisonChart', () => {
       <FundingComparisonChart data={dataWithoutActual} />
     );
     expect(getByTestId('nivo-bar')).toBeTruthy();
+  });
+
+  it('renders table with Regular, Corrections, and Difference column headers', () => {
+    const { container } = renderWithProviders(<FundingComparisonChart data={dataWithActual} />);
+    const headerHTML = container.querySelector('thead')?.innerHTML ?? '';
+    expect(headerHTML).toContain('fundingActualRegular');
+    expect(headerHTML).toContain('fundingActualCorrection');
+    expect(headerHTML).toContain('fundingDifference');
   });
 });

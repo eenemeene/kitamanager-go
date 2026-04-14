@@ -410,11 +410,16 @@ func (h *ChildHandler) DeleteContract(c *gin.Context) {
 
 // ExportYAML godoc
 // @Summary Export children as YAML
-// @Description Download all children with contracts as a YAML file
+// @Description Download children with contracts as a YAML file. Supports the same filters as the list endpoint.
+// @Description Without filters, exports all children (suitable for backup/restore).
 // @Tags children
 // @Produce application/x-yaml
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
+// @Param section_id query int false "Filter by section ID"
+// @Param active_on query string false "Filter by active contract date (YYYY-MM-DD). Unlike the list endpoint, does NOT default to today — omit to export all."
+// @Param contract_after query string false "Filter children with contracts starting after this date (YYYY-MM-DD). Mutually exclusive with active_on."
+// @Param search query string false "Search by first or last name (case-insensitive)"
 // @Success 200 {file} file "YAML file"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
@@ -426,7 +431,34 @@ func (h *ChildHandler) ExportYAML(c *gin.Context) {
 		return
 	}
 
-	all, ok := fetchAllChildren(c, h.service, orgID, models.ChildListFilter{})
+	sectionID, ok := parseOptionalUint(c, "section_id")
+	if !ok {
+		return
+	}
+
+	contractAfter, ok := parseOptionalDatePtr(c, "contract_after")
+	if !ok {
+		return
+	}
+
+	activeOn, ok := parseOptionalDatePtr(c, "active_on")
+	if !ok {
+		return
+	}
+
+	search, ok := parseSearch(c)
+	if !ok {
+		return
+	}
+
+	filter := models.ChildListFilter{
+		SectionID:     sectionID,
+		ActiveOn:      activeOn,
+		ContractAfter: contractAfter,
+		Search:        search,
+	}
+
+	all, ok := fetchAllChildren(c, h.service, orgID, filter)
 	if !ok {
 		return
 	}

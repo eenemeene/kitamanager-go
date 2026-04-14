@@ -76,21 +76,24 @@ export default function OrgDashboardPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Accept suggestion: rename child to match bill name
+  // Accept suggestion: rename child to match bill name and assign the voucher
   const acceptSuggestion = useMutation({
     mutationFn: async ({
       childId,
       firstName,
       lastName,
+      voucherNumber,
     }: {
       childId: number;
       firstName: string;
       lastName: string;
+      voucherNumber: string;
     }) => {
       await apiClient.updateChild(orgId, childId, {
         first_name: firstName,
         last_name: lastName,
       });
+      await apiClient.assignChildVoucher(orgId, childId, voucherNumber);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.children.withoutVouchers(orgId) });
@@ -98,12 +101,13 @@ export default function OrgDashboardPage() {
   });
 
   // Property mismatches (latest bill vs contracts)
-  const { data: latestCompare } = useQuery({
+  const { data: latestCompareWrapped } = useQuery({
     queryKey: queryKeys.governmentFundingBillPeriods.compareLatest(orgId),
     queryFn: () => apiClient.compareBills(orgId),
     enabled: !!orgId,
     staleTime: 5 * 60 * 1000,
   });
+  const latestCompare = latestCompareWrapped?.comparisons?.[0];
 
   const propertyMismatches = useMemo(() => {
     if (!latestCompare?.children) return [];
@@ -222,6 +226,7 @@ export default function OrgDashboardPage() {
                                       childId: child.id,
                                       firstName: s.bill_first_name,
                                       lastName: s.bill_last_name,
+                                      voucherNumber: s.voucher_number,
                                     })
                                   }
                                 >

@@ -496,3 +496,124 @@ func TestGovernmentFundingBillHandler_Compare_NotFound(t *testing.T) {
 		t.Errorf("expected status 404, got %d: %s", w.Code, w.Body.String())
 	}
 }
+
+func TestGovernmentFundingBillHandler_AssignVoucher(t *testing.T) {
+	db := setupTestDB(t)
+	handler := createGovBillHandler(db)
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Test", LastName: "Child", Gender: "female", Birthdate: time.Date(2020, 3, 15, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(child)
+
+	r := setupTestRouter()
+	r.POST("/organizations/:orgId/children/:childId/vouchers", handler.AssignVoucher)
+
+	body := models.ChildVoucherCreateRequest{VoucherNumber: "GB-12345678901-01"}
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/children/%d/vouchers", org.ID, child.ID), body)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
+	}
+
+	// Verify voucher was created
+	var voucher models.ChildVoucher
+	if err := db.Where("child_id = ? AND voucher_number = ?", child.ID, "GB-12345678901-01").First(&voucher).Error; err != nil {
+		t.Fatalf("voucher not found in database: %v", err)
+	}
+}
+
+func TestGovernmentFundingBillHandler_AssignVoucher_Idempotent(t *testing.T) {
+	db := setupTestDB(t)
+	handler := createGovBillHandler(db)
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Test", LastName: "Child", Gender: "female", Birthdate: time.Date(2020, 3, 15, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(child)
+
+	r := setupTestRouter()
+	r.POST("/organizations/:orgId/children/:childId/vouchers", handler.AssignVoucher)
+
+	body := models.ChildVoucherCreateRequest{VoucherNumber: "GB-12345678901-01"}
+
+	// First call
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/children/%d/vouchers", org.ID, child.ID), body)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("first call: expected %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
+	}
+
+	// Second call — should still succeed (idempotent)
+	w = performRequest(r, "POST", fmt.Sprintf("/organizations/%d/children/%d/vouchers", org.ID, child.ID), body)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("second call: expected %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
+	}
+
+	// Only one voucher entry should exist
+	var count int64
+	db.Model(&models.ChildVoucher{}).Where("child_id = ?", child.ID).Count(&count)
+	if count != 1 {
+		t.Errorf("expected 1 voucher entry, got %d", count)
+	}
+}
+
+func TestGovernmentFundingBillHandler_AssignVoucher_ChildNotFound(t *testing.T) {
+	db := setupTestDB(t)
+	handler := createGovBillHandler(db)
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	r := setupTestRouter()
+	r.POST("/organizations/:orgId/children/:childId/vouchers", handler.AssignVoucher)
+
+	body := models.ChildVoucherCreateRequest{VoucherNumber: "GB-12345678901-01"}
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/children/99999/vouchers", org.ID), body)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d, got %d: %s", http.StatusNotFound, w.Code, w.Body.String())
+	}
+}
+
+func TestGovernmentFundingBillHandler_AssignVoucher_WrongOrg(t *testing.T) {
+	db := setupTestDB(t)
+	handler := createGovBillHandler(db)
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org1.ID, FirstName: "Test", LastName: "Child", Gender: "female", Birthdate: time.Date(2020, 3, 15, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(child)
+
+	r := setupTestRouter()
+	r.POST("/organizations/:orgId/children/:childId/vouchers", handler.AssignVoucher)
+
+	body := models.ChildVoucherCreateRequest{VoucherNumber: "GB-12345678901-01"}
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/children/%d/vouchers", org2.ID, child.ID), body)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d, got %d: %s", http.StatusNotFound, w.Code, w.Body.String())
+	}
+}
+
+func TestGovernmentFundingBillHandler_AssignVoucher_MissingVoucherNumber(t *testing.T) {
+	db := setupTestDB(t)
+	handler := createGovBillHandler(db)
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Test", LastName: "Child", Gender: "female", Birthdate: time.Date(2020, 3, 15, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(child)
+
+	r := setupTestRouter()
+	r.POST("/organizations/:orgId/children/:childId/vouchers", handler.AssignVoucher)
+
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/children/%d/vouchers", org.ID, child.ID), map[string]any{})
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}

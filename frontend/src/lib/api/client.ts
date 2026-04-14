@@ -43,6 +43,7 @@ import type {
   GovernmentFundingBillPeriodListItem,
   GovernmentFundingBillPeriodResponse,
   FundingComparisonResponse,
+  FundingComparisonWrappedResponse,
   ChildBillingHistoryResponse,
   ChildrenBillingSummaryResponse,
   ChildWithoutVoucherResponse,
@@ -466,9 +467,9 @@ class ApiClient {
 
   async compareBills(
     orgId: number,
-    params?: { bill_id?: number; date?: string; child_id?: number }
-  ): Promise<FundingComparisonResponse> {
-    const response = await this.client.get<FundingComparisonResponse>(
+    params?: { bill_id?: number; from?: string; to?: string }
+  ): Promise<FundingComparisonWrappedResponse> {
+    const response = await this.client.get<FundingComparisonWrappedResponse>(
       `/organizations/${orgId}/government-funding-bills/compare`,
       { params }
     );
@@ -480,6 +481,12 @@ class ApiClient {
       `/organizations/${orgId}/children/without-vouchers`
     );
     return response.data;
+  }
+
+  async assignChildVoucher(orgId: number, childId: number, voucherNumber: string): Promise<void> {
+    await this.client.post(`/organizations/${orgId}/children/${childId}/vouchers`, {
+      voucher_number: voucherNumber,
+    });
   }
 
   async createChildContract(

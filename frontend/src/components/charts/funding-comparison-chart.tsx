@@ -4,12 +4,17 @@ import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { ResponsiveBar } from '@nivo/bar';
 import type { BarDatum, BarCustomLayerProps } from '@nivo/bar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ExportableChart } from './exportable-chart';
-import type { FinancialResponse } from '@/lib/api/types';
+import type {
+  FinancialResponse,
+  FundingComparisonResponse,
+  FundingComparisonSummary,
+} from '@/lib/api/types';
+import { FundingDeficitAnalysis } from './funding-deficit-analysis';
 import {
   Table,
   TableBody,
@@ -18,11 +23,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { buildKitaYearBands, formatDateLabel, kitaYearLabel, chartTheme } from './chart-utils';
 import { toLocalDateString, getCurrentMonthStart } from '@/lib/utils/formatting';
 
 interface FundingComparisonChartProps {
   data: FinancialResponse;
+  compareData?: Map<string, FundingComparisonResponse>;
+  compareSummaries?: Map<string, FundingComparisonSummary>;
 }
 
 type BandScale = ((v: string) => number | undefined) & { bandwidth(): number };
@@ -31,7 +39,29 @@ function formatEur(cents: number): string {
   return (cents / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
 }
 
-export function FundingComparisonChart({ data }: FundingComparisonChartProps) {
+function HeaderWithTooltip({ label, tooltip }: { label: string; tooltip: string }) {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex cursor-help items-center gap-1">
+            {label}
+            <Info className="text-muted-foreground h-3 w-3" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="max-w-xs text-xs">{tooltip}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+export function FundingComparisonChart({
+  data,
+  compareData,
+  compareSummaries,
+}: FundingComparisonChartProps) {
   const t = useTranslations('statistics');
   const tCommon = useTranslations('common');
   const params = useParams();
@@ -208,21 +238,27 @@ export function FundingComparisonChart({ data }: FundingComparisonChartProps) {
     });
   };
 
-  // Per-Kita-year summary with monthly detail: always show calculated, actual only for months with bills
+  // Per-Kita-year summary with monthly detail
   const kitaYearSummary = useMemo(() => {
     const map = new Map<
       string,
       {
         calculatedTotal: number;
         calculatedWithBill: number;
-        actual: number;
+        regular: number;
+        correction: number;
         actualMonths: number;
         totalMonths: number;
         months: {
           date: string;
           calculated: number;
-          actual: number | null;
+          regular: number | null;
+          correction: number | null;
           difference: number | null;
+          billOnlyCount: number | null;
+          billOnlyAmount: number | null;
+          calcOnlyCount: number | null;
+          calcOnlyAmount: number | null;
         }[];
       }
     >();
@@ -231,7 +267,8 @@ export function FundingComparisonChart({ data }: FundingComparisonChartProps) {
       const entry = map.get(ky) ?? {
         calculatedTotal: 0,
         calculatedWithBill: 0,
-        actual: 0,
+        regular: 0,
+        correction: 0,
         actualMonths: 0,
         totalMonths: 0,
         months: [],
@@ -241,14 +278,21 @@ export function FundingComparisonChart({ data }: FundingComparisonChartProps) {
       const hasActual = dp.actual_funding != null;
       if (hasActual) {
         entry.calculatedWithBill += dp.funding_income;
-        entry.actual += dp.actual_funding!;
+        entry.regular += dp.actual_funding_regular ?? 0;
+        entry.correction += dp.actual_funding_correction ?? 0;
         entry.actualMonths += 1;
       }
+      const comp = compareData?.get(dp.date);
       entry.months.push({
         date: dp.date,
         calculated: dp.funding_income,
-        actual: dp.actual_funding ?? null,
-        difference: hasActual ? dp.actual_funding! - dp.funding_income : null,
+        regular: dp.actual_funding_regular ?? null,
+        correction: dp.actual_funding_correction ?? null,
+        difference: hasActual ? (dp.actual_funding_regular ?? 0) - dp.funding_income : null,
+        billOnlyCount: comp?.bill_only_count ?? null,
+        billOnlyAmount: comp?.bill_only_amount ?? null,
+        calcOnlyCount: comp?.calc_only_count ?? null,
+        calcOnlyAmount: comp?.calc_only_amount ?? null,
       });
       map.set(ky, entry);
     }
@@ -256,15 +300,37 @@ export function FundingComparisonChart({ data }: FundingComparisonChartProps) {
       label,
       calculatedTotal: v.calculatedTotal,
       calculatedWithBill: v.calculatedWithBill,
-      actual: v.actual,
-      difference: v.actual - v.calculatedWithBill,
+      regular: v.regular,
+      correction: v.correction,
+      difference: v.regular + v.correction - v.calculatedWithBill,
       actualMonths: v.actualMonths,
       totalMonths: v.totalMonths,
       hasBills: v.actualMonths > 0,
       complete: v.actualMonths === v.totalMonths,
       months: v.months,
     }));
-  }, [data]);
+  }, [data, compareData]);
+
+  // Match each Kita year to the best-overlapping compare summary window
+  const kitaYearDeficitMap = useMemo(() => {
+    if (!compareSummaries) return new Map<string, FundingComparisonSummary>();
+    const result = new Map<string, FundingComparisonSummary>();
+    for (const row of kitaYearSummary) {
+      if (!row.hasBills) continue;
+      let bestKey: string | undefined;
+      let bestOverlap = 0;
+      for (const [key] of compareSummaries) {
+        const [wFrom, wTo] = key.split(':');
+        const overlap = row.months.filter((m) => m.date >= wFrom && m.date <= wTo).length;
+        if (overlap > bestOverlap) {
+          bestOverlap = overlap;
+          bestKey = key;
+        }
+      }
+      if (bestKey) result.set(row.label, compareSummaries.get(bestKey)!);
+    }
+    return result;
+  }, [compareSummaries, kitaYearSummary]);
 
   const currentMonth = getCurrentMonthStart();
   const currentMonthDP = data.data_points.find((dp) => dp.date === currentMonth);
@@ -351,7 +417,10 @@ export function FundingComparisonChart({ data }: FundingComparisonChartProps) {
           tooltip={({ indexValue, id, value, color }) => {
             const dp = allPoints.find((d) => formatDateLabel(d.date) === indexValue);
             const diff =
-              dp && dp.actual_funding != null ? dp.actual_funding - dp.funding_income : null;
+              dp && dp.actual_funding_regular != null
+                ? dp.actual_funding_regular - dp.funding_income
+                : null;
+            const comp = dp ? compareData?.get(dp.date) : undefined;
             return (
               <div
                 style={{
@@ -395,6 +464,20 @@ export function FundingComparisonChart({ data }: FundingComparisonChartProps) {
                     {formatEur(diff)}
                   </div>
                 )}
+                {comp && comp.bill_only_count > 0 && (
+                  <div style={{ marginTop: 2, fontSize: 12, color: '#f59e0b' }}>
+                    {t('fundingBillOnly')}:{' '}
+                    {t('fundingChildCount', { count: comp.bill_only_count })} (
+                    {formatEur(comp.bill_only_amount)})
+                  </div>
+                )}
+                {comp && comp.calc_only_count > 0 && (
+                  <div style={{ marginTop: 2, fontSize: 12, color: '#3b82f6' }}>
+                    {t('fundingCalcOnly')}:{' '}
+                    {t('fundingChildCount', { count: comp.calc_only_count })} (
+                    {formatEur(comp.calc_only_amount)})
+                  </div>
+                )}
               </div>
             );
           }}
@@ -426,9 +509,30 @@ export function FundingComparisonChart({ data }: FundingComparisonChartProps) {
             <TableHeader>
               <TableRow>
                 <TableHead>{t('kitaYearCol')}</TableHead>
-                <TableHead className="text-right">{t('fundingCalculated')}</TableHead>
-                <TableHead className="text-right">{t('fundingActual')}</TableHead>
-                <TableHead className="text-right">{t('fundingDifference')}</TableHead>
+                <TableHead className="text-right">
+                  <HeaderWithTooltip
+                    label={t('fundingCalculated')}
+                    tooltip={t('fundingCalculatedTooltip')}
+                  />
+                </TableHead>
+                <TableHead className="text-right">
+                  <HeaderWithTooltip
+                    label={t('fundingActualRegular')}
+                    tooltip={t('fundingRegularTooltip')}
+                  />
+                </TableHead>
+                <TableHead className="text-right">
+                  <HeaderWithTooltip
+                    label={t('fundingActualCorrection')}
+                    tooltip={t('fundingCorrectionsTooltip')}
+                  />
+                </TableHead>
+                <TableHead className="text-right">
+                  <HeaderWithTooltip
+                    label={t('fundingDifference')}
+                    tooltip={t('fundingDifferenceTooltip')}
+                  />
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -460,7 +564,10 @@ export function FundingComparisonChart({ data }: FundingComparisonChartProps) {
                         {formatEur(row.calculatedTotal)}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {row.hasBills ? formatEur(row.actual) : '\u2014'}
+                        {row.hasBills ? formatEur(row.regular) : '\u2014'}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {row.hasBills ? formatEur(row.correction) : '\u2014'}
                       </TableCell>
                       <TableCell
                         className={`text-right font-medium tabular-nums ${
@@ -477,30 +584,70 @@ export function FundingComparisonChart({ data }: FundingComparisonChartProps) {
                       </TableCell>
                     </TableRow>
                     {isExpanded &&
-                      row.months.map((m) => (
-                        <TableRow key={m.date} className="bg-muted/30">
-                          <TableCell className="pl-10 text-sm">{formatDateLabel(m.date)}</TableCell>
-                          <TableCell className="text-right text-sm tabular-nums">
-                            {formatEur(m.calculated)}
-                          </TableCell>
-                          <TableCell className="text-right text-sm tabular-nums">
-                            {m.actual != null ? formatEur(m.actual) : '\u2014'}
-                          </TableCell>
-                          <TableCell
-                            className={`text-right text-sm tabular-nums ${
-                              m.difference == null
-                                ? 'text-muted-foreground'
-                                : m.difference >= 0
-                                  ? 'text-green-700 dark:text-green-400'
-                                  : 'text-red-700 dark:text-red-400'
-                            }`}
-                          >
-                            {m.difference != null
-                              ? `${m.difference >= 0 ? '+' : ''}${formatEur(m.difference)}`
-                              : '\u2014'}
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      row.months.map((m) => {
+                        const hasMismatch =
+                          (m.billOnlyCount != null && m.billOnlyCount > 0) ||
+                          (m.calcOnlyCount != null && m.calcOnlyCount > 0);
+                        return (
+                          <React.Fragment key={m.date}>
+                            <TableRow className="bg-muted/30">
+                              <TableCell className="pl-10 text-sm">
+                                {formatDateLabel(m.date)}
+                              </TableCell>
+                              <TableCell className="text-right text-sm tabular-nums">
+                                {formatEur(m.calculated)}
+                              </TableCell>
+                              <TableCell className="text-right text-sm tabular-nums">
+                                {m.regular != null ? formatEur(m.regular) : '\u2014'}
+                              </TableCell>
+                              <TableCell className="text-right text-sm tabular-nums">
+                                {m.correction != null ? formatEur(m.correction) : '\u2014'}
+                              </TableCell>
+                              <TableCell
+                                className={`text-right text-sm tabular-nums ${
+                                  m.difference == null
+                                    ? 'text-muted-foreground'
+                                    : m.difference >= 0
+                                      ? 'text-green-700 dark:text-green-400'
+                                      : 'text-red-700 dark:text-red-400'
+                                }`}
+                              >
+                                {m.difference != null
+                                  ? `${m.difference >= 0 ? '+' : ''}${formatEur(m.difference)}`
+                                  : '\u2014'}
+                              </TableCell>
+                            </TableRow>
+                            {hasMismatch && (
+                              <TableRow className="bg-muted/20">
+                                <TableCell colSpan={5} className="py-1 pl-14">
+                                  <div className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-0.5 text-xs">
+                                    {m.billOnlyCount != null && m.billOnlyCount > 0 && (
+                                      <span className="text-amber-600 dark:text-amber-400">
+                                        {t('fundingBillOnly')}:{' '}
+                                        {t('fundingChildCount', { count: m.billOnlyCount })} (
+                                        {formatEur(m.billOnlyAmount ?? 0)})
+                                      </span>
+                                    )}
+                                    {m.calcOnlyCount != null && m.calcOnlyCount > 0 && (
+                                      <span className="text-blue-600 dark:text-blue-400">
+                                        {t('fundingCalcOnly')}:{' '}
+                                        {t('fundingChildCount', { count: m.calcOnlyCount })} (
+                                        {formatEur(m.calcOnlyAmount ?? 0)})
+                                      </span>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                    {kitaYearDeficitMap.has(row.label) && (
+                      <FundingDeficitAnalysis
+                        summary={kitaYearDeficitMap.get(row.label)!}
+                        orgId={orgId!}
+                      />
+                    )}
                   </React.Fragment>
                 );
               })}

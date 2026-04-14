@@ -851,8 +851,48 @@ export interface FundingComparisonResponse {
   match_count: number;
   difference_count: number;
   bill_only_count: number;
+  bill_only_amount: number;
   calc_only_count: number;
+  calc_only_amount: number;
   children: FundingComparisonChild[];
+}
+
+export interface FundingComparisonCategorySummary {
+  category: string;
+  total_amount: number;
+  child_count: number;
+  actionable: boolean;
+}
+
+export interface FundingComparisonIssueSummary {
+  voucher_number: string;
+  child_name: string;
+  child_id?: number;
+  category: string;
+  issue_type?: string;
+  description: string;
+  property_key?: string;
+  calc_value?: string;
+  bill_value?: string;
+  amount_per_month: number;
+  month_count: number;
+  total_amount: number;
+  actionable: boolean;
+}
+
+export interface FundingComparisonSummary {
+  total_billed: number;
+  total_calculated: number;
+  total_difference: number;
+  total_corrections: number;
+  month_count: number;
+  categories: FundingComparisonCategorySummary[];
+  issues: FundingComparisonIssueSummary[];
+}
+
+export interface FundingComparisonWrappedResponse {
+  comparisons: FundingComparisonResponse[];
+  summary: FundingComparisonSummary;
 }
 
 // Per-child billing history

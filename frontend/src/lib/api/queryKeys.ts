@@ -54,6 +54,8 @@ export const queryKeys = {
     compare: (orgId: number, id: number) =>
       ['governmentFundingBillPeriodCompare', orgId, id] as const,
     compareLatest: (orgId: number) => ['governmentFundingBillCompareLatest', orgId] as const,
+    compareRange: (orgId: number, from: string, to: string) =>
+      ['governmentFundingBillCompareRange', orgId, from, to] as const,
   },
   budgetItems: {
     all: (orgId: number) => ['budgetItems', orgId] as const,

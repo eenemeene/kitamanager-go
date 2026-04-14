@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -54,7 +53,7 @@ func (h *GovernmentFundingBillHandler) UploadISBJ(c *gin.Context) {
 	// Compute SHA-256 hash
 	fileHash, err := service.ComputeFileHash(bytes.NewReader(fileBytes))
 	if err != nil {
-		respondError(c, apperror.Internal(err.Error()))
+		respondError(c, apperror.InternalWrap(err, "failed to compute file hash"))
 		return
 	}
 
@@ -102,7 +101,7 @@ func (h *GovernmentFundingBillHandler) List(c *gin.Context) {
 
 	items, total, err := h.service.List(c.Request.Context(), orgID, params.Limit, params.Offset())
 	if err != nil {
-		respondError(c, apperror.Internal(err.Error()))
+		respondError(c, err)
 		return
 	}
 
@@ -165,27 +164,23 @@ func (h *GovernmentFundingBillHandler) Compare(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-func parseRequiredDateFromString(c *gin.Context, dateStr, paramName string) (time.Time, bool) {
-	date, err := time.Parse(models.DateFormat, dateStr)
-	if err != nil {
-		respondError(c, apperror.BadRequest("invalid date format for "+paramName+", expected YYYY-MM-DD"))
-		return time.Time{}, false
-	}
-	return date, true
-}
+// maxCompareRangeMonths is the maximum date range for bill comparison requests.
+const maxCompareRangeMonths = 12
 
 // CompareUnified godoc
-// @Summary Compare funding bill with calculated funding (unified)
-// @Description Compare bill data against calculated funding. Supports filtering by bill_id, date, or child_id.
-// @Description Without parameters, compares the latest bill. With child_id, returns billing history for that child.
+// @Summary Compare funding bills with calculated funding
+// @Description Compare bill data against calculated funding. Always returns an array of comparisons.
+// @Description Use from/to for a date range, bill_id for a specific bill, or no params for the latest bill.
+// @Description With child_id, returns billing history for that child (different response type).
 // @Tags government-funding-bills
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
 // @Param bill_id query int false "Specific bill ID to compare"
-// @Param date query string false "Bill date (YYYY-MM-DD) to find and compare"
+// @Param from query string false "Range start date (YYYY-MM-DD), requires to"
+// @Param to query string false "Range end date (YYYY-MM-DD), requires from"
 // @Param child_id query int false "Child ID — returns billing history across all bills for this child"
-// @Success 200 {object} models.FundingComparisonResponse "When comparing a bill (bill_id, date, or default)"
+// @Success 200 {array} models.FundingComparisonResponse "Array of comparisons (bill_id, from/to, or default)"
 // @Success 200 {object} models.ChildBillingHistoryResponse "When filtering by child_id"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
@@ -199,7 +194,7 @@ func (h *GovernmentFundingBillHandler) CompareUnified(c *gin.Context) {
 
 	ctx := c.Request.Context()
 
-	// If child_id is provided, delegate to billing history
+	// If child_id is provided, delegate to billing history (different response type)
 	if childIDStr := c.Query("child_id"); childIDStr != "" {
 		childID, err := strconv.ParseUint(childIDStr, 10, 64)
 		if err != nil {
@@ -215,7 +210,7 @@ func (h *GovernmentFundingBillHandler) CompareUnified(c *gin.Context) {
 		return
 	}
 
-	// Resolve which bill to compare
+	// Single bill by ID
 	if billIDStr := c.Query("bill_id"); billIDStr != "" {
 		billID, err := strconv.ParseUint(billIDStr, 10, 64)
 		if err != nil {
@@ -227,37 +222,57 @@ func (h *GovernmentFundingBillHandler) CompareUnified(c *gin.Context) {
 			respondError(c, err)
 			return
 		}
-		c.JSON(http.StatusOK, result)
+		respondWrappedComparison(c, []models.FundingComparisonResponse{*result})
 		return
 	}
 
-	if dateStr := c.Query("date"); dateStr != "" {
-		date, ok := parseRequiredDateFromString(c, dateStr, "date")
-		if !ok {
+	// Date range: from/to
+	from, ok := parseOptionalDatePtr(c, "from")
+	if !ok {
+		return
+	}
+	to, ok := parseOptionalDatePtr(c, "to")
+	if !ok {
+		return
+	}
+	if from != nil || to != nil {
+		if from == nil || to == nil {
+			respondError(c, apperror.BadRequest("both 'from' and 'to' query parameters are required"))
 			return
 		}
-		result, err := h.service.CompareByDate(ctx, orgID, date)
+		if err := validateDateRange(*from, *to, maxCompareRangeMonths); err != nil {
+			respondError(c, err)
+			return
+		}
+		results, err := h.service.CompareRange(ctx, orgID, *from, *to)
 		if err != nil {
 			respondError(c, err)
 			return
 		}
-		c.JSON(http.StatusOK, result)
+		respondWrappedComparison(c, results)
 		return
 	}
 
-	// Default: compare latest bill
+	// Default: latest bill
 	result, err := h.service.CompareLatest(ctx, orgID)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondWrappedComparison(c, []models.FundingComparisonResponse{*result})
+}
+
+func respondWrappedComparison(c *gin.Context, comparisons []models.FundingComparisonResponse) {
+	c.JSON(http.StatusOK, models.FundingComparisonWrappedResponse{
+		Comparisons: comparisons,
+		Summary:     service.BuildComparisonSummary(comparisons),
+	})
 }
 
 // ChildrenWithoutVouchers godoc
 // @Summary Get children with active contracts but no vouchers
 // @Description Returns children who have active contracts but no voucher numbers assigned
-// @Tags government-funding-bills
+// @Tags children
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
@@ -283,7 +298,7 @@ func (h *GovernmentFundingBillHandler) ChildrenWithoutVouchers(c *gin.Context) {
 // ChildrenBillingSummary godoc
 // @Summary Get billing summary for all children
 // @Description Get aggregated billing totals (billed vs calculated) for all children in an organization
-// @Tags government-funding-bills
+// @Tags children
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
@@ -309,7 +324,7 @@ func (h *GovernmentFundingBillHandler) ChildrenBillingSummary(c *gin.Context) {
 // ChildBillingHistory godoc
 // @Summary Get billing history for a child
 // @Description Get complete billing history across all uploaded bills for a child, with comparison to expected funding amounts
-// @Tags government-funding-bills
+// @Tags children
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
@@ -362,4 +377,41 @@ func (h *GovernmentFundingBillHandler) Delete(c *gin.Context) {
 	auditDelete(c, h.auditService, "government_funding_bill", id, period.FileName)
 
 	c.Status(http.StatusNoContent)
+}
+
+// AssignVoucher godoc
+// @Summary Assign a voucher to a child
+// @Description Link a Gutschein number to a child. Idempotent — assigning an already-known voucher is a no-op.
+// @Tags children
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Param childId path int true "Child ID"
+// @Param request body models.ChildVoucherCreateRequest true "Voucher data"
+// @Success 201 {object} models.MessageResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse "Child not found"
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/organizations/{orgId}/children/{childId}/vouchers [post]
+func (h *GovernmentFundingBillHandler) AssignVoucher(c *gin.Context) {
+	orgID, childID, ok := parseOrgAndResourceID(c, "childId")
+	if !ok {
+		return
+	}
+
+	req, ok := bindJSON[models.ChildVoucherCreateRequest](c)
+	if !ok {
+		return
+	}
+
+	if err := h.service.AssignVoucher(c.Request.Context(), childID, orgID, req.VoucherNumber); err != nil {
+		respondError(c, err)
+		return
+	}
+
+	auditCreate(c, h.auditService, "child_voucher", childID, req.VoucherNumber)
+
+	c.JSON(http.StatusCreated, models.MessageResponse{Message: "voucher assigned"})
 }
