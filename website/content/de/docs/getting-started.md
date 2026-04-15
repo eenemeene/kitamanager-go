@@ -9,7 +9,7 @@ Diese Anleitung hilft Ihnen, KitaManager schnell zum Laufen zu bringen.
 
 - [Docker](https://docs.docker.com/get-docker/) und Docker Compose
 - [Go 1.25+](https://go.dev/dl/) (für Entwicklung)
-- [Node.js 18+](https://nodejs.org/) (für Frontend-Entwicklung)
+- [Node.js 24+](https://nodejs.org/) (für Frontend-Entwicklung)
 
 ## Schnellstart mit Docker
 
@@ -59,8 +59,8 @@ Nach dem Start können Sie sich mit den Standard-Admin-Anmeldedaten anmelden:
 
 | Feld | Wert |
 |------|------|
-| E-Mail | `admin@example.com` |
-| Passwort | `admin123` |
+| E-Mail | `superadmin@example.com` |
+| Passwort | `supersecret` |
 
 {{% callout type="warning" %}}
 Ändern Sie das Standard-Passwort sofort in Produktionsumgebungen!
@@ -70,10 +70,13 @@ Nach dem Start können Sie sich mit den Standard-Admin-Anmeldedaten anmelden:
 
 Die Entwicklungsumgebung enthält Testdaten mit:
 
-- Einer Beispielorganisation "Kita Sonnenschein"
-- 50 Testkindern mit Verträgen
-- Beispielmitarbeitern
-- Berliner Landesförderungs-Konfiguration
+- Einer Beispielorganisation „Kita Sonnenschein" mit drei Bereichen (Nest, Nestflüchter, Große)
+- ~120 Kindern mit Betreuungsverträgen und realistischer Altersverteilung
+- ~35 Mitarbeiterinnen und Mitarbeitern mit Arbeitsverträgen in allen Bereichen
+- Entgelttabellen (TVöD-SuE 2024 und Minijob)
+- Haushaltsposten (Elternbeiträge und Betriebskosten)
+- Berliner Kita-Fördersätze
+- Drei Testbenutzer mit verschiedenen Rollen (Superadmin, Admin, Manager)
 
 ## Nächste Schritte
 

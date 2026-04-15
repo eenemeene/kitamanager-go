@@ -9,7 +9,7 @@ This guide will help you get KitaManager up and running quickly.
 
 - [Docker](https://docs.docker.com/get-docker/) and Docker Compose
 - [Go 1.25+](https://go.dev/dl/) (for development)
-- [Node.js 18+](https://nodejs.org/) (for frontend development)
+- [Node.js 24+](https://nodejs.org/) (for frontend development)
 
 ## Quick Start with Docker
 
@@ -59,8 +59,8 @@ After starting, you can log in with the default admin credentials:
 
 | Field | Value |
 |-------|-------|
-| Email | `admin@example.com` |
-| Password | `admin123` |
+| Email | `superadmin@example.com` |
+| Password | `supersecret` |
 
 {{% callout type="warning" %}}
 Change the default password immediately in production environments!
@@ -70,10 +70,13 @@ Change the default password immediately in production environments!
 
 The development environment includes seed data with:
 
-- A sample organization "Kita Sonnenschein"
-- 50 test children with contracts
-- Sample employees
-- Berlin state government funding configuration
+- A sample organization "Kita Sonnenschein" with three sections (Nest, Nestflüchter, Große)
+- ~120 children with care contracts and realistic age distributions
+- ~35 employees with employment contracts across all sections
+- Pay plans (TVöD-SuE 2024 and Minijob)
+- Budget items (parent contributions and operational costs)
+- Berlin state government funding rates
+- Three test users with different roles (superadmin, admin, manager)
 
 ## Next Steps
 
