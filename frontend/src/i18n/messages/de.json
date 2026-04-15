@@ -858,7 +858,10 @@
     "mismatchReasonProperty": "Eigenschaftsabweichung",
     "mismatchReasonBillOnly": "Nur in Abrechnung",
     "mismatchReasonCalcOnly": "Nicht in Abrechnung",
-    "mismatchCount": "{count} {count, plural, one {Abweichung} other {Abweichungen}}"
+    "mismatchCount": "{count} {count, plural, one {Abweichung} other {Abweichungen}}",
+    "summaryMatch": "{count, plural, one {# Abrechnung stimmt} other {# Abrechnungen stimmen}}",
+    "summaryDifference": "{count, plural, one {# Abrechnung mit Abweichungen} other {# Abrechnungen mit Abweichungen}}",
+    "summaryTotal": "Gesamtdifferenz"
   },
   "sectionAgeAlerts": {
     "title": "Kinder über Altersgrenze des Bereichs",

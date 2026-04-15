@@ -858,7 +858,10 @@
     "mismatchReasonProperty": "Property mismatch",
     "mismatchReasonBillOnly": "Only in bill",
     "mismatchReasonCalcOnly": "Not in bill",
-    "mismatchCount": "{count} {count, plural, one {mismatch} other {mismatches}}"
+    "mismatchCount": "{count} {count, plural, one {mismatch} other {mismatches}}",
+    "summaryMatch": "{count, plural, one {# bill matches} other {# bills match}}",
+    "summaryDifference": "{count, plural, one {# bill with differences} other {# bills with differences}}",
+    "summaryTotal": "Total difference"
   },
   "sectionAgeAlerts": {
     "title": "Children Over Section Age Limit",
