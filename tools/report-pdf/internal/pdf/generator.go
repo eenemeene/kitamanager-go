@@ -66,7 +66,7 @@ func (g *Generator) GenerateReport(reportType, orgID string, year int, outputDir
 	fmt.Printf("  Navigating to %s\n", pageURL)
 
 	resp, err := page.Goto(pageURL, playwright.PageGotoOptions{
-		WaitUntil: playwright.WaitUntilStateNetworkidle,
+		WaitUntil: playwright.WaitUntilStateLoad,
 		Timeout:   playwright.Float(30000),
 	})
 	if err != nil {
@@ -84,8 +84,8 @@ func (g *Generator) GenerateReport(reportType, orgID string, year int, outputDir
 	}
 
 	// Wait for data-print-ready="true" attribute
-	_, err = page.WaitForSelector("[data-print-ready='true']", playwright.PageWaitForSelectorOptions{
-		Timeout: playwright.Float(15000),
+	err = page.Locator("[data-print-ready='true']").WaitFor(playwright.LocatorWaitForOptions{
+		Timeout: playwright.Float(30000),
 	})
 	if err != nil {
 		return fmt.Errorf("timeout waiting for page to be ready: %w", err)
