@@ -54,7 +54,9 @@ describe('ForecastEmployeesTab', () => {
 
 describe('ForecastOptimizeTab', () => {
   it('renders without crashing', () => {
-    const { container } = renderWithProviders(<ForecastOptimizeTab />);
+    const { container } = renderWithProviders(
+      <ForecastOptimizeTab baselineBalanceCents={null} isLoadingBaseline={false} />
+    );
     expect(container.innerHTML).not.toBe('');
   });
 });

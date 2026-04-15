@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -68,6 +68,12 @@ export default function ForecastPage() {
     isLoadingBaselineOccupancy ||
     isLoadingBaselineEmployeeHours;
 
+  // Compute the cumulative baseline balance for the selected kita year
+  const baselineBalance = useMemo(() => {
+    if (!baselineFinancials?.data_points?.length) return null;
+    return baselineFinancials.data_points.reduce((sum, dp) => sum + dp.balance, 0);
+  }, [baselineFinancials]);
+
   const forecastMutation = useMutation({
     mutationFn: (req: Parameters<typeof apiClient.postForecast>[1]) =>
       apiClient.postForecast(orgId, req),
@@ -115,7 +121,10 @@ export default function ForecastPage() {
               <ForecastEmployeesTab />
             </TabsContent>
             <TabsContent value="optimize">
-              <ForecastOptimizeTab />
+              <ForecastOptimizeTab
+                baselineBalanceCents={baselineBalance}
+                isLoadingBaseline={isLoadingBaselineFinancials}
+              />
             </TabsContent>
           </Tabs>
 

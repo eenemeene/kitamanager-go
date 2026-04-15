@@ -27,7 +27,7 @@ import {
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { formatCurrency } from '@/lib/utils/formatting';
-import type { FundingComparisonChild } from '@/lib/api/types';
+import type { FundingComparisonChild, MismatchType } from '@/lib/api/types';
 
 function StatusBadge({
   status,
@@ -66,6 +66,61 @@ function StatusBadge({
         </Badge>
       );
   }
+}
+
+function MismatchTag({ mismatch, t }: { mismatch: MismatchType; t: (key: string) => string }) {
+  switch (mismatch) {
+    case 'missing':
+      return (
+        <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+          {t('mismatchMissing')}
+        </span>
+      );
+    case 'additional':
+      return (
+        <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+          {t('mismatchAdditional')}
+        </span>
+      );
+    case 'different':
+      return (
+        <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900 dark:text-red-200">
+          {t('mismatchDifferent')}
+        </span>
+      );
+  }
+}
+
+/** Summarize the mismatch reasons for a child's properties into a compact description. */
+function DifferenceReason({
+  comp,
+  t,
+}: {
+  comp: FundingComparisonChild;
+  t: (key: string, values?: Record<string, number>) => string;
+}) {
+  if (comp.status === 'bill_only') {
+    return <span className="text-muted-foreground text-xs">{t('mismatchReasonBillOnly')}</span>;
+  }
+  if (comp.status === 'calc_only') {
+    return <span className="text-muted-foreground text-xs">{t('mismatchReasonCalcOnly')}</span>;
+  }
+  if (comp.status !== 'difference' || !comp.properties?.length) return null;
+
+  const mismatchProps = comp.properties.filter((p) => p.mismatch);
+  const rateProps = comp.properties.filter((p) => !p.mismatch && p.difference !== 0);
+
+  const reasons: string[] = [];
+  if (mismatchProps.length > 0) {
+    reasons.push(t('mismatchCount', { count: mismatchProps.length }));
+  }
+  if (rateProps.length > 0) {
+    reasons.push(t('mismatchReasonRate'));
+  }
+
+  if (reasons.length === 0) return null;
+
+  return <span className="text-muted-foreground text-xs">{reasons.join(' + ')}</span>;
 }
 
 export default function GovernmentFundingBillDetailPage() {
@@ -387,7 +442,10 @@ export default function GovernmentFundingBillDetailPage() {
                             </span>
                           </TableCell>
                           <TableCell>
-                            <StatusBadge status={comp.status} t={t} />
+                            <div className="flex flex-col gap-1">
+                              <StatusBadge status={comp.status} t={t} />
+                              <DifferenceReason comp={comp} t={t} />
+                            </div>
                           </TableCell>
                         </>
                       )}
@@ -498,7 +556,12 @@ export default function GovernmentFundingBillDetailPage() {
                                     {comp.properties.map((prop) => (
                                       <TableRow key={`${prop.key}-${prop.value}`}>
                                         <TableCell className="text-sm">
-                                          {translateLabel(prop.key, prop.value, prop.label)}
+                                          <span className="flex items-center gap-2">
+                                            {translateLabel(prop.key, prop.value, prop.label)}
+                                            {prop.mismatch && (
+                                              <MismatchTag mismatch={prop.mismatch} t={t} />
+                                            )}
+                                          </span>
                                         </TableCell>
                                         <TableCell className="text-right text-sm">
                                           {prop.bill_amount != null

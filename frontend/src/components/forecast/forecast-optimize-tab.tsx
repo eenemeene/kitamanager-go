@@ -20,7 +20,15 @@ import { useUiStore } from '@/stores/ui-store';
 import { calculateContractEndDate } from '@/lib/utils/school-enrollment';
 import { formatDateForApi } from '@/lib/utils/formatting';
 
-export function ForecastOptimizeTab() {
+interface ForecastOptimizeTabProps {
+  baselineBalanceCents: number | null;
+  isLoadingBaseline: boolean;
+}
+
+export function ForecastOptimizeTab({
+  baselineBalanceCents,
+  isLoadingBaseline,
+}: ForecastOptimizeTabProps) {
   const params = useParams();
   const orgId = Number(params.orgId);
   const t = useTranslations();
@@ -38,6 +46,15 @@ export function ForecastOptimizeTab() {
   const [properties, setProperties] = useState<ScalarContractProperties | undefined>({
     care_type: 'ganztag',
   });
+
+  // Pre-fill target balance with baseline when baseline data first loads
+  const [hasPrefilledTarget, setHasPrefilledTarget] = useState(false);
+  useEffect(() => {
+    if (baselineBalanceCents != null && !hasPrefilledTarget) {
+      setTargetBalanceEur(Math.round(baselineBalanceCents / 100));
+      setHasPrefilledTarget(true);
+    }
+  }, [baselineBalanceCents, hasPrefilledTarget]);
 
   // Optimizer state
   const [isOptimizing, setIsOptimizing] = useState(false);
@@ -289,6 +306,20 @@ export function ForecastOptimizeTab() {
               value={targetBalanceEur}
               onChange={(e) => setTargetBalanceEur(Number(e.target.value) || 0)}
             />
+            {isLoadingBaseline ? (
+              <p className="text-muted-foreground text-xs">{t('common.loading')}</p>
+            ) : baselineBalanceCents != null ? (
+              <p
+                className={`text-xs ${baselineBalanceCents >= 0 ? 'text-green-600' : 'text-red-600'}`}
+              >
+                {t('statistics.forecastBaselineBalance', {
+                  amount: (baselineBalanceCents / 100).toLocaleString('de-DE', {
+                    style: 'currency',
+                    currency: 'EUR',
+                  }),
+                })}
+              </p>
+            ) : null}
           </div>
           <div className="space-y-1">
             <Label>{t('statistics.forecastOptimizeMaxPerSection')}</Label>

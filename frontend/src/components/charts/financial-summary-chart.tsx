@@ -28,25 +28,53 @@ export function FinancialSummaryChart({ data }: FinancialSummaryChartProps) {
   const xLabels = rawDates.map(formatDateLabel);
   const kitaYearBands = useMemo(() => buildKitaYearBands(rawDates), [rawDates]);
 
-  const { chartData, deltas } = useMemo(() => {
+  const { chartData, deltas, deficitInfo } = useMemo(() => {
     let cumulative = 0;
     let currentKitaYear = '';
     const points: BarDatum[] = [];
     const monthlyDeltas: number[] = [];
+    // Track the first deficit month per kita year
+    const deficits: { label: string; kitaYear: string }[] = [];
+    let inDeficit = false;
+
     data.data_points.forEach((dp) => {
       const ky = kitaYearLabel(dp.date);
       if (ky !== currentKitaYear) {
         cumulative = 0;
         currentKitaYear = ky;
+        inDeficit = false;
       }
       cumulative += dp.balance;
       monthlyDeltas.push(dp.balance);
+      const label = formatDateLabel(dp.date);
       points.push({
-        date: formatDateLabel(dp.date),
+        date: label,
         [balanceKey]: cumulative / 100,
       });
+
+      if (cumulative < 0 && !inDeficit) {
+        inDeficit = true;
+        deficits.push({ label, kitaYear: ky });
+      } else if (cumulative >= 0) {
+        inDeficit = false;
+      }
     });
-    return { chartData: points, deltas: monthlyDeltas };
+
+    // Count consecutive deficit months at the end of the data
+    let consecutiveDeficitMonths = 0;
+    for (let i = points.length - 1; i >= 0; i--) {
+      if ((points[i][balanceKey] as number) < 0) {
+        consecutiveDeficitMonths++;
+      } else {
+        break;
+      }
+    }
+
+    return {
+      chartData: points,
+      deltas: monthlyDeltas,
+      deficitInfo: { deficits, consecutiveDeficitMonths },
+    };
   }, [data, balanceKey]);
 
   const todayStr = toLocalDateString(new Date());
@@ -155,6 +183,47 @@ export function FinancialSummaryChart({ data }: FinancialSummaryChartProps) {
     };
   }, [kitaYearBands, xLabels, t]);
 
+  const DeficitMarkers = useMemo(() => {
+    return function DeficitMarkerLayer({ xScale, yScale }: BarCustomLayerProps<BarDatum>) {
+      const scale = xScale as unknown as BandScale;
+      const yFn = yScale as unknown as (v: number) => number;
+      const bw = scale.bandwidth();
+
+      return (
+        <g>
+          {deficitInfo.deficits.map((d) => {
+            const x = scale(d.label);
+            if (x === undefined) return null;
+            const cx = x + bw / 2;
+            const y0 = yFn(0);
+
+            return (
+              <g key={d.label}>
+                {/* Small triangle marker at the zero line */}
+                <polygon
+                  points={`${cx - 5},${y0 - 8} ${cx + 5},${y0 - 8} ${cx},${y0 - 2}`}
+                  fill="#ef4444"
+                  opacity={0.8}
+                />
+                {/* Label */}
+                <text
+                  x={cx}
+                  y={y0 - 12}
+                  textAnchor="middle"
+                  fontSize={10}
+                  fontWeight={600}
+                  fill="#ef4444"
+                >
+                  {t('statistics.deficitSince')}
+                </text>
+              </g>
+            );
+          })}
+        </g>
+      );
+    };
+  }, [deficitInfo.deficits, t]);
+
   const TodayMarker = useMemo(() => {
     return function TodayMarkerLayer({ xScale, innerHeight }: BarCustomLayerProps<BarDatum>) {
       const scale = xScale as unknown as BandScale;
@@ -182,111 +251,119 @@ export function FinancialSummaryChart({ data }: FinancialSummaryChartProps) {
   }, [todayLabel, t]);
 
   return (
-    <ExportableChart filename="financial-summary" className="h-[550px]">
-      <ResponsiveBar
-        data={chartData}
-        keys={[balanceKey]}
-        indexBy="date"
-        margin={{ top: 40, right: 30, bottom: 130, left: 90 }}
-        padding={0.3}
-        valueScale={{ type: 'linear', min: 'auto' }}
-        colors={({ data: d }) => ((d[balanceKey] as number) >= 0 ? '#22c55e' : '#ef4444')}
-        layers={[
-          KitaYearBackground,
-          'grid',
-          'axes',
-          'bars',
-          TodayMarker,
-          'markers',
-          'legends',
-          'annotations',
-        ]}
-        axisTop={null}
-        axisRight={null}
-        axisBottom={{
-          tickSize: 5,
-          tickPadding: 5,
-          tickRotation: -45,
-        }}
-        axisLeft={{
-          tickSize: 5,
-          tickPadding: 5,
-          tickRotation: 0,
-          format: (v) =>
-            Number(v).toLocaleString('de-DE', {
-              style: 'currency',
-              currency: 'EUR',
-              maximumFractionDigits: 0,
-            }),
-        }}
-        enableLabel={true}
-        label={(d) => formatEur((d.value as number) * 100)}
-        labelSkipWidth={50}
-        labelSkipHeight={16}
-        labelTextColor={{ from: 'color', modifiers: [['darker', 2]] }}
-        tooltip={({ indexValue, value, color }) => {
-          const idx = chartData.findIndex((d) => d.date === indexValue);
-          const delta = idx >= 0 ? deltas[idx] : 0;
-          return (
-            <div
-              style={{
-                background: 'hsl(var(--background))',
-                color: 'hsl(var(--foreground))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '6px',
-                padding: '9px 12px',
-                fontSize: 13,
-              }}
-            >
-              <strong>{indexValue}</strong>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                <span
-                  style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: '50%',
-                    background: color,
-                    display: 'inline-block',
-                  }}
-                />
-                {formatEur((value as number) * 100)}
-              </div>
-              {delta !== 0 && (
-                <div
-                  style={{
-                    marginTop: 4,
-                    color: delta > 0 ? '#22c55e' : '#ef4444',
-                    fontSize: 12,
-                  }}
-                >
-                  {delta > 0 ? '+' : ''}
-                  {formatEur(delta)} {t('statistics.monthlyChange')}
+    <div>
+      <ExportableChart filename="financial-summary" className="h-[550px]">
+        <ResponsiveBar
+          data={chartData}
+          keys={[balanceKey]}
+          indexBy="date"
+          margin={{ top: 40, right: 30, bottom: 130, left: 90 }}
+          padding={0.3}
+          valueScale={{ type: 'linear', min: 'auto' }}
+          colors={({ data: d }) => ((d[balanceKey] as number) >= 0 ? '#22c55e' : '#ef4444')}
+          layers={[
+            KitaYearBackground,
+            'grid',
+            'axes',
+            'bars',
+            DeficitMarkers,
+            TodayMarker,
+            'markers',
+            'legends',
+            'annotations',
+          ]}
+          axisTop={null}
+          axisRight={null}
+          axisBottom={{
+            tickSize: 5,
+            tickPadding: 5,
+            tickRotation: -45,
+          }}
+          axisLeft={{
+            tickSize: 5,
+            tickPadding: 5,
+            tickRotation: 0,
+            format: (v) =>
+              Number(v).toLocaleString('de-DE', {
+                style: 'currency',
+                currency: 'EUR',
+                maximumFractionDigits: 0,
+              }),
+          }}
+          enableLabel={true}
+          label={(d) => formatEur((d.value as number) * 100)}
+          labelSkipWidth={50}
+          labelSkipHeight={16}
+          labelTextColor={{ from: 'color', modifiers: [['darker', 2]] }}
+          tooltip={({ indexValue, value, color }) => {
+            const idx = chartData.findIndex((d) => d.date === indexValue);
+            const delta = idx >= 0 ? deltas[idx] : 0;
+            return (
+              <div
+                style={{
+                  background: 'hsl(var(--background))',
+                  color: 'hsl(var(--foreground))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '6px',
+                  padding: '9px 12px',
+                  fontSize: 13,
+                }}
+              >
+                <strong>{indexValue}</strong>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                  <span
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: '50%',
+                      background: color,
+                      display: 'inline-block',
+                    }}
+                  />
+                  {formatEur((value as number) * 100)}
                 </div>
-              )}
-            </div>
-          );
-        }}
-        legends={[
-          {
-            dataFrom: 'keys',
-            anchor: 'top',
-            direction: 'row',
-            justify: false,
-            translateX: 0,
-            translateY: -35,
-            itemsSpacing: 4,
-            itemDirection: 'left-to-right',
-            itemWidth: 200,
-            itemHeight: 20,
-            itemOpacity: 0.85,
-            symbolSize: 12,
-            symbolShape: 'circle',
-          },
-        ]}
-        role="application"
-        ariaLabel={t('statistics.financialSummary')}
-        theme={chartTheme}
-      />
-    </ExportableChart>
+                {delta !== 0 && (
+                  <div
+                    style={{
+                      marginTop: 4,
+                      color: delta > 0 ? '#22c55e' : '#ef4444',
+                      fontSize: 12,
+                    }}
+                  >
+                    {delta > 0 ? '+' : ''}
+                    {formatEur(delta)} {t('statistics.monthlyChange')}
+                  </div>
+                )}
+              </div>
+            );
+          }}
+          legends={[
+            {
+              dataFrom: 'keys',
+              anchor: 'top',
+              direction: 'row',
+              justify: false,
+              translateX: 0,
+              translateY: -35,
+              itemsSpacing: 4,
+              itemDirection: 'left-to-right',
+              itemWidth: 200,
+              itemHeight: 20,
+              itemOpacity: 0.85,
+              symbolSize: 12,
+              symbolShape: 'circle',
+            },
+          ]}
+          role="application"
+          ariaLabel={t('statistics.financialSummary')}
+          theme={chartTheme}
+        />
+      </ExportableChart>
+      {deficitInfo.consecutiveDeficitMonths > 0 && (
+        <p className="mt-2 text-center text-sm text-red-600 dark:text-red-400">
+          {t('statistics.deficitConsecutive', { count: deficitInfo.consecutiveDeficitMonths })}
+        </p>
+      )}
+    </div>
   );
 }
