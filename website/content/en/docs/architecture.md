@@ -60,6 +60,23 @@ Resources that belong to an organization use URL patterns:
 /api/v1/organizations/{orgId}/sections
 ```
 
+## Report Tool
+
+A standalone CLI tool (`tools/report-pdf/`) generates PDF reports by rendering the frontend's print pages via Playwright. It is **independent from the API and frontend** — it authenticates via HTTP and produces the same charts and tables users see in the browser.
+
+```mermaid
+graph LR
+    Report[report-pdf Tool] -->|Login| API
+    Report -->|Render print pages| UI
+    Report -->|Send email| SMTP[SMTP Server]
+```
+
+The tool supports two modes:
+- **One-shot**: Generate PDFs from the command line
+- **Scheduled**: Run as a long-lived service, sending reports via email on a weekly or monthly schedule (configured via YAML file)
+
+Reports are merged into a single PDF containing children, occupancy, staffing, and financials sections.
+
 ## Data Flow
 
 1. **Request** arrives at Gin router

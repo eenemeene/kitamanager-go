@@ -70,7 +70,7 @@ func ParseArgs(args []string) (*Config, error) {
 	}
 
 	if reports == "all" {
-		cfg.Reports = []string{"staffing", "financials", "occupancy", "children"}
+		cfg.Reports = []string{"children", "occupancy", "staffing", "financials"}
 	} else {
 		for _, r := range strings.Split(reports, ",") {
 			r = strings.TrimSpace(r)
