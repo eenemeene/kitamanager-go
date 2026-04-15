@@ -37,7 +37,7 @@ test.describe('Form Validation Errors', () => {
     page,
   }) => {
     await page.goto('/organizations');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     // Open create dialog
     await page.getByRole('button', { name: /new organization/i }).click();
@@ -52,7 +52,7 @@ test.describe('Form Validation Errors', () => {
 
   test('should show validation error for invalid employee data', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/employees`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     // Open create dialog
     await page.getByRole('button', { name: /new employee/i }).click();
@@ -67,7 +67,7 @@ test.describe('Form Validation Errors', () => {
 
   test('should show validation error for invalid child data', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/children`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     // Open create dialog
     await page.getByRole('button', { name: /new child/i }).click();
@@ -139,7 +139,7 @@ test.describe('Not Found Scenarios', () => {
 
   test('should handle non-existent organization gracefully', async ({ page }) => {
     await page.goto('/organizations/99999/employees');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     const bodyText = await page.locator('body').textContent();
     expect(bodyText).toBeTruthy();
@@ -152,7 +152,7 @@ test.describe('Not Found Scenarios', () => {
 
   test('should handle non-existent employee gracefully', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/employees/99999/contracts`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     await expect(page.getByText(/TypeError|ReferenceError|Cannot read/i)).not.toBeVisible({
       timeout: 3000,
@@ -161,7 +161,7 @@ test.describe('Not Found Scenarios', () => {
 
   test('should handle non-existent child gracefully', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/children/99999/contracts`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     await expect(page.getByText(/TypeError|ReferenceError|Cannot read/i)).not.toBeVisible({
       timeout: 3000,
@@ -178,7 +178,7 @@ test.describe('Duplicate Resource Errors', () => {
 
     try {
       await page.goto('/organizations');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       await page.getByRole('button', { name: /new organization/i }).click();
       await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });

@@ -32,7 +32,7 @@ test.describe('Budget Items', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto(`/organizations/${orgId}/budget-items`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
   });
 
   test('should display budget items list', async ({ page }) => {
@@ -73,7 +73,7 @@ test.describe('Budget Items', () => {
     });
 
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     await expect(page.getByText(origName)).toBeVisible({ timeout: 10000 });
 
     const row = page.getByRole('row').filter({ hasText: origName });
@@ -100,7 +100,7 @@ test.describe('Budget Items', () => {
     });
 
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     await expect(page.getByText(itemName)).toBeVisible({ timeout: 10000 });
 
     const row = page.getByRole('row').filter({ hasText: itemName });

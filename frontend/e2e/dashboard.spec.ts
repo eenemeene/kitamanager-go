@@ -11,7 +11,7 @@ test.describe('Dashboard', () => {
     const org = await getFirstOrganization(page);
     orgId = org.id;
     await page.goto(`/organizations/${orgId}/dashboard`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
   });
 
   test('should display dashboard heading', async ({ page }) => {

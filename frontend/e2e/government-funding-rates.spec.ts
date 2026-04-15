@@ -28,7 +28,7 @@ test.describe('Government Fundings', () => {
     test.beforeEach(async ({ page }) => {
       await login(page);
       await page.goto('/government-funding-rates');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
     });
 
     test('should display government fundings list', async ({ page }) => {
@@ -52,7 +52,7 @@ test.describe('Government Fundings', () => {
 
       // Reload page after deleting existing funding
       await page.reload();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       // Click "New Government Funding" button
       await page.getByRole('button', { name: /new government funding/i }).click();
@@ -140,7 +140,7 @@ test.describe('Government Fundings', () => {
 
       // Reload to see it
       await page.reload();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
       await expect(page.getByText(fundingName)).toBeVisible({ timeout: 10000 });
 
       // Click delete button on the funding's row
@@ -189,7 +189,7 @@ test.describe('Government Fundings', () => {
     test('should display funding detail page', async ({ page }) => {
       await login(page);
       await page.goto(`/government-funding-rates/${fundingId}`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       // Verify heading shows funding name
       await expect(page.getByRole('heading', { name: fundingName })).toBeVisible({
@@ -200,7 +200,7 @@ test.describe('Government Fundings', () => {
     test('should create a period via UI', async ({ page }) => {
       await login(page);
       await page.goto(`/government-funding-rates/${fundingId}`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       // Click "Add Period" button
       await page.getByRole('button', { name: /add.*period/i }).click();
@@ -224,7 +224,7 @@ test.describe('Government Fundings', () => {
     test('should create a property within a period via UI', async ({ page }) => {
       await login(page);
       await page.goto(`/government-funding-rates/${fundingId}`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       // Wait for the test period to be visible
       await expect(page.getByText('E2E test period')).toBeVisible({ timeout: 10000 });
@@ -257,7 +257,7 @@ test.describe('Government Fundings', () => {
     test('should delete a property via UI', async ({ page }) => {
       await login(page);
       await page.goto(`/government-funding-rates/${fundingId}`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       // Wait for the test property to be visible (label is shown instead of raw value)
       await expect(page.getByText('E2E Test', { exact: true })).toBeVisible({ timeout: 10000 });
@@ -280,7 +280,7 @@ test.describe('Government Fundings', () => {
     test('should delete a period via UI', async ({ page }) => {
       await login(page);
       await page.goto(`/government-funding-rates/${fundingId}`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       // Wait for the test period to be visible
       await expect(page.getByText('E2E test period')).toBeVisible({ timeout: 10000 });

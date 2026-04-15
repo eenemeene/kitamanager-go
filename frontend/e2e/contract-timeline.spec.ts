@@ -64,7 +64,7 @@ test.describe('Child Contract Timeline', () => {
       });
 
       await page.goto(`/organizations/${orgId}/children/${child.id}/contracts`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       // Click Timeline tab
       await page.getByRole('tab', { name: /Timeline/i }).click();
@@ -98,7 +98,7 @@ test.describe('Child Contract Timeline', () => {
       });
 
       await page.goto(`/organizations/${orgId}/children/${child.id}/contracts`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       await page.getByRole('tab', { name: /Timeline/i }).click();
       await expect(page.getByTestId('contract-timeline')).toBeVisible({ timeout: 5000 });
@@ -132,7 +132,7 @@ test.describe('Child Contract Timeline', () => {
       });
 
       await page.goto(`/organizations/${orgId}/children/${child.id}/contracts`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       await page.getByRole('tab', { name: /Timeline/i }).click();
       await expect(page.getByTestId('contract-timeline')).toBeVisible({ timeout: 5000 });
@@ -168,7 +168,7 @@ test.describe('Child Contract Timeline', () => {
       });
 
       await page.goto(`/organizations/${orgId}/children/${child.id}/contracts`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       await page.getByRole('tab', { name: /Timeline/i }).click();
       await expect(page.getByTestId('boundary-handle')).toBeVisible({ timeout: 5000 });
@@ -183,7 +183,7 @@ test.describe('Child Contract Timeline', () => {
       await page.getByRole('gridcell', { name: '15' }).first().click();
 
       // Wait for the batch update to complete
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       // Switch to Table tab and verify dates changed — both rows should still exist
       await page.getByRole('tab', { name: /Table/i }).click();
@@ -215,7 +215,7 @@ test.describe('Child Contract Timeline', () => {
       });
 
       await page.goto(`/organizations/${orgId}/children/${child.id}/contracts`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       await page.getByRole('tab', { name: /Timeline/i }).click();
       await expect(page.getByTestId('boundary-handle')).toBeVisible({ timeout: 5000 });
@@ -251,7 +251,7 @@ test.describe('Child Contract Timeline', () => {
 
     try {
       await page.goto(`/organizations/${orgId}/children/${child.id}/contracts`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       await page.getByRole('tab', { name: /Timeline/i }).click();
       await expect(page.getByTestId('timeline-empty')).toBeVisible({ timeout: 5000 });
@@ -277,7 +277,7 @@ test.describe('Child Contract Timeline', () => {
       });
 
       await page.goto(`/organizations/${orgId}/children/${child.id}/contracts`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       await page.getByRole('tab', { name: /Timeline/i }).click();
       await expect(page.getByTestId('contract-timeline')).toBeVisible({ timeout: 5000 });
@@ -317,7 +317,7 @@ test.describe('Child Contract Timeline', () => {
       });
 
       await page.goto(`/organizations/${orgId}/children/${child.id}/contracts`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       await page.getByRole('tab', { name: /Timeline/i }).click();
       await expect(page.getByTestId('contract-timeline')).toBeVisible({ timeout: 5000 });
@@ -350,7 +350,7 @@ test.describe('Child Contract Timeline', () => {
       });
 
       await page.goto(`/organizations/${orgId}/children/${child.id}/contracts`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       // Table tab should show 2 rows
       const tableRows = page.locator('table tbody tr');
@@ -401,7 +401,7 @@ test.describe('Employee Contract Timeline', () => {
       });
 
       await page.goto(`/organizations/${orgId}/employees/${employee.id}/contracts`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       await page.getByRole('tab', { name: /Timeline/i }).click();
       await expect(page.getByTestId('contract-timeline')).toBeVisible({ timeout: 5000 });

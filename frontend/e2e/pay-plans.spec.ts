@@ -32,7 +32,7 @@ test.describe('Pay Plans', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto(`/organizations/${orgId}/payplans`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
   });
 
   test('should display pay plans list', async ({ page }) => {
@@ -63,7 +63,7 @@ test.describe('Pay Plans', () => {
     const plan = await createPayPlanViaApi(page, orgId, origName);
 
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     await expect(page.getByText(origName)).toBeVisible({ timeout: 10000 });
 
     const row = page.getByRole('row').filter({ hasText: origName });
@@ -87,7 +87,7 @@ test.describe('Pay Plans', () => {
     await createPayPlanViaApi(page, orgId, planName);
 
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     await expect(page.getByText(planName)).toBeVisible({ timeout: 10000 });
 
     const row = page.getByRole('row').filter({ hasText: planName });

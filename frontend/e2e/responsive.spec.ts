@@ -13,7 +13,7 @@ test.describe('Responsive Layout - Mobile', () => {
 
   test('should display children table with reduced columns on mobile', async ({ page }) => {
     // Navigate to children page
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     // Open mobile sidebar to navigate
     const hamburger = page.getByRole('button', { name: /menu/i });
@@ -28,7 +28,7 @@ test.describe('Responsive Layout - Mobile', () => {
     await expect(childrenLink).toBeVisible();
     await childrenLink.click();
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     // Name and Actions columns should be visible
     const nameHeader = page.getByRole('columnheader', { name: /name/i });
@@ -41,7 +41,7 @@ test.describe('Responsive Layout - Mobile', () => {
 
   test('should stack filter bar on mobile', async ({ page }) => {
     // Navigate to children page
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     const hamburger = page.getByRole('button', { name: /menu/i });
     await expect(hamburger).toBeVisible({ timeout: 10000 });
@@ -54,7 +54,7 @@ test.describe('Responsive Layout - Mobile', () => {
     await expect(childrenLink).toBeVisible();
     await childrenLink.click();
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     // Filter controls should be visible and wrapped (flex-wrap)
     const filterBar = page.locator('.flex.flex-wrap.items-center').first();
@@ -71,13 +71,13 @@ test.describe('Responsive Layout - Desktop', () => {
 
   test('should show full table columns on desktop', async ({ page }) => {
     // Navigate to children page via sidebar
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     const childrenLink = page.getByRole('link', { name: /children/i }).first();
     await expect(childrenLink).toBeVisible({ timeout: 10000 });
     await childrenLink.click();
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     // All columns should be visible on desktop
     const nameHeader = page.getByRole('columnheader', { name: /name/i });

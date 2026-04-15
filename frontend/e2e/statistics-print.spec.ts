@@ -14,7 +14,7 @@ test.describe('Statistics Print Pages', () => {
 
   test('staffing print page renders without sidebar', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/statistics/staffing/print`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     // Verify heading
     await expect(page.getByRole('heading', { name: /staffing/i }).first()).toBeVisible();

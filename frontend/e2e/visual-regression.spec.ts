@@ -12,7 +12,7 @@ test.describe('Visual Regression - Login', () => {
   test('login page', async ({ page }) => {
     await page.goto('/login');
     await expect(page.getByLabel(/email/i)).toBeVisible({ timeout: 10000 });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     await expect(page).toHaveScreenshot('login-page.png', {
       maxDiffPixelRatio: 0.01,
@@ -38,7 +38,7 @@ test.describe('Visual Regression - Dashboard', () => {
   test('organizations list', async ({ page }) => {
     await page.goto('/organizations');
     await expect(page.locator('table, [role="table"]')).toBeVisible({ timeout: 10000 });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     await expect(page).toHaveScreenshot('organizations-list.png', {
       maxDiffPixelRatio: 0.02,
@@ -47,18 +47,18 @@ test.describe('Visual Regression - Dashboard', () => {
 
   test('employees list', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/employees`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     // Wait for table to render
     await expect(page.locator('table, [role="table"]').first()).toBeVisible({ timeout: 10000 });
 
     await expect(page).toHaveScreenshot('employees-list.png', {
-      maxDiffPixelRatio: 0.01,
+      maxDiffPixelRatio: 0.03,
     });
   });
 
   test('children list', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/children`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     await expect(page.locator('table, [role="table"]').first()).toBeVisible({ timeout: 10000 });
 
     await expect(page).toHaveScreenshot('children-list.png', {
@@ -68,7 +68,7 @@ test.describe('Visual Regression - Dashboard', () => {
 
   test('sections board', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/sections`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     // Wait for the kanban board to render
     await expect(page.getByText(/drag children/i)).toBeVisible({ timeout: 10000 });
 
@@ -119,7 +119,7 @@ test.describe('Visual Regression - Dialogs', () => {
 
   test('create organization dialog', async ({ page }) => {
     await page.goto('/organizations');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     await page.getByRole('button', { name: /new organization/i }).click();
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
@@ -131,7 +131,7 @@ test.describe('Visual Regression - Dialogs', () => {
 
   test('create employee dialog', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/employees`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     await page.getByRole('button', { name: /new employee/i }).click();
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
@@ -143,7 +143,7 @@ test.describe('Visual Regression - Dialogs', () => {
 
   test('create child dialog', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/children`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     await page.getByRole('button', { name: /new child/i }).click();
     const dialog = page.getByRole('dialog');

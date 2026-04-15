@@ -76,7 +76,7 @@ test.describe('Organizations', () => {
 
     // Refresh page
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     // Should appear in list
     await expect(page.getByText(orgName)).toBeVisible({ timeout: 10000 });
@@ -99,7 +99,7 @@ test.describe('Organizations', () => {
 
     // Reload to see the organization
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     await expect(page.getByText(origName)).toBeVisible({ timeout: 10000 });
 
     // Click edit button on the organization's row
@@ -134,7 +134,7 @@ test.describe('Organizations', () => {
 
     // Reload to see the organization
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     await expect(page.getByText(orgName)).toBeVisible({ timeout: 10000 });
 
     // Click delete button on the organization's row

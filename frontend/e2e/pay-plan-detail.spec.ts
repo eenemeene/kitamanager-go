@@ -47,7 +47,7 @@ test.describe('Pay Plan Detail', () => {
   test('should display pay plan detail page', async ({ page }) => {
     await login(page);
     await page.goto(`/organizations/${orgId}/payplans/${payPlanId}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     await expect(page.getByRole('heading', { name: payPlanName })).toBeVisible({
       timeout: 10000,
@@ -60,7 +60,7 @@ test.describe('Pay Plan Detail', () => {
   test('should create a period via UI', async ({ page }) => {
     await login(page);
     await page.goto(`/organizations/${orgId}/payplans/${payPlanId}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     await switchToPanelsView(page);
 
@@ -82,7 +82,7 @@ test.describe('Pay Plan Detail', () => {
   test('should edit a period via UI', async ({ page }) => {
     await login(page);
     await page.goto(`/organizations/${orgId}/payplans/${payPlanId}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     await switchToPanelsView(page);
     await expect(page.getByRole('button', { name: /add.*entry/i })).toBeVisible({
@@ -107,7 +107,7 @@ test.describe('Pay Plan Detail', () => {
   test('should create an entry within a period via UI', async ({ page }) => {
     await login(page);
     await page.goto(`/organizations/${orgId}/payplans/${payPlanId}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     await switchToPanelsView(page);
     await expect(page.getByRole('button', { name: /add.*entry/i })).toBeVisible({
@@ -131,7 +131,7 @@ test.describe('Pay Plan Detail', () => {
   test('should delete an entry via UI', async ({ page }) => {
     await login(page);
     await page.goto(`/organizations/${orgId}/payplans/${payPlanId}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     await switchToPanelsView(page);
 
@@ -149,7 +149,7 @@ test.describe('Pay Plan Detail', () => {
   test('should delete a period via UI', async ({ page }) => {
     await login(page);
     await page.goto(`/organizations/${orgId}/payplans/${payPlanId}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     await switchToPanelsView(page);
     await expect(page.getByRole('button', { name: /add.*entry/i })).toBeVisible({
@@ -171,7 +171,7 @@ test.describe('Pay Plan Detail', () => {
   test('should toggle between panels and table view', async ({ page }) => {
     await login(page);
     await page.goto(`/organizations/${orgId}/payplans/${payPlanId}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     await page.getByRole('button', { name: /panels/i }).click();
     await expect(page.getByRole('button', { name: /add.*period/i })).toBeVisible({
