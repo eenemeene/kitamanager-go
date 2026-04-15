@@ -67,7 +67,7 @@ test.describe('Child Contracts - CRUD Operations', () => {
 
     try {
       await page.goto(`/organizations/${orgId}/children/${child.id}/contracts`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       await expect(page.getByText(/No contracts found/i).first()).toBeVisible({
         timeout: 10000,
@@ -112,7 +112,7 @@ test.describe('Child Contracts - CRUD Operations', () => {
 
     try {
       await page.goto(`/organizations/${orgId}/children/${child.id}/contracts`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       await page.getByRole('button', { name: /New Contract/i }).click();
       await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
@@ -164,7 +164,7 @@ test.describe('Child Contracts - CRUD Operations', () => {
 
     try {
       await page.goto(`/organizations/${orgId}/children/${child.id}/contracts`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       const contractRow = page.locator('tbody tr').first();
       await expect(contractRow).toBeVisible({ timeout: 10000 });
@@ -202,7 +202,7 @@ test.describe('Child Contracts - CRUD Operations', () => {
 
     try {
       await page.goto(`/organizations/${orgId}/children/${child.id}/contracts`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       await expect(page.getByText(/Half-Day/i)).toBeVisible({ timeout: 10000 });
 
@@ -245,10 +245,10 @@ test.describe('Child Contract Workflow - create child, add contract, move sectio
 
     try {
       await page.goto(`/organizations/${orgId}/children`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       await page.getByPlaceholder(/Search/i).fill(childName);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       await expect(page.getByText(childName)).toBeVisible({ timeout: 10000 });
 
@@ -274,7 +274,7 @@ test.describe('Child Contract Workflow - create child, add contract, move sectio
       );
 
       await page.goto(`/organizations/${orgId}/children/${child.id}/contracts`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       const contractRows = page.locator('tbody tr');
       await expect(contractRows).toHaveCount(2, { timeout: 10000 });
@@ -298,7 +298,7 @@ test.describe('Employee Contracts - CRUD Operations', () => {
 
     try {
       await page.goto(`/organizations/${orgId}/employees/${employee.id}/contracts`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       await expect(page.getByText(/No contracts found/i).first()).toBeVisible({
         timeout: 10000,
@@ -355,7 +355,7 @@ test.describe('Employee Contracts - CRUD Operations', () => {
 
     try {
       await page.goto(`/organizations/${orgId}/employees/${employee.id}/contracts`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       const contractRow = page.locator('tbody tr').first();
       await expect(contractRow).toBeVisible({ timeout: 10000 });
@@ -401,7 +401,7 @@ test.describe('Employee Contracts - CRUD Operations', () => {
 
     try {
       await page.goto(`/organizations/${orgId}/employees/${employee.id}/contracts`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
 
       await expect(page.getByText(/Supplementary Staff/i)).toBeVisible({ timeout: 10000 });
 

@@ -39,7 +39,7 @@ test.describe('Employees', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto(`/organizations/${orgId}/employees`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
   });
 
   test('should display employees list', async ({ page }) => {
@@ -97,7 +97,7 @@ test.describe('Employees', () => {
 
     // Reload and search for the employee
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     await page.getByRole('textbox', { name: /search/i }).fill(origFirst);
     await expect(page.getByText(origFirst)).toBeVisible({ timeout: 10000 });
 
@@ -142,7 +142,7 @@ test.describe('Employees', () => {
 
     // Reload and search for the employee
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     await page.getByRole('textbox', { name: /search/i }).fill(firstName);
     await expect(page.getByText(firstName)).toBeVisible({ timeout: 10000 });
 

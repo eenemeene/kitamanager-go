@@ -6,7 +6,7 @@ test.use({ locale: 'en-US' });
 
 /** Open the mobile sidebar if the viewport is narrow (hamburger menu visible). */
 async function ensureSidebarVisible(page: Page) {
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('load');
   const hamburger = page.getByRole('button', { name: /menu/i });
   const isHamburgerVisible = await hamburger.isVisible().catch(() => false);
   if (isHamburgerVisible) {
@@ -27,7 +27,7 @@ test.describe('Navigation', () => {
   });
 
   test('should navigate to organizations page', async ({ page }) => {
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     await ensureSidebarVisible(page);
 
     const link = page.getByRole('link', { name: /organization/i }).first();
@@ -39,7 +39,7 @@ test.describe('Navigation', () => {
   });
 
   test('should navigate to government fundings page', async ({ page }) => {
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     await ensureSidebarVisible(page);
 
     const link = page.getByRole('link', { name: /government funding/i }).first();
@@ -82,7 +82,7 @@ test.describe('Mobile Navigation', () => {
   });
 
   test('should open and close mobile sidebar', async ({ page }) => {
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     // Open sidebar via hamburger
     const hamburger = page.getByRole('button', { name: /menu/i });
@@ -102,7 +102,7 @@ test.describe('Mobile Navigation', () => {
   });
 
   test('should navigate via mobile sidebar', async ({ page }) => {
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     // Open sidebar
     const hamburger = page.getByRole('button', { name: /menu/i });

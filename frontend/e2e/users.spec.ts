@@ -32,7 +32,7 @@ test.describe('Users', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto(`/organizations/${orgId}/users`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
   });
 
   test('should display users list', async ({ page }) => {
@@ -73,7 +73,7 @@ test.describe('Users', () => {
     });
 
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     await expect(page.getByText(origName)).toBeVisible({ timeout: 10000 });
 
     const row = page.getByRole('row').filter({ hasText: origName });
@@ -105,7 +105,7 @@ test.describe('Users', () => {
     });
 
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     await expect(page.getByText(userName)).toBeVisible({ timeout: 10000 });
 
     const row = page.getByRole('row').filter({ hasText: userName });

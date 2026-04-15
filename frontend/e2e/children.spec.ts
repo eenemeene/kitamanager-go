@@ -31,7 +31,7 @@ test.describe('Children', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto(`/organizations/${orgId}/children`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
   });
 
   test('should display children list', async ({ page }) => {
@@ -97,7 +97,7 @@ test.describe('Children', () => {
 
     // Reload and search for the child
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     await page.getByRole('textbox', { name: /search/i }).fill(origFirst);
     await expect(page.getByText(origFirst)).toBeVisible({ timeout: 10000 });
 
@@ -142,7 +142,7 @@ test.describe('Children', () => {
 
     // Reload and search for the child
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     await page.getByRole('textbox', { name: /search/i }).fill(firstName);
     await expect(page.getByText(firstName)).toBeVisible({ timeout: 10000 });
 

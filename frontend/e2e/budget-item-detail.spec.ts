@@ -42,7 +42,7 @@ test.describe('Budget Item Detail', () => {
   test('should display budget item detail page', async ({ page }) => {
     await login(page);
     await page.goto(`/organizations/${orgId}/budget-items/${budgetItemId}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     await expect(page.getByRole('heading', { name: budgetItemName })).toBeVisible({
       timeout: 10000,
@@ -54,7 +54,7 @@ test.describe('Budget Item Detail', () => {
   test('should create an entry via UI', async ({ page }) => {
     await login(page);
     await page.goto(`/organizations/${orgId}/budget-items/${budgetItemId}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     await page.getByRole('button', { name: /add.*entry/i }).click();
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
@@ -72,7 +72,7 @@ test.describe('Budget Item Detail', () => {
   test('should edit an entry via UI', async ({ page }) => {
     await login(page);
     await page.goto(`/organizations/${orgId}/budget-items/${budgetItemId}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     await expect(page.getByText('Test entry notes')).toBeVisible({ timeout: 10000 });
 
@@ -93,7 +93,7 @@ test.describe('Budget Item Detail', () => {
   test('should delete an entry via UI', async ({ page }) => {
     await login(page);
     await page.goto(`/organizations/${orgId}/budget-items/${budgetItemId}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     await expect(page.getByText('Updated entry notes')).toBeVisible({ timeout: 10000 });
 

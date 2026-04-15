@@ -45,7 +45,7 @@ test.describe('Sections', () => {
 
   test('should display sections board', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/sections`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     // Board tab should be active by default and show drag hint
     await expect(page.getByText(/drag children/i)).toBeVisible({ timeout: 10000 });
@@ -53,7 +53,7 @@ test.describe('Sections', () => {
 
   test('should switch to Manage tab and create a section', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/sections`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     // Switch to Manage tab
     await page.getByRole('tab', { name: /manage/i }).click({ force: true });
@@ -88,7 +88,7 @@ test.describe('Sections', () => {
     const section = await createSectionViaApi(page, orgId, sectionName);
 
     await page.goto(`/organizations/${orgId}/sections`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     // Switch to Manage tab
     await page.getByRole('tab', { name: /manage/i }).click({ force: true });
@@ -114,7 +114,7 @@ test.describe('Sections', () => {
     const section = await createSectionViaApi(page, orgId, origName);
 
     await page.goto(`/organizations/${orgId}/sections`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     // Switch to Manage tab
     await page.getByRole('tab', { name: /manage/i }).click({ force: true });
@@ -167,7 +167,7 @@ test.describe('Sections', () => {
     });
 
     await page.goto(`/organizations/${orgId}/sections`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     // Should see section column and child
     await expect(page.getByText(sectionName)).toBeVisible({ timeout: 10000 });
