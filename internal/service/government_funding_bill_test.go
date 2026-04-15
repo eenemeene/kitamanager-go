@@ -6569,3 +6569,283 @@ func TestAssignVoucher_RemovesFromWithoutVouchersList(t *testing.T) {
 		t.Errorf("expected 0 children without voucher after assign, got %d", len(after))
 	}
 }
+
+// ============================================================
+// BuildComparisonSummary — pure function tests (no DB needed)
+// ============================================================
+
+func uintPtr(v uint) *uint { return &v }
+
+func TestBuildComparisonSummary_Empty(t *testing.T) {
+	s := BuildComparisonSummary(nil)
+	if s.MonthCount != 0 {
+		t.Errorf("expected 0 months, got %d", s.MonthCount)
+	}
+	if len(s.Categories) != 0 {
+		t.Errorf("expected 0 categories, got %d", len(s.Categories))
+	}
+	if len(s.Issues) != 0 {
+		t.Errorf("expected 0 issues, got %d", len(s.Issues))
+	}
+}
+
+func TestBuildComparisonSummary_InvariantCategorySumEqualsDifference(t *testing.T) {
+	// Response-level totals must match sum of children's amounts for invariant to hold.
+	// Children: matched(bill=100000,calc=105000) + bill_only(80000) + calc_only(75000) + match(320000,320000)
+	// → BillTotal = 100000+80000+0+320000 = 500000
+	// → CalcTotal = 105000+0+75000+320000 = 500000
+	comparisons := []models.FundingComparisonResponse{
+		{
+			BillFrom:        "2025-01-01",
+			BillTotal:       500000,
+			CalcTotal:       500000,
+			CorrectionTotal: 10000,
+			Children: []models.FundingComparisonChild{
+				{
+					VoucherNumber: "V-1",
+					ChildName:     "Matched, Child",
+					ChildID:       uintPtr(1),
+					Status:        "difference",
+					BillTotal:     100000,
+					CalcTotal:     intPtr(105000),
+					Properties: []models.FundingComparisonAmount{
+						{Key: "care_type", Value: "ganztag", Difference: -3000},                                           // rate diff
+						{Key: "integration", Value: "integration a", Difference: -2000, Mismatch: models.MismatchMissing}, // mismatch
+					},
+				},
+				{
+					VoucherNumber: "V-2",
+					ChildName:     "Bill, Only",
+					Status:        "bill_only",
+					BillTotal:     80000,
+				},
+				{
+					VoucherNumber: "V-3",
+					ChildName:     "Calc, Only",
+					ChildID:       uintPtr(3),
+					Status:        "calc_only",
+					CalcTotal:     intPtr(75000),
+				},
+				{
+					VoucherNumber: "V-4",
+					ChildName:     "Perfect, Match",
+					ChildID:       uintPtr(4),
+					Status:        "match",
+					BillTotal:     320000,
+					CalcTotal:     intPtr(320000),
+				},
+			},
+		},
+	}
+
+	s := BuildComparisonSummary(comparisons)
+
+	// Invariant: sum of category amounts == total_difference
+	catSum := 0
+	for _, c := range s.Categories {
+		catSum += c.TotalAmount
+	}
+	if catSum != s.TotalDifference {
+		t.Errorf("invariant broken: sum(categories)=%d != total_difference=%d", catSum, s.TotalDifference)
+	}
+	// rate_diff(-3000) + mismatch(-2000) + bill_only(+80000) + calc_only(-75000) = 0
+	if s.TotalDifference != 0 {
+		t.Errorf("expected total_difference 0, got %d", s.TotalDifference)
+	}
+	if s.TotalCorrections != 10000 {
+		t.Errorf("expected total_corrections 10000, got %d", s.TotalCorrections)
+	}
+
+	// Verify individual categories
+	catMap := make(map[string]int)
+	for _, c := range s.Categories {
+		catMap[c.Category] = c.TotalAmount
+	}
+	if catMap["rate_difference"] != -3000 {
+		t.Errorf("expected rate_difference -3000, got %d", catMap["rate_difference"])
+	}
+	if catMap["property_mismatch"] != -2000 {
+		t.Errorf("expected property_mismatch -2000, got %d", catMap["property_mismatch"])
+	}
+	if catMap["bill_only"] != 80000 {
+		t.Errorf("expected bill_only 80000, got %d", catMap["bill_only"])
+	}
+	if catMap["calc_only"] != -75000 {
+		t.Errorf("expected calc_only -75000, got %d", catMap["calc_only"])
+	}
+}
+
+func TestBuildComparisonSummary_DeduplicatesByChildID(t *testing.T) {
+	// Same child_id=1, two different vouchers, same missing property across 2 months
+	comparisons := []models.FundingComparisonResponse{
+		{
+			BillFrom:  "2025-01-01",
+			BillTotal: 100000,
+			CalcTotal: 110000,
+			Children: []models.FundingComparisonChild{
+				{
+					VoucherNumber: "V-OLD",
+					ChildName:     "Doe,Jane",
+					ChildID:       uintPtr(1),
+					Status:        "difference",
+					BillTotal:     100000,
+					CalcTotal:     intPtr(110000),
+					Properties: []models.FundingComparisonAmount{
+						{Key: "integration", Value: "integration b", Difference: -10000, Mismatch: models.MismatchMissing},
+					},
+				},
+			},
+		},
+		{
+			BillFrom:  "2025-02-01",
+			BillTotal: 100000,
+			CalcTotal: 110000,
+			Children: []models.FundingComparisonChild{
+				{
+					VoucherNumber: "V-NEW",
+					ChildName:     "Doe, Jane",
+					ChildID:       uintPtr(1),
+					Status:        "difference",
+					BillTotal:     100000,
+					CalcTotal:     intPtr(110000),
+					Properties: []models.FundingComparisonAmount{
+						{Key: "integration", Value: "integration b", Difference: -10000, Mismatch: models.MismatchMissing},
+					},
+				},
+			},
+		},
+	}
+
+	s := BuildComparisonSummary(comparisons)
+
+	// Should be 1 issue (deduped by child_id), not 2
+	mismatchIssues := 0
+	for _, issue := range s.Issues {
+		if issue.Category == "property_mismatch" {
+			mismatchIssues++
+			if issue.MonthCount != 2 {
+				t.Errorf("expected 2 months, got %d", issue.MonthCount)
+			}
+			if issue.TotalAmount != -20000 {
+				t.Errorf("expected total -20000, got %d", issue.TotalAmount)
+			}
+		}
+	}
+	if mismatchIssues != 1 {
+		t.Errorf("expected 1 deduped mismatch issue, got %d", mismatchIssues)
+	}
+}
+
+func TestBuildComparisonSummary_FiltersZeroAmountIssues(t *testing.T) {
+	// "different" mismatch where bill-side and calc-side amounts cancel out
+	comparisons := []models.FundingComparisonResponse{
+		{
+			BillFrom:  "2025-01-01",
+			BillTotal: 100000,
+			CalcTotal: 100000,
+			Children: []models.FundingComparisonChild{
+				{
+					VoucherNumber: "V-1",
+					ChildName:     "Zero, Impact",
+					ChildID:       uintPtr(1),
+					Status:        "difference",
+					BillTotal:     100000,
+					CalcTotal:     intPtr(100000),
+					Properties: []models.FundingComparisonAmount{
+						{Key: "integration", Value: "integration", BillAmount: intPtr(50000), Difference: 50000, Mismatch: models.MismatchDifferent},
+						{Key: "integration", Value: "integration a", CalcAmount: intPtr(50000), Difference: -50000, Mismatch: models.MismatchDifferent},
+					},
+				},
+			},
+		},
+	}
+
+	s := BuildComparisonSummary(comparisons)
+
+	if len(s.Issues) != 0 {
+		t.Errorf("expected 0 issues (zero-amount filtered), got %d", len(s.Issues))
+	}
+}
+
+func TestBuildComparisonSummary_SortsByChildImpactThenIssueImpact(t *testing.T) {
+	comparisons := []models.FundingComparisonResponse{
+		{
+			BillFrom:  "2025-01-01",
+			BillTotal: 0,
+			CalcTotal: 350000,
+			Children: []models.FundingComparisonChild{
+				{
+					VoucherNumber: "V-SMALL",
+					ChildName:     "Small, Impact",
+					ChildID:       uintPtr(1),
+					Status:        "difference",
+					Properties: []models.FundingComparisonAmount{
+						{Key: "care_type", Value: "ganztag", Difference: -1000, Mismatch: models.MismatchMissing},
+					},
+				},
+				{
+					VoucherNumber: "V-BIG",
+					ChildName:     "Big, Impact",
+					ChildID:       uintPtr(2),
+					Status:        "calc_only",
+					CalcTotal:     intPtr(200000),
+				},
+				{
+					VoucherNumber: "V-MED",
+					ChildName:     "Medium, Impact",
+					ChildID:       uintPtr(3),
+					Status:        "calc_only",
+					CalcTotal:     intPtr(50000),
+				},
+			},
+		},
+	}
+
+	s := BuildComparisonSummary(comparisons)
+
+	if len(s.Issues) < 3 {
+		t.Fatalf("expected 3 issues, got %d", len(s.Issues))
+	}
+	// Biggest impact child first
+	if s.Issues[0].ChildName != "Big, Impact" {
+		t.Errorf("expected first issue for 'Big, Impact', got %q", s.Issues[0].ChildName)
+	}
+	if s.Issues[1].ChildName != "Medium, Impact" {
+		t.Errorf("expected second issue for 'Medium, Impact', got %q", s.Issues[1].ChildName)
+	}
+	if s.Issues[2].ChildName != "Small, Impact" {
+		t.Errorf("expected third issue for 'Small, Impact', got %q", s.Issues[2].ChildName)
+	}
+}
+
+func TestBuildComparisonSummary_CorrectionOnlyChildNotCounted(t *testing.T) {
+	comparisons := []models.FundingComparisonResponse{
+		{
+			BillFrom:        "2025-01-01",
+			BillTotal:       0,
+			CalcTotal:       0,
+			CorrectionTotal: 50000,
+			Children: []models.FundingComparisonChild{
+				{
+					VoucherNumber:   "V-CORR",
+					ChildName:       "Correction, Only",
+					Status:          "bill_only",
+					BillTotal:       0,
+					CorrectionTotal: 50000,
+				},
+			},
+		},
+	}
+
+	s := BuildComparisonSummary(comparisons)
+
+	if s.TotalCorrections != 50000 {
+		t.Errorf("expected corrections 50000, got %d", s.TotalCorrections)
+	}
+	// bill_only with 0 regular amount should not produce an issue
+	for _, issue := range s.Issues {
+		if issue.Category == "bill_only" {
+			t.Errorf("unexpected bill_only issue for correction-only child")
+		}
+	}
+}
