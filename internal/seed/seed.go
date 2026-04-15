@@ -625,10 +625,13 @@ func seedVouchers(db *gorm.DB, children []seededChild) (int, error) {
 			continue
 		}
 		voucherNum := fmt.Sprintf("GB-%011d-%02d", sc.child.ID+10000000000, 1)
-		if err := db.Model(&models.ChildContract{}).
-			Where("child_id = ?", sc.child.ID).
-			Update("voucher_number", voucherNum).Error; err != nil {
-			return 0, fmt.Errorf("setting voucher for child %d: %w", sc.child.ID, err)
+		voucher := models.ChildVoucher{
+			ChildID:       sc.child.ID,
+			VoucherNumber: voucherNum,
+			FirstSeen:     sc.contracts[0].from,
+		}
+		if err := db.Create(&voucher).Error; err != nil {
+			return 0, fmt.Errorf("creating voucher for child %d: %w", sc.child.ID, err)
 		}
 		sc.voucherNum = voucherNum
 		count++
