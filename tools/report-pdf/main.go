@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/eenemeene/kitamanager-go/tools/report-pdf/internal/auth"
 	"github.com/eenemeene/kitamanager-go/tools/report-pdf/internal/config"
@@ -67,6 +68,7 @@ func runOnce() {
 	defer gen.Close()
 
 	var failed []string
+	var generated []string
 	for _, report := range cfg.Reports {
 		fmt.Printf("Generating %s report...\n", report)
 		if err := gen.GenerateReport(report, cfg.OrgID, cfg.Year, cfg.OutputDir); err != nil {
@@ -74,11 +76,23 @@ func runOnce() {
 			failed = append(failed, report)
 			continue
 		}
+		generated = append(generated, filepath.Join(cfg.OutputDir, fmt.Sprintf("%s-%s-%d.pdf", report, cfg.OrgID, cfg.Year)))
 	}
 
 	if len(failed) > 0 {
 		fmt.Fprintf(os.Stderr, "\nFailed reports: %v\n", failed)
 		os.Exit(1)
+	}
+
+	// Merge individual PDFs into a single combined report
+	if len(generated) > 1 {
+		combinedPath := filepath.Join(cfg.OutputDir, fmt.Sprintf("report-%s-%d.pdf", cfg.OrgID, cfg.Year))
+		fmt.Printf("Merging %d reports into %s...\n", len(generated), combinedPath)
+		if err := pdf.MergeFiles(generated, combinedPath); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to merge PDFs: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("  Saved %s\n", combinedPath)
 	}
 
 	fmt.Println("\nAll reports generated successfully!")

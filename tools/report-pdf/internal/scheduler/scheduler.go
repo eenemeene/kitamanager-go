@@ -1,8 +1,10 @@
 package scheduler
 
 import (
+	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -147,8 +149,32 @@ func (s *Scheduler) isDue(sched config.Schedule, now time.Time) bool {
 	}
 }
 
-// executeSchedule generates PDFs and sends them via email.
+// fetchAPIVersion queries the API health endpoint to get the KitaManager version.
+func fetchAPIVersion(apiURL string) string {
+	resp, err := http.Get(apiURL + "/api/v1/health")
+	if err != nil {
+		return "unknown"
+	}
+	defer resp.Body.Close()
+
+	var health struct {
+		Version string `json:"version"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&health); err != nil {
+		return "unknown"
+	}
+	if health.Version == "" {
+		return "unknown"
+	}
+	return health.Version
+}
+
+// executeSchedule generates PDFs, merges them, and sends via email.
 func (s *Scheduler) executeSchedule(sched config.Schedule, now time.Time) error {
+	// Fetch version for metadata
+	version := fetchAPIVersion(s.config.APIURL)
+	slog.Info("API version", "version", version)
+
 	// Login to get fresh cookies
 	slog.Info("Logging in to API", "email", s.config.Email)
 	cookies, err := auth.Login(s.config.APIURL, s.config.Email, s.config.Password, s.config.BaseURL)
@@ -171,7 +197,7 @@ func (s *Scheduler) executeSchedule(sched config.Schedule, now time.Time) error 
 	defer os.RemoveAll(outputDir)
 
 	year := now.Year()
-	var attachments []email.Attachment
+	var generatedPaths []string
 	var failedReports []string
 
 	for _, reportType := range sched.Reports {
@@ -190,28 +216,61 @@ func (s *Scheduler) executeSchedule(sched config.Schedule, now time.Time) error 
 			continue
 		}
 
-		// Read the generated PDF
 		filename := fmt.Sprintf("%s-%s-%d.pdf", reportType, sched.OrgID, year)
-		pdfPath := filepath.Join(outputDir, filename)
-		data, err := os.ReadFile(pdfPath)
-		if err != nil {
-			slog.Error("Failed to read generated PDF",
-				"path", pdfPath,
-				"error", err,
-			)
-			failedReports = append(failedReports, reportType)
-			continue
-		}
+		generatedPaths = append(generatedPaths, filepath.Join(outputDir, filename))
+	}
 
+	if len(generatedPaths) == 0 {
+		return fmt.Errorf("all reports failed: %v", failedReports)
+	}
+
+	// Merge into a single PDF
+	combinedFilename := fmt.Sprintf("report-%s-%d.pdf", sched.OrgID, year)
+	combinedPath := filepath.Join(outputDir, combinedFilename)
+
+	if len(generatedPaths) > 1 {
+		slog.Info("Merging reports into single PDF", "count", len(generatedPaths))
+		if err := pdf.MergeFiles(generatedPaths, combinedPath); err != nil {
+			slog.Error("Failed to merge PDFs, sending individually", "error", err)
+			// Fall back to sending individual files
+			combinedPath = ""
+		}
+	} else {
+		// Only one report, use it directly
+		combinedPath = generatedPaths[0]
+		combinedFilename = filepath.Base(generatedPaths[0])
+	}
+
+	// Read the PDF(s) for attachment
+	var attachments []email.Attachment
+	if combinedPath != "" {
+		data, err := os.ReadFile(combinedPath)
+		if err != nil {
+			return fmt.Errorf("failed to read combined PDF: %w", err)
+		}
 		attachments = append(attachments, email.Attachment{
-			Filename:    filename,
+			Filename:    combinedFilename,
 			ContentType: "application/pdf",
 			Data:        data,
 		})
+	} else {
+		// Fallback: attach individual files
+		for _, p := range generatedPaths {
+			data, err := os.ReadFile(p)
+			if err != nil {
+				slog.Error("Failed to read PDF", "path", p, "error", err)
+				continue
+			}
+			attachments = append(attachments, email.Attachment{
+				Filename:    filepath.Base(p),
+				ContentType: "application/pdf",
+				Data:        data,
+			})
+		}
 	}
 
 	if len(attachments) == 0 {
-		return fmt.Errorf("all reports failed: %v", failedReports)
+		return fmt.Errorf("no PDFs to send")
 	}
 
 	// Build email
@@ -221,7 +280,7 @@ func (s *Scheduler) executeSchedule(sched config.Schedule, now time.Time) error 
 		year,
 	)
 
-	htmlBody := buildEmailBody(sched, attachments, failedReports, now)
+	htmlBody := buildEmailBody(sched, generatedPaths, failedReports, now, version)
 
 	// Send email
 	slog.Info("Sending report email",
@@ -238,7 +297,7 @@ func (s *Scheduler) executeSchedule(sched config.Schedule, now time.Time) error 
 }
 
 // buildEmailBody creates an HTML email body summarizing the report.
-func buildEmailBody(sched config.Schedule, attachments []email.Attachment, failed []string, now time.Time) string {
+func buildEmailBody(sched config.Schedule, generatedPaths []string, failed []string, now time.Time, version string) string {
 	html := fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -246,30 +305,30 @@ func buildEmailBody(sched config.Schedule, attachments []email.Attachment, faile
 <p><strong>%s</strong></p>
 <p>Generated on %s</p>
 <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
-<h3>Attached Reports</h3>
+<h3>Included Reports</h3>
 <ul>`, sched.Name, now.Format("2 January 2006, 15:04"))
 
-	for _, att := range attachments {
-		html += fmt.Sprintf(`<li>%s</li>`, att.Filename)
+	for _, p := range generatedPaths {
+		html += fmt.Sprintf("<li>%s</li>", filepath.Base(p))
 	}
-	html += `</ul>`
+	html += "</ul>"
 
 	if len(failed) > 0 {
 		html += `<h3 style="color: #dc2626;">Failed Reports</h3><ul>`
 		for _, f := range failed {
-			html += fmt.Sprintf(`<li>%s</li>`, f)
+			html += fmt.Sprintf("<li>%s</li>", f)
 		}
-		html += `</ul>`
+		html += "</ul>"
 	}
 
-	html += `
+	html += fmt.Sprintf(`
 <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
 <p style="color: #6b7280; font-size: 12px;">
-This email was sent automatically by KitaManager.
+This email was sent automatically by KitaManager %s.<br>
 To change the schedule or recipients, update the report configuration file.
 </p>
 </body>
-</html>`
+</html>`, version)
 
 	return html
 }
