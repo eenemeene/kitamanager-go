@@ -164,6 +164,8 @@
     "financialSummaryDescription": "Laufende Summe des monatlichen Saldos, wird zu Beginn jedes Kitajahres (August) auf Null zurückgesetzt",
     "cumulativeBalance": "Kumuliertes Saldo",
     "monthlyChange": "(monatlich)",
+    "deficitSince": "Defizit ab hier",
+    "deficitConsecutive": "Aktuell {count} {count, plural, one {Monat} other {Monate}} in Folge im Defizit",
     "employerCostsTooltip": "Arbeitgeberanteile zur Sozialversicherung (Prozentsatz aus dem Vergütungsplan)",
     "totalIncome": "Gesamteinnahmen",
     "totalExpenses": "Gesamtausgaben",
@@ -270,7 +272,8 @@
     "forecastOptimizeResult": "Ergebnis: {count} Kinder benötigt für ein kumuliertes Saldo von {balance}.",
     "forecastOptimizeNotReached": "Zielsaldo mit den aktuellen Einschränkungen nicht erreichbar (max. {max} Kinder möglich).",
     "forecastOptimizeAddedToStore": "Die Kinder wurden im Kinder-Tab hinzugefügt. Sie können sie vor der Berechnung überprüfen und anpassen.",
-    "forecastOptimizeNoImpact": "Das Hinzufügen von Kindern verbessert das Saldo nicht. Prüfen Sie die Förderungskonfiguration und Vertragseigenschaften."
+    "forecastOptimizeNoImpact": "Das Hinzufügen von Kindern verbessert das Saldo nicht. Prüfen Sie die Förderungskonfiguration und Vertragseigenschaften.",
+    "forecastBaselineBalance": "Aktuelle Basislinie: {amount}"
   },
   "months": {
     "jan": "Jan",
@@ -847,7 +850,18 @@
     "differenceTooltip": "Differenz zwischen abgerechnet und erwartet für diesen Monat",
     "differenceExplanation": "Positiv = mehr abgerechnet als erwartet, negativ = weniger abgerechnet. Nur Monate mit vorhandenen Abrechnungen werden verglichen.",
     "missingBillAlert": "Keine Abrechnung für {month} hochgeladen.",
-    "uploadBill": "Abrechnung hochladen"
+    "uploadBill": "Abrechnung hochladen",
+    "mismatchMissing": "fehlt in Abrechnung",
+    "mismatchAdditional": "zusätzlich in Abrechnung",
+    "mismatchDifferent": "abweichend",
+    "mismatchReasonRate": "Satzdifferenz",
+    "mismatchReasonProperty": "Eigenschaftsabweichung",
+    "mismatchReasonBillOnly": "Nur in Abrechnung",
+    "mismatchReasonCalcOnly": "Nicht in Abrechnung",
+    "mismatchCount": "{count} {count, plural, one {Abweichung} other {Abweichungen}}",
+    "summaryMatch": "{count, plural, one {# Abrechnung stimmt} other {# Abrechnungen stimmen}}",
+    "summaryDifference": "{count, plural, one {# Abrechnung mit Abweichungen} other {# Abrechnungen mit Abweichungen}}",
+    "summaryTotal": "Gesamtdifferenz"
   },
   "sectionAgeAlerts": {
     "title": "Kinder über Altersgrenze des Bereichs",

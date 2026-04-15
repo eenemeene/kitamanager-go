@@ -3,7 +3,7 @@ import { expect, Page } from '@playwright/test';
 /**
  * Test credentials (seeded by API, configurable via env vars)
  */
-export const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL || 'admin@example.com';
+export const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL || 'superadmin@example.com';
 export const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD || 'supersecret';
 
 /**
