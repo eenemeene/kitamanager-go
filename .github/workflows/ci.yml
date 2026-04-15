@@ -39,6 +39,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
+          node-version-file: frontend/.node-version
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
@@ -94,6 +95,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
+          node-version-file: frontend/.node-version
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
@@ -200,6 +202,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
+          node-version-file: frontend/.node-version
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
@@ -329,6 +332,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
+          node-version-file: frontend/.node-version
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
@@ -347,9 +351,9 @@ jobs:
       - name: Start API server
         run: |
           DATABASE_URL="postgres://kitamanager:kitamanager@localhost:5432/kitamanager?sslmode=disable" \
-          SEED_ADMIN_EMAIL=admin@example.com \
+          SEED_ADMIN_EMAIL=superadmin@example.com \
           SEED_ADMIN_PASSWORD=supersecret \
-          SEED_ADMIN_NAME=admin \
+          SEED_ADMIN_NAME="Super Admin" \
           SEED_RBAC_POLICIES=true \
           SEED_TEST_DATA=true \
           LOGIN_RATE_LIMIT_PER_MINUTE=0 \
