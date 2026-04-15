@@ -403,6 +403,20 @@ All frontend components MUST be mobile-friendly. The app is used by teachers on 
 | `md:`  | 768px     | Tablets, small laptops |
 | `lg:`  | 1024px    | Desktop |
 
+## Data Protection in Git
+
+**NEVER commit real (non-anonymized) personal data to git or push it to GitHub.** This includes names, birthdates, addresses, voucher numbers, email addresses, financial amounts, or any other data from real Kitas, children, employees, or families. This applies to:
+
+- Screenshots and images (always use seed data, never production data)
+- Test fixtures and sample data
+- Log output, error messages, or debug output pasted into commits or PRs
+- Configuration files, database dumps, or export files
+- Comments, commit messages, or PR descriptions
+
+Violations of this rule expose the project to **DSGVO (GDPR) liability** — children's personal data receives the highest level of legal protection in Germany.
+
+When you need example data, use the built-in seed data ("Kita Sonnenschein") which contains only fictional names and generated records.
+
 ## Git Workflow
 
 **Always work on a feature branch** and submit changes via pull request. Never commit directly to `main`.
