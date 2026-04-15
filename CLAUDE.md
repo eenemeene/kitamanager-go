@@ -4,6 +4,8 @@
 
 **Always use the latest versions** of all dependencies and tools. This includes Hugo, the Hextra theme, Go, Node.js, and all other libraries. Never pin to older versions or downgrade to work around compatibility issues — instead, upgrade the dependency chain to make everything work with the latest releases.
 
+**Exception:** If a dependency's latest version breaks compatibility with another dependency that hasn't caught up yet (e.g., eslint-plugin-react not supporting eslint 10), pin to the latest compatible version and document the reason in the commit message. Track the upstream issue and upgrade once it's resolved.
+
 ## Go Best Practices
 
 **Always use the latest Go language features and idioms.** When writing or modifying Go code, prefer modern standard library packages and syntax over older patterns.
@@ -270,6 +272,20 @@ if (dateStr.split('-')[0] === '2024') { ... }
 ```
 
 ## E2E Testing
+
+### Page Load Waits
+
+**NEVER use `waitForLoadState('networkidle')`.** react-query keeps background requests active, which prevents pages from ever reaching networkidle state. This causes consistent 30-second timeouts in CI.
+
+Use `waitForLoadState('load')` instead. For waiting on dynamic content, use element-level assertions with explicit timeouts:
+```typescript
+// CORRECT
+await page.waitForLoadState('load');
+await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible({ timeout: 10000 });
+
+// WRONG - will timeout because react-query keeps fetching
+await page.waitForLoadState('networkidle');
+```
 
 ### Language/Locale
 

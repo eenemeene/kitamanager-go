@@ -32,7 +32,7 @@ For pages with a flat list + create/edit/delete dialogs:
 5. Use `Pagination` component for paginated lists
 6. Form validation with `zod` schema + `react-hook-form`
 
-Reference: `src/app/(dashboard)/organizations/[orgId]/groups/page.tsx`
+Reference: `src/app/(dashboard)/organizations/[orgId]/sections/page.tsx`
 
 ### Complex Pages (Children pattern)
 
@@ -85,7 +85,8 @@ Follow the CLAUDE.md DTO naming convention:
 - **File naming**: `{feature}.spec.ts`
 - **Locale**: Always use `test.use({ locale: 'en-US' })` for consistent text matching
 - **API helpers**: Add helper functions to `e2e/utils/test-helpers.ts` for data setup/teardown
-- **Authentication**: Use `login(page)` helper before each test
+- **Authentication**: Use `login(page)` helper before each test (default: `superadmin@example.com` / `supersecret`, matching docker-compose seed; `make dev` seeds `admin@example.com`)
+- **Page waits**: Use `waitForLoadState('load')`, NEVER `networkidle` (react-query background requests prevent networkidle from resolving)
 - **Data setup**: Create test data via API helpers, clean up after tests
 - **Selectors**: Prefer `getByRole`, `getByLabel`, `getByText` over CSS selectors
 - **Avoid date-dependent assertions** (status values like "Active"/"Upcoming")
