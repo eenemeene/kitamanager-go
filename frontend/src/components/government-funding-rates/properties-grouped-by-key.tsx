@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { HeaderWithTooltip } from '@/components/ui/header-with-tooltip';
 import {
   Table,
   TableBody,
@@ -12,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import type { GovernmentFundingPeriod, GovernmentFundingProperty } from '@/lib/api/types';
 import { formatAgeRange, formatCurrency, formatFte } from '@/lib/utils/formatting';
 
@@ -65,51 +67,63 @@ export function PropertiesGroupedByKey({
   }
 
   return (
-    <div className="space-y-6">
-      {groups.map(([key, valueGroups]) => (
-        <div key={key}>
-          <h4 className="text-sm font-semibold">{key}</h4>
-          <div className="mt-2 space-y-3 pl-4">
-            {valueGroups.map(([value, properties]) => (
-              <div key={value}>
-                <p className="text-muted-foreground mb-1 text-sm">
-                  {translateLabel(key, value, properties[0]?.label)}
-                </p>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t('governmentFundings.ageRange')}</TableHead>
-                      <TableHead>{t('governmentFundings.payment')}</TableHead>
-                      <TableHead>{t('governmentFundings.requirementFte')}</TableHead>
-                      <TableHead className="text-right">{t('common.actions')}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {properties.map((property) => (
-                      <TableRow key={property.id}>
-                        <TableCell>
-                          {formatAgeRange(property.min_age, property.max_age, t('common.years'))}
-                        </TableCell>
-                        <TableCell>{formatCurrency(property.payment)}</TableCell>
-                        <TableCell>{formatFte(property.requirement)}</TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => onDeleteProperty(property)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
+    <TooltipProvider>
+      <div className="space-y-6">
+        {groups.map(([key, valueGroups]) => (
+          <div key={key}>
+            <h4 className="text-sm font-semibold">{key}</h4>
+            <div className="mt-2 space-y-3 pl-4">
+              {valueGroups.map(([value, properties]) => (
+                <div key={value}>
+                  <p className="text-muted-foreground mb-1 text-sm">
+                    {translateLabel(key, value, properties[0]?.label)}
+                  </p>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t('governmentFundings.ageRange')}</TableHead>
+                        <TableHead>
+                          <HeaderWithTooltip
+                            label={t('governmentFundings.payment')}
+                            tooltip={t('governmentFundings.paymentTooltip')}
+                          />
+                        </TableHead>
+                        <TableHead>
+                          <HeaderWithTooltip
+                            label={t('governmentFundings.requirementFte')}
+                            tooltip={t('governmentFundings.requirementFteTooltip')}
+                          />
+                        </TableHead>
+                        <TableHead className="text-right">{t('common.actions')}</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            ))}
+                    </TableHeader>
+                    <TableBody>
+                      {properties.map((property) => (
+                        <TableRow key={property.id}>
+                          <TableCell>
+                            {formatAgeRange(property.min_age, property.max_age, t('common.years'))}
+                          </TableCell>
+                          <TableCell>{formatCurrency(property.payment)}</TableCell>
+                          <TableCell>{formatFte(property.requirement)}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => onDeleteProperty(property)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+    </TooltipProvider>
   );
 }

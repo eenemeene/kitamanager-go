@@ -8,6 +8,7 @@ import { Plus, Pencil, Trash2, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { HeaderWithTooltip } from '@/components/ui/header-with-tooltip';
 import {
   Table,
   TableBody,
@@ -16,6 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
@@ -245,356 +247,381 @@ export default function PayPlanDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center">
-        <div className="min-w-0 flex-1">
-          <Breadcrumb
-            items={[
-              { label: t('nav.payPlans'), href: `/organizations/${orgId}/payplans` },
-              { label: payPlan.name },
-            ]}
-          />
-          <h1 className="mt-1 text-3xl font-bold tracking-tight">{payPlan.name}</h1>
-        </div>
-        <Button
-          variant="outline"
-          className="shrink-0"
-          onClick={() => window.open(apiClient.getPayPlanExportUrl(orgId, payPlanId))}
-        >
-          <Download className="mr-2 h-4 w-4" />
-          {t('payPlans.exportYaml')}
-        </Button>
-      </div>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>{t('governmentFundings.periods')}</CardTitle>
-          <div className="flex items-center gap-2">
-            <div className="flex rounded-md border">
-              <Button
-                size="sm"
-                variant={view === 'panels' ? 'secondary' : 'ghost'}
-                className="rounded-r-none"
-                onClick={() => setView('panels')}
-              >
-                {t('payPlans.viewPanels')}
-              </Button>
-              <Button
-                size="sm"
-                variant={view === 'table' ? 'secondary' : 'ghost'}
-                className="rounded-l-none"
-                onClick={() => setView('table')}
-              >
-                {t('payPlans.viewTable')}
-              </Button>
-            </div>
-            {view === 'panels' && (
-              <Button size="sm" onClick={handleAddPeriod}>
-                <Plus className="mr-2 h-4 w-4" />
-                {t('payPlans.addPeriod')}
-              </Button>
-            )}
+    <TooltipProvider>
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+          <div className="min-w-0 flex-1">
+            <Breadcrumb
+              items={[
+                { label: t('nav.payPlans'), href: `/organizations/${orgId}/payplans` },
+                { label: payPlan.name },
+              ]}
+            />
+            <h1 className="mt-1 text-3xl font-bold tracking-tight">{payPlan.name}</h1>
           </div>
-        </CardHeader>
-        <CardContent>
-          {payPlan.periods?.length === 0 ? (
-            <p className="text-muted-foreground py-8 text-center">
-              {view === 'panels' ? t('payPlans.noPeriodsDefined') : t('payPlans.noDataDefined')}
-            </p>
-          ) : view === 'table' ? (
-            <div className="space-y-6">
-              {payPlan.periods?.map((period) => (
-                <div key={period.id}>
-                  <h3 className="mb-2 text-sm font-medium">
-                    {formatPeriod(period.from, period.to, 'en', t('common.ongoing'))}
-                    {' \u2014 '}
-                    {period.weekly_hours}h / {t('payPlans.weeklyHours')}
-                    {' \u2014 '}
-                    {t('payPlans.employerContributionRate')}:{' '}
-                    {(period.employer_contribution_rate / 100).toFixed(2)}%
-                  </h3>
-                  <PayPlanGrid period={period} />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {payPlan.periods?.map((period) => (
-                <Card key={period.id}>
-                  <CardHeader className="flex flex-row items-center justify-between py-3">
-                    <div>
-                      <CardTitle className="text-base">
-                        {formatPeriod(period.from, period.to, 'en', t('common.ongoing'))}
-                      </CardTitle>
-                      <p className="text-muted-foreground text-sm">
-                        {period.weekly_hours}h / {t('payPlans.weeklyHours')}
-                        {' \u2014 '}
-                        {t('payPlans.employerContributionRate')}:{' '}
-                        {(period.employer_contribution_rate / 100).toFixed(2)}%
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => handleAddEntry(period)}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        {t('payPlans.addEntry')}
-                      </Button>
-                      <Button size="icon" variant="ghost" onClick={() => handleEditPeriod(period)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => {
-                          setDeletingPeriod(period);
-                          setIsDeletePeriodDialogOpen(true);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {period.entries?.length === 0 ? (
-                      <p className="text-muted-foreground py-4 text-center">
-                        {t('payPlans.noEntriesDefined')}
-                      </p>
-                    ) : (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>{t('payPlans.grade')}</TableHead>
-                            <TableHead>{t('payPlans.step')}</TableHead>
-                            <TableHead>{t('payPlans.stepMinYears')}</TableHead>
-                            <TableHead>{t('payPlans.monthlyAmount')}</TableHead>
-                            <TableHead className="text-right">{t('common.actions')}</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {period.entries?.map((entry) => (
-                            <TableRow key={entry.id}>
-                              <TableCell className="font-medium">{entry.grade}</TableCell>
-                              <TableCell>{entry.step}</TableCell>
-                              <TableCell>
-                                {entry.step_min_years != null
-                                  ? `${entry.step_min_years}y`
-                                  : '\u2014'}
-                              </TableCell>
-                              <TableCell>{formatCurrency(entry.monthly_amount)}</TableCell>
-                              <TableCell className="text-right">
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  onClick={() => {
-                                    setDeletingEntry({ period, entry });
-                                    setIsDeleteEntryDialogOpen(true);
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          <Button
+            variant="outline"
+            className="shrink-0"
+            onClick={() => window.open(apiClient.getPayPlanExportUrl(orgId, payPlanId))}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            {t('payPlans.exportYaml')}
+          </Button>
+        </div>
 
-      {payPlan.periods && payPlan.periods.length >= 2 && (
         <Card>
-          <CardContent className="pt-6">
-            <PayPlanSalaryChart periods={payPlan.periods} />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Period Dialog */}
-      <Dialog open={isPeriodDialogOpen} onOpenChange={setIsPeriodDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {editingPeriod ? t('payPlans.editPeriod') : t('payPlans.addPeriod')}
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmitPeriod(onSubmitPeriod)} className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="from">{t('payPlans.fromDate')}</Label>
-                <Input id="from" type="date" {...registerPeriod('from')} />
-                {errorsPeriod.from && (
-                  <p className="text-destructive text-sm">{t('validation.fromDateRequired')}</p>
-                )}
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>{t('governmentFundings.periods')}</CardTitle>
+            <div className="flex items-center gap-2">
+              <div className="flex rounded-md border">
+                <Button
+                  size="sm"
+                  variant={view === 'panels' ? 'secondary' : 'ghost'}
+                  className="rounded-r-none"
+                  onClick={() => setView('panels')}
+                >
+                  {t('payPlans.viewPanels')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant={view === 'table' ? 'secondary' : 'ghost'}
+                  className="rounded-l-none"
+                  onClick={() => setView('table')}
+                >
+                  {t('payPlans.viewTable')}
+                </Button>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="to">{t('payPlans.toDateOptional')}</Label>
-                <Input id="to" type="date" {...registerPeriod('to')} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="weekly_hours">{t('payPlans.weeklyHoursLabel')}</Label>
-                <Input
-                  id="weekly_hours"
-                  type="number"
-                  min={0}
-                  max={168}
-                  step={0.5}
-                  {...registerPeriod('weekly_hours', { valueAsNumber: true })}
-                />
-                {errorsPeriod.weekly_hours && (
-                  <p className="text-destructive text-sm">{t('payPlans.weeklyHoursRequired')}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="employer_contribution_rate">
-                  {t('payPlans.employerContributionRateLabel')}
-                </Label>
-                <Input
-                  id="employer_contribution_rate"
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={0.01}
-                  {...registerPeriod('employer_contribution_rate', { valueAsNumber: true })}
-                />
-                {errorsPeriod.employer_contribution_rate && (
-                  <p className="text-destructive text-sm">
-                    {t('payPlans.employerContributionRateRequired')}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsPeriodDialogOpen(false)}>
-                {t('common.cancel')}
-              </Button>
-              <Button
-                type="submit"
-                disabled={createPeriodMutation.isPending || updatePeriodMutation.isPending}
-              >
-                {t('common.save')}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Entry Dialog */}
-      <Dialog open={isEntryDialogOpen} onOpenChange={setIsEntryDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('payPlans.addEntry')}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmitEntry(onSubmitEntry)} className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="grade">{t('payPlans.gradeLabel')}</Label>
-                <Input id="grade" {...registerEntry('grade')} placeholder="S8a" />
-                {errorsEntry.grade && (
-                  <p className="text-destructive text-sm">{t('payPlans.gradeRequired')}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="step">{t('payPlans.stepLabel')}</Label>
-                <Input
-                  id="step"
-                  type="number"
-                  min={1}
-                  max={6}
-                  {...registerEntry('step', { valueAsNumber: true })}
-                />
-                {errorsEntry.step && (
-                  <p className="text-destructive text-sm">{t('payPlans.stepRequired')}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="monthly_amount_euros">{t('payPlans.monthlyAmountInEuros')}</Label>
-              <Input
-                id="monthly_amount_euros"
-                type="number"
-                min={0}
-                step={0.01}
-                {...registerEntry('monthly_amount_euros', { valueAsNumber: true })}
-              />
-              {errorsEntry.monthly_amount_euros && (
-                <p className="text-destructive text-sm">{t('payPlans.monthlyAmountRequired')}</p>
+              {view === 'panels' && (
+                <Button size="sm" onClick={handleAddPeriod}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t('payPlans.addPeriod')}
+                </Button>
               )}
             </div>
+          </CardHeader>
+          <CardContent>
+            {payPlan.periods?.length === 0 ? (
+              <p className="text-muted-foreground py-8 text-center">
+                {view === 'panels' ? t('payPlans.noPeriodsDefined') : t('payPlans.noDataDefined')}
+              </p>
+            ) : view === 'table' ? (
+              <div className="space-y-6">
+                {payPlan.periods?.map((period) => (
+                  <div key={period.id}>
+                    <h3 className="mb-2 text-sm font-medium">
+                      {formatPeriod(period.from, period.to, 'en', t('common.ongoing'))}
+                      {' \u2014 '}
+                      {period.weekly_hours}h / {t('payPlans.weeklyHours')}
+                      {' \u2014 '}
+                      {t('payPlans.employerContributionRate')}:{' '}
+                      {(period.employer_contribution_rate / 100).toFixed(2)}%
+                    </h3>
+                    <PayPlanGrid period={period} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {payPlan.periods?.map((period) => (
+                  <Card key={period.id}>
+                    <CardHeader className="flex flex-row items-center justify-between py-3">
+                      <div>
+                        <CardTitle className="text-base">
+                          {formatPeriod(period.from, period.to, 'en', t('common.ongoing'))}
+                        </CardTitle>
+                        <p className="text-muted-foreground text-sm">
+                          {period.weekly_hours}h / {t('payPlans.weeklyHours')}
+                          {' \u2014 '}
+                          {t('payPlans.employerContributionRate')}:{' '}
+                          {(period.employer_contribution_rate / 100).toFixed(2)}%
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => handleAddEntry(period)}>
+                          <Plus className="mr-2 h-4 w-4" />
+                          {t('payPlans.addEntry')}
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleEditPeriod(period)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => {
+                            setDeletingPeriod(period);
+                            setIsDeletePeriodDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {period.entries?.length === 0 ? (
+                        <p className="text-muted-foreground py-4 text-center">
+                          {t('payPlans.noEntriesDefined')}
+                        </p>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>
+                                <HeaderWithTooltip
+                                  label={t('payPlans.grade')}
+                                  tooltip={t('payPlans.gradeTooltip')}
+                                />
+                              </TableHead>
+                              <TableHead>
+                                <HeaderWithTooltip
+                                  label={t('payPlans.step')}
+                                  tooltip={t('payPlans.stepTooltip')}
+                                />
+                              </TableHead>
+                              <TableHead>{t('payPlans.stepMinYears')}</TableHead>
+                              <TableHead>
+                                <HeaderWithTooltip
+                                  label={t('payPlans.monthlyAmount')}
+                                  tooltip={t('payPlans.monthlyAmountTooltip')}
+                                />
+                              </TableHead>
+                              <TableHead className="text-right">{t('common.actions')}</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {period.entries?.map((entry) => (
+                              <TableRow key={entry.id}>
+                                <TableCell className="font-medium">{entry.grade}</TableCell>
+                                <TableCell>{entry.step}</TableCell>
+                                <TableCell>
+                                  {entry.step_min_years != null
+                                    ? `${entry.step_min_years}y`
+                                    : '\u2014'}
+                                </TableCell>
+                                <TableCell>{formatCurrency(entry.monthly_amount)}</TableCell>
+                                <TableCell className="text-right">
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      setDeletingEntry({ period, entry });
+                                      setIsDeleteEntryDialogOpen(true);
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-            <div className="space-y-2">
-              <Label htmlFor="step_min_years">{t('payPlans.stepMinYearsLabel')}</Label>
-              <Input
-                id="step_min_years"
-                type="number"
-                min={0}
-                {...registerEntry('step_min_years', { valueAsNumber: true })}
-              />
-            </div>
+        {payPlan.periods && payPlan.periods.length >= 2 && (
+          <Card>
+            <CardContent className="pt-6">
+              <PayPlanSalaryChart periods={payPlan.periods} />
+            </CardContent>
+          </Card>
+        )}
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsEntryDialogOpen(false)}>
-                {t('common.cancel')}
-              </Button>
-              <Button type="submit" disabled={createEntryMutation.isPending}>
-                {t('common.save')}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+        {/* Period Dialog */}
+        <Dialog open={isPeriodDialogOpen} onOpenChange={setIsPeriodDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {editingPeriod ? t('payPlans.editPeriod') : t('payPlans.addPeriod')}
+              </DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmitPeriod(onSubmitPeriod)} className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="from">{t('payPlans.fromDate')}</Label>
+                  <Input id="from" type="date" {...registerPeriod('from')} />
+                  {errorsPeriod.from && (
+                    <p className="text-destructive text-sm">{t('validation.fromDateRequired')}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="to">{t('payPlans.toDateOptional')}</Label>
+                  <Input id="to" type="date" {...registerPeriod('to')} />
+                </div>
+              </div>
 
-      {/* Delete Period Confirmation */}
-      <AlertDialog open={isDeletePeriodDialogOpen} onOpenChange={setIsDeletePeriodDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('common.confirmDelete')}</AlertDialogTitle>
-            <AlertDialogDescription>{t('payPlans.deletePeriodConfirm')}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deletingPeriod && deletePeriodMutation.mutate(deletingPeriod.id)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {t('common.delete')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="weekly_hours">{t('payPlans.weeklyHoursLabel')}</Label>
+                  <Input
+                    id="weekly_hours"
+                    type="number"
+                    min={0}
+                    max={168}
+                    step={0.5}
+                    {...registerPeriod('weekly_hours', { valueAsNumber: true })}
+                  />
+                  {errorsPeriod.weekly_hours && (
+                    <p className="text-destructive text-sm">{t('payPlans.weeklyHoursRequired')}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="employer_contribution_rate">
+                    {t('payPlans.employerContributionRateLabel')}
+                  </Label>
+                  <Input
+                    id="employer_contribution_rate"
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.01}
+                    {...registerPeriod('employer_contribution_rate', { valueAsNumber: true })}
+                  />
+                  {errorsPeriod.employer_contribution_rate && (
+                    <p className="text-destructive text-sm">
+                      {t('payPlans.employerContributionRateRequired')}
+                    </p>
+                  )}
+                </div>
+              </div>
 
-      {/* Delete Entry Confirmation */}
-      <AlertDialog open={isDeleteEntryDialogOpen} onOpenChange={setIsDeleteEntryDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('common.confirmDelete')}</AlertDialogTitle>
-            <AlertDialogDescription>{t('payPlans.deleteEntryConfirm')}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() =>
-                deletingEntry &&
-                deleteEntryMutation.mutate({
-                  periodId: deletingEntry.period.id,
-                  entryId: deletingEntry.entry.id,
-                })
-              }
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {t('common.delete')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsPeriodDialogOpen(false)}
+                >
+                  {t('common.cancel')}
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createPeriodMutation.isPending || updatePeriodMutation.isPending}
+                >
+                  {t('common.save')}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Entry Dialog */}
+        <Dialog open={isEntryDialogOpen} onOpenChange={setIsEntryDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t('payPlans.addEntry')}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmitEntry(onSubmitEntry)} className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="grade">{t('payPlans.gradeLabel')}</Label>
+                  <Input id="grade" {...registerEntry('grade')} placeholder="S8a" />
+                  {errorsEntry.grade && (
+                    <p className="text-destructive text-sm">{t('payPlans.gradeRequired')}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="step">{t('payPlans.stepLabel')}</Label>
+                  <Input
+                    id="step"
+                    type="number"
+                    min={1}
+                    max={6}
+                    {...registerEntry('step', { valueAsNumber: true })}
+                  />
+                  {errorsEntry.step && (
+                    <p className="text-destructive text-sm">{t('payPlans.stepRequired')}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="monthly_amount_euros">{t('payPlans.monthlyAmountInEuros')}</Label>
+                <Input
+                  id="monthly_amount_euros"
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  {...registerEntry('monthly_amount_euros', { valueAsNumber: true })}
+                />
+                {errorsEntry.monthly_amount_euros && (
+                  <p className="text-destructive text-sm">{t('payPlans.monthlyAmountRequired')}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="step_min_years">{t('payPlans.stepMinYearsLabel')}</Label>
+                <Input
+                  id="step_min_years"
+                  type="number"
+                  min={0}
+                  {...registerEntry('step_min_years', { valueAsNumber: true })}
+                />
+              </div>
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsEntryDialogOpen(false)}>
+                  {t('common.cancel')}
+                </Button>
+                <Button type="submit" disabled={createEntryMutation.isPending}>
+                  {t('common.save')}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Period Confirmation */}
+        <AlertDialog open={isDeletePeriodDialogOpen} onOpenChange={setIsDeletePeriodDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t('common.confirmDelete')}</AlertDialogTitle>
+              <AlertDialogDescription>{t('payPlans.deletePeriodConfirm')}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => deletingPeriod && deletePeriodMutation.mutate(deletingPeriod.id)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {t('common.delete')}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Delete Entry Confirmation */}
+        <AlertDialog open={isDeleteEntryDialogOpen} onOpenChange={setIsDeleteEntryDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t('common.confirmDelete')}</AlertDialogTitle>
+              <AlertDialogDescription>{t('payPlans.deleteEntryConfirm')}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() =>
+                  deletingEntry &&
+                  deleteEntryMutation.mutate({
+                    periodId: deletingEntry.period.id,
+                    entryId: deletingEntry.entry.id,
+                  })
+                }
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {t('common.delete')}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </TooltipProvider>
   );
 }

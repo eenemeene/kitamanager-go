@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
+import { HeaderWithTooltip } from '@/components/ui/header-with-tooltip';
 import {
   Table,
   TableBody,
@@ -10,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import type { FinancialResponse } from '@/lib/api/types';
 import { formatCurrency } from '@/lib/utils/formatting';
 
@@ -114,142 +116,156 @@ export function BudgetTable({ data }: BudgetTableProps) {
   }
 
   return (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader>
-          {/* Group header row */}
-          <TableRow>
-            <TableHead className="bg-background sticky left-0 z-10" rowSpan={2} />
-            <TableHead
-              colSpan={incomeColCount}
-              className="text-center text-green-700 dark:text-green-400"
-            >
-              {t('totalIncome')}
-            </TableHead>
-            <TableHead
-              colSpan={expenseColCount}
-              className="text-center text-red-700 dark:text-red-400"
-            >
-              {t('totalExpenses')}
-            </TableHead>
-            <TableHead rowSpan={2} className="text-center">
-              {t('balance')}
-            </TableHead>
-          </TableRow>
-          {/* Sub-header row */}
-          <TableRow>
-            {/* Income sub-headers */}
-            <TableHead className="text-center">{t('fundingIncomeSub')}</TableHead>
-            {hasActualFunding && (
-              <TableHead className="text-center">{t('fundingActualSub')}</TableHead>
-            )}
-            {incomeItems.map((name) => (
-              <TableHead key={name} className="text-center">
-                {name}
+    <TooltipProvider>
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            {/* Group header row */}
+            <TableRow>
+              <TableHead className="bg-background sticky left-0 z-10" rowSpan={2} />
+              <TableHead
+                colSpan={incomeColCount}
+                className="text-center text-green-700 dark:text-green-400"
+              >
+                {t('totalIncome')}
               </TableHead>
-            ))}
-            <TableHead className="text-center font-bold">{t('incomeTotal')}</TableHead>
-            {/* Expense sub-headers */}
-            <TableHead className="text-center">{t('salaries')}</TableHead>
-            {expenseItems.map((name) => (
-              <TableHead key={name} className="text-center">
-                {name}
+              <TableHead
+                colSpan={expenseColCount}
+                className="text-center text-red-700 dark:text-red-400"
+              >
+                {t('totalExpenses')}
               </TableHead>
+              <TableHead rowSpan={2} className="text-center">
+                {t('balance')}
+              </TableHead>
+            </TableRow>
+            {/* Sub-header row */}
+            <TableRow>
+              {/* Income sub-headers */}
+              <TableHead className="text-center">
+                <HeaderWithTooltip
+                  label={t('fundingIncomeSub')}
+                  tooltip={t('fundingIncomeSubTooltip')}
+                />
+              </TableHead>
+              {hasActualFunding && (
+                <TableHead className="text-center">
+                  <HeaderWithTooltip
+                    label={t('fundingActualSub')}
+                    tooltip={t('fundingActualSubTooltip')}
+                  />
+                </TableHead>
+              )}
+              {incomeItems.map((name) => (
+                <TableHead key={name} className="text-center">
+                  {name}
+                </TableHead>
+              ))}
+              <TableHead className="text-center font-bold">{t('incomeTotal')}</TableHead>
+              {/* Expense sub-headers */}
+              <TableHead className="text-center">{t('salaries')}</TableHead>
+              {expenseItems.map((name) => (
+                <TableHead key={name} className="text-center">
+                  {name}
+                </TableHead>
+              ))}
+              <TableHead className="text-center font-bold">{t('expenseTotal')}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {/* Monthly rows */}
+            {rows.map((row) => (
+              <TableRow key={row.date}>
+                <TableCell className="bg-background sticky left-0 z-10 font-medium">
+                  {formatMonthHeader(row.date)}
+                </TableCell>
+                {/* Income columns */}
+                <TableCell className="text-right tabular-nums">
+                  {formatCurrencyCell(row.fundingIncome)}
+                </TableCell>
+                {hasActualFunding && (
+                  <TableCell className="text-right tabular-nums">
+                    {row.actualFunding != null ? formatCurrencyCell(row.actualFunding) : '\u2013'}
+                  </TableCell>
+                )}
+                {row.incomeItemValues.map((val, i) => (
+                  <TableCell key={incomeItems[i]} className="text-right tabular-nums">
+                    {formatCurrencyCell(val)}
+                  </TableCell>
+                ))}
+                <TableCell className="text-right font-bold text-green-700 tabular-nums dark:text-green-400">
+                  {formatCurrencyCell(row.totalIncome)}
+                </TableCell>
+                {/* Expense columns */}
+                <TableCell className="text-right tabular-nums">
+                  {formatCurrencyCell(row.salaries)}
+                </TableCell>
+                {row.expenseItemValues.map((val, i) => (
+                  <TableCell key={expenseItems[i]} className="text-right tabular-nums">
+                    {formatCurrencyCell(val)}
+                  </TableCell>
+                ))}
+                <TableCell className="text-right font-bold text-red-700 tabular-nums dark:text-red-400">
+                  {formatCurrencyCell(row.totalExpenses)}
+                </TableCell>
+                {/* Balance */}
+                <TableCell
+                  className={`text-right font-bold tabular-nums ${
+                    row.balance >= 0
+                      ? 'text-green-700 dark:text-green-400'
+                      : 'text-red-700 dark:text-red-400'
+                  }`}
+                >
+                  {formatCurrencyCell(row.balance)}
+                </TableCell>
+              </TableRow>
             ))}
-            <TableHead className="text-center font-bold">{t('expenseTotal')}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {/* Monthly rows */}
-          {rows.map((row) => (
-            <TableRow key={row.date}>
-              <TableCell className="bg-background sticky left-0 z-10 font-medium">
-                {formatMonthHeader(row.date)}
-              </TableCell>
-              {/* Income columns */}
+
+            {/* Annual total row */}
+            <TableRow className="border-t-2 font-bold">
+              <TableCell className="bg-background sticky left-0 z-10">{t('annualTotal')}</TableCell>
               <TableCell className="text-right tabular-nums">
-                {formatCurrencyCell(row.fundingIncome)}
+                {formatCurrencyCell(totals.fundingIncome)}
               </TableCell>
               {hasActualFunding && (
                 <TableCell className="text-right tabular-nums">
-                  {row.actualFunding != null ? formatCurrencyCell(row.actualFunding) : '\u2013'}
+                  {totals.actualFunding != null
+                    ? formatCurrencyCell(totals.actualFunding)
+                    : '\u2013'}
                 </TableCell>
               )}
-              {row.incomeItemValues.map((val, i) => (
+              {totals.incomeItemValues.map((val, i) => (
                 <TableCell key={incomeItems[i]} className="text-right tabular-nums">
                   {formatCurrencyCell(val)}
                 </TableCell>
               ))}
-              <TableCell className="text-right font-bold text-green-700 tabular-nums dark:text-green-400">
-                {formatCurrencyCell(row.totalIncome)}
+              <TableCell className="text-right text-green-700 tabular-nums dark:text-green-400">
+                {formatCurrencyCell(totals.totalIncome)}
               </TableCell>
-              {/* Expense columns */}
               <TableCell className="text-right tabular-nums">
-                {formatCurrencyCell(row.salaries)}
+                {formatCurrencyCell(totals.salaries)}
               </TableCell>
-              {row.expenseItemValues.map((val, i) => (
+              {totals.expenseItemValues.map((val, i) => (
                 <TableCell key={expenseItems[i]} className="text-right tabular-nums">
                   {formatCurrencyCell(val)}
                 </TableCell>
               ))}
-              <TableCell className="text-right font-bold text-red-700 tabular-nums dark:text-red-400">
-                {formatCurrencyCell(row.totalExpenses)}
+              <TableCell className="text-right text-red-700 tabular-nums dark:text-red-400">
+                {formatCurrencyCell(totals.totalExpenses)}
               </TableCell>
-              {/* Balance */}
               <TableCell
-                className={`text-right font-bold tabular-nums ${
-                  row.balance >= 0
+                className={`text-right tabular-nums ${
+                  totals.balance >= 0
                     ? 'text-green-700 dark:text-green-400'
                     : 'text-red-700 dark:text-red-400'
                 }`}
               >
-                {formatCurrencyCell(row.balance)}
+                {formatCurrencyCell(totals.balance)}
               </TableCell>
             </TableRow>
-          ))}
-
-          {/* Annual total row */}
-          <TableRow className="border-t-2 font-bold">
-            <TableCell className="bg-background sticky left-0 z-10">{t('annualTotal')}</TableCell>
-            <TableCell className="text-right tabular-nums">
-              {formatCurrencyCell(totals.fundingIncome)}
-            </TableCell>
-            {hasActualFunding && (
-              <TableCell className="text-right tabular-nums">
-                {totals.actualFunding != null ? formatCurrencyCell(totals.actualFunding) : '\u2013'}
-              </TableCell>
-            )}
-            {totals.incomeItemValues.map((val, i) => (
-              <TableCell key={incomeItems[i]} className="text-right tabular-nums">
-                {formatCurrencyCell(val)}
-              </TableCell>
-            ))}
-            <TableCell className="text-right text-green-700 tabular-nums dark:text-green-400">
-              {formatCurrencyCell(totals.totalIncome)}
-            </TableCell>
-            <TableCell className="text-right tabular-nums">
-              {formatCurrencyCell(totals.salaries)}
-            </TableCell>
-            {totals.expenseItemValues.map((val, i) => (
-              <TableCell key={expenseItems[i]} className="text-right tabular-nums">
-                {formatCurrencyCell(val)}
-              </TableCell>
-            ))}
-            <TableCell className="text-right text-red-700 tabular-nums dark:text-red-400">
-              {formatCurrencyCell(totals.totalExpenses)}
-            </TableCell>
-            <TableCell
-              className={`text-right tabular-nums ${
-                totals.balance >= 0
-                  ? 'text-green-700 dark:text-green-400'
-                  : 'text-red-700 dark:text-red-400'
-              }`}
-            >
-              {formatCurrencyCell(totals.balance)}
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
-    </div>
+          </TableBody>
+        </Table>
+      </div>
+    </TooltipProvider>
   );
 }
