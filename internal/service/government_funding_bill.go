@@ -676,11 +676,19 @@ func BuildComparisonSummary(comparisons []models.FundingComparisonResponse) mode
 		total  int
 	}
 	type issueKey struct {
-		voucher     string
+		childKey    string // child_id if available, else voucher_number
 		propertyKey string
 		issueType   string
 	}
 	issues := make(map[issueKey]*issueAccum)
+
+	// childKeyFor returns a stable dedup key: child_id when available, else voucher_number.
+	childKeyFor := func(child models.FundingComparisonChild) string {
+		if child.ChildID != nil {
+			return strconv.FormatUint(uint64(*child.ChildID), 10)
+		}
+		return child.VoucherNumber
+	}
 
 	for _, comp := range comparisons {
 		totalBilled += comp.BillTotal
@@ -696,7 +704,7 @@ func BuildComparisonSummary(comparisons []models.FundingComparisonResponse) mode
 				cats[catBillOnly].amount += child.BillTotal
 				cats[catBillOnly].children[vn] = true
 				if child.BillTotal != 0 {
-					key := issueKey{vn, "", "bill_only"}
+					key := issueKey{childKeyFor(child), "", "bill_only"}
 					acc := issues[key]
 					if acc == nil {
 						acc = &issueAccum{
@@ -724,7 +732,7 @@ func BuildComparisonSummary(comparisons []models.FundingComparisonResponse) mode
 				cats[catCalcOnly].amount -= calcAmt
 				cats[catCalcOnly].children[vn] = true
 				if calcAmt != 0 {
-					key := issueKey{vn, "", "calc_only"}
+					key := issueKey{childKeyFor(child), "", "calc_only"}
 					acc := issues[key]
 					if acc == nil {
 						acc = &issueAccum{
@@ -758,7 +766,7 @@ func BuildComparisonSummary(comparisons []models.FundingComparisonResponse) mode
 						cats[catMismatch].amount += prop.Difference
 						cats[catMismatch].children[vn] = true
 
-						key := issueKey{vn, prop.Key, string(prop.Mismatch)}
+						key := issueKey{childKeyFor(child), prop.Key, string(prop.Mismatch)}
 						acc := issues[key]
 						if acc == nil {
 							acc = &issueAccum{
@@ -823,9 +831,13 @@ func BuildComparisonSummary(comparisons []models.FundingComparisonResponse) mode
 		categories = []models.FundingComparisonCategorySummary{}
 	}
 
-	// Finalize issues: compute per-month average, generate descriptions, sort by abs(total)
+	// Finalize issues: compute per-month average, generate descriptions, filter zeros, sort
 	issueList := make([]models.FundingComparisonIssueSummary, 0, len(issues))
 	for _, acc := range issues {
+		// Skip zero-amount issues (e.g., "different" mismatches where amounts cancel out)
+		if acc.total == 0 {
+			continue
+		}
 		issue := acc.issue
 		issue.TotalAmount = acc.total
 		issue.MonthCount = len(acc.months)
@@ -847,8 +859,34 @@ func BuildComparisonSummary(comparisons []models.FundingComparisonResponse) mode
 		}
 		issueList = append(issueList, issue)
 	}
-	// Sort by absolute impact descending
+	// Sort: group by child (biggest total impact first), then per-child issues by abs(amount).
+	// Use child_id for grouping (not name, which varies between bill/system formatting).
+	issueChildKey := func(issue models.FundingComparisonIssueSummary) string {
+		if issue.ChildID != nil {
+			return strconv.FormatUint(uint64(*issue.ChildID), 10)
+		}
+		return issue.VoucherNumber
+	}
+	childImpact := make(map[string]int)
+	for i := range issueList {
+		ck := issueChildKey(issueList[i])
+		amt := issueList[i].TotalAmount
+		if amt < 0 {
+			amt = -amt
+		}
+		childImpact[ck] += amt
+	}
 	slices.SortFunc(issueList, func(a, b models.FundingComparisonIssueSummary) int {
+		ckA, ckB := issueChildKey(a), issueChildKey(b)
+		// Primary: child's total impact descending
+		if n := cmp.Compare(childImpact[ckB], childImpact[ckA]); n != 0 {
+			return n
+		}
+		// Secondary: same child — group together
+		if n := cmp.Compare(ckA, ckB); n != 0 {
+			return n
+		}
+		// Tertiary: issue impact descending
 		absA, absB := a.TotalAmount, b.TotalAmount
 		if absA < 0 {
 			absA = -absA
@@ -856,7 +894,7 @@ func BuildComparisonSummary(comparisons []models.FundingComparisonResponse) mode
 		if absB < 0 {
 			absB = -absB
 		}
-		return cmp.Compare(absB, absA) // descending
+		return cmp.Compare(absB, absA)
 	})
 
 	return models.FundingComparisonSummary{
