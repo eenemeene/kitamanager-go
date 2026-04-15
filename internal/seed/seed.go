@@ -2,6 +2,7 @@ package seed
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -17,6 +18,7 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/rbac"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 	"github.com/eenemeene/kitamanager-go/internal/store"
+	"github.com/eenemeene/kitamanager-go/internal/validation"
 )
 
 // randInt returns a random integer in [0, n) for test data generation.
@@ -159,12 +161,30 @@ var propertyCombinations = []models.ContractProperties{
 	{"care_type": "teilzeit", "ndh": "ndh"},
 }
 
+// seededChild tracks a child created during seeding along with its contract details,
+// so we can generate matching ISBJ billing data afterwards.
+type seededChild struct {
+	child      *models.Child
+	contracts  []seededContract
+	voucherNum string
+}
+
+// seededContract tracks a single contract for a seeded child.
+type seededContract struct {
+	from       time.Time
+	to         *time.Time
+	sectionID  uint
+	properties models.ContractProperties
+}
+
 // SeedTestData creates realistic test data for development:
 // - Berlin government funding plan
 // - Organization "Kita Sonnenschein" with Berlin funding assigned
 // - Test users with different roles (all with password "supersecret")
-// - 120 currently active children across 3 sections with 3 years of history (~200 total)
-// - ~35 employees (active, former, and upcoming)
+// - ~60 children across 3 sections with contract histories
+// - ~20 employees (active, former, and upcoming)
+// - ISBJ billing data for the last 6 months matching the seeded children
+// - Voucher numbers for all children with active contracts
 func SeedTestData(cfg *config.Config, db *gorm.DB, imp *importer.GovernmentFundingImporter) error {
 	if !cfg.SeedTestData {
 		slog.Info("Test data seeding skipped: SEED_TEST_DATA not set to true")
@@ -409,12 +429,19 @@ func SeedTestData(cfg *config.Config, db *gorm.DB, imp *importer.GovernmentFundi
 	transactor := store.NewTransactor(db)
 	childService := service.NewChildService(childStore, orgStore, govFundingStore, sectionStore, transactor)
 
-	// Seed children with realistic contract histories spanning 3 years
-	childCount, contractCount, err := seedChildren(db, childService, org.ID, sections)
+	// Seed children with realistic contract histories
+	seededChildren, err := seedChildren(db, childService, org.ID, sections)
 	if err != nil {
 		return fmt.Errorf("failed to seed children: %w", err)
 	}
-	slog.Info("Created test children", "children", childCount, "contracts", contractCount)
+	slog.Info("Created test children", "children", len(seededChildren))
+
+	// Seed vouchers for children with active contracts
+	voucherCount, err := seedVouchers(db, seededChildren)
+	if err != nil {
+		return fmt.Errorf("failed to seed vouchers: %w", err)
+	}
+	slog.Info("Created vouchers", "count", voucherCount)
 
 	// Seed employees with varied scenarios (active, former, upcoming)
 	empCount, empContractCount, err := seedEmployees(db, org.ID, sections, defaultSection, payPlan.ID, minijobPayPlan.ID)
@@ -422,6 +449,13 @@ func SeedTestData(cfg *config.Config, db *gorm.DB, imp *importer.GovernmentFundi
 		return fmt.Errorf("failed to seed employees: %w", err)
 	}
 	slog.Info("Created test employees", "employees", empCount, "contracts", empContractCount)
+
+	// Seed ISBJ billing data for the last 6 months, matching the seeded children
+	billCount, err := seedISBJBillingData(db, govFundingStore, org.ID, seededChildren)
+	if err != nil {
+		return fmt.Errorf("failed to seed ISBJ billing data: %w", err)
+	}
+	slog.Info("Created ISBJ billing periods", "count", billCount)
 
 	slog.Info("Test data seeding completed",
 		"organization", org.Name,
@@ -442,126 +476,93 @@ type childCohort struct {
 	sectionID uint
 }
 
-// seedChildren creates 120 currently active children distributed across sections with 3 years of history.
-// Total children including alumni and future is ~200.
-//
-// The data models a realistic Kita lifecycle:
-//   - Children enter Nest (0-2y), progress through Nestflüchter (2-3y) and Große (3-6y)
-//   - School starters leave on Jul 31 each year
-//   - Most new children join at the start of the Kita year (Aug-Oct), some later
-//   - ~20 children have multi-contract histories showing section transitions
+// seedChildren creates ~60 children distributed across sections.
+// Returns the list of seeded children with their contract details for ISBJ billing generation.
 //
 //nolint:gosec,cyclop // math/rand is fine for test data; complexity is inherent
-func seedChildren(db *gorm.DB, childService *service.ChildService, orgID uint, sections []*models.Section) (int, int, error) {
+func seedChildren(db *gorm.DB, childService *service.ChildService, orgID uint, sections []*models.Section) ([]seededChild, error) {
 	now := time.Now()
 	nest, nestfluechter, grosse := sections[0], sections[1], sections[2]
 
-	// Kita year boundaries (Aug 1 - Jul 31)
 	currentKitaYear := kitaYearStartFor(now)
 	prevKitaYear := currentKitaYear.AddDate(-1, 0, 0)
 	jul := func(year int) time.Time {
 		return time.Date(year, time.July, 31, 0, 0, 0, 0, time.UTC)
 	}
 	midYear2024 := time.Date(2024, 11, 15, 0, 0, 0, 0, time.UTC)
-	midYear2025 := time.Date(2025, 5, 30, 0, 0, 0, 0, time.UTC)
-	jul2023 := jul(currentKitaYear.Year() - 2)
 	jul2024 := jul(currentKitaYear.Year() - 1)
 	jul2025 := jul(currentKitaYear.Year())
 
 	cohorts := []childCohort{
-		// --- Currently active children (120 total: 25 Nest + 30 NF + 50 Große single + 15 multi) ---
-
-		// Nest: born 6-24 months ago, joined when 6-12 months old
-		{25, now.AddDate(-2, 0, 0), now.AddDate(0, -6, 0),
+		// --- Currently active children (45 total: 8 Nest + 12 NF + 25 Große single) ---
+		{8, now.AddDate(-2, 0, 0), now.AddDate(0, -6, 0),
 			prevKitaYear, now.AddDate(0, -1, 0), nil, nest.ID},
-
-		// Nestflüchter: born 24-36 months ago
-		{30, now.AddDate(-3, 0, 0), now.AddDate(-2, 0, 0),
+		{12, now.AddDate(-3, 0, 0), now.AddDate(-2, 0, 0),
 			now.AddDate(-2, -6, 0), now.AddDate(0, -3, 0), nil, nestfluechter.ID},
-
-		// Große: born 3-6 years ago, single contract
-		{50, now.AddDate(-6, 0, 0), now.AddDate(-3, 0, 0),
+		{25, now.AddDate(-6, 0, 0), now.AddDate(-3, 0, 0),
 			now.AddDate(-4, 0, 0), now.AddDate(0, -6, 0), nil, grosse.ID},
 
-		// --- Children who left for school (Jul 31 each year) ---
-
-		// Left Jul 2023: born ~6 years before that, started ~2020-2021
-		{14, jul2023.AddDate(-7, 0, 0), jul2023.AddDate(-6, 0, 0),
-			jul2023.AddDate(-4, 0, 0), jul2023.AddDate(-2, 0, 0), &jul2023, grosse.ID},
-
-		// Left Jul 2024: born ~6 years before that, started ~2021-2022
-		{15, jul2024.AddDate(-7, 0, 0), jul2024.AddDate(-6, 0, 0),
+		// --- Alumni ---
+		{4, jul2024.AddDate(-7, 0, 0), jul2024.AddDate(-6, 0, 0),
 			jul2024.AddDate(-4, 0, 0), jul2024.AddDate(-2, 0, 0), &jul2024, grosse.ID},
-
-		// Left Jul 2025: born ~6 years before that, started ~2022-2023
-		{14, jul2025.AddDate(-7, 0, 0), jul2025.AddDate(-6, 0, 0),
+		{4, jul2025.AddDate(-7, 0, 0), jul2025.AddDate(-6, 0, 0),
 			jul2025.AddDate(-4, 0, 0), jul2025.AddDate(-2, 0, 0), &jul2025, grosse.ID},
-
-		// Left mid-year (family moved) — 2 per year
-		{2, midYear2024.AddDate(-3, 0, 0), midYear2024.AddDate(-2, 0, 0),
+		{1, midYear2024.AddDate(-3, 0, 0), midYear2024.AddDate(-2, 0, 0),
 			midYear2024.AddDate(-2, 0, 0), midYear2024.AddDate(-1, 0, 0), &midYear2024, nestfluechter.ID},
-		{2, midYear2025.AddDate(-4, 0, 0), midYear2025.AddDate(-3, 0, 0),
-			midYear2025.AddDate(-2, 0, 0), midYear2025.AddDate(-1, 0, 0), &midYear2025, grosse.ID},
 
-		// --- Future children (starting in coming months) ---
-		{8, now.AddDate(-1, -6, 0), now.AddDate(0, -6, 0),
+		// --- Future ---
+		{3, now.AddDate(-1, -6, 0), now.AddDate(0, -6, 0),
 			now.AddDate(0, 1, 0), now.AddDate(0, 6, 0), nil, nest.ID},
 	}
 
 	ctx := context.Background()
-	childCount := 0
-	contractCount := 0
+	var allSeeded []seededChild
 
-	// Generate single-contract children from cohorts
 	for _, c := range cohorts {
 		for range c.count {
 			child := newChild(orgID, randomDateBetween(c.birthFrom, c.birthTo))
 			if err := db.Create(&child).Error; err != nil {
-				return 0, 0, err
+				return nil, err
 			}
 			joinDate := randomJoinDate(c.joinFrom, c.joinTo)
-			// Ensure contract doesn't start before birthdate
 			if joinDate.Before(child.Birthdate) {
 				joinDate = child.Birthdate
 			}
+			props := propertyCombinations[randInt(len(propertyCombinations))]
 			if _, err := childService.CreateContract(ctx, child.ID, orgID, &models.ChildContractCreateRequest{
 				SectionID:  c.sectionID,
 				From:       joinDate,
 				To:         c.leftDate,
-				Properties: propertyCombinations[randInt(len(propertyCombinations))],
+				Properties: props,
 			}); err != nil {
-				return 0, 0, err
+				return nil, err
 			}
-			childCount++
-			contractCount++
+			allSeeded = append(allSeeded, seededChild{
+				child: &child,
+				contracts: []seededContract{{
+					from: joinDate, to: c.leftDate, sectionID: c.sectionID, properties: props,
+				}},
+			})
 		}
 	}
 
-	// Multi-contract children showing section transitions (Nest → Nestflüchter → Große)
-	// Currently active, in Große
-	for range 15 {
+	// Multi-contract children (Nest → NF → Große), currently active
+	for range 5 {
 		birthdate := randomDateBetween(now.AddDate(-5, 0, 0), now.AddDate(-3, -6, 0))
 		child := newChild(orgID, birthdate)
 		if err := db.Create(&child).Error; err != nil {
-			return 0, 0, err
+			return nil, err
 		}
-
-		// Nest contract: started at 8-12 months, ended on a Jul 31
-		nestStart := birthdate.AddDate(0, 8+randInt(4), 0)
-		nestStart = firstOfMonth(nestStart)
+		nestStart := firstOfMonth(birthdate.AddDate(0, 8+randInt(4), 0))
 		nestEnd := jul(nestStart.Year() + 1)
 		if !nestEnd.After(nestStart.AddDate(0, 4, 0)) {
 			nestEnd = nestEnd.AddDate(1, 0, 0)
 		}
-
-		// Nestflüchter: Aug 1 after Nest ends, ended on next Jul 31
 		nfStart := nestEnd.AddDate(0, 0, 1)
 		nfEnd := jul(nfStart.Year() + 1)
 		if !nfEnd.After(nfStart.AddDate(0, 4, 0)) {
 			nfEnd = nfEnd.AddDate(1, 0, 0)
 		}
-
-		// Große: Aug 1 after Nestflüchter ends, ongoing
 		grosseStart := nfEnd.AddDate(0, 0, 1)
 
 		reqs := []models.ChildContractCreateRequest{
@@ -569,47 +570,247 @@ func seedChildren(db *gorm.DB, childService *service.ChildService, orgID uint, s
 			{SectionID: nestfluechter.ID, From: nfStart, To: &nfEnd, Properties: propertyCombinations[randInt(len(propertyCombinations))]},
 			{SectionID: grosse.ID, From: grosseStart, Properties: propertyCombinations[randInt(len(propertyCombinations))]},
 		}
+		sc := seededChild{child: &child}
 		for _, req := range reqs {
 			if _, err := childService.CreateContract(ctx, child.ID, orgID, &req); err != nil {
-				return 0, 0, err
+				return nil, err
 			}
-			contractCount++
+			sc.contracts = append(sc.contracts, seededContract{
+				from: req.From, to: req.To, sectionID: req.SectionID, properties: req.Properties,
+			})
 		}
-		childCount++
+		allSeeded = append(allSeeded, sc)
 	}
 
-	// Multi-contract children who already left for school
-	for range 10 {
-		exitYear := currentKitaYear.Year() - 1 - randInt(2) // left Jul 2023, 2024, or 2025
+	// Multi-contract alumni
+	for range 3 {
+		exitYear := currentKitaYear.Year() - 1 - randInt(2)
 		exitDate := jul(exitYear)
 		birthdate := exitDate.AddDate(-6, -randInt(6), 0)
 		child := newChild(orgID, birthdate)
 		if err := db.Create(&child).Error; err != nil {
-			return 0, 0, err
+			return nil, err
 		}
-
-		nestStart := birthdate.AddDate(0, 10+randInt(6), 0)
-		nestStart = firstOfMonth(nestStart)
+		nestStart := firstOfMonth(birthdate.AddDate(0, 10+randInt(6), 0))
 		nestEnd := jul(nestStart.Year() + 1)
 		if !nestEnd.After(nestStart.AddDate(0, 4, 0)) {
 			nestEnd = nestEnd.AddDate(1, 0, 0)
 		}
 		grosseStart := nestEnd.AddDate(0, 0, 1)
-
 		reqs := []models.ChildContractCreateRequest{
 			{SectionID: nest.ID, From: nestStart, To: &nestEnd, Properties: propertyCombinations[randInt(len(propertyCombinations))]},
 			{SectionID: grosse.ID, From: grosseStart, To: &exitDate, Properties: propertyCombinations[randInt(len(propertyCombinations))]},
 		}
+		sc := seededChild{child: &child}
 		for _, req := range reqs {
 			if _, err := childService.CreateContract(ctx, child.ID, orgID, &req); err != nil {
-				return 0, 0, err
+				return nil, err
 			}
-			contractCount++
+			sc.contracts = append(sc.contracts, seededContract{
+				from: req.From, to: req.To, sectionID: req.SectionID, properties: req.Properties,
+			})
 		}
-		childCount++
+		allSeeded = append(allSeeded, sc)
 	}
 
-	return childCount, contractCount, nil
+	return allSeeded, nil
+}
+
+// seedVouchers assigns voucher numbers to all children's contracts.
+func seedVouchers(db *gorm.DB, children []seededChild) (int, error) {
+	count := 0
+	for i := range children {
+		sc := &children[i]
+		if len(sc.contracts) == 0 {
+			continue
+		}
+		voucherNum := fmt.Sprintf("GB-%011d-%02d", sc.child.ID+10000000000, 1)
+		if err := db.Model(&models.ChildContract{}).
+			Where("child_id = ?", sc.child.ID).
+			Update("voucher_number", voucherNum).Error; err != nil {
+			return 0, fmt.Errorf("setting voucher for child %d: %w", sc.child.ID, err)
+		}
+		sc.voucherNum = voucherNum
+		count++
+	}
+	return count, nil
+}
+
+// seedISBJBillingData creates GovernmentFundingBillPeriod records for the last 6 months.
+func seedISBJBillingData(db *gorm.DB, fundingStore *store.GovernmentFundingStore, orgID uint, children []seededChild) (int, error) {
+	ctx := context.Background()
+	funding, err := fundingStore.FindByStateWithDetails(ctx, "berlin", 0, nil)
+	if err != nil {
+		return 0, fmt.Errorf("loading Berlin funding: %w", err)
+	}
+
+	now := time.Now()
+	billCount := 0
+	for monthsAgo := 6; monthsAgo >= 1; monthsAgo-- {
+		billDate := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC).AddDate(0, -monthsAgo, 0)
+		var fundingPeriod *models.GovernmentFundingPeriod
+		for i := range funding.Periods {
+			if funding.Periods[i].IsActiveOn(billDate) {
+				fundingPeriod = &funding.Periods[i]
+				break
+			}
+		}
+		if fundingPeriod == nil {
+			slog.Warn("No funding period for bill date, skipping", "date", billDate)
+			continue
+		}
+		billPeriod := buildBillPeriod(orgID, billDate, fundingPeriod, children, monthsAgo)
+		if billPeriod == nil {
+			continue
+		}
+		if err := db.Create(billPeriod).Error; err != nil {
+			return 0, fmt.Errorf("saving bill for %s: %w", billDate.Format("2006-01"), err)
+		}
+		billCount++
+	}
+	return billCount, nil
+}
+
+// discrepancyType describes what kind of billing discrepancy to introduce.
+type discrepancyType int
+
+const (
+	discrepancyNone             discrepancyType = iota
+	discrepancyAmountOff
+	discrepancyMissingSurcharge
+	discrepancyExtraSurcharge
+	discrepancyBillOnly
+)
+
+func childDiscrepancy(childIdx int) discrepancyType {
+	switch {
+	case childIdx%25 == 3:
+		return discrepancyAmountOff
+	case childIdx%25 == 7:
+		return discrepancyMissingSurcharge
+	case childIdx%25 == 11:
+		return discrepancyExtraSurcharge
+	case childIdx%25 == 19:
+		return discrepancyBillOnly
+	default:
+		return discrepancyNone
+	}
+}
+
+// buildBillPeriod constructs a GovernmentFundingBillPeriod for a single month.
+func buildBillPeriod(orgID uint, billDate time.Time, fundingPeriod *models.GovernmentFundingPeriod, children []seededChild, monthsAgo int) *models.GovernmentFundingBillPeriod {
+	billEndDate := billDate.AddDate(0, 1, -1)
+	var billChildren []models.GovernmentFundingBillChild
+	facilityTotal := 0
+	correctionTotal := 0
+
+	for childIdx, sc := range children {
+		if sc.voucherNum == "" {
+			continue
+		}
+		var activeContract *seededContract
+		for i := range sc.contracts {
+			c := &sc.contracts[i]
+			if !billDate.Before(c.from) && (c.to == nil || !billDate.After(*c.to)) {
+				activeContract = c
+				break
+			}
+		}
+		if activeContract == nil {
+			continue
+		}
+
+		childAge := validation.CalculateAgeOnDate(sc.child.Birthdate, billDate)
+		disc := childDiscrepancy(childIdx)
+		voucherNum := sc.voucherNum
+		if disc == discrepancyBillOnly {
+			voucherNum = fmt.Sprintf("GB-%011d-%02d", 99900000000+childIdx, 1)
+		}
+
+		var payments []models.GovernmentFundingBillPayment
+		rowTotal := 0
+		for pi := range fundingPeriod.Properties {
+			fp := &fundingPeriod.Properties[pi]
+			if !fp.MatchesAge(childAge) || !activeContract.properties.HasValue(fp.Key, fp.Value) {
+				continue
+			}
+			amount := fp.Payment
+			switch disc {
+			case discrepancyAmountOff:
+				if fp.Key == "care_type" {
+					amount += 347
+				}
+			case discrepancyMissingSurcharge:
+				if fp.Key == "ndh" {
+					continue
+				}
+			}
+			payments = append(payments, models.GovernmentFundingBillPayment{
+				Key: fp.Key, Value: fp.Value, Amount: amount, RowIndex: 0,
+			})
+			rowTotal += amount
+		}
+		if disc == discrepancyExtraSurcharge {
+			for pi := range fundingPeriod.Properties {
+				fp := &fundingPeriod.Properties[pi]
+				if fp.Key == "qm/mss" && fp.MatchesAge(childAge) {
+					payments = append(payments, models.GovernmentFundingBillPayment{
+						Key: fp.Key, Value: fp.Value, Amount: fp.Payment, RowIndex: 0,
+					})
+					rowTotal += fp.Payment
+					break
+				}
+			}
+		}
+		if len(payments) == 0 {
+			continue
+		}
+		billChildren = append(billChildren, models.GovernmentFundingBillChild{
+			VoucherNumber: voucherNum,
+			ChildName:     sc.child.LastName + ", " + sc.child.FirstName,
+			BirthDate:     sc.child.Birthdate.Format("01.06"),
+			District:      int64(1 + childIdx%12),
+			Payments:      payments,
+		})
+		facilityTotal += rowTotal
+	}
+
+	// Correction rows for the 2 most recent bills
+	if monthsAgo <= 2 && len(children) > 10 {
+		corrChild := children[10]
+		if corrChild.voucherNum != "" {
+			corrAmount := -1500
+			billChildren = append(billChildren, models.GovernmentFundingBillChild{
+				VoucherNumber: corrChild.voucherNum,
+				ChildName:     corrChild.child.LastName + ", " + corrChild.child.FirstName,
+				BirthDate:     corrChild.child.Birthdate.Format("01.06"),
+				District:      3,
+				Payments: []models.GovernmentFundingBillPayment{
+					{Key: "care_type", Value: "ganztag", Amount: corrAmount, RowIndex: 1},
+				},
+			})
+			correctionTotal += corrAmount
+		}
+	}
+
+	if len(billChildren) == 0 {
+		return nil
+	}
+
+	hashInput := fmt.Sprintf("seed-isbj-%s-%d", billDate.Format("2006-01"), orgID)
+	hash := fmt.Sprintf("%x", sha256.Sum256([]byte(hashInput)))
+	return &models.GovernmentFundingBillPeriod{
+		OrganizationID:    orgID,
+		Period:            models.Period{From: billDate, To: &billEndDate},
+		FileName:          fmt.Sprintf("Senatsabrechnung_%s.xlsx", billDate.Format("2006-01")),
+		FileSha256:        hash,
+		FacilityName:      "Kita Sonnenschein",
+		FacilityTotal:     facilityTotal + correctionTotal,
+		ContractBooking:   facilityTotal - correctionTotal,
+		CorrectionBooking: correctionTotal,
+		CreatedBy:         1,
+		Children:          billChildren,
+	}
 }
 
 // empDef defines an employee and their contract history.
@@ -630,9 +831,7 @@ type empContractDef struct {
 	sectionIdx    int // 0=Nest, 1=Nestflüchter, 2=Große, -1=default
 }
 
-// seedEmployees creates ~35 employees with realistic contract scenarios.
-// Active employees provide 95-130% staffing coverage depending on time of year.
-// Includes former employees (for historical staffing data) and upcoming hires.
+// seedEmployees creates ~20 employees proportional to a ~60-child Kita.
 //
 //nolint:cyclop // complexity is inherent in realistic test data definition
 func seedEmployees(db *gorm.DB, orgID uint, namedSections []*models.Section, defaultSection *models.Section, payPlanID uint, minijobPayPlanID uint) (int, int, error) {
@@ -645,7 +844,7 @@ func seedEmployees(db *gorm.DB, orgID uint, namedSections []*models.Section, def
 	tp := func(t time.Time) *time.Time { return &t }
 
 	employees := []empDef{
-		// ===== Nest section (8 active) =====
+		// ===== Nest section (3 active) =====
 		{"Anna", "Müller", 1988, []empContractDef{
 			{"qualified", "S8a", 4, 39, d(2020, 3, 1), nil, 0},
 		}},
@@ -655,23 +854,8 @@ func seedEmployees(db *gorm.DB, orgID uint, namedSections []*models.Section, def
 		{"Maria", "Weber", 1990, []empContractDef{
 			{"supplementary", "S4", 3, 39, d(2022, 1, 15), nil, 0},
 		}},
-		{"Julia", "Fischer", 1997, []empContractDef{
-			{"qualified", "S8a", 1, 30, d(2025, 2, 1), nil, 0},
-		}},
-		{"Daniela", "Krause", 1993, []empContractDef{
-			{"qualified", "S8a", 2, 39, d(2023, 3, 1), nil, 0},
-		}},
-		{"Sandra", "Schmitz", 1989, []empContractDef{
-			{"supplementary", "S4", 2, 30, d(2024, 8, 1), nil, 0},
-		}},
-		{"Karolin", "Berger", 1994, []empContractDef{
-			{"qualified", "S8a", 2, 39, d(2023, 9, 1), nil, 0},
-		}},
-		{"Stefanie", "Frank", 1997, []empContractDef{
-			{"qualified", "S8a", 1, 30, d(2025, 8, 1), nil, 0},
-		}},
 
-		// ===== Nestflüchter section (9 active) =====
+		// ===== Nestflüchter section (4 active) =====
 		{"Stefan", "Meyer", 1980, []empContractDef{
 			{"qualified", "S8a", 5, 39, d(2018, 8, 1), nil, 1},
 		}},
@@ -684,31 +868,13 @@ func seedEmployees(db *gorm.DB, orgID uint, namedSections []*models.Section, def
 		{"Petra", "Schulz", 1986, []empContractDef{
 			{"supplementary", "S4", 2, 25, d(2024, 2, 1), nil, 1},
 		}},
-		{"Heike", "Schäfer", 1984, []empContractDef{
-			{"qualified", "S8a", 4, 39, d(2019, 8, 1), nil, 1},
-		}},
-		{"Robert", "Lange", 1996, []empContractDef{
-			{"qualified", "S8b", 1, 30, d(2025, 1, 1), nil, 1},
-		}},
-		{"Tanja", "Horn", 1990, []empContractDef{
-			{"qualified", "S8a", 3, 39, d(2023, 8, 1), nil, 1},
-		}},
-		{"Dirk", "Winkler", 1993, []empContractDef{
-			{"qualified", "S8b", 1, 39, d(2024, 3, 1), nil, 1},
-		}},
-		{"Silke", "Pohl", 1987, []empContractDef{
-			{"supplementary", "S4", 2, 30, d(2025, 8, 1), nil, 1},
-		}},
 
-		// ===== Große section (12 active) =====
+		// ===== Große section (6 active) =====
 		{"Andreas", "Hoffmann", 1975, []empContractDef{
 			{"qualified", "S8a", 6, 39, d(2015, 8, 1), nil, 2},
 		}},
 		{"Claudia", "Koch", 1989, []empContractDef{
 			{"qualified", "S8a", 3, 39, d(2021, 3, 1), nil, 2},
-		}},
-		{"Frank", "Richter", 1994, []empContractDef{
-			{"qualified", "S8a", 2, 39, d(2023, 8, 1), nil, 2},
 		}},
 		{"Susanne", "Braun", 1987, []empContractDef{
 			{"qualified", "S9", 3, 39, d(2021, 8, 1), nil, 2},
@@ -716,23 +882,8 @@ func seedEmployees(db *gorm.DB, orgID uint, namedSections []*models.Section, def
 		{"Christian", "Schröder", 1985, []empContractDef{
 			{"supplementary", "S4", 4, 39, d(2020, 1, 1), nil, 2},
 		}},
-		{"Monika", "Neumann", 1996, []empContractDef{
-			{"qualified", "S8b", 1, 30, d(2024, 8, 1), nil, 2},
-		}},
 		{"Markus", "Schmitt", 1991, []empContractDef{
 			{"qualified", "S8a", 3, 39, d(2022, 3, 1), nil, 2},
-		}},
-		{"Nicole", "Krüger", 1988, []empContractDef{
-			{"qualified", "S8a", 4, 39, d(2019, 8, 1), nil, 2},
-		}},
-		{"Kerstin", "Haas", 1986, []empContractDef{
-			{"qualified", "S8a", 4, 39, d(2023, 1, 1), nil, 2},
-		}},
-		{"Rainer", "Lorenz", 1992, []empContractDef{
-			{"qualified", "S8a", 2, 39, d(2024, 8, 1), nil, 2},
-		}},
-		{"Anke", "Vogel", 1995, []empContractDef{
-			{"supplementary", "S4", 1, 39, d(2025, 2, 1), nil, 2},
 		}},
 		// Deputy/coordinator
 		{"Katrin", "Klein", 1982, []empContractDef{
@@ -740,72 +891,32 @@ func seedEmployees(db *gorm.DB, orgID uint, namedSections []*models.Section, def
 		}},
 
 		// ===== Cross-section / support (3 active) =====
-		// Non-pedagogical (kitchen)
 		{"Birgit", "Wolf", 1978, []empContractDef{
 			{"non_pedagogical", "S4", 3, 20, d(2022, 4, 1), nil, -1},
 		}},
-		// Floater/substitute across sections
-		{"Michael", "Hartmann", 1992, []empContractDef{
-			{"qualified", "S8a", 4, 39, d(2019, 8, 1), nil, 2},
-		}},
-		// Cleaning staff
 		{"Inge", "Schwarz", 1970, []empContractDef{
 			{"non_pedagogical", "S4", 5, 20, d(2018, 1, 1), nil, -1},
 		}},
-		// Minijob: kitchen helper (10h/week, €556/month)
 		{"Gisela", "Peters", 1965, []empContractDef{
 			{"non_pedagogical", "Minijob", 1, 10, d(2023, 4, 1), nil, -1},
 		}},
-		// Minijob: afternoon helper (8h/week, prorated to €444.80/month)
-		{"Hanna", "Seidel", 2001, []empContractDef{
-			{"supplementary", "Minijob", 1, 8, d(2024, 9, 1), nil, 2},
-		}},
 
-		// ===== Former employees (left in last 3 years) =====
-
-		// Left Jan 2025 after 6 years (career change)
+		// ===== Former employees =====
 		{"Jürgen", "Lang", 1983, []empContractDef{
 			{"qualified", "S8a", 3, 39, d(2019, 2, 1), tp(d(2022, 7, 31)), 1},
 			{"qualified", "S8a", 4, 39, d(2022, 8, 1), tp(d(2025, 1, 31)), 2},
 		}},
-		// Left Jul 2024 (moved cities)
 		{"Wolfgang", "Krüger", 1990, []empContractDef{
 			{"qualified", "S8b", 2, 39, d(2021, 8, 1), tp(d(2024, 7, 31)), 0},
 		}},
-		// Left Mar 2024 (short stint)
-		{"Uwe", "Zimmermann", 1998, []empContractDef{
-			{"qualified", "S8a", 1, 39, d(2022, 8, 1), tp(d(2024, 3, 31)), 2},
-		}},
-		// Left Jul 2023 (retired)
 		{"Renate", "Meier", 1963, []empContractDef{
 			{"qualified", "S8a", 6, 39, d(2010, 8, 1), tp(d(2023, 7, 31)), 2},
 		}},
-		// Left Dec 2023 (parental leave, didn't return)
-		{"Laura", "Schneider", 1994, []empContractDef{
-			{"supplementary", "S4", 2, 30, d(2022, 3, 1), tp(d(2023, 12, 31)), 1},
-		}},
-		// Left Aug 2024 (burnout)
-		{"Heiko", "Baumann", 1986, []empContractDef{
-			{"qualified", "S8a", 3, 39, d(2020, 8, 1), tp(d(2024, 8, 31)), 0},
-		}},
-		// Left Feb 2024 (moved to another Kita)
-		{"Christine", "Vogt", 1991, []empContractDef{
-			{"qualified", "S8b", 2, 39, d(2021, 3, 1), tp(d(2024, 2, 29)), 2},
-		}},
 
 		// ===== Upcoming employees =====
-
-		// Starting next month
 		{"Lena", "Hofmann", 1999, []empContractDef{
 			{"qualified", "S8a", 1, 39, now.AddDate(0, 1, 0), nil, 0},
 		}},
-		// Starting in 3 months
-		{"Felix", "Werner", 2000, []empContractDef{
-			{"supplementary", "S4", 1, 39,
-				time.Date(currentKitaYear.Year()+1, time.August, 1, 0, 0, 0, 0, time.UTC),
-				nil, 1},
-		}},
-		// Starting next Kita year
 		{"Sophie", "Lehmann", 1998, []empContractDef{
 			{"qualified", "S8a", 1, 39,
 				time.Date(currentKitaYear.Year()+1, time.August, 1, 0, 0, 0, 0, time.UTC),
