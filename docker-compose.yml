@@ -19,6 +19,7 @@ services:
       - SEED_ADMIN_PASSWORD=supersecret
       - SEED_ADMIN_NAME=Super Admin
       - SEED_RBAC_POLICIES=true
+      - SEED_TEST_DATA=${SEED_TEST_DATA:-false}
       - GOVERNMENT_FUNDING_SEED_PATH=configs/government-fundings/berlin.yaml
       - GOVERNMENT_FUNDING_SEED_NAME=Berlin
       # CORS configuration
