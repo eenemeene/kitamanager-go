@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
+import { HeaderWithTooltip } from '@/components/ui/header-with-tooltip';
 import {
   Table,
   TableBody,
@@ -10,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import type { StaffingHoursResponse } from '@/lib/api/types';
 
 interface StaffingHoursTableProps {
@@ -94,121 +96,135 @@ export function StaffingHoursTable({ data }: StaffingHoursTableProps) {
     val >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400';
 
   return (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="bg-background sticky left-0 z-10 min-w-[120px]" />
-            {months.map((m) => (
-              <TableHead key={m} className="min-w-[80px] text-right">
-                {formatMonthHeader(m)}
-              </TableHead>
-            ))}
-            <TableHead className="min-w-[80px] text-right font-bold">{t('average')}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {/* Required */}
-          <TableRow>
-            <TableCell className="bg-background sticky left-0 z-10 font-medium">
-              {t('staffingRequired')}
-            </TableCell>
-            {computed.required.map((val, i) => (
-              <TableCell key={months[i]} className="text-right tabular-nums">
-                {formatHours(val)}
+    <TooltipProvider>
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="bg-background sticky left-0 z-10 min-w-[120px]" />
+              {months.map((m) => (
+                <TableHead key={m} className="min-w-[80px] text-right">
+                  {formatMonthHeader(m)}
+                </TableHead>
+              ))}
+              <TableHead className="min-w-[80px] text-right font-bold">{t('average')}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {/* Required */}
+            <TableRow>
+              <TableCell className="bg-background sticky left-0 z-10 font-medium">
+                <HeaderWithTooltip
+                  label={t('staffingRequired')}
+                  tooltip={t('requiredHoursTooltip')}
+                />
               </TableCell>
-            ))}
-            <TableCell className="text-right font-bold tabular-nums">
-              {formatHours(computed.avgRequired)}
-            </TableCell>
-          </TableRow>
-
-          {/* Available */}
-          <TableRow>
-            <TableCell className="bg-background sticky left-0 z-10 font-medium">
-              {t('staffingAvailable')}
-            </TableCell>
-            {computed.available.map((val, i) => (
-              <TableCell key={months[i]} className="text-right tabular-nums">
-                {formatHours(val)}
+              {computed.required.map((val, i) => (
+                <TableCell key={months[i]} className="text-right tabular-nums">
+                  {formatHours(val)}
+                </TableCell>
+              ))}
+              <TableCell className="text-right font-bold tabular-nums">
+                {formatHours(computed.avgRequired)}
               </TableCell>
-            ))}
-            <TableCell className="text-right font-bold tabular-nums">
-              {formatHours(computed.avgAvailable)}
-            </TableCell>
-          </TableRow>
+            </TableRow>
 
-          {/* Balance */}
-          <TableRow className="border-t-2">
-            <TableCell className="bg-background sticky left-0 z-10 font-medium">
-              {t('staffingBalance')}
-            </TableCell>
-            {computed.balance.map((val, i) => (
+            {/* Available */}
+            <TableRow>
+              <TableCell className="bg-background sticky left-0 z-10 font-medium">
+                <HeaderWithTooltip
+                  label={t('staffingAvailable')}
+                  tooltip={t('availableHoursTooltip')}
+                />
+              </TableCell>
+              {computed.available.map((val, i) => (
+                <TableCell key={months[i]} className="text-right tabular-nums">
+                  {formatHours(val)}
+                </TableCell>
+              ))}
+              <TableCell className="text-right font-bold tabular-nums">
+                {formatHours(computed.avgAvailable)}
+              </TableCell>
+            </TableRow>
+
+            {/* Balance */}
+            <TableRow className="border-t-2">
+              <TableCell className="bg-background sticky left-0 z-10 font-medium">
+                <HeaderWithTooltip
+                  label={t('staffingBalance')}
+                  tooltip={t('staffingBalanceTooltip')}
+                />
+              </TableCell>
+              {computed.balance.map((val, i) => (
+                <TableCell
+                  key={months[i]}
+                  className={`text-right font-bold tabular-nums ${balanceColor(val)}`}
+                >
+                  {formatHours(val)}
+                </TableCell>
+              ))}
               <TableCell
-                key={months[i]}
-                className={`text-right font-bold tabular-nums ${balanceColor(val)}`}
+                className={`text-right font-bold tabular-nums ${balanceColor(computed.avgBalance)}`}
               >
-                {formatHours(val)}
+                {formatHours(computed.avgBalance)}
               </TableCell>
-            ))}
-            <TableCell
-              className={`text-right font-bold tabular-nums ${balanceColor(computed.avgBalance)}`}
-            >
-              {formatHours(computed.avgBalance)}
-            </TableCell>
-          </TableRow>
+            </TableRow>
 
-          {/* Balance % */}
-          <TableRow>
-            <TableCell className="bg-background sticky left-0 z-10 font-medium">
-              {t('staffingBalancePercent')}
-            </TableCell>
-            {computed.balancePercent.map((val, i) => (
+            {/* Balance % */}
+            <TableRow>
+              <TableCell className="bg-background sticky left-0 z-10 font-medium">
+                <HeaderWithTooltip
+                  label={t('staffingBalancePercent')}
+                  tooltip={t('balancePercentageTooltip')}
+                />
+              </TableCell>
+              {computed.balancePercent.map((val, i) => (
+                <TableCell
+                  key={months[i]}
+                  className={`text-right tabular-nums ${isFinite(val) ? balanceColor(val) : ''}`}
+                >
+                  {formatPercent(val)}
+                </TableCell>
+              ))}
               <TableCell
-                key={months[i]}
-                className={`text-right tabular-nums ${isFinite(val) ? balanceColor(val) : ''}`}
+                className={`text-right font-bold tabular-nums ${isFinite(computed.avgBalancePercent) ? balanceColor(computed.avgBalancePercent) : ''}`}
               >
-                {formatPercent(val)}
+                {formatPercent(computed.avgBalancePercent)}
               </TableCell>
-            ))}
-            <TableCell
-              className={`text-right font-bold tabular-nums ${isFinite(computed.avgBalancePercent) ? balanceColor(computed.avgBalancePercent) : ''}`}
-            >
-              {formatPercent(computed.avgBalancePercent)}
-            </TableCell>
-          </TableRow>
+            </TableRow>
 
-          {/* Children */}
-          <TableRow className="border-t-2">
-            <TableCell className="bg-background sticky left-0 z-10 font-medium">
-              {t('childrenContractCount')}
-            </TableCell>
-            {computed.children.map((val, i) => (
-              <TableCell key={months[i]} className="text-right tabular-nums">
-                {val || '\u2013'}
+            {/* Children */}
+            <TableRow className="border-t-2">
+              <TableCell className="bg-background sticky left-0 z-10 font-medium">
+                {t('childrenContractCount')}
               </TableCell>
-            ))}
-            <TableCell className="text-right font-bold tabular-nums">
-              {formatCount(computed.avgChildren)}
-            </TableCell>
-          </TableRow>
+              {computed.children.map((val, i) => (
+                <TableCell key={months[i]} className="text-right tabular-nums">
+                  {val || '\u2013'}
+                </TableCell>
+              ))}
+              <TableCell className="text-right font-bold tabular-nums">
+                {formatCount(computed.avgChildren)}
+              </TableCell>
+            </TableRow>
 
-          {/* Staff */}
-          <TableRow>
-            <TableCell className="bg-background sticky left-0 z-10 font-medium">
-              {t('staffCount')}
-            </TableCell>
-            {computed.staff.map((val, i) => (
-              <TableCell key={months[i]} className="text-right tabular-nums">
-                {val || '\u2013'}
+            {/* Staff */}
+            <TableRow>
+              <TableCell className="bg-background sticky left-0 z-10 font-medium">
+                {t('staffCount')}
               </TableCell>
-            ))}
-            <TableCell className="text-right font-bold tabular-nums">
-              {formatCount(computed.avgStaff)}
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
-    </div>
+              {computed.staff.map((val, i) => (
+                <TableCell key={months[i]} className="text-right tabular-nums">
+                  {val || '\u2013'}
+                </TableCell>
+              ))}
+              <TableCell className="text-right font-bold tabular-nums">
+                {formatCount(computed.avgStaff)}
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </div>
+    </TooltipProvider>
   );
 }
