@@ -1,0 +1,38 @@
+# KitaManager Report Configuration
+#
+# This file configures the report-pdf tool for scheduled report generation
+# and email delivery. Use with: ./report-pdf --config report-config.yaml
+
+# API credentials (must have access to all organizations listed in schedules)
+api_url: http://localhost:8080
+base_url: http://localhost:3000
+email: superadmin@example.com
+password: supersecret
+
+# SMTP configuration for sending emails
+# Leave host empty to log emails instead of sending (useful for testing)
+smtp:
+  host: ""
+  port: 587
+  user: ""
+  password: ""
+  from: "KitaManager Reports <reports@example.com>"
+
+# Report schedules
+schedules:
+  - name: "Monthly Financial Report"
+    org_id: "1"
+    reports: [staffing, financials, occupancy, children]
+    frequency: monthly  # 1st of each month
+    recipients:
+      - vorstand@example.com
+      - leitung@example.com
+    enabled: false  # Set to true when ready
+
+  # - name: "Weekly Staffing Update"
+  #   org_id: "1"
+  #   reports: [staffing]
+  #   frequency: weekly  # Every Monday
+  #   recipients:
+  #     - leitung@example.com
+  #   enabled: false

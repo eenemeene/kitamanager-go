@@ -60,6 +60,23 @@ Ressourcen, die zu einer Organisation gehören, verwenden URL-Muster:
 /api/v1/organizations/{orgId}/sections
 ```
 
+## Report-Tool
+
+Ein eigenständiges CLI-Tool (`tools/report-pdf/`) erzeugt PDF-Berichte, indem es die Druckseiten des Frontends über Playwright rendert. Es ist **unabhängig von API und Frontend** — es authentifiziert sich per HTTP und erzeugt dieselben Diagramme und Tabellen, die Benutzer im Browser sehen.
+
+```mermaid
+graph LR
+    Report[report-pdf Tool] -->|Login| API
+    Report -->|Druckseiten rendern| UI
+    Report -->|E-Mail senden| SMTP[SMTP-Server]
+```
+
+Das Tool unterstützt zwei Modi:
+- **Einmalig**: PDF-Erzeugung über die Kommandozeile
+- **Geplant**: Langlebiger Dienst, der Berichte per E-Mail nach einem wöchentlichen oder monatlichen Zeitplan versendet (konfiguriert per YAML-Datei)
+
+Berichte werden zu einem einzelnen PDF zusammengeführt mit den Bereichen Kinder, Belegung, Personal und Finanzen.
+
 ## Datenfluss
 
 1. **Anfrage** erreicht den Gin-Router

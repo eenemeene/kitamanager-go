@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	pdfcpuapi "github.com/pdfcpu/pdfcpu/pkg/api"
 	"github.com/playwright-community/playwright-go"
 )
 
@@ -135,6 +136,16 @@ func (g *Generator) GenerateReport(reportType, orgID string, year int, outputDir
 
 	fmt.Printf("  Saved %s\n", outputPath)
 	return nil
+}
+
+// MergeFiles combines multiple PDF files into a single output file.
+func MergeFiles(inputPaths []string, outputPath string) error {
+	return pdfcpuapi.MergeCreateFile(inputPaths, outputPath, false, nil)
+}
+
+// AddProperties adds custom properties to an existing PDF file.
+func AddProperties(pdfPath string, properties map[string]string) error {
+	return pdfcpuapi.AddPropertiesFile(pdfPath, "", properties, nil)
 }
 
 // Close shuts down the browser and Playwright.
