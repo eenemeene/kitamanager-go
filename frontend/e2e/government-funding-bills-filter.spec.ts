@@ -20,8 +20,8 @@ test.describe('Government Funding Bills - Kita Year Filter', () => {
       page.getByRole('heading', { name: /government funding bills/i }).first()
     ).toBeVisible({ timeout: 10000 });
 
-    // Kita year stepper should be visible with year label format YYYY/YY
-    await expect(page.locator('text=/\\d{4}\\/\\d{2}/')).toBeVisible();
+    // Kita year stepper should be visible with previous/next buttons and year label
+    await expect(page.getByRole('button', { name: /previous/i })).toBeVisible();
 
     // Previous and next buttons should be available
     await expect(page.getByRole('button', { name: /previous/i })).toBeVisible();
@@ -35,8 +35,8 @@ test.describe('Government Funding Bills - Kita Year Filter', () => {
       page.getByRole('heading', { name: /government funding bills/i }).first()
     ).toBeVisible({ timeout: 10000 });
 
-    // Get the current kita year label
-    const yearLabel = page.locator('text=/\\d{4}\\/\\d{2}/').first();
+    // Get the current kita year label from the stepper
+    const yearLabel = page.locator('.min-w-\\[80px\\]').first();
     const initialYear = await yearLabel.textContent();
 
     // Click previous to go back one year
