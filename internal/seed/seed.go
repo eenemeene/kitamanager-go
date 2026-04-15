@@ -675,7 +675,7 @@ func seedISBJBillingData(db *gorm.DB, fundingStore *store.GovernmentFundingStore
 type discrepancyType int
 
 const (
-	discrepancyNone             discrepancyType = iota
+	discrepancyNone discrepancyType = iota
 	discrepancyAmountOff
 	discrepancyMissingSurcharge
 	discrepancyExtraSurcharge
@@ -683,14 +683,14 @@ const (
 )
 
 func childDiscrepancy(childIdx int) discrepancyType {
-	switch {
-	case childIdx%25 == 3:
+	switch childIdx % 25 {
+	case 3:
 		return discrepancyAmountOff
-	case childIdx%25 == 7:
+	case 7:
 		return discrepancyMissingSurcharge
-	case childIdx%25 == 11:
+	case 11:
 		return discrepancyExtraSurcharge
-	case childIdx%25 == 19:
+	case 19:
 		return discrepancyBillOnly
 	default:
 		return discrepancyNone
