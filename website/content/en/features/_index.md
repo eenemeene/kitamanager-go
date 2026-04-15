@@ -177,7 +177,23 @@ Funding periods can be updated when state rates change without affecting histori
 
 ### ISBJ bill comparison
 
-KitaManager supports uploading government funding bills in the **ISBJ format**. After upload, the system compares the billed amounts against its own calculated funding to identify discrepancies — helping you catch underpayments or errors before they compound.
+KitaManager supports uploading government funding bills in the **ISBJ format** (.xlsx). After upload, the system compares the billed amounts against its own calculated funding to identify discrepancies — helping you catch underpayments or errors before they compound.
+
+| Capability | Description |
+|---|---|
+| Kita year navigation | Browse bills by Kita year (August to July) using a stepper control |
+| Summary bar | At-a-glance overview: how many bills match, how many have differences, and the total difference |
+| Row highlighting | Bills with discrepancies are visually highlighted |
+| Mismatch tags | Per-child comparison shows *why* there's a difference: missing property, extra property, or different rate |
+| Deficit tracking | The cumulative balance chart marks where deficits start and counts consecutive deficit months |
+
+### Financial forecast
+
+The forecast tool lets you model "what if" scenarios to plan ahead:
+
+- **Target balance** — set a financial goal and see how many children you'd need to reach it
+- **Baseline context** — the forecast pre-fills with your current cumulative balance, so you always know your starting point
+- **Optimizer** — automatically calculates the minimum number of children needed to reach your target, distributing them across sections
 
 ---
 
@@ -201,7 +217,7 @@ KitaManager provides seven types of statistics to support operational decisions.
 | Statistic | What it shows |
 |---|---|
 | **Staffing Hours** | Total weekly hours across all employee contracts |
-| **Financials** | Revenue and cost summaries based on funding and pay plan data |
+| **Financials** | Revenue and cost summaries with cumulative balance, deficit markers, and actual-vs-calculated funding comparison |
 | **Occupancy** | Number of enrolled children relative to capacity |
 | **Employee Staffing Details** | Per-employee breakdown of hours, grade, and step |
 | **Age Distribution** | Children grouped by age bracket |

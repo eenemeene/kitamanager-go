@@ -177,7 +177,23 @@ Förderzeiträume können aktualisiert werden, wenn sich die Landessätze änder
 
 ### ISBJ-Abrechnungsvergleich
 
-KitaManager unterstützt den Upload von Förderabrechnungen im **ISBJ-Format**. Nach dem Upload vergleicht das System die abgerechneten Beträge mit den eigenen berechneten Förderbeträgen, um Abweichungen zu erkennen — so können Sie Unterzahlungen oder Fehler frühzeitig aufdecken.
+KitaManager unterstützt den Upload von Förderabrechnungen im **ISBJ-Format** (.xlsx). Nach dem Upload vergleicht das System die abgerechneten Beträge mit den eigenen berechneten Förderbeträgen, um Abweichungen zu erkennen — so können Sie Unterzahlungen oder Fehler frühzeitig aufdecken.
+
+| Funktion | Beschreibung |
+|---|---|
+| Kitajahr-Navigation | Abrechnungen nach Kitajahr (August bis Juli) durchblättern |
+| Zusammenfassungsleiste | Überblick auf einen Blick: wie viele Abrechnungen stimmen, wie viele Abweichungen haben, und die Gesamtdifferenz |
+| Zeilen-Hervorhebung | Abrechnungen mit Abweichungen werden visuell hervorgehoben |
+| Abweichungs-Tags | Pro-Kind-Vergleich zeigt *warum* es eine Differenz gibt: fehlende Eigenschaft, zusätzliche Eigenschaft oder abweichender Satz |
+| Defizit-Tracking | Das kumulierte Saldo-Diagramm markiert, wo Defizite beginnen und zählt aufeinanderfolgende Defizitmonate |
+
+### Finanzprognose
+
+Das Prognose-Tool ermöglicht „Was-wäre-wenn"-Szenarien zur vorausschauenden Planung:
+
+- **Zielsaldo** — setzen Sie ein finanzielles Ziel und sehen Sie, wie viele Kinder Sie benötigen, um es zu erreichen
+- **Basislinie** — die Prognose wird mit Ihrem aktuellen kumulierten Saldo vorausgefüllt, damit Sie immer Ihren Ausgangspunkt kennen
+- **Optimierer** — berechnet automatisch die Mindestanzahl an Kindern, die zur Erreichung Ihres Ziels benötigt wird
 
 ---
 
