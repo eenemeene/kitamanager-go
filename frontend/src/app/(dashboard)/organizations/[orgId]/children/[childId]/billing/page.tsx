@@ -25,25 +25,13 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { HeaderWithTooltip } from '@/components/ui/header-with-tooltip';
 import { QueryError } from '@/components/crud/query-error';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import type { ChildBillingHistoryEntry } from '@/lib/api/types';
 import { formatCurrency, formatDate } from '@/lib/utils/formatting';
-
-function HeaderWithTooltip({ label, tooltip }: { label: string; tooltip: string }) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="cursor-help border-b border-dotted border-current">{label}</span>
-      </TooltipTrigger>
-      <TooltipContent className="max-w-xs">
-        <p>{tooltip}</p>
-      </TooltipContent>
-    </Tooltip>
-  );
-}
 
 function StatusBadge({
   status,

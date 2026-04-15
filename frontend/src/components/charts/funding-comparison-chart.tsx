@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { AlertTriangle, ChevronDown, ChevronRight, Info } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
 import { ResponsiveBar } from '@nivo/bar';
 import type { BarDatum, BarCustomLayerProps } from '@nivo/bar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -23,7 +23,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { HeaderWithTooltip } from '@/components/ui/header-with-tooltip';
 import { buildKitaYearBands, formatDateLabel, kitaYearLabel, chartTheme } from './chart-utils';
 import { toLocalDateString, getCurrentMonthStart } from '@/lib/utils/formatting';
 
@@ -37,24 +38,6 @@ type BandScale = ((v: string) => number | undefined) & { bandwidth(): number };
 
 function formatEur(cents: number): string {
   return (cents / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
-}
-
-function HeaderWithTooltip({ label, tooltip }: { label: string; tooltip: string }) {
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="inline-flex cursor-help items-center gap-1">
-            {label}
-            <Info className="text-muted-foreground h-3 w-3" />
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p className="max-w-xs text-xs">{tooltip}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
 }
 
 export function FundingComparisonChart({
@@ -504,156 +487,158 @@ export function FundingComparisonChart({
         />
       </ExportableChart>
       {kitaYearSummary.length > 0 && (
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('kitaYearCol')}</TableHead>
-                <TableHead className="text-right">
-                  <HeaderWithTooltip
-                    label={t('fundingCalculated')}
-                    tooltip={t('fundingCalculatedTooltip')}
-                  />
-                </TableHead>
-                <TableHead className="text-right">
-                  <HeaderWithTooltip
-                    label={t('fundingActualRegular')}
-                    tooltip={t('fundingRegularTooltip')}
-                  />
-                </TableHead>
-                <TableHead className="text-right">
-                  <HeaderWithTooltip
-                    label={t('fundingActualCorrection')}
-                    tooltip={t('fundingCorrectionsTooltip')}
-                  />
-                </TableHead>
-                <TableHead className="text-right">
-                  <HeaderWithTooltip
-                    label={t('fundingDifference')}
-                    tooltip={t('fundingDifferenceTooltip')}
-                  />
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {kitaYearSummary.map((row) => {
-                const isExpanded = expandedYears.has(row.label);
-                return (
-                  <React.Fragment key={row.label}>
-                    <TableRow
-                      className="hover:bg-muted/50 cursor-pointer"
-                      onClick={() => toggleYear(row.label)}
-                    >
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          {isExpanded ? (
-                            <ChevronDown className="h-4 w-4 shrink-0" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4 shrink-0" />
-                          )}
-                          {t('kitaYear', { year: row.label })}
-                          {row.hasBills && !row.complete && (
-                            <span className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
-                              <AlertTriangle className="h-3 w-3" />
-                              {row.actualMonths}/{row.totalMonths} {t('fundingMonthsCovered')}
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatEur(row.calculatedTotal)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {row.hasBills ? formatEur(row.regular) : '\u2014'}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {row.hasBills ? formatEur(row.correction) : '\u2014'}
-                      </TableCell>
-                      <TableCell
-                        className={`text-right font-medium tabular-nums ${
-                          !row.hasBills
-                            ? 'text-muted-foreground'
-                            : row.difference >= 0
-                              ? 'text-green-700 dark:text-green-400'
-                              : 'text-red-700 dark:text-red-400'
-                        }`}
+        <TooltipProvider>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('kitaYearCol')}</TableHead>
+                  <TableHead className="text-right">
+                    <HeaderWithTooltip
+                      label={t('fundingCalculated')}
+                      tooltip={t('fundingCalculatedTooltip')}
+                    />
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <HeaderWithTooltip
+                      label={t('fundingActualRegular')}
+                      tooltip={t('fundingRegularTooltip')}
+                    />
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <HeaderWithTooltip
+                      label={t('fundingActualCorrection')}
+                      tooltip={t('fundingCorrectionsTooltip')}
+                    />
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <HeaderWithTooltip
+                      label={t('fundingDifference')}
+                      tooltip={t('fundingDifferenceTooltip')}
+                    />
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {kitaYearSummary.map((row) => {
+                  const isExpanded = expandedYears.has(row.label);
+                  return (
+                    <React.Fragment key={row.label}>
+                      <TableRow
+                        className="hover:bg-muted/50 cursor-pointer"
+                        onClick={() => toggleYear(row.label)}
                       >
-                        {row.hasBills
-                          ? `${row.difference >= 0 ? '+' : ''}${formatEur(row.difference)}`
-                          : '\u2014'}
-                      </TableCell>
-                    </TableRow>
-                    {isExpanded &&
-                      row.months.map((m) => {
-                        const hasMismatch =
-                          (m.billOnlyCount != null && m.billOnlyCount > 0) ||
-                          (m.calcOnlyCount != null && m.calcOnlyCount > 0);
-                        return (
-                          <React.Fragment key={m.date}>
-                            <TableRow className="bg-muted/30">
-                              <TableCell className="pl-10 text-sm">
-                                {formatDateLabel(m.date)}
-                              </TableCell>
-                              <TableCell className="text-right text-sm tabular-nums">
-                                {formatEur(m.calculated)}
-                              </TableCell>
-                              <TableCell className="text-right text-sm tabular-nums">
-                                {m.regular != null ? formatEur(m.regular) : '\u2014'}
-                              </TableCell>
-                              <TableCell className="text-right text-sm tabular-nums">
-                                {m.correction != null ? formatEur(m.correction) : '\u2014'}
-                              </TableCell>
-                              <TableCell
-                                className={`text-right text-sm tabular-nums ${
-                                  m.difference == null
-                                    ? 'text-muted-foreground'
-                                    : m.difference >= 0
-                                      ? 'text-green-700 dark:text-green-400'
-                                      : 'text-red-700 dark:text-red-400'
-                                }`}
-                              >
-                                {m.difference != null
-                                  ? `${m.difference >= 0 ? '+' : ''}${formatEur(m.difference)}`
-                                  : '\u2014'}
-                              </TableCell>
-                            </TableRow>
-                            {hasMismatch && (
-                              <TableRow className="bg-muted/20">
-                                <TableCell colSpan={5} className="py-1 pl-14">
-                                  <div className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-0.5 text-xs">
-                                    {m.billOnlyCount != null && m.billOnlyCount > 0 && (
-                                      <span className="text-amber-600 dark:text-amber-400">
-                                        {t('fundingBillOnly')}:{' '}
-                                        {t('fundingChildCount', { count: m.billOnlyCount })} (
-                                        {formatEur(m.billOnlyAmount ?? 0)})
-                                      </span>
-                                    )}
-                                    {m.calcOnlyCount != null && m.calcOnlyCount > 0 && (
-                                      <span className="text-blue-600 dark:text-blue-400">
-                                        {t('fundingCalcOnly')}:{' '}
-                                        {t('fundingChildCount', { count: m.calcOnlyCount })} (
-                                        {formatEur(m.calcOnlyAmount ?? 0)})
-                                      </span>
-                                    )}
-                                  </div>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {isExpanded ? (
+                              <ChevronDown className="h-4 w-4 shrink-0" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4 shrink-0" />
+                            )}
+                            {t('kitaYear', { year: row.label })}
+                            {row.hasBills && !row.complete && (
+                              <span className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                                <AlertTriangle className="h-3 w-3" />
+                                {row.actualMonths}/{row.totalMonths} {t('fundingMonthsCovered')}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {formatEur(row.calculatedTotal)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {row.hasBills ? formatEur(row.regular) : '\u2014'}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {row.hasBills ? formatEur(row.correction) : '\u2014'}
+                        </TableCell>
+                        <TableCell
+                          className={`text-right font-medium tabular-nums ${
+                            !row.hasBills
+                              ? 'text-muted-foreground'
+                              : row.difference >= 0
+                                ? 'text-green-700 dark:text-green-400'
+                                : 'text-red-700 dark:text-red-400'
+                          }`}
+                        >
+                          {row.hasBills
+                            ? `${row.difference >= 0 ? '+' : ''}${formatEur(row.difference)}`
+                            : '\u2014'}
+                        </TableCell>
+                      </TableRow>
+                      {isExpanded &&
+                        row.months.map((m) => {
+                          const hasMismatch =
+                            (m.billOnlyCount != null && m.billOnlyCount > 0) ||
+                            (m.calcOnlyCount != null && m.calcOnlyCount > 0);
+                          return (
+                            <React.Fragment key={m.date}>
+                              <TableRow className="bg-muted/30">
+                                <TableCell className="pl-10 text-sm">
+                                  {formatDateLabel(m.date)}
+                                </TableCell>
+                                <TableCell className="text-right text-sm tabular-nums">
+                                  {formatEur(m.calculated)}
+                                </TableCell>
+                                <TableCell className="text-right text-sm tabular-nums">
+                                  {m.regular != null ? formatEur(m.regular) : '\u2014'}
+                                </TableCell>
+                                <TableCell className="text-right text-sm tabular-nums">
+                                  {m.correction != null ? formatEur(m.correction) : '\u2014'}
+                                </TableCell>
+                                <TableCell
+                                  className={`text-right text-sm tabular-nums ${
+                                    m.difference == null
+                                      ? 'text-muted-foreground'
+                                      : m.difference >= 0
+                                        ? 'text-green-700 dark:text-green-400'
+                                        : 'text-red-700 dark:text-red-400'
+                                  }`}
+                                >
+                                  {m.difference != null
+                                    ? `${m.difference >= 0 ? '+' : ''}${formatEur(m.difference)}`
+                                    : '\u2014'}
                                 </TableCell>
                               </TableRow>
-                            )}
-                          </React.Fragment>
-                        );
-                      })}
-                    {kitaYearDeficitMap.has(row.label) && (
-                      <FundingDeficitAnalysis
-                        summary={kitaYearDeficitMap.get(row.label)!}
-                        orgId={orgId!}
-                      />
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+                              {hasMismatch && (
+                                <TableRow className="bg-muted/20">
+                                  <TableCell colSpan={5} className="py-1 pl-14">
+                                    <div className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-0.5 text-xs">
+                                      {m.billOnlyCount != null && m.billOnlyCount > 0 && (
+                                        <span className="text-amber-600 dark:text-amber-400">
+                                          {t('fundingBillOnly')}:{' '}
+                                          {t('fundingChildCount', { count: m.billOnlyCount })} (
+                                          {formatEur(m.billOnlyAmount ?? 0)})
+                                        </span>
+                                      )}
+                                      {m.calcOnlyCount != null && m.calcOnlyCount > 0 && (
+                                        <span className="text-blue-600 dark:text-blue-400">
+                                          {t('fundingCalcOnly')}:{' '}
+                                          {t('fundingChildCount', { count: m.calcOnlyCount })} (
+                                          {formatEur(m.calcOnlyAmount ?? 0)})
+                                        </span>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
+                      {kitaYearDeficitMap.has(row.label) && (
+                        <FundingDeficitAnalysis
+                          summary={kitaYearDeficitMap.get(row.label)!}
+                          orgId={orgId!}
+                        />
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </TooltipProvider>
       )}
     </div>
   );

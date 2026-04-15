@@ -10,7 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { HeaderWithTooltip } from '@/components/ui/header-with-tooltip';
 import {
   Table,
   TableBody,
@@ -34,19 +35,6 @@ import { queryKeys } from '@/lib/api/queryKeys';
 import type { GovernmentFundingBillPeriodListItem } from '@/lib/api/types';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatCurrency } from '@/lib/utils/formatting';
-
-function HeaderWithTooltip({ label, tooltip }: { label: string; tooltip: string }) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="cursor-help border-b border-dotted border-current">{label}</span>
-      </TooltipTrigger>
-      <TooltipContent className="max-w-xs">
-        <p>{tooltip}</p>
-      </TooltipContent>
-    </Tooltip>
-  );
-}
 
 function BillComparisonCell({ orgId, billId }: { orgId: number; billId: number }) {
   const { data: comparison, isLoading } = useQuery({
