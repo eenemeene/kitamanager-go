@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"gorm.io/gorm"
@@ -733,4 +734,111 @@ func TestBudgetItemHandler_DeleteEntry_NotFound(t *testing.T) {
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d, got %d: %s", http.StatusNotFound, w.Code, w.Body.String())
 	}
+}
+
+func TestBudgetItemHandler_List_Search(t *testing.T) {
+	db := setupTestDB(t)
+	org := createTestOrganization(t, db, "Test Org")
+
+	svc := createBudgetItemService(db)
+	handler := NewBudgetItemHandler(svc, createAuditService(db))
+
+	r := setupTestRouter()
+	r.GET("/api/v1/organizations/:orgId/budget-items", handler.List)
+
+	db.Create(&models.BudgetItem{OrganizationID: org.ID, Name: "Elternbeiträge", Category: "income"})
+	db.Create(&models.BudgetItem{OrganizationID: org.ID, Name: "Essensgeld", Category: "income"})
+	db.Create(&models.BudgetItem{OrganizationID: org.ID, Name: "Miete", Category: "expense"})
+
+	t.Run("case-insensitive match", func(t *testing.T) {
+		w := performRequest(r, "GET", fmt.Sprintf("/api/v1/organizations/%d/budget-items?search=eltern", org.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.BudgetItemResponse]
+		parseResponse(t, w, &response)
+		if len(response.Data) != 1 {
+			t.Errorf("expected 1 budget item matching 'eltern', got %d", len(response.Data))
+		}
+		if response.Total != 1 {
+			t.Errorf("expected total 1, got %d", response.Total)
+		}
+	})
+
+	t.Run("partial match multiple results", func(t *testing.T) {
+		w := performRequest(r, "GET", fmt.Sprintf("/api/v1/organizations/%d/budget-items?search=e", org.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.BudgetItemResponse]
+		parseResponse(t, w, &response)
+		if len(response.Data) != 3 {
+			t.Errorf("expected 3 budget items matching 'e', got %d", len(response.Data))
+		}
+	})
+
+	t.Run("no match", func(t *testing.T) {
+		w := performRequest(r, "GET", fmt.Sprintf("/api/v1/organizations/%d/budget-items?search=nonexistent", org.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.BudgetItemResponse]
+		parseResponse(t, w, &response)
+		if len(response.Data) != 0 {
+			t.Errorf("expected 0 budget items, got %d", len(response.Data))
+		}
+		if response.Total != 0 {
+			t.Errorf("expected total 0, got %d", response.Total)
+		}
+	})
+
+	t.Run("empty search returns all", func(t *testing.T) {
+		w := performRequest(r, "GET", fmt.Sprintf("/api/v1/organizations/%d/budget-items", org.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.BudgetItemResponse]
+		parseResponse(t, w, &response)
+		if len(response.Data) != 3 {
+			t.Errorf("expected 3 budget items without search, got %d", len(response.Data))
+		}
+	})
+
+	t.Run("search with pagination", func(t *testing.T) {
+		w := performRequest(r, "GET", fmt.Sprintf("/api/v1/organizations/%d/budget-items?search=e&page=1&limit=2", org.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.BudgetItemResponse]
+		parseResponse(t, w, &response)
+		if len(response.Data) != 2 {
+			t.Errorf("expected 2 budget items on page 1, got %d", len(response.Data))
+		}
+		if response.Total != 3 {
+			t.Errorf("expected total 3, got %d", response.Total)
+		}
+	})
+
+	t.Run("search preserves org isolation", func(t *testing.T) {
+		otherOrg := createTestOrganization(t, db, "Other Org")
+		db.Create(&models.BudgetItem{OrganizationID: otherOrg.ID, Name: "Elternbeiträge Other", Category: "income"})
+
+		w := performRequest(r, "GET", fmt.Sprintf("/api/v1/organizations/%d/budget-items?search=Eltern", org.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.BudgetItemResponse]
+		parseResponse(t, w, &response)
+		if len(response.Data) != 1 {
+			t.Errorf("expected 1 budget item from own org, got %d", len(response.Data))
+		}
+	})
+
+	t.Run("search too long returns 400", func(t *testing.T) {
+		longSearch := strings.Repeat("a", 256)
+		w := performRequest(r, "GET", fmt.Sprintf("/api/v1/organizations/%d/budget-items?search=%s", org.ID, longSearch), nil)
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status %d for search > 255 chars, got %d", http.StatusBadRequest, w.Code)
+		}
+	})
 }

@@ -228,7 +228,7 @@ func TestBudgetItemService_List(t *testing.T) {
 	_, _ = svc.Create(ctx, org.ID, &models.BudgetItemCreateRequest{Name: "Grants", Category: "income"})
 
 	// First page
-	items, total, err := svc.List(ctx, org.ID, 2, 0)
+	items, total, err := svc.List(ctx, org.ID, "", 2, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -241,7 +241,7 @@ func TestBudgetItemService_List(t *testing.T) {
 	}
 
 	// Second page
-	items, _, err = svc.List(ctx, org.ID, 2, 2)
+	items, _, err = svc.List(ctx, org.ID, "", 2, 2)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -257,7 +257,7 @@ func TestBudgetItemService_List_Empty(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 
-	items, total, err := svc.List(ctx, org.ID, 10, 0)
+	items, total, err := svc.List(ctx, org.ID, "", 10, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -278,7 +278,7 @@ func TestBudgetItemService_List_ActiveAmountCents_NoEntries(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 	_, _ = svc.Create(ctx, org.ID, &models.BudgetItemCreateRequest{Name: "No Entries", Category: "income"})
 
-	items, _, err := svc.List(ctx, org.ID, 10, 0)
+	items, _, err := svc.List(ctx, org.ID, "", 10, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -305,7 +305,7 @@ func TestBudgetItemService_List_ActiveAmountCents_OneActiveOpenEnded(t *testing.
 		AmountCents: 12345,
 	})
 
-	items, _, err := svc.List(ctx, org.ID, 10, 0)
+	items, _, err := svc.List(ctx, org.ID, "", 10, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -334,7 +334,7 @@ func TestBudgetItemService_List_ActiveAmountCents_OneActiveBounded(t *testing.T)
 		AmountCents: 99900,
 	})
 
-	items, _, err := svc.List(ctx, org.ID, 10, 0)
+	items, _, err := svc.List(ctx, org.ID, "", 10, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -363,7 +363,7 @@ func TestBudgetItemService_List_ActiveAmountCents_AllExpired(t *testing.T) {
 		AmountCents: 50000,
 	})
 
-	items, _, err := svc.List(ctx, org.ID, 10, 0)
+	items, _, err := svc.List(ctx, org.ID, "", 10, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -389,7 +389,7 @@ func TestBudgetItemService_List_ActiveAmountCents_AllFuture(t *testing.T) {
 		AmountCents: 50000,
 	})
 
-	items, _, err := svc.List(ctx, org.ID, 10, 0)
+	items, _, err := svc.List(ctx, org.ID, "", 10, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -421,7 +421,7 @@ func TestBudgetItemService_List_ActiveAmountCents_MultipleEntriesOneActive(t *te
 		AmountCents: 20000,
 	})
 
-	items, _, err := svc.List(ctx, org.ID, 10, 0)
+	items, _, err := svc.List(ctx, org.ID, "", 10, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -449,7 +449,7 @@ func TestBudgetItemService_List_ActiveAmountCents_BoundaryFromToday(t *testing.T
 		AmountCents: 77700,
 	})
 
-	items, _, err := svc.List(ctx, org.ID, 10, 0)
+	items, _, err := svc.List(ctx, org.ID, "", 10, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -478,7 +478,7 @@ func TestBudgetItemService_List_ActiveAmountCents_BoundaryToToday(t *testing.T) 
 		AmountCents: 88800,
 	})
 
-	items, _, err := svc.List(ctx, org.ID, 10, 0)
+	items, _, err := svc.List(ctx, org.ID, "", 10, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -517,7 +517,7 @@ func TestBudgetItemService_List_ActiveAmountCents_MixedItems(t *testing.T) {
 		AmountCents: 22200,
 	})
 
-	items, total, err := svc.List(ctx, org.ID, 10, 0)
+	items, total, err := svc.List(ctx, org.ID, "", 10, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}

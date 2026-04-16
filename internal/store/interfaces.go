@@ -216,7 +216,7 @@ type BudgetItemStorer interface {
 	Create(ctx context.Context, item *models.BudgetItem) error
 	FindByID(ctx context.Context, id uint) (*models.BudgetItem, error)
 	FindByIDWithEntries(ctx context.Context, id uint) (*models.BudgetItem, error)
-	FindByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.BudgetItem, int64, error)
+	FindByOrganization(ctx context.Context, orgID uint, search string, limit, offset int) ([]models.BudgetItem, int64, error)
 	FindByOrganizationWithEntries(ctx context.Context, orgID uint) ([]models.BudgetItem, error)
 	Update(ctx context.Context, item *models.BudgetItem) error
 	Delete(ctx context.Context, id uint) error
