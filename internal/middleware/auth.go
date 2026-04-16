@@ -160,7 +160,14 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 			userRevoked, err := m.tokenStore.IsUserRevoked(c.Request.Context(), userID)
 			if err != nil {
 				slog.Error("Failed to check user token revocation", "error", err, "ip", c.ClientIP())
-			} else if userRevoked {
+				c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+					Code:    apperror.CodeInternal,
+					Message: "internal server error",
+				})
+				c.Abort()
+				return
+			}
+			if userRevoked {
 				c.JSON(http.StatusUnauthorized, models.ErrorResponse{
 					Code:    apperror.CodeUnauthorized,
 					Message: "token has been revoked",

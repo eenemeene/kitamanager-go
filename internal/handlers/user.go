@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 	"github.com/eenemeene/kitamanager-go/internal/store"
@@ -319,7 +320,10 @@ func (h *UserHandler) UpdateOrganizationRole(c *gin.Context) {
 	}
 
 	// Get current role before update for audit log
-	memberships, _ := h.userOrgService.GetUserMemberships(c.Request.Context(), userID)
+	memberships, err := h.userOrgService.GetUserMemberships(c.Request.Context(), userID)
+	if err != nil {
+		slog.Warn("failed to fetch memberships for audit log", "user_id", userID, "error", err)
+	}
 	oldRole := ""
 	if memberships != nil {
 		for _, m := range memberships.Memberships {
@@ -498,15 +502,22 @@ func (h *UserHandler) ResetPassword(c *gin.Context) {
 		return
 	}
 
-	// Revoke all tokens for the target user
+	// Revoke all tokens for the target user — if this fails, the password
+	// was changed but old sessions remain valid, which violates the security
+	// invariant. Return 500 so the caller knows the operation is incomplete.
 	if h.tokenStore != nil {
 		if err := h.tokenStore.RevokeAllForUser(c.Request.Context(), targetUserID); err != nil {
 			slog.Error("failed to revoke tokens after password reset", "user_id", targetUserID, "error", err)
+			respondError(c, apperror.InternalWrap(err, "password changed but failed to revoke existing sessions"))
+			return
 		}
 	}
 
 	// Audit log with dedicated password reset tracking
-	targetUser, _ := h.service.GetByID(c.Request.Context(), targetUserID, actorID)
+	targetUser, err := h.service.GetByID(c.Request.Context(), targetUserID, actorID)
+	if err != nil {
+		slog.Warn("failed to fetch user for audit log", "user_id", targetUserID, "error", err)
+	}
 	email := ""
 	if targetUser != nil {
 		email = targetUser.Email

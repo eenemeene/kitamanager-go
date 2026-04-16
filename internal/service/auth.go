@@ -102,7 +102,10 @@ func (s *AuthService) Refresh(ctx context.Context, refreshTokenStr string) (*Aut
 	if s.tokenStore != nil {
 		oldHash := middleware.HashToken(refreshTokenStr)
 		revoked, err := s.tokenStore.IsRevoked(ctx, oldHash)
-		if err == nil && revoked {
+		if err != nil {
+			return nil, apperror.InternalWrap(err, "failed to check token revocation")
+		}
+		if revoked {
 			if err := s.tokenStore.RevokeAllForUser(ctx, userID); err != nil {
 				slog.Error("Failed to revoke all tokens after replay detection", "user_id", userID, "error", err)
 			}
@@ -110,7 +113,10 @@ func (s *AuthService) Refresh(ctx context.Context, refreshTokenStr string) (*Aut
 		}
 
 		userRevoked, err := s.tokenStore.IsUserRevoked(ctx, userID)
-		if err == nil && userRevoked {
+		if err != nil {
+			return nil, apperror.InternalWrap(err, "failed to check user token revocation")
+		}
+		if userRevoked {
 			return nil, apperror.Unauthorized("all sessions have been revoked, please login again")
 		}
 	}
