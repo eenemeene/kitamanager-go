@@ -59,13 +59,15 @@ export default function GovernmentFundingDetailPage() {
     enabled: !!fundingId,
   });
 
-  const detailQueryKey = queryKeys.governmentFundings.detail(fundingId);
+  // Invalidate all governmentFundings keys so the funding-attributes lookup
+  // cache stays fresh when periods/properties are added or removed.
+  const allFundingsKey = queryKeys.governmentFundings.all();
 
   // Period mutations
   const createPeriodMutation = useResourceMutation({
     mutationFn: (data: GovernmentFundingPeriodCreateRequest) =>
       apiClient.createGovernmentFundingPeriod(fundingId, data),
-    invalidateQueryKey: detailQueryKey,
+    invalidateQueryKey: allFundingsKey,
     successMessage: t('governmentFundings.periodCreated'),
     errorMessage: t('governmentFundings.failedToSavePeriod'),
     onSuccess: () => setIsPeriodDialogOpen(false),
@@ -73,7 +75,7 @@ export default function GovernmentFundingDetailPage() {
 
   const deletePeriodMutation = useResourceMutation({
     mutationFn: (periodId: number) => apiClient.deleteGovernmentFundingPeriod(fundingId, periodId),
-    invalidateQueryKey: detailQueryKey,
+    invalidateQueryKey: allFundingsKey,
     successMessage: t('governmentFundings.periodDeleted'),
     errorMessage: t('governmentFundings.failedToDeletePeriod'),
     onSuccess: () => {
@@ -91,7 +93,7 @@ export default function GovernmentFundingDetailPage() {
       periodId: number;
       data: GovernmentFundingPropertyCreateRequest;
     }) => apiClient.createGovernmentFundingProperty(fundingId, periodId, data),
-    invalidateQueryKey: detailQueryKey,
+    invalidateQueryKey: allFundingsKey,
     successMessage: t('governmentFundings.propertyCreated'),
     errorMessage: t('governmentFundings.failedToSaveProperty'),
     onSuccess: () => setIsPropertyDialogOpen(false),
@@ -100,7 +102,7 @@ export default function GovernmentFundingDetailPage() {
   const deletePropertyMutation = useResourceMutation({
     mutationFn: ({ periodId, propertyId }: { periodId: number; propertyId: number }) =>
       apiClient.deleteGovernmentFundingProperty(fundingId, periodId, propertyId),
-    invalidateQueryKey: detailQueryKey,
+    invalidateQueryKey: allFundingsKey,
     successMessage: t('governmentFundings.propertyDeleted'),
     errorMessage: t('governmentFundings.failedToDeleteProperty'),
     onSuccess: () => {
