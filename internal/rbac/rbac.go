@@ -363,7 +363,10 @@ func (e *Enforcer) GetUserRoles(userID uint, orgID uint) ([]string, error) {
 func (e *Enforcer) GetUserRolesAllOrgs(userID uint) ([][]string, error) {
 	sub := fmt.Sprintf("user:%d", userID)
 
-	policies, _ := e.GetFilteredGroupingPolicy(0, sub)
+	policies, err := e.GetFilteredGroupingPolicy(0, sub)
+	if err != nil {
+		return nil, fmt.Errorf("get filtered grouping policy: %w", err)
+	}
 	return policies, nil
 }
 
