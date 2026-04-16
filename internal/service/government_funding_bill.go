@@ -1051,7 +1051,10 @@ func (s *GovernmentFundingBillService) comparePeriod(ctx context.Context, period
 			activeChildIDs = append(activeChildIDs, ac.ID)
 		}
 	}
-	activeChildVouchers, _ := s.childVoucherStore.FindVouchersByChildIDs(ctx, activeChildIDs)
+	activeChildVouchers, err := s.childVoucherStore.FindVouchersByChildIDs(ctx, activeChildIDs)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "failed to fetch vouchers for active children")
+	}
 	// Build voucher set per child
 	vouchersByChildID := make(map[uint][]models.ChildVoucher)
 	for _, v := range activeChildVouchers {
