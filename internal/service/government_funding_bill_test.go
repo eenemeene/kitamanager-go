@@ -25,7 +25,7 @@ func TestGovernmentFundingBillService_ListEmpty(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 	ctx := context.Background()
 
-	items, total, err := svc.List(ctx, org.ID, 10, 0)
+	items, total, err := svc.List(ctx, org.ID, "", 10, 0)
 	if err != nil {
 		t.Fatalf("List() error = %v", err)
 	}
@@ -66,7 +66,7 @@ func TestGovernmentFundingBillService_ListWithPeriods(t *testing.T) {
 		}
 	}
 
-	items, total, err := svc.List(ctx, org.ID, 10, 0)
+	items, total, err := svc.List(ctx, org.ID, "", 10, 0)
 	if err != nil {
 		t.Fatalf("List() error = %v", err)
 	}
@@ -113,7 +113,7 @@ func TestGovernmentFundingBillService_ListOrganizationIsolation(t *testing.T) {
 	}
 
 	// Org2 should see nothing
-	items, total, err := svc.List(ctx, org2.ID, 10, 0)
+	items, total, err := svc.List(ctx, org2.ID, "", 10, 0)
 	if err != nil {
 		t.Fatalf("List() error = %v", err)
 	}

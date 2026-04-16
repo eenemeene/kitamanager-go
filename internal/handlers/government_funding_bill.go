@@ -76,6 +76,7 @@ func (h *GovernmentFundingBillHandler) UploadISBJ(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
+// @Param search query string false "Search by facility name (case-insensitive)"
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(20) maximum(100)
 // @Success 200 {object} models.PaginatedResponse[models.GovernmentFundingBillPeriodListResponse]
@@ -93,7 +94,12 @@ func (h *GovernmentFundingBillHandler) List(c *gin.Context) {
 		return
 	}
 
-	items, total, err := h.service.List(c.Request.Context(), orgID, params.Limit, params.Offset())
+	search, ok := parseSearch(c)
+	if !ok {
+		return
+	}
+
+	items, total, err := h.service.List(c.Request.Context(), orgID, search, params.Limit, params.Offset())
 	if err != nil {
 		respondError(c, err)
 		return

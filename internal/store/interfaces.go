@@ -257,7 +257,7 @@ type AuditStorer interface {
 type GovernmentFundingBillPeriodStorer interface {
 	Create(ctx context.Context, period *models.GovernmentFundingBillPeriod) error
 	FindByID(ctx context.Context, id uint) (*models.GovernmentFundingBillPeriod, error)
-	FindByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.GovernmentFundingBillPeriod, int64, error)
+	FindByOrganization(ctx context.Context, orgID uint, search string, limit, offset int) ([]models.GovernmentFundingBillPeriod, int64, error)
 	FindByOrganizationAndVoucherNumber(ctx context.Context, orgID uint, voucherNumber string) ([]models.BillAppearance, error)
 	FindChildEntriesByOrgAndVoucherNumbers(ctx context.Context, orgID uint, voucherNumbers []string) ([]models.GovernmentFundingBillChildWithPeriod, error)
 	FindBilledTotalsByOrg(ctx context.Context, orgID uint) ([]models.VoucherBilledTotal, error)

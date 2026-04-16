@@ -216,7 +216,7 @@ func TestGovernmentFundingBillPeriodStore_FindByOrganization(t *testing.T) {
 	}
 
 	t.Run("returns only org1 periods", func(t *testing.T) {
-		periods, total, err := s.FindByOrganization(ctx, org1.ID, 10, 0)
+		periods, total, err := s.FindByOrganization(ctx, org1.ID, "", 10, 0)
 		if err != nil {
 			t.Fatalf("FindByOrganization() error = %v", err)
 		}
@@ -229,7 +229,7 @@ func TestGovernmentFundingBillPeriodStore_FindByOrganization(t *testing.T) {
 	})
 
 	t.Run("returns only org2 periods", func(t *testing.T) {
-		periods, total, err := s.FindByOrganization(ctx, org2.ID, 10, 0)
+		periods, total, err := s.FindByOrganization(ctx, org2.ID, "", 10, 0)
 		if err != nil {
 			t.Fatalf("FindByOrganization() error = %v", err)
 		}
@@ -242,7 +242,7 @@ func TestGovernmentFundingBillPeriodStore_FindByOrganization(t *testing.T) {
 	})
 
 	t.Run("pagination limit", func(t *testing.T) {
-		periods, total, err := s.FindByOrganization(ctx, org1.ID, 2, 0)
+		periods, total, err := s.FindByOrganization(ctx, org1.ID, "", 2, 0)
 		if err != nil {
 			t.Fatalf("FindByOrganization() error = %v", err)
 		}
@@ -255,7 +255,7 @@ func TestGovernmentFundingBillPeriodStore_FindByOrganization(t *testing.T) {
 	})
 
 	t.Run("pagination offset", func(t *testing.T) {
-		periods, total, err := s.FindByOrganization(ctx, org1.ID, 10, 2)
+		periods, total, err := s.FindByOrganization(ctx, org1.ID, "", 10, 2)
 		if err != nil {
 			t.Fatalf("FindByOrganization() error = %v", err)
 		}
@@ -268,7 +268,7 @@ func TestGovernmentFundingBillPeriodStore_FindByOrganization(t *testing.T) {
 	})
 
 	t.Run("ordered by from_date descending", func(t *testing.T) {
-		periods, _, err := s.FindByOrganization(ctx, org1.ID, 10, 0)
+		periods, _, err := s.FindByOrganization(ctx, org1.ID, "", 10, 0)
 		if err != nil {
 			t.Fatalf("FindByOrganization() error = %v", err)
 		}
@@ -280,7 +280,7 @@ func TestGovernmentFundingBillPeriodStore_FindByOrganization(t *testing.T) {
 	})
 
 	t.Run("empty for unknown org", func(t *testing.T) {
-		periods, total, err := s.FindByOrganization(ctx, 99999, 10, 0)
+		periods, total, err := s.FindByOrganization(ctx, 99999, "", 10, 0)
 		if err != nil {
 			t.Fatalf("FindByOrganization() error = %v", err)
 		}
