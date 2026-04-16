@@ -30,6 +30,7 @@ import {
   ResourceTable,
   DeleteConfirmDialog,
   CrudFormDialog,
+  QueryError,
   Column,
 } from '@/components/crud';
 import { useCrudDialogs } from '@/lib/hooks/use-crud-dialogs';
@@ -80,7 +81,12 @@ export default function GovernmentFundingsPage() {
     onDeleteSuccess: () => dialogs.closeDeleteDialog(),
   });
 
-  const { data: paginatedData, isLoading } = useQuery({
+  const {
+    data: paginatedData,
+    isLoading,
+    error: queryError,
+    refetch,
+  } = useQuery({
     queryKey: queryKeys.governmentFundings.list(page, search),
     queryFn: () => apiClient.getGovernmentFundings({ page, ...(search ? { search } : {}) }),
   });
@@ -133,6 +139,7 @@ export default function GovernmentFundingsPage() {
             value={searchInput}
             onChange={setSearchInput}
           />
+          <QueryError error={queryError} onRetry={refetch} />
           <ResourceTable
             items={paginatedData?.data}
             columns={columns}

@@ -56,6 +56,8 @@ interface UseCrudPageResult<
   items: TItem[] | undefined;
   paginatedData: PaginatedResponse<TItem> | undefined;
   isLoading: boolean;
+  error: Error | null;
+  refetch: () => void;
   page: number;
   setPage: (page: number) => void;
   /** Search input value (raw, for binding to SearchInput) — only present when searchable */
@@ -116,7 +118,12 @@ export function useCrudPage<
     ? (config.queryKeys.invalidate(orgId) as readonly (string | number | undefined)[])
     : [config.resourceName, orgId];
 
-  const { data: paginatedData, isLoading } = useQuery({
+  const {
+    data: paginatedData,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: listQueryKey,
     queryFn: () => config.listFn(orgId, { page, ...(search ? { search } : {}) }),
     enabled: !!orgId,
@@ -159,6 +166,8 @@ export function useCrudPage<
     items,
     paginatedData,
     isLoading,
+    error,
+    refetch,
     page,
     setPage,
     searchInput,

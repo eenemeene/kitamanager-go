@@ -13,7 +13,13 @@ import { apiClient } from '@/lib/api/client';
 import { formatMonthRange } from '@/lib/utils/formatting';
 import type { Section, SectionCreateRequest, SectionUpdateRequest } from '@/lib/api/types';
 import { useCrudPage } from '@/lib/hooks/use-crud-page';
-import { ResourceTable, DeleteConfirmDialog, CrudFormDialog, Column } from '@/components/crud';
+import {
+  ResourceTable,
+  DeleteConfirmDialog,
+  CrudFormDialog,
+  QueryError,
+  Column,
+} from '@/components/crud';
 import { Pagination } from '@/components/ui/pagination';
 import { SectionKanbanBoard } from '@/components/sections/section-kanban-board';
 import { sectionSchema, type SectionFormData } from '@/lib/schemas';
@@ -103,6 +109,7 @@ export default function SectionsPage() {
               <CardTitle>{t('sections.title')}</CardTitle>
             </CardHeader>
             <CardContent>
+              <QueryError error={crud.error} onRetry={crud.refetch} />
               <ResourceTable
                 items={crud.items}
                 columns={columns}

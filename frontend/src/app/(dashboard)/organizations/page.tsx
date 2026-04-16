@@ -37,7 +37,13 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useCrudMutations } from '@/lib/hooks/use-crud-mutations';
 import { useCrudDialogs } from '@/lib/hooks/use-crud-dialogs';
-import { CrudPageHeader, ResourceTable, DeleteConfirmDialog, Column } from '@/components/crud';
+import {
+  CrudPageHeader,
+  ResourceTable,
+  DeleteConfirmDialog,
+  QueryError,
+  Column,
+} from '@/components/crud';
 import { Pagination } from '@/components/ui/pagination';
 import { organizationSchema, type OrganizationFormData } from '@/lib/schemas';
 
@@ -64,7 +70,12 @@ export default function OrganizationsPage() {
     defaultValues,
   });
 
-  const { data: paginatedData, isLoading } = useQuery({
+  const {
+    data: paginatedData,
+    isLoading,
+    error: queryError,
+    refetch,
+  } = useQuery({
     queryKey: queryKeys.organizations.list(page),
     queryFn: () => apiClient.getOrganizations({ page, limit: DEFAULT_PAGE_SIZE }),
   });
@@ -144,6 +155,7 @@ export default function OrganizationsPage() {
           <CardTitle>{t('organizations.title')}</CardTitle>
         </CardHeader>
         <CardContent>
+          <QueryError error={queryError} onRetry={refetch} />
           <ResourceTable
             items={organizations}
             columns={columns}

@@ -40,6 +40,7 @@ import type {
 import { useToast } from '@/lib/hooks/use-toast';
 import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
 import { formatCurrency } from '@/lib/utils/formatting';
+import { QueryError } from '@/components/crud/query-error';
 import { SearchInput } from '@/components/ui/search-input';
 
 /** Return the kita-year start year for a given date string (YYYY-MM-DD).
@@ -74,7 +75,12 @@ export default function GovernmentFundingBillsPage() {
   const kitaYearFrom = `${kitaYear}-08-01`;
   const kitaYearTo = `${kitaYear + 1}-07-31`;
 
-  const { data: billPeriods, isLoading } = useQuery({
+  const {
+    data: billPeriods,
+    isLoading,
+    error: queryError,
+    refetch,
+  } = useQuery({
     queryKey: queryKeys.governmentFundingBillPeriods.all(orgId),
     queryFn: () => apiClient.getGovernmentFundingBillPeriods(orgId, { limit: 100 }),
   });
@@ -254,6 +260,7 @@ export default function GovernmentFundingBillsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            <QueryError error={queryError} onRetry={refetch} />
             {isLoading ? (
               <p className="text-muted-foreground py-4 text-center">{tCommon('loading')}</p>
             ) : filteredItems.length === 0 ? (

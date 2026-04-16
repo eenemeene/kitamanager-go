@@ -18,6 +18,7 @@ import {
   ResourceTable,
   DeleteConfirmDialog,
   CrudFormDialog,
+  QueryError,
   Column,
 } from '@/components/crud';
 import { Pagination } from '@/components/ui/pagination';
@@ -133,6 +134,7 @@ export default function PayPlansPage() {
             value={crud.searchInput}
             onChange={crud.setSearchInput}
           />
+          <QueryError error={crud.error} onRetry={crud.refetch} />
           <ResourceTable
             items={crud.items}
             columns={columns}
