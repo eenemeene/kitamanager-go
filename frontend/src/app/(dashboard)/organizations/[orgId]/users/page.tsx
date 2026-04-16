@@ -27,6 +27,7 @@ import {
   ResourceTable,
   DeleteConfirmDialog,
   CrudFormDialog,
+  QueryError,
   Column,
 } from '@/components/crud';
 import {
@@ -85,7 +86,12 @@ export default function UsersPage() {
     defaultValues: updateDefaultValues,
   });
 
-  const { data: paginatedData, isLoading } = useQuery({
+  const {
+    data: paginatedData,
+    isLoading,
+    error: queryError,
+    refetch,
+  } = useQuery({
     queryKey: queryKeys.users.list(page),
     queryFn: () => apiClient.getUsers({ page }),
   });
@@ -270,6 +276,7 @@ export default function UsersPage() {
           <CardTitle>{t('users.title')}</CardTitle>
         </CardHeader>
         <CardContent>
+          <QueryError error={queryError} onRetry={refetch} />
           <ResourceTable
             items={users}
             columns={columns}

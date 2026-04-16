@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { isDateBefore } from '@/lib/utils/contracts';
+import { endDateAfterStart } from './period';
 
 export const payPlanSchema = z.object({
   name: z.string().min(1).max(255),
@@ -12,10 +12,7 @@ export const payPlanPeriodSchema = z
     weekly_hours: z.number().gt(0).max(168),
     employer_contribution_rate: z.number().min(0).max(100),
   })
-  .refine((data) => !data.to || !isDateBefore(data.to, data.from), {
-    path: ['to'],
-    message: 'End date must be after start date',
-  });
+  .refine(...endDateAfterStart('from', 'to'));
 
 export const payPlanEntrySchema = z.object({
   grade: z.string().min(1),

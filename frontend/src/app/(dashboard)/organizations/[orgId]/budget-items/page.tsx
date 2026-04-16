@@ -26,9 +26,11 @@ import {
   ResourceTable,
   DeleteConfirmDialog,
   CrudFormDialog,
+  QueryError,
   Column,
 } from '@/components/crud';
 import { Pagination } from '@/components/ui/pagination';
+import { SearchInput } from '@/components/ui/search-input';
 import { budgetItemWithEntrySchema, type BudgetItemWithEntryFormData } from '@/lib/schemas';
 import {
   formatDateForApi,
@@ -64,6 +66,7 @@ export default function BudgetItemsPage() {
     resourceName: 'budgetItems',
     schema: budgetItemWithEntrySchema,
     defaultValues,
+    searchable: true,
     itemToFormData: (item) => ({
       name: item.name,
       category: item.category,
@@ -97,7 +100,7 @@ export default function BudgetItemsPage() {
     updateFn: (orgId, id, data) => apiClient.updateBudgetItem(orgId, id, data),
     deleteFn: (orgId, id) => apiClient.deleteBudgetItem(orgId, id),
     queryKeys: {
-      list: (orgId, page) => queryKeys.budgetItems.list(orgId, page),
+      list: (orgId, page, search) => queryKeys.budgetItems.list(orgId, page, search),
       invalidate: (orgId) => queryKeys.budgetItems.all(orgId),
       extraInvalidate: (orgId) => [['financials', orgId]],
     },
@@ -166,7 +169,13 @@ export default function BudgetItemsPage() {
         <CardHeader>
           <CardTitle>{t('budgetItems.title')}</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <SearchInput
+            id="search-budget-items"
+            value={crud.searchInput}
+            onChange={crud.setSearchInput}
+          />
+          <QueryError error={crud.error} onRetry={crud.refetch} />
           <ResourceTable
             items={crud.items}
             columns={columns}

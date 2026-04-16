@@ -35,7 +35,8 @@ export const queryKeys = {
   },
   payPlans: {
     all: (orgId: number) => ['payPlans', orgId] as const,
-    list: (orgId: number, page: number) => ['payPlans', orgId, 'list', page] as const,
+    list: (orgId: number, page: number, search?: string) =>
+      ['payPlans', orgId, 'list', page, search] as const,
     detail: (orgId: number, payPlanId: number) => ['payPlans', orgId, 'detail', payPlanId] as const,
     details: (orgId: number, payPlanIds: number[]) =>
       ['payPlans', orgId, 'details', payPlanIds] as const,
@@ -45,7 +46,7 @@ export const queryKeys = {
   },
   governmentFundings: {
     all: () => ['governmentFundings'] as const,
-    list: (page: number) => ['governmentFundings', 'list', page] as const,
+    list: (page: number, search?: string) => ['governmentFundings', 'list', page, search] as const,
     detail: (fundingId: number) => ['governmentFundings', 'detail', fundingId] as const,
     lookup: () => ['governmentFundings', 'lookup'] as const,
     lookupDetail: (fundingId: number | undefined) =>
@@ -66,7 +67,8 @@ export const queryKeys = {
   },
   budgetItems: {
     all: (orgId: number) => ['budgetItems', orgId] as const,
-    list: (orgId: number, page: number) => ['budgetItems', orgId, 'list', page] as const,
+    list: (orgId: number, page: number, search?: string) =>
+      ['budgetItems', orgId, 'list', page, search] as const,
     detail: (orgId: number, budgetItemId: number) =>
       ['budgetItems', orgId, 'detail', budgetItemId] as const,
   },

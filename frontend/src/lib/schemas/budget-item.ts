@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { isDateBefore } from '@/lib/utils/contracts';
+import { endDateAfterStart } from './period';
 
 export const budgetItemSchema = z.object({
   name: z.string().min(1).max(255),
@@ -14,10 +14,7 @@ export const budgetItemEntrySchema = z
     amount_euros: z.number().min(0),
     notes: z.string().max(500).optional(),
   })
-  .refine((data) => !data.to || !isDateBefore(data.to, data.from), {
-    path: ['to'],
-    message: 'End date must be after start date',
-  });
+  .refine(...endDateAfterStart('from', 'to'));
 
 // Combined schema for creating a budget item with an initial entry
 export const budgetItemWithEntrySchema = budgetItemSchema
@@ -27,10 +24,7 @@ export const budgetItemWithEntrySchema = budgetItemSchema
     entry_amount_euros: z.number().min(0),
     entry_notes: z.string().max(500).optional(),
   })
-  .refine((data) => !data.entry_to || !isDateBefore(data.entry_to, data.entry_from), {
-    path: ['entry_to'],
-    message: 'End date must be after start date',
-  });
+  .refine(...endDateAfterStart('entry_from', 'entry_to'));
 
 export type BudgetItemFormData = z.infer<typeof budgetItemSchema>;
 export type BudgetItemEntryFormData = z.infer<typeof budgetItemEntrySchema>;

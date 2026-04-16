@@ -38,7 +38,10 @@ import type {
   FundingComparisonResponse,
 } from '@/lib/api/types';
 import { useToast } from '@/lib/hooks/use-toast';
+import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
 import { formatCurrency } from '@/lib/utils/formatting';
+import { QueryError } from '@/components/crud/query-error';
+import { SearchInput } from '@/components/ui/search-input';
 
 /** Return the kita-year start year for a given date string (YYYY-MM-DD).
  *  Kita year runs Aug 1 – Jul 31. e.g. 2025-08-01 → 2025, 2026-03-01 → 2025 */
@@ -61,6 +64,10 @@ export default function GovernmentFundingBillsPage() {
     null
   );
 
+  // Search filter (client-side on facility_name)
+  const [searchInput, setSearchInput] = useState('');
+  const search = useDebouncedValue(searchInput, 300);
+
   // Kita year filter — default to current kita year
   const now = new Date();
   const currentKitaYear = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
@@ -68,16 +75,24 @@ export default function GovernmentFundingBillsPage() {
   const kitaYearFrom = `${kitaYear}-08-01`;
   const kitaYearTo = `${kitaYear + 1}-07-31`;
 
-  const { data: billPeriods, isLoading } = useQuery({
+  const {
+    data: billPeriods,
+    isLoading,
+    error: queryError,
+    refetch,
+  } = useQuery({
     queryKey: queryKeys.governmentFundingBillPeriods.all(orgId),
     queryFn: () => apiClient.getGovernmentFundingBillPeriods(orgId, { limit: 100 }),
   });
 
-  // Filter bills by selected kita year
+  // Filter bills by selected kita year and optional search term
   const filteredItems = useMemo(() => {
     const all = billPeriods?.data ?? [];
-    return all.filter((item) => kitaYearForDate(item.from) === kitaYear);
-  }, [billPeriods, kitaYear]);
+    const byYear = all.filter((item) => kitaYearForDate(item.from) === kitaYear);
+    if (!search) return byYear;
+    const lowerSearch = search.toLowerCase();
+    return byYear.filter((item) => item.facility_name.toLowerCase().includes(lowerSearch));
+  }, [billPeriods, kitaYear, search]);
 
   // Fetch comparison data for the entire kita year range in one call
   const { data: comparison, isLoading: comparisonLoading } = useQuery({
@@ -179,7 +194,10 @@ export default function GovernmentFundingBillsPage() {
       <div className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-2xl font-bold">{t('title')}</h1>
-          <KitaYearStepper value={kitaYear} onChange={setKitaYear} />
+          <div className="flex flex-wrap items-center gap-4">
+            <SearchInput id="search-bills" value={searchInput} onChange={setSearchInput} />
+            <KitaYearStepper value={kitaYear} onChange={setKitaYear} />
+          </div>
         </div>
 
         {/* Upload Card */}
@@ -242,6 +260,7 @@ export default function GovernmentFundingBillsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            <QueryError error={queryError} onRetry={refetch} />
             {isLoading ? (
               <p className="text-muted-foreground py-4 text-center">{tCommon('loading')}</p>
             ) : filteredItems.length === 0 ? (
