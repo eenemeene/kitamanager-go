@@ -392,7 +392,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Filter periods active on date (YYYY-MM-DD, defaults to today)",
+                        "description": "Filter periods active on date (YYYY-MM-DD). Omit to return all periods.",
                         "name": "active_on",
                         "in": "query"
                     }

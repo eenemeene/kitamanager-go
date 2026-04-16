@@ -1116,6 +1116,80 @@ func TestGovernmentFundingHandler_DeleteProperty_InvalidID(t *testing.T) {
 	}
 }
 
+func TestGovernmentFundingHandler_Get_ActiveOn(t *testing.T) {
+	db := setupTestDB(t)
+	fundingStore := store.NewGovernmentFundingStore(db)
+	svc := service.NewGovernmentFundingService(fundingStore, store.NewTransactor(db))
+	handler := NewGovernmentFundingHandler(svc, createAuditService(db), importer.NewGovernmentFundingImporter(svc, store.NewTransactor(db)))
+
+	funding := &models.GovernmentFunding{Name: "Test Funding", State: "berlin"}
+	db.Create(funding)
+
+	// Create periods: one past, one current, one future
+	pastTo := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	currentTo := time.Date(2028, 12, 31, 0, 0, 0, 0, time.UTC)
+	futureTo := time.Date(2030, 12, 31, 0, 0, 0, 0, time.UTC)
+
+	db.Create(&models.GovernmentFundingPeriod{
+		GovernmentFundingID: funding.ID,
+		Period:              models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: &pastTo},
+	})
+	db.Create(&models.GovernmentFundingPeriod{
+		GovernmentFundingID: funding.ID,
+		Period:              models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), To: &currentTo},
+	})
+	db.Create(&models.GovernmentFundingPeriod{
+		GovernmentFundingID: funding.ID,
+		Period:              models.Period{From: time.Date(2029, 1, 1, 0, 0, 0, 0, time.UTC), To: &futureTo},
+	})
+
+	r := setupTestRouter()
+	r.GET("/fundings/:fundingId", handler.Get)
+
+	t.Run("omitting active_on returns all periods", func(t *testing.T) {
+		w := performRequest(r, "GET", fmt.Sprintf("/fundings/%d?periods_limit=0", funding.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+		var result models.GovernmentFundingDetailResponse
+		parseResponse(t, w, &result)
+		if len(result.Periods) != 3 {
+			t.Errorf("expected 3 periods without active_on, got %d", len(result.Periods))
+		}
+	})
+
+	t.Run("active_on filters to matching period", func(t *testing.T) {
+		w := performRequest(r, "GET", fmt.Sprintf("/fundings/%d?periods_limit=0&active_on=2024-06-15", funding.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+		var result models.GovernmentFundingDetailResponse
+		parseResponse(t, w, &result)
+		if len(result.Periods) != 1 {
+			t.Errorf("expected 1 period active on 2024-06-15, got %d", len(result.Periods))
+		}
+	})
+
+	t.Run("active_on with no matching period", func(t *testing.T) {
+		w := performRequest(r, "GET", fmt.Sprintf("/fundings/%d?periods_limit=0&active_on=2020-01-01", funding.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+		var result models.GovernmentFundingDetailResponse
+		parseResponse(t, w, &result)
+		if len(result.Periods) != 0 {
+			t.Errorf("expected 0 periods active on 2020-01-01, got %d", len(result.Periods))
+		}
+	})
+
+	t.Run("invalid active_on returns 400", func(t *testing.T) {
+		w := performRequest(r, "GET", fmt.Sprintf("/fundings/%d?active_on=not-a-date", funding.ID), nil)
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+		}
+	})
+}
+
 func TestGovernmentFundingHandler_List_Search(t *testing.T) {
 	db := setupTestDB(t)
 	fundingStore := store.NewGovernmentFundingStore(db)

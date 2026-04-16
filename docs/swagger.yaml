@@ -3546,7 +3546,8 @@ paths:
         in: query
         name: periods_limit
         type: integer
-      - description: Filter periods active on date (YYYY-MM-DD, defaults to today)
+      - description: Filter periods active on date (YYYY-MM-DD). Omit to return all
+          periods.
         in: query
         name: active_on
         type: string
