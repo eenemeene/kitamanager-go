@@ -163,6 +163,56 @@ func FuzzValidateWeeklyHours(f *testing.F) {
 	})
 }
 
+// FuzzFundingAgeOnDate tests the Berlin billing-age rule: funding age must never
+// exceed the actual age, because the age group change is delayed to the 1st of
+// the following month.
+func FuzzFundingAgeOnDate(f *testing.F) {
+	f.Add(2022, 5, 1, 2024, 5, 1)   // born May 1, billing May 1 (exactly 2nd birthday)
+	f.Add(2022, 5, 1, 2024, 6, 1)   // born May 1, billing June 1 (age-2 rate starts)
+	f.Add(2022, 5, 15, 2024, 5, 1)  // born May 15, billing May 1
+	f.Add(2022, 5, 15, 2024, 6, 1)  // born May 15, billing June 1
+	f.Add(2021, 1, 1, 2024, 1, 1)   // born Jan 1, billing Jan 1 (edge: born on 1st)
+	f.Add(2020, 12, 31, 2024, 1, 1) // born Dec 31, billing Jan 1
+
+	f.Fuzz(func(t *testing.T,
+		birthYear, birthMonth, birthDay int,
+		billYear, billMonth, billDay int,
+	) {
+		birthYear = clamp(birthYear, 1900, 2100)
+		birthMonth = clamp(birthMonth, 1, 12)
+		birthDay = clamp(birthDay, 1, 28)
+		billYear = clamp(billYear, 1900, 2100)
+		billMonth = clamp(billMonth, 1, 12)
+		billDay = clamp(billDay, 1, 28)
+
+		birthdate := time.Date(birthYear, time.Month(birthMonth), birthDay, 0, 0, 0, 0, time.UTC)
+		billingDate := time.Date(billYear, time.Month(billMonth), billDay, 0, 0, 0, 0, time.UTC)
+
+		fundingAge := FundingAgeOnDate(birthdate, billingDate)
+		actualAge := CalculateAgeOnDate(birthdate, billingDate)
+
+		// Funding age must be non-negative
+		if fundingAge < 0 {
+			t.Errorf("funding age must be >= 0, got %d (birth=%v, bill=%v)",
+				fundingAge, birthdate, billingDate)
+		}
+
+		// Core invariant: funding age must never exceed actual age.
+		// The Berlin rule delays the age group change, so the funding age
+		// is either equal to or one less than the actual age.
+		if fundingAge > actualAge {
+			t.Errorf("funding age %d exceeds actual age %d (birth=%v, bill=%v)",
+				fundingAge, actualAge, birthdate, billingDate)
+		}
+
+		// Funding age must be at most 1 less than actual age
+		if actualAge-fundingAge > 1 {
+			t.Errorf("funding age %d is more than 1 less than actual age %d (birth=%v, bill=%v)",
+				fundingAge, actualAge, birthdate, billingDate)
+		}
+	})
+}
+
 func clamp(val, min, max int) int {
 	if val < min {
 		return min
