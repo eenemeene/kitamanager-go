@@ -5785,8 +5785,9 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "maximum": 100,
                         "type": "integer",
-                        "default": 30,
+                        "default": 20,
                         "description": "Items per page",
                         "name": "limit",
                         "in": "query"
@@ -6147,6 +6148,12 @@ const docTemplate = `{
                         "name": "orgId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search by name (case-insensitive)",
+                        "name": "search",
+                        "in": "query"
                     },
                     {
                         "type": "integer",

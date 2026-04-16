@@ -77,7 +77,7 @@ func (h *GovernmentFundingBillHandler) UploadISBJ(c *gin.Context) {
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
 // @Param page query int false "Page number" default(1)
-// @Param limit query int false "Items per page" default(30)
+// @Param limit query int false "Items per page" default(20) maximum(100)
 // @Success 200 {object} models.PaginatedResponse[models.GovernmentFundingBillPeriodListResponse]
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse

@@ -33,6 +33,7 @@ func NewPayPlanHandler(service *service.PayPlanService, auditService *service.Au
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
+// @Param search query string false "Search by name (case-insensitive)"
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(20) maximum(100)
 // @Success 200 {object} models.PaginatedResponse[models.PayPlanResponse]
@@ -42,23 +43,7 @@ func NewPayPlanHandler(service *service.PayPlanService, auditService *service.Au
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/pay-plans [get]
 func (h *PayPlanHandler) List(c *gin.Context) {
-	orgID, ok := parseOrgID(c)
-	if !ok {
-		return
-	}
-
-	params, ok := parsePagination(c)
-	if !ok {
-		return
-	}
-
-	payplans, total, err := h.service.List(c.Request.Context(), orgID, params.Limit, params.Offset())
-	if err != nil {
-		respondError(c, err)
-		return
-	}
-
-	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(payplans, params.Page, params.Limit, total, c.Request.URL.Path, c.Request.URL.RawQuery))
+	handleOrgList(c, h.service.List)
 }
 
 // Get godoc

@@ -85,17 +85,25 @@ func (s *PayPlanStore) FindByIDsWithPeriods(ctx context.Context, ids []uint) (ma
 }
 
 // GetByOrganization retrieves all pay plans for an organization.
-func (s *PayPlanStore) FindByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.PayPlan, int64, error) {
+func (s *PayPlanStore) FindByOrganization(ctx context.Context, orgID uint, search string, limit, offset int) ([]models.PayPlan, int64, error) {
 	var payplans []models.PayPlan
 	var total int64
 
 	query := DBFromContext(ctx, s.db).Model(&models.PayPlan{}).Where("organization_id = ?", orgID)
+	if search != "" {
+		query = query.Scopes(NameSearch("pay_plans", "name", search))
+	}
 
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	err := query.
+	dataQuery := DBFromContext(ctx, s.db).Where("organization_id = ?", orgID)
+	if search != "" {
+		dataQuery = dataQuery.Scopes(NameSearch("pay_plans", "name", search))
+	}
+
+	err := dataQuery.
 		Order("name ASC").
 		Limit(limit).
 		Offset(offset).

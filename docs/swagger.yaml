@@ -7131,9 +7131,10 @@ paths:
         in: query
         name: page
         type: integer
-      - default: 30
+      - default: 20
         description: Items per page
         in: query
+        maximum: 100
         name: limit
         type: integer
       produces:
@@ -7372,6 +7373,10 @@ paths:
         name: orgId
         required: true
         type: integer
+      - description: Search by name (case-insensitive)
+        in: query
+        name: search
+        type: string
       - default: 1
         description: Page number
         in: query
