@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { isDateBefore } from '@/lib/utils/contracts';
 import { personBaseSchema } from './person';
+import { endDateAfterStart } from './period';
 
 export const employeeSchema = personBaseSchema;
 
@@ -15,10 +15,7 @@ export const employeeContractSchema = z
     step: z.number().min(1).max(10),
     weekly_hours: z.number().min(0).max(168),
   })
-  .refine((data) => !data.to || !isDateBefore(data.to, data.from), {
-    path: ['to'],
-    message: 'End date must be after start date',
-  });
+  .refine(...endDateAfterStart('from', 'to'));
 
 export type EmployeeFormData = z.infer<typeof employeeSchema>;
 export type EmployeeContractFormData = z.infer<typeof employeeContractSchema>;

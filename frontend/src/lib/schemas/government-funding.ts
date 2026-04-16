@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { isDateBefore } from '@/lib/utils/contracts';
+import { endDateAfterStart } from './period';
 
 export const governmentFundingSchema = z.object({
   name: z.string().min(1).max(255),
@@ -13,10 +13,7 @@ export const governmentFundingPeriodSchema = z
     full_time_weekly_hours: z.number().min(0.1).max(80),
     comment: z.string().max(1000).optional(),
   })
-  .refine((data) => !data.to || !isDateBefore(data.to, data.from), {
-    path: ['to'],
-    message: 'End date must be after start date',
-  });
+  .refine(...endDateAfterStart('from', 'to'));
 
 export const governmentFundingPropertySchema = z.object({
   key: z.string().min(1).max(100),
