@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 	"github.com/eenemeene/kitamanager-go/internal/store"
@@ -498,10 +499,14 @@ func (h *UserHandler) ResetPassword(c *gin.Context) {
 		return
 	}
 
-	// Revoke all tokens for the target user
+	// Revoke all tokens for the target user — if this fails, the password
+	// was changed but old sessions remain valid, which violates the security
+	// invariant. Return 500 so the caller knows the operation is incomplete.
 	if h.tokenStore != nil {
 		if err := h.tokenStore.RevokeAllForUser(c.Request.Context(), targetUserID); err != nil {
 			slog.Error("failed to revoke tokens after password reset", "user_id", targetUserID, "error", err)
+			respondError(c, apperror.InternalWrap(err, "password changed but failed to revoke existing sessions"))
+			return
 		}
 	}
 
