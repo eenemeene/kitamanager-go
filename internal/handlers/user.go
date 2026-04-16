@@ -320,7 +320,10 @@ func (h *UserHandler) UpdateOrganizationRole(c *gin.Context) {
 	}
 
 	// Get current role before update for audit log
-	memberships, _ := h.userOrgService.GetUserMemberships(c.Request.Context(), userID)
+	memberships, err := h.userOrgService.GetUserMemberships(c.Request.Context(), userID)
+	if err != nil {
+		slog.Warn("failed to fetch memberships for audit log", "user_id", userID, "error", err)
+	}
 	oldRole := ""
 	if memberships != nil {
 		for _, m := range memberships.Memberships {
@@ -511,7 +514,10 @@ func (h *UserHandler) ResetPassword(c *gin.Context) {
 	}
 
 	// Audit log with dedicated password reset tracking
-	targetUser, _ := h.service.GetByID(c.Request.Context(), targetUserID, actorID)
+	targetUser, err := h.service.GetByID(c.Request.Context(), targetUserID, actorID)
+	if err != nil {
+		slog.Warn("failed to fetch user for audit log", "user_id", targetUserID, "error", err)
+	}
 	email := ""
 	if targetUser != nil {
 		email = targetUser.Email
