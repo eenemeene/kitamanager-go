@@ -232,6 +232,7 @@ export default function FinancialsPrintPage() {
               data={financials}
               compareData={compareData}
               compareSummaries={compareSummaries}
+              forceExpanded
             />
           </ChartErrorBoundary>
         </div>

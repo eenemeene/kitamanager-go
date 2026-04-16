@@ -19,6 +19,8 @@ import { cn } from '@/lib/utils';
 interface FundingDeficitAnalysisProps {
   summary: FundingComparisonSummary;
   orgId: string | string[];
+  /** When true, the deficit analysis section is expanded. Used for print/PDF export. */
+  forceExpanded?: boolean;
 }
 
 function formatEur(cents: number): string {
@@ -27,10 +29,14 @@ function formatEur(cents: number): string {
 
 const MAX_INITIAL_ISSUES = 10;
 
-export function FundingDeficitAnalysis({ summary, orgId }: FundingDeficitAnalysisProps) {
+export function FundingDeficitAnalysis({
+  summary,
+  orgId,
+  forceExpanded = false,
+}: FundingDeficitAnalysisProps) {
   const t = useTranslations('statistics');
-  const [showAllIssues, setShowAllIssues] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const [showAllIssues, setShowAllIssues] = useState(forceExpanded);
+  const [expanded, setExpanded] = useState(forceExpanded);
 
   const { categories, issues } = summary;
   const actionableIssues = issues.filter((i) => i.actionable);

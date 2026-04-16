@@ -32,6 +32,8 @@ interface FundingComparisonChartProps {
   data: FinancialResponse;
   compareData?: Map<string, FundingComparisonResponse>;
   compareSummaries?: Map<string, FundingComparisonSummary>;
+  /** When true, all kita year rows and deficit analysis sections are expanded. Used for print/PDF export. */
+  forceExpanded?: boolean;
 }
 
 type BandScale = ((v: string) => number | undefined) & { bandwidth(): number };
@@ -44,6 +46,7 @@ export function FundingComparisonChart({
   data,
   compareData,
   compareSummaries,
+  forceExpanded = false,
 }: FundingComparisonChartProps) {
   const t = useTranslations('statistics');
   const tCommon = useTranslations('common');
@@ -315,6 +318,14 @@ export function FundingComparisonChart({
     return result;
   }, [compareSummaries, kitaYearSummary]);
 
+  // In print/PDF mode, expand all kita year rows automatically
+  const effectiveExpandedYears = useMemo(() => {
+    if (forceExpanded && kitaYearSummary.length > 0) {
+      return new Set(kitaYearSummary.map((row) => row.label));
+    }
+    return expandedYears;
+  }, [forceExpanded, kitaYearSummary, expandedYears]);
+
   const currentMonth = getCurrentMonthStart();
   const currentMonthDP = data.data_points.find((dp) => dp.date === currentMonth);
   const missingCurrentBill = currentMonthDP != null && currentMonthDP.actual_funding == null;
@@ -521,7 +532,7 @@ export function FundingComparisonChart({
               </TableHeader>
               <TableBody>
                 {kitaYearSummary.map((row) => {
-                  const isExpanded = expandedYears.has(row.label);
+                  const isExpanded = effectiveExpandedYears.has(row.label);
                   return (
                     <React.Fragment key={row.label}>
                       <TableRow
@@ -630,6 +641,7 @@ export function FundingComparisonChart({
                         <FundingDeficitAnalysis
                           summary={kitaYearDeficitMap.get(row.label)!}
                           orgId={orgId!}
+                          forceExpanded={forceExpanded}
                         />
                       )}
                     </React.Fragment>
