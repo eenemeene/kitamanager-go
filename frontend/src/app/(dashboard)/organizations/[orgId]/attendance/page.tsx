@@ -95,12 +95,9 @@ export default function AttendancePage() {
   const isLoading = childrenLoading || attendanceLoading;
   const queryError = childrenError || attendanceError;
 
-  const invalidateDate = useCallback(
-    (dateStr: string) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.attendance.byDate(orgId, dateStr) });
-    },
-    [queryClient, orgId]
-  );
+  const invalidateAttendance = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all(orgId) });
+  }, [queryClient, orgId]);
 
   // Check-in mutation: create attendance with status=present and check_in_time=now
   const checkInMutation = useMutation({
@@ -113,7 +110,7 @@ export default function AttendancePage() {
       });
     },
     onSuccess: (data, variables) => {
-      invalidateDate(variables.forDate);
+      invalidateAttendance();
       toast({
         title: t('checkedIn'),
         action: (
@@ -123,7 +120,7 @@ export default function AttendancePage() {
               apiClient
                 .deleteChildAttendance(orgId, variables.childId, data.id)
                 .then(() => {
-                  invalidateDate(variables.forDate);
+                  invalidateAttendance();
                   toast({ title: t('undone') });
                 })
                 .catch(() => {
@@ -158,7 +155,7 @@ export default function AttendancePage() {
       });
     },
     onSuccess: (_data, variables) => {
-      invalidateDate(variables.forDate);
+      invalidateAttendance();
       toast({
         title: t('checkedOut'),
         action: (
@@ -170,7 +167,7 @@ export default function AttendancePage() {
                   check_out_time: '',
                 })
                 .then(() => {
-                  invalidateDate(variables.forDate);
+                  invalidateAttendance();
                   toast({ title: t('undone') });
                 })
                 .catch(() => {
@@ -224,7 +221,7 @@ export default function AttendancePage() {
       });
     },
     onSuccess: (_data, variables) => {
-      invalidateDate(variables.forDate);
+      invalidateAttendance();
       toast({ title: t('updateSuccess') });
     },
     onError: () => {
@@ -266,7 +263,7 @@ export default function AttendancePage() {
       return apiClient.createChildAttendance(orgId, childId, { date: forDate, status });
     },
     onSuccess: (data, variables) => {
-      invalidateDate(variables.forDate);
+      invalidateAttendance();
       const statusLabel = t(variables.status);
       toast({
         title: t('statusChanged', { status: statusLabel }),
@@ -284,7 +281,7 @@ export default function AttendancePage() {
 
               undoPromise
                 .then(() => {
-                  invalidateDate(variables.forDate);
+                  invalidateAttendance();
                   toast({ title: t('undone') });
                 })
                 .catch(() => {
@@ -333,7 +330,7 @@ export default function AttendancePage() {
       });
     },
     onSuccess: (_data, variables) => {
-      invalidateDate(variables.forDate);
+      invalidateAttendance();
       toast({ title: t('updateSuccess') });
     },
     onError: () => {
