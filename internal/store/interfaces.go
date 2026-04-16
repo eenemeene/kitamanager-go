@@ -159,6 +159,10 @@ type GovernmentFundingStorer interface {
 	CreateProperty(ctx context.Context, property *models.GovernmentFundingProperty) error
 	UpdateProperty(ctx context.Context, property *models.GovernmentFundingProperty) error
 	DeleteProperty(ctx context.Context, id uint) error
+
+	// Paginated nested-resource queries
+	FindPeriodsByGovernmentFundingIDPaginated(ctx context.Context, fundingID uint, limit, offset int) ([]models.GovernmentFundingPeriod, int64, error)
+	FindPropertiesByPeriodPaginated(ctx context.Context, periodID uint, limit, offset int) ([]models.GovernmentFundingProperty, int64, error)
 }
 
 // ChildAttendanceStorer defines the interface for child attendance storage operations
@@ -201,6 +205,10 @@ type PayPlanStorer interface {
 	FindEntry(ctx context.Context, periodID uint, grade string, step int) (*models.PayPlanEntry, error)
 	UpdateEntry(ctx context.Context, entry *models.PayPlanEntry) error
 	DeleteEntry(ctx context.Context, id uint) error
+
+	// Paginated nested-resource queries
+	FindPeriodsByPayPlanPaginated(ctx context.Context, payplanID uint, limit, offset int) ([]models.PayPlanPeriod, int64, error)
+	FindEntriesByPeriodPaginated(ctx context.Context, periodID uint, limit, offset int) ([]models.PayPlanEntry, int64, error)
 }
 
 // BudgetItemStorer defines the interface for budget item storage operations

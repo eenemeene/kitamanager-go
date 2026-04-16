@@ -120,12 +120,14 @@ func Setup(r *gin.Engine, d Deps) {
 				governmentFundings.DELETE("/:fundingId", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.Delete)
 
 				// Period management
+				governmentFundings.GET("/:fundingId/periods", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.ListPeriods)
 				governmentFundings.GET("/:fundingId/periods/:periodId", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.GetPeriod)
 				governmentFundings.POST("/:fundingId/periods", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.CreatePeriod)
 				governmentFundings.PUT("/:fundingId/periods/:periodId", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.UpdatePeriod)
 				governmentFundings.DELETE("/:fundingId/periods/:periodId", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.DeletePeriod)
 
 				// Property management (directly under periods)
+				governmentFundings.GET("/:fundingId/periods/:periodId/properties", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.ListProperties)
 				governmentFundings.GET("/:fundingId/periods/:periodId/properties/:propertyId", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.GetProperty)
 				governmentFundings.POST("/:fundingId/periods/:periodId/properties", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.CreateProperty)
 				governmentFundings.PUT("/:fundingId/periods/:periodId/properties/:propertyId", authzMiddleware.RequireSuperAdmin(), governmentFundingHandler.UpdateProperty)
@@ -477,6 +479,9 @@ func Setup(r *gin.Engine, d Deps) {
 						payPlanHandler.Delete)
 
 					// Period management
+					payplans.GET("/:payPlanId/periods",
+						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionRead),
+						payPlanHandler.ListPeriods)
 					payplans.POST("/:payPlanId/periods",
 						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionCreate),
 						payPlanHandler.CreatePeriod)
@@ -491,6 +496,9 @@ func Setup(r *gin.Engine, d Deps) {
 						payPlanHandler.DeletePeriod)
 
 					// Entry management
+					payplans.GET("/:payPlanId/periods/:periodId/entries",
+						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionRead),
+						payPlanHandler.ListEntries)
 					payplans.POST("/:payPlanId/periods/:periodId/entries",
 						authzMiddleware.RequirePermission(rbac.ResourcePayPlans, rbac.ActionCreate),
 						payPlanHandler.CreateEntry)
