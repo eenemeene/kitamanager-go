@@ -59,19 +59,27 @@ func (s *BudgetItemStore) FindByIDWithEntries(ctx context.Context, id uint) (*mo
 }
 
 // FindByOrganization retrieves all budget items for an organization.
-func (s *BudgetItemStore) FindByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.BudgetItem, int64, error) {
+func (s *BudgetItemStore) FindByOrganization(ctx context.Context, orgID uint, search string, limit, offset int) ([]models.BudgetItem, int64, error) {
 	var items []models.BudgetItem
 	var total int64
 
-	db := DBFromContext(ctx, s.db)
+	query := DBFromContext(ctx, s.db).Model(&models.BudgetItem{}).Where("organization_id = ?", orgID)
+	if search != "" {
+		query = query.Scopes(NameSearch("budget_items", "name", search))
+	}
 
-	if err := db.Model(&models.BudgetItem{}).Where("organization_id = ?", orgID).Count(&total).Error; err != nil {
+	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	err := db.
+	dataQuery := DBFromContext(ctx, s.db).
 		Where("organization_id = ?", orgID).
-		Preload("Entries").
+		Preload("Entries")
+	if search != "" {
+		dataQuery = dataQuery.Scopes(NameSearch("budget_items", "name", search))
+	}
+
+	err := dataQuery.
 		Order("name ASC").
 		Limit(limit).
 		Offset(offset).

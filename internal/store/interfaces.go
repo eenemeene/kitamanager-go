@@ -137,7 +137,7 @@ type SectionStorer interface {
 // GovernmentFundingStorer defines the interface for government funding storage operations
 type GovernmentFundingStorer interface {
 	// GovernmentFunding CRUD
-	FindAll(ctx context.Context, limit, offset int) ([]models.GovernmentFunding, int64, error)
+	FindAll(ctx context.Context, search string, limit, offset int) ([]models.GovernmentFunding, int64, error)
 	FindByID(ctx context.Context, id uint) (*models.GovernmentFunding, error)
 	FindByIDWithDetails(ctx context.Context, id uint, periodsLimit int, activeOn *time.Time) (*models.GovernmentFunding, error)
 	FindByState(ctx context.Context, state string) (*models.GovernmentFunding, error)
@@ -183,7 +183,7 @@ type PayPlanStorer interface {
 	FindByID(ctx context.Context, id uint) (*models.PayPlan, error)
 	FindByIDWithPeriods(ctx context.Context, id uint, activeOn *time.Time) (*models.PayPlan, error)
 	FindByIDsWithPeriods(ctx context.Context, ids []uint) (map[uint]*models.PayPlan, error)
-	FindByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.PayPlan, int64, error)
+	FindByOrganization(ctx context.Context, orgID uint, search string, limit, offset int) ([]models.PayPlan, int64, error)
 	FindByNameAndOrg(ctx context.Context, name string, orgID uint) (*models.PayPlan, error)
 	Update(ctx context.Context, payplan *models.PayPlan) error
 	Delete(ctx context.Context, id uint) error
@@ -216,7 +216,7 @@ type BudgetItemStorer interface {
 	Create(ctx context.Context, item *models.BudgetItem) error
 	FindByID(ctx context.Context, id uint) (*models.BudgetItem, error)
 	FindByIDWithEntries(ctx context.Context, id uint) (*models.BudgetItem, error)
-	FindByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.BudgetItem, int64, error)
+	FindByOrganization(ctx context.Context, orgID uint, search string, limit, offset int) ([]models.BudgetItem, int64, error)
 	FindByOrganizationWithEntries(ctx context.Context, orgID uint) ([]models.BudgetItem, error)
 	Update(ctx context.Context, item *models.BudgetItem) error
 	Delete(ctx context.Context, id uint) error
@@ -257,7 +257,7 @@ type AuditStorer interface {
 type GovernmentFundingBillPeriodStorer interface {
 	Create(ctx context.Context, period *models.GovernmentFundingBillPeriod) error
 	FindByID(ctx context.Context, id uint) (*models.GovernmentFundingBillPeriod, error)
-	FindByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.GovernmentFundingBillPeriod, int64, error)
+	FindByOrganization(ctx context.Context, orgID uint, search string, limit, offset int) ([]models.GovernmentFundingBillPeriod, int64, error)
 	FindByOrganizationAndVoucherNumber(ctx context.Context, orgID uint, voucherNumber string) ([]models.BillAppearance, error)
 	FindChildEntriesByOrgAndVoucherNumbers(ctx context.Context, orgID uint, voucherNumbers []string) ([]models.GovernmentFundingBillChildWithPeriod, error)
 	FindBilledTotalsByOrg(ctx context.Context, orgID uint) ([]models.VoucherBilledTotal, error)

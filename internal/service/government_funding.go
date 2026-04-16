@@ -54,8 +54,8 @@ func (s *GovernmentFundingService) verifyPropertyOwnership(ctx context.Context, 
 }
 
 // List returns a paginated list of government fundings
-func (s *GovernmentFundingService) List(ctx context.Context, limit, offset int) ([]models.GovernmentFundingResponse, int64, error) {
-	fundings, total, err := s.store.FindAll(ctx, limit, offset)
+func (s *GovernmentFundingService) List(ctx context.Context, search string, limit, offset int) ([]models.GovernmentFundingResponse, int64, error) {
+	fundings, total, err := s.store.FindAll(ctx, search, limit, offset)
 	if err != nil {
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch government fundings")
 	}

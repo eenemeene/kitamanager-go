@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -616,4 +617,89 @@ func TestGovernmentFundingBillHandler_AssignVoucher_MissingVoucherNumber(t *test
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}
+}
+
+func TestGovernmentFundingBillHandler_List_Search(t *testing.T) {
+	db := setupTestDB(t)
+	r, _ := setupBillRouter(db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "Search User", "billsearch@example.com", "password")
+
+	createBillPeriodInDB(t, db, org.ID, user.ID, "Kita Sonnenschein", time.January)
+	createBillPeriodInDB(t, db, org.ID, user.ID, "Kita Regenbogen", time.February)
+	createBillPeriodInDB(t, db, org.ID, user.ID, "Hort Abenteuer", time.March)
+
+	t.Run("case-insensitive match", func(t *testing.T) {
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/government-funding-bills?search=sonnenschein", org.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.GovernmentFundingBillPeriodListResponse]
+		parseResponse(t, w, &response)
+		if len(response.Data) != 1 {
+			t.Errorf("expected 1 bill matching 'sonnenschein', got %d", len(response.Data))
+		}
+		if response.Total != 1 {
+			t.Errorf("expected total 1, got %d", response.Total)
+		}
+	})
+
+	t.Run("partial match", func(t *testing.T) {
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/government-funding-bills?search=Kita", org.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.GovernmentFundingBillPeriodListResponse]
+		parseResponse(t, w, &response)
+		if len(response.Data) != 2 {
+			t.Errorf("expected 2 bills matching 'Kita', got %d", len(response.Data))
+		}
+	})
+
+	t.Run("no match", func(t *testing.T) {
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/government-funding-bills?search=nonexistent", org.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.GovernmentFundingBillPeriodListResponse]
+		parseResponse(t, w, &response)
+		if len(response.Data) != 0 {
+			t.Errorf("expected 0 bills, got %d", len(response.Data))
+		}
+	})
+
+	t.Run("empty search returns all", func(t *testing.T) {
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/government-funding-bills", org.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.GovernmentFundingBillPeriodListResponse]
+		parseResponse(t, w, &response)
+		if len(response.Data) != 3 {
+			t.Errorf("expected 3 bills without search, got %d", len(response.Data))
+		}
+	})
+
+	t.Run("search preserves org isolation", func(t *testing.T) {
+		otherOrg := createTestOrganization(t, db, "Other Org")
+		createBillPeriodInDB(t, db, otherOrg.ID, user.ID, "Kita Sonnenschein Other", time.April)
+
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/government-funding-bills?search=Sonnenschein", org.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.GovernmentFundingBillPeriodListResponse]
+		parseResponse(t, w, &response)
+		if len(response.Data) != 1 {
+			t.Errorf("expected 1 bill from own org, got %d", len(response.Data))
+		}
+	})
+
+	t.Run("search too long returns 400", func(t *testing.T) {
+		longSearch := strings.Repeat("a", 256)
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/government-funding-bills?search=%s", org.ID, longSearch), nil)
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status %d for search > 255 chars, got %d", http.StatusBadRequest, w.Code)
+		}
+	})
 }

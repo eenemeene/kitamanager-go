@@ -34,17 +34,25 @@ func (s *GovernmentFundingBillPeriodStore) FindByID(ctx context.Context, id uint
 	return &period, nil
 }
 
-func (s *GovernmentFundingBillPeriodStore) FindByOrganization(ctx context.Context, orgID uint, limit, offset int) ([]models.GovernmentFundingBillPeriod, int64, error) {
+func (s *GovernmentFundingBillPeriodStore) FindByOrganization(ctx context.Context, orgID uint, search string, limit, offset int) ([]models.GovernmentFundingBillPeriod, int64, error) {
 	var periods []models.GovernmentFundingBillPeriod
 	var total int64
 
-	db := DBFromContext(ctx, s.db).Where("organization_id = ?", orgID)
+	query := DBFromContext(ctx, s.db).Model(&models.GovernmentFundingBillPeriod{}).Where("organization_id = ?", orgID)
+	if search != "" {
+		query = query.Scopes(NameSearch("government_funding_bill_periods", "facility_name", search))
+	}
 
-	if err := db.Model(&models.GovernmentFundingBillPeriod{}).Count(&total).Error; err != nil {
+	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	if err := db.Order("from_date DESC").Limit(limit).Offset(offset).Find(&periods).Error; err != nil {
+	dataQuery := DBFromContext(ctx, s.db).Where("organization_id = ?", orgID)
+	if search != "" {
+		dataQuery = dataQuery.Scopes(NameSearch("government_funding_bill_periods", "facility_name", search))
+	}
+
+	if err := dataQuery.Order("from_date DESC").Limit(limit).Offset(offset).Find(&periods).Error; err != nil {
 		return nil, 0, err
 	}
 

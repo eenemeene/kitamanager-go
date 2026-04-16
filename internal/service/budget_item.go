@@ -101,8 +101,8 @@ func (s *BudgetItemService) GetByID(ctx context.Context, id, orgID uint) (*model
 }
 
 // List retrieves all budget items for an organization.
-func (s *BudgetItemService) List(ctx context.Context, orgID uint, limit, offset int) ([]models.BudgetItemResponse, int64, error) {
-	items, total, err := s.store.FindByOrganization(ctx, orgID, limit, offset)
+func (s *BudgetItemService) List(ctx context.Context, orgID uint, search string, limit, offset int) ([]models.BudgetItemResponse, int64, error) {
+	items, total, err := s.store.FindByOrganization(ctx, orgID, search, limit, offset)
 	if err != nil {
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch budget items")
 	}

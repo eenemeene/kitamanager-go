@@ -185,6 +185,12 @@ const docTemplate = `{
                 "summary": "List all government fundings",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "Search by name (case-insensitive)",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "default": 1,
                         "description": "Page number",
@@ -386,7 +392,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Filter periods active on date (YYYY-MM-DD, defaults to today)",
+                        "description": "Filter periods active on date (YYYY-MM-DD). Omit to return all periods.",
                         "name": "active_on",
                         "in": "query"
                     }
@@ -1884,6 +1890,12 @@ const docTemplate = `{
                         "name": "orgId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search by name (case-insensitive)",
+                        "name": "search",
+                        "in": "query"
                     },
                     {
                         "type": "integer",
@@ -5778,6 +5790,12 @@ const docTemplate = `{
                         "required": true
                     },
                     {
+                        "type": "string",
+                        "description": "Search by facility name (case-insensitive)",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "default": 1,
                         "description": "Page number",
@@ -5785,8 +5803,9 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "maximum": 100,
                         "type": "integer",
-                        "default": 30,
+                        "default": 20,
                         "description": "Items per page",
                         "name": "limit",
                         "in": "query"
@@ -6147,6 +6166,12 @@ const docTemplate = `{
                         "name": "orgId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search by name (case-insensitive)",
+                        "name": "search",
+                        "in": "query"
                     },
                     {
                         "type": "integer",

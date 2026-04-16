@@ -3419,6 +3419,10 @@ paths:
       - application/json
       description: Get a paginated list of all government fundings
       parameters:
+      - description: Search by name (case-insensitive)
+        in: query
+        name: search
+        type: string
       - default: 1
         description: Page number
         in: query
@@ -3542,7 +3546,8 @@ paths:
         in: query
         name: periods_limit
         type: integer
-      - description: Filter periods active on date (YYYY-MM-DD, defaults to today)
+      - description: Filter periods active on date (YYYY-MM-DD). Omit to return all
+          periods.
         in: query
         name: active_on
         type: string
@@ -4533,6 +4538,10 @@ paths:
         name: orgId
         required: true
         type: integer
+      - description: Search by name (case-insensitive)
+        in: query
+        name: search
+        type: string
       - default: 1
         description: Page number
         in: query
@@ -7126,14 +7135,19 @@ paths:
         name: orgId
         required: true
         type: integer
+      - description: Search by facility name (case-insensitive)
+        in: query
+        name: search
+        type: string
       - default: 1
         description: Page number
         in: query
         name: page
         type: integer
-      - default: 30
+      - default: 20
         description: Items per page
         in: query
+        maximum: 100
         name: limit
         type: integer
       produces:
@@ -7372,6 +7386,10 @@ paths:
         name: orgId
         required: true
         type: integer
+      - description: Search by name (case-insensitive)
+        in: query
+        name: search
+        type: string
       - default: 1
         description: Page number
         in: query

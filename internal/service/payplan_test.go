@@ -141,7 +141,7 @@ func TestPayPlanService_List(t *testing.T) {
 	createTestPayPlan(t, db, "Plan C", org.ID)
 
 	// Test pagination: first page
-	plans, total, err := svc.List(ctx, org.ID, 2, 0)
+	plans, total, err := svc.List(ctx, org.ID, "", 2, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -154,7 +154,7 @@ func TestPayPlanService_List(t *testing.T) {
 	}
 
 	// Second page
-	plans, _, err = svc.List(ctx, org.ID, 2, 2)
+	plans, _, err = svc.List(ctx, org.ID, "", 2, 2)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -170,7 +170,7 @@ func TestPayPlanService_List_Empty(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 
-	plans, total, err := svc.List(ctx, org.ID, 10, 0)
+	plans, total, err := svc.List(ctx, org.ID, "", 10, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1351,7 +1351,7 @@ func TestPayPlanService_Import_UpsertReplacesOldPeriods(t *testing.T) {
 	}
 
 	// Verify no stale data remains: list all pay plans, should be exactly 1.
-	plans, total, err := svc.List(ctx, org.ID, 10, 0)
+	plans, total, err := svc.List(ctx, org.ID, "", 10, 0)
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}

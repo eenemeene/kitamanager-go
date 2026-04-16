@@ -74,7 +74,7 @@ func TestBudgetItemStore_Create_IncomeAndExpense(t *testing.T) {
 	}
 
 	// Verify both exist
-	items, total, err := store.FindByOrganization(ctx, org.ID, 100, 0)
+	items, total, err := store.FindByOrganization(ctx, org.ID, "", 100, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -206,7 +206,7 @@ func TestBudgetItemStore_FindByOrganization(t *testing.T) {
 	db.Create(&models.BudgetItem{OrganizationID: org1.ID, Name: "Rent", Category: "expense"})
 	db.Create(&models.BudgetItem{OrganizationID: org2.ID, Name: "Grants", Category: "income"})
 
-	items, total, err := store.FindByOrganization(ctx, org1.ID, 100, 0)
+	items, total, err := store.FindByOrganization(ctx, org1.ID, "", 100, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -230,7 +230,7 @@ func TestBudgetItemStore_FindByOrganization(t *testing.T) {
 	}
 
 	// Test pagination
-	items, total, err = store.FindByOrganization(ctx, org1.ID, 1, 0)
+	items, total, err = store.FindByOrganization(ctx, org1.ID, "", 1, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -244,7 +244,7 @@ func TestBudgetItemStore_FindByOrganization(t *testing.T) {
 	}
 
 	// Test pagination offset
-	items, _, err = store.FindByOrganization(ctx, org1.ID, 1, 1)
+	items, _, err = store.FindByOrganization(ctx, org1.ID, "", 1, 1)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -718,7 +718,7 @@ func TestBudgetItemStore_FindByOrganization_PreloadsEntries(t *testing.T) {
 		AmountCents: 60000,
 	})
 
-	items, _, err := store.FindByOrganization(ctx, org.ID, 100, 0)
+	items, _, err := store.FindByOrganization(ctx, org.ID, "", 100, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -753,7 +753,7 @@ func TestBudgetItemStore_FindByOrganization_ActiveAmountCents(t *testing.T) {
 		AmountCents: 100000,
 	})
 
-	items, total, err := store.FindByOrganization(ctx, org.ID, 20, 0)
+	items, total, err := store.FindByOrganization(ctx, org.ID, "", 20, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}

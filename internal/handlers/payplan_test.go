@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -860,6 +861,134 @@ func TestPayPlanHandler_DeleteEntry_InvalidEntryID(t *testing.T) {
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}
+}
+
+func TestPayPlanHandler_List_Search(t *testing.T) {
+	db := setupTestDB(t)
+	org := createTestOrganization(t, db, "Test Org")
+
+	payplanStore := store.NewPayPlanStore(db)
+	svc := service.NewPayPlanService(payplanStore, store.NewTransactor(db))
+	handler := NewPayPlanHandler(svc, createAuditService(db))
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/pay-plans", handler.List)
+
+	createTestPayPlan(t, db, "TVöD-SuE", org.ID)
+	createTestPayPlan(t, db, "TV-L", org.ID)
+	createTestPayPlan(t, db, "Haustarif", org.ID)
+
+	t.Run("case-insensitive match", func(t *testing.T) {
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans?search=tvöd", org.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.PayPlanResponse]
+		parseResponse(t, w, &response)
+		if len(response.Data) != 1 {
+			t.Errorf("expected 1 pay plan matching 'tvöd', got %d", len(response.Data))
+		}
+		if response.Total != 1 {
+			t.Errorf("expected total 1, got %d", response.Total)
+		}
+	})
+
+	t.Run("partial match", func(t *testing.T) {
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans?search=TV", org.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.PayPlanResponse]
+		parseResponse(t, w, &response)
+		if len(response.Data) != 2 {
+			t.Errorf("expected 2 pay plans matching 'TV', got %d", len(response.Data))
+		}
+	})
+
+	t.Run("no match", func(t *testing.T) {
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans?search=nonexistent", org.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.PayPlanResponse]
+		parseResponse(t, w, &response)
+		if len(response.Data) != 0 {
+			t.Errorf("expected 0 pay plans, got %d", len(response.Data))
+		}
+		if response.Total != 0 {
+			t.Errorf("expected total 0, got %d", response.Total)
+		}
+	})
+
+	t.Run("empty search returns all", func(t *testing.T) {
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans", org.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.PayPlanResponse]
+		parseResponse(t, w, &response)
+		if len(response.Data) != 3 {
+			t.Errorf("expected 3 pay plans without search, got %d", len(response.Data))
+		}
+	})
+
+	t.Run("search with pagination", func(t *testing.T) {
+		// Create more matching pay plans
+		createTestPayPlan(t, db, "TV-H", org.ID)
+
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans?search=TV&page=1&limit=1", org.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.PayPlanResponse]
+		parseResponse(t, w, &response)
+		if len(response.Data) != 1 {
+			t.Errorf("expected 1 pay plan on page 1, got %d", len(response.Data))
+		}
+		if response.Total != 3 {
+			t.Errorf("expected total 3 matching 'TV', got %d", response.Total)
+		}
+		if response.TotalPages != 3 {
+			t.Errorf("expected 3 total pages, got %d", response.TotalPages)
+		}
+	})
+
+	t.Run("search preserves org isolation", func(t *testing.T) {
+		otherOrg := createTestOrganization(t, db, "Other Org")
+		createTestPayPlan(t, db, "TVöD-SuE Other", otherOrg.ID)
+
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans?search=TVöD", org.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.PayPlanResponse]
+		parseResponse(t, w, &response)
+		if len(response.Data) != 1 {
+			t.Errorf("expected 1 pay plan from own org, got %d", len(response.Data))
+		}
+	})
+
+	t.Run("search with LIKE special characters", func(t *testing.T) {
+		createTestPayPlan(t, db, "100% Plan", org.ID)
+
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans?search=100%%25", org.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.PayPlanResponse]
+		parseResponse(t, w, &response)
+		if len(response.Data) != 1 {
+			t.Errorf("expected 1 pay plan matching '100%%', got %d", len(response.Data))
+		}
+	})
+
+	t.Run("search too long returns 400", func(t *testing.T) {
+		longSearch := strings.Repeat("a", 256)
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans?search=%s", org.ID, longSearch), nil)
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status %d for search > 255 chars, got %d", http.StatusBadRequest, w.Code)
+		}
+	})
 }
 
 func TestPayPlanHandler_DeleteEntry_NotFound(t *testing.T) {

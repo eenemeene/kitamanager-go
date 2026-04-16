@@ -112,8 +112,8 @@ func (s *PayPlanService) GetByID(ctx context.Context, id, orgID uint, activeOn *
 }
 
 // List retrieves all pay plans for an organization.
-func (s *PayPlanService) List(ctx context.Context, orgID uint, limit, offset int) ([]models.PayPlanResponse, int64, error) {
-	payplans, total, err := s.store.FindByOrganization(ctx, orgID, limit, offset)
+func (s *PayPlanService) List(ctx context.Context, orgID uint, search string, limit, offset int) ([]models.PayPlanResponse, int64, error) {
+	payplans, total, err := s.store.FindByOrganization(ctx, orgID, search, limit, offset)
 	if err != nil {
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch pay plans")
 	}
