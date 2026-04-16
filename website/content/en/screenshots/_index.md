@@ -39,7 +39,7 @@ The employee list shows all staff members with their salary grade, weekly hours,
 
 ## Children
 
-The children list shows every enrolled child with their calculated funding amount, FTE requirement, and billing difference. The funding amount is calculated automatically from the child's contract properties and the government funding rates.
+The children list shows every enrolled child with their calculated funding amount, FTE requirement, and billing difference.
 
 {{< screenshot src="/images/screenshots/children.png" alt="Children list" caption="Children overview showing enrollment, funding amounts, and billing differences." >}}
 
@@ -55,17 +55,41 @@ The statistics hub provides access to all reports: financials, staffing, childre
 
 ## Financial Overview
 
-The financial overview shows income vs. expenses over time, actual-vs-calculated funding comparison, cumulative balance with deficit markers, and a budget breakdown.
+The financial overview shows income vs. expenses over time with a balance trend line.
 
-{{< screenshot src="/images/screenshots/statistics-financials.png" alt="Financial overview" caption="Financial charts with income, expenses, funding comparison, and deficit tracking." >}}
+{{< screenshot src="/images/screenshots/statistics-financials.png" alt="Financial overview" caption="Financial charts with income, expenses, and balance trend." >}}
+
+The actual-vs-calculated funding comparison shows whether the government is paying correctly, with per-kita-year totals and deficit analysis.
+
+{{< screenshot src="/images/screenshots/statistics-funding-comparison.png" alt="Actual vs calculated funding" caption="Actual government funding compared to calculated amounts." >}}
+
+The cumulative balance chart tracks your running financial position. Red bars mark deficit periods.
+
+{{< screenshot src="/images/screenshots/statistics-cumulative-balance.png" alt="Cumulative balance" caption="Cumulative balance with deficit markers." >}}
+
+The budget overview table shows monthly income and expenses side by side.
+
+{{< screenshot src="/images/screenshots/statistics-budget.png" alt="Budget overview" caption="Monthly budget breakdown with income, expenses, and balance." >}}
 
 ---
 
 ## Government Funding Bills
 
-Upload ISBJ Excel files to compare government billing against calculated amounts. Navigate by Kita year, see a summary of matches and differences, and drill into individual bills.
+Upload ISBJ Excel files to compare government billing against calculated amounts. Navigate by Kita year, see a summary of matches and differences.
 
 {{< screenshot src="/images/screenshots/government-funding-bills.png" alt="Government funding bills" caption="Funding bills filtered by Kita year with match/difference summary." >}}
+
+Click on a bill to see the per-child comparison with status badges and mismatch indicators.
+
+{{< screenshot src="/images/screenshots/government-funding-bill-detail.png" alt="Bill detail" caption="Per-child comparison showing billed vs. calculated amounts." >}}
+
+---
+
+## Child Billing History
+
+View the complete billing history for an individual child across all uploaded bills.
+
+{{< screenshot src="/images/screenshots/child-billing.png" alt="Child billing history" caption="Billing history for a child with running difference tracking." >}}
 
 ---
 
@@ -79,6 +103,18 @@ Model what-if scenarios to plan your Kita's financial future. The optimizer find
 
 ## Government Funding Rates
 
-Configure the government funding rates for your state. Each entry maps a combination of child properties (age, care type, supplements) to a monthly funding amount.
+Configure the government funding rates for your state. Each entry maps child properties to a monthly funding amount.
 
-{{< screenshot src="/images/screenshots/government-funding-rates.png" alt="Government funding rates" caption="Berlin funding rates with periods, age ranges, and payment amounts." >}}
+{{< screenshot src="/images/screenshots/government-funding-rates.png" alt="Government funding rates" caption="Government funding configurations by state." >}}
+
+The detail view shows periods, age ranges, and payment amounts per property.
+
+{{< screenshot src="/images/screenshots/government-funding-rate-detail.png" alt="Funding rate detail" caption="Detailed funding rates with age ranges and payment amounts." >}}
+
+---
+
+## Pay Plans
+
+Pay plans define salary grades and steps for your staff, typically based on the TVöD-SuE scale.
+
+{{< screenshot src="/images/screenshots/payplan-detail.png" alt="Pay plan detail" caption="Pay plan showing salary grades, steps, and monthly amounts." >}}

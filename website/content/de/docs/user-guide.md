@@ -249,6 +249,18 @@ Die Finanzübersicht zeigt Ihnen, wie sich Einnahmen und Ausgaben Ihrer Kita üb
 
 {{< screenshot src="/images/screenshots/de/statistics-financials.png" alt="Finanzübersicht" caption="Die Finanzübersicht mit Einnahmen, Ausgaben und kumuliertem Saldo über das Kitajahr." >}}
 
+Scrollen Sie nach unten zum **Soll-Ist-Vergleich der Förderung**. Dieses Diagramm vergleicht die tatsächliche ISBJ-Abrechnung mit den von KitaManager berechneten Beträgen. Abweichungen werden pro Kitajahr hervorgehoben.
+
+{{< screenshot src="/images/screenshots/de/statistics-funding-comparison.png" alt="Soll-Ist-Vergleich der Förderung" caption="Vergleich der tatsächlichen Förderung mit den berechneten Beträgen und Defizitanalyse." >}}
+
+Das Diagramm **Kumuliertes Saldo** zeigt den laufenden Finanzstand über die Kitajahre hinweg. Rote Balken kennzeichnen Defizitmonate, und die Darstellung markiert genau, ab wann ein Defizit eingetreten ist.
+
+{{< screenshot src="/images/screenshots/de/statistics-cumulative-balance.png" alt="Kumuliertes Saldo" caption="Kumuliertes Saldo mit Defizit-Markierungen und Zählung aufeinanderfolgender Defizitmonate." >}}
+
+Die **Budgetübersicht** zeigt Einnahmen und Ausgaben in einer monatlichen Tabelle, sodass Sie Monate einfach miteinander vergleichen können.
+
+{{< screenshot src="/images/screenshots/de/statistics-budget.png" alt="Budgetübersicht" caption="Monatliche Budgetaufschlüsselung mit Einnahmen, Ausgaben und Saldo pro Monat." >}}
+
 {{% callout type="info" %}}
 **Tipp:** Achten Sie auf die Defizit-Markierungen im kumulierten Saldo. Wenn das Saldo über mehrere Monate negativ bleibt, sollten Sie die Ursache prüfen -- fehlen Kinder, sind Personalkosten zu hoch, oder fehlen Budgeteinnahmen?
 {{% /callout %}}
@@ -276,6 +288,14 @@ Beim Vergleich einer Abrechnung mit den berechneten Beträgen zeigt KitaManager 
 {{% callout type="info" %}}
 **Tipp:** Arbeiten Sie die Abweichungen systematisch ab. Beginnen Sie mit den fehlenden und zusätzlichen Einträgen, da diese meist auf Dateneingabefehler hindeuten.
 {{% /callout %}}
+
+Klicken Sie auf eine Abrechnung, um den Detailvergleich pro Kind mit Beträgen und Statusanzeigen zu sehen.
+
+{{< screenshot src="/images/screenshots/de/government-funding-bill-detail.png" alt="Abrechnungsdetail" caption="Detailvergleich pro Kind mit abgerechneten und berechneten Beträgen sowie Abweichungsanzeigen." >}}
+
+Sie können auch die komplette Abrechnungshistorie eines einzelnen Kindes einsehen, indem Sie auf der Detailseite des Kindes auf **Abrechnungshistorie** klicken.
+
+{{< screenshot src="/images/screenshots/de/child-billing.png" alt="Abrechnungshistorie eines Kindes" caption="Vollständige Abrechnungshistorie eines Kindes über alle hochgeladenen Abrechnungen." >}}
 
 ### Prognose
 
@@ -397,6 +417,12 @@ Eine Entgelttabelle enthält:
 
 Sie können Entgelttabellen manuell anlegen oder per YAML-Import hochladen. Wenn sich die Tarifgehälter ändern (z.B. durch eine neue Tarifrunde), importieren Sie einfach die aktualisierten Werte.
 
+{{< screenshot src="/images/screenshots/de/payplan-detail.png" alt="Entgelttabelle Detail" caption="Eine Entgelttabelle mit Entgeltgruppen, Stufen und monatlichen Beträgen." >}}
+
+{{% callout type="info" %}}
+**Tipp:** Wenn neue TVöD-SuE-Gehälter veröffentlicht werden (in der Regel jährlich), importieren Sie die aktualisierte Entgelttabelle, damit Gehaltsberechnungen und Finanzberichte korrekt bleiben.
+{{% /callout %}}
+
 ### Fördersätze
 
 Die Fördersätze bestimmen, wie viel das Berliner Jugendamt pro Kind und Monat zahlt. Sie sind abhängig von Alter, Betreuungsart und Zuschlägen.
@@ -406,6 +432,10 @@ Die Fördersätze bestimmen, wie viel das Berliner Jugendamt pro Kind und Monat 
 3. Neue Fördersätze können per YAML-Import hochgeladen werden.
 
 {{< screenshot src="/images/screenshots/de/government-funding-rates.png" alt="Fördersätze" caption="Die hinterlegten Fördersätze des Berliner Jugendamts." >}}
+
+Klicken Sie auf eine Förderkonfiguration, um die detaillierten Sätze mit Zeiträumen, Altersspannen und Zahlungsbeträgen pro Eigenschaft zu sehen.
+
+{{< screenshot src="/images/screenshots/de/government-funding-rate-detail.png" alt="Fördersatz-Detail" caption="Detaillierte Fördersätze mit Zahlungsbeträgen pro Altersspanne und Betreuungsart." >}}
 
 {{% callout type="warning" %}}
 **Wichtig:** Wenn die Fördersätze nicht aktuell sind, stimmen die berechneten Förderbeträge nicht mit den tatsächlichen Zahlungen überein. Aktualisieren Sie die Sätze, sobald neue Werte veröffentlicht werden.

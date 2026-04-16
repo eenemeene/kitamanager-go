@@ -156,6 +156,40 @@ async function getFirstBillId(page: Page, orgId: number): Promise<number | null>
   }, orgId);
 }
 
+async function getFirstPayPlanId(page: Page, orgId: number): Promise<number | null> {
+  return page.evaluate(async (orgId) => {
+    const csrfMatch = document.cookie.match(/csrf_token=([^;]+)/);
+    const headers: Record<string, string> = {};
+    if (csrfMatch) headers['X-CSRF-Token'] = csrfMatch[1];
+    const response = await fetch(`/api/v1/organizations/${orgId}/pay-plans?limit=1`, {
+      credentials: 'same-origin',
+      headers,
+    });
+    const data = await response.json();
+    if (!data.data || data.data.length === 0) {
+      return null;
+    }
+    return data.data[0].id;
+  }, orgId);
+}
+
+async function getFirstFundingId(page: Page): Promise<number | null> {
+  return page.evaluate(async () => {
+    const csrfMatch = document.cookie.match(/csrf_token=([^;]+)/);
+    const headers: Record<string, string> = {};
+    if (csrfMatch) headers['X-CSRF-Token'] = csrfMatch[1];
+    const response = await fetch('/api/v1/government-fundings?limit=1', {
+      credentials: 'same-origin',
+      headers,
+    });
+    const data = await response.json();
+    if (!data.data || data.data.length === 0) {
+      return null;
+    }
+    return data.data[0].id;
+  });
+}
+
 async function capture(page: Page, outputDir: string, name: string): Promise<void> {
   const filepath = path.join(outputDir, `${name}.png`);
   await page.screenshot({ path: filepath, fullPage: false });
@@ -316,6 +350,68 @@ async function captureForLanguage(browser: Browser, lang: LangConfig): Promise<v
     await page.goto(`${BASE_URL}/organizations/${orgId}/statistics/forecast`);
     await waitForContent(page, 4000);
     await capture(page, outputDir, 'forecast');
+
+    // 24. Financials: Cumulative Balance (scroll down)
+    await page.goto(`${BASE_URL}/organizations/${orgId}/statistics/financials`);
+    await waitForContent(page, 4000);
+    await page.evaluate(() => {
+      const headings = document.querySelectorAll('h3, div[class*="CardTitle"]');
+      for (const h of headings) {
+        if (h.textContent?.includes('Cumulative') || h.textContent?.includes('Kumuliert')) {
+          h.scrollIntoView({ behavior: 'instant', block: 'start' });
+          break;
+        }
+      }
+    });
+    await page.waitForTimeout(1000);
+    await capture(page, outputDir, 'statistics-cumulative-balance');
+
+    // 25. Financials: Actual vs Calculated Funding (scroll)
+    await page.evaluate(() => {
+      const headings = document.querySelectorAll('h3, div[class*="CardTitle"]');
+      for (const h of headings) {
+        if (h.textContent?.includes('Actual') || h.textContent?.includes('Soll-Ist')) {
+          h.scrollIntoView({ behavior: 'instant', block: 'start' });
+          break;
+        }
+      }
+    });
+    await page.waitForTimeout(1000);
+    await capture(page, outputDir, 'statistics-funding-comparison');
+
+    // 26. Financials: Budget Overview (scroll)
+    await page.evaluate(() => {
+      const headings = document.querySelectorAll('h3, div[class*="CardTitle"]');
+      for (const h of headings) {
+        if (h.textContent?.includes('Budget')) {
+          h.scrollIntoView({ behavior: 'instant', block: 'start' });
+          break;
+        }
+      }
+    });
+    await page.waitForTimeout(1000);
+    await capture(page, outputDir, 'statistics-budget');
+
+    // 27. Government Funding Rate Detail (navigate to page, ID 1 is the Berlin config)
+    await page.goto(`${BASE_URL}/government-funding-rates/1`);
+    await waitForContent(page);
+    await capture(page, outputDir, 'government-funding-rate-detail');
+
+    // 28. Pay Plan Detail (navigate to first one)
+    await page.goto(`${BASE_URL}/organizations/${orgId}/payplans`);
+    await waitForContent(page);
+    // Click first view link in the pay plans table
+    const payPlanLink = page.locator('table a, table button').first();
+    if (await payPlanLink.count() > 0) {
+      await payPlanLink.click();
+      await waitForContent(page);
+      await capture(page, outputDir, 'payplan-detail');
+    }
+
+    // 29. Child Billing History
+    await page.goto(`${BASE_URL}/organizations/${orgId}/children/${childId}/billing`);
+    await waitForContent(page, 4000);
+    await capture(page, outputDir, 'child-billing');
 
     console.log(`  Done [${lang.code}]!`);
   } finally {

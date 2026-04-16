@@ -227,6 +227,18 @@ The financial overview page shows you the big picture of your organization's fin
 
 {{< screenshot src="/images/screenshots/en/statistics-financials.png" alt="Financial overview" caption="The financial overview with income, expenses, and cumulative balance." >}}
 
+Scroll down to see the **Actual vs Calculated Funding** chart, which compares what the government billed against what KitaManager calculated. Discrepancies are highlighted per Kita year.
+
+{{< screenshot src="/images/screenshots/en/statistics-funding-comparison.png" alt="Actual vs calculated funding" caption="Actual government funding compared to calculated amounts, with deficit analysis." >}}
+
+The **Cumulative Balance** chart tracks your running financial balance across Kita years. Red bars indicate deficit months, and the chart marks exactly where a deficit started.
+
+{{< screenshot src="/images/screenshots/en/statistics-cumulative-balance.png" alt="Cumulative balance" caption="Cumulative balance with deficit markers and consecutive deficit month count." >}}
+
+The **Budget Overview** table shows monthly income and expenses in a grid, making it easy to compare months side by side.
+
+{{< screenshot src="/images/screenshots/en/statistics-budget.png" alt="Budget overview" caption="Monthly budget breakdown with income, expenses, and balance per month." >}}
+
 ### Checking Government Funding Bills
 
 Every month, you receive a funding bill from the ISBJ (the Berlin authority responsible for Kita funding). KitaManager lets you upload these bills and compare them against its own calculations.
@@ -249,6 +261,14 @@ When the government bill does not match KitaManager's calculation, you will see 
 {{% callout type="info" %}}
 When you find a discrepancy, check the child's contract properties first. The most common cause is a mismatch in care type or supplements between your records and the government's records.
 {{% /callout %}}
+
+Click on a bill to see the per-child comparison with detailed amounts and status badges.
+
+{{< screenshot src="/images/screenshots/en/government-funding-bill-detail.png" alt="Bill detail" caption="Per-child comparison showing billed vs. calculated amounts with mismatch indicators." >}}
+
+You can also view the complete billing history for an individual child by navigating to their detail page and clicking **Billing History**.
+
+{{< screenshot src="/images/screenshots/en/child-billing.png" alt="Child billing history" caption="Complete billing history for a child across all uploaded bills." >}}
 
 ### Using the Forecast
 
@@ -346,6 +366,8 @@ KitaManager uses pay plans (Entgelttabellen) to calculate employee salaries. The
 
 Pay plans can be imported via YAML files. Your administrator can update the pay plan when new salary tables are published.
 
+{{< screenshot src="/images/screenshots/en/payplan-detail.png" alt="Pay plan detail" caption="A pay plan showing salary grades, steps, and monthly amounts." >}}
+
 {{% callout type="info" %}}
 When the TVoD-SuE rates change (usually annually), import the updated pay plan so that salary calculations and financial reports stay accurate.
 {{% /callout %}}
@@ -360,6 +382,10 @@ The government funding rates determine how much money you receive per child. The
 Your administrator can update these rates when new ones are published. Keeping them current is critical -- outdated rates will cause mismatches when you compare against ISBJ bills.
 
 {{< screenshot src="/images/screenshots/en/government-funding-rates.png" alt="Government funding rates" caption="Government funding rates organized by age group and care type." >}}
+
+Click on a funding configuration to see the detailed rates with periods, age ranges, and payment amounts per property.
+
+{{< screenshot src="/images/screenshots/en/government-funding-rate-detail.png" alt="Funding rate detail" caption="Detailed funding rates showing payment amounts per age range and care type." >}}
 
 ### User Management
 
