@@ -216,6 +216,26 @@ func (h *GovernmentFundingHandler) Delete(c *gin.Context) {
 
 // Period handlers
 
+// ListPeriods godoc
+// @Summary List periods
+// @Description Get a paginated list of periods for a government funding (superadmin only)
+// @Tags government-funding-rates
+// @Produce json
+// @Security BearerAuth
+// @Param fundingId path int true "GovernmentFunding ID"
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page" default(20) maximum(100)
+// @Success 200 {object} models.PaginatedResponse[models.GovernmentFundingPeriodResponse]
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/government-funding-rates/{fundingId}/periods [get]
+func (h *GovernmentFundingHandler) ListPeriods(c *gin.Context) {
+	handleGlobalNestedList(c, "fundingId", h.service.ListPeriods)
+}
+
 // CreatePeriod godoc
 // @Summary Create a new period
 // @Description Create a new period for a government funding (superadmin only)
@@ -311,6 +331,27 @@ func (h *GovernmentFundingHandler) DeletePeriod(c *gin.Context) {
 }
 
 // Property handlers
+
+// ListProperties godoc
+// @Summary List properties
+// @Description Get a paginated list of properties for a government funding period (superadmin only)
+// @Tags government-funding-rates
+// @Produce json
+// @Security BearerAuth
+// @Param fundingId path int true "GovernmentFunding ID"
+// @Param periodId path int true "Period ID"
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page" default(20) maximum(100)
+// @Success 200 {object} models.PaginatedResponse[models.GovernmentFundingPropertyResponse]
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/government-funding-rates/{fundingId}/periods/{periodId}/properties [get]
+func (h *GovernmentFundingHandler) ListProperties(c *gin.Context) {
+	handleGlobalDeepNestedList(c, "fundingId", "periodId", h.service.ListProperties)
+}
 
 // CreateProperty godoc
 // @Summary Create a new property

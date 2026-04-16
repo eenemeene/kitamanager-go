@@ -200,6 +200,37 @@ func (s *GovernmentFundingService) validatePeriodNoOverlap(ctx context.Context, 
 	)
 }
 
+// ListPeriods retrieves paginated periods for a government funding.
+func (s *GovernmentFundingService) ListPeriods(ctx context.Context, fundingID uint, limit, offset int) ([]models.GovernmentFundingPeriodResponse, int64, error) {
+	if _, err := s.store.FindByID(ctx, fundingID); err != nil {
+		return nil, 0, classifyStoreError(err, "government funding")
+	}
+
+	periods, total, err := s.store.FindPeriodsByGovernmentFundingIDPaginated(ctx, fundingID, limit, offset)
+	if err != nil {
+		return nil, 0, apperror.InternalWrap(err, "failed to fetch government funding periods")
+	}
+
+	return toResponseList(periods, (*models.GovernmentFundingPeriod).ToResponse), total, nil
+}
+
+// ListProperties retrieves paginated properties for a government funding period.
+func (s *GovernmentFundingService) ListProperties(ctx context.Context, fundingID, periodID uint, limit, offset int) ([]models.GovernmentFundingPropertyResponse, int64, error) {
+	if _, err := s.store.FindByID(ctx, fundingID); err != nil {
+		return nil, 0, classifyStoreError(err, "government funding")
+	}
+	if _, err := s.verifyPeriodOwnership(ctx, periodID, fundingID); err != nil {
+		return nil, 0, err
+	}
+
+	properties, total, err := s.store.FindPropertiesByPeriodPaginated(ctx, periodID, limit, offset)
+	if err != nil {
+		return nil, 0, apperror.InternalWrap(err, "failed to fetch government funding properties")
+	}
+
+	return toResponseList(properties, (*models.GovernmentFundingProperty).ToResponse), total, nil
+}
+
 // CreatePeriod creates a new period
 func (s *GovernmentFundingService) CreatePeriod(ctx context.Context, governmentFundingID uint, req *models.GovernmentFundingPeriodCreateRequest) (*models.GovernmentFundingPeriodResponse, error) {
 	// Verify government funding exists

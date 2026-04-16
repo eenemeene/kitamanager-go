@@ -137,6 +137,25 @@ func (s *GovernmentFundingStore) FindPeriodsByGovernmentFundingID(ctx context.Co
 	return periods, nil
 }
 
+// FindPeriodsByGovernmentFundingIDPaginated retrieves periods for a government funding with pagination.
+func (s *GovernmentFundingStore) FindPeriodsByGovernmentFundingIDPaginated(ctx context.Context, fundingID uint, limit, offset int) ([]models.GovernmentFundingPeriod, int64, error) {
+	var periods []models.GovernmentFundingPeriod
+	var total int64
+
+	db := DBFromContext(ctx, s.db)
+	if err := db.Model(&models.GovernmentFundingPeriod{}).Where("government_funding_id = ?", fundingID).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	err := db.Where("government_funding_id = ?", fundingID).
+		Preload("Properties").
+		Order("from_date DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&periods).Error
+	return periods, total, err
+}
+
 func (s *GovernmentFundingStore) CreatePeriod(ctx context.Context, period *models.GovernmentFundingPeriod) error {
 	return DBFromContext(ctx, s.db).Create(period).Error
 }
@@ -157,6 +176,24 @@ func (s *GovernmentFundingStore) FindPropertyByID(ctx context.Context, id uint) 
 		return nil, WrapNotFound(err)
 	}
 	return &property, nil
+}
+
+// FindPropertiesByPeriodPaginated retrieves properties for a period with pagination.
+func (s *GovernmentFundingStore) FindPropertiesByPeriodPaginated(ctx context.Context, periodID uint, limit, offset int) ([]models.GovernmentFundingProperty, int64, error) {
+	var properties []models.GovernmentFundingProperty
+	var total int64
+
+	db := DBFromContext(ctx, s.db)
+	if err := db.Model(&models.GovernmentFundingProperty{}).Where("period_id = ?", periodID).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	err := db.Where("period_id = ?", periodID).
+		Order("key ASC, value ASC").
+		Limit(limit).
+		Offset(offset).
+		Find(&properties).Error
+	return properties, total, err
 }
 
 func (s *GovernmentFundingStore) CreateProperty(ctx context.Context, property *models.GovernmentFundingProperty) error {

@@ -172,6 +172,37 @@ func (s *PayPlanService) validatePayPlanPeriodNoOverlap(ctx context.Context, pay
 	)
 }
 
+// ListPeriods retrieves paginated periods for a pay plan.
+func (s *PayPlanService) ListPeriods(ctx context.Context, payplanID, orgID uint, limit, offset int) ([]models.PayPlanPeriodResponse, int64, error) {
+	if _, err := s.verifyPayPlanOwnership(ctx, payplanID, orgID); err != nil {
+		return nil, 0, err
+	}
+
+	periods, total, err := s.store.FindPeriodsByPayPlanPaginated(ctx, payplanID, limit, offset)
+	if err != nil {
+		return nil, 0, apperror.InternalWrap(err, "failed to fetch pay plan periods")
+	}
+
+	return toResponseList(periods, (*models.PayPlanPeriod).ToResponse), total, nil
+}
+
+// ListEntries retrieves paginated entries for a pay plan period.
+func (s *PayPlanService) ListEntries(ctx context.Context, periodID, payplanID, orgID uint, limit, offset int) ([]models.PayPlanEntryResponse, int64, error) {
+	if _, err := s.verifyPayPlanOwnership(ctx, payplanID, orgID); err != nil {
+		return nil, 0, err
+	}
+	if _, err := s.verifyPeriodOwnership(ctx, periodID, payplanID); err != nil {
+		return nil, 0, err
+	}
+
+	entries, total, err := s.store.FindEntriesByPeriodPaginated(ctx, periodID, limit, offset)
+	if err != nil {
+		return nil, 0, apperror.InternalWrap(err, "failed to fetch pay plan entries")
+	}
+
+	return toResponseList(entries, (*models.PayPlanEntry).ToResponse), total, nil
+}
+
 // CreatePeriod creates a new period for a pay plan.
 func (s *PayPlanService) CreatePeriod(ctx context.Context, payplanID, orgID uint, req *models.PayPlanPeriodCreateRequest) (*models.PayPlanPeriodResponse, error) {
 	if _, err := s.verifyPayPlanOwnership(ctx, payplanID, orgID); err != nil {

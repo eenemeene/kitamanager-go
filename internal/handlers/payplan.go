@@ -216,6 +216,27 @@ func (h *PayPlanHandler) Delete(c *gin.Context) {
 
 // Period handlers
 
+// ListPeriods godoc
+// @Summary List periods
+// @Description Get a paginated list of periods for a pay plan
+// @Tags pay-plans
+// @Produce json
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Param payPlanId path int true "Pay Plan ID"
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page" default(20) maximum(100)
+// @Success 200 {object} models.PaginatedResponse[models.PayPlanPeriodResponse]
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/organizations/{orgId}/pay-plans/{payPlanId}/periods [get]
+func (h *PayPlanHandler) ListPeriods(c *gin.Context) {
+	handleOrgNestedList(c, "payPlanId", h.service.ListPeriods)
+}
+
 // CreatePeriod godoc
 // @Summary Create period
 // @Description Create a new period for a pay plan
@@ -316,6 +337,28 @@ func (h *PayPlanHandler) DeletePeriod(c *gin.Context) {
 }
 
 // Entry handlers
+
+// ListEntries godoc
+// @Summary List entries
+// @Description Get a paginated list of entries for a pay plan period
+// @Tags pay-plans
+// @Produce json
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Param payPlanId path int true "Pay Plan ID"
+// @Param periodId path int true "Period ID"
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page" default(20) maximum(100)
+// @Success 200 {object} models.PaginatedResponse[models.PayPlanEntryResponse]
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/organizations/{orgId}/pay-plans/{payPlanId}/periods/{periodId}/entries [get]
+func (h *PayPlanHandler) ListEntries(c *gin.Context) {
+	handleOrgDeepNestedList(c, "payPlanId", "periodId", h.service.ListEntries)
+}
 
 // CreateEntry godoc
 // @Summary Create entry

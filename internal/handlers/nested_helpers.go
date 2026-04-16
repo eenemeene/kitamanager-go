@@ -196,6 +196,38 @@ func handleOrgNestedDeleteWithFetch[Resp any](
 	c.Status(http.StatusNoContent)
 }
 
+// handleOrgDeepNestedList handles paginated listing of deep nested resources.
+func handleOrgDeepNestedList[Resp any](
+	c *gin.Context,
+	parentParam string,
+	midParam string,
+	listFn func(context.Context, uint, uint, uint, int, int) ([]Resp, int64, error),
+) {
+	orgID, parentID, ok := parseOrgAndResourceID(c, parentParam)
+	if !ok {
+		return
+	}
+
+	midID, err := parseID(c, midParam)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	params, ok := parsePagination(c)
+	if !ok {
+		return
+	}
+
+	items, total, err := listFn(c.Request.Context(), midID, parentID, orgID, params.Limit, params.Offset())
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(items, params.Page, params.Limit, total, c.Request.URL.Path, c.Request.URL.RawQuery))
+}
+
 // --- Org-scoped deep nested helpers (routes: /organizations/:orgId/resource/:id/mid/:midParam/nested) ---
 
 // handleOrgDeepNestedCreate handles creating a deep nested resource with audit logging.
@@ -394,6 +426,32 @@ func handleOrgDeepNestedDeleteWithFetch[Resp any](
 
 // --- Global nested helpers (routes: /resource/:id/nested) ---
 
+// handleGlobalNestedList handles paginated listing of nested resources under a global parent.
+func handleGlobalNestedList[Resp any](
+	c *gin.Context,
+	parentParam string,
+	listFn func(context.Context, uint, int, int) ([]Resp, int64, error),
+) {
+	parentID, err := parseID(c, parentParam)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	params, ok := parsePagination(c)
+	if !ok {
+		return
+	}
+
+	items, total, err := listFn(c.Request.Context(), parentID, params.Limit, params.Offset())
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(items, params.Page, params.Limit, total, c.Request.URL.Path, c.Request.URL.RawQuery))
+}
+
 // handleGlobalNestedCreate handles creating a nested resource under a global parent.
 func handleGlobalNestedCreate[Req any, Resp any](
 	c *gin.Context,
@@ -559,6 +617,39 @@ func handleGlobalNestedDeleteWithFetch[Resp any](
 }
 
 // --- Global deep nested helpers (routes: /resource/:id/mid/:midParam/nested) ---
+
+// handleGlobalDeepNestedList handles paginated listing of deep nested resources under a global parent.
+func handleGlobalDeepNestedList[Resp any](
+	c *gin.Context,
+	parentParam string,
+	midParam string,
+	listFn func(context.Context, uint, uint, int, int) ([]Resp, int64, error),
+) {
+	parentID, err := parseID(c, parentParam)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	midID, err := parseID(c, midParam)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	params, ok := parsePagination(c)
+	if !ok {
+		return
+	}
+
+	items, total, err := listFn(c.Request.Context(), parentID, midID, params.Limit, params.Offset())
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, models.NewPaginatedResponseWithLinks(items, params.Page, params.Limit, total, c.Request.URL.Path, c.Request.URL.RawQuery))
+}
 
 // handleGlobalDeepNestedCreate handles creating a deep nested resource under a global parent.
 func handleGlobalDeepNestedCreate[Req any, Resp any](

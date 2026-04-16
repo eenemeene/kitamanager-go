@@ -191,6 +191,24 @@ func (s *PayPlanStore) FindPeriodsByPayPlan(ctx context.Context, payplanID uint)
 	return periods, nil
 }
 
+// FindPeriodsByPayPlanPaginated retrieves periods for a pay plan with pagination.
+func (s *PayPlanStore) FindPeriodsByPayPlanPaginated(ctx context.Context, payplanID uint, limit, offset int) ([]models.PayPlanPeriod, int64, error) {
+	var periods []models.PayPlanPeriod
+	var total int64
+
+	db := DBFromContext(ctx, s.db)
+	if err := db.Model(&models.PayPlanPeriod{}).Where("pay_plan_id = ?", payplanID).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	err := db.Where("pay_plan_id = ?", payplanID).
+		Order("from_date DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&periods).Error
+	return periods, total, err
+}
+
 // GetActivePeriod retrieves the active period for a pay plan at a given date.
 func (s *PayPlanStore) FindActivePeriod(ctx context.Context, payplanID uint, date time.Time) (*models.PayPlanPeriod, error) {
 	var period models.PayPlanPeriod
@@ -250,6 +268,24 @@ func (s *PayPlanStore) FindEntriesByPeriod(ctx context.Context, periodID uint) (
 		return nil, err
 	}
 	return entries, nil
+}
+
+// FindEntriesByPeriodPaginated retrieves entries for a period with pagination.
+func (s *PayPlanStore) FindEntriesByPeriodPaginated(ctx context.Context, periodID uint, limit, offset int) ([]models.PayPlanEntry, int64, error) {
+	var entries []models.PayPlanEntry
+	var total int64
+
+	db := DBFromContext(ctx, s.db)
+	if err := db.Model(&models.PayPlanEntry{}).Where("period_id = ?", periodID).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	err := db.Where("period_id = ?", periodID).
+		Order("grade ASC, step ASC").
+		Limit(limit).
+		Offset(offset).
+		Find(&entries).Error
+	return entries, total, err
 }
 
 // GetEntry retrieves a specific entry by grade and step.
