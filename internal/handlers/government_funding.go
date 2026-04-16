@@ -29,6 +29,7 @@ func NewGovernmentFundingHandler(service *service.GovernmentFundingService, audi
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param search query string false "Search by name (case-insensitive)"
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(20) maximum(100)
 // @Success 200 {object} models.PaginatedResponse[models.GovernmentFundingResponse]
@@ -41,7 +42,12 @@ func (h *GovernmentFundingHandler) List(c *gin.Context) {
 		return
 	}
 
-	fundings, total, err := h.service.List(c.Request.Context(), params.Limit, params.Offset())
+	search, ok := parseSearch(c)
+	if !ok {
+		return
+	}
+
+	fundings, total, err := h.service.List(c.Request.Context(), search, params.Limit, params.Offset())
 	if err != nil {
 		respondError(c, err)
 		return

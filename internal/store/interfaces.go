@@ -137,7 +137,7 @@ type SectionStorer interface {
 // GovernmentFundingStorer defines the interface for government funding storage operations
 type GovernmentFundingStorer interface {
 	// GovernmentFunding CRUD
-	FindAll(ctx context.Context, limit, offset int) ([]models.GovernmentFunding, int64, error)
+	FindAll(ctx context.Context, search string, limit, offset int) ([]models.GovernmentFunding, int64, error)
 	FindByID(ctx context.Context, id uint) (*models.GovernmentFunding, error)
 	FindByIDWithDetails(ctx context.Context, id uint, periodsLimit int, activeOn *time.Time) (*models.GovernmentFunding, error)
 	FindByState(ctx context.Context, state string) (*models.GovernmentFunding, error)

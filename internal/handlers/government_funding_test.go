@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -1113,4 +1114,95 @@ func TestGovernmentFundingHandler_DeleteProperty_InvalidID(t *testing.T) {
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}
+}
+
+func TestGovernmentFundingHandler_List_Search(t *testing.T) {
+	db := setupTestDB(t)
+	fundingStore := store.NewGovernmentFundingStore(db)
+	svc := service.NewGovernmentFundingService(fundingStore, store.NewTransactor(db))
+	handler := NewGovernmentFundingHandler(svc, createAuditService(db), importer.NewGovernmentFundingImporter(svc, store.NewTransactor(db)))
+
+	r := setupTestRouter()
+	r.GET("/fundings", handler.List)
+
+	db.Create(&models.GovernmentFunding{Name: "Berlin Kita Funding", State: "berlin"})
+	db.Create(&models.GovernmentFunding{Name: "Brandenburg Kita Funding", State: "brandenburg"})
+	db.Create(&models.GovernmentFunding{Name: "Hamburg Förderung", State: "hamburg"})
+
+	t.Run("case-insensitive match", func(t *testing.T) {
+		w := performRequest(r, "GET", "/fundings?search=berlin", nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.GovernmentFundingResponse]
+		parseResponse(t, w, &response)
+		if len(response.Data) != 1 {
+			t.Errorf("expected 1 funding matching 'berlin', got %d", len(response.Data))
+		}
+		if response.Total != 1 {
+			t.Errorf("expected total 1, got %d", response.Total)
+		}
+	})
+
+	t.Run("partial match", func(t *testing.T) {
+		w := performRequest(r, "GET", "/fundings?search=Kita", nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.GovernmentFundingResponse]
+		parseResponse(t, w, &response)
+		if len(response.Data) != 2 {
+			t.Errorf("expected 2 fundings matching 'Kita', got %d", len(response.Data))
+		}
+	})
+
+	t.Run("no match", func(t *testing.T) {
+		w := performRequest(r, "GET", "/fundings?search=nonexistent", nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.GovernmentFundingResponse]
+		parseResponse(t, w, &response)
+		if len(response.Data) != 0 {
+			t.Errorf("expected 0 fundings, got %d", len(response.Data))
+		}
+		if response.Total != 0 {
+			t.Errorf("expected total 0, got %d", response.Total)
+		}
+	})
+
+	t.Run("empty search returns all", func(t *testing.T) {
+		w := performRequest(r, "GET", "/fundings", nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.GovernmentFundingResponse]
+		parseResponse(t, w, &response)
+		if len(response.Data) != 3 {
+			t.Errorf("expected 3 fundings without search, got %d", len(response.Data))
+		}
+	})
+
+	t.Run("search with pagination", func(t *testing.T) {
+		w := performRequest(r, "GET", "/fundings?search=Funding&page=1&limit=1", nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.GovernmentFundingResponse]
+		parseResponse(t, w, &response)
+		if len(response.Data) != 1 {
+			t.Errorf("expected 1 funding on page 1, got %d", len(response.Data))
+		}
+		if response.Total != 2 {
+			t.Errorf("expected total 2 matching 'Funding', got %d", response.Total)
+		}
+	})
+
+	t.Run("search too long returns 400", func(t *testing.T) {
+		longSearch := strings.Repeat("a", 256)
+		w := performRequest(r, "GET", fmt.Sprintf("/fundings?search=%s", longSearch), nil)
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status %d for search > 255 chars, got %d", http.StatusBadRequest, w.Code)
+		}
+	})
 }

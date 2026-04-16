@@ -21,7 +21,7 @@ func TestGovernmentFundingService_List(t *testing.T) {
 	funding := &models.GovernmentFunding{Name: "Berlin Funding", State: "berlin"}
 	db.Create(funding)
 
-	fundings, total, err := svc.List(ctx, 10, 0)
+	fundings, total, err := svc.List(ctx, "", 10, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -40,7 +40,7 @@ func TestGovernmentFundingService_List_Empty(t *testing.T) {
 	svc := NewGovernmentFundingService(fundingStore, store.NewTransactor(db))
 	ctx := context.Background()
 
-	fundings, total, err := svc.List(ctx, 10, 0)
+	fundings, total, err := svc.List(ctx, "", 10, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}

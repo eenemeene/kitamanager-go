@@ -3419,6 +3419,10 @@ paths:
       - application/json
       description: Get a paginated list of all government fundings
       parameters:
+      - description: Search by name (case-insensitive)
+        in: query
+        name: search
+        type: string
       - default: 1
         description: Page number
         in: query

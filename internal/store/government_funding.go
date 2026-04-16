@@ -19,15 +19,25 @@ func NewGovernmentFundingStore(db *gorm.DB) *GovernmentFundingStore {
 
 // GovernmentFunding CRUD
 
-func (s *GovernmentFundingStore) FindAll(ctx context.Context, limit, offset int) ([]models.GovernmentFunding, int64, error) {
+func (s *GovernmentFundingStore) FindAll(ctx context.Context, search string, limit, offset int) ([]models.GovernmentFunding, int64, error) {
 	var fundings []models.GovernmentFunding
 	var total int64
 
-	if err := DBFromContext(ctx, s.db).Model(&models.GovernmentFunding{}).Count(&total).Error; err != nil {
+	query := DBFromContext(ctx, s.db).Model(&models.GovernmentFunding{})
+	if search != "" {
+		query = query.Scopes(NameSearch("government_fundings", "name", search))
+	}
+
+	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	if err := DBFromContext(ctx, s.db).Limit(limit).Offset(offset).Find(&fundings).Error; err != nil {
+	dataQuery := DBFromContext(ctx, s.db).Model(&models.GovernmentFunding{})
+	if search != "" {
+		dataQuery = dataQuery.Scopes(NameSearch("government_fundings", "name", search))
+	}
+
+	if err := dataQuery.Order("name ASC").Limit(limit).Offset(offset).Find(&fundings).Error; err != nil {
 		return nil, 0, err
 	}
 
