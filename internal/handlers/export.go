@@ -171,6 +171,9 @@ func fetchAllEmployees(c *gin.Context, svc *service.EmployeeService, orgID uint,
 			respondError(c, err)
 			return nil, false
 		}
+		if all == nil {
+			all = make([]models.EmployeeResponse, 0, total)
+		}
 		all = append(all, page...)
 		if len(all) >= int(total) {
 			break
@@ -187,6 +190,9 @@ func fetchAllChildren(c *gin.Context, svc *service.ChildService, orgID uint, fil
 		if err != nil {
 			respondError(c, err)
 			return nil, false
+		}
+		if all == nil {
+			all = make([]models.ChildResponse, 0, total)
 		}
 		all = append(all, page...)
 		if len(all) >= int(total) {

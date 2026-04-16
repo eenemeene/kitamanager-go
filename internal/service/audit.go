@@ -53,9 +53,11 @@ func NewAuditService(store store.AuditStorer) *AuditService {
 func (s *AuditService) processLogs() {
 	defer close(s.done)
 	for entry := range s.logCh {
-		if err := s.store.Create(context.Background(), entry); err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		if err := s.store.Create(ctx, entry); err != nil {
 			slog.Error("Failed to create audit log", "action", entry.Action, "error", err)
 		}
+		cancel()
 	}
 }
 
