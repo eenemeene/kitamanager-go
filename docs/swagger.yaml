@@ -1447,6 +1447,21 @@ definitions:
         example: ganztag
         type: string
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.FundingComparisonCategorySummary:
+    properties:
+      actionable:
+        example: false
+        type: boolean
+      category:
+        example: rate_difference
+        type: string
+      child_count:
+        example: 40
+        type: integer
+      total_amount:
+        example: -60100
+        type: integer
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.FundingComparisonChild:
     properties:
       age:
@@ -1491,6 +1506,48 @@ definitions:
         description: match|difference|bill_only|calc_only
         example: match
         type: string
+      voucher_number:
+        example: GB-12345678901-02
+        type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.FundingComparisonIssueSummary:
+    properties:
+      actionable:
+        example: true
+        type: boolean
+      amount_per_month:
+        example: -33064
+        type: integer
+      bill_value:
+        example: ""
+        type: string
+      calc_value:
+        example: integration b
+        type: string
+      category:
+        example: property_mismatch
+        type: string
+      child_id:
+        example: 42
+        type: integer
+      child_name:
+        example: Bagus, Nathan Albert
+        type: string
+      description:
+        example: integration:integration b — in contract but not billed
+        type: string
+      issue_type:
+        example: missing
+        type: string
+      month_count:
+        example: 12
+        type: integer
+      property_key:
+        example: integration
+        type: string
+      total_amount:
+        example: -396768
+        type: integer
       voucher_number:
         example: GB-12345678901-02
         type: string
@@ -1546,6 +1603,41 @@ definitions:
       match_count:
         example: 20
         type: integer
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.FundingComparisonSummary:
+    properties:
+      categories:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FundingComparisonCategorySummary'
+        type: array
+      issues:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FundingComparisonIssueSummary'
+        type: array
+      month_count:
+        example: 12
+        type: integer
+      total_billed:
+        example: 712387
+        type: integer
+      total_calculated:
+        example: 783227
+        type: integer
+      total_corrections:
+        example: 37114
+        type: integer
+      total_difference:
+        example: -70840
+        type: integer
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.FundingComparisonWrappedResponse:
+    properties:
+      comparisons:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FundingComparisonResponse'
+        type: array
+      summary:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FundingComparisonSummary'
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingBillAmount:
     properties:
@@ -7032,9 +7124,8 @@ paths:
   /api/v1/organizations/{orgId}/government-funding-bills/compare:
     get:
       description: |-
-        Compare bill data against calculated funding. Always returns an array of comparisons.
+        Compare bill data against calculated funding. Always returns comparisons with a summary.
         Use from/to for a date range, bill_id for a specific bill, or no params for the latest bill.
-        With child_id, returns billing history for that child (different response type).
       parameters:
       - description: Organization ID
         in: path
@@ -7053,18 +7144,13 @@ paths:
         in: query
         name: to
         type: string
-      - description: Child ID — returns billing history across all bills for this
-          child
-        in: query
-        name: child_id
-        type: integer
       produces:
       - application/json
       responses:
         "200":
-          description: When filtering by child_id
+          description: OK
           schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildBillingHistoryResponse'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FundingComparisonWrappedResponse'
         "400":
           description: Bad Request
           schema:

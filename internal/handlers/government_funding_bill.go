@@ -169,9 +169,8 @@ const maxCompareRangeMonths = 12
 
 // CompareUnified godoc
 // @Summary Compare funding bills with calculated funding
-// @Description Compare bill data against calculated funding. Always returns an array of comparisons.
+// @Description Compare bill data against calculated funding. Always returns comparisons with a summary.
 // @Description Use from/to for a date range, bill_id for a specific bill, or no params for the latest bill.
-// @Description With child_id, returns billing history for that child (different response type).
 // @Tags government-funding-bills
 // @Produce json
 // @Security BearerAuth
@@ -179,9 +178,7 @@ const maxCompareRangeMonths = 12
 // @Param bill_id query int false "Specific bill ID to compare"
 // @Param from query string false "Range start date (YYYY-MM-DD), requires to"
 // @Param to query string false "Range end date (YYYY-MM-DD), requires from"
-// @Param child_id query int false "Child ID — returns billing history across all bills for this child"
-// @Success 200 {array} models.FundingComparisonResponse "Array of comparisons (bill_id, from/to, or default)"
-// @Success 200 {object} models.ChildBillingHistoryResponse "When filtering by child_id"
+// @Success 200 {object} models.FundingComparisonWrappedResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
@@ -193,22 +190,6 @@ func (h *GovernmentFundingBillHandler) CompareUnified(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-
-	// If child_id is provided, delegate to billing history (different response type)
-	if childIDStr := c.Query("child_id"); childIDStr != "" {
-		childID, err := strconv.ParseUint(childIDStr, 10, 64)
-		if err != nil {
-			respondError(c, apperror.BadRequest("invalid child_id parameter"))
-			return
-		}
-		result, err := h.service.ChildBillingHistory(ctx, uint(childID), orgID)
-		if err != nil {
-			respondError(c, err)
-			return
-		}
-		c.JSON(http.StatusOK, result)
-		return
-	}
 
 	// Single bill by ID
 	if billIDStr := c.Query("bill_id"); billIDStr != "" {

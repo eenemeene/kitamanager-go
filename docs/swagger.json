@@ -5720,7 +5720,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Compare bill data against calculated funding. Always returns an array of comparisons.\nUse from/to for a date range, bill_id for a specific bill, or no params for the latest bill.\nWith child_id, returns billing history for that child (different response type).",
+                "description": "Compare bill data against calculated funding. Always returns comparisons with a summary.\nUse from/to for a date range, bill_id for a specific bill, or no params for the latest bill.",
                 "produces": [
                     "application/json"
                 ],
@@ -5753,19 +5753,13 @@
                         "description": "Range end date (YYYY-MM-DD), requires from",
                         "name": "to",
                         "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Child ID — returns billing history across all bills for this child",
-                        "name": "child_id",
-                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "When filtering by child_id",
+                        "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildBillingHistoryResponse"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FundingComparisonWrappedResponse"
                         }
                     },
                     "400": {
@@ -11061,6 +11055,27 @@
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.FundingComparisonCategorySummary": {
+            "type": "object",
+            "properties": {
+                "actionable": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "category": {
+                    "type": "string",
+                    "example": "rate_difference"
+                },
+                "child_count": {
+                    "type": "integer",
+                    "example": 40
+                },
+                "total_amount": {
+                    "type": "integer",
+                    "example": -60100
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.FundingComparisonChild": {
             "type": "object",
             "properties": {
@@ -11120,6 +11135,63 @@
                     "description": "match|difference|bill_only|calc_only",
                     "type": "string",
                     "example": "match"
+                },
+                "voucher_number": {
+                    "type": "string",
+                    "example": "GB-12345678901-02"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.FundingComparisonIssueSummary": {
+            "type": "object",
+            "properties": {
+                "actionable": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "amount_per_month": {
+                    "type": "integer",
+                    "example": -33064
+                },
+                "bill_value": {
+                    "type": "string",
+                    "example": ""
+                },
+                "calc_value": {
+                    "type": "string",
+                    "example": "integration b"
+                },
+                "category": {
+                    "type": "string",
+                    "example": "property_mismatch"
+                },
+                "child_id": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "child_name": {
+                    "type": "string",
+                    "example": "Bagus, Nathan Albert"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "integration:integration b — in contract but not billed"
+                },
+                "issue_type": {
+                    "type": "string",
+                    "example": "missing"
+                },
+                "month_count": {
+                    "type": "integer",
+                    "example": 12
+                },
+                "property_key": {
+                    "type": "string",
+                    "example": "integration"
+                },
+                "total_amount": {
+                    "type": "integer",
+                    "example": -396768
                 },
                 "voucher_number": {
                     "type": "string",
@@ -11195,6 +11267,57 @@
                 "match_count": {
                     "type": "integer",
                     "example": 20
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.FundingComparisonSummary": {
+            "type": "object",
+            "properties": {
+                "categories": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FundingComparisonCategorySummary"
+                    }
+                },
+                "issues": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FundingComparisonIssueSummary"
+                    }
+                },
+                "month_count": {
+                    "type": "integer",
+                    "example": 12
+                },
+                "total_billed": {
+                    "type": "integer",
+                    "example": 712387
+                },
+                "total_calculated": {
+                    "type": "integer",
+                    "example": 783227
+                },
+                "total_corrections": {
+                    "type": "integer",
+                    "example": 37114
+                },
+                "total_difference": {
+                    "type": "integer",
+                    "example": -70840
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.FundingComparisonWrappedResponse": {
+            "type": "object",
+            "properties": {
+                "comparisons": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FundingComparisonResponse"
+                    }
+                },
+                "summary": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FundingComparisonSummary"
                 }
             }
         },
