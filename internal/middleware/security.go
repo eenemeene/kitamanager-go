@@ -37,6 +37,9 @@ func SecurityHeaders() gin.HandlerFunc {
 		// Restrict permissions/features
 		c.Header("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
 
+		// Prevent caching of API responses containing sensitive data
+		c.Header("Cache-Control", "no-store")
+
 		c.Next()
 	}
 }
