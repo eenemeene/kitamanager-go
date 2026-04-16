@@ -64,7 +64,7 @@ export default function EmployeesPage() {
     isPending: isImporting,
   } = useImportMutation({
     importFn: (file) => apiClient.importEmployees(orgId, file),
-    invalidateQueryKey: queryKeys.employees.all(orgId),
+    invalidateQueryKeys: [queryKeys.employees.all(orgId), queryKeys.statistics.all(orgId)],
     resourceNameKey: 'employees.title',
     errorMessageKey: 'employees.importError',
   });

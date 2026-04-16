@@ -61,7 +61,7 @@ export default function ChildrenPage() {
     isPending: isImporting,
   } = useImportMutation({
     importFn: (file) => apiClient.importChildren(orgId, file),
-    invalidateQueryKey: queryKeys.children.all(orgId),
+    invalidateQueryKeys: [queryKeys.children.all(orgId), queryKeys.statistics.all(orgId)],
     resourceNameKey: 'children.title',
     errorMessageKey: 'children.importError',
   });

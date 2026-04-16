@@ -9,8 +9,8 @@ import { showErrorToast } from '@/lib/utils/show-error-toast';
 interface UseImportMutationConfig {
   /** API function to call with the file */
   importFn: (file: File) => Promise<unknown>;
-  /** Query key to invalidate on success */
-  invalidateQueryKey: QueryKey;
+  /** Query keys to invalidate on success */
+  invalidateQueryKeys: QueryKey[];
   /** i18n key for the resource name (e.g., 'children.title') */
   resourceNameKey: string;
   /** i18n key for the import error fallback (e.g., 'children.importError') */
@@ -23,7 +23,7 @@ interface UseImportMutationConfig {
  */
 export function useImportMutation({
   importFn,
-  invalidateQueryKey,
+  invalidateQueryKeys,
   resourceNameKey,
   errorMessageKey,
 }: UseImportMutationConfig) {
@@ -35,7 +35,9 @@ export function useImportMutation({
   const mutation = useMutation({
     mutationFn: importFn,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: invalidateQueryKey });
+      for (const key of invalidateQueryKeys) {
+        queryClient.invalidateQueries({ queryKey: key });
+      }
       toast({
         title: t('common.success'),
         description: t('common.createSuccess', { resource: t(resourceNameKey) }),
