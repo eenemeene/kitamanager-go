@@ -21,6 +21,7 @@ import {
   Column,
 } from '@/components/crud';
 import { Pagination } from '@/components/ui/pagination';
+import { SearchInput } from '@/components/ui/search-input';
 import { payPlanSchema, type PayPlanFormData } from '@/lib/schemas';
 import { useToast } from '@/lib/hooks/use-toast';
 
@@ -62,13 +63,14 @@ export default function PayPlansPage() {
     resourceName: 'payPlans',
     schema: payPlanSchema,
     defaultValues,
+    searchable: true,
     itemToFormData: (payPlan) => ({ name: payPlan.name }),
     listFn: (orgId, params) => apiClient.getPayPlans(orgId, params),
     createFn: (orgId, data) => apiClient.createPayPlan(orgId, data),
     updateFn: (orgId, id, data) => apiClient.updatePayPlan(orgId, id, data),
     deleteFn: (orgId, id) => apiClient.deletePayPlan(orgId, id),
     queryKeys: {
-      list: (orgId, page) => queryKeys.payPlans.list(orgId, page),
+      list: (orgId, page, search) => queryKeys.payPlans.list(orgId, page, search),
       invalidate: (orgId) => queryKeys.payPlans.all(orgId),
     },
   });
@@ -125,7 +127,12 @@ export default function PayPlansPage() {
         <CardHeader>
           <CardTitle>{t('payPlans.title')}</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <SearchInput
+            id="search-payplans"
+            value={crud.searchInput}
+            onChange={crud.setSearchInput}
+          />
           <ResourceTable
             items={crud.items}
             columns={columns}

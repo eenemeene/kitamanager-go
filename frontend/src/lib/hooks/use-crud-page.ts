@@ -19,6 +19,7 @@ import type { z, ZodType } from 'zod';
 import type { PaginatedResponse, PaginationParams } from '@/lib/api/types';
 import { useCrudDialogs, type UseCrudDialogsResult } from './use-crud-dialogs';
 import { useCrudMutations, type UseCrudMutationsResult } from './use-crud-mutations';
+import { useResourceListFilters } from './use-resource-list-filters';
 
 interface UseCrudPageConfig<
   TItem extends { id: number },
@@ -34,9 +35,11 @@ interface UseCrudPageConfig<
   createFn: (orgId: number, data: TCreate) => Promise<TItem>;
   updateFn: (orgId: number, id: number, data: TUpdate) => Promise<TItem>;
   deleteFn: (orgId: number, id: number) => Promise<void>;
+  /** Enable search input support (debounced, auto-resets page) */
+  searchable?: boolean;
   /** Optional query key functions for proper cache alignment with queryKeys factory */
   queryKeys?: {
-    list: (orgId: number, page: number) => readonly unknown[];
+    list: (orgId: number, page: number, search?: string) => readonly unknown[];
     invalidate: (orgId: number) => readonly unknown[];
     /** Additional query keys to invalidate on success (e.g., related statistics) */
     extraInvalidate?: (orgId: number) => readonly (string | number | undefined)[][];
@@ -55,6 +58,10 @@ interface UseCrudPageResult<
   isLoading: boolean;
   page: number;
   setPage: (page: number) => void;
+  /** Search input value (raw, for binding to SearchInput) — only present when searchable */
+  searchInput: string;
+  /** Set search input (auto-resets page to 1) — only present when searchable */
+  setSearchInput: (value: string) => void;
   register: UseFormRegister<TFormData>;
 
   handleSubmit: UseFormHandleSubmit<TFormData, any>;
@@ -77,7 +84,17 @@ export function useCrudPage<
 ): UseCrudPageResult<TItem, TFormData, TCreate, TUpdate> {
   const params = useParams();
   const orgId = Number(params.orgId);
-  const [page, setPage] = useState(1);
+
+  const filters = useResourceListFilters();
+  const [simplePage, setSimplePage] = useState(1);
+
+  // When searchable, use the filters hook (debounced search + auto page reset).
+  // Otherwise, use simple page state for backward compatibility.
+  const page = config.searchable ? filters.page : simplePage;
+  const setPage = config.searchable ? filters.setPage : setSimplePage;
+  const searchInput = filters.searchInput;
+  const setSearchInput = filters.setSearchInput;
+  const search = config.searchable ? filters.search : undefined;
 
   const {
     register,
@@ -93,15 +110,15 @@ export function useCrudPage<
   });
 
   const listQueryKey = config.queryKeys
-    ? config.queryKeys.list(orgId, page)
-    : [config.resourceName, orgId, page];
+    ? config.queryKeys.list(orgId, page, search)
+    : [config.resourceName, orgId, page, search];
   const invalidateQueryKey: readonly (string | number | undefined)[] = config.queryKeys
     ? (config.queryKeys.invalidate(orgId) as readonly (string | number | undefined)[])
     : [config.resourceName, orgId];
 
   const { data: paginatedData, isLoading } = useQuery({
     queryKey: listQueryKey,
-    queryFn: () => config.listFn(orgId, { page }),
+    queryFn: () => config.listFn(orgId, { page, ...(search ? { search } : {}) }),
     enabled: !!orgId,
   });
 
@@ -144,6 +161,8 @@ export function useCrudPage<
     isLoading,
     page,
     setPage,
+    searchInput,
+    setSearchInput,
     register,
     handleSubmit,
     errors,

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
@@ -34,7 +34,9 @@ import {
 } from '@/components/crud';
 import { useCrudDialogs } from '@/lib/hooks/use-crud-dialogs';
 import { useCrudMutations } from '@/lib/hooks/use-crud-mutations';
+import { useResourceListFilters } from '@/lib/hooks/use-resource-list-filters';
 import { governmentFundingSchema, type GovernmentFundingFormData } from '@/lib/schemas';
+import { SearchInput } from '@/components/ui/search-input';
 
 const defaultValues: GovernmentFundingFormData = {
   name: '',
@@ -44,7 +46,7 @@ const defaultValues: GovernmentFundingFormData = {
 export default function GovernmentFundingsPage() {
   const router = useRouter();
   const t = useTranslations();
-  const [page, setPage] = useState(1);
+  const { page, setPage, searchInput, setSearchInput, search } = useResourceListFilters();
 
   const {
     register,
@@ -79,8 +81,8 @@ export default function GovernmentFundingsPage() {
   });
 
   const { data: paginatedData, isLoading } = useQuery({
-    queryKey: queryKeys.governmentFundings.list(page),
-    queryFn: () => apiClient.getGovernmentFundings({ page }),
+    queryKey: queryKeys.governmentFundings.list(page, search),
+    queryFn: () => apiClient.getGovernmentFundings({ page, ...(search ? { search } : {}) }),
   });
 
   const handleView = (funding: GovernmentFunding) => {
@@ -125,7 +127,12 @@ export default function GovernmentFundingsPage() {
         <CardHeader>
           <CardTitle>{t('governmentFundings.title')}</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <SearchInput
+            id="search-government-fundings"
+            value={searchInput}
+            onChange={setSearchInput}
+          />
           <ResourceTable
             items={paginatedData?.data}
             columns={columns}
