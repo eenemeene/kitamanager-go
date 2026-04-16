@@ -1,85 +1,95 @@
 export const queryKeys = {
   organizations: {
     all: () => ['organizations'] as const,
-    list: (page: number) => ['organizations', page] as const,
+    list: (page: number) => ['organizations', 'list', page] as const,
   },
   users: {
     all: () => ['users'] as const,
-    list: (page: number) => ['users', page] as const,
-    memberships: (userId: number) => ['userMemberships', userId] as const,
+    list: (page: number) => ['users', 'list', page] as const,
+    memberships: (userId: number) => ['users', 'memberships', userId] as const,
   },
   employees: {
     all: (orgId: number) => ['employees', orgId] as const,
-    list: (orgId: number, ...filters: unknown[]) => ['employees', orgId, ...filters] as const,
-    allUnpaginated: (orgId: number) => ['employeesAll', orgId] as const,
-    detail: (orgId: number, employeeId: number) => ['employee', orgId, employeeId] as const,
+    list: (orgId: number, ...filters: unknown[]) =>
+      ['employees', orgId, 'list', ...filters] as const,
+    allUnpaginated: (orgId: number) => ['employees', orgId, 'allUnpaginated'] as const,
+    detail: (orgId: number, employeeId: number) =>
+      ['employees', orgId, 'detail', employeeId] as const,
     contracts: (orgId: number, employeeId: number) =>
-      ['employeeContracts', orgId, employeeId] as const,
+      ['employees', orgId, 'contracts', employeeId] as const,
   },
   children: {
     all: (orgId: number) => ['children', orgId] as const,
-    list: (orgId: number, ...filters: unknown[]) => ['children', orgId, ...filters] as const,
-    allUnpaginated: (orgId: number) => ['childrenAll', orgId] as const,
-    detail: (orgId: number, childId: number) => ['child', orgId, childId] as const,
-    contracts: (orgId: number, childId: number) => ['childContracts', orgId, childId] as const,
+    list: (orgId: number, ...filters: unknown[]) =>
+      ['children', orgId, 'list', ...filters] as const,
+    allUnpaginated: (orgId: number) => ['children', orgId, 'allUnpaginated'] as const,
+    detail: (orgId: number, childId: number) => ['children', orgId, 'detail', childId] as const,
+    contracts: (orgId: number, childId: number) =>
+      ['children', orgId, 'contracts', childId] as const,
     billingHistory: (orgId: number, childId: number) =>
-      ['childBillingHistory', orgId, childId] as const,
-    billingSummary: (orgId: number) => ['childrenBillingSummary', orgId] as const,
-    withoutVouchers: (orgId: number) => ['childrenWithoutVouchers', orgId] as const,
-    funding: (orgId: number) => ['childrenFunding', orgId] as const,
-    upcoming: (orgId: number) => ['childrenUpcoming', orgId] as const,
+      ['children', orgId, 'billingHistory', childId] as const,
+    billingSummary: (orgId: number) => ['children', orgId, 'billingSummary'] as const,
+    withoutVouchers: (orgId: number) => ['children', orgId, 'withoutVouchers'] as const,
+    funding: (orgId: number) => ['children', orgId, 'funding'] as const,
+    upcoming: (orgId: number) => ['children', orgId, 'upcoming'] as const,
   },
   payPlans: {
-    all: (orgId: number) => ['payplans', orgId] as const,
-    list: (orgId: number, page: number) => ['payplans', orgId, page] as const,
-    detail: (orgId: number, payPlanId: number) => ['payplan', orgId, payPlanId] as const,
+    all: (orgId: number) => ['payPlans', orgId] as const,
+    list: (orgId: number, page: number) => ['payPlans', orgId, 'list', page] as const,
+    detail: (orgId: number, payPlanId: number) => ['payPlans', orgId, 'detail', payPlanId] as const,
     details: (orgId: number, payPlanIds: number[]) =>
-      ['payplanDetails', orgId, payPlanIds] as const,
+      ['payPlans', orgId, 'details', payPlanIds] as const,
   },
   sections: {
     list: (orgId: number) => ['sections', orgId] as const,
   },
   governmentFundings: {
     all: () => ['governmentFundings'] as const,
-    list: (page: number) => ['governmentFundings', page] as const,
-    detail: (fundingId: number) => ['governmentFunding', fundingId] as const,
-    allCached: () => ['governmentFundings', 'all'] as const,
-    detailCached: (fundingId: number | undefined) =>
-      ['governmentFunding', fundingId, 'details'] as const,
+    list: (page: number) => ['governmentFundings', 'list', page] as const,
+    detail: (fundingId: number) => ['governmentFundings', 'detail', fundingId] as const,
+    lookup: () => ['governmentFundings', 'lookup'] as const,
+    lookupDetail: (fundingId: number | undefined) =>
+      ['governmentFundings', 'lookupDetail', fundingId] as const,
   },
   governmentFundingBillPeriods: {
     all: (orgId: number) => ['governmentFundingBillPeriods', orgId] as const,
-    list: (orgId: number, page: number) => ['governmentFundingBillPeriods', orgId, page] as const,
-    detail: (orgId: number, id: number) => ['governmentFundingBillPeriod', orgId, id] as const,
+    list: (orgId: number, page: number) =>
+      ['governmentFundingBillPeriods', orgId, 'list', page] as const,
+    detail: (orgId: number, id: number) =>
+      ['governmentFundingBillPeriods', orgId, 'detail', id] as const,
     compare: (orgId: number, id: number) =>
-      ['governmentFundingBillPeriodCompare', orgId, id] as const,
-    compareLatest: (orgId: number) => ['governmentFundingBillCompareLatest', orgId] as const,
+      ['governmentFundingBillPeriods', orgId, 'compare', id] as const,
+    compareLatest: (orgId: number) =>
+      ['governmentFundingBillPeriods', orgId, 'compareLatest'] as const,
     compareRange: (orgId: number, from: string, to: string) =>
-      ['governmentFundingBillCompareRange', orgId, from, to] as const,
+      ['governmentFundingBillPeriods', orgId, 'compareRange', from, to] as const,
   },
   budgetItems: {
     all: (orgId: number) => ['budgetItems', orgId] as const,
-    list: (orgId: number, page: number) => ['budgetItems', orgId, page] as const,
-    detail: (orgId: number, budgetItemId: number) => ['budgetItem', orgId, budgetItemId] as const,
+    list: (orgId: number, page: number) => ['budgetItems', orgId, 'list', page] as const,
+    detail: (orgId: number, budgetItemId: number) =>
+      ['budgetItems', orgId, 'detail', budgetItemId] as const,
   },
   statistics: {
-    ageDistribution: (orgId: number) => ['ageDistribution', orgId] as const,
-    contractProperties: (orgId: number) => ['contractProperties', orgId] as const,
+    all: (orgId: number) => ['statistics', orgId] as const,
+    ageDistribution: (orgId: number) => ['statistics', orgId, 'ageDistribution'] as const,
+    contractProperties: (orgId: number) => ['statistics', orgId, 'contractProperties'] as const,
     staffingHours: (orgId: number, sectionId?: number, from?: string, to?: string) =>
-      ['staffingHours', orgId, sectionId, from, to] as const,
+      ['statistics', orgId, 'staffingHours', sectionId, from, to] as const,
     financials: (orgId: number, from?: string, to?: string) =>
-      ['financials', orgId, from, to] as const,
+      ['statistics', orgId, 'financials', from, to] as const,
     occupancy: (orgId: number, sectionId?: number, from?: string, to?: string) =>
-      ['occupancy', orgId, sectionId, from, to] as const,
+      ['statistics', orgId, 'occupancy', sectionId, from, to] as const,
     employeeStaffingHours: (orgId: number, sectionId?: number, from?: string, to?: string) =>
-      ['employeeStaffingHours', orgId, sectionId, from, to] as const,
-    forecast: (orgId: number) => ['forecast', orgId] as const,
+      ['statistics', orgId, 'employeeStaffingHours', sectionId, from, to] as const,
+    forecast: (orgId: number) => ['statistics', orgId, 'forecast'] as const,
   },
   attendance: {
-    byDate: (orgId: number, date: string) => ['attendance', orgId, date] as const,
-    summary: (orgId: number, date: string) => ['attendanceSummary', orgId, date] as const,
     all: (orgId: number) => ['attendance', orgId] as const,
-    byWeek: (orgId: number, weekStart: string) => ['attendanceWeek', orgId, weekStart] as const,
+    byDate: (orgId: number, date: string) => ['attendance', orgId, 'byDate', date] as const,
+    summary: (orgId: number, date: string) => ['attendance', orgId, 'summary', date] as const,
+    byWeek: (orgId: number, weekStart: string) =>
+      ['attendance', orgId, 'byWeek', weekStart] as const,
   },
   stepPromotions: (orgId: number) => ['stepPromotions', orgId] as const,
 } as const;
