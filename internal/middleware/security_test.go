@@ -37,6 +37,7 @@ func TestSecurityHeaders(t *testing.T) {
 		{"X-XSS-Protection", "1; mode=block"},
 		{"Referrer-Policy", "strict-origin-when-cross-origin"},
 		{"Permissions-Policy", "geolocation=(), microphone=(), camera=()"},
+		{"Cache-Control", "no-store"},
 	}
 
 	for _, tt := range tests {
