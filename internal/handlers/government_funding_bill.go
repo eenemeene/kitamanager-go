@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"bytes"
-	"errors"
 	"net/http"
 	"strconv"
 
@@ -61,12 +60,7 @@ func (h *GovernmentFundingBillHandler) UploadISBJ(c *gin.Context) {
 	filename := sanitizeFilename(fileHeader.Filename)
 	result, err := h.service.ProcessISBJ(c.Request.Context(), orgID, bytes.NewReader(fileBytes), filename, fileHash, userID)
 	if err != nil {
-		var appErr *apperror.AppError
-		if errors.As(err, &appErr) {
-			respondError(c, appErr)
-		} else {
-			respondError(c, apperror.BadRequest(err.Error()))
-		}
+		respondError(c, err)
 		return
 	}
 
