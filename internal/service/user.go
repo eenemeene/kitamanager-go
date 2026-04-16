@@ -127,7 +127,7 @@ func (s *UserService) Create(ctx context.Context, req *models.UserCreateRequest,
 
 // Update updates an existing user
 func (s *UserService) Update(ctx context.Context, id uint, req *models.UserUpdateRequest, requesterID uint) (*models.UserResponse, error) {
-	if err := s.verifyRequesterCanAccessUser(ctx, requesterID, id); err != nil {
+	if err := s.verifyRequesterCanModifyUser(ctx, requesterID, id); err != nil {
 		return nil, apperror.NotFound("user")
 	}
 
@@ -178,6 +178,7 @@ func (s *UserService) Update(ctx context.Context, id uint, req *models.UserUpdat
 }
 
 // ResetPassword sets a new password for a user (admin-initiated).
+// The requester must be a superadmin or an admin in an organization the target user belongs to.
 // Non-superadmin requesters cannot reset a superadmin's password.
 func (s *UserService) ResetPassword(ctx context.Context, userID uint, newPassword string, requesterID uint) error {
 	user, err := s.store.FindByID(ctx, userID)
@@ -194,6 +195,11 @@ func (s *UserService) ResetPassword(ctx context.Context, userID uint, newPasswor
 		if !requesterIsSuperAdmin {
 			return apperror.Forbidden("only superadmins can reset a superadmin's password")
 		}
+	}
+
+	// Verify the requester has admin-level access to the target user
+	if err := s.verifyRequesterCanModifyUser(ctx, requesterID, userID); err != nil {
+		return apperror.NotFound("user")
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
@@ -215,7 +221,7 @@ func (s *UserService) Delete(ctx context.Context, id uint, requesterID uint) err
 		return apperror.BadRequest("cannot delete your own account")
 	}
 
-	if err := s.verifyRequesterCanAccessUser(ctx, requesterID, id); err != nil {
+	if err := s.verifyRequesterCanModifyUser(ctx, requesterID, id); err != nil {
 		return apperror.NotFound("user")
 	}
 
@@ -236,6 +242,32 @@ func (s *UserService) Delete(ctx context.Context, id uint, requesterID uint) err
 
 	if err := s.store.Delete(ctx, id); err != nil {
 		return apperror.InternalWrap(err, "failed to delete user")
+	}
+	return nil
+}
+
+// verifyRequesterCanModifyUser checks that the requester can modify the target user.
+// Superadmins can modify all users. A user can always modify themselves.
+// Others must be an admin in at least one organization the target user belongs to.
+func (s *UserService) verifyRequesterCanModifyUser(ctx context.Context, requesterID, targetUserID uint) error {
+	if requesterID == targetUserID {
+		return nil
+	}
+
+	isSuperAdmin, err := s.userOrgStore.IsSuperAdmin(ctx, requesterID)
+	if err != nil {
+		return apperror.InternalWrap(err, "failed to check superadmin status")
+	}
+	if isSuperAdmin {
+		return nil
+	}
+
+	isAdmin, err := s.store.IsAdminInSharedOrg(ctx, requesterID, targetUserID)
+	if err != nil {
+		return apperror.InternalWrap(err, "failed to check admin access")
+	}
+	if !isAdmin {
+		return apperror.NotFound("user")
 	}
 	return nil
 }

@@ -585,7 +585,7 @@ func TestUserService_ResetPassword_ManagerCannotResetSuperAdminPassword(t *testi
 	}
 }
 
-func TestUserService_ResetPassword_AdminCanResetNormalUserPassword(t *testing.T) {
+func TestUserService_ResetPassword_AdminCanResetSameOrgUserPassword(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createUserService(db)
 	ctx := context.Background()
@@ -595,11 +595,58 @@ func TestUserService_ResetPassword_AdminCanResetNormalUserPassword(t *testing.T)
 	createTestUserOrganization(t, db, adminUser.ID, org.ID, models.RoleAdmin)
 
 	normalUser := createTestUser(t, db, "Normal User", "normal@example.com", "password")
+	createTestUserOrganization(t, db, normalUser.ID, org.ID, models.RoleMember)
 
-	// Admin should still be able to reset a normal user's password
+	// Admin should be able to reset password for a user in the same org
 	err := svc.ResetPassword(ctx, normalUser.ID, "newpassword", adminUser.ID)
 	if err != nil {
-		t.Fatalf("expected admin to reset normal user password, got %v", err)
+		t.Fatalf("expected admin to reset same-org user password, got %v", err)
+	}
+}
+
+func TestUserService_ResetPassword_AdminCannotResetCrossOrgUserPassword(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserService(db)
+	ctx := context.Background()
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+
+	adminUser := createTestUser(t, db, "Admin Org1", "admin@example.com", "password")
+	createTestUserOrganization(t, db, adminUser.ID, org1.ID, models.RoleAdmin)
+
+	targetUser := createTestUser(t, db, "User Org2", "target@example.com", "password")
+	createTestUserOrganization(t, db, targetUser.ID, org2.ID, models.RoleMember)
+
+	// Admin in org1 must NOT be able to reset password for user only in org2
+	err := svc.ResetPassword(ctx, targetUser.ID, "hacked", adminUser.ID)
+	if err == nil {
+		t.Fatal("expected error when admin tries to reset cross-org user password, got nil")
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestUserService_ResetPassword_ManagerCannotResetSameOrgUserPassword(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	manager := createTestUser(t, db, "Manager", "manager@example.com", "password")
+	createTestUserOrganization(t, db, manager.ID, org.ID, models.RoleManager)
+
+	normalUser := createTestUser(t, db, "Normal User", "normal@example.com", "password")
+	createTestUserOrganization(t, db, normalUser.ID, org.ID, models.RoleMember)
+
+	// Manager must NOT be able to reset password (not admin role)
+	err := svc.ResetPassword(ctx, normalUser.ID, "hacked", manager.ID)
+	if err == nil {
+		t.Fatal("expected error when manager tries to reset user password, got nil")
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
 	}
 }
 
@@ -703,5 +750,181 @@ func TestUserService_Update_AlreadyInactiveDoesNotRevokeAgain(t *testing.T) {
 	}
 	if revoked {
 		t.Error("expected tokens NOT to be revoked when user was already inactive")
+	}
+}
+
+// =============================================================================
+// Cross-organization authorization tests
+// =============================================================================
+
+func TestUserService_Update_AdminCanUpdateSameOrgUser(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	admin := createTestUser(t, db, "Admin", "admin@example.com", "password")
+	createTestUserOrganization(t, db, admin.ID, org.ID, models.RoleAdmin)
+
+	target := createTestUser(t, db, "Target", "target@example.com", "password")
+	createTestUserOrganization(t, db, target.ID, org.ID, models.RoleMember)
+
+	updated, err := svc.Update(ctx, target.ID, &models.UserUpdateRequest{Name: "New Name"}, admin.ID)
+	if err != nil {
+		t.Fatalf("expected admin to update same-org user, got %v", err)
+	}
+	if updated.Name != "New Name" {
+		t.Errorf("Name = %v, want New Name", updated.Name)
+	}
+}
+
+func TestUserService_Update_AdminCannotUpdateCrossOrgUser(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserService(db)
+	ctx := context.Background()
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+
+	admin := createTestUser(t, db, "Admin Org1", "admin@example.com", "password")
+	createTestUserOrganization(t, db, admin.ID, org1.ID, models.RoleAdmin)
+
+	target := createTestUser(t, db, "User Org2", "target@example.com", "password")
+	createTestUserOrganization(t, db, target.ID, org2.ID, models.RoleMember)
+
+	_, err := svc.Update(ctx, target.ID, &models.UserUpdateRequest{Name: "Hacked"}, admin.ID)
+	if err == nil {
+		t.Fatal("expected error when admin tries to update cross-org user, got nil")
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestUserService_Update_MemberCannotUpdateSameOrgUser(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	member := createTestUser(t, db, "Member", "member@example.com", "password")
+	createTestUserOrganization(t, db, member.ID, org.ID, models.RoleMember)
+
+	target := createTestUser(t, db, "Target", "target@example.com", "password")
+	createTestUserOrganization(t, db, target.ID, org.ID, models.RoleMember)
+
+	_, err := svc.Update(ctx, target.ID, &models.UserUpdateRequest{Name: "Hacked"}, member.ID)
+	if err == nil {
+		t.Fatal("expected error when member tries to update another user, got nil")
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestUserService_Delete_AdminCanDeleteSameOrgUser(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	admin := createTestUser(t, db, "Admin", "admin@example.com", "password")
+	createTestUserOrganization(t, db, admin.ID, org.ID, models.RoleAdmin)
+
+	target := createTestUser(t, db, "Target", "target@example.com", "password")
+	createTestUserOrganization(t, db, target.ID, org.ID, models.RoleMember)
+
+	err := svc.Delete(ctx, target.ID, admin.ID)
+	if err != nil {
+		t.Fatalf("expected admin to delete same-org user, got %v", err)
+	}
+}
+
+func TestUserService_Delete_AdminCannotDeleteCrossOrgUser(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserService(db)
+	ctx := context.Background()
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+
+	admin := createTestUser(t, db, "Admin Org1", "admin@example.com", "password")
+	createTestUserOrganization(t, db, admin.ID, org1.ID, models.RoleAdmin)
+
+	target := createTestUser(t, db, "User Org2", "target@example.com", "password")
+	createTestUserOrganization(t, db, target.ID, org2.ID, models.RoleMember)
+
+	err := svc.Delete(ctx, target.ID, admin.ID)
+	if err == nil {
+		t.Fatal("expected error when admin tries to delete cross-org user, got nil")
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestUserService_Delete_MemberCannotDeleteSameOrgUser(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	member := createTestUser(t, db, "Member", "member@example.com", "password")
+	createTestUserOrganization(t, db, member.ID, org.ID, models.RoleMember)
+
+	target := createTestUser(t, db, "Target", "target@example.com", "password")
+	createTestUserOrganization(t, db, target.ID, org.ID, models.RoleMember)
+
+	err := svc.Delete(ctx, target.ID, member.ID)
+	if err == nil {
+		t.Fatal("expected error when member tries to delete another user, got nil")
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestUserService_GetByID_MemberCanReadSameOrgUser(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	member := createTestUser(t, db, "Member", "member@example.com", "password")
+	createTestUserOrganization(t, db, member.ID, org.ID, models.RoleMember)
+
+	target := createTestUser(t, db, "Target", "target@example.com", "password")
+	createTestUserOrganization(t, db, target.ID, org.ID, models.RoleMember)
+
+	// Read access should still work for members sharing an org
+	found, err := svc.GetByID(ctx, target.ID, member.ID)
+	if err != nil {
+		t.Fatalf("expected member to read same-org user, got %v", err)
+	}
+	if found.ID != target.ID {
+		t.Errorf("ID = %d, want %d", found.ID, target.ID)
+	}
+}
+
+func TestUserService_GetByID_CannotReadCrossOrgUser(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserService(db)
+	ctx := context.Background()
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+
+	requester := createTestUser(t, db, "Requester", "requester@example.com", "password")
+	createTestUserOrganization(t, db, requester.ID, org1.ID, models.RoleMember)
+
+	target := createTestUser(t, db, "Target", "target@example.com", "password")
+	createTestUserOrganization(t, db, target.ID, org2.ID, models.RoleMember)
+
+	_, err := svc.GetByID(ctx, target.ID, requester.ID)
+	if err == nil {
+		t.Fatal("expected error when reading cross-org user, got nil")
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
 	}
 }
