@@ -139,7 +139,7 @@ export default function UsersPage() {
     mutationFn: ({ userId, isSuperadmin }: { userId: number; isSuperadmin: boolean }) =>
       apiClient.setSuperAdmin(userId, isSuperadmin),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all() });
       toast({ title: t('common.success') });
     },
     onError: (error) => {
