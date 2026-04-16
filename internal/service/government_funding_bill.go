@@ -97,7 +97,7 @@ func (s *GovernmentFundingBillService) ProcessISBJ(ctx context.Context, orgID ui
 
 	output, err := isbj.ParseFromReader(reader)
 	if err != nil {
-		return nil, err
+		return nil, apperror.BadRequest("failed to parse ISBJ file: " + err.Error())
 	}
 
 	// Check for duplicate month (same billing month for this org)
@@ -116,7 +116,7 @@ func (s *GovernmentFundingBillService) ProcessISBJ(ctx context.Context, orgID ui
 
 	converted, err := isbj.Convert(output)
 	if err != nil {
-		return nil, err
+		return nil, apperror.BadRequest("failed to convert ISBJ data: " + err.Error())
 	}
 
 	// Build GORM model for persistence
