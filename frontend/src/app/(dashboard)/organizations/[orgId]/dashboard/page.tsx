@@ -96,7 +96,7 @@ export default function OrgDashboardPage() {
       await apiClient.assignChildVoucher(orgId, childId, voucherNumber);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.children.withoutVouchers(orgId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.children.all(orgId) });
     },
   });
 
