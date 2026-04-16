@@ -150,3 +150,18 @@ func (s *UserStore) SharesOrganization(ctx context.Context, userID1, userID2 uin
 	}
 	return count > 0, nil
 }
+
+// IsAdminInSharedOrg checks whether the requester has admin role in at least one
+// organization that the target user belongs to.
+func (s *UserStore) IsAdminInSharedOrg(ctx context.Context, requesterID, targetUserID uint) (bool, error) {
+	var count int64
+	err := DBFromContext(ctx, s.db).Table("user_organizations uo_req").
+		Joins("JOIN user_organizations uo_target ON uo_target.organization_id = uo_req.organization_id").
+		Where("uo_req.user_id = ? AND uo_target.user_id = ? AND uo_req.role = ?",
+			requesterID, targetUserID, "admin").
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}

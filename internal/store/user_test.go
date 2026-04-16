@@ -265,3 +265,114 @@ func TestUserStore_FindAll_Search(t *testing.T) {
 		t.Errorf("expected 3 users, got %d", len(users3))
 	}
 }
+
+func TestUserStore_IsAdminInSharedOrg(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewUserStore(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Shared Org")
+	admin := createTestUser(t, db, "Admin", "admin@example.com")
+	target := createTestUser(t, db, "Target", "target@example.com")
+
+	createTestUserOrganization(t, db, admin.ID, org.ID, models.RoleAdmin)
+	createTestUserOrganization(t, db, target.ID, org.ID, models.RoleMember)
+
+	isAdmin, err := store.IsAdminInSharedOrg(ctx, admin.ID, target.ID)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if !isAdmin {
+		t.Error("expected admin to have admin access in shared org")
+	}
+}
+
+func TestUserStore_IsAdminInSharedOrg_MemberNotAdmin(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewUserStore(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Shared Org")
+	member := createTestUser(t, db, "Member", "member@example.com")
+	target := createTestUser(t, db, "Target", "target@example.com")
+
+	createTestUserOrganization(t, db, member.ID, org.ID, models.RoleMember)
+	createTestUserOrganization(t, db, target.ID, org.ID, models.RoleMember)
+
+	isAdmin, err := store.IsAdminInSharedOrg(ctx, member.ID, target.ID)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if isAdmin {
+		t.Error("member should not have admin access")
+	}
+}
+
+func TestUserStore_IsAdminInSharedOrg_DifferentOrgs(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewUserStore(db)
+	ctx := context.Background()
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+	admin := createTestUser(t, db, "Admin", "admin@example.com")
+	target := createTestUser(t, db, "Target", "target@example.com")
+
+	createTestUserOrganization(t, db, admin.ID, org1.ID, models.RoleAdmin)
+	createTestUserOrganization(t, db, target.ID, org2.ID, models.RoleMember)
+
+	isAdmin, err := store.IsAdminInSharedOrg(ctx, admin.ID, target.ID)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if isAdmin {
+		t.Error("admin in different org should not have admin access to target")
+	}
+}
+
+func TestUserStore_IsAdminInSharedOrg_AdminInOneOfMultipleOrgs(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewUserStore(db)
+	ctx := context.Background()
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+	requester := createTestUser(t, db, "Requester", "requester@example.com")
+	target := createTestUser(t, db, "Target", "target@example.com")
+
+	// Requester is member in org1, admin in org2
+	createTestUserOrganization(t, db, requester.ID, org1.ID, models.RoleMember)
+	createTestUserOrganization(t, db, requester.ID, org2.ID, models.RoleAdmin)
+	// Target is in both orgs
+	createTestUserOrganization(t, db, target.ID, org1.ID, models.RoleMember)
+	createTestUserOrganization(t, db, target.ID, org2.ID, models.RoleMember)
+
+	isAdmin, err := store.IsAdminInSharedOrg(ctx, requester.ID, target.ID)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if !isAdmin {
+		t.Error("requester is admin in org2 which target belongs to, should have access")
+	}
+}
+
+func TestUserStore_IsAdminInSharedOrg_ManagerNotAdmin(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewUserStore(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Shared Org")
+	manager := createTestUser(t, db, "Manager", "manager@example.com")
+	target := createTestUser(t, db, "Target", "target@example.com")
+
+	createTestUserOrganization(t, db, manager.ID, org.ID, models.RoleManager)
+	createTestUserOrganization(t, db, target.ID, org.ID, models.RoleMember)
+
+	isAdmin, err := store.IsAdminInSharedOrg(ctx, manager.ID, target.ID)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if isAdmin {
+		t.Error("manager should not have admin access for user modification")
+	}
+}

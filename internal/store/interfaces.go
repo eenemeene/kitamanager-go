@@ -36,6 +36,7 @@ type UserStorer interface {
 	GetUserOrganizations(ctx context.Context, userID uint) ([]models.Organization, error)
 	FindByOrganizations(ctx context.Context, orgIDs []uint, search string, limit, offset int) ([]models.User, int64, error)
 	SharesOrganization(ctx context.Context, userID1, userID2 uint) (bool, error)
+	IsAdminInSharedOrg(ctx context.Context, requesterID, targetUserID uint) (bool, error)
 }
 
 // OrganizationStorer defines the interface for organization storage operations
