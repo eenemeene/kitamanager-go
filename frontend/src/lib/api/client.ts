@@ -262,6 +262,39 @@ class ApiClient {
     return all;
   }
 
+  /** Fetch an org-scoped statistic with optional section + date range filters. */
+  private async getStatistic<T>(
+    orgId: number,
+    endpoint: string,
+    opts?: { sectionId?: number; from?: string; to?: string }
+  ): Promise<T> {
+    const params: Record<string, string> = {};
+    if (opts?.sectionId) params.section_id = opts.sectionId.toString();
+    if (opts?.from) params.from = opts.from;
+    if (opts?.to) params.to = opts.to;
+    const response = await this.client.get<T>(`/organizations/${orgId}/statistics/${endpoint}`, {
+      params,
+    });
+    return response.data;
+  }
+
+  /** Build an export download URL with optional query string filters. */
+  private buildExportUrl(
+    orgId: number,
+    resource: string,
+    format: 'excel' | 'yaml',
+    filters?: Record<string, string | undefined>
+  ): string {
+    const base = `${API_BASE_URL}/organizations/${orgId}/${resource}/export/${format}`;
+    if (!filters) return base;
+    const qp = new URLSearchParams();
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== undefined && value !== '') qp.set(key, value);
+    }
+    const qs = qp.toString();
+    return qs ? `${base}?${qs}` : base;
+  }
+
   // Auth
   async login(request: LoginRequest): Promise<LoginResponse> {
     const response = await this.client.post<LoginResponse>('/login', request);
@@ -839,59 +872,32 @@ class ApiClient {
     orgId: number,
     opts?: { sectionId?: number; from?: string; to?: string }
   ): Promise<StaffingHoursResponse> {
-    const params: Record<string, string> = {};
-    if (opts?.sectionId) params.section_id = opts.sectionId.toString();
-    if (opts?.from) params.from = opts.from;
-    if (opts?.to) params.to = opts.to;
-    const response = await this.client.get<StaffingHoursResponse>(
-      `/organizations/${orgId}/statistics/staffing-hours`,
-      { params }
-    );
-    return response.data;
+    return this.getStatistic<StaffingHoursResponse>(orgId, 'staffing-hours', opts);
   }
 
   async getFinancials(
     orgId: number,
     opts?: { from?: string; to?: string }
   ): Promise<FinancialResponse> {
-    const params: Record<string, string> = {};
-    if (opts?.from) params.from = opts.from;
-    if (opts?.to) params.to = opts.to;
-    const response = await this.client.get<FinancialResponse>(
-      `/organizations/${orgId}/statistics/financials`,
-      { params }
-    );
-    return response.data;
+    return this.getStatistic<FinancialResponse>(orgId, 'financials', opts);
   }
 
   async getOccupancy(
     orgId: number,
     opts?: { sectionId?: number; from?: string; to?: string }
   ): Promise<OccupancyResponse> {
-    const params: Record<string, string> = {};
-    if (opts?.sectionId) params.section_id = opts.sectionId.toString();
-    if (opts?.from) params.from = opts.from;
-    if (opts?.to) params.to = opts.to;
-    const response = await this.client.get<OccupancyResponse>(
-      `/organizations/${orgId}/statistics/occupancy`,
-      { params }
-    );
-    return response.data;
+    return this.getStatistic<OccupancyResponse>(orgId, 'occupancy', opts);
   }
 
   async getEmployeeStaffingHours(
     orgId: number,
     opts?: { sectionId?: number; from?: string; to?: string }
   ): Promise<EmployeeStaffingHoursResponse> {
-    const params: Record<string, string> = {};
-    if (opts?.sectionId) params.section_id = opts.sectionId.toString();
-    if (opts?.from) params.from = opts.from;
-    if (opts?.to) params.to = opts.to;
-    const response = await this.client.get<EmployeeStaffingHoursResponse>(
-      `/organizations/${orgId}/statistics/staffing-hours/employees`,
-      { params }
+    return this.getStatistic<EmployeeStaffingHoursResponse>(
+      orgId,
+      'staffing-hours/employees',
+      opts
     );
-    return response.data;
   }
 
   async postForecast(orgId: number, request: ForecastRequest): Promise<ForecastResponse> {
@@ -903,18 +909,11 @@ class ApiClient {
   }
 
   getEmployeesExportUrl(orgId: number, filters?: Record<string, string | undefined>): string {
-    const qp = new URLSearchParams();
-    if (filters) {
-      for (const [key, value] of Object.entries(filters)) {
-        if (value !== undefined && value !== '') qp.set(key, value);
-      }
-    }
-    const qs = qp.toString();
-    return `${API_BASE_URL}/organizations/${orgId}/employees/export/excel${qs ? `?${qs}` : ''}`;
+    return this.buildExportUrl(orgId, 'employees', 'excel', filters);
   }
 
   getEmployeesExportYamlUrl(orgId: number): string {
-    return `${API_BASE_URL}/organizations/${orgId}/employees/export/yaml`;
+    return this.buildExportUrl(orgId, 'employees', 'yaml');
   }
 
   async importEmployees(orgId: number, file: File): Promise<Employee[]> {
@@ -929,18 +928,11 @@ class ApiClient {
   }
 
   getChildrenExportUrl(orgId: number, filters?: Record<string, string | undefined>): string {
-    const qp = new URLSearchParams();
-    if (filters) {
-      for (const [key, value] of Object.entries(filters)) {
-        if (value !== undefined && value !== '') qp.set(key, value);
-      }
-    }
-    const qs = qp.toString();
-    return `${API_BASE_URL}/organizations/${orgId}/children/export/excel${qs ? `?${qs}` : ''}`;
+    return this.buildExportUrl(orgId, 'children', 'excel', filters);
   }
 
   getChildrenExportYamlUrl(orgId: number): string {
-    return `${API_BASE_URL}/organizations/${orgId}/children/export/yaml`;
+    return this.buildExportUrl(orgId, 'children', 'yaml');
   }
 
   async importChildren(orgId: number, file: File): Promise<Child[]> {
