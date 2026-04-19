@@ -15,7 +15,7 @@ func init() {
 	gin.SetMode(gin.TestMode)
 }
 
-func TestSecurityHeaders(t *testing.T) {
+func TestSecurityHeaders_API(t *testing.T) {
 	r := gin.New()
 	r.Use(SecurityHeaders())
 	r.GET("/test", func(c *gin.Context) {
@@ -31,10 +31,10 @@ func TestSecurityHeaders(t *testing.T) {
 		want   string
 	}{
 		{"Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload"},
-		{"Content-Security-Policy", "default-src 'self'; frame-ancestors 'none'"},
+		{"Content-Security-Policy", apiCSP},
 		{"X-Frame-Options", "DENY"},
 		{"X-Content-Type-Options", "nosniff"},
-		{"X-XSS-Protection", "1; mode=block"},
+		{"X-XSS-Protection", "0"},
 		{"Referrer-Policy", "strict-origin-when-cross-origin"},
 		{"Permissions-Policy", "geolocation=(), microphone=(), camera=()"},
 		{"Cache-Control", "no-store"},
@@ -45,6 +45,22 @@ func TestSecurityHeaders(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("header %s = %q, want %q", tt.header, got, tt.want)
 		}
+	}
+}
+
+func TestSecurityHeaders_SwaggerUsesLooserCSP(t *testing.T) {
+	r := gin.New()
+	r.Use(SecurityHeaders())
+	r.GET("/swagger/index.html", func(c *gin.Context) {
+		c.String(http.StatusOK, "ok")
+	})
+
+	req, _ := http.NewRequest("GET", "/swagger/index.html", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if got := w.Header().Get("Content-Security-Policy"); got != swaggerCSP {
+		t.Errorf("Content-Security-Policy = %q, want %q", got, swaggerCSP)
 	}
 }
 

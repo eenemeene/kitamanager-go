@@ -350,7 +350,14 @@ jobs:
 
       - name: Start API server
         run: |
-          DATABASE_URL="postgres://kitamanager:kitamanager@localhost:5432/kitamanager?sslmode=disable" \
+          DB_HOST=localhost \
+          DB_PORT=5432 \
+          DB_USER=kitamanager \
+          DB_PASSWORD=kitamanager \
+          DB_NAME=kitamanager \
+          DB_SSLMODE=disable \
+          JWT_SECRET=ci-only-jwt-secret-not-for-production-use-at-least-32-chars \
+          SECURE_COOKIES=false \
           SEED_ADMIN_EMAIL=superadmin@example.com \
           SEED_ADMIN_PASSWORD=supersecret \
           SEED_ADMIN_NAME="Super Admin" \
@@ -359,8 +366,9 @@ jobs:
           LOGIN_RATE_LIMIT_PER_MINUTE=0 \
           API_RATE_LIMIT_PER_MINUTE=0 \
           CORS_ALLOW_ORIGINS="http://localhost:3000" \
+          CORS_ALLOW_CREDENTIALS=true \
           GOVERNMENT_FUNDING_SEED_PATH=configs/government-fundings/berlin.yaml \
-          GOVERNMENT_FUNDING_SEED_NAME=Berlin \
+          GOVERNMENT_FUNDING_SEED_STATE=berlin \
           ./bin/kitamanager-api &
           API_PID=$!
           # Wait for API to be ready with retry loop

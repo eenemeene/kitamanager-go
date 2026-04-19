@@ -13,20 +13,31 @@ import (
 
 // Validation errors
 var (
-	ErrInvalidJWTSecret  = errors.New("JWT_SECRET must be set and not use default value outside development")
+	ErrMissingJWTSecret  = errors.New("JWT_SECRET must be set (generate with: openssl rand -hex 32)")
+	ErrWeakJWTSecret     = errors.New("JWT_SECRET must be at least 32 characters and must not be the default placeholder value")
 	ErrInvalidServerPort = errors.New("SERVER_PORT must be a valid port number (1-65535)")
 	ErrInvalidDBPort     = errors.New("DB_PORT must be a valid port number (1-65535)")
 	ErrInvalidLogLevel   = errors.New("LOG_LEVEL must be one of: debug, info, warn, error")
 	ErrInvalidLogFormat  = errors.New("LOG_FORMAT must be one of: json, text")
 	ErrInvalidCORSOrigin = errors.New("CORS_ALLOW_ORIGINS contains invalid URL")
+	ErrInsecureCORS      = errors.New("CORS_ALLOW_ORIGINS=* combined with CORS_ALLOW_CREDENTIALS=true is not permitted")
+	ErrInvalidDBSSLMode  = errors.New("DB_SSLMODE must be one of: disable, require, verify-ca, verify-full")
 	ErrMissingDBConfig   = errors.New("database configuration incomplete: DB_HOST, DB_USER, DB_PASSWORD, and DB_NAME are required")
 	ErrWeakAdminPassword = errors.New("SEED_ADMIN_PASSWORD must be at least 8 characters when SEED_ADMIN_EMAIL is set")
 	ErrInvalidAdminEmail = errors.New("SEED_ADMIN_EMAIL must be a valid email address")
-	ErrMissingSMTPHost   = errors.New("SMTP_HOST is required in production")
-	ErrMissingSMTPFrom   = errors.New("SMTP_FROM is required in production")
 	ErrInvalidSMTPPort   = errors.New("SMTP_PORT must be a valid port number (1-65535)")
 	ErrInvalidSMTPFrom   = errors.New("SMTP_FROM must be a valid email address")
 )
+
+// knownPlaceholderJWTSecrets are legacy placeholder values that must be rejected.
+// Add every placeholder string that has ever shipped in example files here so that
+// a forgotten .env cannot boot with a predictable secret.
+var knownPlaceholderJWTSecrets = map[string]bool{
+	"default-secret-key":                               true,
+	"your-super-secret-jwt-key-change-in-production":   true,
+	"change-me-in-production":                          true,
+	"dev-only-do-not-use-in-production-please-replace": true,
+}
 
 type Config struct {
 	// Database
@@ -35,6 +46,7 @@ type Config struct {
 	DBUser     string
 	DBPassword string
 	DBName     string
+	DBSSLMode  string
 
 	// Server
 	ServerPort string
@@ -47,13 +59,11 @@ type Config struct {
 	SeedAdminEmail    string
 	SeedAdminPassword string
 	SeedAdminName     string
+	SeedTestData      bool
 
 	// Government Funding Seeding
 	GovernmentFundingSeedPath  string
 	GovernmentFundingSeedState string
-
-	// Test Data Seeding
-	SeedTestData bool
 
 	// CORS
 	CORSAllowOrigins     []string
@@ -63,61 +73,48 @@ type Config struct {
 	LogLevel  string
 	LogFormat string
 
-	// Environment
-	Environment string // "development", "staging", "production"
-
-	// Rate Limiting
-	LoginRateLimitPerMinute int // 0 = disabled, default = 5
-	APIRateLimitPerMinute   int // 0 = disabled, default = 60
+	// Rate Limiting. 0 disables the limiter — the operator is responsible
+	// for setting sensible values in production.
+	LoginRateLimitPerMinute int
+	APIRateLimitPerMinute   int
 
 	// Database Connection Pool
-	DBMaxIdleConns   int // default = 10
-	DBMaxOpenConns   int // default = 100
-	DBConnMaxLifeMin int // connection max lifetime in minutes, default = 60
-	DBConnMaxIdleMin int // idle connection max lifetime in minutes, default = 10
+	DBMaxIdleConns   int
+	DBMaxOpenConns   int
+	DBConnMaxLifeMin int
+	DBConnMaxIdleMin int
 
-	// Database SSL
-	DBSSLMode string // default = "disable", options: disable, require, verify-ca, verify-full
-
-	// Trusted Proxies
-	TrustedProxies []string // TRUSTED_PROXIES env var, comma-separated
+	// Trusted Proxies (comma-separated CIDRs of your reverse proxy).
+	// Empty means do not trust any proxy headers — c.ClientIP() then
+	// returns the direct peer's address.
+	TrustedProxies []string
 
 	// Security
-	SecureCookies bool // SECURE_COOKIES env var, default = true in production/staging
+	SecureCookies bool
 
 	// SMTP
 	SMTPHost     string
 	SMTPPort     int
 	SMTPUser     string
 	SMTPPassword string
-	SMTPFrom     string // "From" address, e.g. "noreply@example.com"
+	SMTPFrom     string
 }
 
-// IsProduction returns true if running in production mode
-func (c *Config) IsProduction() bool {
-	return c.Environment == "production"
-}
-
-// IsDevelopment returns true if running in development mode
-func (c *Config) IsDevelopment() bool {
-	return c.Environment == "development" || c.Environment == ""
-}
-
-// Validate checks the configuration for errors
+// Validate checks the configuration and fails closed on every axis.
 func (c *Config) Validate() error {
 	var errs []error
 
-	// JWT Secret validation - reject default/empty secret in all environments except development
-	if c.JWTSecret == "default-secret-key" || c.JWTSecret == "" {
-		if c.Environment != "development" {
-			errs = append(errs, ErrInvalidJWTSecret)
-		}
-	}
-	if len(c.JWTSecret) < 32 && c.Environment != "development" {
-		errs = append(errs, fmt.Errorf("JWT_SECRET should be at least 32 characters for security"))
+	// JWT Secret: always required, always strong, never a known placeholder.
+	switch {
+	case c.JWTSecret == "":
+		errs = append(errs, ErrMissingJWTSecret)
+	case knownPlaceholderJWTSecrets[c.JWTSecret]:
+		errs = append(errs, ErrWeakJWTSecret)
+	case len(c.JWTSecret) < 32:
+		errs = append(errs, ErrWeakJWTSecret)
 	}
 
-	// Port validation
+	// Ports
 	if !isValidPort(c.ServerPort) {
 		errs = append(errs, ErrInvalidServerPort)
 	}
@@ -125,28 +122,33 @@ func (c *Config) Validate() error {
 		errs = append(errs, ErrInvalidDBPort)
 	}
 
-	// Database config validation
+	// DB identity
 	if c.DBHost == "" || c.DBUser == "" || c.DBPassword == "" || c.DBName == "" {
 		errs = append(errs, ErrMissingDBConfig)
 	}
 
-	// Log level validation
+	// DB SSL mode — syntactic only; operator chooses the right value for their env.
+	validSSLModes := map[string]bool{"disable": true, "require": true, "verify-ca": true, "verify-full": true}
+	if !validSSLModes[c.DBSSLMode] {
+		errs = append(errs, ErrInvalidDBSSLMode)
+	}
+
+	// Log level / format
 	validLogLevels := map[string]bool{"debug": true, "info": true, "warn": true, "error": true}
 	if !validLogLevels[strings.ToLower(c.LogLevel)] {
 		errs = append(errs, ErrInvalidLogLevel)
 	}
-
-	// Log format validation
 	validLogFormats := map[string]bool{"json": true, "text": true}
 	if !validLogFormats[strings.ToLower(c.LogFormat)] {
 		errs = append(errs, ErrInvalidLogFormat)
 	}
 
-	// CORS origins validation
+	// CORS — wildcard + credentials is a browser credential-theft primitive
+	// and is rejected unconditionally.
 	for _, origin := range c.CORSAllowOrigins {
 		if origin == "*" {
-			if c.CORSAllowCredentials && c.IsProduction() {
-				errs = append(errs, fmt.Errorf("CORS: wildcard origin with credentials is not allowed in production"))
+			if c.CORSAllowCredentials {
+				errs = append(errs, ErrInsecureCORS)
 			}
 			continue
 		}
@@ -155,24 +157,7 @@ func (c *Config) Validate() error {
 		}
 	}
 
-	// Database SSL mode validation
-	validSSLModes := map[string]bool{"disable": true, "require": true, "verify-ca": true, "verify-full": true}
-	if !validSSLModes[c.DBSSLMode] {
-		errs = append(errs, fmt.Errorf("DB_SSLMODE must be one of: disable, require, verify-ca, verify-full"))
-	}
-	if c.DBSSLMode == "disable" && c.IsProduction() {
-		errs = append(errs, fmt.Errorf("DB_SSLMODE must not be 'disable' in production — use 'require' or 'verify-full'"))
-	}
-
-	// SMTP validation
-	if c.IsProduction() {
-		if c.SMTPHost == "" {
-			errs = append(errs, ErrMissingSMTPHost)
-		}
-		if c.SMTPFrom == "" {
-			errs = append(errs, ErrMissingSMTPFrom)
-		}
-	}
+	// SMTP — optional overall. If host is set, port and From must be valid.
 	if c.SMTPHost != "" {
 		if c.SMTPPort < 1 || c.SMTPPort > 65535 {
 			errs = append(errs, ErrInvalidSMTPPort)
@@ -182,7 +167,7 @@ func (c *Config) Validate() error {
 		}
 	}
 
-	// Admin seeding validation
+	// Admin seeding
 	if c.SeedAdminEmail != "" {
 		if !strings.Contains(c.SeedAdminEmail, "@") {
 			errs = append(errs, ErrInvalidAdminEmail)
@@ -195,11 +180,9 @@ func (c *Config) Validate() error {
 	if len(errs) > 0 {
 		return fmt.Errorf("configuration validation failed: %w", errors.Join(errs...))
 	}
-
 	return nil
 }
 
-// isValidPort checks if a string is a valid port number
 func isValidPort(port string) bool {
 	p, err := strconv.Atoi(port)
 	if err != nil {
@@ -211,15 +194,19 @@ func isValidPort(port string) bool {
 func Load() (*Config, error) {
 	_ = godotenv.Load()
 
-	corsOrigins := getEnv("CORS_ALLOW_ORIGINS", "http://localhost:3000,http://localhost:5173,http://localhost:8080")
-	origins := strings.Split(corsOrigins, ",")
-	for i := range origins {
-		origins[i] = strings.TrimSpace(origins[i])
+	var origins []string
+	if raw := getEnv("CORS_ALLOW_ORIGINS", ""); raw != "" {
+		for o := range strings.SplitSeq(raw, ",") {
+			o = strings.TrimSpace(o)
+			if o != "" {
+				origins = append(origins, o)
+			}
+		}
 	}
 
 	var trustedProxies []string
 	if tp := getEnv("TRUSTED_PROXIES", ""); tp != "" {
-		for _, p := range strings.Split(tp, ",") {
+		for p := range strings.SplitSeq(tp, ",") {
 			p = strings.TrimSpace(p)
 			if p != "" {
 				trustedProxies = append(trustedProxies, p)
@@ -228,60 +215,44 @@ func Load() (*Config, error) {
 	}
 
 	cfg := &Config{
-		// Database
 		DBHost:     getEnv("DB_HOST", "localhost"),
 		DBPort:     getEnv("DB_PORT", "5432"),
-		DBUser:     getEnv("DB_USER", "kitamanager"),
-		DBPassword: getEnv("DB_PASSWORD", "kitamanager"),
-		DBName:     getEnv("DB_NAME", "kitamanager"),
+		DBUser:     getEnv("DB_USER", ""),
+		DBPassword: getEnv("DB_PASSWORD", ""),
+		DBName:     getEnv("DB_NAME", ""),
+		DBSSLMode:  getEnv("DB_SSLMODE", "require"),
 
-		// Server
 		ServerPort: getEnv("SERVER_PORT", "8080"),
-		JWTSecret:  getEnv("JWT_SECRET", "default-secret-key"),
+		JWTSecret:  getEnv("JWT_SECRET", ""),
 
-		// RBAC
 		RBACModelPath: getEnv("RBAC_MODEL_PATH", "configs/rbac_model.conf"),
 
-		// Seeding
 		SeedAdminEmail:    getEnv("SEED_ADMIN_EMAIL", ""),
 		SeedAdminPassword: getEnv("SEED_ADMIN_PASSWORD", ""),
 		SeedAdminName:     getEnv("SEED_ADMIN_NAME", "admin"),
+		SeedTestData:      getEnv("SEED_TEST_DATA", "false") == "true",
 
-		// Government Funding Seeding
 		GovernmentFundingSeedPath:  getEnv("GOVERNMENT_FUNDING_SEED_PATH", ""),
 		GovernmentFundingSeedState: getEnv("GOVERNMENT_FUNDING_SEED_STATE", "berlin"),
 
-		// Test Data Seeding
-		SeedTestData: getEnv("SEED_TEST_DATA", "false") == "true",
-
-		// CORS
 		CORSAllowOrigins:     origins,
 		CORSAllowCredentials: getEnv("CORS_ALLOW_CREDENTIALS", "true") == "true",
 
-		// Logging
 		LogLevel:  getEnv("LOG_LEVEL", "info"),
 		LogFormat: getEnv("LOG_FORMAT", "json"),
 
-		// Environment
-		Environment: getEnv("ENVIRONMENT", "development"),
-
-		// Rate Limiting
 		LoginRateLimitPerMinute: getEnvInt("LOGIN_RATE_LIMIT_PER_MINUTE", 5),
 		APIRateLimitPerMinute:   getEnvInt("API_RATE_LIMIT_PER_MINUTE", 60),
 
-		// Database Connection Pool
 		DBMaxIdleConns:   getEnvInt("DB_MAX_IDLE_CONNS", 10),
 		DBMaxOpenConns:   getEnvInt("DB_MAX_OPEN_CONNS", 100),
 		DBConnMaxLifeMin: getEnvInt("DB_CONN_MAX_LIFE_MIN", 60),
 		DBConnMaxIdleMin: getEnvInt("DB_CONN_MAX_IDLE_MIN", 10),
 
-		// Database SSL
-		DBSSLMode: getEnv("DB_SSLMODE", "disable"),
-
-		// Trusted Proxies
 		TrustedProxies: trustedProxies,
 
-		// SMTP
+		SecureCookies: getEnv("SECURE_COOKIES", "true") == "true",
+
 		SMTPHost:     getEnv("SMTP_HOST", ""),
 		SMTPPort:     getEnvInt("SMTP_PORT", 587),
 		SMTPUser:     getEnv("SMTP_USER", ""),
@@ -289,27 +260,9 @@ func Load() (*Config, error) {
 		SMTPFrom:     getEnv("SMTP_FROM", ""),
 	}
 
-	// SecureCookies: explicit env var wins, otherwise default to non-development
-	if v := os.Getenv("SECURE_COOKIES"); v != "" {
-		cfg.SecureCookies = v == "true"
-	} else {
-		cfg.SecureCookies = !cfg.IsDevelopment()
-	}
-
-	// Higher rate limits in development for E2E tests
-	if cfg.IsDevelopment() {
-		if getEnv("API_RATE_LIMIT_PER_MINUTE", "") == "" {
-			cfg.APIRateLimitPerMinute = 600
-		}
-		if getEnv("LOGIN_RATE_LIMIT_PER_MINUTE", "") == "" {
-			cfg.LoginRateLimitPerMinute = 60
-		}
-	}
-
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
-
 	return cfg, nil
 }
 

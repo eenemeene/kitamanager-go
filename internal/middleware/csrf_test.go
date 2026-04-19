@@ -136,7 +136,7 @@ func TestCSRFMiddleware_UnsafeMethods_TokenFromDifferentSession(t *testing.T) {
 	}
 }
 
-func TestCSRFMiddleware_SkipForAPIClients(t *testing.T) {
+func TestCSRFMiddleware_SkipWhenNoCookie_WithAuthHeader(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	middleware := NewCSRFMiddleware(testJWTSecret)
@@ -147,15 +147,15 @@ func TestCSRFMiddleware_SkipForAPIClients(t *testing.T) {
 	})
 
 	req := httptest.NewRequest("POST", "/test", nil)
-	// No access_token cookie, but has Authorization header (API client)
+	// No access_token cookie; Authorization header present (CLI/non-browser).
 	req.Header.Set("Authorization", "Bearer some-jwt-token")
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, req)
 
-	// Should pass because API clients using header auth skip CSRF
+	// Non-browser clients without cookie auth are not subject to CSRF.
 	if w.Code != http.StatusOK {
-		t.Errorf("expected status %d for API client with header auth, got %d: %s",
+		t.Errorf("expected status %d for header-only client, got %d: %s",
 			http.StatusOK, w.Code, w.Body.String())
 	}
 }
@@ -257,7 +257,7 @@ func TestCSRFMiddleware_EmptyAccessTokenCookie(t *testing.T) {
 	}
 }
 
-func TestCSRFMiddleware_NoCookieNoAuthHeader(t *testing.T) {
+func TestCSRFMiddleware_SkipWhenNoCookie_NoAuthHeader(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	middleware := NewCSRFMiddleware(testJWTSecret)
@@ -268,14 +268,15 @@ func TestCSRFMiddleware_NoCookieNoAuthHeader(t *testing.T) {
 	})
 
 	req := httptest.NewRequest("POST", "/test", nil)
-	// No access_token cookie and no Authorization header
+	// Neither cookie nor auth header — request will be rejected by the auth
+	// middleware further down the chain, not by CSRF.
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, req)
 
-	if w.Code != http.StatusForbidden {
-		t.Errorf("expected status %d for no cookie and no auth header, got %d: %s",
-			http.StatusForbidden, w.Code, w.Body.String())
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d (CSRF passes through when no cookie), got %d: %s",
+			http.StatusOK, w.Code, w.Body.String())
 	}
 }
 

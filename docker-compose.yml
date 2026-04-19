@@ -1,3 +1,15 @@
+# Local development stack.
+#
+# Requires a .env file in the repo root:
+#
+#   cp .env.dev.example .env
+#   docker compose up -d
+#
+# The API container reads every config value from .env, except DB_HOST which is
+# overridden here to the in-network service name ("db"). The Postgres container
+# reuses DB_USER / DB_PASSWORD / DB_NAME from the same .env via substitution so
+# there is exactly one source of truth.
+
 services:
   api:
     build:
@@ -5,37 +17,13 @@ services:
       dockerfile: Dockerfile.api
     ports:
       - "8080:8080"
+    env_file:
+      - .env
     environment:
+      # Inside the compose network, the DB hostname is the service name, not
+      # whatever is in .env (which is typically localhost for running the
+      # binary directly).
       - DB_HOST=db
-      - DB_PORT=5432
-      - DB_USER=kitamanager
-      - DB_PASSWORD=kitamanager
-      - DB_NAME=kitamanager
-      - DB_SSLMODE=disable
-      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
-      - SERVER_PORT=8080
-      # Admin seeding - set these to create initial admin user
-      - SEED_ADMIN_EMAIL=superadmin@example.com
-      - SEED_ADMIN_PASSWORD=supersecret
-      - SEED_ADMIN_NAME=Super Admin
-      - SEED_RBAC_POLICIES=true
-      - SEED_TEST_DATA=${SEED_TEST_DATA:-false}
-      - GOVERNMENT_FUNDING_SEED_PATH=configs/government-fundings/berlin.yaml
-      - GOVERNMENT_FUNDING_SEED_NAME=Berlin
-      # CORS configuration
-      - CORS_ALLOW_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:8080
-      - CORS_ALLOW_CREDENTIALS=true
-      # Logging
-      - LOG_LEVEL=info
-      - LOG_FORMAT=json
-      # Environment (development, staging, production)
-      - ENVIRONMENT=development
-      # SMTP configuration (optional in development — emails are logged instead of sent)
-      # - SMTP_HOST=smtp.example.com
-      # - SMTP_PORT=587
-      # - SMTP_USER=
-      # - SMTP_PASSWORD=
-      # - SMTP_FROM=noreply@example.com
     depends_on:
       db:
         condition: service_healthy
@@ -56,15 +44,15 @@ services:
   db:
     image: postgres:18-alpine
     environment:
-      - POSTGRES_USER=kitamanager
-      - POSTGRES_PASSWORD=kitamanager
-      - POSTGRES_DB=kitamanager
+      - POSTGRES_USER=${DB_USER:?DB_USER is required — copy .env.dev.example to .env}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:?DB_PASSWORD is required — copy .env.dev.example to .env}
+      - POSTGRES_DB=${DB_NAME:?DB_NAME is required — copy .env.dev.example to .env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U kitamanager"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
       interval: 5s
       timeout: 5s
       retries: 5

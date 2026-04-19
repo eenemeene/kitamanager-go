@@ -98,6 +98,11 @@ type appMiddleware struct {
 }
 
 func main() {
+	// Force release mode before any gin package function runs so startup never
+	// emits debug route tables or verbose diagnostics. Tests override via
+	// gin.SetMode(gin.TestMode).
+	gin.SetMode(gin.ReleaseMode)
+
 	cfg, err := config.Load()
 	if err != nil {
 		slog.Error("Failed to load configuration", "error", err)
@@ -233,9 +238,7 @@ func initServices(s *appStores, cfg *config.Config, transactor store.Transactor)
 }
 
 func initMiddleware(s *appStores, cfg *config.Config, permissionService *rbac.PermissionService) *appMiddleware {
-	if cfg.IsProduction() {
-		slog.Warn("Rate limiter is using in-memory storage — not suitable for multi-instance deployments. Consider a Redis-backed solution for distributed rate limiting.")
-	}
+	slog.Info("Rate limiter is in-memory — not suitable for multi-instance deployments. Use a Redis-backed limiter when scaling horizontally.")
 
 	return &appMiddleware{
 		auth:             middleware.NewAuthMiddleware(cfg.JWTSecret, s.token),
@@ -249,17 +252,12 @@ func initMiddleware(s *appStores, cfg *config.Config, permissionService *rbac.Pe
 func setupRouter(cfg *config.Config, db *gorm.DB, s *appStores, svc *appServices, mw *appMiddleware, transactor store.Transactor) *gin.Engine {
 	r := gin.New()
 
-	// Configure trusted proxies for accurate client IP detection
-	if len(cfg.TrustedProxies) > 0 {
-		if err := r.SetTrustedProxies(cfg.TrustedProxies); err != nil {
-			slog.Error("Failed to set trusted proxies", "error", err)
-			os.Exit(1)
-		}
-	} else if cfg.IsProduction() {
-		if err := r.SetTrustedProxies(nil); err != nil {
-			slog.Error("Failed to set trusted proxies", "error", err)
-			os.Exit(1)
-		}
+	// Trusted proxies: explicit allowlist only. An empty list means the app does
+	// not honor any X-Forwarded-* headers, and c.ClientIP() returns the direct
+	// peer's address. Operators put their reverse-proxy CIDRs in TRUSTED_PROXIES.
+	if err := r.SetTrustedProxies(cfg.TrustedProxies); err != nil {
+		slog.Error("Failed to set trusted proxies", "error", err)
+		os.Exit(1)
 	}
 
 	r.Use(gin.Recovery())
@@ -271,16 +269,12 @@ func setupRouter(cfg *config.Config, db *gorm.DB, s *appStores, svc *appServices
 	r.Use(middleware.RequestTimeout(middleware.DefaultRequestTimeout))
 
 	corsConfig := cors.Config{
+		AllowOrigins:     cfg.CORSAllowOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-CSRF-Token"},
 		ExposeHeaders:    []string{"Content-Length", "X-Request-ID"},
 		AllowCredentials: cfg.CORSAllowCredentials,
 		MaxAge:           12 * time.Hour,
-	}
-	if len(cfg.CORSAllowOrigins) == 1 && cfg.CORSAllowOrigins[0] == "*" {
-		corsConfig.AllowOriginFunc = func(origin string) bool { return true }
-	} else {
-		corsConfig.AllowOrigins = cfg.CORSAllowOrigins
 	}
 	r.Use(cors.New(corsConfig))
 
@@ -290,18 +284,19 @@ func setupRouter(cfg *config.Config, db *gorm.DB, s *appStores, svc *appServices
 	r.GET("/api/v1/ready", healthHandler.Ready)
 	r.GET("/api/v1/live", healthHandler.Live)
 
-	// Metrics endpoint (requires authentication)
-	r.GET("/metrics", mw.auth.RequireAuth(), gin.WrapH(promhttp.Handler()))
+	// Metrics endpoint — superadmin only to avoid leaking request-path/label
+	// cardinality to authenticated tenant users.
+	r.GET("/metrics",
+		mw.auth.RequireAuth(),
+		mw.authz.RequireSuperAdmin(),
+		gin.WrapH(promhttp.Handler()))
 
-	// Swagger UI — open in development, requires superadmin in other environments
-	if cfg.IsDevelopment() {
-		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	} else {
-		swagger := r.Group("/swagger")
-		swagger.Use(mw.auth.RequireAuth())
-		swagger.Use(mw.authz.RequireSuperAdmin())
-		swagger.GET("/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	}
+	// Swagger UI — always requires superadmin. Developers log in as the seeded
+	// admin to use it; there is no anonymous path to the API surface.
+	swagger := r.Group("/swagger")
+	swagger.Use(mw.auth.RequireAuth())
+	swagger.Use(mw.authz.RequireSuperAdmin())
+	swagger.GET("/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// API routes
 	routes.Setup(r, routes.Deps{
