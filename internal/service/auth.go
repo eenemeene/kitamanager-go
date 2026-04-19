@@ -126,8 +126,13 @@ func (s *AuthService) Login(ctx context.Context, email, password, ipAddress, use
 	return s.issueTokens(user.ID, user.Email)
 }
 
-// Refresh exchanges a valid refresh token for new tokens.
-func (s *AuthService) Refresh(ctx context.Context, refreshTokenStr string) (*AuthResult, error) {
+// Refresh exchanges a valid refresh token for new tokens. The caller must also
+// pass the current access-token string (from the access_token cookie, or empty
+// if none was sent); it is added to the revocation list so an access token
+// stolen before the rotation does not outlive the refresh. Without this,
+// `AccessTokenExpiry` minutes of valid-token window persist after the
+// legitimate user refreshes. See M7.
+func (s *AuthService) Refresh(ctx context.Context, refreshTokenStr, oldAccessTokenStr string) (*AuthResult, error) {
 	claims, err := s.parseAndValidateRefreshToken(refreshTokenStr)
 	if err != nil {
 		return nil, err
@@ -168,13 +173,19 @@ func (s *AuthService) Refresh(ctx context.Context, refreshTokenStr string) (*Aut
 		return nil, apperror.Unauthorized("invalid refresh token")
 	}
 
-	// Revoke the old refresh token
+	// Revoke the old refresh token, and the old access token if the client
+	// sent one. Both must be unusable after rotation — otherwise an attacker
+	// who exfiltrated an access token would still be authorized for up to
+	// AccessTokenExpiry after the victim refreshed.
 	if s.tokenStore != nil {
 		expFloat, _ := claims["exp"].(float64)
 		oldExpiresAt := time.Unix(int64(expFloat), 0)
 		oldHash := middleware.HashToken(refreshTokenStr)
 		if err := s.tokenStore.RevokeToken(ctx, oldHash, user.ID, oldExpiresAt); err != nil {
 			slog.Error("Failed to revoke old refresh token", "user_id", user.ID, "error", err)
+		}
+		if oldAccessTokenStr != "" {
+			s.revokeTokenString(ctx, oldAccessTokenStr)
 		}
 	}
 

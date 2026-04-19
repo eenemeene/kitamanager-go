@@ -10,7 +10,9 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
+	"github.com/eenemeene/kitamanager-go/internal/middleware"
 	"github.com/eenemeene/kitamanager-go/internal/models"
+	"github.com/eenemeene/kitamanager-go/internal/store"
 )
 
 // createTestUserWithHashedPassword creates a user with a bcrypt-hashed password
@@ -148,7 +150,7 @@ func TestAuthService_Refresh_Success(t *testing.T) {
 		t.Fatalf("login failed: %v", err)
 	}
 
-	refreshResult, err := svc.Refresh(ctx, loginResult.RefreshToken)
+	refreshResult, err := svc.Refresh(ctx, loginResult.RefreshToken, loginResult.AccessToken)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -177,13 +179,13 @@ func TestAuthService_Refresh_ReplayDetection(t *testing.T) {
 	}
 
 	// First refresh should succeed (and revoke the old token)
-	_, err = svc.Refresh(ctx, loginResult.RefreshToken)
+	_, err = svc.Refresh(ctx, loginResult.RefreshToken, loginResult.AccessToken)
 	if err != nil {
 		t.Fatalf("first refresh failed: %v", err)
 	}
 
 	// Second refresh with the same token should fail (replay detection)
-	_, err = svc.Refresh(ctx, loginResult.RefreshToken)
+	_, err = svc.Refresh(ctx, loginResult.RefreshToken, loginResult.AccessToken)
 	if err == nil {
 		t.Fatal("expected error on token replay, got nil")
 	}
@@ -207,7 +209,7 @@ func TestAuthService_Refresh_InactiveUser(t *testing.T) {
 	// Deactivate the user after login
 	db.Model(user).Update("active", false)
 
-	_, err = svc.Refresh(ctx, loginResult.RefreshToken)
+	_, err = svc.Refresh(ctx, loginResult.RefreshToken, loginResult.AccessToken)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -221,12 +223,62 @@ func TestAuthService_Refresh_InvalidToken(t *testing.T) {
 	svc := createAuthService(db)
 	ctx := context.Background()
 
-	_, err := svc.Refresh(ctx, "not-a-valid-jwt")
+	_, err := svc.Refresh(ctx, "not-a-valid-jwt", "")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
 	if !errors.Is(err, apperror.ErrUnauthorized) {
 		t.Errorf("expected ErrUnauthorized, got %v", err)
+	}
+}
+
+// M7 — on refresh, the OLD access token must also be revoked. Without this,
+// a stolen access token remains valid for up to AccessTokenExpiry after the
+// legitimate user has already rotated their session via refresh.
+func TestAuthService_Refresh_RevokesOldAccessToken(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	tokenStore := store.NewTokenStore(db)
+	ctx := context.Background()
+
+	createTestUserWithHashedPassword(t, db, "Test User", "test@example.com", "password123")
+
+	loginResult, err := svc.Login(ctx, "test@example.com", "password123", "127.0.0.1", "test-agent")
+	if err != nil {
+		t.Fatalf("login: %v", err)
+	}
+
+	// Refresh — this must revoke the old access token too.
+	if _, err := svc.Refresh(ctx, loginResult.RefreshToken, loginResult.AccessToken); err != nil {
+		t.Fatalf("refresh: %v", err)
+	}
+
+	revoked, err := tokenStore.IsRevoked(ctx, middleware.HashToken(loginResult.AccessToken))
+	if err != nil {
+		t.Fatalf("IsRevoked: %v", err)
+	}
+	if !revoked {
+		t.Error("old access token must be revoked after refresh")
+	}
+}
+
+// A client that sends an empty old access token (e.g. because the browser
+// dropped the cookie) must still refresh successfully; the revocation step
+// is best-effort.
+func TestAuthService_Refresh_EmptyOldAccessTokenIsAccepted(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	ctx := context.Background()
+
+	createTestUserWithHashedPassword(t, db, "Test User", "test@example.com", "password123")
+
+	loginResult, err := svc.Login(ctx, "test@example.com", "password123", "127.0.0.1", "test-agent")
+	if err != nil {
+		t.Fatalf("login: %v", err)
+	}
+
+	if _, err := svc.Refresh(ctx, loginResult.RefreshToken, ""); err != nil {
+		t.Fatalf("refresh with empty old access token: %v", err)
 	}
 }
 
@@ -246,7 +298,7 @@ func TestAuthService_Logout(t *testing.T) {
 	svc.Logout(ctx, loginResult.AccessToken, loginResult.RefreshToken)
 
 	// Refresh with the revoked token should fail
-	_, err = svc.Refresh(ctx, loginResult.RefreshToken)
+	_, err = svc.Refresh(ctx, loginResult.RefreshToken, loginResult.AccessToken)
 	if err == nil {
 		t.Fatal("expected error after logout, got nil")
 	}
@@ -493,7 +545,7 @@ func TestAuthService_Refresh_WithAccessTokenInsteadOfRefresh(t *testing.T) {
 	}
 
 	// Attempt to refresh using the access token instead of the refresh token
-	_, err = svc.Refresh(ctx, loginResult.AccessToken)
+	_, err = svc.Refresh(ctx, loginResult.AccessToken, "")
 	if err == nil {
 		t.Fatal("expected error when using access token for refresh, got nil")
 	}
@@ -522,7 +574,7 @@ func TestAuthService_ChangePassword_TokensRevokedAfterChange(t *testing.T) {
 	}
 
 	// Attempt to refresh with the OLD refresh token should fail
-	_, err = svc.Refresh(ctx, loginResult.RefreshToken)
+	_, err = svc.Refresh(ctx, loginResult.RefreshToken, loginResult.AccessToken)
 	if err == nil {
 		t.Fatal("expected error when refreshing with old token after password change, got nil")
 	}
