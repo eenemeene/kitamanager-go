@@ -146,8 +146,14 @@ func Setup(r *gin.Engine, d Deps) {
 				users.GET("/:userId",
 					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionRead),
 					userHandler.Get)
+				// Global user creation is superadmin-only. Org admins create
+				// users in their own org via POST /users/:userId/organizations
+				// against an already-existing user, or through a future
+				// invite-by-email flow. Permitting any org admin to mint
+				// active, org-less user accounts (M11) is abusable for
+				// email/DoS primitives and has no legitimate caller today.
 				users.POST("",
-					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionCreate),
+					authzMiddleware.RequireSuperAdmin(),
 					userHandler.Create)
 				users.PUT("/:userId",
 					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionUpdate),
