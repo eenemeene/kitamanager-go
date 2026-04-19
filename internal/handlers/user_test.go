@@ -1364,6 +1364,7 @@ func TestUserHandler_List_Search(t *testing.T) {
 func TestUserHandler_ResetPassword_Success(t *testing.T) {
 	db := setupTestDB(t)
 	admin := createTestSuperAdmin(t, db)
+	hashedAdminPw(t, db, admin.ID, "adminpw")
 	targetUser := createTestUser(t, db, "Target User", "target@example.com", "oldpassword")
 
 	userService := createUserService(db)
@@ -1375,7 +1376,8 @@ func TestUserHandler_ResetPassword_Success(t *testing.T) {
 	r.PUT("/users/:userId/password", handler.ResetPassword)
 
 	body := models.UserPasswordResetRequest{
-		NewPassword: "newpassword123",
+		ActorPassword: "adminpw",
+		NewPassword:   "newpassword123",
 	}
 
 	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/password", targetUser.ID), body)
@@ -1388,6 +1390,7 @@ func TestUserHandler_ResetPassword_Success(t *testing.T) {
 func TestUserHandler_ResetPassword_UserNotFound(t *testing.T) {
 	db := setupTestDB(t)
 	admin := createTestSuperAdmin(t, db)
+	hashedAdminPw(t, db, admin.ID, "adminpw")
 
 	userService := createUserService(db)
 	auditService := createAuditService(db)
@@ -1397,7 +1400,8 @@ func TestUserHandler_ResetPassword_UserNotFound(t *testing.T) {
 	r.PUT("/users/:userId/password", handler.ResetPassword)
 
 	body := models.UserPasswordResetRequest{
-		NewPassword: "newpassword123",
+		ActorPassword: "adminpw",
+		NewPassword:   "newpassword123",
 	}
 
 	w := performRequest(r, "PUT", "/users/99999/password", body)
@@ -1430,6 +1434,7 @@ func TestUserHandler_ResetPassword_BadRequest_MissingPassword(t *testing.T) {
 func TestUserHandler_ResetPassword_PasswordTooShort(t *testing.T) {
 	db := setupTestDB(t)
 	admin := createTestSuperAdmin(t, db)
+	hashedAdminPw(t, db, admin.ID, "adminpw")
 	targetUser := createTestUser(t, db, "Target User", "target@example.com", "oldpassword")
 
 	userService := createUserService(db)
@@ -1440,7 +1445,8 @@ func TestUserHandler_ResetPassword_PasswordTooShort(t *testing.T) {
 	r.PUT("/users/:userId/password", handler.ResetPassword)
 
 	body := models.UserPasswordResetRequest{
-		NewPassword: "short",
+		ActorPassword: "adminpw",
+		NewPassword:   "short",
 	}
 
 	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/password", targetUser.ID), body)
@@ -1453,6 +1459,7 @@ func TestUserHandler_ResetPassword_PasswordTooShort(t *testing.T) {
 func TestUserHandler_ResetPassword_InvalidUserID(t *testing.T) {
 	db := setupTestDB(t)
 	admin := createTestSuperAdmin(t, db)
+	hashedAdminPw(t, db, admin.ID, "adminpw")
 
 	userService := createUserService(db)
 	auditService := createAuditService(db)
@@ -1462,7 +1469,8 @@ func TestUserHandler_ResetPassword_InvalidUserID(t *testing.T) {
 	r.PUT("/users/:userId/password", handler.ResetPassword)
 
 	body := models.UserPasswordResetRequest{
-		NewPassword: "newpassword123",
+		ActorPassword: "adminpw",
+		NewPassword:   "newpassword123",
 	}
 
 	w := performRequest(r, "PUT", "/users/abc/password", body)
@@ -1477,6 +1485,7 @@ func TestUserHandler_ResetPassword_NonSuperAdminCannotResetSuperAdmin(t *testing
 
 	org := createTestOrganization(t, db, "Test Org")
 	adminUser := createTestUser(t, db, "Admin User", "admin@example.com", "password")
+	hashedAdminPw(t, db, adminUser.ID, "adminpw")
 	createTestUserOrganization(t, db, adminUser.ID, org.ID, models.RoleAdmin)
 
 	superAdmin := createTestSuperAdmin(t, db)
@@ -1489,7 +1498,8 @@ func TestUserHandler_ResetPassword_NonSuperAdminCannotResetSuperAdmin(t *testing
 	r.PUT("/users/:userId/password", handler.ResetPassword)
 
 	body := models.UserPasswordResetRequest{
-		NewPassword: "hacked12345",
+		ActorPassword: "adminpw",
+		NewPassword:   "hacked12345",
 	}
 
 	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/password", superAdmin.ID), body)
@@ -1499,9 +1509,46 @@ func TestUserHandler_ResetPassword_NonSuperAdminCannotResetSuperAdmin(t *testing
 	}
 }
 
+// M1 — admin-initiated password reset must require the actor's own current
+// password (step-up). Without this, a compromised admin session can silently
+// rotate a peer user's password.
+func TestUserHandler_ResetPassword_RejectsWrongActorPassword(t *testing.T) {
+	db := setupTestDB(t)
+	admin := createTestSuperAdmin(t, db)
+	hashedAdminPw(t, db, admin.ID, "correctpw")
+	targetUser := createTestUser(t, db, "Target", "target@example.com", "oldpassword")
+
+	userService := createUserService(db)
+	auditService := createAuditService(db)
+	handler := NewUserHandler(userService, nil, auditService, nil)
+
+	r := setupTestRouterWithUser(admin.ID)
+	r.PUT("/users/:userId/password", handler.ResetPassword)
+
+	body := models.UserPasswordResetRequest{
+		ActorPassword: "WRONG",
+		NewPassword:   "newpassword123",
+	}
+	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/password", targetUser.ID), body)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected %d with wrong actor password, got %d: %s",
+			http.StatusUnauthorized, w.Code, w.Body.String())
+	}
+
+	// The target user's password MUST NOT have been changed.
+	var after models.User
+	_ = db.First(&after, targetUser.ID).Error
+	if after.Password != "oldpassword" {
+		t.Errorf("target password changed despite wrong actor_password (%q != %q)",
+			after.Password, "oldpassword")
+	}
+}
+
 func TestUserHandler_ResetPassword_TokensRevoked(t *testing.T) {
 	db := setupTestDB(t)
 	admin := createTestSuperAdmin(t, db)
+	hashedAdminPw(t, db, admin.ID, "adminpw")
 
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
 	targetUser := createTestUser(t, db, "Target User", "target@example.com", string(hashedPassword))
@@ -1530,7 +1577,8 @@ func TestUserHandler_ResetPassword_TokensRevoked(t *testing.T) {
 	r.PUT("/users/:userId/password", userHandler.ResetPassword)
 
 	resetBody := models.UserPasswordResetRequest{
-		NewPassword: "newpassword456",
+		ActorPassword: "adminpw",
+		NewPassword:   "newpassword456",
 	}
 	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/password", targetUser.ID), resetBody)
 	if w.Code != http.StatusNoContent {

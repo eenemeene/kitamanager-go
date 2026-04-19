@@ -449,9 +449,10 @@ func TestUserService_ResetPassword(t *testing.T) {
 	ctx := context.Background()
 
 	admin := createTestSuperAdmin(t, db)
+	setUserPassword(t, db, admin.ID, "adminpw")
 	user := createTestUser(t, db, "Test User", "reset@example.com", "oldpassword")
 
-	err := svc.ResetPassword(ctx, user.ID, "newpassword123", admin.ID)
+	err := svc.ResetPassword(ctx, user.ID, "newpassword123", "adminpw", admin.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -472,8 +473,9 @@ func TestUserService_ResetPassword_UserNotFound(t *testing.T) {
 	ctx := context.Background()
 
 	admin := createTestSuperAdmin(t, db)
+	setUserPassword(t, db, admin.ID, "adminpw")
 
-	err := svc.ResetPassword(ctx, 99999, "newpassword123", admin.ID)
+	err := svc.ResetPassword(ctx, 99999, "newpassword123", "adminpw", admin.ID)
 	if err == nil {
 		t.Fatal("expected error for non-existent user, got nil")
 	}
@@ -488,9 +490,10 @@ func TestUserService_ResetPassword_OldPasswordInvalidated(t *testing.T) {
 	ctx := context.Background()
 
 	admin := createTestSuperAdmin(t, db)
+	setUserPassword(t, db, admin.ID, "adminpw")
 	user := createTestUser(t, db, "Test User", "reset2@example.com", "oldpassword")
 
-	if err := svc.ResetPassword(ctx, user.ID, "newpassword123", admin.ID); err != nil {
+	if err := svc.ResetPassword(ctx, user.ID, "newpassword123", "adminpw", admin.ID); err != nil {
 		t.Fatalf("ResetPassword: %v", err)
 	}
 
@@ -511,11 +514,12 @@ func TestUserService_ResetPassword_AdminCannotResetSuperAdminPassword(t *testing
 
 	org := createTestOrganization(t, db, "Test Org")
 	adminUser := createTestUser(t, db, "Admin User", "admin@example.com", "password")
+	setUserPassword(t, db, adminUser.ID, "adminpw")
 	createTestUserOrganization(t, db, adminUser.ID, org.ID, models.RoleAdmin)
 
 	superAdmin := createTestSuperAdmin(t, db)
 
-	err := svc.ResetPassword(ctx, superAdmin.ID, "hacked123", adminUser.ID)
+	err := svc.ResetPassword(ctx, superAdmin.ID, "hacked123", "adminpw", adminUser.ID)
 	if err == nil {
 		t.Fatal("expected error when admin tries to reset superadmin password, got nil")
 	}
@@ -542,10 +546,11 @@ func TestUserService_ResetPassword_SuperAdminCanResetSuperAdminPassword(t *testi
 	ctx := context.Background()
 
 	superAdmin1 := createTestSuperAdmin(t, db)
+	setUserPassword(t, db, superAdmin1.ID, "super1pw")
 	superAdmin2 := createTestUser(t, db, "Super Admin 2", "super2@example.com", "password")
 	db.Model(superAdmin2).Update("is_superadmin", true)
 
-	err := svc.ResetPassword(ctx, superAdmin2.ID, "newpassword123", superAdmin1.ID)
+	err := svc.ResetPassword(ctx, superAdmin2.ID, "newpassword123", "super1pw", superAdmin1.ID)
 	if err != nil {
 		t.Fatalf("expected superadmin to reset other superadmin password, got %v", err)
 	}
@@ -558,8 +563,9 @@ func TestUserService_ResetPassword_SelfReset(t *testing.T) {
 
 	superAdmin := createTestSuperAdmin(t, db)
 
-	// A superadmin should be able to reset their own password
-	err := svc.ResetPassword(ctx, superAdmin.ID, "newpassword123", superAdmin.ID)
+	// A superadmin should be able to reset their own password — no
+	// actor_password needed for self-reset.
+	err := svc.ResetPassword(ctx, superAdmin.ID, "newpassword123", "", superAdmin.ID)
 	if err != nil {
 		t.Fatalf("expected self-reset to succeed, got %v", err)
 	}
@@ -572,11 +578,12 @@ func TestUserService_ResetPassword_ManagerCannotResetSuperAdminPassword(t *testi
 
 	org := createTestOrganization(t, db, "Test Org")
 	manager := createTestUser(t, db, "Manager", "manager@example.com", "password")
+	setUserPassword(t, db, manager.ID, "mgrpw")
 	createTestUserOrganization(t, db, manager.ID, org.ID, models.RoleManager)
 
 	superAdmin := createTestSuperAdmin(t, db)
 
-	err := svc.ResetPassword(ctx, superAdmin.ID, "hacked", manager.ID)
+	err := svc.ResetPassword(ctx, superAdmin.ID, "hacked", "mgrpw", manager.ID)
 	if err == nil {
 		t.Fatal("expected error when manager tries to reset superadmin password")
 	}
@@ -592,13 +599,14 @@ func TestUserService_ResetPassword_AdminCanResetSameOrgUserPassword(t *testing.T
 
 	org := createTestOrganization(t, db, "Test Org")
 	adminUser := createTestUser(t, db, "Admin", "admin@example.com", "password")
+	setUserPassword(t, db, adminUser.ID, "adminpw")
 	createTestUserOrganization(t, db, adminUser.ID, org.ID, models.RoleAdmin)
 
 	normalUser := createTestUser(t, db, "Normal User", "normal@example.com", "password")
 	createTestUserOrganization(t, db, normalUser.ID, org.ID, models.RoleMember)
 
 	// Admin should be able to reset password for a user in the same org
-	err := svc.ResetPassword(ctx, normalUser.ID, "newpassword", adminUser.ID)
+	err := svc.ResetPassword(ctx, normalUser.ID, "newpassword", "adminpw", adminUser.ID)
 	if err != nil {
 		t.Fatalf("expected admin to reset same-org user password, got %v", err)
 	}
@@ -613,13 +621,14 @@ func TestUserService_ResetPassword_AdminCannotResetCrossOrgUserPassword(t *testi
 	org2 := createTestOrganization(t, db, "Org 2")
 
 	adminUser := createTestUser(t, db, "Admin Org1", "admin@example.com", "password")
+	setUserPassword(t, db, adminUser.ID, "adminpw")
 	createTestUserOrganization(t, db, adminUser.ID, org1.ID, models.RoleAdmin)
 
 	targetUser := createTestUser(t, db, "User Org2", "target@example.com", "password")
 	createTestUserOrganization(t, db, targetUser.ID, org2.ID, models.RoleMember)
 
 	// Admin in org1 must NOT be able to reset password for user only in org2
-	err := svc.ResetPassword(ctx, targetUser.ID, "hacked", adminUser.ID)
+	err := svc.ResetPassword(ctx, targetUser.ID, "hacked", "adminpw", adminUser.ID)
 	if err == nil {
 		t.Fatal("expected error when admin tries to reset cross-org user password, got nil")
 	}
@@ -635,13 +644,14 @@ func TestUserService_ResetPassword_ManagerCannotResetSameOrgUserPassword(t *test
 
 	org := createTestOrganization(t, db, "Test Org")
 	manager := createTestUser(t, db, "Manager", "manager@example.com", "password")
+	setUserPassword(t, db, manager.ID, "mgrpw")
 	createTestUserOrganization(t, db, manager.ID, org.ID, models.RoleManager)
 
 	normalUser := createTestUser(t, db, "Normal User", "normal@example.com", "password")
 	createTestUserOrganization(t, db, normalUser.ID, org.ID, models.RoleMember)
 
 	// Manager must NOT be able to reset password (not admin role)
-	err := svc.ResetPassword(ctx, normalUser.ID, "hacked", manager.ID)
+	err := svc.ResetPassword(ctx, normalUser.ID, "hacked", "mgrpw", manager.ID)
 	if err == nil {
 		t.Fatal("expected error when manager tries to reset user password, got nil")
 	}

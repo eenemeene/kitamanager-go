@@ -178,12 +178,36 @@ func (s *UserService) Update(ctx context.Context, id uint, req *models.UserUpdat
 }
 
 // ResetPassword sets a new password for a user (admin-initiated).
-// The requester must be a superadmin or an admin in an organization the target user belongs to.
-// Non-superadmin requesters cannot reset a superadmin's password.
-func (s *UserService) ResetPassword(ctx context.Context, userID uint, newPassword string, requesterID uint) error {
+// The requester must be a superadmin or an admin in an organization the
+// target user belongs to. Non-superadmin requesters cannot reset a
+// superadmin's password.
+//
+// `actorPassword` MUST contain the requester's own current password and is
+// verified against their stored hash before any mutation runs (M1 step-up).
+// An empty actorPassword is always rejected unless the requester is resetting
+// their own password — in the self-reset case the new password being set IS
+// effectively the proof of knowledge of the session, and there is no
+// "compromised session rotating a peer account" concern.
+func (s *UserService) ResetPassword(ctx context.Context, userID uint, newPassword, actorPassword string, requesterID uint) error {
 	user, err := s.store.FindByID(ctx, userID)
 	if err != nil {
 		return classifyStoreError(err, "user")
+	}
+
+	// Step-up authentication: the requester must prove they currently know
+	// their own password. A stolen access token therefore cannot be used to
+	// rotate other users' credentials.
+	if requesterID != userID {
+		if actorPassword == "" {
+			return apperror.BadRequest("actor_password is required")
+		}
+		requester, err := s.store.FindByID(ctx, requesterID)
+		if err != nil {
+			return classifyStoreError(err, "requester")
+		}
+		if err := bcrypt.CompareHashAndPassword([]byte(requester.Password), []byte(actorPassword)); err != nil {
+			return apperror.Unauthorized("actor password is incorrect")
+		}
 	}
 
 	// Prevent non-superadmin from resetting a superadmin's password

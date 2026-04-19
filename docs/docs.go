@@ -13908,9 +13908,15 @@ const docTemplate = `{
         "github_com_eenemeene_kitamanager-go_internal_models.UserPasswordResetRequest": {
             "type": "object",
             "required": [
+                "actor_password",
                 "new_password"
             ],
             "properties": {
+                "actor_password": {
+                    "description": "ActorPassword is the current password of the admin performing the reset.\nRequired so that the reset operation cannot be invoked by a session\nthat only has a stolen token and not the actor's password.",
+                    "type": "string",
+                    "example": "adminspassword"
+                },
                 "new_password": {
                     "type": "string",
                     "maxLength": 72,

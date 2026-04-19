@@ -5,12 +5,27 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/store"
 	"github.com/eenemeene/kitamanager-go/internal/testutil"
 )
+
+// setUserPassword bcrypt-hashes `plaintext` and stores it as the user's
+// password. Used by tests that need to exercise a code path which verifies
+// the stored hash — e.g. /me/password, admin step-up on password reset.
+func setUserPassword(t *testing.T, db *gorm.DB, userID uint, plaintext string) {
+	t.Helper()
+	hash, err := bcrypt.GenerateFromPassword([]byte(plaintext), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
+	}
+	if err := db.Model(&models.User{}).Where("id = ?", userID).Update("password", string(hash)).Error; err != nil {
+		t.Fatalf("update password: %v", err)
+	}
+}
 
 // setupTestDB creates a PostgreSQL test database using testcontainers.
 func setupTestDB(t *testing.T) *gorm.DB {

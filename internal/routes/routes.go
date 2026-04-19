@@ -173,8 +173,13 @@ func Setup(r *gin.Engine, d Deps) {
 				users.GET("/:userId/memberships",
 					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionRead),
 					userHandler.GetMemberships)
+				// Password reset requires its own permission (users:reset_password)
+				// AND a step-up check of the actor's current password inside
+				// the handler — see M1. ActionUpdate alone must not grant
+				// password-reset, so that editing a user's name and rotating
+				// their password are not the same capability.
 				users.PUT("/:userId/password",
-					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionUpdate),
+					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionResetPassword),
 					userHandler.ResetPassword)
 				users.PUT("/:userId/superadmin",
 					authzMiddleware.RequireSuperAdmin(),
