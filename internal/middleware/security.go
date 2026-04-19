@@ -16,9 +16,13 @@ const MaxRequestBodySize = 10 << 20 // 10MB
 
 // apiCSP is the Content Security Policy for JSON API responses. The API never
 // serves HTML that loads scripts or styles, so every fetch directive is locked
-// to 'none'. 'connect-src self' permits the API's own error-reporting fetches
-// if any are ever added by the frontend embedded at /web.
+// to 'none'. `connect-src 'self'` is allowed because some browser flows
+// (e.g. Playwright tests that navigate directly to an API URL to seed cookies)
+// end up with the API response as the page origin and then fetch() same-origin
+// endpoints; the permission is harmless because the API never serves HTML that
+// a user-controllable script could execute from.
 const apiCSP = "default-src 'none'; " +
+	"connect-src 'self'; " +
 	"frame-ancestors 'none'; " +
 	"base-uri 'none'; " +
 	"form-action 'none'"
