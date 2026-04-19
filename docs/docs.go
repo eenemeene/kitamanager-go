@@ -9491,7 +9491,9 @@ const docTemplate = `{
                 "child_delete",
                 "org_create",
                 "org_delete",
-                "password_reset"
+                "password_reset",
+                "password_change",
+                "password_change_failed"
             ],
             "x-enum-varnames": [
                 "AuditActionLogin",
@@ -9508,7 +9510,9 @@ const docTemplate = `{
                 "AuditActionChildDelete",
                 "AuditActionOrgCreate",
                 "AuditActionOrgDelete",
-                "AuditActionPasswordReset"
+                "AuditActionPasswordReset",
+                "AuditActionPasswordChange",
+                "AuditActionPasswordChangeFailed"
             ]
         },
         "github_com_eenemeene_kitamanager-go_internal_models.AuditLogResponse": {

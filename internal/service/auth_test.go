@@ -296,6 +296,129 @@ func TestAuthService_ChangePassword_WrongCurrentPassword(t *testing.T) {
 	}
 }
 
+// H8 — /me/password must audit every failure and lock the user out after
+// `passwordChangeLockoutThreshold` failures within the lockout window. This
+// prevents an attacker with a stolen access token from brute-forcing the
+// current password at full mutation-rate-limit speed.
+
+func TestAuthService_ChangePassword_FailureIsAuditLogged(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	ctx := context.Background()
+
+	user := createTestUserWithHashedPassword(t, db, "Test User", "test@example.com", "password123")
+
+	_, err := svc.ChangePassword(ctx, user.ID, "wrongpassword", "newpassword456", "127.0.0.1")
+	if err == nil {
+		t.Fatal("expected error for wrong current password")
+	}
+
+	// The audit log is written async. Drain it.
+	svc.auditService.Shutdown()
+
+	var rows []models.AuditLog
+	if err := db.Where("action = ? AND user_id = ?",
+		models.AuditActionPasswordChangeFailed, user.ID).Find(&rows).Error; err != nil {
+		t.Fatalf("query audit logs: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 password_change_failed audit row, got %d", len(rows))
+	}
+	if rows[0].Success {
+		t.Error("audit row must be marked unsuccessful")
+	}
+	if rows[0].IPAddress != "127.0.0.1" {
+		t.Errorf("IP address = %q, want 127.0.0.1", rows[0].IPAddress)
+	}
+}
+
+func TestAuthService_ChangePassword_LocksOutAfterThreshold(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	ctx := context.Background()
+
+	user := createTestUserWithHashedPassword(t, db, "Test User", "test@example.com", "password123")
+
+	// Seed the lockout counter directly to avoid the async audit channel
+	// race — the store query is what ChangePassword actually reads.
+	for range passwordChangeLockoutThreshold {
+		if err := db.Create(&models.AuditLog{
+			UserID:    &user.ID,
+			UserEmail: user.Email,
+			Action:    models.AuditActionPasswordChangeFailed,
+			IPAddress: "127.0.0.1",
+			Success:   false,
+			Timestamp: time.Now(),
+		}).Error; err != nil {
+			t.Fatalf("seed audit row: %v", err)
+		}
+	}
+
+	// Even the CORRECT current password must be refused once locked out.
+	_, err := svc.ChangePassword(ctx, user.ID, "password123", "newpassword456", "127.0.0.1")
+	if err == nil {
+		t.Fatal("expected 429, got nil — lockout failed to fire with correct password")
+	}
+	if !errors.Is(err, apperror.ErrTooManyRequests) {
+		t.Errorf("expected ErrTooManyRequests, got %v", err)
+	}
+}
+
+func TestAuthService_ChangePassword_LockoutExpiresAfterWindow(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	ctx := context.Background()
+
+	user := createTestUserWithHashedPassword(t, db, "Test User", "test@example.com", "password123")
+
+	// Seed failed attempts from BEFORE the lockout window — they must not
+	// count against the current window.
+	oldEnough := time.Now().Add(-2 * passwordChangeLockoutWindow)
+	for range passwordChangeLockoutThreshold {
+		if err := db.Create(&models.AuditLog{
+			UserID:    &user.ID,
+			UserEmail: user.Email,
+			Action:    models.AuditActionPasswordChangeFailed,
+			Success:   false,
+			Timestamp: oldEnough,
+		}).Error; err != nil {
+			t.Fatalf("seed audit row: %v", err)
+		}
+	}
+
+	_, err := svc.ChangePassword(ctx, user.ID, "password123", "newpassword456", "127.0.0.1")
+	if err != nil {
+		t.Fatalf("expected success — stale failures must not lock out, got %v", err)
+	}
+}
+
+func TestAuthService_ChangePassword_SuccessIsAuditLogged(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	ctx := context.Background()
+
+	user := createTestUserWithHashedPassword(t, db, "Test User", "test@example.com", "password123")
+
+	_, err := svc.ChangePassword(ctx, user.ID, "password123", "newpassword456", "127.0.0.1")
+	if err != nil {
+		t.Fatalf("change password: %v", err)
+	}
+
+	svc.auditService.Shutdown()
+
+	var rows []models.AuditLog
+	if err := db.Where("action = ? AND user_id = ?",
+		models.AuditActionPasswordChange, user.ID).Find(&rows).Error; err != nil {
+		t.Fatalf("query audit logs: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 password_change audit row, got %d", len(rows))
+	}
+	if !rows[0].Success {
+		t.Error("success row must be marked Success=true")
+	}
+}
+
 func TestAuthService_GetCurrentUser(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createAuthService(db)

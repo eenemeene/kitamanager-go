@@ -56,6 +56,8 @@ definitions:
     - org_create
     - org_delete
     - password_reset
+    - password_change
+    - password_change_failed
     type: string
     x-enum-varnames:
     - AuditActionLogin
@@ -73,6 +75,8 @@ definitions:
     - AuditActionOrgCreate
     - AuditActionOrgDelete
     - AuditActionPasswordReset
+    - AuditActionPasswordChange
+    - AuditActionPasswordChangeFailed
   github_com_eenemeene_kitamanager-go_internal_models.AuditLogResponse:
     properties:
       action:

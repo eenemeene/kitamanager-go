@@ -134,6 +134,19 @@ func (s *AuditStore) CountFailedLoginsSince(ctx context.Context, email string, s
 	return count, err
 }
 
+// CountFailedPasswordChangesSince counts password-change failures for a user
+// since a given time. Used by the /me/password lockout to stop an attacker
+// with a stolen access token from brute-forcing the current password at full
+// API-mutation-rate-limit speed.
+func (s *AuditStore) CountFailedPasswordChangesSince(ctx context.Context, userID uint, since time.Time) (int64, error) {
+	var count int64
+	err := DBFromContext(ctx, s.db).Model(&models.AuditLog{}).
+		Where("action = ? AND user_id = ? AND timestamp >= ?",
+			models.AuditActionPasswordChangeFailed, userID, since).
+		Count(&count).Error
+	return count, err
+}
+
 // FindByID returns a single audit log entry by ID
 func (s *AuditStore) FindByID(ctx context.Context, id uint) (*models.AuditLog, error) {
 	var log models.AuditLog

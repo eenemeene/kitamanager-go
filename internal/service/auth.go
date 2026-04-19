@@ -24,6 +24,12 @@ const (
 	RefreshTokenExpiry = 7 * 24 * time.Hour // Refresh tokens expire in 7 days
 	lockoutThreshold   = 5
 	lockoutWindow      = 15 * time.Minute
+	// passwordChangeLockoutThreshold and passwordChangeLockoutWindow govern
+	// the /me/password brute-force defense. A stolen access token must not
+	// allow running the current-password check at the generic mutation rate
+	// limit, so we apply a stricter per-user counter.
+	passwordChangeLockoutThreshold = 5
+	passwordChangeLockoutWindow    = 15 * time.Minute
 )
 
 // AuthResult contains the tokens and metadata returned by auth operations.
@@ -188,14 +194,32 @@ func (s *AuthService) Logout(ctx context.Context, accessTokenStr, refreshTokenSt
 	}
 }
 
-// ChangePassword verifies the current password, sets a new one, and re-issues tokens.
+// ChangePassword verifies the current password, sets a new one, and re-issues
+// tokens. Protected against brute force:
+//   - Every failure is audit-logged (action: password_change_failed).
+//   - Before checking the current password, a lockout counter of
+//     password_change_failed events for this user is consulted; once
+//     `passwordChangeLockoutThreshold` failures land within
+//     `passwordChangeLockoutWindow`, further attempts return 429 without
+//     touching bcrypt.
+//   - On user-not-found and post-lockout paths, a dummy bcrypt compare runs
+//     so response timing does not leak which users exist.
 func (s *AuthService) ChangePassword(ctx context.Context, userID uint, currentPassword, newPassword, ipAddress string) (*AuthResult, error) {
 	user, err := s.userStore.FindByID(ctx, userID)
 	if err != nil {
+		_ = bcrypt.CompareHashAndPassword(s.dummyPasswordHash, []byte(currentPassword))
 		return nil, classifyStoreError(err, "user")
 	}
 
+	failedCount, countErr := s.auditService.CountRecentFailedPasswordChanges(ctx, userID, passwordChangeLockoutWindow)
+	if countErr == nil && failedCount >= passwordChangeLockoutThreshold {
+		_ = bcrypt.CompareHashAndPassword(s.dummyPasswordHash, []byte(currentPassword))
+		s.auditService.LogPasswordChangeFailed(userID, user.Email, ipAddress, "account locked - too many failed password-change attempts")
+		return nil, apperror.TooManyRequests("too many failed password-change attempts, please try again later")
+	}
+
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(currentPassword)); err != nil {
+		s.auditService.LogPasswordChangeFailed(userID, user.Email, ipAddress, "invalid current password")
 		return nil, apperror.Unauthorized("current password is incorrect")
 	}
 
@@ -216,7 +240,7 @@ func (s *AuthService) ChangePassword(ctx context.Context, userID uint, currentPa
 		}
 	}
 
-	s.auditService.LogResourceUpdate(userID, "user_password", userID, user.Email, ipAddress)
+	s.auditService.LogPasswordChange(userID, user.Email, ipAddress)
 
 	return s.issueTokens(user.ID, user.Email)
 }
