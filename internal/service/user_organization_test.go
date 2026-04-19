@@ -219,8 +219,8 @@ func TestUserOrganizationService_RemoveUserFromOrganization(t *testing.T) {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	// Verify user is no longer in org
-	resp, _ := svc.GetUserMemberships(ctx, user.ID)
+	// Verify user is no longer in org (self-view returns all, even if empty).
+	resp, _ := svc.GetUserMemberships(ctx, user.ID, user.ID)
 	if len(resp.Memberships) != 0 {
 		t.Errorf("expected 0 memberships after removal, got %d", len(resp.Memberships))
 	}
@@ -284,7 +284,8 @@ func TestUserOrganizationService_GetUserMemberships(t *testing.T) {
 	createTestUserOrganization(t, db, user.ID, org1.ID, models.RoleAdmin)
 	createTestUserOrganization(t, db, user.ID, org2.ID, models.RoleMember)
 
-	resp, err := svc.GetUserMemberships(ctx, user.ID)
+	// Self-view returns every membership.
+	resp, err := svc.GetUserMemberships(ctx, user.ID, user.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -301,7 +302,8 @@ func TestUserOrganizationService_GetUserMemberships_NoMemberships(t *testing.T) 
 
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 
-	resp, err := svc.GetUserMemberships(ctx, user.ID)
+	// Self-view returns the (empty) list without NotFound.
+	resp, err := svc.GetUserMemberships(ctx, user.ID, user.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -316,7 +318,7 @@ func TestUserOrganizationService_GetUserMemberships_UserNotFound(t *testing.T) {
 	svc := createUserOrganizationService(db)
 	ctx := context.Background()
 
-	_, err := svc.GetUserMemberships(ctx, 999)
+	_, err := svc.GetUserMemberships(ctx, 999, 999)
 	if err == nil {
 		t.Fatal("expected error for non-existent user, got nil")
 	}
@@ -343,7 +345,7 @@ func TestUserOrganizationService_GetUserMemberships_MultipleOrgs(t *testing.T) {
 	createTestUserOrganization(t, db, user.ID, org1.ID, models.RoleAdmin)
 	createTestUserOrganization(t, db, user.ID, org2.ID, models.RoleMember)
 
-	resp, err := svc.GetUserMemberships(ctx, user.ID)
+	resp, err := svc.GetUserMemberships(ctx, user.ID, user.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -666,8 +668,9 @@ func TestUserOrganizationService_AdminCanManageOwnOrg(t *testing.T) {
 		t.Fatalf("expected no error on remove, got %v", err)
 	}
 
-	// Verify user is no longer in org
-	memberships, err := svc.GetUserMemberships(ctx, targetUser.ID)
+	// Verify user is no longer in org. Self-view returns the empty list
+	// without NotFound.
+	memberships, err := svc.GetUserMemberships(ctx, targetUser.ID, targetUser.ID)
 	if err != nil {
 		t.Fatalf("expected no error on get memberships, got %v", err)
 	}

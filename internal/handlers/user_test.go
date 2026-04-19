@@ -983,7 +983,8 @@ func TestUserHandler_GetMemberships(t *testing.T) {
 	createTestUserOrganization(t, db, user.ID, org1.ID, models.RoleAdmin)
 	createTestUserOrganization(t, db, user.ID, org2.ID, models.RoleMember)
 
-	r := setupTestRouter()
+	// Self-view returns every membership.
+	r := setupTestRouterWithUser(user.ID)
 	r.GET("/users/:userId/memberships", handler.GetMemberships)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/users/%d/memberships", user.ID), nil)
@@ -1014,7 +1015,7 @@ func TestUserHandler_GetMemberships_RolesCorrect(t *testing.T) {
 	createTestUserOrganization(t, db, user.ID, org1.ID, models.RoleAdmin)
 	createTestUserOrganization(t, db, user.ID, org2.ID, models.RoleMember)
 
-	r := setupTestRouter()
+	r := setupTestRouterWithUser(user.ID)
 	r.GET("/users/:userId/memberships", handler.GetMemberships)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/users/%d/memberships", user.ID), nil)
@@ -1064,7 +1065,8 @@ func TestUserHandler_GetMemberships_Empty(t *testing.T) {
 
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 
-	r := setupTestRouter()
+	// Self-view returns empty list (not NotFound).
+	r := setupTestRouterWithUser(user.ID)
 	r.GET("/users/:userId/memberships", handler.GetMemberships)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/users/%d/memberships", user.ID), nil)
@@ -1094,6 +1096,101 @@ func TestUserHandler_GetMemberships_InvalidUserID(t *testing.T) {
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+// Scoping tests — H10. Without scoping, any user with users:read in any org
+// could enumerate every other user's full organization graph.
+
+func TestUserHandler_GetMemberships_CrossTenantRequesterGetsNotFound(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userOrgService := createUserOrganizationService(db)
+	handler := NewUserHandler(userService, userOrgService, nil, nil)
+
+	orgA := createTestOrganization(t, db, "Org A")
+	orgB := createTestOrganization(t, db, "Org B")
+	requester := createTestUser(t, db, "Requester", "requester@example.com", "password")
+	target := createTestUser(t, db, "Target", "target@example.com", "password")
+
+	// Requester is only in Org A. Target is only in Org B. Zero overlap.
+	createTestUserOrganization(t, db, requester.ID, orgA.ID, models.RoleAdmin)
+	createTestUserOrganization(t, db, target.ID, orgB.ID, models.RoleAdmin)
+
+	r := setupTestRouterWithUser(requester.ID)
+	r.GET("/users/:userId/memberships", handler.GetMemberships)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/users/%d/memberships", target.ID), nil)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected %d (no overlap must not leak target's existence), got %d: %s",
+			http.StatusNotFound, w.Code, w.Body.String())
+	}
+}
+
+func TestUserHandler_GetMemberships_PartialOverlapReturnsOnlySharedOrgs(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userOrgService := createUserOrganizationService(db)
+	handler := NewUserHandler(userService, userOrgService, nil, nil)
+
+	orgShared := createTestOrganization(t, db, "Shared Org")
+	orgPrivate := createTestOrganization(t, db, "Target's Private Org")
+	requester := createTestUser(t, db, "Requester", "requester@example.com", "password")
+	target := createTestUser(t, db, "Target", "target@example.com", "password")
+
+	// Requester and target both in orgShared. Target additionally in orgPrivate.
+	createTestUserOrganization(t, db, requester.ID, orgShared.ID, models.RoleMember)
+	createTestUserOrganization(t, db, target.ID, orgShared.ID, models.RoleManager)
+	createTestUserOrganization(t, db, target.ID, orgPrivate.ID, models.RoleAdmin)
+
+	r := setupTestRouterWithUser(requester.ID)
+	r.GET("/users/:userId/memberships", handler.GetMemberships)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/users/%d/memberships", target.ID), nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var result models.UserMembershipsResponse
+	parseResponse(t, w, &result)
+	if len(result.Memberships) != 1 {
+		t.Fatalf("expected exactly 1 membership (the shared org), got %d", len(result.Memberships))
+	}
+	if result.Memberships[0].OrganizationID != orgShared.ID {
+		t.Errorf("expected shared org %d, got %d", orgShared.ID, result.Memberships[0].OrganizationID)
+	}
+	if result.Memberships[0].Role != models.RoleManager {
+		t.Errorf("expected manager role, got %v", result.Memberships[0].Role)
+	}
+}
+
+func TestUserHandler_GetMemberships_SuperAdminSeesEverything(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userOrgService := createUserOrganizationService(db)
+	handler := NewUserHandler(userService, userOrgService, nil, nil)
+
+	superAdmin := createTestSuperAdmin(t, db)
+	orgA := createTestOrganization(t, db, "Org A")
+	orgB := createTestOrganization(t, db, "Org B")
+	target := createTestUser(t, db, "Target", "target@example.com", "password")
+
+	// Superadmin is in no orgs but must still see target's full graph.
+	createTestUserOrganization(t, db, target.ID, orgA.ID, models.RoleAdmin)
+	createTestUserOrganization(t, db, target.ID, orgB.ID, models.RoleMember)
+
+	r := setupTestRouterWithUser(superAdmin.ID)
+	r.GET("/users/:userId/memberships", handler.GetMemberships)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/users/%d/memberships", target.ID), nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var result models.UserMembershipsResponse
+	parseResponse(t, w, &result)
+	if len(result.Memberships) != 2 {
+		t.Errorf("superadmin must see both memberships, got %d", len(result.Memberships))
 	}
 }
 

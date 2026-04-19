@@ -319,8 +319,11 @@ func (h *UserHandler) UpdateOrganizationRole(c *gin.Context) {
 		return
 	}
 
-	// Get current role before update for audit log
-	memberships, err := h.userOrgService.GetUserMemberships(c.Request.Context(), userID)
+	// Get current role before update for audit log. The requester already
+	// has admin access to `orgID` (enforced by RequirePermission above), so
+	// the scoped lookup will return at least that membership.
+	requesterID := getUserID(c)
+	memberships, err := h.userOrgService.GetUserMemberships(c.Request.Context(), userID, requesterID)
 	if err != nil {
 		slog.Warn("failed to fetch memberships for audit log", "user_id", userID, "error", err)
 	}
@@ -404,7 +407,7 @@ func (h *UserHandler) GetMemberships(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.userOrgService.GetUserMemberships(c.Request.Context(), userID)
+	resp, err := h.userOrgService.GetUserMemberships(c.Request.Context(), userID, getUserID(c))
 	if err != nil {
 		respondError(c, err)
 		return
