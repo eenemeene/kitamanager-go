@@ -42,19 +42,19 @@ func ComputeCSRFToken(accessToken, secret string) string {
 // ValidateCSRF returns a Gin middleware handler that validates CSRF tokens.
 func (m *CSRFMiddleware) ValidateCSRF() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Safe methods don't require CSRF validation
+		// Safe methods don't require CSRF validation.
 		if isSafeMethod(c.Request.Method) {
 			c.Next()
 			return
 		}
 
-		// Check if request has cookie authentication
-		// If using Authorization header only, skip CSRF check (for API clients)
+		// CSRF is only a concern when the browser attaches credentials
+		// automatically — i.e. when the request carries our access_token
+		// cookie. Non-browser clients (CLI tools, curl, server-to-server)
+		// use Authorization: Bearer and do not have browser-driven
+		// credential attachment, so CSRF does not apply to them.
 		accessToken, cookieErr := c.Cookie("access_token")
-		authHeader := c.GetHeader("Authorization")
-
-		// If no cookie auth is used (pure API client with header auth), skip CSRF
-		if cookieErr != nil && authHeader != "" {
+		if cookieErr != nil {
 			c.Next()
 			return
 		}

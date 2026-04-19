@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -39,40 +40,74 @@ type AuthService struct {
 	tokenStore   store.TokenStorer
 	jwtSecret    string
 	auditService *AuditService
+	// dummyPasswordHash is a bcrypt hash used to equalize Login timing when the
+	// supplied email does not correspond to any user. Without it, bcrypt is
+	// skipped on the not-found path and response latency acts as an account
+	// enumeration oracle.
+	dummyPasswordHash []byte
 }
 
 // NewAuthService creates a new auth service.
 func NewAuthService(userStore store.UserStorer, tokenStore store.TokenStorer, jwtSecret string, auditService *AuditService) *AuthService {
-	return &AuthService{
-		userStore:    userStore,
-		tokenStore:   tokenStore,
-		jwtSecret:    jwtSecret,
-		auditService: auditService,
+	// Cost matches bcrypt.DefaultCost used for real password hashes so that
+	// CompareHashAndPassword takes the same time on miss as on hit.
+	dummyHash, err := bcrypt.GenerateFromPassword([]byte("timing-equalizer"), bcrypt.DefaultCost)
+	if err != nil {
+		// bcrypt.GenerateFromPassword only fails on bad cost parameters, which
+		// can't happen with DefaultCost. Panicking here is appropriate because
+		// the service cannot start without a usable dummy hash.
+		panic(fmt.Sprintf("failed to generate dummy password hash: %v", err))
 	}
+	return &AuthService{
+		userStore:         userStore,
+		tokenStore:        tokenStore,
+		jwtSecret:         jwtSecret,
+		auditService:      auditService,
+		dummyPasswordHash: dummyHash,
+	}
+}
+
+// canonicalEmail normalizes an email for equality-sensitive operations
+// (lockout counters, audit rows) so that case and whitespace variants map to
+// the same bucket. Without this, an attacker can reset the lockout by rotating
+// "Victim@x.com" / "victim@x.com" / "VICTIM@x.com".
+func canonicalEmail(email string) string {
+	return strings.ToLower(strings.TrimSpace(email))
 }
 
 // Login authenticates a user with email and password.
 func (s *AuthService) Login(ctx context.Context, email, password, ipAddress, userAgent string) (*AuthResult, error) {
-	// Check for account lockout
-	failedCount, err := s.auditService.CountRecentFailedLogins(ctx, email, lockoutWindow)
+	// Canonical form is used for the lockout counter and the audit row so that
+	// "Victim@x.com" / "victim@x.com" / "VICTIM@x.com" all share one bucket and
+	// an attacker cannot reset the lockout by rotating case. Backwards
+	// compatibility: the raw (trimmed) email is still passed to FindByEmail so
+	// users whose stored email has mixed case remain findable.
+	rawEmail := strings.TrimSpace(email)
+	canonical := canonicalEmail(email)
+
+	failedCount, err := s.auditService.CountRecentFailedLogins(ctx, canonical, lockoutWindow)
 	if err == nil && failedCount >= lockoutThreshold {
-		s.auditService.LogLoginFailed(email, ipAddress, userAgent, "account locked - too many failed attempts")
+		s.auditService.LogLoginFailed(canonical, ipAddress, userAgent, "account locked - too many failed attempts")
 		return nil, apperror.TooManyRequests("too many failed login attempts, please try again later")
 	}
 
-	user, err := s.userStore.FindByEmail(ctx, email)
+	user, err := s.userStore.FindByEmail(ctx, rawEmail)
 	if err != nil {
-		s.auditService.LogLoginFailed(email, ipAddress, userAgent, "user not found")
+		// Equalize timing against the not-found branch so response latency
+		// does not enumerate valid accounts.
+		_ = bcrypt.CompareHashAndPassword(s.dummyPasswordHash, []byte(password))
+		s.auditService.LogLoginFailed(canonical, ipAddress, userAgent, "user not found")
 		return nil, apperror.Unauthorized("invalid credentials")
 	}
 
 	if !user.Active {
-		s.auditService.LogLoginFailed(email, ipAddress, userAgent, "user inactive")
+		_ = bcrypt.CompareHashAndPassword(s.dummyPasswordHash, []byte(password))
+		s.auditService.LogLoginFailed(canonical, ipAddress, userAgent, "user inactive")
 		return nil, apperror.Unauthorized("invalid credentials")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
-		s.auditService.LogLoginFailed(email, ipAddress, userAgent, "invalid password")
+		s.auditService.LogLoginFailed(canonical, ipAddress, userAgent, "invalid password")
 		return nil, apperror.Unauthorized("invalid credentials")
 	}
 

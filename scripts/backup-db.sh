@@ -3,7 +3,7 @@
 # Full database backup for kitamanager.
 #
 # Reads connection details from environment variables (same as the API server)
-# or falls back to .env / .env.example defaults.
+# or falls back to values in a loaded .env file.
 #
 # Usage:
 #   ./scripts/backup-db.sh                        # writes to backups/<timestamp>.sql.gz

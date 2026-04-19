@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,31 +14,46 @@ import (
 // rejecting uploads before the handler's own validation runs.
 const MaxRequestBodySize = 10 << 20 // 10MB
 
-// SecurityHeaders adds common security headers to responses
+// apiCSP is the Content Security Policy for JSON API responses. The API never
+// serves HTML that loads scripts or styles, so every fetch directive is locked
+// to 'none'. 'connect-src self' permits the API's own error-reporting fetches
+// if any are ever added by the frontend embedded at /web.
+const apiCSP = "default-src 'none'; " +
+	"frame-ancestors 'none'; " +
+	"base-uri 'none'; " +
+	"form-action 'none'"
+
+// swaggerCSP loosens the policy just for the Swagger UI asset bundle.
+const swaggerCSP = "default-src 'self'; " +
+	"script-src 'self' 'unsafe-inline'; " +
+	"style-src 'self' 'unsafe-inline'; " +
+	"img-src 'self' data:; " +
+	"frame-ancestors 'none'; " +
+	"base-uri 'self'; " +
+	"form-action 'self'"
+
+// SecurityHeaders adds common security headers to responses.
 func SecurityHeaders() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Enforce HTTPS via HSTS (1 year, include subdomains, allow preload)
+		// HSTS — 1 year, include subdomains, preload.
 		c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
 
-		// Content Security Policy — restrict resource loading to same origin
-		c.Header("Content-Security-Policy", "default-src 'self'; frame-ancestors 'none'")
+		// Swagger serves HTML + JS; everything else is JSON.
+		if strings.HasPrefix(c.Request.URL.Path, "/swagger") {
+			c.Header("Content-Security-Policy", swaggerCSP)
+		} else {
+			c.Header("Content-Security-Policy", apiCSP)
+		}
 
-		// Prevent clickjacking
 		c.Header("X-Frame-Options", "DENY")
-
-		// Prevent MIME type sniffing
 		c.Header("X-Content-Type-Options", "nosniff")
 
-		// Enable XSS filter in older browsers
-		c.Header("X-XSS-Protection", "1; mode=block")
+		// Modern guidance: disable the legacy XSS filter in Chrome/Edge.
+		// A value of 1 can introduce its own XSS reflection bugs.
+		c.Header("X-XSS-Protection", "0")
 
-		// Control referrer information
 		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
-
-		// Restrict permissions/features
 		c.Header("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
-
-		// Prevent caching of API responses containing sensitive data
 		c.Header("Cache-Control", "no-store")
 
 		c.Next()

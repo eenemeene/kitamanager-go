@@ -43,6 +43,10 @@ dev-fresh: docker-reset clean dev
 # API will be available at http://localhost:8080
 dev: api-build web-install
 	@echo "Starting development environment..."
+	@if [ ! -f .env ]; then \
+		echo "0. No .env found — creating from .env.dev.example"; \
+		cp .env.dev.example .env; \
+	fi
 	@echo "1. Starting database..."
 	@docker compose up -d db
 	@echo "2. Waiting for database to be healthy..."
@@ -52,18 +56,26 @@ dev: api-build web-install
 	done
 	@echo "   Database is ready!"
 	@echo "3. Starting API server in background..."
-	@DATABASE_URL="postgres://kitamanager:kitamanager@localhost:5432/kitamanager?sslmode=disable" \
+	@DB_HOST=localhost \
+		DB_PORT=5432 \
+		DB_USER=kitamanager \
+		DB_PASSWORD=kitamanager \
+		DB_NAME=kitamanager \
+		DB_SSLMODE=disable \
+		JWT_SECRET=dev-only-jwt-secret-not-for-production-use-change-me-32chars \
+		SECURE_COOKIES=false \
 		SEED_ADMIN_EMAIL=admin@example.com \
 		SEED_ADMIN_PASSWORD=supersecret \
 		SEED_ADMIN_NAME=admin \
 		SEED_RBAC_POLICIES=true \
 		SEED_TEST_DATA=true \
 		GOVERNMENT_FUNDING_SEED_PATH=configs/government-fundings/berlin.yaml \
-		GOVERNMENT_FUNDING_SEED_NAME=Berlin \
+		GOVERNMENT_FUNDING_SEED_STATE=berlin \
 		CORS_ALLOW_ORIGINS="http://localhost:3000,http://localhost:3001,http://localhost:8080,http://10.149.53.39:3000,http://10.149.53.39:8080" \
 		CORS_ALLOW_CREDENTIALS=true \
 		LOGIN_RATE_LIMIT_PER_MINUTE=0 \
 		API_RATE_LIMIT_PER_MINUTE=0 \
+		LOG_FORMAT=text \
 		./bin/kitamanager-api > /tmp/kitamanager-api.log 2>&1 & echo $$! > /tmp/kitamanager-api.pid
 	@echo "   Waiting for API to be healthy..."
 	@until curl -sf http://localhost:8080/api/v1/health > /dev/null 2>&1; do \
