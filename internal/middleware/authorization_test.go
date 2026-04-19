@@ -278,6 +278,127 @@ func TestAuthorizationMiddleware_RequirePermission_SuperAdminBypass(t *testing.T
 	}
 }
 
+// M2 — the middleware must populate ctxkeys.IsSuperAdmin so downstream
+// handlers (audit-log IP redaction, for example) can trust the flag
+// without repeating a DB lookup.
+
+func TestAuthorizationMiddleware_RequirePermission_PopulatesIsSuperAdmin_True(t *testing.T) {
+	db := setupTestDB(t)
+	enforcer := setupTestEnforcer(t)
+	assignSuperAdmin(t, db, 1)
+	permissionService := setupTestPermissionService(t, db, enforcer)
+	middleware := NewAuthorizationMiddleware(permissionService)
+
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set(ctxkeys.UserID, uint(1))
+		c.Next()
+	})
+	var observed bool
+	r.GET("/organizations/:orgId/employees",
+		middleware.RequirePermission(rbac.ResourceEmployees, rbac.ActionRead),
+		func(c *gin.Context) {
+			observed = c.GetBool(ctxkeys.IsSuperAdmin)
+			c.Status(http.StatusOK)
+		})
+
+	req, _ := http.NewRequest("GET", "/organizations/1/employees", nil)
+	r.ServeHTTP(httptest.NewRecorder(), req)
+
+	if !observed {
+		t.Error("ctxkeys.IsSuperAdmin must be true for a superadmin requester")
+	}
+}
+
+func TestAuthorizationMiddleware_RequirePermission_PopulatesIsSuperAdmin_False(t *testing.T) {
+	db := setupTestDB(t)
+	enforcer := setupTestEnforcer(t)
+	assignRole(t, db, 1, models.RoleAdmin, 1)
+	permissionService := setupTestPermissionService(t, db, enforcer)
+	middleware := NewAuthorizationMiddleware(permissionService)
+
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set(ctxkeys.UserID, uint(1))
+		c.Next()
+	})
+	var key, boolVal any
+	var observed bool
+	r.GET("/organizations/:orgId/employees",
+		middleware.RequirePermission(rbac.ResourceEmployees, rbac.ActionRead),
+		func(c *gin.Context) {
+			key, observed = c.Get(ctxkeys.IsSuperAdmin)
+			boolVal = key
+			c.Status(http.StatusOK)
+		})
+
+	req, _ := http.NewRequest("GET", "/organizations/1/employees", nil)
+	r.ServeHTTP(httptest.NewRecorder(), req)
+
+	if !observed {
+		t.Fatal("ctxkeys.IsSuperAdmin must be set (to false) for non-superadmin requester")
+	}
+	if b, _ := boolVal.(bool); b {
+		t.Error("ctxkeys.IsSuperAdmin must be false for a non-superadmin requester")
+	}
+}
+
+func TestAuthorizationMiddleware_RequireSuperAdmin_PopulatesIsSuperAdmin(t *testing.T) {
+	db := setupTestDB(t)
+	enforcer := setupTestEnforcer(t)
+	assignSuperAdmin(t, db, 1)
+	permissionService := setupTestPermissionService(t, db, enforcer)
+	middleware := NewAuthorizationMiddleware(permissionService)
+
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set(ctxkeys.UserID, uint(1))
+		c.Next()
+	})
+	var observed bool
+	r.GET("/admin",
+		middleware.RequireSuperAdmin(),
+		func(c *gin.Context) {
+			observed = c.GetBool(ctxkeys.IsSuperAdmin)
+			c.Status(http.StatusOK)
+		})
+
+	req, _ := http.NewRequest("GET", "/admin", nil)
+	r.ServeHTTP(httptest.NewRecorder(), req)
+
+	if !observed {
+		t.Error("ctxkeys.IsSuperAdmin must be true inside RequireSuperAdmin-gated handler")
+	}
+}
+
+func TestAuthorizationMiddleware_RequireGlobalPermission_PopulatesIsSuperAdmin(t *testing.T) {
+	db := setupTestDB(t)
+	enforcer := setupTestEnforcer(t)
+	assignSuperAdmin(t, db, 1)
+	permissionService := setupTestPermissionService(t, db, enforcer)
+	middleware := NewAuthorizationMiddleware(permissionService)
+
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set(ctxkeys.UserID, uint(1))
+		c.Next()
+	})
+	var observed bool
+	r.GET("/users",
+		middleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionRead),
+		func(c *gin.Context) {
+			observed = c.GetBool(ctxkeys.IsSuperAdmin)
+			c.Status(http.StatusOK)
+		})
+
+	req, _ := http.NewRequest("GET", "/users", nil)
+	r.ServeHTTP(httptest.NewRecorder(), req)
+
+	if !observed {
+		t.Error("ctxkeys.IsSuperAdmin must be set by RequireGlobalPermission for superadmin requester")
+	}
+}
+
 func TestAuthorizationMiddleware_RequireSuperAdmin_Allowed(t *testing.T) {
 	db := setupTestDB(t)
 	enforcer := setupTestEnforcer(t)
