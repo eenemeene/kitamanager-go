@@ -46,8 +46,11 @@ var pedagogicalCategories = []string{
 // snapDateRange returns a date range snapped to 1st-of-month with defaults.
 // Defaults cover: 1 month before the previous Kita year through the end of the
 // next Kita year. A Kita year runs Aug 1 – Jul 31.
+//
+// Uses UTC to compute the current Kita year; otherwise the default window
+// flips a day early/late at local-timezone month boundaries.
 func snapDateRange(from, to *time.Time) (time.Time, time.Time) {
-	now := time.Now()
+	now := time.Now().UTC()
 	var rangeStart, rangeEnd time.Time
 
 	// Current Kita year starts on Aug 1 of this or last calendar year

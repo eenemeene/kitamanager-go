@@ -14,11 +14,15 @@ type StaffingHoursResponse struct {
 	DataPoints []StaffingHoursDataPoint `json:"data_points"`
 }
 
-// FinancialBudgetItemDetail provides a breakdown of a single budget item's contribution
+// FinancialBudgetItemDetail provides a breakdown of a single budget item's contribution.
+// For per-child items, AmountCents is the aggregate (UnitAmountCents × child count);
+// UnitAmountCents carries the unit price so the UI can render both without re-fetching.
 type FinancialBudgetItemDetail struct {
-	Name        string `json:"name" example:"Elternbeiträge"`
-	Category    string `json:"category" example:"income"`
-	AmountCents int    `json:"amount_cents" example:"50000"`
+	Name            string `json:"name" example:"Elternbeiträge"`
+	Category        string `json:"category" example:"income"`
+	AmountCents     int    `json:"amount_cents" example:"50000"`
+	PerChild        bool   `json:"per_child" example:"true"`
+	UnitAmountCents int    `json:"unit_amount_cents" example:"5000"`
 }
 
 // FinancialFundingDetail provides a breakdown of a single funding property's contribution

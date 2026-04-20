@@ -1,6 +1,8 @@
 package validation
 
 import (
+	"bytes"
+	"log/slog"
 	"testing"
 	"time"
 )
@@ -59,6 +61,18 @@ func TestValidateBirthdate_Future(t *testing.T) {
 	futureDate := time.Now().AddDate(0, 0, 1)
 	if err := ValidateBirthdate(futureDate); err == nil {
 		t.Error("expected future date to be invalid")
+	}
+}
+
+// TestValidateBirthdate_UTCMidnightAccepted asserts the validator compares in
+// UTC. On a server in a timezone east of UTC, time.Now() reports tomorrow
+// locally while UTC "now" is still today — a UTC-midnight birthdate equal to
+// today's UTC date must still be accepted.
+func TestValidateBirthdate_UTCMidnightAccepted(t *testing.T) {
+	nowUTC := time.Now().UTC()
+	todayUTCMidnight := time.Date(nowUTC.Year(), nowUTC.Month(), nowUTC.Day(), 0, 0, 0, 0, time.UTC)
+	if err := ValidateBirthdate(todayUTCMidnight); err != nil {
+		t.Errorf("expected today UTC midnight to be valid, got: %v", err)
 	}
 }
 
@@ -270,6 +284,40 @@ func TestFundingAgeOnDate(t *testing.T) {
 					age, tt.expectedAge)
 			}
 		})
+	}
+}
+
+// TestFundingAgeOnDate_WarnsOnNonFirstOfMonth asserts that callers who
+// accidentally pass a non-first-of-month date get a log signal. The RV-Tag
+// semantics only apply to first-of-month billing; mid-month calls compute
+// "age as of yesterday" which is surprising.
+func TestFundingAgeOnDate_WarnsOnNonFirstOfMonth(t *testing.T) {
+	var buf bytes.Buffer
+	oldLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn})))
+	defer slog.SetDefault(oldLogger)
+
+	birthdate := time.Date(2023, 5, 15, 0, 0, 0, 0, time.UTC)
+	mid := time.Date(2025, 5, 15, 0, 0, 0, 0, time.UTC)
+	_ = FundingAgeOnDate(birthdate, mid)
+
+	if !bytes.Contains(buf.Bytes(), []byte("non-first-of-month")) {
+		t.Errorf("expected warn log about non-first-of-month, got: %s", buf.String())
+	}
+}
+
+// TestFundingAgeOnDate_NoWarnOnFirstOfMonth asserts the normal path produces
+// no log noise for first-of-month billing.
+func TestFundingAgeOnDate_NoWarnOnFirstOfMonth(t *testing.T) {
+	var buf bytes.Buffer
+	oldLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn})))
+	defer slog.SetDefault(oldLogger)
+
+	birthdate := time.Date(2023, 5, 15, 0, 0, 0, 0, time.UTC)
+	_ = FundingAgeOnDate(birthdate, time.Date(2025, 5, 1, 0, 0, 0, 0, time.UTC))
+	if bytes.Contains(buf.Bytes(), []byte("non-first-of-month")) {
+		t.Errorf("no warn expected for first-of-month billing, got: %s", buf.String())
 	}
 }
 

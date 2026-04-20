@@ -32,16 +32,38 @@ func findPeriodForDate(periods []models.GovernmentFundingPeriod, date time.Time)
 
 // matchFundingProperties returns the funding properties that match a child's age and
 // contract properties. This is the single source of truth for funding property matching.
+//
+// Results are deduplicated by (key, value): if the funding configuration contains
+// two properties with the same key/value that both match the child's age — a
+// misconfiguration, since a child cannot simultaneously receive the same funding
+// item twice — only the first match is returned and an error is logged. Without
+// this guard, a duplicate config row would double-count payments and inflate
+// reported funding.
 func matchFundingProperties(age int, props models.ContractProperties, period *models.GovernmentFundingPeriod) []*models.GovernmentFundingProperty {
 	if period == nil {
 		return nil
 	}
 	var matched []*models.GovernmentFundingProperty
+	seen := make(map[string]*models.GovernmentFundingProperty)
 	for i := range period.Properties {
 		fp := &period.Properties[i]
-		if fp.MatchesAge(age) && props.HasValue(fp.Key, fp.Value) {
-			matched = append(matched, fp)
+		if !fp.MatchesAge(age) || !props.HasValue(fp.Key, fp.Value) {
+			continue
 		}
+		kv := fp.Key + ":" + fp.Value
+		if prev, exists := seen[kv]; exists {
+			slog.Error("duplicate funding property matched; ignoring subsequent entries",
+				"period_id", period.ID,
+				"key", fp.Key,
+				"value", fp.Value,
+				"age", age,
+				"kept_property_id", prev.ID,
+				"ignored_property_id", fp.ID,
+			)
+			continue
+		}
+		seen[kv] = fp
+		matched = append(matched, fp)
 	}
 	return matched
 }

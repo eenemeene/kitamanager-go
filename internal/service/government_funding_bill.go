@@ -9,7 +9,6 @@ import (
 	"io"
 	"log/slog"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -1271,17 +1270,17 @@ func buildComparisonProperties(billAmounts, calcAmounts map[string]int, labelMap
 	for k := range allKeys {
 		sortedKeys = append(sortedKeys, k)
 	}
-	sort.Strings(sortedKeys)
+	slices.Sort(sortedKeys)
 
 	// Detect property mismatches between bill and calc
 	mismatchTypes := classifyMismatches(billAmounts, calcAmounts)
 
 	props := make([]models.FundingComparisonAmount, 0, len(sortedKeys))
 	for _, kv := range sortedKeys {
-		parts := splitKeyValue(kv)
+		key, value, _ := strings.Cut(kv, ":")
 		prop := models.FundingComparisonAmount{
-			Key:      parts[0],
-			Value:    parts[1],
+			Key:      key,
+			Value:    value,
 			Label:    labelMap[kv],
 			Mismatch: mismatchTypes[kv],
 		}
@@ -1355,14 +1354,27 @@ func classifyMismatches(billAmounts, calcAmounts map[string]int) map[string]mode
 	}
 
 	// Group by base key to detect "different" (same key, different values)
-	// Only consider contract property keys for mismatch detection
+	// Only consider contract property keys for mismatch detection.
+	// Surcharge keys (parent, ndh, qm, etc.) that appear on only one side are
+	// logged: the UI does not flag them, but operators still want a signal
+	// because a surcharge present in the bill but not in the calc usually
+	// means the funding config drifted away from what ISBJ is paying out.
 	baseKeyValues := make(map[string][]string) // base_key → list of key:value strings
 	for kv := range allPairs {
-		parts := splitKeyValue(kv)
-		if !contractPropertyKeys[parts[0]] {
+		baseKey, _, _ := strings.Cut(kv, ":")
+		if !contractPropertyKeys[baseKey] {
+			p := allPairs[kv]
+			if p.inBill != p.inCalc {
+				side := "calc"
+				if p.inBill {
+					side = "bill"
+				}
+				slog.Warn("surcharge key appears only on one side of bill-vs-calc comparison",
+					"key_value", kv, "only_on", side)
+			}
 			continue
 		}
-		baseKeyValues[parts[0]] = append(baseKeyValues[parts[0]], kv)
+		baseKeyValues[baseKey] = append(baseKeyValues[baseKey], kv)
 	}
 
 	for _, kvList := range baseKeyValues {
@@ -1418,15 +1430,34 @@ func classifyMismatches(billAmounts, calcAmounts map[string]int) map[string]mode
 }
 
 // buildBillOnlyProperties builds properties for a bill-only child (no calculated counterpart).
+//
+// Aggregates duplicate (key, value) pairs so the UI renders one row per
+// distinct property. The matched path (buildComparisonProperties) uses a
+// map and is inherently deduped; the bill-only path used to emit one row
+// per raw payment, producing duplicate lines in the UI when a child had
+// multiple ISBJ rows sharing the same key/value.
 func buildBillOnlyProperties(payments []models.GovernmentFundingBillPayment, labelMap map[string]string) []models.FundingComparisonAmount {
-	props := make([]models.FundingComparisonAmount, 0, len(payments))
+	totals := make(map[string]int, len(payments))
+	order := make([]string, 0, len(payments))
 	for _, p := range payments {
-		amt := p.Amount
+		kv := p.Key + ":" + p.Value
+		if _, seen := totals[kv]; !seen {
+			order = append(order, kv)
+		}
+		totals[kv] += p.Amount
+	}
+
+	slices.Sort(order)
+	props := make([]models.FundingComparisonAmount, 0, len(order))
+	for _, kv := range order {
+		amt := totals[kv]
+		key, value, _ := strings.Cut(kv, ":")
+		a := amt
 		props = append(props, models.FundingComparisonAmount{
-			Key:        p.Key,
-			Value:      p.Value,
-			Label:      labelMap[p.Key+":"+p.Value],
-			BillAmount: &amt,
+			Key:        key,
+			Value:      value,
+			Label:      labelMap[kv],
+			BillAmount: &a,
 			Difference: amt,
 		})
 	}
@@ -1439,32 +1470,22 @@ func buildCalcOnlyProperties(calcAmounts map[string]int, labelMap map[string]str
 	for k := range calcAmounts {
 		sortedKeys = append(sortedKeys, k)
 	}
-	sort.Strings(sortedKeys)
+	slices.Sort(sortedKeys)
 
 	props := make([]models.FundingComparisonAmount, 0, len(calcAmounts))
 	for _, kv := range sortedKeys {
 		amt := calcAmounts[kv]
-		parts := splitKeyValue(kv)
+		key, value, _ := strings.Cut(kv, ":")
 		a := amt
 		props = append(props, models.FundingComparisonAmount{
-			Key:        parts[0],
-			Value:      parts[1],
+			Key:        key,
+			Value:      value,
 			Label:      labelMap[kv],
 			CalcAmount: &a,
 			Difference: -a,
 		})
 	}
 	return props
-}
-
-// splitKeyValue splits a "key:value" string into its parts.
-func splitKeyValue(kv string) [2]string {
-	for i, c := range kv {
-		if c == ':' {
-			return [2]string{kv[:i], kv[i+1:]}
-		}
-	}
-	return [2]string{kv, ""}
 }
 
 func (s *GovernmentFundingBillService) buildResponse(ctx context.Context, orgID, periodID uint, billDate time.Time, converted *isbj.ConvertedSettlement) (*models.GovernmentFundingBillResponse, error) {
@@ -1830,7 +1851,7 @@ func (s *GovernmentFundingBillService) ChildrenBillingSummary(ctx context.Contex
 				continue
 			}
 			// Count months: from start month to end month (capped at today) inclusive
-			months += countMonths(c.From, end)
+			months += monthCount(c.From, end)
 		}
 		contractMonthsByChild[childID] = months
 	}
@@ -1888,18 +1909,6 @@ func (s *GovernmentFundingBillService) ChildrenBillingSummary(ctx context.Contex
 	return &models.ChildrenBillingSummaryResponse{
 		Children: children,
 	}, nil
-}
-
-// countMonths returns the number of months between from and to (inclusive of both months).
-func countMonths(from, to time.Time) int {
-	if to.Before(from) {
-		return 0
-	}
-	months := (to.Year()-from.Year())*12 + int(to.Month()) - int(from.Month()) + 1
-	if months < 0 {
-		return 0
-	}
-	return months
 }
 
 func lastDayOfMonth(t time.Time) time.Time {

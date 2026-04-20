@@ -3,10 +3,10 @@ package service
 import (
 	"cmp"
 	"fmt"
+	"log/slog"
 	"maps"
 	"math"
 	"slices"
-	"sort"
 	"strings"
 	"time"
 
@@ -90,6 +90,40 @@ func monthCount(start, end time.Time) int {
 	return months
 }
 
+// pickActiveChildContract returns the child contract active on date. When
+// multiple contracts overlap on date (a data-integrity issue), the one with
+// the latest From wins; ties are broken by highest ID for determinism. This
+// removes dependence on the order rows come back from GORM.
+func pickActiveChildContract(contracts []models.ChildContract, date time.Time) *models.ChildContract {
+	var best *models.ChildContract
+	for i := range contracts {
+		c := &contracts[i]
+		if !c.IsActiveOn(date) {
+			continue
+		}
+		if best == nil || c.From.After(best.From) || (c.From.Equal(best.From) && c.ID > best.ID) {
+			best = c
+		}
+	}
+	return best
+}
+
+// pickActiveEmployeeContract is the employee-contract counterpart of
+// pickActiveChildContract. See that function's comment for tie-break semantics.
+func pickActiveEmployeeContract(contracts []models.EmployeeContract, date time.Time) *models.EmployeeContract {
+	var best *models.EmployeeContract
+	for i := range contracts {
+		c := &contracts[i]
+		if !c.IsActiveOn(date) {
+			continue
+		}
+		if best == nil || c.From.After(best.From) || (c.From.Equal(best.From) && c.ID > best.ID) {
+			best = c
+		}
+	}
+	return best
+}
+
 // findPayPlanPeriodForDate finds the pay plan period covering a date.
 func findPayPlanPeriodForDate(periods []models.PayPlanPeriod, date time.Time) *models.PayPlanPeriod {
 	for i := range periods {
@@ -143,21 +177,19 @@ func calculateFinancials(
 		fundingPeriod := fundingPeriodIdx[date]
 		for i := range children {
 			child := &children[i]
-			for j := range child.Contracts {
-				contract := &child.Contracts[j]
-				if contract.IsActiveOn(date) {
-					childCount++
-					age := validation.FundingAgeOnDate(child.Birthdate, date)
-					for _, fp := range matchFundingProperties(age, contract.Properties, fundingPeriod) {
-						fundingIncome += fp.Payment
-						mapKey := fp.Key + ":" + fp.Value
-						existing := fundingDetailMap[mapKey]
-						fundingDetailMap[mapKey] = fundingDetailAccum{
-							amount: existing.amount + fp.Payment,
-							label:  fp.Label,
-						}
-					}
-					break
+			contract := pickActiveChildContract(child.Contracts, date)
+			if contract == nil {
+				continue
+			}
+			childCount++
+			age := validation.FundingAgeOnDate(child.Birthdate, date)
+			for _, fp := range matchFundingProperties(age, contract.Properties, fundingPeriod) {
+				fundingIncome += fp.Payment
+				mapKey := fp.Key + ":" + fp.Value
+				existing := fundingDetailMap[mapKey]
+				fundingDetailMap[mapKey] = fundingDetailAccum{
+					amount: existing.amount + fp.Payment,
+					label:  fp.Label,
 				}
 			}
 		}
@@ -187,37 +219,41 @@ func calculateFinancials(
 		salaryByCategory := make(map[string][2]int) // [0]=gross, [1]=contrib
 		for i := range employees {
 			emp := &employees[i]
-			for j := range emp.Contracts {
-				ec := &emp.Contracts[j]
-				if !ec.IsActiveOn(date) {
-					continue
-				}
-				staffCount++
-
-				ppDateMap := payPlanIdx[ec.PayPlanID]
-				if ppDateMap == nil {
-					break
-				}
-				resolved := ppDateMap[date]
-				if resolved == nil {
-					break
-				}
-				entry := resolved.entryIndex[gradeStepKey{ec.Grade, ec.Step}]
-				if entry == nil {
-					break
-				}
-
-				gross, contrib := employeeMonthlyCost(entry.MonthlyAmount, ec.WeeklyHours, resolved.period.WeeklyHours, resolved.period.EmployerContributionRate)
-				grossSalary += gross
-				employerCosts += contrib
-
-				cat := ec.StaffCategory
-				pair := salaryByCategory[cat]
-				pair[0] += gross
-				pair[1] += contrib
-				salaryByCategory[cat] = pair
-				break // one active contract per employee per month
+			ec := pickActiveEmployeeContract(emp.Contracts, date)
+			if ec == nil {
+				continue
 			}
+			staffCount++
+
+			ppDateMap := payPlanIdx[ec.PayPlanID]
+			if ppDateMap == nil {
+				slog.Warn("employee contract references unknown pay plan; salary not counted",
+					"employee_id", emp.ID, "contract_id", ec.ID, "payplan_id", ec.PayPlanID, "date", date.Format(models.DateFormat))
+				continue
+			}
+			resolved := ppDateMap[date]
+			if resolved == nil {
+				slog.Warn("no pay plan period covers contract date; salary not counted",
+					"employee_id", emp.ID, "contract_id", ec.ID, "payplan_id", ec.PayPlanID, "date", date.Format(models.DateFormat))
+				continue
+			}
+			entry := resolved.entryIndex[gradeStepKey{ec.Grade, ec.Step}]
+			if entry == nil {
+				slog.Warn("no pay plan entry for contract grade/step; salary not counted",
+					"employee_id", emp.ID, "contract_id", ec.ID, "payplan_id", ec.PayPlanID,
+					"grade", ec.Grade, "step", ec.Step, "date", date.Format(models.DateFormat))
+				continue
+			}
+
+			gross, contrib := employeeMonthlyCost(entry.MonthlyAmount, ec.WeeklyHours, resolved.period.WeeklyHours, resolved.period.EmployerContributionRate)
+			grossSalary += gross
+			employerCosts += contrib
+
+			cat := ec.StaffCategory
+			pair := salaryByCategory[cat]
+			pair[0] += gross
+			pair[1] += contrib
+			salaryByCategory[cat] = pair
 		}
 
 		// Convert salary-by-category map to sorted slice
@@ -242,9 +278,10 @@ func calculateFinancials(
 			for j := range item.Entries {
 				entry := &item.Entries[j]
 				if entry.IsActiveOn(date) {
-					amount := entry.AmountCents
+					unit := entry.AmountCents
+					amount := unit
 					if item.PerChild {
-						amount *= childCount
+						amount = unit * childCount
 					}
 					if item.Category == string(models.BudgetItemCategoryIncome) {
 						budgetIncome += amount
@@ -252,9 +289,11 @@ func calculateFinancials(
 						budgetExpenses += amount
 					}
 					budgetItemDetails = append(budgetItemDetails, models.FinancialBudgetItemDetail{
-						Name:        item.Name,
-						Category:    item.Category,
-						AmountCents: amount,
+						Name:            item.Name,
+						Category:        item.Category,
+						AmountCents:     amount,
+						PerChild:        item.PerChild,
+						UnitAmountCents: unit,
 					})
 					break // only first active entry per item
 				}
@@ -312,17 +351,15 @@ func calculateStaffingHours(
 		period := fundingPeriodIdx[date]
 		for i := range children {
 			child := &children[i]
-			for j := range child.Contracts {
-				contract := &child.Contracts[j]
-				if contract.IsActiveOn(date) {
-					childCount++
-					if period != nil {
-						age := validation.FundingAgeOnDate(child.Birthdate, date)
-						requirement := sumChildRequirement(age, contract.Properties, period)
-						requiredHours += requirement * period.FullTimeWeeklyHours
-					}
-					break // Only count each child once per month
-				}
+			contract := pickActiveChildContract(child.Contracts, date)
+			if contract == nil {
+				continue
+			}
+			childCount++
+			if period != nil {
+				age := validation.FundingAgeOnDate(child.Birthdate, date)
+				requirement := sumChildRequirement(age, contract.Properties, period)
+				requiredHours += requirement * period.FullTimeWeeklyHours
 			}
 		}
 
@@ -331,17 +368,12 @@ func calculateStaffingHours(
 		staffCount := 0
 		for i := range employees {
 			emp := &employees[i]
-			hasActive := false
-			for j := range emp.Contracts {
-				if emp.Contracts[j].IsActiveOn(date) {
-					availableHours += emp.Contracts[j].WeeklyHours
-					hasActive = true
-					break // one active contract per employee per month
-				}
+			ec := pickActiveEmployeeContract(emp.Contracts, date)
+			if ec == nil {
+				continue
 			}
-			if hasActive {
-				staffCount++
-			}
+			availableHours += ec.WeeklyHours
+			staffCount++
 		}
 
 		dp.RequiredHours = requiredHours
@@ -374,12 +406,13 @@ func calculateEmployeeStaffingHours(
 	for i := range employees {
 		emp := &employees[i]
 
-		// Determine staff category from the most recent contract
+		// Determine staff category from the most recent contract (tie-break by ID).
 		staffCategory := ""
 		if len(emp.Contracts) > 0 {
-			latest := emp.Contracts[0]
-			for _, c := range emp.Contracts[1:] {
-				if c.From.After(latest.From) {
+			latest := &emp.Contracts[0]
+			for k := 1; k < len(emp.Contracts); k++ {
+				c := &emp.Contracts[k]
+				if c.From.After(latest.From) || (c.From.Equal(latest.From) && c.ID > latest.ID) {
 					latest = c
 				}
 			}
@@ -389,12 +422,8 @@ func calculateEmployeeStaffingHours(
 		monthlyHours := make([]float64, numMonths)
 		monthIdx := 0
 		for date := start; !date.After(end); date = date.AddDate(0, 1, 0) {
-			for j := range emp.Contracts {
-				contract := &emp.Contracts[j]
-				if contract.IsActiveOn(date) {
-					monthlyHours[monthIdx] = contract.WeeklyHours
-					break
-				}
+			if c := pickActiveEmployeeContract(emp.Contracts, date); c != nil {
+				monthlyHours[monthIdx] = c.WeeklyHours
 			}
 			monthIdx++
 		}
@@ -449,33 +478,38 @@ func calculateOccupancy(
 
 		for i := range children {
 			child := &children[i]
-			for j := range child.Contracts {
-				contract := &child.Contracts[j]
-				if !contract.IsActiveOn(date) {
-					continue
-				}
-				dp.Total++
+			contract := pickActiveChildContract(child.Contracts, date)
+			if contract == nil {
+				continue
+			}
+			dp.Total++
 
-				age := validation.FundingAgeOnDate(child.Birthdate, date)
-				ageLabel := findAgeGroupLabel(age, ageGroups)
+			age := validation.FundingAgeOnDate(child.Birthdate, date)
+			ageLabel := findAgeGroupLabel(age, ageGroups)
 
-				// Count by age group × care type
-				careType := contract.Properties.GetScalarProperty("care_type")
-				if ageLabel != "" && careType != "" {
+			// Count by age group × care type. Use GetAllValues rather than
+			// GetScalarProperty: care_type may be stored as ["ganztag"] (array
+			// form) after a JSON round-trip, in which case the scalar accessor
+			// returns "" and the child is silently dropped from the matrix
+			// while still being counted in dp.Total — totals wouldn't match
+			// the sum of the grid.
+			if ageLabel != "" {
+				for _, careType := range contract.Properties.GetAllValues("care_type") {
+					if careType == "" {
+						continue
+					}
 					if dp.ByAgeAndCareType[ageLabel] == nil {
 						dp.ByAgeAndCareType[ageLabel] = make(map[string]int)
 					}
 					dp.ByAgeAndCareType[ageLabel][careType]++
 				}
+			}
 
-				// Count supplements
-				for _, st := range supplementTypes {
-					if contract.Properties.HasValue(st.Key, st.Value) {
-						dp.BySupplement[st.Value]++
-					}
+			// Count supplements
+			for _, st := range supplementTypes {
+				if contract.Properties.HasValue(st.Key, st.Value) {
+					dp.BySupplement[st.Value]++
 				}
-
-				break // Only count each child once per month
 			}
 		}
 
@@ -512,14 +546,7 @@ func calculateAgeDistribution(
 	totalCount := 0
 	for _, child := range children {
 		// Only count children with active contracts
-		hasActive := false
-		for j := range child.Contracts {
-			if child.Contracts[j].IsActiveOn(date) {
-				hasActive = true
-				break
-			}
-		}
-		if !hasActive {
+		if pickActiveChildContract(child.Contracts, date) == nil {
 			continue
 		}
 
@@ -575,26 +602,21 @@ func calculateContractPropertiesDistribution(
 	totalChildren := 0
 
 	for _, child := range children {
-		counted := false
-		for _, contract := range child.Contracts {
-			if !contract.IsActiveOn(date) {
-				continue
-			}
-			if !counted {
-				totalChildren++
-				counted = true
-			}
-			if contract.Properties == nil {
-				continue
-			}
-			for key := range contract.Properties {
-				values := contract.Properties.GetAllValues(key)
-				for _, value := range values {
-					if distribution[key] == nil {
-						distribution[key] = make(map[string]int)
-					}
-					distribution[key][value]++
+		contract := pickActiveChildContract(child.Contracts, date)
+		if contract == nil {
+			continue
+		}
+		totalChildren++
+		if contract.Properties == nil {
+			continue
+		}
+		for key := range contract.Properties {
+			values := contract.Properties.GetAllValues(key)
+			for _, value := range values {
+				if distribution[key] == nil {
+					distribution[key] = make(map[string]int)
 				}
+				distribution[key][value]++
 			}
 		}
 	}
@@ -605,14 +627,14 @@ func calculateContractPropertiesDistribution(
 	for key := range distribution {
 		keys = append(keys, key)
 	}
-	sort.Strings(keys)
+	slices.Sort(keys)
 
 	for _, key := range keys {
 		values := make([]string, 0, len(distribution[key]))
 		for value := range distribution[key] {
 			values = append(values, value)
 		}
-		sort.Strings(values)
+		slices.Sort(values)
 		for _, value := range values {
 			properties = append(properties, models.ContractPropertyCount{
 				Key:   key,
@@ -671,14 +693,7 @@ func calculateFunding(
 	}
 
 	for _, child := range children {
-		// Find active contract
-		var activeContract *models.ChildContract
-		for i := range child.Contracts {
-			if child.Contracts[i].IsActiveOn(date) {
-				activeContract = &child.Contracts[i]
-				break
-			}
-		}
+		activeContract := pickActiveChildContract(child.Contracts, date)
 		if activeContract == nil {
 			continue
 		}
@@ -746,12 +761,18 @@ func intPtr(i int) *int {
 
 // extractOccupancyStructure derives age groups, care types, and supplement types
 // from the government funding periods' properties.
+//
+// Uses the period with the latest From date. Historically this function relied
+// on the caller passing periods ordered DESC — that implicit contract has
+// broken before. Picking the latest explicitly means the occupancy UI stays
+// correct even if the store returns periods in any order.
 func extractOccupancyStructure(periods []models.GovernmentFundingPeriod) ([]models.OccupancyAgeGroup, []models.OccupancyCareType, []models.OccupancySupplementType) {
-	// Use the most recent period (periods are ordered DESC by from_date)
 	if len(periods) == 0 {
 		return nil, nil, nil
 	}
-	period := periods[0]
+	period := slices.MaxFunc(periods, func(a, b models.GovernmentFundingPeriod) int {
+		return a.From.Compare(b.From)
+	})
 
 	type ageKey struct {
 		minAge, maxAge int

@@ -1,6 +1,8 @@
 package service
 
 import (
+	"bytes"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -141,10 +143,13 @@ func TestMonthCount(t *testing.T) {
 		expected int
 	}{
 		{"same month", date(2025, 1, 1), date(2025, 1, 1), 1},
+		{"same month, end-of-month day", date(2025, 1, 1), date(2025, 1, 31), 1},
 		{"two months", date(2025, 1, 1), date(2025, 2, 1), 2},
+		{"two months, end-of-month day", date(2025, 1, 1), date(2025, 2, 28), 2},
 		{"full year", date(2025, 1, 1), date(2025, 12, 1), 12},
 		{"cross year", date(2024, 11, 1), date(2025, 2, 1), 4},
 		{"end before start", date(2025, 3, 1), date(2025, 1, 1), 0},
+		{"end before start, cross year", date(2025, 6, 1), date(2024, 1, 1), 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -285,6 +290,37 @@ func TestExtractOccupancyStructure_NoPeriods(t *testing.T) {
 	ageGroups, careTypes, supplements := extractOccupancyStructure(nil)
 	if ageGroups != nil || careTypes != nil || supplements != nil {
 		t.Error("expected nil for all with no periods")
+	}
+}
+
+// TestExtractOccupancyStructure_PicksLatestRegardlessOfOrder asserts the
+// function picks the most recent period by From date, not the slice-first
+// period. Previously the code relied on an implicit "caller sorts DESC"
+// contract, which caused age-group labels to come from an old period when
+// the store returned ASC order.
+func TestExtractOccupancyStructure_PicksLatestRegardlessOfOrder(t *testing.T) {
+	oldPeriod := makeFundingPeriod(date(2020, 1, 1), datePtr(2023, 12, 31), 39, []models.GovernmentFundingProperty{
+		makeFundingProp("care_type", "ganztag", "OLD", 100000, 0.2, intP(0), intP(2)),
+	})
+	newPeriod := makeFundingPeriod(date(2024, 1, 1), nil, 39, []models.GovernmentFundingProperty{
+		makeFundingProp("care_type", "ganztag", "NEW", 120000, 0.2, intP(0), intP(3)),
+		makeFundingProp("care_type", "teilzeit", "NEW-TZ", 80000, 0.15, intP(0), intP(3)),
+	})
+
+	// Ascending order — the bug-inducing case.
+	ascending := []models.GovernmentFundingPeriod{oldPeriod, newPeriod}
+	// Descending order — the previously-assumed case.
+	descending := []models.GovernmentFundingPeriod{newPeriod, oldPeriod}
+
+	for name, periods := range map[string][]models.GovernmentFundingPeriod{"ascending": ascending, "descending": descending} {
+		ageGroups, careTypes, _ := extractOccupancyStructure(periods)
+		if len(careTypes) != 2 {
+			t.Errorf("[%s] expected 2 care types from new period, got %d", name, len(careTypes))
+		}
+		// New period's age range is 0-3, not old period's 0-2.
+		if len(ageGroups) != 1 || ageGroups[0].MaxAge != 3 {
+			t.Errorf("[%s] expected age range from new period (0-3), got %+v", name, ageGroups)
+		}
 	}
 }
 
@@ -911,6 +947,40 @@ func TestCalculateOccupancy_NoPeriods(t *testing.T) {
 	}
 }
 
+// TestCalculateOccupancy_ArrayFormCareType asserts children whose care_type
+// arrived as a single-element array (JSON-round-tripped) are still classified
+// in the age×care matrix — the previous GetScalarProperty call returned "" for
+// array form and silently dropped such children from the matrix while still
+// counting them in Total.
+func TestCalculateOccupancy_ArrayFormCareType(t *testing.T) {
+	children := []models.Child{
+		makeChild(1, date(2022, 1, 1), "male", []models.ChildContract{
+			makeChildContract(date(2024, 1, 1), nil, models.ContractProperties{
+				"care_type": []any{"ganztag"}, // array form
+			}),
+		}),
+	}
+	periods := []models.GovernmentFundingPeriod{
+		makeFundingPeriod(date(2024, 1, 1), nil, 39, []models.GovernmentFundingProperty{
+			makeFundingProp("care_type", "ganztag", "Ganztag", 100000, 0.2, intP(0), intP(6)),
+		}),
+	}
+	result := calculateOccupancy(children, periods, date(2025, 3, 1), date(2025, 3, 1))
+	dp := result.DataPoints[0]
+	if dp.Total != 1 {
+		t.Errorf("expected total 1, got %d", dp.Total)
+	}
+	found := false
+	for _, careMap := range dp.ByAgeAndCareType {
+		if careMap["ganztag"] == 1 {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected child to be counted in age×ganztag grid, got matrix: %+v", dp.ByAgeAndCareType)
+	}
+}
+
 func TestCalculateOccupancy_MultipleMonths(t *testing.T) {
 	children := []models.Child{
 		makeChild(1, date(2022, 1, 1), "male", []models.ChildContract{
@@ -1078,6 +1148,37 @@ func TestCalculateFinancials_BudgetItems(t *testing.T) {
 	if len(dp.BudgetItemDetails) != 2 {
 		t.Fatalf("expected 2 budget item details, got %d", len(dp.BudgetItemDetails))
 	}
+
+	// Verify PerChild flag and UnitAmountCents populated correctly so the
+	// frontend can distinguish per-child from fixed-price items without
+	// re-fetching the underlying BudgetItem config.
+	var rent, meals *models.FinancialBudgetItemDetail
+	for i := range dp.BudgetItemDetails {
+		switch dp.BudgetItemDetails[i].Name {
+		case "Rent":
+			rent = &dp.BudgetItemDetails[i]
+		case "Meal fees":
+			meals = &dp.BudgetItemDetails[i]
+		}
+	}
+	if rent == nil || meals == nil {
+		t.Fatalf("expected both detail entries, got: %+v", dp.BudgetItemDetails)
+	}
+	if rent.PerChild {
+		t.Errorf("rent.PerChild expected false, got true")
+	}
+	if rent.UnitAmountCents != 200000 {
+		t.Errorf("rent.UnitAmountCents expected 200000, got %d", rent.UnitAmountCents)
+	}
+	if !meals.PerChild {
+		t.Errorf("meals.PerChild expected true, got false")
+	}
+	if meals.UnitAmountCents != 5000 {
+		t.Errorf("meals.UnitAmountCents expected 5000 (unit price), got %d", meals.UnitAmountCents)
+	}
+	if meals.AmountCents != 10000 {
+		t.Errorf("meals.AmountCents expected 10000 (unit × 2 children), got %d", meals.AmountCents)
+	}
 }
 
 func TestCalculateFinancials_FundingDetails(t *testing.T) {
@@ -1168,12 +1269,57 @@ func TestCalculateFinancials_NoPayPlan(t *testing.T) {
 			makeEmployeeContract(1, 1, date(2024, 1, 1), nil, "qualified", "S8a", 3, 39.0, 999),
 		}),
 	}
+
+	// Missing pay-plan data should log a warning so operators can fix the
+	// config — silently producing €0 gross for an employee who is counted in
+	// staff count was the behavior before this fix.
+	var buf bytes.Buffer
+	oldLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn})))
+	defer slog.SetDefault(oldLogger)
+
 	result := calculateFinancials(nil, employees, nil, nil, nil, date(2025, 1, 1), date(2025, 1, 1))
 	if result[0].GrossSalary != 0 {
 		t.Errorf("expected 0 gross when no pay plan, got %d", result[0].GrossSalary)
 	}
 	if result[0].StaffCount != 1 {
 		t.Errorf("expected 1 staff even without pay plan, got %d", result[0].StaffCount)
+	}
+	if !bytes.Contains(buf.Bytes(), []byte("unknown pay plan")) {
+		t.Errorf("expected warn log about unknown pay plan, got: %s", buf.String())
+	}
+}
+
+func TestCalculateFinancials_MissingGradeEntry(t *testing.T) {
+	ppID := uint(1)
+	// PayPlan exists, but doesn't have an entry for the contract's grade/step.
+	payPlans := map[uint]*models.PayPlan{
+		ppID: makePayPlan(ppID, []models.PayPlanPeriod{
+			makePayPlanPeriod(1, date(2024, 1, 1), nil, 39.0, 2200, []models.PayPlanEntry{
+				makePayPlanEntry("S8a", 3, 350000),
+			}),
+		}),
+	}
+	employees := []models.Employee{
+		makeEmployee(1, "A", "B", []models.EmployeeContract{
+			makeEmployeeContract(1, 1, date(2024, 1, 1), nil, "qualified", "S9", 2, 39.0, ppID),
+		}),
+	}
+
+	var buf bytes.Buffer
+	oldLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn})))
+	defer slog.SetDefault(oldLogger)
+
+	result := calculateFinancials(nil, employees, payPlans, nil, nil, date(2025, 1, 1), date(2025, 1, 1))
+	if result[0].GrossSalary != 0 {
+		t.Errorf("expected 0 gross when grade/step missing, got %d", result[0].GrossSalary)
+	}
+	if result[0].StaffCount != 1 {
+		t.Errorf("expected 1 staff, got %d", result[0].StaffCount)
+	}
+	if !bytes.Contains(buf.Bytes(), []byte("no pay plan entry")) {
+		t.Errorf("expected warn log about missing grade/step, got: %s", buf.String())
 	}
 }
 
@@ -1272,5 +1418,124 @@ func TestIntPtr(t *testing.T) {
 	p := intPtr(42)
 	if *p != 42 {
 		t.Errorf("expected 42, got %d", *p)
+	}
+}
+
+// ========================================================================
+// pickActiveChildContract / pickActiveEmployeeContract
+// ========================================================================
+
+func TestPickActiveChildContract_NoneActive(t *testing.T) {
+	contracts := []models.ChildContract{
+		{BaseContract: models.BaseContract{Period: models.Period{From: date(2024, 1, 1), To: datePtr(2024, 12, 31)}}},
+	}
+	if got := pickActiveChildContract(contracts, date(2025, 6, 1)); got != nil {
+		t.Errorf("expected nil, got %+v", got)
+	}
+}
+
+func TestPickActiveChildContract_Empty(t *testing.T) {
+	if got := pickActiveChildContract(nil, date(2025, 6, 1)); got != nil {
+		t.Errorf("expected nil, got %+v", got)
+	}
+}
+
+// Overlapping contracts on the same date are a data-integrity violation; this
+// test asserts the helper picks the latest (by From) regardless of input order,
+// so callers get a deterministic result instead of whatever GORM returned first.
+func TestPickActiveChildContract_OverlappingPicksLatest(t *testing.T) {
+	older := date(2024, 1, 1)
+	newer := date(2025, 3, 1)
+	forward := []models.ChildContract{
+		{ID: 1, BaseContract: models.BaseContract{Period: models.Period{From: newer, To: nil}}},
+		{ID: 2, BaseContract: models.BaseContract{Period: models.Period{From: older, To: nil}}},
+	}
+	reversed := []models.ChildContract{forward[1], forward[0]}
+
+	for name, contracts := range map[string][]models.ChildContract{"forward": forward, "reversed": reversed} {
+		got := pickActiveChildContract(contracts, date(2025, 6, 1))
+		if got == nil {
+			t.Fatalf("[%s] expected a match, got nil", name)
+		}
+		if !got.From.Equal(newer) {
+			t.Errorf("[%s] expected contract with From=%s, got From=%s", name, newer, got.From)
+		}
+	}
+}
+
+// Same-From contracts tie-break by highest ID.
+func TestPickActiveChildContract_SameFromTieBreakByID(t *testing.T) {
+	from := date(2025, 1, 1)
+	forward := []models.ChildContract{
+		{ID: 3, BaseContract: models.BaseContract{Period: models.Period{From: from, To: nil}}},
+		{ID: 7, BaseContract: models.BaseContract{Period: models.Period{From: from, To: nil}}},
+	}
+	reversed := []models.ChildContract{forward[1], forward[0]}
+
+	for name, contracts := range map[string][]models.ChildContract{"forward": forward, "reversed": reversed} {
+		got := pickActiveChildContract(contracts, date(2025, 6, 1))
+		if got == nil {
+			t.Fatalf("[%s] expected a match, got nil", name)
+		}
+		if got.ID != 7 {
+			t.Errorf("[%s] expected ID=7 (highest), got ID=%d", name, got.ID)
+		}
+	}
+}
+
+func TestPickActiveEmployeeContract_OverlappingPicksLatest(t *testing.T) {
+	older := date(2024, 1, 1)
+	newer := date(2025, 3, 1)
+	forward := []models.EmployeeContract{
+		{ID: 1, BaseContract: models.BaseContract{Period: models.Period{From: newer, To: nil}}, StaffCategory: "qualified"},
+		{ID: 2, BaseContract: models.BaseContract{Period: models.Period{From: older, To: nil}}, StaffCategory: "supplementary"},
+	}
+	reversed := []models.EmployeeContract{forward[1], forward[0]}
+
+	for name, contracts := range map[string][]models.EmployeeContract{"forward": forward, "reversed": reversed} {
+		got := pickActiveEmployeeContract(contracts, date(2025, 6, 1))
+		if got == nil {
+			t.Fatalf("[%s] expected a match, got nil", name)
+		}
+		if got.StaffCategory != "qualified" {
+			t.Errorf("[%s] expected latest (qualified), got %s", name, got.StaffCategory)
+		}
+	}
+}
+
+// calculateFinancials must produce the same result regardless of contract order
+// in the input slices — this proves the per-date loops now use the
+// deterministic pickActive*Contract helpers instead of relying on slice order.
+func TestCalculateFinancials_DeterministicOnOverlappingContracts(t *testing.T) {
+	ppID := uint(1)
+	payPlans := map[uint]*models.PayPlan{
+		ppID: makePayPlan(ppID, []models.PayPlanPeriod{
+			makePayPlanPeriod(1, date(2024, 1, 1), nil, 39.0, 2200, []models.PayPlanEntry{
+				makePayPlanEntry("S8a", 3, 350000),
+				makePayPlanEntry("S3", 1, 250000),
+			}),
+		}),
+	}
+
+	// Two overlapping employee contracts: older is supplementary 20h, newer is qualified 39h.
+	// The helper must always pick the newer one.
+	older := makeEmployeeContract(1, 1, date(2024, 1, 1), nil, "supplementary", "S3", 1, 20.0, ppID)
+	newer := makeEmployeeContract(2, 1, date(2025, 1, 1), nil, "qualified", "S8a", 3, 39.0, ppID)
+
+	forward := []models.Employee{makeEmployee(1, "A", "B", []models.EmployeeContract{older, newer})}
+	reversed := []models.Employee{makeEmployee(1, "A", "B", []models.EmployeeContract{newer, older})}
+
+	forwardResult := calculateFinancials(nil, forward, payPlans, nil, nil, date(2025, 6, 1), date(2025, 6, 1))
+	reversedResult := calculateFinancials(nil, reversed, payPlans, nil, nil, date(2025, 6, 1), date(2025, 6, 1))
+
+	if forwardResult[0].GrossSalary != reversedResult[0].GrossSalary {
+		t.Errorf("gross salary depends on input order: forward=%d, reversed=%d", forwardResult[0].GrossSalary, reversedResult[0].GrossSalary)
+	}
+	// The newer (qualified, 39h) contract should win: 350000 * 39/39 = 350000.
+	if forwardResult[0].GrossSalary != 350000 {
+		t.Errorf("expected newer contract to win (gross 350000), got %d", forwardResult[0].GrossSalary)
+	}
+	if forwardResult[0].SalaryDetails[0].StaffCategory != "qualified" {
+		t.Errorf("expected 'qualified', got %q", forwardResult[0].SalaryDetails[0].StaffCategory)
 	}
 }
