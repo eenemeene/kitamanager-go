@@ -9491,7 +9491,9 @@ const docTemplate = `{
                 "child_delete",
                 "org_create",
                 "org_delete",
-                "password_reset"
+                "password_reset",
+                "password_change",
+                "password_change_failed"
             ],
             "x-enum-varnames": [
                 "AuditActionLogin",
@@ -9508,7 +9510,9 @@ const docTemplate = `{
                 "AuditActionChildDelete",
                 "AuditActionOrgCreate",
                 "AuditActionOrgDelete",
-                "AuditActionPasswordReset"
+                "AuditActionPasswordReset",
+                "AuditActionPasswordChange",
+                "AuditActionPasswordChangeFailed"
             ]
         },
         "github_com_eenemeene_kitamanager-go_internal_models.AuditLogResponse": {
@@ -13904,9 +13908,15 @@ const docTemplate = `{
         "github_com_eenemeene_kitamanager-go_internal_models.UserPasswordResetRequest": {
             "type": "object",
             "required": [
+                "actor_password",
                 "new_password"
             ],
             "properties": {
+                "actor_password": {
+                    "description": "ActorPassword is the current password of the admin performing the reset.\nRequired so that the reset operation cannot be invoked by a session\nthat only has a stolen token and not the actor's password.",
+                    "type": "string",
+                    "example": "adminspassword"
+                },
                 "new_password": {
                     "type": "string",
                     "maxLength": 72,

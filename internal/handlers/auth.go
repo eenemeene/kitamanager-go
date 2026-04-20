@@ -78,7 +78,12 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	result, authErr := h.authService.Refresh(c.Request.Context(), refreshTokenStr)
+	// The access-token cookie (when present) is passed through so the service
+	// can revoke it alongside the refresh token — a stolen access token must
+	// not survive past the rotation.
+	oldAccessTokenStr, _ := c.Cookie(accessTokenCookie)
+
+	result, authErr := h.authService.Refresh(c.Request.Context(), refreshTokenStr, oldAccessTokenStr)
 	if authErr != nil {
 		respondError(c, authErr)
 		return

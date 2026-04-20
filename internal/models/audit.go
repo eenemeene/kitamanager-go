@@ -23,6 +23,13 @@ const (
 	AuditActionOrgCreate         AuditAction = "org_create"
 	AuditActionOrgDelete         AuditAction = "org_delete"
 	AuditActionPasswordReset     AuditAction = "password_reset"
+	// AuditActionPasswordChange records a user rotating their own password.
+	AuditActionPasswordChange AuditAction = "password_change"
+	// AuditActionPasswordChangeFailed records a /me/password attempt that
+	// failed the current-password check. Used by the lockout counter so an
+	// attacker holding a stolen access token cannot brute-force the current
+	// password at full API-mutation-rate-limit speed.
+	AuditActionPasswordChangeFailed AuditAction = "password_change_failed"
 )
 
 // AuditLog represents an audit log entry for security-relevant operations

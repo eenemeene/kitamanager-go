@@ -251,6 +251,7 @@ type AuditStorer interface {
 	FindAllFiltered(ctx context.Context, action string, userID *uint, from *time.Time, to *time.Time, limit, offset int) ([]models.AuditLog, int64, error)
 	FindFailedLogins(ctx context.Context, email string, since time.Time, limit int) ([]models.AuditLog, error)
 	CountFailedLoginsSince(ctx context.Context, email string, since time.Time) (int64, error)
+	CountFailedPasswordChangesSince(ctx context.Context, userID uint, since time.Time) (int64, error)
 	Cleanup(ctx context.Context, olderThan time.Time) (int64, error)
 }
 

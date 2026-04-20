@@ -120,6 +120,35 @@ func (s *AuditService) LogLoginFailed(email, ipAddress, userAgent, reason string
 	})
 }
 
+// LogPasswordChange logs a successful self-service password rotation.
+func (s *AuditService) LogPasswordChange(userID uint, email, ipAddress string) {
+	s.log(&models.AuditLog{
+		UserID:       &userID,
+		UserEmail:    email,
+		Action:       models.AuditActionPasswordChange,
+		ResourceType: "user",
+		ResourceID:   &userID,
+		IPAddress:    ipAddress,
+		Success:      true,
+	})
+}
+
+// LogPasswordChangeFailed logs a failed /me/password attempt. Used by the
+// lockout counter so an attacker with a stolen access token cannot brute-force
+// the current password at full API-mutation-rate-limit speed.
+func (s *AuditService) LogPasswordChangeFailed(userID uint, email, ipAddress, reason string) {
+	s.log(&models.AuditLog{
+		UserID:       &userID,
+		UserEmail:    email,
+		Action:       models.AuditActionPasswordChangeFailed,
+		ResourceType: "user",
+		ResourceID:   &userID,
+		IPAddress:    ipAddress,
+		Details:      mustMarshalJSON(map[string]string{"reason": reason}),
+		Success:      false,
+	})
+}
+
 // LogSuperAdminChange logs a superadmin status change
 func (s *AuditService) LogSuperAdminChange(actorID, targetUserID uint, targetEmail string, granted bool, ipAddress string) {
 	action := models.AuditActionSuperAdminGrant
@@ -347,6 +376,18 @@ func (s *AuditService) CountRecentFailedLogins(ctx context.Context, email string
 
 	since := time.Now().UTC().Add(-duration)
 	return s.store.CountFailedLoginsSince(ctx, email, since)
+}
+
+// CountRecentFailedPasswordChanges counts /me/password failures for a user in
+// the last duration. Used for the lockout check before bcrypt so an attacker
+// holding a stolen access token cannot brute-force the current password.
+func (s *AuditService) CountRecentFailedPasswordChanges(ctx context.Context, userID uint, duration time.Duration) (int64, error) {
+	if s == nil || s.store == nil {
+		return 0, nil
+	}
+
+	since := time.Now().UTC().Add(-duration)
+	return s.store.CountFailedPasswordChangesSince(ctx, userID, since)
 }
 
 // log sends an audit log entry to the worker channel.

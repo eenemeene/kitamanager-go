@@ -42,6 +42,12 @@ const (
 	ActionRead   = "read"
 	ActionUpdate = "update"
 	ActionDelete = "delete"
+	// ActionResetPassword is a distinct action from ActionUpdate so that
+	// "edit a user's name" does not automatically grant "reset that user's
+	// password". Previously both flowed through users:update; a compromised
+	// org-admin session could rotate a peer admin's password without any
+	// step-up (M1).
+	ActionResetPassword = "reset_password"
 )
 
 // Enforcer wraps casbin.Enforcer for role-permission policy management.
@@ -142,6 +148,7 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleSuperAdmin, "*", ResourceUsers, ActionRead},
 		{RoleSuperAdmin, "*", ResourceUsers, ActionUpdate},
 		{RoleSuperAdmin, "*", ResourceUsers, ActionDelete},
+		{RoleSuperAdmin, "*", ResourceUsers, ActionResetPassword},
 		{RoleSuperAdmin, "*", ResourceSections, ActionCreate},
 		{RoleSuperAdmin, "*", ResourceSections, ActionRead},
 		{RoleSuperAdmin, "*", ResourceSections, ActionUpdate},
@@ -194,6 +201,7 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleAdmin, "*", ResourceUsers, ActionRead},
 		{RoleAdmin, "*", ResourceUsers, ActionUpdate},
 		{RoleAdmin, "*", ResourceUsers, ActionDelete},
+		{RoleAdmin, "*", ResourceUsers, ActionResetPassword},
 		{RoleAdmin, "*", ResourceSections, ActionCreate},
 		{RoleAdmin, "*", ResourceSections, ActionRead},
 		{RoleAdmin, "*", ResourceSections, ActionUpdate},

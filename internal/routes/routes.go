@@ -146,8 +146,14 @@ func Setup(r *gin.Engine, d Deps) {
 				users.GET("/:userId",
 					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionRead),
 					userHandler.Get)
+				// Global user creation is superadmin-only. Org admins create
+				// users in their own org via POST /users/:userId/organizations
+				// against an already-existing user, or through a future
+				// invite-by-email flow. Permitting any org admin to mint
+				// active, org-less user accounts (M11) is abusable for
+				// email/DoS primitives and has no legitimate caller today.
 				users.POST("",
-					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionCreate),
+					authzMiddleware.RequireSuperAdmin(),
 					userHandler.Create)
 				users.PUT("/:userId",
 					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionUpdate),
@@ -167,8 +173,13 @@ func Setup(r *gin.Engine, d Deps) {
 				users.GET("/:userId/memberships",
 					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionRead),
 					userHandler.GetMemberships)
+				// Password reset requires its own permission (users:reset_password)
+				// AND a step-up check of the actor's current password inside
+				// the handler — see M1. ActionUpdate alone must not grant
+				// password-reset, so that editing a user's name and rotating
+				// their password are not the same capability.
 				users.PUT("/:userId/password",
-					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionUpdate),
+					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionResetPassword),
 					userHandler.ResetPassword)
 				users.PUT("/:userId/superadmin",
 					authzMiddleware.RequireSuperAdmin(),

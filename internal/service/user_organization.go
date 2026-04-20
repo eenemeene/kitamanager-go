@@ -127,21 +127,34 @@ func (s *UserOrganizationService) RemoveUserFromOrganization(ctx context.Context
 	})
 }
 
-// GetUserMemberships returns all organization memberships for a user
-func (s *UserOrganizationService) GetUserMemberships(ctx context.Context, userID uint) (*models.UserMembershipsResponse, error) {
-	// Verify user exists
-	_, err := s.userStore.FindByID(ctx, userID)
-	if err != nil {
+// GetUserMemberships returns the organization memberships for a user, scoped
+// to what the requester is allowed to see:
+//   - Superadmin: every membership.
+//   - Self (requesterID == targetUserID): every membership.
+//   - Anyone else: only memberships in organizations that the requester is
+//     also a member of. If there is no overlap, returns NotFound to avoid
+//     leaking the target's existence.
+//
+// Without this scoping any user with global users:read (e.g. a member in any
+// org) could enumerate another user's complete org graph — including orgs
+// they should not even know about. See H10.
+func (s *UserOrganizationService) GetUserMemberships(ctx context.Context, targetUserID, requesterID uint) (*models.UserMembershipsResponse, error) {
+	if _, err := s.userStore.FindByID(ctx, targetUserID); err != nil {
 		return nil, classifyStoreError(err, "user")
 	}
 
-	memberships, err := s.userOrgStore.FindByUser(ctx, userID)
+	memberships, err := s.userOrgStore.FindByUser(ctx, targetUserID)
 	if err != nil {
 		return nil, apperror.InternalWrap(err, "failed to fetch memberships")
 	}
 
-	result := make([]models.UserMembership, 0, len(memberships))
-	for _, m := range memberships {
+	filtered, err := s.filterMembershipsForRequester(ctx, memberships, targetUserID, requesterID)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]models.UserMembership, 0, len(filtered))
+	for _, m := range filtered {
 		result = append(result, models.UserMembership{
 			UserID:         m.UserID,
 			OrganizationID: m.OrganizationID,
@@ -151,6 +164,55 @@ func (s *UserOrganizationService) GetUserMemberships(ctx context.Context, userID
 	}
 
 	return &models.UserMembershipsResponse{Memberships: result}, nil
+}
+
+// filterMembershipsForRequester applies the visibility rules described on
+// GetUserMemberships. It returns NotFound when the requester has no
+// authorization to see any of the target's memberships.
+func (s *UserOrganizationService) filterMembershipsForRequester(ctx context.Context, memberships []models.UserOrganization, targetUserID, requesterID uint) ([]models.UserOrganization, error) {
+	if requesterID == targetUserID {
+		return memberships, nil
+	}
+
+	isSuperAdmin, err := s.userOrgStore.IsSuperAdmin(ctx, requesterID)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "failed to check superadmin status")
+	}
+	if isSuperAdmin {
+		return memberships, nil
+	}
+
+	requesterOrgIDs, err := s.requesterOrgSet(ctx, requesterID)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]models.UserOrganization, 0, len(memberships))
+	for _, m := range memberships {
+		if requesterOrgIDs[m.OrganizationID] {
+			filtered = append(filtered, m)
+		}
+	}
+	if len(filtered) == 0 {
+		// NotFound rather than Forbidden to avoid confirming the target
+		// user's existence to callers outside their trust scope.
+		return nil, apperror.NotFound("user")
+	}
+	return filtered, nil
+}
+
+// requesterOrgSet returns the set of organization IDs the requester belongs
+// to. Used to scope visibility of other users' memberships.
+func (s *UserOrganizationService) requesterOrgSet(ctx context.Context, requesterID uint) (map[uint]bool, error) {
+	own, err := s.userOrgStore.FindByUser(ctx, requesterID)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "failed to fetch requester memberships")
+	}
+	out := make(map[uint]bool, len(own))
+	for _, m := range own {
+		out[m.OrganizationID] = true
+	}
+	return out, nil
 }
 
 // SetSuperAdmin sets or unsets superadmin status for a user.

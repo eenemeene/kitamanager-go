@@ -10,7 +10,9 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
+	"github.com/eenemeene/kitamanager-go/internal/middleware"
 	"github.com/eenemeene/kitamanager-go/internal/models"
+	"github.com/eenemeene/kitamanager-go/internal/store"
 )
 
 // createTestUserWithHashedPassword creates a user with a bcrypt-hashed password
@@ -148,7 +150,7 @@ func TestAuthService_Refresh_Success(t *testing.T) {
 		t.Fatalf("login failed: %v", err)
 	}
 
-	refreshResult, err := svc.Refresh(ctx, loginResult.RefreshToken)
+	refreshResult, err := svc.Refresh(ctx, loginResult.RefreshToken, loginResult.AccessToken)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -177,13 +179,13 @@ func TestAuthService_Refresh_ReplayDetection(t *testing.T) {
 	}
 
 	// First refresh should succeed (and revoke the old token)
-	_, err = svc.Refresh(ctx, loginResult.RefreshToken)
+	_, err = svc.Refresh(ctx, loginResult.RefreshToken, loginResult.AccessToken)
 	if err != nil {
 		t.Fatalf("first refresh failed: %v", err)
 	}
 
 	// Second refresh with the same token should fail (replay detection)
-	_, err = svc.Refresh(ctx, loginResult.RefreshToken)
+	_, err = svc.Refresh(ctx, loginResult.RefreshToken, loginResult.AccessToken)
 	if err == nil {
 		t.Fatal("expected error on token replay, got nil")
 	}
@@ -207,7 +209,7 @@ func TestAuthService_Refresh_InactiveUser(t *testing.T) {
 	// Deactivate the user after login
 	db.Model(user).Update("active", false)
 
-	_, err = svc.Refresh(ctx, loginResult.RefreshToken)
+	_, err = svc.Refresh(ctx, loginResult.RefreshToken, loginResult.AccessToken)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -221,12 +223,62 @@ func TestAuthService_Refresh_InvalidToken(t *testing.T) {
 	svc := createAuthService(db)
 	ctx := context.Background()
 
-	_, err := svc.Refresh(ctx, "not-a-valid-jwt")
+	_, err := svc.Refresh(ctx, "not-a-valid-jwt", "")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
 	if !errors.Is(err, apperror.ErrUnauthorized) {
 		t.Errorf("expected ErrUnauthorized, got %v", err)
+	}
+}
+
+// M7 — on refresh, the OLD access token must also be revoked. Without this,
+// a stolen access token remains valid for up to AccessTokenExpiry after the
+// legitimate user has already rotated their session via refresh.
+func TestAuthService_Refresh_RevokesOldAccessToken(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	tokenStore := store.NewTokenStore(db)
+	ctx := context.Background()
+
+	createTestUserWithHashedPassword(t, db, "Test User", "test@example.com", "password123")
+
+	loginResult, err := svc.Login(ctx, "test@example.com", "password123", "127.0.0.1", "test-agent")
+	if err != nil {
+		t.Fatalf("login: %v", err)
+	}
+
+	// Refresh — this must revoke the old access token too.
+	if _, err := svc.Refresh(ctx, loginResult.RefreshToken, loginResult.AccessToken); err != nil {
+		t.Fatalf("refresh: %v", err)
+	}
+
+	revoked, err := tokenStore.IsRevoked(ctx, middleware.HashToken(loginResult.AccessToken))
+	if err != nil {
+		t.Fatalf("IsRevoked: %v", err)
+	}
+	if !revoked {
+		t.Error("old access token must be revoked after refresh")
+	}
+}
+
+// A client that sends an empty old access token (e.g. because the browser
+// dropped the cookie) must still refresh successfully; the revocation step
+// is best-effort.
+func TestAuthService_Refresh_EmptyOldAccessTokenIsAccepted(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	ctx := context.Background()
+
+	createTestUserWithHashedPassword(t, db, "Test User", "test@example.com", "password123")
+
+	loginResult, err := svc.Login(ctx, "test@example.com", "password123", "127.0.0.1", "test-agent")
+	if err != nil {
+		t.Fatalf("login: %v", err)
+	}
+
+	if _, err := svc.Refresh(ctx, loginResult.RefreshToken, ""); err != nil {
+		t.Fatalf("refresh with empty old access token: %v", err)
 	}
 }
 
@@ -246,7 +298,7 @@ func TestAuthService_Logout(t *testing.T) {
 	svc.Logout(ctx, loginResult.AccessToken, loginResult.RefreshToken)
 
 	// Refresh with the revoked token should fail
-	_, err = svc.Refresh(ctx, loginResult.RefreshToken)
+	_, err = svc.Refresh(ctx, loginResult.RefreshToken, loginResult.AccessToken)
 	if err == nil {
 		t.Fatal("expected error after logout, got nil")
 	}
@@ -293,6 +345,129 @@ func TestAuthService_ChangePassword_WrongCurrentPassword(t *testing.T) {
 	}
 	if !errors.Is(err, apperror.ErrUnauthorized) {
 		t.Errorf("expected ErrUnauthorized, got %v", err)
+	}
+}
+
+// H8 — /me/password must audit every failure and lock the user out after
+// `passwordChangeLockoutThreshold` failures within the lockout window. This
+// prevents an attacker with a stolen access token from brute-forcing the
+// current password at full mutation-rate-limit speed.
+
+func TestAuthService_ChangePassword_FailureIsAuditLogged(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	ctx := context.Background()
+
+	user := createTestUserWithHashedPassword(t, db, "Test User", "test@example.com", "password123")
+
+	_, err := svc.ChangePassword(ctx, user.ID, "wrongpassword", "newpassword456", "127.0.0.1")
+	if err == nil {
+		t.Fatal("expected error for wrong current password")
+	}
+
+	// The audit log is written async. Drain it.
+	svc.auditService.Shutdown()
+
+	var rows []models.AuditLog
+	if err := db.Where("action = ? AND user_id = ?",
+		models.AuditActionPasswordChangeFailed, user.ID).Find(&rows).Error; err != nil {
+		t.Fatalf("query audit logs: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 password_change_failed audit row, got %d", len(rows))
+	}
+	if rows[0].Success {
+		t.Error("audit row must be marked unsuccessful")
+	}
+	if rows[0].IPAddress != "127.0.0.1" {
+		t.Errorf("IP address = %q, want 127.0.0.1", rows[0].IPAddress)
+	}
+}
+
+func TestAuthService_ChangePassword_LocksOutAfterThreshold(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	ctx := context.Background()
+
+	user := createTestUserWithHashedPassword(t, db, "Test User", "test@example.com", "password123")
+
+	// Seed the lockout counter directly to avoid the async audit channel
+	// race — the store query is what ChangePassword actually reads.
+	for range passwordChangeLockoutThreshold {
+		if err := db.Create(&models.AuditLog{
+			UserID:    &user.ID,
+			UserEmail: user.Email,
+			Action:    models.AuditActionPasswordChangeFailed,
+			IPAddress: "127.0.0.1",
+			Success:   false,
+			Timestamp: time.Now(),
+		}).Error; err != nil {
+			t.Fatalf("seed audit row: %v", err)
+		}
+	}
+
+	// Even the CORRECT current password must be refused once locked out.
+	_, err := svc.ChangePassword(ctx, user.ID, "password123", "newpassword456", "127.0.0.1")
+	if err == nil {
+		t.Fatal("expected 429, got nil — lockout failed to fire with correct password")
+	}
+	if !errors.Is(err, apperror.ErrTooManyRequests) {
+		t.Errorf("expected ErrTooManyRequests, got %v", err)
+	}
+}
+
+func TestAuthService_ChangePassword_LockoutExpiresAfterWindow(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	ctx := context.Background()
+
+	user := createTestUserWithHashedPassword(t, db, "Test User", "test@example.com", "password123")
+
+	// Seed failed attempts from BEFORE the lockout window — they must not
+	// count against the current window.
+	oldEnough := time.Now().Add(-2 * passwordChangeLockoutWindow)
+	for range passwordChangeLockoutThreshold {
+		if err := db.Create(&models.AuditLog{
+			UserID:    &user.ID,
+			UserEmail: user.Email,
+			Action:    models.AuditActionPasswordChangeFailed,
+			Success:   false,
+			Timestamp: oldEnough,
+		}).Error; err != nil {
+			t.Fatalf("seed audit row: %v", err)
+		}
+	}
+
+	_, err := svc.ChangePassword(ctx, user.ID, "password123", "newpassword456", "127.0.0.1")
+	if err != nil {
+		t.Fatalf("expected success — stale failures must not lock out, got %v", err)
+	}
+}
+
+func TestAuthService_ChangePassword_SuccessIsAuditLogged(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	ctx := context.Background()
+
+	user := createTestUserWithHashedPassword(t, db, "Test User", "test@example.com", "password123")
+
+	_, err := svc.ChangePassword(ctx, user.ID, "password123", "newpassword456", "127.0.0.1")
+	if err != nil {
+		t.Fatalf("change password: %v", err)
+	}
+
+	svc.auditService.Shutdown()
+
+	var rows []models.AuditLog
+	if err := db.Where("action = ? AND user_id = ?",
+		models.AuditActionPasswordChange, user.ID).Find(&rows).Error; err != nil {
+		t.Fatalf("query audit logs: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 password_change audit row, got %d", len(rows))
+	}
+	if !rows[0].Success {
+		t.Error("success row must be marked Success=true")
 	}
 }
 
@@ -370,7 +545,7 @@ func TestAuthService_Refresh_WithAccessTokenInsteadOfRefresh(t *testing.T) {
 	}
 
 	// Attempt to refresh using the access token instead of the refresh token
-	_, err = svc.Refresh(ctx, loginResult.AccessToken)
+	_, err = svc.Refresh(ctx, loginResult.AccessToken, "")
 	if err == nil {
 		t.Fatal("expected error when using access token for refresh, got nil")
 	}
@@ -399,7 +574,7 @@ func TestAuthService_ChangePassword_TokensRevokedAfterChange(t *testing.T) {
 	}
 
 	// Attempt to refresh with the OLD refresh token should fail
-	_, err = svc.Refresh(ctx, loginResult.RefreshToken)
+	_, err = svc.Refresh(ctx, loginResult.RefreshToken, loginResult.AccessToken)
 	if err == nil {
 		t.Fatal("expected error when refreshing with old token after password change, got nil")
 	}

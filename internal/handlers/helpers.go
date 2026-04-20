@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"mime/multipart"
+	"net/http"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -272,14 +273,23 @@ func auditDelete(c *gin.Context, svc *service.AuditService, resourceType string,
 	svc.LogResourceDelete(getUserID(c), resourceType, id, name, c.ClientIP())
 }
 
-// allowedUploadContentTypes is the set of MIME types accepted for file uploads.
-var allowedUploadContentTypes = map[string]bool{
-	"application/x-yaml":       true,
-	"text/yaml":                true,
-	"text/x-yaml":              true,
-	"text/plain":               true, // YAML files are often detected as text/plain
-	"application/octet-stream": true, // fallback for unrecognized types
-	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true, // .xlsx
+// allowedSniffedContentTypes is the set of BASE MIME types accepted after
+// sniffing the actual upload bytes with `http.DetectContentType`. We do not
+// trust the client-supplied `Content-Type` header in the multipart part
+// because that header is attacker-controlled and would make the gate
+// cosmetic.
+//
+// The two allowed values cover every upload type the app currently handles:
+//
+//	text/plain        — YAML government-funding imports.
+//	application/zip   — the leading magic bytes of an XLSX workbook.
+//
+// Downstream parsers (excelize.OpenReader, yaml.Unmarshal) provide the final
+// structural validation; this check rejects arbitrary binaries before any
+// parser runs.
+var allowedSniffedContentTypes = map[string]bool{
+	"text/plain":      true,
+	"application/zip": true,
 }
 
 // readUploadFile reads the "file" form field with size and content type validation.
@@ -289,7 +299,9 @@ func readUploadFile(c *gin.Context) ([]byte, bool) {
 	return data, ok
 }
 
-// readUploadFileWithHeader reads the "file" form field with size and content type validation and returns the file header.
+// readUploadFileWithHeader reads the "file" form field with size and content-type
+// validation and returns the file header. The Content-Type is sniffed from the
+// actual file bytes, not from the client-supplied multipart header.
 // Returns (fileBytes, fileHeader, ok). If ok is false, an error response has been sent.
 func readUploadFileWithHeader(c *gin.Context) ([]byte, *multipart.FileHeader, bool) {
 	fileHeader, err := c.FormFile("file")
@@ -300,14 +312,6 @@ func readUploadFileWithHeader(c *gin.Context) ([]byte, *multipart.FileHeader, bo
 
 	if fileHeader.Size > MaxUploadSize {
 		respondError(c, apperror.BadRequest(fmt.Sprintf("file size exceeds maximum of %d MB", MaxUploadSize>>20)))
-		return nil, nil, false
-	}
-
-	// Validate content type before reading file body.
-	// Reject missing/empty content type — clients must declare the MIME type.
-	contentType := fileHeader.Header.Get("Content-Type")
-	if !allowedUploadContentTypes[contentType] {
-		respondError(c, apperror.BadRequest("unsupported file type"))
 		return nil, nil, false
 	}
 
@@ -329,7 +333,26 @@ func readUploadFileWithHeader(c *gin.Context) ([]byte, *multipart.FileHeader, bo
 		return nil, nil, false
 	}
 
+	if !isAllowedSniffedContentType(fileBytes) {
+		respondError(c, apperror.BadRequest("unsupported file type"))
+		return nil, nil, false
+	}
+
 	return fileBytes, fileHeader, true
+}
+
+// isAllowedSniffedContentType runs http.DetectContentType against the first
+// up-to-512 bytes of the upload and checks the base type (before any
+// "; charset=...") against the allowlist.
+func isAllowedSniffedContentType(data []byte) bool {
+	head := data
+	if len(head) > 512 {
+		head = head[:512]
+	}
+	detected := http.DetectContentType(head)
+	base, _, _ := strings.Cut(detected, ";")
+	base = strings.ToLower(strings.TrimSpace(base))
+	return allowedSniffedContentTypes[base]
 }
 
 // parseOptionalDatePair parses optional "from" and "to" query parameters and validates the range.

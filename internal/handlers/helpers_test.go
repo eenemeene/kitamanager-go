@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	"bytes"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/textproto"
 	"strings"
 	"testing"
 	"time"
@@ -401,5 +404,86 @@ func TestSanitizeFilename_NeverContainsPathSeparator(t *testing.T) {
 		if strings.ContainsAny(result, `/\`) {
 			t.Errorf("sanitizeFilename(%q) = %q, should not contain path separators", input, result)
 		}
+	}
+}
+
+// M12 — upload Content-Type must be derived from the actual bytes, not the
+// client-supplied multipart header (which would let the attacker control the
+// gate).
+
+func TestIsAllowedSniffedContentType_AcceptsYAML(t *testing.T) {
+	yaml := []byte("---\nname: Berlin\nstate: berlin\nperiods:\n  - from: 2024-01-01\n")
+	if !isAllowedSniffedContentType(yaml) {
+		t.Error("plain-text YAML must be accepted (detected as text/plain)")
+	}
+}
+
+func TestIsAllowedSniffedContentType_AcceptsXLSX(t *testing.T) {
+	// PK\x03\x04 is the zip magic http.DetectContentType uses to return
+	// application/zip, which is how XLSX is detected.
+	xlsxHead := []byte{0x50, 0x4b, 0x03, 0x04, 0x14, 0x00, 0x00, 0x00}
+	if !isAllowedSniffedContentType(xlsxHead) {
+		t.Error("zip signature (xlsx) must be accepted")
+	}
+}
+
+func TestIsAllowedSniffedContentType_RejectsExecutables(t *testing.T) {
+	// ELF magic.
+	elf := []byte{0x7f, 0x45, 0x4c, 0x46, 0x02, 0x01, 0x01, 0x00}
+	if isAllowedSniffedContentType(elf) {
+		t.Error("ELF binary must not be accepted as an upload")
+	}
+	// Windows PE magic ("MZ...").
+	pe := []byte{0x4d, 0x5a, 0x90, 0x00, 0x03, 0x00, 0x00, 0x00}
+	if isAllowedSniffedContentType(pe) {
+		t.Error("PE binary must not be accepted as an upload")
+	}
+}
+
+func TestIsAllowedSniffedContentType_RejectsHTML(t *testing.T) {
+	html := []byte("<!DOCTYPE html>\n<html><body>hello</body></html>")
+	if isAllowedSniffedContentType(html) {
+		t.Error("HTML must not be accepted — DetectContentType returns text/html")
+	}
+}
+
+func TestIsAllowedSniffedContentType_RejectsPDF(t *testing.T) {
+	pdf := []byte("%PDF-1.4\n%\xe2\xe3\n1 0 obj")
+	if isAllowedSniffedContentType(pdf) {
+		t.Error("PDF must not be accepted")
+	}
+}
+
+// Full-path integration: a client that lies about Content-Type in the
+// multipart part must still be rejected when the actual bytes are HTML.
+func TestReadUploadFile_SniffOverridesClientHeader(t *testing.T) {
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreatePart(textproto.MIMEHeader{
+		"Content-Disposition": []string{`form-data; name="file"; filename="trick.yaml"`},
+		"Content-Type":        []string{"text/yaml"}, // attacker's declared value
+	})
+	if err != nil {
+		t.Fatalf("create part: %v", err)
+	}
+	_, _ = part.Write([]byte("<!DOCTYPE html><script>alert(1)</script>"))
+	writer.Close()
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.POST("/upload", func(c *gin.Context) {
+		_, ok := readUploadFile(c)
+		if ok {
+			c.String(http.StatusOK, "accepted")
+		}
+	})
+
+	req, _ := http.NewRequest("POST", "/upload", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code == http.StatusOK {
+		t.Error("server must reject HTML bytes even when the client declares text/yaml")
 	}
 }

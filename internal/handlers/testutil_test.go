@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
 	"github.com/eenemeene/kitamanager-go/internal/ctxkeys"
@@ -18,6 +19,20 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/store"
 	"github.com/eenemeene/kitamanager-go/internal/testutil"
 )
+
+// hashedAdminPw sets `plaintext` as the bcrypt-hashed password for the given
+// user. Used by tests that exercise code paths which verify a stored password
+// hash — e.g. the step-up check on admin-initiated password reset (M1).
+func hashedAdminPw(t *testing.T, db *gorm.DB, userID uint, plaintext string) {
+	t.Helper()
+	hash, err := bcrypt.GenerateFromPassword([]byte(plaintext), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
+	}
+	if err := db.Model(&models.User{}).Where("id = ?", userID).Update("password", string(hash)).Error; err != nil {
+		t.Fatalf("update password: %v", err)
+	}
+}
 
 func init() {
 	gin.SetMode(gin.TestMode)

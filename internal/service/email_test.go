@@ -66,7 +66,10 @@ func TestSendEmail_EnabledWithInvalidHost(t *testing.T) {
 }
 
 func TestBuildMIMEMessage(t *testing.T) {
-	msg := buildMIMEMessage("from@example.com", "to@example.com", "Test Subject", "<p>Hello</p>")
+	msg, err := buildMIMEMessage("from@example.com", "to@example.com", "Test Subject", "<p>Hello</p>")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	checks := []string{
 		"From: from@example.com\r\n",
@@ -80,6 +83,42 @@ func TestBuildMIMEMessage(t *testing.T) {
 		if !contains(msg, want) {
 			t.Errorf("buildMIMEMessage() missing %q", want)
 		}
+	}
+}
+
+// M8 — every header field must reject CR and LF. Without this, a caller that
+// ever lets attacker-controlled text flow into From/To/Subject enables the
+// classic SMTP header-injection primitive (extra Bcc, a second message, etc.).
+func TestBuildMIMEMessage_RejectsCRLFInjection(t *testing.T) {
+	tests := []struct {
+		name string
+		from string
+		to   string
+		sub  string
+	}{
+		{"crlf in to", "from@example.com", "victim@x.com\r\nBcc: attacker@x.com", "subject"},
+		{"lf in to", "from@example.com", "victim@x.com\nBcc: attacker@x.com", "subject"},
+		{"crlf in subject", "from@example.com", "to@example.com", "Hi\r\nContent-Type: x/y"},
+		{"lf in subject", "from@example.com", "to@example.com", "Hi\nBcc: leak@x.com"},
+		{"crlf in from", "from@example.com\r\nEvil: yes", "to@example.com", "Hi"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := buildMIMEMessage(tc.from, tc.to, tc.sub, "body")
+			if err == nil {
+				t.Error("expected rejection")
+			}
+		})
+	}
+}
+
+func TestSendEmail_RejectsCRLFInjection_EvenInDisabledMode(t *testing.T) {
+	cfg := &config.Config{SMTPHost: "", SMTPPort: 587}
+	svc := NewEmailService(cfg)
+
+	err := svc.SendEmail(context.Background(), "victim@x.com\r\nBcc: attacker@x.com", "sub", "body")
+	if err == nil {
+		t.Error("disabled-mode SendEmail must still reject header injection")
 	}
 }
 

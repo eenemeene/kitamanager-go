@@ -45,7 +45,10 @@ func (m *AuthorizationMiddleware) RequirePermission(resource, action string) gin
 			return
 		}
 
-		// First check if user is superadmin (can access everything)
+		// First check if user is superadmin (can access everything). The
+		// resolved flag is stashed in the context so downstream handlers
+		// (e.g. audit-log IP redaction) do not need to repeat the DB
+		// lookup — see M2.
 		isSuperAdmin, err := m.permissionService.IsSuperAdmin(c.Request.Context(), userIDUint)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, models.ErrorResponse{
@@ -54,6 +57,7 @@ func (m *AuthorizationMiddleware) RequirePermission(resource, action string) gin
 			})
 			return
 		}
+		c.Set(ctxkeys.IsSuperAdmin, isSuperAdmin)
 		if isSuperAdmin {
 			c.Next()
 			return
@@ -133,6 +137,7 @@ func (m *AuthorizationMiddleware) RequireSuperAdmin() gin.HandlerFunc {
 			})
 			return
 		}
+		c.Set(ctxkeys.IsSuperAdmin, isSuperAdmin)
 
 		if !isSuperAdmin {
 			c.AbortWithStatusJSON(http.StatusForbidden, models.ErrorResponse{
@@ -168,6 +173,18 @@ func (m *AuthorizationMiddleware) RequireGlobalPermission(resource, action strin
 			})
 			return
 		}
+
+		// Resolve superadmin up-front so downstream handlers can read the
+		// ctx key without repeating the lookup (M2).
+		isSuperAdmin, err := m.permissionService.IsSuperAdmin(c.Request.Context(), userIDUint)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, models.ErrorResponse{
+				Code:    apperror.CodeInternal,
+				Message: "authorization check failed",
+			})
+			return
+		}
+		c.Set(ctxkeys.IsSuperAdmin, isSuperAdmin)
 
 		allowed, err := m.permissionService.HasPermissionInAnyOrg(c.Request.Context(), userIDUint, resource, action)
 		if err != nil {

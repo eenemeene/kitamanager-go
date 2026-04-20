@@ -983,7 +983,8 @@ func TestUserHandler_GetMemberships(t *testing.T) {
 	createTestUserOrganization(t, db, user.ID, org1.ID, models.RoleAdmin)
 	createTestUserOrganization(t, db, user.ID, org2.ID, models.RoleMember)
 
-	r := setupTestRouter()
+	// Self-view returns every membership.
+	r := setupTestRouterWithUser(user.ID)
 	r.GET("/users/:userId/memberships", handler.GetMemberships)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/users/%d/memberships", user.ID), nil)
@@ -1014,7 +1015,7 @@ func TestUserHandler_GetMemberships_RolesCorrect(t *testing.T) {
 	createTestUserOrganization(t, db, user.ID, org1.ID, models.RoleAdmin)
 	createTestUserOrganization(t, db, user.ID, org2.ID, models.RoleMember)
 
-	r := setupTestRouter()
+	r := setupTestRouterWithUser(user.ID)
 	r.GET("/users/:userId/memberships", handler.GetMemberships)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/users/%d/memberships", user.ID), nil)
@@ -1064,7 +1065,8 @@ func TestUserHandler_GetMemberships_Empty(t *testing.T) {
 
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
 
-	r := setupTestRouter()
+	// Self-view returns empty list (not NotFound).
+	r := setupTestRouterWithUser(user.ID)
 	r.GET("/users/:userId/memberships", handler.GetMemberships)
 
 	w := performRequest(r, "GET", fmt.Sprintf("/users/%d/memberships", user.ID), nil)
@@ -1094,6 +1096,101 @@ func TestUserHandler_GetMemberships_InvalidUserID(t *testing.T) {
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+// Scoping tests — H10. Without scoping, any user with users:read in any org
+// could enumerate every other user's full organization graph.
+
+func TestUserHandler_GetMemberships_CrossTenantRequesterGetsNotFound(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userOrgService := createUserOrganizationService(db)
+	handler := NewUserHandler(userService, userOrgService, nil, nil)
+
+	orgA := createTestOrganization(t, db, "Org A")
+	orgB := createTestOrganization(t, db, "Org B")
+	requester := createTestUser(t, db, "Requester", "requester@example.com", "password")
+	target := createTestUser(t, db, "Target", "target@example.com", "password")
+
+	// Requester is only in Org A. Target is only in Org B. Zero overlap.
+	createTestUserOrganization(t, db, requester.ID, orgA.ID, models.RoleAdmin)
+	createTestUserOrganization(t, db, target.ID, orgB.ID, models.RoleAdmin)
+
+	r := setupTestRouterWithUser(requester.ID)
+	r.GET("/users/:userId/memberships", handler.GetMemberships)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/users/%d/memberships", target.ID), nil)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected %d (no overlap must not leak target's existence), got %d: %s",
+			http.StatusNotFound, w.Code, w.Body.String())
+	}
+}
+
+func TestUserHandler_GetMemberships_PartialOverlapReturnsOnlySharedOrgs(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userOrgService := createUserOrganizationService(db)
+	handler := NewUserHandler(userService, userOrgService, nil, nil)
+
+	orgShared := createTestOrganization(t, db, "Shared Org")
+	orgPrivate := createTestOrganization(t, db, "Target's Private Org")
+	requester := createTestUser(t, db, "Requester", "requester@example.com", "password")
+	target := createTestUser(t, db, "Target", "target@example.com", "password")
+
+	// Requester and target both in orgShared. Target additionally in orgPrivate.
+	createTestUserOrganization(t, db, requester.ID, orgShared.ID, models.RoleMember)
+	createTestUserOrganization(t, db, target.ID, orgShared.ID, models.RoleManager)
+	createTestUserOrganization(t, db, target.ID, orgPrivate.ID, models.RoleAdmin)
+
+	r := setupTestRouterWithUser(requester.ID)
+	r.GET("/users/:userId/memberships", handler.GetMemberships)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/users/%d/memberships", target.ID), nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var result models.UserMembershipsResponse
+	parseResponse(t, w, &result)
+	if len(result.Memberships) != 1 {
+		t.Fatalf("expected exactly 1 membership (the shared org), got %d", len(result.Memberships))
+	}
+	if result.Memberships[0].OrganizationID != orgShared.ID {
+		t.Errorf("expected shared org %d, got %d", orgShared.ID, result.Memberships[0].OrganizationID)
+	}
+	if result.Memberships[0].Role != models.RoleManager {
+		t.Errorf("expected manager role, got %v", result.Memberships[0].Role)
+	}
+}
+
+func TestUserHandler_GetMemberships_SuperAdminSeesEverything(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userOrgService := createUserOrganizationService(db)
+	handler := NewUserHandler(userService, userOrgService, nil, nil)
+
+	superAdmin := createTestSuperAdmin(t, db)
+	orgA := createTestOrganization(t, db, "Org A")
+	orgB := createTestOrganization(t, db, "Org B")
+	target := createTestUser(t, db, "Target", "target@example.com", "password")
+
+	// Superadmin is in no orgs but must still see target's full graph.
+	createTestUserOrganization(t, db, target.ID, orgA.ID, models.RoleAdmin)
+	createTestUserOrganization(t, db, target.ID, orgB.ID, models.RoleMember)
+
+	r := setupTestRouterWithUser(superAdmin.ID)
+	r.GET("/users/:userId/memberships", handler.GetMemberships)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/users/%d/memberships", target.ID), nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var result models.UserMembershipsResponse
+	parseResponse(t, w, &result)
+	if len(result.Memberships) != 2 {
+		t.Errorf("superadmin must see both memberships, got %d", len(result.Memberships))
 	}
 }
 
@@ -1267,6 +1364,7 @@ func TestUserHandler_List_Search(t *testing.T) {
 func TestUserHandler_ResetPassword_Success(t *testing.T) {
 	db := setupTestDB(t)
 	admin := createTestSuperAdmin(t, db)
+	hashedAdminPw(t, db, admin.ID, "adminpw")
 	targetUser := createTestUser(t, db, "Target User", "target@example.com", "oldpassword")
 
 	userService := createUserService(db)
@@ -1278,7 +1376,8 @@ func TestUserHandler_ResetPassword_Success(t *testing.T) {
 	r.PUT("/users/:userId/password", handler.ResetPassword)
 
 	body := models.UserPasswordResetRequest{
-		NewPassword: "newpassword123",
+		ActorPassword: "adminpw",
+		NewPassword:   "newpassword123",
 	}
 
 	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/password", targetUser.ID), body)
@@ -1291,6 +1390,7 @@ func TestUserHandler_ResetPassword_Success(t *testing.T) {
 func TestUserHandler_ResetPassword_UserNotFound(t *testing.T) {
 	db := setupTestDB(t)
 	admin := createTestSuperAdmin(t, db)
+	hashedAdminPw(t, db, admin.ID, "adminpw")
 
 	userService := createUserService(db)
 	auditService := createAuditService(db)
@@ -1300,7 +1400,8 @@ func TestUserHandler_ResetPassword_UserNotFound(t *testing.T) {
 	r.PUT("/users/:userId/password", handler.ResetPassword)
 
 	body := models.UserPasswordResetRequest{
-		NewPassword: "newpassword123",
+		ActorPassword: "adminpw",
+		NewPassword:   "newpassword123",
 	}
 
 	w := performRequest(r, "PUT", "/users/99999/password", body)
@@ -1333,6 +1434,7 @@ func TestUserHandler_ResetPassword_BadRequest_MissingPassword(t *testing.T) {
 func TestUserHandler_ResetPassword_PasswordTooShort(t *testing.T) {
 	db := setupTestDB(t)
 	admin := createTestSuperAdmin(t, db)
+	hashedAdminPw(t, db, admin.ID, "adminpw")
 	targetUser := createTestUser(t, db, "Target User", "target@example.com", "oldpassword")
 
 	userService := createUserService(db)
@@ -1343,7 +1445,8 @@ func TestUserHandler_ResetPassword_PasswordTooShort(t *testing.T) {
 	r.PUT("/users/:userId/password", handler.ResetPassword)
 
 	body := models.UserPasswordResetRequest{
-		NewPassword: "short",
+		ActorPassword: "adminpw",
+		NewPassword:   "short",
 	}
 
 	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/password", targetUser.ID), body)
@@ -1356,6 +1459,7 @@ func TestUserHandler_ResetPassword_PasswordTooShort(t *testing.T) {
 func TestUserHandler_ResetPassword_InvalidUserID(t *testing.T) {
 	db := setupTestDB(t)
 	admin := createTestSuperAdmin(t, db)
+	hashedAdminPw(t, db, admin.ID, "adminpw")
 
 	userService := createUserService(db)
 	auditService := createAuditService(db)
@@ -1365,7 +1469,8 @@ func TestUserHandler_ResetPassword_InvalidUserID(t *testing.T) {
 	r.PUT("/users/:userId/password", handler.ResetPassword)
 
 	body := models.UserPasswordResetRequest{
-		NewPassword: "newpassword123",
+		ActorPassword: "adminpw",
+		NewPassword:   "newpassword123",
 	}
 
 	w := performRequest(r, "PUT", "/users/abc/password", body)
@@ -1380,6 +1485,7 @@ func TestUserHandler_ResetPassword_NonSuperAdminCannotResetSuperAdmin(t *testing
 
 	org := createTestOrganization(t, db, "Test Org")
 	adminUser := createTestUser(t, db, "Admin User", "admin@example.com", "password")
+	hashedAdminPw(t, db, adminUser.ID, "adminpw")
 	createTestUserOrganization(t, db, adminUser.ID, org.ID, models.RoleAdmin)
 
 	superAdmin := createTestSuperAdmin(t, db)
@@ -1392,7 +1498,8 @@ func TestUserHandler_ResetPassword_NonSuperAdminCannotResetSuperAdmin(t *testing
 	r.PUT("/users/:userId/password", handler.ResetPassword)
 
 	body := models.UserPasswordResetRequest{
-		NewPassword: "hacked12345",
+		ActorPassword: "adminpw",
+		NewPassword:   "hacked12345",
 	}
 
 	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/password", superAdmin.ID), body)
@@ -1402,9 +1509,46 @@ func TestUserHandler_ResetPassword_NonSuperAdminCannotResetSuperAdmin(t *testing
 	}
 }
 
+// M1 — admin-initiated password reset must require the actor's own current
+// password (step-up). Without this, a compromised admin session can silently
+// rotate a peer user's password.
+func TestUserHandler_ResetPassword_RejectsWrongActorPassword(t *testing.T) {
+	db := setupTestDB(t)
+	admin := createTestSuperAdmin(t, db)
+	hashedAdminPw(t, db, admin.ID, "correctpw")
+	targetUser := createTestUser(t, db, "Target", "target@example.com", "oldpassword")
+
+	userService := createUserService(db)
+	auditService := createAuditService(db)
+	handler := NewUserHandler(userService, nil, auditService, nil)
+
+	r := setupTestRouterWithUser(admin.ID)
+	r.PUT("/users/:userId/password", handler.ResetPassword)
+
+	body := models.UserPasswordResetRequest{
+		ActorPassword: "WRONG",
+		NewPassword:   "newpassword123",
+	}
+	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/password", targetUser.ID), body)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected %d with wrong actor password, got %d: %s",
+			http.StatusUnauthorized, w.Code, w.Body.String())
+	}
+
+	// The target user's password MUST NOT have been changed.
+	var after models.User
+	_ = db.First(&after, targetUser.ID).Error
+	if after.Password != "oldpassword" {
+		t.Errorf("target password changed despite wrong actor_password (%q != %q)",
+			after.Password, "oldpassword")
+	}
+}
+
 func TestUserHandler_ResetPassword_TokensRevoked(t *testing.T) {
 	db := setupTestDB(t)
 	admin := createTestSuperAdmin(t, db)
+	hashedAdminPw(t, db, admin.ID, "adminpw")
 
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
 	targetUser := createTestUser(t, db, "Target User", "target@example.com", string(hashedPassword))
@@ -1433,7 +1577,8 @@ func TestUserHandler_ResetPassword_TokensRevoked(t *testing.T) {
 	r.PUT("/users/:userId/password", userHandler.ResetPassword)
 
 	resetBody := models.UserPasswordResetRequest{
-		NewPassword: "newpassword456",
+		ActorPassword: "adminpw",
+		NewPassword:   "newpassword456",
 	}
 	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/password", targetUser.ID), resetBody)
 	if w.Code != http.StatusNoContent {
