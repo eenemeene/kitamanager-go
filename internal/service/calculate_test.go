@@ -947,6 +947,40 @@ func TestCalculateOccupancy_NoPeriods(t *testing.T) {
 	}
 }
 
+// TestCalculateOccupancy_ArrayFormCareType asserts children whose care_type
+// arrived as a single-element array (JSON-round-tripped) are still classified
+// in the age×care matrix — the previous GetScalarProperty call returned "" for
+// array form and silently dropped such children from the matrix while still
+// counting them in Total.
+func TestCalculateOccupancy_ArrayFormCareType(t *testing.T) {
+	children := []models.Child{
+		makeChild(1, date(2022, 1, 1), "male", []models.ChildContract{
+			makeChildContract(date(2024, 1, 1), nil, models.ContractProperties{
+				"care_type": []any{"ganztag"}, // array form
+			}),
+		}),
+	}
+	periods := []models.GovernmentFundingPeriod{
+		makeFundingPeriod(date(2024, 1, 1), nil, 39, []models.GovernmentFundingProperty{
+			makeFundingProp("care_type", "ganztag", "Ganztag", 100000, 0.2, intP(0), intP(6)),
+		}),
+	}
+	result := calculateOccupancy(children, periods, date(2025, 3, 1), date(2025, 3, 1))
+	dp := result.DataPoints[0]
+	if dp.Total != 1 {
+		t.Errorf("expected total 1, got %d", dp.Total)
+	}
+	found := false
+	for _, careMap := range dp.ByAgeAndCareType {
+		if careMap["ganztag"] == 1 {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected child to be counted in age×ganztag grid, got matrix: %+v", dp.ByAgeAndCareType)
+	}
+}
+
 func TestCalculateOccupancy_MultipleMonths(t *testing.T) {
 	children := []models.Child{
 		makeChild(1, date(2022, 1, 1), "male", []models.ChildContract{

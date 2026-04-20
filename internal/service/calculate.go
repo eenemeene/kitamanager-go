@@ -485,13 +485,22 @@ func calculateOccupancy(
 			age := validation.FundingAgeOnDate(child.Birthdate, date)
 			ageLabel := findAgeGroupLabel(age, ageGroups)
 
-			// Count by age group × care type
-			careType := contract.Properties.GetScalarProperty("care_type")
-			if ageLabel != "" && careType != "" {
-				if dp.ByAgeAndCareType[ageLabel] == nil {
-					dp.ByAgeAndCareType[ageLabel] = make(map[string]int)
+			// Count by age group × care type. Use GetAllValues rather than
+			// GetScalarProperty: care_type may be stored as ["ganztag"] (array
+			// form) after a JSON round-trip, in which case the scalar accessor
+			// returns "" and the child is silently dropped from the matrix
+			// while still being counted in dp.Total — totals wouldn't match
+			// the sum of the grid.
+			if ageLabel != "" {
+				for _, careType := range contract.Properties.GetAllValues("care_type") {
+					if careType == "" {
+						continue
+					}
+					if dp.ByAgeAndCareType[ageLabel] == nil {
+						dp.ByAgeAndCareType[ageLabel] = make(map[string]int)
+					}
+					dp.ByAgeAndCareType[ageLabel][careType]++
 				}
-				dp.ByAgeAndCareType[ageLabel][careType]++
 			}
 
 			// Count supplements
