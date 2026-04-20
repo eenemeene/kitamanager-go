@@ -7,7 +7,6 @@ import (
 	"maps"
 	"math"
 	"slices"
-	"sort"
 	"strings"
 	"time"
 
@@ -628,14 +627,14 @@ func calculateContractPropertiesDistribution(
 	for key := range distribution {
 		keys = append(keys, key)
 	}
-	sort.Strings(keys)
+	slices.Sort(keys)
 
 	for _, key := range keys {
 		values := make([]string, 0, len(distribution[key]))
 		for value := range distribution[key] {
 			values = append(values, value)
 		}
-		sort.Strings(values)
+		slices.Sort(values)
 		for _, value := range values {
 			properties = append(properties, models.ContractPropertyCount{
 				Key:   key,

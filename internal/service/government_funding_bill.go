@@ -9,7 +9,6 @@ import (
 	"io"
 	"log/slog"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -1271,17 +1270,17 @@ func buildComparisonProperties(billAmounts, calcAmounts map[string]int, labelMap
 	for k := range allKeys {
 		sortedKeys = append(sortedKeys, k)
 	}
-	sort.Strings(sortedKeys)
+	slices.Sort(sortedKeys)
 
 	// Detect property mismatches between bill and calc
 	mismatchTypes := classifyMismatches(billAmounts, calcAmounts)
 
 	props := make([]models.FundingComparisonAmount, 0, len(sortedKeys))
 	for _, kv := range sortedKeys {
-		parts := splitKeyValue(kv)
+		key, value, _ := strings.Cut(kv, ":")
 		prop := models.FundingComparisonAmount{
-			Key:      parts[0],
-			Value:    parts[1],
+			Key:      key,
+			Value:    value,
 			Label:    labelMap[kv],
 			Mismatch: mismatchTypes[kv],
 		}
@@ -1362,8 +1361,8 @@ func classifyMismatches(billAmounts, calcAmounts map[string]int) map[string]mode
 	// means the funding config drifted away from what ISBJ is paying out.
 	baseKeyValues := make(map[string][]string) // base_key → list of key:value strings
 	for kv := range allPairs {
-		parts := splitKeyValue(kv)
-		if !contractPropertyKeys[parts[0]] {
+		baseKey, _, _ := strings.Cut(kv, ":")
+		if !contractPropertyKeys[baseKey] {
 			p := allPairs[kv]
 			if p.inBill != p.inCalc {
 				side := "calc"
@@ -1375,7 +1374,7 @@ func classifyMismatches(billAmounts, calcAmounts map[string]int) map[string]mode
 			}
 			continue
 		}
-		baseKeyValues[parts[0]] = append(baseKeyValues[parts[0]], kv)
+		baseKeyValues[baseKey] = append(baseKeyValues[baseKey], kv)
 	}
 
 	for _, kvList := range baseKeyValues {
@@ -1448,15 +1447,15 @@ func buildBillOnlyProperties(payments []models.GovernmentFundingBillPayment, lab
 		totals[kv] += p.Amount
 	}
 
-	sort.Strings(order)
+	slices.Sort(order)
 	props := make([]models.FundingComparisonAmount, 0, len(order))
 	for _, kv := range order {
 		amt := totals[kv]
-		parts := splitKeyValue(kv)
+		key, value, _ := strings.Cut(kv, ":")
 		a := amt
 		props = append(props, models.FundingComparisonAmount{
-			Key:        parts[0],
-			Value:      parts[1],
+			Key:        key,
+			Value:      value,
 			Label:      labelMap[kv],
 			BillAmount: &a,
 			Difference: amt,
@@ -1471,32 +1470,22 @@ func buildCalcOnlyProperties(calcAmounts map[string]int, labelMap map[string]str
 	for k := range calcAmounts {
 		sortedKeys = append(sortedKeys, k)
 	}
-	sort.Strings(sortedKeys)
+	slices.Sort(sortedKeys)
 
 	props := make([]models.FundingComparisonAmount, 0, len(calcAmounts))
 	for _, kv := range sortedKeys {
 		amt := calcAmounts[kv]
-		parts := splitKeyValue(kv)
+		key, value, _ := strings.Cut(kv, ":")
 		a := amt
 		props = append(props, models.FundingComparisonAmount{
-			Key:        parts[0],
-			Value:      parts[1],
+			Key:        key,
+			Value:      value,
 			Label:      labelMap[kv],
 			CalcAmount: &a,
 			Difference: -a,
 		})
 	}
 	return props
-}
-
-// splitKeyValue splits a "key:value" string into its parts.
-func splitKeyValue(kv string) [2]string {
-	for i, c := range kv {
-		if c == ':' {
-			return [2]string{kv[:i], kv[i+1:]}
-		}
-	}
-	return [2]string{kv, ""}
 }
 
 func (s *GovernmentFundingBillService) buildResponse(ctx context.Context, orgID, periodID uint, billDate time.Time, converted *isbj.ConvertedSettlement) (*models.GovernmentFundingBillResponse, error) {
