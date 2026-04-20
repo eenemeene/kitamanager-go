@@ -54,6 +54,7 @@ import {
   formatDate,
   formatDateForApi,
   formatCurrency,
+  formatPercentage,
   formatPeriod,
   eurosToCents,
 } from '@/lib/utils/formatting';
@@ -314,7 +315,7 @@ export default function PayPlanDetailPage() {
                       {period.weekly_hours}h / {t('payPlans.weeklyHours')}
                       {' \u2014 '}
                       {t('payPlans.employerContributionRate')}:{' '}
-                      {(period.employer_contribution_rate / 100).toFixed(2)}%
+                      {formatPercentage(period.employer_contribution_rate / 100)}
                     </h3>
                     <PayPlanGrid period={period} />
                   </div>
@@ -333,7 +334,7 @@ export default function PayPlanDetailPage() {
                           {period.weekly_hours}h / {t('payPlans.weeklyHours')}
                           {' \u2014 '}
                           {t('payPlans.employerContributionRate')}:{' '}
-                          {(period.employer_contribution_rate / 100).toFixed(2)}%
+                          {formatPercentage(period.employer_contribution_rate / 100)}
                         </p>
                       </div>
                       <div className="flex gap-2">
