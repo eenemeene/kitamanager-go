@@ -1274,3 +1274,122 @@ func TestIntPtr(t *testing.T) {
 		t.Errorf("expected 42, got %d", *p)
 	}
 }
+
+// ========================================================================
+// pickActiveChildContract / pickActiveEmployeeContract
+// ========================================================================
+
+func TestPickActiveChildContract_NoneActive(t *testing.T) {
+	contracts := []models.ChildContract{
+		{BaseContract: models.BaseContract{Period: models.Period{From: date(2024, 1, 1), To: datePtr(2024, 12, 31)}}},
+	}
+	if got := pickActiveChildContract(contracts, date(2025, 6, 1)); got != nil {
+		t.Errorf("expected nil, got %+v", got)
+	}
+}
+
+func TestPickActiveChildContract_Empty(t *testing.T) {
+	if got := pickActiveChildContract(nil, date(2025, 6, 1)); got != nil {
+		t.Errorf("expected nil, got %+v", got)
+	}
+}
+
+// Overlapping contracts on the same date are a data-integrity violation; this
+// test asserts the helper picks the latest (by From) regardless of input order,
+// so callers get a deterministic result instead of whatever GORM returned first.
+func TestPickActiveChildContract_OverlappingPicksLatest(t *testing.T) {
+	older := date(2024, 1, 1)
+	newer := date(2025, 3, 1)
+	forward := []models.ChildContract{
+		{ID: 1, BaseContract: models.BaseContract{Period: models.Period{From: newer, To: nil}}},
+		{ID: 2, BaseContract: models.BaseContract{Period: models.Period{From: older, To: nil}}},
+	}
+	reversed := []models.ChildContract{forward[1], forward[0]}
+
+	for name, contracts := range map[string][]models.ChildContract{"forward": forward, "reversed": reversed} {
+		got := pickActiveChildContract(contracts, date(2025, 6, 1))
+		if got == nil {
+			t.Fatalf("[%s] expected a match, got nil", name)
+		}
+		if !got.From.Equal(newer) {
+			t.Errorf("[%s] expected contract with From=%s, got From=%s", name, newer, got.From)
+		}
+	}
+}
+
+// Same-From contracts tie-break by highest ID.
+func TestPickActiveChildContract_SameFromTieBreakByID(t *testing.T) {
+	from := date(2025, 1, 1)
+	forward := []models.ChildContract{
+		{ID: 3, BaseContract: models.BaseContract{Period: models.Period{From: from, To: nil}}},
+		{ID: 7, BaseContract: models.BaseContract{Period: models.Period{From: from, To: nil}}},
+	}
+	reversed := []models.ChildContract{forward[1], forward[0]}
+
+	for name, contracts := range map[string][]models.ChildContract{"forward": forward, "reversed": reversed} {
+		got := pickActiveChildContract(contracts, date(2025, 6, 1))
+		if got == nil {
+			t.Fatalf("[%s] expected a match, got nil", name)
+		}
+		if got.ID != 7 {
+			t.Errorf("[%s] expected ID=7 (highest), got ID=%d", name, got.ID)
+		}
+	}
+}
+
+func TestPickActiveEmployeeContract_OverlappingPicksLatest(t *testing.T) {
+	older := date(2024, 1, 1)
+	newer := date(2025, 3, 1)
+	forward := []models.EmployeeContract{
+		{ID: 1, BaseContract: models.BaseContract{Period: models.Period{From: newer, To: nil}}, StaffCategory: "qualified"},
+		{ID: 2, BaseContract: models.BaseContract{Period: models.Period{From: older, To: nil}}, StaffCategory: "supplementary"},
+	}
+	reversed := []models.EmployeeContract{forward[1], forward[0]}
+
+	for name, contracts := range map[string][]models.EmployeeContract{"forward": forward, "reversed": reversed} {
+		got := pickActiveEmployeeContract(contracts, date(2025, 6, 1))
+		if got == nil {
+			t.Fatalf("[%s] expected a match, got nil", name)
+		}
+		if got.StaffCategory != "qualified" {
+			t.Errorf("[%s] expected latest (qualified), got %s", name, got.StaffCategory)
+		}
+	}
+}
+
+// calculateFinancials must produce the same result regardless of contract order
+// in the input slices — this proves the per-date loops now use the
+// deterministic pickActive*Contract helpers instead of relying on slice order.
+func TestCalculateFinancials_DeterministicOnOverlappingContracts(t *testing.T) {
+	ppID := uint(1)
+	payPlans := map[uint]*models.PayPlan{
+		ppID: makePayPlan(ppID, []models.PayPlanPeriod{
+			makePayPlanPeriod(1, date(2024, 1, 1), nil, 39.0, 2200, []models.PayPlanEntry{
+				makePayPlanEntry("S8a", 3, 350000),
+				makePayPlanEntry("S3", 1, 250000),
+			}),
+		}),
+	}
+
+	// Two overlapping employee contracts: older is supplementary 20h, newer is qualified 39h.
+	// The helper must always pick the newer one.
+	older := makeEmployeeContract(1, 1, date(2024, 1, 1), nil, "supplementary", "S3", 1, 20.0, ppID)
+	newer := makeEmployeeContract(2, 1, date(2025, 1, 1), nil, "qualified", "S8a", 3, 39.0, ppID)
+
+	forward := []models.Employee{makeEmployee(1, "A", "B", []models.EmployeeContract{older, newer})}
+	reversed := []models.Employee{makeEmployee(1, "A", "B", []models.EmployeeContract{newer, older})}
+
+	forwardResult := calculateFinancials(nil, forward, payPlans, nil, nil, date(2025, 6, 1), date(2025, 6, 1))
+	reversedResult := calculateFinancials(nil, reversed, payPlans, nil, nil, date(2025, 6, 1), date(2025, 6, 1))
+
+	if forwardResult[0].GrossSalary != reversedResult[0].GrossSalary {
+		t.Errorf("gross salary depends on input order: forward=%d, reversed=%d", forwardResult[0].GrossSalary, reversedResult[0].GrossSalary)
+	}
+	// The newer (qualified, 39h) contract should win: 350000 * 39/39 = 350000.
+	if forwardResult[0].GrossSalary != 350000 {
+		t.Errorf("expected newer contract to win (gross 350000), got %d", forwardResult[0].GrossSalary)
+	}
+	if forwardResult[0].SalaryDetails[0].StaffCategory != "qualified" {
+		t.Errorf("expected 'qualified', got %q", forwardResult[0].SalaryDetails[0].StaffCategory)
+	}
+}
