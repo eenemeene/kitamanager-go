@@ -412,7 +412,7 @@
     "funding": "Finanzierung",
     "fundingTooltip": "Monatlicher staatlicher Förderbetrag berechnet aus den Vertragseigenschaften des Kindes",
     "requirement": "VZÄ",
-    "requirementTooltip": "Vollzeitäquivalent-Personalbedarf für dieses Kind basierend auf Alter und Betreuungsart",
+    "requirementTooltip": "Vollzeitäquivalent-Personalbedarf (VZÄ) für dieses Kind. Summe der je Vertragseigenschaft hinterlegten Bedarfsfaktoren (Alter, Betreuungsumfang, Zuschläge). Die Faktoren stammen aus der gültigen Fördersatz-Periode – einsehbar und änderbar unter „Fördersätze“.",
     "billingDifference": "Abr. Diff.",
     "billingDifferenceTooltip": "Kumulative Differenz zwischen abgerechneter und berechneter Förderung über alle hochgeladenen Abrechnungen",
     "fundingDataUnavailable": "Finanzierungsdaten konnten nicht geladen werden",

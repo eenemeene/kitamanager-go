@@ -412,7 +412,7 @@
     "funding": "Funding",
     "fundingTooltip": "Monthly government funding amount calculated from this child's contract properties",
     "requirement": "FTE",
-    "requirementTooltip": "Full-time equivalent staffing requirement for this child based on age and care type",
+    "requirementTooltip": "Full-time-equivalent (FTE) staffing need for this child. Sum of the requirement factors attached to each matched contract property (age, care hours, supplements). Factors come from the active government funding period — view and edit under \"Funding rates\".",
     "billingDifference": "Bill diff.",
     "billingDifferenceTooltip": "Cumulative difference between billed and calculated funding across all uploaded bills",
     "fundingDataUnavailable": "Funding data could not be loaded",
