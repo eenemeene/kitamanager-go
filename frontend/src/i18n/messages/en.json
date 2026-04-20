@@ -546,7 +546,23 @@
     "language": "Language",
     "theme": "Theme",
     "lightMode": "Light Mode",
-    "darkMode": "Dark Mode"
+    "darkMode": "Dark Mode",
+    "password": {
+      "title": "Change password",
+      "description": "Changing your password revokes all other sessions. You'll stay signed in here.",
+      "currentLabel": "Current password",
+      "newLabel": "New password",
+      "confirmLabel": "Confirm new password",
+      "submit": "Change password",
+      "successToast": "Password changed",
+      "errorGeneric": "Could not change password. Check your current password and try again.",
+      "validation": {
+        "currentRequired": "Current password is required",
+        "tooShort": "Password must be at least 8 characters",
+        "mismatch": "Passwords do not match",
+        "sameAsCurrent": "New password must differ from current password"
+      }
+    }
   },
   "states": {
     "state": "State",

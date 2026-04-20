@@ -546,7 +546,23 @@
     "language": "Sprache",
     "theme": "Design",
     "lightMode": "Heller Modus",
-    "darkMode": "Dunkler Modus"
+    "darkMode": "Dunkler Modus",
+    "password": {
+      "title": "Passwort ändern",
+      "description": "Beim Ändern des Passworts werden alle anderen Sitzungen abgemeldet. Hier bleiben Sie angemeldet.",
+      "currentLabel": "Aktuelles Passwort",
+      "newLabel": "Neues Passwort",
+      "confirmLabel": "Neues Passwort bestätigen",
+      "submit": "Passwort ändern",
+      "successToast": "Passwort geändert",
+      "errorGeneric": "Das Passwort konnte nicht geändert werden. Bitte überprüfen Sie Ihr aktuelles Passwort und versuchen Sie es erneut.",
+      "validation": {
+        "currentRequired": "Aktuelles Passwort ist erforderlich",
+        "tooShort": "Das Passwort muss mindestens 8 Zeichen lang sein",
+        "mismatch": "Die Passwörter stimmen nicht überein",
+        "sameAsCurrent": "Das neue Passwort muss sich vom aktuellen unterscheiden"
+      }
+    }
   },
   "states": {
     "state": "Bundesland",
