@@ -143,10 +143,13 @@ func TestMonthCount(t *testing.T) {
 		expected int
 	}{
 		{"same month", date(2025, 1, 1), date(2025, 1, 1), 1},
+		{"same month, end-of-month day", date(2025, 1, 1), date(2025, 1, 31), 1},
 		{"two months", date(2025, 1, 1), date(2025, 2, 1), 2},
+		{"two months, end-of-month day", date(2025, 1, 1), date(2025, 2, 28), 2},
 		{"full year", date(2025, 1, 1), date(2025, 12, 1), 12},
 		{"cross year", date(2024, 11, 1), date(2025, 2, 1), 4},
 		{"end before start", date(2025, 3, 1), date(2025, 1, 1), 0},
+		{"end before start, cross year", date(2025, 6, 1), date(2024, 1, 1), 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

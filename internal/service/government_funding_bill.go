@@ -1830,7 +1830,7 @@ func (s *GovernmentFundingBillService) ChildrenBillingSummary(ctx context.Contex
 				continue
 			}
 			// Count months: from start month to end month (capped at today) inclusive
-			months += countMonths(c.From, end)
+			months += monthCount(c.From, end)
 		}
 		contractMonthsByChild[childID] = months
 	}
@@ -1888,18 +1888,6 @@ func (s *GovernmentFundingBillService) ChildrenBillingSummary(ctx context.Contex
 	return &models.ChildrenBillingSummaryResponse{
 		Children: children,
 	}, nil
-}
-
-// countMonths returns the number of months between from and to (inclusive of both months).
-func countMonths(from, to time.Time) int {
-	if to.Before(from) {
-		return 0
-	}
-	months := (to.Year()-from.Year())*12 + int(to.Month()) - int(from.Month()) + 1
-	if months < 0 {
-		return 0
-	}
-	return months
 }
 
 func lastDayOfMonth(t time.Time) time.Time {
