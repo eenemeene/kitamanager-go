@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"testing"
 	"time"
@@ -6103,6 +6104,43 @@ func TestClassifyMismatches_SurchargesExcluded(t *testing.T) {
 	// care_type should also be none since both sides agree
 	if result["care_type:ganztag"] != models.MismatchNone {
 		t.Errorf("care_type:ganztag = %q, want none", result["care_type:ganztag"])
+	}
+}
+
+// TestClassifyMismatches_SurchargeOnlyOneSideLogs asserts that bill-vs-calc
+// surcharge drift (a key appearing only on one side) emits a warn log. The
+// UI still does not flag these in the comparison matrix — by design — but
+// operators need some signal when their funding config has drifted.
+func TestClassifyMismatches_SurchargeOnlyOneSideLogs(t *testing.T) {
+	var buf bytes.Buffer
+	oldLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn})))
+	defer slog.SetDefault(oldLogger)
+
+	bill := map[string]int{"ndh:ndh": 5000}
+	calc := map[string]int{}
+	classifyMismatches(bill, calc)
+	if !bytes.Contains(buf.Bytes(), []byte("surcharge key appears only on one side")) {
+		t.Errorf("expected surcharge-drift warning, got: %s", buf.String())
+	}
+	if !bytes.Contains(buf.Bytes(), []byte("bill")) {
+		t.Errorf("expected log to report side=bill, got: %s", buf.String())
+	}
+}
+
+// TestClassifyMismatches_SurchargeOnBothSidesNoLog asserts no warning when
+// a surcharge key is present on both sides (the normal case).
+func TestClassifyMismatches_SurchargeOnBothSidesNoLog(t *testing.T) {
+	var buf bytes.Buffer
+	oldLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn})))
+	defer slog.SetDefault(oldLogger)
+
+	bill := map[string]int{"ndh:ndh": 5000}
+	calc := map[string]int{"ndh:ndh": 5000}
+	classifyMismatches(bill, calc)
+	if bytes.Contains(buf.Bytes(), []byte("surcharge key appears")) {
+		t.Errorf("no warning expected when surcharge is on both sides, got: %s", buf.String())
 	}
 }
 

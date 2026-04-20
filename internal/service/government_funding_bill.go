@@ -1355,11 +1355,24 @@ func classifyMismatches(billAmounts, calcAmounts map[string]int) map[string]mode
 	}
 
 	// Group by base key to detect "different" (same key, different values)
-	// Only consider contract property keys for mismatch detection
+	// Only consider contract property keys for mismatch detection.
+	// Surcharge keys (parent, ndh, qm, etc.) that appear on only one side are
+	// logged: the UI does not flag them, but operators still want a signal
+	// because a surcharge present in the bill but not in the calc usually
+	// means the funding config drifted away from what ISBJ is paying out.
 	baseKeyValues := make(map[string][]string) // base_key → list of key:value strings
 	for kv := range allPairs {
 		parts := splitKeyValue(kv)
 		if !contractPropertyKeys[parts[0]] {
+			p := allPairs[kv]
+			if p.inBill != p.inCalc {
+				side := "calc"
+				if p.inBill {
+					side = "bill"
+				}
+				slog.Warn("surcharge key appears only on one side of bill-vs-calc comparison",
+					"key_value", kv, "only_on", side)
+			}
 			continue
 		}
 		baseKeyValues[parts[0]] = append(baseKeyValues[parts[0]], kv)
