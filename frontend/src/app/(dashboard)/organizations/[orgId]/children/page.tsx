@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useCrudDialogs } from '@/lib/hooks/use-crud-dialogs';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Download, Upload } from 'lucide-react';
 import { MonthStepper } from '@/components/ui/month-stepper';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,13 @@ import {
 } from '@/lib/api/types';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { formatDateForInput, formatDateForApi, toLocalDateString } from '@/lib/utils/formatting';
+import {
+  formatDate,
+  formatDateForInput,
+  formatDateForApi,
+  toLocalDateString,
+} from '@/lib/utils/formatting';
+import { showErrorToast } from '@/lib/utils/show-error-toast';
 import { useContractMutation } from '@/lib/hooks/use-contract-mutation';
 import { useImportMutation } from '@/lib/hooks/use-import-mutation';
 import { useResourceListFilters } from '@/lib/hooks/use-resource-list-filters';
@@ -249,6 +255,42 @@ export default function ChildrenPage() {
     [router, orgId]
   );
 
+  const queryClient = useQueryClient();
+  const adjustContractEndMutation = useMutation({
+    mutationFn: ({
+      childId,
+      contractId,
+      to,
+    }: {
+      childId: number;
+      contractId: number;
+      to: string;
+    }) => apiClient.updateChildContract(orgId, childId, contractId, { to: formatDateForApi(to) }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.children.all(orgId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.children.billingSummary(orgId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.children.contracts(orgId, variables.childId),
+      });
+      toast({
+        title: t('children.contractEndAdjusted', { date: formatDate(variables.to) }),
+      });
+    },
+    onError: (error: unknown) => {
+      showErrorToast(
+        t('common.error'),
+        error,
+        t('common.failedToSave', { resource: t('contracts.title') })
+      );
+    },
+  });
+  const handleAdjustContractEnd = useCallback(
+    (child: Child, contractId: number, to: string) => {
+      adjustContractEndMutation.mutate({ childId: child.id, contractId, to });
+    },
+    [adjustContractEndMutation]
+  );
+
   const onSubmitChild = useCallback(
     (data: ChildFormData) => {
       if (dialogs.editingItem) {
@@ -361,11 +403,14 @@ export default function ChildrenPage() {
               fundingByChildId={fundingByChildId}
               weeklyHoursBasis={fundingData?.weekly_hours_basis}
               billingSummaryByChildId={billingSummaryByChildId}
+              orgState={orgState}
               onViewHistory={handleViewContractHistory}
               onViewBilling={handleViewBillingHistory}
               onAddContract={handleAddContract}
               onEdit={dialogs.handleEdit}
               onDelete={dialogs.handleDelete}
+              onAdjustContractEnd={handleAdjustContractEnd}
+              isAdjustingContractEnd={adjustContractEndMutation.isPending}
             />
           )}
           {paginatedData && (

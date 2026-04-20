@@ -1,4 +1,4 @@
-import { calculateContractEndDate } from '../school-enrollment';
+import { calculateContractEndDate, classifySchoolEnrollment } from '../school-enrollment';
 
 describe('calculateContractEndDate', () => {
   describe('Berlin (Stichtag: September 30)', () => {
@@ -49,6 +49,126 @@ describe('calculateContractEndDate', () => {
     it('uses default Stichtag for unknown state', () => {
       // Default is same as Berlin (Sep 30), so same result
       expect(calculateContractEndDate('2020-01-15', 'unknown-state')).toBe('2026-07-31');
+    });
+  });
+});
+
+describe('classifySchoolEnrollment', () => {
+  describe('Berlin — Muss-only (sixth birthday in Apr–Sep)', () => {
+    // Child born Jun 1, 2020 → turns 6 Jun 1, 2026 (Apr–Sep 2026 → no Kann window match)
+    it('classifies an April–September birthday as Muss-only', () => {
+      expect(classifySchoolEnrollment('2020-06-01', 'berlin')).toEqual({
+        mussYear: 2026,
+        kannYear: null,
+        mussContractEnd: '2026-07-31',
+        kannContractEnd: null,
+      });
+    });
+
+    it('classifies Sep 30 (on Stichtag) as Muss-only', () => {
+      expect(classifySchoolEnrollment('2020-09-30', 'berlin')).toEqual({
+        mussYear: 2026,
+        kannYear: null,
+        mussContractEnd: '2026-07-31',
+        kannContractEnd: null,
+      });
+    });
+
+    it('classifies Apr 1 as Muss-only (one day after Kann window closes)', () => {
+      expect(classifySchoolEnrollment('2021-04-01', 'berlin')).toEqual({
+        mussYear: 2027,
+        kannYear: null,
+        mussContractEnd: '2027-07-31',
+        kannContractEnd: null,
+      });
+    });
+  });
+
+  describe('Berlin — Kann-eligible (sixth birthday in Oct–Mar window)', () => {
+    // Per Berlin rule, the Kann option is for the August *preceding* the child's
+    // sixth birthday. A January-born child is Muss the year they turn 6 and
+    // also Kann the August before (at age 5½).
+    it('classifies a January birthday (before Stichtag) as Muss and Kann', () => {
+      expect(classifySchoolEnrollment('2020-01-15', 'berlin')).toEqual({
+        mussYear: 2026,
+        kannYear: 2025,
+        mussContractEnd: '2026-07-31',
+        kannContractEnd: '2025-07-31',
+      });
+    });
+
+    it('classifies Oct 1 as Kann-eligible (window start)', () => {
+      expect(classifySchoolEnrollment('2020-10-01', 'berlin')).toEqual({
+        mussYear: 2027,
+        kannYear: 2026,
+        mussContractEnd: '2027-07-31',
+        kannContractEnd: '2026-07-31',
+      });
+    });
+
+    it('classifies a late-autumn birthday as Kann-eligible', () => {
+      expect(classifySchoolEnrollment('2020-11-15', 'berlin')).toEqual({
+        mussYear: 2027,
+        kannYear: 2026,
+        mussContractEnd: '2027-07-31',
+        kannContractEnd: '2026-07-31',
+      });
+    });
+
+    it('classifies a Dec 31 birthday as Kann-eligible', () => {
+      expect(classifySchoolEnrollment('2019-12-31', 'berlin')).toEqual({
+        mussYear: 2026,
+        kannYear: 2025,
+        mussContractEnd: '2026-07-31',
+        kannContractEnd: '2025-07-31',
+      });
+    });
+
+    it('classifies a February birthday as Kann-eligible', () => {
+      expect(classifySchoolEnrollment('2021-02-15', 'berlin')).toEqual({
+        mussYear: 2027,
+        kannYear: 2026,
+        mussContractEnd: '2027-07-31',
+        kannContractEnd: '2026-07-31',
+      });
+    });
+
+    it('classifies Mar 31 as Kann-eligible (window end, inclusive)', () => {
+      expect(classifySchoolEnrollment('2021-03-31', 'berlin')).toEqual({
+        mussYear: 2027,
+        kannYear: 2026,
+        mussContractEnd: '2027-07-31',
+        kannContractEnd: '2026-07-31',
+      });
+    });
+  });
+
+  describe('edge cases', () => {
+    it('returns null for empty birthdate', () => {
+      expect(classifySchoolEnrollment('', 'berlin')).toBeNull();
+    });
+
+    it('returns null for empty state', () => {
+      expect(classifySchoolEnrollment('2020-01-15', '')).toBeNull();
+    });
+
+    it('returns null for invalid birthdate', () => {
+      expect(classifySchoolEnrollment('not-a-date', 'berlin')).toBeNull();
+    });
+
+    it('returns null for unknown state (strict)', () => {
+      expect(classifySchoolEnrollment('2020-01-15', 'bayern')).toBeNull();
+    });
+
+    // The API returns birthdate as a full ISO datetime; the classifier has to
+    // accept that shape in addition to the form's "YYYY-MM-DD" input.
+    it('accepts an ISO datetime birthdate (as returned by the API)', () => {
+      expect(classifySchoolEnrollment('2020-01-15T00:00:00Z', 'berlin')).toEqual({
+        mussYear: 2026,
+        kannYear: 2025,
+        mussContractEnd: '2026-07-31',
+        kannContractEnd: '2025-07-31',
+      });
     });
   });
 });
