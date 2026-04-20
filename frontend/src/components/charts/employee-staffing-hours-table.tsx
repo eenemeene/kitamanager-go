@@ -52,8 +52,15 @@ const STAFF_CATEGORY_LABELS: Record<string, string> = {
   non_pedagogical: 'NP',
 };
 
+const STAFF_CATEGORY_TRANSLATION_KEYS: Record<string, string> = {
+  qualified: 'employees.staffCategory.qualified',
+  supplementary: 'employees.staffCategory.supplementary',
+  non_pedagogical: 'employees.staffCategory.non_pedagogical',
+};
+
 export function EmployeeStaffingHoursTable({ data }: EmployeeStaffingHoursTableProps) {
   const t = useTranslations('statistics');
+  const tRoot = useTranslations();
 
   const dates = data.dates ?? [];
   const employees = data.employees ?? [];
@@ -87,8 +94,18 @@ export function EmployeeStaffingHoursTable({ data }: EmployeeStaffingHoursTableP
     return <p className="text-muted-foreground">{t('chartError')}</p>;
   }
 
+  const hasCategories = employees.some((e) => e.staff_category);
+
   return (
     <div className="overflow-x-auto">
+      {hasCategories && (
+        <p className="text-muted-foreground mb-2 text-xs">
+          <span className="font-medium">Q</span> = {tRoot('employees.staffCategory.qualified')} ·{' '}
+          <span className="font-medium">S</span> = {tRoot('employees.staffCategory.supplementary')}{' '}
+          · <span className="font-medium">NP</span> ={' '}
+          {tRoot('employees.staffCategory.non_pedagogical')}
+        </p>
+      )}
       <Table>
         <TableHeader>
           <TableRow>
@@ -115,7 +132,18 @@ export function EmployeeStaffingHoursTable({ data }: EmployeeStaffingHoursTableP
                       {emp.last_name}, {emp.first_name}
                     </span>
                     {emp.staff_category && (
-                      <span className="text-muted-foreground text-xs">
+                      <span
+                        className="text-muted-foreground cursor-help border-b border-dotted border-current text-xs"
+                        title={
+                          STAFF_CATEGORY_TRANSLATION_KEYS[emp.staff_category]
+                            ? tRoot(
+                                STAFF_CATEGORY_TRANSLATION_KEYS[emp.staff_category] as Parameters<
+                                  typeof tRoot
+                                >[0]
+                              )
+                            : emp.staff_category
+                        }
+                      >
                         {STAFF_CATEGORY_LABELS[emp.staff_category] ?? emp.staff_category}
                       </span>
                     )}
