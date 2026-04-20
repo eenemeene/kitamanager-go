@@ -9,6 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/eenemeene/kitamanager-go/internal/models"
+	"github.com/eenemeene/kitamanager-go/internal/testutil"
 )
 
 func timePtr(t time.Time) *time.Time { return &t }
@@ -133,6 +134,12 @@ func TestEmployeeHandler_Create(t *testing.T) {
 	if result.OrganizationID != org.ID {
 		t.Errorf("expected organization ID %d, got %d", org.ID, result.OrganizationID)
 	}
+
+	testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+		Action:       models.AuditAction("employee_create"),
+		ResourceType: "employee",
+		ResourceID:   result.ID,
+	})
 }
 
 func TestEmployeeHandler_Update(t *testing.T) {
@@ -166,6 +173,12 @@ func TestEmployeeHandler_Update(t *testing.T) {
 	if result.FirstName != "Updated" {
 		t.Errorf("expected first name 'Updated', got '%s'", result.FirstName)
 	}
+
+	testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+		Action:       models.AuditAction("employee_update"),
+		ResourceType: "employee",
+		ResourceID:   employee.ID,
+	})
 }
 
 func TestEmployeeHandler_Update_WrongOrg(t *testing.T) {
@@ -203,6 +216,14 @@ func TestEmployeeHandler_Update_WrongOrg(t *testing.T) {
 	if unchanged.FirstName != "Original" {
 		t.Errorf("employee was modified despite wrong org access: got '%s'", unchanged.FirstName)
 	}
+
+	// A denied cross-org update must NOT leave a successful audit row
+	// behind — otherwise compliance review sees noise that didn't
+	// actually happen.
+	testutil.AssertNoAuditLog(t, db, testutil.AuditLogQuery{
+		Action:     models.AuditAction("employee_update"),
+		ResourceID: employee.ID,
+	})
 }
 
 func TestEmployeeHandler_Delete(t *testing.T) {
@@ -224,6 +245,12 @@ func TestEmployeeHandler_Delete(t *testing.T) {
 	if w.Code != http.StatusNoContent {
 		t.Errorf("expected status %d, got %d", http.StatusNoContent, w.Code)
 	}
+
+	testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+		Action:       models.AuditActionEmployeeDelete,
+		ResourceType: "employee",
+		ResourceID:   employee.ID,
+	})
 }
 
 func TestEmployeeHandler_Delete_WrongOrg(t *testing.T) {
