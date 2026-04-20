@@ -50,7 +50,8 @@ export function formatDateLabel(dateStr: string): string {
 export function createKitaYearBackgroundLayer(
   kitaYearBands: KitaYearBand[],
   xLabels: string[],
-  kitaYearText: (label: string) => string
+  kitaYearText: (label: string) => string,
+  kitaYearTooltip?: string
 ) {
   return function KitaYearBg({ xScale, innerHeight, innerWidth }: ChartLayerProps) {
     const scale = xScale;
@@ -147,7 +148,9 @@ export function createKitaYearBackgroundLayer(
                       fontWeight={500}
                       fill="currentColor"
                       opacity={0.5}
+                      style={kitaYearTooltip ? { cursor: 'help' } : undefined}
                     >
+                      {kitaYearTooltip && <title>{kitaYearTooltip}</title>}
                       {kitaYearText(band.label)}
                     </text>
                   </>

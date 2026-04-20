@@ -36,8 +36,11 @@ export function MonthlyContractChart({ data, occupancy }: MonthlyContractChartPr
 
   const KitaYearBackgroundLayer = useMemo(
     () =>
-      createKitaYearBackgroundLayer(kitaYearBands, xLabels, (label) =>
-        t('statistics.kitaYear', { year: label })
+      createKitaYearBackgroundLayer(
+        kitaYearBands,
+        xLabels,
+        (label) => t('statistics.kitaYear', { year: label }),
+        t('statistics.kitaYearTooltip')
       ),
     [kitaYearBands, xLabels, t]
   );

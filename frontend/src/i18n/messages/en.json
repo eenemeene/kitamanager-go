@@ -154,6 +154,7 @@
     "filterBySection": "Filter by Section",
     "allSections": "All Sections",
     "kitaYear": "Kita Year {year}",
+    "kitaYearTooltip": "A Kita year runs from August through July. The alternating shaded bands mark consecutive Kita years.",
     "staffingBalance": "Staffing Balance",
     "staffingBalanceTooltip": "Available hours minus required hours — positive means surplus, negative means understaffed",
     "balancePercentage": "Balance",

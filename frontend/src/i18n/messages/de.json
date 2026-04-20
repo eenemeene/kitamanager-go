@@ -154,6 +154,7 @@
     "filterBySection": "Nach Bereich filtern",
     "allSections": "Alle Bereiche",
     "kitaYear": "Kitajahr {year}",
+    "kitaYearTooltip": "Ein Kitajahr läuft von August bis Juli. Die abwechselnd schattierten Bänder markieren aufeinanderfolgende Kitajahre.",
     "staffingBalance": "Personalabgleich",
     "staffingBalanceTooltip": "Verfügbare minus benötigte Stunden — positiv bedeutet Überschuss, negativ bedeutet Unterbesetzung",
     "balancePercentage": "Abgleich",

@@ -169,7 +169,9 @@ export function FinancialSummaryChart({ data }: FinancialSummaryChartProps) {
                         fontWeight={500}
                         fill="currentColor"
                         opacity={0.5}
+                        style={{ cursor: 'help' }}
                       >
+                        <title>{t('statistics.kitaYearTooltip')}</title>
                         {t('statistics.kitaYear', { year: band.label })}
                       </text>
                     </>
