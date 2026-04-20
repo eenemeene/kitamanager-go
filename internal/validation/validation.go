@@ -2,6 +2,7 @@ package validation
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 )
@@ -67,7 +68,15 @@ func ValidateSalary(salary int) error {
 // Implementation: calculate age as of the last day of the previous month. Since billing
 // dates are always the 1st, subtracting one day gives the last day of the prior month.
 // This only changes the result for children born on the 1st of a month.
+//
+// A slog.Warn fires if billingDate is not on the 1st. The RV-Tag semantics
+// only make sense for first-of-month billing; mid-month dates will produce
+// "age as of yesterday" which is almost never what the caller intended.
 func FundingAgeOnDate(birthdate, billingDate time.Time) int {
+	if billingDate.Day() != 1 {
+		slog.Warn("FundingAgeOnDate called with a non-first-of-month date; result uses day-before semantics and may not match caller intent",
+			"billing_date", billingDate.Format("2006-01-02"))
+	}
 	refDate := billingDate.AddDate(0, 0, -1)
 	return CalculateAgeOnDate(birthdate, refDate)
 }
