@@ -76,7 +76,11 @@ export function classifySchoolEnrollment(
 }
 
 function parseBirthdate(s: string): Date | null {
-  const d = new Date(`${s}T00:00:00`);
+  // Accept both "YYYY-MM-DD" (form input) and "YYYY-MM-DDTHH:MM:SSZ" (API response).
+  // Slicing to 10 chars pins the date in the local timezone and avoids the UTC-midnight
+  // off-by-one that `new Date("...Z").getDate()` would cause east of UTC.
+  if (s.length < 10) return null;
+  const d = new Date(`${s.slice(0, 10)}T00:00:00`);
   return isNaN(d.getTime()) ? null : d;
 }
 

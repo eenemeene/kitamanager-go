@@ -159,5 +159,16 @@ describe('classifySchoolEnrollment', () => {
     it('returns null for unknown state (strict)', () => {
       expect(classifySchoolEnrollment('2020-01-15', 'bayern')).toBeNull();
     });
+
+    // The API returns birthdate as a full ISO datetime; the classifier has to
+    // accept that shape in addition to the form's "YYYY-MM-DD" input.
+    it('accepts an ISO datetime birthdate (as returned by the API)', () => {
+      expect(classifySchoolEnrollment('2020-01-15T00:00:00Z', 'berlin')).toEqual({
+        mussYear: 2026,
+        kannYear: 2025,
+        mussContractEnd: '2026-07-31',
+        kannContractEnd: '2025-07-31',
+      });
+    });
   });
 });
