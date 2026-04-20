@@ -459,7 +459,12 @@
     "removeFromOrganizationConfirm": "Diesen Benutzer aus der Organisation entfernen?",
     "selectRole": "Rolle auswählen",
     "passwordHint": "(leer lassen um aktuelles zu behalten)",
-    "superadmin": "Superadmin"
+    "superadmin": "Superadmin",
+    "addToOrganization": "Zu {orgName} hinzufügen",
+    "addToThisOrganization": "Dieser Benutzer ist noch kein Mitglied von {orgName}. Wählen Sie eine Rolle, um ihn hinzuzufügen.",
+    "addedToOrganization": "Benutzer zu {orgName} hinzugefügt",
+    "failedToAddToOrganization": "Fehler beim Hinzufügen des Benutzers zu {orgName}",
+    "otherMemberships": "Mitgliedschaften in anderen Organisationen"
   },
   "roles": {
     "role": "Rolle",
