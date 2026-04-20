@@ -166,7 +166,7 @@
     "contractProperties": "Children Contract Properties (Today)",
     "contractPropertiesDescription": "Distribution of today's active children by contract property (e.g. care hours, age group, supplements). Properties drive the per-child funding rate and staffing requirement.",
     "financialOverview": "Financial Overview (Calculated)",
-    "financialOverviewDescription": "Monthly income and expense breakdown based on contracts and funding rates",
+    "financialOverviewDescription": "Monthly income (positive, above the axis) and expenses (negative, below) derived from contracts, funding rates, and budget items. The blue line shows the monthly balance (income minus expenses). For the running total across the Kita year, see \"Cumulative Balance\" below.",
     "financialSummary": "Cumulative Balance",
     "financialSummaryDescription": "Running total of monthly balance, resetting to zero at the start of each Kita year (August)",
     "cumulativeBalance": "Cumulative Balance",

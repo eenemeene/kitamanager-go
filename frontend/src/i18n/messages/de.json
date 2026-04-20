@@ -166,7 +166,7 @@
     "contractProperties": "Kinder-Vertragseigenschaften (Heute)",
     "contractPropertiesDescription": "Verteilung der heute aktiven Kinder nach Vertragseigenschaften (z. B. Betreuungsumfang, Altersgruppe, Zuschläge). Die Eigenschaften bestimmen den Fördersatz pro Kind und den Personalbedarf.",
     "financialOverview": "Finanzübersicht (Berechnet)",
-    "financialOverviewDescription": "Monatliche Einnahmen- und Ausgabenaufschlüsselung basierend auf Verträgen und Fördersätzen",
+    "financialOverviewDescription": "Monatliche Einnahmen (positiv, oben) und Ausgaben (negativ, unten) basierend auf Verträgen, Fördersätzen und Haushaltsposten. Die blaue Linie zeigt den Monats-Saldo (Einnahmen minus Ausgaben). Für die laufende Summe über das Kitajahr siehe „Kumuliertes Saldo“ weiter unten.",
     "financialSummary": "Kumuliertes Saldo",
     "financialSummaryDescription": "Laufende Summe des monatlichen Saldos, wird zu Beginn jedes Kitajahres (August) auf Null zurückgesetzt",
     "cumulativeBalance": "Kumuliertes Saldo",
