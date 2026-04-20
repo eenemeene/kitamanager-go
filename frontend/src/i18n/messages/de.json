@@ -163,6 +163,7 @@
     "deficit": "Defizit",
     "sectionStaffing": "Personal nach Bereich (Heute)",
     "contractProperties": "Kinder-Vertragseigenschaften (Heute)",
+    "contractPropertiesDescription": "Verteilung der heute aktiven Kinder nach Vertragseigenschaften (z. B. Betreuungsumfang, Altersgruppe, Zuschläge). Die Eigenschaften bestimmen den Fördersatz pro Kind und den Personalbedarf.",
     "financialOverview": "Finanzübersicht (Berechnet)",
     "financialOverviewDescription": "Monatliche Einnahmen- und Ausgabenaufschlüsselung basierend auf Verträgen und Fördersätzen",
     "financialSummary": "Kumuliertes Saldo",

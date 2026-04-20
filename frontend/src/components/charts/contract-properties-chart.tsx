@@ -20,6 +20,9 @@ export function ContractPropertiesChart({ data }: ContractPropertiesChartProps) 
   return (
     <div className="space-y-4">
       <p className="text-muted-foreground text-sm">
+        {t('statistics.contractPropertiesDescription')}
+      </p>
+      <p className="text-muted-foreground text-sm">
         {t('statistics.totalChildren', { count: data.total_children })}
       </p>
       <ExportableChart filename="contract-properties" className="h-[400px]">

@@ -163,6 +163,7 @@
     "deficit": "Deficit",
     "sectionStaffing": "Staffing by Section (Today)",
     "contractProperties": "Children Contract Properties (Today)",
+    "contractPropertiesDescription": "Distribution of today's active children by contract property (e.g. care hours, age group, supplements). Properties drive the per-child funding rate and staffing requirement.",
     "financialOverview": "Financial Overview (Calculated)",
     "financialOverviewDescription": "Monthly income and expense breakdown based on contracts and funding rates",
     "financialSummary": "Cumulative Balance",
