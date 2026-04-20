@@ -1,6 +1,8 @@
 package service
 
 import (
+	"bytes"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -1168,12 +1170,57 @@ func TestCalculateFinancials_NoPayPlan(t *testing.T) {
 			makeEmployeeContract(1, 1, date(2024, 1, 1), nil, "qualified", "S8a", 3, 39.0, 999),
 		}),
 	}
+
+	// Missing pay-plan data should log a warning so operators can fix the
+	// config — silently producing €0 gross for an employee who is counted in
+	// staff count was the behavior before this fix.
+	var buf bytes.Buffer
+	oldLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn})))
+	defer slog.SetDefault(oldLogger)
+
 	result := calculateFinancials(nil, employees, nil, nil, nil, date(2025, 1, 1), date(2025, 1, 1))
 	if result[0].GrossSalary != 0 {
 		t.Errorf("expected 0 gross when no pay plan, got %d", result[0].GrossSalary)
 	}
 	if result[0].StaffCount != 1 {
 		t.Errorf("expected 1 staff even without pay plan, got %d", result[0].StaffCount)
+	}
+	if !bytes.Contains(buf.Bytes(), []byte("unknown pay plan")) {
+		t.Errorf("expected warn log about unknown pay plan, got: %s", buf.String())
+	}
+}
+
+func TestCalculateFinancials_MissingGradeEntry(t *testing.T) {
+	ppID := uint(1)
+	// PayPlan exists, but doesn't have an entry for the contract's grade/step.
+	payPlans := map[uint]*models.PayPlan{
+		ppID: makePayPlan(ppID, []models.PayPlanPeriod{
+			makePayPlanPeriod(1, date(2024, 1, 1), nil, 39.0, 2200, []models.PayPlanEntry{
+				makePayPlanEntry("S8a", 3, 350000),
+			}),
+		}),
+	}
+	employees := []models.Employee{
+		makeEmployee(1, "A", "B", []models.EmployeeContract{
+			makeEmployeeContract(1, 1, date(2024, 1, 1), nil, "qualified", "S9", 2, 39.0, ppID),
+		}),
+	}
+
+	var buf bytes.Buffer
+	oldLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn})))
+	defer slog.SetDefault(oldLogger)
+
+	result := calculateFinancials(nil, employees, payPlans, nil, nil, date(2025, 1, 1), date(2025, 1, 1))
+	if result[0].GrossSalary != 0 {
+		t.Errorf("expected 0 gross when grade/step missing, got %d", result[0].GrossSalary)
+	}
+	if result[0].StaffCount != 1 {
+		t.Errorf("expected 1 staff, got %d", result[0].StaffCount)
+	}
+	if !bytes.Contains(buf.Bytes(), []byte("no pay plan entry")) {
+		t.Errorf("expected warn log about missing grade/step, got: %s", buf.String())
 	}
 }
 

@@ -3,6 +3,7 @@ package service
 import (
 	"cmp"
 	"fmt"
+	"log/slog"
 	"maps"
 	"math"
 	"slices"
@@ -227,14 +228,21 @@ func calculateFinancials(
 
 			ppDateMap := payPlanIdx[ec.PayPlanID]
 			if ppDateMap == nil {
+				slog.Warn("employee contract references unknown pay plan; salary not counted",
+					"employee_id", emp.ID, "contract_id", ec.ID, "payplan_id", ec.PayPlanID, "date", date.Format(models.DateFormat))
 				continue
 			}
 			resolved := ppDateMap[date]
 			if resolved == nil {
+				slog.Warn("no pay plan period covers contract date; salary not counted",
+					"employee_id", emp.ID, "contract_id", ec.ID, "payplan_id", ec.PayPlanID, "date", date.Format(models.DateFormat))
 				continue
 			}
 			entry := resolved.entryIndex[gradeStepKey{ec.Grade, ec.Step}]
 			if entry == nil {
+				slog.Warn("no pay plan entry for contract grade/step; salary not counted",
+					"employee_id", emp.ID, "contract_id", ec.ID, "payplan_id", ec.PayPlanID,
+					"grade", ec.Grade, "step", ec.Step, "date", date.Format(models.DateFormat))
 				continue
 			}
 
