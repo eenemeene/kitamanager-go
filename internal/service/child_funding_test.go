@@ -264,6 +264,64 @@ func TestMatchFundingProperties_MultipleMatches(t *testing.T) {
 	}
 }
 
+// TestMatchFundingProperties_DuplicateConfigDedupes asserts the correctness guard
+// against a funding configuration that accidentally contains two properties with
+// the same (key, value) and overlapping age ranges — without dedup, the child's
+// payment would be double-counted.
+func TestMatchFundingProperties_DuplicateConfigDedupes(t *testing.T) {
+	period := &models.GovernmentFundingPeriod{
+		ID: 42,
+		Properties: []models.GovernmentFundingProperty{
+			{ID: 1, Key: "care_type", Value: "ganztag", Payment: 100000, MinAge: intPtr(0), MaxAge: intPtr(3)},
+			{ID: 2, Key: "care_type", Value: "ganztag", Payment: 100000, MinAge: intPtr(3), MaxAge: intPtr(6)},
+		},
+	}
+	props := models.ContractProperties{"care_type": "ganztag"}
+
+	var buf bytes.Buffer
+	oldLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelError})))
+	defer slog.SetDefault(oldLogger)
+
+	// Age 3 is in both ranges — without dedup we'd match twice.
+	got := matchFundingProperties(3, props, period)
+	if len(got) != 1 {
+		t.Errorf("expected 1 match after dedup, got %d", len(got))
+	}
+	if got[0].ID != 1 {
+		t.Errorf("expected first match (ID 1) to be kept, got ID %d", got[0].ID)
+	}
+	if !bytes.Contains(buf.Bytes(), []byte("duplicate funding property matched")) {
+		t.Errorf("expected duplicate-property log message, got: %s", buf.String())
+	}
+}
+
+// TestSumChildFundingMatch_DuplicatePaymentNotDoubleCounted verifies the
+// callers that sum payments (used by financials + staffing) see the deduped
+// result: the bug would have been silent inflation of funding income.
+func TestSumChildFundingMatch_DuplicatePaymentNotDoubleCounted(t *testing.T) {
+	period := &models.GovernmentFundingPeriod{
+		Properties: []models.GovernmentFundingProperty{
+			{ID: 1, Key: "care_type", Value: "ganztag", Payment: 100000, Requirement: 0.2, MinAge: nil, MaxAge: nil},
+			{ID: 2, Key: "care_type", Value: "ganztag", Payment: 100000, Requirement: 0.2, MinAge: nil, MaxAge: nil},
+		},
+	}
+	props := models.ContractProperties{"care_type": "ganztag"}
+
+	// Silence the expected error log.
+	oldLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&bytes.Buffer{}, &slog.HandlerOptions{Level: slog.LevelError})))
+	defer slog.SetDefault(oldLogger)
+
+	payment, requirement := sumChildFundingMatch(3, props, period)
+	if payment != 100000 {
+		t.Errorf("expected payment 100000 (no double count), got %d", payment)
+	}
+	if requirement != 0.2 {
+		t.Errorf("expected requirement 0.2 (no double count), got %f", requirement)
+	}
+}
+
 // --- calculateChildFunding ---
 
 func TestCalculateChildFunding_NilPeriod(t *testing.T) {
