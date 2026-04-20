@@ -62,6 +62,18 @@ func TestValidateBirthdate_Future(t *testing.T) {
 	}
 }
 
+// TestValidateBirthdate_UTCMidnightAccepted asserts the validator compares in
+// UTC. On a server in a timezone east of UTC, time.Now() reports tomorrow
+// locally while UTC "now" is still today — a UTC-midnight birthdate equal to
+// today's UTC date must still be accepted.
+func TestValidateBirthdate_UTCMidnightAccepted(t *testing.T) {
+	nowUTC := time.Now().UTC()
+	todayUTCMidnight := time.Date(nowUTC.Year(), nowUTC.Month(), nowUTC.Day(), 0, 0, 0, 0, time.UTC)
+	if err := ValidateBirthdate(todayUTCMidnight); err != nil {
+		t.Errorf("expected today UTC midnight to be valid, got: %v", err)
+	}
+}
+
 func TestValidatePeriod_FromBeforeTo(t *testing.T) {
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)

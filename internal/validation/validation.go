@@ -11,9 +11,14 @@ func IsWhitespaceOnly(s string) bool {
 	return strings.TrimSpace(s) == ""
 }
 
-// ValidateBirthdate ensures birthdate is not in the future
+// ValidateBirthdate ensures birthdate is not in the future.
+//
+// Uses UTC for the "now" comparison so validation is not sensitive to the
+// server's local timezone. Birthdates are stored as UTC dates; comparing
+// against a local-wall-clock time.Now would reject valid birthdates at
+// midnight UTC from clients in zones east of UTC.
 func ValidateBirthdate(birthdate time.Time) error {
-	if birthdate.After(time.Now()) {
+	if birthdate.After(time.Now().UTC()) {
 		return fmt.Errorf("birthdate cannot be in the future")
 	}
 	return nil
