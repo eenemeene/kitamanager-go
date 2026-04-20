@@ -310,7 +310,7 @@ export function ForecastOptimizeTab({
               <p className="text-muted-foreground text-xs">{t('common.loading')}</p>
             ) : baselineBalanceCents != null ? (
               <p
-                className={`text-xs ${baselineBalanceCents >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                className={`text-xs ${baselineBalanceCents >= 0 ? 'text-success' : 'text-destructive'}`}
               >
                 {t('statistics.forecastBaselineBalance', {
                   amount: (baselineBalanceCents / 100).toLocaleString('de-DE', {
@@ -380,7 +380,7 @@ export function ForecastOptimizeTab({
 
       {/* Results */}
       {optimizeResult && (
-        <div className="rounded-md border bg-green-50 p-4 dark:bg-green-950">
+        <div className="bg-success/10 border-success/30 rounded-md border p-4">
           <p className="text-sm font-medium">
             {t('statistics.forecastOptimizeResult', {
               count: optimizeResult.childrenAdded,
@@ -399,7 +399,7 @@ export function ForecastOptimizeTab({
       )}
 
       {optimizeError && (
-        <div className="rounded-md border bg-red-50 p-4 dark:bg-red-950">
+        <div className="bg-destructive/10 border-destructive/30 rounded-md border p-4">
           <p className="text-destructive text-sm">{optimizeError}</p>
         </div>
       )}

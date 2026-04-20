@@ -123,11 +123,11 @@ describe('BudgetTable', () => {
 
     // Positive: 1.000,00 €
     const positiveCell = screen.getByText(/1\.000,00/).closest('td');
-    expect(positiveCell?.className).toMatch(/text-green/);
+    expect(positiveCell?.className).toMatch(/text-success/);
 
     // Negative: -500,00 €
     const negativeCell = screen.getByText(/-500,00/).closest('td');
-    expect(negativeCell?.className).toMatch(/text-red/);
+    expect(negativeCell?.className).toMatch(/text-destructive/);
   });
 
   it('shows dash for zero values', () => {

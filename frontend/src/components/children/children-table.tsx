@@ -157,7 +157,7 @@ export function ChildrenTable({
                     return (
                       <div className="flex flex-col items-end gap-0.5">
                         <span
-                          className={`font-medium ${diff < 0 ? 'text-red-600' : diff > 0 ? 'text-green-600' : ''}`}
+                          className={`font-medium ${diff < 0 ? 'text-destructive' : diff > 0 ? 'text-success' : ''}`}
                         >
                           {formatCurrency(diff)}
                         </span>

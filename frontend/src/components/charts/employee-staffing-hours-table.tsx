@@ -38,7 +38,7 @@ function DiffCell({ prev, curr }: { prev: number; curr: number }) {
   const isUp = diff > 0;
   return (
     <TableCell className="px-0 text-center text-[10px] whitespace-nowrap">
-      <span className={isUp ? 'text-green-600' : 'text-red-600'}>
+      <span className={isUp ? 'text-success' : 'text-destructive'}>
         {isUp ? '▲' : '▼'} {isUp ? '+' : ''}
         {formatDiff(diff)}
       </span>

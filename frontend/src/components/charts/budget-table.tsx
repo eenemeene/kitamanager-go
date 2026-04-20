@@ -123,16 +123,10 @@ export function BudgetTable({ data }: BudgetTableProps) {
             {/* Group header row */}
             <TableRow>
               <TableHead className="bg-background sticky left-0 z-10" rowSpan={2} />
-              <TableHead
-                colSpan={incomeColCount}
-                className="text-center text-green-700 dark:text-green-400"
-              >
+              <TableHead colSpan={incomeColCount} className="text-success text-center">
                 {t('totalIncome')}
               </TableHead>
-              <TableHead
-                colSpan={expenseColCount}
-                className="text-center text-red-700 dark:text-red-400"
-              >
+              <TableHead colSpan={expenseColCount} className="text-destructive text-center">
                 {t('totalExpenses')}
               </TableHead>
               <TableHead rowSpan={2} className="text-center">
@@ -193,7 +187,7 @@ export function BudgetTable({ data }: BudgetTableProps) {
                     {formatCurrencyCell(val)}
                   </TableCell>
                 ))}
-                <TableCell className="text-right font-bold text-green-700 tabular-nums dark:text-green-400">
+                <TableCell className="text-success text-right font-bold tabular-nums">
                   {formatCurrencyCell(row.totalIncome)}
                 </TableCell>
                 {/* Expense columns */}
@@ -205,15 +199,13 @@ export function BudgetTable({ data }: BudgetTableProps) {
                     {formatCurrencyCell(val)}
                   </TableCell>
                 ))}
-                <TableCell className="text-right font-bold text-red-700 tabular-nums dark:text-red-400">
+                <TableCell className="text-destructive text-right font-bold tabular-nums">
                   {formatCurrencyCell(row.totalExpenses)}
                 </TableCell>
                 {/* Balance */}
                 <TableCell
                   className={`text-right font-bold tabular-nums ${
-                    row.balance >= 0
-                      ? 'text-green-700 dark:text-green-400'
-                      : 'text-red-700 dark:text-red-400'
+                    row.balance >= 0 ? 'text-success' : 'text-destructive'
                   }`}
                 >
                   {formatCurrencyCell(row.balance)}
@@ -239,7 +231,7 @@ export function BudgetTable({ data }: BudgetTableProps) {
                   {formatCurrencyCell(val)}
                 </TableCell>
               ))}
-              <TableCell className="text-right text-green-700 tabular-nums dark:text-green-400">
+              <TableCell className="text-success text-right tabular-nums">
                 {formatCurrencyCell(totals.totalIncome)}
               </TableCell>
               <TableCell className="text-right tabular-nums">
@@ -250,14 +242,12 @@ export function BudgetTable({ data }: BudgetTableProps) {
                   {formatCurrencyCell(val)}
                 </TableCell>
               ))}
-              <TableCell className="text-right text-red-700 tabular-nums dark:text-red-400">
+              <TableCell className="text-destructive text-right tabular-nums">
                 {formatCurrencyCell(totals.totalExpenses)}
               </TableCell>
               <TableCell
                 className={`text-right tabular-nums ${
-                  totals.balance >= 0
-                    ? 'text-green-700 dark:text-green-400'
-                    : 'text-red-700 dark:text-red-400'
+                  totals.balance >= 0 ? 'text-success' : 'text-destructive'
                 }`}
               >
                 {formatCurrencyCell(totals.balance)}

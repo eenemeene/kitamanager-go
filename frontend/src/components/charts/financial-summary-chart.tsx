@@ -360,7 +360,7 @@ export function FinancialSummaryChart({ data }: FinancialSummaryChartProps) {
         />
       </ExportableChart>
       {deficitInfo.consecutiveDeficitMonths > 0 && (
-        <p className="mt-2 text-center text-sm text-red-600 dark:text-red-400">
+        <p className="text-destructive mt-2 text-center text-sm">
           {t('statistics.deficitConsecutive', { count: deficitInfo.consecutiveDeficitMonths })}
         </p>
       )}

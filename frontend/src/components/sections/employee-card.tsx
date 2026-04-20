@@ -30,7 +30,7 @@ export function EmployeeCard({ employee }: EmployeeCardProps) {
       {...listeners}
       {...attributes}
       className={cn(
-        'cursor-grab border-blue-200 bg-blue-50 active:cursor-grabbing dark:border-blue-800 dark:bg-blue-950',
+        'border-info/30 bg-info/10 cursor-grab active:cursor-grabbing',
         isDragging && 'opacity-50'
       )}
     >
