@@ -98,13 +98,13 @@ export function UserMembershipDialog({ user, orgId, onClose }: UserMembershipDia
     mutationFn: (organizationId: number) =>
       apiClient.removeUserFromOrganization(user!.id, organizationId),
     onSuccess: () => {
-      toast({ title: t('users.removedFromOrganization') });
+      toast({ title: t('users.removedFromOrganization', { orgName }) });
       invalidateMemberships();
       setRemoveTarget(null);
     },
     onError: (error) => {
       toast({
-        title: t('users.failedToRemoveFromOrganization'),
+        title: t('users.failedToRemoveFromOrganization', { orgName }),
         description: getErrorMessage(error, t('common.error')),
         variant: 'destructive',
       });
@@ -245,7 +245,7 @@ export function UserMembershipDialog({ user, orgId, onClose }: UserMembershipDia
           <AlertDialogHeader>
             <AlertDialogTitle>{t('users.confirmRemoval')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {removeTarget ? t('users.removeFromOrganizationConfirm') : ''}
+              {removeTarget ? t('users.removeFromOrganizationConfirm', { orgName }) : ''}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
