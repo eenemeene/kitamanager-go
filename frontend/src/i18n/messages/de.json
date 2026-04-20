@@ -243,6 +243,7 @@
     "ageGroup": "Alter",
     "careType": "Umfang",
     "supplements": "Zuschläge",
+    "supplementsTooltip": "Zusatzmerkmale, die einen Förderzuschlag auslösen (z. B. Integrationsanspruch, sprachliche Förderung, Erweiterte Betreuungszeit). Ein Kind kann mehrere Zuschläge gleichzeitig haben, daher können die Zeilenwerte die Gesamtanzahl übersteigen.",
     "total": "Gesamt",
     "staffingHoursGrid": "Personalstunden-Übersicht",
     "staffingRequired": "Soll",
