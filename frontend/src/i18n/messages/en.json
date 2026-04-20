@@ -162,6 +162,7 @@
     "surplus": "Surplus",
     "deficit": "Deficit",
     "sectionStaffing": "Staffing by Section (Today)",
+    "sectionStaffingDescription": "Deviation of available from required staffing hours per section. 0% means exactly staffed. Positive values (green) indicate surplus, negative values (red) indicate understaffing.",
     "contractProperties": "Children Contract Properties (Today)",
     "contractPropertiesDescription": "Distribution of today's active children by contract property (e.g. care hours, age group, supplements). Properties drive the per-child funding rate and staffing requirement.",
     "financialOverview": "Financial Overview (Calculated)",

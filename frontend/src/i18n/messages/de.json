@@ -162,6 +162,7 @@
     "surplus": "Überschuss",
     "deficit": "Defizit",
     "sectionStaffing": "Personal nach Bereich (Heute)",
+    "sectionStaffingDescription": "Abweichung der verfügbaren von den benötigten Personalstunden pro Bereich. 0 % entspricht einer exakten Besetzung. Positive Werte (grün) zeigen einen Überschuss, negative Werte (rot) eine Unterbesetzung.",
     "contractProperties": "Kinder-Vertragseigenschaften (Heute)",
     "contractPropertiesDescription": "Verteilung der heute aktiven Kinder nach Vertragseigenschaften (z. B. Betreuungsumfang, Altersgruppe, Zuschläge). Die Eigenschaften bestimmen den Fördersatz pro Kind und den Personalbedarf.",
     "financialOverview": "Finanzübersicht (Berechnet)",
