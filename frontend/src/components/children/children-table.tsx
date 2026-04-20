@@ -1,7 +1,16 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { Pencil, Trash2, FileText, History, Receipt, ArrowDown, ArrowUp } from 'lucide-react';
+import {
+  Pencil,
+  Trash2,
+  FileText,
+  History,
+  Receipt,
+  ArrowDown,
+  ArrowUp,
+  AlertTriangle,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HeaderWithTooltip } from '@/components/ui/header-with-tooltip';
 import {
@@ -12,8 +21,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { TooltipProvider } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
+import { SchoolEnrollmentBadge } from '@/components/children/school-enrollment-badge';
 import type {
   Child,
   ChildFundingResponse,
@@ -22,13 +32,15 @@ import type {
 } from '@/lib/api/types';
 import { formatDate, calculateAge, formatCurrency, formatFte } from '@/lib/utils/formatting';
 import { propertiesToLabelKeys } from '@/lib/utils/contract-properties';
-import { getCurrentContract } from '@/lib/utils/contracts';
+import { getCurrentContract, toUTCDate } from '@/lib/utils/contracts';
+import { classifySchoolEnrollment } from '@/lib/utils/school-enrollment';
 
 export interface ChildrenTableProps {
   items: Child[];
   fundingByChildId: Map<number, ChildFundingResponse>;
   billingSummaryByChildId: Map<number, ChildBillingSummaryEntry>;
   weeklyHoursBasis?: number;
+  orgState?: string;
   onViewHistory: (child: Child) => void;
   onViewBilling: (child: Child) => void;
   onAddContract: (child: Child) => void;
@@ -41,6 +53,7 @@ export function ChildrenTable({
   fundingByChildId,
   billingSummaryByChildId,
   weeklyHoursBasis,
+  orgState,
   onViewHistory,
   onViewBilling,
   onAddContract,
@@ -85,6 +98,13 @@ export function ChildrenTable({
         <TableBody>
           {items.map((child) => {
             const currentContract = getCurrentContract(child.contracts);
+            const enrollment = orgState
+              ? classifySchoolEnrollment(child.birthdate, orgState)
+              : null;
+            const contractOverrun =
+              enrollment && currentContract?.to
+                ? toUTCDate(currentContract.to) > toUTCDate(enrollment.mussContractEnd)
+                : false;
             return (
               <TableRow key={child.id}>
                 <TableCell className="font-medium">
@@ -97,10 +117,34 @@ export function ChildrenTable({
                   {formatDate(child.birthdate)}
                 </TableCell>
                 <TableCell className="hidden md:table-cell">
-                  {calculateAge(child.birthdate)}
+                  <div className="flex flex-col gap-1">
+                    <span>{calculateAge(child.birthdate)}</span>
+                    <SchoolEnrollmentBadge birthdate={child.birthdate} state={orgState} />
+                  </div>
                 </TableCell>
                 <TableCell>
-                  {currentContract?.section_name && <span>{currentContract.section_name}</span>}
+                  <div className="flex items-center gap-2">
+                    {currentContract?.section_name && <span>{currentContract.section_name}</span>}
+                    {contractOverrun && enrollment && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <AlertTriangle
+                            className="text-warning h-4 w-4 shrink-0"
+                            aria-label={t('children.contractRunsPastSchoolStart', {
+                              date: formatDate(enrollment.mussContractEnd),
+                            })}
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <p>
+                            {t('children.contractRunsPastSchoolStart', {
+                              date: formatDate(enrollment.mussContractEnd),
+                            })}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="hidden lg:table-cell">
                   {currentContract?.properties &&

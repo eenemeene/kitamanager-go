@@ -361,6 +361,7 @@ export default function ChildrenPage() {
               fundingByChildId={fundingByChildId}
               weeklyHoursBasis={fundingData?.weekly_hours_basis}
               billingSummaryByChildId={billingSummaryByChildId}
+              orgState={orgState}
               onViewHistory={handleViewContractHistory}
               onViewBilling={handleViewBillingHistory}
               onAddContract={handleAddContract}
