@@ -161,6 +161,58 @@ func TestAuthMiddleware_RequireAuth_WrongSecret(t *testing.T) {
 	}
 }
 
+func TestAuthMiddleware_RequireAuth_ClearsCookiesOnInvalidSignature(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	// Simulates a JWT_SECRET rotation: client still holds a cookie signed with
+	// the old secret. Without clearing, the client would keep re-sending it on
+	// every request (and in the SPA, loop on 401s).
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": 42,
+		"email":   "test@example.com",
+		"type":    "access",
+		"exp":     time.Now().Add(time.Hour).Unix(),
+	})
+	tokenString, _ := token.SignedString([]byte("old-secret"))
+
+	middleware := NewAuthMiddleware("new-secret")
+
+	router := gin.New()
+	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.AddCookie(&http.Cookie{Name: "access_token", Value: tokenString})
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", w.Code)
+	}
+
+	// Response must clear all three auth cookies with Max-Age=0.
+	wantCleared := map[string]bool{"access_token": false, "refresh_token": false, "csrf_token": false}
+	for _, cookie := range w.Result().Cookies() {
+		if _, ok := wantCleared[cookie.Name]; !ok {
+			continue
+		}
+		if cookie.MaxAge != -1 {
+			t.Errorf("cookie %q: expected MaxAge=-1 (delete), got %d", cookie.Name, cookie.MaxAge)
+		}
+		if cookie.Value != "" {
+			t.Errorf("cookie %q: expected empty value, got %q", cookie.Name, cookie.Value)
+		}
+		wantCleared[cookie.Name] = true
+	}
+	for name, seen := range wantCleared {
+		if !seen {
+			t.Errorf("expected Set-Cookie clearing %q in response, not found", name)
+		}
+	}
+}
+
 func TestAuthMiddleware_RequireAuth_RejectsRefreshToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

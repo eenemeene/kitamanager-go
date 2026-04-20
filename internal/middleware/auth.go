@@ -18,8 +18,9 @@ import (
 )
 
 type AuthMiddleware struct {
-	jwtSecret  string
-	tokenStore store.TokenStorer
+	jwtSecret     string
+	tokenStore    store.TokenStorer
+	secureCookies bool
 }
 
 func NewAuthMiddleware(jwtSecret string, tokenStore ...store.TokenStorer) *AuthMiddleware {
@@ -28,6 +29,33 @@ func NewAuthMiddleware(jwtSecret string, tokenStore ...store.TokenStorer) *AuthM
 		m.tokenStore = tokenStore[0]
 	}
 	return m
+}
+
+// SetSecureCookies configures whether cleared auth cookies carry the Secure
+// attribute. Must match the value used by the auth handler so the browser
+// treats the clearing Set-Cookie as applying to the same cookie.
+func (m *AuthMiddleware) SetSecureCookies(v bool) {
+	m.secureCookies = v
+}
+
+// Auth cookie names / paths. Duplicated from internal/handlers/auth.go to avoid
+// a middleware→handlers import; they are part of the HTTP contract and change
+// together.
+const (
+	authCookieAccess  = "access_token"
+	authCookieRefresh = "refresh_token"
+	authCookieCSRF    = "csrf_token"
+	refreshCookiePath = "/api/v1/refresh"
+)
+
+// clearAuthCookies expires the auth cookies so a client holding tokens that
+// the server has just rejected (e.g. signed with a rotated JWT secret) stops
+// sending them on subsequent requests.
+func (m *AuthMiddleware) clearAuthCookies(c *gin.Context) {
+	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetCookie(authCookieAccess, "", -1, "/", "", m.secureCookies, true)
+	c.SetCookie(authCookieRefresh, "", -1, refreshCookiePath, "", m.secureCookies, true)
+	c.SetCookie(authCookieCSRF, "", -1, "/", "", m.secureCookies, false)
 }
 
 // HashToken computes the SHA-256 hash of a JWT token string.
@@ -77,6 +105,7 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 
 		if err != nil || !token.Valid {
 			slog.Warn("Auth failed: invalid token", "ip", c.ClientIP(), "path", c.Request.URL.Path, "error", err)
+			m.clearAuthCookies(c)
 			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
 				Code:    apperror.CodeUnauthorized,
 				Message: "invalid token",
@@ -88,6 +117,7 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
 			slog.Warn("Auth failed: invalid token claims", "ip", c.ClientIP(), "path", c.Request.URL.Path)
+			m.clearAuthCookies(c)
 			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
 				Code:    apperror.CodeUnauthorized,
 				Message: "invalid token claims",
@@ -100,6 +130,7 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 		tokenType, _ := claims["type"].(string)
 		if tokenType != "access" {
 			slog.Warn("Auth failed: invalid token type", "ip", c.ClientIP(), "path", c.Request.URL.Path, "type", tokenType)
+			m.clearAuthCookies(c)
 			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
 				Code:    apperror.CodeUnauthorized,
 				Message: "invalid token type",
@@ -112,6 +143,7 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 		// Without this check, a token crafted without an exp claim would be accepted indefinitely.
 		if _, hasExp := claims["exp"]; !hasExp {
 			slog.Warn("Auth failed: missing exp claim", "ip", c.ClientIP(), "path", c.Request.URL.Path)
+			m.clearAuthCookies(c)
 			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
 				Code:    apperror.CodeUnauthorized,
 				Message: "invalid token",
@@ -124,6 +156,7 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 		userIDFloat, ok := claims["user_id"].(float64)
 		if !ok || userIDFloat <= 0 || userIDFloat > math.MaxUint32 || userIDFloat != math.Trunc(userIDFloat) {
 			slog.Warn("Auth failed: invalid user id in token", "ip", c.ClientIP(), "path", c.Request.URL.Path)
+			m.clearAuthCookies(c)
 			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
 				Code:    apperror.CodeUnauthorized,
 				Message: "invalid user id in token",
@@ -148,6 +181,7 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 				return
 			}
 			if revoked {
+				m.clearAuthCookies(c)
 				c.JSON(http.StatusUnauthorized, models.ErrorResponse{
 					Code:    apperror.CodeUnauthorized,
 					Message: "token has been revoked",
@@ -168,6 +202,7 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 				return
 			}
 			if userRevoked {
+				m.clearAuthCookies(c)
 				c.JSON(http.StatusUnauthorized, models.ErrorResponse{
 					Code:    apperror.CodeUnauthorized,
 					Message: "token has been revoked",

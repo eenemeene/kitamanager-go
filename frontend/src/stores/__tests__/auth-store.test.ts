@@ -37,7 +37,7 @@ Object.defineProperty(document, 'cookie', {
     const parts = value.split(';').map((p) => p.trim());
     const [nameValue] = parts;
     const [name, val] = nameValue.split('=');
-    if (parts.some((p) => p.startsWith('max-age=-'))) {
+    if (parts.some((p) => p.startsWith('max-age=-') || p === 'max-age=0')) {
       // Cookie deletion
       delete mockCookies[name];
     } else {
@@ -445,6 +445,17 @@ describe('useAuthStore', () => {
       getUnauthorizedCallback()();
 
       expect(apiClient.setHasSession).toHaveBeenCalledWith(false);
+    });
+
+    it('clears the csrf_token cookie so hasAuthCookie() no longer returns true', () => {
+      // Without this, a server that rejected our tokens (e.g. JWT secret
+      // rotation) would leave csrf_token in the jar; checkAuth() would keep
+      // returning true and re-fire authenticated requests in a loop.
+      mockCookies = { csrf_token: 'stale-token-abc' };
+
+      getUnauthorizedCallback()();
+
+      expect(mockCookies.csrf_token).toBeUndefined();
     });
   });
 

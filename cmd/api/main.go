@@ -240,8 +240,11 @@ func initServices(s *appStores, cfg *config.Config, transactor store.Transactor)
 func initMiddleware(s *appStores, cfg *config.Config, permissionService *rbac.PermissionService) *appMiddleware {
 	slog.Info("Rate limiter is in-memory — not suitable for multi-instance deployments. Use a Redis-backed limiter when scaling horizontally.")
 
+	authMW := middleware.NewAuthMiddleware(cfg.JWTSecret, s.token)
+	authMW.SetSecureCookies(cfg.SecureCookies)
+
 	return &appMiddleware{
-		auth:             middleware.NewAuthMiddleware(cfg.JWTSecret, s.token),
+		auth:             authMW,
 		authz:            middleware.NewAuthorizationMiddleware(permissionService),
 		csrf:             middleware.NewCSRFMiddleware(cfg.JWTSecret),
 		loginRateLimiter: middleware.LoginRateLimiter(cfg.LoginRateLimitPerMinute),
