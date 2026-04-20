@@ -290,6 +290,37 @@ func TestExtractOccupancyStructure_NoPeriods(t *testing.T) {
 	}
 }
 
+// TestExtractOccupancyStructure_PicksLatestRegardlessOfOrder asserts the
+// function picks the most recent period by From date, not the slice-first
+// period. Previously the code relied on an implicit "caller sorts DESC"
+// contract, which caused age-group labels to come from an old period when
+// the store returned ASC order.
+func TestExtractOccupancyStructure_PicksLatestRegardlessOfOrder(t *testing.T) {
+	oldPeriod := makeFundingPeriod(date(2020, 1, 1), datePtr(2023, 12, 31), 39, []models.GovernmentFundingProperty{
+		makeFundingProp("care_type", "ganztag", "OLD", 100000, 0.2, intP(0), intP(2)),
+	})
+	newPeriod := makeFundingPeriod(date(2024, 1, 1), nil, 39, []models.GovernmentFundingProperty{
+		makeFundingProp("care_type", "ganztag", "NEW", 120000, 0.2, intP(0), intP(3)),
+		makeFundingProp("care_type", "teilzeit", "NEW-TZ", 80000, 0.15, intP(0), intP(3)),
+	})
+
+	// Ascending order — the bug-inducing case.
+	ascending := []models.GovernmentFundingPeriod{oldPeriod, newPeriod}
+	// Descending order — the previously-assumed case.
+	descending := []models.GovernmentFundingPeriod{newPeriod, oldPeriod}
+
+	for name, periods := range map[string][]models.GovernmentFundingPeriod{"ascending": ascending, "descending": descending} {
+		ageGroups, careTypes, _ := extractOccupancyStructure(periods)
+		if len(careTypes) != 2 {
+			t.Errorf("[%s] expected 2 care types from new period, got %d", name, len(careTypes))
+		}
+		// New period's age range is 0-3, not old period's 0-2.
+		if len(ageGroups) != 1 || ageGroups[0].MaxAge != 3 {
+			t.Errorf("[%s] expected age range from new period (0-3), got %+v", name, ageGroups)
+		}
+	}
+}
+
 // ========================================================================
 // calculateAgeDistribution
 // ========================================================================

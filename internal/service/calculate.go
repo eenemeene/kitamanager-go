@@ -750,12 +750,18 @@ func intPtr(i int) *int {
 
 // extractOccupancyStructure derives age groups, care types, and supplement types
 // from the government funding periods' properties.
+//
+// Uses the period with the latest From date. Historically this function relied
+// on the caller passing periods ordered DESC — that implicit contract has
+// broken before. Picking the latest explicitly means the occupancy UI stays
+// correct even if the store returns periods in any order.
 func extractOccupancyStructure(periods []models.GovernmentFundingPeriod) ([]models.OccupancyAgeGroup, []models.OccupancyCareType, []models.OccupancySupplementType) {
-	// Use the most recent period (periods are ordered DESC by from_date)
 	if len(periods) == 0 {
 		return nil, nil, nil
 	}
-	period := periods[0]
+	period := slices.MaxFunc(periods, func(a, b models.GovernmentFundingPeriod) int {
+		return a.From.Compare(b.From)
+	})
 
 	type ageKey struct {
 		minAge, maxAge int
