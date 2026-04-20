@@ -36,6 +36,14 @@ export function FinancialsChart({ data }: FinancialsChartProps) {
   const budgetExpensesKey = t('statistics.budgetExpenses');
   const balanceLabel = t('statistics.balance');
 
+  const keyTooltips: Record<string, string> = {
+    [fundingKey]: t('statistics.fundingIncomeTooltip'),
+    [budgetIncomeKey]: t('statistics.budgetIncomeTooltip'),
+    [grossSalaryKey]: t('statistics.grossSalaryTooltip'),
+    [employerCostsKey]: t('statistics.employerCostsTooltip'),
+    [budgetExpensesKey]: t('statistics.budgetExpensesTooltip'),
+  };
+
   const rawDates = data.data_points.map((dp) => dp.date);
   const xLabels = rawDates.map(formatDateLabel);
   const kitaYearBands = useMemo(() => buildKitaYearBands(rawDates), [rawDates]);
@@ -358,9 +366,9 @@ export function FinancialsChart({ data }: FinancialsChartProps) {
                 currency: 'EUR',
               })}
             </div>
-            {id === employerCostsKey && (
-              <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>
-                {t('statistics.employerCostsTooltip')}
+            {keyTooltips[id as string] && (
+              <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4, maxWidth: 280 }}>
+                {keyTooltips[id as string]}
               </div>
             )}
           </div>
