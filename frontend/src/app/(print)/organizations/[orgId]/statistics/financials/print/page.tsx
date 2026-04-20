@@ -182,7 +182,7 @@ export default function FinancialsPrintPage() {
             <p className="text-muted-foreground text-sm font-medium">
               {t('statistics.totalIncome')}
             </p>
-            <p className="mt-1 text-2xl font-bold text-green-600 dark:text-green-400">
+            <p className="text-success mt-1 text-2xl font-bold">
               {formatCurrency(currentFinancials.total_income)}
             </p>
           </div>
@@ -190,7 +190,7 @@ export default function FinancialsPrintPage() {
             <p className="text-muted-foreground text-sm font-medium">
               {t('statistics.totalExpenses')}
             </p>
-            <p className="mt-1 text-2xl font-bold text-red-600 dark:text-red-400">
+            <p className="text-destructive mt-1 text-2xl font-bold">
               {formatCurrency(currentFinancials.total_expenses)}
             </p>
           </div>
@@ -198,9 +198,7 @@ export default function FinancialsPrintPage() {
             <p className="text-muted-foreground text-sm font-medium">{t('statistics.balance')}</p>
             <p
               className={`mt-1 text-2xl font-bold ${
-                currentFinancials.balance >= 0
-                  ? 'text-blue-600 dark:text-blue-400'
-                  : 'text-red-600 dark:text-red-400'
+                currentFinancials.balance >= 0 ? 'text-info' : 'text-destructive'
               }`}
             >
               {formatCurrency(currentFinancials.balance)}

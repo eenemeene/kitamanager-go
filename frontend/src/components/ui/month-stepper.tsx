@@ -30,7 +30,7 @@ export function MonthStepper({ value, onChange }: MonthStepperProps) {
       <Button
         variant="outline"
         size="icon"
-        className="h-8 w-8"
+        className="h-11 w-11 md:h-10 md:w-10"
         onClick={() => onChange(startOfMonth(subMonths(value, 1)))}
         aria-label={t('previousMonth')}
       >
@@ -39,7 +39,7 @@ export function MonthStepper({ value, onChange }: MonthStepperProps) {
 
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button variant="outline" className="min-w-[180px] text-sm font-medium">
+          <Button variant="outline" className="text-sm font-medium md:min-w-[180px]">
             {format(value, 'd. MMMM yyyy', { locale: dfLocale })}
           </Button>
         </PopoverTrigger>
@@ -61,7 +61,7 @@ export function MonthStepper({ value, onChange }: MonthStepperProps) {
       <Button
         variant="outline"
         size="icon"
-        className="h-8 w-8"
+        className="h-11 w-11 md:h-10 md:w-10"
         onClick={() => onChange(startOfMonth(addMonths(value, 1)))}
         aria-label={t('nextMonth')}
       >

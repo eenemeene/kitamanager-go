@@ -89,7 +89,7 @@ export function FundingDeficitAnalysis({
                         <div
                           className={cn(
                             'h-2 rounded-full',
-                            cat.total_amount < 0 ? 'bg-red-500/70' : 'bg-green-500/70'
+                            cat.total_amount < 0 ? 'bg-destructive/70' : 'bg-success/70'
                           )}
                           style={{
                             width: `${(Math.abs(cat.total_amount) / maxCategoryAbs) * 100}%`,
@@ -99,9 +99,7 @@ export function FundingDeficitAnalysis({
                       <span
                         className={cn(
                           'w-24 text-right text-sm font-medium tabular-nums',
-                          cat.total_amount < 0
-                            ? 'text-red-700 dark:text-red-400'
-                            : 'text-green-700 dark:text-green-400'
+                          cat.total_amount < 0 ? 'text-destructive' : 'text-success'
                         )}
                       >
                         {cat.total_amount >= 0 ? '+' : ''}
@@ -166,9 +164,7 @@ export function FundingDeficitAnalysis({
                             <TableCell
                               className={cn(
                                 'text-right font-medium tabular-nums',
-                                issue.total_amount < 0
-                                  ? 'text-red-700 dark:text-red-400'
-                                  : 'text-green-700 dark:text-green-400'
+                                issue.total_amount < 0 ? 'text-destructive' : 'text-success'
                               )}
                             >
                               {issue.total_amount >= 0 ? '+' : ''}

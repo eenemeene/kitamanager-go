@@ -172,8 +172,8 @@ export default function OrgDashboardPage() {
           valueClassName={
             coverageBalance !== null
               ? coverageBalance >= 0
-                ? 'text-green-600'
-                : 'text-red-600'
+                ? 'text-success'
+                : 'text-destructive'
               : undefined
           }
           icon={Clock}

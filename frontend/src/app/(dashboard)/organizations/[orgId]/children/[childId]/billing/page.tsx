@@ -113,7 +113,7 @@ function BillingRow({
         <TableCell className="text-right">{formatCurrency(entry.bill_total)}</TableCell>
         <TableCell className="hidden text-right md:table-cell">
           {entry.correction_total ? (
-            <span className="text-blue-600">{formatCurrency(entry.correction_total)}</span>
+            <span className="text-info">{formatCurrency(entry.correction_total)}</span>
           ) : (
             '\u2014'
           )}
@@ -125,7 +125,11 @@ function BillingRow({
           {entry.difference != null ? (
             <span
               className={
-                entry.difference < 0 ? 'text-red-600' : entry.difference > 0 ? 'text-green-600' : ''
+                entry.difference < 0
+                  ? 'text-destructive'
+                  : entry.difference > 0
+                    ? 'text-success'
+                    : ''
               }
             >
               {formatCurrency(entry.difference)}
@@ -138,9 +142,9 @@ function BillingRow({
           <span
             className={
               entry.running_difference < 0
-                ? 'font-medium text-red-600'
+                ? 'text-destructive font-medium'
                 : entry.running_difference > 0
-                  ? 'font-medium text-green-600'
+                  ? 'text-success font-medium'
                   : ''
             }
           >
@@ -185,9 +189,9 @@ function BillingRow({
                         <span
                           className={
                             prop.difference < 0
-                              ? 'text-red-600'
+                              ? 'text-destructive'
                               : prop.difference > 0
-                                ? 'text-green-600'
+                                ? 'text-success'
                                 : ''
                           }
                         >
@@ -289,7 +293,7 @@ export default function ChildBillingHistoryPage() {
                   <div>
                     <p className="text-muted-foreground text-sm">{t('difference')}</p>
                     <p
-                      className={`text-lg font-semibold ${history.total_difference < 0 ? 'text-red-600' : history.total_difference > 0 ? 'text-green-600' : ''}`}
+                      className={`text-lg font-semibold ${history.total_difference < 0 ? 'text-destructive' : history.total_difference > 0 ? 'text-success' : ''}`}
                     >
                       {formatCurrency(history.total_difference)}
                     </p>
@@ -380,9 +384,9 @@ export default function ChildBillingHistoryPage() {
                             <span
                               className={
                                 history.total_difference < 0
-                                  ? 'text-red-600'
+                                  ? 'text-destructive'
                                   : history.total_difference > 0
-                                    ? 'text-green-600'
+                                    ? 'text-success'
                                     : ''
                               }
                             >

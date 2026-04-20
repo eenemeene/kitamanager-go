@@ -393,6 +393,8 @@
     "birthdate": "Geburtsdatum",
     "noContractsFound": "Keine Verträge für dieses Kind gefunden.",
     "billingHistory": "Abrechnungshistorie",
+    "billingShortfall": "Unterdeckung",
+    "billingOverage": "Überschuss",
     "noBillingEntries": "Keine Abrechnungseinträge für dieses Kind gefunden.",
     "noVoucherNumbers": "Dieses Kind hat keine Gutscheinnummern in seinen Verträgen.",
     "funding": "Finanzierung",

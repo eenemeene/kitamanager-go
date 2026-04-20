@@ -72,19 +72,19 @@ function MismatchTag({ mismatch, t }: { mismatch: MismatchType; t: (key: string)
   switch (mismatch) {
     case 'missing':
       return (
-        <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+        <span className="bg-warning/15 text-warning inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium">
           {t('mismatchMissing')}
         </span>
       );
     case 'additional':
       return (
-        <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+        <span className="bg-info/15 text-info inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium">
           {t('mismatchAdditional')}
         </span>
       );
     case 'different':
       return (
-        <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900 dark:text-red-200">
+        <span className="bg-destructive/15 text-destructive inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium">
           {t('mismatchDifferent')}
         </span>
       );
@@ -214,8 +214,8 @@ export default function GovernmentFundingBillDetailPage() {
                   comparison.difference_count === 0 &&
                   comparison.bill_only_count === 0 &&
                   comparison.calc_only_count === 0
-                    ? 'text-green-600'
-                    : 'text-red-600'
+                    ? 'text-success'
+                    : 'text-destructive'
                 }`}
               >
                 {t('difference')}: {formatCurrency(comparison.difference)}
@@ -251,7 +251,7 @@ export default function GovernmentFundingBillDetailPage() {
                       comparison.difference_count === 0 &&
                       comparison.bill_only_count === 0 &&
                       comparison.calc_only_count === 0
-                        ? 'bg-green-500'
+                        ? 'bg-success'
                         : 'bg-muted-foreground'
                     }`}
                   />
@@ -262,7 +262,7 @@ export default function GovernmentFundingBillDetailPage() {
                 </li>
                 {comparison.difference_count > 0 && (
                   <li className="flex items-center gap-2">
-                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" />
+                    <span className="bg-destructive inline-block h-2.5 w-2.5 rounded-full" />
                     <span className="text-muted-foreground">{t('differenceCount')}</span>
                     <span className="font-medium">
                       {t('childCount', { count: comparison.difference_count })}
@@ -277,7 +277,7 @@ export default function GovernmentFundingBillDetailPage() {
                 )}
                 {comparison.bill_only_count > 0 && (
                   <li className="flex items-center gap-2">
-                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500" />
+                    <span className="bg-warning inline-block h-2.5 w-2.5 rounded-full" />
                     <span className="text-muted-foreground">{t('billOnlyCount')}</span>
                     <span className="font-medium">
                       {t('childCount', { count: comparison.bill_only_count })}
@@ -286,7 +286,7 @@ export default function GovernmentFundingBillDetailPage() {
                 )}
                 {comparison.calc_only_count > 0 && (
                   <li className="flex items-center gap-2">
-                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" />
+                    <span className="bg-destructive inline-block h-2.5 w-2.5 rounded-full" />
                     <span className="text-muted-foreground">{t('calcOnlyCount')}</span>
                     <span className="font-medium">
                       {t('childCount', { count: comparison.calc_only_count })}
@@ -311,9 +311,9 @@ export default function GovernmentFundingBillDetailPage() {
             </CardHeader>
             <CardContent>
               <p className="text-lg font-semibold">
-                <span className="text-green-600">{result.matched_count}</span>
+                <span className="text-success">{result.matched_count}</span>
                 {' / '}
-                <span className="text-red-600">{result.unmatched_count}</span>
+                <span className="text-destructive">{result.unmatched_count}</span>
                 <span className="text-muted-foreground ml-2 text-sm">
                   ({result.children_count} {t('children')})
                 </span>
@@ -328,7 +328,7 @@ export default function GovernmentFundingBillDetailPage() {
         <p className="text-muted-foreground text-center text-sm">{t('comparisonLoading')}</p>
       )}
       {comparisonError && (
-        <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-200">
+        <div className="border-warning/30 bg-warning/10 text-warning rounded-md border p-3 text-sm">
           <AlertTriangle className="mr-2 inline h-4 w-4" />
           {t('comparisonError')}
         </div>
@@ -418,7 +418,7 @@ export default function GovernmentFundingBillDetailPage() {
                         <>
                           <TableCell className="hidden text-right md:table-cell">
                             {comp.correction_total ? (
-                              <span className="text-blue-600">
+                              <span className="text-info">
                                 {formatCurrency(comp.correction_total)}
                               </span>
                             ) : (
@@ -434,8 +434,8 @@ export default function GovernmentFundingBillDetailPage() {
                             <span
                               className={
                                 comp.difference != null && comp.difference >= 0
-                                  ? 'text-green-600'
-                                  : 'text-red-600'
+                                  ? 'text-success'
+                                  : 'text-destructive'
                               }
                             >
                               {comp.difference != null ? formatCurrency(comp.difference) : '\u2014'}
@@ -577,8 +577,8 @@ export default function GovernmentFundingBillDetailPage() {
                                           <span
                                             className={
                                               prop.difference >= 0
-                                                ? 'text-green-600'
-                                                : 'text-red-600'
+                                                ? 'text-success'
+                                                : 'text-destructive'
                                             }
                                           >
                                             {formatCurrency(prop.difference)}

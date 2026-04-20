@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { Pencil, Trash2, FileText, History, Receipt } from 'lucide-react';
+import { Pencil, Trash2, FileText, History, Receipt, ArrowDown, ArrowUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HeaderWithTooltip } from '@/components/ui/header-with-tooltip';
 import {
@@ -157,8 +157,20 @@ export function ChildrenTable({
                     return (
                       <div className="flex flex-col items-end gap-0.5">
                         <span
-                          className={`font-medium ${diff < 0 ? 'text-red-600' : diff > 0 ? 'text-green-600' : ''}`}
+                          className={`inline-flex items-center gap-1 font-medium ${diff < 0 ? 'text-destructive' : diff > 0 ? 'text-success' : ''}`}
                         >
+                          {diff < 0 ? (
+                            <ArrowDown className="h-3 w-3" aria-hidden="true" />
+                          ) : diff > 0 ? (
+                            <ArrowUp className="h-3 w-3" aria-hidden="true" />
+                          ) : null}
+                          <span className="sr-only">
+                            {diff < 0
+                              ? t('children.billingShortfall')
+                              : diff > 0
+                                ? t('children.billingOverage')
+                                : ''}
+                          </span>
                           {formatCurrency(diff)}
                         </span>
                         <span className="text-muted-foreground text-xs">{coverage}</span>

@@ -113,6 +113,27 @@ export function formatFte(ratio: number): string {
 }
 
 /**
+ * Format a percentage. Pass `value` as a fraction (0.125 for 12.5%) when
+ * `asFraction` is true (default), or pre-multiplied when false (12.5 for 12.5%).
+ * Locale 'de' uses comma as decimal separator.
+ */
+export function formatPercentage(
+  value: number | null | undefined,
+  fractionDigits = 2,
+  locale = 'de',
+  asFraction = false
+): string {
+  if (value === null || value === undefined || !isFinite(value)) return '-';
+  const pct = asFraction ? value * 100 : value;
+  return (
+    pct.toLocaleString(locale === 'de' ? 'de-DE' : 'en-US', {
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
+    }) + '%'
+  );
+}
+
+/**
  * Format age range. Callers should pass the translated "years" label
  * via the yearsText parameter (e.g. t('common.years')).
  */

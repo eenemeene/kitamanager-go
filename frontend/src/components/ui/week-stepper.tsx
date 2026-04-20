@@ -35,7 +35,7 @@ export function WeekStepper({ value, onChange }: WeekStepperProps) {
       <Button
         variant="outline"
         size="icon"
-        className="h-8 w-8"
+        className="h-11 w-11 md:h-10 md:w-10"
         onClick={() => onChange(subDays(monday, 7))}
         aria-label={t('previousWeek')}
       >
@@ -44,7 +44,7 @@ export function WeekStepper({ value, onChange }: WeekStepperProps) {
 
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button variant="outline" className="min-w-[260px] text-sm font-medium">
+          <Button variant="outline" className="text-sm font-medium md:min-w-[260px]">
             {label}
           </Button>
         </PopoverTrigger>
@@ -66,7 +66,7 @@ export function WeekStepper({ value, onChange }: WeekStepperProps) {
       <Button
         variant="outline"
         size="icon"
-        className="h-8 w-8"
+        className="h-11 w-11 md:h-10 md:w-10"
         onClick={() => onChange(addDays(monday, 7))}
         aria-label={t('nextWeek')}
       >

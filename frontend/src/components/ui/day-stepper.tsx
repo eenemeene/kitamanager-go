@@ -31,7 +31,7 @@ export function DayStepper({ value, onChange }: DayStepperProps) {
       <Button
         variant="outline"
         size="icon"
-        className="h-8 w-8"
+        className="h-11 w-11 md:h-10 md:w-10"
         onClick={() => onChange(subDays(value, 1))}
         aria-label={tAttendance('previousDay')}
       >
@@ -40,7 +40,7 @@ export function DayStepper({ value, onChange }: DayStepperProps) {
 
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button variant="outline" className="min-w-[200px] text-sm font-medium">
+          <Button variant="outline" className="text-sm font-medium md:min-w-[200px]">
             {format(value, 'EEEE, d. MMMM yyyy', { locale: dfLocale })}
           </Button>
         </PopoverTrigger>
@@ -62,7 +62,7 @@ export function DayStepper({ value, onChange }: DayStepperProps) {
       <Button
         variant="outline"
         size="icon"
-        className="h-8 w-8"
+        className="h-11 w-11 md:h-10 md:w-10"
         onClick={() => onChange(addDays(value, 1))}
         aria-label={tAttendance('nextDay')}
       >

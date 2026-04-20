@@ -13,15 +13,15 @@ interface TimelineSegmentProps {
 }
 
 const statusColors = {
-  active: 'border-green-500 bg-green-50 dark:bg-green-950/20',
-  upcoming: 'border-amber-500 bg-amber-50 dark:bg-amber-950/20',
-  ended: 'border-gray-300 bg-gray-50 dark:border-gray-600 dark:bg-gray-900/20',
+  active: 'border-success bg-success/10',
+  upcoming: 'border-warning bg-warning/10',
+  ended: 'border-muted-foreground/30 bg-muted/40',
 };
 
 const dotColors = {
-  active: 'bg-green-500',
-  upcoming: 'bg-amber-500',
-  ended: 'bg-gray-400',
+  active: 'bg-success',
+  upcoming: 'bg-warning',
+  ended: 'bg-muted-foreground/40',
 };
 
 const badgeVariants = {

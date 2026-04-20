@@ -92,8 +92,7 @@ export function StaffingHoursTable({ data }: StaffingHoursTableProps) {
 
   const months = dataPoints.map((dp) => dp.date);
 
-  const balanceColor = (val: number) =>
-    val >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400';
+  const balanceColor = (val: number) => (val >= 0 ? 'text-success' : 'text-destructive');
 
   return (
     <TooltipProvider>

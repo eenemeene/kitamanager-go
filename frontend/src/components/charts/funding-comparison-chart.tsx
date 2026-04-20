@@ -548,7 +548,7 @@ export function FundingComparisonChart({
                             )}
                             {t('kitaYear', { year: row.label })}
                             {row.hasBills && !row.complete && (
-                              <span className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                              <span className="text-warning inline-flex items-center gap-1 text-xs">
                                 <AlertTriangle className="h-3 w-3" />
                                 {row.actualMonths}/{row.totalMonths} {t('fundingMonthsCovered')}
                               </span>
@@ -569,8 +569,8 @@ export function FundingComparisonChart({
                             !row.hasBills
                               ? 'text-muted-foreground'
                               : row.difference >= 0
-                                ? 'text-green-700 dark:text-green-400'
-                                : 'text-red-700 dark:text-red-400'
+                                ? 'text-success'
+                                : 'text-destructive'
                           }`}
                         >
                           {row.hasBills
@@ -603,8 +603,8 @@ export function FundingComparisonChart({
                                     m.difference == null
                                       ? 'text-muted-foreground'
                                       : m.difference >= 0
-                                        ? 'text-green-700 dark:text-green-400'
-                                        : 'text-red-700 dark:text-red-400'
+                                        ? 'text-success'
+                                        : 'text-destructive'
                                   }`}
                                 >
                                   {m.difference != null
@@ -617,14 +617,14 @@ export function FundingComparisonChart({
                                   <TableCell colSpan={5} className="py-1 pl-14">
                                     <div className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-0.5 text-xs">
                                       {m.billOnlyCount != null && m.billOnlyCount > 0 && (
-                                        <span className="text-amber-600 dark:text-amber-400">
+                                        <span className="text-warning">
                                           {t('fundingBillOnly')}:{' '}
                                           {t('fundingChildCount', { count: m.billOnlyCount })} (
                                           {formatEur(m.billOnlyAmount ?? 0)})
                                         </span>
                                       )}
                                       {m.calcOnlyCount != null && m.calcOnlyCount > 0 && (
-                                        <span className="text-blue-600 dark:text-blue-400">
+                                        <span className="text-info">
                                           {t('fundingCalcOnly')}:{' '}
                                           {t('fundingChildCount', { count: m.calcOnlyCount })} (
                                           {formatEur(m.calcOnlyAmount ?? 0)})

@@ -186,7 +186,7 @@ export default function GovernmentFundingBillsPage() {
     if (comp.difference_count === 0 && comp.bill_only_count === 0 && comp.calc_only_count === 0) {
       return '';
     }
-    return 'bg-red-50/50 dark:bg-red-950/20';
+    return 'bg-destructive/5';
   };
 
   return (
@@ -226,15 +226,15 @@ export default function GovernmentFundingBillsPage() {
         {/* Summary Bar */}
         {summary && (
           <div className="flex flex-wrap gap-4">
-            <div className="flex items-center gap-2 rounded-md border bg-green-50 px-4 py-2 dark:bg-green-950">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <div className="bg-success/10 border-success/30 flex items-center gap-2 rounded-md border px-4 py-2">
+              <CheckCircle2 className="text-success h-4 w-4" />
               <span className="text-sm font-medium">
                 {t('summaryMatch', { count: summary.matchCount })}
               </span>
             </div>
             {summary.differenceCount > 0 && (
-              <div className="flex items-center gap-2 rounded-md border bg-red-50 px-4 py-2 dark:bg-red-950">
-                <XCircle className="h-4 w-4 text-red-600" />
+              <div className="bg-destructive/10 border-destructive/30 flex items-center gap-2 rounded-md border px-4 py-2">
+                <XCircle className="text-destructive h-4 w-4" />
                 <span className="text-sm font-medium">
                   {t('summaryDifference', { count: summary.differenceCount })}
                 </span>
@@ -243,7 +243,7 @@ export default function GovernmentFundingBillsPage() {
             <div className="flex items-center gap-2 rounded-md border px-4 py-2">
               <span className="text-muted-foreground text-sm">{t('summaryTotal')}:</span>
               <span
-                className={`text-sm font-semibold ${summary.totalDifference >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                className={`text-sm font-semibold ${summary.totalDifference >= 0 ? 'text-success' : 'text-destructive'}`}
               >
                 {formatCurrency(summary.totalDifference)}
               </span>
@@ -327,7 +327,7 @@ export default function GovernmentFundingBillsPage() {
                           <>
                             <TableCell className="hidden md:table-cell">
                               {comp.correction_total ? (
-                                <span className="text-blue-600">
+                                <span className="text-info">
                                   {formatCurrency(comp.correction_total)}
                                 </span>
                               ) : (
@@ -339,7 +339,9 @@ export default function GovernmentFundingBillsPage() {
                             </TableCell>
                             <TableCell className="hidden md:table-cell">
                               <span
-                                className={comp.difference < 0 ? 'text-red-600' : 'text-green-600'}
+                                className={
+                                  comp.difference < 0 ? 'text-destructive' : 'text-success'
+                                }
                               >
                                 {formatCurrency(comp.difference)}
                               </span>
