@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { HeaderWithTooltip } from '@/components/ui/header-with-tooltip';
 import { formatCurrency } from '@/lib/utils/formatting';
 
 interface FinancialSummaryCardsProps {
@@ -22,7 +23,10 @@ export function FinancialSummaryCards({
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-muted-foreground text-sm font-medium">
-            {t('statistics.totalIncome')}
+            <HeaderWithTooltip
+              label={t('statistics.totalIncome')}
+              tooltip={t('statistics.totalIncomeTooltip')}
+            />
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -32,7 +36,10 @@ export function FinancialSummaryCards({
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-muted-foreground text-sm font-medium">
-            {t('statistics.totalExpenses')}
+            <HeaderWithTooltip
+              label={t('statistics.totalExpenses')}
+              tooltip={t('statistics.totalExpensesTooltip')}
+            />
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -42,7 +49,10 @@ export function FinancialSummaryCards({
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-muted-foreground text-sm font-medium">
-            {t('statistics.balance')}
+            <HeaderWithTooltip
+              label={t('statistics.balance')}
+              tooltip={t('statistics.balanceTooltip')}
+            />
           </CardTitle>
         </CardHeader>
         <CardContent>
