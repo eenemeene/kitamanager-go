@@ -36,8 +36,11 @@ export function MonthlyContractChart({ data, occupancy }: MonthlyContractChartPr
 
   const KitaYearBackgroundLayer = useMemo(
     () =>
-      createKitaYearBackgroundLayer(kitaYearBands, xLabels, (label) =>
-        t('statistics.kitaYear', { year: label })
+      createKitaYearBackgroundLayer(
+        kitaYearBands,
+        xLabels,
+        (label) => t('statistics.kitaYear', { year: label }),
+        t('statistics.kitaYearTooltip')
       ),
     [kitaYearBands, xLabels, t]
   );
@@ -46,6 +49,15 @@ export function MonthlyContractChart({ data, occupancy }: MonthlyContractChartPr
   const todayLabel = formatDateLabel(todayStr);
 
   const counts = data.data_points.map((dp) => dp.child_count);
+
+  // Build a static age-group color legend from occupancy metadata (stable across months)
+  const ageGroupLegend = useMemo(() => {
+    if (!occupancy) return [];
+    return occupancy.age_groups.map((ag, idx) => ({
+      label: ag.label,
+      color: AGE_GROUP_COLORS[ag.label] ?? DEFAULT_COLORS[idx % DEFAULT_COLORS.length],
+    }));
+  }, [occupancy]);
 
   // Build age-group breakdown per month label for tooltips
   const ageByMonth = useMemo(() => {
@@ -141,109 +153,126 @@ export function MonthlyContractChart({ data, occupancy }: MonthlyContractChartPr
   }, [xLabels, counts]);
 
   return (
-    <ExportableChart filename="children-contracts" className="h-[350px]">
-      <ResponsiveLine
-        data={chartData}
-        margin={{ top: 20, right: 30, bottom: 80, left: 60 }}
-        xScale={{ type: 'point' }}
-        yScale={{ type: 'linear', min: 'auto', max: 'auto', stacked: false }}
-        layers={[
-          KitaYearBackgroundLayer as any,
-          'grid',
-          'markers',
-          'axes',
-          'areas',
-          'crosshair',
-          'lines',
-          TrendArrows as any,
-          'points',
-          'slices',
-          'mesh',
-          'legends',
-        ]}
-        curve="monotoneX"
-        axisTop={null}
-        axisRight={null}
-        axisBottom={{
-          tickSize: 5,
-          tickPadding: 5,
-          tickRotation: -45,
-        }}
-        axisLeft={{
-          tickSize: 5,
-          tickPadding: 5,
-          tickRotation: 0,
-        }}
-        colors={['#3b82f6']}
-        pointSize={6}
-        pointColor={{ from: 'series.color' }}
-        pointBorderWidth={2}
-        pointBorderColor={{ theme: 'background' }}
-        pointLabelYOffset={-12}
-        useMesh={true}
-        enableSlices="x"
-        sliceTooltip={({ slice }) => {
-          const monthLabel = slice.points[0]?.data.xFormatted as string;
-          const total = slice.points[0]?.data.yFormatted;
-          const ageGroups = ageByMonth?.get(monthLabel);
-          return (
-            <div
-              style={{
-                background: 'hsl(var(--background))',
-                color: 'hsl(var(--foreground))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '6px',
-                padding: '8px 12px',
-                minWidth: '180px',
-                fontSize: '13px',
-              }}
-            >
-              <div style={{ fontWeight: 600, marginBottom: ageGroups ? 4 : 0 }}>
-                {monthLabel}: {total} {t('statistics.childrenCount')}
-              </div>
-              {ageGroups && ageGroups.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {ageGroups.map((g) => (
-                    <div key={g.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span
-                        style={{
-                          width: 10,
-                          height: 10,
-                          borderRadius: '50%',
-                          background: g.color,
-                          display: 'inline-block',
-                          flexShrink: 0,
-                        }}
-                      />
-                      <span>
-                        {g.label} {t('statistics.ageYears', { age: '' }).trim()}: {g.count}
-                      </span>
-                    </div>
-                  ))}
+    <div className="space-y-2">
+      {ageGroupLegend.length > 0 && (
+        <div className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+          <span className="font-medium">{t('statistics.ageGroupLegend')}:</span>
+          {ageGroupLegend.map((g) => (
+            <span key={g.label} className="inline-flex items-center gap-1.5">
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-full"
+                style={{ background: g.color }}
+                aria-hidden="true"
+              />
+              {g.label} {t('statistics.ageYears', { age: '' }).trim()}
+            </span>
+          ))}
+        </div>
+      )}
+      <ExportableChart filename="children-contracts" className="h-[350px]">
+        <ResponsiveLine
+          data={chartData}
+          margin={{ top: 20, right: 30, bottom: 80, left: 60 }}
+          xScale={{ type: 'point' }}
+          yScale={{ type: 'linear', min: 'auto', max: 'auto', stacked: false }}
+          layers={[
+            KitaYearBackgroundLayer as any,
+            'grid',
+            'markers',
+            'axes',
+            'areas',
+            'crosshair',
+            'lines',
+            TrendArrows as any,
+            'points',
+            'slices',
+            'mesh',
+            'legends',
+          ]}
+          curve="monotoneX"
+          axisTop={null}
+          axisRight={null}
+          axisBottom={{
+            tickSize: 5,
+            tickPadding: 5,
+            tickRotation: -45,
+          }}
+          axisLeft={{
+            tickSize: 5,
+            tickPadding: 5,
+            tickRotation: 0,
+          }}
+          colors={['#3b82f6']}
+          pointSize={6}
+          pointColor={{ from: 'series.color' }}
+          pointBorderWidth={2}
+          pointBorderColor={{ theme: 'background' }}
+          pointLabelYOffset={-12}
+          useMesh={true}
+          enableSlices="x"
+          sliceTooltip={({ slice }) => {
+            const monthLabel = slice.points[0]?.data.xFormatted as string;
+            const total = slice.points[0]?.data.yFormatted;
+            const ageGroups = ageByMonth?.get(monthLabel);
+            return (
+              <div
+                style={{
+                  background: 'hsl(var(--background))',
+                  color: 'hsl(var(--foreground))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '6px',
+                  padding: '8px 12px',
+                  minWidth: '180px',
+                  fontSize: '13px',
+                }}
+              >
+                <div style={{ fontWeight: 600, marginBottom: ageGroups ? 4 : 0 }}>
+                  {monthLabel}: {total} {t('statistics.childrenCount')}
                 </div>
-              )}
-            </div>
-          );
-        }}
-        markers={[createTodayMarker(todayLabel, t('common.today'))]}
-        legends={[
-          {
-            anchor: 'top-left',
-            direction: 'row',
-            justify: false,
-            translateX: 0,
-            translateY: -20,
-            itemsSpacing: 16,
-            itemDirection: 'left-to-right',
-            itemWidth: 200,
-            itemHeight: 20,
-            itemOpacity: 0.85,
-            symbolSize: 12,
-            symbolShape: 'circle',
-          },
-        ]}
-        theme={chartTheme}
-      />
-    </ExportableChart>
+                {ageGroups && ageGroups.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {ageGroups.map((g) => (
+                      <div key={g.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span
+                          style={{
+                            width: 10,
+                            height: 10,
+                            borderRadius: '50%',
+                            background: g.color,
+                            display: 'inline-block',
+                            flexShrink: 0,
+                          }}
+                        />
+                        <span>
+                          {g.label} {t('statistics.ageYears', { age: '' }).trim()}: {g.count}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          }}
+          markers={[createTodayMarker(todayLabel, t('common.today'))]}
+          legends={[
+            {
+              anchor: 'top-left',
+              direction: 'row',
+              justify: false,
+              translateX: 0,
+              translateY: -20,
+              itemsSpacing: 16,
+              itemDirection: 'left-to-right',
+              itemWidth: 200,
+              itemHeight: 20,
+              itemOpacity: 0.85,
+              symbolSize: 12,
+              symbolShape: 'circle',
+            },
+          ]}
+          theme={chartTheme}
+        />
+      </ExportableChart>
+    </div>
   );
 }

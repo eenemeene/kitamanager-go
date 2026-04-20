@@ -40,8 +40,11 @@ export function StaffingHoursChart({ data }: StaffingHoursChartProps) {
   // Custom Nivo layer that draws alternating background bands per Kita year
   const KitaYearBackgroundLayer = useMemo(
     () =>
-      createKitaYearBackgroundLayer(kitaYearBands, xLabels, (label) =>
-        t('statistics.kitaYear', { year: label })
+      createKitaYearBackgroundLayer(
+        kitaYearBands,
+        xLabels,
+        (label) => t('statistics.kitaYear', { year: label }),
+        t('statistics.kitaYearTooltip')
       ),
     [kitaYearBands, xLabels, t]
   );

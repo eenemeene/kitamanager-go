@@ -173,7 +173,9 @@ export function FundingComparisonChart({
                         fontWeight={500}
                         fill="currentColor"
                         opacity={0.5}
+                        style={{ cursor: 'help' }}
                       >
+                        <title>{t('kitaYearTooltip')}</title>
                         {t('kitaYear', { year: band.label })}
                       </text>
                     </>

@@ -11,6 +11,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { OccupancyResponse } from '@/lib/api/types';
+import { HeaderWithTooltip } from '@/components/ui/header-with-tooltip';
 
 interface OccupancyTableProps {
   data: OccupancyResponse;
@@ -134,7 +135,7 @@ export function OccupancyTable({ data }: OccupancyTableProps) {
                   className="bg-background text-muted-foreground sticky left-0 z-10 px-2 py-2 font-medium"
                   colSpan={2 + months.length}
                 >
-                  {t('supplements')}
+                  <HeaderWithTooltip label={t('supplements')} tooltip={t('supplementsTooltip')} />
                 </TableCell>
               </TableRow>
               {supplementRows.map((row) => (
