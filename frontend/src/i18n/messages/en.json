@@ -393,6 +393,8 @@
     "birthdate": "Birthdate",
     "noContractsFound": "No contracts found for this child.",
     "billingHistory": "Billing History",
+    "billingShortfall": "Shortfall",
+    "billingOverage": "Overage",
     "noBillingEntries": "No billing entries found for this child.",
     "noVoucherNumbers": "This child has no voucher numbers on any contract.",
     "funding": "Funding",
