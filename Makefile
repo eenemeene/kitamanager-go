@@ -126,7 +126,7 @@ api-test-backup:
 
 # Run API contract tests (requires database)
 api-test-contract:
-	go test -v -tags=contract ./internal/contract/...
+	go test -v -race -tags=contract ./internal/contract/...
 
 # Run API fuzz tests (each fuzz test must be run separately).
 # Use iteration count instead of duration to avoid a known Go fuzz engine race
