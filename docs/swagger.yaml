@@ -1272,6 +1272,12 @@ definitions:
       name:
         example: Elternbeiträge
         type: string
+      per_child:
+        example: true
+        type: boolean
+      unit_amount_cents:
+        example: 5000
+        type: integer
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.FinancialDataPoint:
     properties:

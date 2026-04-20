@@ -11173,6 +11173,14 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "Elternbeiträge"
+                },
+                "per_child": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "unit_amount_cents": {
+                    "type": "integer",
+                    "example": 5000
                 }
             }
         },

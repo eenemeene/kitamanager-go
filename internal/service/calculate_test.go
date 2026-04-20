@@ -1148,6 +1148,37 @@ func TestCalculateFinancials_BudgetItems(t *testing.T) {
 	if len(dp.BudgetItemDetails) != 2 {
 		t.Fatalf("expected 2 budget item details, got %d", len(dp.BudgetItemDetails))
 	}
+
+	// Verify PerChild flag and UnitAmountCents populated correctly so the
+	// frontend can distinguish per-child from fixed-price items without
+	// re-fetching the underlying BudgetItem config.
+	var rent, meals *models.FinancialBudgetItemDetail
+	for i := range dp.BudgetItemDetails {
+		switch dp.BudgetItemDetails[i].Name {
+		case "Rent":
+			rent = &dp.BudgetItemDetails[i]
+		case "Meal fees":
+			meals = &dp.BudgetItemDetails[i]
+		}
+	}
+	if rent == nil || meals == nil {
+		t.Fatalf("expected both detail entries, got: %+v", dp.BudgetItemDetails)
+	}
+	if rent.PerChild {
+		t.Errorf("rent.PerChild expected false, got true")
+	}
+	if rent.UnitAmountCents != 200000 {
+		t.Errorf("rent.UnitAmountCents expected 200000, got %d", rent.UnitAmountCents)
+	}
+	if !meals.PerChild {
+		t.Errorf("meals.PerChild expected true, got false")
+	}
+	if meals.UnitAmountCents != 5000 {
+		t.Errorf("meals.UnitAmountCents expected 5000 (unit price), got %d", meals.UnitAmountCents)
+	}
+	if meals.AmountCents != 10000 {
+		t.Errorf("meals.AmountCents expected 10000 (unit × 2 children), got %d", meals.AmountCents)
+	}
 }
 
 func TestCalculateFinancials_FundingDetails(t *testing.T) {

@@ -279,9 +279,10 @@ func calculateFinancials(
 			for j := range item.Entries {
 				entry := &item.Entries[j]
 				if entry.IsActiveOn(date) {
-					amount := entry.AmountCents
+					unit := entry.AmountCents
+					amount := unit
 					if item.PerChild {
-						amount *= childCount
+						amount = unit * childCount
 					}
 					if item.Category == string(models.BudgetItemCategoryIncome) {
 						budgetIncome += amount
@@ -289,9 +290,11 @@ func calculateFinancials(
 						budgetExpenses += amount
 					}
 					budgetItemDetails = append(budgetItemDetails, models.FinancialBudgetItemDetail{
-						Name:        item.Name,
-						Category:    item.Category,
-						AmountCents: amount,
+						Name:            item.Name,
+						Category:        item.Category,
+						AmountCents:     amount,
+						PerChild:        item.PerChild,
+						UnitAmountCents: unit,
 					})
 					break // only first active entry per item
 				}
