@@ -9,6 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/eenemeene/kitamanager-go/internal/models"
+	"github.com/eenemeene/kitamanager-go/internal/testutil"
 )
 
 func TestChildHandler_List(t *testing.T) {
@@ -106,6 +107,12 @@ func TestChildHandler_Create(t *testing.T) {
 	if result.OrganizationID != org.ID {
 		t.Errorf("expected organization ID %d, got %d", org.ID, result.OrganizationID)
 	}
+
+	testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+		Action:       models.AuditAction("child_create"),
+		ResourceType: "child",
+		ResourceID:   result.ID,
+	})
 }
 
 func TestChildHandler_Update(t *testing.T) {
@@ -139,6 +146,12 @@ func TestChildHandler_Update(t *testing.T) {
 	if result.FirstName != "Updated" {
 		t.Errorf("expected first name 'Updated', got '%s'", result.FirstName)
 	}
+
+	testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+		Action:       models.AuditAction("child_update"),
+		ResourceType: "child",
+		ResourceID:   child.ID,
+	})
 }
 
 func TestChildHandler_Delete(t *testing.T) {
@@ -160,6 +173,12 @@ func TestChildHandler_Delete(t *testing.T) {
 	if w.Code != http.StatusNoContent {
 		t.Errorf("expected status %d, got %d", http.StatusNoContent, w.Code)
 	}
+
+	testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+		Action:       models.AuditActionChildDelete,
+		ResourceType: "child",
+		ResourceID:   child.ID,
+	})
 }
 
 func TestChildHandler_ListContracts(t *testing.T) {
