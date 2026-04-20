@@ -265,7 +265,7 @@ export default function ChildrenPage() {
       childId: number;
       contractId: number;
       to: string;
-    }) => apiClient.updateChildContract(orgId, childId, contractId, { to }),
+    }) => apiClient.updateChildContract(orgId, childId, contractId, { to: formatDateForApi(to) }),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.children.all(orgId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.children.billingSummary(orgId) });
