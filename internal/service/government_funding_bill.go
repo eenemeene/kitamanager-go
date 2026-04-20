@@ -1431,15 +1431,34 @@ func classifyMismatches(billAmounts, calcAmounts map[string]int) map[string]mode
 }
 
 // buildBillOnlyProperties builds properties for a bill-only child (no calculated counterpart).
+//
+// Aggregates duplicate (key, value) pairs so the UI renders one row per
+// distinct property. The matched path (buildComparisonProperties) uses a
+// map and is inherently deduped; the bill-only path used to emit one row
+// per raw payment, producing duplicate lines in the UI when a child had
+// multiple ISBJ rows sharing the same key/value.
 func buildBillOnlyProperties(payments []models.GovernmentFundingBillPayment, labelMap map[string]string) []models.FundingComparisonAmount {
-	props := make([]models.FundingComparisonAmount, 0, len(payments))
+	totals := make(map[string]int, len(payments))
+	order := make([]string, 0, len(payments))
 	for _, p := range payments {
-		amt := p.Amount
+		kv := p.Key + ":" + p.Value
+		if _, seen := totals[kv]; !seen {
+			order = append(order, kv)
+		}
+		totals[kv] += p.Amount
+	}
+
+	sort.Strings(order)
+	props := make([]models.FundingComparisonAmount, 0, len(order))
+	for _, kv := range order {
+		amt := totals[kv]
+		parts := splitKeyValue(kv)
+		a := amt
 		props = append(props, models.FundingComparisonAmount{
-			Key:        p.Key,
-			Value:      p.Value,
-			Label:      labelMap[p.Key+":"+p.Value],
-			BillAmount: &amt,
+			Key:        parts[0],
+			Value:      parts[1],
+			Label:      labelMap[kv],
+			BillAmount: &a,
 			Difference: amt,
 		})
 	}

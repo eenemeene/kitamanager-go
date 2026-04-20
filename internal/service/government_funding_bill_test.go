@@ -6128,6 +6128,43 @@ func TestClassifyMismatches_SurchargeOnlyOneSideLogs(t *testing.T) {
 	}
 }
 
+// TestBuildBillOnlyProperties_DedupesAndAggregates asserts that a bill-only
+// child with multiple payments sharing the same (key, value) produces one
+// row in the comparison — the previous implementation produced one row per
+// raw payment, giving the UI duplicate lines.
+func TestBuildBillOnlyProperties_DedupesAndAggregates(t *testing.T) {
+	payments := []models.GovernmentFundingBillPayment{
+		{Key: "care_type", Value: "ganztag", Amount: 100000, RowType: models.RowTypeRegular},
+		{Key: "care_type", Value: "ganztag", Amount: 20000, RowType: models.RowTypeCorrection},
+		{Key: "parent", Value: "care", Amount: 0, RowType: models.RowTypeRegular},
+	}
+	labelMap := map[string]string{"care_type:ganztag": "Ganztag"}
+
+	got := buildBillOnlyProperties(payments, labelMap)
+
+	if len(got) != 2 {
+		t.Fatalf("expected 2 deduped rows, got %d: %+v", len(got), got)
+	}
+	var ganztag *models.FundingComparisonAmount
+	for i := range got {
+		if got[i].Key == "care_type" && got[i].Value == "ganztag" {
+			ganztag = &got[i]
+		}
+	}
+	if ganztag == nil {
+		t.Fatalf("care_type:ganztag row missing, got: %+v", got)
+	}
+	if ganztag.BillAmount == nil || *ganztag.BillAmount != 120000 {
+		t.Errorf("expected aggregated bill amount 120000, got %+v", ganztag.BillAmount)
+	}
+	if ganztag.Difference != 120000 {
+		t.Errorf("expected difference 120000, got %d", ganztag.Difference)
+	}
+	if ganztag.Label != "Ganztag" {
+		t.Errorf("expected label 'Ganztag', got %q", ganztag.Label)
+	}
+}
+
 // TestClassifyMismatches_SurchargeOnBothSidesNoLog asserts no warning when
 // a surcharge key is present on both sides (the normal case).
 func TestClassifyMismatches_SurchargeOnBothSidesNoLog(t *testing.T) {
