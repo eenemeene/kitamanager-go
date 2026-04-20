@@ -227,7 +227,12 @@ export default function BudgetItemDetailPage() {
                     <TableCell>{formatCurrency(entry.amount_cents)}</TableCell>
                     <TableCell>{entry.notes || '-'}</TableCell>
                     <TableCell className="text-right">
-                      <Button size="icon" variant="ghost" onClick={() => handleEditEntry(entry)}>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleEditEntry(entry)}
+                        aria-label={t('common.edit')}
+                      >
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <Button
@@ -237,6 +242,7 @@ export default function BudgetItemDetailPage() {
                           setDeletingEntry(entry);
                           setIsDeleteEntryDialogOpen(true);
                         }}
+                        aria-label={t('common.delete')}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -261,16 +267,30 @@ export default function BudgetItemDetailPage() {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="from">{t('budgetItems.fromDate')}</Label>
-                <Input id="from" type="date" {...register('from')} />
+                <Input
+                  id="from"
+                  type="date"
+                  aria-invalid={!!errors.from}
+                  aria-describedby={errors.from ? 'from-error' : undefined}
+                  {...register('from')}
+                />
                 {errors.from && (
-                  <p className="text-destructive text-sm">{t('validation.fromDateRequired')}</p>
+                  <p id="from-error" className="text-destructive text-sm">
+                    {t('validation.fromDateRequired')}
+                  </p>
                 )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="to">{t('budgetItems.toDateOptional')}</Label>
-                <Input id="to" type="date" {...register('to')} />
+                <Input
+                  id="to"
+                  type="date"
+                  aria-invalid={!!errors.to}
+                  aria-describedby={errors.to ? 'to-error' : undefined}
+                  {...register('to')}
+                />
                 {errors.to && (
-                  <p className="text-destructive text-sm">
+                  <p id="to-error" className="text-destructive text-sm">
                     {t('validation.toDateMustBeAfterFromDate')}
                   </p>
                 )}
@@ -284,10 +304,14 @@ export default function BudgetItemDetailPage() {
                 type="number"
                 min={0}
                 step={0.01}
+                aria-invalid={!!errors.amount_euros}
+                aria-describedby={errors.amount_euros ? 'amount-error' : undefined}
                 {...register('amount_euros', { valueAsNumber: true })}
               />
               {errors.amount_euros && (
-                <p className="text-destructive text-sm">{t('validation.required')}</p>
+                <p id="amount-error" className="text-destructive text-sm">
+                  {t('validation.required')}
+                </p>
               )}
             </div>
 
