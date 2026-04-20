@@ -195,6 +195,45 @@ describe('useContractMutation', () => {
     );
   });
 
+  it('falls back to createFn when endCurrentContract=true but no active contract exists', async () => {
+    // Edge case worth its own test: the user toggles "end current contract"
+    // on but the entity has no currently-active contract (e.g. all contracts
+    // are in the future or already ended). The hook must still create a new
+    // one rather than no-op or crash trying to update nothing.
+    const createFn = jest.fn().mockResolvedValue({ id: 30, from: '2026-01-01', section_id: 1 });
+    const updateFn = jest.fn();
+
+    const { result } = renderHook(
+      () =>
+        useContractMutation<TestCreateData, TestUpdateData, TestContract>({
+          createFn,
+          updateFn,
+          toUpdateData: ({ from, ...rest }) => rest,
+          invalidateQueryKeys: [['children', 1]],
+        }),
+      { wrapper }
+    );
+
+    act(() => {
+      result.current.mutate({
+        entityId: 5,
+        data: { from: '2026-01-01', section_id: 1 },
+        // Entity has only a past contract — no active one for "today".
+        entity: {
+          contracts: [{ id: 50, from: '2020-01-01', to: '2020-06-30' }],
+        },
+        endCurrentContract: true,
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(createFn).toHaveBeenCalledWith(5, { from: '2026-01-01', section_id: 1 });
+    expect(updateFn).not.toHaveBeenCalled();
+  });
+
   it('calls onSuccess callback', async () => {
     const createFn = jest.fn().mockResolvedValue({ id: 10, from: '2026-01-01', section_id: 1 });
     const onSuccess = jest.fn();
