@@ -10,6 +10,7 @@ import {
   ArrowDown,
   ArrowUp,
   AlertTriangle,
+  CalendarCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HeaderWithTooltip } from '@/components/ui/header-with-tooltip';
@@ -46,6 +47,8 @@ export interface ChildrenTableProps {
   onAddContract: (child: Child) => void;
   onEdit: (child: Child) => void;
   onDelete: (child: Child) => void;
+  onAdjustContractEnd?: (child: Child, contractId: number, newTo: string) => void;
+  isAdjustingContractEnd?: boolean;
 }
 
 export function ChildrenTable({
@@ -59,6 +62,8 @@ export function ChildrenTable({
   onAddContract,
   onEdit,
   onDelete,
+  onAdjustContractEnd,
+  isAdjustingContractEnd,
 }: ChildrenTableProps) {
   const t = useTranslations();
   const tLabels = useTranslations('fundingLabels');
@@ -138,6 +143,37 @@ export function ChildrenTable({
                         <TooltipContent className="max-w-xs">
                           <p>
                             {t('children.contractRunsPastSchoolStart', {
+                              date: formatDate(enrollment.mussContractEnd),
+                            })}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                    {contractOverrun && enrollment && currentContract && onAdjustContractEnd && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 shrink-0"
+                            disabled={isAdjustingContractEnd}
+                            onClick={() =>
+                              onAdjustContractEnd(
+                                child,
+                                currentContract.id,
+                                enrollment.mussContractEnd
+                              )
+                            }
+                            aria-label={t('children.adjustContractEnd', {
+                              date: formatDate(enrollment.mussContractEnd),
+                            })}
+                          >
+                            <CalendarCheck className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <p>
+                            {t('children.adjustContractEnd', {
                               date: formatDate(enrollment.mussContractEnd),
                             })}
                           </p>

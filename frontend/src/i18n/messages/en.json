@@ -410,6 +410,8 @@
     "kannKind": "Kann {year}",
     "schoolEnrollmentTooltip": "Berlin rule: a Muss-Kind must start school in August of the year they turn 6 by September 30. A Kann-Kind may apply to start the preceding August if they turn 6 between October 1 and March 31.",
     "contractRunsPastSchoolStart": "Contract ends after the expected school start ({date}) — consider adjusting.",
+    "adjustContractEnd": "Set contract end to {date}",
+    "contractEndAdjusted": "Contract end set to {date}",
     "exportYaml": "Export YAML",
     "importYaml": "Import YAML",
     "importing": "Importing...",
