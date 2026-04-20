@@ -10,8 +10,11 @@ export {
 export {
   userCreateSchema,
   userUpdateSchema,
+  changePasswordSchema,
+  passwordSchema,
   type UserCreateFormData,
   type UserUpdateFormData,
+  type ChangePasswordFormData,
 } from './user';
 export {
   employeeSchema,

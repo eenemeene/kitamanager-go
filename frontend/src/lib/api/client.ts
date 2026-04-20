@@ -313,6 +313,19 @@ class ApiClient {
     return response.data;
   }
 
+  async changePassword(currentPassword: string, newPassword: string): Promise<LoginResponse> {
+    // Backend rotates access/refresh/csrf cookies on success, so the session
+    // stays live. We must NOT touch hasSession here: a successful 200 keeps
+    // the user logged in with the freshly issued cookies. On failure the
+    // server-side lockout + rate limiter protect the endpoint; the UI
+    // surfaces a generic error so no backend detail is echoed to the caller.
+    const response = await this.client.put<LoginResponse>('/me/password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
+    return response.data;
+  }
+
   // Organizations
   private _organizations = this.topLevelCrud<
     Organization,
