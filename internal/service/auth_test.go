@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
@@ -329,6 +330,49 @@ func TestAuthService_ChangePassword_Success(t *testing.T) {
 	_, err = svc.Login(ctx, "test@example.com", "password123", "127.0.0.1", "test-agent")
 	if err == nil {
 		t.Error("expected login with old password to fail")
+	}
+}
+
+// Regression for issue #134: ChangePassword must not lock the caller out.
+// Before the fix, RevokeAllForUser inserted a sentinel that also invalidated
+// the brand-new tokens issued in the same call, causing /me and /refresh to
+// 401 silently for 8 days.
+func TestAuthService_ChangePassword_NewTokensNotRevokedBySentinel(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	tokenStore := store.NewTokenStore(db)
+	ctx := context.Background()
+
+	user := createTestUserWithHashedPassword(t, db, "Test User", "test@example.com", "password123")
+
+	result, err := svc.ChangePassword(ctx, user.ID, "password123", "newpassword456", "127.0.0.1")
+	if err != nil {
+		t.Fatalf("ChangePassword: %v", err)
+	}
+
+	// Parse the freshly-issued access token and extract its iat.
+	parsed, err := jwt.Parse(result.AccessToken, func(*jwt.Token) (any, error) {
+		return []byte("test-jwt-secret"), nil
+	})
+	if err != nil || !parsed.Valid {
+		t.Fatalf("parse new access token: %v", err)
+	}
+	claims := parsed.Claims.(jwt.MapClaims)
+	iat := time.Unix(int64(claims["iat"].(float64)), 0).UTC()
+
+	// The sentinel exists (password change wrote one), but the new token's
+	// iat must lie at-or-after the sentinel cutoff.
+	revoked, err := tokenStore.IsUserRevokedSince(ctx, user.ID, iat)
+	if err != nil {
+		t.Fatalf("IsUserRevokedSince: %v", err)
+	}
+	if revoked {
+		t.Error("new access token issued by ChangePassword must not be treated as revoked")
+	}
+
+	// And Refresh with the freshly-issued refresh token must succeed.
+	if _, err := svc.Refresh(ctx, result.RefreshToken, result.AccessToken); err != nil {
+		t.Errorf("refresh with new token after ChangePassword: %v", err)
 	}
 }
 

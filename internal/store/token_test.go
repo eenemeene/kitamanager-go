@@ -78,7 +78,7 @@ func TestTokenStore_IsRevoked(t *testing.T) {
 	}
 }
 
-func TestTokenStore_RevokeAllForUser(t *testing.T) {
+func TestTokenStore_RevokeAllForUser_RevokesOldTokens(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewTokenStore(db)
 	ctx := context.Background()
@@ -92,6 +92,9 @@ func TestTokenStore_RevokeAllForUser(t *testing.T) {
 		t.Fatalf("RevokeToken: %v", err)
 	}
 
+	// A token issued shortly before RevokeAllForUser must be considered revoked.
+	issuedBefore := time.Now().Add(-10 * time.Second)
+
 	// Revoke all.
 	if err := store.RevokeAllForUser(ctx, user.ID); err != nil {
 		t.Fatalf("RevokeAllForUser: %v", err)
@@ -104,25 +107,48 @@ func TestTokenStore_RevokeAllForUser(t *testing.T) {
 		t.Errorf("expected exactly 1 sentinel row, got %d", count)
 	}
 
-	// Sentinel should be detectable via IsUserRevoked.
-	revoked, err := store.IsUserRevoked(ctx, user.ID)
+	revoked, err := store.IsUserRevokedSince(ctx, user.ID, issuedBefore)
 	if err != nil {
-		t.Fatalf("IsUserRevoked: %v", err)
+		t.Fatalf("IsUserRevokedSince: %v", err)
 	}
 	if !revoked {
-		t.Error("expected user to be revoked after RevokeAllForUser")
+		t.Error("token issued before RevokeAllForUser should be revoked")
 	}
 }
 
-func TestTokenStore_IsUserRevoked_NotRevoked(t *testing.T) {
+func TestTokenStore_RevokeAllForUser_AllowsNewTokens(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewTokenStore(db)
 	ctx := context.Background()
 	user := createTestUser(t, db, "Test User", "test@example.com")
 
-	revoked, err := store.IsUserRevoked(ctx, user.ID)
+	if err := store.RevokeAllForUser(ctx, user.ID); err != nil {
+		t.Fatalf("RevokeAllForUser: %v", err)
+	}
+
+	// A token issued 5 seconds AFTER the sentinel must still be valid.
+	// This is the #134 regression: ChangePassword writes a sentinel and then
+	// immediately issues fresh tokens; those must not be invalidated.
+	issuedAfter := time.Now().Add(5 * time.Second)
+
+	revoked, err := store.IsUserRevokedSince(ctx, user.ID, issuedAfter)
 	if err != nil {
-		t.Fatalf("IsUserRevoked: %v", err)
+		t.Fatalf("IsUserRevokedSince: %v", err)
+	}
+	if revoked {
+		t.Error("token issued after RevokeAllForUser must not be revoked")
+	}
+}
+
+func TestTokenStore_IsUserRevokedSince_NotRevoked(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewTokenStore(db)
+	ctx := context.Background()
+	user := createTestUser(t, db, "Test User", "test@example.com")
+
+	revoked, err := store.IsUserRevokedSince(ctx, user.ID, time.Now().Add(-time.Hour))
+	if err != nil {
+		t.Fatalf("IsUserRevokedSince: %v", err)
 	}
 	if revoked {
 		t.Error("expected user NOT to be revoked initially")
@@ -195,9 +221,9 @@ func TestTokenStore_RevokeAllForUser_IsolatesUsers(t *testing.T) {
 	}
 
 	// User2 should NOT be marked as all-revoked.
-	userRevoked, err := store.IsUserRevoked(ctx, user2.ID)
+	userRevoked, err := store.IsUserRevokedSince(ctx, user2.ID, time.Now().Add(-time.Hour))
 	if err != nil {
-		t.Fatalf("IsUserRevoked: %v", err)
+		t.Fatalf("IsUserRevokedSince: %v", err)
 	}
 	if userRevoked {
 		t.Error("user2 should NOT be user-revoked after revoking user1")

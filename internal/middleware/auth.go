@@ -7,6 +7,7 @@ import (
 	"math"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -167,6 +168,22 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 
 		userID := uint(userIDFloat)
 
+		// Extract iat for user-wide revocation check. Tokens issued by this
+		// codebase always carry iat (see service.generateAccessToken); if it
+		// is missing, the token is malformed and we fail closed.
+		iatFloat, ok := claims["iat"].(float64)
+		if !ok || iatFloat <= 0 {
+			slog.Warn("Auth failed: missing iat claim", "ip", c.ClientIP(), "path", c.Request.URL.Path)
+			m.clearAuthCookies(c)
+			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+				Code:    apperror.CodeUnauthorized,
+				Message: "invalid token",
+			})
+			c.Abort()
+			return
+		}
+		tokenIssuedAt := time.Unix(int64(iatFloat), 0).UTC()
+
 		// Check if token has been revoked
 		if m.tokenStore != nil {
 			tokenHash := HashToken(tokenString)
@@ -190,8 +207,9 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 				return
 			}
 
-			// Check if all tokens for this user have been revoked
-			userRevoked, err := m.tokenStore.IsUserRevoked(c.Request.Context(), userID)
+			// Revoke only tokens issued before the last RevokeAllForUser cutoff;
+			// fresher tokens issued after a password change must keep working.
+			userRevoked, err := m.tokenStore.IsUserRevokedSince(c.Request.Context(), userID, tokenIssuedAt)
 			if err != nil {
 				slog.Error("Failed to check user token revocation", "error", err, "ip", c.ClientIP())
 				c.JSON(http.StatusInternalServerError, models.ErrorResponse{

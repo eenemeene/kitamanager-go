@@ -24,6 +24,7 @@ func TestAuthMiddleware_RequireAuth_UserIDConversion(t *testing.T) {
 		"email":   "test@example.com",
 		"type":    "access",
 		"exp":     time.Now().Add(time.Hour).Unix(),
+		"iat":     time.Now().Unix(),
 	})
 	tokenString, err := token.SignedString([]byte(jwtSecret))
 	if err != nil {
@@ -258,6 +259,7 @@ func TestAuthMiddleware_RequireAuth_AcceptsAccessToken(t *testing.T) {
 		"email":   "test@example.com",
 		"type":    "access", // Explicit access type
 		"exp":     time.Now().Add(time.Hour).Unix(),
+		"iat":     time.Now().Unix(),
 	})
 	tokenString, err := token.SignedString([]byte(jwtSecret))
 	if err != nil {
@@ -326,6 +328,7 @@ func TestAuthMiddleware_RequireAuth_AcceptsCookieToken(t *testing.T) {
 		"email":   "test@example.com",
 		"type":    "access",
 		"exp":     time.Now().Add(time.Hour).Unix(),
+		"iat":     time.Now().Unix(),
 	})
 	tokenString, err := token.SignedString([]byte(jwtSecret))
 	if err != nil {
@@ -368,6 +371,7 @@ func TestAuthMiddleware_RequireAuth_PrefersCookieOverHeader(t *testing.T) {
 		"email":   "cookie@example.com",
 		"type":    "access",
 		"exp":     time.Now().Add(time.Hour).Unix(),
+		"iat":     time.Now().Unix(),
 	})
 	cookieTokenString, _ := cookieToken.SignedString([]byte(jwtSecret))
 
@@ -376,6 +380,7 @@ func TestAuthMiddleware_RequireAuth_PrefersCookieOverHeader(t *testing.T) {
 		"email":   "header@example.com",
 		"type":    "access",
 		"exp":     time.Now().Add(time.Hour).Unix(),
+		"iat":     time.Now().Unix(),
 	})
 	headerTokenString, _ := headerToken.SignedString([]byte(jwtSecret))
 
@@ -415,6 +420,7 @@ func TestAuthMiddleware_RequireAuth_FallsBackToHeader(t *testing.T) {
 		"email":   "test@example.com",
 		"type":    "access",
 		"exp":     time.Now().Add(time.Hour).Unix(),
+		"iat":     time.Now().Unix(),
 	})
 	tokenString, _ := token.SignedString([]byte(jwtSecret))
 
@@ -714,6 +720,43 @@ func TestAuthMiddleware_RequireAuth_FractionalUserID(t *testing.T) {
 
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("expected status %d for fractional user_id, got %d", http.StatusUnauthorized, w.Code)
+	}
+}
+
+func TestAuthMiddleware_RequireAuth_MissingIatClaim(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	jwtSecret := "test-secret"
+	middleware := NewAuthMiddleware(jwtSecret)
+
+	// Tokens produced by this codebase always carry iat (issue #134 fix uses
+	// it to scope user-wide revocation). A token without iat is malformed
+	// and must be rejected.
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": 42,
+		"email":   "test@example.com",
+		"type":    "access",
+		"exp":     time.Now().Add(time.Hour).Unix(),
+		// No "iat" claim
+	})
+	tokenString, err := token.SignedString([]byte(jwtSecret))
+	if err != nil {
+		t.Fatalf("failed to sign token: %v", err)
+	}
+
+	router := gin.New()
+	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.Header.Set("Authorization", "Bearer "+tokenString)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected status %d for missing iat claim, got %d", http.StatusUnauthorized, w.Code)
 	}
 }
 

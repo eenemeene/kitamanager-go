@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -676,7 +677,7 @@ func TestUserService_Update_DeactivationRevokesTokens(t *testing.T) {
 	}
 
 	// Verify tokens were revoked for the user
-	revoked, err := tokenStore.IsUserRevoked(ctx, user.ID)
+	revoked, err := tokenStore.IsUserRevokedSince(ctx, user.ID, time.Now().Add(-time.Hour))
 	if err != nil {
 		t.Fatalf("failed to check revocation: %v", err)
 	}
@@ -703,7 +704,7 @@ func TestUserService_Update_ActivationDoesNotRevokeTokens(t *testing.T) {
 	}
 
 	// Verify tokens were NOT revoked (activation should not revoke)
-	revoked, err := tokenStore.IsUserRevoked(ctx, user.ID)
+	revoked, err := tokenStore.IsUserRevokedSince(ctx, user.ID, time.Now().Add(-time.Hour))
 	if err != nil {
 		t.Fatalf("failed to check revocation: %v", err)
 	}
@@ -727,7 +728,7 @@ func TestUserService_Update_NoActiveChangeDoesNotRevokeTokens(t *testing.T) {
 	}
 
 	// Verify tokens were NOT revoked
-	revoked, err := tokenStore.IsUserRevoked(ctx, user.ID)
+	revoked, err := tokenStore.IsUserRevokedSince(ctx, user.ID, time.Now().Add(-time.Hour))
 	if err != nil {
 		t.Fatalf("failed to check revocation: %v", err)
 	}
@@ -754,7 +755,7 @@ func TestUserService_Update_AlreadyInactiveDoesNotRevokeAgain(t *testing.T) {
 	}
 
 	// Should NOT revoke since user was already inactive (not a transition)
-	revoked, err := tokenStore.IsUserRevoked(ctx, user.ID)
+	revoked, err := tokenStore.IsUserRevokedSince(ctx, user.ID, time.Now().Add(-time.Hour))
 	if err != nil {
 		t.Fatalf("failed to check revocation: %v", err)
 	}
