@@ -132,7 +132,6 @@ export function AttendanceTable({ rows, onQuickStatus, onEdit, onDelete }: Atten
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7"
                     onClick={() => onEdit(row)}
                     aria-label={tCommon('edit')}
                   >
@@ -141,7 +140,7 @@ export function AttendanceTable({ rows, onQuickStatus, onEdit, onDelete }: Atten
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="text-destructive h-7 w-7"
+                    className="text-destructive"
                     onClick={() => onDelete(row)}
                     aria-label={tCommon('delete')}
                   >

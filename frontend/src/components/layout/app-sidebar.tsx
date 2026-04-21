@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useUiStore } from '@/stores/ui-store';
 import { useCurrentRole, hasMinimumRole, type EffectiveRole } from '@/hooks/use-current-role';
+import { useIsLgUp } from '@/hooks/use-media-query';
 import { apiClient } from '@/lib/api/client';
 import { OrgSelector } from './org-selector';
 
@@ -141,6 +142,11 @@ export function AppSidebar() {
     setMobileSidebarOpen,
   } = useUiStore();
   const currentRole = useCurrentRole();
+  const isLgUp = useIsLgUp();
+  // At md (tablet portrait) the sidebar is always visually collapsed — the user
+  // preference only applies at lg+ where there's room for the expanded rail.
+  // On mobile the sidebar is an overlay (sidebarMobileOpen) and is fully shown.
+  const effectiveCollapsed = sidebarMobileOpen ? false : sidebarCollapsed || !isLgUp;
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   const { data: health } = useQuery({
@@ -229,7 +235,7 @@ export function AppSidebar() {
     <>
       {/* Header */}
       <div className="flex h-16 items-center justify-between border-b px-4">
-        {!sidebarCollapsed && (
+        {!effectiveCollapsed && (
           <Link href="/" className="text-xl font-bold">
             {t('common.appName')}
           </Link>
@@ -239,7 +245,7 @@ export function AppSidebar() {
           size="icon"
           onClick={toggleSidebar}
           aria-label={t('common.toggleSidebar')}
-          className={cn('hidden md:inline-flex', sidebarCollapsed && 'mx-auto')}
+          className={cn('hidden lg:inline-flex', sidebarCollapsed && 'mx-auto')}
         >
           {sidebarCollapsed ? (
             <ChevronRight className="h-4 w-4" />
@@ -261,6 +267,8 @@ export function AppSidebar() {
                 <li key={item.name}>
                   <Link
                     href={item.href}
+                    aria-label={t(item.name)}
+                    title={effectiveCollapsed ? t(item.name) : undefined}
                     className={cn(
                       'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                       active
@@ -269,7 +277,7 @@ export function AppSidebar() {
                     )}
                   >
                     <Icon className="h-5 w-5 shrink-0" />
-                    {!sidebarCollapsed && <span>{t(item.name)}</span>}
+                    {!effectiveCollapsed && <span>{t(item.name)}</span>}
                   </Link>
                 </li>
               );
@@ -278,7 +286,7 @@ export function AppSidebar() {
         )}
 
         {/* Organization Selector */}
-        {!sidebarCollapsed && (
+        {!effectiveCollapsed && (
           <div className="mt-6 px-3">
             <OrgSelector />
           </div>
@@ -288,7 +296,7 @@ export function AppSidebar() {
         {selectedOrganizationId &&
           filteredOrgGroups.map((group) => (
             <div key={group.label} className="mt-4">
-              {!sidebarCollapsed && (
+              {!effectiveCollapsed && (
                 <div className="text-sidebar-foreground/50 px-3 pb-1 text-[11px] font-semibold tracking-wider uppercase">
                   {t(group.label)}
                 </div>
@@ -304,7 +312,7 @@ export function AppSidebar() {
                     `/organizations/${selectedOrganizationId}${item.href}`
                   );
 
-                  if (hasChildren && !sidebarCollapsed) {
+                  if (hasChildren && !effectiveCollapsed) {
                     return (
                       <li key={item.name}>
                         <div className="flex items-center">
@@ -363,6 +371,8 @@ export function AppSidebar() {
                     <li key={item.name}>
                       <Link
                         href={href}
+                        aria-label={t(item.name)}
+                        title={effectiveCollapsed ? t(item.name) : undefined}
                         className={cn(
                           'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                           parentActive
@@ -371,7 +381,7 @@ export function AppSidebar() {
                         )}
                       >
                         <Icon className="h-5 w-5 shrink-0" />
-                        {!sidebarCollapsed && <span>{t(item.name)}</span>}
+                        {!effectiveCollapsed && <span>{t(item.name)}</span>}
                       </Link>
                     </li>
                   );
@@ -382,7 +392,7 @@ export function AppSidebar() {
       </nav>
 
       {/* Version */}
-      {health?.version && !sidebarCollapsed && (
+      {health?.version && !effectiveCollapsed && (
         <div className="text-sidebar-foreground/60 border-sidebar-border border-t px-4 py-2 text-[10px]">
           version: {health.version}
         </div>
@@ -392,11 +402,12 @@ export function AppSidebar() {
 
   return (
     <>
-      {/* Desktop sidebar */}
+      {/* Desktop sidebar — always collapsed width at md (tablet portrait),
+          expanded only at lg+ when user preference is not-collapsed */}
       <aside
         className={cn(
-          'bg-sidebar border-sidebar-border fixed top-0 left-0 z-40 hidden h-screen flex-col border-r transition-all duration-300 md:flex',
-          sidebarCollapsed ? 'w-16' : 'w-64'
+          'bg-sidebar border-sidebar-border fixed top-0 left-0 z-40 hidden h-screen flex-col border-r transition-all duration-300 md:flex md:w-16',
+          sidebarCollapsed ? 'lg:w-16' : 'lg:w-64'
         )}
       >
         {sidebarContent}

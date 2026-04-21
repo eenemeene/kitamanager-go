@@ -30,7 +30,6 @@ export function MonthStepper({ value, onChange }: MonthStepperProps) {
       <Button
         variant="outline"
         size="icon"
-        className="h-11 w-11 md:h-10 md:w-10"
         onClick={() => onChange(startOfMonth(subMonths(value, 1)))}
         aria-label={t('previousMonth')}
       >
@@ -61,14 +60,13 @@ export function MonthStepper({ value, onChange }: MonthStepperProps) {
       <Button
         variant="outline"
         size="icon"
-        className="h-11 w-11 md:h-10 md:w-10"
         onClick={() => onChange(startOfMonth(addMonths(value, 1)))}
         aria-label={t('nextMonth')}
       >
         <ChevronRight className="h-4 w-4" />
       </Button>
 
-      <Button variant="ghost" size="sm" className="text-sm" onClick={() => onChange(new Date())}>
+      <Button variant="ghost" className="text-sm" onClick={() => onChange(new Date())}>
         {t('today')}
       </Button>
     </div>

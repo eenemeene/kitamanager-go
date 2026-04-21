@@ -106,45 +106,47 @@ export function ResourceTable<TItem>({
             ))}
             {hasActions && (
               <TableCell className="text-right">
-                {renderActions ? (
-                  renderActions(item)
-                ) : (
-                  <>
-                    {onView && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onView(item)}
-                        disabled={actionsDisabled}
-                        aria-label={t('common.viewDetails')}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    )}
-                    {onEdit && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onEdit(item)}
-                        disabled={actionsDisabled}
-                        aria-label={t('common.edit')}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    )}
-                    {onDelete && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onDelete(item)}
-                        disabled={actionsDisabled}
-                        aria-label={t('common.delete')}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </>
-                )}
+                <div className="flex flex-nowrap items-center justify-end gap-0.5">
+                  {renderActions ? (
+                    renderActions(item)
+                  ) : (
+                    <>
+                      {onView && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onView(item)}
+                          disabled={actionsDisabled}
+                          aria-label={t('common.viewDetails')}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {onEdit && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onEdit(item)}
+                          disabled={actionsDisabled}
+                          aria-label={t('common.edit')}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {onDelete && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onDelete(item)}
+                          disabled={actionsDisabled}
+                          aria-label={t('common.delete')}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
               </TableCell>
             )}
           </TableRow>

@@ -31,7 +31,6 @@ export function DayStepper({ value, onChange }: DayStepperProps) {
       <Button
         variant="outline"
         size="icon"
-        className="h-11 w-11 md:h-10 md:w-10"
         onClick={() => onChange(subDays(value, 1))}
         aria-label={tAttendance('previousDay')}
       >
@@ -62,14 +61,13 @@ export function DayStepper({ value, onChange }: DayStepperProps) {
       <Button
         variant="outline"
         size="icon"
-        className="h-11 w-11 md:h-10 md:w-10"
         onClick={() => onChange(addDays(value, 1))}
         aria-label={tAttendance('nextDay')}
       >
         <ChevronRight className="h-4 w-4" />
       </Button>
 
-      <Button variant="ghost" size="sm" className="text-sm" onClick={() => onChange(new Date())}>
+      <Button variant="ghost" className="text-sm" onClick={() => onChange(new Date())}>
         {t('today')}
       </Button>
     </div>
