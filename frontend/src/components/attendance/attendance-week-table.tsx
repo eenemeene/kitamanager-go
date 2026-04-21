@@ -250,29 +250,29 @@ function StatusNotePopover({
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 shrink-0"
+          className="h-11 w-11 shrink-0"
           aria-label={t('quickMark')}
         >
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-56 space-y-3 p-3" align="center">
-        <div className="flex gap-1">
+      <PopoverContent className="w-72 space-y-3 p-3" align="center">
+        <div className="flex justify-center gap-2">
           {STATUS_BUTTONS.map(({ status, icon: Icon, color, activeColor }) => {
             const isActive = attendance?.status === status;
             return (
               <Button
                 key={status}
                 variant="outline"
-                size="icon"
-                className={`h-8 w-8 ${isActive ? activeColor : color}`}
+                className={`flex h-14 w-14 flex-col items-center justify-center gap-1 px-1 ${isActive ? activeColor : color}`}
                 onClick={() => {
                   onSetStatus(childId, dateStr, status, attendance?.id);
                   setOpen(false);
                 }}
                 aria-label={t(status)}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-5 w-5" />
+                <span className="text-[0.65rem] leading-tight">{t(status)}</span>
               </Button>
             );
           })}
@@ -356,12 +356,12 @@ function AttendanceCell({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 gap-1 text-green-600 hover:bg-green-50 hover:text-green-700"
+                className="h-11 gap-1 text-green-600 hover:bg-green-50 hover:text-green-700"
                 onClick={() => onCheckIn(childId, dateStr)}
                 aria-label={t('checkIn')}
               >
                 <LogIn className="h-4 w-4" />
-                <span className="hidden sm:inline">{t('checkIn')}</span>
+                <span>{t('checkIn')}</span>
               </Button>
             </TooltipTrigger>
             <TooltipContent>{t('checkIn')}</TooltipContent>
@@ -407,12 +407,12 @@ function AttendanceCell({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 gap-1 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
+                  className="h-11 gap-1 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
                   onClick={() => onCheckOut(childId, dateStr, attendance.id)}
                   aria-label={t('checkOut')}
                 >
                   <LogOut className="h-4 w-4" />
-                  <span className="hidden sm:inline">{t('checkOut')}</span>
+                  <span>{t('checkOut')}</span>
                 </Button>
               </TooltipTrigger>
               <TooltipContent>{t('checkOut')}</TooltipContent>

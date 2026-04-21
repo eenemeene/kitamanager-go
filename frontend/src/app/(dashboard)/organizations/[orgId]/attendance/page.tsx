@@ -99,6 +99,14 @@ export default function AttendancePage() {
     queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all(orgId) });
   }, [queryClient, orgId]);
 
+  const getChildName = useCallback(
+    (childId: number): string => {
+      const child = weekChildren?.find((c) => c.id === childId);
+      return child ? `${child.first_name} ${child.last_name}` : '';
+    },
+    [weekChildren]
+  );
+
   // Check-in mutation: create attendance with status=present and check_in_time=now
   const checkInMutation = useMutation({
     mutationFn: async ({ childId, forDate }: { childId: number; forDate: string }) => {
@@ -112,7 +120,7 @@ export default function AttendancePage() {
     onSuccess: (data, variables) => {
       invalidateAttendance();
       toast({
-        title: t('checkedIn'),
+        title: t('checkedIn', { name: getChildName(variables.childId) }),
         action: (
           <ToastAction
             altText={t('undo')}
@@ -157,7 +165,7 @@ export default function AttendancePage() {
     onSuccess: (_data, variables) => {
       invalidateAttendance();
       toast({
-        title: t('checkedOut'),
+        title: t('checkedOut', { name: getChildName(variables.childId) }),
         action: (
           <ToastAction
             altText={t('undo')}
@@ -266,7 +274,10 @@ export default function AttendancePage() {
       invalidateAttendance();
       const statusLabel = t(variables.status);
       toast({
-        title: t('statusChanged', { status: statusLabel }),
+        title: t('statusChanged', {
+          name: getChildName(variables.childId),
+          status: statusLabel,
+        }),
         action: (
           <ToastAction
             altText={t('undo')}
