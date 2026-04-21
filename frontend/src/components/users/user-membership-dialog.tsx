@@ -44,7 +44,7 @@ import { queryKeys } from '@/lib/api/queryKeys';
 import type { User, Role, UserMembership } from '@/lib/api/types';
 import { useUiStore } from '@/stores/ui-store';
 
-const ROLES: Role[] = ['admin', 'manager', 'member'];
+const ROLES: Role[] = ['admin', 'manager', 'member', 'staff'];
 
 interface UserMembershipDialogProps {
   user: User | null;
@@ -215,6 +215,7 @@ export function UserMembershipDialog({ user, orgId, onClose }: UserMembershipDia
                   {t('users.addToOrganization', { orgName })}
                 </Button>
               </div>
+              <p className="text-muted-foreground text-xs">{t(`roles.${addRole}Description`)}</p>
             </div>
           )}
 

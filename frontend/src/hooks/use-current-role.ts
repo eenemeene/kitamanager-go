@@ -9,6 +9,7 @@ const ROLE_HIERARCHY: Record<EffectiveRole, number> = {
   admin: 3,
   manager: 2,
   member: 1,
+  staff: 0,
 };
 
 export function useCurrentRole(): EffectiveRole | null {

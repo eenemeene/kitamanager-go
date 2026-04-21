@@ -470,7 +470,12 @@
     "role": "Rolle",
     "admin": "Admin",
     "manager": "Manager",
-    "member": "Mitglied"
+    "member": "Mitglied",
+    "staff": "Personal",
+    "adminDescription": "Vollzugriff innerhalb dieser Organisation; kann keine Organisationen anlegen oder löschen.",
+    "managerDescription": "Verwaltet Mitarbeiter, Kinder, Verträge und Anwesenheiten.",
+    "memberDescription": "Nur-Lese-Zugriff auf Mitarbeiter, Kinder und Verträge.",
+    "staffDescription": "Nur-Lese-Zugriff auf Kinder und Verträge; Vollzugriff auf Anwesenheiten. Für Erzieher und Hilfskräfte."
   },
   "contracts": {
     "title": "Verträge",
