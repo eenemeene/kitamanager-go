@@ -411,6 +411,38 @@ export async function deleteUserViaApi(page: Page, userId: number): Promise<void
 }
 
 /**
+ * Grant a user an organization-scoped role via the API. The caller's session
+ * must have users:update permission in the target org (superadmin always does).
+ */
+export async function addUserToOrgViaApi(
+  page: Page,
+  userId: number,
+  orgId: number,
+  role: 'admin' | 'manager' | 'member' | 'staff'
+): Promise<{ id: number }> {
+  return apiRequest(page, 'POST', `/api/v1/users/${userId}/organizations`, {
+    organization_id: orgId,
+    role,
+  });
+}
+
+/**
+ * Log out the current session via the API. Clears the access_token,
+ * refresh_token, and csrf_token cookies so the next login starts clean.
+ */
+export async function logoutViaApi(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const csrfMatch = document.cookie.match(/csrf_token=([^;]+)/);
+    const csrfToken = csrfMatch ? csrfMatch[1] : null;
+    await fetch('/api/v1/logout', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {},
+    });
+  });
+}
+
+/**
  * Create a government funding via the API
  */
 export async function createGovernmentFundingViaApi(
