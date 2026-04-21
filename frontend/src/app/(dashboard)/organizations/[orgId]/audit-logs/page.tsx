@@ -115,6 +115,10 @@ export default function AuditLogPage() {
         to: to || undefined,
       }),
     enabled: !!orgId,
+    // The global 60s staleTime would otherwise serve a stale cache when the
+    // user navigates back right after a mutation that produced a new event.
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / PAGE_LIMIT)) : 1;
