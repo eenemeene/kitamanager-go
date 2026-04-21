@@ -174,11 +174,18 @@ func TestChildHandler_Delete(t *testing.T) {
 		t.Errorf("expected status %d, got %d", http.StatusNoContent, w.Code)
 	}
 
-	testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+	row := testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
 		Action:       models.AuditActionChildDelete,
 		ResourceType: "child",
 		ResourceID:   child.ID,
 	})
+	// End-to-end proof that the actor email captured by the auth middleware
+	// flows through the handler, the audit helpers, and the audit service
+	// into the persisted row. A regression here would reproduce the bug that
+	// made the "User" column in the audit UI render as a dash.
+	if row.UserEmail != "test@example.com" {
+		t.Errorf("audit row UserEmail = %q, want test@example.com", row.UserEmail)
+	}
 }
 
 func TestChildHandler_ListContracts(t *testing.T) {
