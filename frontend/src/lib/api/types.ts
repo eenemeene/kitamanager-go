@@ -1011,3 +1011,54 @@ export interface ForecastResponse {
   occupancy?: OccupancyResponse;
   employee_staffing_hours?: EmployeeStaffingHoursResponse;
 }
+
+// AuditLog
+//
+// Mirrors internal/models/audit.go. The backend-side list is the source of
+// truth; keep this in lockstep when new actions are added server-side.
+export type AuditAction =
+  | 'login'
+  | 'login_failed'
+  | 'logout'
+  | 'superadmin_grant'
+  | 'superadmin_revoke'
+  | 'user_create'
+  | 'user_update'
+  | 'user_delete'
+  | 'user_add_to_org'
+  | 'user_remove_from_org'
+  | 'role_change'
+  | 'employee_delete'
+  | 'child_delete'
+  | 'org_create'
+  | 'org_delete'
+  | 'password_reset'
+  | 'password_change'
+  | 'password_change_failed'
+  // The generic "<resource>_create|update|delete|export" variants are also
+  // emitted server-side; callers should treat `action` as a string they may
+  // not have typed yet, so we keep the union open.
+  | (string & {});
+
+export interface AuditLogResponse {
+  id: number;
+  timestamp: string;
+  user_id?: number;
+  user_email?: string;
+  action: AuditAction;
+  resource_type?: string;
+  resource_id?: number;
+  organization_id?: number;
+  ip_address?: string;
+  details?: string;
+  success: boolean;
+}
+
+export interface AuditLogListParams {
+  action?: string;
+  user_id?: number;
+  from?: string; // YYYY-MM-DD
+  to?: string; // YYYY-MM-DD
+  page?: number;
+  limit?: number;
+}

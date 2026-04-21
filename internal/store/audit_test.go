@@ -517,6 +517,57 @@ func TestAuditStore_FindAllFiltered_NonExistentAction(t *testing.T) {
 	}
 }
 
+func TestAuditStore_FindByOrganization(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewAuditStore(db)
+	orgA := createTestOrganization(t, db, "Kita A")
+	orgB := createTestOrganization(t, db, "Kita B")
+
+	// Three distinct rows: orgA, orgB, identity-level (nil).
+	orgAID := orgA.ID
+	orgBID := orgB.ID
+	mustCreate(t, store, &models.AuditLog{
+		UserID: uintPtr(1), UserEmail: "a@example.com", Action: models.AuditActionChildDelete,
+		ResourceType: "child", OrganizationID: &orgAID, IPAddress: "127.0.0.1",
+	})
+	mustCreate(t, store, &models.AuditLog{
+		UserID: uintPtr(2), UserEmail: "b@example.com", Action: models.AuditActionEmployeeDelete,
+		ResourceType: "employee", OrganizationID: &orgBID, IPAddress: "127.0.0.1",
+	})
+	mustCreate(t, store, &models.AuditLog{
+		UserID: uintPtr(3), UserEmail: "c@example.com", Action: models.AuditActionLogin,
+		IPAddress: "127.0.0.1",
+	})
+
+	// orgA returns exactly its one row; nil-org login stays hidden.
+	logs, total, err := store.FindByOrganization(context.Background(), orgA.ID, "", nil, nil, nil, 10, 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if total != 1 || len(logs) != 1 {
+		t.Fatalf("orgA: expected 1 row, got total=%d len=%d", total, len(logs))
+	}
+	if logs[0].Action != models.AuditActionChildDelete {
+		t.Errorf("orgA row action = %v, want %v", logs[0].Action, models.AuditActionChildDelete)
+	}
+
+	// orgB only sees its own row.
+	logsB, totalB, err := store.FindByOrganization(context.Background(), orgB.ID, "", nil, nil, nil, 10, 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if totalB != 1 || logsB[0].Action != models.AuditActionEmployeeDelete {
+		t.Errorf("orgB: expected single employee_delete, got total=%d first=%v", totalB, logsB[0].Action)
+	}
+}
+
+func mustCreate(t *testing.T, s *AuditStore, log *models.AuditLog) {
+	t.Helper()
+	if err := s.Create(context.Background(), log); err != nil {
+		t.Fatalf("failed to create audit log: %v", err)
+	}
+}
+
 func TestAuditStore_Cleanup(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewAuditStore(db)

@@ -886,6 +886,106 @@ func TestAuditLogHandler_Authorization_ManagerForbidden(t *testing.T) {
 	}
 }
 
+// setupOrgAuditLogRouter wires the per-org audit log endpoint with the same
+// authorization middleware the real router uses, so these tests exercise the
+// full RBAC path: RequirePermission(ResourceAuditLog, ActionRead).
+func setupOrgAuditLogRouter(t *testing.T, db *gorm.DB, userID *uint) *gin.Engine {
+	t.Helper()
+
+	authzMw := setupAuthzMiddleware(t, db)
+	auditService := createAuditService(db)
+	handler := NewAuditLogHandler(auditService)
+
+	r := gin.New()
+	if userID != nil {
+		uid := *userID
+		r.Use(func(c *gin.Context) {
+			c.Set(ctxkeys.UserID, uid)
+			c.Next()
+		})
+	}
+	r.GET("/api/v1/organizations/:orgId/audit-logs",
+		authzMw.RequirePermission(rbac.ResourceAuditLog, rbac.ActionRead),
+		handler.ListByOrganization)
+	return r
+}
+
+func TestAuditLogHandler_ListByOrganization_Admin(t *testing.T) {
+	db := setupTestDB(t)
+	auditStore := store.NewAuditStore(db)
+
+	// Two orgs. Admin belongs to orgA only.
+	orgA := createTestOrganization(t, db, "Kita A")
+	orgB := createTestOrganization(t, db, "Kita B")
+	admin := createTestUser(t, db, "Admin", "admin-org-audit@test.com", "password123")
+	createTestUserOrganization(t, db, admin.ID, orgA.ID, models.RoleAdmin)
+
+	// Three seed rows: one in orgA, one in orgB, one identity-level (nil).
+	ctx := context.Background()
+	mustSeed := func(log *models.AuditLog) {
+		if err := auditStore.Create(ctx, log); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+	mustSeed(&models.AuditLog{
+		UserID: &admin.ID, UserEmail: admin.Email, Action: models.AuditActionChildDelete,
+		ResourceType: "child", OrganizationID: &orgA.ID, IPAddress: "127.0.0.1", Success: true,
+		Timestamp: time.Now().UTC().Add(-1 * time.Hour),
+	})
+	mustSeed(&models.AuditLog{
+		UserID: uintPtr(999), UserEmail: "other@test.com", Action: models.AuditActionEmployeeDelete,
+		ResourceType: "employee", OrganizationID: &orgB.ID, IPAddress: "127.0.0.1", Success: true,
+		Timestamp: time.Now().UTC().Add(-2 * time.Hour),
+	})
+	mustSeed(&models.AuditLog{
+		UserID: &admin.ID, UserEmail: admin.Email, Action: models.AuditActionLogin,
+		IPAddress: "127.0.0.1", Success: true,
+		Timestamp: time.Now().UTC().Add(-3 * time.Hour),
+	})
+
+	r := setupOrgAuditLogRouter(t, db, &admin.ID)
+
+	// Admin of orgA sees exactly one row — their org's child_delete event.
+	req, _ := http.NewRequest("GET", fmt.Sprintf("/api/v1/organizations/%d/audit-logs", orgA.ID), nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("admin on own org: expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp models.PaginatedResponse[models.AuditLogResponse]
+	parseResponse(t, w, &resp)
+	if resp.Total != 1 || len(resp.Data) != 1 {
+		t.Fatalf("admin on own org: expected 1 row (not login, not cross-org), got total=%d len=%d", resp.Total, len(resp.Data))
+	}
+	if resp.Data[0].Action != models.AuditActionChildDelete {
+		t.Errorf("unexpected action: %v", resp.Data[0].Action)
+	}
+
+	// Same admin cannot read orgB's audit log.
+	req, _ = http.NewRequest("GET", fmt.Sprintf("/api/v1/organizations/%d/audit-logs", orgB.ID), nil)
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusForbidden {
+		t.Errorf("admin on other org: expected 403, got %d", w.Code)
+	}
+}
+
+func TestAuditLogHandler_ListByOrganization_ManagerForbidden(t *testing.T) {
+	db := setupTestDB(t)
+	manager := createTestUser(t, db, "Manager", "manager-org-audit@test.com", "password123")
+	org := createTestOrganization(t, db, "Kita Manager Denied")
+	createTestUserOrganization(t, db, manager.ID, org.ID, models.RoleManager)
+
+	r := setupOrgAuditLogRouter(t, db, &manager.ID)
+	req, _ := http.NewRequest("GET", fmt.Sprintf("/api/v1/organizations/%d/audit-logs", org.ID), nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("expected 403 for manager, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 func TestAuditLogHandler_Authorization_SuperadminAllowed(t *testing.T) {
 	db := setupTestDB(t)
 	auditStore := store.NewAuditStore(db)

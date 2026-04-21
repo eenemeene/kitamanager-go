@@ -75,6 +75,8 @@ import type {
   PaginationParams,
   ForecastRequest,
   ForecastResponse,
+  AuditLogResponse,
+  AuditLogListParams,
 } from './types';
 import { DEFAULT_PAGE_SIZE } from './types';
 
@@ -1069,6 +1071,22 @@ class ApiClient {
 
   async getHealth(): Promise<{ status: string; version: string }> {
     const response = await this.client.get<{ status: string; version: string }>('/health');
+    return response.data;
+  }
+
+  async getAuditLogs(
+    orgId: number,
+    params: AuditLogListParams = {}
+  ): Promise<PaginatedResponse<AuditLogResponse>> {
+    const { page = 1, limit = DEFAULT_PAGE_SIZE, action, user_id, from, to } = params;
+    const qs = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (action) qs.set('action', action);
+    if (user_id !== undefined) qs.set('user_id', String(user_id));
+    if (from) qs.set('from', from);
+    if (to) qs.set('to', to);
+    const response = await this.client.get<PaginatedResponse<AuditLogResponse>>(
+      `/organizations/${orgId}/audit-logs?${qs.toString()}`
+    );
     return response.data;
   }
 

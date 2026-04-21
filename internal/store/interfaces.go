@@ -249,6 +249,7 @@ type AuditStorer interface {
 	FindByDateRange(ctx context.Context, from, to time.Time, limit, offset int) ([]models.AuditLog, int64, error)
 	FindAll(ctx context.Context, limit, offset int) ([]models.AuditLog, int64, error)
 	FindAllFiltered(ctx context.Context, action string, userID *uint, from *time.Time, to *time.Time, limit, offset int) ([]models.AuditLog, int64, error)
+	FindByOrganization(ctx context.Context, orgID uint, action string, userID *uint, from, to *time.Time, limit, offset int) ([]models.AuditLog, int64, error)
 	FindFailedLogins(ctx context.Context, email string, since time.Time, limit int) ([]models.AuditLog, error)
 	CountFailedLoginsSince(ctx context.Context, email string, since time.Time) (int64, error)
 	CountFailedPasswordChangesSince(ctx context.Context, userID uint, since time.Time) (int64, error)

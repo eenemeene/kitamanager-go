@@ -174,11 +174,12 @@ func (s *AuditService) LogSuperAdminChange(actorID, targetUserID uint, targetEma
 // LogUserAddToOrg logs adding a user to an organization
 func (s *AuditService) LogUserAddToOrg(actorID, userID, orgID uint, role string, ipAddress string) {
 	s.log(&models.AuditLog{
-		UserID:       &actorID,
-		Action:       models.AuditActionUserAddToOrg,
-		ResourceType: "user_organization",
-		ResourceID:   &userID,
-		IPAddress:    ipAddress,
+		UserID:         &actorID,
+		Action:         models.AuditActionUserAddToOrg,
+		ResourceType:   "user_organization",
+		ResourceID:     &userID,
+		OrganizationID: &orgID,
+		IPAddress:      ipAddress,
 		Details: mustMarshalJSON(map[string]any{
 			"organization_id": orgID,
 			"role":            role,
@@ -190,24 +191,26 @@ func (s *AuditService) LogUserAddToOrg(actorID, userID, orgID uint, role string,
 // LogUserRemoveFromOrg logs removing a user from an organization
 func (s *AuditService) LogUserRemoveFromOrg(actorID, userID, orgID uint, ipAddress string) {
 	s.log(&models.AuditLog{
-		UserID:       &actorID,
-		Action:       models.AuditActionUserRemoveFromOrg,
-		ResourceType: "user_organization",
-		ResourceID:   &userID,
-		IPAddress:    ipAddress,
-		Details:      mustMarshalJSON(map[string]any{"organization_id": orgID}),
-		Success:      true,
+		UserID:         &actorID,
+		Action:         models.AuditActionUserRemoveFromOrg,
+		ResourceType:   "user_organization",
+		ResourceID:     &userID,
+		OrganizationID: &orgID,
+		IPAddress:      ipAddress,
+		Details:        mustMarshalJSON(map[string]any{"organization_id": orgID}),
+		Success:        true,
 	})
 }
 
 // LogRoleChange logs a role change for a user in an organization
 func (s *AuditService) LogRoleChange(actorID, userID, orgID uint, oldRole, newRole string, ipAddress string) {
 	s.log(&models.AuditLog{
-		UserID:       &actorID,
-		Action:       models.AuditActionRoleChange,
-		ResourceType: "user_organization",
-		ResourceID:   &userID,
-		IPAddress:    ipAddress,
+		UserID:         &actorID,
+		Action:         models.AuditActionRoleChange,
+		ResourceType:   "user_organization",
+		ResourceID:     &userID,
+		OrganizationID: &orgID,
+		IPAddress:      ipAddress,
 		Details: mustMarshalJSON(map[string]any{
 			"organization_id": orgID,
 			"old_role":        oldRole,
@@ -218,7 +221,9 @@ func (s *AuditService) LogRoleChange(actorID, userID, orgID uint, oldRole, newRo
 }
 
 // LogResourceDelete logs deletion of a resource (employee, child, org, etc.)
-func (s *AuditService) LogResourceDelete(actorID uint, resourceType string, resourceID uint, resourceName, ipAddress string) {
+// orgID may be nil for identity-level resources (user); pass the owning org
+// id for org-scoped resources so org admins can see the event.
+func (s *AuditService) LogResourceDelete(actorID uint, resourceType string, resourceID uint, resourceName, ipAddress string, orgID *uint) {
 	var action models.AuditAction
 	switch resourceType {
 	case "employee":
@@ -234,18 +239,21 @@ func (s *AuditService) LogResourceDelete(actorID uint, resourceType string, reso
 	}
 
 	s.log(&models.AuditLog{
-		UserID:       &actorID,
-		Action:       action,
-		ResourceType: resourceType,
-		ResourceID:   &resourceID,
-		IPAddress:    ipAddress,
-		Details:      mustMarshalJSON(map[string]any{"resource_name": resourceName}),
-		Success:      true,
+		UserID:         &actorID,
+		Action:         action,
+		ResourceType:   resourceType,
+		ResourceID:     &resourceID,
+		OrganizationID: orgID,
+		IPAddress:      ipAddress,
+		Details:        mustMarshalJSON(map[string]any{"resource_name": resourceName}),
+		Success:        true,
 	})
 }
 
-// LogResourceCreate logs creation of a resource
-func (s *AuditService) LogResourceCreate(actorID uint, resourceType string, resourceID uint, resourceName, ipAddress string) {
+// LogResourceCreate logs creation of a resource.
+// orgID may be nil for identity-level resources (user); pass the owning org
+// id for org-scoped resources so org admins can see the event.
+func (s *AuditService) LogResourceCreate(actorID uint, resourceType string, resourceID uint, resourceName, ipAddress string, orgID *uint) {
 	var action models.AuditAction
 	switch resourceType {
 	case "user":
@@ -257,26 +265,30 @@ func (s *AuditService) LogResourceCreate(actorID uint, resourceType string, reso
 	}
 
 	s.log(&models.AuditLog{
-		UserID:       &actorID,
-		Action:       action,
-		ResourceType: resourceType,
-		ResourceID:   &resourceID,
-		IPAddress:    ipAddress,
-		Details:      mustMarshalJSON(map[string]any{"resource_name": resourceName}),
-		Success:      true,
+		UserID:         &actorID,
+		Action:         action,
+		ResourceType:   resourceType,
+		ResourceID:     &resourceID,
+		OrganizationID: orgID,
+		IPAddress:      ipAddress,
+		Details:        mustMarshalJSON(map[string]any{"resource_name": resourceName}),
+		Success:        true,
 	})
 }
 
-// LogResourceUpdate logs update of a resource
-func (s *AuditService) LogResourceUpdate(actorID uint, resourceType string, resourceID uint, resourceName, ipAddress string) {
+// LogResourceUpdate logs update of a resource.
+// orgID may be nil for identity-level resources (user); pass the owning org
+// id for org-scoped resources so org admins can see the event.
+func (s *AuditService) LogResourceUpdate(actorID uint, resourceType string, resourceID uint, resourceName, ipAddress string, orgID *uint) {
 	s.log(&models.AuditLog{
-		UserID:       &actorID,
-		Action:       models.AuditAction(resourceType + "_update"),
-		ResourceType: resourceType,
-		ResourceID:   &resourceID,
-		IPAddress:    ipAddress,
-		Details:      mustMarshalJSON(map[string]any{"resource_name": resourceName}),
-		Success:      true,
+		UserID:         &actorID,
+		Action:         models.AuditAction(resourceType + "_update"),
+		ResourceType:   resourceType,
+		ResourceID:     &resourceID,
+		OrganizationID: orgID,
+		IPAddress:      ipAddress,
+		Details:        mustMarshalJSON(map[string]any{"resource_name": resourceName}),
+		Success:        true,
 	})
 }
 
@@ -299,10 +311,11 @@ func (s *AuditService) LogPasswordReset(actorID, targetUserID uint, targetEmail,
 // LogDataExport logs a bulk data export event
 func (s *AuditService) LogDataExport(actorID uint, resourceType string, orgID uint, recordCount int, ipAddress string) {
 	s.log(&models.AuditLog{
-		UserID:       &actorID,
-		Action:       models.AuditAction(resourceType + "_export"),
-		ResourceType: resourceType,
-		IPAddress:    ipAddress,
+		UserID:         &actorID,
+		Action:         models.AuditAction(resourceType + "_export"),
+		ResourceType:   resourceType,
+		OrganizationID: &orgID,
+		IPAddress:      ipAddress,
 		Details: mustMarshalJSON(map[string]any{
 			"organization_id": orgID,
 			"record_count":    recordCount,
@@ -332,6 +345,22 @@ func (s *AuditService) GetLogsFiltered(ctx context.Context, action string, userI
 	}
 
 	logs, total, err := s.store.FindAllFiltered(ctx, action, userID, from, to, limit, offset)
+	if err != nil {
+		return nil, 0, apperror.InternalWrap(err, "failed to fetch audit logs")
+	}
+
+	return toResponseList(logs, (*models.AuditLog).ToResponse), total, nil
+}
+
+// GetLogsByOrganization returns audit logs scoped to a single organization
+// with optional filters. Identity-level events (org_id IS NULL) are excluded
+// — only the superadmin-only GetLogsFiltered path sees those.
+func (s *AuditService) GetLogsByOrganization(ctx context.Context, orgID uint, action string, userID *uint, from, to *time.Time, limit, offset int) ([]models.AuditLogResponse, int64, error) {
+	if s == nil || s.store == nil {
+		return nil, 0, nil
+	}
+
+	logs, total, err := s.store.FindByOrganization(ctx, orgID, action, userID, from, to, limit, offset)
 	if err != nil {
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch audit logs")
 	}

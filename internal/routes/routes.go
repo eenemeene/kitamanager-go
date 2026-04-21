@@ -231,6 +231,15 @@ func Setup(r *gin.Engine, d Deps) {
 					userHandler.ListByOrganization)
 
 				// ============================================================
+				// Audit log (admin read-only, scoped to this org)
+				// Identity-level events stay visible only through the
+				// superadmin-only /audit-logs endpoint above.
+				// ============================================================
+				orgScoped.GET("/audit-logs",
+					authzMiddleware.RequirePermission(rbac.ResourceAuditLog, rbac.ActionRead),
+					auditLogHandler.ListByOrganization)
+
+				// ============================================================
 				// Organization-wide statistics
 				// ============================================================
 				orgScoped.GET("/statistics/staffing-hours",
