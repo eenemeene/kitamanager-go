@@ -816,9 +816,9 @@
     "undo": "Rückgängig",
     "undone": "Aktion rückgängig gemacht",
     "undoFailed": "Rückgängig machen fehlgeschlagen",
-    "statusChanged": "Markiert als {status}",
-    "checkedIn": "Eingecheckt",
-    "checkedOut": "Ausgecheckt"
+    "statusChanged": "{name} als {status} markiert",
+    "checkedIn": "{name} eingecheckt",
+    "checkedOut": "{name} ausgecheckt"
   },
   "timeline": {
     "title": "Zeitstrahl",

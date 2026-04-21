@@ -816,9 +816,9 @@
     "undo": "Undo",
     "undone": "Action undone",
     "undoFailed": "Failed to undo",
-    "statusChanged": "Marked as {status}",
-    "checkedIn": "Checked in",
-    "checkedOut": "Checked out"
+    "statusChanged": "{name} marked as {status}",
+    "checkedIn": "{name} checked in",
+    "checkedOut": "{name} checked out"
   },
   "timeline": {
     "title": "Timeline",
