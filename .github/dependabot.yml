@@ -35,6 +35,18 @@ updates:
       npm-dependencies:
         patterns:
           - "*"
+    ignore:
+      # eslint 10 breaks eslint-plugin-react (contextOrFilename.getFilename
+      # is not a function). eslint-config-next@16.x still pins
+      # eslint-plugin-react@7.37.x which only supports eslint<=9. Unpin once
+      # eslint-plugin-react ships a release compatible with eslint 10.
+      - dependency-name: eslint
+        versions: [">=10"]
+      # msw 2.13.4 ships ESM source that Jest cannot parse without extra
+      # transformIgnorePatterns config. Revisit when msw ships a CJS build
+      # or when we migrate Jest to ESM.
+      - dependency-name: msw
+        versions: [">=2.13.4"]
 
   # Docker
   - package-ecosystem: docker
