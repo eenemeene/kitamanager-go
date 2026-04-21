@@ -34,7 +34,7 @@ test.describe('Responsive Layout - Mobile', () => {
     const nameHeader = page.getByRole('columnheader', { name: /name/i });
     await expect(nameHeader.first()).toBeVisible({ timeout: 10000 });
 
-    // Gender column should be hidden on mobile (hidden md:table-cell)
+    // Gender column should be hidden on mobile (hidden lg:table-cell)
     const genderHeader = page.getByRole('columnheader', { name: /gender/i });
     await expect(genderHeader).not.toBeVisible();
   });

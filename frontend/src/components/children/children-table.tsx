@@ -74,8 +74,8 @@ export function ChildrenTable({
         <TableHeader>
           <TableRow>
             <TableHead>{t('common.name')}</TableHead>
-            <TableHead className="hidden md:table-cell">{t('gender.label')}</TableHead>
-            <TableHead className="hidden md:table-cell">{t('children.birthdate')}</TableHead>
+            <TableHead className="hidden lg:table-cell">{t('gender.label')}</TableHead>
+            <TableHead className="hidden lg:table-cell">{t('children.birthdate')}</TableHead>
             <TableHead className="hidden md:table-cell">{t('children.age')}</TableHead>
             <TableHead>{t('sections.title')}</TableHead>
             <TableHead className="hidden lg:table-cell">{t('children.properties')}</TableHead>
@@ -115,10 +115,10 @@ export function ChildrenTable({
                 <TableCell className="font-medium">
                   {child.first_name} {child.last_name}
                 </TableCell>
-                <TableCell className="hidden md:table-cell">
+                <TableCell className="hidden lg:table-cell">
                   {t(`gender.${child.gender}`)}
                 </TableCell>
-                <TableCell className="hidden md:table-cell">
+                <TableCell className="hidden lg:table-cell">
                   {formatDate(child.birthdate)}
                 </TableCell>
                 <TableCell className="hidden md:table-cell">
