@@ -231,4 +231,86 @@ describe('ApiClient integration (MSW)', () => {
       expect(onUnauthorized).toHaveBeenCalled();
     });
   });
+
+  describe('changePassword', () => {
+    it('PUTs /me/password with current_password and new_password in the body', async () => {
+      let receivedBody: unknown;
+      let receivedMethod = '';
+      let receivedPath = '';
+
+      server.use(
+        http.post(`${API_BASE}/login`, () => HttpResponse.json({ expires_in: 3600 })),
+        http.put(`${API_BASE}/me/password`, async ({ request }) => {
+          receivedMethod = request.method;
+          receivedPath = new URL(request.url).pathname;
+          receivedBody = await request.json();
+          return HttpResponse.json({ expires_in: 3600 });
+        })
+      );
+
+      const client = await createFreshClient();
+      await client.login({ email: 'test@example.com', password: 'old' });
+
+      const result = await client.changePassword('old-password', 'new-password-8chars');
+
+      expect(receivedMethod).toBe('PUT');
+      expect(receivedPath).toBe('/api/v1/me/password');
+      expect(receivedBody).toEqual({
+        current_password: 'old-password',
+        new_password: 'new-password-8chars',
+      });
+      expect(result.expires_in).toBe(3600);
+    });
+
+    it('does NOT call onUnauthorized on successful password change', async () => {
+      const onUnauthorized = jest.fn();
+      server.use(
+        http.post(`${API_BASE}/login`, () => HttpResponse.json({ expires_in: 3600 })),
+        http.put(`${API_BASE}/me/password`, () => HttpResponse.json({ expires_in: 3600 }))
+      );
+
+      const client = await createFreshClient();
+      client.setOnUnauthorized(onUnauthorized);
+      await client.login({ email: 'test@example.com', password: 'old' });
+
+      await client.changePassword('old', 'new-password-8chars');
+
+      expect(onUnauthorized).not.toHaveBeenCalled();
+    });
+
+    it('propagates backend errors to the caller without touching onUnauthorized', async () => {
+      // 401 on a non-auth endpoint would normally trigger refresh, but /me/password
+      // is a write and should propagate. The point of this test: if the backend
+      // returns 401 "current password is incorrect", the client must NOT blow up
+      // the session or silently retry. We assert the mutation rejects cleanly.
+      const onUnauthorized = jest.fn();
+      let refreshCalled = false;
+
+      server.use(
+        http.post(`${API_BASE}/login`, () => HttpResponse.json({ expires_in: 3600 })),
+        http.put(`${API_BASE}/me/password`, () =>
+          HttpResponse.json(
+            { code: 'unauthorized', message: 'current password is incorrect' },
+            { status: 401 }
+          )
+        ),
+        // Refresh would be tried by the 401 interceptor — count any attempt.
+        http.post(`${API_BASE}/refresh`, () => {
+          refreshCalled = true;
+          return HttpResponse.json({ expires_in: 3600 });
+        })
+      );
+
+      const client = await createFreshClient();
+      client.setOnUnauthorized(onUnauthorized);
+      await client.login({ email: 'test@example.com', password: 'old' });
+
+      await expect(client.changePassword('wrong', 'new-password-8chars')).rejects.toThrow();
+      // The 401-refresh interceptor may retry — acceptable — but the caller
+      // still gets a rejection and onUnauthorized is not fired (refresh succeeds).
+      expect(onUnauthorized).not.toHaveBeenCalled();
+      // Sanity: refresh was attempted by the interceptor (hasSession=true after login).
+      expect(refreshCalled).toBe(true);
+    });
+  });
 });

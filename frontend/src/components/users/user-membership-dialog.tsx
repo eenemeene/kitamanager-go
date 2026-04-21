@@ -42,6 +42,7 @@ import { useToast } from '@/lib/hooks/use-toast';
 import { apiClient, getErrorMessage } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import type { User, Role, UserMembership } from '@/lib/api/types';
+import { useUiStore } from '@/stores/ui-store';
 
 const ROLES: Role[] = ['admin', 'manager', 'member'];
 
@@ -55,7 +56,10 @@ export function UserMembershipDialog({ user, orgId, onClose }: UserMembershipDia
   const t = useTranslations();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const organizations = useUiStore((s) => s.organizations);
+  const orgName = organizations.find((o) => o.id === orgId)?.name ?? `#${orgId}`;
   const [removeTarget, setRemoveTarget] = useState<UserMembership | null>(null);
+  const [addRole, setAddRole] = useState<Role>('member');
 
   const { data: membershipsData, isLoading: membershipsLoading } = useQuery({
     queryKey: queryKeys.users.memberships(user?.id ?? 0),
@@ -65,6 +69,8 @@ export function UserMembershipDialog({ user, orgId, onClose }: UserMembershipDia
 
   const orgMembership =
     membershipsData?.memberships?.find((m) => m.organization_id === orgId) ?? null;
+  const otherMemberships =
+    membershipsData?.memberships?.filter((m) => m.organization_id !== orgId) ?? [];
 
   const invalidateMemberships = () => {
     if (user) {
@@ -92,13 +98,29 @@ export function UserMembershipDialog({ user, orgId, onClose }: UserMembershipDia
     mutationFn: (organizationId: number) =>
       apiClient.removeUserFromOrganization(user!.id, organizationId),
     onSuccess: () => {
-      toast({ title: t('users.removedFromOrganization') });
+      toast({ title: t('users.removedFromOrganization', { orgName }) });
       invalidateMemberships();
       setRemoveTarget(null);
     },
     onError: (error) => {
       toast({
-        title: t('users.failedToRemoveFromOrganization'),
+        title: t('users.failedToRemoveFromOrganization', { orgName }),
+        description: getErrorMessage(error, t('common.error')),
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const addMutation = useMutation({
+    mutationFn: (role: Role) => apiClient.addUserToOrganization(user!.id, orgId, role),
+    onSuccess: () => {
+      toast({ title: t('users.addedToOrganization', { orgName }) });
+      invalidateMemberships();
+      setAddRole('member');
+    },
+    onError: (error) => {
+      toast({
+        title: t('users.failedToAddToOrganization', { orgName }),
         description: getErrorMessage(error, t('common.error')),
         variant: 'destructive',
       });
@@ -169,10 +191,49 @@ export function UserMembershipDialog({ user, orgId, onClose }: UserMembershipDia
               </TableBody>
             </Table>
           ) : (
-            <div className="flex items-center gap-2">
-              <span className="text-muted-foreground text-sm">
-                {t('users.notMemberOfOrganization')}
-              </span>
+            <div className="space-y-2">
+              <p className="text-muted-foreground text-sm">
+                {t('users.addToThisOrganization', { orgName })}
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Select value={addRole} onValueChange={(v) => setAddRole(v as Role)}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ROLES.map((role) => (
+                      <SelectItem key={role} value={role}>
+                        {t(`roles.${role}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  onClick={() => addMutation.mutate(addRole)}
+                  disabled={addMutation.isPending}
+                >
+                  {t('users.addToOrganization', { orgName })}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {!membershipsLoading && otherMemberships.length > 0 && (
+            <div className="mt-4 space-y-2">
+              <h4 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                {t('users.otherMemberships')}
+              </h4>
+              <ul className="max-h-40 space-y-1 overflow-y-auto text-sm">
+                {otherMemberships.map((m) => (
+                  <li
+                    key={m.organization_id}
+                    className="flex items-center justify-between gap-2 rounded border px-3 py-2"
+                  >
+                    <span>{m.organization?.name ?? `#${m.organization_id}`}</span>
+                    <Badge variant="outline">{t(`roles.${m.role}`)}</Badge>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </DialogContent>
@@ -184,7 +245,7 @@ export function UserMembershipDialog({ user, orgId, onClose }: UserMembershipDia
           <AlertDialogHeader>
             <AlertDialogTitle>{t('users.confirmRemoval')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {removeTarget ? t('users.removeFromOrganizationConfirm') : ''}
+              {removeTarget ? t('users.removeFromOrganizationConfirm', { orgName }) : ''}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

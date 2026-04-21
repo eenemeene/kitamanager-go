@@ -450,16 +450,21 @@
     "confirmRemoval": "Confirm Removal",
     "roleUpdated": "Role updated",
     "failedToUpdateRole": "Failed to update role",
-    "removedFromOrganization": "User removed from organization",
-    "failedToRemoveFromOrganization": "Failed to remove user from organization",
+    "removedFromOrganization": "User removed from {orgName}",
+    "failedToRemoveFromOrganization": "Failed to remove user from {orgName}",
     "failedToLoadMemberships": "Failed to load membership data",
     "organizationMembershipFor": "Organization Membership: {name}",
     "organizationMembership": "Organization Membership",
     "notMemberOfOrganization": "User is not a member of this organization",
-    "removeFromOrganizationConfirm": "Remove this user from the organization?",
+    "removeFromOrganizationConfirm": "Remove this user from {orgName}?",
     "selectRole": "Select Role",
     "passwordHint": "(leave blank to keep current)",
-    "superadmin": "Superadmin"
+    "superadmin": "Superadmin",
+    "addToOrganization": "Add to {orgName}",
+    "addToThisOrganization": "This user is not a member of {orgName} yet. Pick a role to add them.",
+    "addedToOrganization": "User added to {orgName}",
+    "failedToAddToOrganization": "Failed to add user to {orgName}",
+    "otherMemberships": "Memberships in other organizations"
   },
   "roles": {
     "role": "Role",
@@ -541,7 +546,23 @@
     "language": "Language",
     "theme": "Theme",
     "lightMode": "Light Mode",
-    "darkMode": "Dark Mode"
+    "darkMode": "Dark Mode",
+    "password": {
+      "title": "Change password",
+      "description": "Changing your password revokes all other sessions. You'll stay signed in here.",
+      "currentLabel": "Current password",
+      "newLabel": "New password",
+      "confirmLabel": "Confirm new password",
+      "submit": "Change password",
+      "successToast": "Password changed",
+      "errorGeneric": "Could not change password. Check your current password and try again.",
+      "validation": {
+        "currentRequired": "Current password is required",
+        "tooShort": "Password must be at least 8 characters",
+        "mismatch": "Passwords do not match",
+        "sameAsCurrent": "New password must differ from current password"
+      }
+    }
   },
   "states": {
     "state": "State",

@@ -2,8 +2,9 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AppHeader } from '../app-header';
 
+const pushMock = jest.fn();
 jest.mock('next/navigation', () => ({
-  useRouter: () => ({ push: jest.fn(), back: jest.fn(), refresh: jest.fn() }),
+  useRouter: () => ({ push: pushMock, back: jest.fn(), refresh: jest.fn() }),
 }));
 
 jest.mock('next-intl', () => ({
@@ -83,5 +84,22 @@ describe('AppHeader', () => {
     await screen.findByText('John Doe');
     expect(screen.getByText('John Doe')).toBeInTheDocument();
     expect(screen.getByText('john@test.com')).toBeInTheDocument();
+  });
+
+  it('renders Settings menu item enabled and navigates to /settings on click', async () => {
+    const user = userEvent.setup();
+    render(<AppHeader />);
+
+    const avatarButton = screen.getByText('JD').closest('button')!;
+    await user.click(avatarButton);
+
+    const settingsItem = await screen.findByText('nav.settings');
+    // The item is NOT disabled. `aria-disabled` is how radix reports disabled state.
+    const settingsRow = settingsItem.closest('[role="menuitem"]') as HTMLElement;
+    expect(settingsRow).not.toBeNull();
+    expect(settingsRow.getAttribute('aria-disabled')).not.toBe('true');
+
+    await user.click(settingsItem);
+    expect(pushMock).toHaveBeenCalledWith('/settings');
   });
 });

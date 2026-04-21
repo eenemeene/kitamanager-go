@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, fireEvent } from '@testing-library/react';
 import UsersPage from '../page';
 import { apiClient } from '@/lib/api/client';
 import { renderWithProviders, createMockPaginatedResponse } from '@/test-utils';
@@ -11,10 +11,16 @@ jest.mock('@/lib/api/client', () => ({
     deleteUser: jest.fn(),
     setSuperAdmin: jest.fn(),
     getUserMemberships: jest.fn().mockResolvedValue({ memberships: [] }),
+    addUserToOrganization: jest.fn().mockResolvedValue({}),
     updateUserOrganizationRole: jest.fn(),
     removeUserFromOrganization: jest.fn(),
   },
   getErrorMessage: jest.fn((error, fallback) => fallback),
+}));
+
+jest.mock('@/stores/ui-store', () => ({
+  useUiStore: (selector: (state: unknown) => unknown) =>
+    selector({ organizations: [{ id: 1, name: 'Kita Sonnenschein' }] }),
 }));
 
 jest.mock('next/navigation', () => ({
@@ -132,5 +138,32 @@ describe('UsersPage', () => {
     });
 
     expect(screen.getByText('users.superadmin')).toBeInTheDocument();
+  });
+
+  it('opens membership dialog and adds the viewed user to the current org', async () => {
+    (apiClient.getUsers as jest.Mock).mockResolvedValue(mockPaginatedResponse);
+    (apiClient.getUserMemberships as jest.Mock).mockResolvedValue({ memberships: [] });
+
+    renderWithProviders(<UsersPage />);
+
+    // Wait for the user list to render, then find User's row and its "manage memberships" icon.
+    await waitFor(() => {
+      expect(screen.getByText('User')).toBeInTheDocument();
+    });
+    const userRow = screen.getByText('User').closest('tr') as HTMLElement;
+    // Action buttons are rendered in order: Edit, Manage Memberships, Delete.
+    // The Manage-Memberships trigger uses the lucide "users" icon.
+    const manageBtn = userRow
+      .querySelector('button svg.lucide-users')
+      ?.closest('button') as HTMLElement;
+    expect(manageBtn).toBeTruthy();
+    fireEvent.click(manageBtn);
+
+    const addBtn = await screen.findByRole('button', { name: /users\.addToOrganization/ });
+    fireEvent.click(addBtn);
+
+    await waitFor(() => {
+      expect(apiClient.addUserToOrganization).toHaveBeenCalledWith(2, 1, 'member');
+    });
   });
 });

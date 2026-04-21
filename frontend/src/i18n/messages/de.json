@@ -450,16 +450,21 @@
     "confirmRemoval": "Entfernung bestätigen",
     "roleUpdated": "Rolle aktualisiert",
     "failedToUpdateRole": "Fehler beim Aktualisieren der Rolle",
-    "removedFromOrganization": "Benutzer aus Organisation entfernt",
-    "failedToRemoveFromOrganization": "Fehler beim Entfernen aus der Organisation",
+    "removedFromOrganization": "Benutzer aus {orgName} entfernt",
+    "failedToRemoveFromOrganization": "Fehler beim Entfernen aus {orgName}",
     "failedToLoadMemberships": "Fehler beim Laden der Mitgliedschaftsdaten",
     "organizationMembershipFor": "Organisationsmitgliedschaft: {name}",
     "organizationMembership": "Organisationsmitgliedschaft",
     "notMemberOfOrganization": "Benutzer ist kein Mitglied dieser Organisation",
-    "removeFromOrganizationConfirm": "Diesen Benutzer aus der Organisation entfernen?",
+    "removeFromOrganizationConfirm": "Diesen Benutzer aus {orgName} entfernen?",
     "selectRole": "Rolle auswählen",
     "passwordHint": "(leer lassen um aktuelles zu behalten)",
-    "superadmin": "Superadmin"
+    "superadmin": "Superadmin",
+    "addToOrganization": "Zu {orgName} hinzufügen",
+    "addToThisOrganization": "Dieser Benutzer ist noch kein Mitglied von {orgName}. Wählen Sie eine Rolle, um ihn hinzuzufügen.",
+    "addedToOrganization": "Benutzer zu {orgName} hinzugefügt",
+    "failedToAddToOrganization": "Fehler beim Hinzufügen des Benutzers zu {orgName}",
+    "otherMemberships": "Mitgliedschaften in anderen Organisationen"
   },
   "roles": {
     "role": "Rolle",
@@ -541,7 +546,23 @@
     "language": "Sprache",
     "theme": "Design",
     "lightMode": "Heller Modus",
-    "darkMode": "Dunkler Modus"
+    "darkMode": "Dunkler Modus",
+    "password": {
+      "title": "Passwort ändern",
+      "description": "Beim Ändern des Passworts werden alle anderen Sitzungen abgemeldet. Hier bleiben Sie angemeldet.",
+      "currentLabel": "Aktuelles Passwort",
+      "newLabel": "Neues Passwort",
+      "confirmLabel": "Neues Passwort bestätigen",
+      "submit": "Passwort ändern",
+      "successToast": "Passwort geändert",
+      "errorGeneric": "Das Passwort konnte nicht geändert werden. Bitte überprüfen Sie Ihr aktuelles Passwort und versuchen Sie es erneut.",
+      "validation": {
+        "currentRequired": "Aktuelles Passwort ist erforderlich",
+        "tooShort": "Das Passwort muss mindestens 8 Zeichen lang sein",
+        "mismatch": "Die Passwörter stimmen nicht überein",
+        "sameAsCurrent": "Das neue Passwort muss sich vom aktuellen unterscheiden"
+      }
+    }
   },
   "states": {
     "state": "Bundesland",
