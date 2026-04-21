@@ -4,7 +4,7 @@
 export type Gender = 'male' | 'female' | 'diverse';
 
 // Roles for user-organization membership
-export type Role = 'admin' | 'manager' | 'member';
+export type Role = 'admin' | 'manager' | 'member' | 'staff';
 
 // Auth
 export interface LoginRequest {

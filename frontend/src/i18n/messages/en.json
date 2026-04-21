@@ -470,7 +470,12 @@
     "role": "Role",
     "admin": "Admin",
     "manager": "Manager",
-    "member": "Member"
+    "member": "Member",
+    "staff": "Staff",
+    "adminDescription": "Full access within this organization; cannot create or delete organizations.",
+    "managerDescription": "Manage employees, children, contracts, and attendance.",
+    "memberDescription": "Read-only access to employees, children, and contracts.",
+    "staffDescription": "Read-only access to children and contracts; full access to attendance. For daycare teachers and assistants."
   },
   "contracts": {
     "title": "Contracts",
