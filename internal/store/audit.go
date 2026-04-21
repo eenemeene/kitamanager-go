@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -195,7 +196,12 @@ func (f auditFilter) apply(q *gorm.DB) *gorm.DB {
 		q = q.Where("organization_id = ?", *f.orgID)
 	}
 	if f.action != "" {
-		q = q.Where("action = ?", f.action)
+		// Case-insensitive substring match so "ild" finds child_create /
+		// child_update / child_delete in one go. Escape the LIKE
+		// metacharacters in user input so a filter containing "%" or "_"
+		// does not suddenly widen the match.
+		pattern := "%" + escapeLike(f.action) + "%"
+		q = q.Where("action ILIKE ? ESCAPE '\\'", pattern)
 	}
 	if f.userID != nil {
 		q = q.Where("user_id = ?", *f.userID)
@@ -207,6 +213,14 @@ func (f auditFilter) apply(q *gorm.DB) *gorm.DB {
 		q = q.Where("timestamp <= ?", *f.to)
 	}
 	return q
+}
+
+// escapeLike escapes the LIKE metacharacters %, _, and \ so the caller can
+// splice untrusted input into a LIKE pattern without it widening or
+// mis-matching. Pair with `ESCAPE '\\'` on the query.
+func escapeLike(s string) string {
+	r := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+	return r.Replace(s)
 }
 
 func (s *AuditStore) findFiltered(ctx context.Context, f auditFilter, limit, offset int) ([]models.AuditLog, int64, error) {

@@ -616,16 +616,35 @@ func TestAuditService_GetLogsFiltered(t *testing.T) {
 		}
 	})
 
-	t.Run("filter by action", func(t *testing.T) {
+	t.Run("filter by action (substring)", func(t *testing.T) {
+		// The action filter is a case-insensitive substring match, so the
+		// fragment "login" also matches "login_failed". Two LogLogin rows
+		// plus one LogLoginFailed row = 3.
 		logs, total, err := readSvc.GetLogsFiltered(ctx, string(models.AuditActionLogin), nil, nil, nil, 100, 0)
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
-		if total != 2 {
-			t.Errorf("expected total 2, got %d", total)
+		if total != 3 {
+			t.Errorf("expected total 3, got %d", total)
 		}
-		if len(logs) != 2 {
-			t.Errorf("expected 2 logs, got %d", len(logs))
+		if len(logs) != 3 {
+			t.Errorf("expected 3 logs, got %d", len(logs))
+		}
+	})
+
+	t.Run("filter by action — exact action string still works", func(t *testing.T) {
+		// "employee_create" is unique enough that the substring behavior
+		// does not widen the match. Guards against regressions where a
+		// full action string suddenly returns extras.
+		logs, total, err := readSvc.GetLogsFiltered(ctx, "employee_create", nil, nil, nil, 100, 0)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if total != 1 {
+			t.Errorf("expected total 1, got %d", total)
+		}
+		if len(logs) != 1 || logs[0].Action != "employee_create" {
+			t.Errorf("got logs=%v, want single employee_create", logs)
 		}
 	})
 

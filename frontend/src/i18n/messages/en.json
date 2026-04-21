@@ -948,7 +948,7 @@
     "from": "From",
     "to": "To",
     "action": "Action",
-    "actionPlaceholder": "e.g. child_delete",
+    "actionPlaceholder": "contains… e.g. child or delete",
     "actor": "User",
     "resource": "Resource",
     "result": "Result",
