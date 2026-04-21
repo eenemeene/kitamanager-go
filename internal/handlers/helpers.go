@@ -260,17 +260,34 @@ type auditConfig struct {
 
 // auditCreate logs a resource creation audit event.
 func auditCreate(c *gin.Context, svc *service.AuditService, resourceType string, id uint, name string) {
-	svc.LogResourceCreate(getUserID(c), resourceType, id, name, c.ClientIP())
+	svc.LogResourceCreate(getUserID(c), resourceType, id, name, c.ClientIP(), auditOrgIDFromContext(c))
 }
 
 // auditUpdate logs a resource update audit event.
 func auditUpdate(c *gin.Context, svc *service.AuditService, resourceType string, id uint, name string) {
-	svc.LogResourceUpdate(getUserID(c), resourceType, id, name, c.ClientIP())
+	svc.LogResourceUpdate(getUserID(c), resourceType, id, name, c.ClientIP(), auditOrgIDFromContext(c))
 }
 
 // auditDelete logs a resource deletion audit event.
 func auditDelete(c *gin.Context, svc *service.AuditService, resourceType string, id uint, name string) {
-	svc.LogResourceDelete(getUserID(c), resourceType, id, name, c.ClientIP())
+	svc.LogResourceDelete(getUserID(c), resourceType, id, name, c.ClientIP(), auditOrgIDFromContext(c))
+}
+
+// auditOrgIDFromContext resolves the :orgId URL parameter as the organization
+// an audit event belongs to. Returns nil when the route is not org-scoped
+// (e.g. the global user CRUD endpoints) — those events remain identity-level
+// and are only visible to the superadmin-wide audit view.
+func auditOrgIDFromContext(c *gin.Context) *uint {
+	raw := c.Param("orgId")
+	if raw == "" {
+		return nil
+	}
+	n, err := strconv.ParseUint(raw, 10, 64)
+	if err != nil {
+		return nil
+	}
+	id := uint(n)
+	return &id
 }
 
 // allowedSniffedContentTypes is the set of BASE MIME types accepted after

@@ -112,7 +112,9 @@ func (h *OrganizationHandler) Create(c *gin.Context) {
 		return
 	}
 
-	auditCreate(c, h.auditService, "organization", organization.ID, organization.Name)
+	// POST /organizations has no :orgId URL param, so route the audit event
+	// to the newly-created org directly.
+	h.auditService.LogResourceCreate(getUserID(c), "organization", organization.ID, organization.Name, c.ClientIP(), &organization.ID)
 
 	c.JSON(http.StatusCreated, organization)
 }

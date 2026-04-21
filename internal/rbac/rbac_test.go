@@ -221,7 +221,10 @@ func TestEnforcer_CheckPermission_Admin(t *testing.T) {
 		{"admin can CRUD employees", 2, 1, ResourceEmployees, ActionCreate, true},
 		{"admin can CRUD children", 2, 1, ResourceChildren, ActionDelete, true},
 		{"admin can CRUD users", 2, 1, ResourceUsers, ActionCreate, true},
+		{"admin can read audit log", 2, 1, ResourceAuditLog, ActionRead, true},
+		{"admin cannot write audit log", 2, 1, ResourceAuditLog, ActionCreate, false},
 		{"admin cannot access other org", 2, 2, ResourceEmployees, ActionRead, false},
+		{"admin cannot read audit log for other org", 2, 2, ResourceAuditLog, ActionRead, false},
 	}
 
 	for _, tt := range tests {
@@ -259,6 +262,7 @@ func TestEnforcer_CheckPermission_Manager(t *testing.T) {
 		{"manager can only read users", 3, 1, ResourceUsers, ActionRead, true},
 		{"manager cannot create users", 3, 1, ResourceUsers, ActionCreate, false},
 		{"manager cannot delete users", 3, 1, ResourceUsers, ActionDelete, false},
+		{"manager cannot read audit log", 3, 1, ResourceAuditLog, ActionRead, false},
 		{"manager cannot access other org", 3, 2, ResourceEmployees, ActionRead, false},
 	}
 
@@ -335,6 +339,9 @@ func TestEnforcer_CheckPermission_Staff(t *testing.T) {
 
 		// Denied permissions - statistics
 		{"staff cannot read statistics", 6, 1, ResourceStatistics, ActionRead, false},
+
+		// Denied permissions - audit log (admin-only resource)
+		{"staff cannot read audit log", 6, 1, ResourceAuditLog, ActionRead, false},
 
 		// Denied permissions - organizations modifications
 		{"staff cannot update org", 6, 1, ResourceOrganizations, ActionUpdate, false},

@@ -92,6 +92,9 @@ definitions:
       ip_address:
         example: 192.168.1.1
         type: string
+      organization_id:
+        example: 1
+        type: integer
       resource_id:
         example: 42
         type: integer
@@ -4544,6 +4547,69 @@ paths:
       summary: Update an organization
       tags:
       - organizations
+  /api/v1/organizations/{orgId}/audit-logs:
+    get:
+      description: Get a paginated list of audit log entries scoped to the given organization.
+        Identity-level events (login, password rotation, superadmin grant/revoke)
+        are deliberately excluded — those are only visible to the superadmin-only
+        global endpoint. Requires org admin.
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Filter by action (e.g. employee_delete, role_change)
+        in: query
+        name: action
+        type: string
+      - description: Filter by user ID
+        in: query
+        name: user_id
+        type: integer
+      - description: Filter from date (YYYY-MM-DD)
+        in: query
+        name: from
+        type: string
+      - description: Filter to date (YYYY-MM-DD)
+        in: query
+        name: to
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        maximum: 100
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PaginatedResponse-github_com_eenemeene_kitamanager-go_internal_models_AuditLogResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List audit logs for an organization
+      tags:
+      - audit-logs
   /api/v1/organizations/{orgId}/budget-items:
     get:
       consumes:

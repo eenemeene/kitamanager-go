@@ -34,6 +34,10 @@ const (
 	ResourceBudgetItemEntries      = "budget_item_entries"
 	ResourceGovernmentFundingBills = "government_funding_bills"
 	ResourceStatistics             = "statistics"
+	// ResourceAuditLog is read-only by design. Only admins get access here —
+	// managers, members and staff never see the audit log. The global
+	// cross-org view remains superadmin-only via dedicated middleware.
+	ResourceAuditLog = "audit_log"
 )
 
 // Actions
@@ -177,6 +181,7 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleSuperAdmin, "*", ResourceGovernmentFundingBills, ActionRead},
 		{RoleSuperAdmin, "*", ResourceGovernmentFundingBills, ActionDelete},
 		{RoleSuperAdmin, "*", ResourceStatistics, ActionRead},
+		{RoleSuperAdmin, "*", ResourceAuditLog, ActionRead},
 
 		// Admin - full access within their organization (domain is checked at runtime)
 		{RoleAdmin, "*", ResourceOrganizations, ActionRead},
@@ -226,6 +231,7 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleAdmin, "*", ResourceGovernmentFundingBills, ActionRead},
 		{RoleAdmin, "*", ResourceGovernmentFundingBills, ActionDelete},
 		{RoleAdmin, "*", ResourceStatistics, ActionRead},
+		{RoleAdmin, "*", ResourceAuditLog, ActionRead},
 
 		// Manager - manage employees, children, contracts; read-only for users/groups
 		{RoleManager, "*", ResourceOrganizations, ActionRead},

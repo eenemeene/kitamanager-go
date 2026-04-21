@@ -47,6 +47,9 @@ func (m *mockAuditStore) CountFailedPasswordChangesSince(context.Context, uint, 
 func (m *mockAuditStore) FindByID(context.Context, uint) (*models.AuditLog, error) {
 	return nil, nil
 }
+func (m *mockAuditStore) FindByOrganization(context.Context, uint, string, *uint, *time.Time, *time.Time, int, int) ([]models.AuditLog, int64, error) {
+	return nil, 0, nil
+}
 func (m *mockAuditStore) FindAllFiltered(context.Context, string, *uint, *time.Time, *time.Time, int, int) ([]models.AuditLog, int64, error) {
 	return nil, 0, nil
 }
@@ -194,11 +197,12 @@ func TestAuditService_LogSuperAdminChange(t *testing.T) {
 
 func TestAuditService_LogUserAddToOrg(t *testing.T) {
 	db := setupTestDB(t)
+	org := createTestOrganization(t, db, "Test Kita")
 	auditStore := store.NewAuditStore(db)
 	svc := NewAuditService(auditStore)
 	ctx := context.Background()
 
-	svc.LogUserAddToOrg(1, 5, 10, "admin", "127.0.0.1")
+	svc.LogUserAddToOrg(1, 5, org.ID, "admin", "127.0.0.1")
 	svc.Shutdown()
 
 	logs, total, err := store.NewAuditStore(db).FindAll(ctx, 100, 0)
@@ -216,13 +220,16 @@ func TestAuditService_LogUserAddToOrg(t *testing.T) {
 	if log.ResourceType != "user_organization" {
 		t.Errorf("ResourceType = %v, want user_organization", log.ResourceType)
 	}
+	if log.OrganizationID == nil || *log.OrganizationID != org.ID {
+		t.Errorf("OrganizationID = %v, want %d", log.OrganizationID, org.ID)
+	}
 
 	var details map[string]any
 	if err := json.Unmarshal([]byte(log.Details), &details); err != nil {
 		t.Fatalf("failed to unmarshal details: %v", err)
 	}
-	if details["organization_id"].(float64) != 10 {
-		t.Errorf("details[organization_id] = %v, want 10", details["organization_id"])
+	if uint(details["organization_id"].(float64)) != org.ID {
+		t.Errorf("details[organization_id] = %v, want %d", details["organization_id"], org.ID)
 	}
 	if details["role"] != "admin" {
 		t.Errorf("details[role] = %v, want admin", details["role"])
@@ -231,11 +238,12 @@ func TestAuditService_LogUserAddToOrg(t *testing.T) {
 
 func TestAuditService_LogUserRemoveFromOrg(t *testing.T) {
 	db := setupTestDB(t)
+	org := createTestOrganization(t, db, "Test Kita")
 	auditStore := store.NewAuditStore(db)
 	svc := NewAuditService(auditStore)
 	ctx := context.Background()
 
-	svc.LogUserRemoveFromOrg(1, 5, 10, "127.0.0.1")
+	svc.LogUserRemoveFromOrg(1, 5, org.ID, "127.0.0.1")
 	svc.Shutdown()
 
 	logs, total, err := store.NewAuditStore(db).FindAll(ctx, 100, 0)
@@ -253,23 +261,27 @@ func TestAuditService_LogUserRemoveFromOrg(t *testing.T) {
 	if log.ResourceType != "user_organization" {
 		t.Errorf("ResourceType = %v, want user_organization", log.ResourceType)
 	}
+	if log.OrganizationID == nil || *log.OrganizationID != org.ID {
+		t.Errorf("OrganizationID = %v, want %d", log.OrganizationID, org.ID)
+	}
 
 	var details map[string]any
 	if err := json.Unmarshal([]byte(log.Details), &details); err != nil {
 		t.Fatalf("failed to unmarshal details: %v", err)
 	}
-	if details["organization_id"].(float64) != 10 {
-		t.Errorf("details[organization_id] = %v, want 10", details["organization_id"])
+	if uint(details["organization_id"].(float64)) != org.ID {
+		t.Errorf("details[organization_id] = %v, want %d", details["organization_id"], org.ID)
 	}
 }
 
 func TestAuditService_LogRoleChange(t *testing.T) {
 	db := setupTestDB(t)
+	org := createTestOrganization(t, db, "Test Kita")
 	auditStore := store.NewAuditStore(db)
 	svc := NewAuditService(auditStore)
 	ctx := context.Background()
 
-	svc.LogRoleChange(1, 5, 10, "manager", "admin", "127.0.0.1")
+	svc.LogRoleChange(1, 5, org.ID, "manager", "admin", "127.0.0.1")
 	svc.Shutdown()
 
 	logs, total, err := store.NewAuditStore(db).FindAll(ctx, 100, 0)
@@ -283,6 +295,9 @@ func TestAuditService_LogRoleChange(t *testing.T) {
 	log := logs[0]
 	if log.Action != models.AuditActionRoleChange {
 		t.Errorf("Action = %v, want %v", log.Action, models.AuditActionRoleChange)
+	}
+	if log.OrganizationID == nil || *log.OrganizationID != org.ID {
+		t.Errorf("OrganizationID = %v, want %d", log.OrganizationID, org.ID)
 	}
 
 	var details map[string]any
@@ -317,7 +332,7 @@ func TestAuditService_LogResourceDelete(t *testing.T) {
 			svc := NewAuditService(auditStore)
 			ctx := context.Background()
 
-			svc.LogResourceDelete(1, tt.resourceType, 42, "Test Resource", "127.0.0.1")
+			svc.LogResourceDelete(1, tt.resourceType, 42, "Test Resource", "127.0.0.1", nil)
 			svc.Shutdown()
 
 			logs, total, err := store.NewAuditStore(db).FindAll(ctx, 100, 0)
@@ -369,7 +384,7 @@ func TestAuditService_LogResourceCreate(t *testing.T) {
 			svc := NewAuditService(auditStore)
 			ctx := context.Background()
 
-			svc.LogResourceCreate(1, tt.resourceType, 50, "Test Resource", "127.0.0.1")
+			svc.LogResourceCreate(1, tt.resourceType, 50, "Test Resource", "127.0.0.1", nil)
 			svc.Shutdown()
 
 			logs, total, err := store.NewAuditStore(db).FindAll(ctx, 100, 0)
@@ -400,7 +415,7 @@ func TestAuditService_LogResourceUpdate(t *testing.T) {
 	svc := NewAuditService(auditStore)
 	ctx := context.Background()
 
-	svc.LogResourceUpdate(1, "child", 30, "Jane Doe", "127.0.0.1")
+	svc.LogResourceUpdate(1, "child", 30, "Jane Doe", "127.0.0.1", nil)
 	svc.Shutdown()
 
 	logs, total, err := store.NewAuditStore(db).FindAll(ctx, 100, 0)
@@ -582,7 +597,7 @@ func TestAuditService_GetLogsFiltered(t *testing.T) {
 	svc.LogLogin(1, "user1@example.com", "127.0.0.1", "Agent")
 	svc.LogLogin(2, "user2@example.com", "127.0.0.1", "Agent")
 	svc.LogLoginFailed("bad@example.com", "127.0.0.1", "Agent", "wrong password")
-	svc.LogResourceCreate(1, "employee", 10, "Jane", "127.0.0.1")
+	svc.LogResourceCreate(1, "employee", 10, "Jane", "127.0.0.1", nil)
 	svc.Shutdown()
 
 	readSvc := &AuditService{store: store.NewAuditStore(db)}
@@ -841,9 +856,9 @@ func TestAuditService_NilSafety(t *testing.T) {
 		svc.LogUserAddToOrg(1, 2, 3, "admin", "127.0.0.1")
 		svc.LogUserRemoveFromOrg(1, 2, 3, "127.0.0.1")
 		svc.LogRoleChange(1, 2, 3, "old", "new", "127.0.0.1")
-		svc.LogResourceDelete(1, "employee", 2, "name", "127.0.0.1")
-		svc.LogResourceCreate(1, "employee", 2, "name", "127.0.0.1")
-		svc.LogResourceUpdate(1, "employee", 2, "name", "127.0.0.1")
+		svc.LogResourceDelete(1, "employee", 2, "name", "127.0.0.1", nil)
+		svc.LogResourceCreate(1, "employee", 2, "name", "127.0.0.1", nil)
+		svc.LogResourceUpdate(1, "employee", 2, "name", "127.0.0.1", nil)
 
 		// Shutdown doesn't panic
 		svc.Shutdown()

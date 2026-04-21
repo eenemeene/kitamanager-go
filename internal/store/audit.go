@@ -158,43 +158,67 @@ func (s *AuditStore) FindByID(ctx context.Context, id uint) (*models.AuditLog, e
 
 // FindAllFiltered returns audit logs with optional filters and pagination.
 func (s *AuditStore) FindAllFiltered(ctx context.Context, action string, userID *uint, from *time.Time, to *time.Time, limit, offset int) ([]models.AuditLog, int64, error) {
+	return s.findFiltered(ctx, auditFilter{
+		action: action,
+		userID: userID,
+		from:   from,
+		to:     to,
+	}, limit, offset)
+}
+
+// FindByOrganization returns audit logs scoped to a single organization with
+// optional filters and pagination. Rows with a NULL organization_id (identity
+// events like login and password changes) are deliberately excluded — those
+// are only reachable via the superadmin-only global endpoint.
+func (s *AuditStore) FindByOrganization(ctx context.Context, orgID uint, action string, userID *uint, from, to *time.Time, limit, offset int) ([]models.AuditLog, int64, error) {
+	return s.findFiltered(ctx, auditFilter{
+		orgID:  &orgID,
+		action: action,
+		userID: userID,
+		from:   from,
+		to:     to,
+	}, limit, offset)
+}
+
+// auditFilter groups the optional WHERE clauses shared by the filtered
+// list queries so the two public variants stay in lockstep.
+type auditFilter struct {
+	orgID  *uint
+	action string
+	userID *uint
+	from   *time.Time
+	to     *time.Time
+}
+
+func (f auditFilter) apply(q *gorm.DB) *gorm.DB {
+	if f.orgID != nil {
+		q = q.Where("organization_id = ?", *f.orgID)
+	}
+	if f.action != "" {
+		q = q.Where("action = ?", f.action)
+	}
+	if f.userID != nil {
+		q = q.Where("user_id = ?", *f.userID)
+	}
+	if f.from != nil {
+		q = q.Where("timestamp >= ?", *f.from)
+	}
+	if f.to != nil {
+		q = q.Where("timestamp <= ?", *f.to)
+	}
+	return q
+}
+
+func (s *AuditStore) findFiltered(ctx context.Context, f auditFilter, limit, offset int) ([]models.AuditLog, int64, error) {
 	var logs []models.AuditLog
 	var total int64
 
-	query := DBFromContext(ctx, s.db).Model(&models.AuditLog{})
-	if action != "" {
-		query = query.Where("action = ?", action)
-	}
-	if userID != nil {
-		query = query.Where("user_id = ?", *userID)
-	}
-	if from != nil {
-		query = query.Where("timestamp >= ?", *from)
-	}
-	if to != nil {
-		query = query.Where("timestamp <= ?", *to)
-	}
-
-	if err := query.Count(&total).Error; err != nil {
+	if err := f.apply(DBFromContext(ctx, s.db).Model(&models.AuditLog{})).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Rebuild query for data fetch (GORM Count consumes the query)
-	dataQuery := DBFromContext(ctx, s.db).Model(&models.AuditLog{})
-	if action != "" {
-		dataQuery = dataQuery.Where("action = ?", action)
-	}
-	if userID != nil {
-		dataQuery = dataQuery.Where("user_id = ?", *userID)
-	}
-	if from != nil {
-		dataQuery = dataQuery.Where("timestamp >= ?", *from)
-	}
-	if to != nil {
-		dataQuery = dataQuery.Where("timestamp <= ?", *to)
-	}
-
-	if err := dataQuery.Order("timestamp DESC").
+	if err := f.apply(DBFromContext(ctx, s.db).Model(&models.AuditLog{})).
+		Order("timestamp DESC").
 		Limit(limit).
 		Offset(offset).
 		Find(&logs).Error; err != nil {

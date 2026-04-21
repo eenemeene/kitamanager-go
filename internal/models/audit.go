@@ -32,46 +32,55 @@ const (
 	AuditActionPasswordChangeFailed AuditAction = "password_change_failed"
 )
 
-// AuditLog represents an audit log entry for security-relevant operations
+// AuditLog represents an audit log entry for security-relevant operations.
+//
+// OrganizationID is populated for events that belong to a specific
+// organization (resource CRUD, membership, role changes, exports). It is
+// left NULL for identity-level events (login, password rotation, superadmin
+// grant/revoke) which have no org scope. The per-org read endpoint filters
+// on OrganizationID; the superadmin-only global endpoint sees every row.
 type AuditLog struct {
-	ID           uint        `gorm:"primaryKey" json:"id"`
-	Timestamp    time.Time   `gorm:"not null;index" json:"timestamp"`
-	UserID       *uint       `gorm:"index" json:"user_id,omitempty"`
-	UserEmail    string      `gorm:"size:255" json:"user_email,omitempty"`
-	Action       AuditAction `gorm:"size:100;not null;index" json:"action"`
-	ResourceType string      `gorm:"size:100" json:"resource_type,omitempty"`
-	ResourceID   *uint       `json:"resource_id,omitempty"`
-	IPAddress    string      `gorm:"size:45" json:"ip_address,omitempty"`
-	UserAgent    string      `gorm:"size:512" json:"user_agent,omitempty"`
-	Details      string      `gorm:"type:text" json:"details,omitempty"` // JSON for extra data
-	Success      bool        `gorm:"not null" json:"success"`
+	ID             uint        `gorm:"primaryKey" json:"id"`
+	Timestamp      time.Time   `gorm:"not null;index" json:"timestamp"`
+	UserID         *uint       `gorm:"index" json:"user_id,omitempty"`
+	UserEmail      string      `gorm:"size:255" json:"user_email,omitempty"`
+	Action         AuditAction `gorm:"size:100;not null;index" json:"action"`
+	ResourceType   string      `gorm:"size:100" json:"resource_type,omitempty"`
+	ResourceID     *uint       `json:"resource_id,omitempty"`
+	OrganizationID *uint       `gorm:"index" json:"organization_id,omitempty"`
+	IPAddress      string      `gorm:"size:45" json:"ip_address,omitempty"`
+	UserAgent      string      `gorm:"size:512" json:"user_agent,omitempty"`
+	Details        string      `gorm:"type:text" json:"details,omitempty"` // JSON for extra data
+	Success        bool        `gorm:"not null" json:"success"`
 }
 
 // AuditLogResponse represents the audit log response
 type AuditLogResponse struct {
-	ID           uint        `json:"id" example:"1"`
-	Timestamp    time.Time   `json:"timestamp"`
-	UserID       *uint       `json:"user_id,omitempty" example:"1"`
-	UserEmail    string      `json:"user_email,omitempty" example:"admin@example.com"`
-	Action       AuditAction `json:"action" example:"employee_delete"`
-	ResourceType string      `json:"resource_type,omitempty" example:"employee"`
-	ResourceID   *uint       `json:"resource_id,omitempty" example:"42"`
-	IPAddress    string      `json:"ip_address,omitempty" example:"192.168.1.1"`
-	Details      string      `json:"details,omitempty" example:"{\"resource_name\":\"John Doe\"}"`
-	Success      bool        `json:"success" example:"true"`
+	ID             uint        `json:"id" example:"1"`
+	Timestamp      time.Time   `json:"timestamp"`
+	UserID         *uint       `json:"user_id,omitempty" example:"1"`
+	UserEmail      string      `json:"user_email,omitempty" example:"admin@example.com"`
+	Action         AuditAction `json:"action" example:"employee_delete"`
+	ResourceType   string      `json:"resource_type,omitempty" example:"employee"`
+	ResourceID     *uint       `json:"resource_id,omitempty" example:"42"`
+	OrganizationID *uint       `json:"organization_id,omitempty" example:"1"`
+	IPAddress      string      `json:"ip_address,omitempty" example:"192.168.1.1"`
+	Details        string      `json:"details,omitempty" example:"{\"resource_name\":\"John Doe\"}"`
+	Success        bool        `json:"success" example:"true"`
 }
 
 func (a *AuditLog) ToResponse() AuditLogResponse {
 	return AuditLogResponse{
-		ID:           a.ID,
-		Timestamp:    a.Timestamp,
-		UserID:       a.UserID,
-		UserEmail:    a.UserEmail,
-		Action:       a.Action,
-		ResourceType: a.ResourceType,
-		ResourceID:   a.ResourceID,
-		IPAddress:    a.IPAddress,
-		Details:      a.Details,
-		Success:      a.Success,
+		ID:             a.ID,
+		Timestamp:      a.Timestamp,
+		UserID:         a.UserID,
+		UserEmail:      a.UserEmail,
+		Action:         a.Action,
+		ResourceType:   a.ResourceType,
+		ResourceID:     a.ResourceID,
+		OrganizationID: a.OrganizationID,
+		IPAddress:      a.IPAddress,
+		Details:        a.Details,
+		Success:        a.Success,
 	}
 }

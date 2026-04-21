@@ -16,6 +16,7 @@ import {
   Landmark,
   Wallet,
   Settings,
+  ScrollText,
   CalendarCheck,
   ChevronLeft,
   ChevronRight,
@@ -124,6 +125,7 @@ const orgNavigationGroups: NavGroup[] = [
     items: [
       { name: 'nav.payPlans', href: '/payplans', icon: Settings, minRole: 'admin' },
       { name: 'nav.users', href: '/users', icon: Users, minRole: 'admin' },
+      { name: 'nav.auditLog', href: '/audit-logs', icon: ScrollText, minRole: 'admin' },
     ],
   },
 ];

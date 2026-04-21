@@ -87,6 +87,7 @@
     "employees": "Mitarbeiter",
     "children": "Kinder",
     "users": "Benutzer",
+    "auditLog": "Protokoll",
     "governmentFundings": "Staatliche Finanzierungen",
     "payPlans": "Entgelttabellen",
     "sections": "Bereiche",
@@ -940,5 +941,28 @@
     "overdue": "Überfällig",
     "monthsLeft": "{count} Mo verbl.",
     "moveTo": "Verschieben nach {section}"
+  },
+  "auditLog": {
+    "title": "Protokoll",
+    "description": "Aktuelle Änderungen in dieser Organisation. Anmelde- und Passwortereignisse werden hier nicht angezeigt — sie bleiben ausschließlich den Systemadministratoren vorbehalten.",
+    "from": "Von",
+    "to": "Bis",
+    "action": "Aktion",
+    "actionPlaceholder": "z. B. child_delete",
+    "actor": "Benutzer",
+    "resource": "Ressource",
+    "result": "Ergebnis",
+    "time": "Zeit",
+    "empty": "Keine Protokolleinträge für die gewählten Filter.",
+    "clearFilters": "Filter zurücksetzen",
+    "detailTitle": "Ereignisdetails",
+    "details": "Details",
+    "ipAddress": "IP-Adresse",
+    "success": "Erfolg",
+    "failed": "Fehlgeschlagen",
+    "categoryAuth": "Authentifizierung",
+    "categoryAccess": "Berechtigungen",
+    "categoryData": "Datenänderung",
+    "categoryExport": "Export"
   }
 }

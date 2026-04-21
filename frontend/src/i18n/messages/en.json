@@ -87,6 +87,7 @@
     "employees": "Employees",
     "children": "Children",
     "users": "Users",
+    "auditLog": "Audit Log",
     "governmentFundings": "Government Fundings",
     "payPlans": "Pay Plans",
     "sections": "Sections",
@@ -940,5 +941,28 @@
     "overdue": "Overdue",
     "monthsLeft": "{count} mo left",
     "moveTo": "Move to {section}"
+  },
+  "auditLog": {
+    "title": "Audit Log",
+    "description": "Recent changes in this organization. Login and password events are not shown here — they remain visible only to system administrators.",
+    "from": "From",
+    "to": "To",
+    "action": "Action",
+    "actionPlaceholder": "e.g. child_delete",
+    "actor": "User",
+    "resource": "Resource",
+    "result": "Result",
+    "time": "Time",
+    "empty": "No audit events for the selected filters.",
+    "clearFilters": "Clear filters",
+    "detailTitle": "Event details",
+    "details": "Details",
+    "ipAddress": "IP address",
+    "success": "Success",
+    "failed": "Failed",
+    "categoryAuth": "Authentication",
+    "categoryAccess": "Access control",
+    "categoryData": "Data change",
+    "categoryExport": "Export"
   }
 }
