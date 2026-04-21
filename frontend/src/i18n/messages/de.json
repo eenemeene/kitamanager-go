@@ -948,7 +948,7 @@
     "from": "Von",
     "to": "Bis",
     "action": "Aktion",
-    "actionPlaceholder": "z. B. child_delete",
+    "actionPlaceholder": "enthält… z. B. child oder delete",
     "actor": "Benutzer",
     "resource": "Ressource",
     "result": "Ergebnis",

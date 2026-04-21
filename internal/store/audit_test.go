@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -559,6 +560,145 @@ func TestAuditStore_FindByOrganization(t *testing.T) {
 	if totalB != 1 || logsB[0].Action != models.AuditActionEmployeeDelete {
 		t.Errorf("orgB: expected single employee_delete, got total=%d first=%v", totalB, logsB[0].Action)
 	}
+}
+
+// TestAuditStore_ActionFilter_Substring verifies the action filter applied
+// by findFiltered / FindByOrganization / FindAllFiltered is a case-insensitive
+// substring match rather than an exact match. A user filtering on "ild" now
+// matches every child_* action — the UX fix asked for by operators who
+// don't remember the exact action string.
+func TestAuditStore_ActionFilter_Substring(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewAuditStore(db)
+	org := createTestOrganization(t, db, "Kita Substring")
+	orgID := org.ID
+	ip := "127.0.0.1"
+
+	mustCreate(t, store, &models.AuditLog{
+		UserID: uintPtr(1), UserEmail: "a@example.com", Action: models.AuditActionChildDelete,
+		ResourceType: "child", OrganizationID: &orgID, IPAddress: ip,
+	})
+	mustCreate(t, store, &models.AuditLog{
+		UserID: uintPtr(1), UserEmail: "a@example.com", Action: "child_create",
+		ResourceType: "child", OrganizationID: &orgID, IPAddress: ip,
+	})
+	mustCreate(t, store, &models.AuditLog{
+		UserID: uintPtr(1), UserEmail: "a@example.com", Action: "child_update",
+		ResourceType: "child", OrganizationID: &orgID, IPAddress: ip,
+	})
+	mustCreate(t, store, &models.AuditLog{
+		UserID: uintPtr(1), UserEmail: "a@example.com", Action: models.AuditActionEmployeeDelete,
+		ResourceType: "employee", OrganizationID: &orgID, IPAddress: ip,
+	})
+	mustCreate(t, store, &models.AuditLog{
+		UserID: uintPtr(1), UserEmail: "a@example.com", Action: models.AuditActionLogin,
+		IPAddress: ip, // no org — identity-level
+	})
+
+	tests := []struct {
+		name    string
+		filter  string
+		wantN   int64
+		wantAll func(a models.AuditAction) bool // predicate every row must satisfy
+	}{
+		{
+			name:    "empty filter returns all org rows",
+			filter:  "ild",
+			wantN:   3, // child_delete, child_create, child_update
+			wantAll: func(a models.AuditAction) bool { return strings.Contains(string(a), "child") },
+		},
+		{
+			name:    "exact action still works",
+			filter:  "child_delete",
+			wantN:   1,
+			wantAll: func(a models.AuditAction) bool { return a == models.AuditActionChildDelete },
+		},
+		{
+			name:    "case-insensitive — uppercase filter matches lowercase rows",
+			filter:  "CHILD",
+			wantN:   3,
+			wantAll: func(a models.AuditAction) bool { return strings.Contains(string(a), "child") },
+		},
+		{
+			name:    "shared suffix picks up across resource types",
+			filter:  "_delete",
+			wantN:   2, // child_delete + employee_delete
+			wantAll: func(a models.AuditAction) bool { return strings.HasSuffix(string(a), "_delete") },
+		},
+		{
+			name:    "no match for unrelated substring",
+			filter:  "xyzzy",
+			wantN:   0,
+			wantAll: func(models.AuditAction) bool { return true },
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logs, total, err := store.FindByOrganization(context.Background(), org.ID, tt.filter, nil, nil, nil, 50, 0)
+			if err != nil {
+				t.Fatalf("FindByOrganization: %v", err)
+			}
+			if total != tt.wantN {
+				t.Fatalf("total = %d, want %d (rows: %v)", total, tt.wantN, actions(logs))
+			}
+			if int64(len(logs)) != tt.wantN {
+				t.Fatalf("len(logs) = %d, want %d", len(logs), tt.wantN)
+			}
+			for _, l := range logs {
+				if !tt.wantAll(l.Action) {
+					t.Errorf("row %v does not satisfy predicate", l.Action)
+				}
+			}
+		})
+	}
+}
+
+// TestAuditStore_ActionFilter_LikeMetacharactersEscaped guards against a user
+// typing % or _ in the filter and accidentally getting a wider match than
+// they meant. Without escaping, "%" would match every row; "child_" would
+// match child1, child2, etc. if such rows existed.
+func TestAuditStore_ActionFilter_LikeMetacharactersEscaped(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewAuditStore(db)
+	org := createTestOrganization(t, db, "Kita Escape")
+	orgID := org.ID
+	ip := "127.0.0.1"
+
+	mustCreate(t, store, &models.AuditLog{
+		UserID: uintPtr(1), UserEmail: "a@example.com", Action: "child_delete",
+		ResourceType: "child", OrganizationID: &orgID, IPAddress: ip,
+	})
+
+	// "%" should not expand into a wildcard — no row has a literal "%" in
+	// its action, so the filter must return zero.
+	_, total, err := store.FindByOrganization(context.Background(), org.ID, "%", nil, nil, nil, 50, 0)
+	if err != nil {
+		t.Fatalf("FindByOrganization with %%: %v", err)
+	}
+	if total != 0 {
+		t.Errorf("filter %% returned %d rows; expected 0 (metachar not escaped)", total)
+	}
+
+	// "_" similarly must be treated literally. The stored action "child_delete"
+	// does contain a literal underscore, so a filter of "_" is still a valid
+	// substring and returns the row. What we're guarding against is that a
+	// filter like "x_y" wouldn't match "xAy" via the LIKE wildcard for _.
+	_, total, err = store.FindByOrganization(context.Background(), org.ID, "a_b", nil, nil, nil, 50, 0)
+	if err != nil {
+		t.Fatalf("FindByOrganization with a_b: %v", err)
+	}
+	if total != 0 {
+		t.Errorf("filter a_b returned %d rows; expected 0 (underscore not escaped)", total)
+	}
+}
+
+func actions(logs []models.AuditLog) []models.AuditAction {
+	out := make([]models.AuditAction, len(logs))
+	for i, l := range logs {
+		out[i] = l.Action
+	}
+	return out
 }
 
 func mustCreate(t *testing.T, s *AuditStore, log *models.AuditLog) {

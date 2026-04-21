@@ -41,7 +41,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Filter by action (e.g. employee_delete, login_failed)",
+                        "description": "Filter by action as a case-insensitive substring (e.g. 'ild' matches every child_* action)",
                         "name": "action",
                         "in": "query"
                     },
@@ -1890,7 +1890,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Filter by action (e.g. employee_delete, role_change)",
+                        "description": "Filter by action as a case-insensitive substring (e.g. 'ild' matches every child_* action)",
                         "name": "action",
                         "in": "query"
                     },

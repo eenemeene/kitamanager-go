@@ -3346,7 +3346,8 @@ paths:
       description: Get a paginated list of all audit log entries with optional filters
         (superadmin only)
       parameters:
-      - description: Filter by action (e.g. employee_delete, login_failed)
+      - description: Filter by action as a case-insensitive substring (e.g. 'ild'
+          matches every child_* action)
         in: query
         name: action
         type: string
@@ -4559,7 +4560,8 @@ paths:
         name: orgId
         required: true
         type: integer
-      - description: Filter by action (e.g. employee_delete, role_change)
+      - description: Filter by action as a case-insensitive substring (e.g. 'ild'
+          matches every child_* action)
         in: query
         name: action
         type: string

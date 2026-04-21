@@ -25,7 +25,7 @@ func NewAuditLogHandler(auditService *service.AuditService) *AuditLogHandler {
 // @Tags audit-logs
 // @Produce json
 // @Security BearerAuth
-// @Param action query string false "Filter by action (e.g. employee_delete, login_failed)"
+// @Param action query string false "Filter by action as a case-insensitive substring (e.g. 'ild' matches every child_* action)"
 // @Param user_id query int false "Filter by user ID"
 // @Param from query string false "Filter from date (YYYY-MM-DD)"
 // @Param to query string false "Filter to date (YYYY-MM-DD)"
@@ -70,7 +70,7 @@ func (h *AuditLogHandler) List(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
-// @Param action query string false "Filter by action (e.g. employee_delete, role_change)"
+// @Param action query string false "Filter by action as a case-insensitive substring (e.g. 'ild' matches every child_* action)"
 // @Param user_id query int false "Filter by user ID"
 // @Param from query string false "Filter from date (YYYY-MM-DD)"
 // @Param to query string false "Filter to date (YYYY-MM-DD)"

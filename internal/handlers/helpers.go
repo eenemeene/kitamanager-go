@@ -110,6 +110,15 @@ func getUserID(c *gin.Context) uint {
 	return id
 }
 
+// getUserEmail extracts the user email from context (set by auth middleware
+// from the JWT "email" claim). Returns "" when no email is present so audit
+// rows written from unauthenticated code paths still persist cleanly.
+func getUserEmail(c *gin.Context) string {
+	v, _ := c.Get(ctxkeys.UserEmail)
+	email, _ := v.(string)
+	return email
+}
+
 // parseRequiredDate parses a required date query parameter.
 // Returns error if param is empty or invalid.
 // Returns (date, ok). If ok is false, error response has been sent.
@@ -260,17 +269,17 @@ type auditConfig struct {
 
 // auditCreate logs a resource creation audit event.
 func auditCreate(c *gin.Context, svc *service.AuditService, resourceType string, id uint, name string) {
-	svc.LogResourceCreate(getUserID(c), resourceType, id, name, c.ClientIP(), auditOrgIDFromContext(c))
+	svc.LogResourceCreate(getUserID(c), getUserEmail(c), resourceType, id, name, c.ClientIP(), auditOrgIDFromContext(c))
 }
 
 // auditUpdate logs a resource update audit event.
 func auditUpdate(c *gin.Context, svc *service.AuditService, resourceType string, id uint, name string) {
-	svc.LogResourceUpdate(getUserID(c), resourceType, id, name, c.ClientIP(), auditOrgIDFromContext(c))
+	svc.LogResourceUpdate(getUserID(c), getUserEmail(c), resourceType, id, name, c.ClientIP(), auditOrgIDFromContext(c))
 }
 
 // auditDelete logs a resource deletion audit event.
 func auditDelete(c *gin.Context, svc *service.AuditService, resourceType string, id uint, name string) {
-	svc.LogResourceDelete(getUserID(c), resourceType, id, name, c.ClientIP(), auditOrgIDFromContext(c))
+	svc.LogResourceDelete(getUserID(c), getUserEmail(c), resourceType, id, name, c.ClientIP(), auditOrgIDFromContext(c))
 }
 
 // auditOrgIDFromContext resolves the :orgId URL parameter as the organization

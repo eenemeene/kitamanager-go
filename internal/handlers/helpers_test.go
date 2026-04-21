@@ -11,7 +11,43 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/eenemeene/kitamanager-go/internal/ctxkeys"
 )
+
+func TestGetUserEmail(t *testing.T) {
+	tests := []struct {
+		name string
+		set  func(c *gin.Context)
+		want string
+	}{
+		{
+			name: "set by auth middleware",
+			set:  func(c *gin.Context) { c.Set(ctxkeys.UserEmail, "actor@example.com") },
+			want: "actor@example.com",
+		},
+		{
+			name: "unset — no auth middleware ran",
+			set:  func(_ *gin.Context) {},
+			want: "",
+		},
+		{
+			name: "wrong type — context corrupted",
+			set:  func(c *gin.Context) { c.Set(ctxkeys.UserEmail, 42) },
+			want: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			tt.set(c)
+			if got := getUserEmail(c); got != tt.want {
+				t.Errorf("getUserEmail = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
 
 func TestParseRequiredDate(t *testing.T) {
 	w := httptest.NewRecorder()

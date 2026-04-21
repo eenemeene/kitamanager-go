@@ -83,7 +83,7 @@ func (h *ExportHandler) ExportEmployees(c *gin.Context) {
 		return
 	}
 
-	h.auditService.LogDataExport(getUserID(c), "employee", orgID, len(all), c.ClientIP())
+	h.auditService.LogDataExport(getUserID(c), getUserEmail(c), "employee", orgID, len(all), c.ClientIP())
 
 	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	c.Header("Content-Disposition", `attachment; filename="mitarbeiter.xlsx"`)
@@ -152,7 +152,7 @@ func (h *ExportHandler) ExportChildren(c *gin.Context) {
 		return
 	}
 
-	h.auditService.LogDataExport(getUserID(c), "child", orgID, len(all), c.ClientIP())
+	h.auditService.LogDataExport(getUserID(c), getUserEmail(c), "child", orgID, len(all), c.ClientIP())
 
 	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	c.Header("Content-Disposition", `attachment; filename="kinder.xlsx"`)

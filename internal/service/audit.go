@@ -150,7 +150,7 @@ func (s *AuditService) LogPasswordChangeFailed(userID uint, email, ipAddress, re
 }
 
 // LogSuperAdminChange logs a superadmin status change
-func (s *AuditService) LogSuperAdminChange(actorID, targetUserID uint, targetEmail string, granted bool, ipAddress string) {
+func (s *AuditService) LogSuperAdminChange(actorID uint, actorEmail string, targetUserID uint, targetEmail string, granted bool, ipAddress string) {
 	action := models.AuditActionSuperAdminGrant
 	if !granted {
 		action = models.AuditActionSuperAdminRevoke
@@ -158,6 +158,7 @@ func (s *AuditService) LogSuperAdminChange(actorID, targetUserID uint, targetEma
 
 	s.log(&models.AuditLog{
 		UserID:       &actorID,
+		UserEmail:    actorEmail,
 		Action:       action,
 		ResourceType: "user",
 		ResourceID:   &targetUserID,
@@ -172,9 +173,10 @@ func (s *AuditService) LogSuperAdminChange(actorID, targetUserID uint, targetEma
 }
 
 // LogUserAddToOrg logs adding a user to an organization
-func (s *AuditService) LogUserAddToOrg(actorID, userID, orgID uint, role string, ipAddress string) {
+func (s *AuditService) LogUserAddToOrg(actorID uint, actorEmail string, userID, orgID uint, role string, ipAddress string) {
 	s.log(&models.AuditLog{
 		UserID:         &actorID,
+		UserEmail:      actorEmail,
 		Action:         models.AuditActionUserAddToOrg,
 		ResourceType:   "user_organization",
 		ResourceID:     &userID,
@@ -189,9 +191,10 @@ func (s *AuditService) LogUserAddToOrg(actorID, userID, orgID uint, role string,
 }
 
 // LogUserRemoveFromOrg logs removing a user from an organization
-func (s *AuditService) LogUserRemoveFromOrg(actorID, userID, orgID uint, ipAddress string) {
+func (s *AuditService) LogUserRemoveFromOrg(actorID uint, actorEmail string, userID, orgID uint, ipAddress string) {
 	s.log(&models.AuditLog{
 		UserID:         &actorID,
+		UserEmail:      actorEmail,
 		Action:         models.AuditActionUserRemoveFromOrg,
 		ResourceType:   "user_organization",
 		ResourceID:     &userID,
@@ -203,9 +206,10 @@ func (s *AuditService) LogUserRemoveFromOrg(actorID, userID, orgID uint, ipAddre
 }
 
 // LogRoleChange logs a role change for a user in an organization
-func (s *AuditService) LogRoleChange(actorID, userID, orgID uint, oldRole, newRole string, ipAddress string) {
+func (s *AuditService) LogRoleChange(actorID uint, actorEmail string, userID, orgID uint, oldRole, newRole string, ipAddress string) {
 	s.log(&models.AuditLog{
 		UserID:         &actorID,
+		UserEmail:      actorEmail,
 		Action:         models.AuditActionRoleChange,
 		ResourceType:   "user_organization",
 		ResourceID:     &userID,
@@ -223,7 +227,7 @@ func (s *AuditService) LogRoleChange(actorID, userID, orgID uint, oldRole, newRo
 // LogResourceDelete logs deletion of a resource (employee, child, org, etc.)
 // orgID may be nil for identity-level resources (user); pass the owning org
 // id for org-scoped resources so org admins can see the event.
-func (s *AuditService) LogResourceDelete(actorID uint, resourceType string, resourceID uint, resourceName, ipAddress string, orgID *uint) {
+func (s *AuditService) LogResourceDelete(actorID uint, actorEmail, resourceType string, resourceID uint, resourceName, ipAddress string, orgID *uint) {
 	var action models.AuditAction
 	switch resourceType {
 	case "employee":
@@ -240,6 +244,7 @@ func (s *AuditService) LogResourceDelete(actorID uint, resourceType string, reso
 
 	s.log(&models.AuditLog{
 		UserID:         &actorID,
+		UserEmail:      actorEmail,
 		Action:         action,
 		ResourceType:   resourceType,
 		ResourceID:     &resourceID,
@@ -253,7 +258,7 @@ func (s *AuditService) LogResourceDelete(actorID uint, resourceType string, reso
 // LogResourceCreate logs creation of a resource.
 // orgID may be nil for identity-level resources (user); pass the owning org
 // id for org-scoped resources so org admins can see the event.
-func (s *AuditService) LogResourceCreate(actorID uint, resourceType string, resourceID uint, resourceName, ipAddress string, orgID *uint) {
+func (s *AuditService) LogResourceCreate(actorID uint, actorEmail, resourceType string, resourceID uint, resourceName, ipAddress string, orgID *uint) {
 	var action models.AuditAction
 	switch resourceType {
 	case "user":
@@ -266,6 +271,7 @@ func (s *AuditService) LogResourceCreate(actorID uint, resourceType string, reso
 
 	s.log(&models.AuditLog{
 		UserID:         &actorID,
+		UserEmail:      actorEmail,
 		Action:         action,
 		ResourceType:   resourceType,
 		ResourceID:     &resourceID,
@@ -279,9 +285,10 @@ func (s *AuditService) LogResourceCreate(actorID uint, resourceType string, reso
 // LogResourceUpdate logs update of a resource.
 // orgID may be nil for identity-level resources (user); pass the owning org
 // id for org-scoped resources so org admins can see the event.
-func (s *AuditService) LogResourceUpdate(actorID uint, resourceType string, resourceID uint, resourceName, ipAddress string, orgID *uint) {
+func (s *AuditService) LogResourceUpdate(actorID uint, actorEmail, resourceType string, resourceID uint, resourceName, ipAddress string, orgID *uint) {
 	s.log(&models.AuditLog{
 		UserID:         &actorID,
+		UserEmail:      actorEmail,
 		Action:         models.AuditAction(resourceType + "_update"),
 		ResourceType:   resourceType,
 		ResourceID:     &resourceID,
@@ -293,9 +300,10 @@ func (s *AuditService) LogResourceUpdate(actorID uint, resourceType string, reso
 }
 
 // LogPasswordReset logs when an admin resets another user's password.
-func (s *AuditService) LogPasswordReset(actorID, targetUserID uint, targetEmail, ipAddress string) {
+func (s *AuditService) LogPasswordReset(actorID uint, actorEmail string, targetUserID uint, targetEmail, ipAddress string) {
 	s.log(&models.AuditLog{
 		UserID:       &actorID,
+		UserEmail:    actorEmail,
 		Action:       models.AuditActionPasswordReset,
 		ResourceType: "user",
 		ResourceID:   &targetUserID,
@@ -309,9 +317,10 @@ func (s *AuditService) LogPasswordReset(actorID, targetUserID uint, targetEmail,
 }
 
 // LogDataExport logs a bulk data export event
-func (s *AuditService) LogDataExport(actorID uint, resourceType string, orgID uint, recordCount int, ipAddress string) {
+func (s *AuditService) LogDataExport(actorID uint, actorEmail, resourceType string, orgID uint, recordCount int, ipAddress string) {
 	s.log(&models.AuditLog{
 		UserID:         &actorID,
+		UserEmail:      actorEmail,
 		Action:         models.AuditAction(resourceType + "_export"),
 		ResourceType:   resourceType,
 		OrganizationID: &orgID,

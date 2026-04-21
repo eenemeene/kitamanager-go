@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -157,12 +158,14 @@ func TestAuditLogHandler_List_FilterByAction(t *testing.T) {
 	var response models.PaginatedResponse[models.AuditLogResponse]
 	parseResponse(t, w, &response)
 
-	if len(response.Data) != 2 {
-		t.Errorf("expected 2 login logs, got %d", len(response.Data))
+	// Substring match: "login" now also surfaces "login_failed", so the
+	// seed's 2 login + 1 login_failed rows all come back.
+	if len(response.Data) != 3 {
+		t.Errorf("expected 3 login-matching logs, got %d", len(response.Data))
 	}
 	for _, log := range response.Data {
-		if log.Action != models.AuditActionLogin {
-			t.Errorf("expected action login, got %s", log.Action)
+		if !strings.Contains(string(log.Action), "login") {
+			t.Errorf("action %q does not contain 'login'", log.Action)
 		}
 	}
 }

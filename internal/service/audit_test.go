@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -153,7 +154,7 @@ func TestAuditService_LogSuperAdminChange(t *testing.T) {
 		auditStore := store.NewAuditStore(db)
 		svc := NewAuditService(auditStore)
 
-		svc.LogSuperAdminChange(1, 2, "target@example.com", true, "127.0.0.1")
+		svc.LogSuperAdminChange(1, "actor@example.com", 2, "target@example.com", true, "127.0.0.1")
 		svc.Shutdown()
 
 		logs, _, err := store.NewAuditStore(db).FindByAction(ctx, models.AuditActionSuperAdminGrant, 100, 0)
@@ -179,7 +180,7 @@ func TestAuditService_LogSuperAdminChange(t *testing.T) {
 		auditStore := store.NewAuditStore(db)
 		svc := NewAuditService(auditStore)
 
-		svc.LogSuperAdminChange(1, 3, "revoked@example.com", false, "127.0.0.1")
+		svc.LogSuperAdminChange(1, "actor@example.com", 3, "revoked@example.com", false, "127.0.0.1")
 		svc.Shutdown()
 
 		logs, _, err := store.NewAuditStore(db).FindByAction(ctx, models.AuditActionSuperAdminRevoke, 100, 0)
@@ -202,7 +203,7 @@ func TestAuditService_LogUserAddToOrg(t *testing.T) {
 	svc := NewAuditService(auditStore)
 	ctx := context.Background()
 
-	svc.LogUserAddToOrg(1, 5, org.ID, "admin", "127.0.0.1")
+	svc.LogUserAddToOrg(1, "actor@example.com", 5, org.ID, "admin", "127.0.0.1")
 	svc.Shutdown()
 
 	logs, total, err := store.NewAuditStore(db).FindAll(ctx, 100, 0)
@@ -243,7 +244,7 @@ func TestAuditService_LogUserRemoveFromOrg(t *testing.T) {
 	svc := NewAuditService(auditStore)
 	ctx := context.Background()
 
-	svc.LogUserRemoveFromOrg(1, 5, org.ID, "127.0.0.1")
+	svc.LogUserRemoveFromOrg(1, "actor@example.com", 5, org.ID, "127.0.0.1")
 	svc.Shutdown()
 
 	logs, total, err := store.NewAuditStore(db).FindAll(ctx, 100, 0)
@@ -281,7 +282,7 @@ func TestAuditService_LogRoleChange(t *testing.T) {
 	svc := NewAuditService(auditStore)
 	ctx := context.Background()
 
-	svc.LogRoleChange(1, 5, org.ID, "manager", "admin", "127.0.0.1")
+	svc.LogRoleChange(1, "actor@example.com", 5, org.ID, "manager", "admin", "127.0.0.1")
 	svc.Shutdown()
 
 	logs, total, err := store.NewAuditStore(db).FindAll(ctx, 100, 0)
@@ -332,7 +333,7 @@ func TestAuditService_LogResourceDelete(t *testing.T) {
 			svc := NewAuditService(auditStore)
 			ctx := context.Background()
 
-			svc.LogResourceDelete(1, tt.resourceType, 42, "Test Resource", "127.0.0.1", nil)
+			svc.LogResourceDelete(1, "actor@example.com", tt.resourceType, 42, "Test Resource", "127.0.0.1", nil)
 			svc.Shutdown()
 
 			logs, total, err := store.NewAuditStore(db).FindAll(ctx, 100, 0)
@@ -384,7 +385,7 @@ func TestAuditService_LogResourceCreate(t *testing.T) {
 			svc := NewAuditService(auditStore)
 			ctx := context.Background()
 
-			svc.LogResourceCreate(1, tt.resourceType, 50, "Test Resource", "127.0.0.1", nil)
+			svc.LogResourceCreate(1, "actor@example.com", tt.resourceType, 50, "Test Resource", "127.0.0.1", nil)
 			svc.Shutdown()
 
 			logs, total, err := store.NewAuditStore(db).FindAll(ctx, 100, 0)
@@ -415,7 +416,7 @@ func TestAuditService_LogResourceUpdate(t *testing.T) {
 	svc := NewAuditService(auditStore)
 	ctx := context.Background()
 
-	svc.LogResourceUpdate(1, "child", 30, "Jane Doe", "127.0.0.1", nil)
+	svc.LogResourceUpdate(1, "actor@example.com", "child", 30, "Jane Doe", "127.0.0.1", nil)
 	svc.Shutdown()
 
 	logs, total, err := store.NewAuditStore(db).FindAll(ctx, 100, 0)
@@ -597,7 +598,7 @@ func TestAuditService_GetLogsFiltered(t *testing.T) {
 	svc.LogLogin(1, "user1@example.com", "127.0.0.1", "Agent")
 	svc.LogLogin(2, "user2@example.com", "127.0.0.1", "Agent")
 	svc.LogLoginFailed("bad@example.com", "127.0.0.1", "Agent", "wrong password")
-	svc.LogResourceCreate(1, "employee", 10, "Jane", "127.0.0.1", nil)
+	svc.LogResourceCreate(1, "user1@example.com", "employee", 10, "Jane", "127.0.0.1", nil)
 	svc.Shutdown()
 
 	readSvc := &AuditService{store: store.NewAuditStore(db)}
@@ -615,16 +616,35 @@ func TestAuditService_GetLogsFiltered(t *testing.T) {
 		}
 	})
 
-	t.Run("filter by action", func(t *testing.T) {
+	t.Run("filter by action (substring)", func(t *testing.T) {
+		// The action filter is a case-insensitive substring match, so the
+		// fragment "login" also matches "login_failed". Two LogLogin rows
+		// plus one LogLoginFailed row = 3.
 		logs, total, err := readSvc.GetLogsFiltered(ctx, string(models.AuditActionLogin), nil, nil, nil, 100, 0)
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
-		if total != 2 {
-			t.Errorf("expected total 2, got %d", total)
+		if total != 3 {
+			t.Errorf("expected total 3, got %d", total)
 		}
-		if len(logs) != 2 {
-			t.Errorf("expected 2 logs, got %d", len(logs))
+		if len(logs) != 3 {
+			t.Errorf("expected 3 logs, got %d", len(logs))
+		}
+	})
+
+	t.Run("filter by action — exact action string still works", func(t *testing.T) {
+		// "employee_create" is unique enough that the substring behavior
+		// does not widen the match. Guards against regressions where a
+		// full action string suddenly returns extras.
+		logs, total, err := readSvc.GetLogsFiltered(ctx, "employee_create", nil, nil, nil, 100, 0)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if total != 1 {
+			t.Errorf("expected total 1, got %d", total)
+		}
+		if len(logs) != 1 || logs[0].Action != "employee_create" {
+			t.Errorf("got logs=%v, want single employee_create", logs)
 		}
 	})
 
@@ -852,15 +872,250 @@ func TestAuditService_NilSafety(t *testing.T) {
 		// Log methods should not panic with nil channel
 		svc.LogLogin(1, "test@example.com", "127.0.0.1", "Agent")
 		svc.LogLoginFailed("test@example.com", "127.0.0.1", "Agent", "reason")
-		svc.LogSuperAdminChange(1, 2, "test@example.com", true, "127.0.0.1")
-		svc.LogUserAddToOrg(1, 2, 3, "admin", "127.0.0.1")
-		svc.LogUserRemoveFromOrg(1, 2, 3, "127.0.0.1")
-		svc.LogRoleChange(1, 2, 3, "old", "new", "127.0.0.1")
-		svc.LogResourceDelete(1, "employee", 2, "name", "127.0.0.1", nil)
-		svc.LogResourceCreate(1, "employee", 2, "name", "127.0.0.1", nil)
-		svc.LogResourceUpdate(1, "employee", 2, "name", "127.0.0.1", nil)
+		svc.LogSuperAdminChange(1, "actor@example.com", 2, "test@example.com", true, "127.0.0.1")
+		svc.LogUserAddToOrg(1, "actor@example.com", 2, 3, "admin", "127.0.0.1")
+		svc.LogUserRemoveFromOrg(1, "actor@example.com", 2, 3, "127.0.0.1")
+		svc.LogRoleChange(1, "actor@example.com", 2, 3, "old", "new", "127.0.0.1")
+		svc.LogResourceDelete(1, "actor@example.com", "employee", 2, "name", "127.0.0.1", nil)
+		svc.LogResourceCreate(1, "actor@example.com", "employee", 2, "name", "127.0.0.1", nil)
+		svc.LogResourceUpdate(1, "actor@example.com", "employee", 2, "name", "127.0.0.1", nil)
 
 		// Shutdown doesn't panic
 		svc.Shutdown()
 	})
+}
+
+// TestAuditService_ActorEmailSnapshot drives every Log* method that carries an
+// actor email and asserts the row's UserEmail field matches what was passed.
+// This guards against the regression where handlers were logging only UserID,
+// leaving UserEmail empty and rendering the audit UI "User" column as a dash.
+func TestAuditService_ActorEmailSnapshot(t *testing.T) {
+	const actorID uint = 7
+	const actorEmail = "actor@example.com"
+
+	cases := []struct {
+		name        string
+		needsOrg    bool // true when the Log method sets OrganizationID (FK)
+		wantAction  models.AuditAction
+		invoke      func(svc *AuditService, orgID uint)
+		assertExtra func(t *testing.T, log models.AuditLog)
+	}{
+		{
+			name:       "LogResourceCreate",
+			wantAction: "employee_create",
+			invoke: func(svc *AuditService, _ uint) {
+				svc.LogResourceCreate(actorID, actorEmail, "employee", 1, "Jane", "127.0.0.1", nil)
+			},
+		},
+		{
+			name:       "LogResourceUpdate",
+			wantAction: "employee_update",
+			invoke: func(svc *AuditService, _ uint) {
+				svc.LogResourceUpdate(actorID, actorEmail, "employee", 1, "Jane", "127.0.0.1", nil)
+			},
+		},
+		{
+			name:       "LogResourceDelete",
+			wantAction: models.AuditActionEmployeeDelete,
+			invoke: func(svc *AuditService, _ uint) {
+				svc.LogResourceDelete(actorID, actorEmail, "employee", 1, "Jane", "127.0.0.1", nil)
+			},
+		},
+		{
+			name:       "LogUserAddToOrg",
+			needsOrg:   true,
+			wantAction: models.AuditActionUserAddToOrg,
+			invoke: func(svc *AuditService, orgID uint) {
+				svc.LogUserAddToOrg(actorID, actorEmail, 2, orgID, "admin", "127.0.0.1")
+			},
+		},
+		{
+			name:       "LogUserRemoveFromOrg",
+			needsOrg:   true,
+			wantAction: models.AuditActionUserRemoveFromOrg,
+			invoke: func(svc *AuditService, orgID uint) {
+				svc.LogUserRemoveFromOrg(actorID, actorEmail, 2, orgID, "127.0.0.1")
+			},
+		},
+		{
+			name:       "LogRoleChange",
+			needsOrg:   true,
+			wantAction: models.AuditActionRoleChange,
+			invoke: func(svc *AuditService, orgID uint) {
+				svc.LogRoleChange(actorID, actorEmail, 2, orgID, "manager", "admin", "127.0.0.1")
+			},
+		},
+		{
+			name:       "LogSuperAdminChange_grant",
+			wantAction: models.AuditActionSuperAdminGrant,
+			invoke: func(svc *AuditService, _ uint) {
+				svc.LogSuperAdminChange(actorID, actorEmail, 2, "target@example.com", true, "127.0.0.1")
+			},
+			assertExtra: func(t *testing.T, log models.AuditLog) {
+				t.Helper()
+				var details map[string]any
+				if err := json.Unmarshal([]byte(log.Details), &details); err != nil {
+					t.Fatalf("details: %v", err)
+				}
+				// Actor email belongs on the row, target email belongs in Details.
+				// If these ever get swapped the "User" column will show the target.
+				if details["target_user_email"] != "target@example.com" {
+					t.Errorf("details[target_user_email]=%v", details["target_user_email"])
+				}
+			},
+		},
+		{
+			name:       "LogPasswordReset",
+			wantAction: models.AuditActionPasswordReset,
+			invoke: func(svc *AuditService, _ uint) {
+				svc.LogPasswordReset(actorID, actorEmail, 2, "target@example.com", "127.0.0.1")
+			},
+			assertExtra: func(t *testing.T, log models.AuditLog) {
+				t.Helper()
+				var details map[string]any
+				if err := json.Unmarshal([]byte(log.Details), &details); err != nil {
+					t.Fatalf("details: %v", err)
+				}
+				if details["target_user_email"] != "target@example.com" {
+					t.Errorf("details[target_user_email]=%v", details["target_user_email"])
+				}
+			},
+		},
+		{
+			name:       "LogDataExport",
+			needsOrg:   true,
+			wantAction: "child_export",
+			invoke: func(svc *AuditService, orgID uint) {
+				svc.LogDataExport(actorID, actorEmail, "child", orgID, 5, "127.0.0.1")
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := setupTestDB(t)
+			var orgID uint
+			if tc.needsOrg {
+				orgID = createTestOrganization(t, db, "Test Kita").ID
+			}
+			svc := NewAuditService(store.NewAuditStore(db))
+			tc.invoke(svc, orgID)
+			svc.Shutdown()
+
+			logs, total, err := store.NewAuditStore(db).FindByAction(context.Background(), tc.wantAction, 10, 0)
+			if err != nil {
+				t.Fatalf("FindByAction: %v", err)
+			}
+			if total != 1 {
+				t.Fatalf("expected 1 row, got %d", total)
+			}
+			row := logs[0]
+			if row.UserEmail != actorEmail {
+				t.Errorf("UserEmail = %q, want %q", row.UserEmail, actorEmail)
+			}
+			if row.UserID == nil || *row.UserID != actorID {
+				t.Errorf("UserID = %v, want %d", row.UserID, actorID)
+			}
+			if tc.assertExtra != nil {
+				tc.assertExtra(t, row)
+			}
+		})
+	}
+}
+
+// TestAuditService_ActorEmail_EmptyString ensures the Log* path doesn't reject
+// or drop entries when the context has no email (e.g. for a token issued
+// before the email claim existed, or unauthenticated code paths). An empty
+// UserEmail is acceptable; a missing row is not.
+func TestAuditService_ActorEmail_EmptyString(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewAuditService(store.NewAuditStore(db))
+
+	svc.LogResourceDelete(42, "", "child", 99, "Unknown", "127.0.0.1", nil)
+	svc.Shutdown()
+
+	logs, total, err := store.NewAuditStore(db).FindByAction(context.Background(), models.AuditActionChildDelete, 10, 0)
+	if err != nil {
+		t.Fatalf("FindByAction: %v", err)
+	}
+	if total != 1 {
+		t.Fatalf("expected 1 row, got %d", total)
+	}
+	if logs[0].UserEmail != "" {
+		t.Errorf("UserEmail = %q, want empty", logs[0].UserEmail)
+	}
+	if logs[0].UserID == nil || *logs[0].UserID != 42 {
+		t.Errorf("UserID = %v, want 42", logs[0].UserID)
+	}
+}
+
+// TestAuditService_ActorEmail_MaxLength verifies a 255-character email (the
+// column's VARCHAR limit) persists intact. The schema would truncate or fail
+// beyond this; catching it here keeps the boundary documented in a test.
+func TestAuditService_ActorEmail_MaxLength(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewAuditService(store.NewAuditStore(db))
+
+	// 64-char local part + @ + 190-char domain = 255 chars total.
+	local := strings.Repeat("a", 64)
+	domain := strings.Repeat("b", 186) + ".com"
+	email := local + "@" + domain
+	if len(email) != 255 {
+		t.Fatalf("test data wrong length: %d", len(email))
+	}
+
+	svc.LogResourceCreate(1, email, "child", 1, "n", "127.0.0.1", nil)
+	svc.Shutdown()
+
+	logs, total, err := store.NewAuditStore(db).FindByAction(context.Background(), "child_create", 10, 0)
+	if err != nil {
+		t.Fatalf("FindByAction: %v", err)
+	}
+	if total != 1 {
+		t.Fatalf("expected 1 row, got %d", total)
+	}
+	if logs[0].UserEmail != email {
+		t.Errorf("UserEmail length = %d, want 255 (got %q)", len(logs[0].UserEmail), logs[0].UserEmail)
+	}
+}
+
+// TestAuditService_SuperAdminChange_ActorNotSwappedWithTarget guards against
+// a parameter-swap regression in the call sites. If a future refactor flipped
+// actor and target emails, LogSuperAdminChange would mislabel who performed
+// the change — exactly the class of mistake a compliance audit catches.
+func TestAuditService_SuperAdminChange_ActorNotSwappedWithTarget(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewAuditService(store.NewAuditStore(db))
+
+	svc.LogSuperAdminChange(10, "admin@example.com", 20, "promoted@example.com", true, "127.0.0.1")
+	svc.Shutdown()
+
+	logs, _, err := store.NewAuditStore(db).FindByAction(context.Background(), models.AuditActionSuperAdminGrant, 10, 0)
+	if err != nil {
+		t.Fatalf("FindByAction: %v", err)
+	}
+	if len(logs) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(logs))
+	}
+	row := logs[0]
+	if row.UserEmail != "admin@example.com" {
+		t.Errorf("row.UserEmail = %q, want admin@example.com (the actor)", row.UserEmail)
+	}
+	if row.UserID == nil || *row.UserID != 10 {
+		t.Errorf("row.UserID = %v, want 10 (the actor)", row.UserID)
+	}
+	if row.ResourceID == nil || *row.ResourceID != 20 {
+		t.Errorf("row.ResourceID = %v, want 20 (the target)", row.ResourceID)
+	}
+
+	var details map[string]any
+	if err := json.Unmarshal([]byte(row.Details), &details); err != nil {
+		t.Fatalf("details: %v", err)
+	}
+	if details["target_user_email"] != "promoted@example.com" {
+		t.Errorf("details[target_user_email] = %v, want promoted@example.com", details["target_user_email"])
+	}
+	if details["target_user_email"] == row.UserEmail {
+		t.Errorf("target and actor emails are identical — likely a parameter swap")
+	}
 }
