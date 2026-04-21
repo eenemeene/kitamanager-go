@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import {
   login,
+  loginViaForm,
   createTestOrg,
   deleteTestOrg,
   createUserViaApi,
@@ -189,6 +190,108 @@ test.describe('Users', () => {
       // in teardown so a failed assertion above still leaves a tidy DB.
       await login(page);
       await deleteUserViaApi(page, member.id).catch(() => {});
+    }
+  });
+
+  // UI form login (as opposed to the API-level `login()` helper) for a
+  // non-superadmin. Guards the login-page React component + its redirect
+  // behaviour for accounts that aren't the seeded admin — a regression
+  // there would leave real members stuck on the form even with valid
+  // credentials.
+  test('member user can sign in through the login form', async ({ page }) => {
+    const memberEmail = `formlogin-${Date.now()}@example.com`;
+    const memberPassword = 'form-login-pw-12345';
+    const member = await createUserViaApi(page, {
+      name: uniqueName('FormLoginUser'),
+      email: memberEmail,
+      password: memberPassword,
+      active: true,
+    });
+    await addUserToOrgViaApi(page, member.id, orgId, 'member');
+
+    try {
+      await logoutViaApi(page);
+      // loginViaForm navigates to /login and exercises the actual form
+      // submit path, then asserts the URL moves off /login.
+      await loginViaForm(page, memberEmail, memberPassword);
+
+      // After the form submit the app should let the member land on an
+      // authenticated page. Confirm via /me that the session is the
+      // member's, not a leftover superadmin session.
+      const me = await page.evaluate(async () => {
+        const r = await fetch('/api/v1/me', { credentials: 'same-origin' });
+        if (!r.ok) throw new Error(`/me ${r.status}`);
+        return (await r.json()) as { email: string };
+      });
+      expect(me.email).toBe(memberEmail);
+    } finally {
+      await login(page);
+      await deleteUserViaApi(page, member.id).catch(() => {});
+    }
+  });
+
+  // Granting org membership through the UI (membership dialog). The API
+  // path is already covered; this pins the dialog workflow an admin
+  // actually uses in the browser — clicking the users icon on a row,
+  // picking a role, and confirming. A regression here would break the
+  // only practical way to onboard a new colleague without hitting the
+  // raw API.
+  test('superadmin can grant org membership through the UI dialog', async ({ page }) => {
+    const candidateEmail = `uimembership-${Date.now()}@example.com`;
+    const candidateName = uniqueName('UiMember');
+    const candidate = await createUserViaApi(page, {
+      name: candidateName,
+      email: candidateEmail,
+      password: 'ui-membership-pw-12345',
+      active: true,
+    });
+
+    try {
+      // Reload so the newly-created user is in the table.
+      await page.reload();
+      await page.waitForLoadState('load');
+      await expect(page.getByText(candidateName)).toBeVisible({ timeout: 10000 });
+
+      // Middle icon on the row opens the membership dialog. Action buttons
+      // are rendered in order: edit, manage-memberships, delete — matching
+      // the existing edit/delete tests above.
+      const row = page.getByRole('row').filter({ hasText: candidateName });
+      const actionButtons = row.locator('button:not([role="switch"])');
+      await actionButtons.nth(1).click();
+
+      // Dialog must be visible and default to "no membership in this org"
+      // because we never granted one.
+      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
+
+      // The role select defaults to member; switch it to manager so the
+      // assertion below is not a no-op if the default ever changes.
+      await page.getByRole('combobox').first().click();
+      await page.getByRole('option', { name: /^Manager$/ }).click();
+
+      // Click the "Add to {orgName}" button to commit.
+      await page.getByRole('button', { name: /add to /i }).click();
+
+      // Poll the memberships API until the row has been created. This is
+      // more robust than asserting UI state, which depends on the dialog
+      // re-rendering without flicker.
+      await expect
+        .poll(
+          async () =>
+            page.evaluate(async (uid) => {
+              const r = await fetch(`/api/v1/users/${uid}/memberships`, {
+                credentials: 'same-origin',
+              });
+              if (!r.ok) return null;
+              const data = (await r.json()) as {
+                memberships: Array<{ organization_id: number; role: string }>;
+              };
+              return data.memberships;
+            }, candidate.id),
+          { timeout: 10000 }
+        )
+        .toEqual(expect.arrayContaining([expect.objectContaining({ organization_id: orgId, role: 'manager' })]));
+    } finally {
+      await deleteUserViaApi(page, candidate.id).catch(() => {});
     }
   });
 

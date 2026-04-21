@@ -403,6 +403,93 @@ func TestAuthFlow_ManagerRole_HasReadButNotOrgUpdate(t *testing.T) {
 	}
 }
 
+// TestAuthFlow_StaffRole_CanReadChildrenButNotEmployees pins the staff-role
+// surface. Staff has children:read and attendance CRUD but deliberately does
+// NOT have employees:read — a policy shape that comes up often enough (an
+// attendance-taker who should not see HR data) that a silent widening would
+// be a real privacy leak. The assertion pair (children:200 / employees:403)
+// is what separates staff from member.
+func TestAuthFlow_StaffRole_CanReadChildrenButNotEmployees(t *testing.T) {
+	cleanupDatabase()
+	fr := setupAuthFlowRouter(t)
+	enforcer, _ := rbac.NewEnforcer(testDB, findRBACModel(t))
+	_, superEmail, superPass := seedSuperadmin(t, enforcer)
+	org := createOrg(t, "Kita Sonnenschein")
+
+	// The auth-flow router only registers /organizations and /users endpoints
+	// to keep setup small. For the staff assertions we need children + employees
+	// endpoints too, so wire those in against the same router.
+	childStore := store.NewChildStore(testDB)
+	employeeStore := store.NewEmployeeStore(testDB)
+	fundingStore := store.NewGovernmentFundingStore(testDB)
+	sectionStore := store.NewSectionStore(testDB)
+	payPlanStore := store.NewPayPlanStore(testDB)
+	orgStore := store.NewOrganizationStore(testDB)
+	transactor := store.NewTransactor(testDB)
+	childService := service.NewChildService(childStore, orgStore, fundingStore, sectionStore, transactor)
+	employeeService := service.NewEmployeeService(employeeStore, payPlanStore, sectionStore, transactor)
+	auditService := service.NewAuditService(store.NewAuditStore(testDB))
+	childHandler := handlers.NewChildHandler(childService, auditService)
+	employeeHandler := handlers.NewEmployeeHandler(employeeService, auditService)
+
+	userOrgStore := store.NewUserOrganizationStore(testDB)
+	permissionService := rbac.NewPermissionService(userOrgStore, enforcer)
+	authzMW := middleware.NewAuthorizationMiddleware(permissionService)
+	tokenStore := store.NewTokenStore(testDB)
+	authMW := middleware.NewAuthMiddleware(testJWTSecret, tokenStore)
+	csrfMW := middleware.NewCSRFMiddleware(testJWTSecret)
+
+	protected := fr.router.Group("/api/v1")
+	protected.Use(authMW.RequireAuth())
+	protected.Use(csrfMW.ValidateCSRF())
+	protected.GET("/organizations/:orgId/children",
+		authzMW.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
+		childHandler.List)
+	protected.GET("/organizations/:orgId/employees",
+		authzMW.RequirePermission(rbac.ResourceEmployees, rbac.ActionRead),
+		employeeHandler.List)
+
+	_, superToken := doLogin(t, fr.router, superEmail, superPass)
+
+	const email = "new-staff@test.local"
+	const password = "staff-password-999"
+	w := doAuthed(t, fr.router, http.MethodPost, "/api/v1/users", superToken, models.UserCreateRequest{
+		Name: "New Staff", Email: email, Password: password, Active: true,
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create user: %d %s", w.Code, w.Body.String())
+	}
+	var created models.UserResponse
+	_ = json.Unmarshal(w.Body.Bytes(), &created)
+
+	w = doAuthed(t, fr.router, http.MethodPost,
+		fmt.Sprintf("/api/v1/users/%d/organizations", created.ID), superToken,
+		models.UserAddOrganizationRequest{OrganizationID: org.ID, Role: models.RoleStaff})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("add to org: %d %s", w.Code, w.Body.String())
+	}
+
+	code, staffToken := doLogin(t, fr.router, email, password)
+	if code != http.StatusOK {
+		t.Fatalf("staff login: got %d, want 200", code)
+	}
+
+	// Staff CAN read children in their org.
+	w = doAuthed(t, fr.router, http.MethodGet,
+		fmt.Sprintf("/api/v1/organizations/%d/children", org.ID), staffToken, nil)
+	if w.Code != http.StatusOK {
+		t.Errorf("staff GET children: got %d, want 200 (children:read is allowed)", w.Code)
+	}
+
+	// Staff CANNOT read employees — the important guard. If a future policy
+	// edit accidentally grants employees:read to staff, this catches it.
+	w = doAuthed(t, fr.router, http.MethodGet,
+		fmt.Sprintf("/api/v1/organizations/%d/employees", org.ID), staffToken, nil)
+	if w.Code != http.StatusForbidden {
+		t.Errorf("staff GET employees: got %d, want 403 (staff must not have employees:read)", w.Code)
+	}
+}
+
 // TestAuthFlow_WrongPasswordRejected is a sanity guard: given a correctly
 // created user, a wrong password must not produce an access token. Paired
 // with the happy-path test this bounds the login behaviour from both sides
