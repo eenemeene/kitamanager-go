@@ -12,7 +12,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { ChildAttendanceResponse, ChildAttendanceStatus } from '@/lib/api/types';
 import { formatTime } from '@/lib/utils/formatting';
 
@@ -80,86 +79,80 @@ export function AttendanceTable({ rows, onQuickStatus, onEdit, onDelete }: Atten
   }
 
   return (
-    <TooltipProvider>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{tCommon('name')}</TableHead>
-            <TableHead>{tCommon('status')}</TableHead>
-            <TableHead>{t('checkIn')}</TableHead>
-            <TableHead>{t('checkOut')}</TableHead>
-            <TableHead>{t('note')}</TableHead>
-            <TableHead className="text-center">{t('quickMark')}</TableHead>
-            <TableHead className="text-right">{tCommon('actions')}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((row) => (
-            <TableRow key={row.childId}>
-              <TableCell className="font-medium">{row.childName}</TableCell>
-              <TableCell>
-                {row.attendance ? (
-                  <Badge variant={STATUS_BADGE_VARIANT[row.attendance.status]}>
-                    {t(row.attendance.status)}
-                  </Badge>
-                ) : (
-                  <span className="text-muted-foreground text-sm">{t('notRecorded')}</span>
-                )}
-              </TableCell>
-              <TableCell>{formatTime(row.attendance?.check_in_time)}</TableCell>
-              <TableCell>{formatTime(row.attendance?.check_out_time)}</TableCell>
-              <TableCell className="max-w-[200px] truncate">{row.attendance?.note || ''}</TableCell>
-              <TableCell>
-                <div className="flex items-center justify-center gap-1">
-                  {QUICK_BUTTONS.map(({ status, icon: Icon, color, activeColor }) => {
-                    const isActive = row.attendance?.status === status;
-                    return (
-                      <Tooltip key={status}>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className={`h-9 w-9 ${isActive ? activeColor : color}`}
-                            onClick={() => onQuickStatus(row.childId, status, row.attendance?.id)}
-                            aria-label={t(status)}
-                          >
-                            <Icon className="h-5 w-5" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>{t(status)}</TooltipContent>
-                      </Tooltip>
-                    );
-                  })}
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>{tCommon('name')}</TableHead>
+          <TableHead>{tCommon('status')}</TableHead>
+          <TableHead>{t('checkIn')}</TableHead>
+          <TableHead>{t('checkOut')}</TableHead>
+          <TableHead>{t('note')}</TableHead>
+          <TableHead className="text-center">{t('quickMark')}</TableHead>
+          <TableHead className="text-right">{tCommon('actions')}</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.map((row) => (
+          <TableRow key={row.childId}>
+            <TableCell className="font-medium">{row.childName}</TableCell>
+            <TableCell>
+              {row.attendance ? (
+                <Badge variant={STATUS_BADGE_VARIANT[row.attendance.status]}>
+                  {t(row.attendance.status)}
+                </Badge>
+              ) : (
+                <span className="text-muted-foreground text-sm">{t('notRecorded')}</span>
+              )}
+            </TableCell>
+            <TableCell>{formatTime(row.attendance?.check_in_time)}</TableCell>
+            <TableCell>{formatTime(row.attendance?.check_out_time)}</TableCell>
+            <TableCell className="max-w-[200px] truncate">{row.attendance?.note || ''}</TableCell>
+            <TableCell>
+              <div className="flex items-center justify-center gap-2">
+                {QUICK_BUTTONS.map(({ status, icon: Icon, color, activeColor }) => {
+                  const isActive = row.attendance?.status === status;
+                  return (
+                    <Button
+                      key={status}
+                      variant="outline"
+                      className={`flex h-14 w-16 flex-col items-center justify-center gap-1 px-1 ${isActive ? activeColor : color}`}
+                      onClick={() => onQuickStatus(row.childId, status, row.attendance?.id)}
+                      aria-label={t(status)}
+                    >
+                      <Icon className="h-5 w-5" />
+                      <span className="text-[0.65rem] leading-tight">{t(status)}</span>
+                    </Button>
+                  );
+                })}
+              </div>
+            </TableCell>
+            <TableCell className="text-right">
+              {row.attendance && (
+                <div className="flex items-center justify-end gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => onEdit(row)}
+                    aria-label={tCommon('edit')}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive h-7 w-7"
+                    onClick={() => onDelete(row)}
+                    aria-label={tCommon('delete')}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
-              </TableCell>
-              <TableCell className="text-right">
-                {row.attendance && (
-                  <div className="flex items-center justify-end gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => onEdit(row)}
-                      aria-label={tCommon('edit')}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive h-7 w-7"
-                      onClick={() => onDelete(row)}
-                      aria-label={tCommon('delete')}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TooltipProvider>
+              )}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }
