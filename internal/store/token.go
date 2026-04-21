@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"time"
 
@@ -35,34 +36,28 @@ func (s *TokenStore) RevokeToken(ctx context.Context, tokenHash string, userID u
 	return result.Error
 }
 
-// RevokeAllForUser revokes all tokens for a user by inserting a sentinel record
-// with a far-future expiry. The middleware checks the revoked_tokens table,
-// and we use a special approach: delete existing records for the user and insert
-// a sentinel that causes IsRevoked to check the user_id.
-// Actually, the simpler approach: we track individual tokens, so "revoke all"
-// needs to be handled differently — the middleware will check token hashes.
-// For "revoke all for user", we set a flag that the middleware checks.
-// Simplest: just let the caller revoke each known token, or check at middleware level.
-//
-// For this implementation, we store a sentinel with empty hash that the middleware
-// won't match against (individual tokens are checked by hash). Instead, we'll
-// have the middleware also check by user_id with a recent timestamp.
-// Actually the cleanest approach: store the "revoke all" timestamp per user.
-// But that requires a different table. Let's keep it simple:
-// RevokeAllForUser is called when changing password — we just need to ensure
-// that tokens issued before this point are invalid. We store a special record.
+// RevokeAllForUser revokes every token issued to the user up to the moment of
+// the call. It works by writing a sentinel row whose CreatedAt acts as a
+// cutoff: the middleware refuses any token whose `iat` claim lies before this
+// cutoff. Tokens issued *after* the sentinel was written remain valid — this
+// is what makes self-initiated password change work (the caller receives a
+// fresh token in the same request) while still locking out other holders of
+// older tokens. See #134.
 func (s *TokenStore) RevokeAllForUser(ctx context.Context, userID uint) error {
-	// Delete existing revocations for this user (cleanup)
+	// Drop any older rows for this user: the cutoff they encoded is now
+	// superseded by the new sentinel, and the individual-token rows they
+	// protected are likewise covered by the cutoff.
 	if err := DBFromContext(ctx, s.db).Where("user_id = ?", userID).Delete(&models.RevokedToken{}).Error; err != nil {
 		return err
 	}
 
-	// Insert a sentinel record: token_hash = "all:<userID>" with far-future expiry
-	// The middleware will check this to invalidate all tokens for this user
 	sentinel := &models.RevokedToken{
 		UserID:    userID,
 		TokenHash: revokeAllSentinel(userID),
 		ExpiresAt: time.Now().UTC().Add(refreshTokenMaxExpiry),
+		// Set CreatedAt explicitly: correctness of revocation now depends on
+		// this value, so do not rely on GORM's auto-populate hook.
+		CreatedAt: time.Now().UTC(),
 	}
 	return DBFromContext(ctx, s.db).Create(sentinel).Error
 }
@@ -89,17 +84,27 @@ func (s *TokenStore) IsRevoked(ctx context.Context, tokenHash string) (bool, err
 	return count > 0, nil
 }
 
-// IsUserRevoked checks if all tokens for a user have been revoked.
-func (s *TokenStore) IsUserRevoked(ctx context.Context, userID uint) (bool, error) {
-	var count int64
-	sentinel := revokeAllSentinel(userID)
-	err := DBFromContext(ctx, s.db).Model(&models.RevokedToken{}).
-		Where("token_hash = ?", sentinel).
-		Count(&count).Error
+// IsUserRevokedSince reports whether a token with the given `iat` (issued-at)
+// has been covered by a prior RevokeAllForUser for this user. Returns true
+// iff a sentinel row exists whose CreatedAt is strictly after tokenIssuedAt.
+//
+// Because JWT `iat` is second-precision while the sentinel's CreatedAt has
+// sub-second precision, callers that need to issue fresh tokens immediately
+// after RevokeAllForUser must wait past the next whole-second boundary (see
+// AuthService.ChangePassword), otherwise the new tokens' second-truncated iat
+// would tie with the sentinel's CreatedAt and be treated as revoked. See #134.
+func (s *TokenStore) IsUserRevokedSince(ctx context.Context, userID uint, tokenIssuedAt time.Time) (bool, error) {
+	var sentinel models.RevokedToken
+	err := DBFromContext(ctx, s.db).
+		Where("token_hash = ?", revokeAllSentinel(userID)).
+		First(&sentinel).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
 		return false, err
 	}
-	return count > 0, nil
+	return tokenIssuedAt.Before(sentinel.CreatedAt), nil
 }
 
 // CleanupExpired removes expired revocation records.

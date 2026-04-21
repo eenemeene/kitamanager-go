@@ -144,6 +144,12 @@ func (s *AuthService) Refresh(ctx context.Context, refreshTokenStr, oldAccessTok
 	}
 	userID := uint(userIDFloat)
 
+	iatFloat, ok := claims["iat"].(float64)
+	if !ok || iatFloat <= 0 {
+		return nil, apperror.Unauthorized("invalid refresh token")
+	}
+	tokenIssuedAt := time.Unix(int64(iatFloat), 0).UTC()
+
 	// Check for token replay
 	if s.tokenStore != nil {
 		oldHash := middleware.HashToken(refreshTokenStr)
@@ -158,7 +164,7 @@ func (s *AuthService) Refresh(ctx context.Context, refreshTokenStr, oldAccessTok
 			return nil, apperror.Unauthorized("token reuse detected, all sessions have been revoked")
 		}
 
-		userRevoked, err := s.tokenStore.IsUserRevoked(ctx, userID)
+		userRevoked, err := s.tokenStore.IsUserRevokedSince(ctx, userID, tokenIssuedAt)
 		if err != nil {
 			return nil, apperror.InternalWrap(err, "failed to check user token revocation")
 		}
@@ -249,6 +255,12 @@ func (s *AuthService) ChangePassword(ctx context.Context, userID uint, currentPa
 		if err := s.tokenStore.RevokeAllForUser(ctx, userID); err != nil {
 			slog.Error("Failed to revoke all tokens after password change", "user_id", userID, "error", err)
 		}
+		// JWT `iat` is second-precision but the sentinel's CreatedAt is
+		// sub-second. Wait past the next whole-second boundary so the fresh
+		// tokens we are about to issue have an iat strictly greater than the
+		// sentinel cutoff — otherwise the caller's own new session would be
+		// revoked in the same tick (#134). Bounded by <1s so this is cheap.
+		waitForNextSecondTick()
 	}
 
 	s.auditService.LogPasswordChange(userID, user.Email, ipAddress)
@@ -333,6 +345,14 @@ func generateJTI() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(b), nil
+}
+
+// waitForNextSecondTick blocks until the current wall-clock second has passed.
+// Used to decouple second-precision JWT `iat` claims from the sub-second
+// precision of sentinel row CreatedAt timestamps (#134).
+var waitForNextSecondTick = func() {
+	now := time.Now()
+	time.Sleep(now.Truncate(time.Second).Add(time.Second).Sub(now))
 }
 
 // parseAndValidateRefreshToken parses a JWT string and validates it is a refresh token.

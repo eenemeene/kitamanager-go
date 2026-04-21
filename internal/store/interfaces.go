@@ -236,7 +236,7 @@ type TokenStorer interface {
 	RevokeToken(ctx context.Context, tokenHash string, userID uint, expiresAt time.Time) error
 	RevokeAllForUser(ctx context.Context, userID uint) error
 	IsRevoked(ctx context.Context, tokenHash string) (bool, error)
-	IsUserRevoked(ctx context.Context, userID uint) (bool, error)
+	IsUserRevokedSince(ctx context.Context, userID uint, tokenIssuedAt time.Time) (bool, error)
 	CleanupExpired(ctx context.Context) error
 }
 
