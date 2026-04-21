@@ -34,13 +34,13 @@ export function CrudPageHeader({
   const t = useTranslations();
 
   return (
-    <div className="flex items-center justify-between">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <h1 className="truncate text-2xl font-bold tracking-tight md:text-3xl">
           {title.includes('.') ? t(title) : title}
         </h1>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {children}
         {!hideNewButton && (
           <Button onClick={onNew} disabled={newButtonDisabled}>

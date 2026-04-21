@@ -123,7 +123,7 @@ function EditableTime({ value, className, onSave, ariaLabel }: EditableTimeProps
             setEditing(false);
           }
         }}
-        className="border-primary h-7 w-[5.5rem] rounded border px-1 text-center text-sm"
+        className="border-primary h-9 w-[6rem] rounded border px-1 text-center text-sm"
         aria-label={ariaLabel}
       />
     );
@@ -132,7 +132,7 @@ function EditableTime({ value, className, onSave, ariaLabel }: EditableTimeProps
   return (
     <button
       type="button"
-      className={`hover:bg-muted cursor-pointer rounded px-1 text-sm font-medium underline decoration-dotted underline-offset-2 ${className ?? ''}`}
+      className={`hover:bg-muted inline-flex min-h-9 cursor-pointer items-center rounded px-2 py-1 text-sm font-medium underline decoration-dotted underline-offset-2 ${className ?? ''}`}
       onClick={() => {
         setDraft(value);
         setEditing(true);
@@ -197,7 +197,7 @@ function EditableNote({ value, onSave }: EditableNoteProps) {
   return (
     <button
       type="button"
-      className="text-muted-foreground hover:text-foreground mt-0.5 max-w-[8rem] cursor-pointer truncate text-left text-[0.65rem] leading-tight underline decoration-dotted underline-offset-2"
+      className="text-muted-foreground hover:text-foreground mt-0.5 inline-flex min-h-8 max-w-[8rem] cursor-pointer items-center truncate rounded px-1 py-1 text-left text-[0.65rem] leading-tight underline decoration-dotted underline-offset-2"
       onClick={() => {
         setDraft(value);
         setEditing(true);
@@ -247,12 +247,7 @@ function StatusNotePopover({
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-11 w-11 shrink-0"
-          aria-label={t('quickMark')}
-        >
+        <Button variant="ghost" size="icon" className="shrink-0" aria-label={t('quickMark')}>
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </PopoverTrigger>

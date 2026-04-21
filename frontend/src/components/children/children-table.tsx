@@ -259,49 +259,54 @@ export function ChildrenTable({
                   })()}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onViewHistory(child)}
-                    title={t('children.contractHistory')}
-                    aria-label={t('children.contractHistory')}
-                  >
-                    <History className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onViewBilling(child)}
-                    title={t('children.billingHistory')}
-                    aria-label={t('children.billingHistory')}
-                  >
-                    <Receipt className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onAddContract(child)}
-                    title={t('children.addContract')}
-                    aria-label={t('children.addContract')}
-                  >
-                    <FileText className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onEdit(child)}
-                    aria-label={t('common.edit')}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onDelete(child)}
-                    aria-label={t('common.delete')}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex flex-nowrap items-center justify-end gap-0.5">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onViewHistory(child)}
+                      title={t('children.contractHistory')}
+                      aria-label={t('children.contractHistory')}
+                      className="hidden lg:inline-flex"
+                    >
+                      <History className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onViewBilling(child)}
+                      title={t('children.billingHistory')}
+                      aria-label={t('children.billingHistory')}
+                      className="hidden lg:inline-flex"
+                    >
+                      <Receipt className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onAddContract(child)}
+                      title={t('children.addContract')}
+                      aria-label={t('children.addContract')}
+                      className="hidden lg:inline-flex"
+                    >
+                      <FileText className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onEdit(child)}
+                      aria-label={t('common.edit')}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onDelete(child)}
+                      aria-label={t('common.delete')}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             );

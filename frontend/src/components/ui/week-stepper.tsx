@@ -35,7 +35,6 @@ export function WeekStepper({ value, onChange }: WeekStepperProps) {
       <Button
         variant="outline"
         size="icon"
-        className="h-11 w-11 md:h-10 md:w-10"
         onClick={() => onChange(subDays(monday, 7))}
         aria-label={t('previousWeek')}
       >
@@ -66,7 +65,6 @@ export function WeekStepper({ value, onChange }: WeekStepperProps) {
       <Button
         variant="outline"
         size="icon"
-        className="h-11 w-11 md:h-10 md:w-10"
         onClick={() => onChange(addDays(monday, 7))}
         aria-label={t('nextWeek')}
       >
@@ -75,7 +73,6 @@ export function WeekStepper({ value, onChange }: WeekStepperProps) {
 
       <Button
         variant="ghost"
-        size="sm"
         className="text-sm"
         onClick={() => onChange(startOfWeek(new Date(), { weekStartsOn: 1 }))}
       >

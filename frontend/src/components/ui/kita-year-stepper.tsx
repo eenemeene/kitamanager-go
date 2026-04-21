@@ -22,7 +22,6 @@ export function KitaYearStepper({ value, onChange }: KitaYearStepperProps) {
       <Button
         variant="outline"
         size="icon"
-        className="h-11 w-11 md:h-10 md:w-10"
         onClick={() => onChange(value - 1)}
         aria-label={t('previousYear')}
       >
@@ -34,7 +33,6 @@ export function KitaYearStepper({ value, onChange }: KitaYearStepperProps) {
       <Button
         variant="outline"
         size="icon"
-        className="h-11 w-11 md:h-10 md:w-10"
         onClick={() => onChange(value + 1)}
         aria-label={t('nextYear')}
       >
