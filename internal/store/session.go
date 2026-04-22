@@ -130,3 +130,27 @@ func (s *SessionStore) CleanupExpired(ctx context.Context) error {
 		Where("expires_at < ?", time.Now().UTC()).
 		Delete(&models.Session{}).Error
 }
+
+// ListForUser returns every non-expired session belonging to the user,
+// ordered by most recently created first. Used by the /me/sessions
+// endpoint so a user can see where they're signed in.
+func (s *SessionStore) ListForUser(ctx context.Context, userID uint) ([]models.Session, error) {
+	var sessions []models.Session
+	err := DBFromContext(ctx, s.db).
+		Where("user_id = ? AND expires_at > ?", userID, time.Now().UTC()).
+		Order("created_at DESC").
+		Find(&sessions).Error
+	return sessions, err
+}
+
+// DeleteForUser removes a session iff it belongs to the given user.
+// Returns the number of rows affected — 0 means the session id did not
+// match a row belonging to this user, which the caller should surface as
+// 404. Scoping on user_id prevents a user from revoking another user's
+// session even if they learned the target's id-hash somehow.
+func (s *SessionStore) DeleteForUser(ctx context.Context, idHash string, userID uint) (int64, error) {
+	result := DBFromContext(ctx, s.db).
+		Where("id = ? AND user_id = ?", idHash, userID).
+		Delete(&models.Session{})
+	return result.RowsAffected, result.Error
+}

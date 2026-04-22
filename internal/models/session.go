@@ -14,6 +14,26 @@ type Session struct {
 	CreatedUserAgent string    `gorm:"column:created_user_agent" json:"created_user_agent"`
 }
 
+// UserSessionResponse is the per-session payload for GET /me/sessions.
+// The `ID` is the sha256 hex of the cookie value; exposing it is safe
+// (it can't be used to authenticate) and the client needs it to DELETE
+// individual sessions via /me/sessions/:id. `Current` marks the session
+// that served the current request so the UI can highlight it.
+type UserSessionResponse struct {
+	ID               string    `json:"id" example:"a1b2c3..."`
+	CreatedAt        time.Time `json:"created_at" example:"2026-04-22T10:00:00Z"`
+	ExpiresAt        time.Time `json:"expires_at" example:"2026-04-29T10:00:00Z"`
+	CreatedIP        string    `json:"created_ip" example:"203.0.113.42"`
+	CreatedUserAgent string    `json:"created_user_agent" example:"Mozilla/5.0 ..."`
+	Current          bool      `json:"current" example:"true"`
+}
+
+// UserSessionsResponse wraps the list so the endpoint stays forward
+// compatible with future fields (pagination, totals, etc.).
+type UserSessionsResponse struct {
+	Sessions []UserSessionResponse `json:"sessions"`
+}
+
 // UserPasswordResetRequest is the request body for admin-initiated password
 // reset. The actor MUST include their OWN current password as a step-up
 // authentication factor — a compromised admin session would otherwise be able

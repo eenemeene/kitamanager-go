@@ -93,6 +93,8 @@ func setupAuthFlowRouter(t *testing.T) *authFlowRouter {
 	protected.Use(csrfMW.ValidateCSRF())
 
 	protected.GET("/me", authHandler.Me)
+	protected.GET("/me/sessions", authHandler.ListSessions)
+	protected.DELETE("/me/sessions/:id", authHandler.RevokeSession)
 
 	// Global user routes. Create requires ResourceUsers + ActionCreate in at
 	// least one org — superadmin satisfies this.
@@ -574,5 +576,86 @@ func TestAuthFlow_InactiveUserCannotLogin(t *testing.T) {
 	}
 	if token != "" {
 		t.Errorf("inactive login issued a token: %q", token)
+	}
+}
+
+// TestAuthFlow_SessionManagement_CrossUserRevokeIs404 pins the core
+// security invariant of /me/sessions: a user CANNOT list or revoke
+// another user's sessions, even if they know the target's id-hash.
+// The endpoints only reveal and operate on sessions scoped to the
+// caller via ctxkeys.UserID, and cross-user deletes return 404 so the
+// caller cannot probe for the existence of another user's session.
+func TestAuthFlow_SessionManagement_CrossUserRevokeIs404(t *testing.T) {
+	cleanupDatabase()
+	fr := setupAuthFlowRouter(t)
+	enforcer, _ := rbac.NewEnforcer(testDB, findRBACModel(t))
+	_, superEmail, superPass := seedSuperadmin(t, enforcer)
+	_, superToken := doLogin(t, fr.router, superEmail, superPass)
+
+	// Two members, both via the real create-user flow.
+	const aliceEmail = "alice-sm@test.local"
+	const alicePass = "alice-pw-12345"
+	const bobEmail = "bob-sm@test.local"
+	const bobPass = "bob-pw-12345"
+
+	for _, u := range []struct{ email, pw string }{{aliceEmail, alicePass}, {bobEmail, bobPass}} {
+		w := doAuthed(t, fr.router, http.MethodPost, "/api/v1/users", superToken, models.UserCreateRequest{
+			Name: u.email, Email: u.email, Password: u.pw, Active: true,
+		})
+		if w.Code != http.StatusCreated {
+			t.Fatalf("create user %s: %d %s", u.email, w.Code, w.Body.String())
+		}
+	}
+
+	// Each logs in, capturing their own session token.
+	aliceCode, aliceToken := doLogin(t, fr.router, aliceEmail, alicePass)
+	if aliceCode != http.StatusOK || aliceToken == "" {
+		t.Fatalf("alice login: %d token=%q", aliceCode, aliceToken)
+	}
+	bobCode, bobToken := doLogin(t, fr.router, bobEmail, bobPass)
+	if bobCode != http.StatusOK || bobToken == "" {
+		t.Fatalf("bob login: %d token=%q", bobCode, bobToken)
+	}
+
+	// Alice lists her sessions via the real endpoint and pulls out the id.
+	w := doAuthed(t, fr.router, http.MethodGet, "/api/v1/me/sessions", aliceToken, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("alice list sessions: %d %s", w.Code, w.Body.String())
+	}
+	var aliceList models.UserSessionsResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &aliceList); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(aliceList.Sessions) != 1 {
+		t.Fatalf("alice should see 1 session, got %d", len(aliceList.Sessions))
+	}
+	aliceSessionID := aliceList.Sessions[0].ID
+	if !aliceList.Sessions[0].Current {
+		t.Error("alice's own session must be flagged Current")
+	}
+
+	// Bob attempts to DELETE Alice's session. Must 404 — not 403, not
+	// 204 — so that the endpoint does not leak which session ids exist.
+	w = doAuthed(t, fr.router, http.MethodDelete, "/api/v1/me/sessions/"+aliceSessionID, bobToken, nil)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("bob→alice revoke: got %d, want 404 (must not leak session existence). body=%s", w.Code, w.Body.String())
+	}
+
+	// And Alice's session must still work — /me still returns her identity.
+	w = doAuthed(t, fr.router, http.MethodGet, "/api/v1/me", aliceToken, nil)
+	if w.Code != http.StatusOK {
+		t.Errorf("alice /me after bob attempt: got %d, want 200 (her session must survive)", w.Code)
+	}
+
+	// Alice can revoke her own session.
+	w = doAuthed(t, fr.router, http.MethodDelete, "/api/v1/me/sessions/"+aliceSessionID, aliceToken, nil)
+	if w.Code != http.StatusNoContent {
+		t.Errorf("alice self-revoke: got %d, want 204. body=%s", w.Code, w.Body.String())
+	}
+
+	// And now her next request must 401 — middleware catches it.
+	w = doAuthed(t, fr.router, http.MethodGet, "/api/v1/me", aliceToken, nil)
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("alice /me after self-revoke: got %d, want 401", w.Code)
 	}
 }

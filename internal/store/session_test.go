@@ -256,3 +256,202 @@ func TestGenerateSessionToken_Unique(t *testing.T) {
 		seen[raw] = true
 	}
 }
+
+func TestSessionStore_ListForUser_Empty(t *testing.T) {
+	db := setupTestDB(t)
+	s := NewSessionStore(db)
+	ctx := context.Background()
+	user := createTestUser(t, db, "User", "u@example.com")
+
+	sessions, err := s.ListForUser(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("ListForUser: %v", err)
+	}
+	if len(sessions) != 0 {
+		t.Errorf("expected 0 sessions, got %d", len(sessions))
+	}
+}
+
+func TestSessionStore_ListForUser_OnlyOwnSessions(t *testing.T) {
+	db := setupTestDB(t)
+	s := NewSessionStore(db)
+	ctx := context.Background()
+	alice := createTestUser(t, db, "Alice", "alice@example.com")
+	bob := createTestUser(t, db, "Bob", "bob@example.com")
+
+	// Seed two sessions for Alice, one for Bob.
+	for _, u := range []uint{alice.ID, alice.ID, bob.ID} {
+		_, h, _ := GenerateSessionToken()
+		if err := s.Create(ctx, &models.Session{
+			ID: h, UserID: u, CreatedAt: time.Now().UTC(),
+			ExpiresAt: time.Now().UTC().Add(time.Hour),
+		}); err != nil {
+			t.Fatalf("create: %v", err)
+		}
+	}
+
+	aliceRows, err := s.ListForUser(ctx, alice.ID)
+	if err != nil {
+		t.Fatalf("ListForUser alice: %v", err)
+	}
+	if len(aliceRows) != 2 {
+		t.Errorf("expected 2 rows for alice, got %d", len(aliceRows))
+	}
+	for _, r := range aliceRows {
+		if r.UserID != alice.ID {
+			t.Errorf("row leaked with UserID=%d", r.UserID)
+		}
+	}
+
+	bobRows, _ := s.ListForUser(ctx, bob.ID)
+	if len(bobRows) != 1 {
+		t.Errorf("expected 1 row for bob, got %d", len(bobRows))
+	}
+}
+
+func TestSessionStore_ListForUser_ExcludesExpired(t *testing.T) {
+	db := setupTestDB(t)
+	s := NewSessionStore(db)
+	ctx := context.Background()
+	user := createTestUser(t, db, "User", "u@example.com")
+
+	// One live, one expired.
+	_, live, _ := GenerateSessionToken()
+	_, expired, _ := GenerateSessionToken()
+	if err := s.Create(ctx, &models.Session{
+		ID: live, UserID: user.ID, CreatedAt: time.Now().UTC(),
+		ExpiresAt: time.Now().UTC().Add(time.Hour),
+	}); err != nil {
+		t.Fatalf("create live: %v", err)
+	}
+	if err := s.Create(ctx, &models.Session{
+		ID: expired, UserID: user.ID, CreatedAt: time.Now().UTC().Add(-2 * time.Hour),
+		ExpiresAt: time.Now().UTC().Add(-time.Hour),
+	}); err != nil {
+		t.Fatalf("create expired: %v", err)
+	}
+
+	rows, err := s.ListForUser(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("ListForUser: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 live row, got %d", len(rows))
+	}
+	if rows[0].ID != live {
+		t.Errorf("returned wrong row: got %q, want live %q", rows[0].ID, live)
+	}
+}
+
+func TestSessionStore_ListForUser_OrderedByCreatedAtDesc(t *testing.T) {
+	db := setupTestDB(t)
+	s := NewSessionStore(db)
+	ctx := context.Background()
+	user := createTestUser(t, db, "User", "u@example.com")
+
+	// Three rows created 3h/2h/1h ago respectively. Must come back newest-first.
+	now := time.Now().UTC()
+	created := []time.Time{
+		now.Add(-3 * time.Hour),
+		now.Add(-2 * time.Hour),
+		now.Add(-1 * time.Hour),
+	}
+	ids := []string{"", "", ""}
+	for i, ts := range created {
+		_, h, _ := GenerateSessionToken()
+		ids[i] = h
+		if err := s.Create(ctx, &models.Session{
+			ID: h, UserID: user.ID, CreatedAt: ts,
+			ExpiresAt: now.Add(time.Hour),
+		}); err != nil {
+			t.Fatalf("create: %v", err)
+		}
+	}
+
+	rows, err := s.ListForUser(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("ListForUser: %v", err)
+	}
+	if len(rows) != 3 {
+		t.Fatalf("expected 3 rows, got %d", len(rows))
+	}
+	// rows[0] must be the newest (ids[2]), rows[2] the oldest (ids[0]).
+	if rows[0].ID != ids[2] {
+		t.Errorf("newest row first: got %q, want %q", rows[0].ID, ids[2])
+	}
+	if rows[2].ID != ids[0] {
+		t.Errorf("oldest row last: got %q, want %q", rows[2].ID, ids[0])
+	}
+}
+
+func TestSessionStore_DeleteForUser_Success(t *testing.T) {
+	db := setupTestDB(t)
+	s := NewSessionStore(db)
+	ctx := context.Background()
+	user := createTestUser(t, db, "User", "u@example.com")
+
+	_, h, _ := GenerateSessionToken()
+	if err := s.Create(ctx, &models.Session{
+		ID: h, UserID: user.ID, CreatedAt: time.Now().UTC(),
+		ExpiresAt: time.Now().UTC().Add(time.Hour),
+	}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	rows, err := s.DeleteForUser(ctx, h, user.ID)
+	if err != nil {
+		t.Fatalf("DeleteForUser: %v", err)
+	}
+	if rows != 1 {
+		t.Errorf("rowsAffected = %d, want 1", rows)
+	}
+	if _, err := s.Lookup(ctx, h); err != ErrNotFound {
+		t.Errorf("session should be gone after delete, got %v", err)
+	}
+}
+
+func TestSessionStore_DeleteForUser_WrongUser_IsNoOp(t *testing.T) {
+	// Critical security invariant: a user cannot revoke another user's
+	// session even if they guess or exfiltrate the target's id-hash.
+	db := setupTestDB(t)
+	s := NewSessionStore(db)
+	ctx := context.Background()
+	alice := createTestUser(t, db, "Alice", "alice@example.com")
+	bob := createTestUser(t, db, "Bob", "bob@example.com")
+
+	_, h, _ := GenerateSessionToken()
+	if err := s.Create(ctx, &models.Session{
+		ID: h, UserID: alice.ID, CreatedAt: time.Now().UTC(),
+		ExpiresAt: time.Now().UTC().Add(time.Hour),
+	}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	// Bob tries to delete Alice's session by its id-hash.
+	rows, err := s.DeleteForUser(ctx, h, bob.ID)
+	if err != nil {
+		t.Fatalf("DeleteForUser: %v", err)
+	}
+	if rows != 0 {
+		t.Errorf("rowsAffected = %d, want 0 (cross-user delete must be a no-op)", rows)
+	}
+	// Alice's session must still exist.
+	if _, err := s.Lookup(ctx, h); err != nil {
+		t.Errorf("alice's session was wrongly deleted: %v", err)
+	}
+}
+
+func TestSessionStore_DeleteForUser_UnknownID_IsNoOp(t *testing.T) {
+	db := setupTestDB(t)
+	s := NewSessionStore(db)
+	ctx := context.Background()
+	user := createTestUser(t, db, "User", "u@example.com")
+
+	rows, err := s.DeleteForUser(ctx, HashSessionToken("never-existed"), user.ID)
+	if err != nil {
+		t.Errorf("expected no error for unknown id, got %v", err)
+	}
+	if rows != 0 {
+		t.Errorf("rowsAffected = %d, want 0 for unknown id", rows)
+	}
+}

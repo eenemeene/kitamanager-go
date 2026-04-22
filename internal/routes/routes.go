@@ -74,6 +74,8 @@ func Setup(r *gin.Engine, d Deps) {
 		protected.POST("/logout", authHandler.Logout)
 		protected.GET("/me", authHandler.Me)
 		protected.PUT("/me/password", authHandler.ChangePassword)
+		protected.GET("/me/sessions", authHandler.ListSessions)
+		protected.DELETE("/me/sessions/:id", authHandler.RevokeSession)
 		{
 			// ============================================================
 			// Organization management

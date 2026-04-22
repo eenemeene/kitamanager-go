@@ -2,12 +2,15 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/eenemeene/kitamanager-go/internal/ctxkeys"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/store"
 )
@@ -578,5 +581,240 @@ func TestAuthHandler_Me_NotAuthenticated(t *testing.T) {
 
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("expected status %d, got %d: %s", http.StatusUnauthorized, w.Code, w.Body.String())
+	}
+}
+
+// routerWithUserAndSession wires a minimal router that behaves like the
+// real auth middleware chain for the purpose of testing /me/sessions:
+// it sets ctxkeys.UserID and optionally ctxkeys.SessionIDHash before
+// delegating to the handler.
+func routerWithUserAndSession(userID uint, sessionHash string) *gin.Engine {
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set(ctxkeys.UserID, userID)
+		c.Set(ctxkeys.UserEmail, "test@example.com")
+		if sessionHash != "" {
+			c.Set(ctxkeys.SessionIDHash, sessionHash)
+		}
+		c.Next()
+	})
+	return r
+}
+
+func TestAuthHandler_ListSessions_Empty(t *testing.T) {
+	db := setupTestDB(t)
+	user := createTestUser(t, db, "User", "u@example.com", "pw")
+	handler := createAuthHandler(db)
+
+	r := routerWithUserAndSession(user.ID, "")
+	r.GET("/me/sessions", handler.ListSessions)
+
+	w := performRequest(r, "GET", "/me/sessions", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want 200, body=%s", w.Code, w.Body.String())
+	}
+	var result models.UserSessionsResponse
+	parseResponse(t, w, &result)
+	if len(result.Sessions) != 0 {
+		t.Errorf("expected empty list, got %d", len(result.Sessions))
+	}
+}
+
+func TestAuthHandler_ListSessions_OnlyCallersSessions(t *testing.T) {
+	// Critical security invariant: /me/sessions must NEVER include
+	// sessions belonging to other users.
+	db := setupTestDB(t)
+	alice := createTestUser(t, db, "Alice", "alice@example.com", "pw")
+	bob := createTestUser(t, db, "Bob", "bob@example.com", "pw")
+	sessStore := store.NewSessionStore(db)
+	ctx := context.Background()
+
+	// Seed: two sessions for Alice, one for Bob.
+	aliceHashes := make([]string, 0, 2)
+	for range 2 {
+		_, h, _ := store.GenerateSessionToken()
+		if err := sessStore.Create(ctx, &models.Session{
+			ID: h, UserID: alice.ID, CreatedAt: time.Now().UTC(),
+			ExpiresAt: time.Now().UTC().Add(time.Hour),
+		}); err != nil {
+			t.Fatalf("seed alice: %v", err)
+		}
+		aliceHashes = append(aliceHashes, h)
+	}
+	_, bobH, _ := store.GenerateSessionToken()
+	if err := sessStore.Create(ctx, &models.Session{
+		ID: bobH, UserID: bob.ID, CreatedAt: time.Now().UTC(),
+		ExpiresAt: time.Now().UTC().Add(time.Hour),
+	}); err != nil {
+		t.Fatalf("seed bob: %v", err)
+	}
+
+	handler := createAuthHandler(db)
+
+	// Alice requests /me/sessions — should see only her two, never Bob's.
+	r := routerWithUserAndSession(alice.ID, aliceHashes[0])
+	r.GET("/me/sessions", handler.ListSessions)
+	w := performRequest(r, "GET", "/me/sessions", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want 200, body=%s", w.Code, w.Body.String())
+	}
+	var result models.UserSessionsResponse
+	parseResponse(t, w, &result)
+	if len(result.Sessions) != 2 {
+		t.Fatalf("expected 2 sessions, got %d", len(result.Sessions))
+	}
+	seen := make(map[string]bool)
+	for _, s := range result.Sessions {
+		if s.ID == bobH {
+			t.Errorf("bob's session leaked into alice's list")
+		}
+		seen[s.ID] = true
+	}
+	// Exactly one row should be flagged as current.
+	var currentCount int
+	for _, s := range result.Sessions {
+		if s.Current {
+			currentCount++
+			if s.ID != aliceHashes[0] {
+				t.Errorf("wrong session flagged current: %q", s.ID)
+			}
+		}
+	}
+	if currentCount != 1 {
+		t.Errorf("expected exactly one current=true row, got %d", currentCount)
+	}
+}
+
+func TestAuthHandler_ListSessions_NotAuthenticated(t *testing.T) {
+	db := setupTestDB(t)
+	handler := createAuthHandler(db)
+
+	// No middleware -> no UserID in context.
+	r := gin.New()
+	r.GET("/me/sessions", handler.ListSessions)
+
+	w := performRequest(r, "GET", "/me/sessions", nil)
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401, got %d", w.Code)
+	}
+}
+
+func TestAuthHandler_RevokeSession_Success(t *testing.T) {
+	db := setupTestDB(t)
+	user := createTestUser(t, db, "User", "u@example.com", "pw")
+	sessStore := store.NewSessionStore(db)
+	ctx := context.Background()
+
+	_, h, _ := store.GenerateSessionToken()
+	if err := sessStore.Create(ctx, &models.Session{
+		ID: h, UserID: user.ID, CreatedAt: time.Now().UTC(),
+		ExpiresAt: time.Now().UTC().Add(time.Hour),
+	}); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	handler := createAuthHandler(db)
+	r := routerWithUserAndSession(user.ID, "different-current-hash")
+	r.DELETE("/me/sessions/:id", handler.RevokeSession)
+
+	w := performRequest(r, "DELETE", fmt.Sprintf("/me/sessions/%s", h), nil)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("status: got %d, want 204, body=%s", w.Code, w.Body.String())
+	}
+	if _, err := sessStore.Lookup(ctx, h); err != store.ErrNotFound {
+		t.Errorf("session should be gone, got %v", err)
+	}
+}
+
+func TestAuthHandler_RevokeSession_UnknownID_404(t *testing.T) {
+	db := setupTestDB(t)
+	user := createTestUser(t, db, "User", "u@example.com", "pw")
+	handler := createAuthHandler(db)
+
+	r := routerWithUserAndSession(user.ID, "")
+	r.DELETE("/me/sessions/:id", handler.RevokeSession)
+
+	// Pass a fully-formed sha256-looking id but one that does not exist.
+	fakeID := store.HashSessionToken("never-issued")
+	w := performRequest(r, "DELETE", fmt.Sprintf("/me/sessions/%s", fakeID), nil)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d", w.Code)
+	}
+}
+
+func TestAuthHandler_RevokeSession_CrossUser_404_NotLeaking(t *testing.T) {
+	// Bob issues DELETE /me/sessions/<alice's id>. Must be 404 —
+	// indistinguishable from an unknown id — and Alice's session must
+	// survive.
+	db := setupTestDB(t)
+	alice := createTestUser(t, db, "Alice", "alice@example.com", "pw")
+	bob := createTestUser(t, db, "Bob", "bob@example.com", "pw")
+	sessStore := store.NewSessionStore(db)
+	ctx := context.Background()
+
+	_, aliceH, _ := store.GenerateSessionToken()
+	if err := sessStore.Create(ctx, &models.Session{
+		ID: aliceH, UserID: alice.ID, CreatedAt: time.Now().UTC(),
+		ExpiresAt: time.Now().UTC().Add(time.Hour),
+	}); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	handler := createAuthHandler(db)
+	// Router acts as Bob.
+	r := routerWithUserAndSession(bob.ID, "")
+	r.DELETE("/me/sessions/:id", handler.RevokeSession)
+
+	w := performRequest(r, "DELETE", fmt.Sprintf("/me/sessions/%s", aliceH), nil)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404 (not leaking session existence), got %d: %s", w.Code, w.Body.String())
+	}
+	if _, err := sessStore.Lookup(ctx, aliceH); err != nil {
+		t.Errorf("alice's session was wrongly deleted: %v", err)
+	}
+}
+
+func TestAuthHandler_RevokeSession_SelfRevoke(t *testing.T) {
+	// The user revokes their own current session. Handler still returns
+	// 204 — the browser's next request will 401 via middleware, which
+	// is the mechanism that clears cookies. Nothing special happens
+	// server-side in this endpoint.
+	db := setupTestDB(t)
+	user := createTestUser(t, db, "User", "u@example.com", "pw")
+	sessStore := store.NewSessionStore(db)
+	ctx := context.Background()
+
+	_, h, _ := store.GenerateSessionToken()
+	if err := sessStore.Create(ctx, &models.Session{
+		ID: h, UserID: user.ID, CreatedAt: time.Now().UTC(),
+		ExpiresAt: time.Now().UTC().Add(time.Hour),
+	}); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	handler := createAuthHandler(db)
+	// Router thinks the current session IS `h`.
+	r := routerWithUserAndSession(user.ID, h)
+	r.DELETE("/me/sessions/:id", handler.RevokeSession)
+
+	w := performRequest(r, "DELETE", fmt.Sprintf("/me/sessions/%s", h), nil)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d: %s", w.Code, w.Body.String())
+	}
+	if _, err := sessStore.Lookup(ctx, h); err != store.ErrNotFound {
+		t.Errorf("self-revoked session should be gone, got %v", err)
+	}
+}
+
+func TestAuthHandler_RevokeSession_NotAuthenticated(t *testing.T) {
+	db := setupTestDB(t)
+	handler := createAuthHandler(db)
+
+	r := gin.New()
+	r.DELETE("/me/sessions/:id", handler.RevokeSession)
+
+	w := performRequest(r, "DELETE", "/me/sessions/anything", nil)
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401, got %d", w.Code)
 	}
 }

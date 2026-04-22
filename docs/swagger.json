@@ -1562,6 +1562,92 @@
                 }
             }
         },
+        "/api/v1/me/sessions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns every non-expired session belonging to the caller,\nwith a `current` flag marking the one that served this\nrequest. Used by the UI to show \"signed in on these devices\"\nand to let the user revoke individual sessions.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "List the caller's active sessions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserSessionsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/me/sessions/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes the session with the given id (sha256 hex of the\ncookie value). Scoped to the caller — a user cannot revoke\nanother user's session, and the response is 404 in that\ncase so the endpoint does not leak session existence. If\nthe caller revokes their own current session, their next\nrequest will 401 and the frontend will clear cookies.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Revoke one of the caller's own sessions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session id (sha256 hex)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/organizations": {
             "get": {
                 "security": [
@@ -14019,6 +14105,46 @@
                 "updated_at": {
                     "type": "string",
                     "example": "2024-01-15T10:30:00Z"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.UserSessionResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-04-22T10:00:00Z"
+                },
+                "created_ip": {
+                    "type": "string",
+                    "example": "203.0.113.42"
+                },
+                "created_user_agent": {
+                    "type": "string",
+                    "example": "Mozilla/5.0 ..."
+                },
+                "current": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "expires_at": {
+                    "type": "string",
+                    "example": "2026-04-29T10:00:00Z"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "a1b2c3..."
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.UserSessionsResponse": {
+            "type": "object",
+            "properties": {
+                "sessions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserSessionResponse"
+                    }
                 }
             }
         },
