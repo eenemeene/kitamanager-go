@@ -28,7 +28,7 @@ var (
 
 // truncation order: leaf tables first, then parents
 var truncateTables = []string{
-	"revoked_tokens",
+	"sessions",
 	"audit_logs",
 	"budget_item_entries",
 	"budget_items",

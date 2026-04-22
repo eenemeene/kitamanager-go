@@ -2171,7 +2171,7 @@ definitions:
   github_com_eenemeene_kitamanager-go_internal_models.LoginResponse:
     properties:
       expires_in:
-        example: 3600
+        example: 604800
         type: integer
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.MessageResponse:
@@ -2942,12 +2942,6 @@ definitions:
         example: TVöD-SuE
         maxLength: 255
         type: string
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.RefreshResponse:
-    properties:
-      expires_in:
-        example: 3600
-        type: integer
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.Role:
     enum:
@@ -4244,7 +4238,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Authenticate user with email and password, returns JWT token
+      description: Authenticate user with email and password. Sets a session cookie
+        on success.
       parameters:
       - description: Login credentials
         in: body
@@ -4280,7 +4275,7 @@ paths:
       - auth
   /api/v1/logout:
     post:
-      description: Clear authentication cookies to log out the user
+      description: Delete the current session and clear authentication cookies.
       produces:
       - application/json
       responses:
@@ -4297,7 +4292,7 @@ paths:
       - auth
   /api/v1/me:
     get:
-      description: Returns the currently authenticated user based on the JWT token
+      description: Returns the currently authenticated user.
       produces:
       - application/json
       responses:
@@ -4323,7 +4318,7 @@ paths:
       consumes:
       - application/json
       description: Authenticated user changes their own password. Requires current
-        password verification. Revokes all existing tokens.
+        password verification. Revokes every other session the user has.
       parameters:
       - description: Password change data
         in: body
@@ -9124,28 +9119,6 @@ paths:
       summary: Readiness check
       tags:
       - health
-  /api/v1/refresh:
-    post:
-      description: Exchange a valid refresh token (from HttpOnly cookie) for new access
-        and refresh tokens
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.RefreshResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-      summary: Refresh access token
-      tags:
-      - auth
   /api/v1/users:
     get:
       consumes:

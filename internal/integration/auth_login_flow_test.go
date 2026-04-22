@@ -45,15 +45,15 @@ func setupAuthFlowRouter(t *testing.T) *authFlowRouter {
 	userStore := store.NewUserStore(testDB)
 	userOrgStore := store.NewUserOrganizationStore(testDB)
 	orgStore := store.NewOrganizationStore(testDB)
-	tokenStore := store.NewTokenStore(testDB)
+	sessionStore := store.NewSessionStore(testDB)
 	transactor := store.NewTransactor(testDB)
 
 	auditStore := store.NewAuditStore(testDB)
 	auditService := service.NewAuditService(auditStore)
 
 	// Real auth service — hashes passwords with bcrypt.DefaultCost and issues
-	// JWTs signed with testJWTSecret.
-	authService := service.NewAuthService(userStore, tokenStore, testJWTSecret, auditService)
+	// opaque session tokens backed by the sessions table.
+	authService := service.NewAuthService(userStore, sessionStore, testJWTSecret, auditService)
 	userService := service.NewUserService(userStore, userOrgStore)
 	userOrgService := service.NewUserOrganizationService(userOrgStore, userStore, transactor)
 	orgService := service.NewOrganizationService(orgStore, userStore)
@@ -69,15 +69,15 @@ func setupAuthFlowRouter(t *testing.T) *authFlowRouter {
 	}
 	permissionService := rbac.NewPermissionService(userOrgStore, enforcer)
 
-	// Real middleware: JWT validation + RBAC gates + CSRF. CSRF short-circuits
-	// when the request uses Authorization: Bearer (no access_token cookie),
-	// so our tests can ignore it.
-	authMW := middleware.NewAuthMiddleware(testJWTSecret, tokenStore)
+	// Real middleware: session validation + RBAC gates + CSRF. CSRF
+	// short-circuits when the request uses Authorization: Bearer (no session
+	// cookie), so our tests can ignore it.
+	authMW := middleware.NewAuthMiddleware(sessionStore)
 	authzMW := middleware.NewAuthorizationMiddleware(permissionService)
 	csrfMW := middleware.NewCSRFMiddleware(testJWTSecret)
 
 	authHandler := handlers.NewAuthHandler(authService, false /*secureCookies*/)
-	userHandler := handlers.NewUserHandler(userService, userOrgService, auditService, tokenStore)
+	userHandler := handlers.NewUserHandler(userService, userOrgService, auditService, sessionStore)
 	orgHandler := handlers.NewOrganizationHandler(orgService, auditService)
 
 	r := gin.New()
@@ -163,9 +163,9 @@ func seedSuperadmin(t *testing.T, enforcer *rbac.Enforcer) (uint, string, string
 	return u.ID, email, password
 }
 
-// doLogin issues a POST /api/v1/login and returns the access token extracted
-// from the Set-Cookie header. An empty string indicates the server did not
-// issue an access_token — callers should assert on the HTTP status first.
+// doLogin issues a POST /api/v1/login and returns the session cookie value
+// extracted from the Set-Cookie header. An empty string indicates the server
+// did not issue a session — callers should assert on the HTTP status first.
 func doLogin(t *testing.T, r *gin.Engine, email, password string) (int, string) {
 	t.Helper()
 	body, _ := json.Marshal(models.LoginRequest{Email: email, Password: password})
@@ -175,7 +175,7 @@ func doLogin(t *testing.T, r *gin.Engine, email, password string) (int, string) 
 	r.ServeHTTP(w, req)
 
 	for _, c := range w.Result().Cookies() {
-		if c.Name == "access_token" {
+		if c.Name == "session" {
 			return w.Code, c.Value
 		}
 	}
@@ -232,7 +232,7 @@ func TestAuthFlow_SuperadminCreatesAdmin_AdminLoginsAndAccessesOrg(t *testing.T)
 		t.Fatalf("superadmin login: got status %d, want 200", code)
 	}
 	if superToken == "" {
-		t.Fatal("superadmin login returned no access_token cookie")
+		t.Fatal("superadmin login returned no session cookie")
 	}
 
 	// 2. Superadmin creates a new admin user via the real API. This is the
@@ -274,7 +274,7 @@ func TestAuthFlow_SuperadminCreatesAdmin_AdminLoginsAndAccessesOrg(t *testing.T)
 		t.Fatalf("new admin login: got status %d, want 200", code)
 	}
 	if adminToken == "" {
-		t.Fatal("new admin login returned no access_token cookie")
+		t.Fatal("new admin login returned no session cookie")
 	}
 
 	// 5. The new admin calls GET /me — base sanity check that the JWT is
@@ -324,7 +324,7 @@ func TestAuthFlow_AdminWithoutOrg_CanLoginButIsRefusedOnOrgEndpoints(t *testing.
 		t.Fatalf("orphan login: got %d, want 200", code)
 	}
 	if orphanToken == "" {
-		t.Fatal("orphan login returned no access_token")
+		t.Fatal("orphan login returned no session cookie")
 	}
 
 	// /me works — identity-level endpoint.
@@ -435,8 +435,8 @@ func TestAuthFlow_StaffRole_CanReadChildrenButNotEmployees(t *testing.T) {
 	userOrgStore := store.NewUserOrganizationStore(testDB)
 	permissionService := rbac.NewPermissionService(userOrgStore, enforcer)
 	authzMW := middleware.NewAuthorizationMiddleware(permissionService)
-	tokenStore := store.NewTokenStore(testDB)
-	authMW := middleware.NewAuthMiddleware(testJWTSecret, tokenStore)
+	sessionStore := store.NewSessionStore(testDB)
+	authMW := middleware.NewAuthMiddleware(sessionStore)
 	csrfMW := middleware.NewCSRFMiddleware(testJWTSecret)
 
 	protected := fr.router.Group("/api/v1")

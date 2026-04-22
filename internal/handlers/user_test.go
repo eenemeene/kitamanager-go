@@ -1369,8 +1369,8 @@ func TestUserHandler_ResetPassword_Success(t *testing.T) {
 
 	userService := createUserService(db)
 	auditService := createAuditService(db)
-	tokenStore := store.NewTokenStore(db)
-	handler := NewUserHandler(userService, nil, auditService, tokenStore)
+	sessionStore := store.NewSessionStore(db)
+	handler := NewUserHandler(userService, nil, auditService, sessionStore)
 
 	r := setupTestRouterWithUser(admin.ID)
 	r.PUT("/users/:userId/password", handler.ResetPassword)
@@ -1545,7 +1545,7 @@ func TestUserHandler_ResetPassword_RejectsWrongActorPassword(t *testing.T) {
 	}
 }
 
-func TestUserHandler_ResetPassword_TokensRevoked(t *testing.T) {
+func TestUserHandler_ResetPassword_SessionsRevoked(t *testing.T) {
 	db := setupTestDB(t)
 	admin := createTestSuperAdmin(t, db)
 	hashedAdminPw(t, db, admin.ID, "adminpw")
@@ -1556,41 +1556,40 @@ func TestUserHandler_ResetPassword_TokensRevoked(t *testing.T) {
 	authHandler := createAuthHandler(db)
 	userService := createUserService(db)
 	auditService := createAuditService(db)
-	tokenStore := store.NewTokenStore(db)
-	userHandler := NewUserHandler(userService, nil, auditService, tokenStore)
+	sessionStore := store.NewSessionStore(db)
+	userHandler := NewUserHandler(userService, nil, auditService, sessionStore)
 
-	// Login as the target user to create tokens
+	// Target user logs in — this creates a session row we expect to be wiped.
 	loginRouter := gin.New()
 	loginRouter.POST("/login", authHandler.Login)
-
-	loginBody := models.LoginRequest{
+	loginResp := performRequest(loginRouter, "POST", "/login", models.LoginRequest{
 		Email:    "target@example.com",
 		Password: "password123",
-	}
-	loginResp := performRequest(loginRouter, "POST", "/login", loginBody)
+	})
 	if loginResp.Code != http.StatusOK {
 		t.Fatalf("login failed: %d: %s", loginResp.Code, loginResp.Body.String())
 	}
 
-	// Admin resets the target user's password
+	var sessionCount int64
+	db.Model(&models.Session{}).Where("user_id = ?", targetUser.ID).Count(&sessionCount)
+	if sessionCount != 1 {
+		t.Fatalf("precondition: expected 1 session, got %d", sessionCount)
+	}
+
+	// Admin resets the target user's password.
 	r := setupTestRouterWithUser(admin.ID)
 	r.PUT("/users/:userId/password", userHandler.ResetPassword)
-
-	resetBody := models.UserPasswordResetRequest{
+	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/password", targetUser.ID), models.UserPasswordResetRequest{
 		ActorPassword: "adminpw",
 		NewPassword:   "newpassword456",
-	}
-	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/password", targetUser.ID), resetBody)
+	})
 	if w.Code != http.StatusNoContent {
 		t.Fatalf("reset failed: %d: %s", w.Code, w.Body.String())
 	}
 
-	// Old refresh token should no longer work
-	refreshRouter := gin.New()
-	refreshRouter.POST("/refresh", authHandler.Refresh)
-
-	refreshResp := performRequestWithCookies(refreshRouter, "POST", "/refresh", nil, loginResp.Result().Cookies())
-	if refreshResp.Code != http.StatusUnauthorized {
-		t.Errorf("expected old refresh token to fail with %d after password reset, got %d", http.StatusUnauthorized, refreshResp.Code)
+	// Target user's sessions must be gone.
+	db.Model(&models.Session{}).Where("user_id = ?", targetUser.ID).Count(&sessionCount)
+	if sessionCount != 0 {
+		t.Errorf("expected target user's sessions to be revoked, %d remain", sessionCount)
 	}
 }

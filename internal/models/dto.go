@@ -15,14 +15,10 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required" example:"secret123"`
 }
 
-// LoginResponse represents the login response (tokens are delivered via HttpOnly cookies only)
+// LoginResponse represents the login response. The session token is delivered
+// via an HttpOnly cookie, never in the response body.
 type LoginResponse struct {
-	ExpiresIn int64 `json:"expires_in" example:"3600"`
-}
-
-// RefreshResponse represents the refresh response (tokens are delivered via HttpOnly cookies only)
-type RefreshResponse struct {
-	ExpiresIn int64 `json:"expires_in" example:"3600"`
+	ExpiresIn int64 `json:"expires_in" example:"604800"`
 }
 
 // MessageResponse represents a success message response

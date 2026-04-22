@@ -170,7 +170,7 @@ func TestAuthHandler_Login_UpdatesLastLogin(t *testing.T) {
 	}
 }
 
-func TestAuthHandler_Login_TokensOnlyInCookies(t *testing.T) {
+func TestAuthHandler_Login_SetsSessionAndCSRFCookies(t *testing.T) {
 	db := setupTestDB(t)
 
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
@@ -194,196 +194,48 @@ func TestAuthHandler_Login_TokensOnlyInCookies(t *testing.T) {
 
 	var result models.LoginResponse
 	parseResponse(t, w, &result)
-
 	if result.ExpiresIn <= 0 {
 		t.Error("expected expires_in to be positive")
 	}
 
-	// Verify tokens are in cookies, not in JSON body
 	cookies := w.Result().Cookies()
-	cookieNames := make(map[string]bool)
+	cookieByName := make(map[string]*http.Cookie)
 	for _, cookie := range cookies {
-		cookieNames[cookie.Name] = true
+		cookieByName[cookie.Name] = cookie
 	}
-	if !cookieNames["access_token"] {
-		t.Error("expected access_token cookie to be set")
+	sess, hasSession := cookieByName["session"]
+	csrf, hasCSRF := cookieByName["csrf_token"]
+	if !hasSession {
+		t.Fatal("expected session cookie to be set")
 	}
-	if !cookieNames["refresh_token"] {
-		t.Error("expected refresh_token cookie to be set")
+	if !hasCSRF {
+		t.Fatal("expected csrf_token cookie to be set")
+	}
+	if !sess.HttpOnly {
+		t.Error("session cookie must be HttpOnly")
+	}
+	if csrf.HttpOnly {
+		t.Error("csrf_token cookie must NOT be HttpOnly (frontend reads it)")
+	}
+	if sess.Value == "" {
+		t.Error("session cookie value is empty")
 	}
 
-	// Verify JSON body does NOT contain token fields
+	// JSON body must not contain any session/token fields.
 	bodyStr := w.Body.String()
-	if contains(bodyStr, `"token"`) {
-		t.Error("JSON body should not contain token field")
-	}
-	if contains(bodyStr, `"refresh_token"`) {
-		t.Error("JSON body should not contain refresh_token field")
+	if containsStr(bodyStr, `"session"`) || containsStr(bodyStr, `"token"`) {
+		t.Errorf("JSON body leaks token-like fields: %s", bodyStr)
 	}
 }
 
-// contains checks if s contains substr (simple helper for test assertions).
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && searchString(s, substr)
-}
-
-func searchString(s, substr string) bool {
+// containsStr is a tiny helper to avoid pulling in a test-only dependency.
+func containsStr(s, substr string) bool {
 	for i := 0; i <= len(s)-len(substr); i++ {
 		if s[i:i+len(substr)] == substr {
 			return true
 		}
 	}
 	return false
-}
-
-func TestAuthHandler_Refresh_Success(t *testing.T) {
-	db := setupTestDB(t)
-
-	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
-	createTestUser(t, db, "Test User", "test@example.com", string(hashedPassword))
-
-	handler := createAuthHandler(db)
-
-	r := gin.New()
-	r.POST("/login", handler.Login)
-	r.POST("/refresh", handler.Refresh)
-
-	// First login to get cookies
-	loginBody := models.LoginRequest{
-		Email:    "test@example.com",
-		Password: "password123",
-	}
-	loginResp := performRequest(r, "POST", "/login", loginBody)
-
-	// Use cookies from login for refresh request
-	w := performRequestWithCookies(r, "POST", "/refresh", nil, loginResp.Result().Cookies())
-
-	if w.Code != http.StatusOK {
-		t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
-	}
-
-	var result models.RefreshResponse
-	parseResponse(t, w, &result)
-
-	if result.ExpiresIn <= 0 {
-		t.Error("expected expires_in to be positive")
-	}
-
-	// Verify new tokens are set in cookies
-	cookies := w.Result().Cookies()
-	cookieNames := make(map[string]bool)
-	for _, cookie := range cookies {
-		cookieNames[cookie.Name] = true
-	}
-	if !cookieNames["access_token"] {
-		t.Error("expected new access_token cookie to be set")
-	}
-	if !cookieNames["refresh_token"] {
-		t.Error("expected new refresh_token cookie to be set")
-	}
-}
-
-func TestAuthHandler_Refresh_InvalidToken(t *testing.T) {
-	db := setupTestDB(t)
-	handler := createAuthHandler(db)
-
-	r := gin.New()
-	r.POST("/refresh", handler.Refresh)
-
-	// Set an invalid refresh_token cookie
-	cookies := []*http.Cookie{
-		{Name: "refresh_token", Value: "invalid-token"},
-	}
-	w := performRequestWithCookies(r, "POST", "/refresh", nil, cookies)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected status %d, got %d", http.StatusUnauthorized, w.Code)
-	}
-}
-
-func TestAuthHandler_Refresh_WithAccessToken(t *testing.T) {
-	db := setupTestDB(t)
-
-	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
-	createTestUser(t, db, "Test User", "test@example.com", string(hashedPassword))
-
-	handler := createAuthHandler(db)
-
-	r := gin.New()
-	r.POST("/login", handler.Login)
-	r.POST("/refresh", handler.Refresh)
-
-	// Login to get tokens
-	loginBody := models.LoginRequest{
-		Email:    "test@example.com",
-		Password: "password123",
-	}
-	loginResp := performRequest(r, "POST", "/login", loginBody)
-
-	// Extract the access_token cookie value and use it as refresh_token cookie
-	var accessTokenValue string
-	for _, cookie := range loginResp.Result().Cookies() {
-		if cookie.Name == "access_token" {
-			accessTokenValue = cookie.Value
-			break
-		}
-	}
-
-	// Try to use ACCESS token as refresh token cookie (should fail)
-	cookies := []*http.Cookie{
-		{Name: "refresh_token", Value: accessTokenValue},
-	}
-	w := performRequestWithCookies(r, "POST", "/refresh", nil, cookies)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected status %d when using access token for refresh, got %d", http.StatusUnauthorized, w.Code)
-	}
-}
-
-func TestAuthHandler_Refresh_InactiveUser(t *testing.T) {
-	db := setupTestDB(t)
-
-	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
-	user := createTestUser(t, db, "Test User", "test@example.com", string(hashedPassword))
-
-	handler := createAuthHandler(db)
-
-	r := gin.New()
-	r.POST("/login", handler.Login)
-	r.POST("/refresh", handler.Refresh)
-
-	// Login to get cookies
-	loginBody := models.LoginRequest{
-		Email:    "test@example.com",
-		Password: "password123",
-	}
-	loginResp := performRequest(r, "POST", "/login", loginBody)
-
-	// Deactivate the user
-	user.Active = false
-	db.Save(user)
-
-	// Try to refresh (should fail because user is now inactive)
-	w := performRequestWithCookies(r, "POST", "/refresh", nil, loginResp.Result().Cookies())
-
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected status %d for inactive user, got %d", http.StatusUnauthorized, w.Code)
-	}
-}
-
-func TestAuthHandler_Refresh_MissingToken(t *testing.T) {
-	db := setupTestDB(t)
-	handler := createAuthHandler(db)
-
-	r := gin.New()
-	r.POST("/refresh", handler.Refresh)
-
-	// No cookies set at all
-	w := performRequest(r, "POST", "/refresh", nil)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected status %d, got %d", http.StatusUnauthorized, w.Code)
-	}
 }
 
 func TestAuthHandler_Login_SetsCookies(t *testing.T) {
@@ -413,35 +265,28 @@ func TestAuthHandler_Login_SetsCookies(t *testing.T) {
 	cookieNames := make(map[string]bool)
 	for _, cookie := range cookies {
 		cookieNames[cookie.Name] = true
-		// Verify HttpOnly flag on access_token
-		if cookie.Name == "access_token" && !cookie.HttpOnly {
-			t.Error("access_token cookie should be HttpOnly")
+		// Verify HttpOnly flag on session cookie
+		if cookie.Name == "session" && !cookie.HttpOnly {
+			t.Error("session cookie should be HttpOnly")
 		}
-		// Verify access_token path is "/"
-		if cookie.Name == "access_token" && cookie.Path != "/" {
-			t.Errorf("access_token cookie path should be '/', got '%s'", cookie.Path)
-		}
-		// Verify refresh_token is scoped to refresh endpoint
-		if cookie.Name == "refresh_token" && cookie.Path != "/api/v1/refresh" {
-			t.Errorf("refresh_token cookie path should be '/api/v1/refresh', got '%s'", cookie.Path)
+		// Verify session path is "/"
+		if cookie.Name == "session" && cookie.Path != "/" {
+			t.Errorf("session cookie path should be '/', got '%s'", cookie.Path)
 		}
 		// CSRF token should NOT be HttpOnly
 		if cookie.Name == "csrf_token" && cookie.HttpOnly {
 			t.Error("csrf_token cookie should NOT be HttpOnly")
 		}
-		// All auth cookies must use SameSite=Strict
-		if cookie.Name == "access_token" || cookie.Name == "refresh_token" || cookie.Name == "csrf_token" {
+		// Both cookies must use SameSite=Strict
+		if cookie.Name == "session" || cookie.Name == "csrf_token" {
 			if cookie.SameSite != http.SameSiteStrictMode {
 				t.Errorf("%s cookie should have SameSite=Strict, got %v", cookie.Name, cookie.SameSite)
 			}
 		}
 	}
 
-	if !cookieNames["access_token"] {
-		t.Error("expected access_token cookie to be set")
-	}
-	if !cookieNames["refresh_token"] {
-		t.Error("expected refresh_token cookie to be set")
+	if !cookieNames["session"] {
+		t.Error("expected session cookie to be set")
 	}
 	if !cookieNames["csrf_token"] {
 		t.Error("expected csrf_token cookie to be set")
@@ -464,7 +309,7 @@ func TestAuthHandler_Logout_ClearsCookies(t *testing.T) {
 	// Check that cookies are cleared (MaxAge <= 0)
 	cookies := w.Result().Cookies()
 	for _, cookie := range cookies {
-		if cookie.Name == "access_token" || cookie.Name == "refresh_token" || cookie.Name == "csrf_token" {
+		if cookie.Name == "session" || cookie.Name == "csrf_token" {
 			if cookie.MaxAge > 0 {
 				t.Errorf("%s cookie should have MaxAge <= 0 to clear it, got %d", cookie.Name, cookie.MaxAge)
 			}
@@ -515,11 +360,8 @@ func TestAuthHandler_ChangePassword_Success(t *testing.T) {
 	for _, cookie := range cookies {
 		cookieNames[cookie.Name] = true
 	}
-	if !cookieNames["access_token"] {
-		t.Error("expected access_token cookie after password change")
-	}
-	if !cookieNames["refresh_token"] {
-		t.Error("expected refresh_token cookie after password change")
+	if !cookieNames["session"] {
+		t.Error("expected session cookie after password change")
 	}
 	if !cookieNames["csrf_token"] {
 		t.Error("expected csrf_token cookie after password change")

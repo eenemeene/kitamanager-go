@@ -40,17 +40,19 @@ def api(method: str, path: str, **kwargs) -> requests.Response:
 print(f"Logging in as {EMAIL} ...", flush=True)
 api("POST", "/login", json={"email": EMAIL, "password": PASSWORD})
 
-access_token = session.cookies.get("access_token")
+session_token = session.cookies.get("session")
 csrf_token = session.cookies.get("csrf_token")
-if not access_token:
-    print("FAILED: could not extract access_token from cookies", flush=True)
+if not session_token:
+    print("FAILED: could not extract session cookie from response", flush=True)
     sys.exit(1)
 if not csrf_token:
     print("FAILED: could not extract csrf_token from cookies", flush=True)
     sys.exit(1)
 
+# Subsequent requests inherit the session cookie via the requests.Session jar.
+# The CSRF header is only required because we also send the cookie — if we
+# used bearer auth without the cookie, the server would skip CSRF validation.
 session.headers.update({
-    "Authorization": f"Bearer {access_token}",
     "X-CSRF-Token": csrf_token,
 })
 print("  OK", flush=True)

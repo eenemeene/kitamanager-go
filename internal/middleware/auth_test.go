@@ -1,795 +1,318 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/eenemeene/kitamanager-go/internal/ctxkeys"
+	"github.com/eenemeene/kitamanager-go/internal/models"
+	"github.com/eenemeene/kitamanager-go/internal/store"
 )
 
-func TestAuthMiddleware_RequireAuth_UserIDConversion(t *testing.T) {
-	gin.SetMode(gin.TestMode)
+// fakeSessionStore is a minimal in-memory SessionStorer so middleware tests
+// don't require a database. It mirrors the contract of store.SessionStore:
+// Lookup returns ErrNotFound when the id is absent, and it enforces the
+// `expires_at > now()` + user_active semantics that the real JOIN query has.
+type fakeSessionStore struct {
+	sessions  map[string]fakeSession
+	lookupErr error // if set, Lookup returns this error
+	deleted   []string
+}
 
-	jwtSecret := "test-secret"
-	middleware := NewAuthMiddleware(jwtSecret)
+type fakeSession struct {
+	userID     uint
+	userEmail  string
+	userActive bool
+	expiresAt  time.Time
+}
 
-	// Create a token with user_id as a number (will be float64 when parsed)
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": 42, // This becomes float64 when parsed from JSON
-		"email":   "test@example.com",
-		"type":    "access",
-		"exp":     time.Now().Add(time.Hour).Unix(),
-		"iat":     time.Now().Unix(),
-	})
-	tokenString, err := token.SignedString([]byte(jwtSecret))
-	if err != nil {
-		t.Fatalf("failed to sign token: %v", err)
+func newFakeSessionStore() *fakeSessionStore {
+	return &fakeSessionStore{sessions: make(map[string]fakeSession)}
+}
+
+func (f *fakeSessionStore) Create(ctx context.Context, sess *models.Session) error {
+	f.sessions[sess.ID] = fakeSession{
+		userID:     sess.UserID,
+		userEmail:  "", // not relevant for middleware tests; set manually in tests that care
+		userActive: true,
+		expiresAt:  sess.ExpiresAt,
 	}
+	return nil
+}
 
-	// Set up a test handler that checks the userID type
-	var capturedUserID any
-	testHandler := func(c *gin.Context) {
-		capturedUserID, _ = c.Get(ctxkeys.UserID)
-		c.Status(http.StatusOK)
+func (f *fakeSessionStore) Lookup(ctx context.Context, idHash string) (*store.SessionLookupResult, error) {
+	if f.lookupErr != nil {
+		return nil, f.lookupErr
 	}
-
-	router := gin.New()
-	router.GET("/test", middleware.RequireAuth(), testHandler)
-
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.Header.Set("Authorization", "Bearer "+tokenString)
-	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
-	}
-
-	// The critical test: userID should be uint, not float64
-	userIDUint, ok := capturedUserID.(uint)
+	s, ok := f.sessions[idHash]
 	if !ok {
-		t.Errorf("userID should be uint, got %T", capturedUserID)
+		return nil, store.ErrNotFound
 	}
-
-	if userIDUint != 42 {
-		t.Errorf("expected userID 42, got %d", userIDUint)
+	if time.Now().UTC().After(s.expiresAt) {
+		return nil, store.ErrNotFound
 	}
+	return &store.SessionLookupResult{
+		UserID:     s.userID,
+		UserEmail:  s.userEmail,
+		UserActive: s.userActive,
+		ExpiresAt:  s.expiresAt,
+	}, nil
 }
 
-func TestAuthMiddleware_RequireAuth_NoToken(t *testing.T) {
+func (f *fakeSessionStore) Delete(ctx context.Context, idHash string) error {
+	f.deleted = append(f.deleted, idHash)
+	delete(f.sessions, idHash)
+	return nil
+}
+
+func (f *fakeSessionStore) DeleteAllForUser(ctx context.Context, userID uint) error {
+	for h, s := range f.sessions {
+		if s.userID == userID {
+			delete(f.sessions, h)
+		}
+	}
+	return nil
+}
+
+func (f *fakeSessionStore) DeleteAllForUserExcept(ctx context.Context, userID uint, keepIDHash string) error {
+	for h, s := range f.sessions {
+		if s.userID == userID && h != keepIDHash {
+			delete(f.sessions, h)
+		}
+	}
+	return nil
+}
+
+func (f *fakeSessionStore) CleanupExpired(ctx context.Context) error {
+	now := time.Now().UTC()
+	for h, s := range f.sessions {
+		if now.After(s.expiresAt) {
+			delete(f.sessions, h)
+		}
+	}
+	return nil
+}
+
+// addSession seeds a session as if it had been issued by Login, returning the
+// raw cookie value.
+func (f *fakeSessionStore) addSession(userID uint, email string, lifetime time.Duration) string {
+	raw, hashed, err := store.GenerateSessionToken()
+	if err != nil {
+		panic(err)
+	}
+	f.sessions[hashed] = fakeSession{
+		userID:     userID,
+		userEmail:  email,
+		userActive: true,
+		expiresAt:  time.Now().UTC().Add(lifetime),
+	}
+	return raw
+}
+
+func newRouter(mw *AuthMiddleware) *gin.Engine {
 	gin.SetMode(gin.TestMode)
-
-	middleware := NewAuthMiddleware("test-secret")
-
-	router := gin.New()
-	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
+	r := gin.New()
+	r.GET("/test", mw.RequireAuth(), func(c *gin.Context) {
 		c.Status(http.StatusOK)
 	})
+	return r
+}
+
+func TestAuthMiddleware_NoCredentials(t *testing.T) {
+	mw := NewAuthMiddleware(newFakeSessionStore())
+	r := newRouter(mw)
 
 	req := httptest.NewRequest("GET", "/test", nil)
 	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
+	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected status %d, got %d", http.StatusUnauthorized, w.Code)
+		t.Errorf("expected 401, got %d", w.Code)
 	}
 }
 
-func TestAuthMiddleware_RequireAuth_InvalidToken(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	middleware := NewAuthMiddleware("test-secret")
-
-	router := gin.New()
-	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
-		c.Status(http.StatusOK)
-	})
+func TestAuthMiddleware_MalformedAuthorizationHeader(t *testing.T) {
+	mw := NewAuthMiddleware(newFakeSessionStore())
+	r := newRouter(mw)
 
 	req := httptest.NewRequest("GET", "/test", nil)
-	req.Header.Set("Authorization", "Bearer invalid-token")
+	req.Header.Set("Authorization", "not-a-bearer-scheme token")
 	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
+	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected status %d, got %d", http.StatusUnauthorized, w.Code)
+		t.Errorf("expected 401 for malformed Authorization, got %d", w.Code)
 	}
 }
 
-func TestAuthMiddleware_RequireAuth_ExpiredToken(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	jwtSecret := "test-secret"
-	middleware := NewAuthMiddleware(jwtSecret)
-
-	// Create an expired token
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": 42,
-		"email":   "test@example.com",
-		"exp":     time.Now().Add(-time.Hour).Unix(), // Expired 1 hour ago
-	})
-	tokenString, _ := token.SignedString([]byte(jwtSecret))
-
-	router := gin.New()
-	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
-		c.Status(http.StatusOK)
-	})
+func TestAuthMiddleware_UnknownSessionCookie_ClearsCookies(t *testing.T) {
+	store := newFakeSessionStore()
+	mw := NewAuthMiddleware(store)
+	r := newRouter(mw)
 
 	req := httptest.NewRequest("GET", "/test", nil)
-	req.Header.Set("Authorization", "Bearer "+tokenString)
+	req.AddCookie(&http.Cookie{Name: authCookieSession, Value: "not-a-known-token"})
 	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected status %d, got %d", http.StatusUnauthorized, w.Code)
-	}
-}
-
-func TestAuthMiddleware_RequireAuth_WrongSecret(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	// Sign with one secret, verify with another
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": 42,
-		"email":   "test@example.com",
-		"exp":     time.Now().Add(time.Hour).Unix(),
-	})
-	tokenString, _ := token.SignedString([]byte("secret-one"))
-
-	middleware := NewAuthMiddleware("secret-two")
-
-	router := gin.New()
-	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
-		c.Status(http.StatusOK)
-	})
-
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.Header.Set("Authorization", "Bearer "+tokenString)
-	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected status %d, got %d", http.StatusUnauthorized, w.Code)
-	}
-}
-
-func TestAuthMiddleware_RequireAuth_ClearsCookiesOnInvalidSignature(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	// Simulates a JWT_SECRET rotation: client still holds a cookie signed with
-	// the old secret. Without clearing, the client would keep re-sending it on
-	// every request (and in the SPA, loop on 401s).
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": 42,
-		"email":   "test@example.com",
-		"type":    "access",
-		"exp":     time.Now().Add(time.Hour).Unix(),
-	})
-	tokenString, _ := token.SignedString([]byte("old-secret"))
-
-	middleware := NewAuthMiddleware("new-secret")
-
-	router := gin.New()
-	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
-		c.Status(http.StatusOK)
-	})
-
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.AddCookie(&http.Cookie{Name: "access_token", Value: tokenString})
-	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
+	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", w.Code)
 	}
 
-	// Response must clear all three auth cookies with Max-Age=0.
-	wantCleared := map[string]bool{"access_token": false, "refresh_token": false, "csrf_token": false}
-	for _, cookie := range w.Result().Cookies() {
-		if _, ok := wantCleared[cookie.Name]; !ok {
+	// Response must clear the two auth cookies with Max-Age=-1.
+	wantCleared := map[string]bool{authCookieSession: false, authCookieCSRF: false}
+	for _, c := range w.Result().Cookies() {
+		if _, ok := wantCleared[c.Name]; !ok {
 			continue
 		}
-		if cookie.MaxAge != -1 {
-			t.Errorf("cookie %q: expected MaxAge=-1 (delete), got %d", cookie.Name, cookie.MaxAge)
+		if c.MaxAge != -1 {
+			t.Errorf("cookie %q MaxAge = %d, want -1", c.Name, c.MaxAge)
 		}
-		if cookie.Value != "" {
-			t.Errorf("cookie %q: expected empty value, got %q", cookie.Name, cookie.Value)
-		}
-		wantCleared[cookie.Name] = true
+		wantCleared[c.Name] = true
 	}
 	for name, seen := range wantCleared {
 		if !seen {
-			t.Errorf("expected Set-Cookie clearing %q in response, not found", name)
+			t.Errorf("expected clearing of cookie %q", name)
 		}
 	}
 }
 
-func TestAuthMiddleware_RequireAuth_RejectsRefreshToken(t *testing.T) {
+func TestAuthMiddleware_ValidSession_Cookie(t *testing.T) {
+	sess := newFakeSessionStore()
+	raw := sess.addSession(42, "test@example.com", time.Hour)
+	mw := NewAuthMiddleware(sess)
+
 	gin.SetMode(gin.TestMode)
-
-	jwtSecret := "test-secret"
-	middleware := NewAuthMiddleware(jwtSecret)
-
-	// Create a refresh token (should be rejected)
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": 42,
-		"type":    "refresh", // This should be rejected
-		"exp":     time.Now().Add(time.Hour).Unix(),
-	})
-	tokenString, err := token.SignedString([]byte(jwtSecret))
-	if err != nil {
-		t.Fatalf("failed to sign token: %v", err)
-	}
-
-	router := gin.New()
-	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
+	r := gin.New()
+	var gotUserID any
+	var gotEmail any
+	var gotSessionHash any
+	r.GET("/test", mw.RequireAuth(), func(c *gin.Context) {
+		gotUserID, _ = c.Get(ctxkeys.UserID)
+		gotEmail, _ = c.Get(ctxkeys.UserEmail)
+		gotSessionHash, _ = c.Get(ctxkeys.SessionIDHash)
 		c.Status(http.StatusOK)
 	})
 
 	req := httptest.NewRequest("GET", "/test", nil)
-	req.Header.Set("Authorization", "Bearer "+tokenString)
+	req.AddCookie(&http.Cookie{Name: authCookieSession, Value: raw})
 	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected status %d for refresh token, got %d", http.StatusUnauthorized, w.Code)
-	}
-}
-
-func TestAuthMiddleware_RequireAuth_AcceptsAccessToken(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	jwtSecret := "test-secret"
-	middleware := NewAuthMiddleware(jwtSecret)
-
-	// Create an access token with explicit type
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": 42,
-		"email":   "test@example.com",
-		"type":    "access", // Explicit access type
-		"exp":     time.Now().Add(time.Hour).Unix(),
-		"iat":     time.Now().Unix(),
-	})
-	tokenString, err := token.SignedString([]byte(jwtSecret))
-	if err != nil {
-		t.Fatalf("failed to sign token: %v", err)
-	}
-
-	router := gin.New()
-	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
-		c.Status(http.StatusOK)
-	})
-
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.Header.Set("Authorization", "Bearer "+tokenString)
-	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
+	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Errorf("expected status %d for access token, got %d", http.StatusOK, w.Code)
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	uid, ok := gotUserID.(uint)
+	if !ok || uid != 42 {
+		t.Errorf("UserID ctxkey: got %v (%T), want uint(42)", gotUserID, gotUserID)
+	}
+	if email, ok := gotEmail.(string); !ok || email != "test@example.com" {
+		t.Errorf("UserEmail ctxkey: got %v, want test@example.com", gotEmail)
+	}
+	if hash, ok := gotSessionHash.(string); !ok || hash != store.HashSessionToken(raw) {
+		t.Errorf("SessionIDHash ctxkey: got %v, want %q", gotSessionHash, store.HashSessionToken(raw))
 	}
 }
 
-func TestAuthMiddleware_RequireAuth_RejectsTokenWithoutType(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	jwtSecret := "test-secret"
-	middleware := NewAuthMiddleware(jwtSecret)
-
-	// Create a token WITHOUT type claim (must be rejected)
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": 42,
-		"email":   "test@example.com",
-		// No "type" claim
-		"exp": time.Now().Add(time.Hour).Unix(),
-	})
-	tokenString, err := token.SignedString([]byte(jwtSecret))
-	if err != nil {
-		t.Fatalf("failed to sign token: %v", err)
-	}
-
-	router := gin.New()
-	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
-		c.Status(http.StatusOK)
-	})
+func TestAuthMiddleware_ValidSession_BearerHeader(t *testing.T) {
+	sess := newFakeSessionStore()
+	raw := sess.addSession(7, "cli@example.com", time.Hour)
+	mw := NewAuthMiddleware(sess)
+	r := newRouter(mw)
 
 	req := httptest.NewRequest("GET", "/test", nil)
-	req.Header.Set("Authorization", "Bearer "+tokenString)
+	req.Header.Set("Authorization", "Bearer "+raw)
 	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected status %d for token without type, got %d", http.StatusUnauthorized, w.Code)
-	}
-}
-
-func TestAuthMiddleware_RequireAuth_AcceptsCookieToken(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	jwtSecret := "test-secret"
-	middleware := NewAuthMiddleware(jwtSecret)
-
-	// Create a valid access token
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": 42,
-		"email":   "test@example.com",
-		"type":    "access",
-		"exp":     time.Now().Add(time.Hour).Unix(),
-		"iat":     time.Now().Unix(),
-	})
-	tokenString, err := token.SignedString([]byte(jwtSecret))
-	if err != nil {
-		t.Fatalf("failed to sign token: %v", err)
-	}
-
-	var capturedUserID any
-	router := gin.New()
-	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
-		capturedUserID, _ = c.Get(ctxkeys.UserID)
-		c.Status(http.StatusOK)
-	})
-
-	req := httptest.NewRequest("GET", "/test", nil)
-	// Use cookie instead of header
-	req.AddCookie(&http.Cookie{Name: "access_token", Value: tokenString})
-	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
+	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Errorf("expected status %d for cookie auth, got %d", http.StatusOK, w.Code)
-	}
-
-	userIDUint, ok := capturedUserID.(uint)
-	if !ok || userIDUint != 42 {
-		t.Errorf("expected userID 42, got %v", capturedUserID)
+		t.Errorf("expected 200 for Bearer session token, got %d", w.Code)
 	}
 }
 
-func TestAuthMiddleware_RequireAuth_PrefersCookieOverHeader(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	jwtSecret := "test-secret"
-	middleware := NewAuthMiddleware(jwtSecret)
-
-	// Create two valid tokens with different user IDs
-	cookieToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": 100, // Cookie has user 100
-		"email":   "cookie@example.com",
-		"type":    "access",
-		"exp":     time.Now().Add(time.Hour).Unix(),
-		"iat":     time.Now().Unix(),
-	})
-	cookieTokenString, _ := cookieToken.SignedString([]byte(jwtSecret))
-
-	headerToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": 200, // Header has user 200
-		"email":   "header@example.com",
-		"type":    "access",
-		"exp":     time.Now().Add(time.Hour).Unix(),
-		"iat":     time.Now().Unix(),
-	})
-	headerTokenString, _ := headerToken.SignedString([]byte(jwtSecret))
-
-	var capturedUserID any
-	router := gin.New()
-	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
-		capturedUserID, _ = c.Get(ctxkeys.UserID)
-		c.Status(http.StatusOK)
-	})
+func TestAuthMiddleware_ExpiredSession(t *testing.T) {
+	sess := newFakeSessionStore()
+	// Seed directly with an already-expired row (addSession uses a future expiry).
+	raw, hashed, _ := store.GenerateSessionToken()
+	sess.sessions[hashed] = fakeSession{
+		userID:     1,
+		userActive: true,
+		expiresAt:  time.Now().UTC().Add(-time.Minute),
+	}
+	mw := NewAuthMiddleware(sess)
+	r := newRouter(mw)
 
 	req := httptest.NewRequest("GET", "/test", nil)
-	req.AddCookie(&http.Cookie{Name: "access_token", Value: cookieTokenString})
-	req.Header.Set("Authorization", "Bearer "+headerTokenString)
+	req.AddCookie(&http.Cookie{Name: authCookieSession, Value: raw})
 	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
 
-	router.ServeHTTP(w, req)
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401 for expired session, got %d", w.Code)
+	}
+}
+
+func TestAuthMiddleware_InactiveUser_SessionPruned(t *testing.T) {
+	sess := newFakeSessionStore()
+	raw, hashed, _ := store.GenerateSessionToken()
+	sess.sessions[hashed] = fakeSession{
+		userID:     1,
+		userActive: false, // inactive
+		expiresAt:  time.Now().UTC().Add(time.Hour),
+	}
+	mw := NewAuthMiddleware(sess)
+	r := newRouter(mw)
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.Header.Set("Authorization", "Bearer "+raw)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401 for inactive user, got %d", w.Code)
+	}
+	if len(sess.deleted) != 1 || sess.deleted[0] != hashed {
+		t.Errorf("expected session row for inactive user to be deleted; deleted=%v", sess.deleted)
+	}
+}
+
+func TestAuthMiddleware_LookupError_500(t *testing.T) {
+	sess := newFakeSessionStore()
+	sess.lookupErr = context.DeadlineExceeded
+	mw := NewAuthMiddleware(sess)
+	r := newRouter(mw)
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.Header.Set("Authorization", "Bearer something")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("expected 500 when Lookup returns a transport error, got %d", w.Code)
+	}
+}
+
+func TestAuthMiddleware_CookieTakesPriorityOverBearer(t *testing.T) {
+	// When both are present, the cookie wins. This matches the documented
+	// behavior in extractRawToken and protects us from a client that sends a
+	// stale Bearer header alongside a fresh cookie.
+	sess := newFakeSessionStore()
+	goodRaw := sess.addSession(9, "a@example.com", time.Hour)
+	mw := NewAuthMiddleware(sess)
+	r := newRouter(mw)
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.AddCookie(&http.Cookie{Name: authCookieSession, Value: goodRaw})
+	req.Header.Set("Authorization", "Bearer stale-bearer-value")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
-	}
-
-	// Should use cookie token (user 100), not header token (user 200)
-	userIDUint, ok := capturedUserID.(uint)
-	if !ok || userIDUint != 100 {
-		t.Errorf("expected cookie userID 100, got %v (cookie should take precedence)", capturedUserID)
-	}
-}
-
-func TestAuthMiddleware_RequireAuth_FallsBackToHeader(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	jwtSecret := "test-secret"
-	middleware := NewAuthMiddleware(jwtSecret)
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": 42,
-		"email":   "test@example.com",
-		"type":    "access",
-		"exp":     time.Now().Add(time.Hour).Unix(),
-		"iat":     time.Now().Unix(),
-	})
-	tokenString, _ := token.SignedString([]byte(jwtSecret))
-
-	var capturedUserID any
-	router := gin.New()
-	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
-		capturedUserID, _ = c.Get(ctxkeys.UserID)
-		c.Status(http.StatusOK)
-	})
-
-	req := httptest.NewRequest("GET", "/test", nil)
-	// No cookie, only header
-	req.Header.Set("Authorization", "Bearer "+tokenString)
-	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Errorf("expected status %d for header auth fallback, got %d", http.StatusOK, w.Code)
-	}
-
-	userIDUint, ok := capturedUserID.(uint)
-	if !ok || userIDUint != 42 {
-		t.Errorf("expected userID 42, got %v", capturedUserID)
-	}
-}
-
-func TestAuthMiddleware_RequireAuth_InvalidCookieToken(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	middleware := NewAuthMiddleware("test-secret")
-
-	router := gin.New()
-	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
-		c.Status(http.StatusOK)
-	})
-
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.AddCookie(&http.Cookie{Name: "access_token", Value: "invalid-token"})
-	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected status %d for invalid cookie token, got %d", http.StatusUnauthorized, w.Code)
-	}
-}
-
-func TestAuthMiddleware_RequireAuth_MalformedBearerHeader(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	middleware := NewAuthMiddleware("test-secret")
-
-	router := gin.New()
-	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
-		c.Status(http.StatusOK)
-	})
-
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.Header.Set("Authorization", "invalid")
-	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected status %d for malformed bearer header, got %d", http.StatusUnauthorized, w.Code)
-	}
-}
-
-func TestAuthMiddleware_RequireAuth_EmptyBearerToken(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	middleware := NewAuthMiddleware("test-secret")
-
-	router := gin.New()
-	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
-		c.Status(http.StatusOK)
-	})
-
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.Header.Set("Authorization", "Bearer ")
-	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected status %d for empty bearer token, got %d", http.StatusUnauthorized, w.Code)
-	}
-}
-
-func TestAuthMiddleware_RequireAuth_BearerOnly(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	middleware := NewAuthMiddleware("test-secret")
-
-	router := gin.New()
-	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
-		c.Status(http.StatusOK)
-	})
-
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.Header.Set("Authorization", "Bearer")
-	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected status %d for bearer-only header, got %d", http.StatusUnauthorized, w.Code)
-	}
-}
-
-func TestAuthMiddleware_RequireAuth_NonBearerScheme(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	middleware := NewAuthMiddleware("test-secret")
-
-	router := gin.New()
-	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
-		c.Status(http.StatusOK)
-	})
-
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.Header.Set("Authorization", "Basic abc123")
-	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected status %d for non-bearer scheme, got %d", http.StatusUnauthorized, w.Code)
-	}
-}
-
-func TestAuthMiddleware_RequireAuth_MissingExpClaim(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	jwtSecret := "test-secret"
-	middleware := NewAuthMiddleware(jwtSecret)
-
-	// Create a token WITHOUT exp claim to verify defense-in-depth check
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": 42,
-		"email":   "test@example.com",
-		"type":    "access",
-		// No "exp" claim
-	})
-	tokenString, err := token.SignedString([]byte(jwtSecret))
-	if err != nil {
-		t.Fatalf("failed to sign token: %v", err)
-	}
-
-	router := gin.New()
-	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
-		c.Status(http.StatusOK)
-	})
-
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.Header.Set("Authorization", "Bearer "+tokenString)
-	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected status %d for missing exp claim, got %d", http.StatusUnauthorized, w.Code)
-	}
-}
-
-func TestAuthMiddleware_RequireAuth_ZeroUserID(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	jwtSecret := "test-secret"
-	middleware := NewAuthMiddleware(jwtSecret)
-
-	// Create a token with user_id: 0
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": 0,
-		"email":   "test@example.com",
-		"type":    "access",
-		"exp":     time.Now().Add(time.Hour).Unix(),
-	})
-	tokenString, err := token.SignedString([]byte(jwtSecret))
-	if err != nil {
-		t.Fatalf("failed to sign token: %v", err)
-	}
-
-	router := gin.New()
-	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
-		c.Status(http.StatusOK)
-	})
-
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.Header.Set("Authorization", "Bearer "+tokenString)
-	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected status %d for zero user_id, got %d", http.StatusUnauthorized, w.Code)
-	}
-}
-
-func TestAuthMiddleware_RequireAuth_NegativeUserID(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	jwtSecret := "test-secret"
-	middleware := NewAuthMiddleware(jwtSecret)
-
-	// Create a token with user_id: -1
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": -1,
-		"email":   "test@example.com",
-		"type":    "access",
-		"exp":     time.Now().Add(time.Hour).Unix(),
-	})
-	tokenString, err := token.SignedString([]byte(jwtSecret))
-	if err != nil {
-		t.Fatalf("failed to sign token: %v", err)
-	}
-
-	router := gin.New()
-	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
-		c.Status(http.StatusOK)
-	})
-
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.Header.Set("Authorization", "Bearer "+tokenString)
-	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected status %d for negative user_id, got %d", http.StatusUnauthorized, w.Code)
-	}
-}
-
-func TestAuthMiddleware_RequireAuth_OverflowUserID(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	jwtSecret := "test-secret"
-	middleware := NewAuthMiddleware(jwtSecret)
-
-	// Create a token with user_id exceeding MaxUint32
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": float64(5000000000), // > math.MaxUint32 (4294967295)
-		"email":   "test@example.com",
-		"type":    "access",
-		"exp":     time.Now().Add(time.Hour).Unix(),
-	})
-	tokenString, err := token.SignedString([]byte(jwtSecret))
-	if err != nil {
-		t.Fatalf("failed to sign token: %v", err)
-	}
-
-	router := gin.New()
-	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
-		c.Status(http.StatusOK)
-	})
-
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.Header.Set("Authorization", "Bearer "+tokenString)
-	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected status %d for overflow user_id, got %d", http.StatusUnauthorized, w.Code)
-	}
-}
-
-func TestAuthMiddleware_RequireAuth_FractionalUserID(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	jwtSecret := "test-secret"
-	middleware := NewAuthMiddleware(jwtSecret)
-
-	// Create a token with fractional user_id
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": 42.5,
-		"email":   "test@example.com",
-		"type":    "access",
-		"exp":     time.Now().Add(time.Hour).Unix(),
-	})
-	tokenString, err := token.SignedString([]byte(jwtSecret))
-	if err != nil {
-		t.Fatalf("failed to sign token: %v", err)
-	}
-
-	router := gin.New()
-	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
-		c.Status(http.StatusOK)
-	})
-
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.Header.Set("Authorization", "Bearer "+tokenString)
-	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected status %d for fractional user_id, got %d", http.StatusUnauthorized, w.Code)
-	}
-}
-
-func TestAuthMiddleware_RequireAuth_MissingIatClaim(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	jwtSecret := "test-secret"
-	middleware := NewAuthMiddleware(jwtSecret)
-
-	// Tokens produced by this codebase always carry iat (issue #134 fix uses
-	// it to scope user-wide revocation). A token without iat is malformed
-	// and must be rejected.
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": 42,
-		"email":   "test@example.com",
-		"type":    "access",
-		"exp":     time.Now().Add(time.Hour).Unix(),
-		// No "iat" claim
-	})
-	tokenString, err := token.SignedString([]byte(jwtSecret))
-	if err != nil {
-		t.Fatalf("failed to sign token: %v", err)
-	}
-
-	router := gin.New()
-	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
-		c.Status(http.StatusOK)
-	})
-
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.Header.Set("Authorization", "Bearer "+tokenString)
-	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected status %d for missing iat claim, got %d", http.StatusUnauthorized, w.Code)
-	}
-}
-
-func TestAuthMiddleware_RequireAuth_MissingUserIDClaim(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	jwtSecret := "test-secret"
-	middleware := NewAuthMiddleware(jwtSecret)
-
-	// Create a token WITHOUT user_id claim
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"email": "test@example.com",
-		"type":  "access",
-		"exp":   time.Now().Add(time.Hour).Unix(),
-		// No "user_id" claim
-	})
-	tokenString, err := token.SignedString([]byte(jwtSecret))
-	if err != nil {
-		t.Fatalf("failed to sign token: %v", err)
-	}
-
-	router := gin.New()
-	router.GET("/test", middleware.RequireAuth(), func(c *gin.Context) {
-		c.Status(http.StatusOK)
-	})
-
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.Header.Set("Authorization", "Bearer "+tokenString)
-	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected status %d for missing user_id claim, got %d", http.StatusUnauthorized, w.Code)
+		t.Errorf("expected 200 (cookie should win), got %d", w.Code)
 	}
 }

@@ -63,7 +63,7 @@ type appStores struct {
 	childAttendance             *store.ChildAttendanceStore
 	budgetItem                  *store.BudgetItemStore
 	audit                       *store.AuditStore
-	token                       *store.TokenStore
+	session                     *store.SessionStore
 	governmentFundingBillPeriod *store.GovernmentFundingBillPeriodStore
 	childVoucher                *store.ChildVoucherStore
 }
@@ -156,7 +156,7 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	tokenCleanupDone := startTokenCleanup(stores.token)
+	sessionCleanupDone := startSessionCleanup(stores.session)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -174,7 +174,7 @@ func main() {
 
 	<-quit
 
-	shutdown(srv, tokenCleanupDone, mw, svc, db)
+	shutdown(srv, sessionCleanupDone, mw, svc, db)
 }
 
 func initStores(db *gorm.DB) *appStores {
@@ -190,7 +190,7 @@ func initStores(db *gorm.DB) *appStores {
 		childAttendance:             store.NewChildAttendanceStore(db),
 		budgetItem:                  store.NewBudgetItemStore(db),
 		audit:                       store.NewAuditStore(db),
-		token:                       store.NewTokenStore(db),
+		session:                     store.NewSessionStore(db),
 		governmentFundingBillPeriod: store.NewGovernmentFundingBillPeriodStore(db),
 		childVoucher:                store.NewChildVoucherStore(db),
 	}
@@ -219,8 +219,8 @@ func initServices(s *appStores, cfg *config.Config, transactor store.Transactor)
 	auditService := service.NewAuditService(s.audit)
 	return &appServices{
 		audit:                 auditService,
-		auth:                  service.NewAuthService(s.user, s.token, cfg.JWTSecret, auditService),
-		user:                  service.NewUserService(s.user, s.userOrganization, s.token),
+		auth:                  service.NewAuthService(s.user, s.session, cfg.JWTSecret, auditService),
+		user:                  service.NewUserService(s.user, s.userOrganization, s.session),
 		userOrganization:      service.NewUserOrganizationService(s.userOrganization, s.user, transactor),
 		organization:          service.NewOrganizationService(s.organization, s.user),
 		section:               service.NewSectionService(s.section, transactor),
@@ -240,7 +240,7 @@ func initServices(s *appStores, cfg *config.Config, transactor store.Transactor)
 func initMiddleware(s *appStores, cfg *config.Config, permissionService *rbac.PermissionService) *appMiddleware {
 	slog.Info("Rate limiter is in-memory — not suitable for multi-instance deployments. Use a Redis-backed limiter when scaling horizontally.")
 
-	authMW := middleware.NewAuthMiddleware(cfg.JWTSecret, s.token)
+	authMW := middleware.NewAuthMiddleware(s.session)
 	authMW.SetSecureCookies(cfg.SecureCookies)
 
 	return &appMiddleware{
@@ -304,7 +304,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, s *appStores, svc *appServices
 	// API routes
 	routes.Setup(r, routes.Deps{
 		Auth:                  handlers.NewAuthHandler(svc.auth, cfg.SecureCookies),
-		User:                  handlers.NewUserHandler(svc.user, svc.userOrganization, svc.audit, s.token),
+		User:                  handlers.NewUserHandler(svc.user, svc.userOrganization, svc.audit, s.session),
 		Section:               handlers.NewSectionHandler(svc.section, svc.audit),
 		Organization:          handlers.NewOrganizationHandler(svc.organization, svc.audit),
 		Employee:              handlers.NewEmployeeHandler(svc.employee, svc.audit),
@@ -328,7 +328,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, s *appStores, svc *appServices
 	return r
 }
 
-func startTokenCleanup(tokenStore *store.TokenStore) chan struct{} {
+func startSessionCleanup(sessionStore *store.SessionStore) chan struct{} {
 	done := make(chan struct{})
 	go func() {
 		ticker := time.NewTicker(1 * time.Hour)
@@ -336,8 +336,8 @@ func startTokenCleanup(tokenStore *store.TokenStore) chan struct{} {
 		for {
 			select {
 			case <-ticker.C:
-				if err := tokenStore.CleanupExpired(context.Background()); err != nil {
-					slog.Error("Failed to cleanup expired tokens", "error", err)
+				if err := sessionStore.CleanupExpired(context.Background()); err != nil {
+					slog.Error("Failed to cleanup expired sessions", "error", err)
 				}
 			case <-done:
 				return
@@ -347,7 +347,7 @@ func startTokenCleanup(tokenStore *store.TokenStore) chan struct{} {
 	return done
 }
 
-func shutdown(srv *http.Server, tokenCleanupDone chan struct{}, mw *appMiddleware, svc *appServices, db *gorm.DB) {
+func shutdown(srv *http.Server, sessionCleanupDone chan struct{}, mw *appMiddleware, svc *appServices, db *gorm.DB) {
 	slog.Info("Shutting down server...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -358,7 +358,7 @@ func shutdown(srv *http.Server, tokenCleanupDone chan struct{}, mw *appMiddlewar
 		os.Exit(1)
 	}
 
-	close(tokenCleanupDone)
+	close(sessionCleanupDone)
 
 	if mw.loginRateLimiter != nil {
 		mw.loginRateLimiter.Stop()

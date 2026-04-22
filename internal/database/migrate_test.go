@@ -272,7 +272,7 @@ func allModels() []any {
 		&models.BudgetItem{},
 		&models.BudgetItemEntry{},
 		&models.AuditLog{},
-		&models.RevokedToken{},
+		&models.Session{},
 		&models.GovernmentFundingBillPeriod{},
 		&models.GovernmentFundingBillChild{},
 		&models.GovernmentFundingBillPayment{},
@@ -436,8 +436,8 @@ func TestMigrationsWithData(t *testing.T) {
 		`INSERT INTO audit_logs (id, timestamp, action, success)
 		 VALUES (1, NOW(), 'login', true)`,
 
-		`INSERT INTO revoked_tokens (id, user_id, token_hash, expires_at, created_at)
-		 VALUES (1, 1, 'abc123def456abc123def456abc123def456abc123def456abc123def456abcd', NOW() + INTERVAL '1 hour', NOW())`,
+		`INSERT INTO sessions (id, user_id, created_at, expires_at, created_ip)
+		 VALUES ('abc123def456abc123def456abc123def456abc123def456abc123def456abcd', 1, NOW(), NOW() + INTERVAL '1 hour', '127.0.0.1')`,
 
 		`INSERT INTO government_funding_bill_periods (id, organization_id, from_date, file_name, file_sha256, facility_name, facility_total, contract_booking, correction_booking, created_by, created_at)
 		 VALUES (1, 1, '2024-01-01', 'test.xlsx', 'abc123', 'Test Kita', 100000, 90000, 10000, 1, NOW())`,
@@ -461,7 +461,7 @@ func TestMigrationsWithData(t *testing.T) {
 		"child_attendances", "government_fundings", "government_funding_periods",
 		"government_funding_properties", "pay_plans", "pay_plan_periods",
 		"pay_plan_entries", "budget_items", "budget_item_entries",
-		"audit_logs", "revoked_tokens",
+		"audit_logs", "sessions",
 		"government_funding_bill_periods", "government_funding_bill_children",
 		"government_funding_bill_payments",
 	}

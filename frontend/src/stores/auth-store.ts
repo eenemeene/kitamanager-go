@@ -145,15 +145,13 @@ if (typeof window !== 'undefined') {
 
 // Set up unauthorized callback
 apiClient.setOnUnauthorized(() => {
-  // Clear session flag (refresh already failed or unavailable)
-  apiClient.setHasSession(false);
-  // Clear local state without calling logout endpoint (already unauthorized)
+  // Clear local state without calling logout endpoint (already unauthorized).
   if (typeof window !== 'undefined') {
     localStorage.removeItem('selectedOrgId');
     // Clear the JS-readable csrf_token cookie. Without this, hasAuthCookie()
-    // keeps returning true after the server rejected our tokens, which causes
-    // components to re-fire authenticated requests in an infinite loop. The
-    // HttpOnly access/refresh cookies are cleared by the server on 401.
+    // keeps returning true after the server rejected our session, which
+    // causes components to re-fire authenticated requests in an infinite
+    // loop. The HttpOnly session cookie is cleared by the server on 401.
     document.cookie = 'csrf_token=; path=/; max-age=0; SameSite=Strict';
   }
   useAuthStore.setState({

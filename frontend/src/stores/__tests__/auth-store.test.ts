@@ -14,7 +14,6 @@ jest.mock('@/lib/api/client', () => ({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (globalThis as any).__authTestUnauthorizedCb = cb;
     }),
-    setHasSession: jest.fn(),
   },
 }));
 
@@ -441,14 +440,8 @@ describe('useAuthStore', () => {
       expect(localStorage.getItem('selectedOrgId')).toBeNull();
     });
 
-    it('calls setHasSession(false) to prevent refresh loops', () => {
-      getUnauthorizedCallback()();
-
-      expect(apiClient.setHasSession).toHaveBeenCalledWith(false);
-    });
-
     it('clears the csrf_token cookie so hasAuthCookie() no longer returns true', () => {
-      // Without this, a server that rejected our tokens (e.g. JWT secret
+      // Without this, a server that rejected our session (e.g. secret
       // rotation) would leave csrf_token in the jar; checkAuth() would keep
       // returning true and re-fire authenticated requests in a loop.
       mockCookies = { csrf_token: 'stale-token-abc' };

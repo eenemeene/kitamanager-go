@@ -58,10 +58,8 @@ func Setup(r *gin.Engine, d Deps) {
 		// Public endpoints with rate limiting
 		if loginRateLimiter != nil {
 			api.POST("/login", loginRateLimiter.RateLimit(), authHandler.Login)
-			api.POST("/refresh", loginRateLimiter.RateLimit(), authHandler.Refresh)
 		} else {
 			api.POST("/login", authHandler.Login)
-			api.POST("/refresh", authHandler.Refresh)
 		}
 
 		// Protected endpoints (require authentication and CSRF for cookie-based auth)
