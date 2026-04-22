@@ -76,17 +76,22 @@ func (s *UserStore) FindByID(ctx context.Context, id uint) (*models.User, error)
 	return &user, nil
 }
 
+// FindByEmail is case-insensitive. The functional unique index on
+// lower(email) (migration 000009) makes this lookup O(index seek).
 func (s *UserStore) FindByEmail(ctx context.Context, email string) (*models.User, error) {
 	var user models.User
-	if err := DBFromContext(ctx, s.db).Where("email = ?", email).First(&user).Error; err != nil {
+	if err := DBFromContext(ctx, s.db).Where("lower(email) = lower(?)", email).First(&user).Error; err != nil {
 		return nil, WrapNotFound(err)
 	}
 	return &user, nil
 }
 
+// EmailExistsForOtherUser is case-insensitive for the same reason as
+// FindByEmail — any caller whose input hasn't been normalized still gets
+// the right answer.
 func (s *UserStore) EmailExistsForOtherUser(ctx context.Context, email string, excludeUserID uint) (bool, error) {
 	var count int64
-	if err := DBFromContext(ctx, s.db).Model(&models.User{}).Where("email = ? AND id != ?", email, excludeUserID).Count(&count).Error; err != nil {
+	if err := DBFromContext(ctx, s.db).Model(&models.User{}).Where("lower(email) = lower(?) AND id != ?", email, excludeUserID).Count(&count).Error; err != nil {
 		return false, err
 	}
 	return count > 0, nil

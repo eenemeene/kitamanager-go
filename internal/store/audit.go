@@ -109,13 +109,16 @@ func (s *AuditStore) FindAll(ctx context.Context, limit, offset int) ([]models.A
 	return logs, total, nil
 }
 
-// FindFailedLogins returns failed login attempts, optionally filtered by email
+// FindFailedLogins returns failed login attempts, optionally filtered by
+// email. The email match is case-insensitive so historical audit rows
+// written before email normalization (migration 000009) still participate
+// in the lockout counter.
 func (s *AuditStore) FindFailedLogins(ctx context.Context, email string, since time.Time, limit int) ([]models.AuditLog, error) {
 	var logs []models.AuditLog
 
 	query := DBFromContext(ctx, s.db).Where("action = ? AND timestamp >= ?", models.AuditActionLoginFailed, since)
 	if email != "" {
-		query = query.Where("user_email = ?", email)
+		query = query.Where("lower(user_email) = lower(?)", email)
 	}
 
 	if err := query.Order("timestamp DESC").Limit(limit).Find(&logs).Error; err != nil {
@@ -125,11 +128,12 @@ func (s *AuditStore) FindFailedLogins(ctx context.Context, email string, since t
 	return logs, nil
 }
 
-// CountFailedLoginsSince counts failed login attempts for an email since a given time
+// CountFailedLoginsSince counts failed login attempts for an email since a
+// given time. Case-insensitive — same rationale as FindFailedLogins.
 func (s *AuditStore) CountFailedLoginsSince(ctx context.Context, email string, since time.Time) (int64, error) {
 	var count int64
 	err := DBFromContext(ctx, s.db).Model(&models.AuditLog{}).
-		Where("action = ? AND user_email = ? AND timestamp >= ?",
+		Where("action = ? AND lower(user_email) = lower(?) AND timestamp >= ?",
 			models.AuditActionLoginFailed, email, since).
 		Count(&count).Error
 	return count, err
