@@ -11,10 +11,13 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/pquerna/otp/totp"
 	"golang.org/x/crypto/bcrypt"
 
+	cryptopkg "github.com/eenemeene/kitamanager-go/internal/crypto"
 	"github.com/eenemeene/kitamanager-go/internal/handlers"
 	"github.com/eenemeene/kitamanager-go/internal/middleware"
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -22,6 +25,24 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/service"
 	"github.com/eenemeene/kitamanager-go/internal/store"
 )
+
+// testTOTPAEADKey is a deterministic test key for the AES-GCM
+// encryption of TOTP secrets. Integration tests don't care about the
+// value, only that encrypt and decrypt round-trip.
+const testTOTPAEADKeyHex = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+
+func testTOTPAEAD(t *testing.T) *cryptopkg.AEAD {
+	t.Helper()
+	key, err := cryptopkg.DecodeKey(testTOTPAEADKeyHex)
+	if err != nil {
+		t.Fatalf("decode key: %v", err)
+	}
+	aead, err := cryptopkg.NewAEAD(key)
+	if err != nil {
+		t.Fatalf("new aead: %v", err)
+	}
+	return aead
+}
 
 // testJWTSecret is a deterministic, ≥32-character secret used by the real
 // auth + CSRF middleware. Config enforces the 32-char floor in production;
@@ -76,9 +97,13 @@ func setupAuthFlowRouter(t *testing.T) *authFlowRouter {
 	authzMW := middleware.NewAuthorizationMiddleware(permissionService)
 	csrfMW := middleware.NewCSRFMiddleware(testJWTSecret)
 
+	factorStore := store.NewFactorStore(testDB)
+	factorService := service.NewFactorService(factorStore, userStore, testTOTPAEAD(t), "KitaManager (test)", auditService)
+
 	authHandler := handlers.NewAuthHandler(authService, false /*secureCookies*/)
 	userHandler := handlers.NewUserHandler(userService, userOrgService, auditService, sessionStore)
 	orgHandler := handlers.NewOrganizationHandler(orgService, auditService)
+	factorHandler := handlers.NewFactorHandler(factorService)
 
 	r := gin.New()
 	api := r.Group("/api/v1")
@@ -95,6 +120,15 @@ func setupAuthFlowRouter(t *testing.T) *authFlowRouter {
 	protected.GET("/me", authHandler.Me)
 	protected.GET("/me/sessions", authHandler.ListSessions)
 	protected.DELETE("/me/sessions/:id", authHandler.RevokeSession)
+
+	// Factor (MFA) endpoints.
+	protected.GET("/users/:userId/factors", factorHandler.List)
+	protected.POST("/users/:userId/factors", factorHandler.Enroll)
+	protected.GET("/users/:userId/factors/:id", factorHandler.Get)
+	protected.PATCH("/users/:userId/factors/:id", factorHandler.UpdateLabel)
+	protected.DELETE("/users/:userId/factors/:id", factorHandler.Delete)
+	protected.POST("/users/:userId/factors/:id/activate", factorHandler.Activate)
+	protected.POST("/users/:userId/factors/:id/regenerate", factorHandler.Regenerate)
 
 	// Global user routes. Create requires ResourceUsers + ActionCreate in at
 	// least one org — superadmin satisfies this.
@@ -657,5 +691,142 @@ func TestAuthFlow_SessionManagement_CrossUserRevokeIs404(t *testing.T) {
 	w = doAuthed(t, fr.router, http.MethodGet, "/api/v1/me", aliceToken, nil)
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("alice /me after self-revoke: got %d, want 401", w.Code)
+	}
+}
+
+// TestAuthFlow_Factors_CrossUserIsolation pins the core invariant for
+// the MFA endpoints: Alice enrols and activates a TOTP factor; Bob
+// tries every /factors endpoint against Alice's factor id and must
+// get 404 — never 403, never success — so the endpoint does not
+// leak which factor ids exist. Alice's factor survives all of Bob's
+// attempts.
+func TestAuthFlow_Factors_CrossUserIsolation(t *testing.T) {
+	cleanupDatabase()
+	fr := setupAuthFlowRouter(t)
+	enforcer, _ := rbac.NewEnforcer(testDB, findRBACModel(t))
+	_, superEmail, superPass := seedSuperadmin(t, enforcer)
+	_, superToken := doLogin(t, fr.router, superEmail, superPass)
+
+	// Two members provisioned via the real user-create API path.
+	const (
+		aliceEmail = "alice-factors@test.local"
+		alicePass  = "alice-pass-12345"
+		bobEmail   = "bob-factors@test.local"
+		bobPass    = "bob-pass-12345"
+	)
+	for _, u := range []struct{ email, pw string }{{aliceEmail, alicePass}, {bobEmail, bobPass}} {
+		w := doAuthed(t, fr.router, http.MethodPost, "/api/v1/users", superToken, models.UserCreateRequest{
+			Name: u.email, Email: u.email, Password: u.pw, Active: true,
+		})
+		if w.Code != http.StatusCreated {
+			t.Fatalf("create user %s: %d %s", u.email, w.Code, w.Body.String())
+		}
+	}
+
+	_, aliceToken := doLogin(t, fr.router, aliceEmail, alicePass)
+	_, bobToken := doLogin(t, fr.router, bobEmail, bobPass)
+	if aliceToken == "" || bobToken == "" {
+		t.Fatal("missing login tokens")
+	}
+
+	// Alice enrols TOTP.
+	w := doAuthed(t, fr.router, http.MethodPost, "/api/v1/users/me/factors", aliceToken,
+		models.FactorEnrollRequest{Type: models.FactorTypeTOTP, Password: alicePass})
+	if w.Code != http.StatusOK {
+		t.Fatalf("alice enrol: %d %s", w.Code, w.Body.String())
+	}
+	var enrol models.FactorResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &enrol); err != nil {
+		t.Fatalf("decode enrol: %v", err)
+	}
+	aliceFactorID := enrol.ID
+	// Pull the secret out of the polymorphic enrollment blob.
+	rawEnroll, _ := json.Marshal(enrol.Enrollment)
+	var payload models.TOTPEnrollmentPayload
+	if err := json.Unmarshal(rawEnroll, &payload); err != nil {
+		t.Fatalf("decode enrollment: %v", err)
+	}
+
+	// Resolve Alice's numeric user id via /me so the test covers the
+	// "Bob addresses alice's explicit user id" path as well as the
+	// /users/me path. Relies on the /me endpoint already being wired.
+	w = doAuthed(t, fr.router, http.MethodGet, "/api/v1/me", aliceToken, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("alice /me: %d", w.Code)
+	}
+	var aliceMe models.UserResponse
+	_ = json.Unmarshal(w.Body.Bytes(), &aliceMe)
+
+	// Bob tries every endpoint against Alice's factor id. Each must 404.
+	//
+	// 1. GET via explicit numeric user id — self-scope rule kicks in.
+	w = doAuthed(t, fr.router, http.MethodGet,
+		fmt.Sprintf("/api/v1/users/%d/factors/%d", aliceMe.ID, aliceFactorID),
+		bobToken, nil)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("bob GET via alice's user id: got %d, want 404. body=%s", w.Code, w.Body.String())
+	}
+
+	// 2. GET via /me/factors/:id with alice's id — ownership check wins.
+	w = doAuthed(t, fr.router, http.MethodGet,
+		fmt.Sprintf("/api/v1/users/me/factors/%d", aliceFactorID),
+		bobToken, nil)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("bob GET /me/factors/<alice-id>: got %d, want 404", w.Code)
+	}
+
+	// 3. Activate — bob provides his own password, but the factor is alice's.
+	w = doAuthed(t, fr.router, http.MethodPost,
+		fmt.Sprintf("/api/v1/users/me/factors/%d/activate", aliceFactorID),
+		bobToken, models.FactorActivateRequest{Code: "000000"})
+	if w.Code != http.StatusNotFound {
+		t.Errorf("bob activate alice's factor: got %d, want 404", w.Code)
+	}
+
+	// 4. Delete — same.
+	w = doAuthed(t, fr.router, http.MethodDelete,
+		fmt.Sprintf("/api/v1/users/me/factors/%d", aliceFactorID),
+		bobToken, models.FactorDeleteRequest{Password: bobPass, Code: "000000"})
+	if w.Code != http.StatusNotFound {
+		t.Errorf("bob delete alice's factor: got %d, want 404", w.Code)
+	}
+
+	// 5. PATCH label — same.
+	lbl := "pwned"
+	w = doAuthed(t, fr.router, http.MethodPatch,
+		fmt.Sprintf("/api/v1/users/me/factors/%d", aliceFactorID),
+		bobToken, models.FactorLabelUpdateRequest{Label: &lbl})
+	if w.Code != http.StatusNotFound {
+		t.Errorf("bob patch alice's factor: got %d, want 404", w.Code)
+	}
+
+	// 6. Alice can still see and use her factor — none of Bob's attempts
+	//    were effective.
+	w = doAuthed(t, fr.router, http.MethodGet,
+		fmt.Sprintf("/api/v1/users/me/factors/%d", aliceFactorID),
+		aliceToken, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("alice can't see her own factor: %d %s", w.Code, w.Body.String())
+	}
+	var aliceView models.FactorResponse
+	_ = json.Unmarshal(w.Body.Bytes(), &aliceView)
+	if aliceView.Activated {
+		t.Error("alice's factor should still be pending (bob's activate attempts must not succeed)")
+	}
+	if aliceView.Label != nil && *aliceView.Label == "pwned" {
+		t.Error("bob's patch wrongly took effect on alice's label")
+	}
+
+	// 7. Alice activates her factor normally — confirms it's still usable
+	//    after every hostile attempt from Bob.
+	code, err := totp.GenerateCode(payload.Secret, time.Now().UTC())
+	if err != nil {
+		t.Fatalf("gen code: %v", err)
+	}
+	w = doAuthed(t, fr.router, http.MethodPost,
+		fmt.Sprintf("/api/v1/users/me/factors/%d/activate", aliceFactorID),
+		aliceToken, models.FactorActivateRequest{Code: code})
+	if w.Code != http.StatusOK {
+		t.Errorf("alice activates after bob's attempts: got %d %s", w.Code, w.Body.String())
 	}
 }

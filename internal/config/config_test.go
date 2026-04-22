@@ -10,6 +10,10 @@ import (
 // It must not appear in knownPlaceholderJWTSecrets.
 const validTestJWTSecret = "test-secret-this-value-is-at-least-32-chars-long"
 
+// validTestTOTPKey is a 64-hex-char key suitable for tests. Must not
+// appear in knownPlaceholderTOTPKeys.
+const validTestTOTPKey = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+
 // baseValidConfig returns a Config that passes Validate() — tests copy it and
 // mutate a single field to isolate failure cases.
 func baseValidConfig() *Config {
@@ -22,6 +26,8 @@ func baseValidConfig() *Config {
 		DBSSLMode:            "disable",
 		ServerPort:           "8080",
 		JWTSecret:            validTestJWTSecret,
+		TOTPEncryptionKey:    validTestTOTPKey,
+		TOTPIssuer:           "KitaManager",
 		LogLevel:             "info",
 		LogFormat:            "json",
 		CORSAllowOrigins:     []string{"http://localhost:3000"},
@@ -93,6 +99,7 @@ var envKeysUnderTest = []string{
 	"DB_MAX_IDLE_CONNS", "DB_MAX_OPEN_CONNS", "DB_CONN_MAX_LIFE_MIN", "DB_CONN_MAX_IDLE_MIN",
 	"TRUSTED_PROXIES", "SECURE_COOKIES",
 	"SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASSWORD", "SMTP_FROM",
+	"TOTP_ENCRYPTION_KEY", "TOTP_ISSUER",
 }
 
 func snapshotEnv(t *testing.T) func() {
@@ -137,6 +144,7 @@ func TestLoad_RejectsMissingDBCreds(t *testing.T) {
 func TestLoad_SucceedsWithRequiredEnv(t *testing.T) {
 	defer snapshotEnv(t)()
 	os.Setenv("JWT_SECRET", validTestJWTSecret)
+	os.Setenv("TOTP_ENCRYPTION_KEY", validTestTOTPKey)
 	os.Setenv("DB_USER", "u")
 	os.Setenv("DB_PASSWORD", "p")
 	os.Setenv("DB_NAME", "db")
@@ -157,6 +165,7 @@ func TestLoad_SucceedsWithRequiredEnv(t *testing.T) {
 func TestLoad_ParsesCORSOrigins(t *testing.T) {
 	defer snapshotEnv(t)()
 	os.Setenv("JWT_SECRET", validTestJWTSecret)
+	os.Setenv("TOTP_ENCRYPTION_KEY", validTestTOTPKey)
 	os.Setenv("DB_USER", "u")
 	os.Setenv("DB_PASSWORD", "p")
 	os.Setenv("DB_NAME", "db")
@@ -181,6 +190,7 @@ func TestLoad_ParsesCORSOrigins(t *testing.T) {
 func TestLoad_EmptyCORSOriginsYieldsNil(t *testing.T) {
 	defer snapshotEnv(t)()
 	os.Setenv("JWT_SECRET", validTestJWTSecret)
+	os.Setenv("TOTP_ENCRYPTION_KEY", validTestTOTPKey)
 	os.Setenv("DB_USER", "u")
 	os.Setenv("DB_PASSWORD", "p")
 	os.Setenv("DB_NAME", "db")
@@ -198,6 +208,7 @@ func TestLoad_EmptyCORSOriginsYieldsNil(t *testing.T) {
 func TestLoad_ParsesCORSCredentials(t *testing.T) {
 	defer snapshotEnv(t)()
 	os.Setenv("JWT_SECRET", validTestJWTSecret)
+	os.Setenv("TOTP_ENCRYPTION_KEY", validTestTOTPKey)
 	os.Setenv("DB_USER", "u")
 	os.Setenv("DB_PASSWORD", "p")
 	os.Setenv("DB_NAME", "db")
@@ -216,6 +227,7 @@ func TestLoad_ParsesCORSCredentials(t *testing.T) {
 func TestLoad_DBSSLDefaultsToRequire(t *testing.T) {
 	defer snapshotEnv(t)()
 	os.Setenv("JWT_SECRET", validTestJWTSecret)
+	os.Setenv("TOTP_ENCRYPTION_KEY", validTestTOTPKey)
 	os.Setenv("DB_USER", "u")
 	os.Setenv("DB_PASSWORD", "p")
 	os.Setenv("DB_NAME", "db")
@@ -233,6 +245,7 @@ func TestLoad_DBSSLDefaultsToRequire(t *testing.T) {
 func TestLoad_SecureCookiesDefaultTrue(t *testing.T) {
 	defer snapshotEnv(t)()
 	os.Setenv("JWT_SECRET", validTestJWTSecret)
+	os.Setenv("TOTP_ENCRYPTION_KEY", validTestTOTPKey)
 	os.Setenv("DB_USER", "u")
 	os.Setenv("DB_PASSWORD", "p")
 	os.Setenv("DB_NAME", "db")
@@ -251,6 +264,7 @@ func TestLoad_TrustedProxies(t *testing.T) {
 	t.Run("parses comma-separated list", func(t *testing.T) {
 		defer snapshotEnv(t)()
 		os.Setenv("JWT_SECRET", validTestJWTSecret)
+		os.Setenv("TOTP_ENCRYPTION_KEY", validTestTOTPKey)
 		os.Setenv("DB_USER", "u")
 		os.Setenv("DB_PASSWORD", "p")
 		os.Setenv("DB_NAME", "db")
@@ -275,6 +289,7 @@ func TestLoad_TrustedProxies(t *testing.T) {
 	t.Run("empty yields nil", func(t *testing.T) {
 		defer snapshotEnv(t)()
 		os.Setenv("JWT_SECRET", validTestJWTSecret)
+		os.Setenv("TOTP_ENCRYPTION_KEY", validTestTOTPKey)
 		os.Setenv("DB_USER", "u")
 		os.Setenv("DB_PASSWORD", "p")
 		os.Setenv("DB_NAME", "db")

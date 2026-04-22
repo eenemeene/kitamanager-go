@@ -30,6 +30,23 @@ const (
 	// attacker holding a stolen access token cannot brute-force the current
 	// password at full API-mutation-rate-limit speed.
 	AuditActionPasswordChangeFailed AuditAction = "password_change_failed"
+
+	// --- Multi-factor authentication events ---
+	// AuditActionFactorEnrolled marks the completion of factor enrollment
+	// (user scanned the QR / confirmed the code). The `details` JSON
+	// carries the factor type.
+	AuditActionFactorEnrolled AuditAction = "factor_enrolled"
+	// AuditActionFactorDeleted marks a user removing their OWN factor.
+	AuditActionFactorDeleted AuditAction = "factor_deleted"
+	// AuditActionFactorAdminDeleted marks an admin wiping a user's
+	// factor (support-ticket recovery for a lost authenticator).
+	// Distinct from FactorDeleted so audit queries can separate "user
+	// disabled 2FA" from "admin intervention."
+	AuditActionFactorAdminDeleted AuditAction = "factor_admin_deleted"
+	// AuditActionBackupCodesRegenerated marks a regenerate-backup-codes
+	// event. Separate action because regeneration should happen rarely;
+	// frequent regeneration is a signal worth surfacing to admins.
+	AuditActionBackupCodesRegenerated AuditAction = "backup_codes_regenerated"
 )
 
 // AuditLog represents an audit log entry for security-relevant operations.

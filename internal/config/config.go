@@ -27,7 +27,18 @@ var (
 	ErrInvalidAdminEmail = errors.New("SEED_ADMIN_EMAIL must be a valid email address")
 	ErrInvalidSMTPPort   = errors.New("SMTP_PORT must be a valid port number (1-65535)")
 	ErrInvalidSMTPFrom   = errors.New("SMTP_FROM must be a valid email address")
+	ErrMissingTOTPKey    = errors.New("TOTP_ENCRYPTION_KEY must be set (generate with: openssl rand -hex 32)")
+	ErrInvalidTOTPKey    = errors.New("TOTP_ENCRYPTION_KEY must be exactly 32 bytes hex-encoded (64 hex chars) and must not be a known placeholder value")
 )
+
+// knownPlaceholderTOTPKeys mirrors knownPlaceholderJWTSecrets: any string
+// that's ever appeared in an example .env file is rejected so a forgotten
+// placeholder cannot boot with a predictable key.
+var knownPlaceholderTOTPKeys = map[string]bool{
+	"0000000000000000000000000000000000000000000000000000000000000000": true,
+	"change-me-in-production": true,
+	"dev-only-totp-key-do-not-use-in-production-please-replace-now": true,
+}
 
 // knownPlaceholderJWTSecrets are legacy placeholder values that must be rejected.
 // Add every placeholder string that has ever shipped in example files here so that
@@ -98,6 +109,14 @@ type Config struct {
 	SMTPUser     string
 	SMTPPassword string
 	SMTPFrom     string
+
+	// TOTP encryption. TOTPEncryptionKey is 64 hex chars (= 32 bytes) used
+	// as the AES-256-GCM key for factor_totp_secrets.secret_ciphertext.
+	// Rotating this key invalidates all stored TOTP secrets; the operational
+	// answer is "affected users re-enroll TOTP." TOTPIssuer is the string
+	// shown in the user's authenticator app.
+	TOTPEncryptionKey string
+	TOTPIssuer        string
 }
 
 // Validate checks the configuration and fails closed on every axis.
@@ -167,6 +186,20 @@ func (c *Config) Validate() error {
 		}
 	}
 
+	// TOTP encryption key. Same shape discipline as JWT_SECRET: required,
+	// known-placeholder values rejected, exact length enforced. Hex
+	// decoding is done at startup (cmd/api/main.go) — here we only
+	// validate the shape of the input string to fail fast with a clear
+	// error.
+	switch {
+	case c.TOTPEncryptionKey == "":
+		errs = append(errs, ErrMissingTOTPKey)
+	case knownPlaceholderTOTPKeys[c.TOTPEncryptionKey]:
+		errs = append(errs, ErrInvalidTOTPKey)
+	case !isValidHex64(c.TOTPEncryptionKey):
+		errs = append(errs, ErrInvalidTOTPKey)
+	}
+
 	// Admin seeding
 	if c.SeedAdminEmail != "" {
 		if !strings.Contains(c.SeedAdminEmail, "@") {
@@ -189,6 +222,24 @@ func isValidPort(port string) bool {
 		return false
 	}
 	return p >= 1 && p <= 65535
+}
+
+// isValidHex64 returns true if s is exactly 64 hex characters — the
+// form of a 32-byte key as emitted by `openssl rand -hex 32`.
+func isValidHex64(s string) bool {
+	if len(s) != 64 {
+		return false
+	}
+	for _, r := range s {
+		switch {
+		case r >= '0' && r <= '9':
+		case r >= 'a' && r <= 'f':
+		case r >= 'A' && r <= 'F':
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 func Load() (*Config, error) {
@@ -258,6 +309,9 @@ func Load() (*Config, error) {
 		SMTPUser:     getEnv("SMTP_USER", ""),
 		SMTPPassword: getEnv("SMTP_PASSWORD", ""),
 		SMTPFrom:     getEnv("SMTP_FROM", ""),
+
+		TOTPEncryptionKey: getEnv("TOTP_ENCRYPTION_KEY", ""),
+		TOTPIssuer:        getEnv("TOTP_ISSUER", "KitaManager"),
 	}
 
 	if err := cfg.Validate(); err != nil {

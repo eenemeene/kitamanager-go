@@ -25,6 +25,7 @@ type Deps struct {
 	Export                *handlers.ExportHandler
 	GovernmentFundingBill *handlers.GovernmentFundingBillHandler
 	AuditLog              *handlers.AuditLogHandler
+	Factor                *handlers.FactorHandler
 	AuthMiddleware        *middleware.AuthMiddleware
 	AuthzMiddleware       *middleware.AuthorizationMiddleware
 	CSRFMiddleware        *middleware.CSRFMiddleware
@@ -48,6 +49,7 @@ func Setup(r *gin.Engine, d Deps) {
 	exportHandler := d.Export
 	governmentFundingBillHandler := d.GovernmentFundingBill
 	auditLogHandler := d.AuditLog
+	factorHandler := d.Factor
 	authMiddleware := d.AuthMiddleware
 	authzMiddleware := d.AuthzMiddleware
 	csrfMiddleware := d.CSRFMiddleware
@@ -76,6 +78,18 @@ func Setup(r *gin.Engine, d Deps) {
 		protected.PUT("/me/password", authHandler.ChangePassword)
 		protected.GET("/me/sessions", authHandler.ListSessions)
 		protected.DELETE("/me/sessions/:id", authHandler.RevokeSession)
+
+		// MFA factors. Path template is /users/:userId/factors/... with
+		// :userId=me as the self-alias (Okta convention). Admin routes
+		// on the same template come in a later PR; for now the
+		// handler rejects addressing anyone but yourself.
+		protected.GET("/users/:userId/factors", factorHandler.List)
+		protected.POST("/users/:userId/factors", factorHandler.Enroll)
+		protected.GET("/users/:userId/factors/:id", factorHandler.Get)
+		protected.PATCH("/users/:userId/factors/:id", factorHandler.UpdateLabel)
+		protected.DELETE("/users/:userId/factors/:id", factorHandler.Delete)
+		protected.POST("/users/:userId/factors/:id/activate", factorHandler.Activate)
+		protected.POST("/users/:userId/factors/:id/regenerate", factorHandler.Regenerate)
 		{
 			// ============================================================
 			// Organization management

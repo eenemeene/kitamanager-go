@@ -28,6 +28,9 @@ var (
 
 // truncation order: leaf tables first, then parents
 var truncateTables = []string{
+	"factor_backup_codes",
+	"factor_totp_secrets",
+	"factors",
 	"sessions",
 	"audit_logs",
 	"budget_item_entries",

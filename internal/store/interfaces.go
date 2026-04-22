@@ -231,6 +231,34 @@ type BudgetItemStorer interface {
 	Entries() PeriodStorer[models.BudgetItemEntry]
 }
 
+// FactorStorer defines the interface for multi-factor authentication
+// storage. All methods that address a single factor by id take the
+// owning userID too so cross-user access returns "not found" rather
+// than leaking existence.
+type FactorStorer interface {
+	FindByUserID(ctx context.Context, userID uint) ([]models.Factor, error)
+	FindActiveByUserID(ctx context.Context, userID uint) ([]models.Factor, error)
+	FindByIDAndUser(ctx context.Context, id, userID uint) (*models.Factor, error)
+	FindPendingByUserAndType(ctx context.Context, userID uint, factorType string) (*models.Factor, error)
+	FindBackupCodesFactor(ctx context.Context, userID uint) (*models.Factor, error)
+	CreateFactor(ctx context.Context, f *models.Factor) error
+	ActivateFactor(ctx context.Context, id, userID uint) (bool, error)
+	DeleteFactor(ctx context.Context, id, userID uint) (int64, error)
+	UpdateLabel(ctx context.Context, id, userID uint, label *string) (bool, error)
+	TouchLastUsed(ctx context.Context, id uint) error
+	CleanupAbandonedPending(ctx context.Context, olderThan time.Duration) (int64, error)
+
+	CreateTOTPSecret(ctx context.Context, secret *models.FactorTOTPSecret) error
+	FindTOTPSecret(ctx context.Context, factorID uint) (*models.FactorTOTPSecret, error)
+	AcceptTOTPStep(ctx context.Context, factorID uint, step int64) (bool, error)
+
+	InsertBackupCodes(ctx context.Context, codes []models.FactorBackupCode) error
+	ListBackupCodes(ctx context.Context, factorID uint) ([]models.FactorBackupCode, error)
+	CountUnusedBackupCodes(ctx context.Context, factorID uint) (int, error)
+	ConsumeBackupCode(ctx context.Context, factorID uint, codeHash string) (bool, error)
+	ReplaceBackupCodes(ctx context.Context, factorID uint, fresh []models.FactorBackupCode) error
+}
+
 // SessionStorer defines the interface for server-side session storage.
 // The `idHash` parameters are sha256 hex of the raw cookie value.
 type SessionStorer interface {
@@ -294,5 +322,6 @@ var (
 	_ ChildVoucherStorer                = (*ChildVoucherStore)(nil)
 	_ BudgetItemStorer                  = (*BudgetItemStore)(nil)
 	_ SessionStorer                     = (*SessionStore)(nil)
+	_ FactorStorer                      = (*FactorStore)(nil)
 	_ Transactor                        = (*GormTransactor)(nil)
 )

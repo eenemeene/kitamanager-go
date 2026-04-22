@@ -9125,6 +9125,443 @@
                 }
             }
         },
+        "/api/v1/users/{userId}/factors": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns every activated factor owned by the addressed user.\nPending (not-yet-activated) factors are hidden.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "factors"
+                ],
+                "summary": "List the caller's MFA factors",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User id or 'me'",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FactorListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a pending factor. For TOTP, returns the\nbase32 secret and otpauth URI that the client displays\nas a QR code. The factor is not yet usable — call\n/activate with a valid code to enable it.\nPassword re-entry is required (step-up) to prevent a\nstolen session from installing a backdoor authenticator.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "factors"
+                ],
+                "summary": "Start MFA enrollment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User id or 'me'",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Factor type + step-up password",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FactorEnrollRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FactorResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/{userId}/factors/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "factors"
+                ],
+                "summary": "Get a single factor",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User id or 'me'",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Factor id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FactorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Disables a factor. Password re-entry required\n(step-up). A code from any active factor is additionally\nrequired when removing your last primary factor —\notherwise a stolen session could wipe your 2FA and\nleave you with password-only protection.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "factors"
+                ],
+                "summary": "Remove a factor",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User id or 'me'",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Factor id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Step-up password + optional code",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FactorDeleteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Rename a factor. No step-up required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "factors"
+                ],
+                "summary": "Edit a factor's label",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User id or 'me'",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Factor id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New label",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FactorLabelUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FactorResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/{userId}/factors/{id}/activate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Verifies the first code (proving the user can read\ntheir authenticator) and enables the factor. If this\nis the user's first primary factor, a fresh set of\nbackup codes is generated and returned — save them NOW.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "factors"
+                ],
+                "summary": "Activate a pending factor",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User id or 'me'",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Factor id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Code from the authenticator",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FactorActivateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FactorActivateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/{userId}/factors/{id}/regenerate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Replaces every backup code (used or unused) with a\nfresh set. Password re-entry required. Only valid for\nbackup_codes factors.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "factors"
+                ],
+                "summary": "Regenerate backup codes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User id or 'me'",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Factor id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Step-up password",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FactorRegenerateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.BackupCodesPayload"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/users/{userId}/memberships": {
             "get": {
                 "security": [
@@ -9632,7 +10069,11 @@
                 "org_delete",
                 "password_reset",
                 "password_change",
-                "password_change_failed"
+                "password_change_failed",
+                "factor_enrolled",
+                "factor_deleted",
+                "factor_admin_deleted",
+                "backup_codes_regenerated"
             ],
             "x-enum-varnames": [
                 "AuditActionLogin",
@@ -9651,7 +10092,11 @@
                 "AuditActionOrgDelete",
                 "AuditActionPasswordReset",
                 "AuditActionPasswordChange",
-                "AuditActionPasswordChangeFailed"
+                "AuditActionPasswordChangeFailed",
+                "AuditActionFactorEnrolled",
+                "AuditActionFactorDeleted",
+                "AuditActionFactorAdminDeleted",
+                "AuditActionBackupCodesRegenerated"
             ]
         },
         "github_com_eenemeene_kitamanager-go_internal_models.AuditLogResponse": {
@@ -9703,6 +10148,24 @@
                 "user_id": {
                     "type": "integer",
                     "example": 1
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.BackupCodesPayload": {
+            "type": "object",
+            "properties": {
+                "codes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "hk7m-93px-2fnr"
+                    ]
+                },
+                "factor_id": {
+                    "type": "integer",
+                    "example": 43
                 }
             }
         },
@@ -11299,6 +11762,136 @@
                 "message": {
                     "type": "string",
                     "example": "resource not found"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.FactorActivateRequest": {
+            "type": "object",
+            "required": [
+                "code"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "123456"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.FactorActivateResponse": {
+            "type": "object",
+            "properties": {
+                "activated": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "backup_codes": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.BackupCodesPayload"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.FactorDeleteRequest": {
+            "type": "object",
+            "required": [
+                "password"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.FactorEnrollRequest": {
+            "type": "object",
+            "required": [
+                "password",
+                "type"
+            ],
+            "properties": {
+                "label": {
+                    "type": "string",
+                    "example": "iPhone"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "yourcurrentpassword"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "totp"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.FactorLabelUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string",
+                    "example": "Old phone"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.FactorListResponse": {
+            "type": "object",
+            "properties": {
+                "factors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FactorResponse"
+                    }
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.FactorRegenerateRequest": {
+            "type": "object",
+            "required": [
+                "password"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string",
+                    "example": "yourcurrentpassword"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.FactorResponse": {
+            "type": "object",
+            "properties": {
+                "activated": {
+                    "description": "Activated is a derived convenience field: true iff EnabledAt is set.\nClients that don't need the timestamp can just read this boolean.",
+                    "type": "boolean",
+                    "example": true
+                },
+                "backup_codes_remaining": {
+                    "description": "BackupCodesRemaining is populated only for factors of type\n\"backup_codes\"; nil otherwise.",
+                    "type": "integer",
+                    "example": 7
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "enabled_at": {
+                    "type": "string"
+                },
+                "enrollment": {
+                    "description": "Enrollment is populated only on the `POST` response during\ninitial enrollment; subsequent GETs omit it."
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "label": {
+                    "type": "string",
+                    "example": "Authenticator app"
+                },
+                "last_used_at": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "totp"
                 }
             }
         },
