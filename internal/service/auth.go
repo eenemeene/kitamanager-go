@@ -206,6 +206,46 @@ func (s *AuthService) GetCurrentUser(ctx context.Context, userID uint) (*models.
 	return user, nil
 }
 
+// ListSessions returns every non-expired session belonging to the user.
+// `currentIDHash` is the id-hash of the caller's own session (from
+// ctxkeys.SessionIDHash) so the response can mark which row is the
+// session that served this request. Pass "" when called outside a
+// request context.
+func (s *AuthService) ListSessions(ctx context.Context, userID uint, currentIDHash string) ([]models.UserSessionResponse, error) {
+	rows, err := s.sessionStore.ListForUser(ctx, userID)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "failed to list sessions")
+	}
+	out := make([]models.UserSessionResponse, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, models.UserSessionResponse{
+			ID:               r.ID,
+			CreatedAt:        r.CreatedAt,
+			ExpiresAt:        r.ExpiresAt,
+			CreatedIP:        r.CreatedIP,
+			CreatedUserAgent: r.CreatedUserAgent,
+			Current:          r.ID == currentIDHash,
+		})
+	}
+	return out, nil
+}
+
+// RevokeSession deletes a single session belonging to the user. The store
+// scopes the DELETE to `user_id = ?` so a user cannot revoke another
+// user's session even if they learned the target's id-hash. Returns
+// NotFound if no matching row exists, so callers leak neither the
+// session's existence nor its owner.
+func (s *AuthService) RevokeSession(ctx context.Context, userID uint, idHash string) error {
+	rows, err := s.sessionStore.DeleteForUser(ctx, idHash, userID)
+	if err != nil {
+		return apperror.InternalWrap(err, "failed to revoke session")
+	}
+	if rows == 0 {
+		return apperror.NotFound("session")
+	}
+	return nil
+}
+
 // issueSession generates a new session row and the matching CSRF token.
 func (s *AuthService) issueSession(ctx context.Context, userID uint, ipAddress, userAgent string) (*AuthResult, error) {
 	raw, hashed, err := store.GenerateSessionToken()

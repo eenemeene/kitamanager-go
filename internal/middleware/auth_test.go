@@ -98,6 +98,25 @@ func (f *fakeSessionStore) CleanupExpired(ctx context.Context) error {
 	return nil
 }
 
+func (f *fakeSessionStore) ListForUser(ctx context.Context, userID uint) ([]models.Session, error) {
+	var out []models.Session
+	for h, s := range f.sessions {
+		if s.userID == userID && !time.Now().UTC().After(s.expiresAt) {
+			out = append(out, models.Session{ID: h, UserID: s.userID, ExpiresAt: s.expiresAt})
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeSessionStore) DeleteForUser(ctx context.Context, idHash string, userID uint) (int64, error) {
+	s, ok := f.sessions[idHash]
+	if !ok || s.userID != userID {
+		return 0, nil
+	}
+	delete(f.sessions, idHash)
+	return 1, nil
+}
+
 // addSession seeds a session as if it had been issued by Login, returning the
 // raw cookie value.
 func (f *fakeSessionStore) addSession(userID uint, email string, lifetime time.Duration) string {

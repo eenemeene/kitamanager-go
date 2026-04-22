@@ -501,6 +501,171 @@ func TestAuthService_GetCurrentUser_NotFound(t *testing.T) {
 	}
 }
 
+func TestAuthService_ListSessions_Empty(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	ctx := context.Background()
+	user := createTestUserWithHashedPassword(t, db, "User", "u@example.com", "pw-123456")
+
+	rows, err := svc.ListSessions(ctx, user.ID, "")
+	if err != nil {
+		t.Fatalf("ListSessions: %v", err)
+	}
+	if len(rows) != 0 {
+		t.Errorf("expected empty list, got %d rows", len(rows))
+	}
+}
+
+func TestAuthService_ListSessions_MarksCurrent(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	ctx := context.Background()
+	createTestUserWithHashedPassword(t, db, "User", "u@example.com", "pw-123456")
+
+	// Two logins — two sessions. The caller's "current" session is the
+	// one we pass to ListSessions via its id-hash.
+	a, err := svc.Login(ctx, "u@example.com", "pw-123456", "10.0.0.1", "ua-a")
+	if err != nil {
+		t.Fatalf("login a: %v", err)
+	}
+	b, err := svc.Login(ctx, "u@example.com", "pw-123456", "10.0.0.2", "ua-b")
+	if err != nil {
+		t.Fatalf("login b: %v", err)
+	}
+
+	// Find the user ID from the second session's lookup.
+	look, err := store.NewSessionStore(db).Lookup(ctx, store.HashSessionToken(a.SessionToken))
+	if err != nil {
+		t.Fatalf("lookup: %v", err)
+	}
+	userID := look.UserID
+
+	rows, err := svc.ListSessions(ctx, userID, store.HashSessionToken(b.SessionToken))
+	if err != nil {
+		t.Fatalf("ListSessions: %v", err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("expected 2 sessions, got %d", len(rows))
+	}
+	var currentCount, nonCurrentCount int
+	for _, r := range rows {
+		if r.Current {
+			currentCount++
+			if r.ID != store.HashSessionToken(b.SessionToken) {
+				t.Errorf("wrong session flagged as current: %q", r.ID)
+			}
+		} else {
+			nonCurrentCount++
+		}
+	}
+	if currentCount != 1 || nonCurrentCount != 1 {
+		t.Errorf("expected exactly one Current row, got current=%d non=%d", currentCount, nonCurrentCount)
+	}
+}
+
+func TestAuthService_ListSessions_NoCurrentHash(t *testing.T) {
+	// When called without a current-session hash (e.g. from an admin
+	// tool), no row is flagged as current.
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	ctx := context.Background()
+	createTestUserWithHashedPassword(t, db, "User", "u@example.com", "pw-123456")
+	_, err := svc.Login(ctx, "u@example.com", "pw-123456", "10.0.0.1", "ua")
+	if err != nil {
+		t.Fatalf("login: %v", err)
+	}
+
+	look, _ := store.NewSessionStore(db).Lookup(ctx,
+		store.HashSessionToken("dummy")) // will fail, use a different path
+	_ = look
+	// Get userID via FindByEmail instead.
+	userStore := store.NewUserStore(db)
+	u, err := userStore.FindByEmail(ctx, "u@example.com")
+	if err != nil {
+		t.Fatalf("FindByEmail: %v", err)
+	}
+
+	rows, err := svc.ListSessions(ctx, u.ID, "")
+	if err != nil {
+		t.Fatalf("ListSessions: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 session, got %d", len(rows))
+	}
+	if rows[0].Current {
+		t.Error("no session should be flagged as current when hash is empty")
+	}
+}
+
+func TestAuthService_RevokeSession_Success(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	ctx := context.Background()
+	createTestUserWithHashedPassword(t, db, "User", "u@example.com", "pw-123456")
+	result, err := svc.Login(ctx, "u@example.com", "pw-123456", "10.0.0.1", "ua")
+	if err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	u, _ := store.NewUserStore(db).FindByEmail(ctx, "u@example.com")
+
+	hash := store.HashSessionToken(result.SessionToken)
+	if err := svc.RevokeSession(ctx, u.ID, hash); err != nil {
+		t.Fatalf("RevokeSession: %v", err)
+	}
+
+	// Session must be gone.
+	sess := store.NewSessionStore(db)
+	if _, err := sess.Lookup(ctx, hash); err != store.ErrNotFound {
+		t.Errorf("session should be gone, got %v", err)
+	}
+}
+
+func TestAuthService_RevokeSession_UnknownID_NotFound(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	ctx := context.Background()
+	user := createTestUserWithHashedPassword(t, db, "User", "u@example.com", "pw-123456")
+
+	err := svc.RevokeSession(ctx, user.ID, store.HashSessionToken("never-issued"))
+	if err == nil {
+		t.Fatal("expected NotFound, got nil")
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestAuthService_RevokeSession_CrossUser_NotFound(t *testing.T) {
+	// Security invariant: Bob cannot revoke Alice's session even with
+	// her id-hash. The service returns NotFound — same as an unknown id
+	// — so the endpoint does not leak session existence.
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	ctx := context.Background()
+	createTestUserWithHashedPassword(t, db, "Alice", "alice@example.com", "pw-123456")
+	bob := createTestUserWithHashedPassword(t, db, "Bob", "bob@example.com", "pw-123456")
+
+	aliceSession, err := svc.Login(ctx, "alice@example.com", "pw-123456", "10.0.0.1", "ua")
+	if err != nil {
+		t.Fatalf("alice login: %v", err)
+	}
+	aliceHash := store.HashSessionToken(aliceSession.SessionToken)
+
+	err = svc.RevokeSession(ctx, bob.ID, aliceHash)
+	if err == nil {
+		t.Fatal("bob should not be able to revoke alice's session")
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound to avoid leaking session existence, got %v", err)
+	}
+
+	// Alice's session must still exist.
+	sess := store.NewSessionStore(db)
+	if _, err := sess.Lookup(ctx, aliceHash); err != nil {
+		t.Errorf("alice's session was wrongly deleted: %v", err)
+	}
+}
+
 // Sessions issued by Login must have the configured lifetime.
 func TestAuthService_Login_SessionLifetime(t *testing.T) {
 	db := setupTestDB(t)

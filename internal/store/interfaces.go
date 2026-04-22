@@ -240,6 +240,8 @@ type SessionStorer interface {
 	DeleteAllForUser(ctx context.Context, userID uint) error
 	DeleteAllForUserExcept(ctx context.Context, userID uint, keepIDHash string) error
 	CleanupExpired(ctx context.Context) error
+	ListForUser(ctx context.Context, userID uint) ([]models.Session, error)
+	DeleteForUser(ctx context.Context, idHash string, userID uint) (int64, error)
 }
 
 // AuditStorer defines the interface for audit log storage operations

@@ -161,6 +161,72 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	})
 }
 
+// ListSessions godoc
+// @Summary List the caller's active sessions
+// @Description Returns every non-expired session belonging to the caller,
+// @Description with a `current` flag marking the one that served this
+// @Description request. Used by the UI to show "signed in on these devices"
+// @Description and to let the user revoke individual sessions.
+// @Tags auth
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} models.UserSessionsResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/me/sessions [get]
+func (h *AuthHandler) ListSessions(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == 0 {
+		respondError(c, apperror.Unauthorized("not authenticated"))
+		return
+	}
+
+	current, _ := c.Get(ctxkeys.SessionIDHash)
+	currentHash, _ := current.(string)
+
+	sessions, err := h.authService.ListSessions(c.Request.Context(), userID, currentHash)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, models.UserSessionsResponse{Sessions: sessions})
+}
+
+// RevokeSession godoc
+// @Summary Revoke one of the caller's own sessions
+// @Description Deletes the session with the given id (sha256 hex of the
+// @Description cookie value). Scoped to the caller — a user cannot revoke
+// @Description another user's session, and the response is 404 in that
+// @Description case so the endpoint does not leak session existence. If
+// @Description the caller revokes their own current session, their next
+// @Description request will 401 and the frontend will clear cookies.
+// @Tags auth
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Session id (sha256 hex)"
+// @Success 204 "No Content"
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/me/sessions/{id} [delete]
+func (h *AuthHandler) RevokeSession(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == 0 {
+		respondError(c, apperror.Unauthorized("not authenticated"))
+		return
+	}
+
+	id := c.Param("id")
+
+	if err := h.authService.RevokeSession(c.Request.Context(), userID, id); err != nil {
+		respondError(c, err)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
 // setAuthCookies sets the session and CSRF cookies from an AuthResult.
 func (h *AuthHandler) setAuthCookies(c *gin.Context, result *service.AuthResult) {
 	maxAge := int(result.ExpiresIn)
