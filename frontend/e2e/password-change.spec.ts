@@ -120,10 +120,11 @@ test.describe('Password change flow (regression for #134)', () => {
 });
 
 // Regression pair for the above: a password change must not silently drop
-// the user's org role. Token revocation (part of ChangePassword) invalidates
-// the old session, but the user_organizations rows must survive so the next
-// login still resolves the role through Casbin. If a future refactor moves
-// role data onto the token claim alone, this test fails.
+// the user's org role. Session revocation (part of ChangePassword) wipes
+// every OTHER session the user has, but the user_organizations rows must
+// survive so the next login still resolves the role through Casbin. If a
+// future refactor moves role data onto the session row itself (instead of
+// resolving it per-request from the DB), this test fails.
 test.describe('Password change preserves org membership', () => {
   let testOrgId: number;
   let testUserId: number | undefined;

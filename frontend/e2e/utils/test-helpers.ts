@@ -49,8 +49,8 @@ async function apiRequest<T>(page: Page, method: string, url: string, body?: unk
 
 /**
  * Login to the application via API and set up authentication state.
- * The API sets HttpOnly cookies (access_token, refresh_token, csrf_token)
- * which are automatically sent with subsequent requests.
+ * The API sets an HttpOnly `session` cookie and a JS-readable `csrf_token`
+ * cookie, which are automatically sent with subsequent requests.
  */
 export async function login(
   page: Page,
@@ -427,8 +427,8 @@ export async function addUserToOrgViaApi(
 }
 
 /**
- * Log out the current session via the API. Clears the access_token,
- * refresh_token, and csrf_token cookies so the next login starts clean.
+ * Log out the current session via the API. Clears the `session` and
+ * `csrf_token` cookies so the next login starts clean.
  */
 export async function logoutViaApi(page: Page): Promise<void> {
   await page.evaluate(async () => {
