@@ -84,24 +84,6 @@ func performRequest(r *gin.Engine, method, path string, body any) *httptest.Resp
 	return w
 }
 
-// performRequestWithCookies executes an HTTP request with cookies from a previous response.
-func performRequestWithCookies(r *gin.Engine, method, path string, body any, cookies []*http.Cookie) *httptest.ResponseRecorder {
-	var req *http.Request
-	if body != nil {
-		jsonBody := mustMarshal(body)
-		req = mustNewRequest(method, path, bytes.NewBuffer(jsonBody))
-		req.Header.Set("Content-Type", "application/json")
-	} else {
-		req = mustNewRequest(method, path, nil)
-	}
-	for _, cookie := range cookies {
-		req.AddCookie(cookie)
-	}
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-	return w
-}
-
 // performRequestRaw executes an HTTP request with a raw string body.
 func performRequestRaw(r *gin.Engine, method, path string, body string) *httptest.ResponseRecorder {
 	req := mustNewRequest(method, path, bytes.NewBufferString(body))
@@ -288,9 +270,9 @@ func createAuditService(db *gorm.DB) *service.AuditService {
 // createAuthService creates an auth service for testing.
 func createAuthService(db *gorm.DB) *service.AuthService {
 	userStore := store.NewUserStore(db)
-	tokenStore := store.NewTokenStore(db)
+	sessionStore := store.NewSessionStore(db)
 	auditService := createAuditService(db)
-	return service.NewAuthService(userStore, tokenStore, "test-jwt-secret", auditService)
+	return service.NewAuthService(userStore, sessionStore, "test-jwt-secret", auditService)
 }
 
 // createAuthHandler creates an auth handler for testing.

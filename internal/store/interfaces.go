@@ -231,12 +231,14 @@ type BudgetItemStorer interface {
 	Entries() PeriodStorer[models.BudgetItemEntry]
 }
 
-// TokenStorer defines the interface for token revocation storage operations.
-type TokenStorer interface {
-	RevokeToken(ctx context.Context, tokenHash string, userID uint, expiresAt time.Time) error
-	RevokeAllForUser(ctx context.Context, userID uint) error
-	IsRevoked(ctx context.Context, tokenHash string) (bool, error)
-	IsUserRevokedSince(ctx context.Context, userID uint, tokenIssuedAt time.Time) (bool, error)
+// SessionStorer defines the interface for server-side session storage.
+// The `idHash` parameters are sha256 hex of the raw cookie value.
+type SessionStorer interface {
+	Create(ctx context.Context, sess *models.Session) error
+	Lookup(ctx context.Context, idHash string) (*SessionLookupResult, error)
+	Delete(ctx context.Context, idHash string) error
+	DeleteAllForUser(ctx context.Context, userID uint) error
+	DeleteAllForUserExcept(ctx context.Context, userID uint, keepIDHash string) error
 	CleanupExpired(ctx context.Context) error
 }
 
@@ -289,6 +291,6 @@ var (
 	_ AuditStorer                       = (*AuditStore)(nil)
 	_ ChildVoucherStorer                = (*ChildVoucherStore)(nil)
 	_ BudgetItemStorer                  = (*BudgetItemStore)(nil)
-	_ TokenStorer                       = (*TokenStore)(nil)
+	_ SessionStorer                     = (*SessionStore)(nil)
 	_ Transactor                        = (*GormTransactor)(nil)
 )

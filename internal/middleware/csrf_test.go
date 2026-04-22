@@ -53,7 +53,7 @@ func TestCSRFMiddleware_UnsafeMethods_WithValidToken(t *testing.T) {
 			})
 
 			req := httptest.NewRequest(method, "/test", nil)
-			req.AddCookie(&http.Cookie{Name: "access_token", Value: accessToken})
+			req.AddCookie(&http.Cookie{Name: "session", Value: accessToken})
 			req.Header.Set(CSRFHeaderName, csrfToken)
 			w := httptest.NewRecorder()
 
@@ -78,7 +78,7 @@ func TestCSRFMiddleware_UnsafeMethods_MissingHeader(t *testing.T) {
 	})
 
 	req := httptest.NewRequest("POST", "/test", nil)
-	req.AddCookie(&http.Cookie{Name: "access_token", Value: "some-token"})
+	req.AddCookie(&http.Cookie{Name: "session", Value: "some-token"})
 	// No CSRF header
 	w := httptest.NewRecorder()
 
@@ -100,7 +100,7 @@ func TestCSRFMiddleware_UnsafeMethods_WrongToken(t *testing.T) {
 	})
 
 	req := httptest.NewRequest("POST", "/test", nil)
-	req.AddCookie(&http.Cookie{Name: "access_token", Value: "some-token"})
+	req.AddCookie(&http.Cookie{Name: "session", Value: "some-token"})
 	req.Header.Set(CSRFHeaderName, "wrong-csrf-token")
 	w := httptest.NewRecorder()
 
@@ -125,7 +125,7 @@ func TestCSRFMiddleware_UnsafeMethods_TokenFromDifferentSession(t *testing.T) {
 	})
 
 	req := httptest.NewRequest("POST", "/test", nil)
-	req.AddCookie(&http.Cookie{Name: "access_token", Value: "my-access-token"})
+	req.AddCookie(&http.Cookie{Name: "session", Value: "my-access-token"})
 	req.Header.Set(CSRFHeaderName, csrfForOtherSession)
 	w := httptest.NewRecorder()
 
@@ -172,7 +172,7 @@ func TestCSRFMiddleware_RequireCSRFForCookieAuth(t *testing.T) {
 
 	req := httptest.NewRequest("POST", "/test", nil)
 	// Has access_token cookie (cookie auth), no CSRF
-	req.AddCookie(&http.Cookie{Name: "access_token", Value: "some-token"})
+	req.AddCookie(&http.Cookie{Name: "session", Value: "some-token"})
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, req)
@@ -245,7 +245,7 @@ func TestCSRFMiddleware_EmptyAccessTokenCookie(t *testing.T) {
 	})
 
 	req := httptest.NewRequest("POST", "/test", nil)
-	req.AddCookie(&http.Cookie{Name: "access_token", Value: accessToken})
+	req.AddCookie(&http.Cookie{Name: "session", Value: accessToken})
 	req.Header.Set(CSRFHeaderName, csrfToken)
 	w := httptest.NewRecorder()
 
@@ -296,7 +296,7 @@ func TestCSRFMiddleware_ExpiredAccessTokenCookie_ValidCSRF(t *testing.T) {
 	})
 
 	req := httptest.NewRequest("POST", "/test", nil)
-	req.AddCookie(&http.Cookie{Name: "access_token", Value: accessToken})
+	req.AddCookie(&http.Cookie{Name: "session", Value: accessToken})
 	req.Header.Set(CSRFHeaderName, csrfToken)
 	w := httptest.NewRecorder()
 

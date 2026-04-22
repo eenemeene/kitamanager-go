@@ -145,11 +145,11 @@ func createUserService(db *gorm.DB) *UserService {
 	return NewUserService(userStore, userOrgStore)
 }
 
-func createUserServiceWithTokenStore(db *gorm.DB) (*UserService, store.TokenStorer) {
+func createUserServiceWithSessionStore(db *gorm.DB) (*UserService, store.SessionStorer) {
 	userStore := store.NewUserStore(db)
 	userOrgStore := store.NewUserOrganizationStore(db)
-	tokenStore := store.NewTokenStore(db)
-	return NewUserService(userStore, userOrgStore, tokenStore), tokenStore
+	sessionStore := store.NewSessionStore(db)
+	return NewUserService(userStore, userOrgStore, sessionStore), sessionStore
 }
 
 func createUserOrganizationService(db *gorm.DB) *UserOrganizationService {
@@ -400,7 +400,7 @@ func createAuditService(db *gorm.DB) *AuditService {
 // createAuthService creates an auth service for testing.
 func createAuthService(db *gorm.DB) *AuthService {
 	userStore := store.NewUserStore(db)
-	tokenStore := store.NewTokenStore(db)
+	sessionStore := store.NewSessionStore(db)
 	auditService := createAuditService(db)
-	return NewAuthService(userStore, tokenStore, "test-jwt-secret", auditService)
+	return NewAuthService(userStore, sessionStore, "test-jwt-secret", auditService)
 }

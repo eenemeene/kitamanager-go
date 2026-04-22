@@ -1392,7 +1392,7 @@ const docTemplate = `{
         },
         "/api/v1/login": {
             "post": {
-                "description": "Authenticate user with email and password, returns JWT token",
+                "description": "Authenticate user with email and password. Sets a session cookie on success.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1450,7 +1450,7 @@ const docTemplate = `{
         },
         "/api/v1/logout": {
             "post": {
-                "description": "Clear authentication cookies to log out the user",
+                "description": "Delete the current session and clear authentication cookies.",
                 "produces": [
                     "application/json"
                 ],
@@ -1481,7 +1481,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns the currently authenticated user based on the JWT token",
+                "description": "Returns the currently authenticated user.",
                 "produces": [
                     "application/json"
                 ],
@@ -1518,7 +1518,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Authenticated user changes their own password. Requires current password verification. Revokes all existing tokens.",
+                "description": "Authenticated user changes their own password. Requires current password verification. Revokes every other session the user has.",
                 "consumes": [
                     "application/json"
                 ],
@@ -8742,38 +8742,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/refresh": {
-            "post": {
-                "description": "Exchange a valid refresh token (from HttpOnly cookie) for new access and refresh tokens",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Refresh access token",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.RefreshResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/users": {
             "get": {
                 "security": [
@@ -12503,7 +12471,7 @@ const docTemplate = `{
             "properties": {
                 "expires_in": {
                     "type": "integer",
-                    "example": 3600
+                    "example": 604800
                 }
             }
         },
@@ -13586,15 +13554,6 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255,
                     "example": "TVöD-SuE"
-                }
-            }
-        },
-        "github_com_eenemeene_kitamanager-go_internal_models.RefreshResponse": {
-            "type": "object",
-            "properties": {
-                "expires_in": {
-                    "type": "integer",
-                    "example": 3600
                 }
             }
         },

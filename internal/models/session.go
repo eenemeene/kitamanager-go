@@ -2,14 +2,16 @@ package models
 
 import "time"
 
-// RevokedToken represents a revoked JWT token stored in the database.
-// Tokens are identified by their SHA-256 hash for security.
-type RevokedToken struct {
-	ID        uint      `gorm:"primaryKey"`
-	UserID    uint      `gorm:"not null;index"`
-	TokenHash string    `gorm:"size:64;not null;uniqueIndex"` // SHA-256 hex of JWT
-	ExpiresAt time.Time `gorm:"not null;index"`               // For cleanup of expired revocations
-	CreatedAt time.Time
+// Session is a server-side authenticated session. The `ID` column stores
+// sha256(raw_cookie_value), so leaking the table does not hand an attacker
+// usable cookies.
+type Session struct {
+	ID               string    `gorm:"primaryKey;size:64" json:"-"`
+	UserID           uint      `gorm:"not null;index" json:"user_id"`
+	CreatedAt        time.Time `gorm:"not null" json:"created_at"`
+	ExpiresAt        time.Time `gorm:"not null;index" json:"expires_at"`
+	CreatedIP        string    `gorm:"size:45;column:created_ip" json:"created_ip"`
+	CreatedUserAgent string    `gorm:"column:created_user_agent" json:"created_user_agent"`
 }
 
 // UserPasswordResetRequest is the request body for admin-initiated password

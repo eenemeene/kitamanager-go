@@ -13,29 +13,37 @@ import (
 )
 
 const (
-	// CSRFHeaderName is the header name for the CSRF token
+	// CSRFHeaderName is the header name for the CSRF token.
 	CSRFHeaderName = "X-CSRF-Token"
-	// CSRFCookieName is the cookie name for the CSRF token
+	// CSRFCookieName is the cookie name for the CSRF token.
 	CSRFCookieName = "csrf_token"
+	// sessionCookieName duplicates handlers/auth.go's constant. Kept here to
+	// avoid a middleware→handlers import; they are part of the HTTP contract
+	// and change together.
+	sessionCookieName = "session"
 )
 
 // CSRFMiddleware validates CSRF tokens for state-changing requests.
-// The CSRF token is derived from the access token via HMAC, binding it to the session.
-// This prevents cookie-injection attacks where an attacker sets their own CSRF cookie.
+// The CSRF token is derived from the session cookie value via HMAC, binding
+// it to the specific session. An attacker who injects a csrf_token cookie
+// they control cannot produce a matching session-derived value.
 type CSRFMiddleware struct {
-	jwtSecret string
+	serverSecret string
 }
 
-// NewCSRFMiddleware creates a new CSRF middleware instance.
-func NewCSRFMiddleware(jwtSecret string) *CSRFMiddleware {
-	return &CSRFMiddleware{jwtSecret: jwtSecret}
+// NewCSRFMiddleware creates a new CSRF middleware instance. `serverSecret`
+// is a process-wide secret used for the HMAC derivation; the JWT secret is
+// reused today because it already has the required 32-char floor.
+func NewCSRFMiddleware(serverSecret string) *CSRFMiddleware {
+	return &CSRFMiddleware{serverSecret: serverSecret}
 }
 
-// ComputeCSRFToken derives a CSRF token from the access token using HMAC-SHA256.
-// This binds the CSRF token to the specific session, preventing cookie injection.
-func ComputeCSRFToken(accessToken, secret string) string {
+// ComputeCSRFToken derives a CSRF token from the session cookie value using
+// HMAC-SHA256. This binds the CSRF token to the specific session, preventing
+// cookie-injection attacks.
+func ComputeCSRFToken(sessionValue, secret string) string {
 	mac := hmac.New(sha256.New, []byte(secret))
-	mac.Write([]byte(accessToken))
+	mac.Write([]byte(sessionValue))
 	return hex.EncodeToString(mac.Sum(nil))
 }
 
@@ -49,11 +57,11 @@ func (m *CSRFMiddleware) ValidateCSRF() gin.HandlerFunc {
 		}
 
 		// CSRF is only a concern when the browser attaches credentials
-		// automatically — i.e. when the request carries our access_token
-		// cookie. Non-browser clients (CLI tools, curl, server-to-server)
-		// use Authorization: Bearer and do not have browser-driven
-		// credential attachment, so CSRF does not apply to them.
-		accessToken, cookieErr := c.Cookie("access_token")
+		// automatically — i.e. when the request carries our session cookie.
+		// Non-browser clients (CLI tools, curl, server-to-server) use
+		// Authorization: Bearer and do not have browser-driven credential
+		// attachment, so CSRF does not apply to them.
+		sessionValue, cookieErr := c.Cookie(sessionCookieName)
 		if cookieErr != nil {
 			c.Next()
 			return
@@ -69,10 +77,10 @@ func (m *CSRFMiddleware) ValidateCSRF() gin.HandlerFunc {
 			return
 		}
 
-		// Compute expected CSRF token from the access token cookie
-		expectedCSRF := ComputeCSRFToken(accessToken, m.jwtSecret)
+		// Compute expected CSRF token from the session cookie.
+		expectedCSRF := ComputeCSRFToken(sessionValue, m.serverSecret)
 
-		// Constant-time comparison to prevent timing attacks
+		// Constant-time comparison to prevent timing attacks.
 		if subtle.ConstantTimeCompare([]byte(csrfHeader), []byte(expectedCSRF)) != 1 {
 			c.JSON(http.StatusForbidden, models.ErrorResponse{
 				Code:    "csrf_error",

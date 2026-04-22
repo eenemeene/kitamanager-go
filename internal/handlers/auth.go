@@ -11,15 +11,13 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/service"
 )
 
-// Cookie names
+// Cookie names. Duplicated in middleware/auth.go (session) and
+// middleware/csrf.go (csrf_token) to avoid middleware→handlers imports;
+// they are part of the HTTP contract and change together.
 const (
-	accessTokenCookie  = "access_token"
-	refreshTokenCookie = "refresh_token"
-	csrfTokenCookie    = "csrf_token"
+	sessionCookie   = "session"
+	csrfTokenCookie = "csrf_token"
 )
-
-// refreshCookiePath restricts the refresh cookie to only be sent to the refresh endpoint.
-const refreshCookiePath = "/api/v1/refresh"
 
 type AuthHandler struct {
 	authService   *service.AuthService
@@ -32,7 +30,7 @@ func NewAuthHandler(authService *service.AuthService, secureCookies bool) *AuthH
 
 // Login godoc
 // @Summary Login user
-// @Description Authenticate user with email and password, returns JWT token
+// @Description Authenticate user with email and password. Sets a session cookie on success.
 // @Tags auth
 // @Accept json
 // @Produce json
@@ -62,53 +60,18 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	})
 }
 
-// Refresh godoc
-// @Summary Refresh access token
-// @Description Exchange a valid refresh token (from HttpOnly cookie) for new access and refresh tokens
-// @Tags auth
-// @Produce json
-// @Success 200 {object} models.RefreshResponse
-// @Failure 401 {object} models.ErrorResponse
-// @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/refresh [post]
-func (h *AuthHandler) Refresh(c *gin.Context) {
-	refreshTokenStr, err := c.Cookie(refreshTokenCookie)
-	if err != nil || refreshTokenStr == "" {
-		respondError(c, apperror.Unauthorized("missing refresh token"))
-		return
-	}
-
-	// The access-token cookie (when present) is passed through so the service
-	// can revoke it alongside the refresh token — a stolen access token must
-	// not survive past the rotation.
-	oldAccessTokenStr, _ := c.Cookie(accessTokenCookie)
-
-	result, authErr := h.authService.Refresh(c.Request.Context(), refreshTokenStr, oldAccessTokenStr)
-	if authErr != nil {
-		respondError(c, authErr)
-		return
-	}
-
-	h.setAuthCookies(c, result)
-
-	c.JSON(http.StatusOK, models.RefreshResponse{
-		ExpiresIn: result.ExpiresIn,
-	})
-}
-
 // Logout godoc
 // @Summary Logout user
-// @Description Clear authentication cookies to log out the user
+// @Description Delete the current session and clear authentication cookies.
 // @Tags auth
 // @Produce json
 // @Success 200 {object} models.MessageResponse
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
-	accessTokenStr, _ := c.Cookie(accessTokenCookie)
-	refreshTokenStr, _ := c.Cookie(refreshTokenCookie)
+	sessionToken, _ := c.Cookie(sessionCookie)
 
-	h.authService.Logout(c.Request.Context(), accessTokenStr, refreshTokenStr)
+	h.authService.Logout(c.Request.Context(), sessionToken)
 
 	h.clearAuthCookies(c)
 
@@ -119,7 +82,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 
 // Me godoc
 // @Summary Get current user
-// @Description Returns the currently authenticated user based on the JWT token
+// @Description Returns the currently authenticated user.
 // @Tags auth
 // @Produce json
 // @Security BearerAuth
@@ -151,7 +114,7 @@ func (h *AuthHandler) Me(c *gin.Context) {
 
 // ChangePassword godoc
 // @Summary Change current user's password
-// @Description Authenticated user changes their own password. Requires current password verification. Revokes all existing tokens.
+// @Description Authenticated user changes their own password. Requires current password verification. Revokes every other session the user has.
 // @Tags auth
 // @Accept json
 // @Produce json
@@ -174,7 +137,18 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 		return
 	}
 
-	result, err := h.authService.ChangePassword(c.Request.Context(), userID, req.CurrentPassword, req.NewPassword, c.ClientIP())
+	currentSessionIDHash, _ := c.Get(ctxkeys.SessionIDHash)
+	sessionIDHash, _ := currentSessionIDHash.(string)
+
+	result, err := h.authService.ChangePassword(
+		c.Request.Context(),
+		userID,
+		req.CurrentPassword,
+		req.NewPassword,
+		sessionIDHash,
+		c.ClientIP(),
+		c.GetHeader("User-Agent"),
+	)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -187,18 +161,17 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	})
 }
 
-// setAuthCookies sets the authentication cookies from an AuthResult.
+// setAuthCookies sets the session and CSRF cookies from an AuthResult.
 func (h *AuthHandler) setAuthCookies(c *gin.Context, result *service.AuthResult) {
+	maxAge := int(result.ExpiresIn)
 	c.SetSameSite(http.SameSiteStrictMode)
-	c.SetCookie(accessTokenCookie, result.AccessToken, int(service.AccessTokenExpiry.Seconds()), "/", "", h.secureCookies, true)
-	c.SetCookie(refreshTokenCookie, result.RefreshToken, int(service.RefreshTokenExpiry.Seconds()), refreshCookiePath, "", h.secureCookies, true)
-	c.SetCookie(csrfTokenCookie, result.CSRFToken, int(service.AccessTokenExpiry.Seconds()), "/", "", h.secureCookies, false)
+	c.SetCookie(sessionCookie, result.SessionToken, maxAge, "/", "", h.secureCookies, true)
+	c.SetCookie(csrfTokenCookie, result.CSRFToken, maxAge, "/", "", h.secureCookies, false)
 }
 
-// clearAuthCookies clears all authentication cookies.
+// clearAuthCookies clears the session and CSRF cookies.
 func (h *AuthHandler) clearAuthCookies(c *gin.Context) {
 	c.SetSameSite(http.SameSiteStrictMode)
-	c.SetCookie(accessTokenCookie, "", -1, "/", "", h.secureCookies, true)
-	c.SetCookie(refreshTokenCookie, "", -1, refreshCookiePath, "", h.secureCookies, true)
+	c.SetCookie(sessionCookie, "", -1, "/", "", h.secureCookies, true)
 	c.SetCookie(csrfTokenCookie, "", -1, "/", "", h.secureCookies, false)
 }

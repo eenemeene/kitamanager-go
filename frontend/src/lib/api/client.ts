@@ -95,12 +95,6 @@ function getCSRFToken(): string | null {
 class ApiClient {
   private client: AxiosInstance;
   private onUnauthorized?: () => void;
-  private hasSession = false;
-  private isRefreshing = false;
-  private refreshQueue: Array<{
-    resolve: (value?: unknown) => void;
-    reject: (reason?: unknown) => void;
-  }> = [];
 
   constructor() {
     this.client = axios.create({
@@ -108,14 +102,13 @@ class ApiClient {
       headers: {
         'Content-Type': 'application/json',
       },
-      // Enable sending cookies with requests (for HttpOnly auth cookies)
+      // Enable sending cookies with requests (for HttpOnly session cookie).
       withCredentials: true,
     });
 
-    // Request interceptor to add CSRF token for state-changing requests
+    // Request interceptor to add CSRF token for state-changing requests.
     this.client.interceptors.request.use(
       (config) => {
-        // Add CSRF token header for non-GET requests (POST, PUT, DELETE, PATCH)
         const method = config.method?.toLowerCase();
         if (method && !['get', 'head', 'options'].includes(method)) {
           const csrfToken = getCSRFToken();
@@ -128,18 +121,16 @@ class ApiClient {
       (error) => Promise.reject(error)
     );
 
-    // Response interceptor with token refresh on 401
+    // Response interceptor: on 401 to a non-auth endpoint, invoke the
+    // onUnauthorized callback so the auth store can clear local state.
+    // There is no client-side token refresh anymore — sessions live for their
+    // full expiry and the server is the source of truth.
     this.client.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
-        const originalRequest = error.config as typeof error.config & { _retry?: boolean };
+        const originalRequest = error.config as typeof error.config | undefined;
 
-        // Skip refresh for login/refresh/logout endpoints or already-retried requests
-        const url = originalRequest?.url || '';
-        const isAuthEndpoint =
-          url.includes('/login') || url.includes('/refresh') || url.includes('/logout');
-
-        // Enrich 429 responses with a user-friendly message
+        // Enrich 429 responses with a user-friendly message.
         if (error.response?.status === 429) {
           const retryAfter = error.response.headers['retry-after'];
           const data = error.response.data as Record<string, unknown> | undefined;
@@ -151,46 +142,10 @@ class ApiClient {
           return Promise.reject(error);
         }
 
-        if (error.response?.status === 401 && !isAuthEndpoint && !originalRequest?._retry) {
-          if (this.hasSession) {
-            if (this.isRefreshing) {
-              // Queue this request while refresh is in progress
-              return new Promise((resolve, reject) => {
-                this.refreshQueue.push({ resolve, reject });
-              }).then(() => {
-                return this.client(originalRequest!);
-              });
-            }
+        const url = originalRequest?.url || '';
+        const isAuthEndpoint = url.includes('/login') || url.includes('/logout');
 
-            this.isRefreshing = true;
-            originalRequest!._retry = true;
-
-            try {
-              // Refresh token is sent automatically via HttpOnly cookie
-              await this.client.post('/refresh');
-
-              // Resolve all queued requests
-              this.refreshQueue.forEach((pending) => pending.resolve());
-              this.refreshQueue = [];
-
-              // Retry the original request
-              return this.client(originalRequest!);
-            } catch {
-              // Refresh failed - clear queue and log out
-              this.refreshQueue.forEach((pending) => pending.reject(error));
-              this.refreshQueue = [];
-              this.hasSession = false;
-
-              if (this.onUnauthorized) {
-                this.onUnauthorized();
-              }
-              return Promise.reject(error);
-            } finally {
-              this.isRefreshing = false;
-            }
-          }
-
-          // No session available - log out
+        if (error.response?.status === 401 && !isAuthEndpoint) {
           if (this.onUnauthorized) {
             this.onUnauthorized();
           }
@@ -202,10 +157,6 @@ class ApiClient {
 
   setOnUnauthorized(callback: () => void) {
     this.onUnauthorized = callback;
-  }
-
-  setHasSession(value: boolean) {
-    this.hasSession = value;
   }
 
   private topLevelCrud<T, TCreate, TUpdate>(resource: string) {
@@ -300,13 +251,10 @@ class ApiClient {
   // Auth
   async login(request: LoginRequest): Promise<LoginResponse> {
     const response = await this.client.post<LoginResponse>('/login', request);
-    // Mark session as active (tokens are in HttpOnly cookies)
-    this.hasSession = true;
     return response.data;
   }
 
   async logout(): Promise<void> {
-    this.hasSession = false;
     await this.client.post('/logout');
   }
 
@@ -316,11 +264,9 @@ class ApiClient {
   }
 
   async changePassword(currentPassword: string, newPassword: string): Promise<LoginResponse> {
-    // Backend rotates access/refresh/csrf cookies on success, so the session
-    // stays live. We must NOT touch hasSession here: a successful 200 keeps
-    // the user logged in with the freshly issued cookies. On failure the
-    // server-side lockout + rate limiter protect the endpoint; the UI
-    // surfaces a generic error so no backend detail is echoed to the caller.
+    // Backend rotates the session + csrf cookies on success, so the caller
+    // stays live with fresh credentials. Other sessions the user has on other
+    // devices are revoked server-side.
     const response = await this.client.put<LoginResponse>('/me/password', {
       current_password: currentPassword,
       new_password: newPassword,

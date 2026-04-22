@@ -7,9 +7,11 @@ import (
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
+	"github.com/eenemeene/kitamanager-go/internal/store"
 )
 
 func TestUserService_List(t *testing.T) {
@@ -661,106 +663,122 @@ func TestUserService_ResetPassword_ManagerCannotResetSameOrgUserPassword(t *test
 	}
 }
 
-func TestUserService_Update_DeactivationRevokesTokens(t *testing.T) {
+// seedSession creates a live session row for the given user and returns its
+// id-hash. Used by the deactivation tests to verify whether Update wipes
+// sessions.
+func seedSession(t *testing.T, db *gorm.DB, userID uint) string {
+	t.Helper()
+	_, hashed, err := store.GenerateSessionToken()
+	if err != nil {
+		t.Fatalf("generate token: %v", err)
+	}
+	sess := &models.Session{
+		ID:        hashed,
+		UserID:    userID,
+		CreatedAt: time.Now().UTC(),
+		ExpiresAt: time.Now().UTC().Add(time.Hour),
+	}
+	if err := db.Create(sess).Error; err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	return hashed
+}
+
+// countSessions returns the number of session rows currently held for the
+// given user. The revocation tests use this as the observable side-effect of
+// Update().
+func countSessions(t *testing.T, db *gorm.DB, userID uint) int64 {
+	t.Helper()
+	var count int64
+	if err := db.Model(&models.Session{}).Where("user_id = ?", userID).Count(&count).Error; err != nil {
+		t.Fatalf("count sessions: %v", err)
+	}
+	return count
+}
+
+func TestUserService_Update_DeactivationRevokesSessions(t *testing.T) {
 	db := setupTestDB(t)
-	svc, tokenStore := createUserServiceWithTokenStore(db)
+	svc, _ := createUserServiceWithSessionStore(db)
 	ctx := context.Background()
 
 	admin := createTestSuperAdmin(t, db)
 	user := createTestUser(t, db, "Active User", "active@example.com", "password")
+	seedSession(t, db, user.ID)
 
-	// Deactivate the user
+	if countSessions(t, db, user.ID) != 1 {
+		t.Fatal("precondition: expected seeded session")
+	}
+
 	active := false
 	_, err := svc.Update(ctx, user.ID, &models.UserUpdateRequest{Active: &active}, admin.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	// Verify tokens were revoked for the user
-	revoked, err := tokenStore.IsUserRevokedSince(ctx, user.ID, time.Now().Add(-time.Hour))
-	if err != nil {
-		t.Fatalf("failed to check revocation: %v", err)
-	}
-	if !revoked {
-		t.Error("expected user tokens to be revoked after deactivation")
+	if n := countSessions(t, db, user.ID); n != 0 {
+		t.Errorf("expected sessions to be revoked after deactivation, %d remain", n)
 	}
 }
 
-func TestUserService_Update_ActivationDoesNotRevokeTokens(t *testing.T) {
+func TestUserService_Update_ActivationDoesNotRevokeSessions(t *testing.T) {
 	db := setupTestDB(t)
-	svc, tokenStore := createUserServiceWithTokenStore(db)
+	svc, _ := createUserServiceWithSessionStore(db)
 	ctx := context.Background()
 
 	admin := createTestSuperAdmin(t, db)
-	// Create an inactive user
 	user := createTestUser(t, db, "Inactive User", "inactive@example.com", "password")
 	db.Model(user).Update("active", false)
+	seedSession(t, db, user.ID)
 
-	// Re-activate the user
 	active := true
 	_, err := svc.Update(ctx, user.ID, &models.UserUpdateRequest{Active: &active}, admin.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	// Verify tokens were NOT revoked (activation should not revoke)
-	revoked, err := tokenStore.IsUserRevokedSince(ctx, user.ID, time.Now().Add(-time.Hour))
-	if err != nil {
-		t.Fatalf("failed to check revocation: %v", err)
-	}
-	if revoked {
-		t.Error("expected user tokens NOT to be revoked after activation")
+	if n := countSessions(t, db, user.ID); n != 1 {
+		t.Errorf("expected session to survive re-activation, got %d rows", n)
 	}
 }
 
-func TestUserService_Update_NoActiveChangeDoesNotRevokeTokens(t *testing.T) {
+func TestUserService_Update_NoActiveChangeDoesNotRevokeSessions(t *testing.T) {
 	db := setupTestDB(t)
-	svc, tokenStore := createUserServiceWithTokenStore(db)
+	svc, _ := createUserServiceWithSessionStore(db)
 	ctx := context.Background()
 
 	admin := createTestSuperAdmin(t, db)
 	user := createTestUser(t, db, "Test User", "test@example.com", "password")
+	seedSession(t, db, user.ID)
 
-	// Update name only (no active change)
 	_, err := svc.Update(ctx, user.ID, &models.UserUpdateRequest{Name: "New Name"}, admin.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	// Verify tokens were NOT revoked
-	revoked, err := tokenStore.IsUserRevokedSince(ctx, user.ID, time.Now().Add(-time.Hour))
-	if err != nil {
-		t.Fatalf("failed to check revocation: %v", err)
-	}
-	if revoked {
-		t.Error("expected user tokens NOT to be revoked after name change")
+	if n := countSessions(t, db, user.ID); n != 1 {
+		t.Errorf("expected session to survive name-only update, got %d rows", n)
 	}
 }
 
 func TestUserService_Update_AlreadyInactiveDoesNotRevokeAgain(t *testing.T) {
 	db := setupTestDB(t)
-	svc, tokenStore := createUserServiceWithTokenStore(db)
+	svc, _ := createUserServiceWithSessionStore(db)
 	ctx := context.Background()
 
 	admin := createTestSuperAdmin(t, db)
-	// Create an already inactive user
 	user := createTestUser(t, db, "Inactive User", "inactive2@example.com", "password")
 	db.Model(user).Update("active", false)
+	seedSession(t, db, user.ID)
 
-	// Set active=false again (already inactive)
 	active := false
 	_, err := svc.Update(ctx, user.ID, &models.UserUpdateRequest{Active: &active}, admin.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	// Should NOT revoke since user was already inactive (not a transition)
-	revoked, err := tokenStore.IsUserRevokedSince(ctx, user.ID, time.Now().Add(-time.Hour))
-	if err != nil {
-		t.Fatalf("failed to check revocation: %v", err)
-	}
-	if revoked {
-		t.Error("expected tokens NOT to be revoked when user was already inactive")
+	// Session must survive because Active did not transition from true→false.
+	if n := countSessions(t, db, user.ID); n != 1 {
+		t.Errorf("expected session to survive no-op update on already-inactive user, got %d rows", n)
 	}
 }
 

@@ -127,8 +127,8 @@ test.describe('Users', () => {
   // membership in the test org, then this test signs out and signs back in
   // as that member. If the browser session survives and /me returns the
   // expected identity, the whole auth chain (password hash on create,
-  // JWT cookies on login, RequireAuth middleware, `member` Casbin policies)
-  // is working end-to-end from the React app's perspective.
+  // session cookie on login, RequireAuth middleware, `member` Casbin
+  // policies) is working end-to-end from the React app's perspective.
   test('member user with org membership can log in and access protected API', async ({ page }) => {
     const memberName = uniqueName('MemberUser');
     const memberEmail = `member-${Date.now()}@example.com`;
@@ -158,8 +158,9 @@ test.describe('Users', () => {
       // bcrypt path as on creation; if the hash were wrong this would 401.
       await login(page, memberEmail, memberPassword);
 
-      // /me must return the member's identity — proof that the JWT issued
-      // by login is being accepted by RequireAuth and decoded correctly.
+      // /me must return the member's identity — proof that the session
+      // issued by login is being accepted by RequireAuth and resolving to
+      // the right user row.
       const me = await page.evaluate(async () => {
         const r = await fetch('/api/v1/me', { credentials: 'same-origin' });
         if (!r.ok) throw new Error(`/me ${r.status}`);

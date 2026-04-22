@@ -16,15 +16,15 @@ type UserHandler struct {
 	service        *service.UserService
 	userOrgService *service.UserOrganizationService
 	auditService   *service.AuditService
-	tokenStore     store.TokenStorer
+	sessionStore   store.SessionStorer
 }
 
-func NewUserHandler(service *service.UserService, userOrgService *service.UserOrganizationService, auditService *service.AuditService, tokenStore store.TokenStorer) *UserHandler {
+func NewUserHandler(service *service.UserService, userOrgService *service.UserOrganizationService, auditService *service.AuditService, sessionStore store.SessionStorer) *UserHandler {
 	return &UserHandler{
 		service:        service,
 		userOrgService: userOrgService,
 		auditService:   auditService,
-		tokenStore:     tokenStore,
+		sessionStore:   sessionStore,
 	}
 }
 
@@ -505,12 +505,12 @@ func (h *UserHandler) ResetPassword(c *gin.Context) {
 		return
 	}
 
-	// Revoke all tokens for the target user — if this fails, the password
+	// Revoke all sessions for the target user — if this fails, the password
 	// was changed but old sessions remain valid, which violates the security
 	// invariant. Return 500 so the caller knows the operation is incomplete.
-	if h.tokenStore != nil {
-		if err := h.tokenStore.RevokeAllForUser(c.Request.Context(), targetUserID); err != nil {
-			slog.Error("failed to revoke tokens after password reset", "user_id", targetUserID, "error", err)
+	if h.sessionStore != nil {
+		if err := h.sessionStore.DeleteAllForUser(c.Request.Context(), targetUserID); err != nil {
+			slog.Error("failed to revoke sessions after password reset", "user_id", targetUserID, "error", err)
 			respondError(c, apperror.InternalWrap(err, "password changed but failed to revoke existing sessions"))
 			return
 		}

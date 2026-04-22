@@ -38,7 +38,7 @@ The `.env.dev.example` file ships with dev-only values (`DB_SSLMODE=disable`, a 
 
 | Var | Rule |
 |---|---|
-| `JWT_SECRET` | Required. ≥32 characters. Must not be a known placeholder string. |
+| `JWT_SECRET` | Required. ≥32 characters. Must not be a known placeholder string. Used for CSRF-token HMAC derivation; name is kept for backwards compatibility. |
 | `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` | Required. |
 | `DB_SSLMODE` | One of `disable`, `require`, `verify-ca`, `verify-full`. |
 | `SERVER_PORT` | Valid TCP port. Defaults to `8080`. |

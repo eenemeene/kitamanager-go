@@ -1,40 +1,30 @@
 /**
  * Integration tests for ApiClient using MSW (Mock Service Worker).
- * Tests real Axios HTTP behavior including interceptors, token refresh, and error handling.
+ * Tests real Axios HTTP behavior: CSRF header injection, 401 handling, 429
+ * enrichment. There is no client-side token refresh any more — sessions live
+ * for their server-side expiry and the only 401 response is "log out".
  *
  * @jest-environment node
  */
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 
-// Must import the real axios (no jest.mock)
-// We create a fresh ApiClient per test by dynamically importing the module
-
 const API_BASE = 'http://localhost/api/v1';
 
-// Set env var before importing client so Axios uses absolute URLs
+// Set env var before importing client so Axios uses absolute URLs.
 process.env.NEXT_PUBLIC_API_URL = 'http://localhost';
-
-// Track handler invocations
-let refreshCallCount: number;
 
 const server = setupServer();
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => {
   server.resetHandlers();
-  refreshCallCount = 0;
 });
 afterAll(() => server.close());
 
-/**
- * Create a fresh ApiClient instance for each test.
- * This avoids stale state between tests.
- */
+/** Create a fresh ApiClient instance for each test. */
 async function createFreshClient() {
-  // Jest module isolation: re-import to get a fresh singleton
   jest.resetModules();
-  // Ensure env var is set for each fresh import
   process.env.NEXT_PUBLIC_API_URL = 'http://localhost';
   const mod = await import('../client');
   return mod.apiClient;
@@ -58,87 +48,8 @@ describe('ApiClient integration (MSW)', () => {
     });
   });
 
-  describe('token refresh on 401', () => {
-    it('refreshes token via cookie and retries the original request on 401', async () => {
-      let meCallCount = 0;
-
-      server.use(
-        // Login
-        http.post(`${API_BASE}/login`, () => {
-          return HttpResponse.json({
-            expires_in: 3600,
-          });
-        }),
-        // /me - first call returns 401, second succeeds
-        http.get(`${API_BASE}/me`, () => {
-          meCallCount++;
-          if (meCallCount === 1) {
-            return HttpResponse.json(
-              { code: 'unauthorized', message: 'token expired' },
-              { status: 401 }
-            );
-          }
-          return HttpResponse.json({
-            id: 1,
-            email: 'test@example.com',
-            name: 'Test User',
-          });
-        }),
-        // Refresh endpoint - no body expected, refresh token comes via cookie
-        http.post(`${API_BASE}/refresh`, () => {
-          refreshCallCount++;
-          return HttpResponse.json({
-            expires_in: 3600,
-          });
-        })
-      );
-
-      const client = await createFreshClient();
-
-      // Login to establish session
-      await client.login({ email: 'test@example.com', password: 'pass' });
-
-      // Call /me which will 401 -> refresh -> retry
-      const user = await client.getCurrentUser();
-
-      expect(user.name).toBe('Test User');
-      expect(refreshCallCount).toBe(1);
-      expect(meCallCount).toBe(2); // First 401, then retry succeeds
-    });
-
-    it('calls onUnauthorized when refresh fails', async () => {
-      const onUnauthorized = jest.fn();
-
-      server.use(
-        http.post(`${API_BASE}/login`, () => {
-          return HttpResponse.json({
-            expires_in: 3600,
-          });
-        }),
-        http.get(`${API_BASE}/me`, () => {
-          return HttpResponse.json(
-            { code: 'unauthorized', message: 'token expired' },
-            { status: 401 }
-          );
-        }),
-        http.post(`${API_BASE}/refresh`, () => {
-          return HttpResponse.json(
-            { code: 'unauthorized', message: 'refresh token expired' },
-            { status: 401 }
-          );
-        })
-      );
-
-      const client = await createFreshClient();
-      client.setOnUnauthorized(onUnauthorized);
-
-      await client.login({ email: 'test@example.com', password: 'pass' });
-
-      await expect(client.getCurrentUser()).rejects.toThrow();
-      expect(onUnauthorized).toHaveBeenCalled();
-    });
-
-    it('calls onUnauthorized immediately when no session is available', async () => {
+  describe('401 on a non-auth endpoint invokes onUnauthorized', () => {
+    it('fires onUnauthorized and rejects when /me returns 401', async () => {
       const onUnauthorized = jest.fn();
 
       server.use(
@@ -199,15 +110,13 @@ describe('ApiClient integration (MSW)', () => {
     });
   });
 
-  describe('logout clears session', () => {
-    it('clears session on logout so 401 triggers onUnauthorized', async () => {
+  describe('logout', () => {
+    it('posts /logout and propagates 401 on subsequent calls via onUnauthorized', async () => {
       const onUnauthorized = jest.fn();
 
       server.use(
         http.post(`${API_BASE}/login`, () => {
-          return HttpResponse.json({
-            expires_in: 3600,
-          });
+          return HttpResponse.json({ expires_in: 3600 });
         }),
         http.post(`${API_BASE}/logout`, () => {
           return HttpResponse.json({ message: 'logged out' });
@@ -226,7 +135,6 @@ describe('ApiClient integration (MSW)', () => {
       await client.login({ email: 'test@example.com', password: 'pass' });
       await client.logout();
 
-      // After logout, session should be cleared, so 401 triggers onUnauthorized directly
       await expect(client.getCurrentUser()).rejects.toThrow();
       expect(onUnauthorized).toHaveBeenCalled();
     });
@@ -278,13 +186,12 @@ describe('ApiClient integration (MSW)', () => {
       expect(onUnauthorized).not.toHaveBeenCalled();
     });
 
-    it('propagates backend errors to the caller without touching onUnauthorized', async () => {
-      // 401 on a non-auth endpoint would normally trigger refresh, but /me/password
-      // is a write and should propagate. The point of this test: if the backend
-      // returns 401 "current password is incorrect", the client must NOT blow up
-      // the session or silently retry. We assert the mutation rejects cleanly.
+    it('a 401 on /me/password fires onUnauthorized and rejects', async () => {
+      // /me/password is not in the auth-endpoint allowlist, so a 401 from it
+      // flows through the same path as any other mutation: onUnauthorized is
+      // called and the caller sees a rejection. The only auth-endpoint carve
+      // out is /login and /logout.
       const onUnauthorized = jest.fn();
-      let refreshCalled = false;
 
       server.use(
         http.post(`${API_BASE}/login`, () => HttpResponse.json({ expires_in: 3600 })),
@@ -293,12 +200,7 @@ describe('ApiClient integration (MSW)', () => {
             { code: 'unauthorized', message: 'current password is incorrect' },
             { status: 401 }
           )
-        ),
-        // Refresh would be tried by the 401 interceptor — count any attempt.
-        http.post(`${API_BASE}/refresh`, () => {
-          refreshCalled = true;
-          return HttpResponse.json({ expires_in: 3600 });
-        })
+        )
       );
 
       const client = await createFreshClient();
@@ -306,11 +208,7 @@ describe('ApiClient integration (MSW)', () => {
       await client.login({ email: 'test@example.com', password: 'old' });
 
       await expect(client.changePassword('wrong', 'new-password-8chars')).rejects.toThrow();
-      // The 401-refresh interceptor may retry — acceptable — but the caller
-      // still gets a rejection and onUnauthorized is not fired (refresh succeeds).
-      expect(onUnauthorized).not.toHaveBeenCalled();
-      // Sanity: refresh was attempted by the interceptor (hasSession=true after login).
-      expect(refreshCalled).toBe(true);
+      expect(onUnauthorized).toHaveBeenCalled();
     });
   });
 });

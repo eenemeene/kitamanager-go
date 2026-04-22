@@ -17,14 +17,16 @@ import (
 type UserService struct {
 	store        store.UserStorer
 	userOrgStore store.UserOrganizationStorer
-	tokenStore   store.TokenStorer
+	sessionStore store.SessionStorer
 }
 
-// NewUserService creates a new user service
-func NewUserService(store store.UserStorer, userOrgStore store.UserOrganizationStorer, tokenStore ...store.TokenStorer) *UserService {
+// NewUserService creates a new user service. `sessionStore` is optional —
+// callers that do not need session invalidation (e.g. tests for pure CRUD)
+// may omit it.
+func NewUserService(store store.UserStorer, userOrgStore store.UserOrganizationStorer, sessionStore ...store.SessionStorer) *UserService {
 	svc := &UserService{store: store, userOrgStore: userOrgStore}
-	if len(tokenStore) > 0 {
-		svc.tokenStore = tokenStore[0]
+	if len(sessionStore) > 0 {
+		svc.sessionStore = sessionStore[0]
 	}
 	return svc
 }
@@ -166,10 +168,10 @@ func (s *UserService) Update(ctx context.Context, id uint, req *models.UserUpdat
 		return nil, apperror.InternalWrap(err, "failed to update user")
 	}
 
-	// Revoke all tokens when a user is deactivated
-	if deactivating && s.tokenStore != nil {
-		if err := s.tokenStore.RevokeAllForUser(ctx, id); err != nil {
-			slog.Error("failed to revoke tokens after user deactivation", "user_id", id, "error", err)
+	// Revoke all sessions when a user is deactivated
+	if deactivating && s.sessionStore != nil {
+		if err := s.sessionStore.DeleteAllForUser(ctx, id); err != nil {
+			slog.Error("failed to revoke sessions after user deactivation", "user_id", id, "error", err)
 		}
 	}
 
