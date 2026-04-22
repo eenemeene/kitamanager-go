@@ -568,6 +568,20 @@
         "mismatch": "Passwords do not match",
         "sameAsCurrent": "New password must differ from current password"
       }
+    },
+    "sessions": {
+      "title": "Active sessions",
+      "description": "Where you're currently signed in. Revoke any session you don't recognise — that device will be signed out on its next request.",
+      "empty": "No other active sessions.",
+      "loading": "Loading sessions…",
+      "loadError": "Could not load sessions.",
+      "currentBadge": "This device",
+      "signedInAt": "Signed in {when}",
+      "expiresAt": "Expires {when}",
+      "revoke": "Revoke",
+      "revokeConfirm": "Revoke this session? Any device using it will be signed out.",
+      "revokeSuccessToast": "Session revoked",
+      "revokeErrorGeneric": "Could not revoke session. Please try again."
     }
   },
   "states": {

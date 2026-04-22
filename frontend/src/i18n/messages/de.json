@@ -568,6 +568,20 @@
         "mismatch": "Die Passwörter stimmen nicht überein",
         "sameAsCurrent": "Das neue Passwort muss sich vom aktuellen unterscheiden"
       }
+    },
+    "sessions": {
+      "title": "Aktive Sitzungen",
+      "description": "Geräte, auf denen Sie aktuell angemeldet sind. Beenden Sie Sitzungen, die Sie nicht wiedererkennen — das betroffene Gerät wird bei seiner nächsten Anfrage abgemeldet.",
+      "empty": "Keine weiteren aktiven Sitzungen.",
+      "loading": "Sitzungen werden geladen…",
+      "loadError": "Sitzungen konnten nicht geladen werden.",
+      "currentBadge": "Dieses Gerät",
+      "signedInAt": "Angemeldet {when}",
+      "expiresAt": "Läuft ab {when}",
+      "revoke": "Beenden",
+      "revokeConfirm": "Diese Sitzung beenden? Das entsprechende Gerät wird abgemeldet.",
+      "revokeSuccessToast": "Sitzung beendet",
+      "revokeErrorGeneric": "Sitzung konnte nicht beendet werden. Bitte versuchen Sie es erneut."
     }
   },
   "states": {

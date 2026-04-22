@@ -77,6 +77,7 @@ import type {
   ForecastResponse,
   AuditLogResponse,
   AuditLogListParams,
+  UserSessionsResponse,
 } from './types';
 import { DEFAULT_PAGE_SIZE } from './types';
 
@@ -272,6 +273,15 @@ class ApiClient {
       new_password: newPassword,
     });
     return response.data;
+  }
+
+  async getSessions(): Promise<UserSessionsResponse> {
+    const response = await this.client.get<UserSessionsResponse>('/me/sessions');
+    return response.data;
+  }
+
+  async revokeSession(id: string): Promise<void> {
+    await this.client.delete(`/me/sessions/${encodeURIComponent(id)}`);
   }
 
   // Organizations
