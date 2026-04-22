@@ -7,6 +7,11 @@ import { renderWithProviders } from '@/test-utils';
 jest.mock('@/lib/api/client', () => ({
   apiClient: {
     changePassword: jest.fn(),
+    // ActiveSessionsCard calls this on mount; return an empty list so the
+    // settings-page tests can focus on the password-change flow without
+    // the sessions card interfering.
+    getSessions: jest.fn().mockResolvedValue({ sessions: [] }),
+    revokeSession: jest.fn(),
   },
 }));
 
@@ -17,6 +22,7 @@ jest.mock('@/lib/hooks/use-toast', () => ({
 
 jest.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
+  useLocale: () => 'en',
 }));
 
 beforeEach(() => jest.clearAllMocks());

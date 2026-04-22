@@ -391,6 +391,20 @@ export interface UserMembershipsResponse {
   memberships: UserMembership[];
 }
 
+// A single session row returned by /me/sessions.
+export interface UserSession {
+  id: string;
+  created_at: string;
+  expires_at: string;
+  created_ip: string;
+  created_user_agent: string;
+  current: boolean;
+}
+
+export interface UserSessionsResponse {
+  sessions: UserSession[];
+}
+
 // Request to add user to organization
 export interface UserAddOrganizationRequest {
   organization_id: number;

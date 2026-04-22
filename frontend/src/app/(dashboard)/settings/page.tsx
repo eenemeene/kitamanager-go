@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { ChangePasswordCard } from '@/components/users/change-password-card';
+import { ActiveSessionsCard } from '@/components/users/active-sessions-card';
 
 export default function SettingsPage() {
   const t = useTranslations();
@@ -12,6 +13,7 @@ export default function SettingsPage() {
         <h1 className="text-2xl font-semibold">{t('nav.settings')}</h1>
       </div>
       <ChangePasswordCard />
+      <ActiveSessionsCard />
     </div>
   );
 }
