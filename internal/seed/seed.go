@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/rand"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -51,10 +52,16 @@ func SeedAdmin(cfg *config.Config, userStore *store.UserStore, userOrgStore *sto
 		return nil
 	}
 
+	// Canonicalize: the unique index is case-insensitive (migration 000009)
+	// and all stored rows are lowercase. Lookup and insert must match that
+	// form, otherwise a mixed-case SEED_ADMIN_EMAIL would fail the index on
+	// second startup.
+	seedEmail := strings.ToLower(strings.TrimSpace(cfg.SeedAdminEmail))
+
 	// Check if user already exists
-	existingUser, err := userStore.FindByEmail(ctx, cfg.SeedAdminEmail)
+	existingUser, err := userStore.FindByEmail(ctx, seedEmail)
 	if err == nil && existingUser != nil {
-		slog.Info("Admin user already exists", "email", cfg.SeedAdminEmail)
+		slog.Info("Admin user already exists", "email", seedEmail)
 
 		// Ensure superadmin is set in database
 		if !existingUser.IsSuperAdmin {
@@ -85,7 +92,7 @@ func SeedAdmin(cfg *config.Config, userStore *store.UserStore, userOrgStore *sto
 	// Create admin user with superadmin flag
 	user := &models.User{
 		Name:         cfg.SeedAdminName,
-		Email:        cfg.SeedAdminEmail,
+		Email:        seedEmail,
 		Password:     string(hashedPassword),
 		Active:       true,
 		IsSuperAdmin: true,
@@ -96,7 +103,7 @@ func SeedAdmin(cfg *config.Config, userStore *store.UserStore, userOrgStore *sto
 		return err
 	}
 
-	slog.Info("Admin user created", "email", cfg.SeedAdminEmail, "id", user.ID)
+	slog.Info("Admin user created", "email", seedEmail, "id", user.ID)
 
 	// Also assign superadmin role in Casbin for backwards compatibility during migration
 	if err := enforcer.AssignSuperAdmin(user.ID); err != nil {

@@ -101,7 +101,9 @@ func (s *UserService) Create(ctx context.Context, req *models.UserCreateRequest,
 	if err != nil {
 		return nil, err
 	}
-	req.Email = strings.TrimSpace(req.Email)
+	// Canonicalize: store in lowercase so the case-insensitive unique index
+	// (migration 000009) stays consistent with the stored column.
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -138,9 +140,10 @@ func (s *UserService) Update(ctx context.Context, id uint, req *models.UserUpdat
 		return nil, classifyStoreError(err, "user")
 	}
 
-	// Trim and validate input
+	// Trim and validate input. Email is lowercased to keep the stored
+	// column aligned with the case-insensitive unique index (migration 000009).
 	req.Name = strings.TrimSpace(req.Name)
-	req.Email = strings.TrimSpace(req.Email)
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 
 	if req.Name != "" {
 		if validation.IsWhitespaceOnly(req.Name) {

@@ -71,9 +71,11 @@ func NewAuthService(userStore store.UserStorer, sessionStore store.SessionStorer
 	}
 }
 
-// canonicalEmail normalizes an email for equality-sensitive operations
-// (lockout counters, audit rows) so that case and whitespace variants map to
-// the same bucket.
+// canonicalEmail normalizes an email for storage and lookup so that case
+// and whitespace variants map to the same row. Migration 000009 enforces a
+// case-insensitive unique index on users.email and rewrote every existing
+// row to lowercase; callers that insert or look up an email must normalize
+// with this function to keep that invariant.
 func canonicalEmail(email string) string {
 	return strings.ToLower(strings.TrimSpace(email))
 }
@@ -81,11 +83,9 @@ func canonicalEmail(email string) string {
 // Login authenticates a user with email and password and issues a new
 // session.
 func (s *AuthService) Login(ctx context.Context, email, password, ipAddress, userAgent string) (*AuthResult, error) {
-	// Canonical form is used for the lockout counter and the audit row so
-	// an attacker cannot reset the lockout by rotating case. Backwards
-	// compatibility: the raw (trimmed) email is still passed to FindByEmail
-	// so users whose stored email has mixed case remain findable.
-	rawEmail := strings.TrimSpace(email)
+	// Single canonical form is used everywhere: lockout counter, audit row,
+	// and DB lookup. An attacker cannot reset the lockout by rotating case
+	// because all three keys collapse to the same value.
 	canonical := canonicalEmail(email)
 
 	failedCount, err := s.auditService.CountRecentFailedLogins(ctx, canonical, lockoutWindow)
@@ -94,7 +94,7 @@ func (s *AuthService) Login(ctx context.Context, email, password, ipAddress, use
 		return nil, apperror.TooManyRequests("too many failed login attempts, please try again later")
 	}
 
-	user, err := s.userStore.FindByEmail(ctx, rawEmail)
+	user, err := s.userStore.FindByEmail(ctx, canonical)
 	if err != nil {
 		_ = bcrypt.CompareHashAndPassword(s.dummyPasswordHash, []byte(password))
 		s.auditService.LogLoginFailed(canonical, ipAddress, userAgent, "user not found")
