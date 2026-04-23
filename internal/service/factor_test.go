@@ -407,6 +407,106 @@ func TestFactorService_DeleteFactor_CrossUser_NotFound(t *testing.T) {
 	}
 }
 
+// TestFactorService_DeleteFactor_WebAuthn_LastPrimary_RequiresCode covers
+// the delete-last-primary rule when the remaining factor is WebAuthn.
+// The service test harness wires webAuthn=nil (ceremonies live in
+// integration), so we seed the webauthn parent row directly and
+// exercise DeleteFactor's primary-counting + backup_codes-sweep logic.
+func TestFactorService_DeleteFactor_WebAuthn_LastPrimary_RequiresCode(t *testing.T) {
+	db := setupTestDB(t)
+	svc, _ := newFactorService(t, db)
+	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
+
+	// Set up a realistic two-primary state: TOTP (which also spawns
+	// the backup_codes factor via auto-create) + WebAuthn seeded
+	// directly.
+	totpFID, secret := enrolAndActivateTOTP(t, svc, user, "pw")
+	now := time.Now().UTC()
+	wa := &models.Factor{
+		UserID:    user.ID,
+		Type:      models.FactorTypeWebAuthn,
+		CreatedAt: now,
+		EnabledAt: &now,
+	}
+	if err := store.NewFactorStore(db).CreateFactor(context.Background(), wa); err != nil {
+		t.Fatalf("seed webauthn: %v", err)
+	}
+
+	// Delete TOTP (still have WebAuthn as primary, so no code needed).
+	code, _ := totp.GenerateCode(secret, time.Now().UTC())
+	if err := svc.DeleteFactor(context.Background(), user.ID, totpFID, "pw", code); err != nil {
+		t.Fatalf("delete totp: %v", err)
+	}
+
+	// Now WebAuthn is the last primary. Deleting it without a code
+	// must fail with BadRequest — same rule that covers TOTP-only
+	// users, restated for WebAuthn-only users.
+	err := svc.DeleteFactor(context.Background(), user.ID, wa.ID, "pw", "")
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected BadRequest when deleting last primary without code, got %v", err)
+	}
+
+	// WebAuthn factor still present.
+	if _, err := store.NewFactorStore(db).FindByIDAndUser(context.Background(), wa.ID, user.ID); err != nil {
+		t.Errorf("webauthn factor wrongly removed: %v", err)
+	}
+}
+
+// TestFactorService_DeleteFactor_WebAuthn_LastPrimary_SweepsBackupCodes
+// is the happy-path counterpart: when the caller supplies a valid
+// backup code, deletion of the WebAuthn factor succeeds AND the
+// backup_codes factor is swept (no stranded secondary factor rows).
+func TestFactorService_DeleteFactor_WebAuthn_LastPrimary_SweepsBackupCodes(t *testing.T) {
+	db := setupTestDB(t)
+	svc, _ := newFactorService(t, db)
+	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
+
+	// Seed state: TOTP (for its backup codes) then delete TOTP with
+	// WebAuthn also active so backup_codes survive the TOTP deletion.
+	totpFID, secret := enrolAndActivateTOTP(t, svc, user, "pw")
+	now := time.Now().UTC()
+	wa := &models.Factor{
+		UserID:    user.ID,
+		Type:      models.FactorTypeWebAuthn,
+		CreatedAt: now,
+		EnabledAt: &now,
+	}
+	if err := store.NewFactorStore(db).CreateFactor(context.Background(), wa); err != nil {
+		t.Fatalf("seed webauthn: %v", err)
+	}
+	code, _ := totp.GenerateCode(secret, time.Now().UTC())
+	if err := svc.DeleteFactor(context.Background(), user.ID, totpFID, "pw", code); err != nil {
+		t.Fatalf("delete totp: %v", err)
+	}
+
+	// Capture one of the auto-issued backup codes (plaintext is not
+	// stored but we can regenerate to force a known set).
+	bundle, err := svc.RegenerateBackupCodes(context.Background(), user.ID,
+		mustFindBackupCodesFactor(t, db, user.ID).ID, "pw")
+	if err != nil {
+		t.Fatalf("regenerate: %v", err)
+	}
+	backupCode := bundle.Codes[0]
+
+	// Delete WebAuthn with a backup code — succeeds, AND backup_codes
+	// factor is swept since WebAuthn was the last primary.
+	if err := svc.DeleteFactor(context.Background(), user.ID, wa.ID, "pw", backupCode); err != nil {
+		t.Fatalf("delete webauthn: %v", err)
+	}
+	if _, err := store.NewFactorStore(db).FindBackupCodesFactor(context.Background(), user.ID); !errors.Is(err, store.ErrNotFound) {
+		t.Error("backup_codes factor must be swept when last webauthn primary is deleted")
+	}
+}
+
+func mustFindBackupCodesFactor(t *testing.T, db *gorm.DB, userID uint) *models.Factor {
+	t.Helper()
+	f, err := store.NewFactorStore(db).FindBackupCodesFactor(context.Background(), userID)
+	if err != nil {
+		t.Fatalf("find backup_codes factor: %v", err)
+	}
+	return f
+}
+
 func TestFactorService_UpdateLabel(t *testing.T) {
 	db := setupTestDB(t)
 	svc, _ := newFactorService(t, db)

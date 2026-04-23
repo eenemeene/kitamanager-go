@@ -436,6 +436,186 @@ func TestFactorHandler_Activate_FiveWrongCodes_Returns429(t *testing.T) {
 	}
 }
 
+// TestFactorHandler_Delete covers the three discrete outcomes the
+// Delete handler must honour:
+//   - happy path: two primaries → delete one → 204 with no body,
+//   - wrong step-up password → 401 + factor still present,
+//   - last-primary-without-code → 400 + factor still present.
+//
+// None of these were exercised at the handler layer before; only the
+// service-layer tests and a cross-user 404 smoke test existed.
+func TestFactorHandler_Delete_Success_204(t *testing.T) {
+	db := setupTestDB(t)
+	user := newFactorUser(t, db, "u@example.com", "pw")
+	h := newFactorHandlerForTest(t, db)
+
+	r := routerAs(user)
+	r.POST("/api/v1/users/:userId/factors", h.Enroll)
+	r.POST("/api/v1/users/:userId/factors/:id/activate", h.Activate)
+	r.DELETE("/api/v1/users/:userId/factors/:id", h.Delete)
+
+	totpFID, secret := enrollTOTPViaHandler(t, r, user.ID, "pw")
+	code, _ := totp.GenerateCode(secret, time.Now().UTC())
+	if w := performRequest(r, "POST",
+		fmt.Sprintf("/api/v1/users/me/factors/%d/activate", totpFID),
+		models.FactorActivateRequest{Code: code}); w.Code != http.StatusOK {
+		t.Fatalf("activate: %d body=%s", w.Code, w.Body.String())
+	}
+
+	// Seed a second primary so the TOTP delete isn't last-primary and
+	// doesn't need a code. Going through the store directly here keeps
+	// the test focused on the handler's delete path.
+	now := time.Now().UTC()
+	second := &models.Factor{
+		UserID:    user.ID,
+		Type:      models.FactorTypeWebAuthn,
+		CreatedAt: now,
+		EnabledAt: &now,
+	}
+	if err := store.NewFactorStore(db).CreateFactor(context.Background(), second); err != nil {
+		t.Fatalf("seed second primary: %v", err)
+	}
+
+	// 204 with empty body — per the REST conventions in CLAUDE.md.
+	w := performRequest(r, "DELETE",
+		fmt.Sprintf("/api/v1/users/me/factors/%d", totpFID),
+		models.FactorDeleteRequest{Password: "pw"})
+	if w.Code != http.StatusNoContent {
+		t.Errorf("delete: expected 204, got %d body=%s", w.Code, w.Body.String())
+	}
+	if body := w.Body.String(); body != "" {
+		t.Errorf("204 response must have no body; got %q", body)
+	}
+}
+
+func TestFactorHandler_Delete_WrongPassword_401(t *testing.T) {
+	db := setupTestDB(t)
+	user := newFactorUser(t, db, "u@example.com", "pw")
+	h := newFactorHandlerForTest(t, db)
+
+	r := routerAs(user)
+	r.POST("/api/v1/users/:userId/factors", h.Enroll)
+	r.POST("/api/v1/users/:userId/factors/:id/activate", h.Activate)
+	r.DELETE("/api/v1/users/:userId/factors/:id", h.Delete)
+	r.GET("/api/v1/users/:userId/factors/:id", h.Get)
+
+	totpFID, secret := enrollTOTPViaHandler(t, r, user.ID, "pw")
+	code, _ := totp.GenerateCode(secret, time.Now().UTC())
+	performRequest(r, "POST",
+		fmt.Sprintf("/api/v1/users/me/factors/%d/activate", totpFID),
+		models.FactorActivateRequest{Code: code})
+
+	w := performRequest(r, "DELETE",
+		fmt.Sprintf("/api/v1/users/me/factors/%d", totpFID),
+		models.FactorDeleteRequest{Password: "wrong-pw"})
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("wrong password: expected 401, got %d body=%s", w.Code, w.Body.String())
+	}
+
+	// Factor must still be present.
+	w = performRequest(r, "GET",
+		fmt.Sprintf("/api/v1/users/me/factors/%d", totpFID), nil)
+	if w.Code != http.StatusOK {
+		t.Errorf("factor wrongly removed after 401: %d", w.Code)
+	}
+}
+
+func TestFactorHandler_Delete_LastPrimaryWithoutCode_400(t *testing.T) {
+	db := setupTestDB(t)
+	user := newFactorUser(t, db, "u@example.com", "pw")
+	h := newFactorHandlerForTest(t, db)
+
+	r := routerAs(user)
+	r.POST("/api/v1/users/:userId/factors", h.Enroll)
+	r.POST("/api/v1/users/:userId/factors/:id/activate", h.Activate)
+	r.DELETE("/api/v1/users/:userId/factors/:id", h.Delete)
+	r.GET("/api/v1/users/:userId/factors/:id", h.Get)
+
+	totpFID, secret := enrollTOTPViaHandler(t, r, user.ID, "pw")
+	code, _ := totp.GenerateCode(secret, time.Now().UTC())
+	performRequest(r, "POST",
+		fmt.Sprintf("/api/v1/users/me/factors/%d/activate", totpFID),
+		models.FactorActivateRequest{Code: code})
+
+	// Only primary — delete without a code must fail with 400
+	// ("code is required when removing your last primary factor").
+	w := performRequest(r, "DELETE",
+		fmt.Sprintf("/api/v1/users/me/factors/%d", totpFID),
+		models.FactorDeleteRequest{Password: "pw"})
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("last-primary no-code: expected 400, got %d body=%s", w.Code, w.Body.String())
+	}
+
+	// Factor still present.
+	w = performRequest(r, "GET",
+		fmt.Sprintf("/api/v1/users/me/factors/%d", totpFID), nil)
+	if w.Code != http.StatusOK {
+		t.Errorf("factor wrongly removed after 400: %d", w.Code)
+	}
+}
+
+// TestFactorHandler_Regenerate covers the two discrete outcomes the
+// Regenerate handler must honour — happy path returns fresh codes;
+// wrong step-up password returns 401 without touching the codes.
+func TestFactorHandler_Regenerate_Success(t *testing.T) {
+	db := setupTestDB(t)
+	user := newFactorUser(t, db, "u@example.com", "pw")
+	h := newFactorHandlerForTest(t, db)
+
+	r := routerAs(user)
+	r.POST("/api/v1/users/:userId/factors", h.Enroll)
+	r.POST("/api/v1/users/:userId/factors/:id/activate", h.Activate)
+	r.POST("/api/v1/users/:userId/factors/:id/regenerate", h.Regenerate)
+
+	totpFID, secret := enrollTOTPViaHandler(t, r, user.ID, "pw")
+	code, _ := totp.GenerateCode(secret, time.Now().UTC())
+	performRequest(r, "POST",
+		fmt.Sprintf("/api/v1/users/me/factors/%d/activate", totpFID),
+		models.FactorActivateRequest{Code: code})
+
+	// The auto-created backup_codes factor is the one we regenerate.
+	bcFactor, err := store.NewFactorStore(db).FindBackupCodesFactor(context.Background(), user.ID)
+	if err != nil {
+		t.Fatalf("find backup_codes factor: %v", err)
+	}
+	w := performRequest(r, "POST",
+		fmt.Sprintf("/api/v1/users/me/factors/%d/regenerate", bcFactor.ID),
+		models.FactorRegenerateRequest{Password: "pw"})
+	if w.Code != http.StatusOK {
+		t.Fatalf("regenerate: expected 200, got %d body=%s", w.Code, w.Body.String())
+	}
+	var payload models.BackupCodesPayload
+	parseResponse(t, w, &payload)
+	if len(payload.Codes) == 0 {
+		t.Errorf("regenerate returned no codes")
+	}
+}
+
+func TestFactorHandler_Regenerate_WrongPassword_401(t *testing.T) {
+	db := setupTestDB(t)
+	user := newFactorUser(t, db, "u@example.com", "pw")
+	h := newFactorHandlerForTest(t, db)
+
+	r := routerAs(user)
+	r.POST("/api/v1/users/:userId/factors", h.Enroll)
+	r.POST("/api/v1/users/:userId/factors/:id/activate", h.Activate)
+	r.POST("/api/v1/users/:userId/factors/:id/regenerate", h.Regenerate)
+
+	totpFID, secret := enrollTOTPViaHandler(t, r, user.ID, "pw")
+	code, _ := totp.GenerateCode(secret, time.Now().UTC())
+	performRequest(r, "POST",
+		fmt.Sprintf("/api/v1/users/me/factors/%d/activate", totpFID),
+		models.FactorActivateRequest{Code: code})
+
+	bcFactor, _ := store.NewFactorStore(db).FindBackupCodesFactor(context.Background(), user.ID)
+	w := performRequest(r, "POST",
+		fmt.Sprintf("/api/v1/users/me/factors/%d/regenerate", bcFactor.ID),
+		models.FactorRegenerateRequest{Password: "wrong-pw"})
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("regenerate wrong pw: expected 401, got %d body=%s", w.Code, w.Body.String())
+	}
+}
+
 // Trivial context-carrying helper to satisfy the unused-import guard
 // if service/store happen not to be referenced in any test.
 var _ = context.Background
