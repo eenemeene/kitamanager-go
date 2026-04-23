@@ -157,9 +157,7 @@ test.describe('Responsive Layout - Tablet', () => {
     await page.waitForLoadState('load');
 
     // Header icon buttons (theme toggle)
-    const themeBtn = page
-      .getByRole('button', { name: /(dark mode|light mode|theme)/i })
-      .first();
+    const themeBtn = page.getByRole('button', { name: /(dark mode|light mode|theme)/i }).first();
     await expect(themeBtn).toBeVisible({ timeout: 10000 });
     const themeBox = await themeBtn.boundingBox();
     expect(themeBox?.width).toBeGreaterThanOrEqual(44);
@@ -173,9 +171,7 @@ test.describe('Responsive Layout - Tablet', () => {
     // Week/day stepper chevron (explicit aria-label to avoid matching
     // pagination or other "next" controls). The attendance view toggles
     // between day and week modes — accept either.
-    const stepperNext = page
-      .getByRole('button', { name: /^next (week|day)$/i })
-      .first();
+    const stepperNext = page.getByRole('button', { name: /^next (week|day)$/i }).first();
     await expect(stepperNext).toBeVisible({ timeout: 15000 });
     const nextBox = await stepperNext.boundingBox();
     expect(nextBox?.width).toBeGreaterThanOrEqual(44);

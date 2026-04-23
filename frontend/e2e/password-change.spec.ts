@@ -113,9 +113,9 @@ test.describe('Password change flow (regression for #134)', () => {
 
     // Old password must no longer work.
     await apiLogout(page);
-    await expect(
-      apiLogin(page, testUserEmail, originalPassword)
-    ).rejects.toThrow(/Login failed: 401/);
+    await expect(apiLogin(page, testUserEmail, originalPassword)).rejects.toThrow(
+      /Login failed: 401/
+    );
   });
 });
 

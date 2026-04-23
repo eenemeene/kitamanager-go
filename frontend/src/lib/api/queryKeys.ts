@@ -94,6 +94,9 @@ export const queryKeys = {
       ['attendance', orgId, 'byWeek', weekStart] as const,
   },
   stepPromotions: (orgId: number) => ['stepPromotions', orgId] as const,
+  factors: {
+    all: () => ['factors', 'me'] as const,
+  },
   auditLogs: {
     all: (orgId: number) => ['auditLogs', orgId] as const,
     list: (orgId: number, ...filters: unknown[]) =>

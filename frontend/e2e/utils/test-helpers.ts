@@ -798,7 +798,11 @@ export async function deleteFundingPeriodViaApi(
   fundingId: number,
   periodId: number
 ): Promise<void> {
-  await apiRequest(page, 'DELETE', `/api/v1/government-funding-rates/${fundingId}/periods/${periodId}`);
+  await apiRequest(
+    page,
+    'DELETE',
+    `/api/v1/government-funding-rates/${fundingId}/periods/${periodId}`
+  );
 }
 
 /**

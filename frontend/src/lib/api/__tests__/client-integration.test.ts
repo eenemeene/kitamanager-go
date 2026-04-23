@@ -36,6 +36,7 @@ describe('ApiClient integration (MSW)', () => {
       server.use(
         http.post(`${API_BASE}/login`, () => {
           return HttpResponse.json({
+            status: 'authenticated',
             expires_in: 3600,
           });
         })
@@ -44,6 +45,9 @@ describe('ApiClient integration (MSW)', () => {
       const client = await createFreshClient();
       const result = await client.login({ email: 'test@example.com', password: 'pass' });
 
+      if (result.status !== 'authenticated') {
+        throw new Error('expected authenticated result');
+      }
       expect(result.expires_in).toBe(3600);
     });
   });
@@ -116,7 +120,7 @@ describe('ApiClient integration (MSW)', () => {
 
       server.use(
         http.post(`${API_BASE}/login`, () => {
-          return HttpResponse.json({ expires_in: 3600 });
+          return HttpResponse.json({ status: 'authenticated', expires_in: 3600 });
         }),
         http.post(`${API_BASE}/logout`, () => {
           return HttpResponse.json({ message: 'logged out' });
@@ -147,12 +151,14 @@ describe('ApiClient integration (MSW)', () => {
       let receivedPath = '';
 
       server.use(
-        http.post(`${API_BASE}/login`, () => HttpResponse.json({ expires_in: 3600 })),
+        http.post(`${API_BASE}/login`, () =>
+          HttpResponse.json({ status: 'authenticated', expires_in: 3600 })
+        ),
         http.put(`${API_BASE}/me/password`, async ({ request }) => {
           receivedMethod = request.method;
           receivedPath = new URL(request.url).pathname;
           receivedBody = await request.json();
-          return HttpResponse.json({ expires_in: 3600 });
+          return HttpResponse.json({ status: 'authenticated', expires_in: 3600 });
         })
       );
 
@@ -173,8 +179,12 @@ describe('ApiClient integration (MSW)', () => {
     it('does NOT call onUnauthorized on successful password change', async () => {
       const onUnauthorized = jest.fn();
       server.use(
-        http.post(`${API_BASE}/login`, () => HttpResponse.json({ expires_in: 3600 })),
-        http.put(`${API_BASE}/me/password`, () => HttpResponse.json({ expires_in: 3600 }))
+        http.post(`${API_BASE}/login`, () =>
+          HttpResponse.json({ status: 'authenticated', expires_in: 3600 })
+        ),
+        http.put(`${API_BASE}/me/password`, () =>
+          HttpResponse.json({ status: 'authenticated', expires_in: 3600 })
+        )
       );
 
       const client = await createFreshClient();
@@ -194,7 +204,9 @@ describe('ApiClient integration (MSW)', () => {
       const onUnauthorized = jest.fn();
 
       server.use(
-        http.post(`${API_BASE}/login`, () => HttpResponse.json({ expires_in: 3600 })),
+        http.post(`${API_BASE}/login`, () =>
+          HttpResponse.json({ status: 'authenticated', expires_in: 3600 })
+        ),
         http.put(`${API_BASE}/me/password`, () =>
           HttpResponse.json(
             { code: 'unauthorized', message: 'current password is incorrect' },

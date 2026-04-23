@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { apiClient } from '@/lib/api/client';
-import type { User, LoginRequest, Role, UserMembership } from '@/lib/api/types';
+import type { User, LoginRequest, LoginResponse, Role, UserMembership } from '@/lib/api/types';
 import { getCookie } from '@/lib/utils';
 
 /**
@@ -21,7 +21,8 @@ interface AuthState {
   memberships: UserMembership[];
   orgRoleMap: Map<number, Role>;
 
-  login: (credentials: LoginRequest) => Promise<void>;
+  login: (credentials: LoginRequest) => Promise<LoginResponse>;
+  hydrateAfterAuth: () => Promise<void>;
   logout: () => Promise<void>;
   loadUser: () => Promise<void>;
   checkAuth: () => boolean;
@@ -51,24 +52,37 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     set({ hasHydrated: state });
   },
 
-  login: async (credentials: LoginRequest) => {
-    // Login sets HttpOnly cookies automatically
-    await apiClient.login(credentials);
+  // login POSTs /login and returns the discriminated response. On
+  // `authenticated` the store hydrates user + memberships immediately;
+  // on `mfa_required` the store state is LEFT ALONE — the page owns
+  // the pending-token + MFA step, and only after a successful
+  // /auth/mfa/verify does the caller invoke `hydrateAfterAuth` to
+  // populate the store. This keeps "authentication state" and
+  // "mid-authentication state" cleanly separate.
+  login: async (credentials: LoginRequest): Promise<LoginResponse> => {
+    const response = await apiClient.login(credentials);
+    if (response.status === 'authenticated') {
+      await get().hydrateAfterAuth();
+    }
+    return response;
+  },
 
+  // hydrateAfterAuth is called by the login page once the session
+  // cookie is in place — either directly after a non-MFA login or
+  // after a successful /auth/mfa/verify. Splits the post-auth
+  // hydration out of `login` so the MFA verify call site can reuse it.
+  hydrateAfterAuth: async () => {
     set({ isAuthenticated: true });
-
-    // Fetch full user data using the new /me endpoint
     try {
       const userData = await apiClient.getCurrentUser();
       set({ user: userData, userLoaded: true });
-
-      // Fetch memberships for role-based navigation
       if (userData.id) {
         try {
           const { memberships } = await apiClient.getUserMemberships(userData.id);
           set({ memberships, orgRoleMap: buildOrgRoleMap(memberships) });
         } catch {
-          // Non-critical: navigation will show all items if memberships fail
+          // Non-critical: navigation shows all items if memberships
+          // fail, the page still works.
         }
       }
     } catch {

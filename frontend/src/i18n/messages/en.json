@@ -79,7 +79,19 @@
     "loginTitle": "Sign in to your account",
     "loginButton": "Sign In",
     "loginError": "Invalid email or password",
-    "logoutSuccess": "Successfully logged out"
+    "logoutSuccess": "Successfully logged out",
+    "mfa": {
+      "title": "Two-factor authentication",
+      "description": "Enter the code from your authenticator or a recovery code to finish signing in.",
+      "factorPickerLabel": "Verify with",
+      "codeLabel": "Code",
+      "submit": "Verify",
+      "back": "Back",
+      "wrongCode": "Invalid code. Please try again.",
+      "tooManyWrongCodes": "Too many wrong codes. Please sign in again.",
+      "pendingExpired": "This session expired. Please sign in again.",
+      "lostAccessHint": "Lost access to your authenticator? Enter a recovery code instead, or contact your administrator."
+    }
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -582,6 +594,68 @@
       "revokeConfirm": "Revoke this session? Any device using it will be signed out.",
       "revokeSuccessToast": "Session revoked",
       "revokeErrorGeneric": "Could not revoke session. Please try again."
+    },
+    "twoFactor": {
+      "title": "Two-factor authentication",
+      "description": "Require a one-time code from an authenticator app in addition to your password.",
+      "loading": "Loading two-factor status…",
+      "loadError": "Could not load two-factor status.",
+      "statusDisabled": "Two-factor is not enabled.",
+      "statusEnabled": "Two-factor is enabled.",
+      "enableButton": "Enable two-factor authentication",
+      "regenerateButton": "Regenerate recovery codes",
+      "disableButton": "Disable two-factor authentication",
+      "factorTypeTotp": "Authenticator app",
+      "factorTypeBackupCodes": "Recovery codes",
+      "backupCodesRemaining": "{count} codes remaining",
+      "lastUsed": "Last used {when}",
+      "lastUsedNever": "Never used",
+      "enrolDialog": {
+        "title": "Enable two-factor",
+        "description": "Confirm your password to start enrolment.",
+        "passwordLabel": "Current password",
+        "continue": "Continue",
+        "wrongPassword": "Current password is incorrect.",
+        "scanTitle": "Scan this QR code",
+        "scanDescription": "Open Google Authenticator, 1Password, Authy, or another TOTP app and scan the code. Then enter the 6-digit code the app shows.",
+        "secretHint": "Can't scan? Enter this key manually:",
+        "codeLabel": "6-digit code",
+        "activate": "Enable two-factor",
+        "wrongCode": "Invalid code. Please try again.",
+        "tooManyWrongCodes": "Too many wrong codes. Enrolment was reset — please try again.",
+        "cancel": "Cancel"
+      },
+      "backupCodesDialog": {
+        "title": "Save your recovery codes",
+        "description": "Each code can be used once if you lose access to your authenticator. Save them now — you won't see them again.",
+        "copy": "Copy to clipboard",
+        "copied": "Codes copied",
+        "copyFailed": "Couldn't access clipboard",
+        "download": "Download as file",
+        "filename": "kitamanager-recovery-codes.txt",
+        "acknowledge": "I've saved these codes somewhere safe",
+        "confirm": "Done"
+      },
+      "regenerateDialog": {
+        "title": "Regenerate recovery codes",
+        "description": "Your existing recovery codes will stop working. Confirm your password to generate a new set.",
+        "passwordLabel": "Current password",
+        "submit": "Generate new codes",
+        "wrongPassword": "Current password is incorrect.",
+        "cancel": "Cancel"
+      },
+      "disableDialog": {
+        "title": "Disable two-factor",
+        "description": "Your account will rely on your password alone. Enter your password and a code from your authenticator or a recovery code to confirm.",
+        "passwordLabel": "Current password",
+        "codeLabel": "Authenticator or recovery code",
+        "submit": "Disable two-factor",
+        "wrongPasswordOrCode": "Wrong password or code.",
+        "cancel": "Cancel"
+      },
+      "successEnabled": "Two-factor authentication enabled",
+      "successRegenerated": "New recovery codes generated",
+      "successDisabled": "Two-factor authentication disabled"
     }
   },
   "states": {

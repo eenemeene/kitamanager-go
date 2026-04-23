@@ -70,9 +70,9 @@ test.describe('Government Funding Bills - Kita Year Filter', () => {
     // If we found bills, verify the summary bar appears
     if (attempts < 5) {
       // Summary badges should appear (match/difference counts)
-      await expect(
-        page.getByText(/bills? match|bills? with differences/i).first()
-      ).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(/bills? match|bills? with differences/i).first()).toBeVisible({
+        timeout: 10000,
+      });
 
       // Total difference should be shown
       await expect(page.getByText(/total difference/i)).toBeVisible();
