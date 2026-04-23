@@ -355,6 +355,86 @@ func TestFactorHandler_MalformedFactorID(t *testing.T) {
 	}
 }
 
+// TestFactorHandler_Enroll_UnsupportedType: a factor type the server
+// doesn't know about must be rejected at the handler boundary with a
+// clean 400 — not fall through to some default path that would create
+// a row the rest of the system can't reason about.
+func TestFactorHandler_Enroll_UnsupportedType(t *testing.T) {
+	db := setupTestDB(t)
+	user := newFactorUser(t, db, "u@example.com", "pw-12345")
+	h := newFactorHandlerForTest(t, db)
+
+	r := routerAs(user)
+	r.POST("/api/v1/users/:userId/factors", h.Enroll)
+
+	w := performRequest(r, "POST", "/api/v1/users/me/factors", models.FactorEnrollRequest{
+		Type:     "webauthn", // not yet implemented
+		Password: "pw-12345",
+	})
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("unsupported type should be 400, got %d body=%s", w.Code, w.Body.String())
+	}
+}
+
+// TestFactorHandler_Enroll_BackupCodesDirectly_Rejected: backup_codes
+// is a server-managed singleton auto-created on first primary factor
+// activation. Allowing the client to enrol one directly would create
+// either duplicate rows or split-brain state, so the handler must 400.
+func TestFactorHandler_Enroll_BackupCodesDirectly_Rejected(t *testing.T) {
+	db := setupTestDB(t)
+	user := newFactorUser(t, db, "u@example.com", "pw-12345")
+	h := newFactorHandlerForTest(t, db)
+
+	r := routerAs(user)
+	r.POST("/api/v1/users/:userId/factors", h.Enroll)
+
+	w := performRequest(r, "POST", "/api/v1/users/me/factors", models.FactorEnrollRequest{
+		Type:     models.FactorTypeBackupCodes,
+		Password: "pw-12345",
+	})
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("direct backup_codes enrol should be 400, got %d body=%s", w.Code, w.Body.String())
+	}
+}
+
+// TestFactorHandler_Activate_FiveWrongCodes_Returns429: mirrors the
+// service-level test at the HTTP boundary. After FactorActivationFailureLimit
+// wrong codes the endpoint responds 429 and the pending factor vanishes.
+func TestFactorHandler_Activate_FiveWrongCodes_Returns429(t *testing.T) {
+	db := setupTestDB(t)
+	user := newFactorUser(t, db, "u@example.com", "pw")
+	h := newFactorHandlerForTest(t, db)
+
+	r := routerAs(user)
+	r.POST("/api/v1/users/:userId/factors", h.Enroll)
+	r.POST("/api/v1/users/:userId/factors/:id/activate", h.Activate)
+
+	fid, _ := enrollTOTPViaHandler(t, r, user.ID, "pw")
+
+	for i := 1; i <= service.FactorActivationFailureLimit-1; i++ {
+		w := performRequest(r, "POST",
+			fmt.Sprintf("/api/v1/users/me/factors/%d/activate", fid),
+			models.FactorActivateRequest{Code: "000000"})
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("attempt %d: expected 401, got %d body=%s", i, w.Code, w.Body.String())
+		}
+	}
+	// Nth wrong code trips the limit.
+	w := performRequest(r, "POST",
+		fmt.Sprintf("/api/v1/users/me/factors/%d/activate", fid),
+		models.FactorActivateRequest{Code: "000000"})
+	if w.Code != http.StatusTooManyRequests {
+		t.Errorf("limit attempt: expected 429, got %d body=%s", w.Code, w.Body.String())
+	}
+	// Subsequent request is 404 — factor row is gone.
+	w = performRequest(r, "POST",
+		fmt.Sprintf("/api/v1/users/me/factors/%d/activate", fid),
+		models.FactorActivateRequest{Code: "000000"})
+	if w.Code != http.StatusNotFound {
+		t.Errorf("post-limit attempt: expected 404, got %d", w.Code)
+	}
+}
+
 // Trivial context-carrying helper to satisfy the unused-import guard
 // if service/store happen not to be referenced in any test.
 var _ = context.Background

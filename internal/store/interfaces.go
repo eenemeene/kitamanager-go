@@ -243,6 +243,7 @@ type FactorStorer interface {
 	FindBackupCodesFactor(ctx context.Context, userID uint) (*models.Factor, error)
 	CreateFactor(ctx context.Context, f *models.Factor) error
 	ActivateFactor(ctx context.Context, id, userID uint) (bool, error)
+	IncrementActivationFailures(ctx context.Context, id, userID uint) (int, error)
 	DeleteFactor(ctx context.Context, id, userID uint) (int64, error)
 	UpdateLabel(ctx context.Context, id, userID uint, label *string) (bool, error)
 	TouchLastUsed(ctx context.Context, id uint) error

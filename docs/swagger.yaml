@@ -62,6 +62,7 @@ definitions:
     - factor_deleted
     - factor_admin_deleted
     - backup_codes_regenerated
+    - factor_activation_locked
     type: string
     x-enum-varnames:
     - AuditActionLogin
@@ -85,6 +86,7 @@ definitions:
     - AuditActionFactorDeleted
     - AuditActionFactorAdminDeleted
     - AuditActionBackupCodesRegenerated
+    - AuditActionFactorActivationLocked
   github_com_eenemeene_kitamanager-go_internal_models.AuditLogResponse:
     properties:
       action:

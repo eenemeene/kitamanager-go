@@ -23,7 +23,12 @@ type Factor struct {
 	Label      *string    `gorm:"size:100" json:"label,omitempty"`
 	EnabledAt  *time.Time `json:"enabled_at,omitempty"`
 	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
-	CreatedAt  time.Time  `gorm:"not null" json:"created_at"`
+	// ActivationFailures is incremented on every wrong code submitted
+	// to /activate. When it reaches FactorActivationFailureLimit the
+	// service layer deletes the pending row, forcing re-enrolment.
+	// Only meaningful while EnabledAt IS NULL.
+	ActivationFailures int       `gorm:"not null;default:0" json:"-"`
+	CreatedAt          time.Time `gorm:"not null" json:"created_at"`
 }
 
 // TableName is explicit because GORM's default would otherwise be "factors"

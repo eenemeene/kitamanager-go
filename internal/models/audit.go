@@ -47,6 +47,11 @@ const (
 	// event. Separate action because regeneration should happen rarely;
 	// frequent regeneration is a signal worth surfacing to admins.
 	AuditActionBackupCodesRegenerated AuditAction = "backup_codes_regenerated"
+	// AuditActionFactorActivationLocked marks a pending factor being
+	// auto-deleted after FactorActivationFailureLimit consecutive wrong
+	// codes. A spike here is the signature of an attacker inside a
+	// user's session trying to brute-force the 6-digit window.
+	AuditActionFactorActivationLocked AuditAction = "factor_activation_locked"
 )
 
 // AuditLog represents an audit log entry for security-relevant operations.

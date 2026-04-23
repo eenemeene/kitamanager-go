@@ -8,13 +8,19 @@
 -- user" at the DB layer.
 
 CREATE TABLE IF NOT EXISTS factors (
-    id           BIGSERIAL   PRIMARY KEY,
-    user_id      BIGINT      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    type         VARCHAR(32) NOT NULL,
-    label        VARCHAR(100),
-    enabled_at   TIMESTAMPTZ,                       -- NULL while enrollment is pending
-    last_used_at TIMESTAMPTZ,
-    created_at   TIMESTAMPTZ NOT NULL,
+    id                   BIGSERIAL   PRIMARY KEY,
+    user_id              BIGINT      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type                 VARCHAR(32) NOT NULL,
+    label                VARCHAR(100),
+    enabled_at           TIMESTAMPTZ,                    -- NULL while enrollment is pending
+    last_used_at         TIMESTAMPTZ,
+    -- activation_failures caps how many wrong codes a user (or attacker
+    -- inside their session) can try against a pending factor. When it
+    -- reaches FactorActivationFailureLimit (service-layer constant) the
+    -- row is auto-deleted and the user must re-enrol, closing the
+    -- otherwise-trivial TOTP brute-force surface against a pending row.
+    activation_failures  BIGINT      NOT NULL DEFAULT 0,
+    created_at           TIMESTAMPTZ NOT NULL,
     CONSTRAINT factors_type_check CHECK (type IN ('totp', 'backup_codes'))
 );
 CREATE INDEX IF NOT EXISTS idx_factors_user_id ON factors(user_id);

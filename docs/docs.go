@@ -10079,7 +10079,8 @@ const docTemplate = `{
                 "factor_enrolled",
                 "factor_deleted",
                 "factor_admin_deleted",
-                "backup_codes_regenerated"
+                "backup_codes_regenerated",
+                "factor_activation_locked"
             ],
             "x-enum-varnames": [
                 "AuditActionLogin",
@@ -10102,7 +10103,8 @@ const docTemplate = `{
                 "AuditActionFactorEnrolled",
                 "AuditActionFactorDeleted",
                 "AuditActionFactorAdminDeleted",
-                "AuditActionBackupCodesRegenerated"
+                "AuditActionBackupCodesRegenerated",
+                "AuditActionFactorActivationLocked"
             ]
         },
         "github_com_eenemeene_kitamanager-go_internal_models.AuditLogResponse": {

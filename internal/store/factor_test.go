@@ -387,6 +387,169 @@ func TestFactorStore_CleanupAbandonedPending(t *testing.T) {
 	}
 }
 
+// TestFactorStore_IncrementActivationFailures covers the three
+// important outcomes of the counter-bump:
+//   - pending factor: counter increments and new value is returned,
+//   - activated factor: no-op (ErrNotFound), because the WHERE clause
+//     excludes enabled_at IS NOT NULL so already-activated rows are
+//     never touched by the rate-limit machinery,
+//   - cross-user: no-op (ErrNotFound) — the same ownership rule as the
+//     rest of FactorStore.
+func TestFactorStore_IncrementActivationFailures(t *testing.T) {
+	db := setupTestDB(t)
+	s := NewFactorStore(db)
+	user := createTestUser(t, db, "U", "u@example.com")
+	other := createTestUser(t, db, "O", "o@example.com")
+
+	pendingID := seedTOTPFactor(t, s, user.ID, false)
+	activeID := seedTOTPFactor(t, s, user.ID, true)
+
+	ctx := context.Background()
+
+	// Pending: increments.
+	n, err := s.IncrementActivationFailures(ctx, pendingID, user.ID)
+	if err != nil {
+		t.Fatalf("increment pending: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("first increment = %d, want 1", n)
+	}
+	n, err = s.IncrementActivationFailures(ctx, pendingID, user.ID)
+	if err != nil {
+		t.Fatalf("increment pending 2: %v", err)
+	}
+	if n != 2 {
+		t.Errorf("second increment = %d, want 2", n)
+	}
+
+	// Activated row: no-op.
+	_, err = s.IncrementActivationFailures(ctx, activeID, user.ID)
+	if err != ErrNotFound {
+		t.Errorf("increment on activated factor: got %v, want ErrNotFound", err)
+	}
+
+	// Cross-user: no-op even though the pending id is real.
+	_, err = s.IncrementActivationFailures(ctx, pendingID, other.ID)
+	if err != ErrNotFound {
+		t.Errorf("cross-user increment: got %v, want ErrNotFound", err)
+	}
+}
+
+// TestFactorStore_FindActiveByUserID_SortOrder verifies the SQL
+// ordering we rely on from the service layer: primary factors first,
+// most-recently-used ahead of unused, creation order as the tiebreaker.
+// Changing this order silently would break the Settings UI's
+// expectations without any test signal.
+func TestFactorStore_FindActiveByUserID_SortOrder(t *testing.T) {
+	db := setupTestDB(t)
+	s := NewFactorStore(db)
+	user := createTestUser(t, db, "U", "u@example.com")
+	ctx := context.Background()
+
+	now := time.Now().UTC()
+	// Three TOTP rows: fresh-unused, recent-used, old-used.
+	freshUnused := &models.Factor{UserID: user.ID, Type: models.FactorTypeTOTP, EnabledAt: &now, CreatedAt: now}
+	oldUsed := &models.Factor{
+		UserID:     user.ID,
+		Type:       models.FactorTypeTOTP,
+		EnabledAt:  &now,
+		LastUsedAt: ptrTime(now.Add(-48 * time.Hour)),
+		CreatedAt:  now.Add(-48 * time.Hour),
+	}
+	recentUsed := &models.Factor{
+		UserID:     user.ID,
+		Type:       models.FactorTypeTOTP,
+		EnabledAt:  &now,
+		LastUsedAt: ptrTime(now.Add(-1 * time.Hour)),
+		CreatedAt:  now.Add(-24 * time.Hour),
+	}
+	backup := &models.Factor{
+		UserID:    user.ID,
+		Type:      models.FactorTypeBackupCodes,
+		EnabledAt: &now,
+		CreatedAt: now.Add(-10 * time.Minute),
+	}
+	for _, f := range []*models.Factor{freshUnused, oldUsed, recentUsed, backup} {
+		if err := s.CreateFactor(ctx, f); err != nil {
+			t.Fatalf("create: %v", err)
+		}
+	}
+
+	got, err := s.FindActiveByUserID(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(got) != 4 {
+		t.Fatalf("expected 4 rows, got %d", len(got))
+	}
+	// Expected order: recentUsed, oldUsed, freshUnused (NULLs last), backup.
+	want := []uint{recentUsed.ID, oldUsed.ID, freshUnused.ID, backup.ID}
+	for i, id := range want {
+		if got[i].ID != id {
+			t.Errorf("position %d: got factor id %d, want %d", i, got[i].ID, id)
+		}
+	}
+}
+
+func ptrTime(t time.Time) *time.Time { return &t }
+
+// TestFactorStore_CascadeDelete_WhenUserDeleted: the FK from factors
+// to users is ON DELETE CASCADE. If the account row goes away so must
+// every factor belonging to it, including the subtable rows (TOTP
+// secrets, backup codes). A stale subtable row surviving a deleted
+// user would be latent PII.
+func TestFactorStore_CascadeDelete_WhenUserDeleted(t *testing.T) {
+	db := setupTestDB(t)
+	s := NewFactorStore(db)
+	user := createTestUser(t, db, "U", "u@example.com")
+	ctx := context.Background()
+
+	totpID := seedTOTPFactor(t, s, user.ID, true)
+
+	// Seed a backup_codes factor with a code row.
+	bf := &models.Factor{UserID: user.ID, Type: models.FactorTypeBackupCodes, CreatedAt: time.Now().UTC()}
+	now := time.Now().UTC()
+	bf.EnabledAt = &now
+	if err := s.CreateFactor(ctx, bf); err != nil {
+		t.Fatalf("create bf: %v", err)
+	}
+	if err := s.InsertBackupCodes(ctx, []models.FactorBackupCode{
+		{FactorID: bf.ID, CodeHash: hashCode("x"), CreatedAt: time.Now().UTC()},
+	}); err != nil {
+		t.Fatalf("insert codes: %v", err)
+	}
+
+	// Delete the user.
+	if err := db.Delete(&models.User{}, user.ID).Error; err != nil {
+		t.Fatalf("delete user: %v", err)
+	}
+
+	// Parent factor rows: gone.
+	var factorCount int64
+	if err := db.Model(&models.Factor{}).Where("user_id = ?", user.ID).Count(&factorCount).Error; err != nil {
+		t.Fatalf("count factors: %v", err)
+	}
+	if factorCount != 0 {
+		t.Errorf("expected user's factors cascaded; count = %d", factorCount)
+	}
+	// TOTP secret row: gone (cascaded via factor_id FK).
+	var secretCount int64
+	if err := db.Model(&models.FactorTOTPSecret{}).Where("factor_id = ?", totpID).Count(&secretCount).Error; err != nil {
+		t.Fatalf("count secrets: %v", err)
+	}
+	if secretCount != 0 {
+		t.Errorf("totp secret survived user deletion; count = %d", secretCount)
+	}
+	// Backup code rows: gone.
+	var codesCount int64
+	if err := db.Model(&models.FactorBackupCode{}).Where("factor_id = ?", bf.ID).Count(&codesCount).Error; err != nil {
+		t.Fatalf("count codes: %v", err)
+	}
+	if codesCount != 0 {
+		t.Errorf("backup code rows survived user deletion; count = %d", codesCount)
+	}
+}
+
 func TestFactorStore_DeleteFactor_CrossUser_IsNoOp(t *testing.T) {
 	db := setupTestDB(t)
 	s := NewFactorStore(db)

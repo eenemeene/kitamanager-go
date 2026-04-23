@@ -27,6 +27,14 @@ import (
 // still-practical number.
 const BackupCodeCount = 8
 
+// FactorActivationFailureLimit caps the number of wrong TOTP codes the
+// activation endpoint will accept before the pending factor is deleted.
+// This closes the "attacker with a session cookie brute-forces the 6-
+// digit TOTP window against a pending row" surface. Picked at 5 to
+// match the typical login rate-limit window and leave room for legit
+// fat-finger typos.
+const FactorActivationFailureLimit = 5
+
 // BackupCodeEntropyBytes is the size of each code before base32-ish
 // encoding. 8 bytes = 64 bits of entropy per code. With 8 codes the
 // total cumulative entropy is still well beyond brute force.
@@ -202,6 +210,22 @@ func (s *FactorService) ActivateFactor(ctx context.Context, userID, factorID uin
 	switch f.Type {
 	case models.FactorTypeTOTP:
 		if err := s.verifyTOTPForActivation(ctx, f.ID, code); err != nil {
+			// Only count "wrong code" (401) as a failure — internal
+			// errors (DB/crypto) shouldn't burn a retry budget.
+			if errors.Is(err, apperror.ErrUnauthorized) {
+				n, incErr := s.factorStore.IncrementActivationFailures(ctx, f.ID, userID)
+				if incErr != nil {
+					slog.Error("increment activation_failures", "factor_id", f.ID, "error", incErr)
+					return nil, err
+				}
+				if n >= FactorActivationFailureLimit {
+					if _, delErr := s.factorStore.DeleteFactor(ctx, f.ID, userID); delErr != nil {
+						slog.Error("delete pending factor after activation limit", "factor_id", f.ID, "error", delErr)
+					}
+					s.auditService.LogFactorActivationLocked(userID, f.Type)
+					return nil, apperror.TooManyRequests("too many wrong codes; re-enroll the factor")
+				}
+			}
 			return nil, err
 		}
 	case models.FactorTypeBackupCodes:

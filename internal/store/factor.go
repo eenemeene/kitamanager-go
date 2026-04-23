@@ -39,11 +39,16 @@ func (s *FactorStore) FindByUserID(ctx context.Context, userID uint) ([]models.F
 // FindActiveByUserID returns only factors with enabled_at IS NOT NULL.
 // This is what `GET /factors` returns and what the service checks when
 // asking "does this user have any primary factor?"
+//
+// Sort order reflects how the Settings page wants to display them:
+// primary factors first (backup_codes sinks to the bottom), then most-
+// recently-used, then creation order as a tiebreaker. Clients get a
+// stable, predictable list without needing to re-sort.
 func (s *FactorStore) FindActiveByUserID(ctx context.Context, userID uint) ([]models.Factor, error) {
 	var out []models.Factor
 	err := DBFromContext(ctx, s.db).
 		Where("user_id = ? AND enabled_at IS NOT NULL", userID).
-		Order("created_at DESC").
+		Order("(type = 'backup_codes')::int ASC, last_used_at DESC NULLS LAST, created_at DESC").
 		Find(&out).Error
 	return out, err
 }
@@ -125,6 +130,37 @@ func (s *FactorStore) ActivateFactor(ctx context.Context, id, userID uint) (bool
 		return false, res.Error
 	}
 	return res.RowsAffected == 1, nil
+}
+
+// IncrementActivationFailures atomically bumps the activation_failures
+// counter on a pending factor and returns the post-increment value.
+// The row is scoped to user_id AND enabled_at IS NULL so this is a no-
+// op on activated factors (defence in depth — the service layer already
+// short-circuits on those).
+//
+// Returns 0 with ErrNotFound if no row matched (wrong id, wrong user,
+// or already activated) so the service can translate cleanly to 404.
+func (s *FactorStore) IncrementActivationFailures(ctx context.Context, id, userID uint) (int, error) {
+	db := DBFromContext(ctx, s.db)
+	res := db.Model(&models.Factor{}).
+		Where("id = ? AND user_id = ? AND enabled_at IS NULL", id, userID).
+		UpdateColumn("activation_failures", gorm.Expr("activation_failures + 1"))
+	if res.Error != nil {
+		return 0, res.Error
+	}
+	if res.RowsAffected == 0 {
+		return 0, ErrNotFound
+	}
+	var f models.Factor
+	if err := db.Select("activation_failures").
+		Where("id = ? AND user_id = ?", id, userID).
+		First(&f).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return 0, ErrNotFound
+		}
+		return 0, err
+	}
+	return f.ActivationFailures, nil
 }
 
 // DeleteFactor removes a factor iff it belongs to the user. Returns

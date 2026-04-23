@@ -173,6 +173,20 @@ func (s *AuditService) LogFactorDeleted(userID uint, factorType string) {
 	})
 }
 
+// LogFactorActivationLocked logs a pending factor being auto-deleted
+// because activation failures hit the limit. This is a security
+// signal: the common cause is an attacker in a hijacked session trying
+// codes against a freshly-enrolled pending row.
+func (s *AuditService) LogFactorActivationLocked(userID uint, factorType string) {
+	s.log(&models.AuditLog{
+		UserID:       &userID,
+		Action:       models.AuditActionFactorActivationLocked,
+		ResourceType: "factor",
+		Details:      mustMarshalJSON(map[string]string{"factor_type": factorType}),
+		Success:      false,
+	})
+}
+
 // LogBackupCodesRegenerated logs a user regenerating their backup
 // codes. A spike in these signals a user having trouble with their
 // primary factor.

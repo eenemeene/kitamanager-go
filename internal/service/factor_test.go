@@ -537,6 +537,229 @@ func TestFactorService_CleanupAbandonedPending(t *testing.T) {
 	}
 }
 
+// TestFactorService_ActivateFactor_FiveWrongCodes_DeletesPending guards
+// the activation rate-limit: the pending factor row survives a handful
+// of wrong codes, but the 5th wrong code (FactorActivationFailureLimit)
+// trips the auto-delete and the next request returns 429 — forcing the
+// user (or attacker-in-session) to re-enroll from scratch. This closes
+// the "session cookie → unlimited TOTP brute-force on pending row"
+// surface.
+func TestFactorService_ActivateFactor_FiveWrongCodes_DeletesPending(t *testing.T) {
+	db := setupTestDB(t)
+	svc, _ := newFactorService(t, db)
+	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
+
+	enroll, err := svc.EnrollTOTP(context.Background(), user.ID, nil, "pw", user.Email)
+	if err != nil {
+		t.Fatalf("enroll: %v", err)
+	}
+
+	// First 4 wrong codes: Unauthorized but the row survives.
+	for i := 1; i <= FactorActivationFailureLimit-1; i++ {
+		_, err := svc.ActivateFactor(context.Background(), user.ID, enroll.ID, "000000")
+		if !errors.Is(err, apperror.ErrUnauthorized) {
+			t.Errorf("attempt %d: expected ErrUnauthorized, got %v", i, err)
+		}
+	}
+	// Row still exists and still pending.
+	if _, err := store.NewFactorStore(db).FindByIDAndUser(context.Background(), enroll.ID, user.ID); err != nil {
+		t.Fatalf("pending row should still exist before limit hit: %v", err)
+	}
+
+	// 5th wrong code: TooManyRequests + pending row is gone.
+	_, err = svc.ActivateFactor(context.Background(), user.ID, enroll.ID, "000000")
+	if !errors.Is(err, apperror.ErrTooManyRequests) {
+		t.Errorf("5th attempt: expected ErrTooManyRequests, got %v", err)
+	}
+	_, err = store.NewFactorStore(db).FindByIDAndUser(context.Background(), enroll.ID, user.ID)
+	if !errors.Is(err, store.ErrNotFound) {
+		t.Errorf("pending row must be auto-deleted after limit; got %v", err)
+	}
+
+	// Any subsequent request against the same factor id is a 404.
+	_, err = svc.ActivateFactor(context.Background(), user.ID, enroll.ID, "000000")
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("after auto-delete: expected ErrNotFound, got %v", err)
+	}
+}
+
+// TestFactorService_ActivateFactor_CorrectCodeAfterWrongAttempts: the
+// rate-limit counter lives only on pending rows (IncrementActivationFailures
+// WHEREs on enabled_at IS NULL). A correct code flips enabled_at to now(),
+// so the counter becomes dead data — no explicit reset required. A user
+// with a few typos is not penalised; abandoned pending rows with N<limit
+// are swept by CleanupAbandonedPendingFactors after the idle window.
+func TestFactorService_ActivateFactor_CorrectCodeAfterWrongAttempts(t *testing.T) {
+	db := setupTestDB(t)
+	svc, _ := newFactorService(t, db)
+	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
+
+	enroll, err := svc.EnrollTOTP(context.Background(), user.ID, nil, "pw", user.Email)
+	if err != nil {
+		t.Fatalf("enroll: %v", err)
+	}
+	pl := enroll.Enrollment.(models.TOTPEnrollmentPayload)
+
+	// Two typos — well below the limit.
+	for range 2 {
+		_, err := svc.ActivateFactor(context.Background(), user.ID, enroll.ID, "000000")
+		if !errors.Is(err, apperror.ErrUnauthorized) {
+			t.Fatalf("expected Unauthorized for wrong code, got %v", err)
+		}
+	}
+	// Real code now: activation succeeds.
+	code, _ := totp.GenerateCode(pl.Secret, time.Now().UTC())
+	if _, err := svc.ActivateFactor(context.Background(), user.ID, enroll.ID, code); err != nil {
+		t.Errorf("activation after typos should succeed, got %v", err)
+	}
+}
+
+// TestFactorService_ListForUser_SortOrder verifies the list ordering
+// contract the Settings UI depends on:
+//   - backup_codes sink to the bottom,
+//   - primary factors ordered by last_used_at DESC (NULLs last),
+//   - created_at DESC as final tiebreaker.
+func TestFactorService_ListForUser_SortOrder(t *testing.T) {
+	db := setupTestDB(t)
+	svc, _ := newFactorService(t, db)
+	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
+
+	// Activate two TOTP factors; give the second one a more-recent
+	// last_used_at so it must sort first.
+	_, _ = enrolAndActivateTOTP(t, svc, user, "pw")
+	fid2, _ := enrolAndActivateTOTP(t, svc, user, "pw")
+
+	recent := time.Now().UTC()
+	if err := db.Model(&models.Factor{}).Where("id = ?", fid2).
+		Update("last_used_at", recent).Error; err != nil {
+		t.Fatalf("touch last_used_at: %v", err)
+	}
+
+	list, err := svc.ListForUser(context.Background(), user.ID)
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(list) != 3 {
+		t.Fatalf("expected 3 factors, got %d", len(list))
+	}
+	// Last entry must be the backup_codes row.
+	if list[len(list)-1].Type != models.FactorTypeBackupCodes {
+		t.Errorf("last entry should be backup_codes, got %q", list[len(list)-1].Type)
+	}
+	// Among primaries, the one with the recent last_used_at comes first.
+	if list[0].ID != fid2 {
+		t.Errorf("expected recently-used factor %d first, got %d", fid2, list[0].ID)
+	}
+}
+
+// TestFactorService_ActivateFactor_BackupCodesType_Rejected verifies
+// that you cannot POST /activate on a backup_codes factor — those are
+// auto-activated at creation time, and the endpoint must not pretend
+// otherwise (which would let clients trip the rate-limit path against
+// a synthetic factor type).
+func TestFactorService_ActivateFactor_BackupCodesType_Rejected(t *testing.T) {
+	db := setupTestDB(t)
+	svc, _ := newFactorService(t, db)
+	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
+
+	_, _ = enrolAndActivateTOTP(t, svc, user, "pw")
+	bf, err := store.NewFactorStore(db).FindBackupCodesFactor(context.Background(), user.ID)
+	if err != nil {
+		t.Fatalf("find backup_codes factor: %v", err)
+	}
+
+	// Mark as pending to force ActivateFactor through the type switch —
+	// without this the "already activated" guard would short-circuit.
+	if err := db.Model(&models.Factor{}).Where("id = ?", bf.ID).
+		Update("enabled_at", nil).Error; err != nil {
+		t.Fatalf("force pending: %v", err)
+	}
+
+	_, err = svc.ActivateFactor(context.Background(), user.ID, bf.ID, "any-code")
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected BadRequest for activate on backup_codes, got %v", err)
+	}
+}
+
+// TestFactorService_RegenerateBackupCodes_OnTOTPFactor_Rejected: you
+// cannot POST /regenerate at a TOTP factor id. This is a 400, not a
+// 404 — the caller owns the factor, they're just pointing regenerate
+// at the wrong type.
+func TestFactorService_RegenerateBackupCodes_OnTOTPFactor_Rejected(t *testing.T) {
+	db := setupTestDB(t)
+	svc, _ := newFactorService(t, db)
+	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
+
+	totpID, _ := enrolAndActivateTOTP(t, svc, user, "pw")
+	_, err := svc.RegenerateBackupCodes(context.Background(), user.ID, totpID, "pw")
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected BadRequest when regenerating on a TOTP factor, got %v", err)
+	}
+}
+
+// TestFactorService_TryTOTPCode_FailedVerify_NoLastUsedBump guards
+// against a subtle timing leak: tryTOTPCode must NOT bump last_used_at
+// for a wrong code, otherwise an attacker could probe "is this code
+// valid" by watching last_used_at move. Only a successful verify
+// (which passes the compare-and-set on last_used_step) touches it.
+func TestFactorService_TryTOTPCode_FailedVerify_NoLastUsedBump(t *testing.T) {
+	db := setupTestDB(t)
+	svc, _ := newFactorService(t, db)
+	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
+
+	fid, _ := enrolAndActivateTOTP(t, svc, user, "pw")
+
+	// Snapshot last_used_at right after activation.
+	var before models.Factor
+	if err := db.Where("id = ?", fid).First(&before).Error; err != nil {
+		t.Fatalf("read before: %v", err)
+	}
+
+	// Wrong code — try a handful so we don't accidentally collide with
+	// a real code at some step.
+	for _, wrong := range []string{"000000", "111111", "999999"} {
+		if ok := svc.tryTOTPCode(context.Background(), fid, wrong); ok {
+			t.Fatalf("unexpected: wrong code %q was accepted", wrong)
+		}
+	}
+
+	var after models.Factor
+	if err := db.Where("id = ?", fid).First(&after).Error; err != nil {
+		t.Fatalf("read after: %v", err)
+	}
+	// last_used_at must be unchanged (same *time.Time pointer value).
+	if (before.LastUsedAt == nil) != (after.LastUsedAt == nil) {
+		t.Errorf("last_used_at pointer-nullity flipped: before=%v after=%v", before.LastUsedAt, after.LastUsedAt)
+	}
+	if before.LastUsedAt != nil && after.LastUsedAt != nil && !before.LastUsedAt.Equal(*after.LastUsedAt) {
+		t.Errorf("last_used_at moved on wrong codes: before=%v after=%v", before.LastUsedAt, after.LastUsedAt)
+	}
+}
+
+// TestFactorService_UpdateLabel_TooLong rejects labels beyond 100
+// characters. The DB column is 100-wide; without the service check an
+// over-long label would hit the SQL layer with a driver error, which
+// becomes a 500 for the user. We want a clean 400 instead.
+func TestFactorService_UpdateLabel_TooLong(t *testing.T) {
+	db := setupTestDB(t)
+	svc, _ := newFactorService(t, db)
+	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
+
+	fid, _ := enrolAndActivateTOTP(t, svc, user, "pw")
+
+	tooLong := strings.Repeat("a", 101)
+	_, err := svc.UpdateLabel(context.Background(), user.ID, fid, &tooLong)
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected BadRequest for 101-char label, got %v", err)
+	}
+
+	// Boundary: exactly 100 chars is accepted.
+	ok := strings.Repeat("a", 100)
+	if _, err := svc.UpdateLabel(context.Background(), user.ID, fid, &ok); err != nil {
+		t.Errorf("100-char label should be accepted, got %v", err)
+	}
+}
+
 // Sanity: enrollment via our service produces URIs that match what
 // pquerna/otp.Validate accepts end-to-end. This guards against a
 // future change to totp-generation options not also updating the
