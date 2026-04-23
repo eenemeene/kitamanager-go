@@ -140,6 +140,13 @@ test.describe('Two-factor authentication — full lifecycle', () => {
   test('enable 2FA from Settings, then login with TOTP, backup code, regenerate, and disable', async ({
     page,
   }) => {
+    // Lifecycle is long because TOTP replay prevention forces us to
+    // wait out at least two full 30-second windows (after activate
+    // and before disable). Default 30s Playwright test timeout is
+    // not enough. 3 minutes covers the waits plus the usual UI
+    // actions comfortably.
+    test.setTimeout(180_000);
+
     // ---- Step 1: user logs in with password (no MFA yet) ----
     await loginViaForm(page, testEmail, password);
     // Land on a dashboard-ish page, not on /login.
