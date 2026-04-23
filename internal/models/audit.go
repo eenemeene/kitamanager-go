@@ -8,9 +8,15 @@ import (
 type AuditAction string
 
 const (
-	AuditActionLogin             AuditAction = "login"
-	AuditActionLoginFailed       AuditAction = "login_failed"
-	AuditActionLogout            AuditAction = "logout"
+	AuditActionLogin       AuditAction = "login"
+	AuditActionLoginFailed AuditAction = "login_failed"
+	AuditActionLogout      AuditAction = "logout"
+	// AuditActionSessionRevoked marks a user revoking one of their
+	// sessions from the Active Sessions UI (as opposed to the whole-
+	// account logout the current session performs). The revoked
+	// session's id hash goes in the resource_id-equivalent Details
+	// field so investigators can correlate with the session row.
+	AuditActionSessionRevoked    AuditAction = "session_revoked"
 	AuditActionSuperAdminGrant   AuditAction = "superadmin_grant"
 	AuditActionSuperAdminRevoke  AuditAction = "superadmin_revoke"
 	AuditActionUserCreate        AuditAction = "user_create"

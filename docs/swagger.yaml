@@ -44,6 +44,7 @@ definitions:
     - login
     - login_failed
     - logout
+    - session_revoked
     - superadmin_grant
     - superadmin_revoke
     - user_create
@@ -72,6 +73,7 @@ definitions:
     - AuditActionLogin
     - AuditActionLoginFailed
     - AuditActionLogout
+    - AuditActionSessionRevoked
     - AuditActionSuperAdminGrant
     - AuditActionSuperAdminRevoke
     - AuditActionUserCreate

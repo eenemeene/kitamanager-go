@@ -108,6 +108,42 @@ func (s *AuditService) LogLogin(userID uint, email, ipAddress, userAgent string)
 	})
 }
 
+// LogLogout records a user destroying their current session via the
+// /logout endpoint. Best-effort: if the caller did not know the user
+// id (e.g. session already expired server-side) the event is still
+// emitted with UserID=nil so investigators can correlate by email +
+// ip. Idempotent logout attempts against an already-gone session
+// must NOT be logged — the handler gates this call on success so we
+// don't spam noise rows after a double-click.
+func (s *AuditService) LogLogout(userID *uint, email, ipAddress string) {
+	s.log(&models.AuditLog{
+		UserID:    userID,
+		UserEmail: email,
+		Action:    models.AuditActionLogout,
+		IPAddress: ipAddress,
+		Success:   true,
+	})
+}
+
+// LogSessionRevoked records a user deleting one of their OTHER
+// sessions from the Active Sessions UI — explicit, intentional, and
+// a strong security signal (commonly fired after the user notices a
+// device they don't recognise). sessionIDHash identifies the row
+// that was killed; we store it in Details rather than ResourceID
+// because AuditLog.ResourceID is a uint and the session key is a
+// hash string.
+func (s *AuditService) LogSessionRevoked(userID uint, email, sessionIDHash, ipAddress string) {
+	s.log(&models.AuditLog{
+		UserID:       &userID,
+		UserEmail:    email,
+		Action:       models.AuditActionSessionRevoked,
+		ResourceType: "session",
+		IPAddress:    ipAddress,
+		Details:      mustMarshalJSON(map[string]string{"session_id_hash": sessionIDHash}),
+		Success:      true,
+	})
+}
+
 // LogLoginFailed logs a failed login attempt
 func (s *AuditService) LogLoginFailed(email, ipAddress, userAgent, reason string) {
 	s.log(&models.AuditLog{
