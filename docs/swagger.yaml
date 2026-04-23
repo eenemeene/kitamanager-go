@@ -1299,8 +1299,8 @@ definitions:
       code:
         example: "123456"
         type: string
-    required:
-    - code
+      webauthn_response:
+        type: object
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.FactorActivateResponse:
     properties:
@@ -2313,8 +2313,9 @@ definitions:
       pending_token:
         example: 9ZmN...sBA
         type: string
+      webauthn_response:
+        type: object
     required:
-    - code
     - factor_id
     - pending_token
     type: object

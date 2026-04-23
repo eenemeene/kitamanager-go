@@ -39,6 +39,7 @@ func newFactorHandlerForTest(t *testing.T, db *gorm.DB) *FactorHandler {
 		store.NewUserStore(db),
 		aead,
 		"KitaManager (test)",
+		nil, // webauthn service not needed in factor-handler tests
 		audit,
 	)
 	return NewFactorHandler(svc)

@@ -34,6 +34,7 @@ func enrolAndActivateTOTPFor(t *testing.T, db *gorm.DB, _ *AuthService, user *mo
 		store.NewUserStore(db),
 		testAuthAEAD(),
 		"KitaManager (test)",
+		nil,
 		auditService,
 	)
 	ctx := context.Background()
@@ -289,7 +290,7 @@ func TestAuthService_VerifyMFALogin_BackupCodeSuccess(t *testing.T) {
 		t.Fatalf("find bf: %v", err)
 	}
 	auditService := createAuditService(db)
-	factorSvc := NewFactorService(factorStore, store.NewUserStore(db), testAuthAEAD(), "KitaManager (test)", auditService)
+	factorSvc := NewFactorService(factorStore, store.NewUserStore(db), testAuthAEAD(), "KitaManager (test)", nil, auditService)
 	payload, err := factorSvc.RegenerateBackupCodes(ctx, user.ID, bf.ID, "pw-123456")
 	if err != nil {
 		t.Fatalf("regenerate: %v", err)
@@ -663,7 +664,7 @@ func TestAuthService_VerifyMFALogin_BackupCodeNormalisation(t *testing.T) {
 	factorStore := store.NewFactorStore(db)
 	bf, _ := factorStore.FindBackupCodesFactor(ctx, user.ID)
 	auditService := createAuditService(db)
-	factorSvc := NewFactorService(factorStore, store.NewUserStore(db), testAuthAEAD(), "KitaManager (test)", auditService)
+	factorSvc := NewFactorService(factorStore, store.NewUserStore(db), testAuthAEAD(), "KitaManager (test)", nil, auditService)
 	payload, err := factorSvc.RegenerateBackupCodes(ctx, user.ID, bf.ID, "pw-123456")
 	if err != nil {
 		t.Fatalf("regen: %v", err)

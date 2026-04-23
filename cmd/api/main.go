@@ -238,7 +238,7 @@ func initServices(s *appStores, cfg *config.Config, transactor store.Transactor)
 		os.Exit(1)
 	}
 
-	factorSvc := service.NewFactorService(s.factor, s.user, aead, cfg.TOTPIssuer, auditService)
+	factorSvc := service.NewFactorService(s.factor, s.user, aead, cfg.TOTPIssuer, nil, auditService)
 	return &appServices{
 		audit:                 auditService,
 		auth:                  service.NewAuthService(s.user, s.session, cfg.JWTSecret, auditService, factorSvc),

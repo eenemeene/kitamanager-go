@@ -95,7 +95,7 @@ func setupAuthFlowRouter(t *testing.T) *authFlowRouter {
 	csrfMW := middleware.NewCSRFMiddleware(testJWTSecret)
 
 	factorStore := store.NewFactorStore(testDB)
-	factorService := service.NewFactorService(factorStore, userStore, testTOTPAEAD(t), "KitaManager (test)", auditService)
+	factorService := service.NewFactorService(factorStore, userStore, testTOTPAEAD(t), "KitaManager (test)", nil, auditService)
 
 	// Real auth service — hashes passwords with bcrypt.DefaultCost and issues
 	// opaque session tokens backed by the sessions table. Gets a factor

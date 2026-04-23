@@ -20,6 +20,7 @@ import (
 	cryptopkg "github.com/eenemeene/kitamanager-go/internal/crypto"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/store"
+	webauthnpkg "github.com/eenemeene/kitamanager-go/internal/webauthn"
 )
 
 // BackupCodeCount is how many codes are generated per set. 8 is the
@@ -49,24 +50,30 @@ const totpPeriod = uint(30)
 
 // FactorService is the business layer for factor-generic MFA. It
 // orchestrates the parent `factors` table and per-type subtables via
-// FactorStorer, wraps the TOTP library from pquerna/otp, and emits
-// audit events for every state transition.
+// FactorStorer, wraps the TOTP library from pquerna/otp and the
+// WebAuthn library wrapper from internal/webauthn, and emits audit
+// events for every state transition.
 type FactorService struct {
 	factorStore  store.FactorStorer
 	userStore    store.UserStorer
 	aead         *cryptopkg.AEAD
 	issuer       string
+	webAuthn     *webauthnpkg.Service // may be nil if WebAuthn is not configured
 	auditService *AuditService
 }
 
 // NewFactorService constructs the service. `aead` is the AES-GCM
 // wrapper built from TOTP_ENCRYPTION_KEY; `issuer` is the string shown
-// in the user's authenticator app.
+// in the user's authenticator app; `webAuthn` may be nil if the
+// deployment has not configured WEBAUTHN_* env vars, in which case
+// any WebAuthn code path returns an apperror.BadRequest with a clear
+// "WebAuthn not enabled" message.
 func NewFactorService(
 	factorStore store.FactorStorer,
 	userStore store.UserStorer,
 	aead *cryptopkg.AEAD,
 	issuer string,
+	webAuthn *webauthnpkg.Service,
 	auditService *AuditService,
 ) *FactorService {
 	return &FactorService{
@@ -74,6 +81,7 @@ func NewFactorService(
 		userStore:    userStore,
 		aead:         aead,
 		issuer:       issuer,
+		webAuthn:     webAuthn,
 		auditService: auditService,
 	}
 }

@@ -13,22 +13,23 @@ import (
 
 // Validation errors
 var (
-	ErrMissingJWTSecret  = errors.New("JWT_SECRET must be set (generate with: openssl rand -hex 32)")
-	ErrWeakJWTSecret     = errors.New("JWT_SECRET must be at least 32 characters and must not be the default placeholder value")
-	ErrInvalidServerPort = errors.New("SERVER_PORT must be a valid port number (1-65535)")
-	ErrInvalidDBPort     = errors.New("DB_PORT must be a valid port number (1-65535)")
-	ErrInvalidLogLevel   = errors.New("LOG_LEVEL must be one of: debug, info, warn, error")
-	ErrInvalidLogFormat  = errors.New("LOG_FORMAT must be one of: json, text")
-	ErrInvalidCORSOrigin = errors.New("CORS_ALLOW_ORIGINS contains invalid URL")
-	ErrInsecureCORS      = errors.New("CORS_ALLOW_ORIGINS=* combined with CORS_ALLOW_CREDENTIALS=true is not permitted")
-	ErrInvalidDBSSLMode  = errors.New("DB_SSLMODE must be one of: disable, require, verify-ca, verify-full")
-	ErrMissingDBConfig   = errors.New("database configuration incomplete: DB_HOST, DB_USER, DB_PASSWORD, and DB_NAME are required")
-	ErrWeakAdminPassword = errors.New("SEED_ADMIN_PASSWORD must be at least 8 characters when SEED_ADMIN_EMAIL is set")
-	ErrInvalidAdminEmail = errors.New("SEED_ADMIN_EMAIL must be a valid email address")
-	ErrInvalidSMTPPort   = errors.New("SMTP_PORT must be a valid port number (1-65535)")
-	ErrInvalidSMTPFrom   = errors.New("SMTP_FROM must be a valid email address")
-	ErrMissingTOTPKey    = errors.New("TOTP_ENCRYPTION_KEY must be set (generate with: openssl rand -hex 32)")
-	ErrInvalidTOTPKey    = errors.New("TOTP_ENCRYPTION_KEY must be exactly 32 bytes hex-encoded (64 hex chars) and must not be a known placeholder value")
+	ErrMissingJWTSecret      = errors.New("JWT_SECRET must be set (generate with: openssl rand -hex 32)")
+	ErrWeakJWTSecret         = errors.New("JWT_SECRET must be at least 32 characters and must not be the default placeholder value")
+	ErrInvalidServerPort     = errors.New("SERVER_PORT must be a valid port number (1-65535)")
+	ErrInvalidDBPort         = errors.New("DB_PORT must be a valid port number (1-65535)")
+	ErrInvalidLogLevel       = errors.New("LOG_LEVEL must be one of: debug, info, warn, error")
+	ErrInvalidLogFormat      = errors.New("LOG_FORMAT must be one of: json, text")
+	ErrInvalidCORSOrigin     = errors.New("CORS_ALLOW_ORIGINS contains invalid URL")
+	ErrInsecureCORS          = errors.New("CORS_ALLOW_ORIGINS=* combined with CORS_ALLOW_CREDENTIALS=true is not permitted")
+	ErrInvalidDBSSLMode      = errors.New("DB_SSLMODE must be one of: disable, require, verify-ca, verify-full")
+	ErrMissingDBConfig       = errors.New("database configuration incomplete: DB_HOST, DB_USER, DB_PASSWORD, and DB_NAME are required")
+	ErrWeakAdminPassword     = errors.New("SEED_ADMIN_PASSWORD must be at least 8 characters when SEED_ADMIN_EMAIL is set")
+	ErrInvalidAdminEmail     = errors.New("SEED_ADMIN_EMAIL must be a valid email address")
+	ErrInvalidSMTPPort       = errors.New("SMTP_PORT must be a valid port number (1-65535)")
+	ErrInvalidSMTPFrom       = errors.New("SMTP_FROM must be a valid email address")
+	ErrMissingTOTPKey        = errors.New("TOTP_ENCRYPTION_KEY must be set (generate with: openssl rand -hex 32)")
+	ErrInvalidTOTPKey        = errors.New("TOTP_ENCRYPTION_KEY must be exactly 32 bytes hex-encoded (64 hex chars) and must not be a known placeholder value")
+	ErrInvalidWebAuthnOrigin = errors.New("WEBAUTHN_ORIGINS contains an invalid entry (must be scheme+host[+port], no wildcards, no trailing slashes)")
 )
 
 // knownPlaceholderTOTPKeys mirrors knownPlaceholderJWTSecrets: any string
@@ -117,6 +118,15 @@ type Config struct {
 	// shown in the user's authenticator app.
 	TOTPEncryptionKey string
 	TOTPIssuer        string
+
+	// WebAuthn relying-party identity. All three are required if any
+	// WebAuthn factor is to be enrolled; together they nail down the
+	// rpId/origin pair the browser binds credentials against. Rotating
+	// WebAuthnRPID invalidates every stored credential across the
+	// fleet — treat it as identity-forever once set.
+	WebAuthnRPID    string
+	WebAuthnRPName  string
+	WebAuthnOrigins []string // comma-separated in env; split + trimmed at load
 }
 
 // Validate checks the configuration and fails closed on every axis.
@@ -200,6 +210,24 @@ func (c *Config) Validate() error {
 		errs = append(errs, ErrInvalidTOTPKey)
 	}
 
+	// WebAuthn: require all three fields together, or all three empty.
+	// Empty means "the deployment does not support WebAuthn factors"
+	// and the service wrapper is simply not wired up. A partially-
+	// configured set is a bug, not a supported mode.
+	anyWebAuthn := c.WebAuthnRPID != "" || c.WebAuthnRPName != "" || len(c.WebAuthnOrigins) > 0
+	allWebAuthn := c.WebAuthnRPID != "" && c.WebAuthnRPName != "" && len(c.WebAuthnOrigins) > 0
+	if anyWebAuthn && !allWebAuthn {
+		errs = append(errs, errors.New("WEBAUTHN_RP_ID, WEBAUTHN_RP_NAME, and WEBAUTHN_ORIGINS must all be set or all left empty"))
+	}
+	if allWebAuthn {
+		for _, o := range c.WebAuthnOrigins {
+			if !isValidWebAuthnOrigin(o) {
+				errs = append(errs, ErrInvalidWebAuthnOrigin)
+				break
+			}
+		}
+	}
+
 	// Admin seeding
 	if c.SeedAdminEmail != "" {
 		if !strings.Contains(c.SeedAdminEmail, "@") {
@@ -224,6 +252,29 @@ func isValidPort(port string) bool {
 	return p >= 1 && p <= 65535
 }
 
+// isValidWebAuthnOrigin enforces the shape WebAuthn expects for an
+// RPOrigin string: scheme://host[:port] with no path, no query, no
+// wildcards, no trailing slash. Browsers do an exact-string match
+// against clientDataJSON.origin so any deviation breaks a ceremony.
+// We accept http:// only for localhost so dev builds work without
+// HTTPS but prod can't accidentally deploy with a plaintext origin.
+func isValidWebAuthnOrigin(s string) bool {
+	if s == "" || strings.Contains(s, "*") || strings.HasSuffix(s, "/") {
+		return false
+	}
+	if rest, ok := strings.CutPrefix(s, "https://"); ok {
+		return rest != "" && !strings.Contains(rest, "/")
+	}
+	if rest, ok := strings.CutPrefix(s, "http://"); ok {
+		// Only permit plaintext for localhost-style dev origins.
+		if !strings.HasPrefix(rest, "localhost") && !strings.HasPrefix(rest, "127.0.0.1") {
+			return false
+		}
+		return rest != "" && !strings.Contains(rest, "/")
+	}
+	return false
+}
+
 // isValidHex64 returns true if s is exactly 64 hex characters — the
 // form of a 32-byte key as emitted by `openssl rand -hex 32`.
 func isValidHex64(s string) bool {
@@ -240,6 +291,24 @@ func isValidHex64(s string) bool {
 		}
 	}
 	return true
+}
+
+// splitCSV trims + filters a comma-separated env value. Used by
+// every multi-valued env (WEBAUTHN_ORIGINS, CORS_ALLOW_ORIGINS
+// pattern above, etc) so consumers don't have to implement the same
+// split-and-trim dance twice.
+func splitCSV(raw string) []string {
+	if raw == "" {
+		return nil
+	}
+	var out []string
+	for v := range strings.SplitSeq(raw, ",") {
+		v = strings.TrimSpace(v)
+		if v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 func Load() (*Config, error) {
@@ -312,6 +381,10 @@ func Load() (*Config, error) {
 
 		TOTPEncryptionKey: getEnv("TOTP_ENCRYPTION_KEY", ""),
 		TOTPIssuer:        getEnv("TOTP_ISSUER", "KitaManager"),
+
+		WebAuthnRPID:    getEnv("WEBAUTHN_RP_ID", ""),
+		WebAuthnRPName:  getEnv("WEBAUTHN_RP_NAME", ""),
+		WebAuthnOrigins: splitCSV(getEnv("WEBAUTHN_ORIGINS", "")),
 	}
 
 	if err := cfg.Validate(); err != nil {

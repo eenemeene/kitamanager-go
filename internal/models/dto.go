@@ -1,5 +1,7 @@
 package models
 
+import "encoding/json"
+
 // DateFormat is the standard date format (ISO 8601 date) used across the application.
 const DateFormat = "2006-01-02"
 
@@ -46,14 +48,37 @@ type LoginMFARequiredResponse struct {
 	Factors      []LoginFactorDescriptor `json:"factors"`
 }
 
-// MFAVerifyRequest is the body of POST /auth/mfa/verify.
-// `pending_token` is the raw value returned by /login; `factor_id` is
-// the id from the response's factors[]. `code` is a TOTP code or a
-// backup code (hyphens/whitespace tolerated).
+// MFAVerifyRequest is the body of POST /auth/mfa/verify. Polymorphic
+// across factor types:
+//   - TOTP / backup_codes: Code carries the 6-digit or recovery code.
+//   - WebAuthn: WebAuthnResponse carries the PublicKeyCredential JSON
+//     from navigator.credentials.get(); Code is unset.
+//
+// At least one of the two must be non-empty; the handler dispatches
+// on the addressed factor's type.
 type MFAVerifyRequest struct {
+	PendingToken     string          `json:"pending_token" binding:"required" example:"9ZmN...sBA"`
+	FactorID         uint            `json:"factor_id" binding:"required" example:"42"`
+	Code             string          `json:"code,omitempty" example:"123456"`
+	WebAuthnResponse json.RawMessage `json:"webauthn_response,omitempty" swaggertype:"object"`
+}
+
+// MFAChallengeRequest is the body of POST /auth/mfa/challenge. Only
+// meaningful for WebAuthn factors — the browser needs a server-
+// generated challenge before it can call
+// navigator.credentials.get(). TOTP factors never hit this endpoint.
+type MFAChallengeRequest struct {
 	PendingToken string `json:"pending_token" binding:"required" example:"9ZmN...sBA"`
 	FactorID     uint   `json:"factor_id" binding:"required" example:"42"`
-	Code         string `json:"code" binding:"required" example:"123456"`
+}
+
+// MFAChallengeResponse carries the factor-type-specific challenge
+// payload the client must hand to navigator.credentials.get(). For
+// WebAuthn this is the PublicKeyCredentialRequestOptionsJSON blob.
+// Kept as RawMessage so we can pass the go-webauthn library's JSON
+// output through unchanged.
+type MFAChallengeResponse struct {
+	RequestOptions json.RawMessage `json:"request_options" swaggertype:"object"`
 }
 
 // MessageResponse represents a success message response

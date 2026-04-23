@@ -40,6 +40,7 @@ func newFactorService(t *testing.T, db *gorm.DB) (*FactorService, *AuditService)
 		store.NewUserStore(db),
 		testFactorAEAD(t),
 		"KitaManager (test)",
+		nil,
 		audit,
 	)
 	return svc, audit

@@ -39,6 +39,7 @@ func userWithMFA(t *testing.T, db *gorm.DB, email, password string) (*models.Use
 		store.NewUserStore(db),
 		aead,
 		"KitaManager (test)",
+		nil,
 		audit,
 	)
 	ctx := context.Background()

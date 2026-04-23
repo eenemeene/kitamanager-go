@@ -258,6 +258,14 @@ type FactorStorer interface {
 	CountUnusedBackupCodes(ctx context.Context, factorID uint) (int, error)
 	ConsumeBackupCode(ctx context.Context, factorID uint, codeHash string) (bool, error)
 	ReplaceBackupCodes(ctx context.Context, factorID uint, fresh []models.FactorBackupCode) error
+
+	// WebAuthn subtable + registration-challenge lifecycle.
+	CreateWebAuthnCredential(ctx context.Context, cred *models.FactorWebAuthnCredential) error
+	FindWebAuthnCredential(ctx context.Context, factorID uint) (*models.FactorWebAuthnCredential, error)
+	FindWebAuthnCredentialByID(ctx context.Context, credentialID []byte) (*models.FactorWebAuthnCredential, error)
+	UpdateWebAuthnSignCount(ctx context.Context, factorID uint, newCount int64, backupState bool) error
+	SetRegistrationChallenge(ctx context.Context, factorID uint, challenge []byte, expiresAt time.Time) error
+	ClearRegistrationChallenge(ctx context.Context, factorID uint) error
 }
 
 // SessionStorer defines the interface for server-side session storage.

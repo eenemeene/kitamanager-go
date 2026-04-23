@@ -11841,13 +11841,13 @@ const docTemplate = `{
         },
         "github_com_eenemeene_kitamanager-go_internal_models.FactorActivateRequest": {
             "type": "object",
-            "required": [
-                "code"
-            ],
             "properties": {
                 "code": {
                     "type": "string",
                     "example": "123456"
+                },
+                "webauthn_response": {
+                    "type": "object"
                 }
             }
         },
@@ -13229,7 +13229,6 @@ const docTemplate = `{
         "github_com_eenemeene_kitamanager-go_internal_models.MFAVerifyRequest": {
             "type": "object",
             "required": [
-                "code",
                 "factor_id",
                 "pending_token"
             ],
@@ -13245,6 +13244,9 @@ const docTemplate = `{
                 "pending_token": {
                     "type": "string",
                     "example": "9ZmN...sBA"
+                },
+                "webauthn_response": {
+                    "type": "object"
                 }
             }
         },
