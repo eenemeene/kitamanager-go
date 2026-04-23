@@ -58,6 +58,11 @@ definitions:
     - password_reset
     - password_change
     - password_change_failed
+    - factor_enrolled
+    - factor_deleted
+    - factor_admin_deleted
+    - backup_codes_regenerated
+    - factor_activation_locked
     type: string
     x-enum-varnames:
     - AuditActionLogin
@@ -77,6 +82,11 @@ definitions:
     - AuditActionPasswordReset
     - AuditActionPasswordChange
     - AuditActionPasswordChangeFailed
+    - AuditActionFactorEnrolled
+    - AuditActionFactorDeleted
+    - AuditActionFactorAdminDeleted
+    - AuditActionBackupCodesRegenerated
+    - AuditActionFactorActivationLocked
   github_com_eenemeene_kitamanager-go_internal_models.AuditLogResponse:
     properties:
       action:
@@ -111,6 +121,18 @@ definitions:
         type: string
       user_id:
         example: 1
+        type: integer
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.BackupCodesPayload:
+    properties:
+      codes:
+        example:
+        - hk7m-93px-2fnr
+        items:
+          type: string
+        type: array
+      factor_id:
+        example: 43
         type: integer
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.BillAppearance:
@@ -1262,6 +1284,101 @@ definitions:
         type: string
       message:
         example: resource not found
+        type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.FactorActivateRequest:
+    properties:
+      code:
+        example: "123456"
+        type: string
+    required:
+    - code
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.FactorActivateResponse:
+    properties:
+      activated:
+        example: true
+        type: boolean
+      backup_codes:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.BackupCodesPayload'
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.FactorDeleteRequest:
+    properties:
+      code:
+        type: string
+      password:
+        type: string
+    required:
+    - password
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.FactorEnrollRequest:
+    properties:
+      label:
+        example: iPhone
+        type: string
+      password:
+        example: yourcurrentpassword
+        type: string
+      type:
+        example: totp
+        type: string
+    required:
+    - password
+    - type
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.FactorLabelUpdateRequest:
+    properties:
+      label:
+        example: Old phone
+        type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.FactorListResponse:
+    properties:
+      factors:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FactorResponse'
+        type: array
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.FactorRegenerateRequest:
+    properties:
+      password:
+        example: yourcurrentpassword
+        type: string
+    required:
+    - password
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.FactorResponse:
+    properties:
+      activated:
+        description: |-
+          Activated is a derived convenience field: true iff EnabledAt is set.
+          Clients that don't need the timestamp can just read this boolean.
+        example: true
+        type: boolean
+      backup_codes_remaining:
+        description: |-
+          BackupCodesRemaining is populated only for factors of type
+          "backup_codes"; nil otherwise.
+        example: 7
+        type: integer
+      created_at:
+        type: string
+      enabled_at:
+        type: string
+      enrollment:
+        description: |-
+          Enrollment is populated only on the `POST` response during
+          initial enrollment; subsequent GETs omit it.
+      id:
+        example: 42
+        type: integer
+      label:
+        example: Authenticator app
+        type: string
+      last_used_at:
+        type: string
+      type:
+        example: totp
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.FinancialBudgetItemDetail:
@@ -9406,6 +9523,308 @@ paths:
       summary: Update a user
       tags:
       - users
+  /api/v1/users/{userId}/factors:
+    get:
+      description: |-
+        Returns every activated factor owned by the addressed user.
+        Pending (not-yet-activated) factors are hidden.
+      parameters:
+      - description: User id or 'me'
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FactorListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List the caller's MFA factors
+      tags:
+      - factors
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Creates a pending factor. For TOTP, returns the
+        base32 secret and otpauth URI that the client displays
+        as a QR code. The factor is not yet usable — call
+        /activate with a valid code to enable it.
+        Password re-entry is required (step-up) to prevent a
+        stolen session from installing a backdoor authenticator.
+      parameters:
+      - description: User id or 'me'
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Factor type + step-up password
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FactorEnrollRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FactorResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Start MFA enrollment
+      tags:
+      - factors
+  /api/v1/users/{userId}/factors/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: |-
+        Disables a factor. Password re-entry required
+        (step-up). A code from any active factor is additionally
+        required when removing your last primary factor —
+        otherwise a stolen session could wipe your 2FA and
+        leave you with password-only protection.
+      parameters:
+      - description: User id or 'me'
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Factor id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Step-up password + optional code
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FactorDeleteRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove a factor
+      tags:
+      - factors
+    get:
+      parameters:
+      - description: User id or 'me'
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Factor id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FactorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a single factor
+      tags:
+      - factors
+    patch:
+      consumes:
+      - application/json
+      description: Rename a factor. No step-up required.
+      parameters:
+      - description: User id or 'me'
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Factor id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: New label
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FactorLabelUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FactorResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Edit a factor's label
+      tags:
+      - factors
+  /api/v1/users/{userId}/factors/{id}/activate:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Verifies the first code (proving the user can read
+        their authenticator) and enables the factor. If this
+        is the user's first primary factor, a fresh set of
+        backup codes is generated and returned — save them NOW.
+      parameters:
+      - description: User id or 'me'
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Factor id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Code from the authenticator
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FactorActivateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FactorActivateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Activate a pending factor
+      tags:
+      - factors
+  /api/v1/users/{userId}/factors/{id}/regenerate:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Replaces every backup code (used or unused) with a
+        fresh set. Password re-entry required. Only valid for
+        backup_codes factors.
+      parameters:
+      - description: User id or 'me'
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Factor id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Step-up password
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FactorRegenerateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.BackupCodesPayload'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Regenerate backup codes
+      tags:
+      - factors
   /api/v1/users/{userId}/memberships:
     get:
       consumes:

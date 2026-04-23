@@ -357,6 +357,7 @@ jobs:
           DB_NAME=kitamanager \
           DB_SSLMODE=disable \
           JWT_SECRET=ci-only-jwt-secret-not-for-production-use-at-least-32-chars \
+          TOTP_ENCRYPTION_KEY=1111111111111111111111111111111111111111111111111111111111111111 \
           SECURE_COOKIES=false \
           SEED_ADMIN_EMAIL=superadmin@example.com \
           SEED_ADMIN_PASSWORD=supersecret \

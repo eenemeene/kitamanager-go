@@ -149,6 +149,56 @@ func (s *AuditService) LogPasswordChangeFailed(userID uint, email, ipAddress, re
 	})
 }
 
+// LogFactorEnrolled logs completion of MFA factor enrollment.
+// `factorType` is the factor-generic type string ("totp", etc.) so
+// audit queries can pivot on it.
+func (s *AuditService) LogFactorEnrolled(userID uint, factorType string) {
+	s.log(&models.AuditLog{
+		UserID:       &userID,
+		Action:       models.AuditActionFactorEnrolled,
+		ResourceType: "factor",
+		Details:      mustMarshalJSON(map[string]string{"factor_type": factorType}),
+		Success:      true,
+	})
+}
+
+// LogFactorDeleted logs a user removing their OWN MFA factor.
+func (s *AuditService) LogFactorDeleted(userID uint, factorType string) {
+	s.log(&models.AuditLog{
+		UserID:       &userID,
+		Action:       models.AuditActionFactorDeleted,
+		ResourceType: "factor",
+		Details:      mustMarshalJSON(map[string]string{"factor_type": factorType}),
+		Success:      true,
+	})
+}
+
+// LogFactorActivationLocked logs a pending factor being auto-deleted
+// because activation failures hit the limit. This is a security
+// signal: the common cause is an attacker in a hijacked session trying
+// codes against a freshly-enrolled pending row.
+func (s *AuditService) LogFactorActivationLocked(userID uint, factorType string) {
+	s.log(&models.AuditLog{
+		UserID:       &userID,
+		Action:       models.AuditActionFactorActivationLocked,
+		ResourceType: "factor",
+		Details:      mustMarshalJSON(map[string]string{"factor_type": factorType}),
+		Success:      false,
+	})
+}
+
+// LogBackupCodesRegenerated logs a user regenerating their backup
+// codes. A spike in these signals a user having trouble with their
+// primary factor.
+func (s *AuditService) LogBackupCodesRegenerated(userID uint) {
+	s.log(&models.AuditLog{
+		UserID:       &userID,
+		Action:       models.AuditActionBackupCodesRegenerated,
+		ResourceType: "factor",
+		Success:      true,
+	})
+}
+
 // LogSuperAdminChange logs a superadmin status change
 func (s *AuditService) LogSuperAdminChange(actorID uint, actorEmail string, targetUserID uint, targetEmail string, granted bool, ipAddress string) {
 	action := models.AuditActionSuperAdminGrant

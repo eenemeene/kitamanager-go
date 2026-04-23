@@ -19,6 +19,7 @@ import (
 
 	_ "github.com/eenemeene/kitamanager-go/docs"
 	"github.com/eenemeene/kitamanager-go/internal/config"
+	cryptopkg "github.com/eenemeene/kitamanager-go/internal/crypto"
 	"github.com/eenemeene/kitamanager-go/internal/database"
 	"github.com/eenemeene/kitamanager-go/internal/handlers"
 	"github.com/eenemeene/kitamanager-go/internal/importer"
@@ -64,6 +65,7 @@ type appStores struct {
 	budgetItem                  *store.BudgetItemStore
 	audit                       *store.AuditStore
 	session                     *store.SessionStore
+	factor                      *store.FactorStore
 	governmentFundingBillPeriod *store.GovernmentFundingBillPeriodStore
 	childVoucher                *store.ChildVoucherStore
 }
@@ -86,6 +88,7 @@ type appServices struct {
 	statistics            *service.StatisticsService
 	governmentFundingBill *service.GovernmentFundingBillService
 	email                 *service.EmailService
+	factor                *service.FactorService
 }
 
 // appMiddleware holds all middleware instances.
@@ -156,7 +159,7 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	sessionCleanupDone := startSessionCleanup(stores.session)
+	sessionCleanupDone := startSessionCleanup(stores.session, stores.factor)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -191,6 +194,7 @@ func initStores(db *gorm.DB) *appStores {
 		budgetItem:                  store.NewBudgetItemStore(db),
 		audit:                       store.NewAuditStore(db),
 		session:                     store.NewSessionStore(db),
+		factor:                      store.NewFactorStore(db),
 		governmentFundingBillPeriod: store.NewGovernmentFundingBillPeriodStore(db),
 		childVoucher:                store.NewChildVoucherStore(db),
 	}
@@ -217,10 +221,28 @@ func seedData(cfg *config.Config, db *gorm.DB, s *appStores, enforcer *rbac.Enfo
 
 func initServices(s *appStores, cfg *config.Config, transactor store.Transactor) *appServices {
 	auditService := service.NewAuditService(s.audit)
+
+	// TOTP_ENCRYPTION_KEY shape is validated at config.Load() time;
+	// the hex decode + AEAD construction here is guaranteed not to
+	// fail on valid config. We still panic on failure rather than
+	// silently skipping — a nil AEAD would surface as a runtime NPE
+	// on the first enrollment attempt, which is much worse.
+	totpKey, err := cryptopkg.DecodeKey(cfg.TOTPEncryptionKey)
+	if err != nil {
+		slog.Error("TOTP_ENCRYPTION_KEY invalid despite config validation", "error", err)
+		os.Exit(1)
+	}
+	aead, err := cryptopkg.NewAEAD(totpKey)
+	if err != nil {
+		slog.Error("failed to construct TOTP AEAD", "error", err)
+		os.Exit(1)
+	}
+
 	return &appServices{
 		audit:                 auditService,
 		auth:                  service.NewAuthService(s.user, s.session, cfg.JWTSecret, auditService),
 		user:                  service.NewUserService(s.user, s.userOrganization, s.session),
+		factor:                service.NewFactorService(s.factor, s.user, aead, cfg.TOTPIssuer, auditService),
 		userOrganization:      service.NewUserOrganizationService(s.userOrganization, s.user, transactor),
 		organization:          service.NewOrganizationService(s.organization, s.user),
 		section:               service.NewSectionService(s.section, transactor),
@@ -318,6 +340,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, s *appStores, svc *appServices
 		Export:                handlers.NewExportHandler(svc.employee, svc.child, svc.audit),
 		GovernmentFundingBill: handlers.NewGovernmentFundingBillHandler(svc.governmentFundingBill, svc.audit),
 		AuditLog:              handlers.NewAuditLogHandler(svc.audit),
+		Factor:                handlers.NewFactorHandler(svc.factor),
 		AuthMiddleware:        mw.auth,
 		AuthzMiddleware:       mw.authz,
 		CSRFMiddleware:        mw.csrf,
@@ -328,7 +351,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, s *appStores, svc *appServices
 	return r
 }
 
-func startSessionCleanup(sessionStore *store.SessionStore) chan struct{} {
+func startSessionCleanup(sessionStore *store.SessionStore, factorStore *store.FactorStore) chan struct{} {
 	done := make(chan struct{})
 	go func() {
 		ticker := time.NewTicker(1 * time.Hour)
@@ -336,8 +359,16 @@ func startSessionCleanup(sessionStore *store.SessionStore) chan struct{} {
 		for {
 			select {
 			case <-ticker.C:
-				if err := sessionStore.CleanupExpired(context.Background()); err != nil {
+				ctx := context.Background()
+				if err := sessionStore.CleanupExpired(ctx); err != nil {
 					slog.Error("Failed to cleanup expired sessions", "error", err)
+				}
+				// Abandoned enrollment rows — users who started MFA
+				// enrollment but never completed it. One hour
+				// matches the UX promise "finish within the hour
+				// or start over."
+				if _, err := factorStore.CleanupAbandonedPending(ctx, time.Hour); err != nil {
+					slog.Error("Failed to cleanup abandoned pending factors", "error", err)
 				}
 			case <-done:
 				return

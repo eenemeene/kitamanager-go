@@ -63,6 +63,7 @@ dev: api-build web-install
 		DB_NAME=kitamanager \
 		DB_SSLMODE=disable \
 		JWT_SECRET=dev-only-jwt-secret-not-for-production-use-change-me-32chars \
+		TOTP_ENCRYPTION_KEY=1111111111111111111111111111111111111111111111111111111111111111 \
 		SECURE_COOKIES=false \
 		SEED_ADMIN_EMAIL=admin@example.com \
 		SEED_ADMIN_PASSWORD=supersecret \
