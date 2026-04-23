@@ -56,3 +56,10 @@ if (typeof global.ResizeObserver === 'undefined') {
     disconnect: jest.fn(),
   }));
 }
+
+// JSDOM does not implement document.elementFromPoint, but input-otp's
+// PWM-autofill-badge helper calls it on a timer. Stub it so components
+// using <InputOTP> render cleanly under Jest.
+if (typeof document !== 'undefined' && typeof document.elementFromPoint !== 'function') {
+  document.elementFromPoint = () => null;
+}

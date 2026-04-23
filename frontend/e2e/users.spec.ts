@@ -173,7 +173,8 @@ test.describe('Users', () => {
       // verify the org-scoped gate resolves the user_organization row
       // through PermissionService to the `member` Casbin policies.
       const orgStatus = await page.evaluate(
-        async (id) => (await fetch(`/api/v1/organizations/${id}`, { credentials: 'same-origin' })).status,
+        async (id) =>
+          (await fetch(`/api/v1/organizations/${id}`, { credentials: 'same-origin' })).status,
         orgId
       );
       expect(orgStatus).toBe(200);
@@ -181,8 +182,11 @@ test.describe('Users', () => {
       // Org-scoped children list is also member-readable.
       const childrenStatus = await page.evaluate(
         async (id) =>
-          (await fetch(`/api/v1/organizations/${id}/children?limit=1`, { credentials: 'same-origin' }))
-            .status,
+          (
+            await fetch(`/api/v1/organizations/${id}/children?limit=1`, {
+              credentials: 'same-origin',
+            })
+          ).status,
         orgId
       );
       expect(childrenStatus).toBe(200);
@@ -290,7 +294,11 @@ test.describe('Users', () => {
             }, candidate.id),
           { timeout: 10000 }
         )
-        .toEqual(expect.arrayContaining([expect.objectContaining({ organization_id: orgId, role: 'manager' })]));
+        .toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ organization_id: orgId, role: 'manager' }),
+          ])
+        );
     } finally {
       await deleteUserViaApi(page, candidate.id).catch(() => {});
     }
@@ -325,7 +333,8 @@ test.describe('Users', () => {
 
       // Org-scoped reads must fail with 403 — no role in this org.
       const orgStatus = await page.evaluate(
-        async (id) => (await fetch(`/api/v1/organizations/${id}`, { credentials: 'same-origin' })).status,
+        async (id) =>
+          (await fetch(`/api/v1/organizations/${id}`, { credentials: 'same-origin' })).status,
         orgId
       );
       expect(orgStatus).toBe(403);

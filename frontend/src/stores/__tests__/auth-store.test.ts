@@ -86,6 +86,7 @@ describe('useAuthStore', () => {
   describe('login', () => {
     it('calls login API and fetches user data on success', async () => {
       (apiClient.login as jest.Mock).mockResolvedValue({
+        status: 'authenticated',
         expires_in: 3600,
       });
       (apiClient.getCurrentUser as jest.Mock).mockResolvedValue({
@@ -110,8 +111,46 @@ describe('useAuthStore', () => {
       expect(apiClient.getCurrentUser).toHaveBeenCalled();
     });
 
+    it('returns mfa_required response WITHOUT touching auth state', async () => {
+      (apiClient.login as jest.Mock).mockResolvedValue({
+        status: 'mfa_required',
+        pending_token: 'pending-abc',
+        expires_at: 'never',
+        factors: [{ id: 42, type: 'totp' }],
+      });
+
+      const result = await useAuthStore
+        .getState()
+        .login({ email: 'user@example.com', password: 'correct' });
+
+      expect(result.status).toBe('mfa_required');
+      // Store state must be unchanged — MFA isn't complete.
+      const state = useAuthStore.getState();
+      expect(state.isAuthenticated).toBe(false);
+      expect(state.user).toBeNull();
+      expect(state.userLoaded).toBe(false);
+      // And crucially: we never called /me, because the session
+      // cookie hasn't been issued yet.
+      expect(apiClient.getCurrentUser).not.toHaveBeenCalled();
+    });
+
+    it('hydrateAfterAuth populates user + memberships once the cookie is in place', async () => {
+      (apiClient.getCurrentUser as jest.Mock).mockResolvedValue({
+        id: 7,
+        email: 'u@example.com',
+      });
+      (apiClient.getUserMemberships as jest.Mock).mockResolvedValue({ memberships: [] });
+
+      await useAuthStore.getState().hydrateAfterAuth();
+
+      const state = useAuthStore.getState();
+      expect(state.isAuthenticated).toBe(true);
+      expect(state.user).toEqual({ id: 7, email: 'u@example.com' });
+    });
+
     it('sets userLoaded even if getCurrentUser fails', async () => {
       (apiClient.login as jest.Mock).mockResolvedValue({
+        status: 'authenticated',
         expires_in: 3600,
       });
       (apiClient.getCurrentUser as jest.Mock).mockRejectedValue(new Error('Network error'));
@@ -252,7 +291,10 @@ describe('useAuthStore', () => {
 
   describe('buildOrgRoleMap (via login/loadUser)', () => {
     it('produces an empty map from an empty memberships array', async () => {
-      (apiClient.login as jest.Mock).mockResolvedValue({ expires_in: 3600 });
+      (apiClient.login as jest.Mock).mockResolvedValue({
+        status: 'authenticated',
+        expires_in: 3600,
+      });
       (apiClient.getCurrentUser as jest.Mock).mockResolvedValue({ id: 1, email: 'a@b.com' });
       (apiClient.getUserMemberships as jest.Mock).mockResolvedValue({ memberships: [] });
 
@@ -264,7 +306,10 @@ describe('useAuthStore', () => {
     });
 
     it('maps organization_id to role for each membership', async () => {
-      (apiClient.login as jest.Mock).mockResolvedValue({ expires_in: 3600 });
+      (apiClient.login as jest.Mock).mockResolvedValue({
+        status: 'authenticated',
+        expires_in: 3600,
+      });
       (apiClient.getCurrentUser as jest.Mock).mockResolvedValue({ id: 5, email: 'a@b.com' });
       (apiClient.getUserMemberships as jest.Mock).mockResolvedValue({
         memberships: [
@@ -285,7 +330,10 @@ describe('useAuthStore', () => {
     });
 
     it('skips memberships without organization_id', async () => {
-      (apiClient.login as jest.Mock).mockResolvedValue({ expires_in: 3600 });
+      (apiClient.login as jest.Mock).mockResolvedValue({
+        status: 'authenticated',
+        expires_in: 3600,
+      });
       (apiClient.getCurrentUser as jest.Mock).mockResolvedValue({ id: 1, email: 'a@b.com' });
       (apiClient.getUserMemberships as jest.Mock).mockResolvedValue({
         memberships: [
@@ -305,7 +353,10 @@ describe('useAuthStore', () => {
     });
 
     it('last membership wins when same org_id appears multiple times', async () => {
-      (apiClient.login as jest.Mock).mockResolvedValue({ expires_in: 3600 });
+      (apiClient.login as jest.Mock).mockResolvedValue({
+        status: 'authenticated',
+        expires_in: 3600,
+      });
       (apiClient.getCurrentUser as jest.Mock).mockResolvedValue({ id: 1, email: 'a@b.com' });
       (apiClient.getUserMemberships as jest.Mock).mockResolvedValue({
         memberships: [
@@ -324,7 +375,10 @@ describe('useAuthStore', () => {
 
   describe('login with memberships', () => {
     it('fetches memberships after successful user load', async () => {
-      (apiClient.login as jest.Mock).mockResolvedValue({ expires_in: 3600 });
+      (apiClient.login as jest.Mock).mockResolvedValue({
+        status: 'authenticated',
+        expires_in: 3600,
+      });
       (apiClient.getCurrentUser as jest.Mock).mockResolvedValue({ id: 7, email: 'a@b.com' });
       (apiClient.getUserMemberships as jest.Mock).mockResolvedValue({
         memberships: [{ user_id: 7, organization_id: 3, role: 'admin' }],
@@ -339,7 +393,10 @@ describe('useAuthStore', () => {
     });
 
     it('completes login successfully even when memberships fetch fails', async () => {
-      (apiClient.login as jest.Mock).mockResolvedValue({ expires_in: 3600 });
+      (apiClient.login as jest.Mock).mockResolvedValue({
+        status: 'authenticated',
+        expires_in: 3600,
+      });
       (apiClient.getCurrentUser as jest.Mock).mockResolvedValue({ id: 7, email: 'a@b.com' });
       (apiClient.getUserMemberships as jest.Mock).mockRejectedValue(new Error('500 Server Error'));
 
@@ -355,7 +412,10 @@ describe('useAuthStore', () => {
     });
 
     it('does not fetch memberships when user data has no id', async () => {
-      (apiClient.login as jest.Mock).mockResolvedValue({ expires_in: 3600 });
+      (apiClient.login as jest.Mock).mockResolvedValue({
+        status: 'authenticated',
+        expires_in: 3600,
+      });
       (apiClient.getCurrentUser as jest.Mock).mockResolvedValue({ email: 'a@b.com' });
 
       await useAuthStore.getState().login({ email: 'a@b.com', password: 'pass' });
@@ -474,7 +534,10 @@ describe('useAuthStore', () => {
 
   describe('no localStorage token usage', () => {
     it('should not store token in localStorage on login', async () => {
-      (apiClient.login as jest.Mock).mockResolvedValue({ expires_in: 3600 });
+      (apiClient.login as jest.Mock).mockResolvedValue({
+        status: 'authenticated',
+        expires_in: 3600,
+      });
       (apiClient.getCurrentUser as jest.Mock).mockResolvedValue({ id: 1, email: 'test@test.com' });
 
       await useAuthStore.getState().login({ email: 'test@test.com', password: 'password' });

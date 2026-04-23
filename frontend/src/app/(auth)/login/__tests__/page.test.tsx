@@ -84,7 +84,7 @@ describe('LoginPage', () => {
   });
 
   it('calls login on valid form submission', async () => {
-    mockLogin.mockResolvedValue(undefined);
+    mockLogin.mockResolvedValue({ status: 'authenticated', expires_in: 604800 });
     (useAuthStore as unknown as jest.Mock).mockImplementation((selector) => {
       const state = {
         login: mockLogin,
@@ -154,5 +154,84 @@ describe('LoginPage', () => {
       expect(passwordInput).toBeDisabled();
       expect(submitButton).toBeDisabled();
     });
+  });
+});
+
+// Page-level state machine tests. The login page goes from
+//   password  →  (authenticated: navigate)
+//              →  (mfa_required: swap in MfaVerifyForm)
+//              →  (password error: stay, show banner)
+// and from mfa_required back to password via the MfaVerifyForm's
+// onRestart callback (user clicks Back, or gets 429).
+describe('LoginPage — state machine', () => {
+  const mockLogin = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (useAuthStore as unknown as jest.Mock).mockImplementation((selector) => {
+      const state = { login: mockLogin, hydrateAfterAuth: jest.fn() };
+      return selector ? selector(state) : state;
+    });
+  });
+
+  it('stays in password state on authenticated response (and does not show MFA form)', async () => {
+    mockLogin.mockResolvedValue({ status: 'authenticated', expires_in: 1 });
+    render(<LoginPage />);
+    await userEvent.type(screen.getByLabelText('auth.email'), 'a@example.com');
+    await userEvent.type(screen.getByLabelText('auth.password'), 'pw-123456');
+    await userEvent.click(screen.getByRole('button', { name: 'auth.loginButton' }));
+    await waitFor(() => expect(mockLogin).toHaveBeenCalled());
+    // No MFA form should appear — navigation is handled by router.push.
+    expect(screen.queryByTestId('mfa-verify-form')).not.toBeInTheDocument();
+  });
+
+  it('swaps in MFA form on mfa_required response', async () => {
+    mockLogin.mockResolvedValue({
+      status: 'mfa_required',
+      pending_token: 'pending-abc',
+      expires_at: 'never',
+      factors: [{ id: 42, type: 'totp', label: 'iPhone' }],
+    });
+    render(<LoginPage />);
+    await userEvent.type(screen.getByLabelText('auth.email'), 'a@example.com');
+    await userEvent.type(screen.getByLabelText('auth.password'), 'pw-123456');
+    await userEvent.click(screen.getByRole('button', { name: 'auth.loginButton' }));
+    await waitFor(() => {
+      expect(screen.getByTestId('mfa-verify-form')).toBeInTheDocument();
+    });
+    // Password inputs are gone — we transitioned state.
+    expect(screen.queryByLabelText('auth.email')).not.toBeInTheDocument();
+  });
+
+  it('reverts to password state when MFA form Back button is clicked', async () => {
+    mockLogin.mockResolvedValue({
+      status: 'mfa_required',
+      pending_token: 'pending-abc',
+      expires_at: 'never',
+      factors: [{ id: 42, type: 'totp' }],
+    });
+    render(<LoginPage />);
+    await userEvent.type(screen.getByLabelText('auth.email'), 'a@example.com');
+    await userEvent.type(screen.getByLabelText('auth.password'), 'pw-123456');
+    await userEvent.click(screen.getByRole('button', { name: 'auth.loginButton' }));
+    await waitFor(() => expect(screen.getByTestId('mfa-verify-form')).toBeInTheDocument());
+    // jest.setup.js's next-intl mock returns bare keys (no namespace),
+    // so the button inside MfaVerifyForm renders as just "back".
+    await userEvent.click(screen.getByRole('button', { name: 'back' }));
+    expect(screen.getByLabelText('auth.email')).toBeInTheDocument();
+    expect(screen.queryByTestId('mfa-verify-form')).not.toBeInTheDocument();
+  });
+
+  it('shows banner on password error in password state', async () => {
+    mockLogin.mockRejectedValue({ response: { data: { message: 'Invalid credentials' } } });
+    render(<LoginPage />);
+    await userEvent.type(screen.getByLabelText('auth.email'), 'a@example.com');
+    await userEvent.type(screen.getByLabelText('auth.password'), 'wrongpw');
+    await userEvent.click(screen.getByRole('button', { name: 'auth.loginButton' }));
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Invalid credentials');
+    });
+    // Still in password state.
+    expect(screen.getByLabelText('auth.email')).toBeInTheDocument();
   });
 });

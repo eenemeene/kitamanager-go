@@ -216,7 +216,9 @@ test.describe('Attendance Status Transitions', () => {
     // Should show "Sick" text, check-out button from today's cell should be gone
     await expect(row.getByText('Sick')).toBeVisible({ timeout: 10000 });
     // Time range should not be visible (times were cleared)
-    await expect(row.locator('button[aria-label="Check-out"]').filter({ hasText: /\d{2}:\d{2}/ })).toBeHidden();
+    await expect(
+      row.locator('button[aria-label="Check-out"]').filter({ hasText: /\d{2}:\d{2}/ })
+    ).toBeHidden();
   });
 
   test('mark sick then mark present auto-sets check-in time', async ({ page }) => {
@@ -271,7 +273,9 @@ test.describe('Attendance Status Transitions', () => {
       .click();
     await checkOutResp;
     // Should show editable check-out time
-    await expect(row.locator('button[aria-label="Check-out"]').filter({ hasText: /\d{2}:\d{2}/ })).toBeVisible({
+    await expect(
+      row.locator('button[aria-label="Check-out"]').filter({ hasText: /\d{2}:\d{2}/ })
+    ).toBeVisible({
       timeout: 10000,
     });
 
@@ -284,7 +288,9 @@ test.describe('Attendance Status Transitions', () => {
 
     // Should show "Vacation" text, times should be gone
     await expect(row.getByText('Vacation')).toBeVisible({ timeout: 10000 });
-    await expect(row.locator('button[aria-label="Check-out"]').filter({ hasText: /\d{2}:\d{2}/ })).toBeHidden();
+    await expect(
+      row.locator('button[aria-label="Check-out"]').filter({ hasText: /\d{2}:\d{2}/ })
+    ).toBeHidden();
   });
 
   test('mark absent then mark present shows check-in time', async ({ page }) => {
@@ -354,14 +360,19 @@ test.describe('Attendance Editable Times', () => {
     const row = page.getByRole('row').filter({ hasText: childFirstName });
 
     // Check-in first
-    await row.getByRole('button', { name: /check-in/i }).first().click();
+    await row
+      .getByRole('button', { name: /check-in/i })
+      .first()
+      .click();
     await expect(row.getByRole('button', { name: /check-out/i }).first()).toBeVisible({
       timeout: 10000,
     });
 
     // Click the check-in time text (it's a button with aria-label "Check-in")
     // The EditableTime renders as a <button> showing the time
-    const timeButton = row.locator('button[aria-label="Check-in"]').filter({ hasText: /\d{2}:\d{2}/ });
+    const timeButton = row
+      .locator('button[aria-label="Check-in"]')
+      .filter({ hasText: /\d{2}:\d{2}/ });
     await timeButton.click();
 
     // Should show a time input
@@ -373,7 +384,10 @@ test.describe('Attendance Editable Times', () => {
     const row = page.getByRole('row').filter({ hasText: childFirstName });
 
     // Check-in
-    await row.getByRole('button', { name: /check-in/i }).first().click();
+    await row
+      .getByRole('button', { name: /check-in/i })
+      .first()
+      .click();
     await expect(row.getByRole('button', { name: /check-out/i }).first()).toBeVisible({
       timeout: 10000,
     });
@@ -394,7 +408,9 @@ test.describe('Attendance Editable Times', () => {
     await timeInput.press('Enter');
 
     // Should show "Attendance updated" toast (confirms save succeeded)
-    await expect(page.getByText('Attendance updated', { exact: true })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Attendance updated', { exact: true })).toBeVisible({
+      timeout: 10000,
+    });
 
     // Input should be gone, replaced by a time button again
     await expect(timeInput).toBeHidden({ timeout: 5000 });
@@ -439,9 +455,14 @@ test.describe('Attendance Editable Times', () => {
     const checkOutResponse = page.waitForResponse(
       (resp) => resp.url().includes('/attendance') && resp.request().method() === 'PUT'
     );
-    await row.getByRole('button', { name: /check-out/i }).first().click();
+    await row
+      .getByRole('button', { name: /check-out/i })
+      .first()
+      .click();
     await checkOutResponse;
-    await expect(row.locator('button[aria-label="Check-out"]').filter({ hasText: /\d{2}:\d{2}/ })).toBeVisible({
+    await expect(
+      row.locator('button[aria-label="Check-out"]').filter({ hasText: /\d{2}:\d{2}/ })
+    ).toBeVisible({
       timeout: 10000,
     });
 
@@ -459,7 +480,9 @@ test.describe('Attendance Editable Times', () => {
     await timeInput.press('Enter');
 
     // Should show toast (confirms save succeeded)
-    await expect(page.getByText('Attendance updated', { exact: true })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Attendance updated', { exact: true })).toBeVisible({
+      timeout: 10000,
+    });
 
     // Input should be gone, replaced by a time button again
     await expect(timeInput).toBeHidden({ timeout: 5000 });
@@ -472,13 +495,18 @@ test.describe('Attendance Editable Times', () => {
     const row = page.getByRole('row').filter({ hasText: childFirstName });
 
     // Check-in
-    await row.getByRole('button', { name: /check-in/i }).first().click();
+    await row
+      .getByRole('button', { name: /check-in/i })
+      .first()
+      .click();
     await expect(row.getByRole('button', { name: /check-out/i }).first()).toBeVisible({
       timeout: 10000,
     });
 
     // The time may render as a button (view mode) or input (edit mode).
-    const timeButton = row.locator('button[aria-label="Check-in"]').filter({ hasText: /\d{2}:\d{2}/ });
+    const timeButton = row
+      .locator('button[aria-label="Check-in"]')
+      .filter({ hasText: /\d{2}:\d{2}/ });
     const timeInput = row.locator('input[type="time"][aria-label="Check-in"]');
     await expect(timeButton.or(timeInput)).toBeVisible({ timeout: 10000 });
 
@@ -497,7 +525,9 @@ test.describe('Attendance Editable Times', () => {
     await timeInput.press('Escape');
 
     // Should revert to original time (no toast)
-    await expect(row.locator('button[aria-label="Check-in"]').filter({ hasText: originalTime })).toBeVisible({
+    await expect(
+      row.locator('button[aria-label="Check-in"]').filter({ hasText: originalTime })
+    ).toBeVisible({
       timeout: 5000,
     });
   });
@@ -547,7 +577,10 @@ test.describe('Attendance Note Saving', () => {
     const row = page.getByRole('row').filter({ hasText: childFirstName });
 
     // Open popover without checking in first
-    await row.getByRole('button', { name: /quick mark/i }).first().click();
+    await row
+      .getByRole('button', { name: /quick mark/i })
+      .first()
+      .click();
 
     // Status buttons should be visible
     await expect(page.getByRole('button', { name: /^Present$/i })).toBeVisible();
@@ -560,13 +593,19 @@ test.describe('Attendance Note Saving', () => {
     const row = page.getByRole('row').filter({ hasText: childFirstName });
 
     // Check-in first (note textarea only shows when attendance record exists)
-    await row.getByRole('button', { name: /check-in/i }).first().click();
+    await row
+      .getByRole('button', { name: /check-in/i })
+      .first()
+      .click();
     await expect(row.getByRole('button', { name: /check-out/i }).first()).toBeVisible({
       timeout: 10000,
     });
 
     // Open popover
-    await row.getByRole('button', { name: /quick mark/i }).first().click();
+    await row
+      .getByRole('button', { name: /quick mark/i })
+      .first()
+      .click();
 
     // Type a note
     const noteTextarea = page.locator('textarea[placeholder="Note"]');
@@ -577,25 +616,35 @@ test.describe('Attendance Note Saving', () => {
     await page.getByRole('button', { name: /^Save$/i }).click();
 
     // Should show success toast
-    await expect(page.getByText('Attendance updated', { exact: true })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Attendance updated', { exact: true })).toBeVisible({
+      timeout: 10000,
+    });
   });
 
   test('note textarea appears after setting status via popover', async ({ page }) => {
     const row = page.getByRole('row').filter({ hasText: childFirstName });
 
     // Mark sick (creates a record without check-in)
-    await row.getByRole('button', { name: /quick mark/i }).first().click();
+    await row
+      .getByRole('button', { name: /quick mark/i })
+      .first()
+      .click();
     await page.getByRole('button', { name: /^Sick$/i }).click();
     await expect(row.getByText('Sick')).toBeVisible({ timeout: 10000 });
 
     // Reopen popover — note textarea should now be visible
-    await row.getByRole('button', { name: /quick mark/i }).first().click();
+    await row
+      .getByRole('button', { name: /quick mark/i })
+      .first()
+      .click();
     await expect(page.locator('textarea[placeholder="Note"]')).toBeVisible();
 
     // Save a note
     await page.locator('textarea[placeholder="Note"]').fill('Has fever');
     await page.getByRole('button', { name: /^Save$/i }).click();
-    await expect(page.getByText('Attendance updated', { exact: true })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Attendance updated', { exact: true })).toBeVisible({
+      timeout: 10000,
+    });
   });
 });
 

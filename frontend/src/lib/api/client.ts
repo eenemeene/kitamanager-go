@@ -2,6 +2,17 @@ import axios, { type AxiosInstance, type AxiosError } from 'axios';
 import type {
   LoginRequest,
   LoginResponse,
+  LoginSuccessResponse,
+  MfaVerifyRequest,
+  FactorResponse,
+  FactorListResponse,
+  FactorEnrolRequest,
+  FactorActivateRequest,
+  FactorActivateResponse,
+  FactorRegenerateRequest,
+  FactorDeleteRequest,
+  FactorLabelUpdateRequest,
+  BackupCodesPayload,
   Organization,
   OrganizationCreateRequest,
   OrganizationUpdateRequest,
@@ -144,7 +155,14 @@ class ApiClient {
         }
 
         const url = originalRequest?.url || '';
-        const isAuthEndpoint = url.includes('/login') || url.includes('/logout');
+        // Endpoints where a 401 is part of the expected flow, not a
+        // sign the user's existing session has gone stale. /login
+        // returns 401 on bad creds; /logout 401 is meaningless (no
+        // session anyway); /auth/mfa/verify returns 401 on wrong
+        // MFA codes — surfacing that as "session expired" would
+        // wipe the auth store the user hasn't even built yet.
+        const isAuthEndpoint =
+          url.includes('/login') || url.includes('/logout') || url.includes('/auth/mfa/');
 
         if (error.response?.status === 401 && !isAuthEndpoint) {
           if (this.onUnauthorized) {
@@ -255,8 +273,59 @@ class ApiClient {
     return response.data;
   }
 
+  // MFA step-two. Pairs with a LoginMfaRequiredResponse returned from
+  // /login. A 200 here sets the session cookie just like a direct
+  // /login does; a 401 means wrong code (input should stay on screen
+  // with the error), 429 means the per-row or per-user limit hit and
+  // the caller should revert back to the password step.
+  async verifyMfa(request: MfaVerifyRequest): Promise<LoginSuccessResponse> {
+    const response = await this.client.post<LoginSuccessResponse>('/auth/mfa/verify', request);
+    return response.data;
+  }
+
   async logout(): Promise<void> {
     await this.client.post('/logout');
+  }
+
+  // Factor (MFA) management — all scoped to the caller via `/users/me/`.
+  async listMyFactors(): Promise<FactorListResponse> {
+    const response = await this.client.get<FactorListResponse>('/users/me/factors');
+    return response.data;
+  }
+
+  async enrolTotp(password: string, label?: string): Promise<FactorResponse> {
+    const body: FactorEnrolRequest = { type: 'totp', password, label };
+    const response = await this.client.post<FactorResponse>('/users/me/factors', body);
+    return response.data;
+  }
+
+  async activateFactor(factorId: number, code: string): Promise<FactorActivateResponse> {
+    const body: FactorActivateRequest = { code };
+    const response = await this.client.post<FactorActivateResponse>(
+      `/users/me/factors/${factorId}/activate`,
+      body
+    );
+    return response.data;
+  }
+
+  async regenerateBackupCodes(factorId: number, password: string): Promise<BackupCodesPayload> {
+    const body: FactorRegenerateRequest = { password };
+    const response = await this.client.post<BackupCodesPayload>(
+      `/users/me/factors/${factorId}/regenerate`,
+      body
+    );
+    return response.data;
+  }
+
+  async deleteFactor(factorId: number, password: string, code?: string): Promise<void> {
+    const body: FactorDeleteRequest = { password, code };
+    await this.client.delete(`/users/me/factors/${factorId}`, { data: body });
+  }
+
+  async updateFactorLabel(factorId: number, label: string | null): Promise<FactorResponse> {
+    const body: FactorLabelUpdateRequest = { label: label ?? undefined };
+    const response = await this.client.patch<FactorResponse>(`/users/me/factors/${factorId}`, body);
+    return response.data;
   }
 
   async getCurrentUser(): Promise<User> {
@@ -264,11 +333,14 @@ class ApiClient {
     return response.data;
   }
 
-  async changePassword(currentPassword: string, newPassword: string): Promise<LoginResponse> {
+  async changePassword(
+    currentPassword: string,
+    newPassword: string
+  ): Promise<LoginSuccessResponse> {
     // Backend rotates the session + csrf cookies on success, so the caller
     // stays live with fresh credentials. Other sessions the user has on other
     // devices are revoked server-side.
-    const response = await this.client.put<LoginResponse>('/me/password', {
+    const response = await this.client.put<LoginSuccessResponse>('/me/password', {
       current_password: currentPassword,
       new_password: newPassword,
     });

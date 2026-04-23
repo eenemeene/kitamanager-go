@@ -12,8 +12,110 @@ export interface LoginRequest {
   password: string;
 }
 
-export interface LoginResponse {
+// LoginSuccessResponse is what /login returns when the user has no
+// MFA factor enrolled — same shape the backend emitted before two-
+// step login shipped, plus an explicit `status` discriminator.
+export interface LoginSuccessResponse {
+  status: 'authenticated';
   expires_in: number;
+}
+
+// LoginFactorDescriptor is the minimal per-factor payload returned in
+// the MFA-required body. Matches the backend's public descriptor:
+// id + type + optional label only. No created_at, last_used_at, or
+// backup_codes_remaining — this shape is sent to an unauthenticated
+// caller and must not leak post-login metadata.
+export interface LoginFactorDescriptor {
+  id: number;
+  type: FactorType;
+  label?: string;
+}
+
+// LoginMfaRequiredResponse is what /login returns when the user has
+// an active primary factor. The `pending_token` is a short-lived
+// opaque handle (5 min, single-use after N wrong codes) that the
+// client passes to /auth/mfa/verify together with the chosen factor
+// and code. No cookie is set at this stage.
+export interface LoginMfaRequiredResponse {
+  status: 'mfa_required';
+  pending_token: string;
+  expires_at: string;
+  factors: LoginFactorDescriptor[];
+}
+
+// LoginResponse is the discriminated union the login page branches
+// on. Prefer pattern-matching on `status` over testing field presence.
+export type LoginResponse = LoginSuccessResponse | LoginMfaRequiredResponse;
+
+// MFA verify step-two.
+export interface MfaVerifyRequest {
+  pending_token: string;
+  factor_id: number;
+  code: string;
+}
+
+// Factor types — matches the backend `FactorType*` constants.
+export type FactorType = 'totp' | 'backup_codes';
+
+// Factor is the authenticated-view factor shape. Includes metadata
+// the Settings UI needs to show the user's enrolment state (created,
+// last used, remaining backup codes, activation state).
+export interface FactorResponse {
+  id: number;
+  type: FactorType;
+  label?: string;
+  enabled_at?: string;
+  last_used_at?: string;
+  created_at: string;
+  activated: boolean;
+  backup_codes_remaining?: number;
+  // Enrollment is populated only on the initial POST response and is
+  // factor-type specific (TOTPEnrollmentPayload for TOTP).
+  enrollment?: TOTPEnrollmentPayload;
+}
+
+export interface TOTPEnrollmentPayload {
+  secret: string;
+  otpauth_uri: string;
+}
+
+export interface FactorListResponse {
+  factors: FactorResponse[];
+}
+
+export interface FactorEnrolRequest {
+  type: FactorType;
+  password: string;
+  label?: string;
+}
+
+export interface FactorActivateRequest {
+  code: string;
+}
+
+// BackupCodesPayload is the one-time presentation of a set of backup
+// codes. After this response the raw codes are only known to the user.
+export interface BackupCodesPayload {
+  factor_id: number;
+  codes: string[];
+}
+
+export interface FactorActivateResponse {
+  activated: boolean;
+  backup_codes?: BackupCodesPayload;
+}
+
+export interface FactorRegenerateRequest {
+  password: string;
+}
+
+export interface FactorDeleteRequest {
+  password: string;
+  code?: string;
+}
+
+export interface FactorLabelUpdateRequest {
+  label?: string;
 }
 
 export interface ErrorResponse {

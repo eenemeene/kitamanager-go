@@ -35,7 +35,9 @@ test.describe('Navigation', () => {
     await link.click();
 
     await expect(page).toHaveURL(/\/organizations\/?$/, { timeout: 10000 });
-    await expect(page.getByRole('heading', { name: /organization/i }).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: /organization/i }).first()).toBeVisible({
+      timeout: 10000,
+    });
   });
 
   test('should navigate to government fundings page', async ({ page }) => {

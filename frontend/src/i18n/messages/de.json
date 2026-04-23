@@ -79,7 +79,19 @@
     "loginTitle": "Melden Sie sich bei Ihrem Konto an",
     "loginButton": "Anmelden",
     "loginError": "Ungültige E-Mail oder Passwort",
-    "logoutSuccess": "Erfolgreich abgemeldet"
+    "logoutSuccess": "Erfolgreich abgemeldet",
+    "mfa": {
+      "title": "Zwei-Faktor-Authentifizierung",
+      "description": "Geben Sie den Code aus Ihrer Authenticator-App oder einen Wiederherstellungscode ein, um die Anmeldung abzuschließen.",
+      "factorPickerLabel": "Verifizieren mit",
+      "codeLabel": "Code",
+      "submit": "Verifizieren",
+      "back": "Zurück",
+      "wrongCode": "Ungültiger Code. Bitte erneut versuchen.",
+      "tooManyWrongCodes": "Zu viele falsche Codes. Bitte melden Sie sich erneut an.",
+      "pendingExpired": "Diese Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
+      "lostAccessHint": "Kein Zugriff mehr auf Ihre Authenticator-App? Geben Sie einen Wiederherstellungscode ein oder wenden Sie sich an Ihren Administrator."
+    }
   },
   "nav": {
     "dashboard": "Übersicht",
@@ -582,6 +594,68 @@
       "revokeConfirm": "Diese Sitzung beenden? Das entsprechende Gerät wird abgemeldet.",
       "revokeSuccessToast": "Sitzung beendet",
       "revokeErrorGeneric": "Sitzung konnte nicht beendet werden. Bitte versuchen Sie es erneut."
+    },
+    "twoFactor": {
+      "title": "Zwei-Faktor-Authentifizierung",
+      "description": "Fordern Sie zusätzlich zu Ihrem Passwort einen Einmalcode aus einer Authenticator-App an.",
+      "loading": "Zwei-Faktor-Status wird geladen…",
+      "loadError": "Zwei-Faktor-Status konnte nicht geladen werden.",
+      "statusDisabled": "Zwei-Faktor ist nicht aktiviert.",
+      "statusEnabled": "Zwei-Faktor ist aktiviert.",
+      "enableButton": "Zwei-Faktor-Authentifizierung aktivieren",
+      "regenerateButton": "Wiederherstellungscodes neu erzeugen",
+      "disableButton": "Zwei-Faktor-Authentifizierung deaktivieren",
+      "factorTypeTotp": "Authenticator-App",
+      "factorTypeBackupCodes": "Wiederherstellungscodes",
+      "backupCodesRemaining": "{count} Codes übrig",
+      "lastUsed": "Zuletzt verwendet {when}",
+      "lastUsedNever": "Nie verwendet",
+      "enrolDialog": {
+        "title": "Zwei-Faktor aktivieren",
+        "description": "Bestätigen Sie Ihr Passwort, um die Einrichtung zu starten.",
+        "passwordLabel": "Aktuelles Passwort",
+        "continue": "Weiter",
+        "wrongPassword": "Das aktuelle Passwort ist falsch.",
+        "scanTitle": "QR-Code scannen",
+        "scanDescription": "Öffnen Sie Google Authenticator, 1Password, Authy oder eine andere TOTP-App und scannen Sie den Code. Geben Sie anschließend den 6-stelligen Code der App ein.",
+        "secretHint": "Kein Scanner zur Hand? Geben Sie diesen Schlüssel manuell ein:",
+        "codeLabel": "6-stelliger Code",
+        "activate": "Zwei-Faktor aktivieren",
+        "wrongCode": "Ungültiger Code. Bitte erneut versuchen.",
+        "tooManyWrongCodes": "Zu viele falsche Codes. Die Einrichtung wurde zurückgesetzt — bitte erneut versuchen.",
+        "cancel": "Abbrechen"
+      },
+      "backupCodesDialog": {
+        "title": "Wiederherstellungscodes sichern",
+        "description": "Jeder Code kann einmal verwendet werden, wenn Sie den Zugriff auf Ihre Authenticator-App verlieren. Speichern Sie sie jetzt — sie werden nicht erneut angezeigt.",
+        "copy": "In die Zwischenablage kopieren",
+        "copied": "Codes kopiert",
+        "copyFailed": "Zwischenablage nicht verfügbar",
+        "download": "Als Datei herunterladen",
+        "filename": "kitamanager-wiederherstellungscodes.txt",
+        "acknowledge": "Ich habe diese Codes sicher gespeichert",
+        "confirm": "Fertig"
+      },
+      "regenerateDialog": {
+        "title": "Wiederherstellungscodes neu erzeugen",
+        "description": "Ihre bestehenden Wiederherstellungscodes werden ungültig. Bestätigen Sie Ihr Passwort, um neue Codes zu erzeugen.",
+        "passwordLabel": "Aktuelles Passwort",
+        "submit": "Neue Codes erzeugen",
+        "wrongPassword": "Das aktuelle Passwort ist falsch.",
+        "cancel": "Abbrechen"
+      },
+      "disableDialog": {
+        "title": "Zwei-Faktor deaktivieren",
+        "description": "Ihr Konto wird nur noch durch das Passwort geschützt. Geben Sie Ihr Passwort und einen Code aus Ihrer Authenticator-App oder einen Wiederherstellungscode ein.",
+        "passwordLabel": "Aktuelles Passwort",
+        "codeLabel": "Authenticator- oder Wiederherstellungscode",
+        "submit": "Zwei-Faktor deaktivieren",
+        "wrongPasswordOrCode": "Falsches Passwort oder falscher Code.",
+        "cancel": "Abbrechen"
+      },
+      "successEnabled": "Zwei-Faktor-Authentifizierung aktiviert",
+      "successRegenerated": "Neue Wiederherstellungscodes erzeugt",
+      "successDisabled": "Zwei-Faktor-Authentifizierung deaktiviert"
     }
   },
   "states": {

@@ -15,9 +15,7 @@ test.describe('Dashboard', () => {
   });
 
   test('should display dashboard heading', async ({ page }) => {
-    await expect(
-      page.getByRole('heading', { name: /dashboard/i }).first()
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: /dashboard/i }).first()).toBeVisible();
   });
 
   test('should display stat cards', async ({ page }) => {
@@ -35,9 +33,11 @@ test.describe('Dashboard', () => {
     // Check that at least one widget section renders (step promotions, upcoming children, or age alerts).
     // These are Cards with headings. We can't guarantee which ones appear, so just verify
     // the page is interactive and no error boundary is shown.
-    await expect(page.locator('[data-testid="error-boundary"]')).not.toBeVisible().catch(() => {
-      // No error boundary test ID — that's fine, just ensure no "Something went wrong" text
-    });
+    await expect(page.locator('[data-testid="error-boundary"]'))
+      .not.toBeVisible()
+      .catch(() => {
+        // No error boundary test ID — that's fine, just ensure no "Something went wrong" text
+      });
     await expect(page.getByText(/something went wrong/i)).not.toBeVisible();
   });
 });
