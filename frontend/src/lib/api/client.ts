@@ -157,6 +157,7 @@ class ApiClient {
         }
 
         const url = originalRequest?.url || '';
+        const method = (originalRequest?.method || 'get').toLowerCase();
         // Endpoints where a 401 is part of the expected flow, not a
         // sign the user's existing session has gone stale. /login
         // returns 401 on bad creds; /logout 401 is meaningless (no
@@ -165,8 +166,17 @@ class ApiClient {
         // wipe the auth store the user hasn't even built yet.
         const isAuthEndpoint =
           url.includes('/login') || url.includes('/logout') || url.includes('/auth/mfa/');
+        // State-changing factor endpoints perform step-up password
+        // (or WebAuthn assertion) verification; a 401 means "wrong
+        // step-up credential," not "session gone." Dispatching the
+        // generic unauthorised handler would redirect the user to
+        // /login while they're in the middle of a step-up dialog —
+        // see webauthn.spec.ts for the regression scenario. GET on
+        // the same paths still falls through so a genuinely expired
+        // session bounces the user to the login screen.
+        const isFactorMutation = /\/users\/[^/]+\/factors(\/|$)/.test(url) && method !== 'get';
 
-        if (error.response?.status === 401 && !isAuthEndpoint) {
+        if (error.response?.status === 401 && !isAuthEndpoint && !isFactorMutation) {
           if (this.onUnauthorized) {
             this.onUnauthorized();
           }
