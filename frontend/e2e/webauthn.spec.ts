@@ -119,6 +119,38 @@ test.describe('WebAuthn enrolment via Settings', () => {
     await expect(page.getByTestId('factor-row-webauthn')).toBeVisible();
     await expect(page.getByTestId('factor-row-backup_codes')).toBeVisible();
   });
+
+  test('wrong step-up password surfaces an inline error; correct password completes', async ({
+    page,
+  }) => {
+    await loginViaForm(page, testEmail, password);
+    await page.goto('/settings', { waitUntil: 'load' });
+    await page.getByRole('button', { name: /add security key/i }).click();
+
+    const dialog = page.getByRole('dialog', { name: /add security key/i });
+    await expect(dialog).toBeVisible();
+    const pwInput = dialog.getByLabel(/current password/i);
+
+    // 1st attempt: wrong password — server returns 401 on enrol,
+    // dialog stays on the password step with an inline error. The
+    // password field is cleared so the user re-types.
+    await pwInput.fill('definitely-not-the-password');
+    await dialog.getByRole('button', { name: /continue/i }).click();
+    await expect(dialog.getByRole('alert')).toContainText(/current password is incorrect/i, {
+      timeout: 10000,
+    });
+    await expect(pwInput).toHaveValue('');
+
+    // 2nd attempt: correct password — ceremony completes, backup
+    // codes dialog appears.
+    await pwInput.fill(password);
+    await dialog.getByRole('button', { name: /continue/i }).click();
+    const backupDialog = page.getByTestId('backup-codes-dialog');
+    await expect(backupDialog).toBeVisible({ timeout: 15000 });
+    await backupDialog.getByRole('checkbox', { name: /saved these codes/i }).check();
+    await backupDialog.getByRole('button', { name: /done/i }).click();
+    await expect(page.getByTestId('factor-row-webauthn')).toBeVisible();
+  });
 });
 
 test.describe('WebAuthn login', () => {
@@ -211,6 +243,44 @@ test.describe('WebAuthn login', () => {
     await expect(mfaForm).toBeVisible();
 
     // Flip UV back on; next click should complete successfully.
+    if (authenticator) {
+      await setUserVerified(authenticator, true);
+    }
+    await mfaForm.getByRole('button', { name: /use security key/i }).click();
+    await expect(page).not.toHaveURL(/\/login/, { timeout: 15000 });
+  });
+
+  test('full negative-then-positive journey: wrong password → correct → cancel → succeed', async ({
+    page,
+  }) => {
+    // Step 1: wrong password on the login form — generic banner,
+    // password cleared, email preserved, still on /login.
+    await page.getByLabel(/email/i).fill(testEmail);
+    await page.getByLabel(/password/i).fill('wrong-password-attempt');
+    await page.getByRole('button', { name: /sign ?in|login/i }).click();
+    await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)').first()).toBeVisible(
+      { timeout: 10000 }
+    );
+    await expect(page).toHaveURL(/\/login/);
+    await expect(page.getByLabel(/email/i)).toHaveValue(testEmail);
+
+    // Step 2: correct password — advances to MFA.
+    await page.getByLabel(/password/i).fill(password);
+    await page.getByRole('button', { name: /sign ?in|login/i }).click();
+    const mfaForm = page.getByTestId('mfa-verify-form');
+    await expect(mfaForm).toBeVisible({ timeout: 10000 });
+
+    // Step 3: cancel the WebAuthn prompt — inline error, MFA form stays.
+    if (authenticator) {
+      await setUserVerified(authenticator, false);
+    }
+    await mfaForm.getByRole('button', { name: /use security key/i }).click();
+    await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)').first()).toBeVisible(
+      { timeout: 15000 }
+    );
+    await expect(mfaForm).toBeVisible();
+
+    // Step 4: retry with UV enabled — login completes, leaves /login.
     if (authenticator) {
       await setUserVerified(authenticator, true);
     }
