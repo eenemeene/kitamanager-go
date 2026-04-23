@@ -4,6 +4,8 @@ import type {
   LoginResponse,
   LoginSuccessResponse,
   MfaVerifyRequest,
+  MfaChallengeRequest,
+  MfaChallengeResponse,
   FactorResponse,
   FactorListResponse,
   FactorEnrolRequest,
@@ -155,6 +157,7 @@ class ApiClient {
         }
 
         const url = originalRequest?.url || '';
+        const method = (originalRequest?.method || 'get').toLowerCase();
         // Endpoints where a 401 is part of the expected flow, not a
         // sign the user's existing session has gone stale. /login
         // returns 401 on bad creds; /logout 401 is meaningless (no
@@ -163,8 +166,17 @@ class ApiClient {
         // wipe the auth store the user hasn't even built yet.
         const isAuthEndpoint =
           url.includes('/login') || url.includes('/logout') || url.includes('/auth/mfa/');
+        // State-changing factor endpoints perform step-up password
+        // (or WebAuthn assertion) verification; a 401 means "wrong
+        // step-up credential," not "session gone." Dispatching the
+        // generic unauthorised handler would redirect the user to
+        // /login while they're in the middle of a step-up dialog —
+        // see webauthn.spec.ts for the regression scenario. GET on
+        // the same paths still falls through so a genuinely expired
+        // session bounces the user to the login screen.
+        const isFactorMutation = /\/users\/[^/]+\/factors(\/|$)/.test(url) && method !== 'get';
 
-        if (error.response?.status === 401 && !isAuthEndpoint) {
+        if (error.response?.status === 401 && !isAuthEndpoint && !isFactorMutation) {
           if (this.onUnauthorized) {
             this.onUnauthorized();
           }
@@ -283,6 +295,14 @@ class ApiClient {
     return response.data;
   }
 
+  // Fetches the WebAuthn challenge for step 2a of the MFA login
+  // flow. TOTP/backup factors don't need this. The returned
+  // request_options blob is passed to navigator.credentials.get().
+  async beginMfaChallenge(request: MfaChallengeRequest): Promise<MfaChallengeResponse> {
+    const response = await this.client.post<MfaChallengeResponse>('/auth/mfa/challenge', request);
+    return response.data;
+  }
+
   async logout(): Promise<void> {
     await this.client.post('/logout');
   }
@@ -299,8 +319,28 @@ class ApiClient {
     return response.data;
   }
 
-  async activateFactor(factorId: number, code: string): Promise<FactorActivateResponse> {
-    const body: FactorActivateRequest = { code };
+  // Starts a WebAuthn registration ceremony. Returns a factor
+  // descriptor whose `enrollment` field carries the raw
+  // PublicKeyCredentialCreationOptions JSON the caller feeds to
+  // `navigator.credentials.create()`. The pending factor row lives
+  // on the server with a 5-minute challenge expiry.
+  async enrolWebAuthn(password: string, label?: string): Promise<FactorResponse> {
+    const body: FactorEnrolRequest = { type: 'webauthn', password, label };
+    const response = await this.client.post<FactorResponse>('/users/me/factors', body);
+    return response.data;
+  }
+
+  // Activates a factor. For TOTP, pass `code`. For WebAuthn, pass the
+  // PublicKeyCredential JSON returned by
+  // `navigator.credentials.create()` as `webauthnResponse`.
+  async activateFactor(
+    factorId: number,
+    args: { code?: string; webauthnResponse?: unknown }
+  ): Promise<FactorActivateResponse> {
+    const body: FactorActivateRequest = {
+      code: args.code,
+      webauthn_response: args.webauthnResponse,
+    };
     const response = await this.client.post<FactorActivateResponse>(
       `/users/me/factors/${factorId}/activate`,
       body

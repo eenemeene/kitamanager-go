@@ -276,6 +276,7 @@ func allModels() []any {
 		&models.Factor{},
 		&models.FactorTOTPSecret{},
 		&models.FactorBackupCode{},
+		&models.FactorWebAuthnCredential{},
 		&models.GovernmentFundingBillPeriod{},
 		&models.GovernmentFundingBillChild{},
 		&models.GovernmentFundingBillPayment{},

@@ -10,8 +10,43 @@ import type { LoginFactorDescriptor } from '@/lib/api/types';
 jest.mock('@/lib/api/client', () => ({
   apiClient: {
     verifyMfa: jest.fn(),
+    beginMfaChallenge: jest.fn(),
   },
 }));
+
+// jsdom has no WebAuthn API + the decode/encode helpers touch
+// ArrayBuffer; stub the util so the WebAuthn branch tests run
+// with canned challenge + response payloads.
+jest.mock('@/lib/utils/webauthn', () => {
+  const actual = jest.requireActual('@/lib/utils/webauthn');
+  return {
+    ...actual,
+    decodeRequestOptions: jest.fn(() => ({
+      challenge: new Uint8Array([1]).buffer,
+      rpId: 'localhost',
+      allowCredentials: [],
+      userVerification: 'preferred' as const,
+    })),
+    encodeAssertionResponse: jest.fn(() => ({
+      id: 'cred',
+      rawId: 'cred',
+      type: 'public-key',
+    })),
+  };
+});
+
+function stubCredentials(impl: () => Promise<unknown>) {
+  Object.defineProperty(window.navigator, 'credentials', {
+    configurable: true,
+    value: { create: jest.fn(), get: jest.fn().mockImplementation(impl) },
+  });
+}
+
+function domError(name: string): Error {
+  const err = new Error(name);
+  (err as unknown as { name: string }).name = name;
+  return err;
+}
 
 const hydrateMock = jest.fn().mockResolvedValue(undefined);
 jest.mock('@/stores/auth-store', () => ({
@@ -34,6 +69,7 @@ const factorsTwo: LoginFactorDescriptor[] = [
   { id: 42, type: 'totp', label: 'iPhone' },
   { id: 43, type: 'backup_codes' },
 ];
+const factorsWebAuthn: LoginFactorDescriptor[] = [{ id: 44, type: 'webauthn', label: 'YubiKey' }];
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -224,5 +260,131 @@ describe('MfaVerifyForm — multi-factor selection', () => {
         code: '123456',
       })
     );
+  });
+});
+
+describe('MfaVerifyForm — WebAuthn branch', () => {
+  function renderWebAuthn(
+    overrides: Partial<Parameters<typeof MfaVerifyForm>[0]> = {}
+  ): ReturnType<typeof renderWithProviders> {
+    return renderWithProviders(
+      <MfaVerifyForm
+        pendingToken="tok"
+        factors={factorsWebAuthn}
+        onRestart={jest.fn()}
+        onSuccess={jest.fn()}
+        {...overrides}
+      />
+    );
+  }
+
+  it('renders "Use security key" instead of the code input for a webauthn factor', () => {
+    renderWebAuthn();
+    expect(screen.getByRole('button', { name: 'auth.mfa.webauthnSubmit' })).toBeInTheDocument();
+    // No code field in the WebAuthn branch.
+    expect(screen.queryByLabelText('auth.mfa.codeLabel')).not.toBeInTheDocument();
+  });
+
+  it('runs challenge + credentials.get + verify on click; calls onSuccess', async () => {
+    const u = userEvent.setup();
+    (apiClient.beginMfaChallenge as jest.Mock).mockResolvedValue({
+      request_options: { publicKey: { challenge: 'abc' } },
+    });
+    stubCredentials(async () => ({
+      id: 'cred',
+      rawId: new Uint8Array([1]).buffer,
+      type: 'public-key',
+      response: {
+        authenticatorData: new Uint8Array([2]).buffer,
+        clientDataJSON: new Uint8Array([3]).buffer,
+        signature: new Uint8Array([4]).buffer,
+        userHandle: new Uint8Array([5]).buffer,
+      },
+      getClientExtensionResults: () => ({}),
+    }));
+    (apiClient.verifyMfa as jest.Mock).mockResolvedValue({});
+    const onSuccess = jest.fn();
+    renderWebAuthn({ onSuccess });
+    await u.click(screen.getByRole('button', { name: 'auth.mfa.webauthnSubmit' }));
+    await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+    expect(apiClient.beginMfaChallenge).toHaveBeenCalledWith({
+      pending_token: 'tok',
+      factor_id: 44,
+    });
+    expect(apiClient.verifyMfa).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pending_token: 'tok',
+        factor_id: 44,
+        webauthn_response: expect.objectContaining({ id: 'cred' }),
+      })
+    );
+    expect(hydrateMock).toHaveBeenCalled();
+  });
+
+  it('shows webauthnCancelled on NotAllowedError; form stays visible', async () => {
+    const u = userEvent.setup();
+    (apiClient.beginMfaChallenge as jest.Mock).mockResolvedValue({
+      request_options: { publicKey: { challenge: 'abc' } },
+    });
+    stubCredentials(async () => {
+      throw domError('NotAllowedError');
+    });
+    renderWebAuthn();
+    await u.click(screen.getByRole('button', { name: 'auth.mfa.webauthnSubmit' }));
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('auth.mfa.webauthnCancelled');
+    });
+    // Form still rendered; verify was never called.
+    expect(screen.getByRole('button', { name: 'auth.mfa.webauthnSubmit' })).toBeInTheDocument();
+    expect(apiClient.verifyMfa).not.toHaveBeenCalled();
+  });
+
+  it('shows webauthnFailed on a generic verify error', async () => {
+    const u = userEvent.setup();
+    (apiClient.beginMfaChallenge as jest.Mock).mockResolvedValue({
+      request_options: { publicKey: { challenge: 'abc' } },
+    });
+    stubCredentials(async () => ({
+      id: 'cred',
+      rawId: new Uint8Array([1]).buffer,
+      type: 'public-key',
+      response: {
+        authenticatorData: new Uint8Array([2]).buffer,
+        clientDataJSON: new Uint8Array([3]).buffer,
+        signature: new Uint8Array([4]).buffer,
+        userHandle: null,
+      },
+      getClientExtensionResults: () => ({}),
+    }));
+    (apiClient.verifyMfa as jest.Mock).mockRejectedValue(axiosError(401));
+    renderWebAuthn();
+    await u.click(screen.getByRole('button', { name: 'auth.mfa.webauthnSubmit' }));
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('auth.mfa.webauthnFailed');
+    });
+  });
+
+  it('escalates to onRestart("too_many") on 429 from verify', async () => {
+    const u = userEvent.setup();
+    (apiClient.beginMfaChallenge as jest.Mock).mockResolvedValue({
+      request_options: { publicKey: { challenge: 'abc' } },
+    });
+    stubCredentials(async () => ({
+      id: 'cred',
+      rawId: new Uint8Array([1]).buffer,
+      type: 'public-key',
+      response: {
+        authenticatorData: new Uint8Array([2]).buffer,
+        clientDataJSON: new Uint8Array([3]).buffer,
+        signature: new Uint8Array([4]).buffer,
+        userHandle: null,
+      },
+      getClientExtensionResults: () => ({}),
+    }));
+    (apiClient.verifyMfa as jest.Mock).mockRejectedValue(axiosError(429));
+    const onRestart = jest.fn();
+    renderWebAuthn({ onRestart });
+    await u.click(screen.getByRole('button', { name: 'auth.mfa.webauthnSubmit' }));
+    await waitFor(() => expect(onRestart).toHaveBeenCalledWith('too_many'));
   });
 });

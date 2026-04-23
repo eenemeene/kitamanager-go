@@ -16,6 +16,8 @@ import { TwoFactorEnrolDialog } from './two-factor-enrol-dialog';
 import { TwoFactorBackupCodesDialog } from './two-factor-backup-codes-dialog';
 import { TwoFactorRegenerateDialog } from './two-factor-regenerate-dialog';
 import { TwoFactorDisableDialog } from './two-factor-disable-dialog';
+import { TwoFactorWebAuthnDialog } from './two-factor-webauthn-dialog';
+import { isWebAuthnSupported } from '@/lib/utils/webauthn';
 
 // TwoFactorCard is the Settings entry for MFA enrolment. The component
 // owns a small state machine:
@@ -43,18 +45,19 @@ export function TwoFactorCard() {
   // state machine make explicit transitions (e.g. close Enrol, then
   // open BackupCodes) without the dialogs fighting over focus.
   const [enrolOpen, setEnrolOpen] = useState(false);
+  const [webAuthnOpen, setWebAuthnOpen] = useState(false);
   const [regenerateOpen, setRegenerateOpen] = useState(false);
   const [disableOpen, setDisableOpen] = useState(false);
 
-  // Which primary factor to address for regenerate/disable. For a
-  // single-primary-factor UI this is always the first TOTP row.
-  // Future: when WebAuthn lands we'll expose per-factor action
-  // buttons in the list below.
+  // Factor lookups. TOTP and webauthn are both "primary" factors;
+  // the first primary drives the regenerate/disable actions (future:
+  // per-row action buttons when the user has multiple primaries).
   const query = useFactors();
   const factors = query.data?.factors ?? [];
   const totp = factors.find((f) => f.type === 'totp');
+  const webAuthnFactors = factors.filter((f) => f.type === 'webauthn');
   const backupCodes = factors.find((f) => f.type === 'backup_codes');
-  const hasMfa = Boolean(totp);
+  const hasMfa = Boolean(totp) || webAuthnFactors.length > 0;
 
   const formatRelative = (iso: string | undefined) =>
     iso ? formatDistanceToNow(new Date(iso), { addSuffix: true, locale: dateLocale }) : null;
@@ -80,9 +83,16 @@ export function TwoFactorCard() {
             {t('loadError')}
           </p>
         ) : !hasMfa ? (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3">
             <p className="text-muted-foreground text-sm">{t('statusDisabled')}</p>
-            <Button onClick={() => setEnrolOpen(true)}>{t('enableButton')}</Button>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => setEnrolOpen(true)}>{t('enableButton')}</Button>
+              {isWebAuthnSupported() && (
+                <Button variant="outline" onClick={() => setWebAuthnOpen(true)}>
+                  {t('addSecurityKeyButton')}
+                </Button>
+              )}
+            </div>
           </div>
         ) : (
           <div className="space-y-4">
@@ -100,6 +110,11 @@ export function TwoFactorCard() {
               ))}
             </ul>
             <div className="flex flex-wrap gap-2">
+              {isWebAuthnSupported() && (
+                <Button variant="outline" onClick={() => setWebAuthnOpen(true)}>
+                  {t('addSecurityKeyButton')}
+                </Button>
+              )}
               <Button variant="outline" onClick={() => setRegenerateOpen(true)}>
                 {t('regenerateButton')}
               </Button>
@@ -117,6 +132,17 @@ export function TwoFactorCard() {
         onComplete={(payload) => {
           setEnrolOpen(false);
           setBackupPayload(payload);
+        }}
+      />
+
+      <TwoFactorWebAuthnDialog
+        open={webAuthnOpen}
+        onOpenChange={setWebAuthnOpen}
+        onComplete={(payload) => {
+          setWebAuthnOpen(false);
+          // payload may be null — first-primary activation issues
+          // backup codes, subsequent webauthn enrolments don't.
+          if (payload) setBackupPayload(payload);
         }}
       />
 
@@ -165,6 +191,7 @@ function FactorListRow({
 
 function labelFor(t: ReturnType<typeof useTranslations>, f: FactorResponse): string {
   if (f.type === 'totp') return f.label || t('factorTypeTotp');
+  if (f.type === 'webauthn') return f.label || t('factorTypeWebAuthn');
   return t('factorTypeBackupCodes');
 }
 

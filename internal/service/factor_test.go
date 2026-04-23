@@ -40,6 +40,7 @@ func newFactorService(t *testing.T, db *gorm.DB) (*FactorService, *AuditService)
 		store.NewUserStore(db),
 		testFactorAEAD(t),
 		"KitaManager (test)",
+		nil,
 		audit,
 	)
 	return svc, audit
@@ -84,7 +85,7 @@ func enrolAndActivateTOTP(t *testing.T, svc *FactorService, user *models.User, p
 	if err != nil {
 		t.Fatalf("gen code: %v", err)
 	}
-	if _, err := svc.ActivateFactor(ctx, user.ID, enroll.ID, code); err != nil {
+	if _, err := svc.ActivateFactor(ctx, user.ID, enroll.ID, &models.FactorActivateRequest{Code: code}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
 	return enroll.ID, payload.Secret
@@ -144,7 +145,7 @@ func TestFactorService_ActivateFactor_WrongCode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("enrol: %v", err)
 	}
-	_, err = svc.ActivateFactor(context.Background(), user.ID, enroll.ID, "000000")
+	_, err = svc.ActivateFactor(context.Background(), user.ID, enroll.ID, &models.FactorActivateRequest{Code: "000000"})
 	if !errors.Is(err, apperror.ErrUnauthorized) {
 		t.Errorf("expected ErrUnauthorized for wrong code, got %v", err)
 	}
@@ -162,7 +163,7 @@ func TestFactorService_ActivateFactor_AutoCreatesBackupCodesOnFirstPrimary(t *te
 	payload := enroll.Enrollment.(models.TOTPEnrollmentPayload)
 	code, _ := totp.GenerateCode(payload.Secret, time.Now().UTC())
 
-	resp, err := svc.ActivateFactor(context.Background(), user.ID, enroll.ID, code)
+	resp, err := svc.ActivateFactor(context.Background(), user.ID, enroll.ID, &models.FactorActivateRequest{Code: code})
 	if err != nil {
 		t.Fatalf("activate: %v", err)
 	}
@@ -201,7 +202,7 @@ func TestFactorService_ActivateFactor_SecondPrimaryDoesNotRegenerateBackupCodes(
 	}
 	pl2 := enroll2.Enrollment.(models.TOTPEnrollmentPayload)
 	code2, _ := totp.GenerateCode(pl2.Secret, time.Now().UTC())
-	resp, err := svc.ActivateFactor(context.Background(), user.ID, enroll2.ID, code2)
+	resp, err := svc.ActivateFactor(context.Background(), user.ID, enroll2.ID, &models.FactorActivateRequest{Code: code2})
 	if err != nil {
 		t.Fatalf("activate 2: %v", err)
 	}
@@ -222,14 +223,14 @@ func TestFactorService_ActivateFactor_DoubleActivateIsConflict(t *testing.T) {
 	pl := enroll.Enrollment.(models.TOTPEnrollmentPayload)
 	code, _ := totp.GenerateCode(pl.Secret, time.Now().UTC())
 
-	if _, err := svc.ActivateFactor(context.Background(), user.ID, enroll.ID, code); err != nil {
+	if _, err := svc.ActivateFactor(context.Background(), user.ID, enroll.ID, &models.FactorActivateRequest{Code: code}); err != nil {
 		t.Fatalf("first activate: %v", err)
 	}
 
 	// Second activation of an already-active factor: use a fresh code
 	// (same window might have advanced between calls).
 	code2, _ := totp.GenerateCode(pl.Secret, time.Now().UTC())
-	_, err = svc.ActivateFactor(context.Background(), user.ID, enroll.ID, code2)
+	_, err = svc.ActivateFactor(context.Background(), user.ID, enroll.ID, &models.FactorActivateRequest{Code: code2})
 	if !errors.Is(err, apperror.ErrConflict) {
 		t.Errorf("expected ErrConflict on double-activate, got %v", err)
 	}
@@ -249,7 +250,7 @@ func TestFactorService_ActivateFactor_CrossUser_NotFound(t *testing.T) {
 	pl := enroll.Enrollment.(models.TOTPEnrollmentPayload)
 	code, _ := totp.GenerateCode(pl.Secret, time.Now().UTC())
 
-	_, err = svc.ActivateFactor(context.Background(), bob.ID, enroll.ID, code)
+	_, err = svc.ActivateFactor(context.Background(), bob.ID, enroll.ID, &models.FactorActivateRequest{Code: code})
 	if !errors.Is(err, apperror.ErrNotFound) {
 		t.Errorf("expected ErrNotFound for cross-user activate, got %v", err)
 	}
@@ -406,6 +407,106 @@ func TestFactorService_DeleteFactor_CrossUser_NotFound(t *testing.T) {
 	}
 }
 
+// TestFactorService_DeleteFactor_WebAuthn_LastPrimary_RequiresCode covers
+// the delete-last-primary rule when the remaining factor is WebAuthn.
+// The service test harness wires webAuthn=nil (ceremonies live in
+// integration), so we seed the webauthn parent row directly and
+// exercise DeleteFactor's primary-counting + backup_codes-sweep logic.
+func TestFactorService_DeleteFactor_WebAuthn_LastPrimary_RequiresCode(t *testing.T) {
+	db := setupTestDB(t)
+	svc, _ := newFactorService(t, db)
+	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
+
+	// Set up a realistic two-primary state: TOTP (which also spawns
+	// the backup_codes factor via auto-create) + WebAuthn seeded
+	// directly.
+	totpFID, secret := enrolAndActivateTOTP(t, svc, user, "pw")
+	now := time.Now().UTC()
+	wa := &models.Factor{
+		UserID:    user.ID,
+		Type:      models.FactorTypeWebAuthn,
+		CreatedAt: now,
+		EnabledAt: &now,
+	}
+	if err := store.NewFactorStore(db).CreateFactor(context.Background(), wa); err != nil {
+		t.Fatalf("seed webauthn: %v", err)
+	}
+
+	// Delete TOTP (still have WebAuthn as primary, so no code needed).
+	code, _ := totp.GenerateCode(secret, time.Now().UTC())
+	if err := svc.DeleteFactor(context.Background(), user.ID, totpFID, "pw", code); err != nil {
+		t.Fatalf("delete totp: %v", err)
+	}
+
+	// Now WebAuthn is the last primary. Deleting it without a code
+	// must fail with BadRequest — same rule that covers TOTP-only
+	// users, restated for WebAuthn-only users.
+	err := svc.DeleteFactor(context.Background(), user.ID, wa.ID, "pw", "")
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected BadRequest when deleting last primary without code, got %v", err)
+	}
+
+	// WebAuthn factor still present.
+	if _, err := store.NewFactorStore(db).FindByIDAndUser(context.Background(), wa.ID, user.ID); err != nil {
+		t.Errorf("webauthn factor wrongly removed: %v", err)
+	}
+}
+
+// TestFactorService_DeleteFactor_WebAuthn_LastPrimary_SweepsBackupCodes
+// is the happy-path counterpart: when the caller supplies a valid
+// backup code, deletion of the WebAuthn factor succeeds AND the
+// backup_codes factor is swept (no stranded secondary factor rows).
+func TestFactorService_DeleteFactor_WebAuthn_LastPrimary_SweepsBackupCodes(t *testing.T) {
+	db := setupTestDB(t)
+	svc, _ := newFactorService(t, db)
+	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
+
+	// Seed state: TOTP (for its backup codes) then delete TOTP with
+	// WebAuthn also active so backup_codes survive the TOTP deletion.
+	totpFID, secret := enrolAndActivateTOTP(t, svc, user, "pw")
+	now := time.Now().UTC()
+	wa := &models.Factor{
+		UserID:    user.ID,
+		Type:      models.FactorTypeWebAuthn,
+		CreatedAt: now,
+		EnabledAt: &now,
+	}
+	if err := store.NewFactorStore(db).CreateFactor(context.Background(), wa); err != nil {
+		t.Fatalf("seed webauthn: %v", err)
+	}
+	code, _ := totp.GenerateCode(secret, time.Now().UTC())
+	if err := svc.DeleteFactor(context.Background(), user.ID, totpFID, "pw", code); err != nil {
+		t.Fatalf("delete totp: %v", err)
+	}
+
+	// Capture one of the auto-issued backup codes (plaintext is not
+	// stored but we can regenerate to force a known set).
+	bundle, err := svc.RegenerateBackupCodes(context.Background(), user.ID,
+		mustFindBackupCodesFactor(t, db, user.ID).ID, "pw")
+	if err != nil {
+		t.Fatalf("regenerate: %v", err)
+	}
+	backupCode := bundle.Codes[0]
+
+	// Delete WebAuthn with a backup code — succeeds, AND backup_codes
+	// factor is swept since WebAuthn was the last primary.
+	if err := svc.DeleteFactor(context.Background(), user.ID, wa.ID, "pw", backupCode); err != nil {
+		t.Fatalf("delete webauthn: %v", err)
+	}
+	if _, err := store.NewFactorStore(db).FindBackupCodesFactor(context.Background(), user.ID); !errors.Is(err, store.ErrNotFound) {
+		t.Error("backup_codes factor must be swept when last webauthn primary is deleted")
+	}
+}
+
+func mustFindBackupCodesFactor(t *testing.T, db *gorm.DB, userID uint) *models.Factor {
+	t.Helper()
+	f, err := store.NewFactorStore(db).FindBackupCodesFactor(context.Background(), userID)
+	if err != nil {
+		t.Fatalf("find backup_codes factor: %v", err)
+	}
+	return f
+}
+
 func TestFactorService_UpdateLabel(t *testing.T) {
 	db := setupTestDB(t)
 	svc, _ := newFactorService(t, db)
@@ -556,7 +657,7 @@ func TestFactorService_ActivateFactor_FiveWrongCodes_DeletesPending(t *testing.T
 
 	// First 4 wrong codes: Unauthorized but the row survives.
 	for i := 1; i <= FactorActivationFailureLimit-1; i++ {
-		_, err := svc.ActivateFactor(context.Background(), user.ID, enroll.ID, "000000")
+		_, err := svc.ActivateFactor(context.Background(), user.ID, enroll.ID, &models.FactorActivateRequest{Code: "000000"})
 		if !errors.Is(err, apperror.ErrUnauthorized) {
 			t.Errorf("attempt %d: expected ErrUnauthorized, got %v", i, err)
 		}
@@ -567,7 +668,7 @@ func TestFactorService_ActivateFactor_FiveWrongCodes_DeletesPending(t *testing.T
 	}
 
 	// 5th wrong code: TooManyRequests + pending row is gone.
-	_, err = svc.ActivateFactor(context.Background(), user.ID, enroll.ID, "000000")
+	_, err = svc.ActivateFactor(context.Background(), user.ID, enroll.ID, &models.FactorActivateRequest{Code: "000000"})
 	if !errors.Is(err, apperror.ErrTooManyRequests) {
 		t.Errorf("5th attempt: expected ErrTooManyRequests, got %v", err)
 	}
@@ -577,7 +678,7 @@ func TestFactorService_ActivateFactor_FiveWrongCodes_DeletesPending(t *testing.T
 	}
 
 	// Any subsequent request against the same factor id is a 404.
-	_, err = svc.ActivateFactor(context.Background(), user.ID, enroll.ID, "000000")
+	_, err = svc.ActivateFactor(context.Background(), user.ID, enroll.ID, &models.FactorActivateRequest{Code: "000000"})
 	if !errors.Is(err, apperror.ErrNotFound) {
 		t.Errorf("after auto-delete: expected ErrNotFound, got %v", err)
 	}
@@ -602,14 +703,14 @@ func TestFactorService_ActivateFactor_CorrectCodeAfterWrongAttempts(t *testing.T
 
 	// Two typos — well below the limit.
 	for range 2 {
-		_, err := svc.ActivateFactor(context.Background(), user.ID, enroll.ID, "000000")
+		_, err := svc.ActivateFactor(context.Background(), user.ID, enroll.ID, &models.FactorActivateRequest{Code: "000000"})
 		if !errors.Is(err, apperror.ErrUnauthorized) {
 			t.Fatalf("expected Unauthorized for wrong code, got %v", err)
 		}
 	}
 	// Real code now: activation succeeds.
 	code, _ := totp.GenerateCode(pl.Secret, time.Now().UTC())
-	if _, err := svc.ActivateFactor(context.Background(), user.ID, enroll.ID, code); err != nil {
+	if _, err := svc.ActivateFactor(context.Background(), user.ID, enroll.ID, &models.FactorActivateRequest{Code: code}); err != nil {
 		t.Errorf("activation after typos should succeed, got %v", err)
 	}
 }
@@ -675,7 +776,7 @@ func TestFactorService_ActivateFactor_BackupCodesType_Rejected(t *testing.T) {
 		t.Fatalf("force pending: %v", err)
 	}
 
-	_, err = svc.ActivateFactor(context.Background(), user.ID, bf.ID, "any-code")
+	_, err = svc.ActivateFactor(context.Background(), user.ID, bf.ID, &models.FactorActivateRequest{Code: "any-code"})
 	if !errors.Is(err, apperror.ErrBadRequest) {
 		t.Errorf("expected BadRequest for activate on backup_codes, got %v", err)
 	}

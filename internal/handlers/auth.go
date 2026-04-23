@@ -105,6 +105,7 @@ func (h *AuthHandler) MFAVerify(c *gin.Context) {
 		req.PendingToken,
 		req.FactorID,
 		req.Code,
+		req.WebAuthnResponse,
 		c.ClientIP(),
 		c.GetHeader("User-Agent"),
 	)
@@ -119,6 +120,34 @@ func (h *AuthHandler) MFAVerify(c *gin.Context) {
 		Status:    models.LoginStatusAuthenticated,
 		ExpiresIn: result.ExpiresIn,
 	})
+}
+
+// MFAChallenge godoc
+// @Summary Login step 2a: request a WebAuthn challenge
+// @Description For WebAuthn factors, the client must fetch a server-
+// @Description issued challenge via this endpoint before calling
+// @Description navigator.credentials.get(). Returns the
+// @Description PublicKeyCredentialRequestOptions JSON unchanged. TOTP
+// @Description and backup-code factors never hit this endpoint.
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body models.MFAChallengeRequest true "Pending token + factor id"
+// @Success 200 {object} models.MFAChallengeResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Router /api/v1/auth/mfa/challenge [post]
+func (h *AuthHandler) MFAChallenge(c *gin.Context) {
+	req, ok := bindJSON[models.MFAChallengeRequest](c)
+	if !ok {
+		return
+	}
+	options, err := h.authService.BeginMFAChallenge(c.Request.Context(), req.PendingToken, req.FactorID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, models.MFAChallengeResponse{RequestOptions: options})
 }
 
 // Logout godoc

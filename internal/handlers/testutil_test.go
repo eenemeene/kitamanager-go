@@ -282,7 +282,7 @@ func createAuthService(db *gorm.DB) *service.AuthService {
 	if err != nil {
 		panic(err)
 	}
-	factorSvc := service.NewFactorService(store.NewFactorStore(db), userStore, aead, "KitaManager (test)", auditService)
+	factorSvc := service.NewFactorService(store.NewFactorStore(db), userStore, aead, "KitaManager (test)", nil, auditService)
 	return service.NewAuthService(userStore, sessionStore, "test-jwt-secret", auditService, factorSvc)
 }
 

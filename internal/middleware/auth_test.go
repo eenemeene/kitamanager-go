@@ -129,6 +129,9 @@ func (f *fakeSessionStore) BumpMFAChallengeFailures(ctx context.Context, idHash 
 func (f *fakeSessionStore) DeletePendingMFA(ctx context.Context, idHash string) error {
 	return nil
 }
+func (f *fakeSessionStore) SetPendingMFAChallenge(ctx context.Context, idHash string, challenge []byte) error {
+	return nil
+}
 
 // addSession seeds a session as if it had been issued by Login, returning the
 // raw cookie value.

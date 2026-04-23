@@ -30,6 +30,7 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/service"
 	"github.com/eenemeene/kitamanager-go/internal/store"
 	"github.com/eenemeene/kitamanager-go/internal/version"
+	webauthnpkg "github.com/eenemeene/kitamanager-go/internal/webauthn"
 )
 
 // @title KitaManager API
@@ -238,7 +239,23 @@ func initServices(s *appStores, cfg *config.Config, transactor store.Transactor)
 		os.Exit(1)
 	}
 
-	factorSvc := service.NewFactorService(s.factor, s.user, aead, cfg.TOTPIssuer, auditService)
+	// Optional WebAuthn wiring. All three env vars together enable
+	// the factor type; otherwise WebAuthn endpoints return a clear
+	// "not enabled" error rather than crashing.
+	var webAuthnSvc *webauthnpkg.Service
+	if cfg.WebAuthnRPID != "" {
+		webAuthnSvc, err = webauthnpkg.New(webauthnpkg.Config{
+			RPID:      cfg.WebAuthnRPID,
+			RPName:    cfg.WebAuthnRPName,
+			RPOrigins: cfg.WebAuthnOrigins,
+		})
+		if err != nil {
+			slog.Error("WebAuthn config invalid despite startup validation", "error", err)
+			os.Exit(1)
+		}
+	}
+
+	factorSvc := service.NewFactorService(s.factor, s.user, aead, cfg.TOTPIssuer, webAuthnSvc, auditService)
 	return &appServices{
 		audit:                 auditService,
 		auth:                  service.NewAuthService(s.user, s.session, cfg.JWTSecret, auditService, factorSvc),

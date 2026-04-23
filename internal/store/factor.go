@@ -285,6 +285,97 @@ func (s *FactorStore) ConsumeBackupCode(ctx context.Context, factorID uint, code
 	return res.RowsAffected == 1, nil
 }
 
+// --- WebAuthn subtable methods ---
+
+// CreateWebAuthnCredential inserts the per-factor WebAuthn credential
+// row. The unique index on credential_id rejects duplicates at the
+// DB layer — two users cannot bind the same hardware key — and the
+// caller should translate that violation into apperror.Conflict so
+// the UI can explain "this security key is already registered".
+func (s *FactorStore) CreateWebAuthnCredential(ctx context.Context, cred *models.FactorWebAuthnCredential) error {
+	return DBFromContext(ctx, s.db).Create(cred).Error
+}
+
+// FindWebAuthnCredential returns the credential row for a factor.
+// ErrNotFound if the factor is not WebAuthn-typed or the subtable
+// row is missing (which shouldn't happen for an activated factor but
+// can for one mid-registration).
+func (s *FactorStore) FindWebAuthnCredential(ctx context.Context, factorID uint) (*models.FactorWebAuthnCredential, error) {
+	var cred models.FactorWebAuthnCredential
+	err := DBFromContext(ctx, s.db).Where("factor_id = ?", factorID).First(&cred).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return &cred, nil
+}
+
+// FindWebAuthnCredentialByID looks up a credential by its credential_id
+// bytes (the globally unique identifier WebAuthn authenticators
+// return). Used at registration time to reject duplicates before
+// inserting, and (future PR) for passwordless flows where the user
+// is identified by the credential alone.
+func (s *FactorStore) FindWebAuthnCredentialByID(ctx context.Context, credentialID []byte) (*models.FactorWebAuthnCredential, error) {
+	var cred models.FactorWebAuthnCredential
+	err := DBFromContext(ctx, s.db).Where("credential_id = ?", credentialID).First(&cred).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return &cred, nil
+}
+
+// UpdateWebAuthnSignCount bumps sign_count and backup_state on a
+// credential after a successful assertion. The WebAuthn L3 spec
+// allows authenticators that don't keep a counter (synced passkeys,
+// some platform authenticators) to always return zero — the service
+// layer decides whether a non-increase is acceptable; this store
+// method just writes whatever the service hands down.
+//
+// backup_state mirrors the current BS flag off the assertion; it can
+// toggle on and off over the credential's lifetime as the user opts
+// in/out of cloud sync.
+func (s *FactorStore) UpdateWebAuthnSignCount(ctx context.Context, factorID uint, newCount int64, backupState bool) error {
+	return DBFromContext(ctx, s.db).Model(&models.FactorWebAuthnCredential{}).
+		Where("factor_id = ?", factorID).
+		Updates(map[string]any{
+			"sign_count":   newCount,
+			"backup_state": backupState,
+		}).Error
+}
+
+// SetRegistrationChallenge persists the server-issued challenge blob
+// on the pending factor row with an absolute expiry. The blob is
+// typically a serialised go-webauthn SessionData (contains the raw
+// challenge bytes + the allowed-credentials list + required UV flag)
+// so the activate path can round-trip it back into the library's
+// verifier.
+func (s *FactorStore) SetRegistrationChallenge(ctx context.Context, factorID uint, challenge []byte, expiresAt time.Time) error {
+	return DBFromContext(ctx, s.db).Model(&models.Factor{}).
+		Where("id = ?", factorID).
+		Updates(map[string]any{
+			"registration_challenge":            challenge,
+			"registration_challenge_expires_at": expiresAt,
+		}).Error
+}
+
+// ClearRegistrationChallenge wipes the challenge columns. Called
+// after successful activation; also called by the cleanup job when a
+// row is swept as abandoned. Safe to call on rows that never had a
+// challenge (both columns go from NULL to NULL). GORM silently
+// swallows nil/gorm.Expr("NULL") on Updates in ways that depend on
+// struct tags and types; raw SQL is unambiguous here.
+func (s *FactorStore) ClearRegistrationChallenge(ctx context.Context, factorID uint) error {
+	return DBFromContext(ctx, s.db).Exec(
+		"UPDATE factors SET registration_challenge = NULL, registration_challenge_expires_at = NULL WHERE id = ?",
+		factorID,
+	).Error
+}
+
 // ReplaceBackupCodes deletes every existing code for the factor and
 // inserts the new batch, all in one transaction with a row lock on the
 // parent factor so two concurrent regenerations serialise.

@@ -64,9 +64,11 @@ func Setup(r *gin.Engine, d Deps) {
 		// cycling into /auth/mfa/verify after the password step.
 		if loginRateLimiter != nil {
 			api.POST("/login", loginRateLimiter.RateLimit(), authHandler.Login)
+			api.POST("/auth/mfa/challenge", loginRateLimiter.RateLimit(), authHandler.MFAChallenge)
 			api.POST("/auth/mfa/verify", loginRateLimiter.RateLimit(), authHandler.MFAVerify)
 		} else {
 			api.POST("/login", authHandler.Login)
+			api.POST("/auth/mfa/challenge", authHandler.MFAChallenge)
 			api.POST("/auth/mfa/verify", authHandler.MFAVerify)
 		}
 

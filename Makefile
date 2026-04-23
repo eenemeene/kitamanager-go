@@ -64,6 +64,9 @@ dev: api-build web-install
 		DB_SSLMODE=disable \
 		JWT_SECRET=dev-only-jwt-secret-not-for-production-use-change-me-32chars \
 		TOTP_ENCRYPTION_KEY=1111111111111111111111111111111111111111111111111111111111111111 \
+		WEBAUTHN_RP_ID=localhost \
+		WEBAUTHN_RP_NAME="KitaManager (dev)" \
+		WEBAUTHN_ORIGINS="http://localhost:3000,http://localhost:8080" \
 		SECURE_COOKIES=false \
 		SEED_ADMIN_EMAIL=admin@example.com \
 		SEED_ADMIN_PASSWORD=supersecret \

@@ -39,6 +39,7 @@ func userWithMFA(t *testing.T, db *gorm.DB, email, password string) (*models.Use
 		store.NewUserStore(db),
 		aead,
 		"KitaManager (test)",
+		nil,
 		audit,
 	)
 	ctx := context.Background()
@@ -48,7 +49,7 @@ func userWithMFA(t *testing.T, db *gorm.DB, email, password string) (*models.Use
 	}
 	payload := enroll.Enrollment.(models.TOTPEnrollmentPayload)
 	code, _ := totp.GenerateCode(payload.Secret, time.Now().UTC())
-	if _, err := factorSvc.ActivateFactor(ctx, user.ID, enroll.ID, code); err != nil {
+	if _, err := factorSvc.ActivateFactor(ctx, user.ID, enroll.ID, &models.FactorActivateRequest{Code: code}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
 	return user, enroll.ID, payload.Secret

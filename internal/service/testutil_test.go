@@ -408,7 +408,7 @@ func createAuthService(db *gorm.DB) *AuthService {
 	sessionStore := store.NewSessionStore(db)
 	auditService := createAuditService(db)
 	aead := testAuthAEAD()
-	factorSvc := NewFactorService(store.NewFactorStore(db), userStore, aead, "KitaManager (test)", auditService)
+	factorSvc := NewFactorService(store.NewFactorStore(db), userStore, aead, "KitaManager (test)", nil, auditService)
 	return NewAuthService(userStore, sessionStore, "test-jwt-secret", auditService, factorSvc)
 }
 

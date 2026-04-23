@@ -90,7 +90,11 @@
       "wrongCode": "Ungültiger Code. Bitte erneut versuchen.",
       "tooManyWrongCodes": "Zu viele falsche Codes. Bitte melden Sie sich erneut an.",
       "pendingExpired": "Diese Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
-      "lostAccessHint": "Kein Zugriff mehr auf Ihre Authenticator-App? Geben Sie einen Wiederherstellungscode ein oder wenden Sie sich an Ihren Administrator."
+      "lostAccessHint": "Kein Zugriff mehr auf Ihre Authenticator-App? Geben Sie einen Wiederherstellungscode ein oder wenden Sie sich an Ihren Administrator.",
+      "webauthnPrompt": "Klicken Sie auf die Schaltfläche unten und tippen Sie dann auf Ihren Sicherheitsschlüssel oder nutzen Sie die biometrische Abfrage Ihres Geräts.",
+      "webauthnSubmit": "Sicherheitsschlüssel verwenden",
+      "webauthnCancelled": "Die Abfrage des Sicherheitsschlüssels wurde abgebrochen.",
+      "webauthnFailed": "Verifizierung des Sicherheitsschlüssels fehlgeschlagen. Bitte erneut versuchen."
     }
   },
   "nav": {
@@ -605,6 +609,21 @@
       "enableButton": "Zwei-Faktor-Authentifizierung aktivieren",
       "regenerateButton": "Wiederherstellungscodes neu erzeugen",
       "disableButton": "Zwei-Faktor-Authentifizierung deaktivieren",
+      "addSecurityKeyButton": "Sicherheitsschlüssel hinzufügen",
+      "factorTypeWebAuthn": "Sicherheitsschlüssel",
+      "webauthnDialog": {
+        "title": "Sicherheitsschlüssel hinzufügen",
+        "description": "Bestätigen Sie Ihr Passwort und tippen Sie dann auf Ihren Sicherheitsschlüssel oder nutzen Sie die biometrische Abfrage Ihres Geräts.",
+        "passwordLabel": "Aktuelles Passwort",
+        "continue": "Weiter",
+        "wrongPassword": "Das aktuelle Passwort ist falsch.",
+        "prompting": "Folgen Sie der Browser-Anzeige, um den Sicherheitsschlüssel zu bestätigen.",
+        "userCancelled": "Die Abfrage des Sicherheitsschlüssels wurde abgebrochen.",
+        "alreadyRegistered": "Dieser Sicherheitsschlüssel ist bereits mit Ihrem Konto verknüpft.",
+        "unsupported": "Ihr Browser unterstützt keine Sicherheitsschlüssel.",
+        "cancel": "Abbrechen",
+        "retry": "Erneut versuchen"
+      },
       "factorTypeTotp": "Authenticator-App",
       "factorTypeBackupCodes": "Wiederherstellungscodes",
       "backupCodesRemaining": "{count} Codes übrig",

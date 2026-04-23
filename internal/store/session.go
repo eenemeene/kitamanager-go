@@ -197,6 +197,23 @@ func (s *SessionStore) DeletePendingMFA(ctx context.Context, idHash string) erro
 		Delete(&models.Session{}).Error
 }
 
+// SetPendingMFAChallenge stores the WebAuthn SessionData JSON blob
+// (challenge + allowCredentials + expected UV flag) on the pending
+// row. Called at /auth/mfa/challenge time; the verify path reads it
+// back and deletes the row atomically with the verify.
+func (s *SessionStore) SetPendingMFAChallenge(ctx context.Context, idHash string, challenge []byte) error {
+	res := DBFromContext(ctx, s.db).Model(&models.Session{}).
+		Where("id = ? AND kind = ?", idHash, models.SessionKindPendingMFA).
+		Update("challenge_nonce", challenge)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 // Delete removes a single session. Returns nil when the row does not exist
 // so logout is idempotent.
 func (s *SessionStore) Delete(ctx context.Context, idHash string) error {

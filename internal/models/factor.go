@@ -1,15 +1,20 @@
 package models
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // Factor types. These are the values stored in factors.type and exposed
-// in the API. Adding a new factor type (e.g. "webauthn") requires:
-// (a) a new constant here, (b) a new subtable migration, (c) a new
-// verifier implementation in service/, (d) the CHECK constraint in
-// migration 000010 loosened.
+// in the API. Each new factor type needs (a) a constant here, (b) a
+// subtable migration (see 000010 for totp/backup, 000012 for webauthn),
+// (c) a verifier implementation in service/factor.go's switch
+// statements, (d) the CHECK constraint in the latest migration
+// loosened to include it.
 const (
 	FactorTypeTOTP        = "totp"
 	FactorTypeBackupCodes = "backup_codes"
+	FactorTypeWebAuthn    = "webauthn"
 )
 
 // Factor is the parent row in the factor-generic data model. Every
@@ -27,8 +32,15 @@ type Factor struct {
 	// to /activate. When it reaches FactorActivationFailureLimit the
 	// service layer deletes the pending row, forcing re-enrolment.
 	// Only meaningful while EnabledAt IS NULL.
-	ActivationFailures int       `gorm:"not null;default:0" json:"-"`
-	CreatedAt          time.Time `gorm:"not null" json:"created_at"`
+	ActivationFailures int `gorm:"not null;default:0" json:"-"`
+	// RegistrationChallenge holds the WebAuthn server-issued challenge
+	// (typically a serialised go-webauthn SessionData blob) between
+	// POST /factors and POST /factors/:id/activate. TOTP and
+	// backup_codes factors leave this NULL. Cleared on activation or
+	// when the row is swept by CleanupAbandonedPending.
+	RegistrationChallenge          []byte     `gorm:"type:bytea" json:"-"`
+	RegistrationChallengeExpiresAt *time.Time `json:"-"`
+	CreatedAt                      time.Time  `gorm:"not null" json:"created_at"`
 }
 
 // TableName is explicit because GORM's default would otherwise be "factors"
@@ -61,6 +73,33 @@ type FactorBackupCode struct {
 
 func (FactorBackupCode) TableName() string { return "factor_backup_codes" }
 
+// FactorWebAuthnCredential is the per-factor subtable row for
+// WebAuthn / FIDO2 credentials. One row per factor; the unique index
+// on credential_id enforces the "credential must be globally unique"
+// rule from WebAuthn L3 section 7.1 step 22 (an authenticator binds
+// to exactly one user account).
+//
+// Public keys are stored plaintext — they are public by definition,
+// and encryption would only confuse operators later. The credential
+// id and AAGUID are not sensitive enough to encrypt either. Sign
+// count, BE/BS flags, and UV-initialised are consulted on every
+// assertion and kept up to date by the verify path.
+type FactorWebAuthnCredential struct {
+	FactorID          uint      `gorm:"primaryKey" json:"-"`
+	CredentialID      []byte    `gorm:"type:bytea;not null;uniqueIndex:idx_factor_webauthn_credential_id" json:"-"`
+	PublicKey         []byte    `gorm:"type:bytea;not null" json:"-"`
+	AAGUID            []byte    `gorm:"type:bytea;column:aaguid" json:"-"`
+	SignCount         int64     `gorm:"not null;default:0" json:"-"`
+	Transports        string    `gorm:"size:255" json:"-"`
+	AttestationFormat string    `gorm:"size:64" json:"-"`
+	BackupEligible    bool      `gorm:"not null;default:false" json:"-"`
+	BackupState       bool      `gorm:"not null;default:false" json:"-"`
+	UVInitialized     bool      `gorm:"not null;default:false" json:"-"`
+	CreatedAt         time.Time `gorm:"not null" json:"-"`
+}
+
+func (FactorWebAuthnCredential) TableName() string { return "factor_webauthn_credentials" }
+
 // FactorEnrollmentPayload is the type-specific blob included in the
 // response to `POST /users/:userId/factors` — what the client needs to
 // complete enrollment. For TOTP it's a base32 secret + otpauth URI.
@@ -74,6 +113,14 @@ type FactorEnrollmentPayload any
 type TOTPEnrollmentPayload struct {
 	Secret     string `json:"secret" example:"JBSWY3DPEHPK3PXP"`
 	OTPAuthURI string `json:"otpauth_uri" example:"otpauth://totp/KitaManager:..."`
+}
+
+// WebAuthnEnrollmentPayload is what `POST /users/:userId/factors
+// {type:"webauthn"}` returns. CreationOptions is the raw JSON from
+// the go-webauthn library — the client hands it straight to
+// `navigator.credentials.create({publicKey: creationOptions})`.
+type WebAuthnEnrollmentPayload struct {
+	CreationOptions json.RawMessage `json:"creation_options" swaggertype:"object"`
 }
 
 // FactorResponse is the per-factor response row. Factor-specific extras
@@ -122,13 +169,20 @@ type FactorListResponse struct {
 // in its pending_mfa response, and that POST /auth/mfa/verify echoes
 // back alongside its error responses. Kept deliberately small — only
 // the fields the unauthenticated client needs to present a factor
-// chooser. No created_at, last_used_at, or backup_codes_remaining —
-// leaking post-login metadata to an unauthenticated caller is exactly
-// what this type is designed to prevent.
+// chooser or drive a WebAuthn ceremony. No created_at, last_used_at,
+// backup_codes_remaining, or AAGUID — leaking post-login metadata to
+// an unauthenticated caller is exactly what this type is designed to
+// prevent.
 type LoginFactorDescriptor struct {
 	ID    uint    `json:"id" example:"42"`
 	Type  string  `json:"type" example:"totp"`
 	Label *string `json:"label,omitempty" example:"iPhone"`
+	// CredentialID is the base64url-encoded credential id, populated
+	// only for webauthn factors. The browser needs it to narrow
+	// allowCredentials[] on navigator.credentials.get(), which lets
+	// the authenticator pre-filter before prompting the user. Safe
+	// to expose: credential ids are public by WebAuthn design.
+	CredentialID *string `json:"credential_id,omitempty" example:"AQIDBAU..."`
 }
 
 // FactorEnrollRequest is the request body for `POST /users/:userId/factors`.
@@ -142,10 +196,16 @@ type FactorEnrollRequest struct {
 }
 
 // FactorActivateRequest is the body for `POST /users/:userId/factors/:id/activate`.
-// `code` is a TOTP code for totp factors; backup_codes factors aren't
-// activated this way (they're auto-created at first primary activation).
+// Polymorphic across factor types:
+//   - TOTP: Code is a 6-digit time-based code; WebAuthnResponse is unset.
+//   - WebAuthn: WebAuthnResponse is the browser's PublicKeyCredential
+//     JSON from navigator.credentials.create(); Code is unset.
+//
+// At least one of the two is required; the handler picks which branch
+// to run based on the factor's stored type.
 type FactorActivateRequest struct {
-	Code string `json:"code" binding:"required" example:"123456"`
+	Code             string          `json:"code,omitempty" example:"123456"`
+	WebAuthnResponse json.RawMessage `json:"webauthn_response,omitempty" swaggertype:"object"`
 }
 
 // FactorActivateResponse carries the activation result. On the first
