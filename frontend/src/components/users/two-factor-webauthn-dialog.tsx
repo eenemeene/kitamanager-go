@@ -126,19 +126,25 @@ export function TwoFactorWebAuthnDialog({
     try {
       await runCeremony(data.password);
     } catch (err) {
-      setStep('password');
       const axiosErr = err as AxiosError;
       const status = axiosErr.response?.status;
+      // 401 means the step-up password was wrong — drop back to the
+      // password step so the user can re-enter it.
       if (status === 401) {
+        setStep('password');
         setPasswordError(t('wrongPassword'));
         pwForm.setValue('password', '');
         return;
       }
+      // Everything else (server 409, browser NotAllowedError, etc.)
+      // keeps the user on the prompting step so the inline error and
+      // the Retry button are visible. Reverting to password here
+      // would silently eat the error since promptError is only
+      // rendered on the prompting step.
       if (status === 409) {
         setPromptError(t('alreadyRegistered'));
         return;
       }
-      // Browser-side exceptions (NotAllowedError, AbortError, etc).
       const name = (err as { name?: string }).name;
       if (name === 'NotAllowedError' || name === 'AbortError') {
         setPromptError(t('userCancelled'));
@@ -148,6 +154,9 @@ export function TwoFactorWebAuthnDialog({
         setPromptError(t('alreadyRegistered'));
         return;
       }
+      // Unknown / network failure — surface the toast and drop back
+      // so the user can retry from the top.
+      setStep('password');
       toast({ title: tCommon('error'), variant: 'destructive' });
     }
   });
