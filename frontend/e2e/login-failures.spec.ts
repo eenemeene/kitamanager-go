@@ -97,20 +97,26 @@ test.describe('Login failures — password step', () => {
   }) => {
     await submitPasswordForm(page, testEmail, 'definitely-wrong-password');
     await expect(page).toHaveURL(/\/login/);
-    await expect(page.getByRole('alert')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toBeVisible({
+      timeout: 10000,
+    });
     // Email field is preserved so the user doesn't have to retype it.
     await expect(page.getByLabel(/email/i)).toHaveValue(testEmail);
   });
 
   test('non-existent email: same banner (no enumeration)', async ({ page }) => {
     await submitPasswordForm(page, `nosuch-${Date.now()}@example.com`, 'any-password');
-    await expect(page.getByRole('alert')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toBeVisible({
+      timeout: 10000,
+    });
     await expect(page).toHaveURL(/\/login/);
   });
 
   test('wrong password followed by correct password succeeds', async ({ page }) => {
     await submitPasswordForm(page, testEmail, 'wrong-first');
-    await expect(page.getByRole('alert')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toBeVisible({
+      timeout: 10000,
+    });
     await page.getByLabel(/password/i).fill(password);
     await page.getByRole('button', { name: /sign ?in|login/i }).click();
     await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
@@ -159,7 +165,10 @@ test.describe('Login failures — MFA step', () => {
     const codeInput = page.getByLabel(/code/i);
     await codeInput.fill('000000');
     await page.getByRole('button', { name: /verify/i }).click();
-    await expect(page.getByRole('alert')).toContainText(/invalid code/i, { timeout: 10000 });
+    await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toContainText(
+      /invalid code/i,
+      { timeout: 10000 }
+    );
     await expect(codeInput).toHaveValue('');
     // Still on MFA step — not back to password.
     await expect(page.getByTestId('mfa-verify-form')).toBeVisible();
@@ -171,7 +180,7 @@ test.describe('Login failures — MFA step', () => {
 
     await page.getByLabel(/code/i).fill('000000');
     await page.getByRole('button', { name: /verify/i }).click();
-    await expect(page.getByRole('alert')).toBeVisible();
+    await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toBeVisible();
 
     // Fresh TOTP code works.
     await page.getByLabel(/code/i).fill(generateTotp(secret));
@@ -199,14 +208,16 @@ test.describe('Login failures — MFA step', () => {
     for (let i = 0; i < 4; i++) {
       await page.getByLabel(/code/i).fill('000000');
       await page.getByRole('button', { name: /verify/i }).click();
-      await expect(page.getByRole('alert')).toBeVisible();
+      await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toBeVisible();
     }
     // 5th wrong code trips the backend's per-row limit → pending
     // row destroyed → the form should revert to password step.
     await page.getByLabel(/code/i).fill('000000');
     await page.getByRole('button', { name: /verify/i }).click();
     await expect(page.getByLabel(/email/i)).toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole('alert')).toContainText(/too many wrong codes/i);
+    await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toContainText(
+      /too many wrong codes/i
+    );
   });
 
   test('browser refresh during MFA step drops pending token → back to password form', async ({
@@ -240,7 +251,7 @@ test.describe('Login failures — MFA step', () => {
     await expect(page.getByTestId('mfa-verify-form')).toBeVisible({ timeout: 10000 });
     await page.getByLabel(/code/i).fill('000000');
     await page.getByRole('button', { name: /verify/i }).click();
-    await expect(page.getByRole('alert')).toBeVisible();
+    await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toBeVisible();
     // MFA form STILL visible — the 401 didn't collapse state.
     await expect(page.getByTestId('mfa-verify-form')).toBeVisible();
     // Email input still hidden (we're in MFA state, not password state).

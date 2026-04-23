@@ -239,9 +239,12 @@ test.describe('Two-factor authentication — full lifecycle', () => {
     await page.getByRole('option', { name: /recovery codes/i }).click();
     await page.getByLabel(/code/i).fill(backupCodes[0]); // reused!
     await page.getByRole('button', { name: /verify/i }).click();
-    await expect(page.getByRole('alert')).toContainText(/invalid code/i, {
-      timeout: 10000,
-    });
+    await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toContainText(
+      /invalid code/i,
+      {
+        timeout: 10000,
+      }
+    );
     // Fall back to TOTP to complete this login (so we can regenerate).
     await page.getByLabel(/verify with/i).click();
     await page.getByRole('option', { name: /authenticator/i }).click();
@@ -278,7 +281,10 @@ test.describe('Two-factor authentication — full lifecycle', () => {
     await page.getByRole('option', { name: /recovery codes/i }).click();
     await page.getByLabel(/code/i).fill(backupCodes[1]);
     await page.getByRole('button', { name: /verify/i }).click();
-    await expect(page.getByRole('alert')).toContainText(/invalid code/i, { timeout: 10000 });
+    await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toContainText(
+      /invalid code/i,
+      { timeout: 10000 }
+    );
 
     // One of the fresh codes works.
     await page.getByLabel(/code/i).fill(freshCodes[0]);
