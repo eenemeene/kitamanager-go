@@ -2302,6 +2302,23 @@ definitions:
         example: authenticated
         type: string
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.MFAChallengeRequest:
+    properties:
+      factor_id:
+        example: 42
+        type: integer
+      pending_token:
+        example: 9ZmN...sBA
+        type: string
+    required:
+    - factor_id
+    - pending_token
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.MFAChallengeResponse:
+    properties:
+      request_options:
+        type: object
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.MFAVerifyRequest:
     properties:
       code:
@@ -3602,6 +3619,41 @@ paths:
       summary: Get audit log entry by ID
       tags:
       - audit-logs
+  /api/v1/auth/mfa/challenge:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        For WebAuthn factors, the client must fetch a server-
+        issued challenge via this endpoint before calling
+        navigator.credentials.get(). Returns the
+        PublicKeyCredentialRequestOptions JSON unchanged. TOTP
+        and backup-code factors never hit this endpoint.
+      parameters:
+      - description: Pending token + factor id
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.MFAChallengeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.MFAChallengeResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      summary: 'Login step 2a: request a WebAuthn challenge'
+      tags:
+      - auth
   /api/v1/auth/mfa/verify:
     post:
       consumes:

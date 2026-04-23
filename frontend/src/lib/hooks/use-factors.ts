@@ -33,14 +33,30 @@ export function useEnrolTotp() {
   });
 }
 
+// useEnrolWebAuthn starts a WebAuthn registration ceremony. The
+// returned FactorResponse carries a `creation_options` payload the
+// caller decodes + hands to navigator.credentials.create(). Like
+// useEnrolTotp, no invalidation here — activation lands via
+// useActivateFactor with a `webauthnResponse` arg.
+export function useEnrolWebAuthn() {
+  return useMutation<FactorResponse, Error, { password: string; label?: string }>({
+    mutationFn: ({ password, label }) => apiClient.enrolWebAuthn(password, label),
+  });
+}
+
 // useActivateFactor verifies the first code and flips enabled_at. On
 // success it returns the BackupCodesPayload (if this is the user's
 // first primary factor). The caller keeps the codes in component
 // state for the one-shot display, then invalidates the list.
 export function useActivateFactor() {
   const queryClient = useQueryClient();
-  return useMutation<FactorActivateResponse, Error, { factorId: number; code: string }>({
-    mutationFn: ({ factorId, code }) => apiClient.activateFactor(factorId, code),
+  return useMutation<
+    FactorActivateResponse,
+    Error,
+    { factorId: number; code?: string; webauthnResponse?: unknown }
+  >({
+    mutationFn: ({ factorId, code, webauthnResponse }) =>
+      apiClient.activateFactor(factorId, { code, webauthnResponse }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.factors.all() });
     },

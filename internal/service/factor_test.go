@@ -85,7 +85,7 @@ func enrolAndActivateTOTP(t *testing.T, svc *FactorService, user *models.User, p
 	if err != nil {
 		t.Fatalf("gen code: %v", err)
 	}
-	if _, err := svc.ActivateFactor(ctx, user.ID, enroll.ID, code); err != nil {
+	if _, err := svc.ActivateFactor(ctx, user.ID, enroll.ID, &models.FactorActivateRequest{Code: code}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
 	return enroll.ID, payload.Secret
@@ -145,7 +145,7 @@ func TestFactorService_ActivateFactor_WrongCode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("enrol: %v", err)
 	}
-	_, err = svc.ActivateFactor(context.Background(), user.ID, enroll.ID, "000000")
+	_, err = svc.ActivateFactor(context.Background(), user.ID, enroll.ID, &models.FactorActivateRequest{Code: "000000"})
 	if !errors.Is(err, apperror.ErrUnauthorized) {
 		t.Errorf("expected ErrUnauthorized for wrong code, got %v", err)
 	}
@@ -163,7 +163,7 @@ func TestFactorService_ActivateFactor_AutoCreatesBackupCodesOnFirstPrimary(t *te
 	payload := enroll.Enrollment.(models.TOTPEnrollmentPayload)
 	code, _ := totp.GenerateCode(payload.Secret, time.Now().UTC())
 
-	resp, err := svc.ActivateFactor(context.Background(), user.ID, enroll.ID, code)
+	resp, err := svc.ActivateFactor(context.Background(), user.ID, enroll.ID, &models.FactorActivateRequest{Code: code})
 	if err != nil {
 		t.Fatalf("activate: %v", err)
 	}
@@ -202,7 +202,7 @@ func TestFactorService_ActivateFactor_SecondPrimaryDoesNotRegenerateBackupCodes(
 	}
 	pl2 := enroll2.Enrollment.(models.TOTPEnrollmentPayload)
 	code2, _ := totp.GenerateCode(pl2.Secret, time.Now().UTC())
-	resp, err := svc.ActivateFactor(context.Background(), user.ID, enroll2.ID, code2)
+	resp, err := svc.ActivateFactor(context.Background(), user.ID, enroll2.ID, &models.FactorActivateRequest{Code: code2})
 	if err != nil {
 		t.Fatalf("activate 2: %v", err)
 	}
@@ -223,14 +223,14 @@ func TestFactorService_ActivateFactor_DoubleActivateIsConflict(t *testing.T) {
 	pl := enroll.Enrollment.(models.TOTPEnrollmentPayload)
 	code, _ := totp.GenerateCode(pl.Secret, time.Now().UTC())
 
-	if _, err := svc.ActivateFactor(context.Background(), user.ID, enroll.ID, code); err != nil {
+	if _, err := svc.ActivateFactor(context.Background(), user.ID, enroll.ID, &models.FactorActivateRequest{Code: code}); err != nil {
 		t.Fatalf("first activate: %v", err)
 	}
 
 	// Second activation of an already-active factor: use a fresh code
 	// (same window might have advanced between calls).
 	code2, _ := totp.GenerateCode(pl.Secret, time.Now().UTC())
-	_, err = svc.ActivateFactor(context.Background(), user.ID, enroll.ID, code2)
+	_, err = svc.ActivateFactor(context.Background(), user.ID, enroll.ID, &models.FactorActivateRequest{Code: code2})
 	if !errors.Is(err, apperror.ErrConflict) {
 		t.Errorf("expected ErrConflict on double-activate, got %v", err)
 	}
@@ -250,7 +250,7 @@ func TestFactorService_ActivateFactor_CrossUser_NotFound(t *testing.T) {
 	pl := enroll.Enrollment.(models.TOTPEnrollmentPayload)
 	code, _ := totp.GenerateCode(pl.Secret, time.Now().UTC())
 
-	_, err = svc.ActivateFactor(context.Background(), bob.ID, enroll.ID, code)
+	_, err = svc.ActivateFactor(context.Background(), bob.ID, enroll.ID, &models.FactorActivateRequest{Code: code})
 	if !errors.Is(err, apperror.ErrNotFound) {
 		t.Errorf("expected ErrNotFound for cross-user activate, got %v", err)
 	}
@@ -557,7 +557,7 @@ func TestFactorService_ActivateFactor_FiveWrongCodes_DeletesPending(t *testing.T
 
 	// First 4 wrong codes: Unauthorized but the row survives.
 	for i := 1; i <= FactorActivationFailureLimit-1; i++ {
-		_, err := svc.ActivateFactor(context.Background(), user.ID, enroll.ID, "000000")
+		_, err := svc.ActivateFactor(context.Background(), user.ID, enroll.ID, &models.FactorActivateRequest{Code: "000000"})
 		if !errors.Is(err, apperror.ErrUnauthorized) {
 			t.Errorf("attempt %d: expected ErrUnauthorized, got %v", i, err)
 		}
@@ -568,7 +568,7 @@ func TestFactorService_ActivateFactor_FiveWrongCodes_DeletesPending(t *testing.T
 	}
 
 	// 5th wrong code: TooManyRequests + pending row is gone.
-	_, err = svc.ActivateFactor(context.Background(), user.ID, enroll.ID, "000000")
+	_, err = svc.ActivateFactor(context.Background(), user.ID, enroll.ID, &models.FactorActivateRequest{Code: "000000"})
 	if !errors.Is(err, apperror.ErrTooManyRequests) {
 		t.Errorf("5th attempt: expected ErrTooManyRequests, got %v", err)
 	}
@@ -578,7 +578,7 @@ func TestFactorService_ActivateFactor_FiveWrongCodes_DeletesPending(t *testing.T
 	}
 
 	// Any subsequent request against the same factor id is a 404.
-	_, err = svc.ActivateFactor(context.Background(), user.ID, enroll.ID, "000000")
+	_, err = svc.ActivateFactor(context.Background(), user.ID, enroll.ID, &models.FactorActivateRequest{Code: "000000"})
 	if !errors.Is(err, apperror.ErrNotFound) {
 		t.Errorf("after auto-delete: expected ErrNotFound, got %v", err)
 	}
@@ -603,14 +603,14 @@ func TestFactorService_ActivateFactor_CorrectCodeAfterWrongAttempts(t *testing.T
 
 	// Two typos — well below the limit.
 	for range 2 {
-		_, err := svc.ActivateFactor(context.Background(), user.ID, enroll.ID, "000000")
+		_, err := svc.ActivateFactor(context.Background(), user.ID, enroll.ID, &models.FactorActivateRequest{Code: "000000"})
 		if !errors.Is(err, apperror.ErrUnauthorized) {
 			t.Fatalf("expected Unauthorized for wrong code, got %v", err)
 		}
 	}
 	// Real code now: activation succeeds.
 	code, _ := totp.GenerateCode(pl.Secret, time.Now().UTC())
-	if _, err := svc.ActivateFactor(context.Background(), user.ID, enroll.ID, code); err != nil {
+	if _, err := svc.ActivateFactor(context.Background(), user.ID, enroll.ID, &models.FactorActivateRequest{Code: code}); err != nil {
 		t.Errorf("activation after typos should succeed, got %v", err)
 	}
 }
@@ -676,7 +676,7 @@ func TestFactorService_ActivateFactor_BackupCodesType_Rejected(t *testing.T) {
 		t.Fatalf("force pending: %v", err)
 	}
 
-	_, err = svc.ActivateFactor(context.Background(), user.ID, bf.ID, "any-code")
+	_, err = svc.ActivateFactor(context.Background(), user.ID, bf.ID, &models.FactorActivateRequest{Code: "any-code"})
 	if !errors.Is(err, apperror.ErrBadRequest) {
 		t.Errorf("expected BadRequest for activate on backup_codes, got %v", err)
 	}

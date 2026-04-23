@@ -4,6 +4,8 @@ import type {
   LoginResponse,
   LoginSuccessResponse,
   MfaVerifyRequest,
+  MfaChallengeRequest,
+  MfaChallengeResponse,
   FactorResponse,
   FactorListResponse,
   FactorEnrolRequest,
@@ -283,6 +285,14 @@ class ApiClient {
     return response.data;
   }
 
+  // Fetches the WebAuthn challenge for step 2a of the MFA login
+  // flow. TOTP/backup factors don't need this. The returned
+  // request_options blob is passed to navigator.credentials.get().
+  async beginMfaChallenge(request: MfaChallengeRequest): Promise<MfaChallengeResponse> {
+    const response = await this.client.post<MfaChallengeResponse>('/auth/mfa/challenge', request);
+    return response.data;
+  }
+
   async logout(): Promise<void> {
     await this.client.post('/logout');
   }
@@ -299,8 +309,28 @@ class ApiClient {
     return response.data;
   }
 
-  async activateFactor(factorId: number, code: string): Promise<FactorActivateResponse> {
-    const body: FactorActivateRequest = { code };
+  // Starts a WebAuthn registration ceremony. Returns a factor
+  // descriptor whose `enrollment` field carries the raw
+  // PublicKeyCredentialCreationOptions JSON the caller feeds to
+  // `navigator.credentials.create()`. The pending factor row lives
+  // on the server with a 5-minute challenge expiry.
+  async enrolWebAuthn(password: string, label?: string): Promise<FactorResponse> {
+    const body: FactorEnrolRequest = { type: 'webauthn', password, label };
+    const response = await this.client.post<FactorResponse>('/users/me/factors', body);
+    return response.data;
+  }
+
+  // Activates a factor. For TOTP, pass `code`. For WebAuthn, pass the
+  // PublicKeyCredential JSON returned by
+  // `navigator.credentials.create()` as `webauthnResponse`.
+  async activateFactor(
+    factorId: number,
+    args: { code?: string; webauthnResponse?: unknown }
+  ): Promise<FactorActivateResponse> {
+    const body: FactorActivateRequest = {
+      code: args.code,
+      webauthn_response: args.webauthnResponse,
+    };
     const response = await this.client.post<FactorActivateResponse>(
       `/users/me/factors/${factorId}/activate`,
       body

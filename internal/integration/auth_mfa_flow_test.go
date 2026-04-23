@@ -53,7 +53,7 @@ func seedUserWithTOTP(t *testing.T, email, password string) (userID uint, factor
 	}
 	payload := enroll.Enrollment.(models.TOTPEnrollmentPayload)
 	code, _ := totp.GenerateCode(payload.Secret, time.Now().UTC())
-	if _, err := factorSvc.ActivateFactor(ctx, u.ID, enroll.ID, code); err != nil {
+	if _, err := factorSvc.ActivateFactor(ctx, u.ID, enroll.ID, &models.FactorActivateRequest{Code: code}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
 	return u.ID, enroll.ID, payload.Secret

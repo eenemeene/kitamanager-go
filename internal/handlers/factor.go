@@ -206,7 +206,7 @@ func (h *FactorHandler) Activate(c *gin.Context) {
 	if !ok {
 		return
 	}
-	resp, err := h.service.ActivateFactor(c.Request.Context(), userID, factorID, req.Code)
+	resp, err := h.service.ActivateFactor(c.Request.Context(), userID, factorID, req)
 	if err != nil {
 		respondError(c, err)
 		return

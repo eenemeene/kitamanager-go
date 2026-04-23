@@ -115,6 +115,14 @@ type TOTPEnrollmentPayload struct {
 	OTPAuthURI string `json:"otpauth_uri" example:"otpauth://totp/KitaManager:..."`
 }
 
+// WebAuthnEnrollmentPayload is what `POST /users/:userId/factors
+// {type:"webauthn"}` returns. CreationOptions is the raw JSON from
+// the go-webauthn library — the client hands it straight to
+// `navigator.credentials.create({publicKey: creationOptions})`.
+type WebAuthnEnrollmentPayload struct {
+	CreationOptions json.RawMessage `json:"creation_options" swaggertype:"object"`
+}
+
 // FactorResponse is the per-factor response row. Factor-specific extras
 // (like backup_codes_remaining) are added by the handler before
 // marshalling.

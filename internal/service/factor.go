@@ -6,12 +6,15 @@ import (
 	"crypto/sha256"
 	"encoding/base32"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
 	"time"
 
+	"github.com/go-webauthn/webauthn/protocol"
+	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
 	"golang.org/x/crypto/bcrypt"
@@ -203,7 +206,15 @@ func (s *FactorService) EnrollTOTP(ctx context.Context, userID uint, label *stri
 // Returns Conflict (apperror.ErrConflict) if the factor was already
 // activated by a concurrent request — the compare-and-set UPDATE in
 // the store layer makes this a clean two-outcome operation.
-func (s *FactorService) ActivateFactor(ctx context.Context, userID, factorID uint, code string) (*models.FactorActivateResponse, error) {
+//
+// `req` is polymorphic by factor type: req.Code for TOTP, the
+// req.WebAuthnResponse JSON blob for WebAuthn. The handler passes
+// whichever the client sent; this method dispatches on the stored
+// factor type.
+func (s *FactorService) ActivateFactor(ctx context.Context, userID, factorID uint, req *models.FactorActivateRequest) (*models.FactorActivateResponse, error) {
+	if req == nil {
+		return nil, apperror.BadRequest("missing request body")
+	}
 	f, err := s.factorStore.FindByIDAndUser(ctx, factorID, userID)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
@@ -217,7 +228,7 @@ func (s *FactorService) ActivateFactor(ctx context.Context, userID, factorID uin
 
 	switch f.Type {
 	case models.FactorTypeTOTP:
-		if err := s.verifyTOTPForActivation(ctx, f.ID, code); err != nil {
+		if err := s.verifyTOTPForActivation(ctx, f.ID, req.Code); err != nil {
 			// Only count "wrong code" (401) as a failure — internal
 			// errors (DB/crypto) shouldn't burn a retry budget.
 			if errors.Is(err, apperror.ErrUnauthorized) {
@@ -234,6 +245,15 @@ func (s *FactorService) ActivateFactor(ctx context.Context, userID, factorID uin
 					return nil, apperror.TooManyRequests("too many wrong codes; re-enroll the factor")
 				}
 			}
+			return nil, err
+		}
+	case models.FactorTypeWebAuthn:
+		// WebAuthn activation runs a completely different ceremony:
+		// parse + verify the attestation signature against the
+		// challenge we issued on POST /factors. Uses no TOTP/activation-
+		// failure machinery — WebAuthn authenticators don't take a
+		// human-readable code so there's no brute-force surface here.
+		if err := s.activateWebAuthnFactor(ctx, userID, f, req.WebAuthnResponse); err != nil {
 			return nil, err
 		}
 	case models.FactorTypeBackupCodes:
@@ -417,6 +437,412 @@ func (s *FactorService) CleanupAbandonedPendingFactors(ctx context.Context, olde
 	return err
 }
 
+// WebAuthnRegistrationChallengeLifetime caps how long a pending
+// WebAuthn enrolment's challenge stays valid. 5 minutes matches the
+// WebAuthn §1.2.1 example timeout and the pending_mfa session TTL
+// used elsewhere in the two-step login flow.
+const WebAuthnRegistrationChallengeLifetime = 5 * time.Minute
+
+// EnrollWebAuthn begins a WebAuthn registration ceremony. Requires
+// step-up (password re-entry) so a stolen session can't plant an
+// authenticator attacker-controlled. If a pending WebAuthn factor
+// already exists for this user + label combination, it is replaced —
+// the user may simply have abandoned an earlier attempt.
+//
+// The returned enrollment payload wraps a PublicKeyCredentialCreationOptionsJSON
+// blob that the client hands straight to `navigator.credentials.create()`.
+// The server-side SessionData (challenge + expected UV + userHandle)
+// is persisted on the factor row's registration_challenge column so
+// the activate path can round-trip the verification.
+func (s *FactorService) EnrollWebAuthn(ctx context.Context, userID uint, label *string, password, accountName, displayName string) (*models.FactorResponse, error) {
+	if s.webAuthn == nil {
+		return nil, apperror.BadRequest("WebAuthn is not enabled on this deployment")
+	}
+	if err := s.verifyPassword(ctx, userID, password); err != nil {
+		return nil, err
+	}
+
+	// Replace any existing pending WebAuthn factor so the user can
+	// restart a botched ceremony without leaking pending rows.
+	if existing, err := s.factorStore.FindPendingByUserAndType(ctx, userID, models.FactorTypeWebAuthn); err == nil {
+		if _, delErr := s.factorStore.DeleteFactor(ctx, existing.ID, userID); delErr != nil {
+			slog.Error("delete stale pending webauthn", "user_id", userID, "error", delErr)
+		}
+	} else if !errors.Is(err, store.ErrNotFound) {
+		return nil, apperror.InternalWrap(err, "find pending webauthn")
+	}
+
+	// Collect the user's already-registered credentials so the
+	// library can put them into excludeCredentials on the new
+	// ceremony — prevents the same hardware key being registered
+	// twice as two separate factors for the same user.
+	existingCreds, err := s.gatherUserWebAuthnCredentials(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	wuser := webauthnpkg.NewUser(userID, accountName, displayName, existingCreds)
+
+	// Create the pending factor row first so we have an id to key
+	// the challenge against. No subtable row yet — that comes on
+	// activate after attestation verifies.
+	f := &models.Factor{
+		UserID:    userID,
+		Type:      models.FactorTypeWebAuthn,
+		Label:     label,
+		CreatedAt: time.Now().UTC(),
+	}
+	if err := s.factorStore.CreateFactor(ctx, f); err != nil {
+		return nil, apperror.InternalWrap(err, "create factor")
+	}
+
+	// attestation=none + preferred UV + non-discoverable credentials:
+	// the second-factor defaults explained in PR 152's design doc.
+	creation, sessionData, err := s.webAuthn.Lib().BeginRegistration(wuser)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "begin webauthn registration")
+	}
+	sessionJSON, err := json.Marshal(sessionData)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "marshal session data")
+	}
+	expiresAt := time.Now().UTC().Add(WebAuthnRegistrationChallengeLifetime)
+	if err := s.factorStore.SetRegistrationChallenge(ctx, f.ID, sessionJSON, expiresAt); err != nil {
+		return nil, apperror.InternalWrap(err, "persist challenge")
+	}
+
+	optionsJSON, err := json.Marshal(creation)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "marshal creation options")
+	}
+
+	r := f.ToResponse()
+	r.Enrollment = models.WebAuthnEnrollmentPayload{CreationOptions: optionsJSON}
+	return &r, nil
+}
+
+// activateWebAuthnFactor is the step-two verifier — called from
+// ActivateFactor's type switch. Parses the attestation response,
+// round-trips the stored SessionData through the go-webauthn
+// library to verify the signature + challenge + origin, and on
+// success writes the FactorWebAuthnCredential subtable row and
+// clears the challenge. Duplicate credential IDs are rejected
+// pre-insert with a Conflict so the user gets a clean error.
+func (s *FactorService) activateWebAuthnFactor(ctx context.Context, userID uint, f *models.Factor, responseBody []byte) error {
+	if s.webAuthn == nil {
+		return apperror.BadRequest("WebAuthn is not enabled on this deployment")
+	}
+	if len(responseBody) == 0 {
+		return apperror.BadRequest("webauthn_response is required")
+	}
+	if f.RegistrationChallenge == nil {
+		return apperror.BadRequest("no registration challenge on factor")
+	}
+	if f.RegistrationChallengeExpiresAt != nil && f.RegistrationChallengeExpiresAt.Before(time.Now().UTC()) {
+		// Delete the stale pending row so a retry produces a fresh
+		// challenge rather than re-hitting the expired one.
+		_, _ = s.factorStore.DeleteFactor(ctx, f.ID, userID)
+		return apperror.Unauthorized("registration challenge expired")
+	}
+
+	var sessionData webauthn.SessionData
+	if err := json.Unmarshal(f.RegistrationChallenge, &sessionData); err != nil {
+		return apperror.InternalWrap(err, "decode session data")
+	}
+
+	parsed, err := webauthnpkg.ParseCreationResponse(responseBody)
+	if err != nil {
+		return apperror.BadRequest(fmt.Sprintf("invalid webauthn response: %v", err))
+	}
+
+	existingCreds, err := s.gatherUserWebAuthnCredentials(ctx, userID)
+	if err != nil {
+		return err
+	}
+	u, err := s.userStore.FindByID(ctx, userID)
+	if err != nil {
+		return classifyStoreError(err, "user")
+	}
+	wuser := webauthnpkg.NewUser(userID, u.Email, u.Name, existingCreds)
+
+	cred, err := s.webAuthn.Lib().CreateCredential(wuser, sessionData, parsed)
+	if err != nil {
+		return apperror.Unauthorized(fmt.Sprintf("attestation verification failed: %v", err))
+	}
+
+	// Uniqueness pre-check — the DB index will also enforce, but
+	// we want a clean 409 rather than a 500 on the race.
+	if existing, err := s.factorStore.FindWebAuthnCredentialByID(ctx, cred.ID); err == nil && existing.FactorID != f.ID {
+		return apperror.Conflict("this security key is already registered")
+	}
+
+	row := &models.FactorWebAuthnCredential{
+		FactorID:          f.ID,
+		CredentialID:      cred.ID,
+		PublicKey:         cred.PublicKey,
+		AAGUID:            cred.Authenticator.AAGUID,
+		SignCount:         int64(cred.Authenticator.SignCount),
+		Transports:        joinTransports(cred.Transport),
+		AttestationFormat: cred.AttestationType,
+		BackupEligible:    cred.Flags.BackupEligible,
+		BackupState:       cred.Flags.BackupState,
+		UVInitialized:     cred.Flags.UserVerified,
+		CreatedAt:         time.Now().UTC(),
+	}
+	if err := s.factorStore.CreateWebAuthnCredential(ctx, row); err != nil {
+		// Catch the unique-index collision if the pre-check raced.
+		return apperror.Conflict("this security key is already registered")
+	}
+
+	// Clear the challenge so the row can't be re-activated.
+	if err := s.factorStore.ClearRegistrationChallenge(ctx, f.ID); err != nil {
+		slog.Error("clear registration challenge", "factor_id", f.ID, "error", err)
+	}
+	return nil
+}
+
+// BuildWebAuthnRequestOptions builds the
+// PublicKeyCredentialRequestOptions for a login assertion ceremony.
+// Called by the AuthService when the pending_mfa flow needs a
+// WebAuthn challenge — the full SessionData blob is returned so the
+// AuthService can persist it on the sessions.challenge_nonce column.
+func (s *FactorService) BuildWebAuthnRequestOptions(ctx context.Context, userID, factorID uint) (optionsJSON, sessionJSON []byte, _ error) {
+	if s.webAuthn == nil {
+		return nil, nil, apperror.BadRequest("WebAuthn is not enabled on this deployment")
+	}
+	f, err := s.factorStore.FindByIDAndUser(ctx, factorID, userID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, nil, apperror.NotFound("factor")
+		}
+		return nil, nil, apperror.InternalWrap(err, "find factor")
+	}
+	if f.Type != models.FactorTypeWebAuthn || f.EnabledAt == nil {
+		return nil, nil, apperror.BadRequest("factor is not an active webauthn credential")
+	}
+	creds, err := s.gatherUserWebAuthnCredentials(ctx, userID)
+	if err != nil {
+		return nil, nil, err
+	}
+	// Scope allowCredentials[] to just the one the user picked so
+	// the authenticator prompt narrows to the intended key.
+	u, err := s.userStore.FindByID(ctx, userID)
+	if err != nil {
+		return nil, nil, classifyStoreError(err, "user")
+	}
+	wuser := webauthnpkg.NewUser(userID, u.Email, u.Name, filterCredentials(creds, factorIDToCredentialID(ctx, s, factorID)))
+
+	opts, session, err := s.webAuthn.Lib().BeginLogin(wuser)
+	if err != nil {
+		return nil, nil, apperror.InternalWrap(err, "begin webauthn login")
+	}
+	optionsJSON, err = json.Marshal(opts)
+	if err != nil {
+		return nil, nil, apperror.InternalWrap(err, "marshal options")
+	}
+	sessionJSON, err = json.Marshal(session)
+	if err != nil {
+		return nil, nil, apperror.InternalWrap(err, "marshal session")
+	}
+	return optionsJSON, sessionJSON, nil
+}
+
+// VerifyWebAuthnAssertion is the login-time counterpart to
+// activateWebAuthnFactor. The AuthService hands in the SessionData
+// it fetched from the pending_mfa row + the raw response body; we
+// verify and on success bump sign_count + return. The pending row
+// itself is deleted by the AuthService in the same transaction as
+// the verify (replay protection).
+func (s *FactorService) VerifyWebAuthnAssertion(ctx context.Context, userID, factorID uint, sessionJSON, responseBody []byte) (bool, error) {
+	if s.webAuthn == nil {
+		return false, apperror.BadRequest("WebAuthn is not enabled on this deployment")
+	}
+	if len(responseBody) == 0 || len(sessionJSON) == 0 {
+		return false, apperror.Unauthorized("invalid webauthn response")
+	}
+	var sessionData webauthn.SessionData
+	if err := json.Unmarshal(sessionJSON, &sessionData); err != nil {
+		return false, apperror.InternalWrap(err, "decode session data")
+	}
+	parsed, err := webauthnpkg.ParseAssertionResponse(responseBody)
+	if err != nil {
+		return false, apperror.Unauthorized("invalid webauthn response")
+	}
+
+	creds, err := s.gatherUserWebAuthnCredentials(ctx, userID)
+	if err != nil {
+		return false, err
+	}
+	u, err := s.userStore.FindByID(ctx, userID)
+	if err != nil {
+		return false, classifyStoreError(err, "user")
+	}
+	wuser := webauthnpkg.NewUser(userID, u.Email, u.Name, creds)
+
+	cred, err := s.webAuthn.Lib().ValidateLogin(wuser, sessionData, parsed)
+	if err != nil {
+		return false, apperror.Unauthorized(fmt.Sprintf("assertion verification failed: %v", err))
+	}
+
+	// Cross-check the credential actually belongs to the factor the
+	// user claimed — stops a valid assertion from one of the user's
+	// other credentials from completing login under the wrong factor
+	// row (which would bump the wrong sign_count).
+	dbCred, err := s.factorStore.FindWebAuthnCredential(ctx, factorID)
+	if err != nil {
+		return false, apperror.NotFound("factor")
+	}
+	if string(dbCred.CredentialID) != string(cred.ID) {
+		return false, apperror.Unauthorized("credential mismatch")
+	}
+
+	// Update sign_count. Per WebAuthn L3 §7.2 step 22: non-increasing
+	// counter is a soft clone signal, not a hard failure — many
+	// synced-passkey authenticators always return zero. We accept
+	// but audit-log the regression.
+	if cred.Authenticator.SignCount > 0 && int64(cred.Authenticator.SignCount) <= dbCred.SignCount {
+		slog.Warn("webauthn counter regression — possible clone",
+			"user_id", userID, "factor_id", factorID,
+			"stored", dbCred.SignCount, "new", cred.Authenticator.SignCount)
+	}
+	if err := s.factorStore.UpdateWebAuthnSignCount(ctx, factorID, int64(cred.Authenticator.SignCount), cred.Flags.BackupState); err != nil {
+		slog.Error("update sign_count", "factor_id", factorID, "error", err)
+		// Don't fail the login for a sign_count update — the
+		// assertion was valid. Clone detection is best-effort.
+	}
+	_ = s.factorStore.TouchLastUsed(ctx, factorID)
+	return true, nil
+}
+
+// gatherUserWebAuthnCredentials collects the library-shaped
+// credentials for a user so allow/exclude-credentials lists can be
+// populated on the two ceremonies. Dormant/pending credentials (no
+// activated factor) are filtered out.
+func (s *FactorService) gatherUserWebAuthnCredentials(ctx context.Context, userID uint) ([]webauthn.Credential, error) {
+	factors, err := s.factorStore.FindActiveByUserID(ctx, userID)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "list factors")
+	}
+	out := make([]webauthn.Credential, 0, len(factors))
+	for i := range factors {
+		if factors[i].Type != models.FactorTypeWebAuthn {
+			continue
+		}
+		cred, err := s.factorStore.FindWebAuthnCredential(ctx, factors[i].ID)
+		if err != nil {
+			continue
+		}
+		out = append(out, webauthn.Credential{
+			ID:        cred.CredentialID,
+			PublicKey: cred.PublicKey,
+			Authenticator: webauthn.Authenticator{
+				AAGUID: cred.AAGUID,
+				// sign_count is capped at uint32 max in the spec; our
+				// BIGINT column allows larger values but we never
+				// write beyond uint32 (we copy from the authenticator,
+				// which is uint32 by definition). Clamp defensively.
+				SignCount: safeUint32(cred.SignCount),
+			},
+			Flags: webauthn.CredentialFlags{
+				BackupEligible: cred.BackupEligible,
+				BackupState:    cred.BackupState,
+				UserVerified:   cred.UVInitialized,
+			},
+			Transport: splitTransports(cred.Transports),
+		})
+	}
+	return out, nil
+}
+
+// filterCredentials narrows a credential list to the single
+// credential whose id matches the given bytes. Used on the login
+// allow-list so only the factor the user picked is offered.
+func filterCredentials(all []webauthn.Credential, target []byte) []webauthn.Credential {
+	if len(target) == 0 {
+		return all
+	}
+	for _, c := range all {
+		if string(c.ID) == string(target) {
+			return []webauthn.Credential{c}
+		}
+	}
+	return nil
+}
+
+// factorIDToCredentialID reads the credential_id bytes for a factor
+// id. Returns nil on any error — the caller's filter falls back to
+// "offer every credential" in that case.
+func factorIDToCredentialID(ctx context.Context, s *FactorService, factorID uint) []byte {
+	cred, err := s.factorStore.FindWebAuthnCredential(ctx, factorID)
+	if err != nil {
+		return nil
+	}
+	return cred.CredentialID
+}
+
+// safeUint32 clamps a non-negative int64 into a uint32 without
+// overflow. WebAuthn sign_count is a uint32 on the wire; we store
+// the value in BIGINT for headroom, but our reads always round-trip
+// through this helper so a malicious or buggy authenticator can't
+// underflow or overflow the type.
+func safeUint32(v int64) uint32 {
+	if v < 0 {
+		return 0
+	}
+	if v > int64(^uint32(0)) {
+		return ^uint32(0)
+	}
+	return uint32(v)
+}
+
+// joinTransports serialises the webauthn protocol transport enum
+// slice into the comma-joined string we store in the DB. Empty or
+// unknown values round-trip cleanly.
+func joinTransports(transports []protocol.AuthenticatorTransport) string {
+	if len(transports) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(transports))
+	for _, t := range transports {
+		parts = append(parts, string(t))
+	}
+	return strings.Join(parts, ",")
+}
+
+// splitTransports is the inverse of joinTransports.
+func splitTransports(s string) []protocol.AuthenticatorTransport {
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	out := make([]protocol.AuthenticatorTransport, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			out = append(out, protocol.AuthenticatorTransport(p))
+		}
+	}
+	return out
+}
+
+// LookupActiveFactor returns a factor by id iff it belongs to the
+// user AND has been activated. Used by the AuthService to decide
+// which verifier (TOTP vs WebAuthn) to dispatch to on /auth/mfa/verify.
+// Returns NotFound for missing / cross-user / pending factors to
+// avoid leaking existence.
+func (s *FactorService) LookupActiveFactor(ctx context.Context, userID, factorID uint) (*models.Factor, error) {
+	f, err := s.factorStore.FindByIDAndUser(ctx, factorID, userID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, apperror.NotFound("factor")
+		}
+		return nil, apperror.InternalWrap(err, "find factor")
+	}
+	if f.EnabledAt == nil {
+		return nil, apperror.NotFound("factor")
+	}
+	return f, nil
+}
+
 // DescriptorsForLogin returns the list of factor choices to present to
 // the user in the /login MFA-required response. Only activated
 // factors; ordering matches the Settings list (TOTP first, most-used
@@ -495,6 +921,13 @@ func (s *FactorService) VerifyCodeForLogin(ctx context.Context, userID, factorID
 			return f.Type, apperror.Unauthorized("invalid code")
 		}
 		return f.Type, nil
+	case models.FactorTypeWebAuthn:
+		// WebAuthn uses VerifyWebAuthnAssertion, not this code-string
+		// path. Returning BadRequest makes it clear to the caller
+		// that they're on the wrong endpoint; the auth service
+		// dispatches to the right verifier before landing here for
+		// TOTP/backup.
+		return f.Type, apperror.BadRequest("webauthn factors must be verified via the webauthn assertion endpoint")
 	default:
 		return f.Type, apperror.BadRequest(fmt.Sprintf("unsupported factor type: %s", f.Type))
 	}

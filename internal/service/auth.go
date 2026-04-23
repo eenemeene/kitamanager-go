@@ -223,7 +223,7 @@ func (s *AuthService) Login(ctx context.Context, email, password, ipAddress, use
 // the user is deactivated between step 1 and step 2 must not allow
 // completing the login. We treat a deactivated user as 401 to avoid
 // leaking the admin action.
-func (s *AuthService) VerifyMFALogin(ctx context.Context, pendingToken string, factorID uint, code, ipAddress, userAgent string) (*AuthResult, error) {
+func (s *AuthService) VerifyMFALogin(ctx context.Context, pendingToken string, factorID uint, code string, webAuthnResponse []byte, ipAddress, userAgent string) (*AuthResult, error) {
 	if pendingToken == "" {
 		return nil, apperror.Unauthorized("invalid pending token")
 	}
@@ -252,7 +252,11 @@ func (s *AuthService) VerifyMFALogin(ctx context.Context, pendingToken string, f
 		return nil, apperror.TooManyRequests("too many failed MFA attempts, please try again later")
 	}
 
-	factorType, verifyErr := s.factorService.VerifyCodeForLogin(ctx, pending.UserID, factorID, code)
+	// Dispatch on factor type. WebAuthn has a different verification
+	// path (signature over a stored challenge, not a symmetric code)
+	// and uses the pending row's challenge_nonce as its SessionData
+	// store, so it can't reuse VerifyCodeForLogin.
+	factorType, verifyErr := s.dispatchMFAVerify(ctx, pending, factorID, code, webAuthnResponse)
 	if verifyErr != nil {
 		// Wrong-factor or unknown-factor cases return NotFound from
 		// VerifyCodeForLogin — we surface them as 401 to avoid
@@ -423,6 +427,67 @@ func (s *AuthService) RevokeSession(ctx context.Context, userID uint, idHash str
 		return apperror.NotFound("session")
 	}
 	return nil
+}
+
+// BeginMFAChallenge is /auth/mfa/challenge's business layer. Only
+// meaningful for WebAuthn factors; TOTP and backup codes don't need
+// a server-side challenge. Writes the WebAuthn SessionData JSON onto
+// the pending row's challenge_nonce column and hands the options
+// JSON back for the client to pass to navigator.credentials.get().
+func (s *AuthService) BeginMFAChallenge(ctx context.Context, pendingToken string, factorID uint) ([]byte, error) {
+	if pendingToken == "" {
+		return nil, apperror.Unauthorized("invalid pending token")
+	}
+	pendHash := store.HashSessionToken(pendingToken)
+
+	pending, err := s.sessionStore.LookupPendingMFA(ctx, pendHash)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, apperror.Unauthorized("invalid pending token")
+		}
+		return nil, apperror.InternalWrap(err, "lookup pending")
+	}
+	if !pending.UserActive {
+		_ = s.sessionStore.DeletePendingMFA(ctx, pendHash)
+		return nil, apperror.Unauthorized("invalid pending token")
+	}
+	if s.factorService == nil {
+		return nil, apperror.BadRequest("WebAuthn is not enabled")
+	}
+	optionsJSON, sessionJSON, err := s.factorService.BuildWebAuthnRequestOptions(ctx, pending.UserID, factorID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.sessionStore.SetPendingMFAChallenge(ctx, pendHash, sessionJSON); err != nil {
+		return nil, apperror.InternalWrap(err, "persist challenge")
+	}
+	return optionsJSON, nil
+}
+
+// dispatchMFAVerify picks the factor-type-specific verifier and
+// returns the factor type + any error. The audit/rate-limit
+// bookkeeping on either side of this call lives in VerifyMFALogin.
+func (s *AuthService) dispatchMFAVerify(ctx context.Context, pending *store.SessionPendingLookupResult, factorID uint, code string, webAuthnResponse []byte) (string, error) {
+	if s.factorService == nil {
+		return "", apperror.Internal("factor service not configured")
+	}
+	// Need the factor type to route. LookupActiveFactor enforces
+	// ownership + activation state in one place.
+	f, err := s.factorService.LookupActiveFactor(ctx, pending.UserID, factorID)
+	if err != nil {
+		return "", err
+	}
+	if f.Type == models.FactorTypeWebAuthn {
+		if len(pending.ChallengeNonce) == 0 {
+			return models.FactorTypeWebAuthn, apperror.BadRequest("no webauthn challenge issued; call /auth/mfa/challenge first")
+		}
+		if _, err := s.factorService.VerifyWebAuthnAssertion(ctx, pending.UserID, factorID, pending.ChallengeNonce, webAuthnResponse); err != nil {
+			return models.FactorTypeWebAuthn, err
+		}
+		return models.FactorTypeWebAuthn, nil
+	}
+	// TOTP / backup_codes — symmetric code path.
+	return s.factorService.VerifyCodeForLogin(ctx, pending.UserID, factorID, code)
 }
 
 // issuePendingMFA generates a pending_mfa row + raw token pair and

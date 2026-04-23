@@ -20,6 +20,7 @@ import { apiClient } from '@/lib/api/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { mfaVerifySchema, type MfaVerifyFormData } from '@/lib/schemas/auth';
 import type { LoginFactorDescriptor } from '@/lib/api/types';
+import { decodeRequestOptions, encodeAssertionResponse } from '@/lib/utils/webauthn';
 
 interface Props {
   pendingToken: string;
@@ -32,17 +33,25 @@ interface Props {
   onSuccess: () => void;
 }
 
+// MfaVerifyForm is the second-step of two-step login. It dispatches
+// internally on the currently-picked factor's type:
+//
+//   totp / backup_codes  →  6-digit code input + submit
+//   webauthn             →  "Use security key" button → navigator.credentials.get()
+//
+// Both branches end in the same /auth/mfa/verify call (body shape
+// differs by the code vs webauthn_response field).
 export function MfaVerifyForm({ pendingToken, factors, onRestart, onSuccess }: Props) {
   const t = useTranslations('auth.mfa');
   const tSettings = useTranslations('settings.twoFactor');
   const hydrate = useAuthStore((s) => s.hydrateAfterAuth);
 
-  // Default selection: the first factor in the list. The backend's
-  // FindActiveByUserID already orders primaries first, so this is
-  // usually the most recently used TOTP.
   const [selectedFactorId, setSelectedFactorId] = useState<number>(factors[0]?.id ?? 0);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const selected = factors.find((f) => f.id === selectedFactorId);
+  const isWebAuthn = selected?.type === 'webauthn';
 
   const { register, handleSubmit, setValue, formState } = useForm<MfaVerifyFormData>({
     resolver: zodResolver(mfaVerifySchema),
@@ -52,10 +61,20 @@ export function MfaVerifyForm({ pendingToken, factors, onRestart, onSuccess }: P
 
   const factorLabel = (f: LoginFactorDescriptor) => {
     if (f.type === 'totp') return f.label || tSettings('factorTypeTotp');
+    if (f.type === 'webauthn') return f.label || tSettings('factorTypeWebAuthn');
     return tSettings('factorTypeBackupCodes');
   };
 
-  const onSubmit = handleSubmit(async (data) => {
+  const classifyErrorAndRestart = (err: unknown): boolean => {
+    const status = (err as AxiosError).response?.status;
+    if (status === 429) {
+      onRestart('too_many');
+      return true;
+    }
+    return false;
+  };
+
+  const onCodeSubmit = handleSubmit(async (data) => {
     setError(null);
     setSubmitting(true);
     try {
@@ -67,28 +86,61 @@ export function MfaVerifyForm({ pendingToken, factors, onRestart, onSuccess }: P
       await hydrate();
       onSuccess();
     } catch (err) {
-      const status = (err as AxiosError).response?.status;
-      if (status === 429) {
-        onRestart('too_many');
-      } else if (status === 401) {
-        // Could be either "wrong code" or "pending expired" —
-        // indistinguishable from this side. Keep the user on the
-        // form for "wrong code" (the common case) and let them
-        // retry; if the pending is truly expired, subsequent
-        // attempts will also 401 and the user can press Back.
-        setError(t('wrongCode'));
-        setValue('code', '');
-      } else {
-        setError(t('wrongCode'));
-        setValue('code', '');
-      }
+      if (classifyErrorAndRestart(err)) return;
+      setError(t('wrongCode'));
+      setValue('code', '');
     } finally {
       setSubmitting(false);
     }
   });
 
+  const onWebAuthnSubmit = async () => {
+    setError(null);
+    setSubmitting(true);
+    try {
+      // Step 1: fetch challenge from the server; stored on the
+      // pending row so the verify call can look it up.
+      const challenge = await apiClient.beginMfaChallenge({
+        pending_token: pendingToken,
+        factor_id: selectedFactorId,
+      });
+      const opts = decodeRequestOptions(
+        challenge.request_options as Parameters<typeof decodeRequestOptions>[0]
+      );
+      // Step 2: browser prompts the user — touch security key / Face ID / etc.
+      const cred = (await navigator.credentials.get({
+        publicKey: opts,
+      })) as PublicKeyCredential | null;
+      if (!cred) throw new Error('no credential');
+      const encoded = encodeAssertionResponse(cred);
+      // Step 3: server verifies assertion and issues the session.
+      await apiClient.verifyMfa({
+        pending_token: pendingToken,
+        factor_id: selectedFactorId,
+        webauthn_response: encoded,
+      });
+      await hydrate();
+      onSuccess();
+    } catch (err) {
+      if (classifyErrorAndRestart(err)) return;
+      const name = (err as { name?: string }).name;
+      if (name === 'NotAllowedError' || name === 'AbortError') {
+        setError(t('webauthnCancelled'));
+      } else {
+        setError(t('webauthnFailed'));
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
-    <form data-testid="mfa-verify-form" onSubmit={onSubmit} className="space-y-4" noValidate>
+    <form
+      data-testid="mfa-verify-form"
+      onSubmit={isWebAuthn ? (e) => e.preventDefault() : onCodeSubmit}
+      className="space-y-4"
+      noValidate
+    >
       <div className="space-y-1">
         <p className="text-sm font-medium">{t('title')}</p>
         <p className="text-muted-foreground text-sm">{t('description')}</p>
@@ -99,7 +151,10 @@ export function MfaVerifyForm({ pendingToken, factors, onRestart, onSuccess }: P
           <Label htmlFor="factor-picker">{t('factorPickerLabel')}</Label>
           <Select
             value={String(selectedFactorId)}
-            onValueChange={(v) => setSelectedFactorId(Number(v))}
+            onValueChange={(v) => {
+              setSelectedFactorId(Number(v));
+              setError(null);
+            }}
           >
             <SelectTrigger id="factor-picker">
               <SelectValue />
@@ -115,25 +170,36 @@ export function MfaVerifyForm({ pendingToken, factors, onRestart, onSuccess }: P
         </div>
       )}
 
-      <div className="space-y-1">
-        <Label htmlFor="mfa-code">{t('codeLabel')}</Label>
-        <Input
-          id="mfa-code"
-          type="text"
-          inputMode="text"
-          autoComplete="one-time-code"
-          autoFocus
-          aria-invalid={!!error}
-          aria-live="polite"
-          {...register('code')}
-          disabled={submitting}
-        />
-        {error && (
-          <p role="alert" className="text-destructive text-sm">
-            {error}
-          </p>
-        )}
-      </div>
+      {isWebAuthn ? (
+        <div className="space-y-2">
+          <p className="text-muted-foreground text-sm">{t('webauthnPrompt')}</p>
+          {error && (
+            <p role="alert" className="text-destructive text-sm">
+              {error}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-1">
+          <Label htmlFor="mfa-code">{t('codeLabel')}</Label>
+          <Input
+            id="mfa-code"
+            type="text"
+            inputMode="text"
+            autoComplete="one-time-code"
+            autoFocus
+            aria-invalid={!!error}
+            aria-live="polite"
+            {...register('code')}
+            disabled={submitting}
+          />
+          {error && (
+            <p role="alert" className="text-destructive text-sm">
+              {error}
+            </p>
+          )}
+        </div>
+      )}
 
       <p className="text-muted-foreground text-xs">{t('lostAccessHint')}</p>
 
@@ -146,13 +212,24 @@ export function MfaVerifyForm({ pendingToken, factors, onRestart, onSuccess }: P
         >
           {t('back')}
         </Button>
-        <Button
-          type="submit"
-          disabled={!formState.isValid || submitting || !selectedFactorId}
-          className="flex-1"
-        >
-          {t('submit')}
-        </Button>
+        {isWebAuthn ? (
+          <Button
+            type="button"
+            onClick={onWebAuthnSubmit}
+            disabled={submitting || !selectedFactorId}
+            className="flex-1"
+          >
+            {t('webauthnSubmit')}
+          </Button>
+        ) : (
+          <Button
+            type="submit"
+            disabled={!formState.isValid || submitting || !selectedFactorId}
+            className="flex-1"
+          >
+            {t('submit')}
+          </Button>
+        )}
       </div>
     </form>
   );

@@ -286,6 +286,7 @@ type SessionStorer interface {
 	LookupPendingMFA(ctx context.Context, idHash string) (*SessionPendingLookupResult, error)
 	BumpMFAChallengeFailures(ctx context.Context, idHash string) (int, error)
 	DeletePendingMFA(ctx context.Context, idHash string) error
+	SetPendingMFAChallenge(ctx context.Context, idHash string, challenge []byte) error
 }
 
 // AuditStorer defines the interface for audit log storage operations

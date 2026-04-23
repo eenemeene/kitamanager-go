@@ -29,6 +29,10 @@ export interface LoginFactorDescriptor {
   id: number;
   type: FactorType;
   label?: string;
+  // credential_id (base64url-encoded) is populated only for webauthn
+  // factors. The frontend uses it to pre-fetch / prime the browser
+  // via `allowCredentials[]`; it's public by WebAuthn design.
+  credential_id?: string;
 }
 
 // LoginMfaRequiredResponse is what /login returns when the user has
@@ -47,15 +51,31 @@ export interface LoginMfaRequiredResponse {
 // on. Prefer pattern-matching on `status` over testing field presence.
 export type LoginResponse = LoginSuccessResponse | LoginMfaRequiredResponse;
 
-// MFA verify step-two.
+// MFA verify step-two. Polymorphic across factor types: `code`
+// carries TOTP/backup-code strings; `webauthn_response` carries the
+// JSON from `navigator.credentials.get()`. Exactly one of the two
+// is set.
 export interface MfaVerifyRequest {
   pending_token: string;
   factor_id: number;
-  code: string;
+  code?: string;
+  webauthn_response?: unknown;
+}
+
+// MFA challenge step-one (WebAuthn only). Fetches the
+// PublicKeyCredentialRequestOptions the browser needs before it can
+// run `navigator.credentials.get()`.
+export interface MfaChallengeRequest {
+  pending_token: string;
+  factor_id: number;
+}
+
+export interface MfaChallengeResponse {
+  request_options: unknown;
 }
 
 // Factor types — matches the backend `FactorType*` constants.
-export type FactorType = 'totp' | 'backup_codes';
+export type FactorType = 'totp' | 'backup_codes' | 'webauthn';
 
 // Factor is the authenticated-view factor shape. Includes metadata
 // the Settings UI needs to show the user's enrolment state (created,
@@ -70,13 +90,23 @@ export interface FactorResponse {
   activated: boolean;
   backup_codes_remaining?: number;
   // Enrollment is populated only on the initial POST response and is
-  // factor-type specific (TOTPEnrollmentPayload for TOTP).
-  enrollment?: TOTPEnrollmentPayload;
+  // factor-type specific: TOTPEnrollmentPayload for TOTP,
+  // WebAuthnEnrollmentPayload for WebAuthn. Parse based on factor
+  // type.
+  enrollment?: TOTPEnrollmentPayload | WebAuthnEnrollmentPayload;
 }
 
 export interface TOTPEnrollmentPayload {
   secret: string;
   otpauth_uri: string;
+}
+
+// WebAuthnEnrollmentPayload wraps the raw
+// PublicKeyCredentialCreationOptions JSON from the go-webauthn
+// library. The client hands it (after decoding base64url-ish fields)
+// straight to `navigator.credentials.create({publicKey: options})`.
+export interface WebAuthnEnrollmentPayload {
+  creation_options: unknown;
 }
 
 export interface FactorListResponse {
@@ -90,7 +120,8 @@ export interface FactorEnrolRequest {
 }
 
 export interface FactorActivateRequest {
-  code: string;
+  code?: string;
+  webauthn_response?: unknown;
 }
 
 // BackupCodesPayload is the one-time presentation of a set of backup

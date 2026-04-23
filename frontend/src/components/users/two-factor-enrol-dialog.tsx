@@ -149,7 +149,13 @@ export function TwoFactorEnrolDialog({
     );
   });
 
-  const payload = factor?.enrollment;
+  // This dialog only drives TOTP enrolment; the WebAuthn flow lives
+  // in TwoFactorWebAuthnDialog. The enrollment payload shape is a
+  // union (TOTP | WebAuthn) — narrow it here.
+  const payload =
+    factor?.enrollment && 'otpauth_uri' in factor.enrollment
+      ? (factor.enrollment as { secret: string; otpauth_uri: string })
+      : undefined;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

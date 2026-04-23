@@ -165,6 +165,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/auth/mfa/challenge": {
+            "post": {
+                "description": "For WebAuthn factors, the client must fetch a server-\nissued challenge via this endpoint before calling\nnavigator.credentials.get(). Returns the\nPublicKeyCredentialRequestOptions JSON unchanged. TOTP\nand backup-code factors never hit this endpoint.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Login step 2a: request a WebAuthn challenge",
+                "parameters": [
+                    {
+                        "description": "Pending token + factor id",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.MFAChallengeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.MFAChallengeResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/auth/mfa/verify": {
             "post": {
                 "description": "Exchanges a pending_token from the /login MFA-required\nresponse + a TOTP code (or a backup code) for a real\nsession. Sets the session cookie on success.",
@@ -13223,6 +13269,31 @@ const docTemplate = `{
                 "status": {
                     "type": "string",
                     "example": "authenticated"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.MFAChallengeRequest": {
+            "type": "object",
+            "required": [
+                "factor_id",
+                "pending_token"
+            ],
+            "properties": {
+                "factor_id": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "pending_token": {
+                    "type": "string",
+                    "example": "9ZmN...sBA"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.MFAChallengeResponse": {
+            "type": "object",
+            "properties": {
+                "request_options": {
+                    "type": "object"
                 }
             }
         },

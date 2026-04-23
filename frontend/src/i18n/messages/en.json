@@ -90,7 +90,11 @@
       "wrongCode": "Invalid code. Please try again.",
       "tooManyWrongCodes": "Too many wrong codes. Please sign in again.",
       "pendingExpired": "This session expired. Please sign in again.",
-      "lostAccessHint": "Lost access to your authenticator? Enter a recovery code instead, or contact your administrator."
+      "lostAccessHint": "Lost access to your authenticator? Enter a recovery code instead, or contact your administrator.",
+      "webauthnPrompt": "Click the button below, then tap your security key or use your device's biometric prompt.",
+      "webauthnSubmit": "Use security key",
+      "webauthnCancelled": "The security key prompt was cancelled.",
+      "webauthnFailed": "Security key verification failed. Please try again."
     }
   },
   "nav": {
@@ -605,6 +609,21 @@
       "enableButton": "Enable two-factor authentication",
       "regenerateButton": "Regenerate recovery codes",
       "disableButton": "Disable two-factor authentication",
+      "addSecurityKeyButton": "Add security key",
+      "factorTypeWebAuthn": "Security key",
+      "webauthnDialog": {
+        "title": "Add security key",
+        "description": "Confirm your password, then tap your security key or use your device's biometric prompt.",
+        "passwordLabel": "Current password",
+        "continue": "Continue",
+        "wrongPassword": "Current password is incorrect.",
+        "prompting": "Follow your browser's prompt to confirm the security key.",
+        "userCancelled": "The security key prompt was cancelled.",
+        "alreadyRegistered": "This security key is already registered on your account.",
+        "unsupported": "Your browser does not support security keys.",
+        "cancel": "Cancel",
+        "retry": "Try again"
+      },
       "factorTypeTotp": "Authenticator app",
       "factorTypeBackupCodes": "Recovery codes",
       "backupCodesRemaining": "{count} codes remaining",

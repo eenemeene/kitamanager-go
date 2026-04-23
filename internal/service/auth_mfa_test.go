@@ -47,7 +47,7 @@ func enrolAndActivateTOTPFor(t *testing.T, db *gorm.DB, _ *AuthService, user *mo
 	if err != nil {
 		t.Fatalf("gen code: %v", err)
 	}
-	if _, err := factorSvc.ActivateFactor(ctx, user.ID, enroll.ID, code); err != nil {
+	if _, err := factorSvc.ActivateFactor(ctx, user.ID, enroll.ID, &models.FactorActivateRequest{Code: code}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
 	return enroll.ID, payload.Secret
@@ -255,7 +255,7 @@ func TestAuthService_VerifyMFALogin_Success(t *testing.T) {
 		t.Fatalf("login: %v", err)
 	}
 	code, _ := totp.GenerateCode(secret, time.Now().UTC())
-	auth, err := svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, factorID, code, "127.0.0.1", "ua")
+	auth, err := svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, factorID, code, nil, "127.0.0.1", "ua")
 	if err != nil {
 		t.Fatalf("verify: %v", err)
 	}
@@ -302,7 +302,7 @@ func TestAuthService_VerifyMFALogin_BackupCodeSuccess(t *testing.T) {
 		t.Fatalf("login: %v", err)
 	}
 
-	auth, err := svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, bf.ID, rawCode, "127.0.0.1", "ua")
+	auth, err := svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, bf.ID, rawCode, nil, "127.0.0.1", "ua")
 	if err != nil {
 		t.Fatalf("verify backup: %v", err)
 	}
@@ -312,7 +312,7 @@ func TestAuthService_VerifyMFALogin_BackupCodeSuccess(t *testing.T) {
 
 	// Second use of the same raw code is rejected (single-use).
 	step1b, _ := svc.Login(ctx, "u@example.com", "pw-123456", "127.0.0.1", "ua")
-	_, err = svc.VerifyMFALogin(ctx, step1b.Pending.PendingToken, bf.ID, rawCode, "127.0.0.1", "ua")
+	_, err = svc.VerifyMFALogin(ctx, step1b.Pending.PendingToken, bf.ID, rawCode, nil, "127.0.0.1", "ua")
 	if !errors.Is(err, apperror.ErrUnauthorized) {
 		t.Errorf("second use of backup code: expected ErrUnauthorized, got %v", err)
 	}
@@ -323,7 +323,7 @@ func TestAuthService_VerifyMFALogin_UnknownPendingToken(t *testing.T) {
 	svc := createAuthService(db)
 	ctx := context.Background()
 
-	_, err := svc.VerifyMFALogin(ctx, "does-not-exist", 1, "123456", "127.0.0.1", "ua")
+	_, err := svc.VerifyMFALogin(ctx, "does-not-exist", 1, "123456", nil, "127.0.0.1", "ua")
 	if !errors.Is(err, apperror.ErrUnauthorized) {
 		t.Errorf("unknown pending: expected ErrUnauthorized, got %v", err)
 	}
@@ -335,7 +335,7 @@ func TestAuthService_VerifyMFALogin_EmptyPendingToken(t *testing.T) {
 	svc := createAuthService(db)
 	ctx := context.Background()
 
-	_, err := svc.VerifyMFALogin(ctx, "", 1, "123456", "127.0.0.1", "ua")
+	_, err := svc.VerifyMFALogin(ctx, "", 1, "123456", nil, "127.0.0.1", "ua")
 	if !errors.Is(err, apperror.ErrUnauthorized) {
 		t.Errorf("empty pending: expected ErrUnauthorized, got %v", err)
 	}
@@ -357,7 +357,7 @@ func TestAuthService_VerifyMFALogin_RegularSessionTokenRejected(t *testing.T) {
 	regularToken := step1.Authenticated.SessionToken
 
 	// Using it as a pending token must fail.
-	_, err = svc.VerifyMFALogin(ctx, regularToken, 1, "000000", "127.0.0.1", "ua")
+	_, err = svc.VerifyMFALogin(ctx, regularToken, 1, "000000", nil, "127.0.0.1", "ua")
 	if !errors.Is(err, apperror.ErrUnauthorized) {
 		t.Errorf("regular session as pending token: expected ErrUnauthorized, got %v", err)
 	}
@@ -381,7 +381,7 @@ func TestAuthService_VerifyMFALogin_ExpiredPending(t *testing.T) {
 	// Seed a pending row with past expiry.
 	raw := seedPendingMFARow(t, db, user.ID, -time.Minute)
 
-	_, err := svc.VerifyMFALogin(ctx, raw, 1, "123456", "127.0.0.1", "ua")
+	_, err := svc.VerifyMFALogin(ctx, raw, 1, "123456", nil, "127.0.0.1", "ua")
 	if !errors.Is(err, apperror.ErrUnauthorized) {
 		t.Errorf("expired pending: expected ErrUnauthorized, got %v", err)
 	}
@@ -402,7 +402,7 @@ func TestAuthService_VerifyMFALogin_CrossUserFactorID(t *testing.T) {
 		t.Fatalf("alice login: %v", err)
 	}
 	code, _ := totp.GenerateCode(bobSecret, time.Now().UTC())
-	_, err = svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, bobFactorID, code, "127.0.0.1", "ua")
+	_, err = svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, bobFactorID, code, nil, "127.0.0.1", "ua")
 	if !errors.Is(err, apperror.ErrUnauthorized) {
 		t.Errorf("cross-user factor id: expected ErrUnauthorized, got %v", err)
 	}
@@ -431,7 +431,7 @@ func TestAuthService_VerifyMFALogin_WrongCode_BumpsCounter(t *testing.T) {
 
 	// 4 wrong codes, row should still exist after.
 	for i := 1; i < MFAChallengeFailureLimit; i++ {
-		_, err := svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, factorID, "000000", "127.0.0.1", "ua")
+		_, err := svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, factorID, "000000", nil, "127.0.0.1", "ua")
 		if !errors.Is(err, apperror.ErrUnauthorized) {
 			t.Errorf("attempt %d: expected ErrUnauthorized, got %v", i, err)
 		}
@@ -455,10 +455,10 @@ func TestAuthService_VerifyMFALogin_FiveWrongCodes_Locks(t *testing.T) {
 
 	step1, _ := svc.Login(ctx, "u@example.com", "pw-123456", "127.0.0.1", "ua")
 	for i := 1; i < MFAChallengeFailureLimit; i++ {
-		_, _ = svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, factorID, "000000", "127.0.0.1", "ua")
+		_, _ = svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, factorID, "000000", nil, "127.0.0.1", "ua")
 	}
 	// Nth: should be 429 and destroy the row.
-	_, err := svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, factorID, "000000", "127.0.0.1", "ua")
+	_, err := svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, factorID, "000000", nil, "127.0.0.1", "ua")
 	if !errors.Is(err, apperror.ErrTooManyRequests) {
 		t.Errorf("limit attempt: expected ErrTooManyRequests, got %v", err)
 	}
@@ -469,7 +469,7 @@ func TestAuthService_VerifyMFALogin_FiveWrongCodes_Locks(t *testing.T) {
 	}
 
 	// Subsequent request returns 401 (no row).
-	_, err = svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, factorID, "000000", "127.0.0.1", "ua")
+	_, err = svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, factorID, "000000", nil, "127.0.0.1", "ua")
 	if !errors.Is(err, apperror.ErrUnauthorized) {
 		t.Errorf("post-lock attempt: expected ErrUnauthorized, got %v", err)
 	}
@@ -500,7 +500,7 @@ func TestAuthService_VerifyMFALogin_PerUserLockout(t *testing.T) {
 	}
 
 	step1, _ := svc.Login(ctx, "u@example.com", "pw-123456", "127.0.0.1", "ua")
-	_, err := svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, factorID, "000000", "127.0.0.1", "ua")
+	_, err := svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, factorID, "000000", nil, "127.0.0.1", "ua")
 	if !errors.Is(err, apperror.ErrTooManyRequests) {
 		t.Errorf("per-user lockout: expected ErrTooManyRequests, got %v", err)
 	}
@@ -534,7 +534,7 @@ func TestAuthService_VerifyMFALogin_ConcurrentSameCode_OneWinner(t *testing.T) {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
-			auth, err := svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, factorID, code, "127.0.0.1", "ua")
+			auth, err := svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, factorID, code, nil, "127.0.0.1", "ua")
 			results[idx] = err
 			if auth != nil {
 				tokens[idx] = auth.SessionToken
@@ -568,10 +568,10 @@ func TestAuthService_VerifyMFALogin_ReuseAfterSuccess(t *testing.T) {
 
 	step1, _ := svc.Login(ctx, "u@example.com", "pw-123456", "127.0.0.1", "ua")
 	code, _ := totp.GenerateCode(secret, time.Now().UTC())
-	if _, err := svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, factorID, code, "127.0.0.1", "ua"); err != nil {
+	if _, err := svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, factorID, code, nil, "127.0.0.1", "ua"); err != nil {
 		t.Fatalf("first verify: %v", err)
 	}
-	_, err := svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, factorID, code, "127.0.0.1", "ua")
+	_, err := svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, factorID, code, nil, "127.0.0.1", "ua")
 	if !errors.Is(err, apperror.ErrUnauthorized) {
 		t.Errorf("reuse after success: expected ErrUnauthorized, got %v", err)
 	}
@@ -594,7 +594,7 @@ func TestAuthService_VerifyMFALogin_UserDeactivatedMidFlow(t *testing.T) {
 	}
 
 	code, _ := totp.GenerateCode(secret, time.Now().UTC())
-	_, err := svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, factorID, code, "127.0.0.1", "ua")
+	_, err := svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, factorID, code, nil, "127.0.0.1", "ua")
 	if !errors.Is(err, apperror.ErrUnauthorized) {
 		t.Errorf("deactivated user: expected ErrUnauthorized, got %v", err)
 	}
@@ -624,7 +624,7 @@ func TestAuthService_VerifyMFALogin_FactorDeletedMidFlow(t *testing.T) {
 	}
 
 	code, _ := totp.GenerateCode(secret, time.Now().UTC())
-	_, err := svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, factorID, code, "127.0.0.1", "ua")
+	_, err := svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, factorID, code, nil, "127.0.0.1", "ua")
 	if !errors.Is(err, apperror.ErrUnauthorized) {
 		t.Errorf("deleted factor: expected ErrUnauthorized, got %v", err)
 	}
@@ -643,11 +643,11 @@ func TestAuthService_VerifyMFALogin_TOTPReplayAcrossPendings(t *testing.T) {
 	step1b, _ := svc.Login(ctx, "u@example.com", "pw-123456", "127.0.0.1", "ua")
 
 	code, _ := totp.GenerateCode(secret, time.Now().UTC())
-	if _, err := svc.VerifyMFALogin(ctx, step1a.Pending.PendingToken, factorID, code, "127.0.0.1", "ua"); err != nil {
+	if _, err := svc.VerifyMFALogin(ctx, step1a.Pending.PendingToken, factorID, code, nil, "127.0.0.1", "ua"); err != nil {
 		t.Fatalf("first verify: %v", err)
 	}
 	// Same code on step1b: rejected by AcceptTOTPStep replay check.
-	_, err := svc.VerifyMFALogin(ctx, step1b.Pending.PendingToken, factorID, code, "127.0.0.1", "ua")
+	_, err := svc.VerifyMFALogin(ctx, step1b.Pending.PendingToken, factorID, code, nil, "127.0.0.1", "ua")
 	if !errors.Is(err, apperror.ErrUnauthorized) {
 		t.Errorf("replayed TOTP code: expected ErrUnauthorized, got %v", err)
 	}
@@ -673,7 +673,7 @@ func TestAuthService_VerifyMFALogin_BackupCodeNormalisation(t *testing.T) {
 	mangled := strings.ToUpper(strings.ReplaceAll(raw, "-", " "))
 
 	step1, _ := svc.Login(ctx, "u@example.com", "pw-123456", "127.0.0.1", "ua")
-	if _, err := svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, bf.ID, mangled, "127.0.0.1", "ua"); err != nil {
+	if _, err := svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, bf.ID, mangled, nil, "127.0.0.1", "ua"); err != nil {
 		t.Errorf("mangled backup code should verify: %v", err)
 	}
 }
