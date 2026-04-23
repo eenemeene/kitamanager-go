@@ -15,10 +15,45 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required" example:"secret123"`
 }
 
+// LoginStatusAuthenticated and LoginStatusMFARequired are the two
+// discriminator values on the login response. Clients check `status`
+// first to know which branch of the two-step flow they're in:
+//   - "authenticated": the session cookie is set, request complete.
+//   - "mfa_required": no session yet; body carries a pending token +
+//     factor list for the follow-up POST /auth/mfa/verify.
+const (
+	LoginStatusAuthenticated = "authenticated"
+	LoginStatusMFARequired   = "mfa_required"
+)
+
 // LoginResponse represents the login response. The session token is delivered
-// via an HttpOnly cookie, never in the response body.
+// via an HttpOnly cookie, never in the response body. Non-MFA login users
+// receive this shape. `Status` is always "authenticated" on this shape;
+// clients that want to branch without introspecting body fields can look at
+// it alone.
 type LoginResponse struct {
-	ExpiresIn int64 `json:"expires_in" example:"604800"`
+	Status    string `json:"status" example:"authenticated"`
+	ExpiresIn int64  `json:"expires_in" example:"604800"`
+}
+
+// LoginMFARequiredResponse is the /login body returned to a user with an
+// active primary factor. The pending_token is the raw value the client must
+// echo back on POST /auth/mfa/verify. No cookies are set at this stage.
+type LoginMFARequiredResponse struct {
+	Status       string                  `json:"status" example:"mfa_required"`
+	PendingToken string                  `json:"pending_token" example:"9ZmN...sBA"`
+	ExpiresAt    string                  `json:"expires_at" example:"2026-04-23T10:05:00Z"`
+	Factors      []LoginFactorDescriptor `json:"factors"`
+}
+
+// MFAVerifyRequest is the body of POST /auth/mfa/verify.
+// `pending_token` is the raw value returned by /login; `factor_id` is
+// the id from the response's factors[]. `code` is a TOTP code or a
+// backup code (hyphens/whitespace tolerated).
+type MFAVerifyRequest struct {
+	PendingToken string `json:"pending_token" binding:"required" example:"9ZmN...sBA"`
+	FactorID     uint   `json:"factor_id" binding:"required" example:"42"`
+	Code         string `json:"code" binding:"required" example:"123456"`
 }
 
 // MessageResponse represents a success message response

@@ -117,6 +117,19 @@ func (f *fakeSessionStore) DeleteForUser(ctx context.Context, idHash string, use
 	return 1, nil
 }
 
+// Pending-MFA methods: unused by the auth middleware tests (which are
+// strictly concerned with regular-session gating), but must exist so
+// *fakeSessionStore still satisfies SessionStorer.
+func (f *fakeSessionStore) LookupPendingMFA(ctx context.Context, idHash string) (*store.SessionPendingLookupResult, error) {
+	return nil, store.ErrNotFound
+}
+func (f *fakeSessionStore) BumpMFAChallengeFailures(ctx context.Context, idHash string) (int, error) {
+	return 0, store.ErrNotFound
+}
+func (f *fakeSessionStore) DeletePendingMFA(ctx context.Context, idHash string) error {
+	return nil
+}
+
 // addSession seeds a session as if it had been issued by Login, returning the
 // raw cookie value.
 func (f *fakeSessionStore) addSession(userID uint, email string, lifetime time.Duration) string {

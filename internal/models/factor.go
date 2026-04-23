@@ -118,6 +118,19 @@ type FactorListResponse struct {
 	Factors []FactorResponse `json:"factors"`
 }
 
+// LoginFactorDescriptor is the minimal factor shape that /login returns
+// in its pending_mfa response, and that POST /auth/mfa/verify echoes
+// back alongside its error responses. Kept deliberately small — only
+// the fields the unauthenticated client needs to present a factor
+// chooser. No created_at, last_used_at, or backup_codes_remaining —
+// leaking post-login metadata to an unauthenticated caller is exactly
+// what this type is designed to prevent.
+type LoginFactorDescriptor struct {
+	ID    uint    `json:"id" example:"42"`
+	Type  string  `json:"type" example:"totp"`
+	Label *string `json:"label,omitempty" example:"iPhone"`
+}
+
 // FactorEnrollRequest is the request body for `POST /users/:userId/factors`.
 // Password re-entry is required (step-up) to install a factor — a stolen
 // session cookie alone must not be able to plant an authenticator the

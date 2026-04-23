@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/hex"
 	"strings"
 	"testing"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
+	cryptopkg "github.com/eenemeene/kitamanager-go/internal/crypto"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/store"
 	"github.com/eenemeene/kitamanager-go/internal/testutil"
@@ -397,10 +399,26 @@ func createAuditService(db *gorm.DB) *AuditService {
 	return NewAuditService(auditStore)
 }
 
-// createAuthService creates an auth service for testing.
+// createAuthService creates an auth service for testing. The factor
+// service is wired in with the test AEAD so two-step login paths can
+// be exercised by tests that seed factors; tests that don't enrol
+// any factor see the same pre-MFA behaviour as before.
 func createAuthService(db *gorm.DB) *AuthService {
 	userStore := store.NewUserStore(db)
 	sessionStore := store.NewSessionStore(db)
 	auditService := createAuditService(db)
-	return NewAuthService(userStore, sessionStore, "test-jwt-secret", auditService)
+	aead := testAuthAEAD()
+	factorSvc := NewFactorService(store.NewFactorStore(db), userStore, aead, "KitaManager (test)", auditService)
+	return NewAuthService(userStore, sessionStore, "test-jwt-secret", auditService, factorSvc)
+}
+
+// testAuthAEAD builds a deterministic AEAD for auth-test helpers. The
+// key itself doesn't matter — tests only need seal/open round-trip.
+func testAuthAEAD() *cryptopkg.AEAD {
+	key, _ := hex.DecodeString("abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789")
+	a, err := cryptopkg.NewAEAD(key)
+	if err != nil {
+		panic(err)
+	}
+	return a
 }

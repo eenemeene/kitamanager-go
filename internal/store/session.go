@@ -62,15 +62,33 @@ func HashSessionToken(raw string) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// SessionPendingLookupResult is the pending_mfa lookup shape. It
+// carries the caller's user id + the row's attempt counter so the
+// service layer can enforce the per-row failure limit without a
+// second query.
+type SessionPendingLookupResult struct {
+	UserID               uint
+	UserActive           bool
+	UserEmail            string
+	ExpiresAt            time.Time
+	MFAChallengeFailures int
+	ChallengeNonce       []byte
+}
+
 // Create inserts a new session row. `idHash` must be the sha256 hex of the
 // raw cookie value — use GenerateSessionToken.
 func (s *SessionStore) Create(ctx context.Context, sess *models.Session) error {
 	return DBFromContext(ctx, s.db).Create(sess).Error
 }
 
-// Lookup returns the session + user row joined by user_id, scoped to
-// non-expired rows only. ErrNotFound is returned when the session is absent
-// or expired.
+// Lookup returns the REGULAR session + user row joined by user_id,
+// scoped to non-expired rows only. pending_mfa rows are explicitly
+// excluded: they must never satisfy RequireAuth — letting a pending
+// handle through cookie would collapse the whole two-step flow back
+// into a password-only login.
+//
+// ErrNotFound is returned when the session is absent, expired, or is
+// not a regular session.
 func (s *SessionStore) Lookup(ctx context.Context, idHash string) (*SessionLookupResult, error) {
 	var row struct {
 		UserID     uint
@@ -82,7 +100,8 @@ func (s *SessionStore) Lookup(ctx context.Context, idHash string) (*SessionLooku
 		Table("sessions").
 		Select("sessions.user_id AS user_id, users.email AS user_email, users.active AS user_active, sessions.expires_at AS expires_at").
 		Joins("JOIN users ON users.id = sessions.user_id").
-		Where("sessions.id = ? AND sessions.expires_at > ?", idHash, time.Now().UTC()).
+		Where("sessions.id = ? AND sessions.kind = ? AND sessions.expires_at > ?",
+			idHash, models.SessionKindRegular, time.Now().UTC()).
 		Take(&row).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -96,6 +115,86 @@ func (s *SessionStore) Lookup(ctx context.Context, idHash string) (*SessionLooku
 		UserActive: row.UserActive,
 		ExpiresAt:  row.ExpiresAt,
 	}, nil
+}
+
+// LookupPendingMFA is the counterpart to Lookup for the two-step login
+// state. Returns the pending row's user binding + attempt counter so
+// the verify path can decide (accept / bump / destroy) in one query.
+// Scoped strictly to kind='pending_mfa' so a regular session value
+// cannot be pointed at /auth/mfa/verify.
+func (s *SessionStore) LookupPendingMFA(ctx context.Context, idHash string) (*SessionPendingLookupResult, error) {
+	var row struct {
+		UserID               uint
+		UserEmail            string
+		UserActive           bool
+		ExpiresAt            time.Time
+		MFAChallengeFailures int
+		ChallengeNonce       []byte
+	}
+	err := DBFromContext(ctx, s.db).
+		Table("sessions").
+		Select("sessions.user_id AS user_id, users.email AS user_email, users.active AS user_active, sessions.expires_at AS expires_at, sessions.mfa_challenge_failures AS mfa_challenge_failures, sessions.challenge_nonce AS challenge_nonce").
+		Joins("JOIN users ON users.id = sessions.user_id").
+		Where("sessions.id = ? AND sessions.kind = ? AND sessions.expires_at > ?",
+			idHash, models.SessionKindPendingMFA, time.Now().UTC()).
+		Take(&row).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return &SessionPendingLookupResult{
+		UserID:               row.UserID,
+		UserEmail:            row.UserEmail,
+		UserActive:           row.UserActive,
+		ExpiresAt:            row.ExpiresAt,
+		MFAChallengeFailures: row.MFAChallengeFailures,
+		ChallengeNonce:       row.ChallengeNonce,
+	}, nil
+}
+
+// BumpMFAChallengeFailures atomically increments mfa_challenge_failures
+// on a pending_mfa row and returns the post-increment value. Returns
+// ErrNotFound if the row is missing, expired, or not pending_mfa, so
+// the caller can translate cleanly without a second query.
+//
+// Scoped to kind='pending_mfa' so that a regular session ID smuggled
+// in here would be a no-op. The post-increment value is read within
+// the same UPDATE via RETURNING to avoid the read-increment-read race
+// two concurrent verify attempts could otherwise exploit to each
+// observe "4 < 5, still OK".
+func (s *SessionStore) BumpMFAChallengeFailures(ctx context.Context, idHash string) (int, error) {
+	var updated struct {
+		MFAChallengeFailures int
+	}
+	err := DBFromContext(ctx, s.db).
+		Raw(
+			`UPDATE sessions
+			 SET mfa_challenge_failures = mfa_challenge_failures + 1
+			 WHERE id = ?
+			   AND kind = ?
+			   AND expires_at > ?
+			 RETURNING mfa_challenge_failures`,
+			idHash, models.SessionKindPendingMFA, time.Now().UTC()).
+		Scan(&updated).Error
+	if err != nil {
+		return 0, err
+	}
+	if updated.MFAChallengeFailures == 0 {
+		// RETURNING yielded no row — pending not found / expired / wrong kind.
+		return 0, ErrNotFound
+	}
+	return updated.MFAChallengeFailures, nil
+}
+
+// DeletePendingMFA removes a single pending_mfa row by id-hash. Scoped
+// on kind so a malformed call cannot accidentally delete a regular
+// session. Idempotent; rows missing are silently a no-op.
+func (s *SessionStore) DeletePendingMFA(ctx context.Context, idHash string) error {
+	return DBFromContext(ctx, s.db).
+		Where("id = ? AND kind = ?", idHash, models.SessionKindPendingMFA).
+		Delete(&models.Session{}).Error
 }
 
 // Delete removes a single session. Returns nil when the row does not exist
@@ -131,13 +230,16 @@ func (s *SessionStore) CleanupExpired(ctx context.Context) error {
 		Delete(&models.Session{}).Error
 }
 
-// ListForUser returns every non-expired session belonging to the user,
-// ordered by most recently created first. Used by the /me/sessions
-// endpoint so a user can see where they're signed in.
+// ListForUser returns every non-expired REGULAR session belonging to
+// the user, ordered by most recently created first. Used by the
+// /me/sessions endpoint so a user can see where they're signed in.
+// pending_mfa rows are excluded — they're mid-flow, not "where I'm
+// signed in."
 func (s *SessionStore) ListForUser(ctx context.Context, userID uint) ([]models.Session, error) {
 	var sessions []models.Session
 	err := DBFromContext(ctx, s.db).
-		Where("user_id = ? AND expires_at > ?", userID, time.Now().UTC()).
+		Where("user_id = ? AND kind = ? AND expires_at > ?",
+			userID, models.SessionKindRegular, time.Now().UTC()).
 		Order("created_at DESC").
 		Find(&sessions).Error
 	return sessions, err

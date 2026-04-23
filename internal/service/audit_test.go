@@ -45,6 +45,9 @@ func (m *mockAuditStore) CountFailedLoginsSince(context.Context, string, time.Ti
 func (m *mockAuditStore) CountFailedPasswordChangesSince(context.Context, uint, time.Time) (int64, error) {
 	return 0, nil
 }
+func (m *mockAuditStore) CountFailedMFAChallengesSince(context.Context, uint, time.Time) (int64, error) {
+	return 0, nil
+}
 func (m *mockAuditStore) FindByID(context.Context, uint) (*models.AuditLog, error) {
 	return nil, nil
 }

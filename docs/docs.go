@@ -165,6 +165,64 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/auth/mfa/verify": {
+            "post": {
+                "description": "Exchanges a pending_token from the /login MFA-required\nresponse + a TOTP code (or a backup code) for a real\nsession. Sets the session cookie on success.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Login step 2: verify MFA code",
+                "parameters": [
+                    {
+                        "description": "Pending token + factor id + code",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.MFAVerifyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/government-funding-rates": {
             "get": {
                 "security": [
@@ -1392,7 +1450,7 @@ const docTemplate = `{
         },
         "/api/v1/login": {
             "post": {
-                "description": "Authenticate user with email and password. Sets a session cookie on success.",
+                "description": "Authenticate with email and password. If the user has\nno MFA factor, returns ` + "`" + `{status:\"authenticated\"}` + "`" + ` and\nsets the session cookie. If the user has an active\nfactor, returns ` + "`" + `{status:\"mfa_required\", pending_token,\nexpires_at, factors}` + "`" + ` and the caller must follow up\nwith POST /auth/mfa/verify. No cookie is set on the\nMFA branch.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1402,7 +1460,7 @@ const docTemplate = `{
                 "tags": [
                     "auth"
                 ],
-                "summary": "Login user",
+                "summary": "Login user (step 1: password)",
                 "parameters": [
                     {
                         "description": "Login credentials",
@@ -1416,7 +1474,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Authenticated",
                         "schema": {
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.LoginResponse"
                         }
@@ -10080,7 +10138,11 @@ const docTemplate = `{
                 "factor_deleted",
                 "factor_admin_deleted",
                 "backup_codes_regenerated",
-                "factor_activation_locked"
+                "factor_activation_locked",
+                "login_mfa_required",
+                "mfa_challenge_succeeded",
+                "mfa_challenge_failed",
+                "mfa_challenge_locked"
             ],
             "x-enum-varnames": [
                 "AuditActionLogin",
@@ -10104,7 +10166,11 @@ const docTemplate = `{
                 "AuditActionFactorDeleted",
                 "AuditActionFactorAdminDeleted",
                 "AuditActionBackupCodesRegenerated",
-                "AuditActionFactorActivationLocked"
+                "AuditActionFactorActivationLocked",
+                "AuditActionLoginMFARequired",
+                "AuditActionMFAChallengeSucceeded",
+                "AuditActionMFAChallengeFailed",
+                "AuditActionMFAChallengeLocked"
             ]
         },
         "github_com_eenemeene_kitamanager-go_internal_models.AuditLogResponse": {
@@ -13153,6 +13219,32 @@ const docTemplate = `{
                 "expires_in": {
                     "type": "integer",
                     "example": 604800
+                },
+                "status": {
+                    "type": "string",
+                    "example": "authenticated"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.MFAVerifyRequest": {
+            "type": "object",
+            "required": [
+                "code",
+                "factor_id",
+                "pending_token"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "123456"
+                },
+                "factor_id": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "pending_token": {
+                    "type": "string",
+                    "example": "9ZmN...sBA"
                 }
             }
         },

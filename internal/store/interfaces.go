@@ -271,6 +271,13 @@ type SessionStorer interface {
 	CleanupExpired(ctx context.Context) error
 	ListForUser(ctx context.Context, userID uint) ([]models.Session, error)
 	DeleteForUser(ctx context.Context, idHash string, userID uint) (int64, error)
+
+	// Pending-MFA (two-step login) helpers. Kept on the same interface
+	// because they share the same storage, transaction boundary, and
+	// cleanup job as regular sessions.
+	LookupPendingMFA(ctx context.Context, idHash string) (*SessionPendingLookupResult, error)
+	BumpMFAChallengeFailures(ctx context.Context, idHash string) (int, error)
+	DeletePendingMFA(ctx context.Context, idHash string) error
 }
 
 // AuditStorer defines the interface for audit log storage operations
@@ -286,6 +293,7 @@ type AuditStorer interface {
 	FindFailedLogins(ctx context.Context, email string, since time.Time, limit int) ([]models.AuditLog, error)
 	CountFailedLoginsSince(ctx context.Context, email string, since time.Time) (int64, error)
 	CountFailedPasswordChangesSince(ctx context.Context, userID uint, since time.Time) (int64, error)
+	CountFailedMFAChallengesSince(ctx context.Context, userID uint, since time.Time) (int64, error)
 	Cleanup(ctx context.Context, olderThan time.Time) (int64, error)
 }
 

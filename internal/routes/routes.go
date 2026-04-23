@@ -57,11 +57,17 @@ func Setup(r *gin.Engine, d Deps) {
 	apiRateLimiter := d.APIRateLimiter
 	api := r.Group("/api/v1")
 	{
-		// Public endpoints with rate limiting
+		// Public endpoints with rate limiting. The MFA verify endpoint
+		// shares the same IP-based login rate limit: it's the other
+		// leg of the two-step login handshake and a brute-force
+		// attacker shouldn't be able to route around the limit by
+		// cycling into /auth/mfa/verify after the password step.
 		if loginRateLimiter != nil {
 			api.POST("/login", loginRateLimiter.RateLimit(), authHandler.Login)
+			api.POST("/auth/mfa/verify", loginRateLimiter.RateLimit(), authHandler.MFAVerify)
 		} else {
 			api.POST("/login", authHandler.Login)
+			api.POST("/auth/mfa/verify", authHandler.MFAVerify)
 		}
 
 		// Protected endpoints (require authentication and CSRF for cookie-based auth)
