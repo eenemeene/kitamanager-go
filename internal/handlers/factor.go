@@ -167,6 +167,18 @@ func (h *FactorHandler) Enroll(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusOK, resp)
+	case models.FactorTypeWebAuthn:
+		email := getUserEmailForTOTPLabel(c)
+		displayName := email // Good enough for the authenticator's
+		// account display name; the user's real name isn't available
+		// here without a user-store lookup and the email keeps the
+		// authenticator's picker unambiguous.
+		resp, err := h.service.EnrollWebAuthn(c.Request.Context(), userID, req.Label, req.Password, email, displayName)
+		if err != nil {
+			respondError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, resp)
 	case models.FactorTypeBackupCodes:
 		respondError(c, apperror.BadRequest("backup_codes factors are auto-created; do not enroll directly"))
 	default:

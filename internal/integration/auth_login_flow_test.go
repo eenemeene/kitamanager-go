@@ -24,6 +24,17 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/rbac"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 	"github.com/eenemeene/kitamanager-go/internal/store"
+	webauthnpkg "github.com/eenemeene/kitamanager-go/internal/webauthn"
+)
+
+// testWebAuthn* is the RP configuration the synthetic authenticator
+// signs over. Tests driving the WebAuthn ceremonies must use the
+// same values on both sides; a mismatch would fail origin / rpIdHash
+// checks (which is exactly the production failure mode we want to
+// exercise separately, but not by accident).
+const (
+	testWebAuthnRPID   = "example.test"
+	testWebAuthnOrigin = "https://example.test"
 )
 
 // testTOTPAEADKey is a deterministic test key for the AES-GCM
@@ -95,7 +106,22 @@ func setupAuthFlowRouter(t *testing.T) *authFlowRouter {
 	csrfMW := middleware.NewCSRFMiddleware(testJWTSecret)
 
 	factorStore := store.NewFactorStore(testDB)
-	factorService := service.NewFactorService(factorStore, userStore, testTOTPAEAD(t), "KitaManager (test)", nil, auditService)
+	// Build a real WebAuthn service so the integration tests can
+	// exercise the full registration + assertion ceremony via the
+	// synthetic authenticator in webauthn_authenticator_test.go.
+	// RP id / origin match what the synthetic authenticator signs
+	// over. If these diverge the library's rpIdHash or origin check
+	// will reject the ceremony — which is the point, but means tests
+	// and real code must agree.
+	waSvc, err := webauthnpkg.New(webauthnpkg.Config{
+		RPID:      testWebAuthnRPID,
+		RPName:    "KitaManager (test)",
+		RPOrigins: []string{testWebAuthnOrigin},
+	})
+	if err != nil {
+		t.Fatalf("webauthn init: %v", err)
+	}
+	factorService := service.NewFactorService(factorStore, userStore, testTOTPAEAD(t), "KitaManager (test)", waSvc, auditService)
 
 	// Real auth service — hashes passwords with bcrypt.DefaultCost and issues
 	// opaque session tokens backed by the sessions table. Gets a factor
@@ -112,6 +138,7 @@ func setupAuthFlowRouter(t *testing.T) *authFlowRouter {
 
 	// Public endpoints — no auth middleware.
 	api.POST("/login", authHandler.Login)
+	api.POST("/auth/mfa/challenge", authHandler.MFAChallenge)
 	api.POST("/auth/mfa/verify", authHandler.MFAVerify)
 
 	// Protected endpoints — real auth + CSRF. CSRF is skipped for Bearer
