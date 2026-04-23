@@ -2,16 +2,54 @@ package models
 
 import "time"
 
-// Session is a server-side authenticated session. The `ID` column stores
+// Session kinds. Every row in the sessions table has a kind; the app
+// layer treats the two kinds as separate state machines that happen to
+// share one storage shape.
+//
+//   - SessionKindRegular is a fully authenticated session — password
+//     verified AND (if the user has factors) an MFA code verified. The
+//     RequireAuth middleware only accepts regular sessions.
+//   - SessionKindPendingMFA is the short-lived intermediate state
+//     between /login (password accepted) and /auth/mfa/verify (code
+//     accepted). It is NEVER accepted as an authentication for
+//     protected endpoints and is transported in the JSON response body,
+//     not as a cookie.
+const (
+	SessionKindRegular    = "regular"
+	SessionKindPendingMFA = "pending_mfa"
+)
+
+// Session is a server-side session. The `ID` column stores
 // sha256(raw_cookie_value), so leaking the table does not hand an attacker
-// usable cookies.
+// usable cookies. See the SessionKind* constants for the two kinds of row.
 type Session struct {
-	ID               string    `gorm:"primaryKey;size:64" json:"-"`
-	UserID           uint      `gorm:"not null;index" json:"user_id"`
-	CreatedAt        time.Time `gorm:"not null" json:"created_at"`
-	ExpiresAt        time.Time `gorm:"not null;index" json:"expires_at"`
-	CreatedIP        string    `gorm:"size:45;column:created_ip" json:"created_ip"`
-	CreatedUserAgent string    `gorm:"column:created_user_agent" json:"created_user_agent"`
+	ID     string `gorm:"primaryKey;size:64" json:"-"`
+	UserID uint   `gorm:"not null;index" json:"user_id"`
+	// Kind discriminates regular authenticated sessions from
+	// short-lived pending_mfa rows. Defaults to 'regular' at the DB
+	// layer so pre-migration rows pick up the right kind on read.
+	Kind      string    `gorm:"size:32;not null;default:regular" json:"-"`
+	CreatedAt time.Time `gorm:"not null" json:"created_at"`
+	ExpiresAt time.Time `gorm:"not null;index" json:"expires_at"`
+	// MFAChallengeFailures is bumped atomically on every wrong code
+	// against a pending_mfa row. When it reaches the service-layer
+	// limit the row is destroyed and the user restarts. Always 0 on
+	// regular rows.
+	MFAChallengeFailures int `gorm:"not null;default:0" json:"-"`
+	// PasswordVerifiedAt is stamped when the pending_mfa row is created,
+	// i.e. when bcrypt accepted the password. It proves at audit-time
+	// exactly which check the user has cleared at that point. NULL on
+	// regular rows (redundant with CreatedAt there).
+	PasswordVerifiedAt *time.Time `json:"-"`
+	// ChallengeNonce is reserved for WebAuthn: a fresh ≥16-byte nonce
+	// issued with the PublicKeyCredentialRequestOptions and verified
+	// against the assertion's clientDataJSON. TOTP and backup codes
+	// never populate it. Keeping the column here instead of a later
+	// migration means the verify-time code path stays one shape across
+	// future factor types.
+	ChallengeNonce   []byte `gorm:"type:bytea" json:"-"`
+	CreatedIP        string `gorm:"size:45;column:created_ip" json:"created_ip"`
+	CreatedUserAgent string `gorm:"column:created_user_agent" json:"created_user_agent"`
 }
 
 // UserSessionResponse is the per-session payload for GET /me/sessions.

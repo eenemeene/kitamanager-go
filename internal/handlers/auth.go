@@ -29,13 +29,19 @@ func NewAuthHandler(authService *service.AuthService, secureCookies bool) *AuthH
 }
 
 // Login godoc
-// @Summary Login user
-// @Description Authenticate user with email and password. Sets a session cookie on success.
+// @Summary Login user (step 1: password)
+// @Description Authenticate with email and password. If the user has
+// @Description no MFA factor, returns `{status:"authenticated"}` and
+// @Description sets the session cookie. If the user has an active
+// @Description factor, returns `{status:"mfa_required", pending_token,
+// @Description expires_at, factors}` and the caller must follow up
+// @Description with POST /auth/mfa/verify. No cookie is set on the
+// @Description MFA branch.
 // @Tags auth
 // @Accept json
 // @Produce json
 // @Param request body models.LoginRequest true "Login credentials"
-// @Success 200 {object} models.LoginResponse
+// @Success 200 {object} models.LoginResponse "Authenticated"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 429 {object} models.ErrorResponse
@@ -53,9 +59,64 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	if result.Pending != nil {
+		// MFA required — return the pending handle + factor list. No
+		// cookie is set: the session only materializes after
+		// /auth/mfa/verify succeeds.
+		c.JSON(http.StatusOK, models.LoginMFARequiredResponse{
+			Status:       models.LoginStatusMFARequired,
+			PendingToken: result.Pending.PendingToken,
+			ExpiresAt:    result.Pending.ExpiresAt.UTC().Format(http.TimeFormat),
+			Factors:      result.Pending.Factors,
+		})
+		return
+	}
+
+	h.setAuthCookies(c, result.Authenticated)
+
+	c.JSON(http.StatusOK, models.LoginResponse{
+		Status:    models.LoginStatusAuthenticated,
+		ExpiresIn: result.Authenticated.ExpiresIn,
+	})
+}
+
+// MFAVerify godoc
+// @Summary Login step 2: verify MFA code
+// @Description Exchanges a pending_token from the /login MFA-required
+// @Description response + a TOTP code (or a backup code) for a real
+// @Description session. Sets the session cookie on success.
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body models.MFAVerifyRequest true "Pending token + factor id + code"
+// @Success 200 {object} models.LoginResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 429 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/auth/mfa/verify [post]
+func (h *AuthHandler) MFAVerify(c *gin.Context) {
+	req, ok := bindJSON[models.MFAVerifyRequest](c)
+	if !ok {
+		return
+	}
+	result, err := h.authService.VerifyMFALogin(
+		c.Request.Context(),
+		req.PendingToken,
+		req.FactorID,
+		req.Code,
+		c.ClientIP(),
+		c.GetHeader("User-Agent"),
+	)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	h.setAuthCookies(c, result)
 
 	c.JSON(http.StatusOK, models.LoginResponse{
+		Status:    models.LoginStatusAuthenticated,
 		ExpiresIn: result.ExpiresIn,
 	})
 }
@@ -157,6 +218,7 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	h.setAuthCookies(c, result)
 
 	c.JSON(http.StatusOK, models.LoginResponse{
+		Status:    models.LoginStatusAuthenticated,
 		ExpiresIn: result.ExpiresIn,
 	})
 }

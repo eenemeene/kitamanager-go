@@ -152,6 +152,19 @@ func (s *AuditStore) CountFailedPasswordChangesSince(ctx context.Context, userID
 	return count, err
 }
 
+// CountFailedMFAChallengesSince counts mfa_challenge_failed events for
+// a user since the given time. Backs the per-user lockout that kicks
+// in across distinct pending_mfa rows — the per-row counter alone
+// could be bypassed by an attacker cycling through many pending rows.
+func (s *AuditStore) CountFailedMFAChallengesSince(ctx context.Context, userID uint, since time.Time) (int64, error) {
+	var count int64
+	err := DBFromContext(ctx, s.db).Model(&models.AuditLog{}).
+		Where("action = ? AND user_id = ? AND timestamp >= ?",
+			models.AuditActionMFAChallengeFailed, userID, since).
+		Count(&count).Error
+	return count, err
+}
+
 // FindByID returns a single audit log entry by ID
 func (s *AuditStore) FindByID(ctx context.Context, id uint) (*models.AuditLog, error) {
 	var log models.AuditLog

@@ -199,6 +199,77 @@ func (s *AuditService) LogBackupCodesRegenerated(userID uint) {
 	})
 }
 
+// LogLoginMFARequired logs the password-accepted-but-MFA-required
+// branch of /login. Success=true because the password itself did
+// verify — the session just isn't complete yet.
+func (s *AuditService) LogLoginMFARequired(userID uint, email, ipAddress, userAgent string) {
+	s.log(&models.AuditLog{
+		UserID:    &userID,
+		UserEmail: email,
+		Action:    models.AuditActionLoginMFARequired,
+		IPAddress: ipAddress,
+		UserAgent: userAgent,
+		Success:   true,
+	})
+}
+
+// LogMFAChallengeSucceeded logs /auth/mfa/verify accepting a code.
+// The `factorType` goes in details so dashboards can pivot on TOTP
+// vs backup_codes usage.
+func (s *AuditService) LogMFAChallengeSucceeded(userID uint, email, factorType, ipAddress, userAgent string) {
+	s.log(&models.AuditLog{
+		UserID:    &userID,
+		UserEmail: email,
+		Action:    models.AuditActionMFAChallengeSucceeded,
+		IPAddress: ipAddress,
+		UserAgent: userAgent,
+		Details:   mustMarshalJSON(map[string]string{"factor_type": factorType}),
+		Success:   true,
+	})
+}
+
+// LogMFAChallengeFailed logs a wrong code on /auth/mfa/verify. This
+// is the audit record the per-user rate-limit counter queries.
+// factorType is the user-claimed factor (from the request) so a
+// distributed attack that iterates through factor IDs is visible.
+func (s *AuditService) LogMFAChallengeFailed(userID uint, email, factorType, ipAddress, userAgent, reason string) {
+	s.log(&models.AuditLog{
+		UserID:    &userID,
+		UserEmail: email,
+		Action:    models.AuditActionMFAChallengeFailed,
+		IPAddress: ipAddress,
+		UserAgent: userAgent,
+		Details: mustMarshalJSON(map[string]string{
+			"factor_type": factorType,
+			"reason":      reason,
+		}),
+		Success: false,
+	})
+}
+
+// LogMFAChallengeLocked logs a pending_mfa row being destroyed after
+// MFAChallengeFailureLimit wrong codes. Security signal — the user
+// will have to restart from the password step.
+func (s *AuditService) LogMFAChallengeLocked(userID uint, email, ipAddress, userAgent string) {
+	s.log(&models.AuditLog{
+		UserID:    &userID,
+		UserEmail: email,
+		Action:    models.AuditActionMFAChallengeLocked,
+		IPAddress: ipAddress,
+		UserAgent: userAgent,
+		Success:   false,
+	})
+}
+
+// CountRecentFailedMFAChallenges counts `mfa_challenge_failed` audit
+// rows for the user in the given window. Used by the verify handler
+// to enforce a per-user cap independent of per-pending-row failures —
+// an attacker cycling through many pending rows would otherwise blow
+// past the per-row limit.
+func (s *AuditService) CountRecentFailedMFAChallenges(ctx context.Context, userID uint, window time.Duration) (int64, error) {
+	return s.store.CountFailedMFAChallengesSince(ctx, userID, time.Now().UTC().Add(-window))
+}
+
 // LogSuperAdminChange logs a superadmin status change
 func (s *AuditService) LogSuperAdminChange(actorID uint, actorEmail string, targetUserID uint, targetEmail string, granted bool, ipAddress string) {
 	action := models.AuditActionSuperAdminGrant

@@ -52,6 +52,29 @@ const (
 	// codes. A spike here is the signature of an attacker inside a
 	// user's session trying to brute-force the 6-digit window.
 	AuditActionFactorActivationLocked AuditAction = "factor_activation_locked"
+
+	// --- Two-step login (MFA challenge) events ---
+	// AuditActionLoginMFARequired marks the /login handler accepting
+	// the password but returning a pending_mfa token instead of a
+	// session — i.e. the user has an active primary factor. Shows a
+	// valid password was used but MFA was triggered, and helps detect
+	// mass-unsuccessful password-only attempts against 2FA users.
+	AuditActionLoginMFARequired AuditAction = "login_mfa_required"
+	// AuditActionMFAChallengeSucceeded marks /auth/mfa/verify accepting
+	// a code and exchanging the pending row for a real session. Paired
+	// with a regular AuditActionLogin so dashboards that query "login"
+	// still find every successful sign-in.
+	AuditActionMFAChallengeSucceeded AuditAction = "mfa_challenge_succeeded"
+	// AuditActionMFAChallengeFailed marks a wrong code on
+	// /auth/mfa/verify. Feeds the per-user rate-limit counter
+	// (CountRecentFailedMFAChallenges) that backs up the per-pending-
+	// row limit and blocks distributed brute force across multiple
+	// pending rows.
+	AuditActionMFAChallengeFailed AuditAction = "mfa_challenge_failed"
+	// AuditActionMFAChallengeLocked marks a pending_mfa row being
+	// destroyed after MFAChallengeFailureLimit wrong codes. The user
+	// must restart from the password step.
+	AuditActionMFAChallengeLocked AuditAction = "mfa_challenge_locked"
 )
 
 // AuditLog represents an audit log entry for security-relevant operations.

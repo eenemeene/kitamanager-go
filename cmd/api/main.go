@@ -238,11 +238,12 @@ func initServices(s *appStores, cfg *config.Config, transactor store.Transactor)
 		os.Exit(1)
 	}
 
+	factorSvc := service.NewFactorService(s.factor, s.user, aead, cfg.TOTPIssuer, auditService)
 	return &appServices{
 		audit:                 auditService,
-		auth:                  service.NewAuthService(s.user, s.session, cfg.JWTSecret, auditService),
+		auth:                  service.NewAuthService(s.user, s.session, cfg.JWTSecret, auditService, factorSvc),
 		user:                  service.NewUserService(s.user, s.userOrganization, s.session),
-		factor:                service.NewFactorService(s.factor, s.user, aead, cfg.TOTPIssuer, auditService),
+		factor:                factorSvc,
 		userOrganization:      service.NewUserOrganizationService(s.userOrganization, s.user, transactor),
 		organization:          service.NewOrganizationService(s.organization, s.user),
 		section:               service.NewSectionService(s.section, transactor),

@@ -57,20 +57,20 @@ func TestAuthService_Login_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if result.SessionToken == "" {
+	if result.Authenticated.SessionToken == "" {
 		t.Error("expected non-empty session token")
 	}
-	if result.CSRFToken == "" {
+	if result.Authenticated.CSRFToken == "" {
 		t.Error("expected non-empty CSRF token")
 	}
-	if result.ExpiresIn != int64(SessionLifetime.Seconds()) {
-		t.Errorf("ExpiresIn = %d, want %d", result.ExpiresIn, int64(SessionLifetime.Seconds()))
+	if result.Authenticated.ExpiresIn != int64(SessionLifetime.Seconds()) {
+		t.Errorf("ExpiresIn = %d, want %d", result.Authenticated.ExpiresIn, int64(SessionLifetime.Seconds()))
 	}
 
 	// A session row must exist on the server keyed by sha256 of the returned
 	// raw token.
 	sess := store.NewSessionStore(db)
-	lookup, err := sess.Lookup(ctx, store.HashSessionToken(result.SessionToken))
+	lookup, err := sess.Lookup(ctx, store.HashSessionToken(result.Authenticated.SessionToken))
 	if err != nil {
 		t.Fatalf("lookup session after login: %v", err)
 	}
@@ -181,7 +181,7 @@ func TestAuthService_Login_LockoutWindowExpiry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected login to succeed after lockout window expiry, got %v", err)
 	}
-	if result.SessionToken == "" {
+	if result.Authenticated.SessionToken == "" {
 		t.Error("expected non-empty session token")
 	}
 }
@@ -198,9 +198,9 @@ func TestAuthService_Logout_DeletesSession(t *testing.T) {
 		t.Fatalf("login failed: %v", err)
 	}
 
-	svc.Logout(ctx, loginResult.SessionToken)
+	svc.Logout(ctx, loginResult.Authenticated.SessionToken)
 
-	if _, err := sess.Lookup(ctx, store.HashSessionToken(loginResult.SessionToken)); err != store.ErrNotFound {
+	if _, err := sess.Lookup(ctx, store.HashSessionToken(loginResult.Authenticated.SessionToken)); err != store.ErrNotFound {
 		t.Errorf("expected session to be deleted after logout, got %v", err)
 	}
 }
@@ -534,13 +534,13 @@ func TestAuthService_ListSessions_MarksCurrent(t *testing.T) {
 	}
 
 	// Find the user ID from the second session's lookup.
-	look, err := store.NewSessionStore(db).Lookup(ctx, store.HashSessionToken(a.SessionToken))
+	look, err := store.NewSessionStore(db).Lookup(ctx, store.HashSessionToken(a.Authenticated.SessionToken))
 	if err != nil {
 		t.Fatalf("lookup: %v", err)
 	}
 	userID := look.UserID
 
-	rows, err := svc.ListSessions(ctx, userID, store.HashSessionToken(b.SessionToken))
+	rows, err := svc.ListSessions(ctx, userID, store.HashSessionToken(b.Authenticated.SessionToken))
 	if err != nil {
 		t.Fatalf("ListSessions: %v", err)
 	}
@@ -551,7 +551,7 @@ func TestAuthService_ListSessions_MarksCurrent(t *testing.T) {
 	for _, r := range rows {
 		if r.Current {
 			currentCount++
-			if r.ID != store.HashSessionToken(b.SessionToken) {
+			if r.ID != store.HashSessionToken(b.Authenticated.SessionToken) {
 				t.Errorf("wrong session flagged as current: %q", r.ID)
 			}
 		} else {
@@ -608,7 +608,7 @@ func TestAuthService_RevokeSession_Success(t *testing.T) {
 	}
 	u, _ := store.NewUserStore(db).FindByEmail(ctx, "u@example.com")
 
-	hash := store.HashSessionToken(result.SessionToken)
+	hash := store.HashSessionToken(result.Authenticated.SessionToken)
 	if err := svc.RevokeSession(ctx, u.ID, hash); err != nil {
 		t.Fatalf("RevokeSession: %v", err)
 	}
@@ -649,7 +649,7 @@ func TestAuthService_RevokeSession_CrossUser_NotFound(t *testing.T) {
 	if err != nil {
 		t.Fatalf("alice login: %v", err)
 	}
-	aliceHash := store.HashSessionToken(aliceSession.SessionToken)
+	aliceHash := store.HashSessionToken(aliceSession.Authenticated.SessionToken)
 
 	err = svc.RevokeSession(ctx, bob.ID, aliceHash)
 	if err == nil {
@@ -679,7 +679,7 @@ func TestAuthService_Login_SessionLifetime(t *testing.T) {
 		t.Fatalf("login: %v", err)
 	}
 
-	lookup, err := sess.Lookup(ctx, store.HashSessionToken(result.SessionToken))
+	lookup, err := sess.Lookup(ctx, store.HashSessionToken(result.Authenticated.SessionToken))
 	if err != nil {
 		t.Fatalf("lookup: %v", err)
 	}

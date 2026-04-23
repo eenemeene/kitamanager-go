@@ -409,6 +409,89 @@ func (s *FactorService) CleanupAbandonedPendingFactors(ctx context.Context, olde
 	return err
 }
 
+// DescriptorsForLogin returns the list of factor choices to present to
+// the user in the /login MFA-required response. Only activated
+// factors; ordering matches the Settings list (TOTP first, most-used
+// first, backup_codes last) so the UI's default selection is the
+// factor the user most recently used.
+//
+// Returns an empty slice (not nil) if the user has no active factors —
+// callers use len() == 0 as the signal to skip the MFA step.
+func (s *FactorService) DescriptorsForLogin(ctx context.Context, userID uint) ([]models.LoginFactorDescriptor, error) {
+	rows, err := s.factorStore.FindActiveByUserID(ctx, userID)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "list factors for login")
+	}
+	out := make([]models.LoginFactorDescriptor, 0, len(rows))
+	for i := range rows {
+		out = append(out, models.LoginFactorDescriptor{
+			ID:    rows[i].ID,
+			Type:  rows[i].Type,
+			Label: rows[i].Label,
+		})
+	}
+	return out, nil
+}
+
+// HasActivePrimaryFactor answers "does the user need to go through
+// two-step login?". A user with only a backup_codes factor (impossible
+// today because backup_codes auto-creation requires a primary, but
+// keep the guard in case data drift) is NOT considered MFA-enrolled
+// for the purpose of the password step.
+func (s *FactorService) HasActivePrimaryFactor(ctx context.Context, userID uint) (bool, error) {
+	rows, err := s.factorStore.FindActiveByUserID(ctx, userID)
+	if err != nil {
+		return false, apperror.InternalWrap(err, "check active factors")
+	}
+	for i := range rows {
+		if rows[i].Type != models.FactorTypeBackupCodes {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// VerifyCodeForLogin checks `code` against the given factor's type-
+// specific verifier. Unlike the step-up verify used by Delete/etc, no
+// password is required — the pending_mfa row is the password-
+// verification proof. Factor ownership is enforced against the caller
+// (the pending row's user_id); cross-user factor IDs return NotFound.
+//
+// Returns (factorType, nil) on success so the caller can audit which
+// factor type was used. On a wrong-but-well-formed code returns
+// apperror.Unauthorized; on a missing/cross-user/inactive factor
+// returns apperror.NotFound uniformly to avoid leaking factor
+// existence.
+func (s *FactorService) VerifyCodeForLogin(ctx context.Context, userID, factorID uint, code string) (string, error) {
+	f, err := s.factorStore.FindByIDAndUser(ctx, factorID, userID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return "", apperror.NotFound("factor")
+		}
+		return "", apperror.InternalWrap(err, "find factor")
+	}
+	if f.EnabledAt == nil {
+		// Pending factor — cannot be used to complete a login. Treat
+		// as not-found so a stale factor id (pending from an abandoned
+		// enrolment) doesn't become an oracle.
+		return "", apperror.NotFound("factor")
+	}
+	switch f.Type {
+	case models.FactorTypeTOTP:
+		if ok := s.tryTOTPCode(ctx, f.ID, code); !ok {
+			return f.Type, apperror.Unauthorized("invalid code")
+		}
+		return f.Type, nil
+	case models.FactorTypeBackupCodes:
+		if ok := s.tryBackupCode(ctx, f.ID, code); !ok {
+			return f.Type, apperror.Unauthorized("invalid code")
+		}
+		return f.Type, nil
+	default:
+		return f.Type, apperror.BadRequest(fmt.Sprintf("unsupported factor type: %s", f.Type))
+	}
+}
+
 // ----- internal helpers -----
 
 func (s *FactorService) verifyPassword(ctx context.Context, userID uint, password string) error {

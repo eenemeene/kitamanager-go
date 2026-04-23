@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -30,6 +31,27 @@ const (
 	// counter.
 	passwordChangeLockoutThreshold = 5
 	passwordChangeLockoutWindow    = 15 * time.Minute
+
+	// PendingMFALifetime caps how long a pending_mfa row is accepted on
+	// /auth/mfa/verify. 5 minutes is the Auth0/Okta industry range's
+	// tighter end — plenty for human UX (scan QR + enter 6 digits) and
+	// short enough that a stolen pending token has a tight window.
+	PendingMFALifetime = 5 * time.Minute
+
+	// MFAChallengeFailureLimit caps wrong codes per pending_mfa row.
+	// Hitting it destroys the row and forces the user to restart with
+	// the password step. 5 matches the per-user activation limit and
+	// stays well below NIST SP 800-63B §5.2.2's cap of 100 failures
+	// per account.
+	MFAChallengeFailureLimit = 5
+
+	// mfaPerUserLockoutThreshold / mfaPerUserLockoutWindow back the
+	// per-pending-row counter: an attacker cycling through freshly-
+	// issued pending rows would otherwise blow past the per-row cap.
+	// 20 wrong codes in 15 minutes across all pending rows for the
+	// same user locks further attempts at the verify endpoint.
+	mfaPerUserLockoutThreshold = 20
+	mfaPerUserLockoutWindow    = 15 * time.Minute
 )
 
 // AuthResult contains the session token and metadata returned by auth
@@ -42,12 +64,38 @@ type AuthResult struct {
 	ExpiresIn    int64
 }
 
+// PendingMFAResult is issued by /login when the user has an active
+// primary factor. The `PendingToken` is the raw value to hand back on
+// /auth/mfa/verify; the server stores sha256 of it in the pending_mfa
+// session row. ExpiresAt is carried through so the client shows a
+// clear countdown and doesn't try to reuse an expired handle.
+type PendingMFAResult struct {
+	PendingToken string
+	ExpiresAt    time.Time
+	Factors      []models.LoginFactorDescriptor
+}
+
+// LoginResult is the union returned by Login. Exactly one field is
+// non-nil:
+//   - Authenticated populated for users with no primary factor —
+//     same shape as pre-MFA Login.
+//   - Pending populated for users with an active primary factor; the
+//     caller must follow up with VerifyMFALogin.
+//
+// Handlers should check Pending first (MFA was triggered) and fall
+// through to Authenticated otherwise.
+type LoginResult struct {
+	Authenticated *AuthResult
+	Pending       *PendingMFAResult
+}
+
 // AuthService handles authentication business logic.
 type AuthService struct {
-	userStore    store.UserStorer
-	sessionStore store.SessionStorer
-	serverSecret string
-	auditService *AuditService
+	userStore     store.UserStorer
+	sessionStore  store.SessionStorer
+	serverSecret  string
+	auditService  *AuditService
+	factorService *FactorService
 	// dummyPasswordHash equalizes Login timing on the not-found path.
 	// Without it, bcrypt is skipped when the email is unknown and response
 	// latency acts as an account enumeration oracle.
@@ -56,8 +104,10 @@ type AuthService struct {
 
 // NewAuthService creates a new auth service. `serverSecret` is used for CSRF
 // HMAC derivation; the existing JWT_SECRET config value is reused because it
-// already has a 32-char floor.
-func NewAuthService(userStore store.UserStorer, sessionStore store.SessionStorer, serverSecret string, auditService *AuditService) *AuthService {
+// already has a 32-char floor. `factorService` may be nil in tests that do
+// not exercise two-step login; Login will then behave as if no user has
+// MFA enrolled.
+func NewAuthService(userStore store.UserStorer, sessionStore store.SessionStorer, serverSecret string, auditService *AuditService, factorService *FactorService) *AuthService {
 	dummyHash, err := bcrypt.GenerateFromPassword([]byte("timing-equalizer"), bcrypt.DefaultCost)
 	if err != nil {
 		panic(fmt.Sprintf("failed to generate dummy password hash: %v", err))
@@ -67,6 +117,7 @@ func NewAuthService(userStore store.UserStorer, sessionStore store.SessionStorer
 		sessionStore:      sessionStore,
 		serverSecret:      serverSecret,
 		auditService:      auditService,
+		factorService:     factorService,
 		dummyPasswordHash: dummyHash,
 	}
 }
@@ -80,9 +131,18 @@ func canonicalEmail(email string) string {
 	return strings.ToLower(strings.TrimSpace(email))
 }
 
-// Login authenticates a user with email and password and issues a new
-// session.
-func (s *AuthService) Login(ctx context.Context, email, password, ipAddress, userAgent string) (*AuthResult, error) {
+// Login authenticates a user with email and password. If the user has
+// no active primary factor, a regular session is issued immediately
+// (LoginResult.Authenticated). If the user does have one, a short-
+// lived pending_mfa row is issued instead (LoginResult.Pending); the
+// caller must then call VerifyMFALogin with a code to exchange the
+// pending token for a real session.
+//
+// The password-only audit event (`login`) is only emitted on the no-
+// MFA path — the MFA path emits `login_mfa_required` at this step and
+// the regular `login` at VerifyMFALogin time. This way dashboards that
+// query the `login` action always match a fully-authenticated session.
+func (s *AuthService) Login(ctx context.Context, email, password, ipAddress, userAgent string) (*LoginResult, error) {
 	// Single canonical form is used everywhere: lockout counter, audit row,
 	// and DB lookup. An attacker cannot reset the lockout by rotating case
 	// because all three keys collapse to the same value.
@@ -112,10 +172,129 @@ func (s *AuthService) Login(ctx context.Context, email, password, ipAddress, use
 		return nil, apperror.Unauthorized("invalid credentials")
 	}
 
+	// Check MFA enrolment. A nil factorService (some tests) behaves as
+	// "no user has MFA enrolled" — safe because factorService is only
+	// nil in paths that aren't exercising MFA.
+	if s.factorService != nil {
+		hasFactor, err := s.factorService.HasActivePrimaryFactor(ctx, user.ID)
+		if err != nil {
+			return nil, err
+		}
+		if hasFactor {
+			pending, err := s.issuePendingMFA(ctx, user.ID, ipAddress, userAgent)
+			if err != nil {
+				return nil, err
+			}
+			s.auditService.LogLoginMFARequired(user.ID, user.Email, ipAddress, userAgent)
+			return &LoginResult{Pending: pending}, nil
+		}
+	}
+
 	_ = s.userStore.UpdateLastLogin(ctx, user.ID)
 	s.auditService.LogLogin(user.ID, user.Email, ipAddress, userAgent)
 
-	return s.issueSession(ctx, user.ID, ipAddress, userAgent)
+	authed, err := s.issueSession(ctx, user.ID, ipAddress, userAgent)
+	if err != nil {
+		return nil, err
+	}
+	return &LoginResult{Authenticated: authed}, nil
+}
+
+// VerifyMFALogin exchanges a pending_mfa token + code for a real
+// session. Step-two of the two-step login.
+//
+// Flow:
+//  1. Look up the pending row by sha256(pendingToken). Missing /
+//     expired / wrong kind → 401 (uniform, no enumeration).
+//  2. Enforce per-user lockout: too many failed challenges across any
+//     pending row in the recent window → 429 and the current pending
+//     row is destroyed.
+//  3. Verify the code against the claimed factor via FactorService.
+//     TOTP: compare-and-set on last_used_step; backup_codes: atomic
+//     single-use.
+//  4. On wrong code: bump the per-row counter. If it hits
+//     MFAChallengeFailureLimit the pending row is destroyed
+//     (mfa_challenge_locked audit event) and the response is 429.
+//     Otherwise it is 401 (mfa_challenge_failed audit event).
+//  5. On success: delete pending row, issue real session, audit
+//     mfa_challenge_succeeded + login.
+//
+// User-active check happens on both sides: even a brief window where
+// the user is deactivated between step 1 and step 2 must not allow
+// completing the login. We treat a deactivated user as 401 to avoid
+// leaking the admin action.
+func (s *AuthService) VerifyMFALogin(ctx context.Context, pendingToken string, factorID uint, code, ipAddress, userAgent string) (*AuthResult, error) {
+	if pendingToken == "" {
+		return nil, apperror.Unauthorized("invalid pending token")
+	}
+	pendHash := store.HashSessionToken(pendingToken)
+
+	pending, err := s.sessionStore.LookupPendingMFA(ctx, pendHash)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, apperror.Unauthorized("invalid pending token")
+		}
+		return nil, apperror.InternalWrap(err, "lookup pending")
+	}
+	if !pending.UserActive {
+		// Soft-delete the row so a subsequent call after the admin
+		// un-deactivates the user does not still succeed.
+		_ = s.sessionStore.DeletePendingMFA(ctx, pendHash)
+		return nil, apperror.Unauthorized("invalid pending token")
+	}
+
+	// Per-user lockout gate. Runs BEFORE the factor verify to avoid
+	// contributing to bcrypt/TOTP CPU on a known-hostile account.
+	perUserFailures, err := s.auditService.CountRecentFailedMFAChallenges(ctx, pending.UserID, mfaPerUserLockoutWindow)
+	if err == nil && perUserFailures >= mfaPerUserLockoutThreshold {
+		_ = s.sessionStore.DeletePendingMFA(ctx, pendHash)
+		s.auditService.LogMFAChallengeLocked(pending.UserID, pending.UserEmail, ipAddress, userAgent)
+		return nil, apperror.TooManyRequests("too many failed MFA attempts, please try again later")
+	}
+
+	factorType, verifyErr := s.factorService.VerifyCodeForLogin(ctx, pending.UserID, factorID, code)
+	if verifyErr != nil {
+		// Wrong-factor or unknown-factor cases return NotFound from
+		// VerifyCodeForLogin — we surface them as 401 to avoid
+		// distinguishing "you picked a factor that isn't yours" from
+		// "wrong code." The audit record preserves the detail.
+		if errors.Is(verifyErr, apperror.ErrNotFound) {
+			s.auditService.LogMFAChallengeFailed(pending.UserID, pending.UserEmail, "", ipAddress, userAgent, "unknown factor")
+			// Do NOT bump the per-row counter: a totally invalid
+			// factor id is more likely a UI bug than a brute force.
+			return nil, apperror.Unauthorized("invalid code")
+		}
+		if errors.Is(verifyErr, apperror.ErrUnauthorized) {
+			newCount, bumpErr := s.sessionStore.BumpMFAChallengeFailures(ctx, pendHash)
+			if bumpErr != nil {
+				// Pending row vanished mid-request (expired between
+				// lookup and bump). Fail closed.
+				slog.Error("bump mfa failures", "error", bumpErr)
+				return nil, apperror.Unauthorized("invalid code")
+			}
+			if newCount >= MFAChallengeFailureLimit {
+				_ = s.sessionStore.DeletePendingMFA(ctx, pendHash)
+				s.auditService.LogMFAChallengeLocked(pending.UserID, pending.UserEmail, ipAddress, userAgent)
+				return nil, apperror.TooManyRequests("too many wrong codes, please restart login")
+			}
+			s.auditService.LogMFAChallengeFailed(pending.UserID, pending.UserEmail, factorType, ipAddress, userAgent, "invalid code")
+			return nil, apperror.Unauthorized("invalid code")
+		}
+		return nil, verifyErr
+	}
+
+	// Success — consume pending row, issue real session.
+	if err := s.sessionStore.DeletePendingMFA(ctx, pendHash); err != nil {
+		slog.Error("delete pending after verify", "error", err)
+		// Fall through: the verify succeeded; orphan pending is
+		// harmless and will be GC'd.
+	}
+
+	_ = s.userStore.UpdateLastLogin(ctx, pending.UserID)
+	s.auditService.LogMFAChallengeSucceeded(pending.UserID, pending.UserEmail, factorType, ipAddress, userAgent)
+	s.auditService.LogLogin(pending.UserID, pending.UserEmail, ipAddress, userAgent)
+
+	return s.issueSession(ctx, pending.UserID, ipAddress, userAgent)
 }
 
 // Logout deletes the caller's session. Idempotent — a missing row is not an
@@ -246,6 +425,42 @@ func (s *AuthService) RevokeSession(ctx context.Context, userID uint, idHash str
 	return nil
 }
 
+// issuePendingMFA generates a pending_mfa row + raw token pair and
+// attaches the current factor descriptors. The raw token is returned
+// to the caller in the JSON body; the row carries sha256(raw).
+func (s *AuthService) issuePendingMFA(ctx context.Context, userID uint, ipAddress, userAgent string) (*PendingMFAResult, error) {
+	raw, hashed, err := store.GenerateSessionToken()
+	if err != nil {
+		return nil, apperror.Internal("failed to generate pending token")
+	}
+	now := time.Now().UTC()
+	expires := now.Add(PendingMFALifetime)
+	pv := now
+	row := &models.Session{
+		ID:                 hashed,
+		UserID:             userID,
+		Kind:               models.SessionKindPendingMFA,
+		CreatedAt:          now,
+		ExpiresAt:          expires,
+		PasswordVerifiedAt: &pv,
+		CreatedIP:          ipAddress,
+		CreatedUserAgent:   userAgent,
+	}
+	if err := s.sessionStore.Create(ctx, row); err != nil {
+		return nil, apperror.Internal("failed to create pending session")
+	}
+
+	factors, err := s.factorService.DescriptorsForLogin(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return &PendingMFAResult{
+		PendingToken: raw,
+		ExpiresAt:    expires,
+		Factors:      factors,
+	}, nil
+}
+
 // issueSession generates a new session row and the matching CSRF token.
 func (s *AuthService) issueSession(ctx context.Context, userID uint, ipAddress, userAgent string) (*AuthResult, error) {
 	raw, hashed, err := store.GenerateSessionToken()
@@ -256,6 +471,7 @@ func (s *AuthService) issueSession(ctx context.Context, userID uint, ipAddress, 
 	sess := &models.Session{
 		ID:               hashed,
 		UserID:           userID,
+		Kind:             models.SessionKindRegular,
 		CreatedAt:        now,
 		ExpiresAt:        now.Add(SessionLifetime),
 		CreatedIP:        ipAddress,

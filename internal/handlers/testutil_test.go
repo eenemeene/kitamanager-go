@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
+	cryptopkg "github.com/eenemeene/kitamanager-go/internal/crypto"
 	"github.com/eenemeene/kitamanager-go/internal/ctxkeys"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
@@ -267,12 +269,21 @@ func createAuditService(db *gorm.DB) *service.AuditService {
 	return service.NewAuditService(auditStore)
 }
 
-// createAuthService creates an auth service for testing.
+// createAuthService creates an auth service for testing. Wires in a
+// real FactorService so two-step login paths are exercised the same
+// way as production — tests that don't enrol any factor see non-MFA
+// behaviour.
 func createAuthService(db *gorm.DB) *service.AuthService {
 	userStore := store.NewUserStore(db)
 	sessionStore := store.NewSessionStore(db)
 	auditService := createAuditService(db)
-	return service.NewAuthService(userStore, sessionStore, "test-jwt-secret", auditService)
+	keyBytes, _ := hex.DecodeString("abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789")
+	aead, err := cryptopkg.NewAEAD(keyBytes)
+	if err != nil {
+		panic(err)
+	}
+	factorSvc := service.NewFactorService(store.NewFactorStore(db), userStore, aead, "KitaManager (test)", auditService)
+	return service.NewAuthService(userStore, sessionStore, "test-jwt-secret", auditService, factorSvc)
 }
 
 // createAuthHandler creates an auth handler for testing.

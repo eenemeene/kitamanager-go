@@ -72,9 +72,6 @@ func setupAuthFlowRouter(t *testing.T) *authFlowRouter {
 	auditStore := store.NewAuditStore(testDB)
 	auditService := service.NewAuditService(auditStore)
 
-	// Real auth service — hashes passwords with bcrypt.DefaultCost and issues
-	// opaque session tokens backed by the sessions table.
-	authService := service.NewAuthService(userStore, sessionStore, testJWTSecret, auditService)
 	userService := service.NewUserService(userStore, userOrgStore)
 	userOrgService := service.NewUserOrganizationService(userOrgStore, userStore, transactor)
 	orgService := service.NewOrganizationService(orgStore, userStore)
@@ -100,6 +97,11 @@ func setupAuthFlowRouter(t *testing.T) *authFlowRouter {
 	factorStore := store.NewFactorStore(testDB)
 	factorService := service.NewFactorService(factorStore, userStore, testTOTPAEAD(t), "KitaManager (test)", auditService)
 
+	// Real auth service — hashes passwords with bcrypt.DefaultCost and issues
+	// opaque session tokens backed by the sessions table. Gets a factor
+	// service so two-step login fires for MFA-enrolled users.
+	authService := service.NewAuthService(userStore, sessionStore, testJWTSecret, auditService, factorService)
+
 	authHandler := handlers.NewAuthHandler(authService, false /*secureCookies*/)
 	userHandler := handlers.NewUserHandler(userService, userOrgService, auditService, sessionStore)
 	orgHandler := handlers.NewOrganizationHandler(orgService, auditService)
@@ -110,6 +112,7 @@ func setupAuthFlowRouter(t *testing.T) *authFlowRouter {
 
 	// Public endpoints — no auth middleware.
 	api.POST("/login", authHandler.Login)
+	api.POST("/auth/mfa/verify", authHandler.MFAVerify)
 
 	// Protected endpoints — real auth + CSRF. CSRF is skipped for Bearer
 	// requests so we don't need to send X-CSRF-Token in these tests.
@@ -118,6 +121,7 @@ func setupAuthFlowRouter(t *testing.T) *authFlowRouter {
 	protected.Use(csrfMW.ValidateCSRF())
 
 	protected.GET("/me", authHandler.Me)
+	protected.POST("/logout", authHandler.Logout)
 	protected.GET("/me/sessions", authHandler.ListSessions)
 	protected.DELETE("/me/sessions/:id", authHandler.RevokeSession)
 
