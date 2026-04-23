@@ -69,17 +69,22 @@ interface RequestOptionsJSON {
 // decodeCreationOptions turns the server JSON into the object
 // `navigator.credentials.create({publicKey: ...})` expects — namely
 // with ArrayBuffers in place of base64url strings.
+//
+// go-webauthn emits the options nested under a top-level `publicKey`
+// key to match the browser shape; unwrap if present so callers can
+// pass the server response directly without having to know the shape.
 export function decodeCreationOptions(
-  opts: CreationOptionsJSON
+  opts: CreationOptionsJSON | { publicKey: CreationOptionsJSON }
 ): PublicKeyCredentialCreationOptions {
+  const inner = 'publicKey' in opts ? opts.publicKey : opts;
   return {
-    ...opts,
-    challenge: base64urlToBuffer(opts.challenge),
+    ...inner,
+    challenge: base64urlToBuffer(inner.challenge),
     user: {
-      ...opts.user,
-      id: base64urlToBuffer(opts.user.id),
+      ...inner.user,
+      id: base64urlToBuffer(inner.user.id),
     },
-    excludeCredentials: opts.excludeCredentials?.map((c) => ({
+    excludeCredentials: inner.excludeCredentials?.map((c) => ({
       ...c,
       id: base64urlToBuffer(c.id),
     })),
@@ -87,12 +92,17 @@ export function decodeCreationOptions(
 }
 
 // decodeRequestOptions turns the server JSON into the object
-// `navigator.credentials.get({publicKey: ...})` expects.
-export function decodeRequestOptions(opts: RequestOptionsJSON): PublicKeyCredentialRequestOptions {
+// `navigator.credentials.get({publicKey: ...})` expects. Unwraps the
+// optional top-level `publicKey` wrapper for the same reason as
+// decodeCreationOptions.
+export function decodeRequestOptions(
+  opts: RequestOptionsJSON | { publicKey: RequestOptionsJSON }
+): PublicKeyCredentialRequestOptions {
+  const inner = 'publicKey' in opts ? opts.publicKey : opts;
   return {
-    ...opts,
-    challenge: base64urlToBuffer(opts.challenge),
-    allowCredentials: opts.allowCredentials?.map((c) => ({
+    ...inner,
+    challenge: base64urlToBuffer(inner.challenge),
+    allowCredentials: inner.allowCredentials?.map((c) => ({
       ...c,
       id: base64urlToBuffer(c.id),
     })),

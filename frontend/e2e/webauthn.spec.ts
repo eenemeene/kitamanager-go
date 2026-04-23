@@ -56,14 +56,7 @@ async function logout(page: Page) {
   await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
 }
 
-// TODO: re-enable once the CDP virtual-authenticator ceremony is
-// reliable end-to-end. The backend flow is covered by Go integration
-// tests (internal/integration/auth_webauthn_flow_test.go) which use a
-// synthetic ES256 authenticator and exercise real attestation +
-// assertion verification. The failure here appears to be in the
-// browser ↔ server round-trip inside CI's headless Chromium and needs
-// iteration in a real dev browser.
-test.describe.skip('WebAuthn enrolment via Settings', () => {
+test.describe('WebAuthn enrolment via Settings', () => {
   let testUserId: number | undefined;
   let testEmail = '';
   const password = 'webauthn-e2e-pw-123';
@@ -128,8 +121,7 @@ test.describe.skip('WebAuthn enrolment via Settings', () => {
   });
 });
 
-// TODO: re-enable alongside the enrolment describe above.
-test.describe.skip('WebAuthn login', () => {
+test.describe('WebAuthn login', () => {
   let testUserId: number | undefined;
   let testEmail = '';
   const password = 'webauthn-login-pw-123';
