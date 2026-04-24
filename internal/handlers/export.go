@@ -55,7 +55,7 @@ func (h *ExportHandler) ExportEmployees(c *gin.Context) {
 		return
 	}
 
-	activeOnDate, ok := parseOptionalDate(c, "active_on")
+	activeOnDate, ok := parseDateOrToday(c, "active_on")
 	if !ok {
 		return
 	}

@@ -247,7 +247,7 @@ func (h *ChildAttendanceHandler) ListByDate(c *gin.Context) {
 		return
 	}
 
-	date, ok := parseOptionalDate(c, "date")
+	date, ok := parseDateOrToday(c, "date")
 	if !ok {
 		return
 	}
@@ -286,7 +286,7 @@ func (h *ChildAttendanceHandler) GetDailySummary(c *gin.Context) {
 		return
 	}
 
-	date, ok := parseOptionalDate(c, "date")
+	date, ok := parseDateOrToday(c, "date")
 	if !ok {
 		return
 	}

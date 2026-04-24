@@ -143,6 +143,11 @@ func (s *FactorService) GetForUser(ctx context.Context, userID, factorID uint) (
 //
 // Returns the factor row plus the enrollment payload (base32 secret +
 // otpauth URI) shown to the user once.
+//
+// No audit event is emitted at this pending-row stage — the audited
+// event is `factor_enrolled` on successful ActivateFactor. Abandoned
+// pending rows get cleaned up by CleanupAbandonedPendingFactors and
+// carry no security signal of their own.
 func (s *FactorService) EnrollTOTP(ctx context.Context, userID uint, label *string, password string, accountLabel string) (*models.FactorResponse, error) {
 	if err := s.verifyPassword(ctx, userID, password); err != nil {
 		return nil, err
@@ -380,6 +385,13 @@ func (s *FactorService) UpdateLabel(ctx context.Context, userID, factorID uint, 
 			label = &trimmed
 		}
 	}
+	f, err := s.factorStore.FindByIDAndUser(ctx, factorID, userID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, apperror.NotFound("factor")
+		}
+		return nil, apperror.InternalWrap(err, "find factor")
+	}
 	ok, err := s.factorStore.UpdateLabel(ctx, factorID, userID, label)
 	if err != nil {
 		return nil, apperror.InternalWrap(err, "update label")
@@ -387,6 +399,7 @@ func (s *FactorService) UpdateLabel(ctx context.Context, userID, factorID uint, 
 	if !ok {
 		return nil, apperror.NotFound("factor")
 	}
+	s.auditService.LogFactorLabelUpdated(ctx, userID, factorID, f.Type)
 	return s.GetForUser(ctx, userID, factorID)
 }
 
@@ -454,6 +467,9 @@ const WebAuthnRegistrationChallengeLifetime = 5 * time.Minute
 // The server-side SessionData (challenge + expected UV + userHandle)
 // is persisted on the factor row's registration_challenge column so
 // the activate path can round-trip the verification.
+//
+// As with EnrollTOTP, no audit event is emitted for the pending row —
+// the audited event is `factor_enrolled` on successful ActivateFactor.
 func (s *FactorService) EnrollWebAuthn(ctx context.Context, userID uint, label *string, password, accountName, displayName string) (*models.FactorResponse, error) {
 	if s.webAuthn == nil {
 		return nil, apperror.BadRequest("WebAuthn is not enabled on this deployment")

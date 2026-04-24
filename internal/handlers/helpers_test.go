@@ -92,12 +92,12 @@ func TestParseRequiredDate_InvalidFormat(t *testing.T) {
 	}
 }
 
-func TestParseOptionalDate_Empty_ReturnsUTC(t *testing.T) {
+func TestParseDateOrToday_Empty_ReturnsUTC(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest("GET", "/?", nil)
 
-	date, ok := parseOptionalDate(c, "active_on")
+	date, ok := parseDateOrToday(c, "active_on")
 	if !ok {
 		t.Fatal("expected ok=true")
 	}
@@ -106,12 +106,12 @@ func TestParseOptionalDate_Empty_ReturnsUTC(t *testing.T) {
 	}
 }
 
-func TestParseOptionalDate_WithValue(t *testing.T) {
+func TestParseDateOrToday_WithValue(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest("GET", "/?active_on=2024-06-15", nil)
 
-	date, ok := parseOptionalDate(c, "active_on")
+	date, ok := parseDateOrToday(c, "active_on")
 	if !ok {
 		t.Fatal("expected ok=true")
 	}
@@ -121,12 +121,12 @@ func TestParseOptionalDate_WithValue(t *testing.T) {
 	}
 }
 
-func TestParseOptionalDate_InvalidFormat(t *testing.T) {
+func TestParseDateOrToday_InvalidFormat(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest("GET", "/?active_on=not-a-date", nil)
 
-	_, ok := parseOptionalDate(c, "active_on")
+	_, ok := parseDateOrToday(c, "active_on")
 	if ok {
 		t.Fatal("expected ok=false for invalid format")
 	}

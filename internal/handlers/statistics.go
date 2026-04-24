@@ -165,7 +165,7 @@ func (h *StatisticsHandler) GetAgeDistribution(c *gin.Context) {
 		return
 	}
 
-	date, ok := parseOptionalDate(c, "date")
+	date, ok := parseDateOrToday(c, "date")
 	if !ok {
 		return
 	}
@@ -199,7 +199,7 @@ func (h *StatisticsHandler) GetContractPropertiesDistribution(c *gin.Context) {
 		return
 	}
 
-	date, ok := parseOptionalDate(c, "date")
+	date, ok := parseDateOrToday(c, "date")
 	if !ok {
 		return
 	}
@@ -234,7 +234,7 @@ func (h *StatisticsHandler) GetFunding(c *gin.Context) {
 		return
 	}
 
-	date, ok := parseOptionalDate(c, "date")
+	date, ok := parseDateOrToday(c, "date")
 	if !ok {
 		return
 	}

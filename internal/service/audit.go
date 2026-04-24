@@ -210,6 +210,20 @@ func (s *AuditService) LogFactorDeleted(ctx context.Context, userID uint, factor
 	})
 }
 
+// LogFactorLabelUpdated logs a user renaming one of their own MFA factors.
+// factorID is recorded as the ResourceID so an investigator can correlate
+// the event with the exact factor row.
+func (s *AuditService) LogFactorLabelUpdated(ctx context.Context, userID, factorID uint, factorType string) {
+	s.log(ctx, &models.AuditLog{
+		UserID:       &userID,
+		Action:       models.AuditActionFactorLabelUpdated,
+		ResourceType: "factor",
+		ResourceID:   &factorID,
+		Details:      mustMarshalJSON(map[string]string{"factor_type": factorType}),
+		Success:      true,
+	})
+}
+
 // LogFactorActivationLocked logs a pending factor being auto-deleted
 // because activation failures hit the limit. This is a security
 // signal: the common cause is an attacker in a hijacked session trying

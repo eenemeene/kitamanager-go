@@ -65,6 +65,11 @@ const (
 	AuditActionFactorEnrolled AuditAction = "factor_enrolled"
 	// AuditActionFactorDeleted marks a user removing their OWN factor.
 	AuditActionFactorDeleted AuditAction = "factor_deleted"
+	// AuditActionFactorLabelUpdated marks a user renaming one of their
+	// own factors. Not security-sensitive on its own (the label is just
+	// a display string), but emitted for completeness so the audit log
+	// covers every mutating factor operation.
+	AuditActionFactorLabelUpdated AuditAction = "factor_label_updated"
 	// AuditActionFactorAdminDeleted marks an admin wiping a user's
 	// factor (support-ticket recovery for a lost authenticator).
 	// Distinct from FactorDeleted so audit queries can separate "user

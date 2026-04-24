@@ -69,7 +69,7 @@ func (h *EmployeeHandler) List(c *gin.Context) {
 	}
 
 	// Parse optional active_on filter (defaults to today)
-	activeOnDate, ok := parseOptionalDate(c, "active_on")
+	activeOnDate, ok := parseDateOrToday(c, "active_on")
 	if !ok {
 		return
 	}

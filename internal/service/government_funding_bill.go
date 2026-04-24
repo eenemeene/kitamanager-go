@@ -481,7 +481,7 @@ func (s *GovernmentFundingBillService) GetByID(ctx context.Context, id, orgID ui
 			}
 		}
 		rows := make([]models.GovernmentFundingBillRowResponse, 0, len(rowMap))
-		for i := 0; i <= maxIdx; i++ {
+		for i := range maxIdx + 1 {
 			payments, ok := rowMap[i]
 			if !ok {
 				continue
