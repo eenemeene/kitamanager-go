@@ -39,7 +39,7 @@ func (h *StepPromotionHandler) GetStepPromotions(c *gin.Context) {
 		return
 	}
 
-	date, ok := parseOptionalDate(c, "date")
+	date, ok := parseDateOrToday(c, "date")
 	if !ok {
 		return
 	}

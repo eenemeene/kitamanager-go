@@ -136,10 +136,16 @@ func parseRequiredDate(c *gin.Context, param string) (time.Time, bool) {
 	return date, true
 }
 
-// parseOptionalDate parses an optional date query parameter.
-// Returns current time if param is empty, or parsed date if valid.
+// parseDateOrToday parses an optional date query parameter and defaults
+// to today's UTC date when the param is absent. Use this ONLY for
+// endpoints where "today" is the semantically correct default (e.g.
+// attendance summaries, age distributions). Do NOT use it for params
+// that are logically required — the silent default hides missing
+// client input, which the CLAUDE.md REST conventions section forbids.
+// For truly required dates use parseRequiredDate; for nil-on-absent use
+// parseOptionalDatePtr.
 // Returns (date, ok). If ok is false, error response has been sent.
-func parseOptionalDate(c *gin.Context, param string) (time.Time, bool) {
+func parseDateOrToday(c *gin.Context, param string) (time.Time, bool) {
 	dateStr := c.Query(param)
 	if dateStr == "" {
 		return time.Now().UTC(), true

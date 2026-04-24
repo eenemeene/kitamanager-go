@@ -63,6 +63,7 @@ definitions:
     - password_change_failed
     - factor_enrolled
     - factor_deleted
+    - factor_label_updated
     - factor_admin_deleted
     - backup_codes_regenerated
     - factor_activation_locked
@@ -94,6 +95,7 @@ definitions:
     - AuditActionPasswordChangeFailed
     - AuditActionFactorEnrolled
     - AuditActionFactorDeleted
+    - AuditActionFactorLabelUpdated
     - AuditActionFactorAdminDeleted
     - AuditActionBackupCodesRegenerated
     - AuditActionFactorActivationLocked
