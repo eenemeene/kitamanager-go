@@ -84,7 +84,7 @@ type ChildAttendanceResponse struct {
 	// should render "anonymous" or similar when the field is absent.
 	RecordedBy *uint     `json:"recorded_by,omitempty" example:"1"`
 	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt      time.Time  `json:"updated_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 // ToResponse converts a ChildAttendance to a ChildAttendanceResponse.
