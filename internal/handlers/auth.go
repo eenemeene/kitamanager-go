@@ -161,7 +161,13 @@ func (h *AuthHandler) MFAChallenge(c *gin.Context) {
 func (h *AuthHandler) Logout(c *gin.Context) {
 	sessionToken, _ := c.Cookie(sessionCookie)
 
-	h.authService.Logout(c.Request.Context(), sessionToken)
+	// If the auth middleware already resolved the caller we know who
+	// to attribute the logout to. If not (expired / absent session)
+	// the service skips the audit.
+	userID := getUserID(c)
+	email, _ := c.Get(ctxkeys.UserEmail)
+	emailStr, _ := email.(string)
+	h.authService.Logout(c.Request.Context(), sessionToken, userID, emailStr, c.ClientIP())
 
 	h.clearAuthCookies(c)
 
@@ -310,7 +316,9 @@ func (h *AuthHandler) RevokeSession(c *gin.Context) {
 
 	id := c.Param("id")
 
-	if err := h.authService.RevokeSession(c.Request.Context(), userID, id); err != nil {
+	email, _ := c.Get(ctxkeys.UserEmail)
+	emailStr, _ := email.(string)
+	if err := h.authService.RevokeSession(c.Request.Context(), userID, id, emailStr, c.ClientIP()); err != nil {
 		respondError(c, err)
 		return
 	}

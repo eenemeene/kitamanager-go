@@ -303,14 +303,26 @@ func (s *AuthService) VerifyMFALogin(ctx context.Context, pendingToken string, f
 
 // Logout deletes the caller's session. Idempotent — a missing row is not an
 // error, so logging out an already-expired session is a no-op.
-func (s *AuthService) Logout(ctx context.Context, sessionToken string) {
+//
+// userID + email + ipAddress are optional context for the audit log;
+// the handler passes them in when the request arrived with a
+// valid-at-middleware-time session. When the session has already
+// expired (empty token, zero userID) we skip the audit to avoid
+// spamming the log with no-op double-clicks.
+func (s *AuthService) Logout(ctx context.Context, sessionToken string, userID uint, email, ipAddress string) {
 	if sessionToken == "" {
 		return
 	}
 	idHash := store.HashSessionToken(sessionToken)
 	if err := s.sessionStore.Delete(ctx, idHash); err != nil {
 		slog.Error("Failed to delete session during logout", "error", err)
+		return
 	}
+	if userID == 0 {
+		return
+	}
+	uid := userID
+	s.auditService.LogLogout(&uid, email, ipAddress)
 }
 
 // ChangePassword verifies the current password, sets a new one, logs every
@@ -418,7 +430,11 @@ func (s *AuthService) ListSessions(ctx context.Context, userID uint, currentIDHa
 // user's session even if they learned the target's id-hash. Returns
 // NotFound if no matching row exists, so callers leak neither the
 // session's existence nor its owner.
-func (s *AuthService) RevokeSession(ctx context.Context, userID uint, idHash string) error {
+//
+// email + ipAddress are used only for the audit-log entry we emit on
+// a successful revocation. A NotFound is NOT audited — it signals a
+// stale UI state, not a security event.
+func (s *AuthService) RevokeSession(ctx context.Context, userID uint, idHash, email, ipAddress string) error {
 	rows, err := s.sessionStore.DeleteForUser(ctx, idHash, userID)
 	if err != nil {
 		return apperror.InternalWrap(err, "failed to revoke session")
@@ -426,6 +442,7 @@ func (s *AuthService) RevokeSession(ctx context.Context, userID uint, idHash str
 	if rows == 0 {
 		return apperror.NotFound("session")
 	}
+	s.auditService.LogSessionRevoked(userID, email, idHash, ipAddress)
 	return nil
 }
 

@@ -198,7 +198,7 @@ func TestAuthService_Logout_DeletesSession(t *testing.T) {
 		t.Fatalf("login failed: %v", err)
 	}
 
-	svc.Logout(ctx, loginResult.Authenticated.SessionToken)
+	svc.Logout(ctx, loginResult.Authenticated.SessionToken, 1, "test@example.com", "127.0.0.1")
 
 	if _, err := sess.Lookup(ctx, store.HashSessionToken(loginResult.Authenticated.SessionToken)); err != store.ErrNotFound {
 		t.Errorf("expected session to be deleted after logout, got %v", err)
@@ -211,7 +211,7 @@ func TestAuthService_Logout_EmptyTokenIsNoOp(t *testing.T) {
 	ctx := context.Background()
 
 	// Should not panic or error.
-	svc.Logout(ctx, "")
+	svc.Logout(ctx, "", 0, "", "127.0.0.1")
 }
 
 func TestAuthService_Logout_UnknownTokenIsNoOp(t *testing.T) {
@@ -220,7 +220,55 @@ func TestAuthService_Logout_UnknownTokenIsNoOp(t *testing.T) {
 	ctx := context.Background()
 
 	// Should not panic or error.
-	svc.Logout(ctx, "never-issued-this")
+	svc.Logout(ctx, "never-issued-this", 0, "", "127.0.0.1")
+}
+
+func TestAuthService_Logout_EmitsAuditRow(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	ctx := context.Background()
+
+	user := createTestUserWithHashedPassword(t, db, "U", "u@example.com", "pw-123456")
+	result, err := svc.Login(ctx, "u@example.com", "pw-123456", "10.0.0.1", "ua")
+	if err != nil {
+		t.Fatalf("login: %v", err)
+	}
+
+	svc.Logout(ctx, result.Authenticated.SessionToken, user.ID, user.Email, "10.0.0.1")
+	svc.auditService.Shutdown()
+
+	var rows []models.AuditLog
+	if err := db.Where("action = ? AND user_id = ?",
+		models.AuditActionLogout, user.ID).Find(&rows).Error; err != nil {
+		t.Fatalf("query audit rows: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 logout audit row, got %d", len(rows))
+	}
+	if rows[0].IPAddress != "10.0.0.1" || rows[0].UserEmail != user.Email || !rows[0].Success {
+		t.Errorf("unexpected row: %+v", rows[0])
+	}
+}
+
+// An expired / unknown session must NOT emit a logout audit row —
+// otherwise a user double-clicking "logout" after their session
+// already expired would spam the audit log.
+func TestAuthService_Logout_UnknownTokenDoesNotEmitAudit(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	ctx := context.Background()
+
+	svc.Logout(ctx, "never-issued-this", 0, "", "10.0.0.1")
+	svc.auditService.Shutdown()
+
+	var count int64
+	if err := db.Model(&models.AuditLog{}).
+		Where("action = ?", models.AuditActionLogout).Count(&count).Error; err != nil {
+		t.Fatalf("count audit rows: %v", err)
+	}
+	if count != 0 {
+		t.Errorf("expected 0 logout audit rows for unknown-token logout, got %d", count)
+	}
 }
 
 func TestAuthService_ChangePassword_Success(t *testing.T) {
@@ -609,7 +657,7 @@ func TestAuthService_RevokeSession_Success(t *testing.T) {
 	u, _ := store.NewUserStore(db).FindByEmail(ctx, "u@example.com")
 
 	hash := store.HashSessionToken(result.Authenticated.SessionToken)
-	if err := svc.RevokeSession(ctx, u.ID, hash); err != nil {
+	if err := svc.RevokeSession(ctx, u.ID, hash, u.Email, "10.0.0.1"); err != nil {
 		t.Fatalf("RevokeSession: %v", err)
 	}
 
@@ -626,13 +674,86 @@ func TestAuthService_RevokeSession_UnknownID_NotFound(t *testing.T) {
 	ctx := context.Background()
 	user := createTestUserWithHashedPassword(t, db, "User", "u@example.com", "pw-123456")
 
-	err := svc.RevokeSession(ctx, user.ID, store.HashSessionToken("never-issued"))
+	err := svc.RevokeSession(ctx, user.ID, store.HashSessionToken("never-issued"), user.Email, "10.0.0.1")
 	if err == nil {
 		t.Fatal("expected NotFound, got nil")
 	}
 	if !errors.Is(err, apperror.ErrNotFound) {
 		t.Errorf("expected ErrNotFound, got %v", err)
 	}
+}
+
+func TestAuthService_RevokeSession_EmitsAuditRow(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	ctx := context.Background()
+	createTestUserWithHashedPassword(t, db, "U", "u@example.com", "pw-123456")
+	result, err := svc.Login(ctx, "u@example.com", "pw-123456", "10.0.0.1", "ua")
+	if err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	u, _ := store.NewUserStore(db).FindByEmail(ctx, "u@example.com")
+	hash := store.HashSessionToken(result.Authenticated.SessionToken)
+
+	if err := svc.RevokeSession(ctx, u.ID, hash, u.Email, "10.0.0.1"); err != nil {
+		t.Fatalf("revoke: %v", err)
+	}
+	svc.auditService.Shutdown()
+
+	var rows []models.AuditLog
+	if err := db.Where("action = ? AND user_id = ?",
+		models.AuditActionSessionRevoked, u.ID).Find(&rows).Error; err != nil {
+		t.Fatalf("query audit: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 session_revoked row, got %d", len(rows))
+	}
+	if rows[0].ResourceType != "session" || !rows[0].Success {
+		t.Errorf("unexpected row shape: %+v", rows[0])
+	}
+	// The session id hash belongs in Details, not ResourceID (which is
+	// a uint and can't carry a hex string).
+	if !stringContains(rows[0].Details, hash) {
+		t.Errorf("details should embed session id hash; got %q", rows[0].Details)
+	}
+}
+
+// A NotFound revoke (wrong id / cross-user) must NOT emit an audit
+// row — the handler maps it to 404 and the event is not a security
+// signal, just a stale UI.
+func TestAuthService_RevokeSession_NotFoundDoesNotEmitAudit(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	ctx := context.Background()
+	user := createTestUserWithHashedPassword(t, db, "U", "u@example.com", "pw-123456")
+
+	err := svc.RevokeSession(ctx, user.ID, store.HashSessionToken("nope"), user.Email, "10.0.0.1")
+	if err == nil {
+		t.Fatal("expected NotFound")
+	}
+	svc.auditService.Shutdown()
+
+	var count int64
+	if err := db.Model(&models.AuditLog{}).
+		Where("action = ?", models.AuditActionSessionRevoked).Count(&count).Error; err != nil {
+		t.Fatalf("count audit rows: %v", err)
+	}
+	if count != 0 {
+		t.Errorf("expected 0 session_revoked rows after NotFound, got %d", count)
+	}
+}
+
+func stringContains(haystack, needle string) bool {
+	return len(haystack) > 0 && len(needle) > 0 && findSubstring(haystack, needle) >= 0
+}
+
+func findSubstring(s, sub string) int {
+	for i := 0; i+len(sub) <= len(s); i++ {
+		if s[i:i+len(sub)] == sub {
+			return i
+		}
+	}
+	return -1
 }
 
 func TestAuthService_RevokeSession_CrossUser_NotFound(t *testing.T) {
@@ -651,7 +772,7 @@ func TestAuthService_RevokeSession_CrossUser_NotFound(t *testing.T) {
 	}
 	aliceHash := store.HashSessionToken(aliceSession.Authenticated.SessionToken)
 
-	err = svc.RevokeSession(ctx, bob.ID, aliceHash)
+	err = svc.RevokeSession(ctx, bob.ID, aliceHash, bob.Email, "10.0.0.2")
 	if err == nil {
 		t.Fatal("bob should not be able to revoke alice's session")
 	}
