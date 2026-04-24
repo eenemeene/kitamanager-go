@@ -55,8 +55,12 @@ func TestDeleteChain_OrgWithPayPlansCascades(t *testing.T) {
 	// Delete the org. Pre-000014 this would fail with
 	//   ERROR: update or delete on table "organizations" violates foreign
 	//   key constraint "pay_plans_organization_id_fkey" on table "pay_plans"
-	if err := testDB.Delete(&models.Organization{}, org.ID).Error; err != nil {
-		t.Fatalf("org delete must succeed post-000014; got %v", err)
+	// Hard-delete via Unscoped() — soft-delete (migration 000015)
+	// doesn't fire the FK CASCADE, which is the invariant this
+	// test verifies. Soft-delete behaviour is covered separately
+	// in the service-layer soft_delete_edge_cases_test.go.
+	if err := testDB.Unscoped().Delete(&models.Organization{}, org.ID).Error; err != nil {
+		t.Fatalf("org hard-delete must succeed post-000014; got %v", err)
 	}
 
 	// Verify the cascade did its job: plan, period and entry are all
@@ -109,8 +113,12 @@ func TestDeleteChain_OrgWithBillPeriodsCascades(t *testing.T) {
 		t.Fatalf("create bill period: %v", err)
 	}
 
-	if err := testDB.Delete(&models.Organization{}, org.ID).Error; err != nil {
-		t.Fatalf("org delete must succeed post-000014; got %v", err)
+	// Hard-delete via Unscoped() — soft-delete (migration 000015)
+	// doesn't fire the FK CASCADE, which is the invariant this
+	// test verifies. Soft-delete behaviour is covered separately
+	// in the service-layer soft_delete_edge_cases_test.go.
+	if err := testDB.Unscoped().Delete(&models.Organization{}, org.ID).Error; err != nil {
+		t.Fatalf("org hard-delete must succeed post-000014; got %v", err)
 	}
 	var left int64
 	_ = testDB.Model(&models.GovernmentFundingBillPeriod{}).Where("organization_id = ?", org.ID).Count(&left)
@@ -153,10 +161,13 @@ func TestDeleteChain_UserWithAttendanceSetsNull(t *testing.T) {
 		t.Fatalf("create attendance: %v", err)
 	}
 
-	// Delete the user. Pre-000014 this would fail at the attendance
-	// FK with a NO ACTION violation.
-	if err := testDB.Delete(&models.User{}, user.ID).Error; err != nil {
-		t.Fatalf("user delete must succeed post-000014; got %v", err)
+	// Hard-delete the user — Unscoped() bypasses the soft-delete
+	// tombstone introduced in migration 000015. The FK ON DELETE
+	// SET NULL cascade only fires on real DELETE, which is the
+	// behaviour we're testing. The soft-delete path is covered in
+	// internal/service/soft_delete_edge_cases_test.go.
+	if err := testDB.Unscoped().Delete(&models.User{}, user.ID).Error; err != nil {
+		t.Fatalf("user hard-delete must succeed post-000014; got %v", err)
 	}
 
 	// Attendance row survives; recorded_by is NULL.
@@ -194,8 +205,8 @@ func TestDeleteChain_UserWithBillPeriodSetsNull(t *testing.T) {
 		t.Fatalf("create bill period: %v", err)
 	}
 
-	if err := testDB.Delete(&models.User{}, user.ID).Error; err != nil {
-		t.Fatalf("user delete must succeed post-000014; got %v", err)
+	if err := testDB.Unscoped().Delete(&models.User{}, user.ID).Error; err != nil {
+		t.Fatalf("user hard-delete must succeed post-000014; got %v", err)
 	}
 
 	var reloaded models.GovernmentFundingBillPeriod

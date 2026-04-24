@@ -708,3 +708,88 @@ func TestOrganizationService_ListForUser_Pagination(t *testing.T) {
 		t.Errorf("page 2: expected 1 org, got %d", len(orgs))
 	}
 }
+
+// -----------------------------------------------------------------
+// Soft-delete (Phase 1) behavioural tests — migration 000015.
+// -----------------------------------------------------------------
+
+// TestOrganizationService_Delete_IsSoft proves the default DELETE
+// path stamps deleted_at instead of removing the row.
+func TestOrganizationService_Delete_IsSoft(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createOrganizationService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Soft Target")
+	if err := svc.Delete(ctx, org.ID); err != nil {
+		t.Fatalf("soft-delete: %v", err)
+	}
+	var live models.Organization
+	if err := db.First(&live, org.ID).Error; err == nil {
+		t.Fatalf("scoped First must return NotFound; got a live row")
+	}
+	var tomb models.Organization
+	if err := db.Unscoped().First(&tomb, org.ID).Error; err != nil {
+		t.Fatalf("unscoped First must return the tombstoned row; got %v", err)
+	}
+	if !tomb.DeletedAt.Valid {
+		t.Errorf("deleted_at must be set on the tombstone")
+	}
+}
+
+// TestOrganizationService_Delete_AllowsNameReuse proves the partial
+// unique index on (name) WHERE deleted_at IS NULL releases the name.
+func TestOrganizationService_Delete_AllowsNameReuse(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createOrganizationService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Reuse-Target")
+	if err := svc.Delete(ctx, org.ID); err != nil {
+		t.Fatalf("soft-delete: %v", err)
+	}
+	fresh := &models.Organization{Name: "Reuse-Target", Active: true, State: "berlin"}
+	if err := db.Create(fresh).Error; err != nil {
+		t.Fatalf("name reuse after soft-delete must succeed; got %v", err)
+	}
+}
+
+// TestOrganizationService_HardDelete_PhysicallyRemovesRow proves
+// purge takes the row out permanently, triggering the FK CASCADEs
+// from migration 000014 (pay_plans, bill_periods, sections, etc.).
+func TestOrganizationService_HardDelete_PhysicallyRemovesRow(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createOrganizationService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Purge-Target")
+	if err := svc.HardDelete(ctx, org.ID); err != nil {
+		t.Fatalf("purge: %v", err)
+	}
+	var count int64
+	_ = db.Unscoped().Model(&models.Organization{}).Where("id = ?", org.ID).Count(&count)
+	if count != 0 {
+		t.Errorf("expected row to be physically removed; %d rows remain", count)
+	}
+}
+
+// TestOrganizationService_HardDelete_WorksOnTombstone covers the
+// retention-job target case: a tombstoned org can still be purged.
+func TestOrganizationService_HardDelete_WorksOnTombstone(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createOrganizationService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Two-Step Purge")
+	if err := svc.Delete(ctx, org.ID); err != nil {
+		t.Fatalf("soft-delete: %v", err)
+	}
+	if err := svc.HardDelete(ctx, org.ID); err != nil {
+		t.Fatalf("purge after tombstone: %v", err)
+	}
+	var count int64
+	_ = db.Unscoped().Model(&models.Organization{}).Where("id = ?", org.ID).Count(&count)
+	if count != 0 {
+		t.Errorf("tombstoned org must be purgeable; %d rows remain", count)
+	}
+}

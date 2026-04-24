@@ -49,6 +49,7 @@ definitions:
     - superadmin_revoke
     - user_create
     - user_delete
+    - user_purged
     - user_add_to_org
     - user_remove_from_org
     - role_change
@@ -56,6 +57,7 @@ definitions:
     - child_delete
     - org_create
     - org_delete
+    - org_purged
     - password_reset
     - password_change
     - password_change_failed
@@ -78,6 +80,7 @@ definitions:
     - AuditActionSuperAdminRevoke
     - AuditActionUserCreate
     - AuditActionUserDelete
+    - AuditActionUserPurged
     - AuditActionUserAddToOrg
     - AuditActionUserRemoveFromOrg
     - AuditActionRoleChange
@@ -85,6 +88,7 @@ definitions:
     - AuditActionChildDelete
     - AuditActionOrgCreate
     - AuditActionOrgDelete
+    - AuditActionOrgPurged
     - AuditActionPasswordReset
     - AuditActionPasswordChange
     - AuditActionPasswordChangeFailed
@@ -2462,6 +2466,10 @@ definitions:
         example: 1
         type: integer
       name:
+        description: |-
+          `uniqueIndex` dropped — uniqueness is now enforced by the
+          partial index `WHERE deleted_at IS NULL` from migration
+          000015 so a soft-deleted org's name can be reused.
         example: Acme Corp
         type: string
       state:

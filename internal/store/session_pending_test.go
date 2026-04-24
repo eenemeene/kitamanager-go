@@ -338,19 +338,25 @@ func TestSessionStore_CleanupExpired_IncludesPending(t *testing.T) {
 	}
 }
 
-// FK cascade: deleting a user removes their pending_mfa rows too.
+// FK cascade: hard-deleting a user removes their pending_mfa rows
+// via the FK ON DELETE CASCADE declared in migration 000001. Note
+// the Unscoped() call — since migration 000015 introduced soft-
+// delete for users, a plain db.Delete leaves the user row in place
+// (with deleted_at set) and the FK cascade does NOT fire. Only a
+// physical DELETE propagates, which is what the retention job and
+// the Art. 17 erasure path use.
 func TestSessionStore_UserDelete_CascadesPending(t *testing.T) {
 	db := setupTestDB(t)
 	s := NewSessionStore(db)
 	user := createTestUser(t, db, "U", "u@example.com")
 	_, _ = seedPending(t, s, user.ID, time.Minute)
 
-	if err := db.Delete(&models.User{}, user.ID).Error; err != nil {
-		t.Fatalf("delete user: %v", err)
+	if err := db.Unscoped().Delete(&models.User{}, user.ID).Error; err != nil {
+		t.Fatalf("hard-delete user: %v", err)
 	}
 	var n int64
 	_ = db.Model(&models.Session{}).Where("user_id = ?", user.ID).Count(&n).Error
 	if n != 0 {
-		t.Errorf("user delete didn't cascade to pending rows: %d", n)
+		t.Errorf("user hard-delete didn't cascade to pending rows: %d", n)
 	}
 }

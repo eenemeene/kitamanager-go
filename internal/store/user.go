@@ -109,8 +109,27 @@ func (s *UserStore) UpdateLastLogin(ctx context.Context, userID uint) error {
 	return DBFromContext(ctx, s.db).Model(&models.User{}).Where("id = ?", userID).Update("last_login", time.Now().UTC()).Error
 }
 
+// Delete soft-deletes the user via GORM's DeletedAt machinery —
+// `UPDATE users SET deleted_at = now() WHERE id = ?`. Subsequent
+// GORM queries that start from the User model auto-scope the row
+// out. Use HardDelete for the physical DELETE path.
 func (s *UserStore) Delete(ctx context.Context, id uint) error {
 	return DBFromContext(ctx, s.db).Delete(&models.User{}, id).Error
+}
+
+// HardDelete issues the physical DELETE, bypassing the soft-delete
+// tombstone. Cascades through sessions, factors, user_organizations
+// via the FKs defined in 000001 + 000014. Irreversible.
+func (s *UserStore) HardDelete(ctx context.Context, id uint) error {
+	return DBFromContext(ctx, s.db).Unscoped().Delete(&models.User{}, id).Error
+}
+
+// FindByIDUnscoped fetches the user row whether it is tombstoned
+// (soft-deleted) or live. Used by admin trash-view and by HardDelete
+// so a tombstoned user can still be purged (the retention job
+// targets exactly that state).
+func (s *UserStore) FindByIDUnscoped(ctx context.Context, id uint, out *models.User) error {
+	return DBFromContext(ctx, s.db).Unscoped().First(out, id).Error
 }
 
 func (s *UserStore) GetUserOrganizations(ctx context.Context, userID uint) ([]models.Organization, error) {

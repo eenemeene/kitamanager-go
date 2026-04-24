@@ -10171,6 +10171,7 @@ const docTemplate = `{
                 "superadmin_revoke",
                 "user_create",
                 "user_delete",
+                "user_purged",
                 "user_add_to_org",
                 "user_remove_from_org",
                 "role_change",
@@ -10178,6 +10179,7 @@ const docTemplate = `{
                 "child_delete",
                 "org_create",
                 "org_delete",
+                "org_purged",
                 "password_reset",
                 "password_change",
                 "password_change_failed",
@@ -10200,6 +10202,7 @@ const docTemplate = `{
                 "AuditActionSuperAdminRevoke",
                 "AuditActionUserCreate",
                 "AuditActionUserDelete",
+                "AuditActionUserPurged",
                 "AuditActionUserAddToOrg",
                 "AuditActionUserRemoveFromOrg",
                 "AuditActionRoleChange",
@@ -10207,6 +10210,7 @@ const docTemplate = `{
                 "AuditActionChildDelete",
                 "AuditActionOrgCreate",
                 "AuditActionOrgDelete",
+                "AuditActionOrgPurged",
                 "AuditActionPasswordReset",
                 "AuditActionPasswordChange",
                 "AuditActionPasswordChangeFailed",
@@ -13489,6 +13493,7 @@ const docTemplate = `{
                     "example": 1
                 },
                 "name": {
+                    "description": "` + "`" + `uniqueIndex` + "`" + ` dropped — uniqueness is now enforced by the\npartial index ` + "`" + `WHERE deleted_at IS NULL` + "`" + ` from migration\n000015 so a soft-deleted org's name can be reused.",
                     "type": "string",
                     "example": "Acme Corp"
                 },

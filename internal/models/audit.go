@@ -16,19 +16,40 @@ const (
 	// account logout the current session performs). The revoked
 	// session's id hash goes in the resource_id-equivalent Details
 	// field so investigators can correlate with the session row.
-	AuditActionSessionRevoked    AuditAction = "session_revoked"
-	AuditActionSuperAdminGrant   AuditAction = "superadmin_grant"
-	AuditActionSuperAdminRevoke  AuditAction = "superadmin_revoke"
-	AuditActionUserCreate        AuditAction = "user_create"
-	AuditActionUserDelete        AuditAction = "user_delete"
+	AuditActionSessionRevoked   AuditAction = "session_revoked"
+	AuditActionSuperAdminGrant  AuditAction = "superadmin_grant"
+	AuditActionSuperAdminRevoke AuditAction = "superadmin_revoke"
+	AuditActionUserCreate       AuditAction = "user_create"
+	// AuditActionUserDelete marks the default DELETE /users/:id
+	// path. As of migration 000015 this is a soft-delete: the row
+	// is tombstoned with a deleted_at timestamp, subsequent lookups
+	// return NotFound, all active sessions are revoked. Admins can
+	// restore from the trash view (Phase 2) or purge for real via
+	// AuditActionUserPurged.
+	AuditActionUserDelete AuditAction = "user_delete"
+	// AuditActionUserPurged marks a hard-delete: the user row and
+	// everything that CASCADEs from it (sessions, factors, org
+	// memberships) are physically removed. Irreversible. Used by
+	// the retention TTL cleanup job and the Art. 17 erasure
+	// endpoint.
+	AuditActionUserPurged        AuditAction = "user_purged"
 	AuditActionUserAddToOrg      AuditAction = "user_add_to_org"
 	AuditActionUserRemoveFromOrg AuditAction = "user_remove_from_org"
 	AuditActionRoleChange        AuditAction = "role_change"
 	AuditActionEmployeeDelete    AuditAction = "employee_delete"
 	AuditActionChildDelete       AuditAction = "child_delete"
 	AuditActionOrgCreate         AuditAction = "org_create"
-	AuditActionOrgDelete         AuditAction = "org_delete"
-	AuditActionPasswordReset     AuditAction = "password_reset"
+	// AuditActionOrgDelete marks the default DELETE path: from
+	// migration 000015 onward this is a soft-delete (tombstoned
+	// with deleted_at, invisible to non-admin queries). Admins
+	// restore or purge via the trash view.
+	AuditActionOrgDelete AuditAction = "org_delete"
+	// AuditActionOrgPurged marks hard-deletion of an organization,
+	// wiping the owned entities that CASCADE from it (pay_plans,
+	// employees, children, bills — see migration 000014).
+	// Irreversible.
+	AuditActionOrgPurged     AuditAction = "org_purged"
+	AuditActionPasswordReset AuditAction = "password_reset"
 	// AuditActionPasswordChange records a user rotating their own password.
 	AuditActionPasswordChange AuditAction = "password_change"
 	// AuditActionPasswordChangeFailed records a /me/password attempt that
