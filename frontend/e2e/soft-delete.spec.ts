@@ -10,6 +10,7 @@ import {
   deleteOrganizationViaApi,
   deleteUserViaApi,
   addUserToOrgViaApi,
+  getOrganizationsViaApi,
   logoutViaApi,
   uniqueName,
 } from './utils/test-helpers';
@@ -175,13 +176,12 @@ test.describe('Organization soft-delete', () => {
     );
     expect(afterStatus).toBe(404);
 
-    // List must also exclude it.
-    const listed = await page.evaluate(async () => {
-      const r = await fetch('/api/v1/organizations?limit=500', { credentials: 'same-origin' });
-      const body = await r.json();
-      return (body.data as Array<{ id: number; name: string }>).map((o) => o.id);
-    });
-    expect(listed).not.toContain(original.id);
+    // List must also exclude the soft-deleted org. Using the
+    // shared helper so the response-shape decoding matches the
+    // rest of the E2E suite (the raw fetch path tripped over a
+    // different envelope shape in CI).
+    const listed = await getOrganizationsViaApi(page);
+    expect(listed.map((o) => o.id)).not.toContain(original.id);
 
     // Admin re-registers the same name. Partial unique index
     // (`name WHERE deleted_at IS NULL`) lets this succeed with a
