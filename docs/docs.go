@@ -10248,6 +10248,10 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 1
                 },
+                "request_id": {
+                    "type": "string",
+                    "example": "4b89e4e0-6c37-4e1c-9a78-5d34b2a5f9a1"
+                },
                 "resource_id": {
                     "type": "integer",
                     "example": 42

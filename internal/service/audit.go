@@ -11,6 +11,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
+	"github.com/eenemeene/kitamanager-go/internal/middleware"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/store"
 )
@@ -97,8 +98,8 @@ func mustMarshalJSON(v any) string {
 }
 
 // LogLogin logs a successful login attempt
-func (s *AuditService) LogLogin(userID uint, email, ipAddress, userAgent string) {
-	s.log(&models.AuditLog{
+func (s *AuditService) LogLogin(ctx context.Context, userID uint, email, ipAddress, userAgent string) {
+	s.log(ctx, &models.AuditLog{
 		UserID:    &userID,
 		UserEmail: email,
 		Action:    models.AuditActionLogin,
@@ -115,8 +116,8 @@ func (s *AuditService) LogLogin(userID uint, email, ipAddress, userAgent string)
 // ip. Idempotent logout attempts against an already-gone session
 // must NOT be logged — the handler gates this call on success so we
 // don't spam noise rows after a double-click.
-func (s *AuditService) LogLogout(userID *uint, email, ipAddress string) {
-	s.log(&models.AuditLog{
+func (s *AuditService) LogLogout(ctx context.Context, userID *uint, email, ipAddress string) {
+	s.log(ctx, &models.AuditLog{
 		UserID:    userID,
 		UserEmail: email,
 		Action:    models.AuditActionLogout,
@@ -132,8 +133,8 @@ func (s *AuditService) LogLogout(userID *uint, email, ipAddress string) {
 // that was killed; we store it in Details rather than ResourceID
 // because AuditLog.ResourceID is a uint and the session key is a
 // hash string.
-func (s *AuditService) LogSessionRevoked(userID uint, email, sessionIDHash, ipAddress string) {
-	s.log(&models.AuditLog{
+func (s *AuditService) LogSessionRevoked(ctx context.Context, userID uint, email, sessionIDHash, ipAddress string) {
+	s.log(ctx, &models.AuditLog{
 		UserID:       &userID,
 		UserEmail:    email,
 		Action:       models.AuditActionSessionRevoked,
@@ -145,8 +146,8 @@ func (s *AuditService) LogSessionRevoked(userID uint, email, sessionIDHash, ipAd
 }
 
 // LogLoginFailed logs a failed login attempt
-func (s *AuditService) LogLoginFailed(email, ipAddress, userAgent, reason string) {
-	s.log(&models.AuditLog{
+func (s *AuditService) LogLoginFailed(ctx context.Context, email, ipAddress, userAgent, reason string) {
+	s.log(ctx, &models.AuditLog{
 		UserEmail: email,
 		Action:    models.AuditActionLoginFailed,
 		IPAddress: ipAddress,
@@ -157,8 +158,8 @@ func (s *AuditService) LogLoginFailed(email, ipAddress, userAgent, reason string
 }
 
 // LogPasswordChange logs a successful self-service password rotation.
-func (s *AuditService) LogPasswordChange(userID uint, email, ipAddress string) {
-	s.log(&models.AuditLog{
+func (s *AuditService) LogPasswordChange(ctx context.Context, userID uint, email, ipAddress string) {
+	s.log(ctx, &models.AuditLog{
 		UserID:       &userID,
 		UserEmail:    email,
 		Action:       models.AuditActionPasswordChange,
@@ -172,8 +173,8 @@ func (s *AuditService) LogPasswordChange(userID uint, email, ipAddress string) {
 // LogPasswordChangeFailed logs a failed /me/password attempt. Used by the
 // lockout counter so an attacker with a stolen access token cannot brute-force
 // the current password at full API-mutation-rate-limit speed.
-func (s *AuditService) LogPasswordChangeFailed(userID uint, email, ipAddress, reason string) {
-	s.log(&models.AuditLog{
+func (s *AuditService) LogPasswordChangeFailed(ctx context.Context, userID uint, email, ipAddress, reason string) {
+	s.log(ctx, &models.AuditLog{
 		UserID:       &userID,
 		UserEmail:    email,
 		Action:       models.AuditActionPasswordChangeFailed,
@@ -188,8 +189,8 @@ func (s *AuditService) LogPasswordChangeFailed(userID uint, email, ipAddress, re
 // LogFactorEnrolled logs completion of MFA factor enrollment.
 // `factorType` is the factor-generic type string ("totp", etc.) so
 // audit queries can pivot on it.
-func (s *AuditService) LogFactorEnrolled(userID uint, factorType string) {
-	s.log(&models.AuditLog{
+func (s *AuditService) LogFactorEnrolled(ctx context.Context, userID uint, factorType string) {
+	s.log(ctx, &models.AuditLog{
 		UserID:       &userID,
 		Action:       models.AuditActionFactorEnrolled,
 		ResourceType: "factor",
@@ -199,8 +200,8 @@ func (s *AuditService) LogFactorEnrolled(userID uint, factorType string) {
 }
 
 // LogFactorDeleted logs a user removing their OWN MFA factor.
-func (s *AuditService) LogFactorDeleted(userID uint, factorType string) {
-	s.log(&models.AuditLog{
+func (s *AuditService) LogFactorDeleted(ctx context.Context, userID uint, factorType string) {
+	s.log(ctx, &models.AuditLog{
 		UserID:       &userID,
 		Action:       models.AuditActionFactorDeleted,
 		ResourceType: "factor",
@@ -213,8 +214,8 @@ func (s *AuditService) LogFactorDeleted(userID uint, factorType string) {
 // because activation failures hit the limit. This is a security
 // signal: the common cause is an attacker in a hijacked session trying
 // codes against a freshly-enrolled pending row.
-func (s *AuditService) LogFactorActivationLocked(userID uint, factorType string) {
-	s.log(&models.AuditLog{
+func (s *AuditService) LogFactorActivationLocked(ctx context.Context, userID uint, factorType string) {
+	s.log(ctx, &models.AuditLog{
 		UserID:       &userID,
 		Action:       models.AuditActionFactorActivationLocked,
 		ResourceType: "factor",
@@ -226,8 +227,8 @@ func (s *AuditService) LogFactorActivationLocked(userID uint, factorType string)
 // LogBackupCodesRegenerated logs a user regenerating their backup
 // codes. A spike in these signals a user having trouble with their
 // primary factor.
-func (s *AuditService) LogBackupCodesRegenerated(userID uint) {
-	s.log(&models.AuditLog{
+func (s *AuditService) LogBackupCodesRegenerated(ctx context.Context, userID uint) {
+	s.log(ctx, &models.AuditLog{
 		UserID:       &userID,
 		Action:       models.AuditActionBackupCodesRegenerated,
 		ResourceType: "factor",
@@ -238,8 +239,8 @@ func (s *AuditService) LogBackupCodesRegenerated(userID uint) {
 // LogLoginMFARequired logs the password-accepted-but-MFA-required
 // branch of /login. Success=true because the password itself did
 // verify — the session just isn't complete yet.
-func (s *AuditService) LogLoginMFARequired(userID uint, email, ipAddress, userAgent string) {
-	s.log(&models.AuditLog{
+func (s *AuditService) LogLoginMFARequired(ctx context.Context, userID uint, email, ipAddress, userAgent string) {
+	s.log(ctx, &models.AuditLog{
 		UserID:    &userID,
 		UserEmail: email,
 		Action:    models.AuditActionLoginMFARequired,
@@ -252,8 +253,8 @@ func (s *AuditService) LogLoginMFARequired(userID uint, email, ipAddress, userAg
 // LogMFAChallengeSucceeded logs /auth/mfa/verify accepting a code.
 // The `factorType` goes in details so dashboards can pivot on TOTP
 // vs backup_codes usage.
-func (s *AuditService) LogMFAChallengeSucceeded(userID uint, email, factorType, ipAddress, userAgent string) {
-	s.log(&models.AuditLog{
+func (s *AuditService) LogMFAChallengeSucceeded(ctx context.Context, userID uint, email, factorType, ipAddress, userAgent string) {
+	s.log(ctx, &models.AuditLog{
 		UserID:    &userID,
 		UserEmail: email,
 		Action:    models.AuditActionMFAChallengeSucceeded,
@@ -268,8 +269,8 @@ func (s *AuditService) LogMFAChallengeSucceeded(userID uint, email, factorType, 
 // is the audit record the per-user rate-limit counter queries.
 // factorType is the user-claimed factor (from the request) so a
 // distributed attack that iterates through factor IDs is visible.
-func (s *AuditService) LogMFAChallengeFailed(userID uint, email, factorType, ipAddress, userAgent, reason string) {
-	s.log(&models.AuditLog{
+func (s *AuditService) LogMFAChallengeFailed(ctx context.Context, userID uint, email, factorType, ipAddress, userAgent, reason string) {
+	s.log(ctx, &models.AuditLog{
 		UserID:    &userID,
 		UserEmail: email,
 		Action:    models.AuditActionMFAChallengeFailed,
@@ -286,8 +287,8 @@ func (s *AuditService) LogMFAChallengeFailed(userID uint, email, factorType, ipA
 // LogMFAChallengeLocked logs a pending_mfa row being destroyed after
 // MFAChallengeFailureLimit wrong codes. Security signal — the user
 // will have to restart from the password step.
-func (s *AuditService) LogMFAChallengeLocked(userID uint, email, ipAddress, userAgent string) {
-	s.log(&models.AuditLog{
+func (s *AuditService) LogMFAChallengeLocked(ctx context.Context, userID uint, email, ipAddress, userAgent string) {
+	s.log(ctx, &models.AuditLog{
 		UserID:    &userID,
 		UserEmail: email,
 		Action:    models.AuditActionMFAChallengeLocked,
@@ -307,13 +308,13 @@ func (s *AuditService) CountRecentFailedMFAChallenges(ctx context.Context, userI
 }
 
 // LogSuperAdminChange logs a superadmin status change
-func (s *AuditService) LogSuperAdminChange(actorID uint, actorEmail string, targetUserID uint, targetEmail string, granted bool, ipAddress string) {
+func (s *AuditService) LogSuperAdminChange(ctx context.Context, actorID uint, actorEmail string, targetUserID uint, targetEmail string, granted bool, ipAddress string) {
 	action := models.AuditActionSuperAdminGrant
 	if !granted {
 		action = models.AuditActionSuperAdminRevoke
 	}
 
-	s.log(&models.AuditLog{
+	s.log(ctx, &models.AuditLog{
 		UserID:       &actorID,
 		UserEmail:    actorEmail,
 		Action:       action,
@@ -330,8 +331,8 @@ func (s *AuditService) LogSuperAdminChange(actorID uint, actorEmail string, targ
 }
 
 // LogUserAddToOrg logs adding a user to an organization
-func (s *AuditService) LogUserAddToOrg(actorID uint, actorEmail string, userID, orgID uint, role string, ipAddress string) {
-	s.log(&models.AuditLog{
+func (s *AuditService) LogUserAddToOrg(ctx context.Context, actorID uint, actorEmail string, userID, orgID uint, role string, ipAddress string) {
+	s.log(ctx, &models.AuditLog{
 		UserID:         &actorID,
 		UserEmail:      actorEmail,
 		Action:         models.AuditActionUserAddToOrg,
@@ -348,8 +349,8 @@ func (s *AuditService) LogUserAddToOrg(actorID uint, actorEmail string, userID, 
 }
 
 // LogUserRemoveFromOrg logs removing a user from an organization
-func (s *AuditService) LogUserRemoveFromOrg(actorID uint, actorEmail string, userID, orgID uint, ipAddress string) {
-	s.log(&models.AuditLog{
+func (s *AuditService) LogUserRemoveFromOrg(ctx context.Context, actorID uint, actorEmail string, userID, orgID uint, ipAddress string) {
+	s.log(ctx, &models.AuditLog{
 		UserID:         &actorID,
 		UserEmail:      actorEmail,
 		Action:         models.AuditActionUserRemoveFromOrg,
@@ -363,8 +364,8 @@ func (s *AuditService) LogUserRemoveFromOrg(actorID uint, actorEmail string, use
 }
 
 // LogRoleChange logs a role change for a user in an organization
-func (s *AuditService) LogRoleChange(actorID uint, actorEmail string, userID, orgID uint, oldRole, newRole string, ipAddress string) {
-	s.log(&models.AuditLog{
+func (s *AuditService) LogRoleChange(ctx context.Context, actorID uint, actorEmail string, userID, orgID uint, oldRole, newRole string, ipAddress string) {
+	s.log(ctx, &models.AuditLog{
 		UserID:         &actorID,
 		UserEmail:      actorEmail,
 		Action:         models.AuditActionRoleChange,
@@ -384,7 +385,7 @@ func (s *AuditService) LogRoleChange(actorID uint, actorEmail string, userID, or
 // LogResourceDelete logs deletion of a resource (employee, child, org, etc.)
 // orgID may be nil for identity-level resources (user); pass the owning org
 // id for org-scoped resources so org admins can see the event.
-func (s *AuditService) LogResourceDelete(actorID uint, actorEmail, resourceType string, resourceID uint, resourceName, ipAddress string, orgID *uint) {
+func (s *AuditService) LogResourceDelete(ctx context.Context, actorID uint, actorEmail, resourceType string, resourceID uint, resourceName, ipAddress string, orgID *uint) {
 	var action models.AuditAction
 	switch resourceType {
 	case "employee":
@@ -399,7 +400,7 @@ func (s *AuditService) LogResourceDelete(actorID uint, actorEmail, resourceType 
 		action = models.AuditAction(resourceType + "_delete")
 	}
 
-	s.log(&models.AuditLog{
+	s.log(ctx, &models.AuditLog{
 		UserID:         &actorID,
 		UserEmail:      actorEmail,
 		Action:         action,
@@ -415,7 +416,7 @@ func (s *AuditService) LogResourceDelete(actorID uint, actorEmail, resourceType 
 // LogResourceCreate logs creation of a resource.
 // orgID may be nil for identity-level resources (user); pass the owning org
 // id for org-scoped resources so org admins can see the event.
-func (s *AuditService) LogResourceCreate(actorID uint, actorEmail, resourceType string, resourceID uint, resourceName, ipAddress string, orgID *uint) {
+func (s *AuditService) LogResourceCreate(ctx context.Context, actorID uint, actorEmail, resourceType string, resourceID uint, resourceName, ipAddress string, orgID *uint) {
 	var action models.AuditAction
 	switch resourceType {
 	case "user":
@@ -426,7 +427,7 @@ func (s *AuditService) LogResourceCreate(actorID uint, actorEmail, resourceType 
 		action = models.AuditAction(resourceType + "_create")
 	}
 
-	s.log(&models.AuditLog{
+	s.log(ctx, &models.AuditLog{
 		UserID:         &actorID,
 		UserEmail:      actorEmail,
 		Action:         action,
@@ -442,8 +443,8 @@ func (s *AuditService) LogResourceCreate(actorID uint, actorEmail, resourceType 
 // LogResourceUpdate logs update of a resource.
 // orgID may be nil for identity-level resources (user); pass the owning org
 // id for org-scoped resources so org admins can see the event.
-func (s *AuditService) LogResourceUpdate(actorID uint, actorEmail, resourceType string, resourceID uint, resourceName, ipAddress string, orgID *uint) {
-	s.log(&models.AuditLog{
+func (s *AuditService) LogResourceUpdate(ctx context.Context, actorID uint, actorEmail, resourceType string, resourceID uint, resourceName, ipAddress string, orgID *uint) {
+	s.log(ctx, &models.AuditLog{
 		UserID:         &actorID,
 		UserEmail:      actorEmail,
 		Action:         models.AuditAction(resourceType + "_update"),
@@ -457,8 +458,8 @@ func (s *AuditService) LogResourceUpdate(actorID uint, actorEmail, resourceType 
 }
 
 // LogPasswordReset logs when an admin resets another user's password.
-func (s *AuditService) LogPasswordReset(actorID uint, actorEmail string, targetUserID uint, targetEmail, ipAddress string) {
-	s.log(&models.AuditLog{
+func (s *AuditService) LogPasswordReset(ctx context.Context, actorID uint, actorEmail string, targetUserID uint, targetEmail, ipAddress string) {
+	s.log(ctx, &models.AuditLog{
 		UserID:       &actorID,
 		UserEmail:    actorEmail,
 		Action:       models.AuditActionPasswordReset,
@@ -474,8 +475,8 @@ func (s *AuditService) LogPasswordReset(actorID uint, actorEmail string, targetU
 }
 
 // LogDataExport logs a bulk data export event
-func (s *AuditService) LogDataExport(actorID uint, actorEmail, resourceType string, orgID uint, recordCount int, ipAddress string) {
-	s.log(&models.AuditLog{
+func (s *AuditService) LogDataExport(ctx context.Context, actorID uint, actorEmail, resourceType string, orgID uint, recordCount int, ipAddress string) {
+	s.log(ctx, &models.AuditLog{
 		UserID:         &actorID,
 		UserEmail:      actorEmail,
 		Action:         models.AuditAction(resourceType + "_export"),
@@ -585,24 +586,39 @@ func (s *AuditService) CountRecentFailedPasswordChanges(ctx context.Context, use
 	return s.store.CountFailedPasswordChangesSince(ctx, userID, since)
 }
 
-// log sends an audit log entry to the worker channel.
-// If the channel is full, falls back to synchronous write with a timeout.
-func (s *AuditService) log(entry *models.AuditLog) {
+// log sends an audit log entry to the worker channel, stamping the
+// request id from ctx so every row emitted inside one HTTP request
+// carries the same X-Request-ID correlation key. ctx may be nil or
+// context.Background() for non-HTTP callers; RequestID then stays
+// empty, which is the correct semantic for events that didn't
+// originate from an HTTP request (seed imports, CLI, background
+// jobs).
+//
+// If the caller pre-populated entry.RequestID (rare — e.g. a test
+// injecting a synthetic id), that wins; ctx is not consulted.
+//
+// If the channel is full, falls back to a synchronous write with a
+// short timeout using a fresh background context so that a client
+// disconnect mid-request cannot cancel the write and drop the audit
+// row.
+func (s *AuditService) log(ctx context.Context, entry *models.AuditLog) {
 	if s == nil || s.logCh == nil {
 		return
 	}
 
 	entry.Timestamp = time.Now().UTC()
+	if entry.RequestID == "" {
+		entry.RequestID = middleware.RequestIDFromContext(ctx)
+	}
 
 	select {
 	case s.logCh <- entry:
 	default:
 		s.fallbackCount.Add(1)
 		auditFallbackTotal.Inc()
-		// Synchronous fallback with timeout
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		writeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if err := s.store.Create(ctx, entry); err != nil {
+		if err := s.store.Create(writeCtx, entry); err != nil {
 			s.droppedCount.Add(1)
 			auditDroppedTotal.Inc()
 			slog.Error("Audit log dropped", "action", entry.Action, "error", err)

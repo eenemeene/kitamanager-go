@@ -91,8 +91,14 @@ const (
 // grant/revoke) which have no org scope. The per-org read endpoint filters
 // on OrganizationID; the superadmin-only global endpoint sees every row.
 type AuditLog struct {
-	ID             uint        `gorm:"primaryKey" json:"id"`
-	Timestamp      time.Time   `gorm:"not null;index" json:"timestamp"`
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	Timestamp time.Time `gorm:"not null;index" json:"timestamp"`
+	// RequestID is the X-Request-ID of the HTTP request that emitted
+	// this row. Stamped by AuditService from the request context so
+	// every audit row produced during one request shares the same
+	// correlation id. NULL for rows emitted outside an HTTP context
+	// (seed imports, background jobs, CLI tooling).
+	RequestID      string      `gorm:"size:64;index" json:"request_id,omitempty"`
 	UserID         *uint       `gorm:"index" json:"user_id,omitempty"`
 	UserEmail      string      `gorm:"size:255" json:"user_email,omitempty"`
 	Action         AuditAction `gorm:"size:100;not null;index" json:"action"`
@@ -109,6 +115,7 @@ type AuditLog struct {
 type AuditLogResponse struct {
 	ID             uint        `json:"id" example:"1"`
 	Timestamp      time.Time   `json:"timestamp"`
+	RequestID      string      `json:"request_id,omitempty" example:"4b89e4e0-6c37-4e1c-9a78-5d34b2a5f9a1"`
 	UserID         *uint       `json:"user_id,omitempty" example:"1"`
 	UserEmail      string      `json:"user_email,omitempty" example:"admin@example.com"`
 	Action         AuditAction `json:"action" example:"employee_delete"`
@@ -124,6 +131,7 @@ func (a *AuditLog) ToResponse() AuditLogResponse {
 	return AuditLogResponse{
 		ID:             a.ID,
 		Timestamp:      a.Timestamp,
+		RequestID:      a.RequestID,
 		UserID:         a.UserID,
 		UserEmail:      a.UserEmail,
 		Action:         a.Action,
