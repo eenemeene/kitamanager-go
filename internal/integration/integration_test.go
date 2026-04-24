@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/ctxkeys"
 	"github.com/eenemeene/kitamanager-go/internal/database"
 	"github.com/eenemeene/kitamanager-go/internal/handlers"
+	"github.com/eenemeene/kitamanager-go/internal/middleware"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 	"github.com/eenemeene/kitamanager-go/internal/store"
@@ -88,6 +90,11 @@ func TestMain(m *testing.M) {
 
 func setupRouter() *gin.Engine {
 	r := gin.New()
+
+	// Mount RequestID first so every downstream audit row carries a
+	// correlation id matching the X-Request-ID response header. This
+	// mirrors the production router wiring in cmd/api/main.go.
+	r.Use(middleware.RequestID())
 
 	// Add middleware to set user context (simulating authenticated user)
 	r.Use(func(c *gin.Context) {
@@ -442,4 +449,66 @@ func TestConcurrentOrganizationCreation(t *testing.T) {
 	if len(orgsResp.Data) != 5 {
 		t.Errorf("expected 5 organizations, got %d", len(orgsResp.Data))
 	}
+}
+
+// TestAuditLog_RequestIDRoundTrip proves the X-Request-ID that the
+// RequestID middleware stamps onto the response header is the same
+// id that lands in the audit_logs row emitted by the mutating
+// handler. This is the end-to-end contract the column exists for:
+// if an investigator has an X-Request-ID from a client trace, they
+// can join it against audit_logs to recover every mutation caused by
+// that request.
+func TestAuditLog_RequestIDRoundTrip(t *testing.T) {
+	cleanupBetweenTests()
+
+	// Send a request with an explicit X-Request-ID so the assertion
+	// is deterministic. A fresh UUID would work too but we'd then
+	// have to read it from the response to assert — this path covers
+	// both the client-provided and the middleware-generated case
+	// since the middleware reuses the header when set.
+	const wantID = "integration-roundtrip-abc123"
+
+	reqBody, _ := json.Marshal(map[string]any{
+		"name":                 "Audit Round-Trip Org",
+		"active":               true,
+		"state":                "berlin",
+		"default_section_name": "Default",
+	})
+	req, _ := http.NewRequest("POST", "/api/v1/organizations", bytes.NewBuffer(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set(middleware.RequestIDHeader, wantID)
+
+	w := httptest.NewRecorder()
+	testRouter.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create org: status=%d body=%s", w.Code, w.Body.String())
+	}
+	if got := w.Result().Header.Get(middleware.RequestIDHeader); got != wantID {
+		t.Fatalf("response X-Request-ID = %q, want %q", got, wantID)
+	}
+
+	// The audit row is written asynchronously. Poll briefly rather
+	// than sleep-and-hope.
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		var rows []models.AuditLog
+		if err := testDB.Where(
+			"action = ? AND request_id = ?",
+			models.AuditActionOrgCreate, wantID,
+		).Find(&rows).Error; err != nil {
+			t.Fatalf("query audit rows: %v", err)
+		}
+		if len(rows) == 1 {
+			// Belt-and-braces: confirm the resource name we sent
+			// actually landed so we know we're inspecting the right
+			// row, not some stale leftover.
+			if !strings.Contains(rows[0].Details, "Audit Round-Trip Org") {
+				t.Errorf("audit row does not match the request: %+v", rows[0])
+			}
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	t.Fatal("audit row with matching request_id never landed within 3s")
 }

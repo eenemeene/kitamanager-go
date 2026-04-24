@@ -279,7 +279,7 @@ func (h *UserHandler) AddToOrganization(c *gin.Context) {
 		return
 	}
 
-	h.auditService.LogUserAddToOrg(getUserID(c), getUserEmail(c), userID, req.OrganizationID, string(role), c.ClientIP())
+	h.auditService.LogUserAddToOrg(c.Request.Context(), getUserID(c), getUserEmail(c), userID, req.OrganizationID, string(role), c.ClientIP())
 
 	c.JSON(http.StatusCreated, resp)
 }
@@ -343,7 +343,7 @@ func (h *UserHandler) UpdateOrganizationRole(c *gin.Context) {
 		return
 	}
 
-	h.auditService.LogRoleChange(getUserID(c), getUserEmail(c), userID, orgID, oldRole, string(req.Role), c.ClientIP())
+	h.auditService.LogRoleChange(c.Request.Context(), getUserID(c), getUserEmail(c), userID, orgID, oldRole, string(req.Role), c.ClientIP())
 
 	c.JSON(http.StatusOK, resp)
 }
@@ -381,7 +381,7 @@ func (h *UserHandler) RemoveFromOrganization(c *gin.Context) {
 		return
 	}
 
-	h.auditService.LogUserRemoveFromOrg(getUserID(c), getUserEmail(c), userID, orgID, c.ClientIP())
+	h.auditService.LogUserRemoveFromOrg(c.Request.Context(), getUserID(c), getUserEmail(c), userID, orgID, c.ClientIP())
 
 	c.Status(http.StatusNoContent)
 }
@@ -458,7 +458,7 @@ func (h *UserHandler) SetSuperAdmin(c *gin.Context) {
 	}
 
 	// Audit log superadmin change
-	h.auditService.LogSuperAdminChange(actorID, getUserEmail(c), userID, targetUser.Email, req.IsSuperAdmin, c.ClientIP())
+	h.auditService.LogSuperAdminChange(c.Request.Context(), actorID, getUserEmail(c), userID, targetUser.Email, req.IsSuperAdmin, c.ClientIP())
 
 	// Return updated user
 	user, err := h.service.GetByID(c.Request.Context(), userID, actorID)
@@ -525,7 +525,7 @@ func (h *UserHandler) ResetPassword(c *gin.Context) {
 	if targetUser != nil {
 		email = targetUser.Email
 	}
-	h.auditService.LogPasswordReset(actorID, getUserEmail(c), targetUserID, email, c.ClientIP())
+	h.auditService.LogPasswordReset(c.Request.Context(), actorID, getUserEmail(c), targetUserID, email, c.ClientIP())
 
 	if actorID != targetUserID {
 		slog.Warn("Admin reset another user's password",

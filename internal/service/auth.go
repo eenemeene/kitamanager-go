@@ -150,25 +150,25 @@ func (s *AuthService) Login(ctx context.Context, email, password, ipAddress, use
 
 	failedCount, err := s.auditService.CountRecentFailedLogins(ctx, canonical, lockoutWindow)
 	if err == nil && failedCount >= lockoutThreshold {
-		s.auditService.LogLoginFailed(canonical, ipAddress, userAgent, "account locked - too many failed attempts")
+		s.auditService.LogLoginFailed(ctx, canonical, ipAddress, userAgent, "account locked - too many failed attempts")
 		return nil, apperror.TooManyRequests("too many failed login attempts, please try again later")
 	}
 
 	user, err := s.userStore.FindByEmail(ctx, canonical)
 	if err != nil {
 		_ = bcrypt.CompareHashAndPassword(s.dummyPasswordHash, []byte(password))
-		s.auditService.LogLoginFailed(canonical, ipAddress, userAgent, "user not found")
+		s.auditService.LogLoginFailed(ctx, canonical, ipAddress, userAgent, "user not found")
 		return nil, apperror.Unauthorized("invalid credentials")
 	}
 
 	if !user.Active {
 		_ = bcrypt.CompareHashAndPassword(s.dummyPasswordHash, []byte(password))
-		s.auditService.LogLoginFailed(canonical, ipAddress, userAgent, "user inactive")
+		s.auditService.LogLoginFailed(ctx, canonical, ipAddress, userAgent, "user inactive")
 		return nil, apperror.Unauthorized("invalid credentials")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
-		s.auditService.LogLoginFailed(canonical, ipAddress, userAgent, "invalid password")
+		s.auditService.LogLoginFailed(ctx, canonical, ipAddress, userAgent, "invalid password")
 		return nil, apperror.Unauthorized("invalid credentials")
 	}
 
@@ -185,13 +185,13 @@ func (s *AuthService) Login(ctx context.Context, email, password, ipAddress, use
 			if err != nil {
 				return nil, err
 			}
-			s.auditService.LogLoginMFARequired(user.ID, user.Email, ipAddress, userAgent)
+			s.auditService.LogLoginMFARequired(ctx, user.ID, user.Email, ipAddress, userAgent)
 			return &LoginResult{Pending: pending}, nil
 		}
 	}
 
 	_ = s.userStore.UpdateLastLogin(ctx, user.ID)
-	s.auditService.LogLogin(user.ID, user.Email, ipAddress, userAgent)
+	s.auditService.LogLogin(ctx, user.ID, user.Email, ipAddress, userAgent)
 
 	authed, err := s.issueSession(ctx, user.ID, ipAddress, userAgent)
 	if err != nil {
@@ -248,7 +248,7 @@ func (s *AuthService) VerifyMFALogin(ctx context.Context, pendingToken string, f
 	perUserFailures, err := s.auditService.CountRecentFailedMFAChallenges(ctx, pending.UserID, mfaPerUserLockoutWindow)
 	if err == nil && perUserFailures >= mfaPerUserLockoutThreshold {
 		_ = s.sessionStore.DeletePendingMFA(ctx, pendHash)
-		s.auditService.LogMFAChallengeLocked(pending.UserID, pending.UserEmail, ipAddress, userAgent)
+		s.auditService.LogMFAChallengeLocked(ctx, pending.UserID, pending.UserEmail, ipAddress, userAgent)
 		return nil, apperror.TooManyRequests("too many failed MFA attempts, please try again later")
 	}
 
@@ -263,7 +263,7 @@ func (s *AuthService) VerifyMFALogin(ctx context.Context, pendingToken string, f
 		// distinguishing "you picked a factor that isn't yours" from
 		// "wrong code." The audit record preserves the detail.
 		if errors.Is(verifyErr, apperror.ErrNotFound) {
-			s.auditService.LogMFAChallengeFailed(pending.UserID, pending.UserEmail, "", ipAddress, userAgent, "unknown factor")
+			s.auditService.LogMFAChallengeFailed(ctx, pending.UserID, pending.UserEmail, "", ipAddress, userAgent, "unknown factor")
 			// Do NOT bump the per-row counter: a totally invalid
 			// factor id is more likely a UI bug than a brute force.
 			return nil, apperror.Unauthorized("invalid code")
@@ -278,10 +278,10 @@ func (s *AuthService) VerifyMFALogin(ctx context.Context, pendingToken string, f
 			}
 			if newCount >= MFAChallengeFailureLimit {
 				_ = s.sessionStore.DeletePendingMFA(ctx, pendHash)
-				s.auditService.LogMFAChallengeLocked(pending.UserID, pending.UserEmail, ipAddress, userAgent)
+				s.auditService.LogMFAChallengeLocked(ctx, pending.UserID, pending.UserEmail, ipAddress, userAgent)
 				return nil, apperror.TooManyRequests("too many wrong codes, please restart login")
 			}
-			s.auditService.LogMFAChallengeFailed(pending.UserID, pending.UserEmail, factorType, ipAddress, userAgent, "invalid code")
+			s.auditService.LogMFAChallengeFailed(ctx, pending.UserID, pending.UserEmail, factorType, ipAddress, userAgent, "invalid code")
 			return nil, apperror.Unauthorized("invalid code")
 		}
 		return nil, verifyErr
@@ -295,8 +295,8 @@ func (s *AuthService) VerifyMFALogin(ctx context.Context, pendingToken string, f
 	}
 
 	_ = s.userStore.UpdateLastLogin(ctx, pending.UserID)
-	s.auditService.LogMFAChallengeSucceeded(pending.UserID, pending.UserEmail, factorType, ipAddress, userAgent)
-	s.auditService.LogLogin(pending.UserID, pending.UserEmail, ipAddress, userAgent)
+	s.auditService.LogMFAChallengeSucceeded(ctx, pending.UserID, pending.UserEmail, factorType, ipAddress, userAgent)
+	s.auditService.LogLogin(ctx, pending.UserID, pending.UserEmail, ipAddress, userAgent)
 
 	return s.issueSession(ctx, pending.UserID, ipAddress, userAgent)
 }
@@ -347,12 +347,12 @@ func (s *AuthService) ChangePassword(ctx context.Context, userID uint, currentPa
 	failedCount, countErr := s.auditService.CountRecentFailedPasswordChanges(ctx, userID, passwordChangeLockoutWindow)
 	if countErr == nil && failedCount >= passwordChangeLockoutThreshold {
 		_ = bcrypt.CompareHashAndPassword(s.dummyPasswordHash, []byte(currentPassword))
-		s.auditService.LogPasswordChangeFailed(userID, user.Email, ipAddress, "account locked - too many failed password-change attempts")
+		s.auditService.LogPasswordChangeFailed(ctx, userID, user.Email, ipAddress, "account locked - too many failed password-change attempts")
 		return nil, apperror.TooManyRequests("too many failed password-change attempts, please try again later")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(currentPassword)); err != nil {
-		s.auditService.LogPasswordChangeFailed(userID, user.Email, ipAddress, "invalid current password")
+		s.auditService.LogPasswordChangeFailed(ctx, userID, user.Email, ipAddress, "invalid current password")
 		return nil, apperror.Unauthorized("current password is incorrect")
 	}
 
@@ -387,7 +387,7 @@ func (s *AuthService) ChangePassword(ctx context.Context, userID uint, currentPa
 		}
 	}
 
-	s.auditService.LogPasswordChange(userID, user.Email, ipAddress)
+	s.auditService.LogPasswordChange(ctx, userID, user.Email, ipAddress)
 
 	return s.issueSession(ctx, user.ID, ipAddress, userAgent)
 }

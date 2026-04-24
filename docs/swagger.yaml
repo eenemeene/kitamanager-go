@@ -115,6 +115,9 @@ definitions:
       organization_id:
         example: 1
         type: integer
+      request_id:
+        example: 4b89e4e0-6c37-4e1c-9a78-5d34b2a5f9a1
+        type: string
       resource_id:
         example: 42
         type: integer

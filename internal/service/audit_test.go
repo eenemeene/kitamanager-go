@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/eenemeene/kitamanager-go/internal/middleware"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/store"
 )
@@ -74,7 +75,7 @@ func TestAuditService_LogLogin(t *testing.T) {
 	ctx := context.Background()
 
 	var userID uint = 1
-	svc.LogLogin(userID, "user@example.com", "127.0.0.1", "TestAgent/1.0")
+	svc.LogLogin(context.Background(), userID, "user@example.com", "127.0.0.1", "TestAgent/1.0")
 	svc.Shutdown()
 
 	logs, total, err := store.NewAuditStore(db).FindAll(ctx, 100, 0)
@@ -118,7 +119,7 @@ func TestAuditService_LogLoginFailed(t *testing.T) {
 	svc := NewAuditService(auditStore)
 	ctx := context.Background()
 
-	svc.LogLoginFailed("bad@example.com", "10.0.0.1", "BadAgent/1.0", "invalid password")
+	svc.LogLoginFailed(context.Background(), "bad@example.com", "10.0.0.1", "BadAgent/1.0", "invalid password")
 	svc.Shutdown()
 
 	logs, total, err := store.NewAuditStore(db).FindAll(ctx, 100, 0)
@@ -157,7 +158,7 @@ func TestAuditService_LogSuperAdminChange(t *testing.T) {
 		auditStore := store.NewAuditStore(db)
 		svc := NewAuditService(auditStore)
 
-		svc.LogSuperAdminChange(1, "actor@example.com", 2, "target@example.com", true, "127.0.0.1")
+		svc.LogSuperAdminChange(context.Background(), 1, "actor@example.com", 2, "target@example.com", true, "127.0.0.1")
 		svc.Shutdown()
 
 		logs, _, err := store.NewAuditStore(db).FindByAction(ctx, models.AuditActionSuperAdminGrant, 100, 0)
@@ -183,7 +184,7 @@ func TestAuditService_LogSuperAdminChange(t *testing.T) {
 		auditStore := store.NewAuditStore(db)
 		svc := NewAuditService(auditStore)
 
-		svc.LogSuperAdminChange(1, "actor@example.com", 3, "revoked@example.com", false, "127.0.0.1")
+		svc.LogSuperAdminChange(context.Background(), 1, "actor@example.com", 3, "revoked@example.com", false, "127.0.0.1")
 		svc.Shutdown()
 
 		logs, _, err := store.NewAuditStore(db).FindByAction(ctx, models.AuditActionSuperAdminRevoke, 100, 0)
@@ -206,7 +207,7 @@ func TestAuditService_LogUserAddToOrg(t *testing.T) {
 	svc := NewAuditService(auditStore)
 	ctx := context.Background()
 
-	svc.LogUserAddToOrg(1, "actor@example.com", 5, org.ID, "admin", "127.0.0.1")
+	svc.LogUserAddToOrg(context.Background(), 1, "actor@example.com", 5, org.ID, "admin", "127.0.0.1")
 	svc.Shutdown()
 
 	logs, total, err := store.NewAuditStore(db).FindAll(ctx, 100, 0)
@@ -247,7 +248,7 @@ func TestAuditService_LogUserRemoveFromOrg(t *testing.T) {
 	svc := NewAuditService(auditStore)
 	ctx := context.Background()
 
-	svc.LogUserRemoveFromOrg(1, "actor@example.com", 5, org.ID, "127.0.0.1")
+	svc.LogUserRemoveFromOrg(context.Background(), 1, "actor@example.com", 5, org.ID, "127.0.0.1")
 	svc.Shutdown()
 
 	logs, total, err := store.NewAuditStore(db).FindAll(ctx, 100, 0)
@@ -285,7 +286,7 @@ func TestAuditService_LogRoleChange(t *testing.T) {
 	svc := NewAuditService(auditStore)
 	ctx := context.Background()
 
-	svc.LogRoleChange(1, "actor@example.com", 5, org.ID, "manager", "admin", "127.0.0.1")
+	svc.LogRoleChange(context.Background(), 1, "actor@example.com", 5, org.ID, "manager", "admin", "127.0.0.1")
 	svc.Shutdown()
 
 	logs, total, err := store.NewAuditStore(db).FindAll(ctx, 100, 0)
@@ -336,7 +337,7 @@ func TestAuditService_LogResourceDelete(t *testing.T) {
 			svc := NewAuditService(auditStore)
 			ctx := context.Background()
 
-			svc.LogResourceDelete(1, "actor@example.com", tt.resourceType, 42, "Test Resource", "127.0.0.1", nil)
+			svc.LogResourceDelete(context.Background(), 1, "actor@example.com", tt.resourceType, 42, "Test Resource", "127.0.0.1", nil)
 			svc.Shutdown()
 
 			logs, total, err := store.NewAuditStore(db).FindAll(ctx, 100, 0)
@@ -388,7 +389,7 @@ func TestAuditService_LogResourceCreate(t *testing.T) {
 			svc := NewAuditService(auditStore)
 			ctx := context.Background()
 
-			svc.LogResourceCreate(1, "actor@example.com", tt.resourceType, 50, "Test Resource", "127.0.0.1", nil)
+			svc.LogResourceCreate(context.Background(), 1, "actor@example.com", tt.resourceType, 50, "Test Resource", "127.0.0.1", nil)
 			svc.Shutdown()
 
 			logs, total, err := store.NewAuditStore(db).FindAll(ctx, 100, 0)
@@ -419,7 +420,7 @@ func TestAuditService_LogResourceUpdate(t *testing.T) {
 	svc := NewAuditService(auditStore)
 	ctx := context.Background()
 
-	svc.LogResourceUpdate(1, "actor@example.com", "child", 30, "Jane Doe", "127.0.0.1", nil)
+	svc.LogResourceUpdate(context.Background(), 1, "actor@example.com", "child", 30, "Jane Doe", "127.0.0.1", nil)
 	svc.Shutdown()
 
 	logs, total, err := store.NewAuditStore(db).FindAll(ctx, 100, 0)
@@ -450,7 +451,7 @@ func TestAuditService_GetLogs(t *testing.T) {
 
 	// Add multiple logs
 	for i := range 5 {
-		svc.LogLogin(uint(i+1), "user@example.com", "127.0.0.1", "Agent")
+		svc.LogLogin(context.Background(), uint(i+1), "user@example.com", "127.0.0.1", "Agent")
 	}
 	svc.Shutdown()
 
@@ -501,11 +502,11 @@ func TestAuditService_GetLogsByUser(t *testing.T) {
 	ctx := context.Background()
 
 	// Log for user 1
-	svc.LogLogin(1, "user1@example.com", "127.0.0.1", "Agent")
-	svc.LogLogin(1, "user1@example.com", "127.0.0.1", "Agent")
+	svc.LogLogin(context.Background(), 1, "user1@example.com", "127.0.0.1", "Agent")
+	svc.LogLogin(context.Background(), 1, "user1@example.com", "127.0.0.1", "Agent")
 
 	// Log for user 2
-	svc.LogLogin(2, "user2@example.com", "127.0.0.1", "Agent")
+	svc.LogLogin(context.Background(), 2, "user2@example.com", "127.0.0.1", "Agent")
 
 	svc.Shutdown()
 
@@ -555,11 +556,11 @@ func TestAuditService_CountRecentFailedLogins(t *testing.T) {
 	ctx := context.Background()
 
 	// Add failed login attempts
-	svc.LogLoginFailed("fail@example.com", "127.0.0.1", "Agent", "bad password")
-	svc.LogLoginFailed("fail@example.com", "127.0.0.1", "Agent", "bad password")
-	svc.LogLoginFailed("fail@example.com", "127.0.0.1", "Agent", "bad password")
+	svc.LogLoginFailed(context.Background(), "fail@example.com", "127.0.0.1", "Agent", "bad password")
+	svc.LogLoginFailed(context.Background(), "fail@example.com", "127.0.0.1", "Agent", "bad password")
+	svc.LogLoginFailed(context.Background(), "fail@example.com", "127.0.0.1", "Agent", "bad password")
 	// Different email
-	svc.LogLoginFailed("other@example.com", "127.0.0.1", "Agent", "bad password")
+	svc.LogLoginFailed(context.Background(), "other@example.com", "127.0.0.1", "Agent", "bad password")
 
 	svc.Shutdown()
 
@@ -598,10 +599,10 @@ func TestAuditService_GetLogsFiltered(t *testing.T) {
 	svc := NewAuditService(auditStore)
 	ctx := context.Background()
 
-	svc.LogLogin(1, "user1@example.com", "127.0.0.1", "Agent")
-	svc.LogLogin(2, "user2@example.com", "127.0.0.1", "Agent")
-	svc.LogLoginFailed("bad@example.com", "127.0.0.1", "Agent", "wrong password")
-	svc.LogResourceCreate(1, "user1@example.com", "employee", 10, "Jane", "127.0.0.1", nil)
+	svc.LogLogin(context.Background(), 1, "user1@example.com", "127.0.0.1", "Agent")
+	svc.LogLogin(context.Background(), 2, "user2@example.com", "127.0.0.1", "Agent")
+	svc.LogLoginFailed(context.Background(), "bad@example.com", "127.0.0.1", "Agent", "wrong password")
+	svc.LogResourceCreate(context.Background(), 1, "user1@example.com", "employee", 10, "Jane", "127.0.0.1", nil)
 	svc.Shutdown()
 
 	readSvc := &AuditService{store: store.NewAuditStore(db)}
@@ -685,7 +686,7 @@ func TestAuditService_GetLogByID(t *testing.T) {
 	svc := NewAuditService(auditStore)
 	ctx := context.Background()
 
-	svc.LogLogin(1, "user@example.com", "127.0.0.1", "Agent")
+	svc.LogLogin(context.Background(), 1, "user@example.com", "127.0.0.1", "Agent")
 	svc.Shutdown()
 
 	readSvc := &AuditService{store: store.NewAuditStore(db)}
@@ -753,13 +754,13 @@ func TestAuditService_FallbackOnFullChannel(t *testing.T) {
 	// Do NOT start processLogs — the channel will stay full after 1 entry.
 
 	// First entry fills the channel (async path).
-	svc.log(&models.AuditLog{Action: "test1"})
+	svc.log(context.Background(), &models.AuditLog{Action: "test1"})
 	if svc.FallbackCount() != 0 {
 		t.Fatalf("expected 0 fallbacks, got %d", svc.FallbackCount())
 	}
 
 	// Second entry should trigger synchronous fallback.
-	svc.log(&models.AuditLog{Action: "test2"})
+	svc.log(context.Background(), &models.AuditLog{Action: "test2"})
 	if svc.FallbackCount() != 1 {
 		t.Errorf("expected 1 fallback, got %d", svc.FallbackCount())
 	}
@@ -788,10 +789,10 @@ func TestAuditService_DroppedOnStoreFailure(t *testing.T) {
 	// Do NOT start processLogs.
 
 	// Fill the channel.
-	svc.log(&models.AuditLog{Action: "fill"})
+	svc.log(context.Background(), &models.AuditLog{Action: "fill"})
 
 	// This should fallback AND fail the store write.
-	svc.log(&models.AuditLog{Action: "drop"})
+	svc.log(context.Background(), &models.AuditLog{Action: "drop"})
 
 	if svc.FallbackCount() != 1 {
 		t.Errorf("expected 1 fallback, got %d", svc.FallbackCount())
@@ -812,7 +813,7 @@ func TestAuditService_ShutdownDrainsChannel(t *testing.T) {
 
 	// Send several entries.
 	for range 10 {
-		svc.log(&models.AuditLog{Action: models.AuditAction("test")})
+		svc.log(context.Background(), &models.AuditLog{Action: models.AuditAction("test")})
 	}
 
 	svc.Shutdown()
@@ -823,6 +824,76 @@ func TestAuditService_ShutdownDrainsChannel(t *testing.T) {
 	}
 	if svc.FallbackCount() != 0 {
 		t.Errorf("expected 0 fallbacks, got %d", svc.FallbackCount())
+	}
+}
+
+// TestAuditService_log_StampsRequestIDFromContext locks in the core
+// invariant of the request-id plumbing: any audit row emitted inside
+// a request context carries that request's X-Request-ID.
+func TestAuditService_log_StampsRequestIDFromContext(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewAuditService(store.NewAuditStore(db))
+
+	ctx := middleware.ContextWithRequestIDForTest(context.Background(), "req-abc-123")
+	svc.LogLogin(ctx, 1, "u@example.com", "127.0.0.1", "agent")
+	svc.Shutdown()
+
+	var rows []models.AuditLog
+	if err := db.Where("action = ?", models.AuditActionLogin).Find(&rows).Error; err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(rows))
+	}
+	if rows[0].RequestID != "req-abc-123" {
+		t.Errorf("request_id: want %q, got %q", "req-abc-123", rows[0].RequestID)
+	}
+}
+
+// Non-HTTP callers pass context.Background(); those rows must keep an
+// empty request_id, which translates to NULL in the DB. Locks in the
+// "opt-in correlation" semantic — not every audit row has a request.
+func TestAuditService_log_EmptyRequestIDForBareContext(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewAuditService(store.NewAuditStore(db))
+
+	svc.LogLogin(context.Background(), 1, "u@example.com", "127.0.0.1", "agent")
+	svc.Shutdown()
+
+	var rows []models.AuditLog
+	if err := db.Where("action = ?", models.AuditActionLogin).Find(&rows).Error; err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(rows))
+	}
+	if rows[0].RequestID != "" {
+		t.Errorf("expected empty request_id for non-HTTP caller, got %q", rows[0].RequestID)
+	}
+}
+
+// An explicitly-set RequestID on the entry wins over the ctx value.
+// This is the escape hatch for tooling that synthesises a correlation
+// id (e.g. an import job that wants to tag every one of its rows with
+// a run id).
+func TestAuditService_log_ExplicitRequestIDWinsOverContext(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewAuditService(store.NewAuditStore(db))
+
+	ctx := middleware.ContextWithRequestIDForTest(context.Background(), "from-ctx")
+	svc.log(ctx, &models.AuditLog{
+		Action:    models.AuditActionLogin,
+		RequestID: "explicit-override",
+		Success:   true,
+	})
+	svc.Shutdown()
+
+	var rows []models.AuditLog
+	if err := db.Where("action = ?", models.AuditActionLogin).Find(&rows).Error; err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	if len(rows) != 1 || rows[0].RequestID != "explicit-override" {
+		t.Errorf("expected explicit request_id to survive, got %+v", rows)
 	}
 }
 
@@ -873,15 +944,15 @@ func TestAuditService_NilSafety(t *testing.T) {
 		svc := &AuditService{}
 
 		// Log methods should not panic with nil channel
-		svc.LogLogin(1, "test@example.com", "127.0.0.1", "Agent")
-		svc.LogLoginFailed("test@example.com", "127.0.0.1", "Agent", "reason")
-		svc.LogSuperAdminChange(1, "actor@example.com", 2, "test@example.com", true, "127.0.0.1")
-		svc.LogUserAddToOrg(1, "actor@example.com", 2, 3, "admin", "127.0.0.1")
-		svc.LogUserRemoveFromOrg(1, "actor@example.com", 2, 3, "127.0.0.1")
-		svc.LogRoleChange(1, "actor@example.com", 2, 3, "old", "new", "127.0.0.1")
-		svc.LogResourceDelete(1, "actor@example.com", "employee", 2, "name", "127.0.0.1", nil)
-		svc.LogResourceCreate(1, "actor@example.com", "employee", 2, "name", "127.0.0.1", nil)
-		svc.LogResourceUpdate(1, "actor@example.com", "employee", 2, "name", "127.0.0.1", nil)
+		svc.LogLogin(context.Background(), 1, "test@example.com", "127.0.0.1", "Agent")
+		svc.LogLoginFailed(context.Background(), "test@example.com", "127.0.0.1", "Agent", "reason")
+		svc.LogSuperAdminChange(context.Background(), 1, "actor@example.com", 2, "test@example.com", true, "127.0.0.1")
+		svc.LogUserAddToOrg(context.Background(), 1, "actor@example.com", 2, 3, "admin", "127.0.0.1")
+		svc.LogUserRemoveFromOrg(context.Background(), 1, "actor@example.com", 2, 3, "127.0.0.1")
+		svc.LogRoleChange(context.Background(), 1, "actor@example.com", 2, 3, "old", "new", "127.0.0.1")
+		svc.LogResourceDelete(context.Background(), 1, "actor@example.com", "employee", 2, "name", "127.0.0.1", nil)
+		svc.LogResourceCreate(context.Background(), 1, "actor@example.com", "employee", 2, "name", "127.0.0.1", nil)
+		svc.LogResourceUpdate(context.Background(), 1, "actor@example.com", "employee", 2, "name", "127.0.0.1", nil)
 
 		// Shutdown doesn't panic
 		svc.Shutdown()
@@ -907,21 +978,21 @@ func TestAuditService_ActorEmailSnapshot(t *testing.T) {
 			name:       "LogResourceCreate",
 			wantAction: "employee_create",
 			invoke: func(svc *AuditService, _ uint) {
-				svc.LogResourceCreate(actorID, actorEmail, "employee", 1, "Jane", "127.0.0.1", nil)
+				svc.LogResourceCreate(context.Background(), actorID, actorEmail, "employee", 1, "Jane", "127.0.0.1", nil)
 			},
 		},
 		{
 			name:       "LogResourceUpdate",
 			wantAction: "employee_update",
 			invoke: func(svc *AuditService, _ uint) {
-				svc.LogResourceUpdate(actorID, actorEmail, "employee", 1, "Jane", "127.0.0.1", nil)
+				svc.LogResourceUpdate(context.Background(), actorID, actorEmail, "employee", 1, "Jane", "127.0.0.1", nil)
 			},
 		},
 		{
 			name:       "LogResourceDelete",
 			wantAction: models.AuditActionEmployeeDelete,
 			invoke: func(svc *AuditService, _ uint) {
-				svc.LogResourceDelete(actorID, actorEmail, "employee", 1, "Jane", "127.0.0.1", nil)
+				svc.LogResourceDelete(context.Background(), actorID, actorEmail, "employee", 1, "Jane", "127.0.0.1", nil)
 			},
 		},
 		{
@@ -929,7 +1000,7 @@ func TestAuditService_ActorEmailSnapshot(t *testing.T) {
 			needsOrg:   true,
 			wantAction: models.AuditActionUserAddToOrg,
 			invoke: func(svc *AuditService, orgID uint) {
-				svc.LogUserAddToOrg(actorID, actorEmail, 2, orgID, "admin", "127.0.0.1")
+				svc.LogUserAddToOrg(context.Background(), actorID, actorEmail, 2, orgID, "admin", "127.0.0.1")
 			},
 		},
 		{
@@ -937,7 +1008,7 @@ func TestAuditService_ActorEmailSnapshot(t *testing.T) {
 			needsOrg:   true,
 			wantAction: models.AuditActionUserRemoveFromOrg,
 			invoke: func(svc *AuditService, orgID uint) {
-				svc.LogUserRemoveFromOrg(actorID, actorEmail, 2, orgID, "127.0.0.1")
+				svc.LogUserRemoveFromOrg(context.Background(), actorID, actorEmail, 2, orgID, "127.0.0.1")
 			},
 		},
 		{
@@ -945,14 +1016,14 @@ func TestAuditService_ActorEmailSnapshot(t *testing.T) {
 			needsOrg:   true,
 			wantAction: models.AuditActionRoleChange,
 			invoke: func(svc *AuditService, orgID uint) {
-				svc.LogRoleChange(actorID, actorEmail, 2, orgID, "manager", "admin", "127.0.0.1")
+				svc.LogRoleChange(context.Background(), actorID, actorEmail, 2, orgID, "manager", "admin", "127.0.0.1")
 			},
 		},
 		{
 			name:       "LogSuperAdminChange_grant",
 			wantAction: models.AuditActionSuperAdminGrant,
 			invoke: func(svc *AuditService, _ uint) {
-				svc.LogSuperAdminChange(actorID, actorEmail, 2, "target@example.com", true, "127.0.0.1")
+				svc.LogSuperAdminChange(context.Background(), actorID, actorEmail, 2, "target@example.com", true, "127.0.0.1")
 			},
 			assertExtra: func(t *testing.T, log models.AuditLog) {
 				t.Helper()
@@ -971,7 +1042,7 @@ func TestAuditService_ActorEmailSnapshot(t *testing.T) {
 			name:       "LogPasswordReset",
 			wantAction: models.AuditActionPasswordReset,
 			invoke: func(svc *AuditService, _ uint) {
-				svc.LogPasswordReset(actorID, actorEmail, 2, "target@example.com", "127.0.0.1")
+				svc.LogPasswordReset(context.Background(), actorID, actorEmail, 2, "target@example.com", "127.0.0.1")
 			},
 			assertExtra: func(t *testing.T, log models.AuditLog) {
 				t.Helper()
@@ -989,7 +1060,7 @@ func TestAuditService_ActorEmailSnapshot(t *testing.T) {
 			needsOrg:   true,
 			wantAction: "child_export",
 			invoke: func(svc *AuditService, orgID uint) {
-				svc.LogDataExport(actorID, actorEmail, "child", orgID, 5, "127.0.0.1")
+				svc.LogDataExport(context.Background(), actorID, actorEmail, "child", orgID, 5, "127.0.0.1")
 			},
 		},
 	}
@@ -1034,7 +1105,7 @@ func TestAuditService_ActorEmail_EmptyString(t *testing.T) {
 	db := setupTestDB(t)
 	svc := NewAuditService(store.NewAuditStore(db))
 
-	svc.LogResourceDelete(42, "", "child", 99, "Unknown", "127.0.0.1", nil)
+	svc.LogResourceDelete(context.Background(), 42, "", "child", 99, "Unknown", "127.0.0.1", nil)
 	svc.Shutdown()
 
 	logs, total, err := store.NewAuditStore(db).FindByAction(context.Background(), models.AuditActionChildDelete, 10, 0)
@@ -1067,7 +1138,7 @@ func TestAuditService_ActorEmail_MaxLength(t *testing.T) {
 		t.Fatalf("test data wrong length: %d", len(email))
 	}
 
-	svc.LogResourceCreate(1, email, "child", 1, "n", "127.0.0.1", nil)
+	svc.LogResourceCreate(context.Background(), 1, email, "child", 1, "n", "127.0.0.1", nil)
 	svc.Shutdown()
 
 	logs, total, err := store.NewAuditStore(db).FindByAction(context.Background(), "child_create", 10, 0)
@@ -1090,7 +1161,7 @@ func TestAuditService_SuperAdminChange_ActorNotSwappedWithTarget(t *testing.T) {
 	db := setupTestDB(t)
 	svc := NewAuditService(store.NewAuditStore(db))
 
-	svc.LogSuperAdminChange(10, "admin@example.com", 20, "promoted@example.com", true, "127.0.0.1")
+	svc.LogSuperAdminChange(context.Background(), 10, "admin@example.com", 20, "promoted@example.com", true, "127.0.0.1")
 	svc.Shutdown()
 
 	logs, _, err := store.NewAuditStore(db).FindByAction(context.Background(), models.AuditActionSuperAdminGrant, 10, 0)

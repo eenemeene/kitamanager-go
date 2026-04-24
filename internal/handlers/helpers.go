@@ -269,17 +269,17 @@ type auditConfig struct {
 
 // auditCreate logs a resource creation audit event.
 func auditCreate(c *gin.Context, svc *service.AuditService, resourceType string, id uint, name string) {
-	svc.LogResourceCreate(getUserID(c), getUserEmail(c), resourceType, id, name, c.ClientIP(), auditOrgIDFromContext(c))
+	svc.LogResourceCreate(c.Request.Context(), getUserID(c), getUserEmail(c), resourceType, id, name, c.ClientIP(), auditOrgIDFromContext(c))
 }
 
 // auditUpdate logs a resource update audit event.
 func auditUpdate(c *gin.Context, svc *service.AuditService, resourceType string, id uint, name string) {
-	svc.LogResourceUpdate(getUserID(c), getUserEmail(c), resourceType, id, name, c.ClientIP(), auditOrgIDFromContext(c))
+	svc.LogResourceUpdate(c.Request.Context(), getUserID(c), getUserEmail(c), resourceType, id, name, c.ClientIP(), auditOrgIDFromContext(c))
 }
 
 // auditDelete logs a resource deletion audit event.
 func auditDelete(c *gin.Context, svc *service.AuditService, resourceType string, id uint, name string) {
-	svc.LogResourceDelete(getUserID(c), getUserEmail(c), resourceType, id, name, c.ClientIP(), auditOrgIDFromContext(c))
+	svc.LogResourceDelete(c.Request.Context(), getUserID(c), getUserEmail(c), resourceType, id, name, c.ClientIP(), auditOrgIDFromContext(c))
 }
 
 // auditOrgIDFromContext resolves the :orgId URL parameter as the organization
