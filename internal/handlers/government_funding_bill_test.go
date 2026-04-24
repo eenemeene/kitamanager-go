@@ -65,7 +65,7 @@ func createBillPeriodInDB(t *testing.T, db *gorm.DB, orgID, userID uint, facilit
 		FacilityTotal:     300000,
 		ContractBooking:   280000,
 		CorrectionBooking: 20000,
-		CreatedBy:         userID,
+		CreatedBy:         &userID,
 		Children: []models.GovernmentFundingBillChild{
 			{
 				VoucherNumber: fmt.Sprintf("GB-0000000000%d-01", month),

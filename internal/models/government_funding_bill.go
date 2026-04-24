@@ -48,19 +48,23 @@ type GovernmentFundingBillChild struct {
 
 // GovernmentFundingBillPeriod represents a single uploaded government funding bill.
 type GovernmentFundingBillPeriod struct {
-	ID                uint                         `gorm:"primaryKey" json:"id" example:"1"`
-	OrganizationID    uint                         `gorm:"not null;index" json:"organization_id" example:"1"`
-	Period                                         // from_date, to_date
-	FileName          string                       `gorm:"size:255;not null" json:"file_name" example:"Abrechnung_11-25.xlsx"`
-	FileSha256        string                       `gorm:"size:64;not null" json:"file_sha256" example:"a1b2c3d4..."`
-	FacilityName      string                       `gorm:"size:255;not null" json:"facility_name" example:"Kita Sonnenschein"`
-	FacilityTotal     int                          `gorm:"not null" json:"facility_total" example:"500000"`
-	ContractBooking   int                          `gorm:"not null" json:"contract_booking" example:"480000"`
-	CorrectionBooking int                          `gorm:"not null" json:"correction_booking" example:"20000"`
-	CreatedBy         uint                         `gorm:"not null" json:"created_by" example:"1"`
-	CreatedAt         time.Time                    `json:"created_at"`
-	UpdatedAt         time.Time                    `json:"updated_at"`
-	Children          []GovernmentFundingBillChild `gorm:"foreignKey:PeriodID;constraint:OnDelete:CASCADE" json:"children,omitempty"`
+	ID                uint   `gorm:"primaryKey" json:"id" example:"1"`
+	OrganizationID    uint   `gorm:"not null;index" json:"organization_id" example:"1"`
+	Period                   // from_date, to_date
+	FileName          string `gorm:"size:255;not null" json:"file_name" example:"Abrechnung_11-25.xlsx"`
+	FileSha256        string `gorm:"size:64;not null" json:"file_sha256" example:"a1b2c3d4..."`
+	FacilityName      string `gorm:"size:255;not null" json:"facility_name" example:"Kita Sonnenschein"`
+	FacilityTotal     int    `gorm:"not null" json:"facility_total" example:"500000"`
+	ContractBooking   int    `gorm:"not null" json:"contract_booking" example:"480000"`
+	CorrectionBooking int    `gorm:"not null" json:"correction_booking" example:"20000"`
+	// CreatedBy became nullable in migration 000014: the FK to
+	// users(id) is now ON DELETE SET NULL so deleting the uploader
+	// doesn't block user deletion and doesn't destroy the bill
+	// record. Fresh inserts always have a non-nil value.
+	CreatedBy *uint                        `json:"created_by,omitempty" example:"1"`
+	CreatedAt time.Time                    `json:"created_at"`
+	UpdatedAt time.Time                    `json:"updated_at"`
+	Children  []GovernmentFundingBillChild `gorm:"foreignKey:PeriodID;constraint:OnDelete:CASCADE" json:"children,omitempty"`
 }
 
 // ============================================================
@@ -110,8 +114,10 @@ type GovernmentFundingBillPeriodResponse struct {
 	UnmatchedCount    int                                  `json:"unmatched_count" example:"2"`
 	Surcharges        []GovernmentFundingBillAmount        `json:"surcharges"`
 	Children          []GovernmentFundingBillChildResponse `json:"children"`
-	CreatedBy         uint                                 `json:"created_by" example:"1"`
-	CreatedAt         time.Time                            `json:"created_at"`
+	// CreatedBy is nil when the uploader has since been deleted
+	// (migration 000014 ON DELETE SET NULL).
+	CreatedBy *uint     `json:"created_by,omitempty" example:"1"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // GovernmentFundingBillPeriodListResponse is the summary response for list view.

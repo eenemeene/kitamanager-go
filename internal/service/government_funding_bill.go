@@ -129,7 +129,7 @@ func (s *GovernmentFundingBillService) ProcessISBJ(ctx context.Context, orgID ui
 		FacilityTotal:     converted.FacilityTotal,
 		ContractBooking:   converted.ContractBooking,
 		CorrectionBooking: converted.CorrectionBooking,
-		CreatedBy:         userID,
+		CreatedBy:         &userID,
 	}
 
 	for _, child := range converted.Children {

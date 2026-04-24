@@ -60,7 +60,7 @@ func TestGovernmentFundingBillService_ListWithPeriods(t *testing.T) {
 			FacilityTotal:     100000 * (i + 1),
 			ContractBooking:   90000 * (i + 1),
 			CorrectionBooking: 10000 * (i + 1),
-			CreatedBy:         user.ID,
+			CreatedBy:         &user.ID,
 		}
 		if err := db.Create(p).Error; err != nil {
 			t.Fatalf("setup: Create() error = %v", err)
@@ -108,7 +108,7 @@ func TestGovernmentFundingBillService_ListOrganizationIsolation(t *testing.T) {
 		FileName:       "org1.xlsx",
 		FileSha256:     "hash1",
 		FacilityName:   "Org1 Kita",
-		CreatedBy:      user.ID,
+		CreatedBy:      &user.ID,
 	}).Error; err != nil {
 		t.Fatalf("setup error: %v", err)
 	}
@@ -145,7 +145,7 @@ func TestGovernmentFundingBillService_GetByID(t *testing.T) {
 		FacilityTotal:     300000,
 		ContractBooking:   280000,
 		CorrectionBooking: 20000,
-		CreatedBy:         user.ID,
+		CreatedBy:         &user.ID,
 		Children: []models.GovernmentFundingBillChild{
 			{
 				VoucherNumber: "GB-11111111111-01",
@@ -267,7 +267,7 @@ func TestGovernmentFundingBillService_GetByIDWithMatching(t *testing.T) {
 		FileSha256:     "matchhash",
 		FacilityName:   "Kita Match",
 		FacilityTotal:  200000,
-		CreatedBy:      user.ID,
+		CreatedBy:      &user.ID,
 		Children: []models.GovernmentFundingBillChild{
 			{
 				VoucherNumber: voucher, // matches
@@ -357,7 +357,7 @@ func TestGovernmentFundingBillService_GetByIDWrongOrg(t *testing.T) {
 		FileName:       "wrong-org.xlsx",
 		FileSha256:     "wrongorghash",
 		FacilityName:   "Kita",
-		CreatedBy:      user.ID,
+		CreatedBy:      &user.ID,
 	}
 	if err := db.Create(period).Error; err != nil {
 		t.Fatalf("setup error: %v", err)
@@ -405,7 +405,7 @@ func TestGovernmentFundingBillService_Delete(t *testing.T) {
 		FileName:       "delete.xlsx",
 		FileSha256:     "deletehash",
 		FacilityName:   "Kita Delete",
-		CreatedBy:      user.ID,
+		CreatedBy:      &user.ID,
 	}
 	if err := db.Create(period).Error; err != nil {
 		t.Fatalf("setup error: %v", err)
@@ -443,7 +443,7 @@ func TestGovernmentFundingBillService_DeleteWrongOrg(t *testing.T) {
 		FileName:       "protected.xlsx",
 		FileSha256:     "protectedhash",
 		FacilityName:   "Kita Protected",
-		CreatedBy:      user.ID,
+		CreatedBy:      &user.ID,
 	}
 	if err := db.Create(period).Error; err != nil {
 		t.Fatalf("setup error: %v", err)
@@ -498,7 +498,7 @@ func TestGovernmentFundingBillService_GetByIDSurchargesAggregation(t *testing.T)
 		FileSha256:     "surchargehash",
 		FacilityName:   "Kita Surcharge",
 		FacilityTotal:  500000,
-		CreatedBy:      user.ID,
+		CreatedBy:      &user.ID,
 		Children: []models.GovernmentFundingBillChild{
 			{
 				VoucherNumber: "GB-11111111111-01",
@@ -580,7 +580,7 @@ func TestGovernmentFundingBillService_GetByIDNoSurcharges(t *testing.T) {
 		FileSha256:     "nosurchargehash",
 		FacilityName:   "Kita No Surcharge",
 		FacilityTotal:  100000,
-		CreatedBy:      user.ID,
+		CreatedBy:      &user.ID,
 		Children: []models.GovernmentFundingBillChild{
 			{
 				VoucherNumber: "GB-44444444444-01",
@@ -630,7 +630,7 @@ func TestGovernmentFundingBillService_GetByIDNoChildren(t *testing.T) {
 		FileSha256:     "emptychildrenhash",
 		FacilityName:   "Kita Empty",
 		FacilityTotal:  0,
-		CreatedBy:      user.ID,
+		CreatedBy:      &user.ID,
 	}
 	if err := db.Create(period).Error; err != nil {
 		t.Fatalf("setup error: %v", err)
@@ -790,7 +790,7 @@ func TestGovernmentFundingBillService_GetByIDMatchingCrossTenancy(t *testing.T) 
 		FileName:       "cross-tenant.xlsx",
 		FileSha256:     "crosshash",
 		FacilityName:   "Org1 Kita",
-		CreatedBy:      user.ID,
+		CreatedBy:      &user.ID,
 		Children: []models.GovernmentFundingBillChild{
 			{
 				VoucherNumber: voucher,
@@ -867,7 +867,7 @@ func createBillPeriodForCompare(t *testing.T, db *gorm.DB, orgID, userID uint, c
 		FileSha256:     "comparehash",
 		FacilityName:   "Kita Compare",
 		FacilityTotal:  500000,
-		CreatedBy:      userID,
+		CreatedBy:      &userID,
 		Children:       children,
 	}
 	if err := db.Create(period).Error; err != nil {
@@ -2000,7 +2000,7 @@ func TestGovernmentFundingBillService_GetByID_MultiRowGrouping(t *testing.T) {
 		FacilityTotal:     200000,
 		ContractBooking:   180000,
 		CorrectionBooking: 20000,
-		CreatedBy:         user.ID,
+		CreatedBy:         &user.ID,
 		Children: []models.GovernmentFundingBillChild{
 			{
 				VoucherNumber: "GB-MULTIROW01-01",
@@ -2105,7 +2105,7 @@ func TestBuildResponse_NoChildren(t *testing.T) {
 		FileName:       "test.xlsx",
 		FileSha256:     "sha256",
 		FacilityName:   "Kita Test",
-		CreatedBy:      user.ID,
+		CreatedBy:      &user.ID,
 	}
 	if err := db.Create(period).Error; err != nil {
 		t.Fatalf("setup: %v", err)
@@ -2156,7 +2156,7 @@ func TestBuildResponse_WithMatchedChild(t *testing.T) {
 		FileName:       "test.xlsx",
 		FileSha256:     "sha256",
 		FacilityName:   "Kita Test",
-		CreatedBy:      user.ID,
+		CreatedBy:      &user.ID,
 	}
 	if err := db.Create(period).Error; err != nil {
 		t.Fatalf("setup: %v", err)
@@ -2222,7 +2222,7 @@ func TestBuildResponse_UnmatchedChild(t *testing.T) {
 		FileName:       "test.xlsx",
 		FileSha256:     "sha256",
 		FacilityName:   "Kita Test",
-		CreatedBy:      user.ID,
+		CreatedBy:      &user.ID,
 	}
 	if err := db.Create(period).Error; err != nil {
 		t.Fatalf("setup: %v", err)
@@ -2337,7 +2337,7 @@ func TestGovernmentFundingBillService_Compare_CalcOnlyEnrichment_MixedChildren(t
 		OrganizationID: org.ID,
 		Period:         models.Period{From: time.Date(2025, 10, 1, 0, 0, 0, 0, time.UTC), To: &toOct},
 		FileName:       "oct.xlsx", FileSha256: "mixhash1", FacilityName: "Kita Oktober",
-		CreatedBy: user.ID,
+		CreatedBy: &user.ID,
 		Children: []models.GovernmentFundingBillChild{
 			{VoucherNumber: voucherA, ChildName: "WithHistory, ChildA", BirthDate: "05.21", District: 1,
 				Payments: []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 120000}}},
@@ -2498,7 +2498,7 @@ func TestGovernmentFundingBillService_Compare_CalcOnlyEnrichment_CrossTenancy(t 
 		OrganizationID: orgA.ID,
 		Period:         models.Period{From: time.Date(2025, 10, 1, 0, 0, 0, 0, time.UTC), To: &toOct},
 		FileName:       "orgA_oct.xlsx", FileSha256: "hashA", FacilityName: "Kita A",
-		CreatedBy: user.ID,
+		CreatedBy: &user.ID,
 		Children: []models.GovernmentFundingBillChild{
 			{VoucherNumber: voucherA, ChildName: "Voucher, Shared", BirthDate: "05.21", District: 1,
 				Payments: []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 120000}}},
@@ -2508,7 +2508,7 @@ func TestGovernmentFundingBillService_Compare_CalcOnlyEnrichment_CrossTenancy(t 
 		OrganizationID: orgB.ID,
 		Period:         models.Period{From: time.Date(2025, 10, 1, 0, 0, 0, 0, time.UTC), To: &toOct},
 		FileName:       "orgB_oct.xlsx", FileSha256: "hashB", FacilityName: "Kita B",
-		CreatedBy: user.ID,
+		CreatedBy: &user.ID,
 		Children: []models.GovernmentFundingBillChild{
 			{VoucherNumber: voucherB, ChildName: "Voucher, Shared", BirthDate: "05.21", District: 1,
 				Payments: []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 120000}}},
@@ -2575,7 +2575,7 @@ func TestGovernmentFundingBillService_Compare_CalcOnlyEnrichment_ChildWasMatched
 			OrganizationID: org.ID,
 			Period:         models.Period{From: m.from, To: &to},
 			FileName:       m.facility + ".xlsx", FileSha256: "hash_" + m.facility, FacilityName: m.facility,
-			CreatedBy: user.ID,
+			CreatedBy: &user.ID,
 			Children: []models.GovernmentFundingBillChild{
 				{VoucherNumber: voucher, ChildName: "Matched, Was", BirthDate: "05.21", District: 1,
 					Payments: []models.GovernmentFundingBillPayment{
@@ -2666,7 +2666,7 @@ func TestGovernmentFundingBillService_Compare_FullMixedEnrichmentScope(t *testin
 		OrganizationID: org.ID,
 		Period:         models.Period{From: time.Date(2025, 10, 1, 0, 0, 0, 0, time.UTC), To: &toOct},
 		FileName:       "older.xlsx", FileSha256: "olderhash", FacilityName: "Kita Older",
-		CreatedBy: user.ID,
+		CreatedBy: &user.ID,
 		Children: []models.GovernmentFundingBillChild{
 			{VoucherNumber: voucherCalc, ChildName: "Child, CalcOnly", BirthDate: "05.21", District: 1,
 				Payments: []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 120000}}},
@@ -3224,7 +3224,7 @@ func createBillFixture(t *testing.T, db *gorm.DB, orgID, userID uint, year int, 
 		FacilityName:    "Test Kita",
 		FacilityTotal:   total,
 		ContractBooking: total,
-		CreatedBy:       userID,
+		CreatedBy:       &userID,
 		Children:        children,
 	}
 	if err := db.Create(period).Error; err != nil {

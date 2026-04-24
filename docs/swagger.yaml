@@ -410,6 +410,10 @@ definitions:
         example: 1
         type: integer
       recorded_by:
+        description: |-
+          RecordedBy is nil when the recording user has since been
+          deleted (migration 000014 ON DELETE SET NULL). Frontends
+          should render "anonymous" or similar when the field is absent.
         example: 1
         type: integer
       status:
@@ -1875,6 +1879,9 @@ definitions:
       created_at:
         type: string
       created_by:
+        description: |-
+          CreatedBy is nil when the uploader has since been deleted
+          (migration 000014 ON DELETE SET NULL).
         example: 1
         type: integer
       facility_name:

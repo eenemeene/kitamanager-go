@@ -99,7 +99,7 @@ func (s *ChildAttendanceService) Create(ctx context.Context, orgID, childID uint
 		CheckInTime:    checkInTime,
 		Status:         req.Status,
 		Note:           strings.TrimSpace(req.Note),
-		RecordedBy:     recordedBy,
+		RecordedBy:     &recordedBy,
 	}
 
 	if err := s.store.Create(ctx, attendance); err != nil {

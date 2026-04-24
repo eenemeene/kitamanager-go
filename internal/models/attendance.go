@@ -16,9 +16,15 @@ type ChildAttendance struct {
 	CheckOutTime   *time.Time    `json:"check_out_time" example:"2025-06-15T16:00:00Z"`
 	Status         string        `gorm:"size:20;not null;default:present" json:"status" example:"present"`
 	Note           string        `gorm:"size:500" json:"note,omitempty" example:"Picked up early by grandparent"`
-	RecordedBy     uint          `gorm:"not null" json:"recorded_by" example:"1"`
-	CreatedAt      time.Time     `json:"created_at"`
-	UpdatedAt      time.Time     `json:"updated_at"`
+	// RecordedBy became nullable in migration 000014: the FK to
+	// users(id) is now ON DELETE SET NULL so a user deletion doesn't
+	// orphan attendance records (previously the FK had no ON DELETE
+	// action, silently blocking user deletion). On fresh inserts
+	// the service layer always passes the caller's id, so *uint is
+	// only ever nil after a historical user row was removed.
+	RecordedBy *uint     `json:"recorded_by,omitempty" example:"1"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 // GetOrganizationID returns the organization ID for the OrgOwned interface.
@@ -73,9 +79,12 @@ type ChildAttendanceResponse struct {
 	CheckOutTime   *time.Time `json:"check_out_time" example:"2025-06-15T16:00:00Z"`
 	Status         string     `json:"status" example:"present"`
 	Note           string     `json:"note,omitempty" example:"Picked up early"`
-	RecordedBy     uint       `json:"recorded_by" example:"1"`
-	CreatedAt      time.Time  `json:"created_at"`
-	UpdatedAt      time.Time  `json:"updated_at"`
+	// RecordedBy is nil when the recording user has since been
+	// deleted (migration 000014 ON DELETE SET NULL). Frontends
+	// should render "anonymous" or similar when the field is absent.
+	RecordedBy *uint     `json:"recorded_by,omitempty" example:"1"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 // ToResponse converts a ChildAttendance to a ChildAttendanceResponse.

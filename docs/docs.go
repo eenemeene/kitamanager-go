@@ -10655,6 +10655,7 @@ const docTemplate = `{
                     "example": 1
                 },
                 "recorded_by": {
+                    "description": "RecordedBy is nil when the recording user has since been\ndeleted (migration 000014 ON DELETE SET NULL). Frontends\nshould render \"anonymous\" or similar when the field is absent.",
                     "type": "integer",
                     "example": 1
                 },
@@ -12691,6 +12692,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "created_by": {
+                    "description": "CreatedBy is nil when the uploader has since been deleted\n(migration 000014 ON DELETE SET NULL).",
                     "type": "integer",
                     "example": 1
                 },

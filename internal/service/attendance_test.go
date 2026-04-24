@@ -1161,7 +1161,7 @@ func TestChildAttendanceService_Update_OnlyCheckOutNoExistingCheckIn_NoValidatio
 		OrganizationID: tc.org.ID,
 		Date:           date,
 		Status:         models.ChildAttendanceStatusPresent,
-		RecordedBy:     tc.userID,
+		RecordedBy:     &tc.userID,
 	}
 	if err := tc.attendanceStore.Create(ctx, attendance); err != nil {
 		t.Fatalf("failed to create attendance: %v", err)
@@ -1455,10 +1455,10 @@ func TestChildAttendanceService_ListByChild(t *testing.T) {
 	day1 := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	day2 := time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC)
 
-	if err := tc.attendanceStore.Create(ctx, &models.ChildAttendance{ChildID: tc.child.ID, OrganizationID: tc.org.ID, Date: day1, Status: models.ChildAttendanceStatusPresent, RecordedBy: tc.userID}); err != nil {
+	if err := tc.attendanceStore.Create(ctx, &models.ChildAttendance{ChildID: tc.child.ID, OrganizationID: tc.org.ID, Date: day1, Status: models.ChildAttendanceStatusPresent, RecordedBy: &tc.userID}); err != nil {
 		t.Fatalf("failed to create attendance: %v", err)
 	}
-	if err := tc.attendanceStore.Create(ctx, &models.ChildAttendance{ChildID: tc.child.ID, OrganizationID: tc.org.ID, Date: day2, Status: models.ChildAttendanceStatusSick, RecordedBy: tc.userID}); err != nil {
+	if err := tc.attendanceStore.Create(ctx, &models.ChildAttendance{ChildID: tc.child.ID, OrganizationID: tc.org.ID, Date: day2, Status: models.ChildAttendanceStatusSick, RecordedBy: &tc.userID}); err != nil {
 		t.Fatalf("failed to create attendance: %v", err)
 	}
 
@@ -1522,13 +1522,13 @@ func TestChildAttendanceService_GetDailySummary(t *testing.T) {
 	today := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
 	now := time.Now()
 
-	if err := attendanceStore.Create(ctx, &models.ChildAttendance{ChildID: child1.ID, OrganizationID: org.ID, Date: today, Status: models.ChildAttendanceStatusPresent, RecordedBy: user.ID, CheckInTime: &now}); err != nil {
+	if err := attendanceStore.Create(ctx, &models.ChildAttendance{ChildID: child1.ID, OrganizationID: org.ID, Date: today, Status: models.ChildAttendanceStatusPresent, RecordedBy: &user.ID, CheckInTime: &now}); err != nil {
 		t.Fatalf("failed to create attendance: %v", err)
 	}
-	if err := attendanceStore.Create(ctx, &models.ChildAttendance{ChildID: child2.ID, OrganizationID: org.ID, Date: today, Status: models.ChildAttendanceStatusPresent, RecordedBy: user.ID, CheckInTime: &now}); err != nil {
+	if err := attendanceStore.Create(ctx, &models.ChildAttendance{ChildID: child2.ID, OrganizationID: org.ID, Date: today, Status: models.ChildAttendanceStatusPresent, RecordedBy: &user.ID, CheckInTime: &now}); err != nil {
 		t.Fatalf("failed to create attendance: %v", err)
 	}
-	if err := attendanceStore.Create(ctx, &models.ChildAttendance{ChildID: child3.ID, OrganizationID: org.ID, Date: today, Status: models.ChildAttendanceStatusSick, RecordedBy: user.ID}); err != nil {
+	if err := attendanceStore.Create(ctx, &models.ChildAttendance{ChildID: child3.ID, OrganizationID: org.ID, Date: today, Status: models.ChildAttendanceStatusSick, RecordedBy: &user.ID}); err != nil {
 		t.Fatalf("failed to create attendance: %v", err)
 	}
 
