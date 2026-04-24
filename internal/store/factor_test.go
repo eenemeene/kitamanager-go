@@ -519,9 +519,12 @@ func TestFactorStore_CascadeDelete_WhenUserDeleted(t *testing.T) {
 		t.Fatalf("insert codes: %v", err)
 	}
 
-	// Delete the user.
-	if err := db.Delete(&models.User{}, user.ID).Error; err != nil {
-		t.Fatalf("delete user: %v", err)
+	// Hard-delete the user (Unscoped): migration 000015 made the
+	// default db.Delete a soft-delete, so the FK cascade declared
+	// in 000001 fires only under Unscoped. This test exercises
+	// exactly the purge path.
+	if err := db.Unscoped().Delete(&models.User{}, user.ID).Error; err != nil {
+		t.Fatalf("hard-delete user: %v", err)
 	}
 
 	// Parent factor rows: gone.

@@ -413,6 +413,35 @@ func (s *AuditService) LogResourceDelete(ctx context.Context, actorID uint, acto
 	})
 }
 
+// LogResourcePurged logs a hard-delete (purge) event, distinct from
+// the soft-delete path that LogResourceDelete emits. Used by the
+// retention TTL cleanup job and admin-initiated Art. 17 erasure.
+// Currently wired for resourceType "user" and "organization"; other
+// types fall through to the "<type>_purged" convention.
+func (s *AuditService) LogResourcePurged(ctx context.Context, actorID uint, actorEmail, resourceType string, resourceID uint, resourceName, ipAddress string, orgID *uint) {
+	var action models.AuditAction
+	switch resourceType {
+	case "user":
+		action = models.AuditActionUserPurged
+	case "organization":
+		action = models.AuditActionOrgPurged
+	default:
+		action = models.AuditAction(resourceType + "_purged")
+	}
+
+	s.log(ctx, &models.AuditLog{
+		UserID:         &actorID,
+		UserEmail:      actorEmail,
+		Action:         action,
+		ResourceType:   resourceType,
+		ResourceID:     &resourceID,
+		OrganizationID: orgID,
+		IPAddress:      ipAddress,
+		Details:        mustMarshalJSON(map[string]any{"resource_name": resourceName}),
+		Success:        true,
+	})
+}
+
 // LogResourceCreate logs creation of a resource.
 // orgID may be nil for identity-level resources (user); pass the owning org
 // id for org-scoped resources so org admins can see the event.

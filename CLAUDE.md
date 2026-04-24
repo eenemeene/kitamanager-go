@@ -453,6 +453,39 @@ Rules:
 
 All new pages must be verified at **375px** (phone), **820px** (mainstream iPad portrait), and **1280px** (desktop). Use Playwright or the browser DevTools device toolbar. The E2E suite has `responsive.spec.ts` with `Responsive Layout - Mobile / Tablet / Desktop` describes as a template. The Tablet describe uses `hasTouch: true` and asserts touch-target sizes (≥44px) on the daily-use surfaces.
 
+## Soft-Delete
+
+As of migration 000015 the `users` and `organizations` tables are soft-deleted: `DELETE` at the app layer stamps `deleted_at` rather than physically removing the row, and subsequent queries that start from the GORM model auto-scope the tombstone out.
+
+### The raw-query rule
+
+**Any hand-written query (`.Table()`, `.Joins()`, `.Raw()`) that references the `users` or `organizations` table as a joined entity MUST explicitly filter out soft-deleted rows.** GORM's auto-scoping applies only to the primary model, not to joined tables.
+
+Use the helpers in `internal/store/scoping.go`:
+
+```go
+// Good: raw JOIN through users, filter applied explicitly
+q := db.Table("sessions").Joins("JOIN users ON users.id = sessions.user_id").Where(...)
+err := store.ExcludeSoftDeletedUsers(q).Take(&row).Error
+
+// Good: raw JOIN through organizations
+err := store.ExcludeSoftDeletedOrganizations(q).Take(&row).Error
+
+// Bad: forgotten filter — soft-deleted users would authenticate
+db.Table("sessions").Joins("JOIN users ...").Where("sessions.id = ?", idHash).Take(...)
+```
+
+Queries that **start** from a GORM model (`db.First(&User{}, id)`, `db.Model(&User{}).Joins(...)`, etc.) auto-scope and need no helper.
+
+### Admin / purge paths
+
+Use `db.Unscoped()` explicitly for:
+- Admin "trash view" endpoints that list tombstoned rows.
+- `HardDelete` methods that physically remove rows for the Art. 17 erasure flow or the retention TTL cleanup.
+- `FindByIDUnscoped` when a purge target might already be tombstoned.
+
+Never call `.Unscoped()` in a default read path.
+
 ## Data Protection in Git
 
 **NEVER commit real (non-anonymized) personal data to git or push it to GitHub.** This includes names, birthdates, addresses, voucher numbers, email addresses, financial amounts, or any other data from real Kitas, children, employees, or families. This applies to:

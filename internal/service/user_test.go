@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -955,5 +956,185 @@ func TestUserService_GetByID_CannotReadCrossOrgUser(t *testing.T) {
 	}
 	if !errors.Is(err, apperror.ErrNotFound) {
 		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
+// -----------------------------------------------------------------
+// Soft-delete (Phase 1) behavioural tests — migration 000015.
+// -----------------------------------------------------------------
+
+// TestUserService_Delete_IsSoft proves the default DELETE path is
+// now a tombstone stamp rather than a physical DELETE. The row must
+// persist in the DB with a non-NULL deleted_at; default-path GORM
+// queries must not see it.
+func TestUserService_Delete_IsSoft(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserService(db)
+	ctx := context.Background()
+	requester := createTestUser(t, db, "Admin", "admin@example.com", "pw")
+	makeSuperadmin(t, db, requester.ID)
+	victim := createTestUser(t, db, "Victim", "victim@example.com", "pw")
+	// Second superadmin so the "last superadmin" guard doesn't fire.
+	other := createTestUser(t, db, "Other", "other@example.com", "pw")
+	makeSuperadmin(t, db, other.ID)
+
+	if err := svc.Delete(ctx, victim.ID, requester.ID); err != nil {
+		t.Fatalf("soft-delete: %v", err)
+	}
+
+	var live models.User
+	if err := db.First(&live, victim.ID).Error; err == nil {
+		t.Fatalf("scoped First must return NotFound; got a live row")
+	}
+
+	var tomb models.User
+	if err := db.Unscoped().First(&tomb, victim.ID).Error; err != nil {
+		t.Fatalf("unscoped First must return the tombstoned row; got %v", err)
+	}
+	if !tomb.DeletedAt.Valid {
+		t.Errorf("deleted_at must be set on the tombstone")
+	}
+}
+
+// TestUserService_Delete_HidesFromGet proves the public GetByID path
+// returns NotFound for a tombstoned user.
+func TestUserService_Delete_HidesFromGet(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserService(db)
+	ctx := context.Background()
+	requester := createTestUser(t, db, "Admin", "admin@example.com", "pw")
+	makeSuperadmin(t, db, requester.ID)
+	victim := createTestUser(t, db, "Victim", "victim@example.com", "pw")
+	other := createTestUser(t, db, "Other", "other@example.com", "pw")
+	makeSuperadmin(t, db, other.ID)
+
+	if err := svc.Delete(ctx, victim.ID, requester.ID); err != nil {
+		t.Fatalf("soft-delete: %v", err)
+	}
+	_, err := svc.GetByID(ctx, victim.ID, requester.ID)
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound after soft-delete; got %v", err)
+	}
+}
+
+// TestUserService_Delete_AllowsEmailReuse proves the partial unique
+// index released the email for a new registration.
+func TestUserService_Delete_AllowsEmailReuse(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserService(db)
+	ctx := context.Background()
+	requester := createTestUser(t, db, "Admin", "admin@example.com", "pw")
+	makeSuperadmin(t, db, requester.ID)
+	victim := createTestUser(t, db, "Victim", "dup@example.com", "pw")
+	other := createTestUser(t, db, "Other", "other@example.com", "pw")
+	makeSuperadmin(t, db, other.ID)
+
+	if err := svc.Delete(ctx, victim.ID, requester.ID); err != nil {
+		t.Fatalf("soft-delete: %v", err)
+	}
+	fresh := &models.User{
+		Name:     "Fresh",
+		Email:    "dup@example.com",
+		Password: "pw",
+		Active:   true,
+	}
+	if err := db.Create(fresh).Error; err != nil {
+		t.Fatalf("email reuse after soft-delete must succeed; got %v", err)
+	}
+}
+
+// TestUserService_Delete_RevokesSessions proves the soft-delete path
+// forcibly signs out every session belonging to the user.
+func TestUserService_Delete_RevokesSessions(t *testing.T) {
+	db := setupTestDB(t)
+	svc, sessionStore := createUserServiceWithSessionStore(db)
+	ctx := context.Background()
+
+	requester := createTestUser(t, db, "Admin", "admin@example.com", "pw")
+	makeSuperadmin(t, db, requester.ID)
+	victim := createTestUser(t, db, "Victim", "victim@example.com", "pw")
+	other := createTestUser(t, db, "Other", "other@example.com", "pw")
+	makeSuperadmin(t, db, other.ID)
+
+	for i := range 2 {
+		sess := &models.Session{
+			ID:        store.HashSessionToken(fmt.Sprintf("tok-%d-%d", victim.ID, i)),
+			UserID:    victim.ID,
+			ExpiresAt: time.Now().Add(24 * time.Hour),
+			Kind:      models.SessionKindRegular,
+		}
+		if err := sessionStore.Create(ctx, sess); err != nil {
+			t.Fatalf("seed session %d: %v", i, err)
+		}
+	}
+
+	if err := svc.Delete(ctx, victim.ID, requester.ID); err != nil {
+		t.Fatalf("soft-delete: %v", err)
+	}
+
+	var count int64
+	if err := db.Model(&models.Session{}).Where("user_id = ?", victim.ID).Count(&count).Error; err != nil {
+		t.Fatalf("count sessions: %v", err)
+	}
+	if count != 0 {
+		t.Errorf("expected all sessions revoked; %d remain", count)
+	}
+}
+
+// TestUserService_HardDelete_PhysicallyRemovesRow proves the purge
+// path truly deletes — the row is gone even from Unscoped queries.
+func TestUserService_HardDelete_PhysicallyRemovesRow(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserService(db)
+	ctx := context.Background()
+	requester := createTestUser(t, db, "Admin", "admin@example.com", "pw")
+	makeSuperadmin(t, db, requester.ID)
+	victim := createTestUser(t, db, "Victim", "victim@example.com", "pw")
+	other := createTestUser(t, db, "Other", "other@example.com", "pw")
+	makeSuperadmin(t, db, other.ID)
+
+	if err := svc.HardDelete(ctx, victim.ID, requester.ID); err != nil {
+		t.Fatalf("purge: %v", err)
+	}
+	var count int64
+	_ = db.Unscoped().Model(&models.User{}).Where("id = ?", victim.ID).Count(&count)
+	if count != 0 {
+		t.Errorf("expected row to be physically removed; %d rows remain", count)
+	}
+}
+
+// TestUserService_HardDelete_WorksOnTombstone proves the retention
+// job's exact target case: a row that is already soft-deleted can
+// still be purged.
+func TestUserService_HardDelete_WorksOnTombstone(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserService(db)
+	ctx := context.Background()
+	requester := createTestUser(t, db, "Admin", "admin@example.com", "pw")
+	makeSuperadmin(t, db, requester.ID)
+	victim := createTestUser(t, db, "Victim", "victim@example.com", "pw")
+	other := createTestUser(t, db, "Other", "other@example.com", "pw")
+	makeSuperadmin(t, db, other.ID)
+
+	if err := svc.Delete(ctx, victim.ID, requester.ID); err != nil {
+		t.Fatalf("soft-delete: %v", err)
+	}
+	if err := svc.HardDelete(ctx, victim.ID, requester.ID); err != nil {
+		t.Fatalf("purge after tombstone: %v", err)
+	}
+	var count int64
+	_ = db.Unscoped().Model(&models.User{}).Where("id = ?", victim.ID).Count(&count)
+	if count != 0 {
+		t.Errorf("tombstoned row must be purgeable; %d rows remain", count)
+	}
+}
+
+// makeSuperadmin flips the is_superadmin column directly so tests
+// can set up the "cannot delete last superadmin" guard without
+// driving the whole user-update service path.
+func makeSuperadmin(t *testing.T, db *gorm.DB, userID uint) {
+	t.Helper()
+	if err := db.Model(&models.User{}).Where("id = ?", userID).Update("is_superadmin", true).Error; err != nil {
+		t.Fatalf("makeSuperadmin: %v", err)
 	}
 }

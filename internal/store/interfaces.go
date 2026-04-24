@@ -33,6 +33,11 @@ type UserStorer interface {
 	Update(ctx context.Context, user *models.User) error
 	UpdateLastLogin(ctx context.Context, userID uint) error
 	Delete(ctx context.Context, id uint) error
+	// HardDelete bypasses the soft-delete tombstone for purge paths.
+	// FindByIDUnscoped returns the row regardless of deleted_at —
+	// used by HardDelete and admin trash views.
+	HardDelete(ctx context.Context, id uint) error
+	FindByIDUnscoped(ctx context.Context, id uint, out *models.User) error
 	GetUserOrganizations(ctx context.Context, userID uint) ([]models.Organization, error)
 	FindByOrganizations(ctx context.Context, orgIDs []uint, search string, limit, offset int) ([]models.User, int64, error)
 	SharesOrganization(ctx context.Context, userID1, userID2 uint) (bool, error)
@@ -47,6 +52,10 @@ type OrganizationStorer interface {
 	CreateWithDefaultSection(ctx context.Context, org *models.Organization, defaultSection *models.Section) error
 	Update(ctx context.Context, org *models.Organization) error
 	Delete(ctx context.Context, id uint) error
+	// HardDelete / FindByIDUnscoped mirror the User soft-delete
+	// surface — purge path and tombstone-aware lookup.
+	HardDelete(ctx context.Context, id uint) error
+	FindByIDUnscoped(ctx context.Context, id uint, out *models.Organization) error
 }
 
 // EmployeeStorer defines the interface for employee storage operations

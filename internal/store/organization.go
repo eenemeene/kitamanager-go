@@ -65,6 +65,23 @@ func (s *OrganizationStore) Update(ctx context.Context, organization *models.Org
 	return DBFromContext(ctx, s.db).Save(organization).Error
 }
 
+// Delete soft-deletes the organization — GORM turns this into
+// `UPDATE organizations SET deleted_at = now() WHERE id = ?` thanks
+// to the DeletedAt field on the model. Live queries stop seeing
+// the row; admin trash-view / HardDelete still can via Unscoped().
 func (s *OrganizationStore) Delete(ctx context.Context, id uint) error {
 	return DBFromContext(ctx, s.db).Delete(&models.Organization{}, id).Error
+}
+
+// HardDelete issues the physical DELETE, bypassing the tombstone.
+// Cascades through pay_plans, government_funding_bill_periods,
+// employees, children, sections, etc. via the FKs defined in
+// migration 000001 + 000014.
+func (s *OrganizationStore) HardDelete(ctx context.Context, id uint) error {
+	return DBFromContext(ctx, s.db).Unscoped().Delete(&models.Organization{}, id).Error
+}
+
+// FindByIDUnscoped fetches whether tombstoned or live.
+func (s *OrganizationStore) FindByIDUnscoped(ctx context.Context, id uint, out *models.Organization) error {
+	return DBFromContext(ctx, s.db).Unscoped().First(out, id).Error
 }

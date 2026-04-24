@@ -243,8 +243,17 @@ func (s *UserService) ResetPassword(ctx context.Context, userID uint, newPasswor
 	return nil
 }
 
-// Delete deletes a user.
-// Users cannot delete themselves. The last superadmin cannot be deleted.
+// Delete soft-deletes a user — the row is tombstoned with
+// deleted_at and becomes invisible to every GORM-model query, but
+// physically remains in the DB for a retention window. Every
+// active session for the user is hard-revoked so the user is
+// signed out immediately across every device (the DeletedAt filter
+// in SessionStore.Lookup is belt-and-braces for any session we
+// miss, but an explicit revoke avoids the request window).
+//
+// Users cannot delete themselves. The last superadmin cannot be
+// deleted. Hard-deletion (purge) is available via HardDelete,
+// used by the Art. 17 erasure flow and the retention TTL job.
 func (s *UserService) Delete(ctx context.Context, id uint, requesterID uint) error {
 	if id == requesterID {
 		return apperror.BadRequest("cannot delete your own account")
@@ -271,6 +280,53 @@ func (s *UserService) Delete(ctx context.Context, id uint, requesterID uint) err
 
 	if err := s.store.Delete(ctx, id); err != nil {
 		return apperror.InternalWrap(err, "failed to delete user")
+	}
+	// Force sign-out across all devices. Sessions are not soft-
+	// deletable (the token loses its meaning the moment we tombstone
+	// the user row) so we hard-delete them here.
+	if s.sessionStore != nil {
+		if err := s.sessionStore.DeleteAllForUser(ctx, id); err != nil {
+			// Non-fatal: the user is already soft-deleted, and the
+			// Lookup filter rejects stale sessions pointing at a
+			// tombstoned user. Log and continue.
+			slog.Error("failed to revoke sessions after soft-delete", "user_id", id, "error", err)
+		}
+	}
+	return nil
+}
+
+// HardDelete permanently removes a user and cascades through the FK
+// graph (sessions, factors, user_organizations — see migration
+// 000001 + 000014). Bypasses the soft-delete tombstone. Irreversible.
+// Used by the Art. 17 right-to-erasure endpoint (Phase 4) and by the
+// retention TTL cleanup job (Phase 3). Keeps the same caller-safety
+// invariants as Delete (cannot purge self, cannot purge last
+// superadmin).
+func (s *UserService) HardDelete(ctx context.Context, id uint, requesterID uint) error {
+	if id == requesterID {
+		return apperror.BadRequest("cannot purge your own account")
+	}
+	if err := s.verifyRequesterCanModifyUser(ctx, requesterID, id); err != nil {
+		return apperror.NotFound("user")
+	}
+	// Fetch with Unscoped so that purge works whether the user is
+	// live or already tombstoned — the retention job targets
+	// tombstoned rows; Art. 17 sometimes fires against a live user.
+	var user models.User
+	if err := s.store.FindByIDUnscoped(ctx, id, &user); err != nil {
+		return classifyStoreError(err, "user")
+	}
+	if user.IsSuperAdmin {
+		count, err := s.userOrgStore.CountSuperAdmins(ctx)
+		if err != nil {
+			return apperror.InternalWrap(err, "failed to count superadmins")
+		}
+		if count <= 1 {
+			return apperror.BadRequest("cannot purge the last superadmin")
+		}
+	}
+	if err := s.store.HardDelete(ctx, id); err != nil {
+		return apperror.InternalWrap(err, "failed to purge user")
 	}
 	return nil
 }

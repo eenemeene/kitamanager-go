@@ -96,13 +96,18 @@ func (s *SessionStore) Lookup(ctx context.Context, idHash string) (*SessionLooku
 		UserActive bool
 		ExpiresAt  time.Time
 	}
-	err := DBFromContext(ctx, s.db).
+	// This raw-table query does not go through the User GORM model,
+	// so GORM's soft-delete auto-scoping does not apply — we must
+	// filter out tombstoned users by hand. A stale session pointing
+	// at a soft-deleted user must not authenticate; returning
+	// ErrNotFound forces the caller to reject the request.
+	q := DBFromContext(ctx, s.db).
 		Table("sessions").
 		Select("sessions.user_id AS user_id, users.email AS user_email, users.active AS user_active, sessions.expires_at AS expires_at").
 		Joins("JOIN users ON users.id = sessions.user_id").
 		Where("sessions.id = ? AND sessions.kind = ? AND sessions.expires_at > ?",
-			idHash, models.SessionKindRegular, time.Now().UTC()).
-		Take(&row).Error
+			idHash, models.SessionKindRegular, time.Now().UTC())
+	err := ExcludeSoftDeletedUsers(q).Take(&row).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrNotFound
@@ -131,13 +136,17 @@ func (s *SessionStore) LookupPendingMFA(ctx context.Context, idHash string) (*Se
 		MFAChallengeFailures int
 		ChallengeNonce       []byte
 	}
-	err := DBFromContext(ctx, s.db).
+	// Raw-table query — soft-delete scoping applied explicitly
+	// (same reason as Lookup above). A pending_mfa row pointing at
+	// a tombstoned user must not be resurrectable into a real
+	// session by the verify path.
+	q := DBFromContext(ctx, s.db).
 		Table("sessions").
 		Select("sessions.user_id AS user_id, users.email AS user_email, users.active AS user_active, sessions.expires_at AS expires_at, sessions.mfa_challenge_failures AS mfa_challenge_failures, sessions.challenge_nonce AS challenge_nonce").
 		Joins("JOIN users ON users.id = sessions.user_id").
 		Where("sessions.id = ? AND sessions.kind = ? AND sessions.expires_at > ?",
-			idHash, models.SessionKindPendingMFA, time.Now().UTC()).
-		Take(&row).Error
+			idHash, models.SessionKindPendingMFA, time.Now().UTC())
+	err := ExcludeSoftDeletedUsers(q).Take(&row).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrNotFound

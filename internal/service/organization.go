@@ -164,10 +164,35 @@ func (s *OrganizationService) Update(ctx context.Context, id uint, req *models.O
 	return &resp, nil
 }
 
-// Delete deletes an organization
+// Delete soft-deletes an organization. The row is tombstoned with
+// deleted_at; subsequent GORM-model queries auto-scope it out. Owned
+// entities (employees, children, pay_plans, bills) are NOT cascaded
+// in Phase 1 — their own lookup paths go through the org resolver,
+// which returns NotFound once the parent is tombstoned, so the
+// entire subtree becomes effectively invisible. Phase 2 introduces
+// proper cascade soft-delete for operational cleanliness.
+//
+// HardDelete is the purge path (admin-only, retention-driven); it
+// fires the FK CASCADEs defined in migration 000014.
 func (s *OrganizationService) Delete(ctx context.Context, id uint) error {
 	if err := s.store.Delete(ctx, id); err != nil {
 		return apperror.InternalWrap(err, "failed to delete organization")
+	}
+	return nil
+}
+
+// HardDelete physically removes an organization and every row the FK
+// graph cascades from it (pay_plans, gov-funding bills, employees,
+// children, sections). Irreversible.
+func (s *OrganizationService) HardDelete(ctx context.Context, id uint) error {
+	// Accept both tombstoned and live rows: the retention job
+	// targets tombstones, admin purge endpoints target live.
+	var org models.Organization
+	if err := s.store.FindByIDUnscoped(ctx, id, &org); err != nil {
+		return classifyStoreError(err, "organization")
+	}
+	if err := s.store.HardDelete(ctx, id); err != nil {
+		return apperror.InternalWrap(err, "failed to purge organization")
 	}
 	return nil
 }
