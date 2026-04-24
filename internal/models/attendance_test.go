@@ -47,7 +47,7 @@ func TestChildAttendance_ToResponse(t *testing.T) {
 		CheckInTime:    &now,
 		Status:         ChildAttendanceStatusPresent,
 		Note:           "Test note",
-		RecordedBy:     1,
+		RecordedBy:     UintPtr(1),
 		Child: &Child{
 			Person: Person{
 				FirstName: "Emma",
@@ -82,8 +82,8 @@ func TestChildAttendance_ToResponse(t *testing.T) {
 	if resp.CheckInTime == nil {
 		t.Error("expected CheckInTime to be set")
 	}
-	if resp.RecordedBy != 1 {
-		t.Errorf("expected RecordedBy 1, got %d", resp.RecordedBy)
+	if resp.RecordedBy == nil || *resp.RecordedBy != 1 {
+		t.Errorf("expected RecordedBy 1, got %v", resp.RecordedBy)
 	}
 }
 
@@ -95,7 +95,7 @@ func TestChildAttendance_ToResponse_NoChild(t *testing.T) {
 		OrganizationID: 3,
 		Date:           today,
 		Status:         ChildAttendanceStatusAbsent,
-		RecordedBy:     1,
+		RecordedBy:     UintPtr(1),
 	}
 
 	resp := attendance.ToResponse()
@@ -112,7 +112,7 @@ func TestChildAttendance_ToResponse_NilCheckTimes(t *testing.T) {
 		OrganizationID: 3,
 		Date:           today,
 		Status:         ChildAttendanceStatusSick,
-		RecordedBy:     1,
+		RecordedBy:     UintPtr(1),
 	}
 
 	resp := attendance.ToResponse()
@@ -137,7 +137,7 @@ func TestChildAttendance_ToResponse_WithCheckOut(t *testing.T) {
 		CheckInTime:    &checkIn,
 		CheckOutTime:   &checkOut,
 		Status:         ChildAttendanceStatusPresent,
-		RecordedBy:     1,
+		RecordedBy:     UintPtr(1),
 	}
 
 	resp := attendance.ToResponse()
@@ -164,7 +164,7 @@ func TestChildAttendance_ToResponse_EmptyNote(t *testing.T) {
 		Date:           today,
 		Status:         ChildAttendanceStatusPresent,
 		Note:           "",
-		RecordedBy:     1,
+		RecordedBy:     UintPtr(1),
 	}
 
 	resp := attendance.ToResponse()

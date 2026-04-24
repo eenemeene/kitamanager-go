@@ -26,7 +26,7 @@ func TestGovernmentFundingBillPeriodStore_Create(t *testing.T) {
 		FacilityTotal:     500000,
 		ContractBooking:   480000,
 		CorrectionBooking: 20000,
-		CreatedBy:         user.ID,
+		CreatedBy:         &user.ID,
 		Children: []models.GovernmentFundingBillChild{
 			{
 				VoucherNumber: "GB-12345678901-02",
@@ -92,7 +92,7 @@ func TestGovernmentFundingBillPeriodStore_CreateEmptyChildren(t *testing.T) {
 		FacilityTotal:     0,
 		ContractBooking:   0,
 		CorrectionBooking: 0,
-		CreatedBy:         user.ID,
+		CreatedBy:         &user.ID,
 	}
 
 	if err := s.Create(ctx, period); err != nil {
@@ -121,7 +121,7 @@ func TestGovernmentFundingBillPeriodStore_FindByID(t *testing.T) {
 		FacilityTotal:     300000,
 		ContractBooking:   280000,
 		CorrectionBooking: 20000,
-		CreatedBy:         user.ID,
+		CreatedBy:         &user.ID,
 		Children: []models.GovernmentFundingBillChild{
 			{
 				VoucherNumber: "GB-11111111111-01",
@@ -197,7 +197,7 @@ func TestGovernmentFundingBillPeriodStore_FindByOrganization(t *testing.T) {
 			FileName:       fmt.Sprintf("file_%d.xlsx", i),
 			FileSha256:     fmt.Sprintf("hash_%d", i),
 			FacilityName:   "Kita",
-			CreatedBy:      user.ID,
+			CreatedBy:      &user.ID,
 		}
 		if err := s.Create(ctx, p); err != nil {
 			t.Fatalf("setup: Create() error = %v", err)
@@ -210,7 +210,7 @@ func TestGovernmentFundingBillPeriodStore_FindByOrganization(t *testing.T) {
 		FileName:       "other.xlsx",
 		FileSha256:     "otherhash",
 		FacilityName:   "Other Kita",
-		CreatedBy:      user.ID,
+		CreatedBy:      &user.ID,
 	}); err != nil {
 		t.Fatalf("setup: Create() error = %v", err)
 	}
@@ -307,7 +307,7 @@ func TestGovernmentFundingBillPeriodStore_Delete(t *testing.T) {
 		FileName:       "delete-test.xlsx",
 		FileSha256:     "deletehash",
 		FacilityName:   "Kita Delete",
-		CreatedBy:      user.ID,
+		CreatedBy:      &user.ID,
 		Children: []models.GovernmentFundingBillChild{
 			{
 				VoucherNumber: "GB-00000000000-01",
@@ -356,7 +356,7 @@ func TestGovernmentFundingBillPeriodStore_FindByIDChildrenOrdered(t *testing.T) 
 		FileName:       "order-test.xlsx",
 		FileSha256:     "orderhash",
 		FacilityName:   "Kita Order",
-		CreatedBy:      user.ID,
+		CreatedBy:      &user.ID,
 		Children: []models.GovernmentFundingBillChild{
 			{VoucherNumber: "GB-00000000001-01", ChildName: "Alpha, Child", BirthDate: "01.20", District: 1},
 			{VoucherNumber: "GB-00000000002-01", ChildName: "Beta, Child", BirthDate: "02.20", District: 2},
@@ -397,7 +397,7 @@ func TestGovernmentFundingBillPeriodStore_FindByOrganizationAndVoucherNumber(t *
 	period1 := &models.GovernmentFundingBillPeriod{
 		OrganizationID: org.ID,
 		Period:         models.Period{From: time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC), To: &toNov},
-		FileName:       "nov.xlsx", FileSha256: "hash1", FacilityName: "Kita A", CreatedBy: user.ID,
+		FileName:       "nov.xlsx", FileSha256: "hash1", FacilityName: "Kita A", CreatedBy: &user.ID,
 		Children: []models.GovernmentFundingBillChild{
 			{VoucherNumber: "GB-VOUCHER-01", ChildName: "Kind, Eins", BirthDate: "01.20", District: 1},
 			{VoucherNumber: "GB-VOUCHER-02", ChildName: "Kind, Zwei", BirthDate: "03.21", District: 2},
@@ -407,7 +407,7 @@ func TestGovernmentFundingBillPeriodStore_FindByOrganizationAndVoucherNumber(t *
 	period2 := &models.GovernmentFundingBillPeriod{
 		OrganizationID: org.ID,
 		Period:         models.Period{From: time.Date(2025, 12, 1, 0, 0, 0, 0, time.UTC), To: &toDec},
-		FileName:       "dec.xlsx", FileSha256: "hash2", FacilityName: "Kita A", CreatedBy: user.ID,
+		FileName:       "dec.xlsx", FileSha256: "hash2", FacilityName: "Kita A", CreatedBy: &user.ID,
 		Children: []models.GovernmentFundingBillChild{
 			{VoucherNumber: "GB-VOUCHER-01", ChildName: "Kind, Eins", BirthDate: "01.20", District: 1},
 		},
@@ -416,7 +416,7 @@ func TestGovernmentFundingBillPeriodStore_FindByOrganizationAndVoucherNumber(t *
 	period3 := &models.GovernmentFundingBillPeriod{
 		OrganizationID: org.ID,
 		Period:         models.Period{From: time.Date(2025, 10, 1, 0, 0, 0, 0, time.UTC), To: &toOct},
-		FileName:       "oct.xlsx", FileSha256: "hash3", FacilityName: "Kita B", CreatedBy: user.ID,
+		FileName:       "oct.xlsx", FileSha256: "hash3", FacilityName: "Kita B", CreatedBy: &user.ID,
 		Children: []models.GovernmentFundingBillChild{
 			{VoucherNumber: "GB-VOUCHER-02", ChildName: "Kind, Zwei", BirthDate: "03.21", District: 2},
 		},
@@ -426,7 +426,7 @@ func TestGovernmentFundingBillPeriodStore_FindByOrganizationAndVoucherNumber(t *
 	periodOtherOrg := &models.GovernmentFundingBillPeriod{
 		OrganizationID: org2.ID,
 		Period:         models.Period{From: time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC), To: &toNov2},
-		FileName:       "other.xlsx", FileSha256: "hash4", FacilityName: "Kita Other", CreatedBy: user.ID,
+		FileName:       "other.xlsx", FileSha256: "hash4", FacilityName: "Kita Other", CreatedBy: &user.ID,
 		Children: []models.GovernmentFundingBillChild{
 			{VoucherNumber: "GB-VOUCHER-01", ChildName: "Kind, Eins", BirthDate: "01.20", District: 1},
 		},
@@ -523,7 +523,7 @@ func TestGovernmentFundingBillPeriodStore_FindFacilityTotalsByOrganizationInDate
 			Period:         models.Period{From: time.Date(2025, m, 1, 0, 0, 0, 0, time.UTC), To: &to},
 			FileName:       fmt.Sprintf("file_%d.xlsx", m), FileSha256: fmt.Sprintf("hash_%d", m), FacilityName: "Kita",
 			FacilityTotal: int(m) * 100000, // Jan=100000, Feb=200000, Mar=300000
-			CreatedBy:     user.ID,
+			CreatedBy:     &user.ID,
 		}
 		if err := s.Create(ctx, p); err != nil {
 			t.Fatalf("setup: Create() error = %v", err)
@@ -535,7 +535,7 @@ func TestGovernmentFundingBillPeriodStore_FindFacilityTotalsByOrganizationInDate
 		Period:         models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), To: &toJanOrg2},
 		FileName:       "other.xlsx", FileSha256: "otherhash", FacilityName: "Other",
 		FacilityTotal: 999999,
-		CreatedBy:     user.ID,
+		CreatedBy:     &user.ID,
 	}); err != nil {
 		t.Fatalf("setup: Create() error = %v", err)
 	}
@@ -609,7 +609,7 @@ func TestGovernmentFundingBillPeriodStore_FindFacilityTotalsByOrganizationInDate
 			Period:         models.Period{From: time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC), To: &toJan2},
 			FileName:       "correction.xlsx", FileSha256: "corrhash", FacilityName: "Kita",
 			FacilityTotal: 50000,
-			CreatedBy:     user.ID,
+			CreatedBy:     &user.ID,
 		}); err != nil {
 			t.Fatalf("Create() error = %v", err)
 		}
@@ -644,7 +644,7 @@ func TestGovernmentFundingBillPeriodStore_FindByOrganizationAndVoucherNumber_Dup
 		OrganizationID: org.ID,
 		Period:         models.Period{From: time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC), To: &toNov},
 		FileName:       "dup.xlsx", FileSha256: "duphash", FacilityName: "Kita Dup",
-		CreatedBy: user.ID,
+		CreatedBy: &user.ID,
 		Children: []models.GovernmentFundingBillChild{
 			{VoucherNumber: "GB-DUPVOUCHER-01", ChildName: "Dup, Child", BirthDate: "01.20", District: 1,
 				Payments: []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 120000}}},
@@ -697,7 +697,7 @@ func TestGovernmentFundingBillPeriodStore_ExistsByOrgAndHash(t *testing.T) {
 		FileName:       "test.xlsx",
 		FileSha256:     "hashA",
 		FacilityName:   "Kita",
-		CreatedBy:      user.ID,
+		CreatedBy:      &user.ID,
 	}
 	if err := s.Create(ctx, period); err != nil {
 		t.Fatalf("Create() error = %v", err)
@@ -759,7 +759,7 @@ func TestGovernmentFundingBillPeriodStore_ExistsByOrgAndMonth(t *testing.T) {
 		FileName:       "test.xlsx",
 		FileSha256:     "hash1",
 		FacilityName:   "Kita",
-		CreatedBy:      user.ID,
+		CreatedBy:      &user.ID,
 	}
 	if err := s.Create(ctx, period); err != nil {
 		t.Fatalf("Create() error = %v", err)
@@ -808,7 +808,7 @@ func TestGovernmentFundingBillPeriodStore_ExistsByOrgAndHash_AfterDelete(t *test
 		FileName:       "test.xlsx",
 		FileSha256:     "delhash",
 		FacilityName:   "Kita",
-		CreatedBy:      user.ID,
+		CreatedBy:      &user.ID,
 	}
 	if err := s.Create(ctx, period); err != nil {
 		t.Fatalf("Create() error = %v", err)
@@ -853,7 +853,7 @@ func TestGovernmentFundingBillPeriodStore_ExistsByOrgAndMonth_AfterDelete(t *tes
 		FileName:       "test.xlsx",
 		FileSha256:     "hash_month_del",
 		FacilityName:   "Kita",
-		CreatedBy:      user.ID,
+		CreatedBy:      &user.ID,
 	}
 	if err := s.Create(ctx, period); err != nil {
 		t.Fatalf("Create() error = %v", err)
@@ -894,7 +894,7 @@ func TestGovernmentFundingBillPeriodStore_FindChildEntriesByOrgAndVoucherNumbers
 			FileName:       fmt.Sprintf("bill_%d.xlsx", month),
 			FileSha256:     fmt.Sprintf("hash_%d", month),
 			FacilityName:   "Test Kita",
-			CreatedBy:      user.ID,
+			CreatedBy:      &user.ID,
 			Children: []models.GovernmentFundingBillChild{
 				{
 					VoucherNumber: voucher1,

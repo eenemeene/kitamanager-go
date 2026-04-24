@@ -5,6 +5,11 @@ import "encoding/json"
 // DateFormat is the standard date format (ISO 8601 date) used across the application.
 const DateFormat = "2006-01-02"
 
+// UintPtr returns a pointer to a uint. Used by callers (seeds, tests)
+// that need to populate *uint columns from literal values, where
+// taking &<literal> is not permitted by Go.
+func UintPtr(u uint) *uint { return &u }
+
 // ErrorResponse represents a structured error response
 type ErrorResponse struct {
 	Code    string `json:"code" example:"not_found"`

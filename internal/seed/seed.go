@@ -818,7 +818,7 @@ func buildBillPeriod(orgID uint, billDate time.Time, fundingPeriod *models.Gover
 		FacilityTotal:     facilityTotal + correctionTotal,
 		ContractBooking:   facilityTotal - correctionTotal,
 		CorrectionBooking: correctionTotal,
-		CreatedBy:         1,
+		CreatedBy:         models.UintPtr(1),
 		Children:          billChildren,
 	}
 }

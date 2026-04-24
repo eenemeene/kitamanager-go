@@ -3701,7 +3701,7 @@ func TestStatisticsService_GetFinancials_ActualFunding_BillMatchesMonth(t *testi
 		FileSha256:     "hash1",
 		FacilityName:   "Kita Test",
 		FacilityTotal:  500000,
-		CreatedBy:      user.ID,
+		CreatedBy:      &user.ID,
 	}
 	if err := db.Create(bill).Error; err != nil {
 		t.Fatalf("create bill: %v", err)
@@ -3753,7 +3753,7 @@ func TestStatisticsService_GetFinancials_ActualFunding_SingleBill(t *testing.T) 
 		FileSha256:     "febhash",
 		FacilityName:   "Kita",
 		FacilityTotal:  350000,
-		CreatedBy:      user.ID,
+		CreatedBy:      &user.ID,
 	}
 	if err := db.Create(bill).Error; err != nil {
 		t.Fatalf("create bill: %v", err)
@@ -3813,7 +3813,7 @@ func TestStatisticsService_GetFinancials_ActualFunding_BillOutsideRange(t *testi
 		FileSha256:     "hash",
 		FacilityName:   "Kita",
 		FacilityTotal:  400000,
-		CreatedBy:      user.ID,
+		CreatedBy:      &user.ID,
 	}
 	if err := db.Create(bill).Error; err != nil {
 		t.Fatalf("create bill: %v", err)
@@ -3851,7 +3851,7 @@ func TestStatisticsService_GetFinancials_ActualFunding_DifferentOrg(t *testing.T
 		FileSha256:     "hash",
 		FacilityName:   "Kita Org2",
 		FacilityTotal:  999999,
-		CreatedBy:      user.ID,
+		CreatedBy:      &user.ID,
 	}
 	if err := db.Create(bill).Error; err != nil {
 		t.Fatalf("create bill: %v", err)
