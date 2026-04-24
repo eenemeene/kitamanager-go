@@ -111,8 +111,11 @@ func TestRequestID_PropagatedOnRequestContext(t *testing.T) {
 // this semantic — they pass context.Background() and get back empty,
 // which AuditService then persists as NULL.
 func TestRequestIDFromContext_EmptyForBareContext(t *testing.T) {
-	//lint:ignore SA1012 deliberately testing the nil-safe path
-	if got := RequestIDFromContext(nil); got != "" {
+	// Deliberately feed a nil Context to verify the defensive guard in
+	// RequestIDFromContext. Staticcheck's SA1012 flags the pattern in
+	// production code — here we are testing that the guard exists.
+	var nilCtx context.Context //nolint:staticcheck // SA1012: exercising nil-safe path
+	if got := RequestIDFromContext(nilCtx); got != "" {
 		t.Errorf("nil ctx: got %q, want empty", got)
 	}
 	if got := RequestIDFromContext(context.Background()); got != "" {

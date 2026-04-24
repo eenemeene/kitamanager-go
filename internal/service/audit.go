@@ -116,8 +116,8 @@ func (s *AuditService) LogLogin(ctx context.Context, userID uint, email, ipAddre
 // ip. Idempotent logout attempts against an already-gone session
 // must NOT be logged — the handler gates this call on success so we
 // don't spam noise rows after a double-click.
-func (s *AuditService) LogLogout(userID *uint, email, ipAddress string) {
-	s.log(&models.AuditLog{
+func (s *AuditService) LogLogout(ctx context.Context, userID *uint, email, ipAddress string) {
+	s.log(ctx, &models.AuditLog{
 		UserID:    userID,
 		UserEmail: email,
 		Action:    models.AuditActionLogout,
@@ -133,8 +133,8 @@ func (s *AuditService) LogLogout(userID *uint, email, ipAddress string) {
 // that was killed; we store it in Details rather than ResourceID
 // because AuditLog.ResourceID is a uint and the session key is a
 // hash string.
-func (s *AuditService) LogSessionRevoked(userID uint, email, sessionIDHash, ipAddress string) {
-	s.log(&models.AuditLog{
+func (s *AuditService) LogSessionRevoked(ctx context.Context, userID uint, email, sessionIDHash, ipAddress string) {
+	s.log(ctx, &models.AuditLog{
 		UserID:       &userID,
 		UserEmail:    email,
 		Action:       models.AuditActionSessionRevoked,

@@ -322,7 +322,7 @@ func (s *AuthService) Logout(ctx context.Context, sessionToken string, userID ui
 		return
 	}
 	uid := userID
-	s.auditService.LogLogout(&uid, email, ipAddress)
+	s.auditService.LogLogout(ctx, &uid, email, ipAddress)
 }
 
 // ChangePassword verifies the current password, sets a new one, logs every
@@ -442,7 +442,7 @@ func (s *AuthService) RevokeSession(ctx context.Context, userID uint, idHash, em
 	if rows == 0 {
 		return apperror.NotFound("session")
 	}
-	s.auditService.LogSessionRevoked(userID, email, idHash, ipAddress)
+	s.auditService.LogSessionRevoked(ctx, userID, email, idHash, ipAddress)
 	return nil
 }
 
