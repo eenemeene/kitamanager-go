@@ -172,7 +172,7 @@
     "allSections": "All Sections",
     "kitaYear": "Kita Year {year}",
     "kitaYearTooltip": "A Kita year runs from August through July. The alternating shaded bands mark consecutive Kita years.",
-    "staffingBalance": "Staffing Balance",
+    "staffingBalance": "Balance",
     "staffingBalanceTooltip": "Available hours minus required hours — positive means surplus, negative means understaffed",
     "balancePercentage": "Balance",
     "balancePercentageTooltip": "Available hours as a percentage of required hours — 100% means exactly staffed",
@@ -253,8 +253,8 @@
     "fundingMonthsCovered": "months with bills",
     "kitaYearCol": "Kita Year",
     "salaries": "Salaries",
-    "incomeTotal": "\u03a3 Income",
-    "expenseTotal": "\u03a3 Expenses",
+    "incomeTotal": "Σ Income",
+    "expenseTotal": "Σ Expenses",
     "annualTotal": "Annual Total",
     "previousYear": "Previous year",
     "nextYear": "Next year",
@@ -267,7 +267,6 @@
     "staffingHoursGrid": "Staffing Hours Grid",
     "staffingRequired": "Required",
     "staffingAvailable": "Available",
-    "staffingBalance": "Balance",
     "staffingBalancePercent": "Balance %",
     "staffCount": "Staff",
     "average": "Average",
@@ -308,7 +307,13 @@
     "forecastOptimizeNotReached": "Target balance not reachable with the current constraints (max {max} children possible).",
     "forecastOptimizeAddedToStore": "The children have been added to the Children tab. You can review and adjust them before calculating.",
     "forecastOptimizeNoImpact": "Adding children does not improve the balance. Check funding configuration and contract properties.",
-    "forecastBaselineBalance": "Current baseline: {amount}"
+    "forecastBaselineBalance": "Current baseline: {amount}",
+    "warnings": {
+      "title": "{count, plural, one {# data-quality warning} other {# data-quality warnings}}",
+      "missingPayPlan": "Salary excluded: contract references unknown pay plan {payPlan}",
+      "noPayPlanPeriod": "Salary excluded: pay plan {payPlan} has no period covering this date",
+      "noPayPlanEntry": "Salary excluded: pay plan has no entry for grade {grade}, step {step}"
+    }
   },
   "months": {
     "jan": "Jan",
@@ -1012,7 +1017,6 @@
     "statusNoFundingConfig": "No Funding Config",
     "billedTotal": "Billed Total",
     "voucherNumbers": "Voucher Numbers",
-    "billingMonth": "Billing Month",
     "billTotal": "Billed",
     "billTotalTooltip": "Regular monthly billing amount from the Senat (excludes corrections)",
     "calcTotal": "Expected",
