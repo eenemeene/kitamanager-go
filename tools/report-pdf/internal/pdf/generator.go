@@ -2,6 +2,7 @@ package pdf
 
 import (
 	"fmt"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"time"
@@ -9,6 +10,26 @@ import (
 	pdfcpuapi "github.com/pdfcpu/pdfcpu/pkg/api"
 	"github.com/playwright-community/playwright-go"
 )
+
+// loginPathPrefix is the SPA route the frontend redirects to when no
+// session cookie is present or it has expired. We detect bounces both
+// right after the initial navigation and after waiting for the print-
+// ready signal — that way an operator gets a clear "auth failed"
+// message instead of a 30-second generic timeout when the frontend
+// silently route-changed away from the print page.
+const loginPathPrefix = "/login"
+
+// isLoginBounce returns true when rawURL points at the login route.
+// Parsing the URL (instead of strings.Contains over the whole string)
+// guards against false positives like "/?next=/login" or report
+// content that happens to mention login text in the path.
+func isLoginBounce(rawURL string) bool {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return false
+	}
+	return u.Path == loginPathPrefix || strings.HasPrefix(u.Path, loginPathPrefix+"/")
+}
 
 type Generator struct {
 	pw      *playwright.Playwright
@@ -74,21 +95,30 @@ func (g *Generator) GenerateReport(reportType, orgID string, year int, outputDir
 		return fmt.Errorf("navigate to %s: %w", pageURL, err)
 	}
 
-	// Check if we were redirected to login (auth failure)
-	finalURL := page.URL()
-	if strings.Contains(finalURL, "/login") {
-		return fmt.Errorf("redirected to login page — authentication failed")
+	// Fast-path bounce detection: the SPA redirects unauthenticated
+	// requests straight to the login route, so we can fail in <100ms
+	// rather than waiting 30s for the print-ready signal that will
+	// never arrive.
+	if isLoginBounce(page.URL()) {
+		return fmt.Errorf("redirected to %s — authentication failed (cookies expired or service account lacks access to org %s)", page.URL(), orgID)
 	}
 
 	if resp != nil && resp.Status() >= 400 {
 		return fmt.Errorf("page returned HTTP %d", resp.Status())
 	}
 
-	// Wait for data-print-ready="true" attribute
+	// Slow-path: wait for the print-ready signal, but if it times out
+	// re-check the URL — if the SPA route-changed to /login during the
+	// wait (mid-render session expiry, race with token refresh), give
+	// the operator the same clear auth-failure message rather than a
+	// generic timeout.
 	err = page.Locator("[data-print-ready='true']").WaitFor(playwright.LocatorWaitForOptions{
 		Timeout: playwright.Float(30000),
 	})
 	if err != nil {
+		if isLoginBounce(page.URL()) {
+			return fmt.Errorf("page bounced to %s mid-render — session expired during PDF generation", page.URL())
+		}
 		return fmt.Errorf("timeout waiting for page to be ready: %w", err)
 	}
 

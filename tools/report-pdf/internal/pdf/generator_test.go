@@ -92,3 +92,28 @@ func envOr(key, fallback string) string {
 	}
 	return fallback
 }
+
+func TestIsLoginBounce(t *testing.T) {
+	cases := []struct {
+		name string
+		url  string
+		want bool
+	}{
+		{"exact /login", "https://app.example.com/login", true},
+		{"login subroute", "https://app.example.com/login/forgot", true},
+		{"login with query", "https://app.example.com/login?next=/orgs/1", true},
+		{"print page", "https://app.example.com/organizations/1/statistics/staffing/print?year=2026", false},
+		{"login as query value, not path", "https://app.example.com/?next=/login", false},
+		{"path with login as substring of segment", "https://app.example.com/loginhelper", false},
+		{"unrelated path", "https://app.example.com/dashboard", false},
+		{"empty string", "", false},
+		{"malformed url", "://broken", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := isLoginBounce(tc.url); got != tc.want {
+				t.Errorf("isLoginBounce(%q) = %v, want %v", tc.url, got, tc.want)
+			}
+		})
+	}
+}
