@@ -215,6 +215,65 @@ func TestSectionStore_FindDefaultSection_NotFound(t *testing.T) {
 	}
 }
 
+// TestSectionStore_FindByOrganizationPaginated_NullsSortLast is a
+// regression guard for the previous `COALESCE(min_age_months, 999)`
+// ordering. Sections with NULL min_age must sort AFTER concrete
+// values (NULLS LAST), and a section with min_age=999 (implausible
+// but legal) must NOT collide with NULL ordering as it would have
+// under the old magic-number trick.
+func TestSectionStore_FindByOrganizationPaginated_NullsSortLast(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewSectionStore(db)
+	org := createTestOrganization(t, db, "Test Org")
+
+	// Three sections: NULL min_age, min_age=12, min_age=999.
+	// Expected sort: 12, 999, NULL — NULLS LAST.
+	min12 := 12
+	min999 := 999
+	if err := db.Create(&models.Section{
+		OrganizationID: org.ID, Name: "B-NoAge",
+	}).Error; err != nil {
+		t.Fatalf("create no-age: %v", err)
+	}
+	if err := db.Create(&models.Section{
+		OrganizationID: org.ID, Name: "A-Twelve", MinAgeMonths: &min12,
+	}).Error; err != nil {
+		t.Fatalf("create min12: %v", err)
+	}
+	if err := db.Create(&models.Section{
+		OrganizationID: org.ID, Name: "A-NineNineNine", MinAgeMonths: &min999,
+	}).Error; err != nil {
+		t.Fatalf("create min999: %v", err)
+	}
+
+	got, _, err := store.FindByOrganizationPaginated(context.Background(), org.ID, "", 100, 0)
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+
+	// Filter to just the three we seeded (the org-create helper
+	// also seeded a default section without a min_age).
+	var seeded []models.Section
+	for _, s := range got {
+		if s.Name == "B-NoAge" || s.Name == "A-Twelve" || s.Name == "A-NineNineNine" {
+			seeded = append(seeded, s)
+		}
+	}
+	if len(seeded) != 3 {
+		t.Fatalf("expected 3 seeded sections, got %d", len(seeded))
+	}
+	// Order assertions (NULLS LAST).
+	if seeded[0].Name != "A-Twelve" {
+		t.Errorf("position 0 should be min_age=12 (A-Twelve), got %q", seeded[0].Name)
+	}
+	if seeded[1].Name != "A-NineNineNine" {
+		t.Errorf("position 1 should be min_age=999 (A-NineNineNine), got %q", seeded[1].Name)
+	}
+	if seeded[2].Name != "B-NoAge" {
+		t.Errorf("position 2 should be NULL min_age (B-NoAge), got %q", seeded[2].Name)
+	}
+}
+
 // TestSectionStore_HasActiveChildren covers the time-filtered guard.
 // The previous HasChildren counted EVERY contract — even ENDED ones
 // from years ago — which left orgs unable to delete sections after

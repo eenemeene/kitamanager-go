@@ -19,7 +19,13 @@ func NewSectionStore(db *gorm.DB) *SectionStore {
 
 func (s *SectionStore) FindByID(ctx context.Context, id uint) (*models.Section, error) {
 	var section models.Section
-	if err := DBFromContext(ctx, s.db).Preload("Organization").First(&section, id).Error; err != nil {
+	// Organization is NOT preloaded — every section endpoint lives
+	// under /organizations/{orgId}/sections, so the caller already
+	// has the org. The previous Preload was dead bytes per request;
+	// dropping it shaves the round-trip without any user-visible
+	// change. If a future endpoint needs the embedded org, it can
+	// add a dedicated method.
+	if err := DBFromContext(ctx, s.db).First(&section, id).Error; err != nil {
 		return nil, WrapNotFound(err)
 	}
 	return &section, nil
@@ -60,12 +66,18 @@ func (s *SectionStore) FindByOrganizationPaginated(ctx context.Context, orgID ui
 		return nil, 0, err
 	}
 
-	dataQuery := DBFromContext(ctx, s.db).Preload("Organization").Where("organization_id = ?", orgID)
+	// Same rationale as FindByID: drop the dead Preload; sort with
+	// NULLS LAST instead of `COALESCE(min_age_months, 999)`. The
+	// magic 999 collided with a legitimate min_age=999 (admittedly
+	// implausible for a daycare but a real footgun) and the
+	// function-on-column blocked any index from being used for the
+	// sort.
+	dataQuery := DBFromContext(ctx, s.db).Where("organization_id = ?", orgID)
 	if search != "" {
 		dataQuery = dataQuery.Scopes(NameSearch("sections", "name", search))
 	}
 
-	if err := dataQuery.Order("COALESCE(min_age_months, 999) ASC, name ASC").Limit(limit).Offset(offset).Find(&sections).Error; err != nil {
+	if err := dataQuery.Order("min_age_months ASC NULLS LAST, name ASC").Limit(limit).Offset(offset).Find(&sections).Error; err != nil {
 		return nil, 0, err
 	}
 
