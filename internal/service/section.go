@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -159,24 +160,35 @@ func (s *SectionService) DeleteByIDAndOrg(ctx context.Context, id, orgID uint) e
 			return apperror.BadRequest("cannot delete the default section")
 		}
 
-		// Check if section has children
-		hasChildren, err := s.store.HasChildren(txCtx, id)
+		// Block deletion only when CURRENT contracts still reference
+		// the section. Historical / ended contracts are fine — the
+		// section row physically lives on (gorm soft-delete just sets
+		// deleted_at), so their FK keeps resolving even after the
+		// tombstone. Without the time filter, an org that reorganised
+		// its sections years ago would have permanent "zombie"
+		// sections it could never clean up.
+		now := time.Now().UTC()
+		hasChildren, err := s.store.HasActiveChildren(txCtx, id, now)
 		if err != nil {
 			return apperror.InternalWrap(err, "failed to check section children")
 		}
 		if hasChildren {
-			return apperror.BadRequest("cannot delete section with assigned children")
+			return apperror.BadRequest("cannot delete section with currently-assigned children")
 		}
 
-		// Check if section has employees
-		hasEmployees, err := s.store.HasEmployees(txCtx, id)
+		hasEmployees, err := s.store.HasActiveEmployees(txCtx, id, now)
 		if err != nil {
 			return apperror.InternalWrap(err, "failed to check section employees")
 		}
 		if hasEmployees {
-			return apperror.BadRequest("cannot delete section with assigned employees")
+			return apperror.BadRequest("cannot delete section with currently-assigned employees")
 		}
 
+		// Soft-delete via gorm's DeletedAt machinery. Section.Delete
+		// stamps deleted_at; subsequent FindByID auto-scopes the row
+		// out (so List / pickers stop showing it) but historical
+		// contracts under it keep resolving via FK because the row
+		// is still physically present.
 		if err := s.store.Delete(txCtx, id); err != nil {
 			return apperror.InternalWrap(err, "failed to delete section")
 		}

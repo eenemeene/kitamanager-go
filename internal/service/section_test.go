@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -517,6 +518,118 @@ func TestSectionService_DeleteByIDAndOrg_CannotDeleteWithEmployees(t *testing.T)
 
 	if !errors.Is(err, apperror.ErrBadRequest) {
 		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+}
+
+// ============================================================
+// S2: soft-delete with active-only assignment guard
+// ============================================================
+
+// Bug fix: a section with ONLY ended contracts used to be
+// undeletable forever (HasChildren counted historical contracts with
+// no time filter). With the active-only guard, the section can be
+// soft-deleted; the ended contracts retain their FK because the
+// section row physically still exists.
+func TestSectionService_DeleteByIDAndOrg_OnlyEndedContracts_NowAllowed(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createSectionService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section := createTestSection(t, db, "Krippe", org.ID, false)
+
+	// Seed an ENDED child contract: 2024 only.
+	child := createTestChild(t, db, "Past", "Child", org.ID)
+	endOf2024 := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	if err := db.Create(&models.ChildContract{
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period: models.Period{
+				From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+				To:   &endOf2024,
+			},
+			SectionID: section.ID,
+		},
+	}).Error; err != nil {
+		t.Fatalf("seed ended contract: %v", err)
+	}
+
+	// Delete must now succeed — historical contracts don't block.
+	if err := svc.DeleteByIDAndOrg(ctx, section.ID, org.ID); err != nil {
+		t.Fatalf("section with only-ended contracts should now delete, got %v", err)
+	}
+
+	// And the section is no longer findable through the standard path
+	// (gorm soft-delete auto-scope).
+	if _, err := svc.GetByIDAndOrg(ctx, section.ID, org.ID); !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("soft-deleted section should be NotFound via GetByIDAndOrg, got %v", err)
+	}
+
+	// The ended contract still resolves via FK (the section row is
+	// physically there, just tombstoned). Read it directly to verify.
+	var c models.ChildContract
+	if err := db.Where("section_id = ?", section.ID).First(&c).Error; err != nil {
+		t.Errorf("ended contract should still be readable; got %v", err)
+	}
+}
+
+// Lock-in: the OLD behavior of blocking on currently-active contracts
+// must NOT regress. This is the same scenario as the existing
+// _CannotDeleteWithChildren test but explicitly named so the
+// expected-block reason ("active") is unambiguous.
+func TestSectionService_DeleteByIDAndOrg_ActiveContract_StillBlocked(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createSectionService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section := createTestSection(t, db, "Krippe", org.ID, false)
+
+	// Open-ended contract starting before today → active.
+	child := createTestChild(t, db, "Now", "Child", org.ID)
+	if err := db.Create(&models.ChildContract{
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period:    models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+			SectionID: section.ID,
+		},
+	}).Error; err != nil {
+		t.Fatalf("seed active contract: %v", err)
+	}
+
+	err := svc.DeleteByIDAndOrg(ctx, section.ID, org.ID)
+	if err == nil {
+		t.Fatal("active contract must still block delete")
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "currently-assigned") {
+		t.Errorf("error should mention currently-assigned, got %v", err)
+	}
+}
+
+// Lock-in: the partial unique index from migration 000018 lets a
+// soft-deleted section's name be reused — same playbook as users.email
+// after migration 000015.
+func TestSectionService_NameReusableAfterSoftDelete(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createSectionService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	first := createTestSection(t, db, "Krippe", org.ID, false)
+
+	if err := svc.DeleteByIDAndOrg(ctx, first.ID, org.ID); err != nil {
+		t.Fatalf("delete first: %v", err)
+	}
+
+	// Same name, fresh section. Was previously blocked by the raw
+	// unique index; the partial `WHERE deleted_at IS NULL` allows it.
+	if _, err := svc.Create(ctx, org.ID, &models.SectionCreateRequest{
+		Name: "Krippe",
+	}, "tester"); err != nil {
+		t.Errorf("name reuse after soft-delete should succeed, got %v", err)
 	}
 }
 

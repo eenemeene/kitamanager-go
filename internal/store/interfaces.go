@@ -152,8 +152,14 @@ type SectionStorer interface {
 	Create(ctx context.Context, section *models.Section) error
 	Update(ctx context.Context, section *models.Section) error
 	Delete(ctx context.Context, id uint) error
-	HasChildren(ctx context.Context, id uint) (bool, error)
-	HasEmployees(ctx context.Context, id uint) (bool, error)
+	// HasActiveChildren / HasActiveEmployees report whether any
+	// contract that is active on `asOf` references this section. Used
+	// by the delete-guard in SectionService — only currently-assigned
+	// contracts block deletion. Historical (ended) contracts under a
+	// soft-deleted section keep their FK valid because the section
+	// row physically still exists.
+	HasActiveChildren(ctx context.Context, id uint, asOf time.Time) (bool, error)
+	HasActiveEmployees(ctx context.Context, id uint, asOf time.Time) (bool, error)
 }
 
 // GovernmentFundingStorer defines the interface for government funding storage operations

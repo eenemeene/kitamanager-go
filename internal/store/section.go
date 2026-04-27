@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -99,18 +100,49 @@ func (s *SectionStore) Delete(ctx context.Context, id uint) error {
 	return DBFromContext(ctx, s.db).Delete(&models.Section{}, id).Error
 }
 
-func (s *SectionStore) HasChildren(ctx context.Context, id uint) (bool, error) {
-	var count int64
-	if err := DBFromContext(ctx, s.db).Model(&models.ChildContract{}).Where("section_id = ?", id).Count(&count).Error; err != nil {
+// HasActiveChildren reports whether any child_contract that is active
+// on `asOf` references this section. Two semantic improvements over
+// the previous HasChildren:
+//
+//   - Time-filtered. The previous query counted EVERY contract,
+//     including ENDED ones from years ago. That left orgs with
+//     "zombie" sections that could never be deleted.
+//   - EXISTS-shaped. `LIMIT 1` short-circuits as soon as one row is
+//     found, so even a section with thousands of historical
+//     assignments answers in milliseconds rather than scanning the
+//     full match set.
+//
+// The active predicate is `from_date <= asOf AND (to_date IS NULL OR
+// to_date >= asOf)` — the same shape PeriodStore.HasActiveRecord
+// uses elsewhere in the codebase.
+func (s *SectionStore) HasActiveChildren(ctx context.Context, id uint, asOf time.Time) (bool, error) {
+	var oneID uint
+	err := DBFromContext(ctx, s.db).
+		Model(&models.ChildContract{}).
+		Select("id").
+		Where("section_id = ? AND from_date <= ? AND (to_date IS NULL OR to_date >= ?)",
+			id, asOf, asOf).
+		Limit(1).
+		Scan(&oneID).Error
+	if err != nil {
 		return false, err
 	}
-	return count > 0, nil
+	return oneID != 0, nil
 }
 
-func (s *SectionStore) HasEmployees(ctx context.Context, id uint) (bool, error) {
-	var count int64
-	if err := DBFromContext(ctx, s.db).Model(&models.EmployeeContract{}).Where("section_id = ?", id).Count(&count).Error; err != nil {
+// HasActiveEmployees is the employee-side counterpart. See
+// HasActiveChildren for the rationale.
+func (s *SectionStore) HasActiveEmployees(ctx context.Context, id uint, asOf time.Time) (bool, error) {
+	var oneID uint
+	err := DBFromContext(ctx, s.db).
+		Model(&models.EmployeeContract{}).
+		Select("id").
+		Where("section_id = ? AND from_date <= ? AND (to_date IS NULL OR to_date >= ?)",
+			id, asOf, asOf).
+		Limit(1).
+		Scan(&oneID).Error
+	if err != nil {
 		return false, err
 	}
-	return count > 0, nil
+	return oneID != 0, nil
 }
