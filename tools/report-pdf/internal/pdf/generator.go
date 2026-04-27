@@ -31,6 +31,15 @@ func isLoginBounce(rawURL string) bool {
 	return u.Path == loginPathPrefix || strings.HasPrefix(u.Path, loginPathPrefix+"/")
 }
 
+// printPageURL builds the URL of the print-optimised statistics page
+// for a given org + report type. Extracted so the URL contract can be
+// pinned by unit tests without spinning up Playwright — the path
+// shape and `year` query parameter are part of the API/frontend
+// contract a renaming on either side would silently break.
+func printPageURL(baseURL, orgID, reportType string, year int) string {
+	return fmt.Sprintf("%s/organizations/%s/statistics/%s/print?year=%d", baseURL, orgID, reportType, year)
+}
+
 type Generator struct {
 	pw      *playwright.Playwright
 	browser playwright.Browser
@@ -84,7 +93,7 @@ func (g *Generator) GenerateReport(reportType, orgID string, year int, outputDir
 		return fmt.Errorf("create page: %w", err)
 	}
 
-	pageURL := fmt.Sprintf("%s/organizations/%s/statistics/%s/print?year=%d", g.baseURL, orgID, reportType, year)
+	pageURL := printPageURL(g.baseURL, orgID, reportType, year)
 	fmt.Printf("  Navigating to %s\n", pageURL)
 
 	resp, err := page.Goto(pageURL, playwright.PageGotoOptions{
