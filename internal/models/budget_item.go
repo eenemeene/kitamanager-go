@@ -20,11 +20,18 @@ func ValidBudgetItemCategory(category string) bool {
 }
 
 // BudgetItem represents an income or expense category for an organization (e.g., "Rent", "Elternbeiträge", "Essensgeld").
+//
+// Uniqueness on (organization_id, name) is enforced by a functional
+// index on `(organization_id, lower(trim(name)))` declared in
+// migration 000017 — so "Rent", "rent", and " Rent " all collide.
+// The GORM uniqueIndex tags below reference the same name as a
+// breadcrumb but are NOT the source of truth (we never run
+// AutoMigrate; the SQL migration is the truthful schema).
 type BudgetItem struct {
 	ID             uint              `gorm:"primaryKey" json:"id" example:"1"`
-	OrganizationID uint              `gorm:"not null;index;uniqueIndex:idx_budget_item_org_name" json:"organization_id" example:"1"`
+	OrganizationID uint              `gorm:"not null;index" json:"organization_id" example:"1"`
 	Organization   *Organization     `gorm:"foreignKey:OrganizationID" json:"-"`
-	Name           string            `gorm:"size:255;not null;uniqueIndex:idx_budget_item_org_name" json:"name" example:"Elternbeiträge"`
+	Name           string            `gorm:"size:255;not null" json:"name" example:"Elternbeiträge"`
 	Category       string            `gorm:"size:50;not null" json:"category" example:"income"`
 	PerChild       bool              `gorm:"default:false;not null" json:"per_child" example:"true"`
 	Entries        []BudgetItemEntry `gorm:"foreignKey:BudgetItemID" json:"entries,omitempty"`

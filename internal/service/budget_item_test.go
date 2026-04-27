@@ -616,6 +616,107 @@ func TestBudgetItemService_Update_InvalidCategory(t *testing.T) {
 }
 
 // ============================================================
+// B6: case-insensitive + whitespace-insensitive name uniqueness
+// ============================================================
+
+func TestBudgetItemService_Create_CaseInsensitiveDuplicate_Rejected(t *testing.T) {
+	// "Rent" then "rent" used to produce two distinct items —
+	// confusing in the list and in financial breakdowns. Migration
+	// 000017's functional index on lower(trim(name)) rejects the
+	// second insert; the service surfaces the existing
+	// IsDuplicateKeyError handler as a 409 Conflict.
+	db := setupTestDB(t)
+	svc := createBudgetItemService(db)
+	ctx := context.Background()
+	org := createTestOrganization(t, db, "Org")
+
+	if _, err := svc.Create(ctx, org.ID, &models.BudgetItemCreateRequest{
+		Name: "Rent", Category: "expense",
+	}); err != nil {
+		t.Fatalf("seed item: %v", err)
+	}
+
+	_, err := svc.Create(ctx, org.ID, &models.BudgetItemCreateRequest{
+		Name: "rent", Category: "expense",
+	})
+	if err == nil {
+		t.Fatal("expected Conflict for case-only duplicate, got nil")
+	}
+	if !errors.Is(err, apperror.ErrConflict) {
+		t.Errorf("expected ErrConflict, got %v", err)
+	}
+}
+
+func TestBudgetItemService_Create_WhitespaceDuplicate_Rejected(t *testing.T) {
+	// Service-layer trim already collapses outer whitespace, but the
+	// DB index is the truthful gate. Both " Rent " and "Rent" land
+	// as "Rent" in the column; a follow-up insert of " RENT  "
+	// (which trims to "RENT", lowercases to "rent") collides with
+	// the index entry "rent" → conflict.
+	db := setupTestDB(t)
+	svc := createBudgetItemService(db)
+	ctx := context.Background()
+	org := createTestOrganization(t, db, "Org")
+
+	if _, err := svc.Create(ctx, org.ID, &models.BudgetItemCreateRequest{
+		Name: " Rent ", Category: "expense",
+	}); err != nil {
+		t.Fatalf("seed item: %v", err)
+	}
+
+	_, err := svc.Create(ctx, org.ID, &models.BudgetItemCreateRequest{
+		Name: " RENT  ", Category: "expense",
+	})
+	if err == nil {
+		t.Fatal("expected Conflict for whitespace+case duplicate, got nil")
+	}
+	if !errors.Is(err, apperror.ErrConflict) {
+		t.Errorf("expected ErrConflict, got %v", err)
+	}
+}
+
+func TestBudgetItemService_Create_DistinctNames_BothSucceed(t *testing.T) {
+	// Negative regression: "Rent" and "Rent2" are genuinely
+	// different and must both succeed under the new index.
+	db := setupTestDB(t)
+	svc := createBudgetItemService(db)
+	ctx := context.Background()
+	org := createTestOrganization(t, db, "Org")
+
+	if _, err := svc.Create(ctx, org.ID, &models.BudgetItemCreateRequest{
+		Name: "Rent", Category: "expense",
+	}); err != nil {
+		t.Fatalf("first: %v", err)
+	}
+	if _, err := svc.Create(ctx, org.ID, &models.BudgetItemCreateRequest{
+		Name: "Rent2", Category: "expense",
+	}); err != nil {
+		t.Errorf("distinct name 'Rent2' should be allowed, got %v", err)
+	}
+}
+
+func TestBudgetItemService_Create_SameNameDifferentOrg_BothSucceed(t *testing.T) {
+	// Uniqueness is scoped per organization. "Rent" can exist in
+	// every org without collision.
+	db := setupTestDB(t)
+	svc := createBudgetItemService(db)
+	ctx := context.Background()
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+
+	if _, err := svc.Create(ctx, org1.ID, &models.BudgetItemCreateRequest{
+		Name: "Rent", Category: "expense",
+	}); err != nil {
+		t.Fatalf("org1: %v", err)
+	}
+	if _, err := svc.Create(ctx, org2.ID, &models.BudgetItemCreateRequest{
+		Name: "Rent", Category: "expense",
+	}); err != nil {
+		t.Errorf("same name in different org should be allowed, got %v", err)
+	}
+}
+
+// ============================================================
 // B3: toggle-guard for category / per_child when entries exist
 // ============================================================
 
