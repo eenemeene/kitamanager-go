@@ -45,7 +45,32 @@ func (b *BudgetItem) GetOrganizationID() uint {
 }
 
 // BudgetItemEntry represents a time-bound amount for a BudgetItem.
-// Entries for the same budget item cannot overlap in time.
+//
+// # Uniqueness / overlap
+//
+// Entries for the same budget item cannot overlap in time. Enforced
+// at two layers: BudgetItemService.ValidateNoOverlap (friendly error
+// message) AND a DB-level GIST EXCLUDE constraint added in migration
+// 000016 (the truthful gate, prevents the TOCTOU window the service
+// validation has under READ COMMITTED).
+//
+// # Mid-month semantics in financials
+//
+// The financials calculator (calculateFinancials) takes a first-of-
+// month SNAPSHOT each iteration: an entry is counted for a given
+// month only if `IsActiveOn(firstOfThatMonth)` returns true.
+// Practical implication for budget-item entries:
+//
+//   - An entry with From=2025-01-15 contributes nothing to January
+//     2025; it first counts in February.
+//   - An entry that ends 2025-04-20 still counts for all of April
+//     (snapshot on April 1 is within the period).
+//
+// Net effect: under-count in the first partial month, over-count
+// in the last. For monthly-rollup planning this is acceptable; if a
+// stakeholder ever asks for day-accurate pro-rating it has to be
+// added explicitly. See calculateFinancials' doc-comment for the
+// fuller treatment.
 type BudgetItemEntry struct {
 	ID           uint        `gorm:"primaryKey" json:"id" example:"1"`
 	BudgetItemID uint        `gorm:"not null;index" json:"budget_item_id" example:"1"`
