@@ -9,9 +9,69 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
-// virtualIDBase is the starting ID for virtual (overlay-added) entities.
-// Chosen to be high enough to never collide with real DB IDs.
+// virtualIDBase is the FLOOR for virtual (overlay-added) entity IDs. The
+// allocator below takes max(this, max-real-ID-in-DataSet) + 1 as its
+// starting point, so:
+//
+//   - Old assumption "any id >= 1_000_000 is a virtual entity" still
+//     holds for fresh deployments (front-end / log-grep filters relying
+//     on it keep working).
+//   - A long-lived org whose auto-incrementing sequence has crossed
+//     1_000_000 no longer collides — the allocator starts above the
+//     real max, deterministically.
+//
+// Picking 1_000_000 keeps the boundary visible in logs and avoids the
+// top-half-of-uint trick, which would make virtual IDs look like
+// uint-overflow garbage.
 const virtualIDBase uint = 1_000_000
+
+// overlayIDAllocator hands out unique uint IDs for virtual entities and
+// their contracts. A single counter spans employees, employee contracts,
+// children, and child contracts so we never have to reason about
+// "could two contract kinds share an ID space" (they would, but the
+// downstream code is type-disambiguated, so collision-free is simpler
+// than collision-safe).
+//
+// The starting point is `max(virtualIDBase, max(real IDs in DataSet)+1)`
+// — see virtualIDBase doc-comment for why both inputs matter.
+type overlayIDAllocator struct {
+	next uint
+}
+
+func newOverlayIDAllocator(ds *DataSet) *overlayIDAllocator {
+	next := virtualIDBase
+	bump := func(id uint) {
+		if id >= next {
+			next = id + 1
+		}
+	}
+	for i := range ds.Employees {
+		bump(ds.Employees[i].ID)
+		for j := range ds.Employees[i].Contracts {
+			bump(ds.Employees[i].Contracts[j].ID)
+		}
+	}
+	for i := range ds.Children {
+		bump(ds.Children[i].ID)
+		for j := range ds.Children[i].Contracts {
+			bump(ds.Children[i].Contracts[j].ID)
+		}
+	}
+	return &overlayIDAllocator{next: next}
+}
+
+// nextID returns a fresh ID and advances the counter. Per-call so each
+// virtual contract — even within the same overlay-added employee — gets
+// its own ID. Without this, two overlay employees with one contract
+// each previously both ended up with contract.ID == virtualIDBase, an
+// upstream bug that mostly survived because nothing yet keys per
+// contract.ID; left in place it would silently corrupt any future
+// `map[contractID]Foo`.
+func (a *overlayIDAllocator) nextID() uint {
+	id := a.next
+	a.next++
+	return id
+}
 
 // GetForecast runs all statistics calculations with overlay modifications applied.
 func (s *StatisticsService) GetForecast(ctx context.Context, orgID uint, req *models.ForecastRequest) (*models.ForecastResponse, error) {
@@ -363,14 +423,20 @@ func applyOverlay(ds *DataSet, req *models.ForecastRequest, sectionID *uint) {
 		}
 	}
 
+	// 5+6. Allocate virtual IDs for new entities and their contracts. A
+	// single allocator handles both kinds; see overlayIDAllocator for
+	// why every contract — including multiple under one new employee —
+	// gets its own ID rather than the index-within-entity that the
+	// previous code used (which collided across entities).
+	alloc := newOverlayIDAllocator(ds)
+
 	// 5. Add new virtual employees
 	for i := range req.AddEmployees {
 		emp := req.AddEmployees[i]
-		virtualID := virtualIDBase + uint(i) //nolint:gosec // index cannot overflow
-		emp.ID = virtualID
+		emp.ID = alloc.nextID()
 		for j := range emp.Contracts {
-			emp.Contracts[j].ID = virtualIDBase + uint(j) //nolint:gosec // index cannot overflow
-			emp.Contracts[j].EmployeeID = virtualID
+			emp.Contracts[j].ID = alloc.nextID()
+			emp.Contracts[j].EmployeeID = emp.ID
 		}
 		if sectionID != nil {
 			emp.Contracts = filterSlice(emp.Contracts, func(c models.EmployeeContract) bool {
@@ -382,15 +448,13 @@ func applyOverlay(ds *DataSet, req *models.ForecastRequest, sectionID *uint) {
 		}
 	}
 
-	// 6. Add new virtual children (IDs offset from employees to avoid collisions)
-	childVirtualIDBase := virtualIDBase + uint(len(req.AddEmployees)) //nolint:gosec // length cannot overflow
+	// 6. Add new virtual children
 	for i := range req.AddChildren {
 		child := req.AddChildren[i]
-		virtualID := childVirtualIDBase + uint(i) //nolint:gosec // index cannot overflow
-		child.ID = virtualID
+		child.ID = alloc.nextID()
 		for j := range child.Contracts {
-			child.Contracts[j].ID = virtualIDBase + uint(j) //nolint:gosec // index cannot overflow
-			child.Contracts[j].ChildID = virtualID
+			child.Contracts[j].ID = alloc.nextID()
+			child.Contracts[j].ChildID = child.ID
 		}
 		if sectionID != nil {
 			child.Contracts = filterSlice(child.Contracts, func(c models.ChildContract) bool {

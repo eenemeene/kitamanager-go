@@ -1424,6 +1424,165 @@ func TestSnapAndValidateRange_ExactlyAtCap_Allowed(t *testing.T) {
 	}
 }
 
+// ============================================================
+// F3: virtual-ID allocator (collision + brittleness fixes)
+// ============================================================
+
+func TestOverlayIDAllocator_EmptyDataSet_StartsAtBase(t *testing.T) {
+	// With no real entities the allocator must start exactly at
+	// virtualIDBase so the legacy "id >= 1_000_000 means virtual" rule
+	// of thumb (used by some log greps and frontend diagnostics) keeps
+	// holding for fresh deployments.
+	alloc := newOverlayIDAllocator(&DataSet{})
+	first := alloc.nextID()
+	if first != virtualIDBase {
+		t.Errorf("first id = %d, want %d (virtualIDBase)", first, virtualIDBase)
+	}
+	if alloc.nextID() != virtualIDBase+1 {
+		t.Errorf("expected monotonic +1 increments")
+	}
+}
+
+func TestOverlayIDAllocator_RealIDAboveBase_StartsAboveMax(t *testing.T) {
+	// A long-lived org whose auto-incrementing employee sequence has
+	// crossed virtualIDBase used to silently overlap with overlay IDs.
+	// The allocator must take max(virtualIDBase, max real id) + 1.
+	ds := &DataSet{
+		Employees: []models.Employee{
+			{Person: models.Person{ID: virtualIDBase + 5}},
+		},
+	}
+	alloc := newOverlayIDAllocator(ds)
+	first := alloc.nextID()
+	if first != virtualIDBase+6 {
+		t.Errorf("first id = %d, want %d (one above max real)", first, virtualIDBase+6)
+	}
+}
+
+func TestOverlayIDAllocator_RealContractIDAboveBase_StartsAboveMax(t *testing.T) {
+	// Same scenario via a real CONTRACT id (not the parent entity id) —
+	// the allocator must scan contracts too, not only entity ids,
+	// because contracts have their own auto-increment sequence.
+	ds := &DataSet{
+		Employees: []models.Employee{{
+			Person: models.Person{ID: 1},
+			Contracts: []models.EmployeeContract{{
+				ID: virtualIDBase + 12,
+			}},
+		}},
+		Children: []models.Child{{
+			Person:    models.Person{ID: 2},
+			Contracts: []models.ChildContract{{ID: virtualIDBase + 30}},
+		}},
+	}
+	alloc := newOverlayIDAllocator(ds)
+	first := alloc.nextID()
+	if first != virtualIDBase+31 {
+		t.Errorf("first id = %d, want %d (one above max contract id)", first, virtualIDBase+31)
+	}
+}
+
+func TestApplyOverlay_TwoEmployeesEachWithMultipleContracts_AllUnique(t *testing.T) {
+	// Regression test for the contract-ID collision bug: the previous
+	// `virtualIDBase + uint(j)` (j is index-within-entity) gave two
+	// overlay employees with one contract each the SAME contract id.
+	// With the allocator each contract — across all virtual entities —
+	// gets its own id.
+	ds := &DataSet{
+		PayPlans: map[uint]*models.PayPlan{},
+	}
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	mkContract := func(section uint) models.EmployeeContract {
+		return models.EmployeeContract{
+			BaseContract: models.BaseContract{
+				Period:    models.Period{From: from},
+				SectionID: section,
+			},
+			PayPlanID: 1, Grade: "S8a", Step: 3, WeeklyHours: 30, StaffCategory: "qualified",
+		}
+	}
+	req := &models.ForecastRequest{
+		AddEmployees: []models.Employee{
+			{
+				Person:    models.Person{Birthdate: from},
+				Contracts: []models.EmployeeContract{mkContract(1), mkContract(1)},
+			},
+			{
+				Person:    models.Person{Birthdate: from},
+				Contracts: []models.EmployeeContract{mkContract(1), mkContract(1)},
+			},
+		},
+	}
+
+	applyOverlay(ds, req, nil)
+
+	if len(ds.Employees) != 2 {
+		t.Fatalf("want 2 overlay employees, got %d", len(ds.Employees))
+	}
+	seen := map[uint]bool{}
+	for _, e := range ds.Employees {
+		if seen[e.ID] {
+			t.Errorf("duplicate employee id %d", e.ID)
+		}
+		seen[e.ID] = true
+		for _, c := range e.Contracts {
+			if seen[c.ID] {
+				t.Errorf("duplicate id %d (overlap between entity and/or contract namespaces)", c.ID)
+			}
+			seen[c.ID] = true
+			if c.EmployeeID != e.ID {
+				t.Errorf("contract %d EmployeeID=%d, want %d", c.ID, c.EmployeeID, e.ID)
+			}
+		}
+	}
+	// Sanity: 2 employees + 4 contracts = 6 unique ids.
+	if len(seen) != 6 {
+		t.Errorf("expected 6 unique ids, got %d", len(seen))
+	}
+}
+
+func TestApplyOverlay_VirtualVsRealCollision_NoOverlap(t *testing.T) {
+	// Real entity already has id == virtualIDBase + 1 (a long-lived org's
+	// auto-increment crossed the line). Overlay-added entities must
+	// start above that, never silently shadow it.
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	ds := &DataSet{
+		Employees: []models.Employee{{
+			Person:    models.Person{ID: virtualIDBase + 1},
+			Contracts: []models.EmployeeContract{{ID: 50}}, // small, ignored
+		}},
+		PayPlans: map[uint]*models.PayPlan{},
+	}
+	req := &models.ForecastRequest{
+		AddEmployees: []models.Employee{{
+			Person: models.Person{Birthdate: from},
+			Contracts: []models.EmployeeContract{{
+				BaseContract: models.BaseContract{
+					Period:    models.Period{From: from},
+					SectionID: 1,
+				},
+				PayPlanID: 1, Grade: "S8a", Step: 3, WeeklyHours: 30, StaffCategory: "qualified",
+			}},
+		}},
+	}
+
+	applyOverlay(ds, req, nil)
+
+	// First overlay employee should land at virtualIDBase + 2 (one past
+	// the real overlapping id), not virtualIDBase (the legacy starting
+	// point that would have shadowed the real row).
+	if len(ds.Employees) != 2 {
+		t.Fatalf("expected 2 employees post-overlay, got %d", len(ds.Employees))
+	}
+	overlayEmp := ds.Employees[1]
+	if overlayEmp.ID == virtualIDBase+1 {
+		t.Errorf("overlay employee id collided with real id %d", overlayEmp.ID)
+	}
+	if overlayEmp.ID < virtualIDBase+2 {
+		t.Errorf("overlay employee id %d should be >= %d", overlayEmp.ID, virtualIDBase+2)
+	}
+}
+
 // countingPayPlanStore lets a test fail the Nth FindByIDsWithPeriods call.
 // errOnCall(n) returns an error to substitute, or nil to defer to the
 // wrapped store. n is 1-indexed to match the natural "fail the second
