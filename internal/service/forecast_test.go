@@ -1408,6 +1408,69 @@ func TestGetFinancials_RangeTooWide_Rejected(t *testing.T) {
 	}
 }
 
+// ============================================================
+// F5: snapDateRange + calc-loop semantics (inclusive on both ends)
+// ============================================================
+//
+// These tests lock in the snap-and-iterate convention so a future
+// "tighten the date handling" pass doesn't accidentally flip rangeEnd
+// to exclusive — which would silently drop one month off every
+// statistics response, including all forecasts.
+
+func TestSnapDateRange_ToDateInclusiveOfMonth(t *testing.T) {
+	// User submits to=2026-07-15 expecting "through July 2026". The
+	// snap drops it to 2026-07-01 and the calc loop's
+	// `!date.After(end)` STILL includes July (date == end is fine).
+	from := time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC)
+
+	start, end := snapDateRange(&from, &to)
+	if start != from {
+		t.Errorf("start = %v, want %v", start, from)
+	}
+	if end != time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC) {
+		t.Errorf("end = %v, want 2026-07-01 (snapped)", end)
+	}
+
+	// Walk the loop the calculators use and verify Jul is the last entry.
+	var months []string
+	for d := start; !d.After(end); d = d.AddDate(0, 1, 0) {
+		months = append(months, d.Format("2006-01"))
+	}
+	if last := months[len(months)-1]; last != "2026-07" {
+		t.Errorf("last month = %q, want 2026-07 (inclusive of end's month)", last)
+	}
+	if got, want := len(months), 12; got != want {
+		t.Errorf("month count = %d, want %d", got, want)
+	}
+}
+
+func TestSnapDateRange_FromDateInclusiveOfMonth(t *testing.T) {
+	// Symmetric to the above for `from`: a mid-month date snaps backward
+	// to the first of the same month, which the loop then includes.
+	from := time.Date(2025, 8, 20, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2025, 12, 1, 0, 0, 0, 0, time.UTC)
+	start, _ := snapDateRange(&from, &to)
+	if start != time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC) {
+		t.Errorf("start = %v, want 2025-08-01 (snapped)", start)
+	}
+}
+
+func TestSnapDateRange_FrontendKitaYearRound_ProducesTwelveMonths(t *testing.T) {
+	// Direct lock-in of the frontend convention. The forecast page sends
+	// `from = ${year}-08-01, to = ${year+1}-07-01` for "the Kita year
+	// starting in {year}". This MUST produce exactly 12 monthly data
+	// points covering Aug Y through Jul Y+1. A regression here would be
+	// silent (charts just look slightly short) so the test is loud.
+	from := time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	start, end := snapDateRange(&from, &to)
+
+	if got := monthCount(start, end); got != 12 {
+		t.Errorf("Kita year span = %d months, want 12", got)
+	}
+}
+
 func TestSnapAndValidateRange_ExactlyAtCap_Allowed(t *testing.T) {
 	// Boundary: a span of exactly MaxStatisticsRangeMonths must succeed.
 	// monthCount is inclusive on both ends, so 72 means start + 71 months.

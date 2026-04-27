@@ -90,6 +90,16 @@ func snapAndValidateRange(from, to *time.Time) (time.Time, time.Time, error) {
 // Uses UTC to compute the current Kita year; otherwise the default window
 // flips a day early/late at local-timezone month boundaries.
 //
+// Both `from` and `to` are INCLUSIVE of the month they fall in. The
+// calculator loop is `for date := start; !date.After(end); date = date.AddDate(0, 1, 0)`,
+// so when `end` is also a 1st-of-month date the loop emits a data point
+// for that month before exiting. Concrete: with end=2026-07-01 the loop
+// emits Jul 2026 and stops; July is NOT skipped. The frontend forecast
+// page relies on this: it sends `to = ${year+1}-07-01` to mean "include
+// all of July of the following year" and would silently lose one month
+// per request if the convention ever flipped to exclusive. Tests in
+// forecast_test.go (TestSnapDateRange_*Inclusive*) lock this in.
+//
 // Callers should prefer snapAndValidateRange so unbounded user input is
 // rejected at the same place every time. snapDateRange remains exported-
 // internal for unit tests that want to assert just the snap behavior.
