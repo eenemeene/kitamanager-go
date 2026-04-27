@@ -249,6 +249,12 @@ type BudgetItemStorer interface {
 	FindEntriesByBudgetItemPaginated(ctx context.Context, budgetItemID uint, limit, offset int) ([]models.BudgetItemEntry, int64, error)
 	UpdateEntry(ctx context.Context, entry *models.BudgetItemEntry) error
 	DeleteEntry(ctx context.Context, id uint) error
+	// CountEntries returns how many entries exist for a budget item.
+	// Used by the service-layer toggle guard: changing category or
+	// per_child after entries exist would silently flip the meaning
+	// of every historical row in financials. Cheap COUNT(*) — avoids
+	// loading entries just to check len().
+	CountEntries(ctx context.Context, budgetItemID uint) (int64, error)
 	Entries() PeriodStorer[models.BudgetItemEntry]
 }
 

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -611,6 +612,187 @@ func TestBudgetItemService_Update_InvalidCategory(t *testing.T) {
 
 	if !errors.Is(err, apperror.ErrBadRequest) {
 		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+}
+
+// ============================================================
+// B3: toggle-guard for category / per_child when entries exist
+// ============================================================
+
+// helper: create an item with one entry so the toggle guard fires.
+func createBudgetItemWithEntry(
+	t *testing.T,
+	svc *BudgetItemService,
+	orgID uint,
+	name, category string,
+	perChild bool,
+) *models.BudgetItemResponse {
+	t.Helper()
+	ctx := context.Background()
+	item, err := svc.Create(ctx, orgID, &models.BudgetItemCreateRequest{
+		Name:     name,
+		Category: category,
+		PerChild: perChild,
+	})
+	if err != nil {
+		t.Fatalf("create item: %v", err)
+	}
+	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	if _, err := svc.CreateEntry(ctx, item.ID, orgID, &models.BudgetItemEntryCreateRequest{
+		From:        from,
+		AmountCents: 50000,
+	}); err != nil {
+		t.Fatalf("create entry: %v", err)
+	}
+	return item
+}
+
+func TestBudgetItemService_Update_NameOnly_WithEntries_Allowed(t *testing.T) {
+	// Renaming a budget item never changes the meaning of historical
+	// entries, so it must always succeed even when entries exist.
+	// Regression guard for an over-eager toggle guard.
+	db := setupTestDB(t)
+	svc := createBudgetItemService(db)
+	ctx := context.Background()
+	org := createTestOrganization(t, db, "Org")
+	item := createBudgetItemWithEntry(t, svc, org.ID, "Original", "income", false)
+
+	updName := "Renamed"
+	resp, err := svc.Update(ctx, item.ID, org.ID, &models.BudgetItemUpdateRequest{
+		Name: &updName,
+	})
+	if err != nil {
+		t.Fatalf("name-only update should succeed even with entries, got %v", err)
+	}
+	if resp.Name != "Renamed" {
+		t.Errorf("Name = %q, want Renamed", resp.Name)
+	}
+}
+
+func TestBudgetItemService_Update_NoOpToggle_WithEntries_Allowed(t *testing.T) {
+	// Submitting the SAME category / per_child the item already has
+	// is a no-op and must not trigger the guard. Avoids spurious
+	// errors when the frontend re-submits all fields on save.
+	db := setupTestDB(t)
+	svc := createBudgetItemService(db)
+	ctx := context.Background()
+	org := createTestOrganization(t, db, "Org")
+	item := createBudgetItemWithEntry(t, svc, org.ID, "X", "income", false)
+
+	sameCategory := "income"
+	samePerChild := false
+	if _, err := svc.Update(ctx, item.ID, org.ID, &models.BudgetItemUpdateRequest{
+		Category: &sameCategory,
+		PerChild: &samePerChild,
+	}); err != nil {
+		t.Errorf("no-op toggle should succeed, got %v", err)
+	}
+}
+
+func TestBudgetItemService_Update_CategoryToggle_WithEntries_Rejected(t *testing.T) {
+	// Flipping income → expense after entries exist would silently
+	// re-interpret every historical row in financials. Reject with a
+	// message that tells the user how to escape (delete entries or
+	// create a new item).
+	db := setupTestDB(t)
+	svc := createBudgetItemService(db)
+	ctx := context.Background()
+	org := createTestOrganization(t, db, "Org")
+	item := createBudgetItemWithEntry(t, svc, org.ID, "Elternbeiträge", "income", false)
+
+	updCategory := "expense"
+	_, err := svc.Update(ctx, item.ID, org.ID, &models.BudgetItemUpdateRequest{
+		Category: &updCategory,
+	})
+	if err == nil {
+		t.Fatal("expected BadRequest for category change with entries, got nil")
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "category") {
+		t.Errorf("error should mention category; got %v", err)
+	}
+}
+
+func TestBudgetItemService_Update_PerChildToggle_WithEntries_Rejected(t *testing.T) {
+	// Flipping per_child = false → true means every "€50,000/month"
+	// entry suddenly becomes "€50,000 per child × childCount" in the
+	// financials chart. Same reasoning as the category guard.
+	db := setupTestDB(t)
+	svc := createBudgetItemService(db)
+	ctx := context.Background()
+	org := createTestOrganization(t, db, "Org")
+	item := createBudgetItemWithEntry(t, svc, org.ID, "Rent", "expense", false)
+
+	updPerChild := true
+	_, err := svc.Update(ctx, item.ID, org.ID, &models.BudgetItemUpdateRequest{
+		PerChild: &updPerChild,
+	})
+	if err == nil {
+		t.Fatal("expected BadRequest for per_child change with entries, got nil")
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "per_child") {
+		t.Errorf("error should mention per_child; got %v", err)
+	}
+}
+
+func TestBudgetItemService_Update_BothToggles_WithEntries_Rejected(t *testing.T) {
+	// User attempts to flip both at once — error message must call
+	// out both fields so the user knows the full scope of what they
+	// were about to change.
+	db := setupTestDB(t)
+	svc := createBudgetItemService(db)
+	ctx := context.Background()
+	org := createTestOrganization(t, db, "Org")
+	item := createBudgetItemWithEntry(t, svc, org.ID, "X", "income", false)
+
+	updCategory := "expense"
+	updPerChild := true
+	_, err := svc.Update(ctx, item.ID, org.ID, &models.BudgetItemUpdateRequest{
+		Category: &updCategory,
+		PerChild: &updPerChild,
+	})
+	if err == nil {
+		t.Fatal("expected BadRequest, got nil")
+	}
+	if !strings.Contains(err.Error(), "category") || !strings.Contains(err.Error(), "per_child") {
+		t.Errorf("error should mention both category and per_child; got %v", err)
+	}
+}
+
+func TestBudgetItemService_Update_Toggle_WithoutEntries_Allowed(t *testing.T) {
+	// Sanity counterpart to the rejected-with-entries cases: when no
+	// entry exists yet, both toggles are free to change. This is the
+	// "early life" of a budget item where the user is still figuring
+	// out the shape and shouldn't be locked in.
+	db := setupTestDB(t)
+	svc := createBudgetItemService(db)
+	ctx := context.Background()
+	org := createTestOrganization(t, db, "Org")
+	item, err := svc.Create(ctx, org.ID, &models.BudgetItemCreateRequest{
+		Name:     "Fresh",
+		Category: "income",
+		PerChild: false,
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	updCategory := "expense"
+	updPerChild := true
+	resp, err := svc.Update(ctx, item.ID, org.ID, &models.BudgetItemUpdateRequest{
+		Category: &updCategory,
+		PerChild: &updPerChild,
+	})
+	if err != nil {
+		t.Fatalf("toggle without entries should succeed, got %v", err)
+	}
+	if resp.Category != "expense" || !resp.PerChild {
+		t.Errorf("post-toggle = (%v, %v), want (expense, true)", resp.Category, resp.PerChild)
 	}
 }
 

@@ -162,6 +162,17 @@ func (s *BudgetItemStore) UpdateEntry(ctx context.Context, entry *models.BudgetI
 	return DBFromContext(ctx, s.db).Save(entry).Error
 }
 
+// CountEntries returns the number of entries for a budget item without
+// loading them. Used by the service-layer guard against changing
+// category / per_child after entries exist.
+func (s *BudgetItemStore) CountEntries(ctx context.Context, budgetItemID uint) (int64, error) {
+	var total int64
+	err := DBFromContext(ctx, s.db).Model(&models.BudgetItemEntry{}).
+		Where("budget_item_id = ?", budgetItemID).
+		Count(&total).Error
+	return total, err
+}
+
 // DeleteEntry deletes a budget item entry.
 func (s *BudgetItemStore) DeleteEntry(ctx context.Context, id uint) error {
 	return DBFromContext(ctx, s.db).Delete(&models.BudgetItemEntry{}, id).Error

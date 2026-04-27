@@ -125,6 +125,39 @@ func (s *BudgetItemService) Update(ctx context.Context, id, orgID uint, req *mod
 		item.Name = name
 	}
 
+	// category and per_child are "meaning-defining" — flipping them
+	// after entries exist silently re-interprets every historical
+	// entry in financials (an "income €50,000/month" line becomes
+	// "expense €50,000/month"; a flat "€50,000" becomes
+	// "€50,000 × childCount"). The user has no signal that the
+	// dashboard's totals just shifted under their feet.
+	//
+	// Reject the change at the boundary, with a precise message
+	// telling the user how to escape: delete the entries, or create
+	// a new budget item alongside this one. Either path forces an
+	// explicit data-migration step the user is aware of.
+	categoryChanging := req.Category != nil && *req.Category != item.Category
+	perChildChanging := req.PerChild != nil && *req.PerChild != item.PerChild
+	if categoryChanging || perChildChanging {
+		count, err := s.store.CountEntries(ctx, item.ID)
+		if err != nil {
+			return nil, apperror.InternalWrap(err, "failed to count budget item entries")
+		}
+		if count > 0 {
+			switch {
+			case categoryChanging && perChildChanging:
+				return nil, apperror.BadRequest(
+					"cannot change category and per_child while entries exist; delete entries first or create a new budget item")
+			case categoryChanging:
+				return nil, apperror.BadRequest(
+					"cannot change category while entries exist; delete entries first or create a new budget item")
+			default:
+				return nil, apperror.BadRequest(
+					"cannot change per_child while entries exist; delete entries first or create a new budget item")
+			}
+		}
+	}
+
 	if req.Category != nil {
 		if !models.ValidBudgetItemCategory(*req.Category) {
 			return nil, apperror.BadRequest("category must be 'income' or 'expense'")
