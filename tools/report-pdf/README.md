@@ -53,7 +53,7 @@ Every generated PDF carries a colophon stamp on the bottom of its last page reco
 
 - **report-pdf** — the CLI version, baked into the binary at build time via ldflags.
 - **API** — fetched from `GET {api-url}/api/v1/health` at run time.
-- **Web** — fetched from `GET {base-url}/version` at run time. The frontend ships as its own image and may be at a different version than the API.
+- **Web** — read from a `<meta name="kitamanager-version">` tag in the rendered DOM via Playwright. Reading from the DOM (rather than a separate HTTP route) means the captured value is guaranteed to be from the same frontend build that actually rendered the print pages. The frontend ships as its own image and may be at a different version than the API.
 
 This means an artifact found a year later still carries enough provenance to reproduce or audit the build. If either the API or Web endpoint is unreachable the corresponding field falls back to "unknown" — the colophon still gets stamped.
 

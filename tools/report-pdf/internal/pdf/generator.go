@@ -49,6 +49,13 @@ type Generator struct {
 	browser playwright.Browser
 	cookies []playwright.OptionalCookie
 	baseURL string
+	// webVersion is captured from the rendered DOM the first time
+	// GenerateReport sees a `<meta name="kitamanager-version">` tag.
+	// We read it from the page rather than via a separate HTTP call so
+	// the version we record is guaranteed to come from the same build
+	// that actually rendered the print pages — no race, no parallel
+	// route handler that can drift out of sync with the layout.
+	webVersion string
 }
 
 // NewGenerator installs Playwright browsers if needed and launches a headless Chromium instance.
@@ -138,6 +145,18 @@ func (g *Generator) GenerateReport(reportType, orgID, month, outputDir string) e
 		return fmt.Errorf("timeout waiting for page to be ready: %w", err)
 	}
 
+	// Capture the web-version meta tag the first time we see it.
+	// Subsequent reports won't change the value (same frontend build)
+	// so we only sniff once. EvaluateOptions returns nil for missing
+	// attributes — we just leave webVersion empty in that case.
+	if g.webVersion == "" {
+		if v, err := page.Evaluate(`document.querySelector('meta[name="kitamanager-version"]')?.content ?? ""`); err == nil {
+			if s, ok := v.(string); ok {
+				g.webVersion = s
+			}
+		}
+	}
+
 	// Inject print-optimized CSS:
 	// - Remove max-width so wide tables aren't clipped by the container
 	// - Remove body margin so content uses the full paper width
@@ -182,6 +201,15 @@ func (g *Generator) GenerateReport(reportType, orgID, month, outputDir string) e
 
 	fmt.Printf("  Saved %s\n", outputPath)
 	return nil
+}
+
+// WebVersion returns the kitamanager-version meta tag value the
+// generator captured from the rendered DOM during the most recent
+// GenerateReport call. Returns empty string if no report has been
+// generated yet or if the layout doesn't expose the meta tag (e.g.
+// against a frontend at a version older than this feature).
+func (g *Generator) WebVersion() string {
+	return g.webVersion
 }
 
 // MergeFiles combines multiple PDF files into a single output file.
