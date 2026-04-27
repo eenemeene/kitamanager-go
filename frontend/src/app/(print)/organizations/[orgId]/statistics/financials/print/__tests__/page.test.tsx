@@ -7,6 +7,11 @@ import { renderWithProviders } from '@/test-utils';
 jest.mock('@/lib/api/client', () => ({
   apiClient: {
     getFinancials: jest.fn(),
+    // The financials print page derives "compare windows" from the bill
+    // months in the financials response and fires a compareBills query
+    // per window. Without a mock these would hit the real network and
+    // make the test flaky / slow. Stub returns a no-op shape.
+    compareBills: jest.fn(),
   },
   getErrorMessage: jest.fn((error, fallback) => fallback),
 }));
@@ -50,12 +55,16 @@ describe('FinancialsPrintPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (apiClient.getFinancials as jest.Mock).mockResolvedValue(mockFinancialData);
+    (apiClient.compareBills as jest.Mock).mockResolvedValue({
+      comparisons: [],
+      summary: undefined,
+    });
     window.print = jest.fn();
   });
 
-  it('renders page title', () => {
+  it('renders page title with the report month', () => {
     renderWithProviders(<FinancialsPrintPage />);
-    expect(screen.getByText('nav.statisticsFinancials')).toBeInTheDocument();
+    expect(screen.getByText(/nav\.statisticsFinancials/)).toBeInTheDocument();
   });
 
   it('renders organization name', () => {

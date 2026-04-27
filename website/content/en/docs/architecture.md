@@ -66,14 +66,15 @@ A standalone CLI tool (`tools/report-pdf/`) generates PDF reports by rendering t
 
 ```mermaid
 graph LR
-    Report[report-pdf Tool] -->|Login| API
+    Scheduler[External scheduler<br/>cron / systemd / k8s CronJob] -->|invoke| Report[report-pdf Tool]
+    Report -->|Login| API
     Report -->|Render print pages| UI
-    Report -->|Send email| SMTP[SMTP Server]
+    Report -->|Write PDFs| Disk[(Output directory)]
 ```
 
-The tool supports two modes:
-- **One-shot**: Generate PDFs from the command line
-- **Scheduled**: Run as a long-lived service, sending reports via email on a weekly or monthly schedule (configured via YAML file)
+The tool is **one-shot**: it logs in, generates PDFs, writes them to disk, and exits. Recurring delivery (weekly / monthly emails to stakeholders) is delegated to the host scheduler — see the tool's [README](https://github.com/eenemeene/kitamanager-go/tree/main/tools/report-pdf) for cron, systemd-timer, and Kubernetes CronJob recipes.
+
+Every CLI flag also reads from a `KITAMANAGER_REPORT_*` environment variable, which is the natural fit for container deployments where flags would otherwise leak into the process listing.
 
 Reports are merged into a single PDF containing children, occupancy, staffing, and financials sections.
 

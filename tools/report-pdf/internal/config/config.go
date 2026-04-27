@@ -1,13 +1,13 @@
 package config
 
 import (
-	"flag"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
-	"gopkg.in/yaml.v3"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 )
 
 var validReports = map[string]bool{
@@ -17,58 +17,109 @@ var validReports = map[string]bool{
 	"children":   true,
 }
 
+// envPrefix prefixes the env-var fallback for every flag so the report
+// tool's variables can never collide with the API server's own env vars
+// (which use KITAMANAGER_* without the REPORT_ segment). Cobra/viper
+// uppercases and replaces "-" with "_" in flag names automatically, so
+// --org-id maps to KITAMANAGER_REPORT_ORG_ID.
+const envPrefix = "KITAMANAGER_REPORT"
+
+// monthLayout is the YYYY-MM format used for the --month flag and the
+// frontend ?month= query parameter. We accept this exact form only —
+// stricter than Go's general date parser, easier to error on typos
+// (e.g., "2026/04" vs "2026-04").
+const monthLayout = "2006-01"
+
 type Config struct {
 	BaseURL   string
 	APIURL    string
 	Email     string
 	Password  string
 	OrgID     string
-	Year      int
+	// Month is the first day of the report month (always day=1, time=00:00 UTC).
+	// We carry a time.Time rather than a string so callers don't have to re-parse.
+	Month     time.Time
 	OutputDir string
 	Reports   []string
 }
 
-// Parse parses CLI flags from os.Args.
-func Parse() (*Config, error) {
-	return ParseArgs(nil)
+// MonthString returns the YYYY-MM form of cfg.Month for URL/filename use.
+func (c *Config) MonthString() string {
+	return c.Month.Format(monthLayout)
 }
 
-// ParseArgs parses the given args (or os.Args[1:] if nil) into a Config.
-func ParseArgs(args []string) (*Config, error) {
-	cfg := &Config{}
-
-	fs := flag.NewFlagSet("report-pdf", flag.ContinueOnError)
-	fs.StringVar(&cfg.BaseURL, "base-url", "http://localhost:3000", "Frontend URL")
-	fs.StringVar(&cfg.APIURL, "api-url", "http://localhost:8080", "API URL")
-	fs.StringVar(&cfg.Email, "email", "", "Login email (required)")
-	fs.StringVar(&cfg.Password, "password", "", "Login password (required)")
-	fs.StringVar(&cfg.OrgID, "org-id", "", "Organization ID (required)")
-	fs.IntVar(&cfg.Year, "year", time.Now().Year(), "Report year")
-	fs.StringVar(&cfg.OutputDir, "output-dir", ".", "Output directory for PDFs")
-
-	var reports string
-	fs.StringVar(&reports, "reports", "all", "Comma-separated reports: staffing,financials,occupancy,children")
-
-	if args == nil {
-		args = os.Args[1:]
+// NewRootCmd builds the cobra command for the report-pdf tool. The runFn
+// callback is invoked with the resolved Config after a successful parse;
+// splitting the wiring this way keeps main() thin and lets tests exercise
+// parsing without the side effects of actually running the report.
+func NewRootCmd(runFn func(*Config) error) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:           "report-pdf",
+		Short:         "Generate KitaManager statistics PDFs",
+		Long:          "report-pdf logs into a KitaManager instance, renders the statistics pages via Playwright, and writes them as PDF files. Every flag also reads from the matching " + envPrefix + "_* environment variable when not provided on the command line.",
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			cfg, err := resolve(cmd.Flags())
+			if err != nil {
+				return err
+			}
+			return runFn(cfg)
+		},
 	}
-	if err := fs.Parse(args); err != nil {
-		return nil, err
+
+	cmd.Flags().String("base-url", "http://localhost:3000", "Frontend URL")
+	cmd.Flags().String("api-url", "http://localhost:8080", "API URL")
+	cmd.Flags().String("email", "", "Login email (required)")
+	cmd.Flags().String("password", "", "Login password (required)")
+	cmd.Flags().String("org-id", "", "Organization ID (required)")
+	cmd.Flags().String("month", "", "Report month in YYYY-MM form (default: current month)")
+	cmd.Flags().String("output-dir", ".", "Output directory for PDFs")
+	cmd.Flags().String("reports", "all", "Comma-separated reports: staffing,financials,occupancy,children")
+
+	return cmd
+}
+
+// resolve reads values from the parsed flag set, falling back to env vars
+// under envPrefix, and validates required fields. Exposed package-internal
+// so tests can drive parsing through cobra.SetArgs / t.Setenv and then
+// pull the resolved Config back out.
+func resolve(flags *pflag.FlagSet) (*Config, error) {
+	v := viper.New()
+	v.SetEnvPrefix(envPrefix)
+	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+	v.AutomaticEnv()
+	if err := v.BindPFlags(flags); err != nil {
+		return nil, fmt.Errorf("binding flags: %w", err)
+	}
+
+	cfg := &Config{
+		BaseURL:   v.GetString("base-url"),
+		APIURL:    v.GetString("api-url"),
+		Email:     v.GetString("email"),
+		Password:  v.GetString("password"),
+		OrgID:     v.GetString("org-id"),
+		OutputDir: v.GetString("output-dir"),
 	}
 
 	if cfg.Email == "" {
-		return nil, fmt.Errorf("--email is required")
+		return nil, fmt.Errorf("--email (or %s_EMAIL) is required", envPrefix)
 	}
 	if cfg.Password == "" {
-		return nil, fmt.Errorf("--password is required")
+		return nil, fmt.Errorf("--password (or %s_PASSWORD) is required", envPrefix)
 	}
 	if cfg.OrgID == "" {
-		return nil, fmt.Errorf("--org-id is required")
-	}
-	if cfg.Year < 2000 || cfg.Year > 2100 {
-		return nil, fmt.Errorf("--year must be between 2000 and 2100")
+		return nil, fmt.Errorf("--org-id (or %s_ORG_ID) is required", envPrefix)
 	}
 
+	monthStr := v.GetString("month")
+	month, err := parseMonth(monthStr)
+	if err != nil {
+		return nil, err
+	}
+	cfg.Month = month
+
+	reports := v.GetString("reports")
 	if reports == "all" {
 		cfg.Reports = []string{"children", "occupancy", "staffing", "financials"}
 	} else {
@@ -84,93 +135,21 @@ func ParseArgs(args []string) (*Config, error) {
 	return cfg, nil
 }
 
-// FileConfig represents a YAML configuration file for scheduled report mode.
-type FileConfig struct {
-	APIURL    string     `yaml:"api_url"`
-	BaseURL   string     `yaml:"base_url"`
-	Email     string     `yaml:"email"`
-	Password  string     `yaml:"password"`
-	SMTP      SMTPConfig `yaml:"smtp"`
-	Schedules []Schedule `yaml:"schedules"`
-}
-
-// SMTPConfig holds SMTP server settings for email delivery.
-type SMTPConfig struct {
-	Host     string `yaml:"host"`
-	Port     int    `yaml:"port"`
-	User     string `yaml:"user"`
-	Password string `yaml:"password"`
-	From     string `yaml:"from"`
-}
-
-// Schedule defines a single report schedule entry.
-type Schedule struct {
-	Name       string   `yaml:"name"`
-	OrgID      string   `yaml:"org_id"`
-	Reports    []string `yaml:"reports"`
-	Frequency  string   `yaml:"frequency"` // "monthly" or "weekly"
-	Recipients []string `yaml:"recipients"`
-	Enabled    bool     `yaml:"enabled"`
-}
-
-// LoadFile reads a YAML config file and validates it.
-func LoadFile(path string) (*FileConfig, error) {
-	data, err := os.ReadFile(path)
+// parseMonth turns a YYYY-MM string into the first day of that month
+// (UTC, midnight). Empty input defaults to the current calendar month.
+// We bound the year to a reasonable range so a typo like "20226-04"
+// errors loudly instead of producing a report titled "year 20226".
+func parseMonth(s string) (time.Time, error) {
+	if s == "" {
+		now := time.Now().UTC()
+		return time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC), nil
+	}
+	t, err := time.Parse(monthLayout, s)
 	if err != nil {
-		return nil, fmt.Errorf("reading config file: %w", err)
+		return time.Time{}, fmt.Errorf("--month: invalid YYYY-MM value %q (example: 2026-04)", s)
 	}
-
-	var fc FileConfig
-	if err := yaml.Unmarshal(data, &fc); err != nil {
-		return nil, fmt.Errorf("parsing config file: %w", err)
+	if t.Year() < 2000 || t.Year() > 2100 {
+		return time.Time{}, fmt.Errorf("--month: year must be between 2000 and 2100, got %d", t.Year())
 	}
-
-	// Required fields.
-	if fc.Email == "" {
-		return nil, fmt.Errorf("email is required in config file")
-	}
-	if fc.Password == "" {
-		return nil, fmt.Errorf("password is required in config file")
-	}
-
-	// Defaults.
-	if fc.APIURL == "" {
-		fc.APIURL = "http://localhost:8080"
-	}
-	if fc.BaseURL == "" {
-		fc.BaseURL = "http://localhost:3000"
-	}
-	if fc.SMTP.Port == 0 {
-		fc.SMTP.Port = 587
-	}
-
-	// Validate enabled schedules.
-	validFrequencies := map[string]bool{"weekly": true, "monthly": true}
-	for i, s := range fc.Schedules {
-		if !s.Enabled {
-			continue
-		}
-		if s.Name == "" {
-			return nil, fmt.Errorf("schedule[%d]: name is required", i)
-		}
-		if s.OrgID == "" {
-			return nil, fmt.Errorf("schedule[%d] %q: org_id is required", i, s.Name)
-		}
-		if len(s.Reports) == 0 {
-			return nil, fmt.Errorf("schedule[%d] %q: at least one report type is required", i, s.Name)
-		}
-		for _, r := range s.Reports {
-			if !validReports[r] {
-				return nil, fmt.Errorf("schedule[%d] %q: invalid report type: %q (valid: staffing, financials, occupancy, children)", i, s.Name, r)
-			}
-		}
-		if !validFrequencies[s.Frequency] {
-			return nil, fmt.Errorf("schedule[%d] %q: invalid frequency: %q (valid: weekly, monthly)", i, s.Name, s.Frequency)
-		}
-		if len(s.Recipients) == 0 {
-			return nil, fmt.Errorf("schedule[%d] %q: at least one recipient is required", i, s.Name)
-		}
-	}
-
-	return &fc, nil
+	return t, nil
 }

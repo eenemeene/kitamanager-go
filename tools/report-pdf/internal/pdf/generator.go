@@ -2,6 +2,7 @@ package pdf
 
 import (
 	"fmt"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"time"
@@ -9,6 +10,38 @@ import (
 	pdfcpuapi "github.com/pdfcpu/pdfcpu/pkg/api"
 	"github.com/playwright-community/playwright-go"
 )
+
+// loginPathPrefix is the SPA route the frontend redirects to when no
+// session cookie is present or it has expired. We detect bounces both
+// right after the initial navigation and after waiting for the print-
+// ready signal — that way an operator gets a clear "auth failed"
+// message instead of a 30-second generic timeout when the frontend
+// silently route-changed away from the print page.
+const loginPathPrefix = "/login"
+
+// isLoginBounce returns true when rawURL points at the login route.
+// Parsing the URL (instead of strings.Contains over the whole string)
+// guards against false positives like "/?next=/login" or report
+// content that happens to mention login text in the path.
+func isLoginBounce(rawURL string) bool {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return false
+	}
+	return u.Path == loginPathPrefix || strings.HasPrefix(u.Path, loginPathPrefix+"/")
+}
+
+// printPageURL builds the URL of the print-optimised statistics page
+// for a given org + report type. Extracted so the URL contract can be
+// pinned by unit tests without spinning up Playwright — the path
+// shape and `month` query parameter are part of the API/frontend
+// contract a renaming on either side would silently break. month is
+// passed through verbatim (already validated to YYYY-MM at the CLI
+// layer); we don't re-validate here so the helper stays a pure
+// formatter.
+func printPageURL(baseURL, orgID, reportType, month string) string {
+	return fmt.Sprintf("%s/organizations/%s/statistics/%s/print?month=%s", baseURL, orgID, reportType, month)
+}
 
 type Generator struct {
 	pw      *playwright.Playwright
@@ -45,7 +78,10 @@ func NewGenerator(cookies []playwright.OptionalCookie, baseURL string) (*Generat
 }
 
 // GenerateReport navigates to a print page and exports it as a PDF.
-func (g *Generator) GenerateReport(reportType, orgID string, year int, outputDir string) error {
+// month is the YYYY-MM form of the report month — passed verbatim into
+// the print page's `?month=` query so every API call the page makes is
+// scoped to the same period.
+func (g *Generator) GenerateReport(reportType, orgID, month, outputDir string) error {
 	ctx, err := g.browser.NewContext(playwright.BrowserNewContextOptions{
 		Viewport: &playwright.Size{Width: 1600, Height: 900},
 	})
@@ -63,7 +99,7 @@ func (g *Generator) GenerateReport(reportType, orgID string, year int, outputDir
 		return fmt.Errorf("create page: %w", err)
 	}
 
-	pageURL := fmt.Sprintf("%s/organizations/%s/statistics/%s/print?year=%d", g.baseURL, orgID, reportType, year)
+	pageURL := printPageURL(g.baseURL, orgID, reportType, month)
 	fmt.Printf("  Navigating to %s\n", pageURL)
 
 	resp, err := page.Goto(pageURL, playwright.PageGotoOptions{
@@ -74,21 +110,30 @@ func (g *Generator) GenerateReport(reportType, orgID string, year int, outputDir
 		return fmt.Errorf("navigate to %s: %w", pageURL, err)
 	}
 
-	// Check if we were redirected to login (auth failure)
-	finalURL := page.URL()
-	if strings.Contains(finalURL, "/login") {
-		return fmt.Errorf("redirected to login page — authentication failed")
+	// Fast-path bounce detection: the SPA redirects unauthenticated
+	// requests straight to the login route, so we can fail in <100ms
+	// rather than waiting 30s for the print-ready signal that will
+	// never arrive.
+	if isLoginBounce(page.URL()) {
+		return fmt.Errorf("redirected to %s — authentication failed (cookies expired or service account lacks access to org %s)", page.URL(), orgID)
 	}
 
 	if resp != nil && resp.Status() >= 400 {
 		return fmt.Errorf("page returned HTTP %d", resp.Status())
 	}
 
-	// Wait for data-print-ready="true" attribute
+	// Slow-path: wait for the print-ready signal, but if it times out
+	// re-check the URL — if the SPA route-changed to /login during the
+	// wait (mid-render session expiry, race with token refresh), give
+	// the operator the same clear auth-failure message rather than a
+	// generic timeout.
 	err = page.Locator("[data-print-ready='true']").WaitFor(playwright.LocatorWaitForOptions{
 		Timeout: playwright.Float(30000),
 	})
 	if err != nil {
+		if isLoginBounce(page.URL()) {
+			return fmt.Errorf("page bounced to %s mid-render — session expired during PDF generation", page.URL())
+		}
 		return fmt.Errorf("timeout waiting for page to be ready: %w", err)
 	}
 
@@ -113,7 +158,7 @@ func (g *Generator) GenerateReport(reportType, orgID string, year int, outputDir
 	// Brief stabilization delay for chart animations
 	time.Sleep(1 * time.Second)
 
-	filename := fmt.Sprintf("%s-%s-%d.pdf", reportType, orgID, year)
+	filename := fmt.Sprintf("%s-%s-%s.pdf", reportType, orgID, month)
 	outputPath := filepath.Join(outputDir, filename)
 
 	marginMM := "10mm"

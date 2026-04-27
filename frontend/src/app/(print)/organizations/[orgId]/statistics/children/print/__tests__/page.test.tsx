@@ -9,6 +9,7 @@ jest.mock('@/lib/api/client', () => ({
     getStaffingHours: jest.fn(),
     getAgeDistribution: jest.fn(),
     getContractPropertiesDistribution: jest.fn(),
+    getOccupancy: jest.fn(),
   },
   getErrorMessage: jest.fn((error, fallback) => fallback),
 }));
@@ -61,12 +62,20 @@ describe('ChildrenPrintPage', () => {
     (apiClient.getContractPropertiesDistribution as jest.Mock).mockResolvedValue(
       mockContractProperties
     );
+    // MonthlyContractChart consumes occupancy for the age-group legend +
+    // tooltip breakdown — keep the mock present even if its content isn't asserted.
+    (apiClient.getOccupancy as jest.Mock).mockResolvedValue({
+      age_groups: [],
+      care_types: [],
+      supplement_types: [],
+      data_points: [],
+    });
     window.print = jest.fn();
   });
 
-  it('renders page title', () => {
+  it('renders page title with the report month', () => {
     renderWithProviders(<ChildrenPrintPage />);
-    expect(screen.getByText('nav.statisticsChildren')).toBeInTheDocument();
+    expect(screen.getByText(/nav\.statisticsChildren/)).toBeInTheDocument();
   });
 
   it('renders organization name', () => {

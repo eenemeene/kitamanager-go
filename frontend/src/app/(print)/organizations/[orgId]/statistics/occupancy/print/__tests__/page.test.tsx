@@ -49,9 +49,11 @@ describe('OccupancyPrintPage', () => {
     window.print = jest.fn();
   });
 
-  it('renders page title', () => {
+  it('renders page title with the report month', () => {
     renderWithProviders(<OccupancyPrintPage />);
-    expect(screen.getByText('nav.statisticsOccupancy')).toBeInTheDocument();
+    // Title is now "nav.statisticsOccupancy · <report month>"; default
+    // (no ?month=) falls back to the current calendar month.
+    expect(screen.getByText(/nav\.statisticsOccupancy/)).toBeInTheDocument();
   });
 
   it('renders organization name', () => {

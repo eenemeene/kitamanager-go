@@ -1,15 +1,42 @@
 package config
 
 import (
-	"os"
-	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
 
-func TestParseArgs_AllDefaults(t *testing.T) {
+// parseForTest builds a fresh root command, applies args, and returns the
+// resolved Config (or the parse error). The runFn is a no-op — we want to
+// observe parsing only, not actually run a report. Callers that need env
+// vars set should use t.Setenv before invoking; viper reads from os.Getenv
+// at resolve() time.
+func parseForTest(t *testing.T, args []string) (*Config, error) {
+	t.Helper()
+	var got *Config
+	cmd := NewRootCmd(func(cfg *Config) error {
+		got = cfg
+		return nil
+	})
+	cmd.SetArgs(args)
+	cmd.SetOut(&strings.Builder{})
+	cmd.SetErr(&strings.Builder{})
+	if err := cmd.Execute(); err != nil {
+		return nil, err
+	}
+	return got, nil
+}
+
+// firstOfCurrentMonth returns the first day of the month in which the test
+// runs. Used to assert the default-month behavior without time-mocking.
+func firstOfCurrentMonth() time.Time {
+	now := time.Now().UTC()
+	return time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+}
+
+func TestParse_AllDefaults(t *testing.T) {
 	args := []string{"--email", "a@b.com", "--password", "pw", "--org-id", "1"}
-	cfg, err := ParseArgs(args)
+	cfg, err := parseForTest(t, args)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -29,8 +56,8 @@ func TestParseArgs_AllDefaults(t *testing.T) {
 	if cfg.APIURL != "http://localhost:8080" {
 		t.Errorf("APIURL = %q, want default", cfg.APIURL)
 	}
-	if cfg.Year != time.Now().Year() {
-		t.Errorf("Year = %d, want current year", cfg.Year)
+	if !cfg.Month.Equal(firstOfCurrentMonth()) {
+		t.Errorf("Month = %v, want first of current month %v", cfg.Month, firstOfCurrentMonth())
 	}
 	if cfg.OutputDir != "." {
 		t.Errorf("OutputDir = %q, want %q", cfg.OutputDir, ".")
@@ -40,18 +67,18 @@ func TestParseArgs_AllDefaults(t *testing.T) {
 	}
 }
 
-func TestParseArgs_CustomValues(t *testing.T) {
+func TestParse_CustomValues(t *testing.T) {
 	args := []string{
 		"--email", "user@test.com",
 		"--password", "secret",
 		"--org-id", "42",
 		"--base-url", "https://app.example.com",
 		"--api-url", "https://api.example.com",
-		"--year", "2025",
+		"--month", "2025-08",
 		"--output-dir", "/tmp/reports",
 		"--reports", "staffing,financials",
 	}
-	cfg, err := ParseArgs(args)
+	cfg, err := parseForTest(t, args)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -62,8 +89,12 @@ func TestParseArgs_CustomValues(t *testing.T) {
 	if cfg.APIURL != "https://api.example.com" {
 		t.Errorf("APIURL = %q", cfg.APIURL)
 	}
-	if cfg.Year != 2025 {
-		t.Errorf("Year = %d, want 2025", cfg.Year)
+	want := time.Date(2025, time.August, 1, 0, 0, 0, 0, time.UTC)
+	if !cfg.Month.Equal(want) {
+		t.Errorf("Month = %v, want %v", cfg.Month, want)
+	}
+	if cfg.MonthString() != "2025-08" {
+		t.Errorf("MonthString = %q, want 2025-08", cfg.MonthString())
 	}
 	if cfg.OutputDir != "/tmp/reports" {
 		t.Errorf("OutputDir = %q", cfg.OutputDir)
@@ -73,9 +104,9 @@ func TestParseArgs_CustomValues(t *testing.T) {
 	}
 }
 
-func TestParseArgs_SingleReport(t *testing.T) {
+func TestParse_SingleReport(t *testing.T) {
 	args := []string{"--email", "a@b.com", "--password", "pw", "--org-id", "1", "--reports", "children"}
-	cfg, err := ParseArgs(args)
+	cfg, err := parseForTest(t, args)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -84,57 +115,74 @@ func TestParseArgs_SingleReport(t *testing.T) {
 	}
 }
 
-func TestParseArgs_MissingEmail(t *testing.T) {
+func TestParse_MissingEmail(t *testing.T) {
 	args := []string{"--password", "pw", "--org-id", "1"}
-	_, err := ParseArgs(args)
+	_, err := parseForTest(t, args)
 	if err == nil {
 		t.Fatal("expected error for missing email")
 	}
 }
 
-func TestParseArgs_MissingPassword(t *testing.T) {
+func TestParse_MissingPassword(t *testing.T) {
 	args := []string{"--email", "a@b.com", "--org-id", "1"}
-	_, err := ParseArgs(args)
+	_, err := parseForTest(t, args)
 	if err == nil {
 		t.Fatal("expected error for missing password")
 	}
 }
 
-func TestParseArgs_MissingOrgID(t *testing.T) {
+func TestParse_MissingOrgID(t *testing.T) {
 	args := []string{"--email", "a@b.com", "--password", "pw"}
-	_, err := ParseArgs(args)
+	_, err := parseForTest(t, args)
 	if err == nil {
 		t.Fatal("expected error for missing org-id")
 	}
 }
 
-func TestParseArgs_YearTooLow(t *testing.T) {
-	args := []string{"--email", "a@b.com", "--password", "pw", "--org-id", "1", "--year", "1999"}
-	_, err := ParseArgs(args)
-	if err == nil {
-		t.Fatal("expected error for year < 2000")
+func TestParse_MonthInvalidFormat(t *testing.T) {
+	cases := []string{
+		"2025/08", // wrong separator
+		"08-2025", // wrong order
+		"2025",    // missing month
+		"2025-13", // invalid month
+		"abc",
+		"2025-8", // month must be zero-padded
+	}
+	for _, m := range cases {
+		t.Run(m, func(t *testing.T) {
+			args := []string{"--email", "a@b.com", "--password", "pw", "--org-id", "1", "--month", m}
+			_, err := parseForTest(t, args)
+			if err == nil {
+				t.Fatalf("expected error for invalid month value %q", m)
+			}
+		})
 	}
 }
 
-func TestParseArgs_YearTooHigh(t *testing.T) {
-	args := []string{"--email", "a@b.com", "--password", "pw", "--org-id", "1", "--year", "2101"}
-	_, err := ParseArgs(args)
-	if err == nil {
-		t.Fatal("expected error for year > 2100")
+func TestParse_MonthYearOutOfRange(t *testing.T) {
+	cases := []string{"1999-12", "2101-01"}
+	for _, m := range cases {
+		t.Run(m, func(t *testing.T) {
+			args := []string{"--email", "a@b.com", "--password", "pw", "--org-id", "1", "--month", m}
+			_, err := parseForTest(t, args)
+			if err == nil {
+				t.Fatalf("expected error for out-of-range month %q", m)
+			}
+		})
 	}
 }
 
-func TestParseArgs_InvalidReport(t *testing.T) {
+func TestParse_InvalidReport(t *testing.T) {
 	args := []string{"--email", "a@b.com", "--password", "pw", "--org-id", "1", "--reports", "staffing,bogus"}
-	_, err := ParseArgs(args)
+	_, err := parseForTest(t, args)
 	if err == nil {
 		t.Fatal("expected error for invalid report type")
 	}
 }
 
-func TestParseArgs_ReportsWithSpaces(t *testing.T) {
+func TestParse_ReportsWithSpaces(t *testing.T) {
 	args := []string{"--email", "a@b.com", "--password", "pw", "--org-id", "1", "--reports", "staffing, occupancy"}
-	cfg, err := ParseArgs(args)
+	cfg, err := parseForTest(t, args)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -143,214 +191,99 @@ func TestParseArgs_ReportsWithSpaces(t *testing.T) {
 	}
 }
 
-// writeTestConfig writes YAML content to a temp file and returns its path.
-func writeTestConfig(t *testing.T, content string) string {
-	t.Helper()
-	f, err := os.CreateTemp(t.TempDir(), "config-*.yaml")
-	if err != nil {
-		t.Fatalf("creating temp file: %v", err)
-	}
-	path := f.Name()
-	f.Close()
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("writing temp file: %v", err)
-	}
-	return path
-}
+// --- env-var fallback tests ---
 
-func TestLoadFile_FullConfig(t *testing.T) {
-	yaml := `
-api_url: https://api.example.com
-base_url: https://app.example.com
-email: admin@example.com
-password: secret123
-smtp:
-  host: smtp.example.com
-  port: 465
-  user: smtpuser
-  password: smtppass
-  from: "Reports <reports@example.com>"
-schedules:
-  - name: Monthly Report
-    org_id: "42"
-    reports: [staffing, financials]
-    frequency: monthly
-    recipients:
-      - boss@example.com
-      - team@example.com
-    enabled: true
-  - name: Weekly Update
-    org_id: "7"
-    reports: [occupancy]
-    frequency: weekly
-    recipients:
-      - manager@example.com
-    enabled: true
-`
-	path := writeTestConfig(t, yaml)
-	fc, err := LoadFile(path)
+func TestParse_EnvVarFallback_AllRequired(t *testing.T) {
+	t.Setenv("KITAMANAGER_REPORT_EMAIL", "envuser@example.com")
+	t.Setenv("KITAMANAGER_REPORT_PASSWORD", "envpw")
+	t.Setenv("KITAMANAGER_REPORT_ORG_ID", "99")
+
+	cfg, err := parseForTest(t, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if fc.APIURL != "https://api.example.com" {
-		t.Errorf("APIURL = %q", fc.APIURL)
+	if cfg.Email != "envuser@example.com" {
+		t.Errorf("Email = %q, want from env", cfg.Email)
 	}
-	if fc.BaseURL != "https://app.example.com" {
-		t.Errorf("BaseURL = %q", fc.BaseURL)
+	if cfg.Password != "envpw" {
+		t.Errorf("Password = %q, want from env", cfg.Password)
 	}
-	if fc.Email != "admin@example.com" {
-		t.Errorf("Email = %q", fc.Email)
-	}
-	if fc.Password != "secret123" {
-		t.Errorf("Password = %q", fc.Password)
-	}
-	if fc.SMTP.Host != "smtp.example.com" {
-		t.Errorf("SMTP.Host = %q", fc.SMTP.Host)
-	}
-	if fc.SMTP.Port != 465 {
-		t.Errorf("SMTP.Port = %d", fc.SMTP.Port)
-	}
-	if fc.SMTP.User != "smtpuser" {
-		t.Errorf("SMTP.User = %q", fc.SMTP.User)
-	}
-	if fc.SMTP.Password != "smtppass" {
-		t.Errorf("SMTP.Password = %q", fc.SMTP.Password)
-	}
-	if fc.SMTP.From != "Reports <reports@example.com>" {
-		t.Errorf("SMTP.From = %q", fc.SMTP.From)
-	}
-	if len(fc.Schedules) != 2 {
-		t.Fatalf("Schedules length = %d, want 2", len(fc.Schedules))
-	}
-	s := fc.Schedules[0]
-	if s.Name != "Monthly Report" {
-		t.Errorf("Schedule[0].Name = %q", s.Name)
-	}
-	if s.OrgID != "42" {
-		t.Errorf("Schedule[0].OrgID = %q", s.OrgID)
-	}
-	if len(s.Reports) != 2 || s.Reports[0] != "staffing" || s.Reports[1] != "financials" {
-		t.Errorf("Schedule[0].Reports = %v", s.Reports)
-	}
-	if s.Frequency != "monthly" {
-		t.Errorf("Schedule[0].Frequency = %q", s.Frequency)
-	}
-	if len(s.Recipients) != 2 {
-		t.Errorf("Schedule[0].Recipients = %v", s.Recipients)
+	if cfg.OrgID != "99" {
+		t.Errorf("OrgID = %q, want from env", cfg.OrgID)
 	}
 }
 
-func TestLoadFile_Defaults(t *testing.T) {
-	yaml := `
-email: user@test.com
-password: pw
-`
-	path := writeTestConfig(t, yaml)
-	fc, err := LoadFile(path)
+func TestParse_EnvVarFallback_AllOptionals(t *testing.T) {
+	t.Setenv("KITAMANAGER_REPORT_EMAIL", "u@e.com")
+	t.Setenv("KITAMANAGER_REPORT_PASSWORD", "pw")
+	t.Setenv("KITAMANAGER_REPORT_ORG_ID", "1")
+	t.Setenv("KITAMANAGER_REPORT_BASE_URL", "https://env-frontend.example.com")
+	t.Setenv("KITAMANAGER_REPORT_API_URL", "https://env-api.example.com")
+	t.Setenv("KITAMANAGER_REPORT_MONTH", "2024-03")
+	t.Setenv("KITAMANAGER_REPORT_OUTPUT_DIR", "/env/output")
+	t.Setenv("KITAMANAGER_REPORT_REPORTS", "occupancy,children")
+
+	cfg, err := parseForTest(t, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if fc.APIURL != "http://localhost:8080" {
-		t.Errorf("APIURL = %q, want default", fc.APIURL)
+	if cfg.BaseURL != "https://env-frontend.example.com" {
+		t.Errorf("BaseURL = %q", cfg.BaseURL)
 	}
-	if fc.BaseURL != "http://localhost:3000" {
-		t.Errorf("BaseURL = %q, want default", fc.BaseURL)
+	if cfg.APIURL != "https://env-api.example.com" {
+		t.Errorf("APIURL = %q", cfg.APIURL)
 	}
-	if fc.SMTP.Port != 587 {
-		t.Errorf("SMTP.Port = %d, want 587", fc.SMTP.Port)
+	want := time.Date(2024, time.March, 1, 0, 0, 0, 0, time.UTC)
+	if !cfg.Month.Equal(want) {
+		t.Errorf("Month = %v, want %v", cfg.Month, want)
 	}
-}
-
-func TestLoadFile_MissingEmail(t *testing.T) {
-	yaml := `
-password: pw
-`
-	path := writeTestConfig(t, yaml)
-	_, err := LoadFile(path)
-	if err == nil {
-		t.Fatal("expected error for missing email")
+	if cfg.OutputDir != "/env/output" {
+		t.Errorf("OutputDir = %q", cfg.OutputDir)
+	}
+	if len(cfg.Reports) != 2 || cfg.Reports[0] != "occupancy" || cfg.Reports[1] != "children" {
+		t.Errorf("Reports = %v", cfg.Reports)
 	}
 }
 
-func TestLoadFile_InvalidFrequency(t *testing.T) {
-	yaml := `
-email: a@b.com
-password: pw
-schedules:
-  - name: Bad Schedule
-    org_id: "1"
-    reports: [staffing]
-    frequency: daily
-    recipients: [a@b.com]
-    enabled: true
-`
-	path := writeTestConfig(t, yaml)
-	_, err := LoadFile(path)
-	if err == nil {
-		t.Fatal("expected error for invalid frequency")
-	}
-}
+func TestParse_FlagOverridesEnv(t *testing.T) {
+	t.Setenv("KITAMANAGER_REPORT_EMAIL", "from-env@example.com")
+	t.Setenv("KITAMANAGER_REPORT_PASSWORD", "envpw")
+	t.Setenv("KITAMANAGER_REPORT_ORG_ID", "1")
 
-func TestLoadFile_InvalidReport(t *testing.T) {
-	yaml := `
-email: a@b.com
-password: pw
-schedules:
-  - name: Bad Reports
-    org_id: "1"
-    reports: [staffing, bogus]
-    frequency: monthly
-    recipients: [a@b.com]
-    enabled: true
-`
-	path := writeTestConfig(t, yaml)
-	_, err := LoadFile(path)
-	if err == nil {
-		t.Fatal("expected error for invalid report type")
-	}
-}
-
-func TestLoadFile_MissingRecipients(t *testing.T) {
-	yaml := `
-email: a@b.com
-password: pw
-schedules:
-  - name: No Recipients
-    org_id: "1"
-    reports: [staffing]
-    frequency: monthly
-    recipients: []
-    enabled: true
-`
-	path := writeTestConfig(t, yaml)
-	_, err := LoadFile(path)
-	if err == nil {
-		t.Fatal("expected error for missing recipients")
-	}
-}
-
-func TestLoadFile_DisabledScheduleSkipsValidation(t *testing.T) {
-	yaml := `
-email: a@b.com
-password: pw
-schedules:
-  - name: Incomplete
-    enabled: false
-`
-	path := writeTestConfig(t, yaml)
-	fc, err := LoadFile(path)
+	cfg, err := parseForTest(t, []string{"--email", "from-flag@example.com"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(fc.Schedules) != 1 {
-		t.Errorf("Schedules length = %d, want 1", len(fc.Schedules))
+	if cfg.Email != "from-flag@example.com" {
+		t.Errorf("Email = %q, want CLI flag to override env", cfg.Email)
+	}
+	if cfg.Password != "envpw" {
+		t.Errorf("Password = %q, want env (flag not provided)", cfg.Password)
 	}
 }
 
-func TestLoadFile_FileNotFound(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "nonexistent.yaml")
-	_, err := LoadFile(path)
+func TestParse_EnvMissingRequired(t *testing.T) {
+	// Only password + org-id set; email missing — must error.
+	t.Setenv("KITAMANAGER_REPORT_PASSWORD", "pw")
+	t.Setenv("KITAMANAGER_REPORT_ORG_ID", "1")
+
+	_, err := parseForTest(t, nil)
 	if err == nil {
-		t.Fatal("expected error for missing file")
+		t.Fatal("expected error for missing email when neither flag nor env provides it")
+	}
+	if !strings.Contains(err.Error(), "email") {
+		t.Errorf("error = %q, want it to mention email", err)
+	}
+}
+
+func TestParse_EnvVarMonthOutOfRange(t *testing.T) {
+	t.Setenv("KITAMANAGER_REPORT_EMAIL", "u@e.com")
+	t.Setenv("KITAMANAGER_REPORT_PASSWORD", "pw")
+	t.Setenv("KITAMANAGER_REPORT_ORG_ID", "1")
+	t.Setenv("KITAMANAGER_REPORT_MONTH", "1500-01")
+
+	_, err := parseForTest(t, nil)
+	if err == nil {
+		t.Fatal("expected error for env-provided month out of range")
 	}
 }

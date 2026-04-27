@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -14,7 +14,11 @@ import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { LOOKUP_FETCH_LIMIT } from '@/lib/api/types';
 import { useUiStore } from '@/stores/ui-store';
-import { getCurrentMonthStart } from '@/lib/utils/formatting';
+import {
+  parseReportMonth,
+  formatReportMonthLong,
+  formatKitaYearLabel,
+} from '@/lib/utils/report-month';
 
 const StaffingHoursChart = dynamic(
   () => import('@/components/charts/staffing-hours-chart').then((mod) => mod.StaffingHoursChart),
@@ -33,17 +37,7 @@ export default function StaffingPrintPage() {
   const t = useTranslations();
   const { organizations, fetchOrganizations } = useUiStore();
   const searchParams = useSearchParams();
-  const [year] = useState(() => {
-    const p = searchParams.get('year');
-    if (p) {
-      const n = parseInt(p, 10);
-      if (!isNaN(n) && n >= 2000 && n <= 2100) return n;
-    }
-    return new Date().getFullYear();
-  });
-
-  const from = `${year}-01-01`;
-  const to = `${year}-12-01`;
+  const reportMonth = useMemo(() => parseReportMonth(searchParams.get('month')), [searchParams]);
 
   // Ensure organizations are loaded for org name
   useQuery({
@@ -62,41 +56,86 @@ export default function StaffingPrintPage() {
     enabled: !!orgId,
   });
 
+  // Multi-year trend chart: previous + current + next Kita year.
   const { data: staffingHours, isLoading: isLoadingStaffing } = useQuery({
-    queryKey: queryKeys.statistics.staffingHours(orgId),
-    queryFn: () => apiClient.getStaffingHours(orgId),
+    queryKey: queryKeys.statistics.staffingHours(
+      orgId,
+      undefined,
+      reportMonth.trendFrom,
+      reportMonth.trendTo
+    ),
+    queryFn: () =>
+      apiClient.getStaffingHours(orgId, {
+        from: reportMonth.trendFrom,
+        to: reportMonth.trendTo,
+      }),
     enabled: !!orgId,
   });
 
+  // Annual grids: Kita year (Aug → Jul) containing the report month.
   const { data: staffingGrid, isLoading: isLoadingGrid } = useQuery({
-    queryKey: queryKeys.statistics.staffingHours(orgId, undefined, from, to),
-    queryFn: () => apiClient.getStaffingHours(orgId, { from, to }),
+    queryKey: queryKeys.statistics.staffingHours(
+      orgId,
+      undefined,
+      reportMonth.kitaYearFrom,
+      reportMonth.kitaYearTo
+    ),
+    queryFn: () =>
+      apiClient.getStaffingHours(orgId, {
+        from: reportMonth.kitaYearFrom,
+        to: reportMonth.kitaYearTo,
+      }),
     enabled: !!orgId,
   });
 
   const { data: employeeStaffingGrid, isLoading: isLoadingEmployeeGrid } = useQuery({
-    queryKey: queryKeys.statistics.employeeStaffingHours(orgId, undefined, from, to),
-    queryFn: () => apiClient.getEmployeeStaffingHours(orgId, { from, to }),
+    queryKey: queryKeys.statistics.employeeStaffingHours(
+      orgId,
+      undefined,
+      reportMonth.kitaYearFrom,
+      reportMonth.kitaYearTo
+    ),
+    queryFn: () =>
+      apiClient.getEmployeeStaffingHours(orgId, {
+        from: reportMonth.kitaYearFrom,
+        to: reportMonth.kitaYearTo,
+      }),
     enabled: !!orgId,
   });
 
+  // Per-section staffing — used only to pick the report-month data point
+  // for the SectionStaffingChart's "this month, by section" view. Fetch the
+  // Kita year so the picker always has a row available even if the report
+  // month is at the very start of a Kita year.
   const sectionStaffingQueries = useQueries({
     queries: (sections?.data ?? []).map((section) => ({
-      queryKey: queryKeys.statistics.staffingHours(orgId, section.id),
-      queryFn: () => apiClient.getStaffingHours(orgId, { sectionId: section.id }),
+      queryKey: queryKeys.statistics.staffingHours(
+        orgId,
+        section.id,
+        reportMonth.kitaYearFrom,
+        reportMonth.kitaYearTo
+      ),
+      queryFn: () =>
+        apiClient.getStaffingHours(orgId, {
+          sectionId: section.id,
+          from: reportMonth.kitaYearFrom,
+          to: reportMonth.kitaYearTo,
+        }),
       enabled: !!orgId && !!sections,
     })),
   });
 
   const sectionStaffingData = useMemo(() => {
     if (!sections?.data) return [];
-    const currentMonth = getCurrentMonthStart();
     return sections.data
       .map((section, i) => {
         const queryResult = sectionStaffingQueries[i];
         if (!queryResult?.data?.data_points?.length) return null;
         const points = queryResult.data.data_points;
-        const exact = points.find((dp) => dp.date === currentMonth);
+        // Pick the report-month data point. Falls back to the latest
+        // available point if for some reason the report month isn't in
+        // the response (shouldn't happen given the Kita-year window).
+        const exact = points.find((dp) => dp.date === reportMonth.asOf);
         const dp = exact ?? points[points.length - 1];
         return {
           sectionName: section.name,
@@ -105,7 +144,7 @@ export default function StaffingPrintPage() {
         };
       })
       .filter((d): d is NonNullable<typeof d> => d !== null);
-  }, [sections?.data, sectionStaffingQueries]);
+  }, [sections?.data, sectionStaffingQueries, reportMonth.asOf]);
 
   return (
     <div
@@ -116,7 +155,9 @@ export default function StaffingPrintPage() {
     >
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t('nav.statisticsStaffing')}</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {t('nav.statisticsStaffing')} &middot; {formatReportMonthLong(reportMonth)}
+          </h1>
           <p className="text-muted-foreground mt-1 text-sm">
             {orgName} &middot; {new Date().toLocaleDateString()}
           </p>
@@ -130,7 +171,7 @@ export default function StaffingPrintPage() {
         </button>
       </div>
 
-      {/* Staffing Hours Chart */}
+      {/* Staffing Hours Chart — multi-year trend */}
       <div className="mb-8 break-inside-avoid">
         <h2 className="mb-3 text-xl font-semibold">{t('statistics.staffingHours')}</h2>
         {isLoadingStaffing ? (
@@ -142,7 +183,7 @@ export default function StaffingPrintPage() {
         ) : null}
       </div>
 
-      {/* Staffing by Section */}
+      {/* Staffing by Section — snapshot at the report month */}
       {sectionStaffingData.length > 0 && (
         <div className="mb-8 break-inside-avoid">
           <h2 className="mb-3 text-xl font-semibold">{t('statistics.sectionStaffing')}</h2>
@@ -152,11 +193,10 @@ export default function StaffingPrintPage() {
         </div>
       )}
 
-      {/* Staffing Hours Grid */}
+      {/* Staffing Hours Grid — Kita year */}
       <div className="mb-8 break-inside-avoid">
-        <h2 className="mb-3 text-xl font-semibold">
-          {t('statistics.staffingHoursGrid')} &middot; {year}
-        </h2>
+        <h2 className="mb-1 text-xl font-semibold">{t('statistics.staffingHoursGrid')}</h2>
+        <p className="text-muted-foreground mb-3 text-sm">{formatKitaYearLabel(reportMonth)}</p>
         {isLoadingGrid ? (
           <Skeleton className="h-[200px] w-full" />
         ) : staffingGrid ? (
@@ -166,11 +206,10 @@ export default function StaffingPrintPage() {
         ) : null}
       </div>
 
-      {/* Employee Staffing Hours Grid */}
+      {/* Employee Staffing Hours Grid — Kita year */}
       <div className="break-inside-avoid">
-        <h2 className="mb-3 text-xl font-semibold">
-          {t('statistics.employeeStaffingHoursGrid')} &middot; {year}
-        </h2>
+        <h2 className="mb-1 text-xl font-semibold">{t('statistics.employeeStaffingHoursGrid')}</h2>
+        <p className="text-muted-foreground mb-3 text-sm">{formatKitaYearLabel(reportMonth)}</p>
         {isLoadingEmployeeGrid ? (
           <Skeleton className="h-[200px] w-full" />
         ) : employeeStaffingGrid ? (
