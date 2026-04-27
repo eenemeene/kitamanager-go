@@ -37,16 +37,18 @@ This produces:
 
 ## CLI Flags
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--email` | (required) | Login email for the KitaManager API |
-| `--password` | (required) | Login password |
-| `--org-id` | (required) | Organization ID to generate reports for |
-| `--api-url` | `http://localhost:8080` | API server URL |
-| `--base-url` | `http://localhost:3000` | Frontend URL (used for Playwright rendering) |
-| `--year` | current year | Report year |
-| `--output-dir` | `.` | Output directory for PDF files |
-| `--reports` | `all` | Comma-separated: `children,occupancy,staffing,financials` |
+| Flag | Env var | Default | Description |
+|------|---------|---------|-------------|
+| `--email` | `KITAMANAGER_REPORT_EMAIL` | (required) | Login email for the KitaManager API |
+| `--password` | `KITAMANAGER_REPORT_PASSWORD` | (required) | Login password |
+| `--org-id` | `KITAMANAGER_REPORT_ORG_ID` | (required) | Organization ID to generate reports for |
+| `--api-url` | `KITAMANAGER_REPORT_API_URL` | `http://localhost:8080` | API server URL |
+| `--base-url` | `KITAMANAGER_REPORT_BASE_URL` | `http://localhost:3000` | Frontend URL (used for Playwright rendering) |
+| `--year` | `KITAMANAGER_REPORT_YEAR` | current year | Report year |
+| `--output-dir` | `KITAMANAGER_REPORT_OUTPUT_DIR` | `.` | Output directory for PDF files |
+| `--reports` | `KITAMANAGER_REPORT_REPORTS` | `all` | Comma-separated: `children,occupancy,staffing,financials` |
+
+Every flag also reads from the matching env var when not provided on the command line. **CLI flags win over env vars**, so you can set defaults in a service-unit `EnvironmentFile` and override individual values per invocation. The `KITAMANAGER_REPORT_` prefix avoids collision with the API server's own `KITAMANAGER_*` env vars.
 
 ## Docker
 
@@ -127,22 +129,14 @@ spec:
           containers:
             - name: report
               image: ghcr.io/eenemeene/kitamanager-report:latest
-              args:
-                - --email=$(REPORT_EMAIL)
-                - --password=$(REPORT_PASSWORD)
-                - --org-id=1
-                - --output-dir=/output
               env:
-                - name: REPORT_EMAIL
-                  valueFrom:
-                    secretKeyRef:
-                      name: kitamanager-report-creds
-                      key: email
-                - name: REPORT_PASSWORD
-                  valueFrom:
-                    secretKeyRef:
-                      name: kitamanager-report-creds
-                      key: password
+                - name: KITAMANAGER_REPORT_ORG_ID
+                  value: "1"
+                - name: KITAMANAGER_REPORT_OUTPUT_DIR
+                  value: /output
+              envFrom:
+                - secretRef:
+                    name: kitamanager-report-creds  # provides KITAMANAGER_REPORT_EMAIL, _PASSWORD
               volumeMounts:
                 - name: output
                   mountPath: /output

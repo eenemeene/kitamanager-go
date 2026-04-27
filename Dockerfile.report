@@ -5,9 +5,12 @@
 #
 # Usage:
 #   docker build -f Dockerfile.report -t kitamanager-report .
-#   docker run --rm -v /tmp/reports:/output kitamanager-report \
-#     --email admin@example.com --password secret \
-#     --org-id 1 --output-dir /output
+#   docker run --rm -v /tmp/reports:/output \
+#     -e KITAMANAGER_REPORT_EMAIL=admin@example.com \
+#     -e KITAMANAGER_REPORT_PASSWORD=secret \
+#     -e KITAMANAGER_REPORT_ORG_ID=1 \
+#     -e KITAMANAGER_REPORT_OUTPUT_DIR=/output \
+#     kitamanager-report
 
 # Stage 1: Build the Go binary
 FROM cgr.dev/chainguard/go:latest AS builder
