@@ -34,10 +34,13 @@ func isLoginBounce(rawURL string) bool {
 // printPageURL builds the URL of the print-optimised statistics page
 // for a given org + report type. Extracted so the URL contract can be
 // pinned by unit tests without spinning up Playwright — the path
-// shape and `year` query parameter are part of the API/frontend
-// contract a renaming on either side would silently break.
-func printPageURL(baseURL, orgID, reportType string, year int) string {
-	return fmt.Sprintf("%s/organizations/%s/statistics/%s/print?year=%d", baseURL, orgID, reportType, year)
+// shape and `month` query parameter are part of the API/frontend
+// contract a renaming on either side would silently break. month is
+// passed through verbatim (already validated to YYYY-MM at the CLI
+// layer); we don't re-validate here so the helper stays a pure
+// formatter.
+func printPageURL(baseURL, orgID, reportType, month string) string {
+	return fmt.Sprintf("%s/organizations/%s/statistics/%s/print?month=%s", baseURL, orgID, reportType, month)
 }
 
 type Generator struct {
@@ -75,7 +78,10 @@ func NewGenerator(cookies []playwright.OptionalCookie, baseURL string) (*Generat
 }
 
 // GenerateReport navigates to a print page and exports it as a PDF.
-func (g *Generator) GenerateReport(reportType, orgID string, year int, outputDir string) error {
+// month is the YYYY-MM form of the report month — passed verbatim into
+// the print page's `?month=` query so every API call the page makes is
+// scoped to the same period.
+func (g *Generator) GenerateReport(reportType, orgID, month, outputDir string) error {
 	ctx, err := g.browser.NewContext(playwright.BrowserNewContextOptions{
 		Viewport: &playwright.Size{Width: 1600, Height: 900},
 	})
@@ -93,7 +99,7 @@ func (g *Generator) GenerateReport(reportType, orgID string, year int, outputDir
 		return fmt.Errorf("create page: %w", err)
 	}
 
-	pageURL := printPageURL(g.baseURL, orgID, reportType, year)
+	pageURL := printPageURL(g.baseURL, orgID, reportType, month)
 	fmt.Printf("  Navigating to %s\n", pageURL)
 
 	resp, err := page.Goto(pageURL, playwright.PageGotoOptions{
@@ -152,7 +158,7 @@ func (g *Generator) GenerateReport(reportType, orgID string, year int, outputDir
 	// Brief stabilization delay for chart animations
 	time.Sleep(1 * time.Second)
 
-	filename := fmt.Sprintf("%s-%s-%d.pdf", reportType, orgID, year)
+	filename := fmt.Sprintf("%s-%s-%s.pdf", reportType, orgID, month)
 	outputPath := filepath.Join(outputDir, filename)
 
 	marginMM := "10mm"

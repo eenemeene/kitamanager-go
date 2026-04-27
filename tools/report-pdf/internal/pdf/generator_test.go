@@ -27,7 +27,7 @@ func TestGenerateReport_Integration(t *testing.T) {
 	email := envOr("REPORT_PDF_EMAIL", "admin@example.com")
 	password := envOr("REPORT_PDF_PASSWORD", "supersecret")
 	orgID := envOr("REPORT_PDF_ORG_ID", "1")
-	year := 2026
+	month := envOr("REPORT_PDF_MONTH", "2026-04")
 
 	// Login to get cookies
 	cookies, err := auth.Login(apiURL, email, password, baseURL)
@@ -47,13 +47,13 @@ func TestGenerateReport_Integration(t *testing.T) {
 	reportTypes := []string{"staffing", "financials", "occupancy", "children"}
 	for _, rt := range reportTypes {
 		t.Run(rt, func(t *testing.T) {
-			err := gen.GenerateReport(rt, orgID, year, outputDir)
+			err := gen.GenerateReport(rt, orgID, month, outputDir)
 			if err != nil {
 				t.Fatalf("GenerateReport(%q) failed: %v", rt, err)
 			}
 
 			// Verify PDF file was created
-			filename := filepath.Join(outputDir, fmt.Sprintf("%s-%s-%d.pdf", rt, orgID, year))
+			filename := filepath.Join(outputDir, fmt.Sprintf("%s-%s-%s.pdf", rt, orgID, month))
 			info, err := os.Stat(filename)
 			if err != nil {
 				t.Fatalf("PDF file not found: %v", err)
@@ -99,7 +99,7 @@ func TestPrintPageURL(t *testing.T) {
 		baseURL    string
 		orgID      string
 		reportType string
-		year       int
+		month      string
 		want       string
 	}{
 		{
@@ -107,37 +107,37 @@ func TestPrintPageURL(t *testing.T) {
 			baseURL:    "http://localhost:3000",
 			orgID:      "1",
 			reportType: "staffing",
-			year:       2026,
-			want:       "http://localhost:3000/organizations/1/statistics/staffing/print?year=2026",
+			month:      "2026-04",
+			want:       "http://localhost:3000/organizations/1/statistics/staffing/print?month=2026-04",
 		},
 		{
 			name:       "https with custom port",
 			baseURL:    "https://app.example.com:8443",
 			orgID:      "42",
 			reportType: "financials",
-			year:       2024,
-			want:       "https://app.example.com:8443/organizations/42/statistics/financials/print?year=2024",
+			month:      "2024-12",
+			want:       "https://app.example.com:8443/organizations/42/statistics/financials/print?month=2024-12",
 		},
 		{
 			name:       "occupancy report",
 			baseURL:    "https://app.example.com",
 			orgID:      "7",
 			reportType: "occupancy",
-			year:       2025,
-			want:       "https://app.example.com/organizations/7/statistics/occupancy/print?year=2025",
+			month:      "2025-01",
+			want:       "https://app.example.com/organizations/7/statistics/occupancy/print?month=2025-01",
 		},
 		{
 			name:       "children report",
 			baseURL:    "https://app.example.com",
 			orgID:      "7",
 			reportType: "children",
-			year:       2025,
-			want:       "https://app.example.com/organizations/7/statistics/children/print?year=2025",
+			month:      "2025-06",
+			want:       "https://app.example.com/organizations/7/statistics/children/print?month=2025-06",
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := printPageURL(tc.baseURL, tc.orgID, tc.reportType, tc.year); got != tc.want {
+			if got := printPageURL(tc.baseURL, tc.orgID, tc.reportType, tc.month); got != tc.want {
 				t.Errorf("printPageURL(...)\n got: %s\nwant: %s", got, tc.want)
 			}
 		})

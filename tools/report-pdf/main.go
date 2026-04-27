@@ -19,6 +19,7 @@ func main() {
 }
 
 func run(cfg *config.Config) error {
+	monthStr := cfg.MonthString()
 	fmt.Printf("Logging in as %s...\n", cfg.Email)
 	cookies, err := auth.Login(cfg.APIURL, cfg.Email, cfg.Password, cfg.BaseURL)
 	if err != nil {
@@ -36,13 +37,13 @@ func run(cfg *config.Config) error {
 	var failed []string
 	var generated []string
 	for _, report := range cfg.Reports {
-		fmt.Printf("Generating %s report...\n", report)
-		if err := gen.GenerateReport(report, cfg.OrgID, cfg.Year, cfg.OutputDir); err != nil {
+		fmt.Printf("Generating %s report for %s...\n", report, monthStr)
+		if err := gen.GenerateReport(report, cfg.OrgID, monthStr, cfg.OutputDir); err != nil {
 			fmt.Fprintf(os.Stderr, "  Failed: %v\n", err)
 			failed = append(failed, report)
 			continue
 		}
-		generated = append(generated, filepath.Join(cfg.OutputDir, fmt.Sprintf("%s-%s-%d.pdf", report, cfg.OrgID, cfg.Year)))
+		generated = append(generated, filepath.Join(cfg.OutputDir, fmt.Sprintf("%s-%s-%s.pdf", report, cfg.OrgID, monthStr)))
 	}
 
 	if len(failed) > 0 {
@@ -50,7 +51,7 @@ func run(cfg *config.Config) error {
 	}
 
 	if len(generated) > 1 {
-		combinedPath := filepath.Join(cfg.OutputDir, fmt.Sprintf("report-%s-%d.pdf", cfg.OrgID, cfg.Year))
+		combinedPath := filepath.Join(cfg.OutputDir, fmt.Sprintf("report-%s-%s.pdf", cfg.OrgID, monthStr))
 		fmt.Printf("Merging %d reports into %s...\n", len(generated), combinedPath)
 		if err := pdf.MergeFiles(generated, combinedPath); err != nil {
 			return fmt.Errorf("merging PDFs: %w", err)

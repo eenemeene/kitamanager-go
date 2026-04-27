@@ -24,15 +24,28 @@ var validReports = map[string]bool{
 // --org-id maps to KITAMANAGER_REPORT_ORG_ID.
 const envPrefix = "KITAMANAGER_REPORT"
 
+// monthLayout is the YYYY-MM format used for the --month flag and the
+// frontend ?month= query parameter. We accept this exact form only —
+// stricter than Go's general date parser, easier to error on typos
+// (e.g., "2026/04" vs "2026-04").
+const monthLayout = "2006-01"
+
 type Config struct {
 	BaseURL   string
 	APIURL    string
 	Email     string
 	Password  string
 	OrgID     string
-	Year      int
+	// Month is the first day of the report month (always day=1, time=00:00 UTC).
+	// We carry a time.Time rather than a string so callers don't have to re-parse.
+	Month     time.Time
 	OutputDir string
 	Reports   []string
+}
+
+// MonthString returns the YYYY-MM form of cfg.Month for URL/filename use.
+func (c *Config) MonthString() string {
+	return c.Month.Format(monthLayout)
 }
 
 // NewRootCmd builds the cobra command for the report-pdf tool. The runFn
@@ -60,7 +73,7 @@ func NewRootCmd(runFn func(*Config) error) *cobra.Command {
 	cmd.Flags().String("email", "", "Login email (required)")
 	cmd.Flags().String("password", "", "Login password (required)")
 	cmd.Flags().String("org-id", "", "Organization ID (required)")
-	cmd.Flags().Int("year", 0, "Report year (default: current year)")
+	cmd.Flags().String("month", "", "Report month in YYYY-MM form (default: current month)")
 	cmd.Flags().String("output-dir", ".", "Output directory for PDFs")
 	cmd.Flags().String("reports", "all", "Comma-separated reports: staffing,financials,occupancy,children")
 
@@ -99,13 +112,12 @@ func resolve(flags *pflag.FlagSet) (*Config, error) {
 		return nil, fmt.Errorf("--org-id (or %s_ORG_ID) is required", envPrefix)
 	}
 
-	cfg.Year = v.GetInt("year")
-	if cfg.Year == 0 {
-		cfg.Year = time.Now().Year()
+	monthStr := v.GetString("month")
+	month, err := parseMonth(monthStr)
+	if err != nil {
+		return nil, err
 	}
-	if cfg.Year < 2000 || cfg.Year > 2100 {
-		return nil, fmt.Errorf("--year must be between 2000 and 2100")
-	}
+	cfg.Month = month
 
 	reports := v.GetString("reports")
 	if reports == "all" {
@@ -121,4 +133,23 @@ func resolve(flags *pflag.FlagSet) (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// parseMonth turns a YYYY-MM string into the first day of that month
+// (UTC, midnight). Empty input defaults to the current calendar month.
+// We bound the year to a reasonable range so a typo like "20226-04"
+// errors loudly instead of producing a report titled "year 20226".
+func parseMonth(s string) (time.Time, error) {
+	if s == "" {
+		now := time.Now().UTC()
+		return time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC), nil
+	}
+	t, err := time.Parse(monthLayout, s)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("--month: invalid YYYY-MM value %q (example: 2026-04)", s)
+	}
+	if t.Year() < 2000 || t.Year() > 2100 {
+		return time.Time{}, fmt.Errorf("--month: year must be between 2000 and 2100, got %d", t.Year())
+	}
+	return t, nil
 }

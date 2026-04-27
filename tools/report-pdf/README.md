@@ -31,9 +31,9 @@ cd tools/report-pdf && go build -o ../../bin/report-pdf .
   --output-dir /tmp/reports
 ```
 
-This produces:
-- `report-1-2026.pdf` — combined report (all sections in one file)
-- `children-1-2026.pdf`, `occupancy-1-2026.pdf`, etc. — individual reports
+This produces (filenames include the report month in `YYYY-MM` form):
+- `report-1-2026-04.pdf` — combined report (all sections in one file)
+- `children-1-2026-04.pdf`, `occupancy-1-2026-04.pdf`, etc. — individual reports
 
 ## CLI Flags
 
@@ -44,7 +44,7 @@ This produces:
 | `--org-id` | `KITAMANAGER_REPORT_ORG_ID` | (required) | Organization ID to generate reports for |
 | `--api-url` | `KITAMANAGER_REPORT_API_URL` | `http://localhost:8080` | API server URL |
 | `--base-url` | `KITAMANAGER_REPORT_BASE_URL` | `http://localhost:3000` | Frontend URL (used for Playwright rendering) |
-| `--year` | `KITAMANAGER_REPORT_YEAR` | current year | Report year |
+| `--month` | `KITAMANAGER_REPORT_MONTH` | current month | Report month in `YYYY-MM` form (e.g. `2026-04`). All data the report renders is scoped to a 12-month rolling window ending on this month, with snapshot views as of the first of this month. |
 | `--output-dir` | `KITAMANAGER_REPORT_OUTPUT_DIR` | `.` | Output directory for PDF files |
 | `--reports` | `KITAMANAGER_REPORT_REPORTS` | `all` | Comma-separated: `children,occupancy,staffing,financials` |
 
