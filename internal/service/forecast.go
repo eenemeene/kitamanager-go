@@ -146,60 +146,148 @@ func (s *StatisticsService) validateOverlay(ctx context.Context, req *models.For
 		return err
 	}
 
-	// Validate section IDs belong to org
-	sectionIDs := collectOverlaySectionIDs(req)
-	for _, sid := range sectionIDs {
-		if err := validateSectionOrg(ctx, s.sectionStore, sid, orgID); err != nil {
-			return err
+	// First pass: cheap, no-DB validation. Catches missing fields and
+	// (for standalone contracts) the parent-id-zero footgun before we
+	// burn round trips on requests that can never succeed.
+	for i, ac := range req.AddEmployeeContracts {
+		if ac.EmployeeID == 0 {
+			return apperror.BadRequest(fmt.Sprintf("add_employee_contracts[%d]: employee_id is required", i))
+		}
+	}
+	for i, ac := range req.AddChildContracts {
+		if ac.ChildID == 0 {
+			return apperror.BadRequest(fmt.Sprintf("add_child_contracts[%d]: child_id is required", i))
 		}
 	}
 
-	// Validate pay plan IDs belong to org
-	payPlanIDs := collectOverlayPayPlanIDs(req)
-	for _, ppID := range payPlanIDs {
-		pp, err := s.payPlanStore.FindByID(ctx, ppID)
-		if err != nil {
-			return apperror.BadRequest("pay plan not found")
+	// Second pass: batch all org-membership checks. The previous code
+	// did ~N+1 round trips (one per section, pay plan, removed employee,
+	// removed child, standalone contract reference) — for a 50-employee
+	// + 50-child overlay that's 200+ DB calls before any calculation
+	// runs. Each batch returns a presence map; absence from the map
+	// means either the row doesn't exist OR it belongs to another org —
+	// validateOverlay treats both as the same not-found error to avoid
+	// leaking cross-org existence.
+	if err := s.validateOverlaySectionsExist(ctx, req, orgID); err != nil {
+		return err
+	}
+	if err := s.validateOverlayPayPlansBelongToOrg(ctx, req, orgID); err != nil {
+		return err
+	}
+	if err := s.validateOverlayEmployeesExist(ctx, req, orgID); err != nil {
+		return err
+	}
+	if err := s.validateOverlayChildrenExist(ctx, req, orgID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// validateOverlaySectionsExist batches one query for every section
+// referenced anywhere in the overlay.
+func (s *StatisticsService) validateOverlaySectionsExist(ctx context.Context, req *models.ForecastRequest, orgID uint) error {
+	ids := collectOverlaySectionIDs(req)
+	if len(ids) == 0 {
+		return nil
+	}
+	found, err := s.sectionStore.FindByIDsAndOrg(ctx, ids, orgID)
+	if err != nil {
+		return apperror.InternalWrap(err, "failed to validate overlay sections")
+	}
+	for _, id := range ids {
+		if _, ok := found[id]; !ok {
+			return apperror.BadRequest(fmt.Sprintf("section %d not found in this organization", id))
+		}
+	}
+	return nil
+}
+
+// validateOverlayPayPlansBelongToOrg uses the existing
+// FindByIDsWithPeriods batch (same one the calculator uses to load
+// rates), then checks org-membership inline. Avoids a second query
+// just to verify ownership.
+func (s *StatisticsService) validateOverlayPayPlansBelongToOrg(ctx context.Context, req *models.ForecastRequest, orgID uint) error {
+	ids := collectOverlayPayPlanIDs(req)
+	if len(ids) == 0 {
+		return nil
+	}
+	loaded, err := s.payPlanStore.FindByIDsWithPeriods(ctx, ids)
+	if err != nil {
+		return apperror.InternalWrap(err, "failed to validate overlay pay plans")
+	}
+	for _, id := range ids {
+		pp, ok := loaded[id]
+		if !ok {
+			return apperror.BadRequest(fmt.Sprintf("pay plan %d not found", id))
 		}
 		if pp.OrganizationID != orgID {
-			return apperror.BadRequest("pay plan does not belong to this organization")
+			return apperror.BadRequest(fmt.Sprintf("pay plan %d does not belong to this organization", id))
 		}
 	}
+	return nil
+}
 
-	// Validate employee IDs to remove
+// validateOverlayEmployeesExist batches both RemoveEmployeeIDs and
+// AddEmployeeContracts.EmployeeID into a single query.
+func (s *StatisticsService) validateOverlayEmployeesExist(ctx context.Context, req *models.ForecastRequest, orgID uint) error {
+	seen := make(map[uint]bool)
+	var ids []uint
+	add := func(id uint) {
+		if id != 0 && !seen[id] {
+			seen[id] = true
+			ids = append(ids, id)
+		}
+	}
 	for _, eid := range req.RemoveEmployeeIDs {
-		if _, err := s.employeeStore.FindByIDMinimalAndOrg(ctx, eid, orgID); err != nil {
-			return apperror.BadRequest("employee not found in this organization")
-		}
+		add(eid)
 	}
-
-	// Validate employee IDs for standalone contract additions
 	for _, ac := range req.AddEmployeeContracts {
-		if ac.EmployeeID == 0 {
-			return apperror.BadRequest("standalone employee contract requires employee_id")
-		}
-		if _, err := s.employeeStore.FindByIDMinimalAndOrg(ctx, ac.EmployeeID, orgID); err != nil {
-			return apperror.BadRequest("employee not found in this organization")
+		add(ac.EmployeeID)
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	found, err := s.employeeStore.FindByIDsAndOrg(ctx, ids, orgID)
+	if err != nil {
+		return apperror.InternalWrap(err, "failed to validate overlay employees")
+	}
+	for _, id := range ids {
+		if _, ok := found[id]; !ok {
+			return apperror.BadRequest(fmt.Sprintf("employee %d not found in this organization", id))
 		}
 	}
+	return nil
+}
 
-	// Validate child IDs to remove
+// validateOverlayChildrenExist is the child-side counterpart.
+func (s *StatisticsService) validateOverlayChildrenExist(ctx context.Context, req *models.ForecastRequest, orgID uint) error {
+	seen := make(map[uint]bool)
+	var ids []uint
+	add := func(id uint) {
+		if id != 0 && !seen[id] {
+			seen[id] = true
+			ids = append(ids, id)
+		}
+	}
 	for _, cid := range req.RemoveChildIDs {
-		if _, err := s.childStore.FindByIDMinimalAndOrg(ctx, cid, orgID); err != nil {
-			return apperror.BadRequest("child not found in this organization")
-		}
+		add(cid)
 	}
-
-	// Validate child IDs for standalone contract additions
 	for _, ac := range req.AddChildContracts {
-		if ac.ChildID == 0 {
-			return apperror.BadRequest("standalone child contract requires child_id")
-		}
-		if _, err := s.childStore.FindByIDMinimalAndOrg(ctx, ac.ChildID, orgID); err != nil {
-			return apperror.BadRequest("child not found in this organization")
+		add(ac.ChildID)
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	found, err := s.childStore.FindByIDsAndOrg(ctx, ids, orgID)
+	if err != nil {
+		return apperror.InternalWrap(err, "failed to validate overlay children")
+	}
+	for _, id := range ids {
+		if _, ok := found[id]; !ok {
+			return apperror.BadRequest(fmt.Sprintf("child %d not found in this organization", id))
 		}
 	}
-
 	return nil
 }
 

@@ -139,6 +139,26 @@ func (s *ChildStore) FindByIDMinimalAndOrg(ctx context.Context, id, orgID uint) 
 	return &child, nil
 }
 
+// FindByIDsAndOrg returns the subset of `ids` that exist AND belong to
+// orgID, keyed by id. Batch counterpart to FindByIDMinimalAndOrg used
+// by forecast validation to collapse N+1 lookups into one.
+func (s *ChildStore) FindByIDsAndOrg(ctx context.Context, ids []uint, orgID uint) (map[uint]*models.Child, error) {
+	out := make(map[uint]*models.Child, len(ids))
+	if len(ids) == 0 {
+		return out, nil
+	}
+	var rows []models.Child
+	if err := DBFromContext(ctx, s.db).
+		Where("id IN ? AND organization_id = ?", ids, orgID).
+		Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	for i := range rows {
+		out[rows[i].ID] = &rows[i]
+	}
+	return out, nil
+}
+
 func (s *ChildStore) Create(ctx context.Context, child *models.Child) error {
 	return DBFromContext(ctx, s.db).Create(child).Error
 }

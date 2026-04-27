@@ -67,6 +67,10 @@ type EmployeeStorer interface {
 	FindByIDAndOrg(ctx context.Context, id, orgID uint) (*models.Employee, error)
 	FindByIDMinimal(ctx context.Context, id uint) (*models.Employee, error) // Without preloads, for org checks
 	FindByIDMinimalAndOrg(ctx context.Context, id, orgID uint) (*models.Employee, error)
+	// FindByIDsAndOrg is the batch form: returns the subset of ids that
+	// exist AND belong to orgID, keyed by id. For one-shot existence
+	// checks (forecast validation, etc.) — collapses N+1 to 1.
+	FindByIDsAndOrg(ctx context.Context, ids []uint, orgID uint) (map[uint]*models.Employee, error)
 	Create(ctx context.Context, emp *models.Employee) error
 	Update(ctx context.Context, emp *models.Employee) error
 	Delete(ctx context.Context, id uint) error
@@ -95,6 +99,10 @@ type ChildStorer interface {
 	FindByIDAndOrg(ctx context.Context, id, orgID uint) (*models.Child, error)
 	FindByIDMinimal(ctx context.Context, id uint) (*models.Child, error) // Without preloads, for org checks
 	FindByIDMinimalAndOrg(ctx context.Context, id, orgID uint) (*models.Child, error)
+	// FindByIDsAndOrg is the batch form: returns the subset of ids that
+	// exist AND belong to orgID, keyed by id. Used by forecast validation
+	// to collapse per-id existence checks into one round trip.
+	FindByIDsAndOrg(ctx context.Context, ids []uint, orgID uint) (map[uint]*models.Child, error)
 	Create(ctx context.Context, child *models.Child) error
 	Update(ctx context.Context, child *models.Child) error
 	Delete(ctx context.Context, id uint) error
@@ -134,6 +142,10 @@ type PeriodStorer[T models.PeriodRecord] interface {
 // SectionStorer defines the interface for section storage operations
 type SectionStorer interface {
 	FindByID(ctx context.Context, id uint) (*models.Section, error)
+	// FindByIDsAndOrg returns the subset of `ids` that exist AND belong
+	// to orgID, keyed by id. Used for batched validation; missing or
+	// wrong-org IDs are simply absent from the result.
+	FindByIDsAndOrg(ctx context.Context, ids []uint, orgID uint) (map[uint]*models.Section, error)
 	FindByOrganizationPaginated(ctx context.Context, orgID uint, search string, limit, offset int) ([]models.Section, int64, error)
 	FindDefaultSection(ctx context.Context, orgID uint) (*models.Section, error)
 	FindByNameAndOrg(ctx context.Context, name string, orgID uint) (*models.Section, error)

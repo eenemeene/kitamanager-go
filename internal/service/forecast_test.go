@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -1226,14 +1227,19 @@ func TestGetForecast_PayPlanStoreError_OverlayEmployee_ReturnsError(t *testing.T
 	createTestPayPlanPeriodWithContrib(t, db, otherPP.ID,
 		time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC), nil, 39.0, 2000)
 
-	// Wrap: the first FindByIDsWithPeriods (baseline) succeeds, the
-	// second (overlay) fails. loadMissingPayPlans is the only second
-	// call in the path so this isolates the right failure point.
+	// Wrap: as of the F6 batch-validation refactor there are THREE
+	// FindByIDsWithPeriods calls per forecast that references a new
+	// overlay pay plan:
+	//   1. validateOverlayPayPlansBelongToOrg (org-membership check)
+	//   2. loadDataSet → loadPayPlans (baseline employees)
+	//   3. loadMissingPayPlans (overlay employees' new pay plans)
+	// Only call 3 is the path under test; let 1 and 2 succeed so we
+	// reach it.
 	calls := 0
 	svc.payPlanStore = &countingPayPlanStore{
 		PayPlanStorer: svc.payPlanStore,
 		errOnCall: func(n int) error {
-			if n >= 2 {
+			if n >= 3 {
 				return errors.New("overlay load failed")
 			}
 			return nil
@@ -1273,8 +1279,8 @@ func TestGetForecast_PayPlanStoreError_OverlayEmployee_ReturnsError(t *testing.T
 	if !strings.Contains(err.Error(), "overlay pay plans") {
 		t.Errorf("expected error to mention overlay pay plans, got %v", err)
 	}
-	if calls != 2 {
-		t.Errorf("expected exactly 2 FindByIDsWithPeriods calls (baseline + overlay), got %d", calls)
+	if calls != 3 {
+		t.Errorf("expected exactly 3 FindByIDsWithPeriods calls (validate + baseline + overlay), got %d", calls)
 	}
 }
 
@@ -1484,6 +1490,150 @@ func TestSnapAndValidateRange_ExactlyAtCap_Allowed(t *testing.T) {
 	tooFar := from.AddDate(0, MaxStatisticsRangeMonths, 0)
 	if _, _, err := snapAndValidateRange(&from, &tooFar); err == nil {
 		t.Errorf("one-past-cap span should fail, got nil")
+	}
+}
+
+// ============================================================
+// F6: validateOverlay batching (kill N+1)
+// ============================================================
+
+// countingEmployeeStore wraps EmployeeStorer and counts FindByIDsAndOrg
+// invocations so a test can assert the validator made one call per
+// concern, not per id.
+type countingEmployeeStore struct {
+	store.EmployeeStorer
+	batchCalls int
+}
+
+func (c *countingEmployeeStore) FindByIDsAndOrg(ctx context.Context, ids []uint, orgID uint) (map[uint]*models.Employee, error) {
+	c.batchCalls++
+	return c.EmployeeStorer.FindByIDsAndOrg(ctx, ids, orgID)
+}
+
+// countingChildStore is the child-side counterpart.
+type countingChildStore struct {
+	store.ChildStorer
+	batchCalls int
+}
+
+func (c *countingChildStore) FindByIDsAndOrg(ctx context.Context, ids []uint, orgID uint) (map[uint]*models.Child, error) {
+	c.batchCalls++
+	return c.ChildStorer.FindByIDsAndOrg(ctx, ids, orgID)
+}
+
+func TestGetForecast_ValidateOverlay_BatchedNotNPlusOne(t *testing.T) {
+	// Lock-in test for the F6 batching: an overlay with N RemoveEmployeeIDs
+	// + M AddEmployeeContracts must produce exactly ONE
+	// employeeStore.FindByIDsAndOrg call (and zero per-id FindBy*
+	// calls), regardless of N+M. Same for children. Without this,
+	// "we did N+1 in the past, refactored to batch, then a future
+	// PR re-introduced a per-id loop" would silently land.
+	svc, td, db := setupForecastTestDataWithDB(t)
+	ctx := context.Background()
+
+	// Add 5 more employees and 5 more children so the test exercises a
+	// real list, not just the seeded two.
+	from := time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC)
+	extraEmps := make([]uint, 5)
+	for i := range 5 {
+		e := createTestEmployee(t, db, "Extra", fmt.Sprintf("Emp%d", i), td.org.ID)
+		createTestEmployeeContractWithCategory(t, db, e.ID, td.payplan.ID, from, nil, 30, "qualified", td.section.ID)
+		extraEmps[i] = e.ID
+	}
+	extraKids := make([]uint, 5)
+	for i := range 5 {
+		c := createTestChild(t, db, "Extra", fmt.Sprintf("Kid%d", i), td.org.ID)
+		extraKids[i] = c.ID
+	}
+
+	emp := &countingEmployeeStore{EmployeeStorer: svc.employeeStore}
+	child := &countingChildStore{ChildStorer: svc.childStore}
+	svc.employeeStore = emp
+	svc.childStore = child
+
+	to := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	req := &models.ForecastRequest{
+		From:              &from,
+		To:                &to,
+		RemoveEmployeeIDs: append([]uint{td.emp1.ID, td.emp2.ID}, extraEmps...),
+		RemoveChildIDs:    append([]uint{td.child1.ID, td.child2.ID}, extraKids...),
+	}
+
+	if _, err := svc.GetForecast(ctx, td.org.ID, req); err != nil {
+		t.Fatalf("forecast: %v", err)
+	}
+
+	if emp.batchCalls != 1 {
+		t.Errorf("employee batch calls = %d, want 1 (request had %d ids)", emp.batchCalls, len(req.RemoveEmployeeIDs))
+	}
+	if child.batchCalls != 1 {
+		t.Errorf("child batch calls = %d, want 1 (request had %d ids)", child.batchCalls, len(req.RemoveChildIDs))
+	}
+}
+
+func TestGetForecast_ValidateOverlay_PayPlanWrongOrg_Rejected(t *testing.T) {
+	// Pay plan exists in the DB but belongs to a different org. The
+	// previous validator did per-id FindByID and an inline org check;
+	// the new batched form via FindByIDsWithPeriods does the same thing
+	// inline. Must reject — and the error must be specifically about
+	// org membership, not "not found" (which would mislead operators
+	// into thinking the row was deleted).
+	svc, td, db := setupForecastTestDataWithDB(t)
+	otherOrg := createTestOrganization(t, db, "Other Org")
+	otherPP := createTestPayPlan(t, db, "TV-L Other Org", otherOrg.ID)
+	createTestPayPlanPeriodWithContrib(t, db, otherPP.ID, time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC), nil, 39.0, 2000)
+	ctx := context.Background()
+
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	req := &models.ForecastRequest{
+		From: &from, To: &to,
+		AddEmployees: []models.Employee{{
+			Person: models.Person{
+				FirstName: "Cross", LastName: "Org", Gender: "female",
+				Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC),
+			},
+			Contracts: []models.EmployeeContract{{
+				BaseContract: models.BaseContract{
+					Period:    models.Period{From: from},
+					SectionID: td.section.ID,
+				},
+				PayPlanID: otherPP.ID,
+				Grade:     "S8a", Step: 3,
+				WeeklyHours: 30, StaffCategory: "qualified",
+			}},
+		}},
+	}
+
+	_, err := svc.GetForecast(ctx, td.org.ID, req)
+	if err == nil {
+		t.Fatal("expected BadRequest for pay plan in another org, got nil")
+	}
+	if !strings.Contains(err.Error(), "does not belong to this organization") {
+		t.Errorf("error should distinguish wrong-org from not-found; got %v", err)
+	}
+}
+
+func TestGetForecast_ValidateOverlay_RemoveEmployeeMissing_Rejected(t *testing.T) {
+	// Removing an id that doesn't exist in the org used to be caught by
+	// the per-id FindByIDMinimalAndOrg call. Same outcome must hold via
+	// the batched FindByIDsAndOrg (id absent from the result map).
+	svc, td := setupForecastTestData(t)
+	ctx := context.Background()
+
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	req := &models.ForecastRequest{
+		From: &from, To: &to,
+		RemoveEmployeeIDs: []uint{99_999_999}, // not in this org (or any)
+	}
+
+	_, err := svc.GetForecast(ctx, td.org.ID, req)
+	if err == nil {
+		t.Fatal("expected BadRequest for missing employee id, got nil")
+	}
+	if !strings.Contains(err.Error(), "99999999") {
+		t.Errorf("error should mention the missing id; got %v", err)
 	}
 }
 
