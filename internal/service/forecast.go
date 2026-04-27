@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -29,21 +30,26 @@ func (s *StatisticsService) GetForecast(ctx context.Context, orgID uint, req *mo
 
 	// Load any pay plans referenced by overlay employees that aren't already in the DataSet.
 	// We must NOT reload all pay plans — that would wipe overlay-added periods.
-	s.loadMissingPayPlans(ctx, ds)
+	if err := s.loadMissingPayPlans(ctx, ds); err != nil {
+		return nil, err
+	}
 
 	pedEmployees := ds.PedagogicalEmployees()
 
 	dates, rows := calculateEmployeeStaffingHours(ds.Employees, rangeStart, rangeEnd)
+	dataPoints, warnings := calculateFinancials(ds.Children, ds.Employees, ds.PayPlans, ds.FundingPeriods, ds.BudgetItems, rangeStart, rangeEnd)
 
 	return &models.ForecastResponse{
 		Financials: &models.FinancialResponse{
-			DataPoints: calculateFinancials(ds.Children, ds.Employees, ds.PayPlans, ds.FundingPeriods, ds.BudgetItems, rangeStart, rangeEnd),
+			DataPoints: dataPoints,
+			Warnings:   warnings,
 		},
 		StaffingHours: &models.StaffingHoursResponse{
 			DataPoints: calculateStaffingHours(ds.Children, pedEmployees, ds.FundingPeriods, rangeStart, rangeEnd),
 		},
 		Occupancy:             calculateOccupancy(ds.Children, ds.FundingPeriods, rangeStart, rangeEnd),
 		EmployeeStaffingHours: &models.EmployeeStaffingHoursResponse{Dates: dates, Employees: rows},
+		Warnings:              warnings,
 	}, nil
 }
 
@@ -275,29 +281,37 @@ func collectOverlayPayPlanIDs(req *models.ForecastRequest) []uint {
 	return ids
 }
 
-// loadMissingPayPlans loads pay plans referenced by employees but not yet in the DataSet.
-func (s *StatisticsService) loadMissingPayPlans(ctx context.Context, ds *DataSet) {
+// loadMissingPayPlans loads pay plans referenced by employees (typically
+// overlay-added virtual employees) that aren't already in the DataSet.
+//
+// A store error here would cause calculateFinancials to silently exclude
+// those employees' salaries — the same forecast-correctness footgun that
+// loadPayPlans had. Propagate. Per-row "pay plan id has no row in DB"
+// becomes a CalculationWarning at calc time, not an error here.
+func (s *StatisticsService) loadMissingPayPlans(ctx context.Context, ds *DataSet) error {
 	var missingIDs []uint
+	seen := make(map[uint]bool)
 	for i := range ds.Employees {
 		for j := range ds.Employees[i].Contracts {
 			ppID := ds.Employees[i].Contracts[j].PayPlanID
-			if ppID != 0 {
-				if _, exists := ds.PayPlans[ppID]; !exists {
-					missingIDs = append(missingIDs, ppID)
-				}
+			if ppID == 0 || seen[ppID] {
+				continue
+			}
+			seen[ppID] = true
+			if _, exists := ds.PayPlans[ppID]; !exists {
+				missingIDs = append(missingIDs, ppID)
 			}
 		}
 	}
 	if len(missingIDs) == 0 {
-		return
+		return nil
 	}
 	loaded, err := s.payPlanStore.FindByIDsWithPeriods(ctx, missingIDs)
 	if err != nil {
-		return // non-fatal
+		return apperror.InternalWrap(err, "failed to load overlay pay plans")
 	}
-	for id, pp := range loaded {
-		ds.PayPlans[id] = pp
-	}
+	maps.Copy(ds.PayPlans, loaded)
+	return nil
 }
 
 // applyOverlay mutates the DataSet in-place according to the overlay request.

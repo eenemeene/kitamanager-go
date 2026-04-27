@@ -148,6 +148,16 @@ func findPayPlanPeriodForDate(periods []models.PayPlanPeriod, date time.Time) *m
 //
 // Each month uses the first-of-month as reference date.
 // A child/employee is counted if their contract IsActiveOn that date.
+// calculateFinancials returns the per-month rollup AND any data-quality
+// warnings hit along the way (e.g. a contract pointing at a pay plan that
+// no longer exists). Warnings are de-duplicated across the date range so
+// one bad row doesn't produce N copies of the same warning — the first
+// month it appears wins.
+//
+// Salary for a row that produces a warning is excluded from totals; this
+// keeps the numbers deterministic instead of silently zero-padding, and
+// the caller (handler / forecast service) is expected to surface the
+// warnings to the end user.
 func calculateFinancials(
 	children []models.Child,
 	employees []models.Employee,
@@ -155,10 +165,27 @@ func calculateFinancials(
 	fundingPeriods []models.GovernmentFundingPeriod,
 	budgetItems []models.BudgetItem,
 	start, end time.Time,
-) []models.FinancialDataPoint {
+) ([]models.FinancialDataPoint, []models.CalculationWarning) {
 	// Pre-build indexes: O(1) lookups in hot loop
 	fundingPeriodIdx := buildFundingPeriodIndex(fundingPeriods, start, end)
 	payPlanIdx := buildPayPlanIndex(payPlans, start, end)
+
+	// Dedupe warnings keyed on (code, contract id) so a misconfigured
+	// contract appearing in 12 monthly slices yields one warning, not 12.
+	type warningKey struct {
+		code       string
+		contractID uint
+	}
+	warnSeen := make(map[warningKey]bool)
+	var warnings []models.CalculationWarning
+	addWarning := func(w models.CalculationWarning) {
+		k := warningKey{w.Code, w.ContractID}
+		if warnSeen[k] {
+			return
+		}
+		warnSeen[k] = true
+		warnings = append(warnings, w)
+	}
 
 	type fundingDetailAccum struct {
 		amount int
@@ -229,12 +256,28 @@ func calculateFinancials(
 			if ppDateMap == nil {
 				slog.Warn("employee contract references unknown pay plan; salary not counted",
 					"employee_id", emp.ID, "contract_id", ec.ID, "payplan_id", ec.PayPlanID, "date", date.Format(models.DateFormat))
+				addWarning(models.CalculationWarning{
+					Code:       "missing_pay_plan",
+					Message:    "employee contract references unknown pay plan; salary excluded",
+					EmployeeID: emp.ID,
+					ContractID: ec.ID,
+					PayPlanID:  ec.PayPlanID,
+					Date:       date.Format(models.DateFormat),
+				})
 				continue
 			}
 			resolved := ppDateMap[date]
 			if resolved == nil {
 				slog.Warn("no pay plan period covers contract date; salary not counted",
 					"employee_id", emp.ID, "contract_id", ec.ID, "payplan_id", ec.PayPlanID, "date", date.Format(models.DateFormat))
+				addWarning(models.CalculationWarning{
+					Code:       "no_pay_plan_period",
+					Message:    "no pay plan period covers contract date; salary excluded",
+					EmployeeID: emp.ID,
+					ContractID: ec.ID,
+					PayPlanID:  ec.PayPlanID,
+					Date:       date.Format(models.DateFormat),
+				})
 				continue
 			}
 			entry := resolved.entryIndex[gradeStepKey{ec.Grade, ec.Step}]
@@ -242,6 +285,16 @@ func calculateFinancials(
 				slog.Warn("no pay plan entry for contract grade/step; salary not counted",
 					"employee_id", emp.ID, "contract_id", ec.ID, "payplan_id", ec.PayPlanID,
 					"grade", ec.Grade, "step", ec.Step, "date", date.Format(models.DateFormat))
+				addWarning(models.CalculationWarning{
+					Code:       "no_pay_plan_entry",
+					Message:    "no pay plan entry for contract grade/step; salary excluded",
+					EmployeeID: emp.ID,
+					ContractID: ec.ID,
+					PayPlanID:  ec.PayPlanID,
+					Grade:      ec.Grade,
+					Step:       ec.Step,
+					Date:       date.Format(models.DateFormat),
+				})
 				continue
 			}
 
@@ -316,7 +369,7 @@ func calculateFinancials(
 		dataPoints = append(dataPoints, dp)
 	}
 
-	return dataPoints
+	return dataPoints, warnings
 }
 
 // calculateStaffingHours computes monthly required vs available staffing

@@ -93,8 +93,16 @@ func (s *StatisticsService) loadOrgAndFunding(ctx context.Context, orgID uint) (
 	return s.loadFundingPeriods(ctx, org.State), nil
 }
 
-// loadPayPlans batch-fetches pay plans referenced by the given employees' contracts.
-func (s *StatisticsService) loadPayPlans(ctx context.Context, employees []models.Employee) map[uint]*models.PayPlan {
+// loadPayPlans batch-fetches pay plans referenced by the given employees'
+// contracts. A store error here means the calculation would silently
+// undercount labor cost (calculate.go skips employees whose pay plan is
+// missing) — propagate it instead of swallowing.
+//
+// Per-row data-quality issues (a contract referencing a payplan_id that
+// no longer exists in the DB, but the store call succeeded with a partial
+// map) are NOT errors — they're surfaced as CalculationWarnings from
+// calculateFinancials so the caller can show them to the user.
+func (s *StatisticsService) loadPayPlans(ctx context.Context, employees []models.Employee) (map[uint]*models.PayPlan, error) {
 	payPlanIDs := make([]uint, 0)
 	seen := make(map[uint]bool)
 	for i := range employees {
@@ -106,11 +114,14 @@ func (s *StatisticsService) loadPayPlans(ctx context.Context, employees []models
 			}
 		}
 	}
+	if len(payPlanIDs) == 0 {
+		return make(map[uint]*models.PayPlan), nil
+	}
 	payPlanMap, err := s.payPlanStore.FindByIDsWithPeriods(ctx, payPlanIDs)
 	if err != nil {
-		return make(map[uint]*models.PayPlan) // non-fatal: proceed without pay plans
+		return nil, apperror.InternalWrap(err, "failed to load pay plans")
 	}
-	return payPlanMap
+	return payPlanMap, nil
 }
 
 // GetStaffingHours calculates monthly staffing hours data points
@@ -168,14 +179,17 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 		return nil, apperror.InternalWrap(err, "failed to fetch employees")
 	}
 
-	payPlans := s.loadPayPlans(ctx, employees)
+	payPlans, err := s.loadPayPlans(ctx, employees)
+	if err != nil {
+		return nil, err
+	}
 
 	budgetItems, err := s.budgetItemStore.FindByOrganizationWithEntries(ctx, orgID)
 	if err != nil {
 		budgetItems = nil // non-fatal: proceed without budget items
 	}
 
-	dataPoints := calculateFinancials(children, employees, payPlans, fundingPeriods, budgetItems, rangeStart, rangeEnd)
+	dataPoints, warnings := calculateFinancials(children, employees, payPlans, fundingPeriods, budgetItems, rangeStart, rangeEnd)
 
 	// Merge actual funding from government funding bills
 	if s.billStore != nil {
@@ -214,7 +228,7 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 		// non-fatal: proceed without actual funding on error
 	}
 
-	return &models.FinancialResponse{DataPoints: dataPoints}, nil
+	return &models.FinancialResponse{DataPoints: dataPoints, Warnings: warnings}, nil
 }
 
 // GetOccupancy calculates monthly occupancy data points broken down by age group, care type, and supplements.
