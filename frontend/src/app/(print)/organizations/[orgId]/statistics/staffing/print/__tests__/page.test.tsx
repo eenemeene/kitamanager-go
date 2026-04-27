@@ -61,9 +61,9 @@ describe('StaffingPrintPage', () => {
     window.print = jest.fn();
   });
 
-  it('renders page title', () => {
+  it('renders page title with the report month', () => {
     renderWithProviders(<StaffingPrintPage />);
-    expect(screen.getByText('nav.statisticsStaffing')).toBeInTheDocument();
+    expect(screen.getByText(/nav\.statisticsStaffing/)).toBeInTheDocument();
   });
 
   it('renders organization name', () => {

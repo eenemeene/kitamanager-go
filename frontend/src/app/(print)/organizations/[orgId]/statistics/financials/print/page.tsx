@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -12,8 +12,13 @@ import { BudgetTable } from '@/components/charts/budget-table';
 import type { FundingComparisonResponse, FundingComparisonSummary } from '@/lib/api/types';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
-import { formatCurrency, getCurrentMonthStart } from '@/lib/utils/formatting';
+import { formatCurrency } from '@/lib/utils/formatting';
 import { useUiStore } from '@/stores/ui-store';
+import {
+  parseReportMonth,
+  formatReportMonthLong,
+  formatKitaYearLabel,
+} from '@/lib/utils/report-month';
 
 const FinancialsChart = dynamic(
   () => import('@/components/charts/financials-bar-chart').then((mod) => mod.FinancialsChart),
@@ -52,17 +57,7 @@ export default function FinancialsPrintPage() {
   const t = useTranslations();
   const { organizations, fetchOrganizations } = useUiStore();
   const searchParams = useSearchParams();
-  const [budgetYear] = useState(() => {
-    const p = searchParams.get('year');
-    if (p) {
-      const n = parseInt(p, 10);
-      if (!isNaN(n) && n >= 2000 && n <= 2100) return n;
-    }
-    return new Date().getFullYear();
-  });
-
-  const budgetFrom = `${budgetYear}-01-01`;
-  const budgetTo = `${budgetYear}-12-01`;
+  const reportMonth = useMemo(() => parseReportMonth(searchParams.get('month')), [searchParams]);
 
   useQuery({
     queryKey: ['organizations-load'],
@@ -74,19 +69,38 @@ export default function FinancialsPrintPage() {
 
   const orgName = organizations.find((o) => o.id === orgId)?.name ?? '';
 
+  // Multi-year trend chart data — used by the bar chart, funding-comparison
+  // chart, and cumulative balance chart. Spans previous + current + next
+  // Kita year so the trends have history and forecast around the report month.
   const { data: financials, isLoading: isLoadingFinancials } = useQuery({
-    queryKey: queryKeys.statistics.financials(orgId),
-    queryFn: () => apiClient.getFinancials(orgId),
+    queryKey: queryKeys.statistics.financials(orgId, reportMonth.trendFrom, reportMonth.trendTo),
+    queryFn: () =>
+      apiClient.getFinancials(orgId, {
+        from: reportMonth.trendFrom,
+        to: reportMonth.trendTo,
+      }),
     enabled: !!orgId,
   });
 
+  // Budget table — Kita year (Aug → Jul) containing the report month.
   const { data: budgetFinancials, isLoading: isLoadingBudget } = useQuery({
-    queryKey: queryKeys.statistics.financials(orgId, budgetFrom, budgetTo),
-    queryFn: () => apiClient.getFinancials(orgId, { from: budgetFrom, to: budgetTo }),
+    queryKey: queryKeys.statistics.financials(
+      orgId,
+      reportMonth.kitaYearFrom,
+      reportMonth.kitaYearTo
+    ),
+    queryFn: () =>
+      apiClient.getFinancials(orgId, {
+        from: reportMonth.kitaYearFrom,
+        to: reportMonth.kitaYearTo,
+      }),
     enabled: !!orgId,
   });
 
-  // Derive date range from financials data for compare queries
+  // Compare-bills windows: chunk the bill-month range from the financials
+  // response into 12-month slices for the actual-vs-calculated comparison.
+  // Logic unchanged from the year-based version; the windowing is driven by
+  // which months have actual_funding present in the data.
   const compareWindows = useMemo(() => {
     const dps = financials?.data_points;
     if (!dps?.length) return [];
@@ -145,12 +159,15 @@ export default function FinancialsPrintPage() {
 
   const isLoadingCompare = compareResults.some((r) => r.isLoading);
 
-  const currentFinancials = useMemo(() => {
+  // Pick the data point for the report month — replaces the previous
+  // getCurrentMonthStart() call which always returned the calendar
+  // current month regardless of report period (so a 2024 report
+  // generated in 2026 would show April 2026 numbers in the cards).
+  const reportMonthFinancials = useMemo(() => {
     if (!financials?.data_points?.length) return null;
-    const currentMonth = getCurrentMonthStart();
-    const exact = financials.data_points.find((dp) => dp.date === currentMonth);
+    const exact = financials.data_points.find((dp) => dp.date === reportMonth.asOf);
     return exact ?? financials.data_points[financials.data_points.length - 1];
-  }, [financials]);
+  }, [financials, reportMonth.asOf]);
 
   return (
     <div
@@ -161,7 +178,9 @@ export default function FinancialsPrintPage() {
     >
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t('nav.statisticsFinancials')}</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {t('nav.statisticsFinancials')} &middot; {formatReportMonthLong(reportMonth)}
+          </h1>
           <p className="text-muted-foreground mt-1 text-sm">
             {orgName} &middot; {new Date().toLocaleDateString()}
           </p>
@@ -175,39 +194,42 @@ export default function FinancialsPrintPage() {
         </button>
       </div>
 
-      {/* Financial Summary Cards */}
-      {currentFinancials && (
-        <div className="mb-8 grid break-inside-avoid grid-cols-3 gap-4">
-          <div className="rounded-lg border p-4">
-            <p className="text-muted-foreground text-sm font-medium">
-              {t('statistics.totalIncome')}
-            </p>
-            <p className="text-success mt-1 text-2xl font-bold">
-              {formatCurrency(currentFinancials.total_income)}
-            </p>
-          </div>
-          <div className="rounded-lg border p-4">
-            <p className="text-muted-foreground text-sm font-medium">
-              {t('statistics.totalExpenses')}
-            </p>
-            <p className="text-destructive mt-1 text-2xl font-bold">
-              {formatCurrency(currentFinancials.total_expenses)}
-            </p>
-          </div>
-          <div className="rounded-lg border p-4">
-            <p className="text-muted-foreground text-sm font-medium">{t('statistics.balance')}</p>
-            <p
-              className={`mt-1 text-2xl font-bold ${
-                currentFinancials.balance >= 0 ? 'text-info' : 'text-destructive'
-              }`}
-            >
-              {formatCurrency(currentFinancials.balance)}
-            </p>
+      {/* Summary cards — for the report month */}
+      {reportMonthFinancials && (
+        <div className="mb-8 break-inside-avoid">
+          <p className="text-muted-foreground mb-2 text-sm">{formatReportMonthLong(reportMonth)}</p>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="rounded-lg border p-4">
+              <p className="text-muted-foreground text-sm font-medium">
+                {t('statistics.totalIncome')}
+              </p>
+              <p className="text-success mt-1 text-2xl font-bold">
+                {formatCurrency(reportMonthFinancials.total_income)}
+              </p>
+            </div>
+            <div className="rounded-lg border p-4">
+              <p className="text-muted-foreground text-sm font-medium">
+                {t('statistics.totalExpenses')}
+              </p>
+              <p className="text-destructive mt-1 text-2xl font-bold">
+                {formatCurrency(reportMonthFinancials.total_expenses)}
+              </p>
+            </div>
+            <div className="rounded-lg border p-4">
+              <p className="text-muted-foreground text-sm font-medium">{t('statistics.balance')}</p>
+              <p
+                className={`mt-1 text-2xl font-bold ${
+                  reportMonthFinancials.balance >= 0 ? 'text-info' : 'text-destructive'
+                }`}
+              >
+                {formatCurrency(reportMonthFinancials.balance)}
+              </p>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Financial Overview Chart */}
+      {/* Financial Overview Chart — multi-year trend */}
       <div className="mb-8 break-inside-avoid">
         <h2 className="mb-3 text-xl font-semibold">{t('statistics.financialOverview')}</h2>
         {isLoadingFinancials ? (
@@ -219,7 +241,7 @@ export default function FinancialsPrintPage() {
         ) : null}
       </div>
 
-      {/* Actual vs Calculated Funding */}
+      {/* Actual vs Calculated Funding — multi-year trend */}
       {financials?.data_points?.length && (
         <div className="mb-8 break-inside-avoid">
           <h2 className="mb-3 text-xl font-semibold">
@@ -236,7 +258,7 @@ export default function FinancialsPrintPage() {
         </div>
       )}
 
-      {/* Cumulative Balance */}
+      {/* Cumulative Balance — multi-year trend */}
       <div className="mb-8 break-inside-avoid">
         <h2 className="mb-3 text-xl font-semibold">{t('statistics.financialSummary')}</h2>
         <p className="text-muted-foreground mb-2 text-sm">
@@ -251,29 +273,31 @@ export default function FinancialsPrintPage() {
         ) : null}
       </div>
 
-      {/* Breakdown Pie Charts */}
-      {currentFinancials && (
-        <div className="mb-8 grid break-inside-avoid grid-cols-2 gap-6">
-          <div>
-            <h2 className="mb-3 text-xl font-semibold">{t('statistics.fundingBreakdown')}</h2>
-            <ChartErrorBoundary>
-              <FundingBreakdownChart data={currentFinancials} />
-            </ChartErrorBoundary>
-          </div>
-          <div>
-            <h2 className="mb-3 text-xl font-semibold">{t('statistics.expenseBreakdown')}</h2>
-            <ChartErrorBoundary>
-              <ExpenseBreakdownChart data={currentFinancials} />
-            </ChartErrorBoundary>
+      {/* Breakdown Pie Charts — for the report month */}
+      {reportMonthFinancials && (
+        <div className="mb-8 break-inside-avoid">
+          <p className="text-muted-foreground mb-2 text-sm">{formatReportMonthLong(reportMonth)}</p>
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <h2 className="mb-3 text-xl font-semibold">{t('statistics.fundingBreakdown')}</h2>
+              <ChartErrorBoundary>
+                <FundingBreakdownChart data={reportMonthFinancials} />
+              </ChartErrorBoundary>
+            </div>
+            <div>
+              <h2 className="mb-3 text-xl font-semibold">{t('statistics.expenseBreakdown')}</h2>
+              <ChartErrorBoundary>
+                <ExpenseBreakdownChart data={reportMonthFinancials} />
+              </ChartErrorBoundary>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Budget Table */}
+      {/* Budget Table — Kita year */}
       <div className="break-inside-avoid">
-        <h2 className="mb-3 text-xl font-semibold">
-          {t('statistics.budgetOverview')} &middot; {budgetYear}
-        </h2>
+        <h2 className="mb-1 text-xl font-semibold">{t('statistics.budgetOverview')}</h2>
+        <p className="text-muted-foreground mb-3 text-sm">{formatKitaYearLabel(reportMonth)}</p>
         {isLoadingBudget ? (
           <Skeleton className="h-[300px] w-full" />
         ) : budgetFinancials ? (

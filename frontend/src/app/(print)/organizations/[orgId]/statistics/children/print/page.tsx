@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -11,6 +11,7 @@ import { ChartErrorBoundary } from '@/components/charts/chart-error-boundary';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { useUiStore } from '@/stores/ui-store';
+import { parseReportMonth, formatReportMonthLong } from '@/lib/utils/report-month';
 
 const AgeDistributionChart = dynamic(
   () =>
@@ -38,18 +39,7 @@ export default function ChildrenPrintPage() {
   const t = useTranslations();
   const { organizations, fetchOrganizations } = useUiStore();
   const searchParams = useSearchParams();
-  const [year] = useState(() => {
-    const p = searchParams.get('year');
-    if (p) {
-      const n = parseInt(p, 10);
-      if (!isNaN(n) && n >= 2000 && n <= 2100) return n;
-    }
-    return new Date().getFullYear();
-  });
-
-  const from = `${year}-01-01`;
-  const to = `${year}-12-01`;
-  const date = `${year}-06-01`;
+  const reportMonth = useMemo(() => parseReportMonth(searchParams.get('month')), [searchParams]);
 
   useQuery({
     queryKey: ['organizations-load'],
@@ -61,27 +51,55 @@ export default function ChildrenPrintPage() {
 
   const orgName = organizations.find((o) => o.id === orgId)?.name ?? '';
 
+  // Snapshot at the report month — replaces the previous hard-coded
+  // "${year}-06-01" June snapshot, which was always mid-year regardless
+  // of when the report was generated.
   const { data: ageDistribution, isLoading: isLoadingAge } = useQuery({
     queryKey: queryKeys.statistics.ageDistribution(orgId),
-    queryFn: () => apiClient.getAgeDistribution(orgId, date),
-    enabled: !!orgId,
-  });
-
-  const { data: staffingHours, isLoading: isLoadingContracts } = useQuery({
-    queryKey: queryKeys.statistics.staffingHours(orgId, undefined, from, to),
-    queryFn: () => apiClient.getStaffingHours(orgId, { from, to }),
-    enabled: !!orgId,
-  });
-
-  const { data: occupancy } = useQuery({
-    queryKey: queryKeys.statistics.occupancy(orgId, undefined, from, to),
-    queryFn: () => apiClient.getOccupancy(orgId, { from, to }),
+    queryFn: () => apiClient.getAgeDistribution(orgId, reportMonth.asOf),
     enabled: !!orgId,
   });
 
   const { data: contractProperties, isLoading: isLoadingContractProperties } = useQuery({
     queryKey: queryKeys.statistics.contractProperties(orgId),
-    queryFn: () => apiClient.getContractPropertiesDistribution(orgId, date),
+    queryFn: () => apiClient.getContractPropertiesDistribution(orgId, reportMonth.asOf),
+    enabled: !!orgId,
+  });
+
+  // Multi-year trend chart: previous + current + next Kita year. Explicitly
+  // pass the trend window so the chart matches the page title — without it,
+  // the API returns its own ~25-month default which drifts as wall-clock time
+  // moves past the report month.
+  const { data: contractTrend, isLoading: isLoadingContracts } = useQuery({
+    queryKey: queryKeys.statistics.staffingHours(
+      orgId,
+      undefined,
+      reportMonth.trendFrom,
+      reportMonth.trendTo
+    ),
+    queryFn: () =>
+      apiClient.getStaffingHours(orgId, {
+        from: reportMonth.trendFrom,
+        to: reportMonth.trendTo,
+      }),
+    enabled: !!orgId,
+  });
+
+  // Occupancy is consumed by MonthlyContractChart for the age-group legend
+  // and per-month tooltip breakdown. Fetch over the same trend window as
+  // contractTrend so the tooltips have data for every column the chart renders.
+  const { data: occupancy } = useQuery({
+    queryKey: queryKeys.statistics.occupancy(
+      orgId,
+      undefined,
+      reportMonth.trendFrom,
+      reportMonth.trendTo
+    ),
+    queryFn: () =>
+      apiClient.getOccupancy(orgId, {
+        from: reportMonth.trendFrom,
+        to: reportMonth.trendTo,
+      }),
     enabled: !!orgId,
   });
 
@@ -94,7 +112,9 @@ export default function ChildrenPrintPage() {
     >
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t('nav.statisticsChildren')}</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {t('nav.statisticsChildren')} &middot; {formatReportMonthLong(reportMonth)}
+          </h1>
           <p className="text-muted-foreground mt-1 text-sm">
             {orgName} &middot; {new Date().toLocaleDateString()}
           </p>
@@ -113,9 +133,9 @@ export default function ChildrenPrintPage() {
         <h2 className="mb-3 text-xl font-semibold">{t('statistics.childrenContractCount')}</h2>
         {isLoadingContracts ? (
           <Skeleton className="h-[350px] w-full" />
-        ) : staffingHours ? (
+        ) : contractTrend ? (
           <ChartErrorBoundary>
-            <MonthlyContractChart data={staffingHours} occupancy={occupancy} />
+            <MonthlyContractChart data={contractTrend} occupancy={occupancy} />
           </ChartErrorBoundary>
         ) : null}
       </div>
