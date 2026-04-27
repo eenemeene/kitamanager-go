@@ -98,6 +98,14 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta-frontend.outputs.tags }}
           labels: ${{ steps.meta-frontend.outputs.labels }}
+          # Same version triple the API + report images bake. Surfaced
+          # at runtime by the frontend's GET /version route handler so
+          # the report-pdf colophon can include the web version
+          # alongside the API and CLI versions.
+          build-args: |
+            APP_VERSION=${{ steps.version.outputs.version }}
+            APP_COMMIT=${{ github.sha }}
+            APP_BUILD_TIME=${{ github.event.release.created_at }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
 

@@ -26,12 +26,7 @@ type healthResponse struct {
 // "thin standalone HTTP" style. A short timeout + a no-redirect
 // client matches the Login() shape.
 func FetchAPIVersion(apiURL string) (string, error) {
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
+	client := newVersionClient()
 	resp, err := client.Get(apiURL + "/api/v1/health")
 	if err != nil {
 		return "", fmt.Errorf("health request failed: %w", err)
@@ -52,4 +47,50 @@ func FetchAPIVersion(apiURL string) (string, error) {
 		return "", fmt.Errorf("parse health response: %w", err)
 	}
 	return parsed.Version, nil
+}
+
+// webVersionResponse is the shape served by the frontend's /version
+// route handler (frontend/src/app/version/route.ts). Modeled here as
+// the minimum field we need so an additive change on the frontend
+// (e.g. adding `node_version`) doesn't break the parse.
+type webVersionResponse struct {
+	Version string `json:"version"`
+}
+
+// FetchWebVersion calls GET {baseURL}/version on the frontend and
+// returns the reported web/UI version. The frontend ships as its own
+// container image and may be at a different version than the API —
+// the colophon needs both to be honest about which exact pair of
+// images rendered the PDF.
+func FetchWebVersion(baseURL string) (string, error) {
+	client := newVersionClient()
+	resp, err := client.Get(baseURL + "/version")
+	if err != nil {
+		return "", fmt.Errorf("web version request failed: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("web version returned status %d", resp.StatusCode)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("read web version response: %w", err)
+	}
+	var parsed webVersionResponse
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return "", fmt.Errorf("parse web version response: %w", err)
+	}
+	return parsed.Version, nil
+}
+
+// newVersionClient builds the http.Client both Fetch*Version helpers
+// share: short timeout, no redirect-following. Factored out so the
+// two helpers stay byte-for-byte consistent in their HTTP behaviour.
+func newVersionClient() *http.Client {
+	return &http.Client{
+		Timeout: 5 * time.Second,
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
 }
