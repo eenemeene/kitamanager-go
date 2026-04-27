@@ -771,7 +771,8 @@
     "ageRangeError": "Höchstalter muss größer als Mindestalter sein",
     "ageMismatchWarning": "Altersabweichung",
     "ageMismatchDescription": "Das Alter dieses Kindes liegt außerhalb des Altersbereichs des Zielbereichs.",
-    "selectSection": "Bereich auswählen"
+    "selectSection": "Bereich auswählen",
+    "asOfDate": "Stichtag"
   },
   "payPlans": {
     "title": "Entgelttabellen",

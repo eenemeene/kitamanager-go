@@ -771,7 +771,8 @@
     "ageRangeError": "Max age must be greater than min age",
     "ageMismatchWarning": "Age mismatch",
     "ageMismatchDescription": "This child's age is outside the target section's age range.",
-    "selectSection": "Select section"
+    "selectSection": "Select section",
+    "asOfDate": "As of date"
   },
   "payPlans": {
     "title": "Pay Plans",

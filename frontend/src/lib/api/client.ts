@@ -1174,6 +1174,13 @@ class ApiClient {
     const today = toLocalDateString(new Date());
     return this.fetchAllPages<Child>(`/organizations/${orgId}/children?contract_on=${today}`);
   }
+
+  // Employees - fetch all with active contracts on a specific date (for
+  // the kanban board's "as of date" picker — see getChildrenAllForDate
+  // for the children-side counterpart).
+  async getEmployeesAllForDate(orgId: number, date: string): Promise<Employee[]> {
+    return this.fetchAllPages<Employee>(`/organizations/${orgId}/employees?active_on=${date}`);
+  }
 }
 
 export const apiClient = new ApiClient();
