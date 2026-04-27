@@ -152,8 +152,26 @@ type SectionStorer interface {
 	Create(ctx context.Context, section *models.Section) error
 	Update(ctx context.Context, section *models.Section) error
 	Delete(ctx context.Context, id uint) error
-	HasChildren(ctx context.Context, id uint) (bool, error)
-	HasEmployees(ctx context.Context, id uint) (bool, error)
+	// PromoteToDefault flips is_default so that the given section
+	// becomes the only default in its org. Two-statement
+	// implementation (clear-then-set) keeps the partial unique
+	// index from migration 000019 happy at every statement boundary.
+	// Caller wraps in a transaction.
+	PromoteToDefault(ctx context.Context, id, orgID uint) error
+	// HasActiveChildren / HasActiveEmployees report whether any
+	// contract that is active on `asOf` references this section. Used
+	// by the delete-guard in SectionService — only currently-assigned
+	// contracts block deletion. Historical (ended) contracts under a
+	// soft-deleted section keep their FK valid because the section
+	// row physically still exists.
+	HasActiveChildren(ctx context.Context, id uint, asOf time.Time) (bool, error)
+	HasActiveEmployees(ctx context.Context, id uint, asOf time.Time) (bool, error)
+	// CountActive* returns the exact count, used by the
+	// delete-rejection path to put a number in the error message.
+	// Slower than HasActive* (no short-circuit), so reserved for the
+	// already-rejected case.
+	CountActiveChildren(ctx context.Context, id uint, asOf time.Time) (int64, error)
+	CountActiveEmployees(ctx context.Context, id uint, asOf time.Time) (int64, error)
 }
 
 // GovernmentFundingStorer defines the interface for government funding storage operations

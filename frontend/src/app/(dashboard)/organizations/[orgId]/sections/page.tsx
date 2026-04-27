@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { apiClient } from '@/lib/api/client';
+import { queryKeys } from '@/lib/api/queryKeys';
 import { formatMonthRange } from '@/lib/utils/formatting';
 import type { Section, SectionCreateRequest, SectionUpdateRequest } from '@/lib/api/types';
 import { useCrudPage } from '@/lib/hooks/use-crud-page';
@@ -45,6 +46,23 @@ export default function SectionsPage() {
     createFn: (orgId, data) => apiClient.createSection(orgId, data),
     updateFn: (orgId, id, data) => apiClient.updateSection(orgId, id, data),
     deleteFn: (orgId, id) => apiClient.deleteSection(orgId, id),
+    queryKeys: {
+      list: (orgId) => queryKeys.sections.list(orgId),
+      invalidate: (orgId) => queryKeys.sections.list(orgId),
+      // A section rename / delete changes how dependent rows render
+      // EVERYWHERE: children/employees tables show
+      // `contract.section_name`, statistics charts filter by section,
+      // section pickers list by name. Without this cascade those
+      // pages stay stale until a manual refresh — same shape as the
+      // budget-items B2 fix. Invalidate the whole namespace prefix
+      // for each: TanStack Query matches downward from the prefix
+      // and dirties every parameterised query under it.
+      extraInvalidate: (orgId) => [
+        [...queryKeys.children.all(orgId)],
+        [...queryKeys.employees.all(orgId)],
+        [...queryKeys.statistics.all(orgId)],
+      ],
+    },
   });
 
   const columns = useMemo<Column<Section>[]>(

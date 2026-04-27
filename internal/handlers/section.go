@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -116,4 +118,52 @@ func (h *SectionHandler) Update(c *gin.Context) {
 // @Router /api/v1/organizations/{orgId}/sections/{sectionId} [delete]
 func (h *SectionHandler) Delete(c *gin.Context) {
 	handleOrgDelete(c, "sectionId", h.audit(), h.service.GetByIDAndOrg, h.service.DeleteByIDAndOrg, sectionAuditInfo)
+}
+
+// PromoteToDefault godoc
+// @Summary Set a section as the organization's default
+// @Description Atomically clears the previous default flag (if any) and
+// @Description sets is_default = true on the given section. The
+// @Description (organization_id) WHERE is_default index from migration
+// @Description 000019 enforces "exactly one default per org" at the DB
+// @Description layer; this endpoint is the only sanctioned way to flip
+// @Description the flag through the API.
+// @Tags sections
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Param sectionId path int true "Section ID"
+// @Success 204 "No Content"
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/organizations/{orgId}/sections/{sectionId}/promote-default [post]
+func (h *SectionHandler) PromoteToDefault(c *gin.Context) {
+	orgID, sectionID, ok := parseOrgAndResourceID(c, "sectionId")
+	if !ok {
+		return
+	}
+
+	// Fetch the name BEFORE the update so the audit row carries
+	// human-readable context. Lookup uses the same NotFound semantics
+	// the service then re-runs (cross-org leaks remain prevented).
+	section, err := h.service.GetByIDAndOrg(c.Request.Context(), sectionID, orgID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	if err := h.service.PromoteToDefault(c.Request.Context(), sectionID, orgID); err != nil {
+		respondError(c, err)
+		return
+	}
+
+	// Resource type discriminator carries the "this was a promotion"
+	// semantic so audit consumers can grep for "section_default_set"
+	// without a new AuditAction enum value.
+	auditUpdate(c, h.auditService, "section_default_set", sectionID, section.Name)
+
+	c.Status(http.StatusNoContent)
 }

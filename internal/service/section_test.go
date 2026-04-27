@@ -3,11 +3,15 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
+
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
+	"github.com/eenemeene/kitamanager-go/internal/store"
 )
 
 // =========================================
@@ -444,7 +448,11 @@ func TestSectionService_DeleteByIDAndOrg_CannotDeleteDefault(t *testing.T) {
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
-	defaultSection := createTestSection(t, db, "Unassigned", org.ID, true)
+	// Use the org's already-seeded default — migration 000019's
+	// partial unique index forbids creating a SECOND is_default=true
+	// row in the same org, so the previous test setup (which made
+	// its own with isDefault=true) is no longer legal.
+	defaultSection := getDefaultSection(t, db, org.ID)
 
 	err := svc.DeleteByIDAndOrg(ctx, defaultSection.ID, org.ID)
 	if err == nil {
@@ -460,8 +468,8 @@ func TestSectionService_DeleteByIDAndOrg_CannotDeleteDefault(t *testing.T) {
 	if err != nil {
 		t.Errorf("default section was deleted despite protection: %v", err)
 	}
-	if found.Name != "Unassigned" {
-		t.Errorf("default section data was corrupted")
+	if found.Name != "Default" {
+		t.Errorf("default section data was corrupted (name now %q)", found.Name)
 	}
 }
 
@@ -517,6 +525,456 @@ func TestSectionService_DeleteByIDAndOrg_CannotDeleteWithEmployees(t *testing.T)
 
 	if !errors.Is(err, apperror.ErrBadRequest) {
 		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+}
+
+// ============================================================
+// S2: soft-delete with active-only assignment guard
+// ============================================================
+
+// Bug fix: a section with ONLY ended contracts used to be
+// undeletable forever (HasChildren counted historical contracts with
+// no time filter). With the active-only guard, the section can be
+// soft-deleted; the ended contracts retain their FK because the
+// section row physically still exists.
+func TestSectionService_DeleteByIDAndOrg_OnlyEndedContracts_NowAllowed(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createSectionService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section := createTestSection(t, db, "Krippe", org.ID, false)
+
+	// Seed an ENDED child contract: 2024 only.
+	child := createTestChild(t, db, "Past", "Child", org.ID)
+	endOf2024 := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	if err := db.Create(&models.ChildContract{
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period: models.Period{
+				From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+				To:   &endOf2024,
+			},
+			SectionID: section.ID,
+		},
+	}).Error; err != nil {
+		t.Fatalf("seed ended contract: %v", err)
+	}
+
+	// Delete must now succeed — historical contracts don't block.
+	if err := svc.DeleteByIDAndOrg(ctx, section.ID, org.ID); err != nil {
+		t.Fatalf("section with only-ended contracts should now delete, got %v", err)
+	}
+
+	// And the section is no longer findable through the standard path
+	// (gorm soft-delete auto-scope).
+	if _, err := svc.GetByIDAndOrg(ctx, section.ID, org.ID); !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("soft-deleted section should be NotFound via GetByIDAndOrg, got %v", err)
+	}
+
+	// The ended contract still resolves via FK (the section row is
+	// physically there, just tombstoned). Read it directly to verify.
+	var c models.ChildContract
+	if err := db.Where("section_id = ?", section.ID).First(&c).Error; err != nil {
+		t.Errorf("ended contract should still be readable; got %v", err)
+	}
+}
+
+// Lock-in: the OLD behavior of blocking on currently-active contracts
+// must NOT regress. This is the same scenario as the existing
+// _CannotDeleteWithChildren test but explicitly named so the
+// expected-block reason ("active") is unambiguous.
+func TestSectionService_DeleteByIDAndOrg_ActiveContract_StillBlocked(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createSectionService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section := createTestSection(t, db, "Krippe", org.ID, false)
+
+	// Open-ended contract starting before today → active.
+	child := createTestChild(t, db, "Now", "Child", org.ID)
+	if err := db.Create(&models.ChildContract{
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period:    models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+			SectionID: section.ID,
+		},
+	}).Error; err != nil {
+		t.Fatalf("seed active contract: %v", err)
+	}
+
+	err := svc.DeleteByIDAndOrg(ctx, section.ID, org.ID)
+	if err == nil {
+		t.Fatal("active contract must still block delete")
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "currently-assigned") {
+		t.Errorf("error should mention currently-assigned, got %v", err)
+	}
+}
+
+// Lock-in: the partial unique index from migration 000018 lets a
+// soft-deleted section's name be reused — same playbook as users.email
+// after migration 000015.
+func TestSectionService_NameReusableAfterSoftDelete(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createSectionService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	first := createTestSection(t, db, "Krippe", org.ID, false)
+
+	if err := svc.DeleteByIDAndOrg(ctx, first.ID, org.ID); err != nil {
+		t.Fatalf("delete first: %v", err)
+	}
+
+	// Same name, fresh section. Was previously blocked by the raw
+	// unique index; the partial `WHERE deleted_at IS NULL` allows it.
+	if _, err := svc.Create(ctx, org.ID, &models.SectionCreateRequest{
+		Name: "Krippe",
+	}, "tester"); err != nil {
+		t.Errorf("name reuse after soft-delete should succeed, got %v", err)
+	}
+}
+
+// ============================================================
+// S6: assignee count surfaced in delete-rejection error
+// ============================================================
+
+func TestSectionService_Delete_BlockedError_IncludesActiveChildCount(t *testing.T) {
+	// When delete is rejected, the user needs to know the magnitude
+	// of what they have to reassign. Three children → "3 currently-
+	// assigned children" in the error message. Without the count
+	// the user is stuck guessing whether it's 1 or 100.
+	db := setupTestDB(t)
+	svc := createSectionService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section := createTestSection(t, db, "Krippe", org.ID, false)
+
+	for i := range 3 {
+		c := createTestChild(t, db, "Active", string(rune('A'+i)), org.ID)
+		if err := db.Create(&models.ChildContract{
+			ChildID: c.ID,
+			BaseContract: models.BaseContract{
+				Period:    models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+				SectionID: section.ID,
+			},
+		}).Error; err != nil {
+			t.Fatalf("seed contract %d: %v", i, err)
+		}
+	}
+
+	err := svc.DeleteByIDAndOrg(ctx, section.ID, org.ID)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "3 currently-assigned children") {
+		t.Errorf("error should include count '3'; got %v", err)
+	}
+}
+
+func TestSectionService_Delete_BlockedError_IncludesActiveEmployeeCount(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createSectionService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section := createTestSection(t, db, "Krippe", org.ID, false)
+	payPlan := createTestPayPlan(t, db, "TV-L", org.ID)
+
+	for i := range 2 {
+		emp := createTestEmployee(t, db, "Emp", string(rune('A'+i)), org.ID)
+		if err := db.Create(&models.EmployeeContract{
+			EmployeeID: emp.ID,
+			BaseContract: models.BaseContract{
+				Period:    models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+				SectionID: section.ID,
+			},
+			StaffCategory: "qualified", Grade: "S8a", Step: 1,
+			WeeklyHours: 39, PayPlanID: payPlan.ID,
+		}).Error; err != nil {
+			t.Fatalf("seed contract %d: %v", i, err)
+		}
+	}
+
+	err := svc.DeleteByIDAndOrg(ctx, section.ID, org.ID)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "2 currently-assigned employees") {
+		t.Errorf("error should include count '2'; got %v", err)
+	}
+}
+
+// ============================================================
+// S5: case-insensitive name uniqueness + age CHECK constraint
+// ============================================================
+
+func TestSectionService_Create_CaseInsensitiveDuplicate_Rejected(t *testing.T) {
+	// "Krippe" vs "krippe" used to produce two distinct rows under
+	// the raw-name partial unique index. Migration 000020's functional
+	// partial index on `lower(trim(name)) WHERE deleted_at IS NULL`
+	// makes them collide.
+	db := setupTestDB(t)
+	svc := createSectionService(db)
+	ctx := context.Background()
+	org := createTestOrganization(t, db, "Test Org")
+
+	if _, err := svc.Create(ctx, org.ID, &models.SectionCreateRequest{Name: "Krippe"}, "tester"); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	_, err := svc.Create(ctx, org.ID, &models.SectionCreateRequest{Name: "krippe"}, "tester")
+	if err == nil {
+		t.Fatal("expected Conflict for case-only duplicate")
+	}
+	if !errors.Is(err, apperror.ErrConflict) {
+		t.Errorf("expected ErrConflict, got %v", err)
+	}
+}
+
+func TestSectionService_Create_WhitespaceDuplicate_Rejected(t *testing.T) {
+	// Service-layer trim already collapses outer whitespace at the
+	// column level, but the DB index is the truthful gate. " KRIPPE "
+	// trims to "KRIPPE", lowercases to "krippe" → collides with the
+	// existing index entry from "Krippe".
+	db := setupTestDB(t)
+	svc := createSectionService(db)
+	ctx := context.Background()
+	org := createTestOrganization(t, db, "Test Org")
+
+	if _, err := svc.Create(ctx, org.ID, &models.SectionCreateRequest{Name: "Krippe"}, "tester"); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	_, err := svc.Create(ctx, org.ID, &models.SectionCreateRequest{Name: " KRIPPE "}, "tester")
+	if err == nil {
+		t.Fatal("expected Conflict for whitespace+case duplicate")
+	}
+	if !errors.Is(err, apperror.ErrConflict) {
+		t.Errorf("expected ErrConflict, got %v", err)
+	}
+}
+
+func TestSectionService_Create_DistinctNames_BothSucceed(t *testing.T) {
+	// Negative regression: genuinely-distinct names still allowed.
+	db := setupTestDB(t)
+	svc := createSectionService(db)
+	ctx := context.Background()
+	org := createTestOrganization(t, db, "Test Org")
+
+	if _, err := svc.Create(ctx, org.ID, &models.SectionCreateRequest{Name: "Krippe"}, "tester"); err != nil {
+		t.Fatalf("first: %v", err)
+	}
+	if _, err := svc.Create(ctx, org.ID, &models.SectionCreateRequest{Name: "Hort"}, "tester"); err != nil {
+		t.Errorf("distinct name should succeed, got %v", err)
+	}
+}
+
+func TestSection_DBAgeCheck_RejectsNegativeAndInverted(t *testing.T) {
+	// Direct UPDATEs that bypass service.validateAgeRange must still
+	// hit the CHECK from migration 000020. Belt-and-suspenders.
+	db := setupTestDB(t)
+	org := createTestOrganization(t, db, "Test Org")
+	section := createTestSection(t, db, "Krippe", org.ID, false)
+
+	// Negative min: rejected.
+	negTen := -10
+	err := db.Model(&models.Section{}).Where("id = ?", section.ID).
+		UpdateColumn("min_age_months", &negTen).Error
+	if err == nil {
+		t.Error("expected DB CHECK to reject negative min_age_months")
+	}
+
+	// Inverted (min > max): rejected.
+	min24 := 24
+	max12 := 12
+	err = db.Model(&models.Section{}).Where("id = ?", section.ID).
+		Updates(map[string]any{"min_age_months": &min24, "max_age_months": &max12}).Error
+	if err == nil {
+		t.Error("expected DB CHECK to reject min > max")
+	}
+
+	// Valid values: allowed (regression guard for an over-zealous CHECK).
+	min0 := 0
+	max36 := 36
+	err = db.Model(&models.Section{}).Where("id = ?", section.ID).
+		Updates(map[string]any{"min_age_months": &min0, "max_age_months": &max36}).Error
+	if err != nil {
+		t.Errorf("valid age range should be allowed, got %v", err)
+	}
+}
+
+// ============================================================
+// S4: Update's IsDuplicateKeyError fallback (TOCTOU symmetry)
+// ============================================================
+
+// updateRacingSectionStore wraps a real SectionStorer but forces
+// Update to return a synthesized pg-23505 error — the same shape
+// IsDuplicateKeyError recognises. This lets the test exercise the
+// fallback branch in service.UpdateByIDAndOrg WITHOUT actually
+// having to race two concurrent Update goroutines.
+type updateRacingSectionStore struct {
+	store.SectionStorer
+}
+
+func (w *updateRacingSectionStore) Update(_ context.Context, _ *models.Section) error {
+	// Mimic what gorm + pgx surface for a real unique-index violation.
+	// IsDuplicateKeyError extracts via errors.As(*pgconn.PgError) and
+	// checks Code == "23505".
+	return &pgconn.PgError{Code: "23505", Message: "duplicate key value violates unique constraint"}
+}
+
+func TestSectionService_UpdateByIDAndOrg_DuplicateKeyFallback_ReturnsConflict(t *testing.T) {
+	// Pre-check FindByNameAndOrg returns "no conflict" but the actual
+	// store.Update fails with a duplicate-key violation (the TOCTOU
+	// race). The previous code wrapped that as InternalWrap → 500.
+	// With the fallback (mirroring Create) it must return Conflict.
+	db := setupTestDB(t)
+	realStore := store.NewSectionStore(db)
+	transactor := store.NewTransactor(db)
+	wrapped := &updateRacingSectionStore{SectionStorer: realStore}
+	svc := NewSectionService(wrapped, transactor)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section := createTestSection(t, db, "Krippe", org.ID, false)
+
+	// Submit a NEW name that doesn't collide in the pre-check (the
+	// real store's FindByNameAndOrg sees no conflict on "Brand New").
+	// The wrapped Update then synthesises the duplicate-key — that's
+	// the path under test.
+	newName := "Brand New"
+	_, err := svc.UpdateByIDAndOrg(ctx, section.ID, org.ID, &models.SectionUpdateRequest{
+		Name: &newName,
+	})
+	if err == nil {
+		t.Fatal("expected error from forced duplicate-key, got nil")
+	}
+	if !errors.Is(err, apperror.ErrConflict) {
+		t.Errorf("expected ErrConflict (mirrors Create), got %v", err)
+	}
+}
+
+// ============================================================
+// S3: PromoteToDefault — exclusivity invariant
+// ============================================================
+
+func TestSectionService_PromoteToDefault_FlipsAndClearsPrevious(t *testing.T) {
+	// Org create-flow seeds one default; the user creates a second
+	// section then promotes it. After promotion the new section has
+	// is_default=true and the seeded one has is_default=false. The
+	// partial unique index from migration 000019 is the truthful
+	// gate; this test exercises the happy path AND verifies the
+	// exclusivity invariant via direct DB read.
+	db := setupTestDB(t)
+	svc := createSectionService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	originalDefault := getDefaultSection(t, db, org.ID)
+	newSection := createTestSection(t, db, "Krippe", org.ID, false)
+
+	if err := svc.PromoteToDefault(ctx, newSection.ID, org.ID); err != nil {
+		t.Fatalf("promote: %v", err)
+	}
+
+	// Read both rows directly to bypass any service-layer scoping.
+	var seeded models.Section
+	if err := db.First(&seeded, originalDefault.ID).Error; err != nil {
+		t.Fatalf("re-read seeded: %v", err)
+	}
+	var promoted models.Section
+	if err := db.First(&promoted, newSection.ID).Error; err != nil {
+		t.Fatalf("re-read promoted: %v", err)
+	}
+
+	if seeded.IsDefault {
+		t.Error("previously-default section should be cleared after promotion")
+	}
+	if !promoted.IsDefault {
+		t.Error("promoted section should have is_default=true")
+	}
+}
+
+func TestSectionService_PromoteToDefault_AlreadyDefault_NoOp(t *testing.T) {
+	// Promoting the section that's already the default must be a
+	// safe no-op — the two-step transaction (clear all, then set
+	// the chosen one) ends in the same state. Regression guard for
+	// a future "skip if already default" optimization that drops
+	// the transaction.
+	db := setupTestDB(t)
+	svc := createSectionService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	defaultSection := getDefaultSection(t, db, org.ID)
+
+	if err := svc.PromoteToDefault(ctx, defaultSection.ID, org.ID); err != nil {
+		t.Fatalf("idempotent promote: %v", err)
+	}
+
+	var after models.Section
+	if err := db.First(&after, defaultSection.ID).Error; err != nil {
+		t.Fatalf("re-read: %v", err)
+	}
+	if !after.IsDefault {
+		t.Error("idempotent promote should leave is_default=true")
+	}
+}
+
+func TestSectionService_PromoteToDefault_WrongOrg_NotFound(t *testing.T) {
+	// Cross-org promotion must NOT leak existence — return NotFound,
+	// not Forbidden. Mirrors the GetByIDAndOrg / DeleteByIDAndOrg
+	// security pattern.
+	db := setupTestDB(t)
+	svc := createSectionService(db)
+	ctx := context.Background()
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+	target := createTestSection(t, db, "Krippe", org1.ID, false)
+
+	err := svc.PromoteToDefault(ctx, target.ID, org2.ID)
+	if err == nil {
+		t.Fatal("cross-org promote must error")
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound (no existence leak), got %v", err)
+	}
+
+	// And the target's is_default must be unchanged.
+	var after models.Section
+	if err := db.First(&after, target.ID).Error; err != nil {
+		t.Fatalf("re-read: %v", err)
+	}
+	if after.IsDefault {
+		t.Error("cross-org call must not have flipped is_default")
+	}
+}
+
+func TestSectionStore_PartialUniqueIndex_RejectsDirectSecondDefault(t *testing.T) {
+	// Direct DB write of a second is_default=true row in the same
+	// org must fail under the partial unique index from migration
+	// 000019. This is the truthful gate that backs the service-layer
+	// PromoteToDefault — without it, a future bug or admin script
+	// could leave the system with two defaults and FindDefaultSection
+	// would be non-deterministic.
+	db := setupTestDB(t)
+	org := createTestOrganization(t, db, "Test Org")
+	// The org-create flow already seeded one default; a direct INSERT
+	// of a second default in the same org must fail.
+	rogue := &models.Section{
+		OrganizationID: org.ID,
+		Name:           "Rogue Default",
+		IsDefault:      true,
+	}
+	err := db.Create(rogue).Error
+	if err == nil {
+		t.Fatal("partial unique index must reject a second is_default=true row")
 	}
 }
 

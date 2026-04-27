@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -135,11 +137,49 @@ func (s *SectionService) UpdateByIDAndOrg(ctx context.Context, id, orgID uint, r
 	}
 
 	if err := s.store.Update(ctx, section); err != nil {
+		// Mirror Create's TOCTOU fallback. Two requests racing to
+		// rename two different sections to the same target name can
+		// both pass the FindByNameAndOrg pre-check above; the unique
+		// index then catches the second one. Without this, that
+		// second request would surface as a 500 (InternalWrap). With
+		// it, both Create and Update consistently return Conflict
+		// for any duplicate-name path.
+		if store.IsDuplicateKeyError(err) {
+			return nil, apperror.Conflict("section with this name already exists in the organization")
+		}
 		return nil, apperror.InternalWrap(err, "failed to update section")
 	}
 
 	resp := section.ToResponse()
 	return &resp, nil
+}
+
+// PromoteToDefault sets the given section as the org's default,
+// clearing the flag from any existing default. Wraps the two-step
+// store operation in a transaction so the partial-unique-index
+// invariant from migration 000019 holds at every statement boundary.
+//
+// Cross-org calls (sectionID belongs to another org) return NotFound
+// rather than Forbidden, mirroring the pattern of GetByIDAndOrg /
+// UpdateByIDAndOrg — avoids leaking section existence across orgs.
+//
+// No-op when the section is already the default; the transaction
+// still runs but both UPDATEs touch the same row (clear→set→clear→
+// set is the same final state).
+func (s *SectionService) PromoteToDefault(ctx context.Context, id, orgID uint) error {
+	return s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
+		section, err := s.store.FindByID(txCtx, id)
+		if err != nil {
+			return classifyStoreError(err, "section")
+		}
+		if err := verifyOrgOwnership(section, orgID, "section"); err != nil {
+			return err
+		}
+		if err := s.store.PromoteToDefault(txCtx, id, orgID); err != nil {
+			return classifyStoreError(err, "section")
+		}
+		return nil
+	})
 }
 
 // DeleteByIDAndOrg deletes a section if it belongs to the specified organization.
@@ -159,24 +199,46 @@ func (s *SectionService) DeleteByIDAndOrg(ctx context.Context, id, orgID uint) e
 			return apperror.BadRequest("cannot delete the default section")
 		}
 
-		// Check if section has children
-		hasChildren, err := s.store.HasChildren(txCtx, id)
+		// Block deletion only when CURRENT contracts still reference
+		// the section. Historical / ended contracts are fine — the
+		// section row physically lives on (gorm soft-delete just sets
+		// deleted_at), so their FK keeps resolving even after the
+		// tombstone. Without the time filter, an org that reorganised
+		// its sections years ago would have permanent "zombie"
+		// sections it could never clean up.
+		now := time.Now().UTC()
+		hasChildren, err := s.store.HasActiveChildren(txCtx, id, now)
 		if err != nil {
 			return apperror.InternalWrap(err, "failed to check section children")
 		}
 		if hasChildren {
-			return apperror.BadRequest("cannot delete section with assigned children")
+			// Surface the exact count so the toast/dialog tells the
+			// user the magnitude of what they need to reassign. The
+			// extra round trip only fires on the rejection path, so
+			// the cost lands precisely where the user is already
+			// facing an error.
+			n, _ := s.store.CountActiveChildren(txCtx, id, now)
+			return apperror.BadRequest(fmt.Sprintf(
+				"cannot delete section with %d currently-assigned children; reassign them first",
+				n))
 		}
 
-		// Check if section has employees
-		hasEmployees, err := s.store.HasEmployees(txCtx, id)
+		hasEmployees, err := s.store.HasActiveEmployees(txCtx, id, now)
 		if err != nil {
 			return apperror.InternalWrap(err, "failed to check section employees")
 		}
 		if hasEmployees {
-			return apperror.BadRequest("cannot delete section with assigned employees")
+			n, _ := s.store.CountActiveEmployees(txCtx, id, now)
+			return apperror.BadRequest(fmt.Sprintf(
+				"cannot delete section with %d currently-assigned employees; reassign them first",
+				n))
 		}
 
+		// Soft-delete via gorm's DeletedAt machinery. Section.Delete
+		// stamps deleted_at; subsequent FindByID auto-scopes the row
+		// out (so List / pickers stop showing it) but historical
+		// contracts under it keep resolving via FK because the row
+		// is still physically present.
 		if err := s.store.Delete(txCtx, id); err != nil {
 			return apperror.InternalWrap(err, "failed to delete section")
 		}

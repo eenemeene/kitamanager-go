@@ -21,6 +21,9 @@ import { useMoveContractMutation } from '@/lib/hooks/use-move-contract-mutation'
 import { type Child, type Employee, LOOKUP_FETCH_LIMIT } from '@/lib/api/types';
 import { getActiveContract } from '@/lib/utils/contracts';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { toLocalDateString } from '@/lib/utils/formatting';
 import { SectionColumn } from './section-column';
 import { ChildCard } from './child-card';
 import { EmployeeCard } from './employee-card';
@@ -44,6 +47,13 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
   const { toast } = useToast();
   const [activeItem, setActiveItem] = useState<ActiveItem | null>(null);
 
+  // Snapshot date for the board. Defaults to today; the user can
+  // shift it backward to see how their sections looked at any past
+  // date or forward to plan a reorganisation. The query keys
+  // include the date so changing it triggers a refetch through the
+  // active_on / contract_on backend filter.
+  const [asOfDate, setAsOfDate] = useState(() => toLocalDateString(new Date()));
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
@@ -57,14 +67,15 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
   });
 
   const { data: children, isLoading: childrenLoading } = useQuery({
-    queryKey: queryKeys.children.allUnpaginated(orgId),
-    queryFn: () => apiClient.getChildrenAll(orgId),
+    // Date in the key so a change triggers a refetch.
+    queryKey: [...queryKeys.children.allUnpaginated(orgId), asOfDate],
+    queryFn: () => apiClient.getChildrenAllForDate(orgId, asOfDate),
     enabled: !!orgId,
   });
 
   const { data: allEmployees, isLoading: employeesLoading } = useQuery({
-    queryKey: queryKeys.employees.allUnpaginated(orgId),
-    queryFn: () => apiClient.getEmployeesAll(orgId),
+    queryKey: [...queryKeys.employees.allUnpaginated(orgId), asOfDate],
+    queryFn: () => apiClient.getEmployeesAllForDate(orgId, asOfDate),
     enabled: !!orgId,
   });
 
@@ -216,10 +227,24 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
 
   return (
     <div className="space-y-3">
-      <p className="text-muted-foreground flex items-center gap-2 text-sm">
-        <GripVertical className="h-4 w-4" />
-        {t('sections.dragHint')}
-      </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <p className="text-muted-foreground flex items-center gap-2 text-sm">
+          <GripVertical className="h-4 w-4" />
+          {t('sections.dragHint')}
+        </p>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="kanban-as-of-date" className="text-sm">
+            {t('sections.asOfDate')}
+          </Label>
+          <Input
+            id="kanban-as-of-date"
+            type="date"
+            value={asOfDate}
+            onChange={(e) => setAsOfDate(e.target.value || toLocalDateString(new Date()))}
+            className="w-auto"
+          />
+        </div>
+      </div>
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="flex gap-4 overflow-x-auto pb-4">
           {sections.map((section) => (

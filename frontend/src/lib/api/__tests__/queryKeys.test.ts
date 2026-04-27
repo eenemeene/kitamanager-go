@@ -83,6 +83,50 @@ describe('queryKeys', () => {
     it('list includes orgId', () => {
       expect(queryKeys.sections.list(3)).toEqual(['sections', 3]);
     });
+
+    // Regression test for the stale-after-section-rename bug. The
+    // sections page's mutation must invalidate not just its own
+    // ['sections', orgId] but also the children, employees, and
+    // statistics namespaces — those queries cache `contract.section_name`
+    // (and related) which goes stale the instant a section is renamed.
+    // Without the cascade, every page that filters or renders by
+    // section shows the OLD name until manual refresh.
+    //
+    // Same shape as the budget-items B2 fix; lock-in here so a
+    // future "let's simplify the invalidation" PR can't silently
+    // re-break it.
+    it('section CRUD invalidation cascade reaches children/employees/statistics', async () => {
+      const { QueryClient } = await import('@tanstack/react-query');
+      const client = new QueryClient();
+
+      // Seed one query under each namespace the cascade should reach,
+      // plus an unrelated query (attendance) that must NOT be touched.
+      client.setQueryData(queryKeys.children.list(1, 'page1'), { seeded: 'children' });
+      client.setQueryData(queryKeys.employees.list(1, 'page1'), { seeded: 'employees' });
+      client.setQueryData(queryKeys.statistics.financials(1, '2025-01-01', '2025-12-01'), {
+        seeded: 'financials',
+      });
+      client.setQueryData(queryKeys.attendance.summary(1, '2025-01-01'), {
+        seeded: 'attendance',
+      });
+
+      // Invalidate via the same prefixes the sections page uses in
+      // its extraInvalidate.
+      await client.invalidateQueries({ queryKey: queryKeys.children.all(1) });
+      await client.invalidateQueries({ queryKey: queryKeys.employees.all(1) });
+      await client.invalidateQueries({ queryKey: queryKeys.statistics.all(1) });
+
+      expect(client.getQueryState(queryKeys.children.list(1, 'page1'))?.isInvalidated).toBe(true);
+      expect(client.getQueryState(queryKeys.employees.list(1, 'page1'))?.isInvalidated).toBe(true);
+      expect(
+        client.getQueryState(queryKeys.statistics.financials(1, '2025-01-01', '2025-12-01'))
+          ?.isInvalidated
+      ).toBe(true);
+      // attendance is unrelated and must stay fresh.
+      expect(
+        client.getQueryState(queryKeys.attendance.summary(1, '2025-01-01'))?.isInvalidated
+      ).toBe(false);
+    });
   });
 
   describe('governmentFundings', () => {

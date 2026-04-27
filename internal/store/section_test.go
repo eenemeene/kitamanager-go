@@ -215,103 +215,193 @@ func TestSectionStore_FindDefaultSection_NotFound(t *testing.T) {
 	}
 }
 
-func TestSectionStore_HasChildren(t *testing.T) {
+// TestSectionStore_FindByOrganizationPaginated_NullsSortLast is a
+// regression guard for the previous `COALESCE(min_age_months, 999)`
+// ordering. Sections with NULL min_age must sort AFTER concrete
+// values (NULLS LAST), and a section with min_age=999 (implausible
+// but legal) must NOT collide with NULL ordering as it would have
+// under the old magic-number trick.
+func TestSectionStore_FindByOrganizationPaginated_NullsSortLast(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewSectionStore(db)
-
 	org := createTestOrganization(t, db, "Test Org")
-	section := createTestSectionWithOrg(t, db, "Test Section", org.ID)
 
-	// Section should have no children initially
-	hasChildren, err := store.HasChildren(context.Background(), section.ID)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if hasChildren {
-		t.Error("expected no children initially")
-	}
-
-	// Create a child with a contract in the section
-	child := &models.Child{
-		Person: models.Person{
-			FirstName:      "Test",
-			LastName:       "Child",
-			OrganizationID: org.ID,
-		},
-	}
-	if err := db.Create(child).Error; err != nil {
-		t.Fatalf("failed to create test child: %v", err)
-	}
-	if err := db.Create(&models.ChildContract{
-		ChildID: child.ID,
-		BaseContract: models.BaseContract{
-			Period:    models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
-			SectionID: section.ID,
-		},
+	// Three sections: NULL min_age, min_age=12, min_age=999.
+	// Expected sort: 12, 999, NULL — NULLS LAST.
+	min12 := 12
+	min999 := 999
+	if err := db.Create(&models.Section{
+		OrganizationID: org.ID, Name: "B-NoAge",
 	}).Error; err != nil {
-		t.Fatalf("failed to create test child contract: %v", err)
+		t.Fatalf("create no-age: %v", err)
+	}
+	if err := db.Create(&models.Section{
+		OrganizationID: org.ID, Name: "A-Twelve", MinAgeMonths: &min12,
+	}).Error; err != nil {
+		t.Fatalf("create min12: %v", err)
+	}
+	if err := db.Create(&models.Section{
+		OrganizationID: org.ID, Name: "A-NineNineNine", MinAgeMonths: &min999,
+	}).Error; err != nil {
+		t.Fatalf("create min999: %v", err)
 	}
 
-	// Section should now have children
-	hasChildren, err = store.HasChildren(context.Background(), section.ID)
+	got, _, err := store.FindByOrganizationPaginated(context.Background(), org.ID, "", 100, 0)
 	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+		t.Fatalf("list: %v", err)
 	}
-	if !hasChildren {
-		t.Error("expected section to have children")
+
+	// Filter to just the three we seeded (the org-create helper
+	// also seeded a default section without a min_age).
+	var seeded []models.Section
+	for _, s := range got {
+		if s.Name == "B-NoAge" || s.Name == "A-Twelve" || s.Name == "A-NineNineNine" {
+			seeded = append(seeded, s)
+		}
+	}
+	if len(seeded) != 3 {
+		t.Fatalf("expected 3 seeded sections, got %d", len(seeded))
+	}
+	// Order assertions (NULLS LAST).
+	if seeded[0].Name != "A-Twelve" {
+		t.Errorf("position 0 should be min_age=12 (A-Twelve), got %q", seeded[0].Name)
+	}
+	if seeded[1].Name != "A-NineNineNine" {
+		t.Errorf("position 1 should be min_age=999 (A-NineNineNine), got %q", seeded[1].Name)
+	}
+	if seeded[2].Name != "B-NoAge" {
+		t.Errorf("position 2 should be NULL min_age (B-NoAge), got %q", seeded[2].Name)
 	}
 }
 
-func TestSectionStore_HasEmployees(t *testing.T) {
+// TestSectionStore_HasActiveChildren covers the time-filtered guard.
+// The previous HasChildren counted EVERY contract — even ENDED ones
+// from years ago — which left orgs unable to delete sections after
+// reorganising. The new HasActiveChildren must only fire for
+// contracts active on the asOf date.
+func TestSectionStore_HasActiveChildren(t *testing.T) {
 	db := setupTestDB(t)
-	store := NewSectionStore(db)
+	s := NewSectionStore(db)
+	org := createTestOrganization(t, db, "Test Org")
+	section := createTestSectionWithOrg(t, db, "Test Section", org.ID)
+	asOf := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
 
+	// Empty section → no active children.
+	got, err := s.HasActiveChildren(context.Background(), section.ID, asOf)
+	if err != nil {
+		t.Fatalf("empty section: %v", err)
+	}
+	if got {
+		t.Error("expected false for empty section")
+	}
+
+	// Helper: insert a child + a contract with given period.
+	mkContract := func(name string, from, to time.Time, hasTo bool) {
+		child := &models.Child{
+			Person: models.Person{FirstName: name, LastName: "X", OrganizationID: org.ID},
+		}
+		if err := db.Create(child).Error; err != nil {
+			t.Fatalf("create child: %v", err)
+		}
+		var toPtr *time.Time
+		if hasTo {
+			toPtr = &to
+		}
+		if err := db.Create(&models.ChildContract{
+			ChildID: child.ID,
+			BaseContract: models.BaseContract{
+				Period:    models.Period{From: from, To: toPtr},
+				SectionID: section.ID,
+			},
+		}).Error; err != nil {
+			t.Fatalf("create contract: %v", err)
+		}
+	}
+
+	// Add an ENDED contract: 2024-01-01 → 2024-12-31. Must NOT block.
+	mkContract("Past", time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC), true)
+
+	got, err = s.HasActiveChildren(context.Background(), section.ID, asOf)
+	if err != nil {
+		t.Fatalf("ended contract only: %v", err)
+	}
+	if got {
+		t.Error("ended contract should not be counted as active")
+	}
+
+	// Add a CURRENT contract that started 2026-01 with no end. Must
+	// block.
+	mkContract("Current", time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), time.Time{}, false)
+
+	got, err = s.HasActiveChildren(context.Background(), section.ID, asOf)
+	if err != nil {
+		t.Fatalf("with active: %v", err)
+	}
+	if !got {
+		t.Error("active contract must register as active")
+	}
+}
+
+func TestSectionStore_HasActiveEmployees(t *testing.T) {
+	db := setupTestDB(t)
+	s := NewSectionStore(db)
 	org := createTestOrganization(t, db, "Test Org")
 	section := createTestSectionWithOrg(t, db, "Test Section", org.ID)
 	payPlan := createTestPayPlan(t, db, org.ID)
+	asOf := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
 
-	// Section should have no employees initially
-	hasEmployees, err := store.HasEmployees(context.Background(), section.ID)
+	got, err := s.HasActiveEmployees(context.Background(), section.ID, asOf)
 	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+		t.Fatalf("empty: %v", err)
 	}
-	if hasEmployees {
-		t.Error("expected no employees initially")
-	}
-
-	// Create an employee with a contract in the section
-	employee := &models.Employee{
-		Person: models.Person{
-			FirstName:      "Test",
-			LastName:       "Employee",
-			OrganizationID: org.ID,
-		},
-	}
-	if err := db.Create(employee).Error; err != nil {
-		t.Fatalf("failed to create test employee: %v", err)
-	}
-	if err := db.Create(&models.EmployeeContract{
-		EmployeeID: employee.ID,
-		BaseContract: models.BaseContract{
-			Period:    models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
-			SectionID: section.ID,
-		},
-		StaffCategory: "qualified",
-		Grade:         "S8a",
-		Step:          1,
-		WeeklyHours:   39,
-		PayPlanID:     payPlan.ID,
-	}).Error; err != nil {
-		t.Fatalf("failed to create test employee contract: %v", err)
+	if got {
+		t.Error("expected false for empty section")
 	}
 
-	// Section should now have employees
-	hasEmployees, err = store.HasEmployees(context.Background(), section.ID)
+	mkContract := func(name string, from, to time.Time, hasTo bool) {
+		emp := &models.Employee{
+			Person: models.Person{FirstName: name, LastName: "X", OrganizationID: org.ID},
+		}
+		if err := db.Create(emp).Error; err != nil {
+			t.Fatalf("create emp: %v", err)
+		}
+		var toPtr *time.Time
+		if hasTo {
+			toPtr = &to
+		}
+		if err := db.Create(&models.EmployeeContract{
+			EmployeeID: emp.ID,
+			BaseContract: models.BaseContract{
+				Period:    models.Period{From: from, To: toPtr},
+				SectionID: section.ID,
+			},
+			StaffCategory: "qualified", Grade: "S8a", Step: 1,
+			WeeklyHours: 39, PayPlanID: payPlan.ID,
+		}).Error; err != nil {
+			t.Fatalf("create contract: %v", err)
+		}
+	}
+
+	// Ended employee contract → not active.
+	mkContract("Past", time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC), true)
+	got, err = s.HasActiveEmployees(context.Background(), section.ID, asOf)
 	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+		t.Fatalf("ended only: %v", err)
 	}
-	if !hasEmployees {
-		t.Error("expected section to have employees")
+	if got {
+		t.Error("ended employee contract should not be counted active")
+	}
+
+	// Currently-active.
+	mkContract("Current", time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), time.Time{}, false)
+	got, err = s.HasActiveEmployees(context.Background(), section.ID, asOf)
+	if err != nil {
+		t.Fatalf("with active: %v", err)
+	}
+	if !got {
+		t.Error("active employee contract must register")
 	}
 }
 
@@ -320,14 +410,14 @@ func TestSection_IsDefaultField(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 
-	// Create a section with IsDefault = true
-	defaultSection := &models.Section{
-		Name:           "Default Section",
-		OrganizationID: org.ID,
-		IsDefault:      true,
-	}
-	if err := db.Create(defaultSection).Error; err != nil {
-		t.Fatalf("failed to create default section: %v", err)
+	// The org-create helper already seeds one default section. With
+	// migration 000019's partial unique index, a SECOND default in
+	// the same org is forbidden — read the seeded one to verify the
+	// IsDefault round-trips correctly through GORM.
+	var defaultSection models.Section
+	if err := db.Where("organization_id = ? AND is_default = ?", org.ID, true).
+		First(&defaultSection).Error; err != nil {
+		t.Fatalf("failed to find seeded default: %v", err)
 	}
 
 	// Reload and verify

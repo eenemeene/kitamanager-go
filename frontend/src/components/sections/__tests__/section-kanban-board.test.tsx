@@ -8,7 +8,11 @@ import { apiClient } from '@/lib/api/client';
 jest.mock('@/lib/api/client', () => ({
   apiClient: {
     getSections: jest.fn(),
-    getChildrenAll: jest.fn(),
+    // The board now uses date-aware fetchers so the user can shift
+    // the snapshot date — `For Date` variants take an explicit
+    // YYYY-MM-DD instead of defaulting to today inside the client.
+    getChildrenAllForDate: jest.fn().mockResolvedValue([]),
+    getEmployeesAllForDate: jest.fn().mockResolvedValue([]),
     updateChild: jest.fn(),
   },
 }));
@@ -57,7 +61,7 @@ describe('SectionKanbanBoard', () => {
 
   it('renders loading skeletons while data is loading', () => {
     mockApiClient.getSections.mockReturnValue(new Promise(() => {})); // Never resolves
-    mockApiClient.getChildrenAll.mockReturnValue(new Promise(() => {}));
+    mockApiClient.getChildrenAllForDate.mockReturnValue(new Promise(() => {}));
 
     render(<SectionKanbanBoard orgId={1} />, { wrapper: TestWrapper });
 
@@ -94,7 +98,7 @@ describe('SectionKanbanBoard', () => {
       total_pages: 1,
     });
 
-    mockApiClient.getChildrenAll.mockResolvedValue([
+    mockApiClient.getChildrenAllForDate.mockResolvedValue([
       {
         id: 1,
         organization_id: 1,
@@ -165,7 +169,7 @@ describe('SectionKanbanBoard', () => {
       total_pages: 1,
     });
 
-    mockApiClient.getChildrenAll.mockResolvedValue([
+    mockApiClient.getChildrenAllForDate.mockResolvedValue([
       {
         id: 1,
         organization_id: 1,
@@ -217,7 +221,7 @@ describe('SectionKanbanBoard', () => {
     expect(screen.getByText('Max Müller')).toBeInTheDocument();
   });
 
-  it('calls getChildrenAll with contract_on filter (server-side filtering)', async () => {
+  it('calls getChildrenAllForDate with the asOf date (default: today)', async () => {
     mockApiClient.getSections.mockResolvedValue({
       data: [],
       total: 0,
@@ -225,15 +229,62 @@ describe('SectionKanbanBoard', () => {
       limit: 100,
       total_pages: 0,
     });
-    mockApiClient.getChildrenAll.mockResolvedValue([]);
+    mockApiClient.getChildrenAllForDate.mockResolvedValue([]);
 
     render(<SectionKanbanBoard orgId={1} />, { wrapper: TestWrapper });
 
     // Wait for loading to finish
     await screen.findByText('sections.dragHint');
 
-    // Verify getChildrenAll was called (API does the contract filtering)
-    expect(mockApiClient.getChildrenAll).toHaveBeenCalledWith(1);
+    // The board defaults to today and passes the date through to the
+    // server (the backend's contract_on filter narrows the result
+    // set, so the page doesn't have to load every contract ever).
+    // Locking in (orgId, YYYY-MM-DD) shape so a future "let's just
+    // pass orgId" PR is exposed.
+    expect(mockApiClient.getChildrenAllForDate).toHaveBeenCalledWith(1, expect.any(String));
+    const calledWith = mockApiClient.getChildrenAllForDate.mock.calls[0][1];
+    expect(calledWith).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('refetches when the asOf date changes', async () => {
+    // Lock-in for the S8 date-shift feature: changing the date in
+    // the picker triggers a refetch through the date-aware
+    // fetchers. Without the date in the query key, TanStack Query
+    // would serve the stale today-snapshot and the user would see
+    // unchanged data.
+    const { fireEvent } = await import('@testing-library/react');
+    mockApiClient.getSections.mockResolvedValue({
+      data: [],
+      total: 0,
+      page: 1,
+      limit: 100,
+      total_pages: 0,
+    });
+    mockApiClient.getChildrenAllForDate.mockResolvedValue([]);
+    mockApiClient.getEmployeesAllForDate.mockResolvedValue([]);
+
+    render(<SectionKanbanBoard orgId={1} />, { wrapper: TestWrapper });
+    await screen.findByText('sections.dragHint');
+
+    const initialChildCalls = mockApiClient.getChildrenAllForDate.mock.calls.length;
+
+    // Change the date — the picker is the only date input on the
+    // page so getByDisplayValue is fine.
+    const dateInput = screen.getByLabelText('sections.asOfDate') as HTMLInputElement;
+    fireEvent.change(dateInput, { target: { value: '2024-01-15' } });
+
+    // Wait for the refetch.
+    await screen.findByDisplayValue('2024-01-15');
+
+    // The fetcher must have been called again, with the new date.
+    expect(mockApiClient.getChildrenAllForDate.mock.calls.length).toBeGreaterThan(
+      initialChildCalls
+    );
+    const lastCall =
+      mockApiClient.getChildrenAllForDate.mock.calls[
+        mockApiClient.getChildrenAllForDate.mock.calls.length - 1
+      ];
+    expect(lastCall).toEqual([1, '2024-01-15']);
   });
 
   it('renders drag hint text', async () => {
@@ -244,7 +295,7 @@ describe('SectionKanbanBoard', () => {
       limit: 100,
       total_pages: 0,
     });
-    mockApiClient.getChildrenAll.mockResolvedValue([]);
+    mockApiClient.getChildrenAllForDate.mockResolvedValue([]);
 
     render(<SectionKanbanBoard orgId={1} />, { wrapper: TestWrapper });
 
