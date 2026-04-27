@@ -8,6 +8,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+
+	"github.com/eenemeene/kitamanager-go/tools/report-pdf/internal/version"
 )
 
 var validReports = map[string]bool{
@@ -54,9 +56,13 @@ func (c *Config) MonthString() string {
 // parsing without the side effects of actually running the report.
 func NewRootCmd(runFn func(*Config) error) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:           "report-pdf",
-		Short:         "Generate KitaManager statistics PDFs",
-		Long:          "report-pdf logs into a KitaManager instance, renders the statistics pages via Playwright, and writes them as PDF files. Every flag also reads from the matching " + envPrefix + "_* environment variable when not provided on the command line.",
+		Use:   "report-pdf",
+		Short: "Generate KitaManager statistics PDFs",
+		Long:  "report-pdf logs into a KitaManager instance, renders the statistics pages via Playwright, and writes them as PDF files. Every flag also reads from the matching " + envPrefix + "_* environment variable when not provided on the command line.",
+		// Setting Version makes cobra wire up `--version` automatically.
+		// Format: "<git-describe>" plus the short commit + build time so
+		// `report-pdf --version` carries enough info to reproduce a build.
+		Version:       fmt.Sprintf("%s (commit %s, built %s)", version.Version(), version.GitCommit, version.BuildTime),
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {

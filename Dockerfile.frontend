@@ -31,6 +31,19 @@ WORKDIR /app
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
+# Version triple — read at request time by the /version route handler
+# so the frontend can advertise its build identity (independent of the
+# API's, since they ship as separate images that may be at different
+# versions). ARGs must be re-declared in this stage to inherit the
+# values from `docker build --build-arg`. Defaults make local
+# `docker build` from a working copy still produce something sensible.
+ARG APP_VERSION=dev
+ARG APP_COMMIT=unknown
+ARG APP_BUILD_TIME=unknown
+ENV APP_VERSION=${APP_VERSION}
+ENV APP_COMMIT=${APP_COMMIT}
+ENV APP_BUILD_TIME=${APP_BUILD_TIME}
+
 # Expose port
 EXPOSE 3000
 

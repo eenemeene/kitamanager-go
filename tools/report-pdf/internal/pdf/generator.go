@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -48,6 +49,13 @@ type Generator struct {
 	browser playwright.Browser
 	cookies []playwright.OptionalCookie
 	baseURL string
+	// webVersion is captured from the rendered DOM the first time
+	// GenerateReport sees a `<meta name="kitamanager-version">` tag.
+	// We read it from the page rather than via a separate HTTP call so
+	// the version we record is guaranteed to come from the same build
+	// that actually rendered the print pages — no race, no parallel
+	// route handler that can drift out of sync with the layout.
+	webVersion string
 }
 
 // NewGenerator installs Playwright browsers if needed and launches a headless Chromium instance.
@@ -137,6 +145,18 @@ func (g *Generator) GenerateReport(reportType, orgID, month, outputDir string) e
 		return fmt.Errorf("timeout waiting for page to be ready: %w", err)
 	}
 
+	// Capture the web-version meta tag the first time we see it.
+	// Subsequent reports won't change the value (same frontend build)
+	// so we only sniff once. EvaluateOptions returns nil for missing
+	// attributes — we just leave webVersion empty in that case.
+	if g.webVersion == "" {
+		if v, err := page.Evaluate(`document.querySelector('meta[name="kitamanager-version"]')?.content ?? ""`); err == nil {
+			if s, ok := v.(string); ok {
+				g.webVersion = s
+			}
+		}
+	}
+
 	// Inject print-optimized CSS:
 	// - Remove max-width so wide tables aren't clipped by the container
 	// - Remove body margin so content uses the full paper width
@@ -183,6 +203,15 @@ func (g *Generator) GenerateReport(reportType, orgID, month, outputDir string) e
 	return nil
 }
 
+// WebVersion returns the kitamanager-version meta tag value the
+// generator captured from the rendered DOM during the most recent
+// GenerateReport call. Returns empty string if no report has been
+// generated yet or if the layout doesn't expose the meta tag (e.g.
+// against a frontend at a version older than this feature).
+func (g *Generator) WebVersion() string {
+	return g.webVersion
+}
+
 // MergeFiles combines multiple PDF files into a single output file.
 func MergeFiles(inputPaths []string, outputPath string) error {
 	return pdfcpuapi.MergeCreateFile(inputPaths, outputPath, false, nil)
@@ -191,6 +220,41 @@ func MergeFiles(inputPaths []string, outputPath string) error {
 // AddProperties adds custom properties to an existing PDF file.
 func AddProperties(pdfPath string, properties map[string]string) error {
 	return pdfcpuapi.AddPropertiesFile(pdfPath, "", properties, nil)
+}
+
+// StampColophon writes `text` as a small bottom-center stamp on the
+// last page of pdfPath in place. Used by the report tool to record the
+// CLI + API versions and the build/render time so a reader can later
+// reproduce or audit which code rendered the PDF in front of them —
+// otherwise an artifact found a year later carries no provenance.
+//
+// pos:bc → bottom-center; sc:0.4 → smallish; op:0.6 → translucent so
+// it never overpowers the chart on the page below it. onTop=true
+// (stamp, not watermark) so it stays readable on top of any
+// background fill the print page might have.
+func StampColophon(pdfPath, text string) error {
+	pages, err := pdfcpuapi.PageCountFile(pdfPath)
+	if err != nil {
+		return fmt.Errorf("count pages of %s: %w", pdfPath, err)
+	}
+	if pages == 0 {
+		return fmt.Errorf("%s has no pages to stamp", pdfPath)
+	}
+	lastPage := strconv.Itoa(pages)
+	// pdfcpu's stamp DSL: position bottom-center, horizontal (rotation:0
+	// — the default would tilt the text ~45° like a watermark), 9pt
+	// font, 60% opaque, slight upward offset so the line clears the
+	// page margin. `scalefactor:1.0 abs` keeps the text at literal
+	// font size rather than fitting it to page width.
+	//
+	// `scalefactor` and `rotation` are spelled out rather than using
+	// the short prefix because `sc` collides with `strokecolor` and
+	// `rot` with `rendermode` — pdfcpu rejects ambiguous prefixes.
+	desc := "pos:bc, offset:0 20, points:9, opacity:0.6, rotation:0, scalefactor:1.0 abs"
+	if err := pdfcpuapi.AddTextWatermarksFile(pdfPath, "", []string{lastPage}, true, text, desc, nil); err != nil {
+		return fmt.Errorf("stamp colophon on %s: %w", pdfPath, err)
+	}
+	return nil
 }
 
 // Close shuts down the browser and Playwright.

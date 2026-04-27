@@ -47,6 +47,15 @@ This produces (filenames include the report month in `YYYY-MM` form):
 | `--month` | `KITAMANAGER_REPORT_MONTH` | current month | Report month in `YYYY-MM` form (e.g. `2026-04`). All data the report renders is scoped to a 12-month rolling window ending on this month, with snapshot views as of the first of this month. |
 | `--output-dir` | `KITAMANAGER_REPORT_OUTPUT_DIR` | `.` | Output directory for PDF files |
 | `--reports` | `KITAMANAGER_REPORT_REPORTS` | `all` | Comma-separated: `children,occupancy,staffing,financials` |
+| `--version` | — | — | Print the report-pdf version (git describe + commit + build time) and exit |
+
+Every generated PDF carries a colophon stamp on the bottom of its last page recording three versions:
+
+- **report-pdf** — the CLI version, baked into the binary at build time via ldflags.
+- **API** — fetched from `GET {api-url}/api/v1/health` at run time.
+- **Web** — read from a `<meta name="kitamanager-version">` tag in the rendered DOM via Playwright. Reading from the DOM (rather than a separate HTTP route) means the captured value is guaranteed to be from the same frontend build that actually rendered the print pages. The frontend ships as its own image and may be at a different version than the API.
+
+This means an artifact found a year later still carries enough provenance to reproduce or audit the build. If either the API or Web endpoint is unreachable the corresponding field falls back to "unknown" — the colophon still gets stamped.
 
 Every flag also reads from the matching env var when not provided on the command line. **CLI flags win over env vars**, so you can set defaults in a service-unit `EnvironmentFile` and override individual values per invocation. The `KITAMANAGER_REPORT_` prefix avoids collision with the API server's own `KITAMANAGER_*` env vars.
 
