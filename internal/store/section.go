@@ -96,6 +96,45 @@ func (s *SectionStore) Update(ctx context.Context, section *models.Section) erro
 	return DBFromContext(ctx, s.db).Save(section).Error
 }
 
+// PromoteToDefault flips is_default so that exactly the given section
+// is the org's default. Implemented as TWO statements inside a single
+// transaction (the caller wraps the call) rather than one UPDATE with
+// a CASE expression — Postgres checks NOT DEFERRABLE unique
+// constraints immediately per row, so a single UPDATE that sets the
+// NEW default first and the OLD default second would transiently
+// violate the partial-unique index from migration 000019. Splitting
+// into "clear all firsts, then set the new one" guarantees the
+// invariant at every statement boundary.
+//
+// Caller must wrap in a transaction (Service does).
+func (s *SectionStore) PromoteToDefault(ctx context.Context, id, orgID uint) error {
+	db := DBFromContext(ctx, s.db)
+	// Step 1: clear any existing default in this org. is_default rows
+	// for soft-deleted sections are also cleared (no harm — they're
+	// invisible everywhere else).
+	if err := db.Model(&models.Section{}).
+		Where("organization_id = ? AND is_default = ?", orgID, true).
+		Update("is_default", false).Error; err != nil {
+		return err
+	}
+	// Step 2: promote the chosen section. Use UpdateColumn to
+	// bypass GORM's auto-fill of UpdatedAt — promotion shouldn't
+	// touch other audit fields.
+	res := db.Model(&models.Section{}).
+		Where("id = ? AND organization_id = ?", id, orgID).
+		Update("is_default", true)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		// Section vanished between the caller's existence check and
+		// this update — surface as a not-found-style error so the
+		// caller's friendly message stays consistent.
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
 func (s *SectionStore) Delete(ctx context.Context, id uint) error {
 	return DBFromContext(ctx, s.db).Delete(&models.Section{}, id).Error
 }

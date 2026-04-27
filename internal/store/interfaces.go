@@ -152,6 +152,12 @@ type SectionStorer interface {
 	Create(ctx context.Context, section *models.Section) error
 	Update(ctx context.Context, section *models.Section) error
 	Delete(ctx context.Context, id uint) error
+	// PromoteToDefault flips is_default so that the given section
+	// becomes the only default in its org. Two-statement
+	// implementation (clear-then-set) keeps the partial unique
+	// index from migration 000019 happy at every statement boundary.
+	// Caller wraps in a transaction.
+	PromoteToDefault(ctx context.Context, id, orgID uint) error
 	// HasActiveChildren / HasActiveEmployees report whether any
 	// contract that is active on `asOf` references this section. Used
 	// by the delete-guard in SectionService — only currently-assigned

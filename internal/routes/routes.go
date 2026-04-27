@@ -243,6 +243,12 @@ func Setup(r *gin.Engine, d Deps) {
 					sections.DELETE("/:sectionId",
 						authzMiddleware.RequirePermission(rbac.ResourceSections, rbac.ActionDelete),
 						sectionHandler.Delete)
+					// promote-default flips is_default atomically; gated
+					// on Update permission since it modifies the section
+					// without creating or destroying anything.
+					sections.POST("/:sectionId/promote-default",
+						authzMiddleware.RequirePermission(rbac.ResourceSections, rbac.ActionUpdate),
+						sectionHandler.PromoteToDefault)
 				}
 
 				// ============================================================

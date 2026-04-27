@@ -143,6 +143,34 @@ func (s *SectionService) UpdateByIDAndOrg(ctx context.Context, id, orgID uint, r
 	return &resp, nil
 }
 
+// PromoteToDefault sets the given section as the org's default,
+// clearing the flag from any existing default. Wraps the two-step
+// store operation in a transaction so the partial-unique-index
+// invariant from migration 000019 holds at every statement boundary.
+//
+// Cross-org calls (sectionID belongs to another org) return NotFound
+// rather than Forbidden, mirroring the pattern of GetByIDAndOrg /
+// UpdateByIDAndOrg — avoids leaking section existence across orgs.
+//
+// No-op when the section is already the default; the transaction
+// still runs but both UPDATEs touch the same row (clear→set→clear→
+// set is the same final state).
+func (s *SectionService) PromoteToDefault(ctx context.Context, id, orgID uint) error {
+	return s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
+		section, err := s.store.FindByID(txCtx, id)
+		if err != nil {
+			return classifyStoreError(err, "section")
+		}
+		if err := verifyOrgOwnership(section, orgID, "section"); err != nil {
+			return err
+		}
+		if err := s.store.PromoteToDefault(txCtx, id, orgID); err != nil {
+			return classifyStoreError(err, "section")
+		}
+		return nil
+	})
+}
+
 // DeleteByIDAndOrg deletes a section if it belongs to the specified organization.
 // The check-then-delete sequence runs inside a transaction to prevent TOCTOU races.
 func (s *SectionService) DeleteByIDAndOrg(ctx context.Context, id, orgID uint) error {

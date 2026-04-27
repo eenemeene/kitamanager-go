@@ -351,14 +351,14 @@ func TestSection_IsDefaultField(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 
-	// Create a section with IsDefault = true
-	defaultSection := &models.Section{
-		Name:           "Default Section",
-		OrganizationID: org.ID,
-		IsDefault:      true,
-	}
-	if err := db.Create(defaultSection).Error; err != nil {
-		t.Fatalf("failed to create default section: %v", err)
+	// The org-create helper already seeds one default section. With
+	// migration 000019's partial unique index, a SECOND default in
+	// the same org is forbidden — read the seeded one to verify the
+	// IsDefault round-trips correctly through GORM.
+	var defaultSection models.Section
+	if err := db.Where("organization_id = ? AND is_default = ?", org.ID, true).
+		First(&defaultSection).Error; err != nil {
+		t.Fatalf("failed to find seeded default: %v", err)
 	}
 
 	// Reload and verify

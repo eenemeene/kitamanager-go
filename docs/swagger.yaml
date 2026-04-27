@@ -8981,6 +8981,54 @@ paths:
       summary: Update a section
       tags:
       - sections
+  /api/v1/organizations/{orgId}/sections/{sectionId}/promote-default:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Atomically clears the previous default flag (if any) and
+        sets is_default = true on the given section. The
+        (organization_id) WHERE is_default index from migration
+        000019 enforces "exactly one default per org" at the DB
+        layer; this endpoint is the only sanctioned way to flip
+        the flag through the API.
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Section ID
+        in: path
+        name: sectionId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Set a section as the organization's default
+      tags:
+      - sections
   /api/v1/organizations/{orgId}/statistics/age-distribution:
     get:
       consumes:

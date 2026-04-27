@@ -445,7 +445,11 @@ func TestSectionService_DeleteByIDAndOrg_CannotDeleteDefault(t *testing.T) {
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
-	defaultSection := createTestSection(t, db, "Unassigned", org.ID, true)
+	// Use the org's already-seeded default — migration 000019's
+	// partial unique index forbids creating a SECOND is_default=true
+	// row in the same org, so the previous test setup (which made
+	// its own with isDefault=true) is no longer legal.
+	defaultSection := getDefaultSection(t, db, org.ID)
 
 	err := svc.DeleteByIDAndOrg(ctx, defaultSection.ID, org.ID)
 	if err == nil {
@@ -461,8 +465,8 @@ func TestSectionService_DeleteByIDAndOrg_CannotDeleteDefault(t *testing.T) {
 	if err != nil {
 		t.Errorf("default section was deleted despite protection: %v", err)
 	}
-	if found.Name != "Unassigned" {
-		t.Errorf("default section data was corrupted")
+	if found.Name != "Default" {
+		t.Errorf("default section data was corrupted (name now %q)", found.Name)
 	}
 }
 
@@ -630,6 +634,125 @@ func TestSectionService_NameReusableAfterSoftDelete(t *testing.T) {
 		Name: "Krippe",
 	}, "tester"); err != nil {
 		t.Errorf("name reuse after soft-delete should succeed, got %v", err)
+	}
+}
+
+// ============================================================
+// S3: PromoteToDefault — exclusivity invariant
+// ============================================================
+
+func TestSectionService_PromoteToDefault_FlipsAndClearsPrevious(t *testing.T) {
+	// Org create-flow seeds one default; the user creates a second
+	// section then promotes it. After promotion the new section has
+	// is_default=true and the seeded one has is_default=false. The
+	// partial unique index from migration 000019 is the truthful
+	// gate; this test exercises the happy path AND verifies the
+	// exclusivity invariant via direct DB read.
+	db := setupTestDB(t)
+	svc := createSectionService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	originalDefault := getDefaultSection(t, db, org.ID)
+	newSection := createTestSection(t, db, "Krippe", org.ID, false)
+
+	if err := svc.PromoteToDefault(ctx, newSection.ID, org.ID); err != nil {
+		t.Fatalf("promote: %v", err)
+	}
+
+	// Read both rows directly to bypass any service-layer scoping.
+	var seeded models.Section
+	if err := db.First(&seeded, originalDefault.ID).Error; err != nil {
+		t.Fatalf("re-read seeded: %v", err)
+	}
+	var promoted models.Section
+	if err := db.First(&promoted, newSection.ID).Error; err != nil {
+		t.Fatalf("re-read promoted: %v", err)
+	}
+
+	if seeded.IsDefault {
+		t.Error("previously-default section should be cleared after promotion")
+	}
+	if !promoted.IsDefault {
+		t.Error("promoted section should have is_default=true")
+	}
+}
+
+func TestSectionService_PromoteToDefault_AlreadyDefault_NoOp(t *testing.T) {
+	// Promoting the section that's already the default must be a
+	// safe no-op — the two-step transaction (clear all, then set
+	// the chosen one) ends in the same state. Regression guard for
+	// a future "skip if already default" optimization that drops
+	// the transaction.
+	db := setupTestDB(t)
+	svc := createSectionService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	defaultSection := getDefaultSection(t, db, org.ID)
+
+	if err := svc.PromoteToDefault(ctx, defaultSection.ID, org.ID); err != nil {
+		t.Fatalf("idempotent promote: %v", err)
+	}
+
+	var after models.Section
+	if err := db.First(&after, defaultSection.ID).Error; err != nil {
+		t.Fatalf("re-read: %v", err)
+	}
+	if !after.IsDefault {
+		t.Error("idempotent promote should leave is_default=true")
+	}
+}
+
+func TestSectionService_PromoteToDefault_WrongOrg_NotFound(t *testing.T) {
+	// Cross-org promotion must NOT leak existence — return NotFound,
+	// not Forbidden. Mirrors the GetByIDAndOrg / DeleteByIDAndOrg
+	// security pattern.
+	db := setupTestDB(t)
+	svc := createSectionService(db)
+	ctx := context.Background()
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+	target := createTestSection(t, db, "Krippe", org1.ID, false)
+
+	err := svc.PromoteToDefault(ctx, target.ID, org2.ID)
+	if err == nil {
+		t.Fatal("cross-org promote must error")
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound (no existence leak), got %v", err)
+	}
+
+	// And the target's is_default must be unchanged.
+	var after models.Section
+	if err := db.First(&after, target.ID).Error; err != nil {
+		t.Fatalf("re-read: %v", err)
+	}
+	if after.IsDefault {
+		t.Error("cross-org call must not have flipped is_default")
+	}
+}
+
+func TestSectionStore_PartialUniqueIndex_RejectsDirectSecondDefault(t *testing.T) {
+	// Direct DB write of a second is_default=true row in the same
+	// org must fail under the partial unique index from migration
+	// 000019. This is the truthful gate that backs the service-layer
+	// PromoteToDefault — without it, a future bug or admin script
+	// could leave the system with two defaults and FindDefaultSection
+	// would be non-deterministic.
+	db := setupTestDB(t)
+	org := createTestOrganization(t, db, "Test Org")
+	// The org-create flow already seeded one default; a direct INSERT
+	// of a second default in the same org must fail.
+	rogue := &models.Section{
+		OrganizationID: org.ID,
+		Name:           "Rogue Default",
+		IsDefault:      true,
+	}
+	err := db.Create(rogue).Error
+	if err == nil {
+		t.Fatal("partial unique index must reject a second is_default=true row")
 	}
 }
 
