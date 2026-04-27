@@ -450,15 +450,19 @@ jobs:
             --api-url http://localhost:8080 \
             --output-dir /tmp/report-pdfs
 
-      - name: Upload generated reports
-        # always() so we capture partial output if the tool fails midway
-        # (one report renders, another times out) — that's exactly the
-        # case where having the artifact is most diagnostic.
+      - name: Upload generated report
+        # Upload only the merged report (`report-{org}-{month}.pdf`) —
+        # the four per-section PDFs in the same directory are intermediate
+        # artefacts that pdf.MergeFiles already concatenates into the
+        # combined file, so shipping them separately is just noise inside
+        # the zip wrapper GitHub forces on every artifact.
+        # always() so we capture the merged file if it was produced even
+        # when an earlier step (e.g., E2E) failed.
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: report-pdfs
-          path: /tmp/report-pdfs/
+          name: report-pdf
+          path: /tmp/report-pdfs/report-*.pdf
           retention-days: 30
           if-no-files-found: ignore
 
