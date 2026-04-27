@@ -983,10 +983,15 @@ class ApiClient {
     );
   }
 
-  async postForecast(orgId: number, request: ForecastRequest): Promise<ForecastResponse> {
+  async postForecast(
+    orgId: number,
+    request: ForecastRequest,
+    signal?: AbortSignal
+  ): Promise<ForecastResponse> {
     const response = await this.client.post<ForecastResponse>(
       `/organizations/${orgId}/statistics/forecast`,
-      request
+      request,
+      { signal }
     );
     return response.data;
   }

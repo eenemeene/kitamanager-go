@@ -67,9 +67,46 @@ type FinancialDataPoint struct {
 	SalaryDetails     []FinancialSalaryDetail     `json:"salary_details,omitempty"`
 }
 
-// FinancialResponse represents the response for financial statistics
+// FinancialResponse represents the response for financial statistics.
+//
+// Warnings collects per-row, non-fatal data-quality issues hit during the
+// month-by-month walk: an employee contract that references an unknown pay
+// plan, a contract date that no period covers, a (grade,step) combination
+// missing from the pay plan's entries. The salary for that employee in
+// that month is excluded from the totals (so the numbers stay
+// deterministic instead of silently zero-padding) and a warning entry is
+// appended so the caller can show "1 employee's salary was excluded — pay
+// plan X has no period for 2026-03." Empty when the dataset is clean.
 type FinancialResponse struct {
 	DataPoints []FinancialDataPoint `json:"data_points"`
+	Warnings   []CalculationWarning `json:"warnings,omitempty"`
+}
+
+// CalculationWarning is a per-row, non-fatal data-quality issue surfaced
+// from a statistics or forecast calculation. Encoded so the frontend can
+// group/translate by Code rather than by string-matching Message. Numeric
+// metadata is omitted (json `omitempty`) so warnings unrelated to a
+// specific entity stay compact.
+//
+// Codes are stable strings, owned by the service layer; new codes can be
+// added freely but existing ones MUST keep their semantics. Current set:
+//
+//   - missing_pay_plan        — contract.PayPlanID has no row in the
+//     loaded pay plan map (data references a
+//     row that no longer exists).
+//   - no_pay_plan_period      — pay plan exists but no period covers the
+//     contract date.
+//   - no_pay_plan_entry       — period exists but the (grade, step)
+//     combination is not in its entries.
+type CalculationWarning struct {
+	Code       string `json:"code" example:"missing_pay_plan"`
+	Message    string `json:"message" example:"employee contract references unknown pay plan"`
+	EmployeeID uint   `json:"employee_id,omitempty" example:"42"`
+	ContractID uint   `json:"contract_id,omitempty" example:"99"`
+	PayPlanID  uint   `json:"pay_plan_id,omitempty" example:"7"`
+	Grade      string `json:"grade,omitempty" example:"S8a"`
+	Step       int    `json:"step,omitempty" example:"3"`
+	Date       string `json:"date,omitempty" example:"2026-03-01"`
 }
 
 // OccupancyAgeGroup describes an age group derived from government funding configuration

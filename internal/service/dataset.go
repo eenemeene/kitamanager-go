@@ -57,7 +57,10 @@ func (s *StatisticsService) loadDataSet(ctx context.Context, orgID uint, rangeSt
 		return nil, apperror.InternalWrap(err, "failed to fetch employees")
 	}
 
-	payPlans := s.loadPayPlans(ctx, employees)
+	payPlans, err := s.loadPayPlans(ctx, employees)
+	if err != nil {
+		return nil, err
+	}
 
 	budgetItems, err := s.budgetItemStore.FindByOrganizationWithEntries(ctx, orgID)
 	if err != nil {

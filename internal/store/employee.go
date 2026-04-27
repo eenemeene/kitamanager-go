@@ -146,6 +146,28 @@ func (s *EmployeeStore) FindByIDMinimalAndOrg(ctx context.Context, id, orgID uin
 	return &employee, nil
 }
 
+// FindByIDsAndOrg returns the subset of `ids` that exist AND belong to
+// orgID, keyed by id. No preloads — pure existence check, used by the
+// forecast validator to verify N referenced employees in a single
+// round trip rather than N. Missing or wrong-org IDs are absent from
+// the result; the caller turns absence into the appropriate error.
+func (s *EmployeeStore) FindByIDsAndOrg(ctx context.Context, ids []uint, orgID uint) (map[uint]*models.Employee, error) {
+	out := make(map[uint]*models.Employee, len(ids))
+	if len(ids) == 0 {
+		return out, nil
+	}
+	var rows []models.Employee
+	if err := DBFromContext(ctx, s.db).
+		Where("id IN ? AND organization_id = ?", ids, orgID).
+		Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	for i := range rows {
+		out[rows[i].ID] = &rows[i]
+	}
+	return out, nil
+}
+
 func (s *EmployeeStore) Create(ctx context.Context, employee *models.Employee) error {
 	return DBFromContext(ctx, s.db).Create(employee).Error
 }

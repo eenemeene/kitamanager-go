@@ -310,6 +310,33 @@ definitions:
         example: true
         type: boolean
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.CalculationWarning:
+    properties:
+      code:
+        example: missing_pay_plan
+        type: string
+      contract_id:
+        example: 99
+        type: integer
+      date:
+        example: "2026-03-01"
+        type: string
+      employee_id:
+        example: 42
+        type: integer
+      grade:
+        example: S8a
+        type: string
+      message:
+        example: employee contract references unknown pay plan
+        type: string
+      pay_plan_id:
+        example: 7
+        type: integer
+      step:
+        example: 3
+        type: integer
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.Child:
     properties:
       birthdate:
@@ -1513,6 +1540,10 @@ definitions:
         items:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FinancialDataPoint'
         type: array
+      warnings:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.CalculationWarning'
+        type: array
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.FinancialSalaryDetail:
     properties:
@@ -1571,6 +1602,10 @@ definitions:
         $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.OccupancyResponse'
       staffing_hours:
         $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.StaffingHoursResponse'
+      warnings:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.CalculationWarning'
+        type: array
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.FundingComparisonAmount:
     properties:

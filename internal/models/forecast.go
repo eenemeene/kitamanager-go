@@ -23,9 +23,14 @@ type ForecastRequest struct {
 }
 
 // ForecastResponse is the combined response from the forecast endpoint.
+//
+// Warnings is the union of per-row data-quality warnings emitted by all
+// embedded calculations (today only Financials emits any). See
+// CalculationWarning for the code set.
 type ForecastResponse struct {
 	Financials            *FinancialResponse             `json:"financials,omitempty"`
 	StaffingHours         *StaffingHoursResponse         `json:"staffing_hours,omitempty"`
 	Occupancy             *OccupancyResponse             `json:"occupancy,omitempty"`
 	EmployeeStaffingHours *EmployeeStaffingHoursResponse `json:"employee_staffing_hours,omitempty"`
+	Warnings              []CalculationWarning           `json:"warnings,omitempty"`
 }

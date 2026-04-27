@@ -10518,6 +10518,43 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.CalculationWarning": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "missing_pay_plan"
+                },
+                "contract_id": {
+                    "type": "integer",
+                    "example": 99
+                },
+                "date": {
+                    "type": "string",
+                    "example": "2026-03-01"
+                },
+                "employee_id": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "grade": {
+                    "type": "string",
+                    "example": "S8a"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "employee contract references unknown pay plan"
+                },
+                "pay_plan_id": {
+                    "type": "integer",
+                    "example": 7
+                },
+                "step": {
+                    "type": "integer",
+                    "example": 3
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.Child": {
             "type": "object",
             "properties": {
@@ -12174,6 +12211,12 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FinancialDataPoint"
                     }
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.CalculationWarning"
+                    }
                 }
             }
         },
@@ -12260,6 +12303,12 @@ const docTemplate = `{
                 },
                 "staffing_hours": {
                     "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.StaffingHoursResponse"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.CalculationWarning"
+                    }
                 }
             }
         },

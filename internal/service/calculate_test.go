@@ -1039,7 +1039,7 @@ func TestCalculateFinancials_Basic(t *testing.T) {
 		}),
 	}
 
-	result := calculateFinancials(children, employees, payPlans, fundingPeriods, nil, start, end)
+	result, _ := calculateFinancials(children, employees, payPlans, fundingPeriods, nil, start, end)
 
 	if len(result) != 1 {
 		t.Fatalf("expected 1 data point, got %d", len(result))
@@ -1092,7 +1092,7 @@ func TestCalculateFinancials_PartTimeEmployee(t *testing.T) {
 		}),
 	}
 
-	result := calculateFinancials(nil, employees, payPlans, nil, nil, start, end)
+	result, _ := calculateFinancials(nil, employees, payPlans, nil, nil, start, end)
 	if len(result) != 1 {
 		t.Fatalf("expected 1 data point, got %d", len(result))
 	}
@@ -1123,7 +1123,7 @@ func TestCalculateFinancials_BudgetItems(t *testing.T) {
 		}),
 	}
 
-	result := calculateFinancials(children, nil, nil, nil, budgetItems, start, end)
+	result, _ := calculateFinancials(children, nil, nil, nil, budgetItems, start, end)
 	if len(result) != 1 {
 		t.Fatalf("expected 1 data point, got %d", len(result))
 	}
@@ -1205,7 +1205,7 @@ func TestCalculateFinancials_FundingDetails(t *testing.T) {
 		}),
 	}
 
-	result := calculateFinancials(children, nil, nil, periods, nil, start, end)
+	result, _ := calculateFinancials(children, nil, nil, periods, nil, start, end)
 	dp := result[0]
 
 	// 2 children × 100000 ganztag + 1 child × 30000 ndh = 230000
@@ -1247,7 +1247,7 @@ func TestCalculateFinancials_SalaryDetails(t *testing.T) {
 		}),
 	}
 
-	result := calculateFinancials(nil, employees, payPlans, nil, nil, start, end)
+	result, _ := calculateFinancials(nil, employees, payPlans, nil, nil, start, end)
 	dp := result[0]
 
 	if len(dp.SalaryDetails) != 2 {
@@ -1278,7 +1278,7 @@ func TestCalculateFinancials_NoPayPlan(t *testing.T) {
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn})))
 	defer slog.SetDefault(oldLogger)
 
-	result := calculateFinancials(nil, employees, nil, nil, nil, date(2025, 1, 1), date(2025, 1, 1))
+	result, warnings := calculateFinancials(nil, employees, nil, nil, nil, date(2025, 1, 1), date(2025, 1, 1))
 	if result[0].GrossSalary != 0 {
 		t.Errorf("expected 0 gross when no pay plan, got %d", result[0].GrossSalary)
 	}
@@ -1287,6 +1287,12 @@ func TestCalculateFinancials_NoPayPlan(t *testing.T) {
 	}
 	if !bytes.Contains(buf.Bytes(), []byte("unknown pay plan")) {
 		t.Errorf("expected warn log about unknown pay plan, got: %s", buf.String())
+	}
+	if len(warnings) != 1 {
+		t.Fatalf("expected 1 warning, got %d", len(warnings))
+	}
+	if warnings[0].Code != "missing_pay_plan" || warnings[0].EmployeeID != 1 || warnings[0].ContractID != 1 || warnings[0].PayPlanID != 999 {
+		t.Errorf("unexpected warning fields: %+v", warnings[0])
 	}
 }
 
@@ -1311,7 +1317,7 @@ func TestCalculateFinancials_MissingGradeEntry(t *testing.T) {
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn})))
 	defer slog.SetDefault(oldLogger)
 
-	result := calculateFinancials(nil, employees, payPlans, nil, nil, date(2025, 1, 1), date(2025, 1, 1))
+	result, warnings := calculateFinancials(nil, employees, payPlans, nil, nil, date(2025, 1, 1), date(2025, 1, 1))
 	if result[0].GrossSalary != 0 {
 		t.Errorf("expected 0 gross when grade/step missing, got %d", result[0].GrossSalary)
 	}
@@ -1321,10 +1327,16 @@ func TestCalculateFinancials_MissingGradeEntry(t *testing.T) {
 	if !bytes.Contains(buf.Bytes(), []byte("no pay plan entry")) {
 		t.Errorf("expected warn log about missing grade/step, got: %s", buf.String())
 	}
+	if len(warnings) != 1 {
+		t.Fatalf("expected 1 warning, got %d", len(warnings))
+	}
+	if warnings[0].Code != "no_pay_plan_entry" || warnings[0].Grade != "S9" || warnings[0].Step != 2 {
+		t.Errorf("unexpected warning fields: %+v", warnings[0])
+	}
 }
 
 func TestCalculateFinancials_MultipleMonths(t *testing.T) {
-	result := calculateFinancials(nil, nil, nil, nil, nil, date(2025, 1, 1), date(2025, 6, 1))
+	result, _ := calculateFinancials(nil, nil, nil, nil, nil, date(2025, 1, 1), date(2025, 6, 1))
 	if len(result) != 6 {
 		t.Errorf("expected 6 data points, got %d", len(result))
 	}
@@ -1337,7 +1349,7 @@ func TestCalculateFinancials_MultipleMonths(t *testing.T) {
 }
 
 func TestCalculateFinancials_Empty(t *testing.T) {
-	result := calculateFinancials(nil, nil, nil, nil, nil, date(2025, 1, 1), date(2025, 1, 1))
+	result, _ := calculateFinancials(nil, nil, nil, nil, nil, date(2025, 1, 1), date(2025, 1, 1))
 	if len(result) != 1 {
 		t.Fatalf("expected 1 data point, got %d", len(result))
 	}
@@ -1353,9 +1365,107 @@ func TestCalculateFinancials_BudgetItemExpiredEntry(t *testing.T) {
 			makeBudgetItemEntry(date(2023, 1, 1), datePtr(2024, 12, 31), 100000),
 		}),
 	}
-	result := calculateFinancials(nil, nil, nil, nil, budgetItems, date(2025, 1, 1), date(2025, 1, 1))
+	result, _ := calculateFinancials(nil, nil, nil, nil, budgetItems, date(2025, 1, 1), date(2025, 1, 1))
 	if result[0].BudgetExpenses != 0 {
 		t.Errorf("expected 0 for expired budget entry, got %d", result[0].BudgetExpenses)
+	}
+}
+
+func TestCalculateFinancials_NoPayPlanPeriodForDate(t *testing.T) {
+	// Pay plan exists, but its single period is in the past — the requested
+	// month falls in a gap with no period coverage.
+	ppID := uint(1)
+	pastEnd := date(2024, 12, 31)
+	payPlans := map[uint]*models.PayPlan{
+		ppID: makePayPlan(ppID, []models.PayPlanPeriod{
+			makePayPlanPeriod(1, date(2024, 1, 1), &pastEnd, 39.0, 2200, []models.PayPlanEntry{
+				makePayPlanEntry("S8a", 3, 350000),
+			}),
+		}),
+	}
+	employees := []models.Employee{
+		makeEmployee(7, "A", "B", []models.EmployeeContract{
+			makeEmployeeContract(11, 1, date(2025, 1, 1), nil, "qualified", "S8a", 3, 39.0, ppID),
+		}),
+	}
+
+	result, warnings := calculateFinancials(nil, employees, payPlans, nil, nil, date(2025, 1, 1), date(2025, 1, 1))
+	if result[0].GrossSalary != 0 {
+		t.Errorf("expected 0 gross when no period covers date, got %d", result[0].GrossSalary)
+	}
+	if len(warnings) != 1 {
+		t.Fatalf("expected 1 warning, got %d", len(warnings))
+	}
+	if warnings[0].Code != "no_pay_plan_period" {
+		t.Errorf("expected code no_pay_plan_period, got %q", warnings[0].Code)
+	}
+	if warnings[0].EmployeeID != 7 || warnings[0].ContractID != 11 || warnings[0].PayPlanID != ppID {
+		t.Errorf("unexpected warning fields: %+v", warnings[0])
+	}
+	if warnings[0].Date != "2025-01-01" {
+		t.Errorf("expected date 2025-01-01, got %q", warnings[0].Date)
+	}
+}
+
+func TestCalculateFinancials_WarningsDedupedAcrossMonths(t *testing.T) {
+	// One bad contract spanning 12 months should yield ONE warning, not 12.
+	// Without dedup the response payload would balloon and the UI would
+	// have to dedup client-side, which is a worse split of responsibilities.
+	employees := []models.Employee{
+		makeEmployee(1, "A", "B", []models.EmployeeContract{
+			makeEmployeeContract(1, 1, date(2024, 1, 1), nil, "qualified", "S8a", 3, 39.0, 999),
+		}),
+	}
+	_, warnings := calculateFinancials(nil, employees, nil, nil, nil, date(2025, 1, 1), date(2025, 12, 1))
+	if len(warnings) != 1 {
+		t.Fatalf("expected 1 deduped warning across 12 months, got %d: %+v", len(warnings), warnings)
+	}
+	if warnings[0].Code != "missing_pay_plan" {
+		t.Errorf("expected missing_pay_plan, got %q", warnings[0].Code)
+	}
+	// First-month-wins for the Date stamp.
+	if warnings[0].Date != "2025-01-01" {
+		t.Errorf("expected first-month date 2025-01-01, got %q", warnings[0].Date)
+	}
+}
+
+func TestCalculateFinancials_DistinctContractsProduceDistinctWarnings(t *testing.T) {
+	// Two different misconfigured contracts must each surface as their own
+	// warning — dedup is per-contract, not per-code.
+	employees := []models.Employee{
+		makeEmployee(1, "A", "B", []models.EmployeeContract{
+			makeEmployeeContract(101, 1, date(2024, 1, 1), nil, "qualified", "S8a", 3, 39.0, 999),
+		}),
+		makeEmployee(2, "C", "D", []models.EmployeeContract{
+			makeEmployeeContract(102, 2, date(2024, 1, 1), nil, "qualified", "S8a", 3, 39.0, 998),
+		}),
+	}
+	_, warnings := calculateFinancials(nil, employees, nil, nil, nil, date(2025, 1, 1), date(2025, 1, 1))
+	if len(warnings) != 2 {
+		t.Fatalf("expected 2 warnings (one per bad contract), got %d", len(warnings))
+	}
+}
+
+func TestCalculateFinancials_CleanData_NoWarnings(t *testing.T) {
+	// Sanity check: when every contract resolves cleanly, no warnings are
+	// emitted. Prevents a regression where the dedup map starts populating
+	// on success paths too.
+	ppID := uint(1)
+	payPlans := map[uint]*models.PayPlan{
+		ppID: makePayPlan(ppID, []models.PayPlanPeriod{
+			makePayPlanPeriod(1, date(2024, 1, 1), nil, 39.0, 2200, []models.PayPlanEntry{
+				makePayPlanEntry("S8a", 3, 350000),
+			}),
+		}),
+	}
+	employees := []models.Employee{
+		makeEmployee(1, "A", "B", []models.EmployeeContract{
+			makeEmployeeContract(1, 1, date(2024, 1, 1), nil, "qualified", "S8a", 3, 39.0, ppID),
+		}),
+	}
+	_, warnings := calculateFinancials(nil, employees, payPlans, nil, nil, date(2025, 1, 1), date(2025, 6, 1))
+	if len(warnings) != 0 {
+		t.Errorf("expected no warnings on clean data, got %+v", warnings)
 	}
 }
 
@@ -1525,8 +1635,8 @@ func TestCalculateFinancials_DeterministicOnOverlappingContracts(t *testing.T) {
 	forward := []models.Employee{makeEmployee(1, "A", "B", []models.EmployeeContract{older, newer})}
 	reversed := []models.Employee{makeEmployee(1, "A", "B", []models.EmployeeContract{newer, older})}
 
-	forwardResult := calculateFinancials(nil, forward, payPlans, nil, nil, date(2025, 6, 1), date(2025, 6, 1))
-	reversedResult := calculateFinancials(nil, reversed, payPlans, nil, nil, date(2025, 6, 1), date(2025, 6, 1))
+	forwardResult, _ := calculateFinancials(nil, forward, payPlans, nil, nil, date(2025, 6, 1), date(2025, 6, 1))
+	reversedResult, _ := calculateFinancials(nil, reversed, payPlans, nil, nil, date(2025, 6, 1), date(2025, 6, 1))
 
 	if forwardResult[0].GrossSalary != reversedResult[0].GrossSalary {
 		t.Errorf("gross salary depends on input order: forward=%d, reversed=%d", forwardResult[0].GrossSalary, reversedResult[0].GrossSalary)

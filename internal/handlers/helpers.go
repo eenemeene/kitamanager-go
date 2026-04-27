@@ -22,7 +22,11 @@ import (
 )
 
 // MaxDateRangeMonths is the maximum allowed date range for queries.
-const MaxDateRangeMonths = 72
+// Kept as an alias of the service-layer bound so the two cannot drift —
+// handler-side parsing rejects oversized ranges, and the service layer
+// enforces the same bound in snapAndValidateRange for the JSON-body
+// forecast endpoint that bypasses query-string parsing.
+const MaxDateRangeMonths = service.MaxStatisticsRangeMonths
 
 // MaxUploadSize is the maximum allowed file upload size (5MB).
 const MaxUploadSize = 5 << 20

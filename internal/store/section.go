@@ -24,6 +24,28 @@ func (s *SectionStore) FindByID(ctx context.Context, id uint) (*models.Section, 
 	return &section, nil
 }
 
+// FindByIDsAndOrg returns the subset of `ids` that exist AND belong to
+// orgID, keyed by id for O(1) presence checks at the call site. Used by
+// the forecast validator to check N section references in one round
+// trip instead of N. Missing/wrong-org IDs are simply absent from the
+// result map — the caller turns absence into the appropriate error.
+func (s *SectionStore) FindByIDsAndOrg(ctx context.Context, ids []uint, orgID uint) (map[uint]*models.Section, error) {
+	out := make(map[uint]*models.Section, len(ids))
+	if len(ids) == 0 {
+		return out, nil
+	}
+	var rows []models.Section
+	if err := DBFromContext(ctx, s.db).
+		Where("id IN ? AND organization_id = ?", ids, orgID).
+		Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	for i := range rows {
+		out[rows[i].ID] = &rows[i]
+	}
+	return out, nil
+}
+
 func (s *SectionStore) FindByOrganizationPaginated(ctx context.Context, orgID uint, search string, limit, offset int) ([]models.Section, int64, error) {
 	var sections []models.Section
 	var total int64
