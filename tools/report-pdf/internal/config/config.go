@@ -6,8 +6,6 @@ import (
 	"os"
 	"strings"
 	"time"
-
-	"gopkg.in/yaml.v3"
 )
 
 var validReports = map[string]bool{
@@ -82,95 +80,4 @@ func ParseArgs(args []string) (*Config, error) {
 	}
 
 	return cfg, nil
-}
-
-// FileConfig represents a YAML configuration file for scheduled report mode.
-type FileConfig struct {
-	APIURL    string     `yaml:"api_url"`
-	BaseURL   string     `yaml:"base_url"`
-	Email     string     `yaml:"email"`
-	Password  string     `yaml:"password"`
-	SMTP      SMTPConfig `yaml:"smtp"`
-	Schedules []Schedule `yaml:"schedules"`
-}
-
-// SMTPConfig holds SMTP server settings for email delivery.
-type SMTPConfig struct {
-	Host     string `yaml:"host"`
-	Port     int    `yaml:"port"`
-	User     string `yaml:"user"`
-	Password string `yaml:"password"`
-	From     string `yaml:"from"`
-}
-
-// Schedule defines a single report schedule entry.
-type Schedule struct {
-	Name       string   `yaml:"name"`
-	OrgID      string   `yaml:"org_id"`
-	Reports    []string `yaml:"reports"`
-	Frequency  string   `yaml:"frequency"` // "monthly" or "weekly"
-	Recipients []string `yaml:"recipients"`
-	Enabled    bool     `yaml:"enabled"`
-}
-
-// LoadFile reads a YAML config file and validates it.
-func LoadFile(path string) (*FileConfig, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("reading config file: %w", err)
-	}
-
-	var fc FileConfig
-	if err := yaml.Unmarshal(data, &fc); err != nil {
-		return nil, fmt.Errorf("parsing config file: %w", err)
-	}
-
-	// Required fields.
-	if fc.Email == "" {
-		return nil, fmt.Errorf("email is required in config file")
-	}
-	if fc.Password == "" {
-		return nil, fmt.Errorf("password is required in config file")
-	}
-
-	// Defaults.
-	if fc.APIURL == "" {
-		fc.APIURL = "http://localhost:8080"
-	}
-	if fc.BaseURL == "" {
-		fc.BaseURL = "http://localhost:3000"
-	}
-	if fc.SMTP.Port == 0 {
-		fc.SMTP.Port = 587
-	}
-
-	// Validate enabled schedules.
-	validFrequencies := map[string]bool{"weekly": true, "monthly": true}
-	for i, s := range fc.Schedules {
-		if !s.Enabled {
-			continue
-		}
-		if s.Name == "" {
-			return nil, fmt.Errorf("schedule[%d]: name is required", i)
-		}
-		if s.OrgID == "" {
-			return nil, fmt.Errorf("schedule[%d] %q: org_id is required", i, s.Name)
-		}
-		if len(s.Reports) == 0 {
-			return nil, fmt.Errorf("schedule[%d] %q: at least one report type is required", i, s.Name)
-		}
-		for _, r := range s.Reports {
-			if !validReports[r] {
-				return nil, fmt.Errorf("schedule[%d] %q: invalid report type: %q (valid: staffing, financials, occupancy, children)", i, s.Name, r)
-			}
-		}
-		if !validFrequencies[s.Frequency] {
-			return nil, fmt.Errorf("schedule[%d] %q: invalid frequency: %q (valid: weekly, monthly)", i, s.Name, s.Frequency)
-		}
-		if len(s.Recipients) == 0 {
-			return nil, fmt.Errorf("schedule[%d] %q: at least one recipient is required", i, s.Name)
-		}
-	}
-
-	return &fc, nil
 }

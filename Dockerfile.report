@@ -1,10 +1,13 @@
 # Multi-stage build for the report-pdf tool.
-# Produces a container that can generate PDF reports via Playwright
-# and send them via email on a schedule.
+# Produces a container that can generate PDF reports via Playwright.
+# The tool is one-shot: external schedulers (cron, systemd timers,
+# Kubernetes CronJob) drive recurring runs.
 #
 # Usage:
 #   docker build -f Dockerfile.report -t kitamanager-report .
-#   docker run -v ./report-config.yaml:/config/report-config.yaml:ro kitamanager-report
+#   docker run --rm -v /tmp/reports:/output kitamanager-report \
+#     --email admin@example.com --password secret \
+#     --org-id 1 --output-dir /output
 
 # Stage 1: Build the Go binary
 FROM cgr.dev/chainguard/go:latest AS builder
@@ -31,4 +34,3 @@ COPY --from=builder /app/report-pdf /usr/local/bin/report-pdf
 RUN npx playwright install chromium 2>/dev/null || true
 
 ENTRYPOINT ["report-pdf"]
-CMD ["--config", "/config/report-config.yaml"]
