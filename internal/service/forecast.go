@@ -89,7 +89,7 @@ func (s *StatisticsService) GetForecast(ctx context.Context, orgID uint, req *mo
 		return nil, err
 	}
 
-	applyOverlay(ds, req, req.SectionID)
+	applyOverlay(ds, req)
 
 	// Load any pay plans referenced by overlay employees that aren't already in the DataSet.
 	// We must NOT reload all pay plans — that would wipe overlay-added periods.
@@ -118,6 +118,18 @@ func (s *StatisticsService) GetForecast(ctx context.Context, orgID uint, req *mo
 
 // validateOverlay checks overlay fields and that all referenced IDs belong to the organization.
 func (s *StatisticsService) validateOverlay(ctx context.Context, req *models.ForecastRequest, orgID uint) error {
+	// When the request scopes to a specific section, every overlay add
+	// MUST target that section. The previous behavior silently filtered
+	// mismatches in applyOverlay; users who submitted "add 5 employees
+	// in section A" with `section_id: B` got back "0 employees added"
+	// with no error and no clue why. Catch the contradiction at the
+	// boundary so the response carries a precise field path.
+	if req.SectionID != nil {
+		if err := validateOverlaySectionMatches(req, *req.SectionID); err != nil {
+			return err
+		}
+	}
+
 	// Validate overlay children fields
 	if err := validateOverlayChildren(req.AddChildren); err != nil {
 		return err
@@ -188,6 +200,46 @@ func (s *StatisticsService) validateOverlay(ctx context.Context, req *models.For
 		}
 	}
 
+	return nil
+}
+
+// validateOverlaySectionMatches enforces that every overlay add targets
+// the request's section_id when one is set. Iterates all four add paths
+// (whole entities and standalone contracts, employees and children) so
+// the error message points at the exact path the caller can fix.
+func validateOverlaySectionMatches(req *models.ForecastRequest, want uint) error {
+	for i := range req.AddEmployees {
+		for j, ct := range req.AddEmployees[i].Contracts {
+			if ct.SectionID != want {
+				return apperror.BadRequest(fmt.Sprintf(
+					"add_employees[%d].contracts[%d]: section_id %d does not match request section_id %d",
+					i, j, ct.SectionID, want))
+			}
+		}
+	}
+	for i, ct := range req.AddEmployeeContracts {
+		if ct.SectionID != want {
+			return apperror.BadRequest(fmt.Sprintf(
+				"add_employee_contracts[%d]: section_id %d does not match request section_id %d",
+				i, ct.SectionID, want))
+		}
+	}
+	for i := range req.AddChildren {
+		for j, ct := range req.AddChildren[i].Contracts {
+			if ct.SectionID != want {
+				return apperror.BadRequest(fmt.Sprintf(
+					"add_children[%d].contracts[%d]: section_id %d does not match request section_id %d",
+					i, j, ct.SectionID, want))
+			}
+		}
+	}
+	for i, ct := range req.AddChildContracts {
+		if ct.SectionID != want {
+			return apperror.BadRequest(fmt.Sprintf(
+				"add_child_contracts[%d]: section_id %d does not match request section_id %d",
+				i, ct.SectionID, want))
+		}
+	}
 	return nil
 }
 
@@ -377,10 +429,16 @@ func (s *StatisticsService) loadMissingPayPlans(ctx context.Context, ds *DataSet
 	return nil
 }
 
-// applyOverlay mutates the DataSet in-place according to the overlay request.
-// Order: removes → add contracts to existing → add new virtual entities.
-// If sectionID is non-nil, overlay additions are filtered to that section.
-func applyOverlay(ds *DataSet, req *models.ForecastRequest, sectionID *uint) {
+// applyOverlay mutates the DataSet in-place according to the overlay
+// request. Order: removes → add contracts to existing → add new virtual
+// entities.
+//
+// Section filtering is NOT applied here — validateOverlay rejects any
+// overlay add whose SectionID disagrees with req.SectionID, so by the
+// time we reach this function the only legal sections are present.
+// Keeping the filter out of applyOverlay means "0 results" can no
+// longer be a silent symptom of a section/section mismatch.
+func applyOverlay(ds *DataSet, req *models.ForecastRequest) {
 	// 1. Remove employees
 	if len(req.RemoveEmployeeIDs) > 0 {
 		removeSet := toUintSet(req.RemoveEmployeeIDs)
@@ -399,9 +457,6 @@ func applyOverlay(ds *DataSet, req *models.ForecastRequest, sectionID *uint) {
 
 	// 3. Add contracts to existing employees
 	for _, ac := range req.AddEmployeeContracts {
-		if sectionID != nil && ac.SectionID != *sectionID {
-			continue
-		}
 		for i := range ds.Employees {
 			if ds.Employees[i].ID == ac.EmployeeID {
 				ds.Employees[i].Contracts = append(ds.Employees[i].Contracts, ac)
@@ -412,9 +467,6 @@ func applyOverlay(ds *DataSet, req *models.ForecastRequest, sectionID *uint) {
 
 	// 4. Add contracts to existing children
 	for _, ac := range req.AddChildContracts {
-		if sectionID != nil && ac.SectionID != *sectionID {
-			continue
-		}
 		for i := range ds.Children {
 			if ds.Children[i].ID == ac.ChildID {
 				ds.Children[i].Contracts = append(ds.Children[i].Contracts, ac)
@@ -438,11 +490,6 @@ func applyOverlay(ds *DataSet, req *models.ForecastRequest, sectionID *uint) {
 			emp.Contracts[j].ID = alloc.nextID()
 			emp.Contracts[j].EmployeeID = emp.ID
 		}
-		if sectionID != nil {
-			emp.Contracts = filterSlice(emp.Contracts, func(c models.EmployeeContract) bool {
-				return c.SectionID == *sectionID
-			})
-		}
 		if len(emp.Contracts) > 0 {
 			ds.Employees = append(ds.Employees, emp)
 		}
@@ -455,11 +502,6 @@ func applyOverlay(ds *DataSet, req *models.ForecastRequest, sectionID *uint) {
 		for j := range child.Contracts {
 			child.Contracts[j].ID = alloc.nextID()
 			child.Contracts[j].ChildID = child.ID
-		}
-		if sectionID != nil {
-			child.Contracts = filterSlice(child.Contracts, func(c models.ChildContract) bool {
-				return c.SectionID == *sectionID
-			})
 		}
 		if len(child.Contracts) > 0 {
 			ds.Children = append(ds.Children, child)

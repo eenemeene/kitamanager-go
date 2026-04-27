@@ -450,7 +450,7 @@ func TestApplyOverlay_AddContractToExistingEmployee(t *testing.T) {
 		},
 	}
 
-	applyOverlay(ds, req, nil)
+	applyOverlay(ds, req)
 
 	if len(ds.Employees[0].Contracts) != 2 {
 		t.Fatalf("expected 2 contracts, got %d", len(ds.Employees[0].Contracts))
@@ -1425,6 +1425,208 @@ func TestSnapAndValidateRange_ExactlyAtCap_Allowed(t *testing.T) {
 }
 
 // ============================================================
+// F4: section_id + overlay-section conflict handling
+// ============================================================
+
+func TestGetForecast_SectionScoped_RejectsMismatchedAddEmployee(t *testing.T) {
+	// User submitting "scope to section A, add an employee in section B"
+	// previously got back "0 employees added" with no error — applyOverlay
+	// silently filtered the mismatch. Validation now catches the
+	// contradiction at the boundary so the response carries a precise
+	// path-and-mismatch error.
+	svc, td, db := setupForecastTestDataWithDB(t)
+	otherSection := createTestSection(t, db, "Other Section", td.org.ID, false)
+	ctx := context.Background()
+
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	scopeTo := td.section.ID
+	req := &models.ForecastRequest{
+		From: &from, To: &to, SectionID: &scopeTo,
+		AddEmployees: []models.Employee{{
+			Person: models.Person{
+				FirstName: "Wrong", LastName: "Section", Gender: "female",
+				Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC),
+			},
+			Contracts: []models.EmployeeContract{{
+				BaseContract: models.BaseContract{
+					Period:    models.Period{From: from},
+					SectionID: otherSection.ID,
+				},
+				PayPlanID: td.payplan.ID, Grade: "S8a", Step: 3,
+				WeeklyHours: 30, StaffCategory: "qualified",
+			}},
+		}},
+	}
+
+	_, err := svc.GetForecast(ctx, td.org.ID, req)
+	if err == nil {
+		t.Fatal("expected BadRequest for section mismatch on add_employees, got nil")
+	}
+	if !strings.Contains(err.Error(), "add_employees[0].contracts[0]") {
+		t.Errorf("error should reference the precise path; got %v", err)
+	}
+}
+
+func TestGetForecast_SectionScoped_RejectsMismatchedAddEmployeeContract(t *testing.T) {
+	svc, td, db := setupForecastTestDataWithDB(t)
+	otherSection := createTestSection(t, db, "Other Section", td.org.ID, false)
+	ctx := context.Background()
+
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	scopeTo := td.section.ID
+	req := &models.ForecastRequest{
+		From: &from, To: &to, SectionID: &scopeTo,
+		AddEmployeeContracts: []models.EmployeeContract{{
+			BaseContract: models.BaseContract{
+				Period:    models.Period{From: from},
+				SectionID: otherSection.ID,
+			},
+			EmployeeID: td.emp1.ID,
+			PayPlanID:  td.payplan.ID,
+			Grade:      "S8a", Step: 3, WeeklyHours: 20, StaffCategory: "qualified",
+		}},
+	}
+
+	_, err := svc.GetForecast(ctx, td.org.ID, req)
+	if err == nil {
+		t.Fatal("expected BadRequest, got nil")
+	}
+	if !strings.Contains(err.Error(), "add_employee_contracts[0]") {
+		t.Errorf("error should reference path add_employee_contracts[0]; got %v", err)
+	}
+}
+
+func TestGetForecast_SectionScoped_RejectsMismatchedAddChild(t *testing.T) {
+	svc, td, db := setupForecastTestDataWithDB(t)
+	otherSection := createTestSection(t, db, "Other Section", td.org.ID, false)
+	ctx := context.Background()
+
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	scopeTo := td.section.ID
+	req := &models.ForecastRequest{
+		From: &from, To: &to, SectionID: &scopeTo,
+		AddChildren: []models.Child{{
+			Person: models.Person{
+				FirstName: "Wrong", LastName: "Section", Gender: "female",
+				Birthdate: time.Date(2022, 5, 15, 0, 0, 0, 0, time.UTC),
+			},
+			Contracts: []models.ChildContract{{
+				BaseContract: models.BaseContract{
+					Period:     models.Period{From: from},
+					SectionID:  otherSection.ID,
+					Properties: models.ContractProperties{"care_type": "ganztag"},
+				},
+			}},
+		}},
+	}
+
+	_, err := svc.GetForecast(ctx, td.org.ID, req)
+	if err == nil {
+		t.Fatal("expected BadRequest, got nil")
+	}
+	if !strings.Contains(err.Error(), "add_children[0].contracts[0]") {
+		t.Errorf("error should reference add_children[0].contracts[0]; got %v", err)
+	}
+}
+
+func TestGetForecast_SectionScoped_RejectsMismatchedAddChildContract(t *testing.T) {
+	svc, td, db := setupForecastTestDataWithDB(t)
+	otherSection := createTestSection(t, db, "Other Section", td.org.ID, false)
+	ctx := context.Background()
+
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	scopeTo := td.section.ID
+	req := &models.ForecastRequest{
+		From: &from, To: &to, SectionID: &scopeTo,
+		AddChildContracts: []models.ChildContract{{
+			BaseContract: models.BaseContract{
+				Period:     models.Period{From: from},
+				SectionID:  otherSection.ID,
+				Properties: models.ContractProperties{"care_type": "ganztag"},
+			},
+			ChildID: td.child1.ID,
+		}},
+	}
+
+	_, err := svc.GetForecast(ctx, td.org.ID, req)
+	if err == nil {
+		t.Fatal("expected BadRequest, got nil")
+	}
+	if !strings.Contains(err.Error(), "add_child_contracts[0]") {
+		t.Errorf("error should reference add_child_contracts[0]; got %v", err)
+	}
+}
+
+func TestGetForecast_SectionScoped_AllMatching_Accepted(t *testing.T) {
+	// Sanity: when every overlay add targets the same section as the
+	// scope, validation passes and the forecast runs.
+	svc, td := setupForecastTestData(t)
+	ctx := context.Background()
+
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	scopeTo := td.section.ID
+	req := &models.ForecastRequest{
+		From: &from, To: &to, SectionID: &scopeTo,
+		AddEmployees: []models.Employee{{
+			Person: models.Person{
+				FirstName: "Match", LastName: "Section", Gender: "female",
+				Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC),
+			},
+			Contracts: []models.EmployeeContract{{
+				BaseContract: models.BaseContract{
+					Period:    models.Period{From: from},
+					SectionID: td.section.ID,
+				},
+				PayPlanID: td.payplan.ID, Grade: "S8a", Step: 3,
+				WeeklyHours: 30, StaffCategory: "qualified",
+			}},
+		}},
+	}
+
+	if _, err := svc.GetForecast(ctx, td.org.ID, req); err != nil {
+		t.Fatalf("matching-section forecast should succeed, got %v", err)
+	}
+}
+
+func TestGetForecast_NoSectionScope_AllowsMixedOverlaySections(t *testing.T) {
+	// When req.SectionID is nil the request isn't section-scoped, so
+	// overlay adds may target any section. Regression guard for an
+	// over-eager validator that fires on every request.
+	svc, td, db := setupForecastTestDataWithDB(t)
+	otherSection := createTestSection(t, db, "Other Section", td.org.ID, false)
+	ctx := context.Background()
+
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	req := &models.ForecastRequest{
+		From: &from, To: &to,
+		AddEmployees: []models.Employee{{
+			Person: models.Person{
+				FirstName: "Cross", LastName: "Section", Gender: "female",
+				Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC),
+			},
+			Contracts: []models.EmployeeContract{{
+				BaseContract: models.BaseContract{
+					Period:    models.Period{From: from},
+					SectionID: otherSection.ID,
+				},
+				PayPlanID: td.payplan.ID, Grade: "S8a", Step: 3,
+				WeeklyHours: 30, StaffCategory: "qualified",
+			}},
+		}},
+	}
+
+	if _, err := svc.GetForecast(ctx, td.org.ID, req); err != nil {
+		t.Fatalf("nil section scope should accept any overlay sections, got %v", err)
+	}
+}
+
+// ============================================================
 // F3: virtual-ID allocator (collision + brittleness fixes)
 // ============================================================
 
@@ -1514,7 +1716,7 @@ func TestApplyOverlay_TwoEmployeesEachWithMultipleContracts_AllUnique(t *testing
 		},
 	}
 
-	applyOverlay(ds, req, nil)
+	applyOverlay(ds, req)
 
 	if len(ds.Employees) != 2 {
 		t.Fatalf("want 2 overlay employees, got %d", len(ds.Employees))
@@ -1566,7 +1768,7 @@ func TestApplyOverlay_VirtualVsRealCollision_NoOverlap(t *testing.T) {
 		}},
 	}
 
-	applyOverlay(ds, req, nil)
+	applyOverlay(ds, req)
 
 	// First overlay employee should land at virtualIDBase + 2 (one past
 	// the real overlapping id), not virtualIDBase (the legacy starting
