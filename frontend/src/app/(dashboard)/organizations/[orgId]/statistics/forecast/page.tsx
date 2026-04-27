@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -36,6 +36,14 @@ export default function ForecastPage() {
   useEffect(() => {
     store.setFilters(from, to);
   }, [from, to]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cross-org isolation: when navigating between orgs, the persisted
+  // store would otherwise carry the previous org's overlay rows. The
+  // setOrgId action clears everything if orgId changed; first-mount
+  // just records it.
+  useEffect(() => {
+    if (orgId) store.setOrgId(orgId);
+  }, [orgId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Baseline data queries (fetched alongside forecast for comparison)
   const { data: baselineFinancials, isLoading: isLoadingBaselineFinancials } = useQuery({
@@ -74,9 +82,21 @@ export default function ForecastPage() {
     return baselineFinancials.data_points.reduce((sum, dp) => sum + dp.balance, 0);
   }, [baselineFinancials]);
 
+  // Hold the AbortController of the in-flight forecast request. Used to
+  // cancel a stale request when the user clicks Reset+Calculate before
+  // the original response lands — without this the first response's
+  // onSuccess fires after the second mutate, writing scenario-1 data
+  // into scenario-2's view.
+  const abortRef = useRef<AbortController | null>(null);
+
   const forecastMutation = useMutation({
-    mutationFn: (req: Parameters<typeof apiClient.postForecast>[1]) =>
-      apiClient.postForecast(orgId, req),
+    mutationFn: ({
+      req,
+      signal,
+    }: {
+      req: Parameters<typeof apiClient.postForecast>[1];
+      signal: AbortSignal;
+    }) => apiClient.postForecast(orgId, req, signal),
   });
 
   // Surfaced from `store.buildRequest()` when an overlay row carries a
@@ -96,10 +116,16 @@ export default function ForecastPage() {
       }
       throw e;
     }
-    forecastMutation.mutate(req);
+    // Cancel any in-flight request before kicking off a new one.
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    forecastMutation.mutate({ req, signal: controller.signal });
   };
 
   const handleReset = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
     store.reset();
     forecastMutation.reset();
     setBuildError(null);

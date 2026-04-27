@@ -3,6 +3,9 @@ import type { ForecastChild, ForecastEmployee } from '@/lib/api/types';
 
 describe('forecast-store', () => {
   beforeEach(() => {
+    // Reset persists too — clear localStorage between tests so cross-org
+    // assertions (below) don't see leftovers from a previous test.
+    localStorage.clear();
     useForecastStore.getState().reset();
   });
 
@@ -178,6 +181,78 @@ describe('forecast-store', () => {
   it('does not throw for absent overlay (clean baseline-only request)', () => {
     useForecastStore.getState().setFilters('2026-01-01', '2026-12-01');
     expect(() => useForecastStore.getState().buildRequest()).not.toThrow();
+  });
+
+  // F9: cross-org isolation + persistence
+  it('setOrgId records the org on first set without wiping', () => {
+    useForecastStore.getState().addChild({
+      first_name: 'A',
+      last_name: 'B',
+      gender: 'female',
+      birthdate: '2023-01-01',
+      contracts: [{ from: '2026-08-01', section_id: 1 }],
+    });
+    useForecastStore.getState().setOrgId(7);
+    const state = useForecastStore.getState();
+    expect(state.orgId).toBe(7);
+    expect(state.addChildren).toHaveLength(1);
+  });
+
+  it('setOrgId wipes the scenario when navigating to a different org', () => {
+    // Seed a scenario under org 1.
+    useForecastStore.getState().setOrgId(1);
+    useForecastStore.getState().addChild({
+      first_name: 'A',
+      last_name: 'B',
+      gender: 'female',
+      birthdate: '2023-01-01',
+      contracts: [{ from: '2026-08-01', section_id: 1 }],
+    });
+    useForecastStore.getState().toggleRemoveEmployee(99);
+    expect(useForecastStore.getState().modificationCount()).toBe(2);
+
+    // Navigate to org 2 — the persisted state must NOT bleed across.
+    useForecastStore.getState().setOrgId(2);
+    const state = useForecastStore.getState();
+    expect(state.orgId).toBe(2);
+    expect(state.addChildren).toHaveLength(0);
+    expect(state.removeEmployeeIds).toEqual([]);
+    expect(state.modificationCount()).toBe(0);
+  });
+
+  it('setOrgId is idempotent for the same org (does not wipe on rerender)', () => {
+    useForecastStore.getState().setOrgId(1);
+    useForecastStore.getState().addChild({
+      first_name: 'A',
+      last_name: 'B',
+      gender: 'female',
+      birthdate: '2023-01-01',
+      contracts: [{ from: '2026-08-01', section_id: 1 }],
+    });
+    // Calling setOrgId(1) again (e.g. component re-renders) must
+    // preserve the scenario; otherwise every rerender wipes the user's
+    // work.
+    useForecastStore.getState().setOrgId(1);
+    expect(useForecastStore.getState().addChildren).toHaveLength(1);
+  });
+
+  it('persists state to localStorage', () => {
+    useForecastStore.getState().setOrgId(1);
+    useForecastStore.getState().addChild({
+      first_name: 'Persist',
+      last_name: 'Me',
+      gender: 'female',
+      birthdate: '2023-01-01',
+      contracts: [{ from: '2026-08-01', section_id: 1 }],
+    });
+    // Persist middleware writes synchronously after each set in tests
+    // (the default storage is localStorage, which is synchronous).
+    const raw = localStorage.getItem('kitamanager-forecast-scenario');
+    expect(raw).not.toBeNull();
+    const parsed = JSON.parse(raw!);
+    expect(parsed.state.orgId).toBe(1);
+    expect(parsed.state.addChildren).toHaveLength(1);
+    expect(parsed.state.addChildren[0].first_name).toBe('Persist');
   });
 
   it('omits empty arrays from request', () => {
