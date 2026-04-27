@@ -2,6 +2,24 @@ import { create } from 'zustand';
 import type { ForecastRequest, ForecastChild, ForecastEmployee } from '@/lib/api/types';
 import { formatDateForApi } from '@/lib/utils/formatting';
 
+/**
+ * Thrown by `buildRequest()` when a required date can't be converted to
+ * the API's RFC3339 wire format. The previous implementation used a
+ * non-null assertion (`formatDateForApi(d)!`) and silently sent the
+ * literal string "null" — backend rejected with an opaque error and the
+ * user had no idea which field was at fault. ForecastBuildError carries
+ * the field path (e.g. `add_children[0].contracts[1].from`) so the page
+ * can show "Field X is missing or invalid".
+ */
+export class ForecastBuildError extends Error {
+  field: string;
+  constructor(field: string, message: string) {
+    super(message);
+    this.field = field;
+    this.name = 'ForecastBuildError';
+  }
+}
+
 interface ForecastState {
   // Filters
   from: string | null;
@@ -75,32 +93,45 @@ export const useForecastStore = create<ForecastState>()((set, get) => ({
     const s = get();
     const req: ForecastRequest = {};
 
-    const apiDate = (date: string): string => formatDateForApi(date)!;
+    // apiDate converts a UI YYYY-MM-DD string to the backend's RFC3339
+    // wire format. The previous `formatDateForApi(date)!` non-null
+    // assertion silently produced JSON `null` for missing/invalid input
+    // — backend rejected with an opaque "BadRequest" and the user was
+    // stuck. Now: throw ForecastBuildError with the offending field
+    // path; the page (handleCalculate) catches and surfaces a clear
+    // field-level error.
+    const apiDate = (date: string, field: string): string => {
+      const r = formatDateForApi(date);
+      if (r === null) {
+        throw new ForecastBuildError(field, `${field}: missing or invalid date "${date}"`);
+      }
+      return r;
+    };
     const apiDateOptional = (date?: string | null): string | undefined =>
       date ? (formatDateForApi(date) ?? undefined) : undefined;
 
-    if (s.from) req.from = apiDate(s.from);
-    if (s.to) req.to = apiDate(s.to);
+    if (s.from) req.from = apiDate(s.from, 'from');
+    if (s.to) req.to = apiDate(s.to, 'to');
     if (s.sectionId) req.section_id = s.sectionId;
 
     if (s.addChildren.length > 0)
-      req.add_children = s.addChildren.map((c) => ({
+      req.add_children = s.addChildren.map((c, i) => ({
         ...c,
-        birthdate: apiDate(c.birthdate),
-        contracts: c.contracts.map((ct) => ({
+        birthdate: apiDate(c.birthdate, `add_children[${i}].birthdate`),
+        contracts: c.contracts.map((ct, j) => ({
           ...ct,
-          from: apiDate(ct.from),
+          from: apiDate(ct.from, `add_children[${i}].contracts[${j}].from`),
           to: apiDateOptional(ct.to),
         })),
       }));
     if (s.removeChildIds.length > 0) req.remove_child_ids = s.removeChildIds;
     if (s.addEmployees.length > 0)
-      req.add_employees = s.addEmployees.map((e) => ({
+      req.add_employees = s.addEmployees.map((e, i) => ({
         ...e,
-        birthdate: apiDate(e.birthdate),
-        contracts: e.contracts.map((ct) => ({
+        birthdate: apiDate(e.birthdate, `add_employees[${i}].birthdate`),
+        contracts: e.contracts.map((ct, j) => ({
           ...ct,
-          from: apiDate(ct.from),
+          from: apiDate(ct.from, `add_employees[${i}].contracts[${j}].from`),
           to: apiDateOptional(ct.to),
         })),
       }));

@@ -17,7 +17,7 @@ import { ForecastEmployeesTab } from '@/components/forecast/forecast-employees-t
 import { ForecastOptimizeTab } from '@/components/forecast/forecast-optimize-tab';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
-import { useForecastStore } from '@/stores/forecast-store';
+import { useForecastStore, ForecastBuildError } from '@/stores/forecast-store';
 
 export default function ForecastPage() {
   const params = useParams();
@@ -79,13 +79,30 @@ export default function ForecastPage() {
       apiClient.postForecast(orgId, req),
   });
 
+  // Surfaced from `store.buildRequest()` when an overlay row carries a
+  // missing/invalid date — without this the throw becomes an unhandled
+  // promise rejection in the console and the user sees nothing.
+  const [buildError, setBuildError] = useState<string | null>(null);
+
   const handleCalculate = () => {
-    forecastMutation.mutate(store.buildRequest());
+    setBuildError(null);
+    let req: ReturnType<typeof store.buildRequest>;
+    try {
+      req = store.buildRequest();
+    } catch (e) {
+      if (e instanceof ForecastBuildError) {
+        setBuildError(e.message);
+        return;
+      }
+      throw e;
+    }
+    forecastMutation.mutate(req);
   };
 
   const handleReset = () => {
     store.reset();
     forecastMutation.reset();
+    setBuildError(null);
   };
 
   return (
@@ -148,11 +165,11 @@ export default function ForecastPage() {
       {/* Results */}
       {forecastMutation.isPending && <Skeleton className="h-[400px] w-full" />}
 
-      {forecastMutation.isError && (
+      {(forecastMutation.isError || buildError) && (
         <Card>
           <CardContent className="pt-6">
             <p className="text-destructive">
-              {t('common.error')}: {forecastMutation.error.message}
+              {t('common.error')}: {buildError ?? forecastMutation.error?.message}
             </p>
           </CardContent>
         </Card>
