@@ -102,7 +102,16 @@ export default function BudgetItemsPage() {
     queryKeys: {
       list: (orgId, page, search) => queryKeys.budgetItems.list(orgId, page, search),
       invalidate: (orgId) => queryKeys.budgetItems.all(orgId),
-      extraInvalidate: (orgId) => [['financials', orgId]],
+      // Editing a budget item changes every financials data point that
+      // includes it, so invalidate the whole statistics namespace via
+      // the prefix key. The previous `[['financials', orgId]]` matched
+      // nothing — actual financials keys live under
+      // `['statistics', orgId, 'financials', from, to]`. With this,
+      // dashboards refetch automatically after a budget-item edit.
+      // Spread the readonly key into a mutable tuple so it satisfies
+      // the extraInvalidate type signature (which doesn't accept
+      // `readonly` tuples).
+      extraInvalidate: (orgId) => [[...queryKeys.statistics.all(orgId)]],
     },
   });
 
