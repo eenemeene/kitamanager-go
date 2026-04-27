@@ -166,6 +166,12 @@ type SectionStorer interface {
 	// row physically still exists.
 	HasActiveChildren(ctx context.Context, id uint, asOf time.Time) (bool, error)
 	HasActiveEmployees(ctx context.Context, id uint, asOf time.Time) (bool, error)
+	// CountActive* returns the exact count, used by the
+	// delete-rejection path to put a number in the error message.
+	// Slower than HasActive* (no short-circuit), so reserved for the
+	// already-rejected case.
+	CountActiveChildren(ctx context.Context, id uint, asOf time.Time) (int64, error)
+	CountActiveEmployees(ctx context.Context, id uint, asOf time.Time) (int64, error)
 }
 
 // GovernmentFundingStorer defines the interface for government funding storage operations

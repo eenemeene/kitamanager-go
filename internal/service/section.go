@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -211,7 +212,15 @@ func (s *SectionService) DeleteByIDAndOrg(ctx context.Context, id, orgID uint) e
 			return apperror.InternalWrap(err, "failed to check section children")
 		}
 		if hasChildren {
-			return apperror.BadRequest("cannot delete section with currently-assigned children")
+			// Surface the exact count so the toast/dialog tells the
+			// user the magnitude of what they need to reassign. The
+			// extra round trip only fires on the rejection path, so
+			// the cost lands precisely where the user is already
+			// facing an error.
+			n, _ := s.store.CountActiveChildren(txCtx, id, now)
+			return apperror.BadRequest(fmt.Sprintf(
+				"cannot delete section with %d currently-assigned children; reassign them first",
+				n))
 		}
 
 		hasEmployees, err := s.store.HasActiveEmployees(txCtx, id, now)
@@ -219,7 +228,10 @@ func (s *SectionService) DeleteByIDAndOrg(ctx context.Context, id, orgID uint) e
 			return apperror.InternalWrap(err, "failed to check section employees")
 		}
 		if hasEmployees {
-			return apperror.BadRequest("cannot delete section with currently-assigned employees")
+			n, _ := s.store.CountActiveEmployees(txCtx, id, now)
+			return apperror.BadRequest(fmt.Sprintf(
+				"cannot delete section with %d currently-assigned employees; reassign them first",
+				n))
 		}
 
 		// Soft-delete via gorm's DeletedAt machinery. Section.Delete

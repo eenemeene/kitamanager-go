@@ -185,3 +185,32 @@ func (s *SectionStore) HasActiveEmployees(ctx context.Context, id uint, asOf tim
 	}
 	return oneID != 0, nil
 }
+
+// CountActiveChildren returns how many child_contracts active on
+// `asOf` reference this section. Used by the delete-rejection path
+// to put a number in the error message ("cannot delete: 5
+// currently-assigned children"). Slower than HasActiveChildren
+// because it can't short-circuit, so reserved for the
+// already-rejected case where the user is about to see an error
+// anyway.
+func (s *SectionStore) CountActiveChildren(ctx context.Context, id uint, asOf time.Time) (int64, error) {
+	var n int64
+	err := DBFromContext(ctx, s.db).
+		Model(&models.ChildContract{}).
+		Where("section_id = ? AND from_date <= ? AND (to_date IS NULL OR to_date >= ?)",
+			id, asOf, asOf).
+		Count(&n).Error
+	return n, err
+}
+
+// CountActiveEmployees is the employee-side counterpart of
+// CountActiveChildren.
+func (s *SectionStore) CountActiveEmployees(ctx context.Context, id uint, asOf time.Time) (int64, error) {
+	var n int64
+	err := DBFromContext(ctx, s.db).
+		Model(&models.EmployeeContract{}).
+		Where("section_id = ? AND from_date <= ? AND (to_date IS NULL OR to_date >= ?)",
+			id, asOf, asOf).
+		Count(&n).Error
+	return n, err
+}

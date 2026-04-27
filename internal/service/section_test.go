@@ -641,6 +641,77 @@ func TestSectionService_NameReusableAfterSoftDelete(t *testing.T) {
 }
 
 // ============================================================
+// S6: assignee count surfaced in delete-rejection error
+// ============================================================
+
+func TestSectionService_Delete_BlockedError_IncludesActiveChildCount(t *testing.T) {
+	// When delete is rejected, the user needs to know the magnitude
+	// of what they have to reassign. Three children → "3 currently-
+	// assigned children" in the error message. Without the count
+	// the user is stuck guessing whether it's 1 or 100.
+	db := setupTestDB(t)
+	svc := createSectionService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section := createTestSection(t, db, "Krippe", org.ID, false)
+
+	for i := range 3 {
+		c := createTestChild(t, db, "Active", string(rune('A'+i)), org.ID)
+		if err := db.Create(&models.ChildContract{
+			ChildID: c.ID,
+			BaseContract: models.BaseContract{
+				Period:    models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+				SectionID: section.ID,
+			},
+		}).Error; err != nil {
+			t.Fatalf("seed contract %d: %v", i, err)
+		}
+	}
+
+	err := svc.DeleteByIDAndOrg(ctx, section.ID, org.ID)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "3 currently-assigned children") {
+		t.Errorf("error should include count '3'; got %v", err)
+	}
+}
+
+func TestSectionService_Delete_BlockedError_IncludesActiveEmployeeCount(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createSectionService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section := createTestSection(t, db, "Krippe", org.ID, false)
+	payPlan := createTestPayPlan(t, db, "TV-L", org.ID)
+
+	for i := range 2 {
+		emp := createTestEmployee(t, db, "Emp", string(rune('A'+i)), org.ID)
+		if err := db.Create(&models.EmployeeContract{
+			EmployeeID: emp.ID,
+			BaseContract: models.BaseContract{
+				Period:    models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+				SectionID: section.ID,
+			},
+			StaffCategory: "qualified", Grade: "S8a", Step: 1,
+			WeeklyHours: 39, PayPlanID: payPlan.ID,
+		}).Error; err != nil {
+			t.Fatalf("seed contract %d: %v", i, err)
+		}
+	}
+
+	err := svc.DeleteByIDAndOrg(ctx, section.ID, org.ID)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "2 currently-assigned employees") {
+		t.Errorf("error should include count '2'; got %v", err)
+	}
+}
+
+// ============================================================
 // S5: case-insensitive name uniqueness + age CHECK constraint
 // ============================================================
 
