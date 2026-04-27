@@ -1308,6 +1308,122 @@ func TestGetForecast_OverlayPayPlanNotInDB_EmitsWarning(t *testing.T) {
 	}
 }
 
+// ============================================================
+// F2: date-range bounds on /statistics/forecast (and the rest)
+// ============================================================
+
+func TestGetForecast_RangeTooWide_Rejected(t *testing.T) {
+	// The forecast endpoint accepts from/to in the JSON body, which used
+	// to bypass the handler's MaxDateRangeMonths gate (only enforced for
+	// query-string callers). A 3,600-month request ran 3,600 × 4 tight
+	// loops, a trivial DoS vector. snapAndValidateRange now applies the
+	// same 72-month cap regardless of how the request arrived.
+	svc, td := setupForecastTestData(t)
+	ctx := context.Background()
+
+	from := time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2100, 12, 31, 0, 0, 0, 0, time.UTC)
+	req := &models.ForecastRequest{From: &from, To: &to}
+
+	_, err := svc.GetForecast(ctx, td.org.ID, req)
+	if err == nil {
+		t.Fatal("expected BadRequest for a 200-year forecast range, got nil")
+	}
+	if !strings.Contains(err.Error(), "must not exceed") {
+		t.Errorf("expected range-exceeded error, got %v", err)
+	}
+}
+
+func TestGetForecast_InvertedRange_Rejected(t *testing.T) {
+	// snapDateRange does not reorder a from/to pair, so an inverted range
+	// (from after to) used to fall through to the calculators and silently
+	// return zero data points. Now rejected at the boundary so the user
+	// sees a clear error instead of an "empty forecast" mystery.
+	svc, td := setupForecastTestData(t)
+	ctx := context.Background()
+
+	from := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	req := &models.ForecastRequest{From: &from, To: &to}
+
+	_, err := svc.GetForecast(ctx, td.org.ID, req)
+	if err == nil {
+		t.Fatal("expected BadRequest for inverted from/to, got nil")
+	}
+	if !strings.Contains(err.Error(), "must not be before") {
+		t.Errorf("expected inverted-range error, got %v", err)
+	}
+}
+
+func TestGetForecast_NilDates_UsesDefaults(t *testing.T) {
+	// from=nil and to=nil must still work — snapDateRange's defaults
+	// (1 month before previous Kita year through 1 month past next)
+	// cover ~37 months, comfortably under MaxStatisticsRangeMonths.
+	// Regression guard: a too-eager validator could reject the
+	// default-default case.
+	svc, td := setupForecastTestData(t)
+	ctx := context.Background()
+
+	_, err := svc.GetForecast(ctx, td.org.ID, &models.ForecastRequest{})
+	if err != nil {
+		t.Fatalf("nil-date forecast should use defaults, got %v", err)
+	}
+}
+
+func TestGetForecast_OnlyFromExtreme_StillBounded(t *testing.T) {
+	// Only one bound supplied: snapDateRange substitutes its default for
+	// the missing side. With from=1900-01 and to=nil that's still ~125
+	// years. Validation must catch the snapped result, not just the user
+	// input — otherwise the defense-in-depth motivation is half-applied.
+	svc, td := setupForecastTestData(t)
+	ctx := context.Background()
+
+	from := time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC)
+	req := &models.ForecastRequest{From: &from}
+
+	_, err := svc.GetForecast(ctx, td.org.ID, req)
+	if err == nil {
+		t.Fatal("expected BadRequest when supplied bound forces snapped span past cap, got nil")
+	}
+	if !strings.Contains(err.Error(), "must not exceed") {
+		t.Errorf("expected range-exceeded error, got %v", err)
+	}
+}
+
+func TestGetFinancials_RangeTooWide_Rejected(t *testing.T) {
+	// The same bound applies to the baseline statistics endpoints. They
+	// already had a query-string-level guard via parseOptionalDatePair,
+	// but service-layer enforcement is defense-in-depth: a future internal
+	// caller (e.g. a background job or test harness) cannot accidentally
+	// kick off a 200-year iteration.
+	svc, td := setupForecastTestData(t)
+	ctx := context.Background()
+
+	from := time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2100, 12, 31, 0, 0, 0, 0, time.UTC)
+
+	_, err := svc.GetFinancials(ctx, td.org.ID, &from, &to, nil)
+	if err == nil {
+		t.Fatal("expected BadRequest from GetFinancials, got nil")
+	}
+}
+
+func TestSnapAndValidateRange_ExactlyAtCap_Allowed(t *testing.T) {
+	// Boundary: a span of exactly MaxStatisticsRangeMonths must succeed.
+	// monthCount is inclusive on both ends, so 72 means start + 71 months.
+	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from.AddDate(0, MaxStatisticsRangeMonths-1, 0) // 71 months later
+	if _, _, err := snapAndValidateRange(&from, &to); err != nil {
+		t.Errorf("exactly-at-cap span should pass, got %v", err)
+	}
+
+	// And one month past the cap must fail.
+	tooFar := from.AddDate(0, MaxStatisticsRangeMonths, 0)
+	if _, _, err := snapAndValidateRange(&from, &tooFar); err == nil {
+		t.Errorf("one-past-cap span should fail, got nil")
+	}
+}
+
 // countingPayPlanStore lets a test fail the Nth FindByIDsWithPeriods call.
 // errOnCall(n) returns an error to substitute, or nil to defer to the
 // wrapped store. n is 1-indexed to match the natural "fail the second

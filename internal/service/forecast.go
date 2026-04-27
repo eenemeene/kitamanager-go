@@ -19,7 +19,10 @@ func (s *StatisticsService) GetForecast(ctx context.Context, orgID uint, req *mo
 		return nil, err
 	}
 
-	rangeStart, rangeEnd := snapDateRange(req.From, req.To)
+	rangeStart, rangeEnd, err := snapAndValidateRange(req.From, req.To)
+	if err != nil {
+		return nil, err
+	}
 
 	ds, err := s.loadDataSet(ctx, orgID, rangeStart, rangeEnd, req.SectionID)
 	if err != nil {

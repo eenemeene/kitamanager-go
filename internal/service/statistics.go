@@ -43,12 +43,56 @@ var pedagogicalCategories = []string{
 	string(models.StaffCategorySupplementary),
 }
 
+// MaxStatisticsRangeMonths caps the span (in months) any statistics or
+// forecast calculation will iterate over. The four calculators walk the
+// range one month at a time and pre-build per-month indexes; an
+// unbounded range (e.g. from=1900, to=2200) turns one request into
+// 14,400+ tight loops over the entire dataset and is a trivial DoS
+// vector if not capped here.
+//
+// Mirrors handlers.MaxDateRangeMonths so the bound is identical whether
+// the user came in through a query-string endpoint (parseOptionalDatePair
+// catches them at the handler) or the JSON-body forecast endpoint
+// (snapAndValidateRange catches them at the service). Bumping this
+// constant is a deliberate "we accept slower forecasts" decision —
+// don't bump just to get a single request through.
+const MaxStatisticsRangeMonths = 72
+
+// snapAndValidateRange snaps the user-supplied date range to first-of-
+// month with sensible Kita-year defaults, then enforces two invariants
+// the calculators silently assume:
+//
+//   - end >= start: snapDateRange does not reorder, so an inverted
+//     range (from=2026-06, to=2025-01) used to silently return zero
+//     data points instead of an error.
+//   - span <= MaxStatisticsRangeMonths: see the constant comment.
+//
+// Centralizing both checks here means every statistics endpoint —
+// including the JSON-body forecast endpoint that bypasses the handler-
+// level parseOptionalDatePair gate — gets the same bound. New endpoints
+// MUST call this rather than snapDateRange directly.
+func snapAndValidateRange(from, to *time.Time) (time.Time, time.Time, error) {
+	start, end := snapDateRange(from, to)
+	if end.Before(start) {
+		return start, end, apperror.BadRequest("'to' date must not be before 'from' date")
+	}
+	if monthCount(start, end) > MaxStatisticsRangeMonths {
+		return start, end, apperror.BadRequest(fmt.Sprintf(
+			"date range must not exceed %d months", MaxStatisticsRangeMonths))
+	}
+	return start, end, nil
+}
+
 // snapDateRange returns a date range snapped to 1st-of-month with defaults.
 // Defaults cover: 1 month before the previous Kita year through the end of the
 // next Kita year. A Kita year runs Aug 1 – Jul 31.
 //
 // Uses UTC to compute the current Kita year; otherwise the default window
 // flips a day early/late at local-timezone month boundaries.
+//
+// Callers should prefer snapAndValidateRange so unbounded user input is
+// rejected at the same place every time. snapDateRange remains exported-
+// internal for unit tests that want to assert just the snap behavior.
 func snapDateRange(from, to *time.Time) (time.Time, time.Time) {
 	now := time.Now().UTC()
 	var rangeStart, rangeEnd time.Time
@@ -126,7 +170,10 @@ func (s *StatisticsService) loadPayPlans(ctx context.Context, employees []models
 
 // GetStaffingHours calculates monthly staffing hours data points
 func (s *StatisticsService) GetStaffingHours(ctx context.Context, orgID uint, from, to *time.Time, sectionID *uint) (*models.StaffingHoursResponse, error) {
-	rangeStart, rangeEnd := snapDateRange(from, to)
+	rangeStart, rangeEnd, err := snapAndValidateRange(from, to)
+	if err != nil {
+		return nil, err
+	}
 
 	fundingPeriods, err := s.loadOrgAndFunding(ctx, orgID)
 	if err != nil {
@@ -149,7 +196,10 @@ func (s *StatisticsService) GetStaffingHours(ctx context.Context, orgID uint, fr
 
 // GetEmployeeStaffingHours returns per-employee monthly contracted hours
 func (s *StatisticsService) GetEmployeeStaffingHours(ctx context.Context, orgID uint, from, to *time.Time, sectionID *uint) (*models.EmployeeStaffingHoursResponse, error) {
-	rangeStart, rangeEnd := snapDateRange(from, to)
+	rangeStart, rangeEnd, err := snapAndValidateRange(from, to)
+	if err != nil {
+		return nil, err
+	}
 
 	employees, err := s.employeeStore.FindByOrganizationInDateRange(ctx, orgID, rangeStart, rangeEnd, []string(nil), sectionID)
 	if err != nil {
@@ -162,7 +212,10 @@ func (s *StatisticsService) GetEmployeeStaffingHours(ctx context.Context, orgID 
 
 // GetFinancials calculates monthly financial data points (income, expenses, balance)
 func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from, to *time.Time, sectionID *uint) (*models.FinancialResponse, error) {
-	rangeStart, rangeEnd := snapDateRange(from, to)
+	rangeStart, rangeEnd, err := snapAndValidateRange(from, to)
+	if err != nil {
+		return nil, err
+	}
 
 	fundingPeriods, err := s.loadOrgAndFunding(ctx, orgID)
 	if err != nil {
@@ -233,7 +286,10 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 
 // GetOccupancy calculates monthly occupancy data points broken down by age group, care type, and supplements.
 func (s *StatisticsService) GetOccupancy(ctx context.Context, orgID uint, from, to *time.Time, sectionID *uint) (*models.OccupancyResponse, error) {
-	rangeStart, rangeEnd := snapDateRange(from, to)
+	rangeStart, rangeEnd, err := snapAndValidateRange(from, to)
+	if err != nil {
+		return nil, err
+	}
 
 	fundingPeriods, err := s.loadOrgAndFunding(ctx, orgID)
 	if err != nil {
