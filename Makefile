@@ -274,9 +274,15 @@ pre-commit:
 # Report PDF tool
 # =============================================================================
 
-# Build the report-pdf CLI tool
+# Build the report-pdf CLI tool. The -ldflags injection mirrors the API
+# build (same GitVersion / GitCommit / BuildTime triple) so the tool's
+# `--version` flag and the colophon stamped onto every generated PDF
+# carry real provenance instead of "dev".
+REPORT_VERSION_PKG := github.com/eenemeene/kitamanager-go/tools/report-pdf/internal/version
+REPORT_LDFLAGS := -ldflags "-X $(REPORT_VERSION_PKG).GitVersion=$(GIT_VERSION) -X $(REPORT_VERSION_PKG).GitCommit=$(GIT_COMMIT) -X $(REPORT_VERSION_PKG).BuildTime=$(BUILD_TIME)"
+
 report-pdf-build:
-	cd tools/report-pdf && go build -o ../../bin/report-pdf .
+	cd tools/report-pdf && go build $(REPORT_LDFLAGS) -o ../../bin/report-pdf .
 
 # Generate PDF reports (requires running dev environment)
 report-pdf:

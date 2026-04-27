@@ -15,15 +15,25 @@
 # Stage 1: Build the Go binary
 FROM cgr.dev/chainguard/go:latest AS builder
 
+# Version triple injected via build args (the release workflow passes
+# real values from `git describe`; defaults make a `docker build` from
+# a working copy still produce a runnable binary). Kept identical to
+# Dockerfile.api's pattern so a future operator only has to learn it once.
+ARG GIT_VERSION=dev
+ARG GIT_COMMIT=unknown
+ARG BUILD_TIME=unknown
+
 WORKDIR /app
 
 # Copy go.mod/go.sum first for dependency caching
 COPY tools/report-pdf/go.mod tools/report-pdf/go.sum ./
 RUN go mod download
 
-# Copy source and build
+# Copy source and build with version info embedded.
 COPY tools/report-pdf/ .
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o report-pdf .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo \
+    -ldflags "-X github.com/eenemeene/kitamanager-go/tools/report-pdf/internal/version.GitVersion=${GIT_VERSION} -X github.com/eenemeene/kitamanager-go/tools/report-pdf/internal/version.GitCommit=${GIT_COMMIT} -X github.com/eenemeene/kitamanager-go/tools/report-pdf/internal/version.BuildTime=${BUILD_TIME}" \
+    -o report-pdf .
 
 # Stage 2: Runtime with Node.js (needed for Playwright browser management)
 FROM cgr.dev/chainguard/node:latest-dev

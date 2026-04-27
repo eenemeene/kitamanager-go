@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -191,6 +192,36 @@ func MergeFiles(inputPaths []string, outputPath string) error {
 // AddProperties adds custom properties to an existing PDF file.
 func AddProperties(pdfPath string, properties map[string]string) error {
 	return pdfcpuapi.AddPropertiesFile(pdfPath, "", properties, nil)
+}
+
+// StampColophon writes `text` as a small bottom-center stamp on the
+// last page of pdfPath in place. Used by the report tool to record the
+// CLI + API versions and the build/render time so a reader can later
+// reproduce or audit which code rendered the PDF in front of them —
+// otherwise an artifact found a year later carries no provenance.
+//
+// pos:bc → bottom-center; sc:0.4 → smallish; op:0.6 → translucent so
+// it never overpowers the chart on the page below it. onTop=true
+// (stamp, not watermark) so it stays readable on top of any
+// background fill the print page might have.
+func StampColophon(pdfPath, text string) error {
+	pages, err := pdfcpuapi.PageCountFile(pdfPath)
+	if err != nil {
+		return fmt.Errorf("count pages of %s: %w", pdfPath, err)
+	}
+	if pages == 0 {
+		return fmt.Errorf("%s has no pages to stamp", pdfPath)
+	}
+	lastPage := strconv.Itoa(pages)
+	// pdfcpu's stamp DSL: position bottom-center, 9pt font, 60% opaque,
+	// no scaling beyond what the font size dictates. We spell out
+	// `scalefactor` instead of the `sc` prefix because `sc` collides
+	// with `strokecolor` and pdfcpu rejects ambiguous prefixes.
+	desc := "pos:bc, points:9, opacity:0.6, scalefactor:1.0 abs"
+	if err := pdfcpuapi.AddTextWatermarksFile(pdfPath, "", []string{lastPage}, true, text, desc, nil); err != nil {
+		return fmt.Errorf("stamp colophon on %s: %w", pdfPath, err)
+	}
+	return nil
 }
 
 // Close shuts down the browser and Playwright.
