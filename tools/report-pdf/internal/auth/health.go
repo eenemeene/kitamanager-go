@@ -84,13 +84,13 @@ func FetchWebVersion(baseURL string) (string, error) {
 }
 
 // newVersionClient builds the http.Client both Fetch*Version helpers
-// share: short timeout, no redirect-following. Factored out so the
-// two helpers stay byte-for-byte consistent in their HTTP behaviour.
+// share: short timeout, follows redirects (Next.js bounces /version
+// to /version/ as a 307 — refusing to follow would surface as
+// "returned status 307" in the colophon). Different from Login's
+// client, which deliberately refuses redirects so it can capture
+// Set-Cookie headers before any bounce.
 func newVersionClient() *http.Client {
 	return &http.Client{
 		Timeout: 5 * time.Second,
-		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
 	}
 }

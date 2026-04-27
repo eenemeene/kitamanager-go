@@ -115,3 +115,30 @@ func TestFetchWebVersion_ConnectionRefused(t *testing.T) {
 		t.Fatal("expected error for connection refused")
 	}
 }
+
+func TestFetchWebVersion_FollowsRedirect(t *testing.T) {
+	// Next.js bounces /version → /version/ with 307 by default.
+	// The version-fetch client must follow the redirect; a plain
+	// "no follow" client (like the Login one) would surface the
+	// 307 as "returned status 307" and we'd lose the version.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/version":
+			http.Redirect(w, r, "/version/", http.StatusTemporaryRedirect)
+		case "/version/":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"version":"v0.27.1"}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	v, err := FetchWebVersion(server.URL)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if v != "v0.27.1" {
+		t.Errorf("version = %q, want %q after following 307", v, "v0.27.1")
+	}
+}

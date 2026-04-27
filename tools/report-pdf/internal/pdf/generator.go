@@ -213,11 +213,16 @@ func StampColophon(pdfPath, text string) error {
 		return fmt.Errorf("%s has no pages to stamp", pdfPath)
 	}
 	lastPage := strconv.Itoa(pages)
-	// pdfcpu's stamp DSL: position bottom-center, 9pt font, 60% opaque,
-	// no scaling beyond what the font size dictates. We spell out
-	// `scalefactor` instead of the `sc` prefix because `sc` collides
-	// with `strokecolor` and pdfcpu rejects ambiguous prefixes.
-	desc := "pos:bc, points:9, opacity:0.6, scalefactor:1.0 abs"
+	// pdfcpu's stamp DSL: position bottom-center, horizontal (rotation:0
+	// — the default would tilt the text ~45° like a watermark), 9pt
+	// font, 60% opaque, slight upward offset so the line clears the
+	// page margin. `scalefactor:1.0 abs` keeps the text at literal
+	// font size rather than fitting it to page width.
+	//
+	// `scalefactor` and `rotation` are spelled out rather than using
+	// the short prefix because `sc` collides with `strokecolor` and
+	// `rot` with `rendermode` — pdfcpu rejects ambiguous prefixes.
+	desc := "pos:bc, offset:0 20, points:9, opacity:0.6, rotation:0, scalefactor:1.0 abs"
 	if err := pdfcpuapi.AddTextWatermarksFile(pdfPath, "", []string{lastPage}, true, text, desc, nil); err != nil {
 		return fmt.Errorf("stamp colophon on %s: %w", pdfPath, err)
 	}
