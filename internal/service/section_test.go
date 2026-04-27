@@ -7,8 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
+
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
+	"github.com/eenemeene/kitamanager-go/internal/store"
 )
 
 // =========================================
@@ -634,6 +637,57 @@ func TestSectionService_NameReusableAfterSoftDelete(t *testing.T) {
 		Name: "Krippe",
 	}, "tester"); err != nil {
 		t.Errorf("name reuse after soft-delete should succeed, got %v", err)
+	}
+}
+
+// ============================================================
+// S4: Update's IsDuplicateKeyError fallback (TOCTOU symmetry)
+// ============================================================
+
+// updateRacingSectionStore wraps a real SectionStorer but forces
+// Update to return a synthesized pg-23505 error — the same shape
+// IsDuplicateKeyError recognises. This lets the test exercise the
+// fallback branch in service.UpdateByIDAndOrg WITHOUT actually
+// having to race two concurrent Update goroutines.
+type updateRacingSectionStore struct {
+	store.SectionStorer
+}
+
+func (w *updateRacingSectionStore) Update(_ context.Context, _ *models.Section) error {
+	// Mimic what gorm + pgx surface for a real unique-index violation.
+	// IsDuplicateKeyError extracts via errors.As(*pgconn.PgError) and
+	// checks Code == "23505".
+	return &pgconn.PgError{Code: "23505", Message: "duplicate key value violates unique constraint"}
+}
+
+func TestSectionService_UpdateByIDAndOrg_DuplicateKeyFallback_ReturnsConflict(t *testing.T) {
+	// Pre-check FindByNameAndOrg returns "no conflict" but the actual
+	// store.Update fails with a duplicate-key violation (the TOCTOU
+	// race). The previous code wrapped that as InternalWrap → 500.
+	// With the fallback (mirroring Create) it must return Conflict.
+	db := setupTestDB(t)
+	realStore := store.NewSectionStore(db)
+	transactor := store.NewTransactor(db)
+	wrapped := &updateRacingSectionStore{SectionStorer: realStore}
+	svc := NewSectionService(wrapped, transactor)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section := createTestSection(t, db, "Krippe", org.ID, false)
+
+	// Submit a NEW name that doesn't collide in the pre-check (the
+	// real store's FindByNameAndOrg sees no conflict on "Brand New").
+	// The wrapped Update then synthesises the duplicate-key — that's
+	// the path under test.
+	newName := "Brand New"
+	_, err := svc.UpdateByIDAndOrg(ctx, section.ID, org.ID, &models.SectionUpdateRequest{
+		Name: &newName,
+	})
+	if err == nil {
+		t.Fatal("expected error from forced duplicate-key, got nil")
+	}
+	if !errors.Is(err, apperror.ErrConflict) {
+		t.Errorf("expected ErrConflict (mirrors Create), got %v", err)
 	}
 }
 

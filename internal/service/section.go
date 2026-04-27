@@ -136,6 +136,16 @@ func (s *SectionService) UpdateByIDAndOrg(ctx context.Context, id, orgID uint, r
 	}
 
 	if err := s.store.Update(ctx, section); err != nil {
+		// Mirror Create's TOCTOU fallback. Two requests racing to
+		// rename two different sections to the same target name can
+		// both pass the FindByNameAndOrg pre-check above; the unique
+		// index then catches the second one. Without this, that
+		// second request would surface as a 500 (InternalWrap). With
+		// it, both Create and Update consistently return Conflict
+		// for any duplicate-name path.
+		if store.IsDuplicateKeyError(err) {
+			return nil, apperror.Conflict("section with this name already exists in the organization")
+		}
 		return nil, apperror.InternalWrap(err, "failed to update section")
 	}
 
