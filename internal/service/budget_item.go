@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -78,7 +79,10 @@ func (s *BudgetItemService) Create(ctx context.Context, orgID uint, req *models.
 		return nil, apperror.InternalWrap(err, "failed to create budget item")
 	}
 
-	resp := item.ToResponse()
+	// Newly-created item has no entries yet; asOf is irrelevant but
+	// must be passed. Use now for consistency with other "what's
+	// active right now" call sites.
+	resp := item.ToResponse(time.Now().UTC())
 	return &resp, nil
 }
 
@@ -107,7 +111,14 @@ func (s *BudgetItemService) List(ctx context.Context, orgID uint, search string,
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch budget items")
 	}
 
-	return toResponseList(items, (*models.BudgetItem).ToResponse), total, nil
+	// Use a single "now" for the whole page so two items in the same
+	// list response can't pick entries against drifted clock values.
+	now := time.Now().UTC()
+	out := make([]models.BudgetItemResponse, 0, len(items))
+	for i := range items {
+		out = append(out, items[i].ToResponse(now))
+	}
+	return out, total, nil
 }
 
 // Update updates a budget item.
@@ -176,7 +187,7 @@ func (s *BudgetItemService) Update(ctx context.Context, id, orgID uint, req *mod
 		return nil, apperror.InternalWrap(err, "failed to update budget item")
 	}
 
-	resp := item.ToResponse()
+	resp := item.ToResponse(time.Now().UTC())
 	return &resp, nil
 }
 

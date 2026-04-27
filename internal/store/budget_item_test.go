@@ -765,7 +765,7 @@ func TestBudgetItemStore_FindByOrganization_ActiveAmountCents(t *testing.T) {
 	}
 
 	// Convert to response — this calls ToResponse() which relies on preloaded entries
-	resp := items[0].ToResponse()
+	resp := items[0].ToResponse(time.Now().UTC())
 	if resp.ActiveAmountCents == nil {
 		t.Fatal("expected ActiveAmountCents to be set, got nil (entries not preloaded?)")
 	}

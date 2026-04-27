@@ -121,8 +121,23 @@ type BudgetItemEntryResponse struct {
 	UpdatedAt    time.Time  `json:"updated_at"`
 }
 
-// ToResponse converts a BudgetItem to BudgetItemResponse.
-func (b *BudgetItem) ToResponse() BudgetItemResponse {
+// ToResponse converts a BudgetItem to BudgetItemResponse, picking the
+// entry active on `asOf` to populate ActiveAmountCents. Callers that
+// want "active right now" pass time.Now().UTC().
+//
+// asOf is required (not optional) so the picked entry is never a
+// hidden function of the server clock — every caller has to make a
+// deliberate choice. The previous time.Now()-by-default version meant
+// any caller (list view, future as-of-date filter, summary view) got
+// "active right now" regardless of the user's intent.
+//
+// Determinism note: migration 000016's GIST exclusion constraint
+// guarantees at most one entry is active on any given date for a
+// single budget item, so the loop's first match is the only match.
+// If that constraint is ever dropped, callers should also order
+// b.Entries by from_date DESC so the "newest period that covers
+// asOf" wins reproducibly — see the loader Order() clauses.
+func (b *BudgetItem) ToResponse(asOf time.Time) BudgetItemResponse {
 	resp := BudgetItemResponse{
 		ID:             b.ID,
 		OrganizationID: b.OrganizationID,
@@ -133,9 +148,8 @@ func (b *BudgetItem) ToResponse() BudgetItemResponse {
 		UpdatedAt:      b.UpdatedAt,
 	}
 
-	now := time.Now().UTC()
 	for i := range b.Entries {
-		if b.Entries[i].IsActiveOn(now) {
+		if b.Entries[i].IsActiveOn(asOf) {
 			amount := b.Entries[i].AmountCents
 			resp.ActiveAmountCents = &amount
 			break
