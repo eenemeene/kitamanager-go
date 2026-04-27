@@ -423,6 +423,45 @@ jobs:
           path: frontend/test-results/
           retention-days: 7
 
+      # Smoke-test the report-pdf tool against the same running stack the
+      # E2E suite just exercised: verifies the print pages still render
+      # end-to-end (login → cookie wiring → Playwright render → PDF write
+      # → pdfcpu merge) and produces an artifact a reviewer can open to
+      # eyeball regressions in chart layout that unit tests can't catch.
+      # Reuses the seed admin credentials the API already booted with.
+      #
+      # Runs even when the E2E suite fails (`!cancelled()` rather than
+      # `success()`) — that catches the case where the report renders
+      # fine but a different E2E spec is flaky, and surfaces report-only
+      # failures that would otherwise be invisible to the E2E job.
+      - name: Build report-pdf tool
+        if: ${{ !cancelled() }}
+        run: make report-pdf-build
+
+      - name: Generate PDF reports
+        if: ${{ !cancelled() }}
+        run: |
+          mkdir -p /tmp/report-pdfs
+          ./bin/report-pdf \
+            --email superadmin@example.com \
+            --password supersecret \
+            --org-id 1 \
+            --base-url http://localhost:3000 \
+            --api-url http://localhost:8080 \
+            --output-dir /tmp/report-pdfs
+
+      - name: Upload generated reports
+        # always() so we capture partial output if the tool fails midway
+        # (one report renders, another times out) — that's exactly the
+        # case where having the artifact is most diagnostic.
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: report-pdfs
+          path: /tmp/report-pdfs/
+          retention-days: 30
+          if-no-files-found: ignore
+
   swagger-docs:
     name: Swagger Docs
     runs-on: ubuntu-latest
