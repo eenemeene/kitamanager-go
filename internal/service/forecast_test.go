@@ -1494,6 +1494,294 @@ func TestSnapAndValidateRange_ExactlyAtCap_Allowed(t *testing.T) {
 }
 
 // ============================================================
+// F7: remaining edge cases + per-field validator coverage
+// ============================================================
+
+// TestValidateOverlay_FieldValidators is a table-driven sweep over every
+// field-presence check in the validateOverlay* helpers. The previous
+// test suite verified org/existence checks but none of the cheap "field
+// must be present" checks; without these, accidentally weakening the
+// validators (e.g. dropping a `if x == 0` branch) would land silently.
+func TestValidateOverlay_FieldValidators(t *testing.T) {
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	bday := time.Date(2022, 5, 15, 0, 0, 0, 0, time.UTC)
+
+	cases := []struct {
+		name        string
+		req         *models.ForecastRequest
+		wantErrPath string
+	}{
+		// AddChildren
+		{
+			name: "child_missing_birthdate",
+			req: &models.ForecastRequest{
+				AddChildren: []models.Child{{
+					Person:    models.Person{FirstName: "X", LastName: "Y", Gender: "female"},
+					Contracts: []models.ChildContract{{BaseContract: models.BaseContract{Period: models.Period{From: from}, SectionID: 1}}},
+				}},
+			},
+			wantErrPath: "add_children[0]: birthdate is required",
+		},
+		{
+			name: "child_no_contracts",
+			req: &models.ForecastRequest{
+				AddChildren: []models.Child{{
+					Person: models.Person{FirstName: "X", LastName: "Y", Gender: "female", Birthdate: bday},
+				}},
+			},
+			wantErrPath: "add_children[0]: at least one contract is required",
+		},
+		{
+			name: "child_contract_missing_from",
+			req: &models.ForecastRequest{
+				AddChildren: []models.Child{{
+					Person:    models.Person{FirstName: "X", LastName: "Y", Gender: "female", Birthdate: bday},
+					Contracts: []models.ChildContract{{BaseContract: models.BaseContract{SectionID: 1}}},
+				}},
+			},
+			wantErrPath: "add_children[0].contracts[0]: from is required",
+		},
+		{
+			name: "child_contract_missing_section",
+			req: &models.ForecastRequest{
+				AddChildren: []models.Child{{
+					Person:    models.Person{FirstName: "X", LastName: "Y", Gender: "female", Birthdate: bday},
+					Contracts: []models.ChildContract{{BaseContract: models.BaseContract{Period: models.Period{From: from}}}},
+				}},
+			},
+			wantErrPath: "add_children[0].contracts[0]: section_id is required",
+		},
+
+		// AddChildContracts (standalone)
+		{
+			name:        "child_contract_standalone_missing_child_id",
+			req:         &models.ForecastRequest{AddChildContracts: []models.ChildContract{{BaseContract: models.BaseContract{Period: models.Period{From: from}, SectionID: 1}}}},
+			wantErrPath: "add_child_contracts[0]: child_id is required",
+		},
+		{
+			name: "child_contract_standalone_missing_from",
+			req: &models.ForecastRequest{
+				AddChildContracts: []models.ChildContract{{
+					BaseContract: models.BaseContract{SectionID: 1},
+					ChildID:      1,
+				}},
+			},
+			wantErrPath: "add_child_contracts[0]: from is required",
+		},
+
+		// AddEmployees
+		{
+			name: "employee_no_contracts",
+			req: &models.ForecastRequest{
+				AddEmployees: []models.Employee{{
+					Person: models.Person{FirstName: "X", LastName: "Y", Birthdate: bday},
+				}},
+			},
+			wantErrPath: "add_employees[0]: at least one contract is required",
+		},
+		{
+			name: "employee_contract_missing_payplan",
+			req: &models.ForecastRequest{
+				AddEmployees: []models.Employee{{
+					Person: models.Person{FirstName: "X", LastName: "Y", Birthdate: bday},
+					Contracts: []models.EmployeeContract{{
+						BaseContract: models.BaseContract{Period: models.Period{From: from}, SectionID: 1},
+						Grade:        "S8a", Step: 3, WeeklyHours: 30, StaffCategory: "qualified",
+					}},
+				}},
+			},
+			wantErrPath: "add_employees[0].contracts[0]: pay_plan_id is required",
+		},
+		{
+			name: "employee_contract_missing_grade",
+			req: &models.ForecastRequest{
+				AddEmployees: []models.Employee{{
+					Person: models.Person{FirstName: "X", LastName: "Y", Birthdate: bday},
+					Contracts: []models.EmployeeContract{{
+						BaseContract: models.BaseContract{Period: models.Period{From: from}, SectionID: 1},
+						PayPlanID:    1,
+						Step:         3, WeeklyHours: 30, StaffCategory: "qualified",
+					}},
+				}},
+			},
+			wantErrPath: "add_employees[0].contracts[0]: grade is required",
+		},
+		{
+			name: "employee_contract_step_zero",
+			req: &models.ForecastRequest{
+				AddEmployees: []models.Employee{{
+					Person: models.Person{FirstName: "X", LastName: "Y", Birthdate: bday},
+					Contracts: []models.EmployeeContract{{
+						BaseContract: models.BaseContract{Period: models.Period{From: from}, SectionID: 1},
+						PayPlanID:    1, Grade: "S8a",
+						WeeklyHours: 30, StaffCategory: "qualified",
+					}},
+				}},
+			},
+			wantErrPath: "add_employees[0].contracts[0]: step must be >= 1",
+		},
+		{
+			name: "employee_contract_zero_hours",
+			req: &models.ForecastRequest{
+				AddEmployees: []models.Employee{{
+					Person: models.Person{FirstName: "X", LastName: "Y", Birthdate: bday},
+					Contracts: []models.EmployeeContract{{
+						BaseContract: models.BaseContract{Period: models.Period{From: from}, SectionID: 1},
+						PayPlanID:    1, Grade: "S8a", Step: 3, StaffCategory: "qualified",
+					}},
+				}},
+			},
+			wantErrPath: "add_employees[0].contracts[0]: weekly_hours must be > 0",
+		},
+		{
+			name: "employee_contract_missing_staff_category",
+			req: &models.ForecastRequest{
+				AddEmployees: []models.Employee{{
+					Person: models.Person{FirstName: "X", LastName: "Y", Birthdate: bday},
+					Contracts: []models.EmployeeContract{{
+						BaseContract: models.BaseContract{Period: models.Period{From: from}, SectionID: 1},
+						PayPlanID:    1, Grade: "S8a", Step: 3, WeeklyHours: 30,
+					}},
+				}},
+			},
+			wantErrPath: "add_employees[0].contracts[0]: staff_category is required",
+		},
+
+		// AddEmployeeContracts (standalone)
+		{
+			name:        "employee_contract_standalone_missing_employee_id",
+			req:         &models.ForecastRequest{AddEmployeeContracts: []models.EmployeeContract{{BaseContract: models.BaseContract{Period: models.Period{From: from}, SectionID: 1}, PayPlanID: 1, Grade: "S8a", Step: 3, WeeklyHours: 30, StaffCategory: "qualified"}}},
+			wantErrPath: "add_employee_contracts[0]: employee_id is required",
+		},
+	}
+
+	svc, td := setupForecastTestData(t)
+	ctx := context.Background()
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := svc.GetForecast(ctx, td.org.ID, tc.req)
+			if err == nil {
+				t.Fatalf("expected validation error, got nil")
+			}
+			if !strings.Contains(err.Error(), tc.wantErrPath) {
+				t.Errorf("error %q does not contain %q", err.Error(), tc.wantErrPath)
+			}
+		})
+	}
+}
+
+func TestGetForecast_OverlayOnlyRemoves(t *testing.T) {
+	// An overlay that ONLY removes (no adds) was a documented gap. Verify
+	// the calculator still runs and produces a result, and that removing
+	// an employee shaves their salary off financials.
+	svc, td := setupForecastTestData(t)
+	ctx := context.Background()
+
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+
+	baseline, err := svc.GetForecast(ctx, td.org.ID, &models.ForecastRequest{From: &from, To: &to})
+	if err != nil {
+		t.Fatalf("baseline: %v", err)
+	}
+	baselineGross := baseline.Financials.DataPoints[0].GrossSalary
+
+	withRemove, err := svc.GetForecast(ctx, td.org.ID, &models.ForecastRequest{
+		From: &from, To: &to,
+		RemoveEmployeeIDs: []uint{td.emp1.ID},
+	})
+	if err != nil {
+		t.Fatalf("with remove: %v", err)
+	}
+	if withRemove.Financials.DataPoints[0].GrossSalary >= baselineGross {
+		t.Errorf("removing emp1 should lower gross salary; baseline=%d, with-remove=%d",
+			baselineGross, withRemove.Financials.DataPoints[0].GrossSalary)
+	}
+	if got := withRemove.Financials.DataPoints[0].StaffCount; got != 1 {
+		t.Errorf("staff count after removing 1 of 2 = %d, want 1", got)
+	}
+}
+
+func TestGetForecast_RemoveChildMissing_Rejected(t *testing.T) {
+	// Counterpart to F6's employee-missing test for the child path.
+	svc, td := setupForecastTestData(t)
+	ctx := context.Background()
+
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+
+	_, err := svc.GetForecast(ctx, td.org.ID, &models.ForecastRequest{
+		From: &from, To: &to,
+		RemoveChildIDs: []uint{99_999_999},
+	})
+	if err == nil {
+		t.Fatal("expected BadRequest for missing child id")
+	}
+	if !strings.Contains(err.Error(), "99999999") {
+		t.Errorf("error should mention the missing id; got %v", err)
+	}
+}
+
+func TestGetForecast_DateRangeCrossingKitaYearBoundary(t *testing.T) {
+	// Kita year boundary is Aug 1. Walk Jul → Aug across that boundary
+	// to make sure the calc loop emits both months and the funding
+	// period switch (if any) is handled cleanly. Today only one funding
+	// period is seeded so this is mostly a smoke test, but it locks in
+	// that snap+iterate handles the year-rollover correctly.
+	svc, td := setupForecastTestData(t)
+	ctx := context.Background()
+
+	from := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+
+	result, err := svc.GetForecast(ctx, td.org.ID, &models.ForecastRequest{From: &from, To: &to})
+	if err != nil {
+		t.Fatalf("forecast: %v", err)
+	}
+	if got := len(result.Financials.DataPoints); got != 3 {
+		t.Fatalf("data point count = %d, want 3 (Jul, Aug, Sep)", got)
+	}
+	wantDates := []string{"2026-07-01", "2026-08-01", "2026-09-01"}
+	for i, want := range wantDates {
+		if got := result.Financials.DataPoints[i].Date; got != want {
+			t.Errorf("data_points[%d].date = %q, want %q", i, got, want)
+		}
+	}
+}
+
+func TestGetForecast_ChildContractStartsBeforeBirthdate_DocumentsCurrentBehavior(t *testing.T) {
+	// Lock-in test for current behavior: the validator does NOT check
+	// that contract.From >= child.Birthdate. A six-month-old can have
+	// a contract starting a year before they were born and the request
+	// is accepted. Documented here so the next reader knows it's a
+	// deliberate omission, not an oversight — adding the check is a
+	// separate decision (would interact with funding age math that
+	// already uses birth-relative dates).
+	svc, td := setupForecastTestData(t)
+	ctx := context.Background()
+
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	contractFrom := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	birthdate := time.Date(2024, 5, 15, 0, 0, 0, 0, time.UTC)
+
+	_, err := svc.GetForecast(ctx, td.org.ID, &models.ForecastRequest{
+		From: &from, To: &to,
+		AddChildren: []models.Child{{
+			Person: models.Person{FirstName: "Time", LastName: "Traveler", Gender: "female", Birthdate: birthdate},
+			Contracts: []models.ChildContract{{BaseContract: models.BaseContract{
+				Period:     models.Period{From: contractFrom},
+				SectionID:  td.section.ID,
+				Properties: models.ContractProperties{"care_type": "ganztag"},
+			}}},
+		}},
+	})
+	if err != nil {
+		t.Errorf("current behavior is to ACCEPT contract.From < birthdate; got error: %v", err)
+	}
+}
+
+// ============================================================
 // F6: validateOverlay batching (kill N+1)
 // ============================================================
 
