@@ -20,11 +20,18 @@ func ValidBudgetItemCategory(category string) bool {
 }
 
 // BudgetItem represents an income or expense category for an organization (e.g., "Rent", "Elternbeiträge", "Essensgeld").
+//
+// Uniqueness on (organization_id, name) is enforced by a functional
+// index on `(organization_id, lower(trim(name)))` declared in
+// migration 000017 — so "Rent", "rent", and " Rent " all collide.
+// The GORM uniqueIndex tags below reference the same name as a
+// breadcrumb but are NOT the source of truth (we never run
+// AutoMigrate; the SQL migration is the truthful schema).
 type BudgetItem struct {
 	ID             uint              `gorm:"primaryKey" json:"id" example:"1"`
-	OrganizationID uint              `gorm:"not null;index;uniqueIndex:idx_budget_item_org_name" json:"organization_id" example:"1"`
+	OrganizationID uint              `gorm:"not null;index" json:"organization_id" example:"1"`
 	Organization   *Organization     `gorm:"foreignKey:OrganizationID" json:"-"`
-	Name           string            `gorm:"size:255;not null;uniqueIndex:idx_budget_item_org_name" json:"name" example:"Elternbeiträge"`
+	Name           string            `gorm:"size:255;not null" json:"name" example:"Elternbeiträge"`
 	Category       string            `gorm:"size:50;not null" json:"category" example:"income"`
 	PerChild       bool              `gorm:"default:false;not null" json:"per_child" example:"true"`
 	Entries        []BudgetItemEntry `gorm:"foreignKey:BudgetItemID" json:"entries,omitempty"`
@@ -38,7 +45,32 @@ func (b *BudgetItem) GetOrganizationID() uint {
 }
 
 // BudgetItemEntry represents a time-bound amount for a BudgetItem.
-// Entries for the same budget item cannot overlap in time.
+//
+// # Uniqueness / overlap
+//
+// Entries for the same budget item cannot overlap in time. Enforced
+// at two layers: BudgetItemService.ValidateNoOverlap (friendly error
+// message) AND a DB-level GIST EXCLUDE constraint added in migration
+// 000016 (the truthful gate, prevents the TOCTOU window the service
+// validation has under READ COMMITTED).
+//
+// # Mid-month semantics in financials
+//
+// The financials calculator (calculateFinancials) takes a first-of-
+// month SNAPSHOT each iteration: an entry is counted for a given
+// month only if `IsActiveOn(firstOfThatMonth)` returns true.
+// Practical implication for budget-item entries:
+//
+//   - An entry with From=2025-01-15 contributes nothing to January
+//     2025; it first counts in February.
+//   - An entry that ends 2025-04-20 still counts for all of April
+//     (snapshot on April 1 is within the period).
+//
+// Net effect: under-count in the first partial month, over-count
+// in the last. For monthly-rollup planning this is acceptable; if a
+// stakeholder ever asks for day-accurate pro-rating it has to be
+// added explicitly. See calculateFinancials' doc-comment for the
+// fuller treatment.
 type BudgetItemEntry struct {
 	ID           uint        `gorm:"primaryKey" json:"id" example:"1"`
 	BudgetItemID uint        `gorm:"not null;index" json:"budget_item_id" example:"1"`
@@ -121,8 +153,23 @@ type BudgetItemEntryResponse struct {
 	UpdatedAt    time.Time  `json:"updated_at"`
 }
 
-// ToResponse converts a BudgetItem to BudgetItemResponse.
-func (b *BudgetItem) ToResponse() BudgetItemResponse {
+// ToResponse converts a BudgetItem to BudgetItemResponse, picking the
+// entry active on `asOf` to populate ActiveAmountCents. Callers that
+// want "active right now" pass time.Now().UTC().
+//
+// asOf is required (not optional) so the picked entry is never a
+// hidden function of the server clock — every caller has to make a
+// deliberate choice. The previous time.Now()-by-default version meant
+// any caller (list view, future as-of-date filter, summary view) got
+// "active right now" regardless of the user's intent.
+//
+// Determinism note: migration 000016's GIST exclusion constraint
+// guarantees at most one entry is active on any given date for a
+// single budget item, so the loop's first match is the only match.
+// If that constraint is ever dropped, callers should also order
+// b.Entries by from_date DESC so the "newest period that covers
+// asOf" wins reproducibly — see the loader Order() clauses.
+func (b *BudgetItem) ToResponse(asOf time.Time) BudgetItemResponse {
 	resp := BudgetItemResponse{
 		ID:             b.ID,
 		OrganizationID: b.OrganizationID,
@@ -133,9 +180,8 @@ func (b *BudgetItem) ToResponse() BudgetItemResponse {
 		UpdatedAt:      b.UpdatedAt,
 	}
 
-	now := time.Now().UTC()
 	for i := range b.Entries {
-		if b.Entries[i].IsActiveOn(now) {
+		if b.Entries[i].IsActiveOn(asOf) {
 			amount := b.Entries[i].AmountCents
 			resp.ActiveAmountCents = &amount
 			break

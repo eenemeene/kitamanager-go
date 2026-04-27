@@ -84,12 +84,18 @@ export default function BudgetItemDetailPage() {
   });
 
   const detailQueryKey = queryKeys.budgetItems.detail(orgId, budgetItemId);
-  const financialsKey = queryKeys.statistics.financials(orgId);
+  // Use the statistics-namespace prefix so every concrete financials
+  // query (parameterised by from/to) is invalidated after an entry
+  // mutation. The previous `queryKeys.statistics.financials(orgId)`
+  // produced `['statistics', orgId, 'financials', undefined, undefined]`,
+  // which TanStack Query matches LITERALLY against `undefined` slots
+  // and therefore missed every parameterised financials query.
+  const statisticsKey = queryKeys.statistics.all(orgId);
 
   const createEntryMutation = useResourceMutation({
     mutationFn: (data: BudgetItemEntryCreateRequest) =>
       apiClient.createBudgetItemEntry(orgId, budgetItemId, data),
-    invalidateQueryKey: [detailQueryKey, financialsKey],
+    invalidateQueryKey: [detailQueryKey, statisticsKey],
     successMessage: t('budgetItems.entryCreated'),
     errorMessage: t('budgetItems.failedToSaveEntry'),
     onSuccess: () => {
@@ -102,7 +108,7 @@ export default function BudgetItemDetailPage() {
   const updateEntryMutation = useResourceMutation({
     mutationFn: ({ entryId, data }: { entryId: number; data: BudgetItemEntryUpdateRequest }) =>
       apiClient.updateBudgetItemEntry(orgId, budgetItemId, entryId, data),
-    invalidateQueryKey: [detailQueryKey, financialsKey],
+    invalidateQueryKey: [detailQueryKey, statisticsKey],
     successMessage: t('budgetItems.entryUpdated'),
     errorMessage: t('budgetItems.failedToSaveEntry'),
     onSuccess: () => {
@@ -114,7 +120,7 @@ export default function BudgetItemDetailPage() {
 
   const deleteEntryMutation = useResourceMutation({
     mutationFn: (entryId: number) => apiClient.deleteBudgetItemEntry(orgId, budgetItemId, entryId),
-    invalidateQueryKey: [detailQueryKey, financialsKey],
+    invalidateQueryKey: [detailQueryKey, statisticsKey],
     successMessage: t('budgetItems.entryDeleted'),
     errorMessage: t('budgetItems.failedToDeleteEntry'),
     onSuccess: () => {

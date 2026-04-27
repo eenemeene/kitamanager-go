@@ -54,7 +54,7 @@ func TestBudgetItem_ToResponse_NoActiveEntry(t *testing.T) {
 		UpdatedAt:      now,
 	}
 
-	resp := b.ToResponse()
+	resp := b.ToResponse(time.Now().UTC())
 
 	if resp.ID != 1 {
 		t.Errorf("ID = %d, want 1", resp.ID)
@@ -95,7 +95,7 @@ func TestBudgetItem_ToResponse_WithActiveEntry(t *testing.T) {
 		},
 	}
 
-	resp := b.ToResponse()
+	resp := b.ToResponse(time.Now().UTC())
 
 	if resp.ActiveAmountCents == nil {
 		t.Fatal("ActiveAmountCents = nil, want non-nil")
@@ -103,6 +103,78 @@ func TestBudgetItem_ToResponse_WithActiveEntry(t *testing.T) {
 	if *resp.ActiveAmountCents != 50000 {
 		t.Errorf("ActiveAmountCents = %d, want 50000", *resp.ActiveAmountCents)
 	}
+}
+
+// ============================================================
+// B5: ToResponse(asOf) — caller controls "active when?"
+// ============================================================
+
+func TestBudgetItem_ToResponse_AsOfPicksMatchingEntry(t *testing.T) {
+	// Two non-overlapping entries — one active in 2024, one in 2025.
+	// ToResponse(asOf=2024-06-01) must pick the 2024 entry;
+	// ToResponse(asOf=2025-06-01) must pick the 2025 one. The
+	// previous time.Now()-by-default version meant a list-page
+	// rendered today would always pick "today" regardless of the
+	// caller's intent (e.g. a future "as-of-date" filter).
+	endOf2024 := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	b := BudgetItem{
+		ID: 1, OrganizationID: 2, Name: "Rent", Category: "expense",
+		Entries: []BudgetItemEntry{
+			{
+				ID: 1, BudgetItemID: 1,
+				Period:      Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: &endOf2024},
+				AmountCents: 30000,
+			},
+			{
+				ID: 2, BudgetItemID: 1,
+				Period:      Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
+				AmountCents: 50000,
+			},
+		},
+	}
+
+	resp24 := b.ToResponse(time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC))
+	if resp24.ActiveAmountCents == nil || *resp24.ActiveAmountCents != 30000 {
+		t.Errorf("asOf 2024-06-01: ActiveAmountCents = %v, want 30000",
+			derefOrNil(resp24.ActiveAmountCents))
+	}
+
+	resp25 := b.ToResponse(time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC))
+	if resp25.ActiveAmountCents == nil || *resp25.ActiveAmountCents != 50000 {
+		t.Errorf("asOf 2025-06-01: ActiveAmountCents = %v, want 50000",
+			derefOrNil(resp25.ActiveAmountCents))
+	}
+}
+
+func TestBudgetItem_ToResponse_AsOfBeforeAnyEntry_ReturnsNil(t *testing.T) {
+	// asOf before the first entry's From: no match. Important for
+	// historical-snapshot views where the date predates the budget
+	// item's existence in the books.
+	b := BudgetItem{
+		ID: 1, Name: "X", Category: "income",
+		Entries: []BudgetItemEntry{
+			{
+				ID: 1, BudgetItemID: 1,
+				Period:      Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
+				AmountCents: 10000,
+			},
+		},
+	}
+	resp := b.ToResponse(time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC))
+	if resp.ActiveAmountCents != nil {
+		t.Errorf("expected nil ActiveAmountCents for asOf-before-from, got %d",
+			*resp.ActiveAmountCents)
+	}
+}
+
+// derefOrNil returns the int the pointer points to, or 0 if nil. Lets
+// asserting test names say "got 0" instead of "got <nil>" when
+// formatting %v.
+func derefOrNil(p *int) int {
+	if p == nil {
+		return 0
+	}
+	return *p
 }
 
 func TestBudgetItem_ToResponse_InactiveEntry(t *testing.T) {
@@ -125,7 +197,7 @@ func TestBudgetItem_ToResponse_InactiveEntry(t *testing.T) {
 		},
 	}
 
-	resp := b.ToResponse()
+	resp := b.ToResponse(time.Now().UTC())
 
 	if resp.ActiveAmountCents != nil {
 		t.Errorf("ActiveAmountCents = %d, want nil (entry ended in the past)", *resp.ActiveAmountCents)

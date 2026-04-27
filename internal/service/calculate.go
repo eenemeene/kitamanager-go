@@ -146,18 +146,52 @@ func findPayPlanPeriodForDate(periods []models.PayPlanPeriod, date time.Time) *m
 //   - Employer contributions: gross × employer contribution rate
 //   - Budget items with category "expense" (fixed or per-child)
 //
-// Each month uses the first-of-month as reference date.
-// A child/employee is counted if their contract IsActiveOn that date.
-// calculateFinancials returns the per-month rollup AND any data-quality
-// warnings hit along the way (e.g. a contract pointing at a pay plan that
-// no longer exists). Warnings are de-duplicated across the date range so
-// one bad row doesn't produce N copies of the same warning — the first
-// month it appears wins.
+// # First-of-month snapshot semantics
 //
-// Salary for a row that produces a warning is excluded from totals; this
-// keeps the numbers deterministic instead of silently zero-padding, and
-// the caller (handler / forecast service) is expected to surface the
-// warnings to the end user.
+// Each month uses the first-of-month as the reference date. A child,
+// employee contract, or budget-item entry is counted if its
+// `IsActiveOn(firstOfMonth)` returns true.
+//
+// This means PARTIAL-MONTH activity is silently rounded to the next
+// snapshot:
+//
+//   - An entry/contract with From=2025-01-15 contributes nothing to
+//     January 2025 (the loop iteration on 2025-01-01 sees `from > date`
+//     and skips it). It first counts in February.
+//   - An entry that ends mid-month still counts for that whole month
+//     (since the snapshot at the start of the month sees it as active).
+//
+// Net effect: the calculator under-counts income/expense in the
+// FIRST partial month and over-counts in the LAST partial month, by
+// roughly the same amount over the year. For monthly-rollup financial
+// planning this is acceptable; if a future report needs day-accurate
+// pro-rating, it has to compute that itself rather than relying on
+// these snapshots.
+//
+// The convention is consistent across every calculator
+// (pickActiveChildContract, pickActiveEmployeeContract, the budget-
+// item entry loop), so a future maintainer who breaks one breaks
+// them all visibly. Document, don't pro-rate.
+//
+// # Per-child budget items
+//
+// Items with PerChild=true multiply the entry's amount_cents by
+// `childCount` (children with an active contract on the snapshot
+// date). When childCount=0 the item contributes 0 — legal but
+// usually a config smell worth surfacing in the UI.
+//
+// # Warnings
+//
+// Returns the per-month rollup AND any data-quality warnings hit
+// along the way (e.g. a contract pointing at a pay plan that no
+// longer exists). Warnings are de-duplicated across the date range
+// so one bad row doesn't produce N copies of the same warning — the
+// first month it appears wins.
+//
+// Salary for a row that produces a warning is excluded from totals;
+// this keeps the numbers deterministic instead of silently zero-
+// padding, and the caller (handler / forecast service) is expected
+// to surface the warnings to the end user.
 func calculateFinancials(
 	children []models.Child,
 	employees []models.Employee,

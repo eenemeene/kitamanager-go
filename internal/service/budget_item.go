@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -78,7 +79,10 @@ func (s *BudgetItemService) Create(ctx context.Context, orgID uint, req *models.
 		return nil, apperror.InternalWrap(err, "failed to create budget item")
 	}
 
-	resp := item.ToResponse()
+	// Newly-created item has no entries yet; asOf is irrelevant but
+	// must be passed. Use now for consistency with other "what's
+	// active right now" call sites.
+	resp := item.ToResponse(time.Now().UTC())
 	return &resp, nil
 }
 
@@ -107,7 +111,14 @@ func (s *BudgetItemService) List(ctx context.Context, orgID uint, search string,
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch budget items")
 	}
 
-	return toResponseList(items, (*models.BudgetItem).ToResponse), total, nil
+	// Use a single "now" for the whole page so two items in the same
+	// list response can't pick entries against drifted clock values.
+	now := time.Now().UTC()
+	out := make([]models.BudgetItemResponse, 0, len(items))
+	for i := range items {
+		out = append(out, items[i].ToResponse(now))
+	}
+	return out, total, nil
 }
 
 // Update updates a budget item.
@@ -123,6 +134,39 @@ func (s *BudgetItemService) Update(ctx context.Context, id, orgID uint, req *mod
 			return nil, err
 		}
 		item.Name = name
+	}
+
+	// category and per_child are "meaning-defining" — flipping them
+	// after entries exist silently re-interprets every historical
+	// entry in financials (an "income €50,000/month" line becomes
+	// "expense €50,000/month"; a flat "€50,000" becomes
+	// "€50,000 × childCount"). The user has no signal that the
+	// dashboard's totals just shifted under their feet.
+	//
+	// Reject the change at the boundary, with a precise message
+	// telling the user how to escape: delete the entries, or create
+	// a new budget item alongside this one. Either path forces an
+	// explicit data-migration step the user is aware of.
+	categoryChanging := req.Category != nil && *req.Category != item.Category
+	perChildChanging := req.PerChild != nil && *req.PerChild != item.PerChild
+	if categoryChanging || perChildChanging {
+		count, err := s.store.CountEntries(ctx, item.ID)
+		if err != nil {
+			return nil, apperror.InternalWrap(err, "failed to count budget item entries")
+		}
+		if count > 0 {
+			switch {
+			case categoryChanging && perChildChanging:
+				return nil, apperror.BadRequest(
+					"cannot change category and per_child while entries exist; delete entries first or create a new budget item")
+			case categoryChanging:
+				return nil, apperror.BadRequest(
+					"cannot change category while entries exist; delete entries first or create a new budget item")
+			default:
+				return nil, apperror.BadRequest(
+					"cannot change per_child while entries exist; delete entries first or create a new budget item")
+			}
+		}
 	}
 
 	if req.Category != nil {
@@ -143,7 +187,7 @@ func (s *BudgetItemService) Update(ctx context.Context, id, orgID uint, req *mod
 		return nil, apperror.InternalWrap(err, "failed to update budget item")
 	}
 
-	resp := item.ToResponse()
+	resp := item.ToResponse(time.Now().UTC())
 	return &resp, nil
 }
 

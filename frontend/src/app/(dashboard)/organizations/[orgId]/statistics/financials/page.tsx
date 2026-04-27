@@ -9,6 +9,7 @@ import type { FundingComparisonResponse, FundingComparisonSummary } from '@/lib/
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChartErrorBoundary } from '@/components/charts/chart-error-boundary';
+import { CalculationWarningsBanner } from '@/components/charts/calculation-warnings-banner';
 import { StatisticsPageHeader } from '@/components/statistics/statistics-page-header';
 import { FinancialSummaryCards } from '@/components/statistics/financial-summary-cards';
 import { BudgetTable } from '@/components/charts/budget-table';
@@ -141,6 +142,14 @@ export default function FinancialsPage() {
         titleKey="nav.statisticsFinancials"
         printHref={`/organizations/${orgId}/statistics/financials/print`}
       />
+
+      {/* Data-quality warnings from the backend calculator (e.g.
+          employees whose pay plan couldn't be resolved). The salary
+          for those rows was excluded from the totals below; without
+          this banner the lower-than-expected numbers would be
+          unattributable. See backend F1 commit for the warning
+          codes. */}
+      <CalculationWarningsBanner warnings={financials?.warnings} />
 
       {/* Financial Summary Cards */}
       {currentFinancials && (

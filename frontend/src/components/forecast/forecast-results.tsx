@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { ChartErrorBoundary } from '@/components/charts/chart-error-boundary';
+import { CalculationWarningsBanner } from '@/components/charts/calculation-warnings-banner';
 import { StaffingHoursTable } from '@/components/charts/staffing-hours-table';
 import { EmployeeStaffingHoursTable } from '@/components/charts/employee-staffing-hours-table';
 import { OccupancyTable } from '@/components/charts/occupancy-table';
@@ -57,6 +58,15 @@ export function ForecastResults({ data, baseline }: ForecastResultsProps) {
 
   return (
     <Card>
+      {/* Banner ABOVE the card content so warnings are visible no
+          matter which tab the user lands on. ForecastResponse.warnings
+          is the union of all sub-calculations' warnings (today only
+          financials emits any). See backend F1 commit. */}
+      {data.warnings && data.warnings.length > 0 && (
+        <div className="px-6 pt-6">
+          <CalculationWarningsBanner warnings={data.warnings} />
+        </div>
+      )}
       <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <CardTitle>{t('forecastResults')}</CardTitle>
         {baseline && (

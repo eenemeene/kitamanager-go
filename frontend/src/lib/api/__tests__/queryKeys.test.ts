@@ -210,6 +210,70 @@ describe('queryKeys', () => {
         undefined,
       ]);
     });
+
+    // Regression test for the stale-financials-after-budget-item-edit
+    // bug. TanStack Query invalidates by prefix. The right way to
+    // invalidate every concrete financials query (each parameterised
+    // by from/to) is via `queryKeys.statistics.all(orgId)` — the bare
+    // ['statistics', orgId] tuple. The previous frontend code used
+    // `['financials', orgId]`, which matches nothing because
+    // financials keys actually live under the 'statistics' namespace.
+    //
+    // This test runs a real QueryClient with two parameterised
+    // financials queries and asserts both get invalidated by the
+    // statistics prefix. If somebody re-introduces the per-financials
+    // key (or worse, the bare ['financials', orgId] tuple), this
+    // test fails loud.
+    it('statistics.all prefix invalidates every parameterised financials query', async () => {
+      const { QueryClient } = await import('@tanstack/react-query');
+      const client = new QueryClient();
+      // Seed two concrete financials queries under different date
+      // ranges, plus a budgetItems query that must NOT be invalidated.
+      client.setQueryData(queryKeys.statistics.financials(1, '2025-01-01', '2025-12-01'), {
+        seeded: 'a',
+      });
+      client.setQueryData(queryKeys.statistics.financials(1, '2026-01-01', '2026-12-01'), {
+        seeded: 'b',
+      });
+      client.setQueryData(queryKeys.budgetItems.all(1), { seeded: 'budgets' });
+
+      // Invalidate via the statistics-namespace prefix.
+      await client.invalidateQueries({ queryKey: queryKeys.statistics.all(1) });
+
+      // Both financials queries are marked stale.
+      const a = client.getQueryState(
+        queryKeys.statistics.financials(1, '2025-01-01', '2025-12-01')
+      );
+      const b = client.getQueryState(
+        queryKeys.statistics.financials(1, '2026-01-01', '2026-12-01')
+      );
+      expect(a?.isInvalidated).toBe(true);
+      expect(b?.isInvalidated).toBe(true);
+
+      // budgetItems is NOT invalidated — the prefix only matches
+      // queries under the 'statistics' branch.
+      const budgets = client.getQueryState(queryKeys.budgetItems.all(1));
+      expect(budgets?.isInvalidated).toBe(false);
+    });
+
+    // Negative regression: the buggy historical key did not match.
+    // Lock this in so a "let's restore the simpler key" PR is
+    // immediately exposed.
+    it('the legacy ["financials", orgId] tuple does NOT match parameterised queries', async () => {
+      const { QueryClient } = await import('@tanstack/react-query');
+      const client = new QueryClient();
+      client.setQueryData(queryKeys.statistics.financials(1, '2025-01-01', '2025-12-01'), {
+        seeded: 'a',
+      });
+
+      await client.invalidateQueries({ queryKey: ['financials', 1] });
+
+      const a = client.getQueryState(
+        queryKeys.statistics.financials(1, '2025-01-01', '2025-12-01')
+      );
+      // BUG REPRODUCTION: nothing matches.
+      expect(a?.isInvalidated).toBe(false);
+    });
   });
 
   describe('stepPromotions', () => {

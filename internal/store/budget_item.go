@@ -74,7 +74,13 @@ func (s *BudgetItemStore) FindByOrganization(ctx context.Context, orgID uint, se
 
 	dataQuery := DBFromContext(ctx, s.db).
 		Where("organization_id = ?", orgID).
-		Preload("Entries")
+		// Newest entry first so ToResponse(asOf)'s first-match
+		// loop is deterministic if a future migration ever drops the
+		// GIST exclusion constraint that today guarantees at most one
+		// active entry per item.
+		Preload("Entries", func(db *gorm.DB) *gorm.DB {
+			return db.Order("budget_item_entries.from_date DESC")
+		})
 	if search != "" {
 		dataQuery = dataQuery.Scopes(NameSearch("budget_items", "name", search))
 	}
@@ -92,11 +98,19 @@ func (s *BudgetItemStore) FindByOrganization(ctx context.Context, orgID uint, se
 }
 
 // FindByOrganizationWithEntries retrieves all budget items for an organization with entries preloaded.
+// Used by the financials calculator (calculateFinancials) which walks
+// `item.Entries` looking for the one active on the current month.
+// The DESC order is defensive: today migration 000016's GIST exclusion
+// guarantees at most one active entry per item per date so the order
+// doesn't change correctness, but if that constraint is ever dropped
+// the loader's ordering becomes the silent tiebreaker.
 func (s *BudgetItemStore) FindByOrganizationWithEntries(ctx context.Context, orgID uint) ([]models.BudgetItem, error) {
 	var items []models.BudgetItem
 	err := DBFromContext(ctx, s.db).
 		Where("organization_id = ?", orgID).
-		Preload("Entries").
+		Preload("Entries", func(db *gorm.DB) *gorm.DB {
+			return db.Order("budget_item_entries.from_date DESC")
+		}).
 		Find(&items).Error
 	if err != nil {
 		return nil, err
@@ -109,17 +123,17 @@ func (s *BudgetItemStore) Update(ctx context.Context, item *models.BudgetItem) e
 	return DBFromContext(ctx, s.db).Save(item).Error
 }
 
-// Delete deletes a budget item and all related entries.
+// Delete deletes a budget item. Entries cascade automatically via the
+// FK declared in migration 000001 (`budget_item_entries.budget_item_id
+// REFERENCES budget_items(id) ON DELETE CASCADE`). The previous
+// implementation did the entry-delete manually then deleted the
+// parent — redundant work, and the two statements ran without a
+// transaction at this layer (a future caller invoking the store
+// directly outside a service-layer tx would have left an orphaned
+// budget_item if the parent delete failed). One statement, atomic by
+// definition, FK does the rest.
 func (s *BudgetItemStore) Delete(ctx context.Context, id uint) error {
-	db := DBFromContext(ctx, s.db)
-
-	// Delete entries first
-	if err := db.Where("budget_item_id = ?", id).Delete(&models.BudgetItemEntry{}).Error; err != nil {
-		return err
-	}
-
-	// Delete budget item
-	return db.Delete(&models.BudgetItem{}, id).Error
+	return DBFromContext(ctx, s.db).Delete(&models.BudgetItem{}, id).Error
 }
 
 // BudgetItemEntry CRUD
@@ -160,6 +174,17 @@ func (s *BudgetItemStore) FindEntriesByBudgetItemPaginated(ctx context.Context, 
 // UpdateEntry updates a budget item entry.
 func (s *BudgetItemStore) UpdateEntry(ctx context.Context, entry *models.BudgetItemEntry) error {
 	return DBFromContext(ctx, s.db).Save(entry).Error
+}
+
+// CountEntries returns the number of entries for a budget item without
+// loading them. Used by the service-layer guard against changing
+// category / per_child after entries exist.
+func (s *BudgetItemStore) CountEntries(ctx context.Context, budgetItemID uint) (int64, error) {
+	var total int64
+	err := DBFromContext(ctx, s.db).Model(&models.BudgetItemEntry{}).
+		Where("budget_item_id = ?", budgetItemID).
+		Count(&total).Error
+	return total, err
 }
 
 // DeleteEntry deletes a budget item entry.

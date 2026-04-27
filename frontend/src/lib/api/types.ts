@@ -775,8 +775,34 @@ export interface FinancialDataPoint {
   salary_details?: FinancialSalaryDetail[];
 }
 
+/**
+ * Per-row, non-fatal data-quality issue surfaced from a statistics or
+ * forecast calculation. Mirrors models.CalculationWarning on the
+ * backend. Stable codes (so the UI can group/translate by Code, not
+ * by Message):
+ *   - "missing_pay_plan"      — contract.PayPlanID has no row in DB
+ *   - "no_pay_plan_period"    — pay plan exists but no period covers
+ *                                the contract date
+ *   - "no_pay_plan_entry"     — period exists but the (grade, step)
+ *                                isn't in its entries
+ * The salary for that employee in that month is excluded from the
+ * totals, so the user sees a smaller number than reality. Surfacing
+ * the warning is the only way the user can tell why.
+ */
+export interface CalculationWarning {
+  code: string;
+  message: string;
+  employee_id?: number;
+  contract_id?: number;
+  pay_plan_id?: number;
+  grade?: string;
+  step?: number;
+  date?: string;
+}
+
 export interface FinancialResponse {
   data_points: FinancialDataPoint[];
+  warnings?: CalculationWarning[];
 }
 
 // Staffing hours statistics
@@ -1157,6 +1183,11 @@ export interface ForecastResponse {
   staffing_hours?: StaffingHoursResponse;
   occupancy?: OccupancyResponse;
   employee_staffing_hours?: EmployeeStaffingHoursResponse;
+  /**
+   * Union of per-row warnings from every embedded calculation (today
+   * only Financials emits any). See CalculationWarning.
+   */
+  warnings?: CalculationWarning[];
 }
 
 // AuditLog
