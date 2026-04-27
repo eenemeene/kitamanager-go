@@ -641,6 +641,103 @@ func TestSectionService_NameReusableAfterSoftDelete(t *testing.T) {
 }
 
 // ============================================================
+// S5: case-insensitive name uniqueness + age CHECK constraint
+// ============================================================
+
+func TestSectionService_Create_CaseInsensitiveDuplicate_Rejected(t *testing.T) {
+	// "Krippe" vs "krippe" used to produce two distinct rows under
+	// the raw-name partial unique index. Migration 000020's functional
+	// partial index on `lower(trim(name)) WHERE deleted_at IS NULL`
+	// makes them collide.
+	db := setupTestDB(t)
+	svc := createSectionService(db)
+	ctx := context.Background()
+	org := createTestOrganization(t, db, "Test Org")
+
+	if _, err := svc.Create(ctx, org.ID, &models.SectionCreateRequest{Name: "Krippe"}, "tester"); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	_, err := svc.Create(ctx, org.ID, &models.SectionCreateRequest{Name: "krippe"}, "tester")
+	if err == nil {
+		t.Fatal("expected Conflict for case-only duplicate")
+	}
+	if !errors.Is(err, apperror.ErrConflict) {
+		t.Errorf("expected ErrConflict, got %v", err)
+	}
+}
+
+func TestSectionService_Create_WhitespaceDuplicate_Rejected(t *testing.T) {
+	// Service-layer trim already collapses outer whitespace at the
+	// column level, but the DB index is the truthful gate. " KRIPPE "
+	// trims to "KRIPPE", lowercases to "krippe" → collides with the
+	// existing index entry from "Krippe".
+	db := setupTestDB(t)
+	svc := createSectionService(db)
+	ctx := context.Background()
+	org := createTestOrganization(t, db, "Test Org")
+
+	if _, err := svc.Create(ctx, org.ID, &models.SectionCreateRequest{Name: "Krippe"}, "tester"); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	_, err := svc.Create(ctx, org.ID, &models.SectionCreateRequest{Name: " KRIPPE "}, "tester")
+	if err == nil {
+		t.Fatal("expected Conflict for whitespace+case duplicate")
+	}
+	if !errors.Is(err, apperror.ErrConflict) {
+		t.Errorf("expected ErrConflict, got %v", err)
+	}
+}
+
+func TestSectionService_Create_DistinctNames_BothSucceed(t *testing.T) {
+	// Negative regression: genuinely-distinct names still allowed.
+	db := setupTestDB(t)
+	svc := createSectionService(db)
+	ctx := context.Background()
+	org := createTestOrganization(t, db, "Test Org")
+
+	if _, err := svc.Create(ctx, org.ID, &models.SectionCreateRequest{Name: "Krippe"}, "tester"); err != nil {
+		t.Fatalf("first: %v", err)
+	}
+	if _, err := svc.Create(ctx, org.ID, &models.SectionCreateRequest{Name: "Hort"}, "tester"); err != nil {
+		t.Errorf("distinct name should succeed, got %v", err)
+	}
+}
+
+func TestSection_DBAgeCheck_RejectsNegativeAndInverted(t *testing.T) {
+	// Direct UPDATEs that bypass service.validateAgeRange must still
+	// hit the CHECK from migration 000020. Belt-and-suspenders.
+	db := setupTestDB(t)
+	org := createTestOrganization(t, db, "Test Org")
+	section := createTestSection(t, db, "Krippe", org.ID, false)
+
+	// Negative min: rejected.
+	negTen := -10
+	err := db.Model(&models.Section{}).Where("id = ?", section.ID).
+		UpdateColumn("min_age_months", &negTen).Error
+	if err == nil {
+		t.Error("expected DB CHECK to reject negative min_age_months")
+	}
+
+	// Inverted (min > max): rejected.
+	min24 := 24
+	max12 := 12
+	err = db.Model(&models.Section{}).Where("id = ?", section.ID).
+		Updates(map[string]any{"min_age_months": &min24, "max_age_months": &max12}).Error
+	if err == nil {
+		t.Error("expected DB CHECK to reject min > max")
+	}
+
+	// Valid values: allowed (regression guard for an over-zealous CHECK).
+	min0 := 0
+	max36 := 36
+	err = db.Model(&models.Section{}).Where("id = ?", section.ID).
+		Updates(map[string]any{"min_age_months": &min0, "max_age_months": &max36}).Error
+	if err != nil {
+		t.Errorf("valid age range should be allowed, got %v", err)
+	}
+}
+
+// ============================================================
 // S4: Update's IsDuplicateKeyError fallback (TOCTOU symmetry)
 // ============================================================
 
