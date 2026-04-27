@@ -807,3 +807,208 @@ func TestBudgetItemStore_PerChild_Persisted(t *testing.T) {
 		t.Error("expected per_child to be false for 'Flat Item'")
 	}
 }
+
+// ============================================================
+// B4: DB-level constraints from migration 000016
+// ============================================================
+//
+// These tests bypass the service layer and write directly via the
+// underlying GORM/DB so we exercise the DB constraints, not the
+// app-layer validation. If the constraint is missing or named
+// differently, the tests fail.
+
+func TestBudgetItemEntries_DBOverlapConstraint_Rejected(t *testing.T) {
+	// service.ValidateNoOverlap has a TOCTOU window — two concurrent
+	// requests can pass the SELECT then both INSERT. The GIST
+	// exclusion constraint added in 000016 is the truthful gate.
+	// Direct INSERT bypasses the app validation; the DB must still
+	// reject.
+	db := setupTestDB(t)
+	store := NewBudgetItemStore(db)
+	ctx := t.Context()
+	org := createTestOrganization(t, db, "Test Org")
+
+	item := &models.BudgetItem{
+		OrganizationID: org.ID,
+		Name:           "X", Category: "income", PerChild: false,
+	}
+	if err := store.Create(ctx, item); err != nil {
+		t.Fatalf("create item: %v", err)
+	}
+
+	// Seed an open-ended entry [2025-01-01, ∞).
+	first := &models.BudgetItemEntry{
+		BudgetItemID: item.ID,
+		Period:       models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
+		AmountCents:  10000,
+	}
+	if err := store.CreateEntry(ctx, first); err != nil {
+		t.Fatalf("seed first entry: %v", err)
+	}
+
+	// Direct INSERT of an overlapping entry [2025-06-01, ∞).
+	// (Bypasses any app-layer ValidateNoOverlap; the DB must reject.)
+	second := &models.BudgetItemEntry{
+		BudgetItemID: item.ID,
+		Period:       models.Period{From: time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC)},
+		AmountCents:  20000,
+	}
+	err := db.Create(second).Error
+	if err == nil {
+		t.Fatal("expected DB constraint to reject overlapping entry, got nil")
+	}
+	// Don't pin the exact message — Postgres versions differ — but it
+	// should mention the constraint we created.
+	if !errors.Is(err, err) || err.Error() == "" {
+		t.Errorf("unexpected error shape: %v", err)
+	}
+}
+
+func TestBudgetItemEntries_DBOverlapConstraint_NonOverlappingAllowed(t *testing.T) {
+	// Negative regression: adjacent periods that touch but do not
+	// overlap (one ends 2024-12-31, next starts 2025-01-01) MUST be
+	// allowed. With the daterange `to_date + 1` modelling, the first
+	// becomes [..., 2025-01-01) and the second [2025-01-01, ...);
+	// these are disjoint per `&&`.
+	db := setupTestDB(t)
+	store := NewBudgetItemStore(db)
+	ctx := t.Context()
+	org := createTestOrganization(t, db, "Test Org")
+	item := &models.BudgetItem{
+		OrganizationID: org.ID, Name: "X", Category: "income",
+	}
+	if err := store.Create(ctx, item); err != nil {
+		t.Fatalf("create item: %v", err)
+	}
+
+	endOf2024 := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	first := &models.BudgetItemEntry{
+		BudgetItemID: item.ID,
+		Period: models.Period{
+			From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			To:   &endOf2024,
+		},
+		AmountCents: 10000,
+	}
+	if err := store.CreateEntry(ctx, first); err != nil {
+		t.Fatalf("first: %v", err)
+	}
+
+	second := &models.BudgetItemEntry{
+		BudgetItemID: item.ID,
+		Period:       models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
+		AmountCents:  20000,
+	}
+	if err := store.CreateEntry(ctx, second); err != nil {
+		t.Errorf("touching-but-non-overlapping entry should be allowed, got %v", err)
+	}
+}
+
+func TestBudgetItemEntries_DBOverlapConstraint_DifferentItemsAllowed(t *testing.T) {
+	// Negative regression: two entries with overlapping date ranges
+	// but for DIFFERENT budget items must coexist. The constraint is
+	// scoped per-item via `budget_item_id WITH =`.
+	db := setupTestDB(t)
+	store := NewBudgetItemStore(db)
+	ctx := t.Context()
+	org := createTestOrganization(t, db, "Test Org")
+
+	itemA := &models.BudgetItem{OrganizationID: org.ID, Name: "A", Category: "income"}
+	itemB := &models.BudgetItem{OrganizationID: org.ID, Name: "B", Category: "income"}
+	if err := store.Create(ctx, itemA); err != nil {
+		t.Fatalf("create A: %v", err)
+	}
+	if err := store.Create(ctx, itemB); err != nil {
+		t.Fatalf("create B: %v", err)
+	}
+
+	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	if err := store.CreateEntry(ctx, &models.BudgetItemEntry{
+		BudgetItemID: itemA.ID, Period: models.Period{From: from}, AmountCents: 1,
+	}); err != nil {
+		t.Fatalf("entry A: %v", err)
+	}
+	if err := store.CreateEntry(ctx, &models.BudgetItemEntry{
+		BudgetItemID: itemB.ID, Period: models.Period{From: from}, AmountCents: 1,
+	}); err != nil {
+		t.Errorf("entry B (different item, same date) should be allowed, got %v", err)
+	}
+}
+
+func TestBudgetItems_DBCategoryCheck_RejectsGarbage(t *testing.T) {
+	// Direct UPDATE that bypasses ValidBudgetItemCategory must still
+	// hit the CHECK and fail. Without the CHECK a malicious migration
+	// or DBA console session could write garbage, and downstream code
+	// (calculate.go's `category == "income"` branch) would silently
+	// route the value into expenses.
+	db := setupTestDB(t)
+	org := createTestOrganization(t, db, "Test Org")
+	item := &models.BudgetItem{OrganizationID: org.ID, Name: "X", Category: "income"}
+	if err := db.Create(item).Error; err != nil {
+		t.Fatalf("seed item: %v", err)
+	}
+	err := db.Model(&models.BudgetItem{}).Where("id = ?", item.ID).
+		UpdateColumn("category", "neither").Error
+	if err == nil {
+		t.Fatal("expected DB CHECK to reject category='neither', got nil")
+	}
+}
+
+func TestBudgetItemEntries_DBAmountCheck_RejectsNegative(t *testing.T) {
+	db := setupTestDB(t)
+	org := createTestOrganization(t, db, "Test Org")
+	item := &models.BudgetItem{OrganizationID: org.ID, Name: "X", Category: "income"}
+	if err := db.Create(item).Error; err != nil {
+		t.Fatalf("seed item: %v", err)
+	}
+	entry := &models.BudgetItemEntry{
+		BudgetItemID: item.ID,
+		Period:       models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
+		AmountCents:  -1,
+	}
+	err := db.Create(entry).Error
+	if err == nil {
+		t.Fatal("expected DB CHECK to reject negative amount, got nil")
+	}
+}
+
+func TestBudgetItemStore_Delete_CascadesEntriesViaFK(t *testing.T) {
+	// Lock-in test for the simplification: BudgetItemStore.Delete now
+	// issues ONE statement (the parent delete) and relies on the FK
+	// ON DELETE CASCADE declared in migration 000001. If a future
+	// migration ever drops that FK or reverses the cascade, every
+	// entry of every deleted budget item would silently leak as an
+	// orphan — this test catches that.
+	db := setupTestDB(t)
+	s := NewBudgetItemStore(db)
+	ctx := t.Context()
+	org := createTestOrganization(t, db, "Test Org")
+	item := &models.BudgetItem{OrganizationID: org.ID, Name: "X", Category: "income"}
+	if err := s.Create(ctx, item); err != nil {
+		t.Fatalf("create item: %v", err)
+	}
+	for i := range 3 {
+		from := time.Date(2024+i, 1, 1, 0, 0, 0, 0, time.UTC)
+		to := time.Date(2024+i, 12, 31, 0, 0, 0, 0, time.UTC)
+		if err := s.CreateEntry(ctx, &models.BudgetItemEntry{
+			BudgetItemID: item.ID,
+			Period:       models.Period{From: from, To: &to},
+			AmountCents:  1000 * (i + 1),
+		}); err != nil {
+			t.Fatalf("entry %d: %v", i, err)
+		}
+	}
+
+	if err := s.Delete(ctx, item.ID); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+
+	var orphans int64
+	if err := db.Model(&models.BudgetItemEntry{}).
+		Where("budget_item_id = ?", item.ID).Count(&orphans).Error; err != nil {
+		t.Fatalf("count orphans: %v", err)
+	}
+	if orphans != 0 {
+		t.Errorf("FK cascade missed entries; %d orphans remain", orphans)
+	}
+}

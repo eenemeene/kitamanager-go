@@ -109,17 +109,17 @@ func (s *BudgetItemStore) Update(ctx context.Context, item *models.BudgetItem) e
 	return DBFromContext(ctx, s.db).Save(item).Error
 }
 
-// Delete deletes a budget item and all related entries.
+// Delete deletes a budget item. Entries cascade automatically via the
+// FK declared in migration 000001 (`budget_item_entries.budget_item_id
+// REFERENCES budget_items(id) ON DELETE CASCADE`). The previous
+// implementation did the entry-delete manually then deleted the
+// parent — redundant work, and the two statements ran without a
+// transaction at this layer (a future caller invoking the store
+// directly outside a service-layer tx would have left an orphaned
+// budget_item if the parent delete failed). One statement, atomic by
+// definition, FK does the rest.
 func (s *BudgetItemStore) Delete(ctx context.Context, id uint) error {
-	db := DBFromContext(ctx, s.db)
-
-	// Delete entries first
-	if err := db.Where("budget_item_id = ?", id).Delete(&models.BudgetItemEntry{}).Error; err != nil {
-		return err
-	}
-
-	// Delete budget item
-	return db.Delete(&models.BudgetItem{}, id).Error
+	return DBFromContext(ctx, s.db).Delete(&models.BudgetItem{}, id).Error
 }
 
 // BudgetItemEntry CRUD

@@ -1600,7 +1600,15 @@ func TestGetFinancials_BudgetEntryStartsMidRange(t *testing.T) {
 	}
 }
 
-func TestGetFinancials_BudgetOneEntryPerItem(t *testing.T) {
+// TestGetFinancials_BudgetOneEntryPerItem documented the (then-only)
+// app-layer protection in calculate.go's `break // only first active
+// entry per item` against double-counting two overlapping entries.
+// Migration 000016 added a DB-level GIST exclusion constraint so the
+// "two overlapping entries on the same item" data state can no
+// longer exist — the protection has moved one layer down. Convert
+// the test to assert the new gate: directly seeding the corrupt
+// state must fail, and a single-entry calc still works.
+func TestGetFinancials_BudgetItemOverlapImpossibleAtDBLayer(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createStatisticsService(db)
 	ctx := context.Background()
@@ -1608,25 +1616,32 @@ func TestGetFinancials_BudgetOneEntryPerItem(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 	db.Model(org).Update("state", "berlin")
 
-	// Two overlapping entries on same item: only first active one is counted
 	item := createTestBudgetItem(t, db, "Rent", org.ID, "expense", false)
 	createTestBudgetItemEntry(t, db, item.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 30000, "first")
-	createTestBudgetItemEntry(t, db, item.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 70000, "second")
 
+	// Attempt to seed an overlapping entry; the GIST EXCLUSION
+	// constraint added in 000016 must reject. testutil's helper
+	// t.Fatal-s on error, so use raw GORM here to test the rejection.
+	overlap := &models.BudgetItemEntry{
+		BudgetItemID: item.ID,
+		Period:       models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		AmountCents:  70000,
+		Notes:        "second",
+	}
+	if err := db.Create(overlap).Error; err == nil {
+		t.Fatal("expected DB exclusion constraint to reject overlapping entry, got nil")
+	}
+
+	// And the single-entry case still computes the expected total.
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	result, err := svc.GetFinancials(ctx, org.ID, &from, &to, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-
 	dp := result.DataPoints[0]
-	// Should be either 30000 or 70000, but NOT 100000 (both combined)
-	if dp.BudgetExpenses == 100000 {
-		t.Errorf("BudgetExpenses = 100000, should only count first active entry, not both")
-	}
-	if dp.BudgetExpenses != 30000 && dp.BudgetExpenses != 70000 {
-		t.Errorf("BudgetExpenses = %d, want 30000 or 70000 (first active entry)", dp.BudgetExpenses)
+	if dp.BudgetExpenses != 30000 {
+		t.Errorf("BudgetExpenses = %d, want 30000 (single entry)", dp.BudgetExpenses)
 	}
 }
 
