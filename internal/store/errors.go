@@ -41,3 +41,17 @@ func IsForeignKeyViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23503"
 }
+
+// IsExclusionViolation checks if the error is a PostgreSQL exclusion constraint
+// violation (23P01). Raised when an EXCLUDE constraint (e.g., the GiST overlap
+// guard on child_contracts / employee_contracts) detects a conflict. With
+// DEFERRABLE INITIALLY DEFERRED constraints this surfaces at COMMIT time rather
+// than on the offending statement, so callers must inspect the error returned
+// from transactor.InTransaction, not just statement results.
+func IsExclusionViolation(err error) bool {
+	if err == nil {
+		return false
+	}
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23P01"
+}

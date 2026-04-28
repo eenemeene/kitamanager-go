@@ -109,6 +109,13 @@ func (s *EmployeeService) CreateContract(ctx context.Context, employeeID, orgID 
 		return nil, err
 	}
 
+	// Symmetric to ChildService.CreateContract: contract dates must not predate
+	// the employee's birthdate. Without this, seniority calculations downstream
+	// can produce centuries-of-tenure nonsense.
+	if err := validateContractDatesAfterBirthdate(req.From, req.To, employee.Birthdate); err != nil {
+		return nil, err
+	}
+
 	// Validate pay plan exists and belongs to same organization
 	payPlan, err := s.payPlanStore.FindByID(ctx, req.PayPlanID)
 	if err != nil {
@@ -146,16 +153,18 @@ func (s *EmployeeService) CreateContract(ctx context.Context, employeeID, orgID 
 		PayPlanID:     req.PayPlanID,
 	}
 
-	// Validate + create in a single transaction to prevent race conditions
-	if err := s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
+	// Validate + create in a single transaction to prevent race conditions.
+	// The application-level ValidateNoOverlap is a friendly pre-check; the DB
+	// EXCLUDE constraint (DEFERRABLE INITIALLY DEFERRED) is the truthful gate
+	// against concurrent inserts that both pass the pre-check, and surfaces as
+	// a 23P01 at commit — mapContractDeferredOverlap turns that into 409.
+	err = mapContractDeferredOverlap(s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
 		if err := s.store.Contracts().ValidateNoOverlap(txCtx, employeeID, req.From, req.To, nil); err != nil {
-			if errors.Is(err, store.ErrPeriodOverlap) {
-				return apperror.Conflict(err.Error())
-			}
-			return apperror.InternalWrap(err, "failed to validate contract")
+			return contractOverlapError(err)
 		}
 		return s.store.CreateContract(txCtx, contract)
-	}); err != nil {
+	}))
+	if err != nil {
 		return nil, err
 	}
 
@@ -212,7 +221,11 @@ func (s *EmployeeService) BatchUpdateContracts(ctx context.Context, employeeID, 
 
 	responses := make([]models.EmployeeContractResponse, len(req.Updates))
 
-	if err := s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
+	// Phase-1 saves can transiently violate the EXCLUDE constraint when the
+	// batch swaps adjacent ranges. The constraint is DEFERRABLE INITIALLY
+	// DEFERRED, so it only fires at COMMIT — after phase 2's reconciliation.
+	// mapContractDeferredOverlap turns that commit-time 23P01 into 409.
+	err = mapContractDeferredOverlap(s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
 		contracts := make([]*models.EmployeeContract, len(req.Updates))
 
 		// Phase 1: fetch, verify, apply fields, validate period, save
@@ -229,6 +242,12 @@ func (s *EmployeeService) BatchUpdateContracts(ctx context.Context, employeeID, 
 
 			if err := validation.ValidatePeriod(contract.From, contract.To); err != nil {
 				return apperror.BadRequest(err.Error())
+			}
+
+			// Same rationale as single-contract Update: a batch entry can move
+			// From earlier than birthdate. Check after apply, before save.
+			if err := validateContractDatesAfterBirthdate(contract.From, contract.To, employee.Birthdate); err != nil {
+				return err
 			}
 
 			// Same gating as single-contract Update: only re-validate when
@@ -257,7 +276,8 @@ func (s *EmployeeService) BatchUpdateContracts(ctx context.Context, employeeID, 
 			responses[i] = contract.ToResponse()
 		}
 		return nil
-	}); err != nil {
+	}))
+	if err != nil {
 		return nil, err
 	}
 
@@ -375,7 +395,7 @@ func (s *EmployeeService) UpdateContract(ctx context.Context, contractID, employ
 
 	switch mode {
 	case amendModeInPlace:
-		return s.updateContractInPlace(ctx, contract, employeeID, req)
+		return s.updateContractInPlace(ctx, contract, employeeID, employee.Birthdate, req)
 	case amendModeAmend:
 		return s.amendContract(ctx, contract, employeeID, req)
 	default:
@@ -413,8 +433,14 @@ func applyEmployeeContractFields(contract *models.EmployeeContract, req *models.
 }
 
 // updateContractInPlace applies changes directly to the existing employee contract.
-func (s *EmployeeService) updateContractInPlace(ctx context.Context, contract *models.EmployeeContract, employeeID uint, req *models.EmployeeContractUpdateRequest) (*models.EmployeeContractResponse, error) {
+func (s *EmployeeService) updateContractInPlace(ctx context.Context, contract *models.EmployeeContract, employeeID uint, birthdate time.Time, req *models.EmployeeContractUpdateRequest) (*models.EmployeeContractResponse, error) {
 	applyEmployeeContractFields(contract, req)
+
+	// A PUT can move From earlier than the employee's birthdate; the create-time
+	// guard alone doesn't cover that — re-validate after fields are applied.
+	if err := validateContractDatesAfterBirthdate(contract.From, contract.To, birthdate); err != nil {
+		return nil, err
+	}
 
 	// Re-validate pay plan coverage only when the (PayPlanID, Grade, Step, From)
 	// tuple actually moved — touching unrelated fields on a legacy contract
@@ -492,6 +518,7 @@ func (s *EmployeeService) amendContract(ctx context.Context, contract *models.Em
 	}
 
 	if err := amendContractTx(ctx, s.transactor, s.store.Contracts(), employeeID,
+		today,
 		newContract.From, newContract.To,
 		func(txCtx context.Context, yesterday time.Time) error {
 			contract.To = &yesterday

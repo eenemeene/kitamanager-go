@@ -53,6 +53,26 @@ func contractOverlapError(err error) error {
 	return apperror.InternalWrap(err, "failed to validate contract")
 }
 
+// mapContractDeferredOverlap translates a Postgres exclusion-constraint
+// violation (sqlstate 23P01) into apperror.Conflict. The exclusion constraint
+// is the truthful gate against the SELECT-then-INSERT race in
+// PeriodStore.ValidateNoOverlap; with DEFERRABLE INITIALLY DEFERRED it fires
+// at COMMIT, so this must be called on the error returned by
+// transactor.InTransaction (not on errors from inside the closure).
+//
+// All other errors pass through unchanged so the application-level
+// pre-check that returns ErrPeriodOverlap (already mapped to Conflict by
+// contractOverlapError) is not double-wrapped.
+func mapContractDeferredOverlap(err error) error {
+	if err == nil {
+		return nil
+	}
+	if store.IsExclusionViolation(err) {
+		return apperror.Conflict("contract dates overlap with an existing contract")
+	}
+	return err
+}
+
 // inPlaceContractUpdate validates a period and runs overlap validation + update
 // inside a single transaction.
 func inPlaceContractUpdate[T models.PeriodRecord](
@@ -68,21 +88,29 @@ func inPlaceContractUpdate[T models.PeriodRecord](
 		return apperror.BadRequest(err.Error())
 	}
 
-	return transactor.InTransaction(ctx, func(txCtx context.Context) error {
+	err := transactor.InTransaction(ctx, func(txCtx context.Context) error {
 		if err := contracts.ValidateNoOverlap(txCtx, ownerID, from, to, &contractID); err != nil {
 			return contractOverlapError(err)
 		}
 		return updateFn(txCtx)
 	})
+	return mapContractDeferredOverlap(err)
 }
 
 // amendContractTx closes the old contract (To = yesterday) and creates a new
 // one, with overlap validation, all inside a single transaction.
+//
+// `today` is taken from the caller rather than re-read from time.Now() so that
+// the new contract's From and the old contract's To+1 cannot drift apart if the
+// request crosses midnight UTC between the caller deciding "today" and this
+// helper running. Yesterday is derived from the caller's today for the same
+// reason.
 func amendContractTx[T models.PeriodRecord](
 	ctx context.Context,
 	transactor store.Transactor,
 	contracts store.PeriodStorer[T],
 	ownerID uint,
+	today time.Time,
 	newFrom time.Time, newTo *time.Time,
 	closeOldFn func(ctx context.Context, yesterday time.Time) error,
 	createNewFn func(ctx context.Context) error,
@@ -91,10 +119,9 @@ func amendContractTx[T models.PeriodRecord](
 		return apperror.BadRequest(err.Error())
 	}
 
-	today := models.Today()
 	yesterday := today.AddDate(0, 0, -1)
 
-	return transactor.InTransaction(ctx, func(txCtx context.Context) error {
+	err := transactor.InTransaction(ctx, func(txCtx context.Context) error {
 		if err := closeOldFn(txCtx, yesterday); err != nil {
 			return err
 		}
@@ -103,4 +130,5 @@ func amendContractTx[T models.PeriodRecord](
 		}
 		return createNewFn(txCtx)
 	})
+	return mapContractDeferredOverlap(err)
 }

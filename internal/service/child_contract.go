@@ -2,13 +2,11 @@ package service
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
-	"github.com/eenemeene/kitamanager-go/internal/store"
 	"github.com/eenemeene/kitamanager-go/internal/validation"
 )
 
@@ -95,11 +93,8 @@ func (s *ChildService) CreateContract(ctx context.Context, childID, orgID uint, 
 	}
 
 	// Validate contract dates are not before child's birthdate
-	if req.From.Before(child.Birthdate) {
-		return nil, apperror.BadRequest("contract start date cannot be before child's birthdate")
-	}
-	if req.To != nil && req.To.Before(child.Birthdate) {
-		return nil, apperror.BadRequest("contract end date cannot be before child's birthdate")
+	if err := validateContractDatesAfterBirthdate(req.From, req.To, child.Birthdate); err != nil {
+		return nil, err
 	}
 
 	// Validate section belongs to the same organization
@@ -123,16 +118,18 @@ func (s *ChildService) CreateContract(ctx context.Context, childID, orgID uint, 
 		},
 	}
 
-	// Validate + create in a single transaction to prevent race conditions
-	if err := s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
+	// Validate + create in a single transaction to prevent race conditions.
+	// The application-level ValidateNoOverlap is a friendly pre-check; the DB
+	// EXCLUDE constraint (DEFERRABLE INITIALLY DEFERRED) is the truthful gate
+	// against concurrent inserts that both pass the pre-check, and surfaces as
+	// a 23P01 at commit — mapContractDeferredOverlap turns that into 409.
+	err = mapContractDeferredOverlap(s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
 		if err := s.store.Contracts().ValidateNoOverlap(txCtx, childID, req.From, req.To, nil); err != nil {
-			if errors.Is(err, store.ErrPeriodOverlap) {
-				return apperror.Conflict(err.Error())
-			}
-			return apperror.InternalWrap(err, "failed to validate contract")
+			return contractOverlapError(err)
 		}
 		return s.store.CreateContract(txCtx, contract)
-	}); err != nil {
+	}))
+	if err != nil {
 		return nil, err
 	}
 
@@ -176,7 +173,7 @@ func (s *ChildService) UpdateContract(ctx context.Context, contractID, childID, 
 
 	switch mode {
 	case amendModeInPlace:
-		return s.updateContractInPlace(ctx, contract, childID, orgID, req)
+		return s.updateContractInPlace(ctx, contract, childID, orgID, child.Birthdate, req)
 	case amendModeAmend:
 		return s.amendContract(ctx, contract, childID, orgID, req)
 	default:
@@ -201,8 +198,14 @@ func (s *ChildService) applyChildContractFields(ctx context.Context, contract *m
 }
 
 // updateContractInPlace applies changes directly to the existing contract.
-func (s *ChildService) updateContractInPlace(ctx context.Context, contract *models.ChildContract, childID, orgID uint, req *models.ChildContractUpdateRequest) (*models.ChildContractResponse, error) {
+func (s *ChildService) updateContractInPlace(ctx context.Context, contract *models.ChildContract, childID, orgID uint, birthdate time.Time, req *models.ChildContractUpdateRequest) (*models.ChildContractResponse, error) {
 	s.applyChildContractFields(ctx, contract, orgID, req)
+
+	// A PUT can move From earlier than the child's birthdate; the create-time
+	// guard alone doesn't cover that — re-validate after fields are applied.
+	if err := validateContractDatesAfterBirthdate(contract.From, contract.To, birthdate); err != nil {
+		return nil, err
+	}
 
 	if err := inPlaceContractUpdate(ctx, s.transactor, s.store.Contracts(), childID,
 		contract.From, contract.To, contract.ID,
@@ -248,6 +251,7 @@ func (s *ChildService) amendContract(ctx context.Context, contract *models.Child
 	newContract.Properties = newContract.Properties.MergeDefaults(defaults)
 
 	if err := amendContractTx(ctx, s.transactor, s.store.Contracts(), childID,
+		today,
 		newContract.From, newContract.To,
 		func(txCtx context.Context, yesterday time.Time) error {
 			contract.To = &yesterday
@@ -292,7 +296,12 @@ func (s *ChildService) BatchUpdateContracts(ctx context.Context, childID, orgID 
 
 	responses := make([]models.ChildContractResponse, len(req.Updates))
 
-	if err := s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
+	// Phase-1 saves can transiently violate the EXCLUDE constraint when the
+	// batch swaps adjacent ranges (extend A's To, shift B's From). The
+	// constraint is DEFERRABLE INITIALLY DEFERRED, so it only fires at COMMIT —
+	// after phase 2's reconciliation. mapContractDeferredOverlap turns that
+	// commit-time 23P01 into 409.
+	err = mapContractDeferredOverlap(s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
 		contracts := make([]*models.ChildContract, len(req.Updates))
 
 		// Phase 1: fetch, verify, apply fields, validate period, save
@@ -309,6 +318,12 @@ func (s *ChildService) BatchUpdateContracts(ctx context.Context, childID, orgID 
 
 			if err := validation.ValidatePeriod(contract.From, contract.To); err != nil {
 				return apperror.BadRequest(err.Error())
+			}
+
+			// Same rationale as single-contract Update: a batch entry can move
+			// From earlier than birthdate. Check after apply, before save.
+			if err := validateContractDatesAfterBirthdate(contract.From, contract.To, child.Birthdate); err != nil {
+				return err
 			}
 
 			if err := s.store.UpdateContract(txCtx, contract); err != nil {
@@ -329,7 +344,8 @@ func (s *ChildService) BatchUpdateContracts(ctx context.Context, childID, orgID 
 			responses[i] = contract.ToResponse()
 		}
 		return nil
-	}); err != nil {
+	}))
+	if err != nil {
 		return nil, err
 	}
 
