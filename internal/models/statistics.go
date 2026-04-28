@@ -91,13 +91,23 @@ type FinancialResponse struct {
 // Codes are stable strings, owned by the service layer; new codes can be
 // added freely but existing ones MUST keep their semantics. Current set:
 //
-//   - missing_pay_plan        — contract.PayPlanID has no row in the
+//   - missing_pay_plan         — contract.PayPlanID has no row in the
 //     loaded pay plan map (data references a
 //     row that no longer exists).
-//   - no_pay_plan_period      — pay plan exists but no period covers the
+//   - no_pay_plan_period       — pay plan exists but no period covers the
 //     contract date.
-//   - no_pay_plan_entry       — period exists but the (grade, step)
+//   - no_pay_plan_entry        — period exists but the (grade, step)
 //     combination is not in its entries.
+//   - budget_items_load_failed — budget items query failed; expense
+//     breakdown excludes operating costs for
+//     this response. Distinct from "no budget
+//     items configured" (which is silent).
+//   - funding_bills_load_failed — actual government funding bill totals
+//     could not be loaded; ActualFunding /
+//     ActualFundingRegular / ActualFundingCorrection
+//     fields are absent on data points that would
+//     otherwise have had them. Distinct from
+//     "no bill recorded for this month" (silent).
 type CalculationWarning struct {
 	Code       string `json:"code" example:"missing_pay_plan"`
 	Message    string `json:"message" example:"employee contract references unknown pay plan"`

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
@@ -87,8 +88,10 @@ func snapAndValidateRange(from, to *time.Time) (time.Time, time.Time, error) {
 // Defaults cover: 1 month before the previous Kita year through the end of the
 // next Kita year. A Kita year runs Aug 1 – Jul 31.
 //
-// Uses UTC to compute the current Kita year; otherwise the default window
-// flips a day early/late at local-timezone month boundaries.
+// Uses models.Today() so the current Kita year is derived from the user's
+// wall-clock calendar day in the application timezone — a request made at
+// 23:30 UTC in late July is "still July" for a Berlin user even though
+// the server's UTC clock has already rolled into August.
 //
 // Both `from` and `to` are INCLUSIVE of the month they fall in. The
 // calculator loop is `for date := start; !date.After(end); date = date.AddDate(0, 1, 0)`,
@@ -104,7 +107,7 @@ func snapAndValidateRange(from, to *time.Time) (time.Time, time.Time, error) {
 // rejected at the same place every time. snapDateRange remains exported-
 // internal for unit tests that want to assert just the snap behavior.
 func snapDateRange(from, to *time.Time) (time.Time, time.Time) {
-	now := time.Now().UTC()
+	now := models.Today()
 	var rangeStart, rangeEnd time.Time
 
 	// Current Kita year starts on Aug 1 of this or last calendar year
@@ -248,16 +251,41 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 	}
 
 	budgetItems, err := s.budgetItemStore.FindByOrganizationWithEntries(ctx, orgID)
+	loadWarnings := make([]models.CalculationWarning, 0)
 	if err != nil {
-		budgetItems = nil // non-fatal: proceed without budget items
+		// Non-fatal: proceed without budget items, but tell the caller
+		// the breakdown is incomplete so the UI can render a banner
+		// instead of silently showing an empty operating-costs slice.
+		slog.Warn("failed to load budget items; expense breakdown will exclude operating costs",
+			"org_id", orgID, "error", err)
+		loadWarnings = append(loadWarnings, models.CalculationWarning{
+			Code:    "budget_items_load_failed",
+			Message: "could not load budget items; expense breakdown excludes operating costs",
+		})
+		budgetItems = nil
 	}
 
 	dataPoints, warnings := calculateFinancials(children, employees, payPlans, fundingPeriods, budgetItems, rangeStart, rangeEnd)
+	warnings = append(loadWarnings, warnings...)
 
 	// Merge actual funding from government funding bills
 	if s.billStore != nil {
 		billTotals, errTotals := s.billStore.FindFacilityTotalsByOrganizationInDateRange(ctx, orgID, rangeStart, rangeEnd)
 		billByRowType, errRowType := s.billStore.FindBillTotalsByRowTypeInDateRange(ctx, orgID, rangeStart, rangeEnd)
+
+		if errTotals != nil || errRowType != nil {
+			// Non-fatal: proceed without actual funding overlays. A single
+			// warning covers either failure since both fuel the same set of
+			// frontend fields (ActualFunding / ActualFundingRegular /
+			// ActualFundingCorrection) — the UI just needs to know the
+			// numbers may be incomplete.
+			slog.Warn("failed to load government funding bills; actual funding overlay will be incomplete",
+				"org_id", orgID, "totals_error", errTotals, "row_type_error", errRowType)
+			warnings = append(warnings, models.CalculationWarning{
+				Code:    "funding_bills_load_failed",
+				Message: "could not load actual government funding bills; reported actuals may be incomplete",
+			})
+		}
 
 		// Pre-parse dates once for all data points
 		dateKeys := make(map[string]time.Time, len(dataPoints))
@@ -288,7 +316,6 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 				}
 			}
 		}
-		// non-fatal: proceed without actual funding on error
 	}
 
 	return &models.FinancialResponse{DataPoints: dataPoints, Warnings: warnings}, nil
@@ -356,7 +383,7 @@ func (s *StatisticsService) GetContractPropertiesDistribution(ctx context.Contex
 
 // EstimateChildFunding calculates government funding for a hypothetical child.
 func (s *StatisticsService) EstimateChildFunding(ctx context.Context, orgID uint, req *models.ChildFundingEstimateRequest) (*models.ChildFundingResponse, error) {
-	date := time.Now()
+	date := models.Today()
 	if req.Date != nil {
 		date = *req.Date
 	}
@@ -378,7 +405,7 @@ func (s *StatisticsService) EstimateChildFunding(ctx context.Context, orgID uint
 
 // EstimateEmployeeCost calculates monthly cost for a hypothetical employee.
 func (s *StatisticsService) EstimateEmployeeCost(ctx context.Context, orgID uint, req *models.EmployeeCostEstimateRequest) (*models.EmployeeCostEstimateResponse, error) {
-	date := time.Now()
+	date := models.Today()
 	if req.Date != nil {
 		date = *req.Date
 	}
