@@ -1076,5 +1076,16 @@
     "categoryAccess": "Berechtigungen",
     "categoryData": "Datenänderung",
     "categoryExport": "Export"
+  },
+  "report": {
+    "title": "KitaManager-Bericht",
+    "cover": {
+      "subtitle": "Monatsbericht — {month}"
+    },
+    "sectionChildren": "Kinder",
+    "sectionOccupancy": "Belegung",
+    "sectionStaffing": "Personal",
+    "sectionFinancials": "Finanzen",
+    "printAction": "Bericht drucken"
   }
 }

@@ -1076,5 +1076,16 @@
     "categoryAccess": "Access control",
     "categoryData": "Data change",
     "categoryExport": "Export"
+  },
+  "report": {
+    "title": "KitaManager Report",
+    "cover": {
+      "subtitle": "Monthly report — {month}"
+    },
+    "sectionChildren": "Children",
+    "sectionOccupancy": "Occupancy",
+    "sectionStaffing": "Staffing",
+    "sectionFinancials": "Financials",
+    "printAction": "Print report"
   }
 }
