@@ -47,6 +47,7 @@ type Generator struct {
 	browser playwright.Browser
 	cookies []playwright.OptionalCookie
 	baseURL string
+	locale  string
 	// webVersion is captured from the rendered DOM the first time
 	// GenerateReport sees a `<meta name="kitamanager-version">` tag.
 	// We read it from the page rather than via a separate HTTP call so
@@ -56,8 +57,13 @@ type Generator struct {
 	webVersion string
 }
 
-// NewGenerator installs Playwright browsers if needed and launches a headless Chromium instance.
-func NewGenerator(cookies []playwright.OptionalCookie, baseURL string) (*Generator, error) {
+// NewGenerator installs Playwright browsers if needed and launches a
+// headless Chromium instance. locale (`en` / `de`) drives the
+// `locale` cookie pushed into the browser context before navigation,
+// which the frontend's i18n request config reads to pick the message
+// catalog. Pass an empty string to skip the cookie and let the
+// frontend fall back to its defaultLocale.
+func NewGenerator(cookies []playwright.OptionalCookie, baseURL, locale string) (*Generator, error) {
 	if err := playwright.Install(); err != nil {
 		return nil, fmt.Errorf("install playwright: %w", err)
 	}
@@ -80,7 +86,33 @@ func NewGenerator(cookies []playwright.OptionalCookie, baseURL string) (*Generat
 		browser: browser,
 		cookies: cookies,
 		baseURL: strings.TrimRight(baseURL, "/"),
+		locale:  locale,
 	}, nil
+}
+
+// localeCookie builds the `locale` cookie playwright should add to
+// the browser context for the frontend hostname. Returns nil when
+// no locale was configured (caller should skip the AddCookies call
+// for it).
+func (g *Generator) localeCookie() *playwright.OptionalCookie {
+	if g.locale == "" {
+		return nil
+	}
+	parsed, err := url.Parse(g.baseURL)
+	if err != nil {
+		return nil
+	}
+	host := parsed.Hostname()
+	if host == "" {
+		return nil
+	}
+	path := "/"
+	return &playwright.OptionalCookie{
+		Name:   "locale",
+		Value:  g.locale,
+		Domain: &host,
+		Path:   &path,
+	}
 }
 
 // GenerateCombinedReport navigates to the combined /report/print page
@@ -103,6 +135,12 @@ func (g *Generator) GenerateCombinedReport(orgID, month, outputPath string) erro
 
 	if err := ctx.AddCookies(g.cookies); err != nil {
 		return fmt.Errorf("add cookies: %w", err)
+	}
+
+	if lc := g.localeCookie(); lc != nil {
+		if err := ctx.AddCookies([]playwright.OptionalCookie{*lc}); err != nil {
+			return fmt.Errorf("add locale cookie: %w", err)
+		}
 	}
 
 	page, err := ctx.NewPage()

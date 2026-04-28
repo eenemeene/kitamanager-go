@@ -36,7 +36,7 @@ func TestGenerateReport_Integration(t *testing.T) {
 	}
 
 	// Create generator
-	gen, err := NewGenerator(cookies, baseURL)
+	gen, err := NewGenerator(cookies, baseURL, envOr("REPORT_PDF_LOCALE", "en"))
 	if err != nil {
 		t.Fatalf("failed to create generator: %v", err)
 	}

@@ -43,7 +43,7 @@ func run(cfg *config.Config) error {
 	fmt.Printf("Login successful (%d cookies)\n", len(cookies))
 
 	fmt.Println("Initializing PDF generator...")
-	gen, err := pdf.NewGenerator(cookies, cfg.BaseURL)
+	gen, err := pdf.NewGenerator(cookies, cfg.BaseURL, cfg.Locale)
 	if err != nil {
 		return fmt.Errorf("initializing PDF generator: %w", err)
 	}
