@@ -271,6 +271,32 @@ if (from < birthdate) { ... }
 if (dateStr.split('-')[0] === '2024') { ... }
 ```
 
+### "Today" — always use `models.Today()`
+
+Every "what calendar date is today?" decision MUST go through `models.Today()`. Never derive a date from `time.Now()` or `time.Now().UTC()` directly when you mean "today's date" — the answer must match the user's wall-clock day, not the server's clock day.
+
+`models.Today()` returns the UTC midnight of the current calendar date in the application's timezone (`Europe/Berlin` by default, override via `KITAMANAGER_TIMEZONE`). The result is at UTC midnight so it composes with `models.TruncateToDate` and with DATE columns round-tripped through GORM.
+
+```go
+// CORRECT — Berlin's calendar today
+today := models.Today()
+if contract.From.Before(today) { ... }
+
+// WRONG — server's UTC clock-day; off by one for ~1 hour every day
+today := time.Now().UTC().Truncate(24 * time.Hour)
+```
+
+This rule applies to:
+- Amend-mode threshold (is the contract started before *today*?)
+- List defaults (`active_on=today` when the param is absent)
+- Auto-derived dates (attendance recorded "today")
+- Future-birthdate guards (is this birthdate after *today*?)
+- Anywhere else "today" is implicit
+
+`time.Now()` and `time.Now().UTC()` remain correct for instant timestamps (audit log times, JWT issued-at, MFA expiry, check-in/check-out times) — those want the precise moment, not a calendar day.
+
+For tests that need to pin behavior to a specific instant or zone, call `models.DateIn(t, loc)` directly — it's the pure helper underneath `Today()`.
+
 ## E2E Testing
 
 ### Page Load Waits

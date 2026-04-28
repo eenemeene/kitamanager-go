@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"testing"
 	"time"
+
+	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
 func TestIsWhitespaceOnly_EmptyString(t *testing.T) {
@@ -51,14 +53,13 @@ func TestValidateBirthdate_Past(t *testing.T) {
 }
 
 func TestValidateBirthdate_Today(t *testing.T) {
-	today := time.Now().Truncate(24 * time.Hour)
-	if err := ValidateBirthdate(today); err != nil {
+	if err := ValidateBirthdate(models.Today()); err != nil {
 		t.Errorf("expected today's date to be valid, got error: %v", err)
 	}
 }
 
 func TestValidateBirthdate_Future(t *testing.T) {
-	futureDate := time.Now().AddDate(0, 0, 1)
+	futureDate := models.Today().AddDate(0, 0, 1)
 	if err := ValidateBirthdate(futureDate); err == nil {
 		t.Error("expected future date to be invalid")
 	}
@@ -73,6 +74,23 @@ func TestValidateBirthdate_UTCMidnightAccepted(t *testing.T) {
 	todayUTCMidnight := time.Date(nowUTC.Year(), nowUTC.Month(), nowUTC.Day(), 0, 0, 0, 0, time.UTC)
 	if err := ValidateBirthdate(todayUTCMidnight); err != nil {
 		t.Errorf("expected today UTC midnight to be valid, got: %v", err)
+	}
+}
+
+// Birthdate at the application timezone's calendar today is valid even when
+// the input is mid-day local time (e.g., a Berlin client posting today's date
+// at 14:00 Berlin = 12:00 UTC). The truncation in ValidateBirthdate must not
+// promote an in-day timestamp into "tomorrow".
+func TestValidateBirthdate_TodayInAppZoneNotFuture(t *testing.T) {
+	berlin, err := time.LoadLocation("Europe/Berlin")
+	if err != nil {
+		t.Fatalf("Europe/Berlin must resolve: %v", err)
+	}
+	now := time.Now().In(berlin)
+	// 14:00 in Berlin local time, today's calendar date.
+	mid := time.Date(now.Year(), now.Month(), now.Day(), 14, 0, 0, 0, berlin)
+	if err := ValidateBirthdate(mid); err != nil {
+		t.Errorf("today @ 14:00 Berlin should be valid, got %v", err)
 	}
 }
 

@@ -1911,7 +1911,7 @@ func TestChildHandler_UpdateContract(t *testing.T) {
 	db.Create(child)
 
 	// Use today so contract qualifies for in-place update
-	today := time.Now().UTC().Truncate(24 * time.Hour)
+	today := models.Today()
 	contract := &models.ChildContract{
 		ChildID: child.ID,
 		BaseContract: models.BaseContract{
@@ -1982,7 +1982,7 @@ func TestChildHandler_UpdateContract_Overlap(t *testing.T) {
 	db.Create(child)
 
 	// Use future dates so contracts qualify for in-place update
-	today := time.Now().UTC().Truncate(24 * time.Hour)
+	today := models.Today()
 	endDate1 := today.AddDate(0, 6, 0)
 	db.Create(&models.ChildContract{
 		ChildID: child.ID,

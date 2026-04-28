@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"strings"
 	"time"
+
+	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
 // IsWhitespaceOnly returns true if string is empty or contains only whitespace
@@ -14,12 +16,15 @@ func IsWhitespaceOnly(s string) bool {
 
 // ValidateBirthdate ensures birthdate is not in the future.
 //
-// Uses UTC for the "now" comparison so validation is not sensitive to the
-// server's local timezone. Birthdates are stored as UTC dates; comparing
-// against a local-wall-clock time.Now would reject valid birthdates at
-// midnight UTC from clients in zones east of UTC.
+// "Future" is judged against models.Today() — the calendar today in the
+// application timezone (Europe/Berlin by default). Without this, a Berlin
+// user submitting today's date at 00:30 local time gets rejected by a UTC
+// server still on yesterday's clock, and a UTC user submitting tomorrow's
+// date at 23:30 server time slips through. Birthdates are stored as DATE
+// (round-tripped as UTC midnight); compare on truncated dates to keep the
+// comparison day-precise.
 func ValidateBirthdate(birthdate time.Time) error {
-	if birthdate.After(time.Now().UTC()) {
+	if models.TruncateToDate(birthdate).After(models.Today()) {
 		return fmt.Errorf("birthdate cannot be in the future")
 	}
 	return nil

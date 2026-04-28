@@ -24,7 +24,7 @@ const (
 // determineAmendMode decides whether to update in place or amend.
 // Returns an error if the contract has already ended (To date is in the past).
 func determineAmendMode(contractFrom time.Time, contractTo *time.Time) (amendMode, error) {
-	today := models.TruncateToDate(time.Now())
+	today := models.Today()
 	from := models.TruncateToDate(contractFrom)
 
 	// Contract already ended → reject
@@ -91,7 +91,7 @@ func amendContractTx[T models.PeriodRecord](
 		return apperror.BadRequest(err.Error())
 	}
 
-	today := models.TruncateToDate(time.Now())
+	today := models.Today()
 	yesterday := today.AddDate(0, 0, -1)
 
 	return transactor.InTransaction(ctx, func(txCtx context.Context) error {

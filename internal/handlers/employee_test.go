@@ -2162,7 +2162,7 @@ func TestEmployeeHandler_UpdateContract_Overlap(t *testing.T) {
 	db.Create(employee)
 
 	// Use future dates so contracts qualify for in-place update
-	today := time.Now().UTC().Truncate(24 * time.Hour)
+	today := models.Today()
 	endDate1 := today.AddDate(0, 6, 0)
 	db.Create(&models.EmployeeContract{
 		EmployeeID: employee.ID,

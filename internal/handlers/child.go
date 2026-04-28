@@ -3,7 +3,6 @@ package handlers
 import (
 	"log/slog"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v3"
@@ -81,8 +80,11 @@ func (h *ChildHandler) List(c *gin.Context) {
 	}
 
 	if activeOn == nil && contractAfter == nil {
-		// Default active_on to today when neither filter is specified
-		now := time.Now()
+		// Default active_on to today when neither filter is specified.
+		// models.Today() honors the application timezone (Europe/Berlin by
+		// default) so a Berlin user editing the list at 23:30 sees the
+		// roster they expect, not yesterday's.
+		now := models.Today()
 		activeOn = &now
 	}
 

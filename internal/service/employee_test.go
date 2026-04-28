@@ -1793,7 +1793,7 @@ func TestEmployeeService_UpdateContract_AmendChangeSection(t *testing.T) {
 	section1 := createTestSection(t, db, "Krippe", org.ID, false)
 	section2 := createTestSection(t, db, "Elementar", org.ID, false)
 
-	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	past := models.Today().AddDate(0, -3, 0)
 	contract, err := svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
 		SectionID:     section1.ID,
 		From:          past,
@@ -1813,7 +1813,7 @@ func TestEmployeeService_UpdateContract_AmendChangeSection(t *testing.T) {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	today := time.Now().UTC().Truncate(24 * time.Hour)
+	today := models.Today()
 	yesterday := today.AddDate(0, 0, -1)
 
 	// New contract created
@@ -1869,7 +1869,7 @@ func TestEmployeeService_UpdateContract_AmendChangeStaffCategory(t *testing.T) {
 	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
-	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	past := models.Today().AddDate(0, -3, 0)
 	contract, err := svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
 		SectionID:     section.ID,
 		From:          past,
@@ -1909,7 +1909,7 @@ func TestEmployeeService_UpdateContract_AmendChangePayPlan(t *testing.T) {
 	payPlan2 := createTestPayPlanWithCoverage(t, db, "TVoD-SuE 2024", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
-	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	past := models.Today().AddDate(0, -3, 0)
 	contract, err := svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
 		SectionID:     section.ID,
 		From:          past,
@@ -1947,7 +1947,7 @@ func TestEmployeeService_UpdateContract_AmendChangeGradeStep(t *testing.T) {
 	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
-	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	past := models.Today().AddDate(0, -3, 0)
 	contract, err := svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
 		SectionID:     section.ID,
 		From:          past,
@@ -1991,7 +1991,7 @@ func TestEmployeeService_UpdateContract_AmendChangeWeeklyHours(t *testing.T) {
 	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
-	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	past := models.Today().AddDate(0, -3, 0)
 	contract, err := svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
 		SectionID:     section.ID,
 		From:          past,
@@ -2030,7 +2030,7 @@ func TestEmployeeService_UpdateContract_AmendAllFieldsCarryOver(t *testing.T) {
 	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
-	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	past := models.Today().AddDate(0, -3, 0)
 	contract, err := svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
 		SectionID:     section.ID,
 		From:          past,
@@ -2122,7 +2122,7 @@ func TestEmployeeService_UpdateContract_AmendFromIgnored(t *testing.T) {
 	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
-	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	past := models.Today().AddDate(0, -3, 0)
 	contract, err := svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
 		SectionID:     section.ID,
 		From:          past,
@@ -2143,7 +2143,7 @@ func TestEmployeeService_UpdateContract_AmendFromIgnored(t *testing.T) {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	today := time.Now().UTC().Truncate(24 * time.Hour)
+	today := models.Today()
 	if !updated.From.Truncate(24 * time.Hour).Equal(today) {
 		t.Errorf("From = %v, want today (%v) — From should be ignored in amend mode", updated.From, today)
 	}
@@ -2159,7 +2159,7 @@ func TestEmployeeService_UpdateContract_AmendOverlapConflict(t *testing.T) {
 	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
-	today := time.Now().UTC().Truncate(24 * time.Hour)
+	today := models.Today()
 	past := today.AddDate(0, -3, 0)
 
 	// Create ongoing contract starting in the past (qualifies for amend)
@@ -2215,7 +2215,7 @@ func TestEmployeeService_UpdateContract_InPlace_FutureContract(t *testing.T) {
 	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
-	tomorrow := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, 0, 1)
+	tomorrow := models.Today().AddDate(0, 0, 1)
 	contract, err := svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
 		SectionID:     section.ID,
 		From:          tomorrow,
@@ -2259,8 +2259,8 @@ func TestEmployeeService_UpdateContract_AmendStateConsistency(t *testing.T) {
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 	payPlan := createTestPayPlanWithCoverage(t, db, "TVÖD", org.ID)
 
-	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
-	today := time.Now().UTC().Truncate(24 * time.Hour)
+	past := models.Today().AddDate(0, -3, 0)
+	today := models.Today()
 	yesterday := today.AddDate(0, 0, -1)
 
 	contract, err := svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
@@ -2333,7 +2333,7 @@ func TestEmployeeService_UpdateContract_AmendPreservesOngoingTo(t *testing.T) {
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 	payPlan := createTestPayPlanWithCoverage(t, db, "TVÖD", org.ID)
 
-	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	past := models.Today().AddDate(0, -3, 0)
 	contract, err := svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
 		SectionID:     section.ID,
 		From:          past,
@@ -2372,8 +2372,8 @@ func TestEmployeeService_UpdateContract_AmendPreservesToWhenNotInRequest(t *test
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 	payPlan := createTestPayPlanWithCoverage(t, db, "TVÖD", org.ID)
 
-	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
-	endDate := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, 6, 0)
+	past := models.Today().AddDate(0, -3, 0)
+	endDate := models.Today().AddDate(0, 6, 0)
 	contract, err := svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
 		SectionID:     section.ID,
 		From:          past,
