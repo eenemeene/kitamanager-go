@@ -1080,7 +1080,10 @@
   "report": {
     "title": "KitaManager-Bericht",
     "cover": {
-      "subtitle": "Monatsbericht — {month}"
+      "subtitle": "Monatsbericht — {month}",
+      "titleLine": "{month} · {org}",
+      "intro": "Monatsbericht für {org} zum Berichtsmonat {month}. Die folgenden Seiten fassen Kinder, Belegung, Personal und Finanzen auf Basis der zum Zeitpunkt der Erstellung in KitaManager erfassten Daten zusammen. Mehrjährige Trendgrafiken zeigen das vorherige, aktuelle und nächste Kita-Jahr; Jahresmatrizen und -tabellen sind am Kita-Jahr (Aug → Jul) ausgerichtet, das den Berichtsmonat enthält; Stichtags-Ansichten (Altersverteilung, Übersichtskarten, Tortendiagramme) beziehen sich auf den ersten Tag des Monats.",
+      "generatedFootnote": "Erstellt am {date} · Web {web}"
     },
     "sectionChildren": "Kinder",
     "sectionOccupancy": "Belegung",

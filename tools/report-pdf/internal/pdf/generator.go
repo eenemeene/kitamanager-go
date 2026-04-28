@@ -165,19 +165,18 @@ func (g *Generator) GenerateCombinedReport(orgID, month, outputPath string) erro
 		}
 	}
 
-	// Inject print-optimized CSS:
-	// - Remove max-width so wide tables aren't clipped by the container
-	// - Remove body margin so content uses the full paper width
-	// - Ensure overflow is visible everywhere
+	// Inject defensive overflow:visible so chart libraries that clip
+	// internally (recharts in particular) don't get cut off in the
+	// PDF render. The combined report page is already laid out for
+	// A4 landscape — its container is max-w-[1100px] and the page
+	// owns its own @page CSS for size + margins — so we no longer
+	// override max-width / padding here (those overrides came from
+	// the per-section days when the page didn't know it was a
+	// print target).
 	if _, err := page.AddStyleTag(playwright.PageAddStyleTagOptions{
 		Content: playwright.String(`
 			body { margin: 0 !important; padding: 0 !important; }
-			[data-print-ready] {
-				max-width: none !important;
-				overflow: visible !important;
-				padding: 0 20px !important;
-			}
-			table { overflow: visible !important; }
+			table, [data-print-ready] { overflow: visible !important; }
 		`),
 	}); err != nil {
 		return fmt.Errorf("inject print CSS: %w", err)
@@ -192,7 +191,15 @@ func (g *Generator) GenerateCombinedReport(orgID, month, outputPath string) erro
 		Landscape:       playwright.Bool(true),
 		PrintBackground: playwright.Bool(true),
 		Format:          playwright.String("A4"),
-		Scale:           playwright.Float(0.55),
+		// Scale 1.0 (default): render at the same proportions a
+		// user would see in the browser print dialog. Previous
+		// value (0.55) was a workaround from when individual print
+		// pages had content wider than A4 landscape — the combined
+		// page is already laid out to fit (~1047px printable area
+		// vs the 1100px container), and shrinking at the renderer
+		// stage made charts like the financial-overview bar chart
+		// render as 1-pixel sticks instead of readable bars.
+		Scale: playwright.Float(1.0),
 		Margin: &playwright.Margin{
 			Top:    &marginMM,
 			Bottom: &marginMM,

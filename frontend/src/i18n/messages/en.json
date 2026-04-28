@@ -1080,7 +1080,10 @@
   "report": {
     "title": "KitaManager Report",
     "cover": {
-      "subtitle": "Monthly report — {month}"
+      "subtitle": "Monthly report — {month}",
+      "titleLine": "{month} · {org}",
+      "intro": "Monthly report for {org} covering {month}. The pages that follow summarize children, occupancy, staffing, and financials based on the data captured in KitaManager at the time of generation. Multi-year trend charts span the previous, current, and next Kita year; annual matrices and grids align to the Kita year (Aug → Jul) containing the report month; snapshot views (age distribution, summary cards, pie charts) are taken as of the first day of the month.",
+      "generatedFootnote": "Generated {date} · Web {web}"
     },
     "sectionChildren": "Children",
     "sectionOccupancy": "Occupancy",
