@@ -6,10 +6,11 @@ import (
 	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
+	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
 func TestDetermineAmendMode_FromToday(t *testing.T) {
-	today := time.Now().UTC().Truncate(24 * time.Hour)
+	today := models.Today()
 	mode, err := determineAmendMode(today, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -20,7 +21,7 @@ func TestDetermineAmendMode_FromToday(t *testing.T) {
 }
 
 func TestDetermineAmendMode_FromTomorrow(t *testing.T) {
-	tomorrow := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, 0, 1)
+	tomorrow := models.Today().AddDate(0, 0, 1)
 	mode, err := determineAmendMode(tomorrow, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -31,7 +32,7 @@ func TestDetermineAmendMode_FromTomorrow(t *testing.T) {
 }
 
 func TestDetermineAmendMode_FromYesterday(t *testing.T) {
-	yesterday := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, 0, -1)
+	yesterday := models.Today().AddDate(0, 0, -1)
 	mode, err := determineAmendMode(yesterday, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -42,7 +43,7 @@ func TestDetermineAmendMode_FromYesterday(t *testing.T) {
 }
 
 func TestDetermineAmendMode_FromSixMonthsAgo(t *testing.T) {
-	sixMonthsAgo := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -6, 0)
+	sixMonthsAgo := models.Today().AddDate(0, -6, 0)
 	mode, err := determineAmendMode(sixMonthsAgo, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -53,8 +54,8 @@ func TestDetermineAmendMode_FromSixMonthsAgo(t *testing.T) {
 }
 
 func TestDetermineAmendMode_EndedYesterday(t *testing.T) {
-	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -6, 0)
-	yesterday := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, 0, -1)
+	past := models.Today().AddDate(0, -6, 0)
+	yesterday := models.Today().AddDate(0, 0, -1)
 	_, err := determineAmendMode(past, &yesterday)
 	if err == nil {
 		t.Fatal("expected error for ended contract, got nil")
@@ -65,7 +66,7 @@ func TestDetermineAmendMode_EndedYesterday(t *testing.T) {
 }
 
 func TestDetermineAmendMode_EndsToday(t *testing.T) {
-	today := time.Now().UTC().Truncate(24 * time.Hour)
+	today := models.Today()
 	past := today.AddDate(0, -6, 0)
 	// Contract ends today — still active today, should be amendModeAmend (started in the past)
 	mode, err := determineAmendMode(past, &today)
@@ -78,7 +79,7 @@ func TestDetermineAmendMode_EndsToday(t *testing.T) {
 }
 
 func TestDetermineAmendMode_EndsTomorrow(t *testing.T) {
-	today := time.Now().UTC().Truncate(24 * time.Hour)
+	today := models.Today()
 	tomorrow := today.AddDate(0, 0, 1)
 	// Contract from today, ends tomorrow → in-place
 	mode, err := determineAmendMode(today, &tomorrow)
@@ -91,7 +92,7 @@ func TestDetermineAmendMode_EndsTomorrow(t *testing.T) {
 }
 
 func TestDetermineAmendMode_FromTodayToNil(t *testing.T) {
-	today := time.Now().UTC().Truncate(24 * time.Hour)
+	today := models.Today()
 	mode, err := determineAmendMode(today, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -117,7 +118,7 @@ func TestDetermineAmendMode_NonMidnightTime(t *testing.T) {
 
 // Edge case: same-day contract (From == To == today) — should be in-place
 func TestDetermineAmendMode_SameDayContract(t *testing.T) {
-	today := time.Now().UTC().Truncate(24 * time.Hour)
+	today := models.Today()
 	mode, err := determineAmendMode(today, &today)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -129,7 +130,7 @@ func TestDetermineAmendMode_SameDayContract(t *testing.T) {
 
 // Edge case: contract ended exactly today with From in past — still active, should be amend mode
 func TestDetermineAmendMode_EndsToday_FromPast(t *testing.T) {
-	today := time.Now().UTC().Truncate(24 * time.Hour)
+	today := models.Today()
 	past := today.AddDate(0, -1, 0)
 	mode, err := determineAmendMode(past, &today)
 	if err != nil {

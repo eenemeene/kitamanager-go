@@ -25,8 +25,11 @@ func NewPeriodStore[T models.PeriodRecord](db *gorm.DB, ownerIDCol string) *Peri
 }
 
 // GetCurrentRecord returns the active record for an owner (if any).
+// "Current" is judged against models.Today() — the calendar today in the
+// application timezone, NOT the server clock — so the answer agrees with the
+// list-default and amend-mode threshold the user sees in the UI.
 func (s *PeriodStore[T]) GetCurrentRecord(ctx context.Context, ownerID uint) (*T, error) {
-	return s.GetRecordOn(ctx, ownerID, time.Now())
+	return s.GetRecordOn(ctx, ownerID, models.Today())
 }
 
 // GetRecordOn returns the record valid on a specific date.

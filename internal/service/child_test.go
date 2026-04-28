@@ -2108,7 +2108,7 @@ func TestChildService_UpdateContract_InPlace(t *testing.T) {
 	child := createTestChild(t, db, "John", "Doe", org.ID)
 
 	// Use today's date so the contract qualifies for in-place update
-	today := time.Now().UTC().Truncate(24 * time.Hour)
+	today := models.Today()
 	to := today.AddDate(1, 0, 0)
 	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		SectionID:  1,
@@ -2158,7 +2158,7 @@ func TestChildService_UpdateContract_InvalidPeriod(t *testing.T) {
 	child := createTestChild(t, db, "John", "Doe", org.ID)
 
 	// Use today so the contract qualifies for in-place update
-	today := time.Now().UTC().Truncate(24 * time.Hour)
+	today := models.Today()
 	to := today.AddDate(1, 0, 0)
 	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		SectionID: 1,
@@ -2194,7 +2194,7 @@ func TestChildService_UpdateContract_OverlapConflict(t *testing.T) {
 	child := createTestChild(t, db, "John", "Doe", org.ID)
 
 	// Use future dates so contracts are eligible for in-place update
-	today := time.Now().UTC().Truncate(24 * time.Hour)
+	today := models.Today()
 
 	// Create first contract: today to today+6 months
 	from1 := today
@@ -2246,7 +2246,7 @@ func TestChildService_UpdateContract_WrongOrg(t *testing.T) {
 	org2 := createTestOrganization(t, db, "Org 2")
 	child := createTestChild(t, db, "John", "Doe", org1.ID)
 
-	today := time.Now().UTC().Truncate(24 * time.Hour)
+	today := models.Today()
 	contract, err := svc.CreateContract(ctx, child.ID, org1.ID, &models.ChildContractCreateRequest{SectionID: 1, From: today})
 	if err != nil {
 		t.Fatalf("failed to create contract: %v", err)
@@ -2276,7 +2276,7 @@ func TestChildService_UpdateContract_WrongChild(t *testing.T) {
 	child1 := createTestChild(t, db, "John", "Doe", org.ID)
 	child2 := createTestChild(t, db, "Jane", "Doe", org.ID)
 
-	today := time.Now().UTC().Truncate(24 * time.Hour)
+	today := models.Today()
 	contract, err := svc.CreateContract(ctx, child1.ID, org.ID, &models.ChildContractCreateRequest{SectionID: 1, From: today})
 	if err != nil {
 		t.Fatalf("failed to create contract: %v", err)
@@ -2349,7 +2349,7 @@ func TestChildService_UpdateContract_AmendChangeSection(t *testing.T) {
 	section2 := createTestSection(t, db, "Elementar", org.ID, false)
 
 	// Create contract starting in the past (triggers amend mode)
-	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	past := models.Today().AddDate(0, -3, 0)
 	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		SectionID:  section1.ID,
 		From:       past,
@@ -2367,7 +2367,7 @@ func TestChildService_UpdateContract_AmendChangeSection(t *testing.T) {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	today := time.Now().UTC().Truncate(24 * time.Hour)
+	today := models.Today()
 	yesterday := today.AddDate(0, 0, -1)
 
 	// New contract should have a different ID
@@ -2413,7 +2413,7 @@ func TestChildService_UpdateContract_AmendChangeProperties(t *testing.T) {
 	child := createTestChild(t, db, "John", "Doe", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
-	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	past := models.Today().AddDate(0, -3, 0)
 	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		SectionID:  section.ID,
 		From:       past,
@@ -2452,7 +2452,7 @@ func TestChildService_UpdateContract_AmendFromIgnored(t *testing.T) {
 	child := createTestChild(t, db, "John", "Doe", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
-	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	past := models.Today().AddDate(0, -3, 0)
 	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		SectionID: section.ID,
 		From:      past,
@@ -2470,7 +2470,7 @@ func TestChildService_UpdateContract_AmendFromIgnored(t *testing.T) {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	today := time.Now().UTC().Truncate(24 * time.Hour)
+	today := models.Today()
 	// From should be today, NOT the requested date
 	if !updated.From.Truncate(24 * time.Hour).Equal(today) {
 		t.Errorf("From = %v, want today (%v) — From should be ignored in amend mode", updated.From, today)
@@ -2486,7 +2486,7 @@ func TestChildService_UpdateContract_AmendToApplied(t *testing.T) {
 	child := createTestChild(t, db, "John", "Doe", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
-	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	past := models.Today().AddDate(0, -3, 0)
 	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		SectionID: section.ID,
 		From:      past,
@@ -2496,7 +2496,7 @@ func TestChildService_UpdateContract_AmendToApplied(t *testing.T) {
 	}
 
 	// Set To date in the request
-	endDate := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, 6, 0)
+	endDate := models.Today().AddDate(0, 6, 0)
 	updated, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
 		To: &endDate,
 	})
@@ -2554,7 +2554,7 @@ func TestChildService_UpdateContract_InPlace_FutureContract(t *testing.T) {
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
 	// Create a contract starting tomorrow
-	tomorrow := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, 0, 1)
+	tomorrow := models.Today().AddDate(0, 0, 1)
 	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		SectionID: section.ID,
 		From:      tomorrow,
@@ -2590,7 +2590,7 @@ func TestChildService_UpdateContract_AmendOverlapConflict(t *testing.T) {
 	child := createTestChild(t, db, "John", "Doe", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
-	today := time.Now().UTC().Truncate(24 * time.Hour)
+	today := models.Today()
 	past := today.AddDate(0, -3, 0)
 
 	// Create ongoing contract starting in the past (qualifies for amend)
@@ -2645,7 +2645,7 @@ func TestChildService_UpdateContract_AmendPreservesProperties(t *testing.T) {
 	section1 := createTestSection(t, db, "Krippe", org.ID, false)
 	section2 := createTestSection(t, db, "Elementar", org.ID, false)
 
-	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	past := models.Today().AddDate(0, -3, 0)
 	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		SectionID:  section1.ID,
 		From:       past,
@@ -2681,7 +2681,7 @@ func TestChildService_UpdateContract_AmendPreservesSection(t *testing.T) {
 	child := createTestChild(t, db, "John", "Doe", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
-	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	past := models.Today().AddDate(0, -3, 0)
 	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		SectionID:  section.ID,
 		From:       past,
@@ -2714,7 +2714,7 @@ func TestChildService_UpdateContract_AmendPreservesOngoingTo(t *testing.T) {
 	child := createTestChild(t, db, "John", "Doe", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
-	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	past := models.Today().AddDate(0, -3, 0)
 	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		SectionID: section.ID,
 		From:      past,
@@ -2748,8 +2748,8 @@ func TestChildService_UpdateContract_AmendPreservesToWhenNotInRequest(t *testing
 	child := createTestChild(t, db, "John", "Doe", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
-	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
-	endDate := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, 6, 0)
+	past := models.Today().AddDate(0, -3, 0)
+	endDate := models.Today().AddDate(0, 6, 0)
 	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		SectionID: section.ID,
 		From:      past,
@@ -2786,8 +2786,8 @@ func TestChildService_UpdateContract_AmendStateConsistency(t *testing.T) {
 	child := createTestChild(t, db, "John", "Doe", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
-	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
-	today := time.Now().UTC().Truncate(24 * time.Hour)
+	past := models.Today().AddDate(0, -3, 0)
+	today := models.Today()
 	yesterday := today.AddDate(0, 0, -1)
 
 	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
@@ -3715,7 +3715,7 @@ func TestChildService_UpdateContract_InPlace_AutoApply(t *testing.T) {
 	section := getDefaultSection(t, db, org.ID)
 
 	// Create contract starting in the future (update-in-place mode)
-	future := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, 3, 0)
+	future := models.Today().AddDate(0, 3, 0)
 	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		SectionID:  section.ID,
 		From:       future,
@@ -3758,7 +3758,7 @@ func TestChildService_UpdateContract_Amend_AutoApply(t *testing.T) {
 	section2 := createTestSection(t, db, "Elementar", org.ID, false)
 
 	// Create contract starting in the past (triggers amend mode)
-	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
+	past := models.Today().AddDate(0, -3, 0)
 	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		SectionID:  section1.ID,
 		From:       past,

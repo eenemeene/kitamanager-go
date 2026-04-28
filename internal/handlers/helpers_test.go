@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/eenemeene/kitamanager-go/internal/ctxkeys"
+	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
 func TestGetUserEmail(t *testing.T) {
@@ -92,7 +93,7 @@ func TestParseRequiredDate_InvalidFormat(t *testing.T) {
 	}
 }
 
-func TestParseDateOrToday_Empty_ReturnsUTC(t *testing.T) {
+func TestParseDateOrToday_Empty_ReturnsAppToday(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest("GET", "/?", nil)
@@ -101,8 +102,19 @@ func TestParseDateOrToday_Empty_ReturnsUTC(t *testing.T) {
 	if !ok {
 		t.Fatal("expected ok=true")
 	}
+	// Result must be UTC midnight (composes with date columns).
 	if date.Location() != time.UTC {
 		t.Errorf("expected UTC location, got %v", date.Location())
+	}
+	if date.Hour() != 0 || date.Minute() != 0 || date.Second() != 0 {
+		t.Errorf("expected midnight, got %v", date)
+	}
+	// And: equal to models.Today() at the moment of the call. We allow a
+	// 1-day delta because the test may straddle midnight in the configured
+	// zone — production handles that correctly; the test should not flake.
+	delta := date.Sub(models.Today())
+	if delta != 0 && delta != 24*time.Hour && delta != -24*time.Hour {
+		t.Errorf("parseDateOrToday empty default = %v vs models.Today() = %v (delta %v)", date, models.Today(), delta)
 	}
 }
 

@@ -65,7 +65,9 @@ func (s *ChildAttendanceService) Create(ctx context.Context, orgID, childID uint
 				return nil, apperror.BadRequest("invalid date format, expected YYYY-MM-DD")
 			}
 		} else {
-			date = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+			// Calendar date follows the application timezone; the check-in
+			// time below stays at UTC (precise instant).
+			date = models.Today()
 		}
 		if req.CheckInTime != nil {
 			checkInTime = req.CheckInTime

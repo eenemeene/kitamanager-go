@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"time"
-
 	"github.com/gin-gonic/gin"
 
 	"github.com/eenemeene/kitamanager-go/internal/export"
@@ -131,7 +129,9 @@ func (h *ExportHandler) ExportChildren(c *gin.Context) {
 	}
 
 	if activeOn == nil && contractAfter == nil {
-		now := time.Now().UTC()
+		// Match ChildHandler.List's default — Berlin's "today", not the
+		// server clock's UTC date.
+		now := models.Today()
 		activeOn = &now
 	}
 
