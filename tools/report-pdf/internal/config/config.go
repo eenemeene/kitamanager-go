@@ -12,11 +12,12 @@ import (
 	"github.com/eenemeene/kitamanager-go/tools/report-pdf/internal/version"
 )
 
-var validReports = map[string]bool{
-	"staffing":   true,
-	"financials": true,
-	"occupancy":  true,
-	"children":   true,
+// validLocales mirrors frontend/src/i18n/config.ts. Adding a new
+// locale on the frontend means adding it here too so the CLI's
+// validation matches the runtime registry.
+var validLocales = map[string]bool{
+	"en": true,
+	"de": true,
 }
 
 // envPrefix prefixes the env-var fallback for every flag so the report
@@ -33,16 +34,20 @@ const envPrefix = "KITAMANAGER_REPORT"
 const monthLayout = "2006-01"
 
 type Config struct {
-	BaseURL   string
-	APIURL    string
-	Email     string
-	Password  string
-	OrgID     string
+	BaseURL  string
+	APIURL   string
+	Email    string
+	Password string
+	OrgID    string
 	// Month is the first day of the report month (always day=1, time=00:00 UTC).
 	// We carry a time.Time rather than a string so callers don't have to re-parse.
 	Month     time.Time
 	OutputDir string
-	Reports   []string
+	// Locale is the ISO 639-1 code (`en` or `de`) the rendered report
+	// should use. Threaded through to the Playwright context as a
+	// `locale` cookie before navigation, which the frontend's i18n
+	// request config honours when picking the message catalog.
+	Locale string
 }
 
 // MonthString returns the YYYY-MM form of cfg.Month for URL/filename use.
@@ -81,7 +86,7 @@ func NewRootCmd(runFn func(*Config) error) *cobra.Command {
 	cmd.Flags().String("org-id", "", "Organization ID (required)")
 	cmd.Flags().String("month", "", "Report month in YYYY-MM form (default: current month)")
 	cmd.Flags().String("output-dir", ".", "Output directory for PDFs")
-	cmd.Flags().String("reports", "all", "Comma-separated reports: staffing,financials,occupancy,children")
+	cmd.Flags().String("locale", "en", "Report language: en or de")
 
 	return cmd
 }
@@ -125,18 +130,11 @@ func resolve(flags *pflag.FlagSet) (*Config, error) {
 	}
 	cfg.Month = month
 
-	reports := v.GetString("reports")
-	if reports == "all" {
-		cfg.Reports = []string{"children", "occupancy", "staffing", "financials"}
-	} else {
-		for _, r := range strings.Split(reports, ",") {
-			r = strings.TrimSpace(r)
-			if !validReports[r] {
-				return nil, fmt.Errorf("invalid report type: %q (valid: staffing, financials, occupancy, children)", r)
-			}
-			cfg.Reports = append(cfg.Reports, r)
-		}
+	locale := v.GetString("locale")
+	if !validLocales[locale] {
+		return nil, fmt.Errorf("--locale: invalid value %q (valid: en, de)", locale)
 	}
+	cfg.Locale = locale
 
 	return cfg, nil
 }

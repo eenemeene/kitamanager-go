@@ -62,8 +62,8 @@ func TestParse_AllDefaults(t *testing.T) {
 	if cfg.OutputDir != "." {
 		t.Errorf("OutputDir = %q, want %q", cfg.OutputDir, ".")
 	}
-	if len(cfg.Reports) != 4 {
-		t.Errorf("Reports = %v, want all 4 reports", cfg.Reports)
+	if cfg.Locale != "en" {
+		t.Errorf("Locale = %q, want default %q", cfg.Locale, "en")
 	}
 }
 
@@ -76,7 +76,7 @@ func TestParse_CustomValues(t *testing.T) {
 		"--api-url", "https://api.example.com",
 		"--month", "2025-08",
 		"--output-dir", "/tmp/reports",
-		"--reports", "staffing,financials",
+		"--locale", "de",
 	}
 	cfg, err := parseForTest(t, args)
 	if err != nil {
@@ -99,19 +99,8 @@ func TestParse_CustomValues(t *testing.T) {
 	if cfg.OutputDir != "/tmp/reports" {
 		t.Errorf("OutputDir = %q", cfg.OutputDir)
 	}
-	if len(cfg.Reports) != 2 || cfg.Reports[0] != "staffing" || cfg.Reports[1] != "financials" {
-		t.Errorf("Reports = %v, want [staffing financials]", cfg.Reports)
-	}
-}
-
-func TestParse_SingleReport(t *testing.T) {
-	args := []string{"--email", "a@b.com", "--password", "pw", "--org-id", "1", "--reports", "children"}
-	cfg, err := parseForTest(t, args)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(cfg.Reports) != 1 || cfg.Reports[0] != "children" {
-		t.Errorf("Reports = %v, want [children]", cfg.Reports)
+	if cfg.Locale != "de" {
+		t.Errorf("Locale = %q, want %q", cfg.Locale, "de")
 	}
 }
 
@@ -172,22 +161,26 @@ func TestParse_MonthYearOutOfRange(t *testing.T) {
 	}
 }
 
-func TestParse_InvalidReport(t *testing.T) {
-	args := []string{"--email", "a@b.com", "--password", "pw", "--org-id", "1", "--reports", "staffing,bogus"}
+func TestParse_InvalidLocale(t *testing.T) {
+	args := []string{"--email", "a@b.com", "--password", "pw", "--org-id", "1", "--locale", "fr"}
 	_, err := parseForTest(t, args)
 	if err == nil {
-		t.Fatal("expected error for invalid report type")
+		t.Fatal("expected error for invalid locale")
 	}
 }
 
-func TestParse_ReportsWithSpaces(t *testing.T) {
-	args := []string{"--email", "a@b.com", "--password", "pw", "--org-id", "1", "--reports", "staffing, occupancy"}
-	cfg, err := parseForTest(t, args)
+func TestParse_LocaleEnvVar(t *testing.T) {
+	t.Setenv("KITAMANAGER_REPORT_EMAIL", "a@b.com")
+	t.Setenv("KITAMANAGER_REPORT_PASSWORD", "pw")
+	t.Setenv("KITAMANAGER_REPORT_ORG_ID", "1")
+	t.Setenv("KITAMANAGER_REPORT_LOCALE", "de")
+
+	cfg, err := parseForTest(t, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(cfg.Reports) != 2 || cfg.Reports[0] != "staffing" || cfg.Reports[1] != "occupancy" {
-		t.Errorf("Reports = %v, want [staffing occupancy]", cfg.Reports)
+	if cfg.Locale != "de" {
+		t.Errorf("Locale = %q, want %q", cfg.Locale, "de")
 	}
 }
 
@@ -221,7 +214,7 @@ func TestParse_EnvVarFallback_AllOptionals(t *testing.T) {
 	t.Setenv("KITAMANAGER_REPORT_API_URL", "https://env-api.example.com")
 	t.Setenv("KITAMANAGER_REPORT_MONTH", "2024-03")
 	t.Setenv("KITAMANAGER_REPORT_OUTPUT_DIR", "/env/output")
-	t.Setenv("KITAMANAGER_REPORT_REPORTS", "occupancy,children")
+	t.Setenv("KITAMANAGER_REPORT_LOCALE", "de")
 
 	cfg, err := parseForTest(t, nil)
 	if err != nil {
@@ -240,8 +233,8 @@ func TestParse_EnvVarFallback_AllOptionals(t *testing.T) {
 	if cfg.OutputDir != "/env/output" {
 		t.Errorf("OutputDir = %q", cfg.OutputDir)
 	}
-	if len(cfg.Reports) != 2 || cfg.Reports[0] != "occupancy" || cfg.Reports[1] != "children" {
-		t.Errorf("Reports = %v", cfg.Reports)
+	if cfg.Locale != "de" {
+		t.Errorf("Locale = %q, want %q", cfg.Locale, "de")
 	}
 }
 

@@ -3,7 +3,6 @@ package pdf
 import (
 	"fmt"
 	"net/url"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -32,16 +31,15 @@ func isLoginBounce(rawURL string) bool {
 	return u.Path == loginPathPrefix || strings.HasPrefix(u.Path, loginPathPrefix+"/")
 }
 
-// printPageURL builds the URL of the print-optimised statistics page
-// for a given org + report type. Extracted so the URL contract can be
-// pinned by unit tests without spinning up Playwright — the path
-// shape and `month` query parameter are part of the API/frontend
-// contract a renaming on either side would silently break. month is
-// passed through verbatim (already validated to YYYY-MM at the CLI
-// layer); we don't re-validate here so the helper stays a pure
-// formatter.
-func printPageURL(baseURL, orgID, reportType, month string) string {
-	return fmt.Sprintf("%s/organizations/%s/statistics/%s/print?month=%s", baseURL, orgID, reportType, month)
+// combinedReportURL builds the URL of the combined report print page
+// for a given org. Extracted so the URL contract can be pinned by
+// unit tests without spinning up Playwright — the path shape and
+// `month` query parameter are part of the API/frontend contract a
+// renaming on either side would silently break. month is passed
+// through verbatim (already validated to YYYY-MM at the CLI layer);
+// we don't re-validate here so the helper stays a pure formatter.
+func combinedReportURL(baseURL, orgID, month string) string {
+	return fmt.Sprintf("%s/organizations/%s/statistics/report/print?month=%s", baseURL, orgID, month)
 }
 
 type Generator struct {
@@ -49,6 +47,7 @@ type Generator struct {
 	browser playwright.Browser
 	cookies []playwright.OptionalCookie
 	baseURL string
+	locale  string
 	// webVersion is captured from the rendered DOM the first time
 	// GenerateReport sees a `<meta name="kitamanager-version">` tag.
 	// We read it from the page rather than via a separate HTTP call so
@@ -58,8 +57,13 @@ type Generator struct {
 	webVersion string
 }
 
-// NewGenerator installs Playwright browsers if needed and launches a headless Chromium instance.
-func NewGenerator(cookies []playwright.OptionalCookie, baseURL string) (*Generator, error) {
+// NewGenerator installs Playwright browsers if needed and launches a
+// headless Chromium instance. locale (`en` / `de`) drives the
+// `locale` cookie pushed into the browser context before navigation,
+// which the frontend's i18n request config reads to pick the message
+// catalog. Pass an empty string to skip the cookie and let the
+// frontend fall back to its defaultLocale.
+func NewGenerator(cookies []playwright.OptionalCookie, baseURL, locale string) (*Generator, error) {
 	if err := playwright.Install(); err != nil {
 		return nil, fmt.Errorf("install playwright: %w", err)
 	}
@@ -82,14 +86,45 @@ func NewGenerator(cookies []playwright.OptionalCookie, baseURL string) (*Generat
 		browser: browser,
 		cookies: cookies,
 		baseURL: strings.TrimRight(baseURL, "/"),
+		locale:  locale,
 	}, nil
 }
 
-// GenerateReport navigates to a print page and exports it as a PDF.
+// localeCookie builds the `locale` cookie playwright should add to
+// the browser context for the frontend hostname. Returns nil when
+// no locale was configured (caller should skip the AddCookies call
+// for it).
+func (g *Generator) localeCookie() *playwright.OptionalCookie {
+	if g.locale == "" {
+		return nil
+	}
+	parsed, err := url.Parse(g.baseURL)
+	if err != nil {
+		return nil
+	}
+	host := parsed.Hostname()
+	if host == "" {
+		return nil
+	}
+	path := "/"
+	return &playwright.OptionalCookie{
+		Name:   "locale",
+		Value:  g.locale,
+		Domain: &host,
+		Path:   &path,
+	}
+}
+
+// GenerateCombinedReport navigates to the combined /report/print page
+// and exports it as a single PDF at outputPath. The frontend page
+// drives all four section renders + cover + page-break CSS in one
+// continuous document, so the tool no longer needs to render each
+// section separately and merge afterwards.
+//
 // month is the YYYY-MM form of the report month — passed verbatim into
 // the print page's `?month=` query so every API call the page makes is
 // scoped to the same period.
-func (g *Generator) GenerateReport(reportType, orgID, month, outputDir string) error {
+func (g *Generator) GenerateCombinedReport(orgID, month, outputPath string) error {
 	ctx, err := g.browser.NewContext(playwright.BrowserNewContextOptions{
 		Viewport: &playwright.Size{Width: 1600, Height: 900},
 	})
@@ -102,12 +137,18 @@ func (g *Generator) GenerateReport(reportType, orgID, month, outputDir string) e
 		return fmt.Errorf("add cookies: %w", err)
 	}
 
+	if lc := g.localeCookie(); lc != nil {
+		if err := ctx.AddCookies([]playwright.OptionalCookie{*lc}); err != nil {
+			return fmt.Errorf("add locale cookie: %w", err)
+		}
+	}
+
 	page, err := ctx.NewPage()
 	if err != nil {
 		return fmt.Errorf("create page: %w", err)
 	}
 
-	pageURL := printPageURL(g.baseURL, orgID, reportType, month)
+	pageURL := combinedReportURL(g.baseURL, orgID, month)
 	fmt.Printf("  Navigating to %s\n", pageURL)
 
 	resp, err := page.Goto(pageURL, playwright.PageGotoOptions{
@@ -135,8 +176,13 @@ func (g *Generator) GenerateReport(reportType, orgID, month, outputDir string) e
 	// wait (mid-render session expiry, race with token refresh), give
 	// the operator the same clear auth-failure message rather than a
 	// generic timeout.
+	//
+	// Timeout is generous (60s): the combined page composes ~30 parallel
+	// queries across cover + 4 sections, plus chart-render time. Most
+	// runs settle in 5–10s but a slow API or under-resourced runner can
+	// take longer.
 	err = page.Locator("[data-print-ready='true']").WaitFor(playwright.LocatorWaitForOptions{
-		Timeout: playwright.Float(30000),
+		Timeout: playwright.Float(60000),
 	})
 	if err != nil {
 		if isLoginBounce(page.URL()) {
@@ -157,19 +203,18 @@ func (g *Generator) GenerateReport(reportType, orgID, month, outputDir string) e
 		}
 	}
 
-	// Inject print-optimized CSS:
-	// - Remove max-width so wide tables aren't clipped by the container
-	// - Remove body margin so content uses the full paper width
-	// - Ensure overflow is visible everywhere
+	// Inject defensive overflow:visible so chart libraries that clip
+	// internally (recharts in particular) don't get cut off in the
+	// PDF render. The combined report page is already laid out for
+	// A4 landscape — its container is max-w-[1100px] and the page
+	// owns its own @page CSS for size + margins — so we no longer
+	// override max-width / padding here (those overrides came from
+	// the per-section days when the page didn't know it was a
+	// print target).
 	if _, err := page.AddStyleTag(playwright.PageAddStyleTagOptions{
 		Content: playwright.String(`
 			body { margin: 0 !important; padding: 0 !important; }
-			[data-print-ready] {
-				max-width: none !important;
-				overflow: visible !important;
-				padding: 0 20px !important;
-			}
-			table { overflow: visible !important; }
+			table, [data-print-ready] { overflow: visible !important; }
 		`),
 	}); err != nil {
 		return fmt.Errorf("inject print CSS: %w", err)
@@ -178,16 +223,21 @@ func (g *Generator) GenerateReport(reportType, orgID, month, outputDir string) e
 	// Brief stabilization delay for chart animations
 	time.Sleep(1 * time.Second)
 
-	filename := fmt.Sprintf("%s-%s-%s.pdf", reportType, orgID, month)
-	outputPath := filepath.Join(outputDir, filename)
-
 	marginMM := "10mm"
 	_, err = page.PDF(playwright.PagePdfOptions{
 		Path:            playwright.String(outputPath),
 		Landscape:       playwright.Bool(true),
 		PrintBackground: playwright.Bool(true),
 		Format:          playwright.String("A4"),
-		Scale:           playwright.Float(0.55),
+		// Scale 1.0 (default): render at the same proportions a
+		// user would see in the browser print dialog. Previous
+		// value (0.55) was a workaround from when individual print
+		// pages had content wider than A4 landscape — the combined
+		// page is already laid out to fit (~1047px printable area
+		// vs the 1100px container), and shrinking at the renderer
+		// stage made charts like the financial-overview bar chart
+		// render as 1-pixel sticks instead of readable bars.
+		Scale: playwright.Float(1.0),
 		Margin: &playwright.Margin{
 			Top:    &marginMM,
 			Bottom: &marginMM,
@@ -198,8 +248,6 @@ func (g *Generator) GenerateReport(reportType, orgID, month, outputDir string) e
 	if err != nil {
 		return fmt.Errorf("generate PDF: %w", err)
 	}
-
-	fmt.Printf("  Saved %s\n", outputPath)
 	return nil
 }
 
