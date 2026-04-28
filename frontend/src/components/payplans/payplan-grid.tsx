@@ -12,11 +12,7 @@ import {
 import { useTranslations } from 'next-intl';
 import type { PayPlanPeriod } from '@/lib/api/types';
 import { formatCurrency } from '@/lib/utils/formatting';
-
-function parseGrade(g: string): [number, string] {
-  const match = g.match(/^[A-Za-z]*(\d+)(.*)$/);
-  return match ? [parseInt(match[1]), match[2]] : [0, g];
-}
+import { compareGrade } from '@/lib/utils/grade';
 
 interface PayPlanGridProps {
   period: PayPlanPeriod;
@@ -26,12 +22,11 @@ export function PayPlanGrid({ period }: PayPlanGridProps) {
   const t = useTranslations();
   const entries = period.entries ?? [];
 
-  const grades = Array.from(new Set(entries.map((e) => e.grade))).sort((a, b) => {
-    const [numA, suffA] = parseGrade(a);
-    const [numB, suffB] = parseGrade(b);
-    if (numA !== numB) return numB - numA;
-    return suffB.localeCompare(suffA);
-  });
+  // The grid wants the highest grade at the top (descending), so sort by
+  // compareGrade and reverse.
+  const grades = Array.from(new Set(entries.map((e) => e.grade)))
+    .sort(compareGrade)
+    .reverse();
 
   const steps = Array.from(new Set(entries.map((e) => e.step))).sort((a, b) => a - b);
 

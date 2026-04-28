@@ -4,7 +4,7 @@ import {
   createTestOrg,
   deleteTestOrg,
   createPayPlanViaApi,
-  createPayPlanPeriodViaApi,
+  seedPayPlanCoverageViaApi,
   createEmployeeWithContractViaApi,
   deleteEmployeeViaApi,
   uniqueName,
@@ -20,12 +20,10 @@ test.describe('Employees', () => {
     await login(page);
     const testOrg = await createTestOrg(page, 'Employees');
     orgId = testOrg.orgId;
-    // Create a pay plan with period (needed for employee contracts)
+    // Create a pay plan with a wide-open period and full grade/step coverage
+    // (employee contract create validates the pinned (grade, step) entry).
     const payplan = await createPayPlanViaApi(page, orgId, 'Test Pay Plan');
-    await createPayPlanPeriodViaApi(page, orgId, payplan.id, {
-      from: '2020-01-01',
-      weekly_hours: 39,
-    });
+    await seedPayPlanCoverageViaApi(page, orgId, payplan.id, { from: '2020-01-01' });
     await page.close();
   });
 

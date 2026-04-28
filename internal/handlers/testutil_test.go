@@ -156,7 +156,10 @@ func createTestUserOrganization(t *testing.T, db *gorm.DB, userID, orgID uint, r
 	return testutil.CreateTestUserOrganization(t, db, userID, orgID, role)
 }
 
-// ensureTestPayPlan finds or creates a pay plan for the given organization.
+// ensureTestPayPlan finds or creates a pay plan for the given organization,
+// including a wide-open period with entries for grades commonly used in tests.
+// Coverage is required because the contract create/update service paths now
+// validate that (PayPlanID, Grade, Step) resolves to an actual entry.
 func ensureTestPayPlan(t *testing.T, db *gorm.DB, orgID uint) uint {
 	t.Helper()
 	var payPlan models.PayPlan
@@ -168,7 +171,36 @@ func ensureTestPayPlan(t *testing.T, db *gorm.DB, orgID uint) uint {
 	if err := db.Create(&payPlan).Error; err != nil {
 		t.Fatalf("failed to create test pay plan: %v", err)
 	}
+	seedTestPayPlanCoverage(t, db, payPlan.ID)
 	return payPlan.ID
+}
+
+// seedTestPayPlanCoverage adds a wide-open period (2000-01-01 onward) with
+// entries for every grade/step combination that contract handler tests
+// typically use. Tests that create a pay plan inline (without
+// ensureTestPayPlan) and then go through CreateContract should call this
+// after creating the plan.
+func seedTestPayPlanCoverage(t *testing.T, db *gorm.DB, payPlanID uint) {
+	t.Helper()
+	period := models.PayPlanPeriod{
+		PayPlanID:   payPlanID,
+		Period:      models.Period{From: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)},
+		WeeklyHours: 39.0,
+	}
+	if err := db.Create(&period).Error; err != nil {
+		t.Fatalf("failed to seed pay plan period: %v", err)
+	}
+	grades := []string{"S2", "S3", "S4", "S5", "S6", "S7", "S8a", "S8b", "S9", "S10", "S11a", "S11b", "S12", "S13", "S14", "S15", "S16", "S17", "S18", "Minijob"}
+	for _, grade := range grades {
+		for step := 1; step <= 6; step++ {
+			entry := models.PayPlanEntry{
+				PeriodID: period.ID, Grade: grade, Step: step, MonthlyAmount: 300000,
+			}
+			if err := db.Create(&entry).Error; err != nil {
+				t.Fatalf("failed to seed pay plan entry: %v", err)
+			}
+		}
+	}
 }
 
 // ensureTestSection finds or creates a default section for the given organization.

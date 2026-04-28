@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math"
+	"strings"
 	"testing"
 	"time"
 
@@ -206,6 +207,26 @@ func TestPayPlanService_Update(t *testing.T) {
 	}
 }
 
+func TestPayPlanService_Update_DuplicateNameReturnsConflict(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createPayPlanService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	createTestPayPlan(t, db, "Plan A", org.ID)
+	planB := createTestPayPlan(t, db, "Plan B", org.ID)
+
+	collidingName := "Plan A"
+	req := models.PayPlanUpdateRequest{Name: &collidingName}
+	_, err := svc.Update(ctx, planB.ID, org.ID, &req)
+	if err == nil {
+		t.Fatal("expected conflict on rename collision, got nil")
+	}
+	if !errors.Is(err, apperror.ErrConflict) {
+		t.Errorf("expected ErrConflict, got %v", err)
+	}
+}
+
 func TestPayPlanService_Update_WrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createPayPlanService(db)
@@ -274,6 +295,42 @@ func TestPayPlanService_Delete_WrongOrg(t *testing.T) {
 	}
 	if !errors.Is(err, apperror.ErrNotFound) {
 		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestPayPlanService_Delete_BlockedByEmployeeContract(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createPayPlanService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	payplan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	period := createTestPayPlanPeriod(t, db, payplan.ID, from, &to, 39.0)
+	createTestPayPlanEntry(t, db, period.ID, "S8a", 3, 400000, nil)
+
+	emp := createTestEmployee(t, db, "Anna", "Schmidt", org.ID)
+	createTestEmployeeContract(t, db, emp.ID, payplan.ID, from, &to, "S8a", 3, 39.0)
+
+	err := svc.Delete(ctx, payplan.ID, org.ID)
+	if err == nil {
+		t.Fatal("expected delete to fail because contract still references pay plan")
+	}
+	if !errors.Is(err, apperror.ErrConflict) {
+		t.Errorf("expected ErrConflict, got %v", err)
+	}
+
+	// Periods and entries must NOT have been pre-deleted before the failed pay-plan delete.
+	resp, err := svc.GetByID(ctx, payplan.ID, org.ID, nil)
+	if err != nil {
+		t.Fatalf("pay plan should still exist after blocked delete: %v", err)
+	}
+	if len(resp.Periods) != 1 {
+		t.Errorf("period count after blocked delete = %d, want 1 (atomicity check)", len(resp.Periods))
+	} else if len(resp.Periods[0].Entries) != 1 {
+		t.Errorf("entry count after blocked delete = %d, want 1 (atomicity check)", len(resp.Periods[0].Entries))
 	}
 }
 
@@ -365,6 +422,125 @@ func TestPayPlanService_CreatePeriod_WrongPayPlan(t *testing.T) {
 	}
 	if !errors.Is(err, apperror.ErrNotFound) {
 		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestPayPlanService_CreatePeriod_FieldValidation(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createPayPlanService(db)
+	ctx := context.Background()
+	org := createTestOrganization(t, db, "Test Org")
+	payplan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
+
+	jan1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	dec31 := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+
+	cases := []struct {
+		name        string
+		req         models.PayPlanPeriodCreateRequest
+		wantMessage string
+	}{
+		{
+			name: "from after to",
+			req: models.PayPlanPeriodCreateRequest{
+				From: dec31, To: &jan1, WeeklyHours: 39.0, EmployerContributionRate: 2200,
+			},
+			wantMessage: "to must be on or after from",
+		},
+		{
+			name: "weekly_hours zero",
+			req: models.PayPlanPeriodCreateRequest{
+				From: jan1, To: &dec31, WeeklyHours: 0, EmployerContributionRate: 2200,
+			},
+			wantMessage: "weekly_hours must be > 0",
+		},
+		{
+			name: "weekly_hours negative",
+			req: models.PayPlanPeriodCreateRequest{
+				From: jan1, To: &dec31, WeeklyHours: -5, EmployerContributionRate: 2200,
+			},
+			wantMessage: "weekly_hours must be > 0",
+		},
+		{
+			name: "weekly_hours over max",
+			req: models.PayPlanPeriodCreateRequest{
+				From: jan1, To: &dec31, WeeklyHours: 200, EmployerContributionRate: 2200,
+			},
+			wantMessage: "weekly_hours cannot exceed",
+		},
+		{
+			name: "employer_rate negative",
+			req: models.PayPlanPeriodCreateRequest{
+				From: jan1, To: &dec31, WeeklyHours: 39, EmployerContributionRate: -1,
+			},
+			wantMessage: "employer_contribution_rate must be in",
+		},
+		{
+			name: "employer_rate too large",
+			req: models.PayPlanPeriodCreateRequest{
+				From: jan1, To: &dec31, WeeklyHours: 39, EmployerContributionRate: 10001,
+			},
+			wantMessage: "employer_contribution_rate must be in",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := svc.CreatePeriod(ctx, payplan.ID, org.ID, &tc.req)
+			if err == nil {
+				t.Fatal("expected validation error, got nil")
+			}
+			if !errors.Is(err, apperror.ErrBadRequest) {
+				t.Fatalf("expected ErrBadRequest, got %v", err)
+			}
+			var appErr *apperror.AppError
+			if !errors.As(err, &appErr) {
+				t.Fatalf("expected AppError, got %T", err)
+			}
+			if !strings.Contains(appErr.Message, tc.wantMessage) {
+				t.Errorf("message %q does not contain %q", appErr.Message, tc.wantMessage)
+			}
+		})
+	}
+}
+
+func TestPayPlanService_CreatePeriod_FromEqualsToAllowed(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createPayPlanService(db)
+	ctx := context.Background()
+	org := createTestOrganization(t, db, "Test Org")
+	payplan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
+
+	day := time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC)
+	req := models.PayPlanPeriodCreateRequest{
+		From: day, To: &day, WeeklyHours: 39, EmployerContributionRate: 0,
+	}
+	if _, err := svc.CreatePeriod(ctx, payplan.ID, org.ID, &req); err != nil {
+		t.Fatalf("from==to should be a valid (single-day) period, got %v", err)
+	}
+}
+
+func TestPayPlanService_UpdatePeriod_FromAfterToRejected(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createPayPlanService(db)
+	ctx := context.Background()
+	org := createTestOrganization(t, db, "Test Org")
+	payplan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	period := createTestPayPlanPeriod(t, db, payplan.ID, from, &to, 39.0)
+
+	bad := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
+	req := models.PayPlanPeriodUpdateRequest{
+		From: to, To: &bad, WeeklyHours: 39, EmployerContributionRate: 2200,
+	}
+	_, err := svc.UpdatePeriod(ctx, period.ID, payplan.ID, org.ID, &req)
+	if err == nil {
+		t.Fatal("expected from>to to be rejected on update")
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
 	}
 }
 
@@ -648,6 +824,60 @@ func TestPayPlanService_CreateEntry(t *testing.T) {
 	}
 }
 
+func TestPayPlanService_CreateEntry_DuplicateGradeStepReturnsConflict(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createPayPlanService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	payplan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	period := createTestPayPlanPeriod(t, db, payplan.ID, from, nil, 39.0)
+
+	req := models.PayPlanEntryCreateRequest{Grade: "S8a", Step: 3, MonthlyAmount: 400000}
+	if _, err := svc.CreateEntry(ctx, period.ID, payplan.ID, org.ID, &req); err != nil {
+		t.Fatalf("first create should succeed, got %v", err)
+	}
+
+	_, err := svc.CreateEntry(ctx, period.ID, payplan.ID, org.ID, &req)
+	if err == nil {
+		t.Fatal("expected duplicate (grade, step) to be rejected")
+	}
+	if !errors.Is(err, apperror.ErrConflict) {
+		t.Errorf("expected ErrConflict, got %v", err)
+	}
+}
+
+func TestPayPlanService_CreateEntry_FieldValidation(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createPayPlanService(db)
+	ctx := context.Background()
+	org := createTestOrganization(t, db, "Test Org")
+	payplan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	period := createTestPayPlanPeriod(t, db, payplan.ID, from, nil, 39.0)
+
+	cases := []struct {
+		name string
+		req  models.PayPlanEntryCreateRequest
+	}{
+		{"empty grade", models.PayPlanEntryCreateRequest{Grade: "  ", Step: 1, MonthlyAmount: 100000}},
+		{"step zero", models.PayPlanEntryCreateRequest{Grade: "S8a", Step: 0, MonthlyAmount: 100000}},
+		{"negative monthly_amount", models.PayPlanEntryCreateRequest{Grade: "S8a", Step: 1, MonthlyAmount: -1}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := svc.CreateEntry(ctx, period.ID, payplan.ID, org.ID, &tc.req)
+			if err == nil {
+				t.Fatal("expected validation error")
+			}
+			if !errors.Is(err, apperror.ErrBadRequest) {
+				t.Errorf("expected ErrBadRequest, got %v", err)
+			}
+		})
+	}
+}
+
 func TestPayPlanService_CreateEntry_WrongPayPlan(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createPayPlanService(db)
@@ -783,6 +1013,31 @@ func TestPayPlanService_GetEntry_WrongPeriod(t *testing.T) {
 	}
 	if !errors.Is(err, apperror.ErrNotFound) {
 		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestPayPlanService_UpdateEntry_DuplicateGradeStepReturnsConflict(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createPayPlanService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	payplan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	period := createTestPayPlanPeriod(t, db, payplan.ID, from, nil, 39.0)
+	createTestPayPlanEntry(t, db, period.ID, "S8a", 3, 400000, nil)
+	target := createTestPayPlanEntry(t, db, period.ID, "S8a", 4, 420000, nil)
+
+	// Try to update target to collide with the (S8a, 3) entry.
+	req := models.PayPlanEntryUpdateRequest{
+		Grade: "S8a", Step: 3, MonthlyAmount: 999000,
+	}
+	_, err := svc.UpdateEntry(ctx, target.ID, period.ID, payplan.ID, org.ID, &req)
+	if err == nil {
+		t.Fatal("expected duplicate-key conflict on update")
+	}
+	if !errors.Is(err, apperror.ErrConflict) {
+		t.Errorf("expected ErrConflict, got %v", err)
 	}
 }
 
@@ -1615,5 +1870,205 @@ func TestPayPlanService_Import_StepMinYearsPreserved(t *testing.T) {
 	}
 	if entries[2].StepMinYears == nil || *entries[2].StepMinYears != 4 {
 		t.Errorf("entry 2 StepMinYears = %v, want 4", entries[2].StepMinYears)
+	}
+}
+
+// Import validation tests — YAML deserialisation does not run gin's binding
+// tags, so the service layer has to enforce the same rules.
+
+func TestPayPlanService_Import_RejectsBadFields(t *testing.T) {
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+
+	negStepMin := -1
+
+	cases := []struct {
+		name        string
+		data        models.PayPlanDetailResponse
+		wantMessage string
+	}{
+		{
+			name: "weekly_hours zero",
+			data: models.PayPlanDetailResponse{
+				Name: "P", Periods: []models.PayPlanPeriodResponse{
+					{From: from, To: &to, WeeklyHours: 0, EmployerContributionRate: 2200},
+				},
+			},
+			wantMessage: "weekly_hours must be > 0",
+		},
+		{
+			name: "weekly_hours negative",
+			data: models.PayPlanDetailResponse{
+				Name: "P", Periods: []models.PayPlanPeriodResponse{
+					{From: from, To: &to, WeeklyHours: -1, EmployerContributionRate: 2200},
+				},
+			},
+			wantMessage: "weekly_hours must be > 0",
+		},
+		{
+			name: "weekly_hours over 168",
+			data: models.PayPlanDetailResponse{
+				Name: "P", Periods: []models.PayPlanPeriodResponse{
+					{From: from, To: &to, WeeklyHours: 200, EmployerContributionRate: 2200},
+				},
+			},
+			wantMessage: "weekly_hours cannot exceed",
+		},
+		{
+			name: "employer_rate negative",
+			data: models.PayPlanDetailResponse{
+				Name: "P", Periods: []models.PayPlanPeriodResponse{
+					{From: from, To: &to, WeeklyHours: 39, EmployerContributionRate: -1},
+				},
+			},
+			wantMessage: "employer_contribution_rate must be in",
+		},
+		{
+			name: "employer_rate over max",
+			data: models.PayPlanDetailResponse{
+				Name: "P", Periods: []models.PayPlanPeriodResponse{
+					{From: from, To: &to, WeeklyHours: 39, EmployerContributionRate: 99999},
+				},
+			},
+			wantMessage: "employer_contribution_rate must be in",
+		},
+		{
+			name: "from after to",
+			data: models.PayPlanDetailResponse{
+				Name: "P", Periods: []models.PayPlanPeriodResponse{
+					{From: to, To: &from, WeeklyHours: 39, EmployerContributionRate: 2200},
+				},
+			},
+			wantMessage: "to must be on or after from",
+		},
+		{
+			name: "empty grade",
+			data: models.PayPlanDetailResponse{
+				Name: "P", Periods: []models.PayPlanPeriodResponse{
+					{From: from, To: &to, WeeklyHours: 39, EmployerContributionRate: 2200,
+						Entries: []models.PayPlanEntryResponse{
+							{Grade: "   ", Step: 1, MonthlyAmount: 100000},
+						}},
+				},
+			},
+			wantMessage: "grade cannot be empty",
+		},
+		{
+			name: "step zero",
+			data: models.PayPlanDetailResponse{
+				Name: "P", Periods: []models.PayPlanPeriodResponse{
+					{From: from, To: &to, WeeklyHours: 39, EmployerContributionRate: 2200,
+						Entries: []models.PayPlanEntryResponse{
+							{Grade: "S8a", Step: 0, MonthlyAmount: 100000},
+						}},
+				},
+			},
+			wantMessage: "step must be >= 1",
+		},
+		{
+			name: "negative monthly_amount",
+			data: models.PayPlanDetailResponse{
+				Name: "P", Periods: []models.PayPlanPeriodResponse{
+					{From: from, To: &to, WeeklyHours: 39, EmployerContributionRate: 2200,
+						Entries: []models.PayPlanEntryResponse{
+							{Grade: "S8a", Step: 1, MonthlyAmount: -1},
+						}},
+				},
+			},
+			wantMessage: "monthly_amount must be >= 0",
+		},
+		{
+			name: "negative step_min_years",
+			data: models.PayPlanDetailResponse{
+				Name: "P", Periods: []models.PayPlanPeriodResponse{
+					{From: from, To: &to, WeeklyHours: 39, EmployerContributionRate: 2200,
+						Entries: []models.PayPlanEntryResponse{
+							{Grade: "S8a", Step: 1, MonthlyAmount: 100000, StepMinYears: &negStepMin},
+						}},
+				},
+			},
+			wantMessage: "step_min_years must be >= 0",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := setupTestDB(t)
+			svc := createPayPlanService(db)
+			org := createTestOrganization(t, db, "Test Org")
+			_, err := svc.Import(context.Background(), org.ID, &tc.data)
+			if err == nil {
+				t.Fatal("expected validation error, got nil")
+			}
+			if !errors.Is(err, apperror.ErrBadRequest) {
+				t.Fatalf("expected ErrBadRequest, got %v", err)
+			}
+			var appErr *apperror.AppError
+			if !errors.As(err, &appErr) {
+				t.Fatalf("expected AppError, got %T", err)
+			}
+			if !strings.Contains(appErr.Message, tc.wantMessage) {
+				t.Errorf("message %q does not contain %q", appErr.Message, tc.wantMessage)
+			}
+
+			// Nothing should have been persisted on failure.
+			var count int64
+			if err := db.Model(&models.PayPlan{}).Where("organization_id = ?", org.ID).Count(&count).Error; err != nil {
+				t.Fatalf("count query failed: %v", err)
+			}
+			if count != 0 {
+				t.Errorf("expected 0 pay plans persisted on rejection, got %d", count)
+			}
+		})
+	}
+}
+
+func TestPayPlanService_Import_RejectsOverlappingPeriods(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createPayPlanService(db)
+	org := createTestOrganization(t, db, "Test Org")
+
+	period1End := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
+	period2Start := time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC) // overlaps with period1
+	period2End := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+
+	data := &models.PayPlanDetailResponse{
+		Name: "Overlapping",
+		Periods: []models.PayPlanPeriodResponse{
+			{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), To: &period1End, WeeklyHours: 39, EmployerContributionRate: 2200},
+			{From: period2Start, To: &period2End, WeeklyHours: 39, EmployerContributionRate: 2200},
+		},
+	}
+	_, err := svc.Import(context.Background(), org.ID, data)
+	if err == nil {
+		t.Fatal("expected overlap rejection")
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+}
+
+func TestPayPlanService_Import_RejectsDuplicateEntriesWithinPeriod(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createPayPlanService(db)
+	org := createTestOrganization(t, db, "Test Org")
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	data := &models.PayPlanDetailResponse{
+		Name: "Dups",
+		Periods: []models.PayPlanPeriodResponse{
+			{From: from, WeeklyHours: 39, EmployerContributionRate: 2200,
+				Entries: []models.PayPlanEntryResponse{
+					{Grade: "S8a", Step: 1, MonthlyAmount: 100000},
+					{Grade: " S8a ", Step: 1, MonthlyAmount: 110000}, // duplicate after trim
+				}},
+		},
+	}
+	_, err := svc.Import(context.Background(), org.ID, data)
+	if err == nil {
+		t.Fatal("expected duplicate-entry rejection")
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
 	}
 }

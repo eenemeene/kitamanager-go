@@ -4,7 +4,7 @@ import {
   createTestOrg,
   deleteTestOrg,
   createPayPlanViaApi,
-  createPayPlanPeriodViaApi,
+  seedPayPlanCoverageViaApi,
   createChildViaApi,
   createEmployeeViaApi,
   deleteChildViaApi,
@@ -29,10 +29,9 @@ test.beforeAll(async ({ browser }) => {
   defaultSectionId = testOrg.sectionId;
   const payplan = await createPayPlanViaApi(page, orgId, 'Test Pay Plan');
   payplanId = payplan.id;
-  await createPayPlanPeriodViaApi(page, orgId, payplanId, {
-    from: '2020-01-01',
-    weekly_hours: 39,
-  });
+  // Create a single wide-open period with full grade/step coverage so any
+  // (grade, step) combination the tests pin on a contract resolves cleanly.
+  await seedPayPlanCoverageViaApi(page, orgId, payplanId, { from: '2020-01-01' });
   await page.close();
 });
 

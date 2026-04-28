@@ -374,7 +374,7 @@ func TestEmployeeService_CreateContract(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
@@ -417,7 +417,7 @@ func TestEmployeeService_CreateContract_EmployeeNotFound(t *testing.T) {
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	req := &models.EmployeeContractCreateRequest{
@@ -452,7 +452,7 @@ func TestEmployeeService_CreateContract_WrongOrg(t *testing.T) {
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
 	employee := createTestEmployee(t, db, "John", "Doe", org1.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org2.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org2.ID)
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	req := &models.EmployeeContractCreateRequest{
@@ -495,7 +495,7 @@ func TestEmployeeService_CreateContract_EmptyStaffCategory(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	req := &models.EmployeeContractCreateRequest{
@@ -528,7 +528,7 @@ func TestEmployeeService_CreateContract_InvalidStaffCategory(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	req := &models.EmployeeContractCreateRequest{
@@ -561,7 +561,7 @@ func TestEmployeeService_CreateContract_InvalidPeriod(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	from := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC) // Before from
@@ -597,7 +597,7 @@ func TestEmployeeService_CreateContract_OverlappingContract(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	// Create first contract
 	from1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -650,7 +650,7 @@ func TestEmployeeService_CreateContract_OngoingContract(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	// No 'to' date means ongoing contract
@@ -680,7 +680,7 @@ func TestEmployeeService_CreateContract_ValidStaffCategories(t *testing.T) {
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	validCategories := []string{"qualified", "supplementary", "non_pedagogical"}
 
@@ -714,7 +714,7 @@ func TestEmployeeService_CreateContract_SectionNotFound(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	_, err := svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
 		SectionID:     99999,
@@ -741,7 +741,7 @@ func TestEmployeeService_CreateContract_SectionFromWrongOrg(t *testing.T) {
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
 	employee := createTestEmployee(t, db, "John", "Doe", org1.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org1.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org1.ID)
 
 	// Get org2's default section
 	var org2Section models.Section
@@ -771,7 +771,7 @@ func TestEmployeeService_ListContracts(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	// Create two contracts
 	from1 := time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -823,7 +823,7 @@ func TestEmployeeService_ListContracts_WrongOrg(t *testing.T) {
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
 	employee := createTestEmployee(t, db, "John", "Doe", org1.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org1.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org1.ID)
 
 	// Create a contract for org1's employee
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -851,7 +851,7 @@ func TestEmployeeService_ListByOrganizationAndSection_ActiveOn(t *testing.T) {
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	// Employee with active contract
 	empActive := createTestEmployee(t, db, "Active", "Employee", org.ID)
@@ -1000,7 +1000,7 @@ func TestEmployeeService_GetCurrentRecord_WrongOrg(t *testing.T) {
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
 	employee := createTestEmployee(t, db, "John", "Doe", org1.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org1.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org1.ID)
 
 	// Create an active (ongoing) contract for org1's employee
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -1031,7 +1031,7 @@ func TestEmployeeService_DeleteContract_WrongOrg(t *testing.T) {
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
 	employee := createTestEmployee(t, db, "John", "Doe", org1.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org1.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org1.ID)
 
 	// Create a contract for org1's employee
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -1073,7 +1073,7 @@ func TestEmployeeService_DeleteContract(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	// Create a contract
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -1131,7 +1131,7 @@ func TestEmployeeService_DeleteContract_WrongEmployee(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 	employee1 := createTestEmployee(t, db, "John", "Doe", org.ID)
 	employee2 := createTestEmployee(t, db, "Jane", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	// Create a contract for employee1
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -1173,7 +1173,7 @@ func TestEmployeeService_GetCurrentRecord(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	// Create an ongoing contract (no end date)
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -1204,7 +1204,7 @@ func TestEmployeeService_GetCurrentRecord_NoActiveContract(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	// Create an expired contract
 	from := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -1303,7 +1303,7 @@ func TestEmployeeService_UpdateContract_StaffCategory(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	createReq := &models.EmployeeContractCreateRequest{
@@ -1342,7 +1342,7 @@ func TestEmployeeService_UpdateContract_InvalidStaffCategory(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	createReq := &models.EmployeeContractCreateRequest{
@@ -1389,7 +1389,7 @@ func TestEmployeeService_CreateContract_WithPayPlanID(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE 2024", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE 2024", org.ID)
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	req := &models.EmployeeContractCreateRequest{
@@ -1452,7 +1452,7 @@ func TestEmployeeService_CreateContract_PayPlanWrongOrg(t *testing.T) {
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
 	employee := createTestEmployee(t, db, "John", "Doe", org1.ID)
-	payPlanOrg2 := createTestPayPlan(t, db, "TVoD-SuE Org2", org2.ID)
+	payPlanOrg2 := createTestPayPlanWithCoverage(t, db, "TVoD-SuE Org2", org2.ID)
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	req := &models.EmployeeContractCreateRequest{
@@ -1494,8 +1494,8 @@ func TestEmployeeService_UpdateContract_PayPlanID(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan1 := createTestPayPlan(t, db, "TVoD-SuE 2023", org.ID)
-	payPlan2 := createTestPayPlan(t, db, "TVoD-SuE 2024", org.ID)
+	payPlan1 := createTestPayPlanWithCoverage(t, db, "TVoD-SuE 2023", org.ID)
+	payPlan2 := createTestPayPlanWithCoverage(t, db, "TVoD-SuE 2024", org.ID)
 
 	// Create contract with payPlan1
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -1540,7 +1540,7 @@ func TestEmployeeService_UpdateContract_PayPlanNotFound(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	createReq := &models.EmployeeContractCreateRequest{
@@ -1595,8 +1595,8 @@ func TestEmployeeService_UpdateContract_PayPlanWrongOrg(t *testing.T) {
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
 	employee := createTestEmployee(t, db, "John", "Doe", org1.ID)
-	payPlan1 := createTestPayPlan(t, db, "TVoD-SuE Org1", org1.ID)
-	payPlanOrg2 := createTestPayPlan(t, db, "TVoD-SuE Org2", org2.ID)
+	payPlan1 := createTestPayPlanWithCoverage(t, db, "TVoD-SuE Org1", org1.ID)
+	payPlanOrg2 := createTestPayPlanWithCoverage(t, db, "TVoD-SuE Org2", org2.ID)
 
 	// Create contract with org1's pay plan
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -1650,7 +1650,7 @@ func TestEmployeeService_CreateContract_PayPlanIDResponse(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE 2024", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE 2024", org.ID)
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	req := &models.EmployeeContractCreateRequest{
@@ -1710,7 +1710,7 @@ func TestEmployeeService_UpdateContract_PayPlanIDNotChangedWhenOmitted(t *testin
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	createReq := &models.EmployeeContractCreateRequest{
@@ -1789,7 +1789,7 @@ func TestEmployeeService_UpdateContract_AmendChangeSection(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 	section1 := createTestSection(t, db, "Krippe", org.ID, false)
 	section2 := createTestSection(t, db, "Elementar", org.ID, false)
 
@@ -1866,7 +1866,7 @@ func TestEmployeeService_UpdateContract_AmendChangeStaffCategory(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
 	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
@@ -1905,8 +1905,8 @@ func TestEmployeeService_UpdateContract_AmendChangePayPlan(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan1 := createTestPayPlan(t, db, "TVoD-SuE 2023", org.ID)
-	payPlan2 := createTestPayPlan(t, db, "TVoD-SuE 2024", org.ID)
+	payPlan1 := createTestPayPlanWithCoverage(t, db, "TVoD-SuE 2023", org.ID)
+	payPlan2 := createTestPayPlanWithCoverage(t, db, "TVoD-SuE 2024", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
 	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
@@ -1944,7 +1944,7 @@ func TestEmployeeService_UpdateContract_AmendChangeGradeStep(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
 	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
@@ -1988,7 +1988,7 @@ func TestEmployeeService_UpdateContract_AmendChangeWeeklyHours(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
 	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
@@ -2027,7 +2027,7 @@ func TestEmployeeService_UpdateContract_AmendAllFieldsCarryOver(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
 	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
@@ -2083,7 +2083,7 @@ func TestEmployeeService_UpdateContract_EndedContract(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	past := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
 	pastEnd := time.Date(2023, 12, 31, 0, 0, 0, 0, time.UTC)
@@ -2119,7 +2119,7 @@ func TestEmployeeService_UpdateContract_AmendFromIgnored(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
 	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
@@ -2156,7 +2156,7 @@ func TestEmployeeService_UpdateContract_AmendOverlapConflict(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
 	today := time.Now().UTC().Truncate(24 * time.Hour)
@@ -2212,7 +2212,7 @@ func TestEmployeeService_UpdateContract_InPlace_FutureContract(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
 
 	tomorrow := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, 0, 1)
@@ -2257,7 +2257,7 @@ func TestEmployeeService_UpdateContract_AmendStateConsistency(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
-	payPlan := createTestPayPlan(t, db, "TVÖD", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVÖD", org.ID)
 
 	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
 	today := time.Now().UTC().Truncate(24 * time.Hour)
@@ -2331,7 +2331,7 @@ func TestEmployeeService_UpdateContract_AmendPreservesOngoingTo(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
-	payPlan := createTestPayPlan(t, db, "TVÖD", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVÖD", org.ID)
 
 	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
 	contract, err := svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
@@ -2370,7 +2370,7 @@ func TestEmployeeService_UpdateContract_AmendPreservesToWhenNotInRequest(t *test
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
 	section := createTestSection(t, db, "Krippe", org.ID, false)
-	payPlan := createTestPayPlan(t, db, "TVÖD", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVÖD", org.ID)
 
 	past := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, -3, 0)
 	endDate := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, 6, 0)
@@ -2416,7 +2416,7 @@ func TestEmployeeService_CreateContract_AdjacentContracts(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVÖD", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVÖD", org.ID)
 
 	from1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to1 := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
@@ -2456,7 +2456,7 @@ func TestEmployeeService_CreateContract_OverlapOnSameDay(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVÖD", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVÖD", org.ID)
 
 	from1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to1 := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
@@ -2520,7 +2520,7 @@ func TestEmployeeService_UpdateContract_ClearNullableTo(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "Test Pay Plan", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "Test Pay Plan", org.ID)
 	section := getDefaultSection(t, db, org.ID)
 
 	// Create contract with To set (use future date to trigger in-place update)
@@ -2571,7 +2571,7 @@ func TestEmployeeService_UpdateContract_ClearNullableProperties(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "Test Pay Plan", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "Test Pay Plan", org.ID)
 	section := getDefaultSection(t, db, org.ID)
 
 	// Create contract with Properties set (use future date to trigger in-place update)
@@ -2621,7 +2621,7 @@ func TestEmployeeService_Import_NewEmployee(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
-	payPlan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVöD-SuE", org.ID)
 	sectionName := section.Name
 	payPlanName := payPlan.Name
 
@@ -2683,7 +2683,7 @@ func TestEmployeeService_Import_UpsertReplacesContracts(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
-	payPlan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVöD-SuE", org.ID)
 	sectionName := section.Name
 	payPlanName := payPlan.Name
 	birthdate := time.Date(1985, 3, 20, 0, 0, 0, 0, time.UTC)
@@ -2758,7 +2758,7 @@ func TestEmployeeService_Import_SectionAutoCreation(t *testing.T) {
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
-	payPlan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVöD-SuE", org.ID)
 	payPlanName := payPlan.Name
 	newSectionName := "Elementar"
 
@@ -2874,7 +2874,7 @@ func TestEmployeeService_Import_MissingContractFrom(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
-	payPlan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVöD-SuE", org.ID)
 	payPlanName := payPlan.Name
 	sectionName := section.Name
 
@@ -2953,7 +2953,7 @@ func TestEmployeeService_Import_InvalidStaffCategory(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
-	payPlan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVöD-SuE", org.ID)
 	sectionName := section.Name
 	payPlanName := payPlan.Name
 
@@ -2994,7 +2994,7 @@ func TestEmployeeService_Import_NegativeWeeklyHours(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
-	payPlan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVöD-SuE", org.ID)
 	sectionName := section.Name
 	payPlanName := payPlan.Name
 
@@ -3034,7 +3034,7 @@ func TestEmployeeService_FindAllByOrganization(t *testing.T) {
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
-	payPlan := createTestPayPlan(t, db, "TV-L", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TV-L", org.ID)
 
 	// Create 3 employees with contracts.
 	for i := range 3 {
@@ -3059,8 +3059,8 @@ func TestEmployeeService_FindAllByOrganization_IsolatesOrgs(t *testing.T) {
 
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
-	payPlan1 := createTestPayPlan(t, db, "TV-L", org1.ID)
-	payPlan2 := createTestPayPlan(t, db, "TV-L", org2.ID)
+	payPlan1 := createTestPayPlanWithCoverage(t, db, "TV-L", org1.ID)
+	payPlan2 := createTestPayPlanWithCoverage(t, db, "TV-L", org2.ID)
 
 	emp1 := createTestEmployee(t, db, "Emp", "Org1", org1.ID)
 	createTestEmployeeContract(t, db, emp1.ID, payPlan1.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, "S8a", 1, 39)
@@ -3099,7 +3099,7 @@ func TestEmployeeService_Import_InvalidPeriod(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
-	payPlan := createTestPayPlan(t, db, "TVöD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVöD-SuE", org.ID)
 	sectionName := section.Name
 	payPlanName := payPlan.Name
 
@@ -3143,7 +3143,7 @@ func TestEmployeeService_GetContractByID_Success(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
@@ -3180,7 +3180,7 @@ func TestEmployeeService_GetContractByID_WrongEmployee(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 	employee1 := createTestEmployee(t, db, "John", "Doe", org.ID)
 	employee2 := createTestEmployee(t, db, "Jane", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
@@ -3212,7 +3212,7 @@ func TestEmployeeService_GetContractByID_WrongOrg(t *testing.T) {
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
 	employee := createTestEmployee(t, db, "John", "Doe", org1.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org1.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org1.ID)
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
@@ -3242,7 +3242,7 @@ func TestEmployeeService_ListContracts_Pagination(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	// Create 5 non-overlapping contracts
 	for i := range 5 {
@@ -3272,7 +3272,7 @@ func TestEmployeeService_CreateContract_WeeklyHoursNegative(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	req := &models.EmployeeContractCreateRequest{
@@ -3297,7 +3297,7 @@ func TestEmployeeService_CreateContract_GradeTrimmed(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	req := &models.EmployeeContractCreateRequest{
@@ -3315,6 +3315,216 @@ func TestEmployeeService_CreateContract_GradeTrimmed(t *testing.T) {
 	}
 }
 
+// Pay-plan coverage validation: contract create must fail loudly when the
+// (PayPlanID, Grade, Step) tuple does not resolve to an entry. Without this
+// check, the misconfiguration is silent until CalculateSalary or step
+// promotion runs much later.
+
+func TestEmployeeService_CreateContract_RejectsMissingGrade(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	employee := createTestEmployee(t, db, "Anna", "Schmidt", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
+
+	req := &models.EmployeeContractCreateRequest{
+		SectionID:     1,
+		From:          time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		StaffCategory: "qualified",
+		WeeklyHours:   39,
+		Grade:         "S99a", // not in the seeded coverage
+		Step:          3,
+		PayPlanID:     payPlan.ID,
+	}
+	_, err := svc.CreateContract(ctx, employee.ID, org.ID, req)
+	if err == nil {
+		t.Fatal("expected create to fail because grade is not in pay plan")
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+}
+
+func TestEmployeeService_CreateContract_RejectsMissingStep(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	employee := createTestEmployee(t, db, "Anna", "Schmidt", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
+
+	req := &models.EmployeeContractCreateRequest{
+		SectionID:     1,
+		From:          time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		StaffCategory: "qualified",
+		WeeklyHours:   39,
+		Grade:         "S8a",
+		Step:          9, // coverage seeds steps 1..6
+		PayPlanID:     payPlan.ID,
+	}
+	_, err := svc.CreateContract(ctx, employee.ID, org.ID, req)
+	if err == nil {
+		t.Fatal("expected create to fail because step is not in pay plan")
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+}
+
+func TestEmployeeService_CreateContract_RejectsNoPeriodAtFrom(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	employee := createTestEmployee(t, db, "Anna", "Schmidt", org.ID)
+
+	// Pay plan whose only period is in the future relative to the contract's From.
+	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	period := createTestPayPlanPeriod(t, db, payPlan.ID, time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0)
+	createTestPayPlanEntry(t, db, period.ID, "S8a", 3, 400000, nil)
+
+	req := &models.EmployeeContractCreateRequest{
+		SectionID:     1,
+		From:          time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		StaffCategory: "qualified",
+		WeeklyHours:   39,
+		Grade:         "S8a", Step: 3,
+		PayPlanID: payPlan.ID,
+	}
+	_, err := svc.CreateContract(ctx, employee.ID, org.ID, req)
+	if err == nil {
+		t.Fatal("expected create to fail because no period covers the From date")
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+}
+
+func TestEmployeeService_CreateContract_AllowsUnpinnedGradeStep(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	employee := createTestEmployee(t, db, "Anna", "Schmidt", org.ID)
+	// Plan exists but no period yet — that's fine because the contract
+	// doesn't pin a grade/step, so no salary lookup will happen.
+	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+
+	req := &models.EmployeeContractCreateRequest{
+		SectionID: 1, From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		StaffCategory: "qualified", WeeklyHours: 39,
+		Grade: "", Step: 0, // unpinned
+		PayPlanID: payPlan.ID,
+	}
+	if _, err := svc.CreateContract(ctx, employee.ID, org.ID, req); err != nil {
+		t.Fatalf("unpinned (grade, step) should be allowed, got %v", err)
+	}
+}
+
+func TestEmployeeService_UpdateContract_InPlace_SkipsCoverageWhenTupleUnchanged(t *testing.T) {
+	// A legacy contract whose (grade, step) is no longer in the pay plan
+	// should still accept updates that don't touch the tuple — touching
+	// unrelated fields shouldn't break already-saved data.
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	employee := createTestEmployee(t, db, "Anna", "Schmidt", org.ID)
+	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID) // no coverage
+
+	// Direct-insert a contract bypassing the service (simulates legacy data
+	// that pre-dates the validation, or coverage that was deleted later).
+	from := time.Now().AddDate(1, 0, 0)
+	from = time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, time.UTC)
+	contract := createTestEmployeeContract(t, db, employee.ID, payPlan.ID, from, nil, "S8a", 3, 40.0)
+
+	newHours := 30.0
+	updated, err := svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
+		WeeklyHours: &newHours,
+	})
+	if err != nil {
+		t.Fatalf("update should succeed when only weekly_hours changes, got %v", err)
+	}
+	if updated.WeeklyHours != 30 {
+		t.Errorf("WeeklyHours = %v, want 30", updated.WeeklyHours)
+	}
+}
+
+func TestEmployeeService_UpdateContract_InPlace_RejectsChangeToMissingGrade(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	employee := createTestEmployee(t, db, "Anna", "Schmidt", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
+
+	from := time.Now().AddDate(1, 0, 0)
+	from = time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, time.UTC)
+	contract, err := svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
+		SectionID: 1, From: from, StaffCategory: "qualified",
+		WeeklyHours: 40, Grade: "S8a", Step: 3, PayPlanID: payPlan.ID,
+	})
+	if err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+
+	bogus := "S99a"
+	_, err = svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
+		Grade: &bogus,
+	})
+	if err == nil {
+		t.Fatal("expected update to reject missing grade")
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+}
+
+func TestEmployeeService_BatchUpdateContracts_RejectsMissingGrade(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	employee := createTestEmployee(t, db, "Anna", "Schmidt", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	contract, err := svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
+		SectionID: 1, From: from, StaffCategory: "qualified",
+		WeeklyHours: 39, Grade: "S8a", Step: 3, PayPlanID: payPlan.ID,
+	})
+	if err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+
+	bogus := "S99a"
+	req := &models.EmployeeContractBatchUpdateRequest{
+		Updates: []models.EmployeeContractBatchUpdateEntry{
+			{
+				ID: contract.ID,
+				EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{
+					Grade: &bogus,
+				},
+			},
+		},
+	}
+	_, err = svc.BatchUpdateContracts(ctx, employee.ID, org.ID, req)
+	if err == nil {
+		t.Fatal("expected batch update to reject change to a missing grade")
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+}
+
 func TestEmployeeService_UpdateContract_InPlace_ChangeWeeklyHours(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createEmployeeService(db)
@@ -3322,7 +3532,7 @@ func TestEmployeeService_UpdateContract_InPlace_ChangeWeeklyHours(t *testing.T) 
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	// Create a future-dated contract (in-place mode)
 	from := time.Now().AddDate(1, 0, 0)
@@ -3359,7 +3569,7 @@ func TestEmployeeService_UpdateContract_InPlace_ChangeGradeStep(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	// Create a future-dated contract (in-place mode)
 	from := time.Now().AddDate(1, 0, 0)
@@ -3400,7 +3610,7 @@ func TestEmployeeService_UpdateContract_InPlace_InvalidWeeklyHours(t *testing.T)
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	// Create a future-dated contract (in-place mode)
 	from := time.Now().AddDate(1, 0, 0)
@@ -3433,7 +3643,7 @@ func TestEmployeeService_UpdateContract_InPlace_InvalidStaffCategory(t *testing.
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	// Create a future-dated contract (in-place mode)
 	from := time.Now().AddDate(1, 0, 0)
@@ -3468,7 +3678,7 @@ func TestEmployeeService_UpdateContract_InPlace_NilToClearsEndDate(t *testing.T)
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	// Create a future-dated contract with an explicit end date
 	from := time.Now().AddDate(1, 0, 0)
@@ -3507,7 +3717,7 @@ func TestEmployeeService_UpdateContract_AmendGradeTrimmed(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlan(t, db, "TVoD-SuE", org.ID)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
 
 	// Create a past-dated ongoing contract (amend mode)
 	from := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -3544,7 +3754,7 @@ func TestEmployeeService_BatchUpdateContracts_ShiftBoundary(t *testing.T) {
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
-	payplan := createTestPayPlan(t, db, "TestPP", org.ID)
+	payplan := createTestPayPlanWithCoverage(t, db, "TestPP", org.ID)
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
 
 	aTo := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
@@ -3586,8 +3796,8 @@ func TestEmployeeService_BatchUpdateContracts_AllFields(t *testing.T) {
 
 	org := createTestOrganization(t, db, "Test Org")
 	section2 := createTestSection(t, db, "Section2", org.ID, false)
-	payplan := createTestPayPlan(t, db, "TestPP", org.ID)
-	payplan2 := createTestPayPlan(t, db, "TestPP2", org.ID)
+	payplan := createTestPayPlanWithCoverage(t, db, "TestPP", org.ID)
+	payplan2 := createTestPayPlanWithCoverage(t, db, "TestPP2", org.ID)
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
 
 	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
@@ -3648,7 +3858,7 @@ func TestEmployeeService_BatchUpdateContracts_PastContracts_NoAmendMode(t *testi
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
-	payplan := createTestPayPlan(t, db, "TestPP", org.ID)
+	payplan := createTestPayPlanWithCoverage(t, db, "TestPP", org.ID)
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
 
 	aTo := time.Date(2020, 6, 30, 0, 0, 0, 0, time.UTC)
@@ -3718,7 +3928,7 @@ func TestEmployeeService_BatchUpdateContracts_WrongEmployee(t *testing.T) {
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
-	payplan := createTestPayPlan(t, db, "TestPP", org.ID)
+	payplan := createTestPayPlanWithCoverage(t, db, "TestPP", org.ID)
 	emp1 := createTestEmployee(t, db, "John", "Doe", org.ID)
 	emp2 := createTestEmployee(t, db, "Jane", "Doe", org.ID)
 
@@ -3768,8 +3978,8 @@ func TestEmployeeService_BatchUpdateContracts_InvalidPayPlan(t *testing.T) {
 
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
-	payplan1 := createTestPayPlan(t, db, "PP1", org1.ID)
-	payplan2 := createTestPayPlan(t, db, "PP2", org2.ID)
+	payplan1 := createTestPayPlanWithCoverage(t, db, "PP1", org1.ID)
+	payplan2 := createTestPayPlanWithCoverage(t, db, "PP2", org2.ID)
 	employee := createTestEmployee(t, db, "John", "Doe", org1.ID)
 
 	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
@@ -3796,7 +4006,7 @@ func TestEmployeeService_BatchUpdateContracts_InvalidStaffCategory(t *testing.T)
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
-	payplan := createTestPayPlan(t, db, "TestPP", org.ID)
+	payplan := createTestPayPlanWithCoverage(t, db, "TestPP", org.ID)
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
 
 	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
@@ -3823,7 +4033,7 @@ func TestEmployeeService_BatchUpdateContracts_OverlapConflict(t *testing.T) {
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
-	payplan := createTestPayPlan(t, db, "TestPP", org.ID)
+	payplan := createTestPayPlanWithCoverage(t, db, "TestPP", org.ID)
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
 
 	aTo := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
@@ -3856,7 +4066,7 @@ func TestEmployeeService_BatchUpdateContracts_TransactionRollback(t *testing.T) 
 	ctx := context.Background()
 
 	org := createTestOrganization(t, db, "Test Org")
-	payplan := createTestPayPlan(t, db, "TestPP", org.ID)
+	payplan := createTestPayPlanWithCoverage(t, db, "TestPP", org.ID)
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
 
 	aTo := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)

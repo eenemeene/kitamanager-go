@@ -774,6 +774,59 @@ export async function createPayPlanEntryViaApi(
 }
 
 /**
+ * Seed pay-plan coverage: a wide-open period plus entries for every
+ * grade/step combination tests typically use. Call this after createPayPlanViaApi
+ * in test setup so that any subsequent createEmployeeContractViaApi(...) which
+ * pins a (grade, step) resolves cleanly — without coverage the API rejects
+ * the contract with 400.
+ *
+ * Returns the created period id so tests can chain off it if needed.
+ */
+export async function seedPayPlanCoverageViaApi(
+  page: Page,
+  orgId: number,
+  payplanId: number,
+  options?: { from?: string; weeklyHours?: number }
+): Promise<{ periodId: number }> {
+  const period = await createPayPlanPeriodViaApi(page, orgId, payplanId, {
+    from: options?.from ?? '2000-01-01',
+    weekly_hours: options?.weeklyHours ?? 39,
+  });
+  const grades = [
+    'S2',
+    'S3',
+    'S4',
+    'S5',
+    'S6',
+    'S7',
+    'S8a',
+    'S8b',
+    'S9',
+    'S10',
+    'S11a',
+    'S11b',
+    'S12',
+    'S13',
+    'S14',
+    'S15',
+    'S16',
+    'S17',
+    'S18',
+    'Minijob',
+  ];
+  for (const grade of grades) {
+    for (let step = 1; step <= 6; step++) {
+      await createPayPlanEntryViaApi(page, orgId, payplanId, period.id, {
+        grade,
+        step,
+        monthly_amount: 300000,
+      });
+    }
+  }
+  return { periodId: period.id };
+}
+
+/**
  * Delete a pay plan entry via the API
  */
 export async function deletePayPlanEntryViaApi(

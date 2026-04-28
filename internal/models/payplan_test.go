@@ -110,3 +110,70 @@ func TestPayPlanEntry_ToResponse_NilStepMinYears(t *testing.T) {
 		t.Errorf("StepMinYears = %v, want nil", resp.StepMinYears)
 	}
 }
+
+func TestCompareGrade_NaturalOrder(t *testing.T) {
+	got := []string{"S10", "S2", "S11a", "S11b", "S9", "S8a", "S8b", "Minijob"}
+	want := []string{"Minijob", "S2", "S8a", "S8b", "S9", "S10", "S11a", "S11b"}
+
+	sortStrings(got, CompareGrade)
+	if !equalStrings(got, want) {
+		t.Errorf("natural order = %v, want %v", got, want)
+	}
+}
+
+func TestCompareGrade_EdgeCases(t *testing.T) {
+	cases := []struct {
+		a, b string
+		sign int // expected sign of CompareGrade(a, b)
+	}{
+		// Numeric component beats alphabetic.
+		{"S2", "S10", -1},
+		{"S10", "S2", +1},
+		// Same number, suffix orders alphabetically.
+		{"S8a", "S8b", -1},
+		{"S8b", "S8a", +1},
+		{"S8a", "S8a", 0},
+		// "Minijob" has no digits (number=0), prefix "Minijob" sorts before "S".
+		{"Minijob", "S2", -1},
+		// String with no digits at all.
+		{"foo", "bar", +1},
+		{"bar", "bar", 0},
+	}
+	for _, tc := range cases {
+		got := CompareGrade(tc.a, tc.b)
+		if !sameSign(got, tc.sign) {
+			t.Errorf("CompareGrade(%q, %q) = %d, want sign %d", tc.a, tc.b, got, tc.sign)
+		}
+	}
+}
+
+func sortStrings(xs []string, less func(a, b string) int) {
+	for i := 1; i < len(xs); i++ {
+		for j := i; j > 0 && less(xs[j-1], xs[j]) > 0; j-- {
+			xs[j-1], xs[j] = xs[j], xs[j-1]
+		}
+	}
+}
+
+func equalStrings(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func sameSign(got, want int) bool {
+	switch {
+	case want < 0:
+		return got < 0
+	case want > 0:
+		return got > 0
+	default:
+		return got == 0
+	}
+}

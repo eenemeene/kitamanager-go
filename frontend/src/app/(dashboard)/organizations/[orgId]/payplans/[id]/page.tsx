@@ -47,6 +47,7 @@ import type {
   PayPlanPeriodCreateRequest,
   PayPlanPeriodUpdateRequest,
   PayPlanEntryCreateRequest,
+  PayPlanEntryUpdateRequest,
 } from '@/lib/api/types';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -145,6 +146,26 @@ export default function PayPlanDetailPage() {
     },
   });
 
+  const updateEntryMutation = useResourceMutation({
+    mutationFn: ({
+      periodId,
+      entryId,
+      data,
+    }: {
+      periodId: number;
+      entryId: number;
+      data: PayPlanEntryUpdateRequest;
+    }) => apiClient.updatePayPlanEntry(orgId, payPlanId, periodId, entryId, data),
+    invalidateQueryKey: detailQueryKey,
+    successMessage: t('payPlans.entryUpdated'),
+    errorMessage: t('payPlans.failedToSaveEntry'),
+    onSuccess: () => {
+      setIsEntryDialogOpen(false);
+      setEditingEntry(null);
+      resetEntry();
+    },
+  });
+
   const deleteEntryMutation = useResourceMutation({
     mutationFn: ({ periodId, entryId }: { periodId: number; entryId: number }) =>
       apiClient.deletePayPlanEntry(orgId, payPlanId, periodId, entryId),
@@ -201,6 +222,18 @@ export default function PayPlanDetailPage() {
     setIsEntryDialogOpen(true);
   };
 
+  const handleEditEntry = (period: PayPlanPeriod, entry: PayPlanEntry) => {
+    setSelectedPeriod(period);
+    setEditingEntry(entry);
+    resetEntry({
+      grade: entry.grade,
+      step: entry.step,
+      monthly_amount_euros: entry.monthly_amount / 100,
+      step_min_years: entry.step_min_years ?? undefined,
+    });
+    setIsEntryDialogOpen(true);
+  };
+
   const onSubmitPeriod = (data: PayPlanPeriodFormData) => {
     const payload = {
       ...data,
@@ -216,18 +249,28 @@ export default function PayPlanDetailPage() {
   };
 
   const onSubmitEntry = (data: PayPlanEntryFormData) => {
-    if (selectedPeriod) {
+    if (!selectedPeriod) {
+      return;
+    }
+    const payload = {
+      grade: data.grade,
+      step: data.step,
+      monthly_amount: eurosToCents(data.monthly_amount_euros),
+      step_min_years:
+        data.step_min_years != null && !isNaN(data.step_min_years)
+          ? data.step_min_years
+          : undefined,
+    };
+    if (editingEntry) {
+      updateEntryMutation.mutate({
+        periodId: selectedPeriod.id,
+        entryId: editingEntry.id,
+        data: payload,
+      });
+    } else {
       createEntryMutation.mutate({
         periodId: selectedPeriod.id,
-        data: {
-          grade: data.grade,
-          step: data.step,
-          monthly_amount: eurosToCents(data.monthly_amount_euros),
-          step_min_years:
-            data.step_min_years != null && !isNaN(data.step_min_years)
-              ? data.step_min_years
-              : undefined,
-        },
+        data: payload,
       });
     }
   };
@@ -404,16 +447,27 @@ export default function PayPlanDetailPage() {
                                 </TableCell>
                                 <TableCell>{formatCurrency(entry.monthly_amount)}</TableCell>
                                 <TableCell className="text-right">
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    onClick={() => {
-                                      setDeletingEntry({ period, entry });
-                                      setIsDeleteEntryDialogOpen(true);
-                                    }}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
+                                  <div className="flex flex-nowrap items-center justify-end gap-0.5">
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      onClick={() => handleEditEntry(period, entry)}
+                                      aria-label={t('common.edit')}
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      onClick={() => {
+                                        setDeletingEntry({ period, entry });
+                                        setIsDeleteEntryDialogOpen(true);
+                                      }}
+                                      aria-label={t('common.delete')}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -514,10 +568,20 @@ export default function PayPlanDetailPage() {
         </Dialog>
 
         {/* Entry Dialog */}
-        <Dialog open={isEntryDialogOpen} onOpenChange={setIsEntryDialogOpen}>
+        <Dialog
+          open={isEntryDialogOpen}
+          onOpenChange={(open) => {
+            setIsEntryDialogOpen(open);
+            if (!open) {
+              setEditingEntry(null);
+            }
+          }}
+        >
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{t('payPlans.addEntry')}</DialogTitle>
+              <DialogTitle>
+                {editingEntry ? t('payPlans.editEntry') : t('payPlans.addEntry')}
+              </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmitEntry(onSubmitEntry)} className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -571,7 +635,10 @@ export default function PayPlanDetailPage() {
                 <Button type="button" variant="outline" onClick={() => setIsEntryDialogOpen(false)}>
                   {t('common.cancel')}
                 </Button>
-                <Button type="submit" disabled={createEntryMutation.isPending}>
+                <Button
+                  type="submit"
+                  disabled={createEntryMutation.isPending || updateEntryMutation.isPending}
+                >
                   {t('common.save')}
                 </Button>
               </DialogFooter>

@@ -1,7 +1,9 @@
 package store
 
 import (
+	"cmp"
 	"context"
+	"slices"
 	"time"
 
 	"gorm.io/gorm"
@@ -12,6 +14,26 @@ import (
 // PayPlanStore handles database operations for pay plans.
 type PayPlanStore struct {
 	db *gorm.DB
+}
+
+// sortEntriesNatural orders entries by grade naturally (S2 before S10) and
+// then by step. Postgres ORDER BY on grade gives plain alphabetical order
+// ("S10" before "S2"), so callers used to have to re-sort client-side; this
+// keeps the order consistent across every consumer.
+func sortEntriesNatural(entries []models.PayPlanEntry) {
+	slices.SortFunc(entries, func(a, b models.PayPlanEntry) int {
+		return cmp.Or(
+			models.CompareGrade(a.Grade, b.Grade),
+			cmp.Compare(a.Step, b.Step),
+		)
+	})
+}
+
+// sortPeriodEntriesNatural sorts entries inside every period.
+func sortPeriodEntriesNatural(periods []models.PayPlanPeriod) {
+	for i := range periods {
+		sortEntriesNatural(periods[i].Entries)
+	}
 }
 
 // NewPayPlanStore creates a new PayPlanStore.
@@ -46,13 +68,12 @@ func (s *PayPlanStore) FindByIDWithPeriods(ctx context.Context, id uint, activeO
 			}
 			return q
 		}).
-		Preload("Periods.Entries", func(db *gorm.DB) *gorm.DB {
-			return db.Order("pay_plan_entries.grade ASC, pay_plan_entries.step ASC")
-		}).
+		Preload("Periods.Entries").
 		First(&payplan, id).Error
 	if err != nil {
 		return nil, WrapNotFound(err)
 	}
+	sortPeriodEntriesNatural(payplan.Periods)
 	return &payplan, nil
 }
 
@@ -69,9 +90,7 @@ func (s *PayPlanStore) FindByIDsWithPeriods(ctx context.Context, ids []uint) (ma
 		Preload("Periods", func(db *gorm.DB) *gorm.DB {
 			return db.Order("pay_plan_periods.from_date DESC")
 		}).
-		Preload("Periods.Entries", func(db *gorm.DB) *gorm.DB {
-			return db.Order("pay_plan_entries.grade ASC, pay_plan_entries.step ASC")
-		}).
+		Preload("Periods.Entries").
 		Where("id IN ?", ids).
 		Find(&payplans).Error
 	if err != nil {
@@ -79,6 +98,7 @@ func (s *PayPlanStore) FindByIDsWithPeriods(ctx context.Context, ids []uint) (ma
 	}
 
 	for i := range payplans {
+		sortPeriodEntriesNatural(payplans[i].Periods)
 		result[payplans[i].ID] = &payplans[i]
 	}
 	return result, nil
@@ -132,15 +152,18 @@ func (s *PayPlanStore) Update(ctx context.Context, payplan *models.PayPlan) erro
 	return DBFromContext(ctx, s.db).Save(payplan).Error
 }
 
-// Delete deletes a pay plan and all related periods and entries.
+// Delete deletes a pay plan. Periods and entries cascade-delete via the FK
+// constraints declared in migration 000001 (ON DELETE CASCADE on
+// pay_plan_periods.pay_plan_id and pay_plan_entries.period_id), so a single
+// statement is atomic. If the pay plan is still referenced by an
+// employee_contracts row (FK has no ON DELETE), Postgres returns a 23503,
+// which the service layer translates into a 409 Conflict.
 func (s *PayPlanStore) Delete(ctx context.Context, id uint) error {
-	if err := s.DeletePeriodsAndEntries(ctx, id); err != nil {
-		return err
-	}
 	return DBFromContext(ctx, s.db).Delete(&models.PayPlan{}, id).Error
 }
 
 // DeletePeriodsAndEntries deletes all periods and entries for a pay plan, but keeps the pay plan itself.
+// Used by the Import upsert path to clear stale data before re-inserting.
 func (s *PayPlanStore) DeletePeriodsAndEntries(ctx context.Context, payplanID uint) error {
 	db := DBFromContext(ctx, s.db)
 
@@ -176,13 +199,12 @@ func (s *PayPlanStore) FindPeriodByID(ctx context.Context, id uint) (*models.Pay
 func (s *PayPlanStore) FindPeriodByIDWithEntries(ctx context.Context, id uint) (*models.PayPlanPeriod, error) {
 	var period models.PayPlanPeriod
 	err := DBFromContext(ctx, s.db).
-		Preload("Entries", func(db *gorm.DB) *gorm.DB {
-			return db.Order("pay_plan_entries.grade ASC, pay_plan_entries.step ASC")
-		}).
+		Preload("Entries").
 		First(&period, id).Error
 	if err != nil {
 		return nil, WrapNotFound(err)
 	}
+	sortEntriesNatural(period.Entries)
 	return &period, nil
 }
 
@@ -270,15 +292,23 @@ func (s *PayPlanStore) FindEntriesByPeriod(ctx context.Context, periodID uint) (
 	var entries []models.PayPlanEntry
 	err := DBFromContext(ctx, s.db).
 		Where("period_id = ?", periodID).
-		Order("grade ASC, step ASC").
 		Find(&entries).Error
 	if err != nil {
 		return nil, err
 	}
+	sortEntriesNatural(entries)
 	return entries, nil
 }
 
 // FindEntriesByPeriodPaginated retrieves entries for a period with pagination.
+//
+// Note: pagination + natural ordering is a tension. We can't ORDER BY natural
+// in SQL without a generated column, and sorting in Go after pagination would
+// give locally-natural-ordered pages but inconsistent ordering across page
+// boundaries. We accept that here — the typical use is "fetch everything for
+// this period" via the API which loads at most a few hundred rows in one
+// page. If true paginated browsing of grade tables becomes a need, we'd add
+// a sort key column.
 func (s *PayPlanStore) FindEntriesByPeriodPaginated(ctx context.Context, periodID uint, limit, offset int) ([]models.PayPlanEntry, int64, error) {
 	var entries []models.PayPlanEntry
 	var total int64
@@ -293,6 +323,10 @@ func (s *PayPlanStore) FindEntriesByPeriodPaginated(ctx context.Context, periodI
 		Limit(limit).
 		Offset(offset).
 		Find(&entries).Error
+	if err != nil {
+		return nil, 0, err
+	}
+	sortEntriesNatural(entries)
 	return entries, total, err
 }
 
