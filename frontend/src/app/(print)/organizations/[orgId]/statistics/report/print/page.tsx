@@ -64,6 +64,16 @@ export default function CombinedReportPrintPage() {
           .report-section:first-of-type { break-before: auto; }
           .break-inside-avoid { break-inside: avoid; }
           .no-print { display: none !important; }
+          /* Compact tables for print: the financial budget table and
+             employee staffing grid have many columns and overflow A4
+             landscape at full size. Smaller font + tight padding lets
+             every column fit within the page margin. */
+          table { font-size: 0.72em; }
+          table th, table td { padding: 4px 6px !important; }
+          /* Allow tables to expand to their natural width — the
+             dashboard wraps them in overflow-x-auto for scrolling,
+             which clips content in print mode. */
+          .overflow-x-auto { overflow: visible !important; }
         }
       `}</style>
 
