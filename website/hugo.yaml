@@ -77,3 +77,14 @@ markup:
       unsafe: true
   highlight:
     noClasses: false
+
+# Hugo 0.158+ tightened the default security.http.urls policy, which
+# now blocks all remote URL fetches unless explicitly whitelisted. The
+# Hextra theme uses resources.GetRemote at build time to pull FlexSearch
+# (search index) and Mermaid (diagram rendering) from jsdelivr; without
+# this allow-list the build fails with "access denied: ... is not
+# whitelisted in policy security.http.urls".
+security:
+  http:
+    urls:
+      - ^https://cdn\.jsdelivr\.net/.*
