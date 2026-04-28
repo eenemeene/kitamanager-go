@@ -184,6 +184,26 @@ func createTestPayPlan(t *testing.T, db *gorm.DB, name string, orgID uint) *mode
 	return testutil.CreateTestPayPlan(t, db, name, orgID)
 }
 
+// createTestPayPlanWithCoverage creates a pay plan plus a wide-open period
+// (2000-01-01 onward) with entries for every grade/step combination contract
+// tests typically use. Use this in tests that go through the contract create/
+// update service paths — those validate that the (PayPlanID, Grade, Step)
+// tuple resolves to an existing entry. Tests that need an empty plan (e.g.
+// "no periods" assertions) should keep using createTestPayPlan.
+func createTestPayPlanWithCoverage(t *testing.T, db *gorm.DB, name string, orgID uint) *models.PayPlan {
+	t.Helper()
+	payPlan := createTestPayPlan(t, db, name, orgID)
+	from := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
+	period := createTestPayPlanPeriod(t, db, payPlan.ID, from, nil, 39.0)
+	grades := []string{"S2", "S3", "S4", "S5", "S6", "S7", "S8a", "S8b", "S9", "S10", "S11a", "S11b", "S12", "S13", "S14", "S15", "S16", "S17", "S18", "Minijob"}
+	for _, grade := range grades {
+		for step := 1; step <= 6; step++ {
+			createTestPayPlanEntry(t, db, period.ID, grade, step, 300000, nil)
+		}
+	}
+	return payPlan
+}
+
 // createTestPayPlanPeriod creates a pay plan period for testing.
 func createTestPayPlanPeriod(t *testing.T, db *gorm.DB, payplanID uint, from time.Time, to *time.Time, weeklyHours float64) *models.PayPlanPeriod {
 	t.Helper()

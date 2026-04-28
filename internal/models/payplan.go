@@ -1,6 +1,44 @@
 package models
 
-import "time"
+import (
+	"cmp"
+	"regexp"
+	"strconv"
+	"time"
+)
+
+// gradeNumberRe extracts the digit run from a grade string like "S8a" → "8".
+// Anything before is treated as the prefix, anything after as the suffix.
+var gradeNumberRe = regexp.MustCompile(`(\d+)`)
+
+// CompareGrade orders grades naturally: prefix (alpha), then numeric part, then
+// suffix. Plain string comparison would put "S10" before "S2" which is what
+// every consumer wants to avoid. Used by the store layer so callers don't
+// have to re-sort, and so non-UI consumers (YAML export, etc.) get sane
+// ordering too.
+func CompareGrade(a, b string) int {
+	pa, na, sa := splitGrade(a)
+	pb, nb, sb := splitGrade(b)
+	return cmp.Or(
+		cmp.Compare(pa, pb),
+		cmp.Compare(na, nb),
+		cmp.Compare(sa, sb),
+	)
+}
+
+// splitGrade splits a grade like "S8a" into ("S", 8, "a"). If no digit run is
+// found the prefix is the whole string and number is 0; that keeps the
+// comparator total without panicking on unexpected input.
+func splitGrade(g string) (prefix string, number int, suffix string) {
+	loc := gradeNumberRe.FindStringIndex(g)
+	if loc == nil {
+		return g, 0, ""
+	}
+	prefix = g[:loc[0]]
+	number, _ = strconv.Atoi(g[loc[0]:loc[1]])
+	suffix = g[loc[1]:]
+	return
+}
 
 // PayPlan represents a salary pay plan (e.g., TVöD-SuE) for an organization.
 // Each organization can have multiple pay plans.

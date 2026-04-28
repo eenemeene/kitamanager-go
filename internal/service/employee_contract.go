@@ -12,6 +12,39 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/validation"
 )
 
+// validatePayPlanGradeStepCovers checks the pay plan has an active period at
+// startDate AND that the period contains an entry for (grade, step). Catches
+// misconfiguration at contract create/update time — without this, a typo like
+// "S88a" or a grade that's missing from the latest period only surfaces later
+// as a silent CalculateSalary NotFound or a vanished step-promotion row.
+//
+// An "unpinned" contract — one with no grade or step yet — is allowed:
+// CalculateSalary won't be called for it. Only when both grade is non-empty
+// and step >= 1 do we insist on the entry existing.
+//
+// Only the period covering startDate is checked; future periods that the
+// admin hasn't imported yet are tolerated.
+func validatePayPlanGradeStepCovers(ctx context.Context, payPlanStore store.PayPlanStorer, payPlanID uint, grade string, step int, startDate time.Time) error {
+	grade = strings.TrimSpace(grade)
+	if grade == "" || step < 1 {
+		return nil
+	}
+	period, err := payPlanStore.FindActivePeriod(ctx, payPlanID, startDate)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return apperror.BadRequest("pay plan has no active period covering the contract's start date")
+		}
+		return apperror.InternalWrap(err, "failed to fetch pay plan period")
+	}
+	if _, err := payPlanStore.FindEntry(ctx, period.ID, grade, step); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return apperror.BadRequest("pay plan has no entry for the given (grade, step) at the contract's start date")
+		}
+		return apperror.InternalWrap(err, "failed to fetch pay plan entry")
+	}
+	return nil
+}
+
 // ListContracts returns paginated contract history for an employee, validating it belongs to the specified organization
 func (s *EmployeeService) ListContracts(ctx context.Context, employeeID, orgID uint, limit, offset int) ([]models.EmployeeContractResponse, int64, error) {
 	// Verify employee exists and belongs to org (use minimal query - no preloads needed)
@@ -83,6 +116,12 @@ func (s *EmployeeService) CreateContract(ctx context.Context, employeeID, orgID 
 	}
 	if payPlan.OrganizationID != orgID {
 		return nil, apperror.BadRequest("payplan does not belong to this organization")
+	}
+
+	// Catch typos / misconfigured (grade, step) at contract creation rather
+	// than letting CalculateSalary silently NotFound months later.
+	if err := validatePayPlanGradeStepCovers(ctx, s.payPlanStore, req.PayPlanID, req.Grade, req.Step, req.From); err != nil {
+		return nil, err
 	}
 
 	// Validate section belongs to the same organization
@@ -190,6 +229,14 @@ func (s *EmployeeService) BatchUpdateContracts(ctx context.Context, employeeID, 
 
 			if err := validation.ValidatePeriod(contract.From, contract.To); err != nil {
 				return apperror.BadRequest(err.Error())
+			}
+
+			// Same gating as single-contract Update: only re-validate when
+			// the tuple/anchor actually moved.
+			if entry.PayPlanID != nil || entry.Grade != nil || entry.Step != nil || entry.From != nil {
+				if err := validatePayPlanGradeStepCovers(txCtx, s.payPlanStore, contract.PayPlanID, contract.Grade, contract.Step, contract.From); err != nil {
+					return err
+				}
 			}
 
 			if err := s.store.UpdateContract(txCtx, contract); err != nil {
@@ -369,6 +416,15 @@ func applyEmployeeContractFields(contract *models.EmployeeContract, req *models.
 func (s *EmployeeService) updateContractInPlace(ctx context.Context, contract *models.EmployeeContract, employeeID uint, req *models.EmployeeContractUpdateRequest) (*models.EmployeeContractResponse, error) {
 	applyEmployeeContractFields(contract, req)
 
+	// Re-validate pay plan coverage only when the (PayPlanID, Grade, Step, From)
+	// tuple actually moved — touching unrelated fields on a legacy contract
+	// shouldn't fail because a pay plan was edited later.
+	if req.PayPlanID != nil || req.Grade != nil || req.Step != nil || req.From != nil {
+		if err := validatePayPlanGradeStepCovers(ctx, s.payPlanStore, contract.PayPlanID, contract.Grade, contract.Step, contract.From); err != nil {
+			return nil, err
+		}
+	}
+
 	if err := inPlaceContractUpdate(ctx, s.transactor, s.store.Contracts(), employeeID,
 		contract.From, contract.To, contract.ID,
 		func(txCtx context.Context) error { return s.store.UpdateContract(txCtx, contract) },
@@ -426,6 +482,13 @@ func (s *EmployeeService) amendContract(ctx context.Context, contract *models.Em
 	}
 	if req.Step != nil {
 		newContract.Step = *req.Step
+	}
+
+	// Amend creates a fresh contract anchored at today, so the pay-plan
+	// coverage check must run regardless of which fields the request touched —
+	// the active period (at today) may differ from the original contract's.
+	if err := validatePayPlanGradeStepCovers(ctx, s.payPlanStore, newContract.PayPlanID, newContract.Grade, newContract.Step, newContract.From); err != nil {
+		return nil, err
 	}
 
 	if err := amendContractTx(ctx, s.transactor, s.store.Contracts(), employeeID,

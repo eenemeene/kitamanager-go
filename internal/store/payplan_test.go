@@ -191,6 +191,97 @@ func TestPayPlanStore_FindByIDsWithPeriods(t *testing.T) {
 	})
 }
 
+func TestPayPlanStore_NaturalOrderingOfEntries(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewPayPlanStore(db)
+	org := createTestOrganization(t, db, "Test Org")
+
+	payplan := &models.PayPlan{OrganizationID: org.ID, Name: "TVöD-SuE"}
+	db.Create(payplan)
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	period := &models.PayPlanPeriod{
+		PayPlanID:   payplan.ID,
+		Period:      models.Period{From: from},
+		WeeklyHours: 39.0,
+	}
+	db.Create(period)
+
+	// Insert grades in arbitrary order. Plain alphabetical SQL sort would
+	// emit "S10" before "S2"; natural order should put "S2" first.
+	grades := []struct {
+		grade string
+		step  int
+	}{
+		{"S10", 1}, {"S2", 1}, {"S11a", 1}, {"S11b", 1}, {"S9", 1},
+		{"S8a", 1}, {"S8a", 2}, {"S8b", 1},
+	}
+	for _, g := range grades {
+		db.Create(&models.PayPlanEntry{
+			PeriodID: period.ID, Grade: g.grade, Step: g.step, MonthlyAmount: 100000,
+		})
+	}
+
+	ctx := context.Background()
+
+	t.Run("FindByIDWithPeriods returns natural order", func(t *testing.T) {
+		pp, err := store.FindByIDWithPeriods(ctx, payplan.ID, nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		got := make([]string, 0, len(pp.Periods[0].Entries))
+		for _, e := range pp.Periods[0].Entries {
+			got = append(got, e.Grade)
+		}
+		want := []string{"S2", "S8a", "S8a", "S8b", "S9", "S10", "S11a", "S11b"}
+		if !equalStringSlices(got, want) {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	})
+
+	t.Run("FindEntriesByPeriod returns natural order", func(t *testing.T) {
+		entries, err := store.FindEntriesByPeriod(ctx, period.ID)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		got := make([]string, 0, len(entries))
+		for _, e := range entries {
+			got = append(got, e.Grade)
+		}
+		want := []string{"S2", "S8a", "S8a", "S8b", "S9", "S10", "S11a", "S11b"}
+		if !equalStringSlices(got, want) {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	})
+
+	t.Run("FindPeriodByIDWithEntries returns natural order", func(t *testing.T) {
+		p, err := store.FindPeriodByIDWithEntries(ctx, period.ID)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		got := make([]string, 0, len(p.Entries))
+		for _, e := range p.Entries {
+			got = append(got, e.Grade)
+		}
+		want := []string{"S2", "S8a", "S8a", "S8b", "S9", "S10", "S11a", "S11b"}
+		if !equalStringSlices(got, want) {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	})
+}
+
+func equalStringSlices(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func TestPayPlanStore_FindActivePeriod_UsesScope(t *testing.T) {
 	db := setupTestDB(t)
 	store := NewPayPlanStore(db)

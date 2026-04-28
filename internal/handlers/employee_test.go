@@ -477,6 +477,7 @@ func TestEmployeeHandler_CreateContract(t *testing.T) {
 
 	payPlan := &models.PayPlan{OrganizationID: org.ID, Name: "TVöD-SuE"}
 	db.Create(payPlan)
+	seedTestPayPlanCoverage(t, db, payPlan.ID)
 
 	r := setupTestRouter()
 	r.POST("/organizations/:orgId/employees/:employeeId/contracts", handler.CreateContract)
@@ -519,6 +520,7 @@ func TestEmployeeHandler_CreateContract_SameDay(t *testing.T) {
 
 	payPlan := &models.PayPlan{OrganizationID: org.ID, Name: "TVöD-SuE"}
 	db.Create(payPlan)
+	seedTestPayPlanCoverage(t, db, payPlan.ID)
 
 	r := setupTestRouter()
 	r.POST("/organizations/:orgId/employees/:employeeId/contracts", handler.CreateContract)
@@ -616,6 +618,7 @@ func TestEmployeeHandler_CreateContract_Overlap(t *testing.T) {
 
 	payPlan := &models.PayPlan{OrganizationID: org.ID, Name: "TVöD-SuE"}
 	db.Create(payPlan)
+	seedTestPayPlanCoverage(t, db, payPlan.ID)
 
 	// Create existing contract
 	db.Create(&models.EmployeeContract{
@@ -1462,6 +1465,7 @@ func TestEmployeeHandler_CreateContract_ContractBoundaryTouch(t *testing.T) {
 
 	payPlan := &models.PayPlan{OrganizationID: org.ID, Name: "TVöD-SuE"}
 	db.Create(payPlan)
+	seedTestPayPlanCoverage(t, db, payPlan.ID)
 
 	// Create contract ending on Dec 31, 2024
 	endDate := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
@@ -1513,6 +1517,7 @@ func TestEmployeeHandler_CreateContract_SameDayTransitionRejected(t *testing.T) 
 
 	payPlan := &models.PayPlan{OrganizationID: org.ID, Name: "TVöD-SuE"}
 	db.Create(payPlan)
+	seedTestPayPlanCoverage(t, db, payPlan.ID)
 
 	// Create contract ending on Jan 31, 2025
 	endDate := time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC)

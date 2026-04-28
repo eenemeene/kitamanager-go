@@ -30,3 +30,14 @@ func IsDuplicateKeyError(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
+
+// IsForeignKeyViolation checks if the error is a PostgreSQL foreign key violation (23503).
+// Returned when a delete is blocked by a referencing row, or an insert/update points at
+// a non-existent parent.
+func IsForeignKeyViolation(err error) bool {
+	if err == nil {
+		return false
+	}
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23503"
+}

@@ -77,7 +77,7 @@ func (s *StepPromotionService) GetStepPromotions(ctx context.Context, orgID uint
 	payplanIDs := make(map[uint]bool)
 	for _, emp := range employees {
 		for _, c := range emp.Contracts {
-			if isActiveOn(c, date) {
+			if c.IsActiveOn(date) {
 				payplanIDs[c.PayPlanID] = true
 			}
 		}
@@ -108,7 +108,7 @@ func (s *StepPromotionService) GetStepPromotions(ctx context.Context, orgID uint
 		// Find the active contract on date
 		var activeContract *models.EmployeeContract
 		for i := range emp.Contracts {
-			if isActiveOn(emp.Contracts[i], date) {
+			if emp.Contracts[i].IsActiveOn(date) {
 				activeContract = &emp.Contracts[i]
 				break
 			}
@@ -172,15 +172,4 @@ func (s *StepPromotionService) GetStepPromotions(ctx context.Context, orgID uint
 		TotalMonthlyCostDelta: totalDelta,
 		Promotions:            promotions,
 	}, nil
-}
-
-// isActiveOn checks if a contract is active on the given date.
-func isActiveOn(c models.EmployeeContract, date time.Time) bool {
-	if c.From.After(date) {
-		return false
-	}
-	if c.To != nil && c.To.Before(date) {
-		return false
-	}
-	return true
 }

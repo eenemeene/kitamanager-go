@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -67,6 +68,46 @@ func (s *PayPlanService) verifyEntryOwnership(ctx context.Context, entryID, peri
 		return nil, apperror.NotFound("entry")
 	}
 	return entry, nil
+}
+
+// validatePayPlanPeriodFields validates pay plan period field values. The gin
+// binding tags on PayPlanPeriodCreateRequest/UpdateRequest cover most of these,
+// but YAML import bypasses binding entirely, and from<=to is a cross-field
+// invariant that binding tags can't express. Calling this from every path
+// keeps the rules in one place.
+func validatePayPlanPeriodFields(from time.Time, to *time.Time, weeklyHours float64, employerRate int) error {
+	if weeklyHours <= 0 {
+		return apperror.BadRequest("weekly_hours must be > 0")
+	}
+	if weeklyHours > validation.MaxWeeklyHours {
+		return apperror.BadRequest("weekly_hours cannot exceed 168 hours per week")
+	}
+	if employerRate < 0 || employerRate > 10000 {
+		return apperror.BadRequest("employer_contribution_rate must be in [0, 10000] (hundredths of a percent)")
+	}
+	if to != nil && models.TruncateToDate(*to).Before(models.TruncateToDate(from)) {
+		return apperror.BadRequest("to must be on or after from")
+	}
+	return nil
+}
+
+// validatePayPlanEntryFields validates pay plan entry field values. Like
+// validatePayPlanPeriodFields, this also runs on the YAML import path where
+// gin binding tags don't apply.
+func validatePayPlanEntryFields(grade string, step int, monthlyAmount int, stepMinYears *int) error {
+	if strings.TrimSpace(grade) == "" {
+		return apperror.BadRequest("grade cannot be empty")
+	}
+	if step < 1 {
+		return apperror.BadRequest("step must be >= 1")
+	}
+	if monthlyAmount < 0 {
+		return apperror.BadRequest("monthly_amount must be >= 0")
+	}
+	if stepMinYears != nil && *stepMinYears < 0 {
+		return apperror.BadRequest("step_min_years must be >= 0")
+	}
+	return nil
 }
 
 // Create creates a new pay plan.
@@ -137,6 +178,9 @@ func (s *PayPlanService) Update(ctx context.Context, id, orgID uint, req *models
 	}
 
 	if err := s.store.Update(ctx, payplan); err != nil {
+		if store.IsDuplicateKeyError(err) {
+			return nil, apperror.Conflict("pay plan with this name already exists in this organization")
+		}
 		return nil, apperror.InternalWrap(err, "failed to update pay plan")
 	}
 
@@ -144,13 +188,17 @@ func (s *PayPlanService) Update(ctx context.Context, id, orgID uint, req *models
 	return &resp, nil
 }
 
-// Delete deletes a pay plan.
+// Delete deletes a pay plan. Returns 409 Conflict when an employee_contracts row
+// still references the pay plan (FK 23503).
 func (s *PayPlanService) Delete(ctx context.Context, id, orgID uint) error {
 	if _, err := s.verifyPayPlanOwnership(ctx, id, orgID); err != nil {
 		return err
 	}
 
 	if err := s.store.Delete(ctx, id); err != nil {
+		if store.IsForeignKeyViolation(err) {
+			return apperror.Conflict("pay plan is referenced by one or more employee contracts and cannot be deleted")
+		}
 		return apperror.InternalWrap(err, "failed to delete pay plan")
 	}
 	return nil
@@ -206,6 +254,10 @@ func (s *PayPlanService) ListEntries(ctx context.Context, periodID, payplanID, o
 // CreatePeriod creates a new period for a pay plan.
 func (s *PayPlanService) CreatePeriod(ctx context.Context, payplanID, orgID uint, req *models.PayPlanPeriodCreateRequest) (*models.PayPlanPeriodResponse, error) {
 	if _, err := s.verifyPayPlanOwnership(ctx, payplanID, orgID); err != nil {
+		return nil, err
+	}
+
+	if err := validatePayPlanPeriodFields(req.From, req.To, req.WeeklyHours, req.EmployerContributionRate); err != nil {
 		return nil, err
 	}
 
@@ -266,6 +318,10 @@ func (s *PayPlanService) UpdatePeriod(ctx context.Context, periodID, payplanID, 
 		return nil, err
 	}
 
+	if err := validatePayPlanPeriodFields(req.From, req.To, req.WeeklyHours, req.EmployerContributionRate); err != nil {
+		return nil, err
+	}
+
 	period.From = req.From
 	period.To = req.To
 	period.WeeklyHours = req.WeeklyHours
@@ -315,15 +371,22 @@ func (s *PayPlanService) CreateEntry(ctx context.Context, periodID, payplanID, o
 		return nil, err
 	}
 
+	if err := validatePayPlanEntryFields(req.Grade, req.Step, req.MonthlyAmount, req.StepMinYears); err != nil {
+		return nil, err
+	}
+
 	entry := &models.PayPlanEntry{
 		PeriodID:      periodID,
-		Grade:         req.Grade,
+		Grade:         strings.TrimSpace(req.Grade),
 		Step:          req.Step,
 		MonthlyAmount: req.MonthlyAmount,
 		StepMinYears:  req.StepMinYears,
 	}
 
 	if err := s.store.CreateEntry(ctx, entry); err != nil {
+		if store.IsDuplicateKeyError(err) {
+			return nil, apperror.Conflict("an entry with this grade and step already exists in this period")
+		}
 		return nil, apperror.InternalWrap(err, "failed to create entry")
 	}
 
@@ -365,12 +428,19 @@ func (s *PayPlanService) UpdateEntry(ctx context.Context, entryID, periodID, pay
 		return nil, err
 	}
 
-	entry.Grade = req.Grade
+	if err := validatePayPlanEntryFields(req.Grade, req.Step, req.MonthlyAmount, req.StepMinYears); err != nil {
+		return nil, err
+	}
+
+	entry.Grade = strings.TrimSpace(req.Grade)
 	entry.Step = req.Step
 	entry.MonthlyAmount = req.MonthlyAmount
 	entry.StepMinYears = req.StepMinYears
 
 	if err := s.store.UpdateEntry(ctx, entry); err != nil {
+		if store.IsDuplicateKeyError(err) {
+			return nil, apperror.Conflict("an entry with this grade and step already exists in this period")
+		}
 		return nil, apperror.InternalWrap(err, "failed to update entry")
 	}
 
@@ -432,6 +502,35 @@ func (s *PayPlanService) Import(ctx context.Context, orgID uint, data *models.Pa
 			return apperror.InternalWrap(err, "failed to look up pay plan")
 		}
 
+		// Validate every period+entry up-front. YAML deserialisation does not
+		// run gin's binding tags, so without this an import can land bad data
+		// (weekly_hours=0 → CalculateSalary divides by zero, negative
+		// monthly_amount, overlapping periods that the create endpoint would
+		// reject, …).
+		for i, p := range data.Periods {
+			if err := validatePayPlanPeriodFields(p.From, p.To, p.WeeklyHours, p.EmployerContributionRate); err != nil {
+				return err
+			}
+			// Check overlap against earlier periods in the same import.
+			for j := range i {
+				q := data.Periods[j]
+				if (models.Period{From: p.From, To: p.To}).Overlaps(models.Period{From: q.From, To: q.To}) {
+					return apperror.BadRequest("imported periods overlap")
+				}
+			}
+			seenEntries := make(map[string]bool, len(p.Entries))
+			for _, e := range p.Entries {
+				if err := validatePayPlanEntryFields(e.Grade, e.Step, e.MonthlyAmount, e.StepMinYears); err != nil {
+					return err
+				}
+				key := strings.TrimSpace(e.Grade) + "|" + strconv.Itoa(e.Step)
+				if seenEntries[key] {
+					return apperror.BadRequest("duplicate (grade, step) entries in the same imported period")
+				}
+				seenEntries[key] = true
+			}
+		}
+
 		for _, p := range data.Periods {
 			period := &models.PayPlanPeriod{
 				PayPlanID:                payplan.ID,
@@ -446,7 +545,7 @@ func (s *PayPlanService) Import(ctx context.Context, orgID uint, data *models.Pa
 			for _, e := range p.Entries {
 				entry := &models.PayPlanEntry{
 					PeriodID:      period.ID,
-					Grade:         e.Grade,
+					Grade:         strings.TrimSpace(e.Grade),
 					Step:          e.Step,
 					MonthlyAmount: e.MonthlyAmount,
 					StepMinYears:  e.StepMinYears,

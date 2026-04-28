@@ -14,15 +14,10 @@ import {
 } from '@/components/ui/select';
 import type { PayPlanPeriod } from '@/lib/api/types';
 import { formatCurrency } from '@/lib/utils/formatting';
+import { compareGrade } from '@/lib/utils/grade';
 
 interface PayPlanSalaryChartProps {
   periods: PayPlanPeriod[];
-}
-
-/** Parse grade string into [number, suffix] for natural sorting (e.g. "S8a" → [8, "a"]) */
-function parseGrade(g: string): [number, string] {
-  const match = g.match(/^[A-Za-z]*(\d+)(.*)$/);
-  return match ? [parseInt(match[1]), match[2]] : [0, g];
 }
 
 /** A distinct color palette for up to 15 grade bars. */
@@ -57,14 +52,11 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
         gradeSet.add(entry.grade);
       }
     }
+    // De-dup across periods may interleave first-seen-from-each-period, so
+    // we re-sort. compareGrade mirrors the server-side natural order.
     return {
       allSteps: Array.from(stepSet).sort((a, b) => a - b),
-      allGrades: Array.from(gradeSet).sort((a, b) => {
-        const [numA, suffA] = parseGrade(a);
-        const [numB, suffB] = parseGrade(b);
-        if (numA !== numB) return numA - numB;
-        return suffA.localeCompare(suffB);
-      }),
+      allGrades: Array.from(gradeSet).sort(compareGrade),
     };
   }, [periods]);
 
