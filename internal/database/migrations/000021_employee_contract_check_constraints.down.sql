@@ -1,0 +1,3 @@
+ALTER TABLE employee_contracts DROP CONSTRAINT IF EXISTS employee_contracts_weekly_hours_valid;
+ALTER TABLE employee_contracts DROP CONSTRAINT IF EXISTS employee_contracts_step_valid;
+ALTER TABLE employee_contracts DROP CONSTRAINT IF EXISTS employee_contracts_staff_category_valid;

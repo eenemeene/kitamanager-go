@@ -2161,11 +2161,15 @@ func TestEmployeeService_UpdateContract_AmendOverlapConflict(t *testing.T) {
 
 	today := models.Today()
 	past := today.AddDate(0, -3, 0)
+	originalEnd := today.AddDate(0, 0, 30)
 
-	// Create ongoing contract starting in the past (qualifies for amend)
+	// Original contract: started in the past (amend mode), bounded so we can
+	// place a non-overlapping blocker after it (required by the EXCLUDE
+	// constraint added in migration 000022).
 	contract, err := svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
 		SectionID:     section.ID,
 		From:          past,
+		To:            &originalEnd,
 		StaffCategory: "qualified",
 		WeeklyHours:   39,
 		Grade:         "S8a", Step: 3,
@@ -2175,27 +2179,30 @@ func TestEmployeeService_UpdateContract_AmendOverlapConflict(t *testing.T) {
 		t.Fatalf("failed to create first contract: %v", err)
 	}
 
-	// Insert a blocking contract directly in DB (bypass overlap validation)
-	futureEnd := today.AddDate(1, 0, 0)
-	blockingContract := &models.EmployeeContract{
-		EmployeeID: employee.ID,
-		BaseContract: models.BaseContract{
-			Period:    models.Period{From: today, To: &futureEnd},
-			SectionID: section.ID,
-		},
+	// Blocker contract: disjoint from the original, but in the way of an
+	// extended amend.
+	blockerStart := originalEnd.AddDate(0, 0, 1)
+	blockerEnd := blockerStart.AddDate(0, 3, 0)
+	if _, err := svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
+		SectionID:     section.ID,
+		From:          blockerStart,
+		To:            &blockerEnd,
 		StaffCategory: "qualified",
 		WeeklyHours:   39,
-		PayPlanID:     payPlan.ID,
-	}
-	if err := db.Create(blockingContract).Error; err != nil {
-		t.Fatalf("failed to insert blocking contract: %v", err)
+		Grade:         "S8a", Step: 3,
+		PayPlanID: payPlan.ID,
+	}); err != nil {
+		t.Fatalf("failed to create blocker contract: %v", err)
 	}
 
-	// Try to amend first contract:
-	// Amend closes old (To=yesterday), creates new (from=today, ongoing) → overlaps with blocking
+	// Amend the original AND extend its To past the blocker. Amend creates a
+	// new contract from today with the extended To — that range overlaps the
+	// blocker, so the overlap check inside amendContractTx must produce 409.
+	extendedEnd := blockerStart.AddDate(0, 1, 0)
 	newCategory := "supplementary"
 	_, err = svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
 		StaffCategory: &newCategory,
+		To:            &extendedEnd,
 	})
 	if err == nil {
 		t.Fatal("expected overlap conflict error, got nil")

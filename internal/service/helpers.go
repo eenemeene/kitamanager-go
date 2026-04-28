@@ -82,6 +82,23 @@ func validateOptionalSectionOrg(ctx context.Context, sectionStore store.SectionS
 	return validateSectionOrg(ctx, sectionStore, *sectionID, orgID)
 }
 
+// validateContractDatesAfterBirthdate rejects a contract whose date range straddles
+// a date prior to the person's birthdate. Applies to both children and employees.
+//
+// Comparison is performed on truncated dates so that the rule does not flip on
+// timezone offsets in the request body or on a birthdate stored at midnight UTC
+// vs a from/to expressed in another offset.
+func validateContractDatesAfterBirthdate(from time.Time, to *time.Time, birthdate time.Time) error {
+	bd := models.TruncateToDate(birthdate)
+	if models.TruncateToDate(from).Before(bd) {
+		return apperror.BadRequest("contract start date cannot be before birthdate")
+	}
+	if to != nil && models.TruncateToDate(*to).Before(bd) {
+		return apperror.BadRequest("contract end date cannot be before birthdate")
+	}
+	return nil
+}
+
 // periodsOverlap checks if two date ranges overlap.
 // A period with nil To extends indefinitely into the future.
 // Dates are truncated to midnight UTC to ensure consistent date-only comparison.

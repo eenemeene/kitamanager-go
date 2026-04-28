@@ -2592,35 +2592,41 @@ func TestChildService_UpdateContract_AmendOverlapConflict(t *testing.T) {
 
 	today := models.Today()
 	past := today.AddDate(0, -3, 0)
+	originalEnd := today.AddDate(0, 0, 30) // bounded so we can place a blocker after it
 
-	// Create ongoing contract starting in the past (qualifies for amend)
+	// Original contract: started in the past (amend mode), ends in the future
+	// so it remains updatable. The bounded To leaves room for a non-overlapping
+	// blocker that the EXCLUDE constraint will accept at setup time.
 	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		SectionID: section.ID,
 		From:      past,
+		To:        &originalEnd,
 	})
 	if err != nil {
 		t.Fatalf("failed to create first contract: %v", err)
 	}
 
-	// Insert a blocking contract directly in DB (bypass overlap validation)
-	// This simulates a scenario where another contract exists starting today.
-	futureEnd := today.AddDate(1, 0, 0)
-	blockingContract := &models.ChildContract{
-		ChildID: child.ID,
-		BaseContract: models.BaseContract{
-			Period:    models.Period{From: today, To: &futureEnd},
-			SectionID: section.ID,
-		},
-	}
-	if err := db.Create(blockingContract).Error; err != nil {
-		t.Fatalf("failed to insert blocking contract: %v", err)
+	// Blocker contract: starts the day after the original ends, runs for a
+	// few months. It coexists with the original because the ranges are
+	// disjoint — required by the EXCLUDE constraint added in migration 000022.
+	blockerStart := originalEnd.AddDate(0, 0, 1)
+	blockerEnd := blockerStart.AddDate(0, 3, 0)
+	if _, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
+		SectionID: section.ID,
+		From:      blockerStart,
+		To:        &blockerEnd,
+	}); err != nil {
+		t.Fatalf("failed to create blocker contract: %v", err)
 	}
 
-	// Try to amend the first contract:
-	// Amend closes old contract (To=yesterday), creates new from=today (ongoing).
-	// New contract would overlap with blocking contract (today → future).
+	// Amend the original AND extend its To past the blocker. Amend closes
+	// the old at yesterday and creates a new contract from today with the
+	// extended To — that range now overlaps the blocker, and the amend's
+	// overlap check inside amendContractTx must produce 409.
+	extendedEnd := blockerStart.AddDate(0, 1, 0) // sits inside the blocker's range
 	_, err = svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
 		Properties: models.ContractProperties{"care_type": "halbtag"},
+		To:         &extendedEnd,
 	})
 	if err == nil {
 		t.Fatal("expected overlap conflict error, got nil")
@@ -3505,40 +3511,10 @@ func TestChildService_GetContractPropertiesDistribution_SortedOutput(t *testing.
 	}
 }
 
-func TestChildService_GetContractPropertiesDistribution_MultipleActiveContracts(t *testing.T) {
-	db := setupTestDB(t)
-	statsSvc := createStatisticsService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	section := getDefaultSection(t, db, org.ID)
-	refDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
-
-	// Create child with two overlapping contracts (via direct DB insert, bypassing overlap validation)
-	child := createTestChild(t, db, "Overlap", "Child", org.ID)
-	from1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	createTestChildContract(t, db, child.ID, from1, nil, section.ID, models.ContractProperties{"care_type": "ganztag"})
-	from2 := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
-	createTestChildContract(t, db, child.ID, from2, nil, section.ID, models.ContractProperties{"lunch": "yes"})
-
-	stats, err := statsSvc.GetContractPropertiesDistribution(ctx, org.ID, refDate)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	// Both contracts are active, properties from both should be counted
-	expected := map[string]int{
-		"care_type:ganztag": 1,
-		"lunch:yes":         1,
-	}
-
-	for _, p := range stats.Properties {
-		key := p.Key + ":" + p.Value
-		if expected[key] != p.Count {
-			t.Errorf("property %s: expected count %d, got %d", key, expected[key], p.Count)
-		}
-	}
-}
+// (Removed TestChildService_GetContractPropertiesDistribution_MultipleActiveContracts.
+// The state it set up — two simultaneously active contracts for one child —
+// is now prevented at the DB layer by migration 000022's EXCLUDE constraint,
+// so the scenario can no longer occur in production or in tests.)
 
 func TestChildService_GetContractPropertiesDistribution_EmptyStringValue(t *testing.T) {
 	db := setupTestDB(t)
