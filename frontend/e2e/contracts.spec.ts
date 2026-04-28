@@ -4,7 +4,7 @@ import {
   createTestOrg,
   deleteTestOrg,
   createPayPlanViaApi,
-  createPayPlanPeriodViaApi,
+  seedPayPlanCoverageViaApi,
   createChildViaApi,
   createEmployeeViaApi,
   deleteChildViaApi,
@@ -32,13 +32,12 @@ test.beforeAll(async ({ browser }) => {
   const testOrg = await createTestOrg(page, 'Contracts');
   orgId = testOrg.orgId;
   defaultSectionId = testOrg.sectionId;
-  // Create a pay plan with period (needed for employee contracts)
+  // Create a pay plan with a wide-open period and full grade/step coverage
+  // (needed because employee contract create now validates that the pinned
+  // (grade, step) resolves to an existing entry).
   const payplan = await createPayPlanViaApi(page, orgId, 'Test Pay Plan');
   payplanId = payplan.id;
-  await createPayPlanPeriodViaApi(page, orgId, payplanId, {
-    from: '2020-01-01',
-    weekly_hours: 39,
-  });
+  await seedPayPlanCoverageViaApi(page, orgId, payplanId, { from: '2020-01-01' });
   // Ensure Berlin funding has properties (for contract property suggestions)
   await ensureFundingHasProperties(page);
   await page.close();
