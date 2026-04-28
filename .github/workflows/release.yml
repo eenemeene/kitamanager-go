@@ -115,7 +115,14 @@ jobs:
           context: .
           file: Dockerfile.report
           push: true
-          platforms: linux/amd64,linux/arm64
+          # amd64 only — the report image bundles Playwright + Chromium
+          # (~200 MB) installed via `npx playwright install chromium`,
+          # and running that under QEMU arm64 emulation on an amd64
+          # runner reliably exhausts the 6h job timeout. The report
+          # tool's deployment targets (cron / systemd / k8s CronJob on
+          # ordinary servers) are virtually all amd64 anyway. Apple
+          # Silicon developers can `docker build` locally if needed.
+          platforms: linux/amd64
           tags: ${{ steps.meta-report.outputs.tags }}
           labels: ${{ steps.meta-report.outputs.labels }}
           # Same version triple the API image bakes — the report tool

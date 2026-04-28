@@ -19,6 +19,20 @@ COPY --chown=node:node frontend/ .
 ARG BACKEND_URL=http://api:8080
 ENV BACKEND_URL=${BACKEND_URL}
 
+# Version triple — passed in at build time so Next.js's metadata API
+# captures the real version into the statically-rendered <meta> tag
+# during `npm run build`. Setting these in the runtime stage alone
+# (the previous shape) would have made the build see "dev" and bake
+# that into the static output, which was the bug v0.28.0 attempted
+# to work around with `dynamic = 'force-dynamic'` at the root layout
+# — and that change made the multi-arch arm64 build hang.
+ARG APP_VERSION=dev
+ARG APP_COMMIT=unknown
+ARG APP_BUILD_TIME=unknown
+ENV APP_VERSION=${APP_VERSION}
+ENV APP_COMMIT=${APP_COMMIT}
+ENV APP_BUILD_TIME=${APP_BUILD_TIME}
+
 # Build with standalone output
 RUN npm run build
 
