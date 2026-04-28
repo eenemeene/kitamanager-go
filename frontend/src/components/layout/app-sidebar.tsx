@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useUiStore } from '@/stores/ui-store';
 import { useCurrentRole, hasMinimumRole, type EffectiveRole } from '@/hooks/use-current-role';
+import { useFrontendVersion } from '@/hooks/use-frontend-version';
 import { useIsLgUp } from '@/hooks/use-media-query';
 import { apiClient } from '@/lib/api/client';
 import { OrgSelector } from './org-selector';
@@ -155,6 +156,11 @@ export function AppSidebar() {
     staleTime: Infinity,
     retry: false,
   });
+
+  // The frontend ships as its own image and may be at a different version
+  // than the API. Read it from the meta tag the root layout injects (same
+  // source the report-pdf colophon uses, so the two never disagree).
+  const webVersion = useFrontendVersion();
 
   const filteredGlobalNavigation = globalNavigation.filter(
     (item) => !item.minRole || hasMinimumRole(currentRole, item.minRole)
@@ -391,10 +397,14 @@ export function AppSidebar() {
           ))}
       </nav>
 
-      {/* Version */}
-      {health?.version && !effectiveCollapsed && (
-        <div className="text-sidebar-foreground/60 border-sidebar-border border-t px-4 py-2 text-[10px]">
-          version: {health.version}
+      {/* Versions — API + Web shown separately because the two ship as
+          independent images and can drift between releases. Each row is
+          conditionally rendered: if either side fails to populate, the
+          other still appears. */}
+      {!effectiveCollapsed && (health?.version || webVersion) && (
+        <div className="text-sidebar-foreground/60 border-sidebar-border space-y-0.5 border-t px-4 py-2 text-[10px]">
+          {health?.version && <div>API: {health.version}</div>}
+          {webVersion && <div>Web: {webVersion}</div>}
         </div>
       )}
     </>
