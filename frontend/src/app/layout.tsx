@@ -7,12 +7,6 @@ import { Providers } from './providers';
 
 const inter = Inter({ subsets: ['latin'] });
 
-// Prevent Next.js from statically rendering this layout at build time.
-// The kitamanager-version meta tag below reads APP_VERSION from the
-// runtime container env (set by Dockerfile.frontend) — a static render
-// would freeze the build-time value, which is empty in CI.
-export const dynamic = 'force-dynamic';
-
 export const metadata: Metadata = {
   title: 'KitaManager',
   description: 'Kindergarten management system',
@@ -22,6 +16,14 @@ export const metadata: Metadata = {
   // frontend build actually rendered the print pages they consumed.
   // Embedding it here means every page across the app carries it,
   // including the (print) routes, with no per-page wiring.
+  //
+  // process.env.APP_VERSION is read at *build* time (the Next.js
+  // metadata API runs on the server during `npm run build` for static
+  // pages). Dockerfile.frontend's builder stage takes APP_VERSION as a
+  // build arg so the value flows through. We deliberately do NOT set
+  // `dynamic = 'force-dynamic'` here because that turned out to hang
+  // the multi-arch buildx run for the frontend image — the static
+  // build-time read is fine since the image is immutable per release.
   other: {
     'kitamanager-version': process.env.APP_VERSION ?? 'dev',
   },
