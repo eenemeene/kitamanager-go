@@ -43,47 +43,37 @@ func TestGenerateReport_Integration(t *testing.T) {
 	defer gen.Close()
 
 	outputDir := t.TempDir()
+	outputPath := filepath.Join(outputDir, fmt.Sprintf("report-%s-%s.pdf", orgID, month))
 
-	reportTypes := []string{"staffing", "financials", "occupancy", "children"}
-	for _, rt := range reportTypes {
-		t.Run(rt, func(t *testing.T) {
-			err := gen.GenerateReport(rt, orgID, month, outputDir)
-			if err != nil {
-				t.Fatalf("GenerateReport(%q) failed: %v", rt, err)
-			}
-
-			// Verify PDF file was created
-			filename := filepath.Join(outputDir, fmt.Sprintf("%s-%s-%s.pdf", rt, orgID, month))
-			info, err := os.Stat(filename)
-			if err != nil {
-				t.Fatalf("PDF file not found: %v", err)
-			}
-			if info.Size() == 0 {
-				t.Fatal("PDF file is empty")
-			}
-			// Minimum reasonable size for a PDF with charts
-			if info.Size() < 1000 {
-				t.Errorf("PDF file suspiciously small: %d bytes", info.Size())
-			}
-
-			// Verify PDF header magic bytes
-			f, err := os.Open(filename)
-			if err != nil {
-				t.Fatalf("failed to open PDF: %v", err)
-			}
-			defer f.Close()
-
-			header := make([]byte, 5)
-			if _, err := f.Read(header); err != nil {
-				t.Fatalf("failed to read PDF header: %v", err)
-			}
-			if string(header) != "%PDF-" {
-				t.Errorf("invalid PDF header: got %q, want %%PDF-", string(header))
-			}
-
-			t.Logf("Generated %s: %d bytes", filename, info.Size())
-		})
+	if err := gen.GenerateCombinedReport(orgID, month, outputPath); err != nil {
+		t.Fatalf("GenerateCombinedReport failed: %v", err)
 	}
+
+	info, err := os.Stat(outputPath)
+	if err != nil {
+		t.Fatalf("PDF file not found: %v", err)
+	}
+	if info.Size() == 0 {
+		t.Fatal("PDF file is empty")
+	}
+	// Minimum reasonable size for a PDF with cover + 4 sections of charts.
+	if info.Size() < 5000 {
+		t.Errorf("PDF file suspiciously small: %d bytes", info.Size())
+	}
+
+	f, err := os.Open(outputPath)
+	if err != nil {
+		t.Fatalf("failed to open PDF: %v", err)
+	}
+	defer f.Close()
+	header := make([]byte, 5)
+	if _, err := f.Read(header); err != nil {
+		t.Fatalf("failed to read PDF header: %v", err)
+	}
+	if string(header) != "%PDF-" {
+		t.Errorf("invalid PDF header: got %q, want %%PDF-", string(header))
+	}
+	t.Logf("Generated %s: %d bytes", outputPath, info.Size())
 }
 
 func envOr(key, fallback string) string {
@@ -93,52 +83,40 @@ func envOr(key, fallback string) string {
 	return fallback
 }
 
-func TestPrintPageURL(t *testing.T) {
+func TestCombinedReportURL(t *testing.T) {
 	cases := []struct {
-		name       string
-		baseURL    string
-		orgID      string
-		reportType string
-		month      string
-		want       string
+		name    string
+		baseURL string
+		orgID   string
+		month   string
+		want    string
 	}{
 		{
-			name:       "default localhost dev",
-			baseURL:    "http://localhost:3000",
-			orgID:      "1",
-			reportType: "staffing",
-			month:      "2026-04",
-			want:       "http://localhost:3000/organizations/1/statistics/staffing/print?month=2026-04",
+			name:    "default localhost dev",
+			baseURL: "http://localhost:3000",
+			orgID:   "1",
+			month:   "2026-04",
+			want:    "http://localhost:3000/organizations/1/statistics/report/print?month=2026-04",
 		},
 		{
-			name:       "https with custom port",
-			baseURL:    "https://app.example.com:8443",
-			orgID:      "42",
-			reportType: "financials",
-			month:      "2024-12",
-			want:       "https://app.example.com:8443/organizations/42/statistics/financials/print?month=2024-12",
+			name:    "https with custom port",
+			baseURL: "https://app.example.com:8443",
+			orgID:   "42",
+			month:   "2024-12",
+			want:    "https://app.example.com:8443/organizations/42/statistics/report/print?month=2024-12",
 		},
 		{
-			name:       "occupancy report",
-			baseURL:    "https://app.example.com",
-			orgID:      "7",
-			reportType: "occupancy",
-			month:      "2025-01",
-			want:       "https://app.example.com/organizations/7/statistics/occupancy/print?month=2025-01",
-		},
-		{
-			name:       "children report",
-			baseURL:    "https://app.example.com",
-			orgID:      "7",
-			reportType: "children",
-			month:      "2025-06",
-			want:       "https://app.example.com/organizations/7/statistics/children/print?month=2025-06",
+			name:    "december edge",
+			baseURL: "https://app.example.com",
+			orgID:   "7",
+			month:   "2025-12",
+			want:    "https://app.example.com/organizations/7/statistics/report/print?month=2025-12",
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := printPageURL(tc.baseURL, tc.orgID, tc.reportType, tc.month); got != tc.want {
-				t.Errorf("printPageURL(...)\n got: %s\nwant: %s", got, tc.want)
+			if got := combinedReportURL(tc.baseURL, tc.orgID, tc.month); got != tc.want {
+				t.Errorf("combinedReportURL(...)\n got: %s\nwant: %s", got, tc.want)
 			}
 		})
 	}
