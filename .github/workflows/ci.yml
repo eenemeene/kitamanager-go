@@ -430,25 +430,52 @@ jobs:
       # eyeball regressions in chart layout that unit tests can't catch.
       # Reuses the seed admin credentials the API already booted with.
       #
+      # We exercise the actual Dockerfile.report container — not just the
+      # Go binary on the runner — because that's the artefact end users
+      # consume, and CI testing only the binary on Ubuntu (which has all
+      # of Chromium's shared libs already) hid the v0.29.0 release going
+      # out with a wrong-Chromium-revision and a runtime base missing
+      # libnss/libatk/etc. Building + running the image here means a
+      # broken image fails CI instead of a cut release.
+      #
       # Runs even when the E2E suite fails (`!cancelled()` rather than
       # `success()`) — that catches the case where the report renders
       # fine but a different E2E spec is flaky, and surfaces report-only
       # failures that would otherwise be invisible to the E2E job.
-      - name: Build report-pdf tool
+      - name: Set up Docker Buildx (for report image cache)
         if: ${{ !cancelled() }}
-        run: make report-pdf-build
+        uses: docker/setup-buildx-action@v4
 
-      - name: Generate PDF reports
+      - name: Build report-pdf image
+        if: ${{ !cancelled() }}
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile.report
+          load: true
+          tags: kitamanager-report:ci
+          cache-from: type=gha,scope=report-ci
+          cache-to: type=gha,mode=max,scope=report-ci
+
+      - name: Generate PDF reports (via container)
         if: ${{ !cancelled() }}
         run: |
           mkdir -p /tmp/report-pdfs
-          ./bin/report-pdf \
-            --email superadmin@example.com \
-            --password supersecret \
-            --org-id 1 \
-            --base-url http://localhost:3000 \
-            --api-url http://localhost:8080 \
-            --output-dir /tmp/report-pdfs
+          # The non-root `node` user inside the container writes the
+          # PDFs; the bind-mounted host dir needs to be world-writable
+          # for that to succeed on the GitHub-hosted runner.
+          chmod 777 /tmp/report-pdfs
+          # --network host so the container can reach the API and
+          # frontend running on the runner's localhost.
+          docker run --network host --rm \
+            -e KITAMANAGER_REPORT_EMAIL=superadmin@example.com \
+            -e KITAMANAGER_REPORT_PASSWORD=supersecret \
+            -e KITAMANAGER_REPORT_ORG_ID=1 \
+            -e KITAMANAGER_REPORT_BASE_URL=http://localhost:3000 \
+            -e KITAMANAGER_REPORT_API_URL=http://localhost:8080 \
+            -e KITAMANAGER_REPORT_OUTPUT_DIR=/output \
+            -v /tmp/report-pdfs:/output \
+            kitamanager-report:ci
 
       - name: Upload generated report
         # Upload only the merged report (`report-{org}-{month}.pdf`) —

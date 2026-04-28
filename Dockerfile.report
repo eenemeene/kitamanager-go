@@ -12,38 +12,92 @@
 #     -e KITAMANAGER_REPORT_OUTPUT_DIR=/output \
 #     kitamanager-report
 
-# Stage 1: Build the Go binary
+# Stage 1: Build the Go binary AND install Playwright + Chromium.
+# Two reasons we install Playwright here rather than in the runtime
+# stage:
+#   1. The matching Chromium version. playwright-go is pinned to
+#      Playwright JS 1.50.1 which expects a specific revision
+#      (`chromium_headless_shell-1155`). The previous Dockerfile
+#      ran `npx playwright install chromium` which pulled npm's
+#      latest Playwright (1.55+) and downloaded a different
+#      revision (1217) — never used at runtime. ~290 MB of dead
+#      weight in the published image.
+#   2. We can use the Go-native `playwright-go/cmd/playwright`
+#      installer here (Go is already in the builder stage),
+#      skipping `npx` and the entire dev-tooling base image the
+#      previous setup needed.
+# `chromium-headless-shell` (with hyphen) installs ONLY the
+# headless variant, not the full Chromium browser — saves another
+# ~557 MB vs `playwright install chromium`.
 FROM cgr.dev/chainguard/go:latest AS builder
 
-# Version triple injected via build args (the release workflow passes
-# real values from `git describe`; defaults make a `docker build` from
-# a working copy still produce a runnable binary). Kept identical to
-# Dockerfile.api's pattern so a future operator only has to learn it once.
 ARG GIT_VERSION=dev
 ARG GIT_COMMIT=unknown
 ARG BUILD_TIME=unknown
 
 WORKDIR /app
 
-# Copy go.mod/go.sum first for dependency caching
 COPY tools/report-pdf/go.mod tools/report-pdf/go.sum ./
 RUN go mod download
 
-# Copy source and build with version info embedded.
 COPY tools/report-pdf/ .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo \
     -ldflags "-X github.com/eenemeene/kitamanager-go/tools/report-pdf/internal/version.GitVersion=${GIT_VERSION} -X github.com/eenemeene/kitamanager-go/tools/report-pdf/internal/version.GitCommit=${GIT_COMMIT} -X github.com/eenemeene/kitamanager-go/tools/report-pdf/internal/version.BuildTime=${BUILD_TIME}" \
     -o report-pdf .
 
-# Stage 2: Runtime with Node.js (needed for Playwright browser management)
-FROM cgr.dev/chainguard/node:latest-dev
+ENV HOME=/install
+RUN mkdir -p /install && \
+    go run github.com/playwright-community/playwright-go/cmd/playwright install chromium-headless-shell
 
-WORKDIR /app
+# Stage 2: Runtime — wolfi-base (~15 MB) + node + chromium-as-dep-puller.
+#
+# We install the Wolfi `chromium` PACKAGE not because we use Wolfi's
+# Chromium binary at runtime — Playwright's pre-baked
+# `chromium_headless_shell` is the one we launch — but because
+# `chromium`'s transitive dependency closure (gtk-3, libnss, mesa,
+# fontconfig, etc.) is exactly the runtime-library set Chromium
+# needs to launch. Hand-curating each `lib*` package lib by lib
+# would take 17+ apk entries; this is the same answer in 1.
+#
+# We then prune the files Chromium pulled in but `headless_shell`
+# doesn't need (Wolfi's chromium binary itself, Qt, systemd,
+# Python, icon themes, locales, man/doc). Verified via real
+# end-to-end report generation that nothing in the prune list is
+# load-bearing for headless rendering. Saves ~600 MB.
+FROM cgr.dev/chainguard/wolfi-base:latest
 
-# Copy the Go binary
+USER root
+RUN apk add --no-cache \
+        nodejs-22-minimal \
+        chromium \
+    && rm -rf \
+        /usr/lib/chromium \
+        /usr/lib/qt6 \
+        /usr/lib/qt5 \
+        /usr/lib/python3.13 \
+        /usr/lib/systemd \
+        /usr/bin/python* \
+        /usr/bin/systemd* \
+        /usr/bin/chromium* \
+        /usr/bin/chromedriver \
+        /usr/share/icons \
+        /usr/share/themes \
+        /usr/share/locale \
+        /usr/share/man \
+        /usr/share/doc \
+        /usr/share/info \
+        /etc/chromium \
+        /var/cache/apk/*
+
+# Match the user/path layout the playwright-go installer wrote into,
+# so the COPYs land where Playwright looks at runtime.
+RUN addgroup -S node && adduser -S -G node -h /home/node node
+
+USER node
+WORKDIR /home/node
+
 COPY --from=builder /app/report-pdf /usr/local/bin/report-pdf
-
-# Install Playwright and Chromium browser
-RUN npx playwright install chromium 2>/dev/null || true
+COPY --from=builder --chown=node:node /install/.cache/ms-playwright /home/node/.cache/ms-playwright
+COPY --from=builder --chown=node:node /install/.cache/ms-playwright-go /home/node/.cache/ms-playwright-go
 
 ENTRYPOINT ["report-pdf"]
