@@ -264,6 +264,21 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # Frontend image is otherwise only built by the release workflow on
+      # tag publish, so dependency-resolution issues (e.g. peer-dep
+      # conflicts) can't be caught until a release fails. Build it here on
+      # every PR so it fails fast in CI instead.
+      - name: Build Frontend Docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile.frontend
+          push: false
+          load: true
+          tags: kitamanager-frontend:${{ github.sha }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
