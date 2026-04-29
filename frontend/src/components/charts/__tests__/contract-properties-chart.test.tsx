@@ -25,10 +25,10 @@ describe('ContractPropertiesChart', () => {
     date: '2024-01-01',
     total_children: 30,
     properties: [
-      { key: 'care_type', value: 'ganztag', count: 20 },
-      { key: 'care_type', value: 'halbtag', count: 5 },
-      { key: 'supplements', value: 'mss', count: 8 },
-      { key: 'supplements', value: 'ndh', count: 12 },
+      { key: 'care_type', value: 'ganztag', count: 20, label: 'Ganztag' },
+      { key: 'care_type', value: 'halbtag', count: 5, label: 'Halbtag' },
+      { key: 'supplements', value: 'mss', count: 8, label: 'MSS' },
+      { key: 'supplements', value: 'ndh', count: 12, label: 'NDH' },
     ],
   };
 

@@ -69,7 +69,7 @@ export default function BudgetItemsPage() {
     searchable: true,
     itemToFormData: (item) => ({
       name: item.name,
-      category: item.category,
+      category: item.category as 'income' | 'expense',
       per_child: item.per_child,
       // Entry fields are not used for editing — provide defaults
       entry_from: today,
@@ -90,7 +90,7 @@ export default function BudgetItemsPage() {
       if (entryData.entry_from) {
         await apiClient.createBudgetItemEntry(orgId, budgetItem.id, {
           from: formatDateForApi(entryData.entry_from) || entryData.entry_from,
-          to: formatDateForApi(entryData.entry_to) || null,
+          to: formatDateForApi(entryData.entry_to) || undefined,
           amount_cents: eurosToCents(entryData.entry_amount_euros),
           notes: entryData.entry_notes || '',
         });

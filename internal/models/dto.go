@@ -39,7 +39,7 @@ const (
 // clients that want to branch without introspecting body fields can look at
 // it alone.
 type LoginResponse struct {
-	Status    string `json:"status" example:"authenticated"`
+	Status    string `json:"status" enums:"authenticated" example:"authenticated"`
 	ExpiresIn int64  `json:"expires_in" example:"604800"`
 }
 
@@ -47,7 +47,7 @@ type LoginResponse struct {
 // active primary factor. The pending_token is the raw value the client must
 // echo back on POST /auth/mfa/verify. No cookies are set at this stage.
 type LoginMFARequiredResponse struct {
-	Status       string                  `json:"status" example:"mfa_required"`
+	Status       string                  `json:"status" enums:"mfa_required" example:"mfa_required"`
 	PendingToken string                  `json:"pending_token" example:"9ZmN...sBA"`
 	ExpiresAt    string                  `json:"expires_at" example:"2026-04-23T10:05:00Z"`
 	Factors      []LoginFactorDescriptor `json:"factors"`
@@ -107,5 +107,5 @@ type StatusResponse struct {
 // UserAddOrganizationRequest represents the request body for adding a user to an organization
 type UserAddOrganizationRequest struct {
 	OrganizationID uint `json:"organization_id" binding:"required" example:"1"`
-	Role           Role `json:"role" example:"member"`
+	Role           Role `json:"role" enums:"admin,manager,member,staff" example:"member"`
 }

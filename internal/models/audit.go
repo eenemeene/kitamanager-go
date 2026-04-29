@@ -118,7 +118,7 @@ const (
 // on OrganizationID; the superadmin-only global endpoint sees every row.
 type AuditLog struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
-	Timestamp time.Time `gorm:"not null;index" json:"timestamp"`
+	Timestamp time.Time `gorm:"not null;index" json:"timestamp" format:"date-time"`
 	// RequestID is the X-Request-ID of the HTTP request that emitted
 	// this row. Stamped by AuditService from the request context so
 	// every audit row produced during one request shares the same
@@ -140,7 +140,7 @@ type AuditLog struct {
 // AuditLogResponse represents the audit log response
 type AuditLogResponse struct {
 	ID             uint        `json:"id" example:"1"`
-	Timestamp      time.Time   `json:"timestamp"`
+	Timestamp      time.Time   `json:"timestamp" format:"date-time"`
 	RequestID      string      `json:"request_id,omitempty" example:"4b89e4e0-6c37-4e1c-9a78-5d34b2a5f9a1"`
 	UserID         *uint       `json:"user_id,omitempty" example:"1"`
 	UserEmail      string      `json:"user_email,omitempty" example:"admin@example.com"`

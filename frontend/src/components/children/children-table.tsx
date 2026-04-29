@@ -229,10 +229,11 @@ export function ChildrenTable({
                     if (!billing || billing.bill_count === 0) {
                       return <span className="text-muted-foreground text-sm">-</span>;
                     }
-                    const diff = billing.total_difference;
+                    const diff = billing.total_difference ?? 0;
+                    const contractMonths = billing.contract_months ?? 0;
                     const coverage =
-                      billing.contract_months > 0
-                        ? `${billing.bill_count}/${billing.contract_months}`
+                      contractMonths > 0
+                        ? `${billing.bill_count}/${contractMonths}`
                         : `${billing.bill_count}`;
                     return (
                       <div className="flex flex-col items-end gap-0.5">

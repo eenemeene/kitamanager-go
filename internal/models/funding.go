@@ -9,8 +9,8 @@ type GovernmentFunding struct {
 	ID        uint                      `gorm:"primaryKey" json:"id" example:"1"`
 	Name      string                    `gorm:"size:255;not null" json:"name" example:"Berlin Kita Funding"`
 	State     string                    `gorm:"size:50;not null;uniqueIndex" json:"state" example:"berlin"`
-	CreatedAt time.Time                 `json:"created_at" example:"2024-01-15T10:30:00Z"`
-	UpdatedAt time.Time                 `json:"updated_at" example:"2024-01-15T10:30:00Z"`
+	CreatedAt time.Time                 `json:"created_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
+	UpdatedAt time.Time                 `json:"updated_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
 	Periods   []GovernmentFundingPeriod `gorm:"foreignKey:GovernmentFundingID;constraint:OnDelete:CASCADE" json:"periods,omitempty"`
 }
 
@@ -29,8 +29,8 @@ type GovernmentFundingPeriod struct {
 	Period                                          // From, To (embedded)
 	FullTimeWeeklyHours float64                     `gorm:"not null" json:"full_time_weekly_hours" example:"39.0"`
 	Comment             string                      `gorm:"size:1000" json:"comment,omitempty" example:"Funding period 2023/2024"`
-	CreatedAt           time.Time                   `json:"created_at" example:"2024-01-15T10:30:00Z"`
-	UpdatedAt           time.Time                   `json:"updated_at" example:"2024-01-15T10:30:00Z"`
+	CreatedAt           time.Time                   `json:"created_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
+	UpdatedAt           time.Time                   `json:"updated_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
 	Properties          []GovernmentFundingProperty `gorm:"foreignKey:PeriodID;constraint:OnDelete:CASCADE" json:"properties,omitempty"`
 }
 
@@ -67,7 +67,7 @@ type GovernmentFundingProperty struct {
 	// to select it. Example: parent meal contributions (Elternessen) in Berlin apply to
 	// all children regardless of care type.
 	ApplyToAllContracts bool      `gorm:"column:apply_to_all_contracts;not null;default:false" json:"apply_to_all_contracts" example:"false"`
-	CreatedAt           time.Time `json:"created_at" example:"2024-01-15T10:30:00Z"`
+	CreatedAt           time.Time `json:"created_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
 }
 
 // TableName specifies the table name for GORM
@@ -107,16 +107,16 @@ type GovernmentFundingUpdateRequest struct {
 
 // GovernmentFundingPeriodCreateRequest represents the request body for creating a government funding period.
 type GovernmentFundingPeriodCreateRequest struct {
-	From                time.Time  `json:"from" binding:"required" example:"2023-03-01"`
-	To                  *time.Time `json:"to" example:"2024-02-29"`
+	From                time.Time  `json:"from" format:"date-time" binding:"required" example:"2023-03-01"`
+	To                  *time.Time `json:"to" format:"date-time" example:"2024-02-29"`
 	FullTimeWeeklyHours float64    `json:"full_time_weekly_hours" binding:"required,gt=0" example:"39.0"`
 	Comment             string     `json:"comment" binding:"max=1000" example:"Funding period 2023/2024"`
 }
 
 // GovernmentFundingPeriodUpdateRequest represents the request body for updating a government funding period.
 type GovernmentFundingPeriodUpdateRequest struct {
-	From                *time.Time `json:"from" example:"2023-03-01"`
-	To                  *time.Time `json:"to" example:"2024-02-29"`
+	From                *time.Time `json:"from" format:"date-time" example:"2023-03-01"`
+	To                  *time.Time `json:"to" format:"date-time" example:"2024-02-29"`
 	FullTimeWeeklyHours *float64   `json:"full_time_weekly_hours" binding:"omitempty,gt=0" example:"39.0"`
 	Comment             *string    `json:"comment" binding:"omitempty,max=1000" example:"Updated comment"`
 }
@@ -152,8 +152,8 @@ type GovernmentFundingResponse struct {
 	ID        uint      `json:"id" example:"1"`
 	Name      string    `json:"name" example:"Berlin Kita Funding"`
 	State     string    `json:"state" example:"berlin"`
-	CreatedAt time.Time `json:"created_at" example:"2024-01-15T10:30:00Z"`
-	UpdatedAt time.Time `json:"updated_at" example:"2024-01-15T10:30:00Z"`
+	CreatedAt time.Time `json:"created_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
+	UpdatedAt time.Time `json:"updated_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
 }
 
 func (f *GovernmentFunding) ToResponse() GovernmentFundingResponse {
@@ -176,12 +176,12 @@ type GovernmentFundingDetailResponse struct {
 type GovernmentFundingPeriodResponse struct {
 	ID                  uint       `json:"id" example:"1"`
 	GovernmentFundingID uint       `json:"government_funding_id" example:"1"`
-	From                time.Time  `json:"from" example:"2023-03-01"`
-	To                  *time.Time `json:"to" example:"2024-02-29"`
+	From                time.Time  `json:"from" format:"date-time" example:"2023-03-01"`
+	To                  *time.Time `json:"to" format:"date-time" example:"2024-02-29"`
 	FullTimeWeeklyHours float64    `json:"full_time_weekly_hours" example:"39.0"`
 	Comment             string     `json:"comment,omitempty" example:"Funding period 2023/2024"`
-	CreatedAt           time.Time  `json:"created_at" example:"2024-01-15T10:30:00Z"`
-	UpdatedAt           time.Time  `json:"updated_at" example:"2024-01-15T10:30:00Z"`
+	CreatedAt           time.Time  `json:"created_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
+	UpdatedAt           time.Time  `json:"updated_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
 }
 
 func (p *GovernmentFundingPeriod) ToResponse() GovernmentFundingPeriodResponse {
@@ -211,7 +211,7 @@ type GovernmentFundingPropertyResponse struct {
 	MaxAge              *int      `json:"max_age,omitempty" example:"3"`
 	Comment             string    `json:"comment,omitempty" example:"Full-day care funding for U3"`
 	ApplyToAllContracts bool      `json:"apply_to_all_contracts" example:"false"`
-	CreatedAt           time.Time `json:"created_at" example:"2024-01-15T10:30:00Z"`
+	CreatedAt           time.Time `json:"created_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
 }
 
 func (p *GovernmentFundingProperty) ToResponse() GovernmentFundingPropertyResponse {
@@ -250,7 +250,7 @@ type ChildFundingMatchedProp struct {
 
 // ChildrenFundingResponse represents the funding calculation response for all children
 type ChildrenFundingResponse struct {
-	Date             time.Time              `json:"date" example:"2025-01-27"`
+	Date             time.Time              `json:"date" format:"date-time" example:"2025-01-27"`
 	WeeklyHoursBasis float64                `json:"weekly_hours_basis" example:"39.0"`
 	Children         []ChildFundingResponse `json:"children"`
 }

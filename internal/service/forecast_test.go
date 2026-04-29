@@ -1590,7 +1590,7 @@ func TestValidateOverlay_FieldValidators(t *testing.T) {
 					}},
 				}},
 			},
-			wantErrPath: "add_employees[0].contracts[0]: pay_plan_id is required",
+			wantErrPath: "add_employees[0].contracts[0]: payplan_id is required",
 		},
 		{
 			name: "employee_contract_missing_grade",

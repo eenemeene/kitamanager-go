@@ -3,8 +3,15 @@ import { isDateBefore } from '@/lib/utils/contracts';
 import { personBaseSchema } from './person';
 import { endDateAfterStart } from './period';
 
+// childSchema reuses personBaseSchema. No top-level Person schema in the
+// API (the spec inlines person fields into ChildResponse), so no
+// satisfies target.
 export const childSchema = personBaseSchema;
 
+// childContractSchema is form-only: the form's `properties` value is
+// `Record<string, string>` (single-value tags), while the API's
+// ContractProperties accepts `Record<string, string | string[]>`.
+// The submit handler widens the value type before posting.
 export const childContractSchema = z
   .object({
     from: z.string().min(1),
@@ -14,7 +21,10 @@ export const childContractSchema = z
   })
   .refine(...endDateAfterStart('from', 'to'));
 
-// Combined schema for creating a child with an initial contract
+// Combined schema for creating a child with an initial contract —
+// composite shape with no single API counterpart (the page splits
+// it into ChildCreateRequest + ChildContractCreateRequest before
+// submitting). Skipping the satisfies guard.
 export const childWithContractSchema = z
   .object({
     first_name: z.string().min(1).max(255),

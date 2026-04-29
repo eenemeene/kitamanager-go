@@ -46,16 +46,16 @@ export function StaffingHoursTable({ data }: StaffingHoursTableProps) {
   const dataPoints = data.data_points ?? [];
 
   const computed = useMemo(() => {
-    const required = dataPoints.map((dp) => dp.required_hours);
-    const available = dataPoints.map((dp) => dp.available_hours);
-    const balance = dataPoints.map((dp) => dp.available_hours - dp.required_hours);
-    const balancePercent = dataPoints.map((dp) =>
-      dp.required_hours === 0
-        ? NaN
-        : ((dp.available_hours - dp.required_hours) / dp.required_hours) * 100
-    );
-    const children = dataPoints.map((dp) => dp.child_count);
-    const staff = dataPoints.map((dp) => dp.staff_count);
+    const required = dataPoints.map((dp) => dp.required_hours ?? 0);
+    const available = dataPoints.map((dp) => dp.available_hours ?? 0);
+    const balance = dataPoints.map((dp) => (dp.available_hours ?? 0) - (dp.required_hours ?? 0));
+    const balancePercent = dataPoints.map((dp) => {
+      const req = dp.required_hours ?? 0;
+      const avail = dp.available_hours ?? 0;
+      return req === 0 ? NaN : ((avail - req) / req) * 100;
+    });
+    const children = dataPoints.map((dp) => dp.child_count ?? 0);
+    const staff = dataPoints.map((dp) => dp.staff_count ?? 0);
 
     const avg = (arr: number[]) => {
       if (arr.length === 0) return 0;
@@ -90,7 +90,7 @@ export function StaffingHoursTable({ data }: StaffingHoursTableProps) {
     return <p className="text-muted-foreground">{t('chartError')}</p>;
   }
 
-  const months = dataPoints.map((dp) => dp.date);
+  const months = dataPoints.map((dp) => dp.date ?? '');
 
   const balanceColor = (val: number) => (val >= 0 ? 'text-success' : 'text-destructive');
 

@@ -11,9 +11,9 @@ type ChildAttendance struct {
 	Child          *Child        `gorm:"foreignKey:ChildID;constraint:OnDelete:CASCADE" json:"child,omitempty"`
 	OrganizationID uint          `gorm:"not null;index" json:"organization_id" example:"1"`
 	Organization   *Organization `gorm:"foreignKey:OrganizationID;constraint:OnDelete:CASCADE" json:"organization,omitempty"`
-	Date           time.Time     `gorm:"type:date;not null;index" json:"date" example:"2025-06-15"`
-	CheckInTime    *time.Time    `json:"check_in_time" example:"2025-06-15T08:00:00Z"`
-	CheckOutTime   *time.Time    `json:"check_out_time" example:"2025-06-15T16:00:00Z"`
+	Date           time.Time     `gorm:"type:date;not null;index" json:"date" format:"date-time" example:"2025-06-15"`
+	CheckInTime    *time.Time    `json:"check_in_time" format:"date-time" example:"2025-06-15T08:00:00Z"`
+	CheckOutTime   *time.Time    `json:"check_out_time" format:"date-time" example:"2025-06-15T16:00:00Z"`
 	Status         string        `gorm:"size:20;not null;default:present" json:"status" example:"present"`
 	Note           string        `gorm:"size:500" json:"note,omitempty" example:"Picked up early by grandparent"`
 	// RecordedBy became nullable in migration 000014: the FK to
@@ -23,8 +23,8 @@ type ChildAttendance struct {
 	// the service layer always passes the caller's id, so *uint is
 	// only ever nil after a historical user row was removed.
 	RecordedBy *uint     `json:"recorded_by,omitempty" example:"1"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	CreatedAt  time.Time `json:"created_at" format:"date-time"`
+	UpdatedAt  time.Time `json:"updated_at" format:"date-time"`
 }
 
 // GetOrganizationID returns the organization ID for the OrgOwned interface.
@@ -56,14 +56,14 @@ type ChildAttendanceCreateRequest struct {
 	// validates its presence and returns a clear error.
 	Date        string     `json:"date" example:"2025-06-15"`
 	Status      string     `json:"status" binding:"required" example:"present"`
-	CheckInTime *time.Time `json:"check_in_time" example:"2025-06-15T08:00:00Z"`
+	CheckInTime *time.Time `json:"check_in_time" format:"date-time" example:"2025-06-15T08:00:00Z"`
 	Note        string     `json:"note,omitempty" example:"Arrived with father"`
 }
 
 // ChildAttendanceUpdateRequest represents the request body for updating an attendance record.
 type ChildAttendanceUpdateRequest struct {
-	CheckInTime  *time.Time `json:"check_in_time" example:"2025-06-15T08:00:00Z"`
-	CheckOutTime *time.Time `json:"check_out_time" example:"2025-06-15T16:00:00Z"`
+	CheckInTime  *time.Time `json:"check_in_time" format:"date-time" example:"2025-06-15T08:00:00Z"`
+	CheckOutTime *time.Time `json:"check_out_time" format:"date-time" example:"2025-06-15T16:00:00Z"`
 	Status       *string    `json:"status" example:"present"`
 	Note         *string    `json:"note" example:"Updated note"`
 }
@@ -75,16 +75,16 @@ type ChildAttendanceResponse struct {
 	ChildName      string     `json:"child_name,omitempty" example:"Emma Schmidt"`
 	OrganizationID uint       `json:"organization_id" example:"1"`
 	Date           string     `json:"date" example:"2025-06-15"`
-	CheckInTime    *time.Time `json:"check_in_time" example:"2025-06-15T08:00:00Z"`
-	CheckOutTime   *time.Time `json:"check_out_time" example:"2025-06-15T16:00:00Z"`
+	CheckInTime    *time.Time `json:"check_in_time" format:"date-time" example:"2025-06-15T08:00:00Z"`
+	CheckOutTime   *time.Time `json:"check_out_time" format:"date-time" example:"2025-06-15T16:00:00Z"`
 	Status         string     `json:"status" example:"present"`
 	Note           string     `json:"note,omitempty" example:"Picked up early"`
 	// RecordedBy is nil when the recording user has since been
 	// deleted (migration 000014 ON DELETE SET NULL). Frontends
 	// should render "anonymous" or similar when the field is absent.
 	RecordedBy *uint     `json:"recorded_by,omitempty" example:"1"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	CreatedAt  time.Time `json:"created_at" format:"date-time"`
+	UpdatedAt  time.Time `json:"updated_at" format:"date-time"`
 }
 
 // ToResponse converts a ChildAttendance to a ChildAttendanceResponse.

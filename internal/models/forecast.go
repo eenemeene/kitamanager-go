@@ -7,8 +7,8 @@ import "time"
 // Only children and employees are configurable — pay plans, funding, and budgets
 // use the real data as-is.
 type ForecastRequest struct {
-	From      *time.Time `json:"from,omitempty"`
-	To        *time.Time `json:"to,omitempty"`
+	From      *time.Time `json:"from,omitempty" format:"date-time"`
+	To        *time.Time `json:"to,omitempty" format:"date-time"`
 	SectionID *uint      `json:"section_id,omitempty"`
 
 	// Child overlays

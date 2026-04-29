@@ -1,1242 +1,336 @@
-// API Types - matching the Go backend models
-
-// Gender type
-export type Gender = 'male' | 'female' | 'diverse';
-
-// Roles for user-organization membership
-export type Role = 'admin' | 'manager' | 'member' | 'staff';
-
-// Auth
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-// LoginSuccessResponse is what /login returns when the user has no
-// MFA factor enrolled — same shape the backend emitted before two-
-// step login shipped, plus an explicit `status` discriminator.
-export interface LoginSuccessResponse {
-  status: 'authenticated';
-  expires_in: number;
-}
-
-// LoginFactorDescriptor is the minimal per-factor payload returned in
-// the MFA-required body. Matches the backend's public descriptor:
-// id + type + optional label only. No created_at, last_used_at, or
-// backup_codes_remaining — this shape is sent to an unauthenticated
-// caller and must not leak post-login metadata.
-export interface LoginFactorDescriptor {
-  id: number;
-  type: FactorType;
-  label?: string;
-  // credential_id (base64url-encoded) is populated only for webauthn
-  // factors. The frontend uses it to pre-fetch / prime the browser
-  // via `allowCredentials[]`; it's public by WebAuthn design.
-  credential_id?: string;
-}
-
-// LoginMfaRequiredResponse is what /login returns when the user has
-// an active primary factor. The `pending_token` is a short-lived
-// opaque handle (5 min, single-use after N wrong codes) that the
-// client passes to /auth/mfa/verify together with the chosen factor
-// and code. No cookie is set at this stage.
-export interface LoginMfaRequiredResponse {
-  status: 'mfa_required';
-  pending_token: string;
-  expires_at: string;
-  factors: LoginFactorDescriptor[];
-}
-
-// LoginResponse is the discriminated union the login page branches
-// on. Prefer pattern-matching on `status` over testing field presence.
-export type LoginResponse = LoginSuccessResponse | LoginMfaRequiredResponse;
-
-// MFA verify step-two. Polymorphic across factor types: `code`
-// carries TOTP/backup-code strings; `webauthn_response` carries the
-// JSON from `navigator.credentials.get()`. Exactly one of the two
-// is set.
-export interface MfaVerifyRequest {
-  pending_token: string;
-  factor_id: number;
-  code?: string;
-  webauthn_response?: unknown;
-}
-
-// MFA challenge step-one (WebAuthn only). Fetches the
-// PublicKeyCredentialRequestOptions the browser needs before it can
-// run `navigator.credentials.get()`.
-export interface MfaChallengeRequest {
-  pending_token: string;
-  factor_id: number;
-}
-
-export interface MfaChallengeResponse {
-  request_options: unknown;
-}
-
-// Factor types — matches the backend `FactorType*` constants.
-export type FactorType = 'totp' | 'backup_codes' | 'webauthn';
-
-// Factor is the authenticated-view factor shape. Includes metadata
-// the Settings UI needs to show the user's enrolment state (created,
-// last used, remaining backup codes, activation state).
-export interface FactorResponse {
-  id: number;
-  type: FactorType;
-  label?: string;
-  enabled_at?: string;
-  last_used_at?: string;
-  created_at: string;
-  activated: boolean;
-  backup_codes_remaining?: number;
-  // Enrollment is populated only on the initial POST response and is
-  // factor-type specific: TOTPEnrollmentPayload for TOTP,
-  // WebAuthnEnrollmentPayload for WebAuthn. Parse based on factor
-  // type.
-  enrollment?: TOTPEnrollmentPayload | WebAuthnEnrollmentPayload;
-}
-
-export interface TOTPEnrollmentPayload {
-  secret: string;
-  otpauth_uri: string;
-}
-
-// WebAuthnEnrollmentPayload wraps the raw
-// PublicKeyCredentialCreationOptions JSON from the go-webauthn
-// library. The client hands it (after decoding base64url-ish fields)
-// straight to `navigator.credentials.create({publicKey: options})`.
-export interface WebAuthnEnrollmentPayload {
-  creation_options: unknown;
-}
-
-export interface FactorListResponse {
-  factors: FactorResponse[];
-}
-
-export interface FactorEnrolRequest {
-  type: FactorType;
-  password: string;
-  label?: string;
-}
-
-export interface FactorActivateRequest {
-  code?: string;
-  webauthn_response?: unknown;
-}
-
-// BackupCodesPayload is the one-time presentation of a set of backup
-// codes. After this response the raw codes are only known to the user.
-export interface BackupCodesPayload {
-  factor_id: number;
-  codes: string[];
-}
-
-export interface FactorActivateResponse {
-  activated: boolean;
-  backup_codes?: BackupCodesPayload;
-}
-
-export interface FactorRegenerateRequest {
-  password: string;
-}
-
-export interface FactorDeleteRequest {
-  password: string;
-  code?: string;
-}
-
-export interface FactorLabelUpdateRequest {
-  label?: string;
-}
-
-export interface ErrorResponse {
-  code: string;
-  message: string;
-}
-
-export interface MessageResponse {
-  message: string;
-}
-
-// GovernmentFunding
-export interface GovernmentFunding {
-  id: number;
-  name: string;
-  state: string;
-  created_at: string;
-  updated_at: string;
-  periods?: GovernmentFundingPeriod[];
-}
-
-export interface GovernmentFundingPeriod {
-  id: number;
-  government_funding_id: number;
-  from: string;
-  to?: string | null;
-  full_time_weekly_hours: number;
-  comment?: string;
-  created_at: string;
-  properties?: GovernmentFundingProperty[];
-}
-
-export interface GovernmentFundingProperty {
-  id: number;
-  period_id: number;
-  key: string;
-  value: string;
-  label: string;
-  payment: number;
-  requirement: number;
-  min_age?: number | null;
-  max_age?: number | null;
-  comment?: string;
-  apply_to_all_contracts?: boolean;
-  created_at: string;
-}
-
-export interface GovernmentFundingCreateRequest {
-  name: string;
-  state: string;
-}
-
-export interface GovernmentFundingUpdateRequest {
-  name?: string;
-}
-
-export interface GovernmentFundingPeriodCreateRequest {
-  from: string;
-  to?: string | null;
-  full_time_weekly_hours: number;
-  comment?: string;
-}
-
-export interface GovernmentFundingPeriodUpdateRequest {
-  from?: string;
-  to?: string | null;
-  full_time_weekly_hours?: number;
-  comment?: string;
-}
-
-export interface GovernmentFundingPropertyCreateRequest {
-  key: string;
-  value: string;
-  label: string;
-  payment: number;
-  requirement: number;
-  min_age?: number | null;
-  max_age?: number | null;
-  comment?: string;
-  apply_to_all_contracts?: boolean;
-}
-
-export interface GovernmentFundingPropertyUpdateRequest {
-  key?: string;
-  value?: string;
-  label?: string;
-  payment?: number;
-  requirement?: number;
-  min_age?: number | null;
-  max_age?: number | null;
-  comment?: string;
-  apply_to_all_contracts?: boolean;
-}
-
-// Organization
-export interface Organization {
-  id: number;
-  name: string;
-  active: boolean;
-  state: string;
-  created_at: string;
-  created_by: string;
-  updated_at: string;
-  users?: User[];
-}
-
-export interface OrganizationCreateRequest {
-  name: string;
-  active?: boolean;
-  state: string;
-  default_section_name: string;
-}
-
-export interface OrganizationUpdateRequest {
-  name?: string;
-  active?: boolean;
-  state?: string;
-}
-
-// User
-export interface User {
-  id: number;
-  name: string;
-  email: string;
-  active: boolean;
-  is_superadmin: boolean;
-  last_login?: string | null;
-  created_at: string;
-  created_by: string;
-  updated_at: string;
-  organizations?: Organization[];
-}
-
-export interface UserCreateRequest {
-  name: string;
-  email: string;
-  password: string;
-  active?: boolean;
-}
-
-export interface UserUpdateRequest {
-  name?: string;
-  email?: string;
-  active?: boolean;
-}
-
-// Person (base for Employee and Child)
-export interface Person {
-  id: number;
-  organization_id: number;
-  organization?: Organization;
-  first_name: string;
-  last_name: string;
-  gender: Gender;
-  birthdate: string;
-  created_at: string;
-  updated_at: string;
-}
-
-// Employee
-export interface Employee extends Person {
-  contracts?: EmployeeContract[];
-}
-
-export interface EmployeeContract {
-  id: number;
-  employee_id: number;
-  from: string;
-  to?: string | null;
-  section_id: number;
-  section_name?: string | null;
-  staff_category: string;
-  grade: string;
-  step: number;
-  weekly_hours: number;
-  payplan_id: number;
-  properties?: ContractProperties;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface EmployeeCreateRequest {
-  organization_id: number;
-  first_name: string;
-  last_name: string;
-  gender: Gender;
-  birthdate: string;
-}
-
-export interface EmployeeUpdateRequest {
-  first_name?: string;
-  last_name?: string;
-  gender?: Gender;
-  birthdate?: string;
-}
-
-export interface EmployeeContractCreateRequest {
-  from: string;
-  to?: string | null;
-  section_id: number;
-  staff_category: string;
-  grade: string;
-  step: number;
-  weekly_hours: number;
-  payplan_id: number;
-  properties?: ContractProperties;
-}
-
-export interface EmployeeContractUpdateRequest {
-  from?: string;
-  to?: string | null;
-  section_id?: number | null;
-  staff_category?: string;
-  grade?: string;
-  step?: number;
-  weekly_hours?: number;
-  payplan_id?: number;
-}
-
-// Section
-export interface Section {
-  id: number;
-  organization_id: number;
-  name: string;
-  is_default: boolean;
-  min_age_months?: number | null;
-  max_age_months?: number | null;
-  created_at: string;
-  created_by: string;
-  updated_at: string;
-}
-
-export interface SectionCreateRequest {
-  name: string;
-  min_age_months?: number | null;
-  max_age_months?: number | null;
-}
-
-export interface SectionUpdateRequest {
-  name?: string;
-  min_age_months?: number | null;
-  max_age_months?: number | null;
-}
-
-// Child
-export interface Child extends Person {
-  vouchers?: string[];
-  contracts?: ChildContract[];
-}
-
-export interface VoucherSuggestion {
-  voucher_number: string;
-  bill_child_name: string;
-  bill_first_name: string;
-  bill_last_name: string;
-  bill_birth_date: string;
-  similarity: number;
-  bill_from: string;
-}
-
-export interface ChildWithoutVoucherResponse extends Child {
-  suggestions?: VoucherSuggestion[];
-}
-
-// ContractProperties is a map of property keys to values.
-// Values can be strings (scalar) or string arrays.
-// Example: {"care_type": "ganztag", "supplements": ["ndh", "mss"]}
-export type ContractProperties = Record<string, string | string[]>;
-
-export interface ChildContract {
-  id: number;
-  child_id: number;
-  from: string;
-  to?: string | null;
-  section_id: number;
-  section_name?: string | null;
-  properties?: ContractProperties;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ChildCreateRequest {
-  organization_id: number;
-  first_name: string;
-  last_name: string;
-  gender: Gender;
-  birthdate: string;
-}
-
-export interface ChildUpdateRequest {
-  first_name?: string;
-  last_name?: string;
-  gender?: Gender;
-  birthdate?: string;
-}
-
-export interface ChildContractCreateRequest {
-  from: string;
-  to?: string | null;
-  section_id: number;
-  properties?: ContractProperties;
-}
-
-export interface ChildContractUpdateRequest {
-  from?: string;
-  to?: string | null;
-  section_id?: number | null;
-  properties?: ContractProperties;
-}
-
-// Batch contract update types (used for timeline boundary adjustments)
-export interface ContractBatchUpdateItem {
-  id: number;
-  from?: string;
-  to?: string | null;
-}
-
-export interface ContractBatchUpdateRequest {
-  updates: ContractBatchUpdateItem[];
-}
-
-// Pagination response wrapper
-export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  page: number;
-  limit: number;
-  total_pages: number;
-}
-
-// Pagination params for API calls (index signature allows arbitrary filter params)
-export interface PaginationParams {
-  page?: number;
-  limit?: number;
-  [key: string]: string | number | boolean | undefined;
-}
-
-export const DEFAULT_PAGE_SIZE = 30;
-
-/** Fetch limit for lookup/dropdown data (sections, pay plans, etc.) where all items are needed. */
-export const LOOKUP_FETCH_LIMIT = 100;
-
-/** Valid state (Bundesland) values. Must match the backend's models.ValidStates. */
-export const VALID_STATES = ['berlin'] as const;
-export type ValidState = (typeof VALID_STATES)[number];
-
-// Dashboard stats
-export interface DashboardStats {
-  total_organizations: number;
-  total_employees: number;
-  total_children: number;
-  total_users: number;
-}
-
-// User-Organization membership response
-export interface UserOrganizationResponse {
-  user_id: number;
-  organization_id: number;
-  role: Role;
-  created_at: string;
-  created_by: string;
-  organization?: Organization;
-}
-
-// User membership for memberships endpoint
-export interface UserMembership {
-  user_id: number;
-  organization_id: number;
-  role: Role;
-  organization?: Organization;
-}
-
-// Response for user memberships
-export interface UserMembershipsResponse {
-  memberships: UserMembership[];
-}
-
-// A single session row returned by /me/sessions.
-export interface UserSession {
-  id: string;
-  created_at: string;
-  expires_at: string;
-  created_ip: string;
-  created_user_agent: string;
-  current: boolean;
-}
-
-export interface UserSessionsResponse {
-  sessions: UserSession[];
-}
-
-// Request to add user to organization
-export interface UserAddOrganizationRequest {
-  organization_id: number;
-  role?: Role;
-}
-
-// Request to update user's role in an organization
-export interface UserOrganizationRoleUpdateRequest {
-  role: Role;
-}
-
-// Request to set superadmin status
-export interface SetSuperAdminRequest {
-  is_superadmin: boolean;
-}
-
-// Child funding calculation
-export interface ChildFundingMatchedProp {
-  key: string;
-  value: string;
-}
-
-export interface ChildFundingResponse {
-  child_id: number;
-  child_name: string;
-  age: number;
-  funding: number;
-  requirement: number;
-  matched_properties: ChildFundingMatchedProp[];
-  unmatched_properties: ChildFundingMatchedProp[];
-}
-
-export interface ChildrenFundingResponse {
-  date: string;
-  weekly_hours_basis: number;
-  children: ChildFundingResponse[];
-}
-
-// Age distribution
-export interface AgeDistributionResponse {
-  date: string;
-  total_count: number;
-  distribution: AgeDistributionBucket[];
-}
-
-export interface AgeDistributionBucket {
-  age_label: string; // e.g., "0", "1", "2", "3", "4", "5", "6+"
-  min_age: number;
-  max_age?: number | null; // null for open-ended (6+)
-  count: number;
-  male_count: number;
-  female_count: number;
-  diverse_count: number;
-}
-
-// PayPlan (organization-scoped salary tables)
-export interface PayPlan {
-  id: number;
-  organization_id: number;
-  name: string;
-  created_at: string;
-  updated_at: string;
-  periods?: PayPlanPeriod[];
-  total_periods?: number;
-}
-
-export interface PayPlanPeriod {
-  id: number;
-  payplan_id: number;
-  from: string;
-  to?: string | null;
-  weekly_hours: number;
-  employer_contribution_rate: number; // hundredths of percent: 2200 = 22.00%
-  created_at: string;
-  updated_at: string;
-  entries?: PayPlanEntry[];
-}
-
-export interface PayPlanEntry {
-  id: number;
-  period_id: number;
-  grade: string;
-  step: number;
-  monthly_amount: number; // cents
-  step_min_years?: number | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface PayPlanCreateRequest {
-  name: string;
-}
-
-export interface PayPlanUpdateRequest {
-  name?: string;
-}
-
-export interface PayPlanPeriodCreateRequest {
-  from: string;
-  to?: string | null;
-  weekly_hours: number;
-  employer_contribution_rate: number;
-}
-
-export interface PayPlanPeriodUpdateRequest {
-  from?: string;
-  to?: string | null;
-  weekly_hours?: number;
-  employer_contribution_rate?: number;
-}
-
-export interface PayPlanEntryCreateRequest {
-  grade: string;
-  step: number;
-  monthly_amount: number;
-  step_min_years?: number | null;
-}
-
-export interface PayPlanEntryUpdateRequest {
-  grade?: string;
-  step?: number;
-  monthly_amount?: number;
-  step_min_years?: number | null;
-}
-
-// BudgetItem (organization-scoped income/expense categories)
-export interface BudgetItem {
-  id: number;
-  organization_id: number;
-  name: string;
-  category: 'income' | 'expense';
-  per_child: boolean;
-  active_amount_cents?: number | null;
-  entries?: BudgetItemEntry[];
-  created_at: string;
-  updated_at: string;
-}
-
-export interface BudgetItemEntry {
-  id: number;
-  budget_item_id: number;
-  from: string;
-  to?: string | null;
-  amount_cents: number;
-  notes?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface BudgetItemCreateRequest {
-  name: string;
-  category: string;
-  per_child: boolean;
-}
-
-export interface BudgetItemUpdateRequest {
-  name?: string;
-  category?: string;
-  per_child?: boolean;
-}
-
-export interface BudgetItemEntryCreateRequest {
-  from: string;
-  to?: string | null;
-  amount_cents: number;
-  notes?: string;
-}
-
-export interface BudgetItemEntryUpdateRequest {
-  from: string;
-  to?: string | null;
-  amount_cents: number;
-  notes?: string;
-}
-
-// Step Promotions
-export interface StepPromotion {
-  employee_id: number;
-  employee_name: string;
-  current_step: number;
-  eligible_step: number;
-  years_of_service: number;
-  service_start: string;
-  grade: string;
-  current_amount: number;
-  new_amount: number;
-  monthly_cost_delta: number;
-  payplan_id: number;
-  payplan_name: string;
-}
-
-export interface StepPromotionsResponse {
-  date: string;
-  total_monthly_cost_delta: number;
-  promotions: StepPromotion[];
-}
-
-// Financial statistics
-export interface FinancialBudgetItemDetail {
-  name: string;
-  category: string;
-  amount_cents: number;
-}
-
-export interface FinancialFundingDetail {
-  key: string;
-  value: string;
-  label: string;
-  amount_cents: number;
-}
-
-export interface FinancialSalaryDetail {
-  staff_category: string;
-  gross_salary: number;
-  employer_costs: number;
-}
-
-export interface FinancialDataPoint {
-  date: string;
-  funding_income: number;
-  gross_salary: number;
-  employer_costs: number;
-  budget_income: number;
-  budget_expenses: number;
-  total_income: number;
-  total_expenses: number;
-  balance: number;
-  actual_funding?: number | null;
-  actual_funding_regular?: number | null;
-  actual_funding_correction?: number | null;
-  child_count: number;
-  staff_count: number;
-  budget_item_details?: FinancialBudgetItemDetail[];
-  funding_details?: FinancialFundingDetail[];
-  salary_details?: FinancialSalaryDetail[];
-}
-
-/**
- * Per-row, non-fatal data-quality issue surfaced from a statistics or
- * forecast calculation. Mirrors models.CalculationWarning on the
- * backend. Stable codes (so the UI can group/translate by Code, not
- * by Message):
- *   - "missing_pay_plan"      — contract.PayPlanID has no row in DB
- *   - "no_pay_plan_period"    — pay plan exists but no period covers
- *                                the contract date
- *   - "no_pay_plan_entry"     — period exists but the (grade, step)
- *                                isn't in its entries
- * The salary for that employee in that month is excluded from the
- * totals, so the user sees a smaller number than reality. Surfacing
- * the warning is the only way the user can tell why.
- */
-export interface CalculationWarning {
-  code: string;
-  message: string;
-  employee_id?: number;
-  contract_id?: number;
-  pay_plan_id?: number;
-  grade?: string;
-  step?: number;
-  date?: string;
-}
-
-export interface FinancialResponse {
-  data_points: FinancialDataPoint[];
-  warnings?: CalculationWarning[];
-}
-
-// Staffing hours statistics
-export interface StaffingHoursDataPoint {
-  date: string;
-  required_hours: number;
-  available_hours: number;
-  child_count: number;
-  staff_count: number;
-}
-
-export interface StaffingHoursResponse {
-  data_points: StaffingHoursDataPoint[];
-}
-
-// Occupancy matrix statistics
-export interface OccupancyAgeGroup {
-  label: string;
-  min_age: number;
-  max_age: number;
-}
-
-export interface OccupancySupplementType {
-  key: string;
-  value: string;
-  label: string;
-}
-
-export interface OccupancyDataPoint {
-  date: string;
-  total: number;
-  by_age_and_care_type: Record<string, Record<string, number>>;
-  by_supplement: Record<string, number>;
-}
-
-export interface OccupancyCareType {
-  value: string;
-  label: string;
-}
-
-export interface OccupancyResponse {
-  age_groups: OccupancyAgeGroup[];
-  care_types: OccupancyCareType[];
-  supplement_types: OccupancySupplementType[];
-  data_points: OccupancyDataPoint[];
-}
-
-// Employee staffing hours (per-employee breakdown)
-export interface EmployeeStaffingHoursRow {
-  employee_id: number;
-  first_name: string;
-  last_name: string;
-  staff_category: string;
-  monthly_hours: number[];
-}
-
-export interface EmployeeStaffingHoursResponse {
-  dates: string[];
-  employees: EmployeeStaffingHoursRow[];
-}
-
-// Child Attendance
-export type ChildAttendanceStatus = 'present' | 'absent' | 'sick' | 'vacation';
-
-export interface ChildAttendanceResponse {
-  id: number;
-  child_id: number;
-  child_name?: string;
-  organization_id: number;
-  date: string;
-  check_in_time?: string | null;
-  check_out_time?: string | null;
-  status: ChildAttendanceStatus;
-  note?: string;
-  recorded_by: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ChildAttendanceCreateRequest {
-  date: string;
-  status: ChildAttendanceStatus;
-  check_in_time?: string | null;
-  note?: string;
-}
-
-export interface ChildAttendanceUpdateRequest {
-  status?: ChildAttendanceStatus;
-  check_in_time?: string | null;
-  check_out_time?: string | null;
-  note?: string;
-}
-
-export interface ChildAttendanceDailySummaryResponse {
-  date: string;
-  total_children: number;
-  present: number;
-  absent: number;
-  sick: number;
-  vacation: number;
-}
-
-// Government Funding Bill (ISBJ upload)
-export interface GovernmentFundingBillPayment {
-  key: string;
-  value: string;
-  amount: number;
-}
-
-export interface GovernmentFundingBillRow {
-  total_row_amount: number;
-  amounts: GovernmentFundingBillPayment[];
-}
-
-export interface GovernmentFundingBillChild {
-  voucher_number: string;
-  child_name: string;
-  birth_date: string;
-  district: number;
-  total_amount: number;
-  rows: GovernmentFundingBillRow[];
-  child_id?: number;
-  contract_id?: number;
-  matched: boolean;
-}
-
-export interface GovernmentFundingBillResponse {
-  id: number;
-  facility_name: string;
-  facility_total: number;
-  contract_booking: number;
-  correction_booking: number;
-  children_count: number;
-  matched_count: number;
-  unmatched_count: number;
-  surcharges: GovernmentFundingBillPayment[];
-  children: GovernmentFundingBillChild[];
-}
-
-export interface GovernmentFundingBillPeriodListItem {
-  id: number;
-  from: string;
-  to: string;
-  file_name: string;
-  facility_name: string;
-  facility_total: number;
-  contract_booking: number;
-  correction_booking: number;
-  children_count: number;
-  created_at: string;
-}
-
-export interface GovernmentFundingBillPeriodResponse {
-  id: number;
-  organization_id: number;
-  from: string;
-  to: string;
-  file_name: string;
-  file_sha256: string;
-  facility_name: string;
-  facility_total: number;
-  contract_booking: number;
-  correction_booking: number;
-  children_count: number;
-  matched_count: number;
-  unmatched_count: number;
-  surcharges: GovernmentFundingBillPayment[];
-  children: GovernmentFundingBillChild[];
-  created_by: number;
-  created_at: string;
-}
-
-// Funding Bill Comparison
-export type MismatchType = 'missing' | 'additional' | 'different';
-
-export interface FundingComparisonAmount {
-  key: string;
-  value: string;
-  label: string;
-  bill_amount: number | null;
-  calculated_amount: number | null;
-  difference: number;
-  mismatch?: MismatchType;
-}
-
-export interface BillAppearance {
-  bill_id: number;
-  bill_from: string;
-  facility_name: string;
-}
-
-export interface FundingComparisonChild {
-  voucher_number: string;
-  child_name: string;
-  birth_date?: string;
-  child_id?: number;
-  age?: number;
-  bill_total: number;
-  correction_total: number;
-  calculated_total?: number;
-  difference?: number;
-  status: 'match' | 'difference' | 'bill_only' | 'calc_only';
-  properties: FundingComparisonAmount[];
-  bill_appearances?: BillAppearance[];
-  contract_from?: string;
-  contract_to?: string;
-}
-
-export interface FundingComparisonResponse {
-  bill_id: number;
-  bill_from: string;
-  bill_to: string;
-  facility_name: string;
-  bill_total: number;
-  correction_total: number;
-  calculated_total: number;
-  difference: number;
-  children_count: number;
-  match_count: number;
-  difference_count: number;
-  bill_only_count: number;
-  bill_only_amount: number;
-  calc_only_count: number;
-  calc_only_amount: number;
-  children: FundingComparisonChild[];
-}
-
-export interface FundingComparisonCategorySummary {
-  category: string;
-  total_amount: number;
-  child_count: number;
-  actionable: boolean;
-}
-
-export interface FundingComparisonIssueSummary {
-  voucher_number: string;
-  child_name: string;
-  child_id?: number;
-  category: string;
-  issue_type?: string;
-  description: string;
-  property_key?: string;
-  calc_value?: string;
-  bill_value?: string;
-  amount_per_month: number;
-  month_count: number;
-  total_amount: number;
-  actionable: boolean;
-}
-
-export interface FundingComparisonSummary {
-  total_billed: number;
-  total_calculated: number;
-  total_difference: number;
-  total_corrections: number;
-  month_count: number;
-  categories: FundingComparisonCategorySummary[];
-  issues: FundingComparisonIssueSummary[];
-}
-
-export interface FundingComparisonWrappedResponse {
-  comparisons: FundingComparisonResponse[];
-  summary: FundingComparisonSummary;
-}
-
-// Per-child billing history
-export interface ChildBillingHistoryEntry {
-  bill_id: number;
-  bill_from: string;
-  bill_to: string;
-  facility_name: string;
-  voucher_number: string;
-  child_name: string;
-  birth_date: string;
-  age?: number;
-  bill_total: number;
-  correction_total: number;
-  calculated_total?: number;
-  difference?: number;
-  status: 'match' | 'difference' | 'bill_only' | 'no_contract' | 'no_funding_config';
-  running_difference: number;
-  properties: FundingComparisonAmount[];
-  contract_id?: number;
-}
-
-export interface ChildBillingHistoryResponse {
-  child_id: number;
-  child_name: string;
-  birthdate: string;
-  voucher_numbers: string[];
-  total_billed: number;
-  total_calculated: number;
-  total_difference: number;
-  entries: ChildBillingHistoryEntry[];
-}
-
-// Bulk billing summary (for children list)
-export interface ChildBillingSummaryEntry {
-  child_id: number;
-  total_billed: number;
-  total_calculated: number;
-  total_difference: number;
-  bill_count: number;
-  contract_months: number;
-}
-
-export interface ChildrenBillingSummaryResponse {
-  children: ChildBillingSummaryEntry[];
-}
-
-// Contract properties distribution
-export interface ContractPropertyCount {
-  key: string;
-  value: string;
-  label?: string;
-  count: number;
-}
-
-export interface ContractPropertiesDistributionResponse {
-  date: string;
-  total_children: number;
-  properties: ContractPropertyCount[];
-}
-
-// Forecast / Planning overlay types
-// These mirror the backend models.Child / models.Employee shapes with string dates.
-
-export interface ForecastChildContract {
-  child_id?: number;
-  from: string;
-  to?: string | null;
-  section_id: number;
-  properties?: ContractProperties;
-}
-
-export interface ForecastChild {
-  first_name: string;
-  last_name: string;
-  gender: string;
-  birthdate: string;
-  contracts: ForecastChildContract[];
-}
-
-export interface ForecastEmployeeContract {
-  employee_id?: number;
-  from: string;
-  to?: string | null;
-  section_id: number;
-  staff_category: string;
-  grade?: string;
-  step?: number;
-  weekly_hours: number;
-  pay_plan_id: number;
-}
-
-export interface ForecastEmployee {
-  first_name: string;
-  last_name: string;
-  gender: string;
-  birthdate: string;
-  contracts: ForecastEmployeeContract[];
-}
-
-export interface ForecastRequest {
-  from?: string | null;
-  to?: string | null;
-  section_id?: number | null;
-  add_children?: ForecastChild[];
-  remove_child_ids?: number[];
-  add_child_contracts?: ForecastChildContract[];
-  add_employees?: ForecastEmployee[];
-  remove_employee_ids?: number[];
-  add_employee_contracts?: ForecastEmployeeContract[];
-}
-
-export interface ForecastResponse {
-  financials?: FinancialResponse;
-  staffing_hours?: StaffingHoursResponse;
-  occupancy?: OccupancyResponse;
-  employee_staffing_hours?: EmployeeStaffingHoursResponse;
-  /**
-   * Union of per-row warnings from every embedded calculation (today
-   * only Financials emits any). See CalculationWarning.
-   */
-  warnings?: CalculationWarning[];
-}
-
-// AuditLog
+// Public API types barrel.
 //
-// Mirrors internal/models/audit.go. The backend-side list is the source of
-// truth; keep this in lockstep when new actions are added server-side.
-export type AuditAction =
-  | 'login'
-  | 'login_failed'
-  | 'logout'
-  | 'superadmin_grant'
-  | 'superadmin_revoke'
-  | 'user_create'
-  | 'user_update'
-  | 'user_delete'
-  | 'user_add_to_org'
-  | 'user_remove_from_org'
-  | 'role_change'
-  | 'employee_delete'
-  | 'child_delete'
-  | 'org_create'
-  | 'org_delete'
-  | 'password_reset'
-  | 'password_change'
-  | 'password_change_failed'
-  // The generic "<resource>_create|update|delete|export" variants are also
-  // emitted server-side; callers should treat `action` as a string they may
-  // not have typed yet, so we keep the union open.
-  | (string & {});
+// All API request/response shapes are aliased from `./generated.ts`
+// (auto-generated by `make api-types` from `docs/openapi.json`,
+// which is generated from the Go DTOs by `make swagger-docs`).
+// Do NOT edit shapes here; edit the Go struct or its swaggo annotations
+// and re-run the generator.
+//
+// Frontend-only helpers (literal unions, constants, view composites)
+// live in `./types.handwritten.ts` and are re-exported below.
+//
+// Naming policy: this file uses the historic frontend names (e.g.
+// `User` instead of `UserResponse`, `MfaVerifyRequest` instead of
+// `MFAVerifyRequest`) so the migration to generated types stays
+// invisible to consumers. New code should prefer the alias names
+// declared here.
 
-export interface AuditLogResponse {
-  id: number;
-  timestamp: string;
-  user_id?: number;
-  user_email?: string;
-  action: AuditAction;
-  resource_type?: string;
-  resource_id?: number;
-  organization_id?: number;
-  ip_address?: string;
-  details?: string;
-  success: boolean;
-}
+import type { components } from './generated';
+import type {
+  Gender,
+  Role,
+  FactorType,
+  ChildAttendanceStatus,
+  ContractProperties,
+} from './types.handwritten';
 
-export interface AuditLogListParams {
-  action?: string;
-  user_id?: number;
-  from?: string; // YYYY-MM-DD
-  to?: string; // YYYY-MM-DD
-  page?: number;
-  limit?: number;
-}
+type S = components['schemas'];
+
+// Helper that overrides specific fields on a generated schema with
+// stricter types (typically the literal-string unions above). Used to
+// re-narrow what swaggo emits as `string`.
+//
+// `Override` keeps the field required. `OverrideOptional` keeps it
+// optional. We can't infer optionality from T because TS spreads Omit
+// in a way that loses the `?` modifier — pass the right helper instead.
+type Override<T, K extends keyof T, V> = Omit<T, K> & { [P in K]: V };
+type OverrideOptional<T, K extends keyof T, V> = Omit<T, K> & { [P in K]?: V };
+
+// ============================================================
+// Auth + sessions
+// ============================================================
+
+export type LoginRequest = S['LoginRequest'];
+export type LoginFactorDescriptor = S['LoginFactorDescriptor'];
+export type MfaVerifyRequest = S['MFAVerifyRequest'];
+export type MfaChallengeRequest = S['MFAChallengeRequest'];
+export type MfaChallengeResponse = S['MFAChallengeResponse'];
+
+export type FactorResponse = Override<S['FactorResponse'], 'type', FactorType>;
+export type FactorListResponse = S['FactorListResponse'];
+export type FactorEnrolRequest = S['FactorEnrollRequest'];
+export type FactorActivateRequest = S['FactorActivateRequest'];
+export type FactorActivateResponse = S['FactorActivateResponse'];
+export type FactorRegenerateRequest = S['FactorRegenerateRequest'];
+export type FactorDeleteRequest = S['FactorDeleteRequest'];
+export type FactorLabelUpdateRequest = S['FactorLabelUpdateRequest'];
+export type TOTPEnrollmentPayload = S['TOTPEnrollmentPayload'];
+export type WebAuthnEnrollmentPayload = S['WebAuthnEnrollmentPayload'];
+export type BackupCodesPayload = S['BackupCodesPayload'];
+
+export type ErrorResponse = S['ErrorResponse'];
+export type MessageResponse = S['MessageResponse'];
+
+// ============================================================
+// Organizations + users
+// ============================================================
+
+export type Organization = S['OrganizationResponse'];
+export type OrganizationCreateRequest = S['OrganizationCreateRequest'];
+export type OrganizationUpdateRequest = S['OrganizationUpdateRequest'];
+
+// User and create/update requests don't carry a role — role is per-membership
+// (UserMembership, UserOrganizationResponse). The hand-written types added
+// a role field incorrectly; consumers that read it relied on a field the
+// backend never returns.
+export type User = S['UserResponse'];
+export type UserCreateRequest = S['UserCreateRequest'];
+export type UserUpdateRequest = S['UserUpdateRequest'];
+export type UserOrganizationResponse = Override<S['UserOrganizationResponse'], 'role', Role>;
+export type UserMembership = Override<S['UserMembership'], 'role', Role>;
+export type UserMembershipsResponse = S['UserMembershipsResponse'];
+export type UserSession = S['UserSessionResponse'];
+export type UserSessionsResponse = S['UserSessionsResponse'];
+export type UserAddOrganizationRequest = Override<S['UserAddOrganizationRequest'], 'role', Role>;
+export type UserOrganizationRoleUpdateRequest = Override<
+  S['UserOrganizationRoleUpdateRequest'],
+  'role',
+  Role
+>;
+export type SetSuperAdminRequest = S['UserSetSuperAdminRequest'];
+
+// ============================================================
+// Employee / Child (no shared "Person" type — the spec inlines the
+// shared fields into each concrete schema instead of exposing the
+// embedded Go struct)
+// ============================================================
+
+export type Employee = Override<S['EmployeeResponse'], 'gender', Gender>;
+export type EmployeeContract = S['EmployeeContractResponse'];
+export type EmployeeCreateRequest = Override<S['EmployeeCreateRequest'], 'gender', Gender>;
+export type EmployeeUpdateRequest = S['EmployeeUpdateRequest'];
+export type EmployeeContractCreateRequest = S['EmployeeContractCreateRequest'];
+export type EmployeeContractUpdateRequest = S['EmployeeContractUpdateRequest'];
+
+export type Child = Override<S['ChildResponse'], 'gender', Gender>;
+export type ChildContract = OverrideOptional<
+  S['ChildContractResponse'],
+  'properties',
+  ContractProperties
+>;
+export type ChildCreateRequest = Override<S['ChildCreateRequest'], 'gender', Gender>;
+export type ChildUpdateRequest = S['ChildUpdateRequest'];
+export type ChildContractCreateRequest = OverrideOptional<
+  S['ChildContractCreateRequest'],
+  'properties',
+  ContractProperties
+>;
+export type ChildContractUpdateRequest = OverrideOptional<
+  S['ChildContractUpdateRequest'],
+  'properties',
+  ContractProperties
+>;
+export type ContractBatchUpdateItem = S['ChildContractBatchUpdateEntry'];
+export type ContractBatchUpdateRequest = S['ChildContractBatchUpdateRequest'];
+
+export type ChildWithoutVoucherResponse = S['ChildWithoutVoucherResponse'];
+export type VoucherSuggestion = S['ChildVoucherCreateRequest'];
+
+// ============================================================
+// Sections
+// ============================================================
+
+export type Section = S['SectionResponse'];
+export type SectionCreateRequest = S['SectionCreateRequest'];
+export type SectionUpdateRequest = S['SectionUpdateRequest'];
+
+// ============================================================
+// Pay plans + budget items
+//
+// Each resource has two shapes:
+//   - List shape (PayPlan, BudgetItem) — returned by GET /…/list endpoints
+//   - Detail shape (PayPlanDetail, BudgetItemDetail) — returned by GET /…/{id}
+//     and includes nested children (periods, entries).
+// ============================================================
+
+export type PayPlan = S['PayPlanResponse'];
+export type PayPlanDetail = S['PayPlanDetailResponse'];
+export type PayPlanPeriod = S['PayPlanPeriodResponse'];
+export type PayPlanEntry = S['PayPlanEntryResponse'];
+export type PayPlanCreateRequest = S['PayPlanCreateRequest'];
+export type PayPlanUpdateRequest = S['PayPlanUpdateRequest'];
+export type PayPlanPeriodCreateRequest = S['PayPlanPeriodCreateRequest'];
+export type PayPlanPeriodUpdateRequest = S['PayPlanPeriodUpdateRequest'];
+export type PayPlanEntryCreateRequest = S['PayPlanEntryCreateRequest'];
+export type PayPlanEntryUpdateRequest = S['PayPlanEntryUpdateRequest'];
+
+export type BudgetItem = S['BudgetItemResponse'];
+export type BudgetItemDetail = S['BudgetItemDetailResponse'];
+export type BudgetItemEntry = S['BudgetItemEntryResponse'];
+export type BudgetItemCreateRequest = S['BudgetItemCreateRequest'];
+export type BudgetItemUpdateRequest = S['BudgetItemUpdateRequest'];
+export type BudgetItemEntryCreateRequest = S['BudgetItemEntryCreateRequest'];
+export type BudgetItemEntryUpdateRequest = S['BudgetItemEntryUpdateRequest'];
+
+// ============================================================
+// Government funding
+//
+// Same list/detail split as pay plans — GET /government-fundings returns
+// the list shape, GET /government-fundings/{id} returns the detail shape
+// with nested periods and total_periods count.
+// ============================================================
+
+export type GovernmentFunding = S['GovernmentFundingResponse'];
+export type GovernmentFundingDetail = S['GovernmentFundingDetailResponse'];
+// `GovernmentFundingPeriod` is the rich shape (with nested `properties`)
+// returned inside GovernmentFundingDetail. The list endpoint returns the
+// thinner `GovernmentFundingPeriodResponse` shape (no properties); we
+// don't currently need a frontend alias for that.
+export type GovernmentFundingPeriod = S['GovernmentFundingPeriod'];
+export type GovernmentFundingProperty = S['GovernmentFundingPropertyResponse'];
+export type GovernmentFundingCreateRequest = S['GovernmentFundingCreateRequest'];
+export type GovernmentFundingUpdateRequest = S['GovernmentFundingUpdateRequest'];
+export type GovernmentFundingPeriodCreateRequest = S['GovernmentFundingPeriodCreateRequest'];
+export type GovernmentFundingPeriodUpdateRequest = S['GovernmentFundingPeriodUpdateRequest'];
+export type GovernmentFundingPropertyCreateRequest = S['GovernmentFundingPropertyCreateRequest'];
+export type GovernmentFundingPropertyUpdateRequest = S['GovernmentFundingPropertyUpdateRequest'];
+
+// ============================================================
+// Government funding bills
+// ============================================================
+
+export type GovernmentFundingBillPayment = S['GovernmentFundingBillAmount'];
+export type GovernmentFundingBillRow = S['GovernmentFundingBillRowResponse'];
+export type GovernmentFundingBillChild = S['GovernmentFundingBillChildResponse'];
+export type GovernmentFundingBillResponse = S['GovernmentFundingBillResponse'];
+export type GovernmentFundingBillPeriodListItem = S['GovernmentFundingBillPeriodListResponse'];
+export type GovernmentFundingBillPeriodResponse = S['GovernmentFundingBillPeriodResponse'];
+
+// ============================================================
+// Funding comparison (per-bill vs computed amounts)
+// ============================================================
+
+export type FundingComparisonAmount = S['FundingComparisonAmount'];
+export type BillAppearance = S['BillAppearance'];
+export type FundingComparisonChild = S['FundingComparisonChild'];
+export type FundingComparisonResponse = S['FundingComparisonResponse'];
+export type FundingComparisonCategorySummary = S['FundingComparisonCategorySummary'];
+export type FundingComparisonIssueSummary = S['FundingComparisonIssueSummary'];
+export type FundingComparisonSummary = S['FundingComparisonSummary'];
+export type FundingComparisonWrappedResponse = S['FundingComparisonWrappedResponse'];
+
+// ============================================================
+// Statistics: financial / staffing / occupancy / age
+// ============================================================
+
+export type FinancialBudgetItemDetail = S['FinancialBudgetItemDetail'];
+export type FinancialFundingDetail = S['FinancialFundingDetail'];
+export type FinancialSalaryDetail = S['FinancialSalaryDetail'];
+export type FinancialDataPoint = S['FinancialDataPoint'];
+export type FinancialResponse = S['FinancialResponse'];
+export type CalculationWarning = S['CalculationWarning'];
+
+export type StaffingHoursDataPoint = S['StaffingHoursDataPoint'];
+export type StaffingHoursResponse = S['StaffingHoursResponse'];
+export type EmployeeStaffingHoursRow = S['EmployeeStaffingHoursRow'];
+export type EmployeeStaffingHoursResponse = S['EmployeeStaffingHoursResponse'];
+
+export type OccupancyAgeGroup = S['OccupancyAgeGroup'];
+export type OccupancySupplementType = S['OccupancySupplementType'];
+export type OccupancyDataPoint = S['OccupancyDataPoint'];
+export type OccupancyCareType = S['OccupancyCareType'];
+export type OccupancyResponse = S['OccupancyResponse'];
+
+export type AgeDistributionResponse = S['AgeDistributionResponse'];
+export type AgeDistributionBucket = S['AgeDistributionBucket'];
+
+export type ContractPropertyCount = S['ContractPropertyCount'];
+export type ContractPropertiesDistributionResponse = S['ContractPropertiesDistributionResponse'];
+
+// Step promotions
+
+export type StepPromotion = S['StepPromotionResponse'];
+export type StepPromotionsResponse = S['StepPromotionsResponse'];
+
+// ============================================================
+// Funding for individual children (estimate / report views)
+// ============================================================
+
+export type ChildFundingMatchedProp = S['ChildFundingMatchedProp'];
+export type ChildFundingResponse = S['ChildFundingResponse'];
+export type ChildrenFundingResponse = S['ChildrenFundingResponse'];
+
+// ============================================================
+// Attendance
+// ============================================================
+
+export type ChildAttendanceResponse = Override<
+  S['ChildAttendanceResponse'],
+  'status',
+  ChildAttendanceStatus
+>;
+export type ChildAttendanceCreateRequest = Override<
+  S['ChildAttendanceCreateRequest'],
+  'status',
+  ChildAttendanceStatus
+>;
+export type ChildAttendanceUpdateRequest = OverrideOptional<
+  S['ChildAttendanceUpdateRequest'],
+  'status',
+  ChildAttendanceStatus
+>;
+export type ChildAttendanceDailySummaryResponse = S['ChildAttendanceDailySummaryResponse'];
+
+// ============================================================
+// Billing history
+// ============================================================
+
+export type ChildBillingHistoryEntry = S['ChildBillingHistoryEntryResponse'];
+export type ChildBillingHistoryResponse = S['ChildBillingHistoryResponse'];
+export type ChildBillingSummaryEntry = S['ChildBillingSummaryEntry'];
+export type ChildrenBillingSummaryResponse = S['ChildrenBillingSummaryResponse'];
+
+// ============================================================
+// Forecast
+//
+// ForecastChild/ForecastEmployee and their Contract sub-shapes are
+// defined in types.handwritten.ts — they're slim "scenario input"
+// shapes, not the full DB-level Response types. The backend's
+// POST /forecast accepts these abbreviated forms.
+// ============================================================
+
+export type ForecastRequest = S['ForecastRequest'];
+export type ForecastResponse = S['ForecastResponse'];
+
+// ============================================================
+// Audit log
+// ============================================================
+
+export type AuditLogResponse = S['AuditLogResponse'];
+
+// ============================================================
+// Re-export hand-written helpers (literal unions, constants, composites)
+// ============================================================
+
+export type {
+  Gender,
+  Role,
+  FactorType,
+  ChildAttendanceStatus,
+  MismatchType,
+  ContractProperties,
+  AuditAction,
+  ValidState,
+  PaginationParams,
+  PaginatedResponse,
+  AuditLogListParams,
+  DashboardStats,
+  ForecastChild,
+  ForecastChildContract,
+  ForecastEmployee,
+  ForecastEmployeeContract,
+} from './types.handwritten';
+export { DEFAULT_PAGE_SIZE, LOOKUP_FETCH_LIMIT, VALID_STATES } from './types.handwritten';
+
+// ============================================================
+// Login response: hand-built discriminated union
+// ============================================================
+//
+// The spec exposes both LoginResponse (status='authenticated') and
+// LoginMFARequiredResponse (status='mfa_required') as separate
+// schemas, but doesn't combine them as oneOf. We hand-roll the union
+// so callers can use `if (resp.status === 'authenticated')` narrowing.
+
+export type LoginSuccessResponse = S['LoginResponse'];
+export type LoginMfaRequiredResponse = S['LoginMFARequiredResponse'];
+export type LoginResponse = LoginSuccessResponse | LoginMfaRequiredResponse;

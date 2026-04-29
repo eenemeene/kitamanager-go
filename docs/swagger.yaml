@@ -134,6 +134,7 @@ definitions:
         example: true
         type: boolean
       timestamp:
+        format: date-time
         type: string
       user_email:
         example: admin@example.com
@@ -187,6 +188,7 @@ definitions:
         example: income
         type: string
       created_at:
+        format: date-time
         type: string
       entries:
         items:
@@ -205,6 +207,7 @@ definitions:
         example: true
         type: boolean
       updated_at:
+        format: date-time
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.BudgetItemEntryCreateRequest:
@@ -215,6 +218,7 @@ definitions:
         type: integer
       from:
         example: "2024-01-01T00:00:00Z"
+        format: date-time
         type: string
       notes:
         example: Monthly co-payment
@@ -222,6 +226,7 @@ definitions:
         type: string
       to:
         example: "2024-12-31T00:00:00Z"
+        format: date-time
         type: string
     required:
     - amount_cents
@@ -236,9 +241,11 @@ definitions:
         example: 1
         type: integer
       created_at:
+        format: date-time
         type: string
       from:
         example: "2024-01-01T00:00:00Z"
+        format: date-time
         type: string
       id:
         example: 1
@@ -248,8 +255,10 @@ definitions:
         type: string
       to:
         example: "2024-12-31T00:00:00Z"
+        format: date-time
         type: string
       updated_at:
+        format: date-time
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.BudgetItemEntryUpdateRequest:
@@ -260,6 +269,7 @@ definitions:
         type: integer
       from:
         example: "2024-01-01T00:00:00Z"
+        format: date-time
         type: string
       notes:
         example: Monthly co-payment
@@ -267,6 +277,7 @@ definitions:
         type: string
       to:
         example: "2024-12-31T00:00:00Z"
+        format: date-time
         type: string
     required:
     - amount_cents
@@ -281,6 +292,7 @@ definitions:
         example: income
         type: string
       created_at:
+        format: date-time
         type: string
       id:
         example: 1
@@ -295,6 +307,7 @@ definitions:
         example: true
         type: boolean
       updated_at:
+        format: date-time
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.BudgetItemUpdateRequest:
@@ -330,7 +343,7 @@ definitions:
       message:
         example: employee contract references unknown pay plan
         type: string
-      pay_plan_id:
+      payplan_id:
         example: 7
         type: integer
       step:
@@ -341,17 +354,23 @@ definitions:
     properties:
       birthdate:
         example: "1990-05-15"
+        format: date-time
         type: string
       contracts:
         items:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContract'
         type: array
       created_at:
+        format: date-time
         type: string
       first_name:
         example: Max
         type: string
       gender:
+        enum:
+        - male
+        - female
+        - diverse
         example: male
         type: string
       id:
@@ -366,6 +385,7 @@ definitions:
         example: 1
         type: integer
       updated_at:
+        format: date-time
         type: string
       vouchers:
         items:
@@ -376,6 +396,7 @@ definitions:
     properties:
       check_in_time:
         example: "2025-06-15T08:00:00Z"
+        format: date-time
         type: string
       date:
         description: |-
@@ -418,9 +439,11 @@ definitions:
     properties:
       check_in_time:
         example: "2025-06-15T08:00:00Z"
+        format: date-time
         type: string
       check_out_time:
         example: "2025-06-15T16:00:00Z"
+        format: date-time
         type: string
       child_id:
         example: 1
@@ -429,6 +452,7 @@ definitions:
         example: Emma Schmidt
         type: string
       created_at:
+        format: date-time
         type: string
       date:
         example: "2025-06-15"
@@ -453,15 +477,18 @@ definitions:
         example: present
         type: string
       updated_at:
+        format: date-time
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildAttendanceUpdateRequest:
     properties:
       check_in_time:
         example: "2025-06-15T08:00:00Z"
+        format: date-time
         type: string
       check_out_time:
         example: "2025-06-15T16:00:00Z"
+        format: date-time
         type: string
       note:
         example: Updated note
@@ -579,8 +606,10 @@ definitions:
         example: 1
         type: integer
       created_at:
+        format: date-time
         type: string
       from:
+        format: date-time
         type: string
       id:
         example: 1
@@ -597,14 +626,17 @@ definitions:
       section_id:
         type: integer
       to:
+        format: date-time
         type: string
       updated_at:
+        format: date-time
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildContractBatchUpdateEntry:
     properties:
       from:
         example: "2025-01-01"
+        format: date-time
         type: string
       id:
         example: 5
@@ -616,6 +648,7 @@ definitions:
         type: integer
       to:
         example: "2025-12-31"
+        format: date-time
         type: string
     required:
     - id
@@ -635,6 +668,7 @@ definitions:
     properties:
       from:
         example: "2025-01-01"
+        format: date-time
         type: string
       properties:
         $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
@@ -643,6 +677,7 @@ definitions:
         type: integer
       to:
         example: "2025-12-31"
+        format: date-time
         type: string
     required:
     - from
@@ -654,9 +689,11 @@ definitions:
         example: 1
         type: integer
       created_at:
+        format: date-time
         type: string
       from:
         example: "2025-01-01"
+        format: date-time
         type: string
       id:
         example: 1
@@ -671,14 +708,17 @@ definitions:
         type: string
       to:
         example: "2025-12-31"
+        format: date-time
         type: string
       updated_at:
+        format: date-time
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildContractUpdateRequest:
     properties:
       from:
         example: "2025-01-01"
+        format: date-time
         type: string
       properties:
         $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
@@ -687,6 +727,7 @@ definitions:
         type: integer
       to:
         example: "2025-12-31"
+        format: date-time
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildCreateRequest:
@@ -699,6 +740,10 @@ definitions:
         maxLength: 255
         type: string
       gender:
+        enum:
+        - male
+        - female
+        - diverse
         example: female
         type: string
       last_name:
@@ -715,9 +760,11 @@ definitions:
     properties:
       birthdate:
         example: "2022-05-15T00:00:00Z"
+        format: date-time
         type: string
       date:
         example: "2026-04-01T00:00:00Z"
+        format: date-time
         type: string
       properties:
         $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
@@ -764,17 +811,23 @@ definitions:
     properties:
       birthdate:
         example: "2020-03-10"
+        format: date-time
         type: string
       contracts:
         items:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractResponse'
         type: array
       created_at:
+        format: date-time
         type: string
       first_name:
         example: Emma
         type: string
       gender:
+        enum:
+        - male
+        - female
+        - diverse
         example: female
         type: string
       id:
@@ -787,6 +840,7 @@ definitions:
         example: 1
         type: integer
       updated_at:
+        format: date-time
         type: string
       vouchers:
         items:
@@ -803,6 +857,10 @@ definitions:
         maxLength: 255
         type: string
       gender:
+        enum:
+        - male
+        - female
+        - diverse
         example: female
         type: string
       last_name:
@@ -815,8 +873,10 @@ definitions:
       child_id:
         type: integer
       created_at:
+        format: date-time
         type: string
       first_seen:
+        format: date-time
         type: string
       id:
         type: integer
@@ -836,17 +896,23 @@ definitions:
     properties:
       birthdate:
         example: "2020-03-10"
+        format: date-time
         type: string
       contracts:
         items:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractResponse'
         type: array
       created_at:
+        format: date-time
         type: string
       first_name:
         example: Emma
         type: string
       gender:
+        enum:
+        - male
+        - female
+        - diverse
         example: female
         type: string
       id:
@@ -863,6 +929,7 @@ definitions:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.VoucherSuggestion'
         type: array
       updated_at:
+        format: date-time
         type: string
       vouchers:
         items:
@@ -884,6 +951,7 @@ definitions:
         type: array
       date:
         example: "2025-01-27"
+        format: date-time
         type: string
       weekly_hours_basis:
         example: 39
@@ -924,17 +992,23 @@ definitions:
     properties:
       birthdate:
         example: "1990-05-15"
+        format: date-time
         type: string
       contracts:
         items:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContract'
         type: array
       created_at:
+        format: date-time
         type: string
       first_name:
         example: Max
         type: string
       gender:
+        enum:
+        - male
+        - female
+        - diverse
         example: male
         type: string
       id:
@@ -949,16 +1023,19 @@ definitions:
         example: 1
         type: integer
       updated_at:
+        format: date-time
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.EmployeeContract:
     properties:
       created_at:
+        format: date-time
         type: string
       employee_id:
         example: 1
         type: integer
       from:
+        format: date-time
         type: string
       grade:
         example: S8a
@@ -988,8 +1065,10 @@ definitions:
         example: 3
         type: integer
       to:
+        format: date-time
         type: string
       updated_at:
+        format: date-time
         type: string
       weekly_hours:
         example: 40
@@ -999,6 +1078,7 @@ definitions:
     properties:
       from:
         example: "2025-01-01"
+        format: date-time
         type: string
       grade:
         example: S8a
@@ -1025,6 +1105,7 @@ definitions:
         type: integer
       to:
         example: "2025-12-31"
+        format: date-time
         type: string
       weekly_hours:
         example: 40
@@ -1049,6 +1130,7 @@ definitions:
     properties:
       from:
         example: "2025-01-01"
+        format: date-time
         type: string
       grade:
         example: S8a
@@ -1072,6 +1154,7 @@ definitions:
         type: integer
       to:
         example: "2025-12-31"
+        format: date-time
         type: string
       weekly_hours:
         example: 40
@@ -1088,12 +1171,14 @@ definitions:
   github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractResponse:
     properties:
       created_at:
+        format: date-time
         type: string
       employee_id:
         example: 1
         type: integer
       from:
         example: "2025-01-01"
+        format: date-time
         type: string
       grade:
         example: S8a
@@ -1101,12 +1186,12 @@ definitions:
       id:
         example: 1
         type: integer
-      pay_plan_name:
-        example: TV eene meene
-        type: string
       payplan_id:
         example: 1
         type: integer
+      payplan_name:
+        example: TV eene meene
+        type: string
       properties:
         $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
       section_id:
@@ -1123,8 +1208,10 @@ definitions:
         type: integer
       to:
         example: "2025-12-31"
+        format: date-time
         type: string
       updated_at:
+        format: date-time
         type: string
       weekly_hours:
         example: 40
@@ -1134,6 +1221,7 @@ definitions:
     properties:
       from:
         example: "2025-01-01"
+        format: date-time
         type: string
       grade:
         example: S8a
@@ -1157,6 +1245,7 @@ definitions:
         type: integer
       to:
         example: "2025-12-31"
+        format: date-time
         type: string
       weekly_hours:
         example: 40
@@ -1168,12 +1257,13 @@ definitions:
     properties:
       date:
         example: "2026-04-01T00:00:00Z"
+        format: date-time
         type: string
       grade:
         example: S8a
         maxLength: 20
         type: string
-      pay_plan_id:
+      payplan_id:
         example: 1
         type: integer
       staff_category:
@@ -1189,7 +1279,7 @@ definitions:
         type: number
     required:
     - grade
-    - pay_plan_id
+    - payplan_id
     - step
     - weekly_hours
     type: object
@@ -1213,7 +1303,7 @@ definitions:
       gross_salary:
         example: 380000
         type: integer
-      pay_plan_weekly_hours:
+      payplan_weekly_hours:
         example: 39.4
         type: number
       staff_category:
@@ -1239,6 +1329,10 @@ definitions:
         maxLength: 255
         type: string
       gender:
+        enum:
+        - male
+        - female
+        - diverse
         example: male
         type: string
       last_name:
@@ -1255,17 +1349,23 @@ definitions:
     properties:
       birthdate:
         example: "1990-05-15"
+        format: date-time
         type: string
       contracts:
         items:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractResponse'
         type: array
       created_at:
+        format: date-time
         type: string
       first_name:
         example: Max
         type: string
       gender:
+        enum:
+        - male
+        - female
+        - diverse
         example: male
         type: string
       id:
@@ -1278,6 +1378,7 @@ definitions:
         example: 1
         type: integer
       updated_at:
+        format: date-time
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.EmployeeStaffingHoursResponse:
@@ -1320,6 +1421,10 @@ definitions:
         maxLength: 255
         type: string
       gender:
+        enum:
+        - male
+        - female
+        - diverse
         example: male
         type: string
       last_name:
@@ -1412,8 +1517,10 @@ definitions:
         example: 7
         type: integer
       created_at:
+        format: date-time
         type: string
       enabled_at:
+        format: date-time
         type: string
       enrollment:
         description: |-
@@ -1426,8 +1533,13 @@ definitions:
         example: Authenticator app
         type: string
       last_used_at:
+        format: date-time
         type: string
       type:
+        enum:
+        - totp
+        - backup_codes
+        - webauthn
         example: totp
         type: string
     type: object
@@ -1578,6 +1690,7 @@ definitions:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Employee'
         type: array
       from:
+        format: date-time
         type: string
       remove_child_ids:
         items:
@@ -1590,6 +1703,7 @@ definitions:
       section_id:
         type: integer
       to:
+        format: date-time
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ForecastResponse:
@@ -1882,6 +1996,7 @@ definitions:
         example: 20000
         type: integer
       created_at:
+        format: date-time
         type: string
       facility_name:
         example: Kita Sonnenschein
@@ -1918,6 +2033,7 @@ definitions:
         example: 20000
         type: integer
       created_at:
+        format: date-time
         type: string
       created_by:
         description: |-
@@ -2022,6 +2138,7 @@ definitions:
     properties:
       created_at:
         example: "2024-01-15T10:30:00Z"
+        format: date-time
         type: string
       id:
         example: 1
@@ -2040,6 +2157,7 @@ definitions:
         type: integer
       updated_at:
         example: "2024-01-15T10:30:00Z"
+        format: date-time
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriod:
@@ -2049,8 +2167,10 @@ definitions:
         type: string
       created_at:
         example: "2024-01-15T10:30:00Z"
+        format: date-time
         type: string
       from:
+        format: date-time
         type: string
       full_time_weekly_hours:
         example: 39
@@ -2066,9 +2186,11 @@ definitions:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingProperty'
         type: array
       to:
+        format: date-time
         type: string
       updated_at:
         example: "2024-01-15T10:30:00Z"
+        format: date-time
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriodCreateRequest:
@@ -2079,12 +2201,14 @@ definitions:
         type: string
       from:
         example: "2023-03-01"
+        format: date-time
         type: string
       full_time_weekly_hours:
         example: 39
         type: number
       to:
         example: "2024-02-29"
+        format: date-time
         type: string
     required:
     - from
@@ -2097,9 +2221,11 @@ definitions:
         type: string
       created_at:
         example: "2024-01-15T10:30:00Z"
+        format: date-time
         type: string
       from:
         example: "2023-03-01"
+        format: date-time
         type: string
       full_time_weekly_hours:
         example: 39
@@ -2112,9 +2238,11 @@ definitions:
         type: integer
       to:
         example: "2024-02-29"
+        format: date-time
         type: string
       updated_at:
         example: "2024-01-15T10:30:00Z"
+        format: date-time
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingPeriodUpdateRequest:
@@ -2125,12 +2253,14 @@ definitions:
         type: string
       from:
         example: "2023-03-01"
+        format: date-time
         type: string
       full_time_weekly_hours:
         example: 39
         type: number
       to:
         example: "2024-02-29"
+        format: date-time
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingProperty:
@@ -2148,6 +2278,7 @@ definitions:
         type: string
       created_at:
         example: "2024-01-15T10:30:00Z"
+        format: date-time
         type: string
       id:
         example: 1
@@ -2229,6 +2360,7 @@ definitions:
         type: string
       created_at:
         example: "2024-01-15T10:30:00Z"
+        format: date-time
         type: string
       id:
         example: 1
@@ -2300,6 +2432,7 @@ definitions:
     properties:
       created_at:
         example: "2024-01-15T10:30:00Z"
+        format: date-time
         type: string
       id:
         example: 1
@@ -2312,6 +2445,7 @@ definitions:
         type: string
       updated_at:
         example: "2024-01-15T10:30:00Z"
+        format: date-time
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingUpdateRequest:
@@ -2334,6 +2468,49 @@ definitions:
         example: a1b2c3d
         type: string
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.LoginFactorDescriptor:
+    properties:
+      credential_id:
+        description: |-
+          CredentialID is the base64url-encoded credential id, populated
+          only for webauthn factors. The browser needs it to narrow
+          allowCredentials[] on navigator.credentials.get(), which lets
+          the authenticator pre-filter before prompting the user. Safe
+          to expose: credential ids are public by WebAuthn design.
+        example: AQIDBAU...
+        type: string
+      id:
+        example: 42
+        type: integer
+      label:
+        example: iPhone
+        type: string
+      type:
+        enum:
+        - totp
+        - backup_codes
+        - webauthn
+        example: totp
+        type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.LoginMFARequiredResponse:
+    properties:
+      expires_at:
+        example: "2026-04-23T10:05:00Z"
+        type: string
+      factors:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.LoginFactorDescriptor'
+        type: array
+      pending_token:
+        example: 9ZmN...sBA
+        type: string
+      status:
+        enum:
+        - mfa_required
+        example: mfa_required
+        type: string
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.LoginRequest:
     properties:
       email:
@@ -2352,6 +2529,8 @@ definitions:
         example: 604800
         type: integer
       status:
+        enum:
+        - authenticated
         example: authenticated
         type: string
     type: object
@@ -2495,6 +2674,7 @@ definitions:
         type: boolean
       created_at:
         example: "2024-01-15T10:30:00Z"
+        format: date-time
         type: string
       created_by:
         example: admin@example.com
@@ -2514,6 +2694,7 @@ definitions:
         type: string
       updated_at:
         example: "2024-01-15T10:30:00Z"
+        format: date-time
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.OrganizationCreateRequest:
@@ -2544,6 +2725,7 @@ definitions:
         type: boolean
       created_at:
         example: "2024-01-15T10:30:00Z"
+        format: date-time
         type: string
       created_by:
         example: admin@example.com
@@ -2559,6 +2741,7 @@ definitions:
         type: string
       updated_at:
         example: "2024-01-15T10:30:00Z"
+        format: date-time
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.OrganizationUpdateRequest:
@@ -2981,6 +3164,7 @@ definitions:
   github_com_eenemeene_kitamanager-go_internal_models.PayPlanDetailResponse:
     properties:
       created_at:
+        format: date-time
         type: string
       id:
         example: 1
@@ -2996,6 +3180,7 @@ definitions:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.PayPlanPeriodResponse'
         type: array
       updated_at:
+        format: date-time
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.PayPlanEntryCreateRequest:
@@ -3023,6 +3208,7 @@ definitions:
   github_com_eenemeene_kitamanager-go_internal_models.PayPlanEntryResponse:
     properties:
       created_at:
+        format: date-time
         type: string
       grade:
         example: S8a
@@ -3043,6 +3229,7 @@ definitions:
         example: 3
         type: integer
       updated_at:
+        format: date-time
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.PayPlanEntryUpdateRequest:
@@ -3077,9 +3264,11 @@ definitions:
         type: integer
       from:
         example: "2024-01-01T00:00:00Z"
+        format: date-time
         type: string
       to:
         example: "2024-12-31T00:00:00Z"
+        format: date-time
         type: string
       weekly_hours:
         example: 39
@@ -3091,6 +3280,7 @@ definitions:
   github_com_eenemeene_kitamanager-go_internal_models.PayPlanPeriodResponse:
     properties:
       created_at:
+        format: date-time
         type: string
       employer_contribution_rate:
         description: 'hundredths of percent: 2200 = 22.00%'
@@ -3102,6 +3292,7 @@ definitions:
         type: array
       from:
         example: "2024-01-01T00:00:00Z"
+        format: date-time
         type: string
       id:
         example: 1
@@ -3111,8 +3302,10 @@ definitions:
         type: integer
       to:
         example: "2024-12-31T00:00:00Z"
+        format: date-time
         type: string
       updated_at:
+        format: date-time
         type: string
       weekly_hours:
         example: 39
@@ -3128,9 +3321,11 @@ definitions:
         type: integer
       from:
         example: "2024-01-01T00:00:00Z"
+        format: date-time
         type: string
       to:
         example: "2024-12-31T00:00:00Z"
+        format: date-time
         type: string
       weekly_hours:
         example: 39
@@ -3142,6 +3337,7 @@ definitions:
   github_com_eenemeene_kitamanager-go_internal_models.PayPlanResponse:
     properties:
       created_at:
+        format: date-time
         type: string
       id:
         example: 1
@@ -3153,6 +3349,7 @@ definitions:
         example: 1
         type: integer
       updated_at:
+        format: date-time
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.PayPlanUpdateRequest:
@@ -3178,6 +3375,7 @@ definitions:
     properties:
       created_at:
         example: "2024-01-15T10:30:00Z"
+        format: date-time
         type: string
       created_by:
         example: admin@example.com
@@ -3204,6 +3402,7 @@ definitions:
         type: integer
       updated_at:
         example: "2024-01-15T10:30:00Z"
+        format: date-time
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.SectionCreateRequest:
@@ -3225,6 +3424,7 @@ definitions:
     properties:
       created_at:
         example: "2024-01-15T10:30:00Z"
+        format: date-time
         type: string
       created_by:
         example: admin@example.com
@@ -3249,6 +3449,7 @@ definitions:
         type: integer
       updated_at:
         example: "2024-01-15T10:30:00Z"
+        format: date-time
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.SectionUpdateRequest:
@@ -3348,6 +3549,15 @@ definitions:
         example: 40284
         type: integer
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.TOTPEnrollmentPayload:
+    properties:
+      otpauth_uri:
+        example: otpauth://totp/KitaManager:...
+        type: string
+      secret:
+        example: JBSWY3DPEHPK3PXP
+        type: string
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.UserAddOrganizationRequest:
     properties:
       organization_id:
@@ -3356,6 +3566,11 @@ definitions:
       role:
         allOf:
         - $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Role'
+        enum:
+        - admin
+        - manager
+        - member
+        - staff
         example: member
     required:
     - organization_id
@@ -3393,6 +3608,11 @@ definitions:
       role:
         allOf:
         - $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Role'
+        enum:
+        - admin
+        - manager
+        - member
+        - staff
         example: admin
       user_id:
         example: 1
@@ -3409,6 +3629,7 @@ definitions:
     properties:
       created_at:
         example: "2024-01-15T10:30:00Z"
+        format: date-time
         type: string
       created_by:
         example: admin@example.com
@@ -3421,6 +3642,11 @@ definitions:
       role:
         allOf:
         - $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Role'
+        enum:
+        - admin
+        - manager
+        - member
+        - staff
         example: member
       user_id:
         example: 1
@@ -3431,6 +3657,11 @@ definitions:
       role:
         allOf:
         - $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Role'
+        enum:
+        - admin
+        - manager
+        - member
+        - staff
         example: admin
     required:
     - role
@@ -3474,6 +3705,7 @@ definitions:
         type: boolean
       created_at:
         example: "2024-01-15T10:30:00Z"
+        format: date-time
         type: string
       created_by:
         example: admin@example.com
@@ -3489,18 +3721,21 @@ definitions:
         type: boolean
       last_login:
         example: "2024-01-15T10:30:00Z"
+        format: date-time
         type: string
       name:
         example: John Doe
         type: string
       updated_at:
         example: "2024-01-15T10:30:00Z"
+        format: date-time
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.UserSessionResponse:
     properties:
       created_at:
         example: "2026-04-22T10:00:00Z"
+        format: date-time
         type: string
       created_ip:
         example: 203.0.113.42
@@ -3513,6 +3748,7 @@ definitions:
         type: boolean
       expires_at:
         example: "2026-04-29T10:00:00Z"
+        format: date-time
         type: string
       id:
         example: a1b2c3...
@@ -3568,6 +3804,11 @@ definitions:
       voucher_number:
         example: GB-12345678901-02
         type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.WebAuthnEnrollmentPayload:
+    properties:
+      creation_options:
+        type: object
     type: object
 host: localhost:8080
 info:
@@ -4580,9 +4821,9 @@ paths:
       - application/json
       responses:
         "200":
-          description: Authenticated
+          description: 'MFA required: no cookie set; follow up with POST /auth/mfa/verify'
           schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.LoginResponse'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.LoginMFARequiredResponse'
         "400":
           description: Bad Request
           schema:
@@ -9812,9 +10053,9 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: WebAuthn enrollment branch (referenced via FactorResponse.enrollment)
           schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FactorResponse'
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.WebAuthnEnrollmentPayload'
         "400":
           description: Bad Request
           schema:

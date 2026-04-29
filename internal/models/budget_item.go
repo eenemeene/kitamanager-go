@@ -35,8 +35,8 @@ type BudgetItem struct {
 	Category       string            `gorm:"size:50;not null" json:"category" example:"income"`
 	PerChild       bool              `gorm:"default:false;not null" json:"per_child" example:"true"`
 	Entries        []BudgetItemEntry `gorm:"foreignKey:BudgetItemID" json:"entries,omitempty"`
-	CreatedAt      time.Time         `json:"created_at"`
-	UpdatedAt      time.Time         `json:"updated_at"`
+	CreatedAt      time.Time         `json:"created_at" format:"date-time"`
+	UpdatedAt      time.Time         `json:"updated_at" format:"date-time"`
 }
 
 // GetOrganizationID returns the organization ID for the OrgOwned interface.
@@ -78,8 +78,8 @@ type BudgetItemEntry struct {
 	Period                   // From, To (embedded)
 	AmountCents  int         `gorm:"not null" json:"amount_cents" example:"50000"` // cents, always positive
 	Notes        string      `gorm:"size:500" json:"notes,omitempty" example:"Monthly co-payment"`
-	CreatedAt    time.Time   `json:"created_at"`
-	UpdatedAt    time.Time   `json:"updated_at"`
+	CreatedAt    time.Time   `json:"created_at" format:"date-time"`
+	UpdatedAt    time.Time   `json:"updated_at" format:"date-time"`
 }
 
 // GetOwnerID returns the budget item ID for the PeriodRecord interface.
@@ -109,8 +109,8 @@ type BudgetItemResponse struct {
 	Category          string    `json:"category" example:"income"`
 	PerChild          bool      `json:"per_child" example:"true"`
 	ActiveAmountCents *int      `json:"active_amount_cents,omitempty" example:"50000"`
-	CreatedAt         time.Time `json:"created_at"`
-	UpdatedAt         time.Time `json:"updated_at"`
+	CreatedAt         time.Time `json:"created_at" format:"date-time"`
+	UpdatedAt         time.Time `json:"updated_at" format:"date-time"`
 }
 
 // BudgetItemDetailResponse includes entries for detail view.
@@ -121,22 +121,22 @@ type BudgetItemDetailResponse struct {
 	Category       string                    `json:"category" example:"income"`
 	PerChild       bool                      `json:"per_child" example:"true"`
 	Entries        []BudgetItemEntryResponse `json:"entries"`
-	CreatedAt      time.Time                 `json:"created_at"`
-	UpdatedAt      time.Time                 `json:"updated_at"`
+	CreatedAt      time.Time                 `json:"created_at" format:"date-time"`
+	UpdatedAt      time.Time                 `json:"updated_at" format:"date-time"`
 }
 
 // BudgetItemEntryCreateRequest is the request body for creating a budget item entry.
 type BudgetItemEntryCreateRequest struct {
-	From        time.Time  `json:"from" binding:"required" example:"2024-01-01T00:00:00Z"`
-	To          *time.Time `json:"to,omitempty" example:"2024-12-31T00:00:00Z"`
+	From        time.Time  `json:"from" format:"date-time" binding:"required" example:"2024-01-01T00:00:00Z"`
+	To          *time.Time `json:"to,omitempty" format:"date-time" example:"2024-12-31T00:00:00Z"`
 	AmountCents int        `json:"amount_cents" binding:"required,min=0" example:"50000"`
 	Notes       string     `json:"notes,omitempty" binding:"max=500" example:"Monthly co-payment"`
 }
 
 // BudgetItemEntryUpdateRequest is the request body for updating a budget item entry.
 type BudgetItemEntryUpdateRequest struct {
-	From        time.Time  `json:"from" binding:"required" example:"2024-01-01T00:00:00Z"`
-	To          *time.Time `json:"to,omitempty" example:"2024-12-31T00:00:00Z"`
+	From        time.Time  `json:"from" format:"date-time" binding:"required" example:"2024-01-01T00:00:00Z"`
+	To          *time.Time `json:"to,omitempty" format:"date-time" example:"2024-12-31T00:00:00Z"`
 	AmountCents int        `json:"amount_cents" binding:"required,min=0" example:"50000"`
 	Notes       string     `json:"notes,omitempty" binding:"max=500" example:"Monthly co-payment"`
 }
@@ -145,12 +145,12 @@ type BudgetItemEntryUpdateRequest struct {
 type BudgetItemEntryResponse struct {
 	ID           uint       `json:"id" example:"1"`
 	BudgetItemID uint       `json:"budget_item_id" example:"1"`
-	From         time.Time  `json:"from" example:"2024-01-01T00:00:00Z"`
-	To           *time.Time `json:"to,omitempty" example:"2024-12-31T00:00:00Z"`
+	From         time.Time  `json:"from" format:"date-time" example:"2024-01-01T00:00:00Z"`
+	To           *time.Time `json:"to,omitempty" format:"date-time" example:"2024-12-31T00:00:00Z"`
 	AmountCents  int        `json:"amount_cents" example:"50000"`
 	Notes        string     `json:"notes,omitempty" example:"Monthly co-payment"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
+	CreatedAt    time.Time  `json:"created_at" format:"date-time"`
+	UpdatedAt    time.Time  `json:"updated_at" format:"date-time"`
 }
 
 // ToResponse converts a BudgetItem to BudgetItemResponse, picking the

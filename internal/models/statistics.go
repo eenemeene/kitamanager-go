@@ -113,7 +113,7 @@ type CalculationWarning struct {
 	Message    string `json:"message" example:"employee contract references unknown pay plan"`
 	EmployeeID uint   `json:"employee_id,omitempty" example:"42"`
 	ContractID uint   `json:"contract_id,omitempty" example:"99"`
-	PayPlanID  uint   `json:"pay_plan_id,omitempty" example:"7"`
+	PayPlanID  uint   `json:"payplan_id,omitempty" example:"7"`
 	Grade      string `json:"grade,omitempty" example:"S8a"`
 	Step       int    `json:"step,omitempty" example:"3"`
 	Date       string `json:"date,omitempty" example:"2026-03-01"`

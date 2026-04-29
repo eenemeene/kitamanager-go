@@ -19,10 +19,10 @@ type User struct {
 	Password     string     `gorm:"size:255;not null" json:"-"`
 	Active       bool       `gorm:"default:true" json:"active" example:"true"`
 	IsSuperAdmin bool       `gorm:"column:is_superadmin;default:false" json:"is_superadmin" example:"false"`
-	LastLogin    *time.Time `json:"last_login" example:"2024-01-15T10:30:00Z"`
-	CreatedAt    time.Time  `json:"created_at" example:"2024-01-15T10:30:00Z"`
+	LastLogin    *time.Time `json:"last_login" format:"date-time" example:"2024-01-15T10:30:00Z"`
+	CreatedAt    time.Time  `json:"created_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
 	CreatedBy    string     `gorm:"size:255" json:"created_by" example:"admin@example.com"`
-	UpdatedAt    time.Time  `json:"updated_at" example:"2024-01-15T10:30:00Z"`
+	UpdatedAt    time.Time  `json:"updated_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
 	// DeletedAt enables GORM's soft-delete machinery: every SELECT
 	// that starts from the User model auto-scopes to `deleted_at
 	// IS NULL`; `db.Delete(&User{}, id)` becomes an UPDATE stamping
@@ -57,10 +57,10 @@ type UserResponse struct {
 	Email        string     `json:"email" example:"john@example.com"`
 	Active       bool       `json:"active" example:"true"`
 	IsSuperAdmin bool       `json:"is_superadmin" example:"false"`
-	LastLogin    *time.Time `json:"last_login" example:"2024-01-15T10:30:00Z"`
-	CreatedAt    time.Time  `json:"created_at" example:"2024-01-15T10:30:00Z"`
+	LastLogin    *time.Time `json:"last_login" format:"date-time" example:"2024-01-15T10:30:00Z"`
+	CreatedAt    time.Time  `json:"created_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
 	CreatedBy    string     `json:"created_by" example:"admin@example.com"`
-	UpdatedAt    time.Time  `json:"updated_at" example:"2024-01-15T10:30:00Z"`
+	UpdatedAt    time.Time  `json:"updated_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
 }
 
 func (u *User) ToResponse() UserResponse {

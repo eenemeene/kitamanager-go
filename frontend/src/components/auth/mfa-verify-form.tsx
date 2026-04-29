@@ -105,7 +105,7 @@ export function MfaVerifyForm({ pendingToken, factors, onRestart, onSuccess }: P
         factor_id: selectedFactorId,
       });
       const opts = decodeRequestOptions(
-        challenge.request_options as Parameters<typeof decodeRequestOptions>[0]
+        challenge.request_options as unknown as Parameters<typeof decodeRequestOptions>[0]
       );
       // Step 2: browser prompts the user — touch security key / Face ID / etc.
       const cred = (await navigator.credentials.get({
@@ -117,7 +117,7 @@ export function MfaVerifyForm({ pendingToken, factors, onRestart, onSuccess }: P
       await apiClient.verifyMfa({
         pending_token: pendingToken,
         factor_id: selectedFactorId,
-        webauthn_response: encoded,
+        webauthn_response: encoded as unknown as Record<string, never>,
       });
       await hydrate();
       onSuccess();

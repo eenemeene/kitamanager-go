@@ -34,8 +34,8 @@ func (c EmployeeContract) GetOwnerID() uint {
 
 // EmployeeContractCreateRequest represents the request body for creating an employee contract.
 type EmployeeContractCreateRequest struct {
-	From          time.Time          `json:"from" binding:"required" example:"2025-01-01"`
-	To            *time.Time         `json:"to" example:"2025-12-31"`
+	From          time.Time          `json:"from" format:"date-time" binding:"required" example:"2025-01-01"`
+	To            *time.Time         `json:"to" format:"date-time" example:"2025-12-31"`
 	SectionID     uint               `json:"section_id" binding:"required" example:"2"`
 	StaffCategory string             `json:"staff_category" binding:"required" example:"qualified"`
 	Grade         string             `json:"grade" binding:"max=20" example:"S8a"`
@@ -47,8 +47,8 @@ type EmployeeContractCreateRequest struct {
 
 // EmployeeContractUpdateRequest represents the request body for updating an employee contract.
 type EmployeeContractUpdateRequest struct {
-	From          *time.Time         `json:"from" example:"2025-01-01"`
-	To            *time.Time         `json:"to" example:"2025-12-31"`
+	From          *time.Time         `json:"from" format:"date-time" example:"2025-01-01"`
+	To            *time.Time         `json:"to" format:"date-time" example:"2025-12-31"`
 	SectionID     *uint              `json:"section_id,omitempty" example:"2"`
 	StaffCategory *string            `json:"staff_category" binding:"omitempty" example:"qualified"`
 	Grade         *string            `json:"grade" binding:"omitempty,max=20" example:"S8a"`
@@ -74,7 +74,7 @@ type EmployeeContractBatchUpdateRequest struct {
 type EmployeeCreateRequest struct {
 	FirstName string `json:"first_name" binding:"required,max=255" example:"Max"`
 	LastName  string `json:"last_name" binding:"required,max=255" example:"Mustermann"`
-	Gender    string `json:"gender" binding:"required" example:"male"`
+	Gender    string `json:"gender" enums:"male,female,diverse" binding:"required" example:"male"`
 	Birthdate string `json:"birthdate" binding:"required" example:"1990-05-15"`
 }
 
@@ -82,7 +82,7 @@ type EmployeeCreateRequest struct {
 type EmployeeUpdateRequest struct {
 	FirstName *string `json:"first_name" binding:"omitempty,max=255" example:"Max"`
 	LastName  *string `json:"last_name" binding:"omitempty,max=255" example:"Mustermann"`
-	Gender    *string `json:"gender" binding:"omitempty" example:"male"`
+	Gender    *string `json:"gender" enums:"male,female,diverse" binding:"omitempty" example:"male"`
 	Birthdate *string `json:"birthdate" binding:"omitempty" example:"1990-05-15"`
 }
 
@@ -92,11 +92,11 @@ type EmployeeResponse struct {
 	OrganizationID uint                       `json:"organization_id" yaml:"organization_id" example:"1"`
 	FirstName      string                     `json:"first_name" yaml:"first_name" example:"Max"`
 	LastName       string                     `json:"last_name" yaml:"last_name" example:"Mustermann"`
-	Gender         string                     `json:"gender" yaml:"gender" example:"male"`
-	Birthdate      time.Time                  `json:"birthdate" yaml:"birthdate" example:"1990-05-15"`
+	Gender         string                     `json:"gender" enums:"male,female,diverse" yaml:"gender" example:"male"`
+	Birthdate      time.Time                  `json:"birthdate" format:"date-time" yaml:"birthdate" example:"1990-05-15"`
 	Contracts      []EmployeeContractResponse `json:"contracts,omitempty" yaml:"contracts"`
-	CreatedAt      time.Time                  `json:"created_at" yaml:"created_at"`
-	UpdatedAt      time.Time                  `json:"updated_at" yaml:"updated_at"`
+	CreatedAt      time.Time                  `json:"created_at" format:"date-time" yaml:"created_at"`
+	UpdatedAt      time.Time                  `json:"updated_at" format:"date-time" yaml:"updated_at"`
 }
 
 // EmployeeImportExportData wraps a list of employees for YAML import/export.
@@ -135,8 +135,8 @@ func (e *Employee) ToResponse() EmployeeResponse {
 type EmployeeContractResponse struct {
 	ID            uint               `json:"id" yaml:"id" example:"1"`
 	EmployeeID    uint               `json:"employee_id" yaml:"employee_id" example:"1"`
-	From          time.Time          `json:"from" yaml:"from" example:"2025-01-01"`
-	To            *time.Time         `json:"to" yaml:"to" example:"2025-12-31"`
+	From          time.Time          `json:"from" format:"date-time" yaml:"from" example:"2025-01-01"`
+	To            *time.Time         `json:"to" format:"date-time" yaml:"to" example:"2025-12-31"`
 	SectionID     uint               `json:"section_id" yaml:"section_id" example:"2"`
 	SectionName   *string            `json:"section_name,omitempty" yaml:"section_name" example:"Krippe"`
 	StaffCategory string             `json:"staff_category" yaml:"staff_category" example:"qualified"`
@@ -144,10 +144,10 @@ type EmployeeContractResponse struct {
 	Step          int                `json:"step" yaml:"step" example:"3"`
 	WeeklyHours   float64            `json:"weekly_hours" yaml:"weekly_hours" example:"40"`
 	PayPlanID     uint               `json:"payplan_id" yaml:"payplan_id" example:"1"`
-	PayPlanName   *string            `json:"pay_plan_name,omitempty" yaml:"pay_plan_name" example:"TV eene meene"`
+	PayPlanName   *string            `json:"payplan_name,omitempty" yaml:"payplan_name" example:"TV eene meene"`
 	Properties    ContractProperties `json:"properties,omitempty" yaml:"properties"`
-	CreatedAt     time.Time          `json:"created_at" yaml:"created_at"`
-	UpdatedAt     time.Time          `json:"updated_at" yaml:"updated_at"`
+	CreatedAt     time.Time          `json:"created_at" format:"date-time" yaml:"created_at"`
+	UpdatedAt     time.Time          `json:"updated_at" format:"date-time" yaml:"updated_at"`
 }
 
 // EmployeeListFilter represents filter options for listing employees.

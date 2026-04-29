@@ -27,16 +27,16 @@ func (c ChildContract) GetOwnerID() uint {
 
 // ChildContractCreateRequest represents the request body for creating a child contract.
 type ChildContractCreateRequest struct {
-	From       time.Time          `json:"from" binding:"required" example:"2025-01-01"`
-	To         *time.Time         `json:"to" example:"2025-12-31"`
+	From       time.Time          `json:"from" binding:"required" format:"date-time" example:"2025-01-01"`
+	To         *time.Time         `json:"to" format:"date-time" example:"2025-12-31"`
 	SectionID  uint               `json:"section_id" binding:"required" example:"2"`
 	Properties ContractProperties `json:"properties,omitempty"`
 }
 
 // ChildContractUpdateRequest represents the request body for updating a child contract.
 type ChildContractUpdateRequest struct {
-	From       *time.Time         `json:"from" example:"2025-01-01"`
-	To         *time.Time         `json:"to" example:"2025-12-31"`
+	From       *time.Time         `json:"from" format:"date-time" example:"2025-01-01"`
+	To         *time.Time         `json:"to" format:"date-time" example:"2025-12-31"`
 	SectionID  *uint              `json:"section_id,omitempty" example:"2"`
 	Properties ContractProperties `json:"properties,omitempty"`
 }
@@ -57,7 +57,7 @@ type ChildContractBatchUpdateRequest struct {
 type ChildCreateRequest struct {
 	FirstName string `json:"first_name" binding:"required,max=255" example:"Emma"`
 	LastName  string `json:"last_name" binding:"required,max=255" example:"Schmidt"`
-	Gender    string `json:"gender" binding:"required" example:"female"`
+	Gender    string `json:"gender" enums:"male,female,diverse" binding:"required" example:"female"`
 	Birthdate string `json:"birthdate" binding:"required" example:"2020-03-10"`
 }
 
@@ -65,7 +65,7 @@ type ChildCreateRequest struct {
 type ChildUpdateRequest struct {
 	FirstName *string `json:"first_name" binding:"omitempty,max=255" example:"Emma"`
 	LastName  *string `json:"last_name" binding:"omitempty,max=255" example:"Schmidt"`
-	Gender    *string `json:"gender" binding:"omitempty" example:"female"`
+	Gender    *string `json:"gender" enums:"male,female,diverse" binding:"omitempty" example:"female"`
 	Birthdate *string `json:"birthdate" binding:"omitempty" example:"2020-03-10"`
 }
 
@@ -75,12 +75,12 @@ type ChildResponse struct {
 	OrganizationID uint                    `json:"organization_id" yaml:"organization_id" example:"1"`
 	FirstName      string                  `json:"first_name" yaml:"first_name" example:"Emma"`
 	LastName       string                  `json:"last_name" yaml:"last_name" example:"Schmidt"`
-	Gender         string                  `json:"gender" yaml:"gender" example:"female"`
-	Birthdate      time.Time               `json:"birthdate" yaml:"birthdate" example:"2020-03-10"`
+	Gender         string                  `json:"gender" enums:"male,female,diverse" yaml:"gender" example:"female"`
+	Birthdate      time.Time               `json:"birthdate" format:"date-time" yaml:"birthdate" example:"2020-03-10"`
 	Vouchers       []string                `json:"vouchers,omitempty" yaml:"vouchers"`
 	Contracts      []ChildContractResponse `json:"contracts,omitempty" yaml:"contracts"`
-	CreatedAt      time.Time               `json:"created_at" yaml:"created_at"`
-	UpdatedAt      time.Time               `json:"updated_at" yaml:"updated_at"`
+	CreatedAt      time.Time               `json:"created_at" format:"date-time" yaml:"created_at"`
+	UpdatedAt      time.Time               `json:"updated_at" format:"date-time" yaml:"updated_at"`
 }
 
 // ChildImportExportData wraps a list of children for YAML import/export.
@@ -123,13 +123,13 @@ func (c *Child) ToResponse() ChildResponse {
 type ChildContractResponse struct {
 	ID          uint               `json:"id" yaml:"id" example:"1"`
 	ChildID     uint               `json:"child_id" yaml:"child_id" example:"1"`
-	From        time.Time          `json:"from" yaml:"from" example:"2025-01-01"`
-	To          *time.Time         `json:"to" yaml:"to" example:"2025-12-31"`
+	From        time.Time          `json:"from" format:"date-time" yaml:"from" example:"2025-01-01"`
+	To          *time.Time         `json:"to" format:"date-time" yaml:"to" example:"2025-12-31"`
 	SectionID   uint               `json:"section_id" yaml:"section_id" example:"2"`
 	SectionName *string            `json:"section_name,omitempty" yaml:"section_name" example:"Krippe"`
 	Properties  ContractProperties `json:"properties,omitempty" yaml:"properties"`
-	CreatedAt   time.Time          `json:"created_at" yaml:"created_at"`
-	UpdatedAt   time.Time          `json:"updated_at" yaml:"updated_at"`
+	CreatedAt   time.Time          `json:"created_at" format:"date-time" yaml:"created_at"`
+	UpdatedAt   time.Time          `json:"updated_at" format:"date-time" yaml:"updated_at"`
 }
 
 func (c *ChildContract) ToResponse() ChildContractResponse {

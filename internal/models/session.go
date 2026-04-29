@@ -29,8 +29,8 @@ type Session struct {
 	// short-lived pending_mfa rows. Defaults to 'regular' at the DB
 	// layer so pre-migration rows pick up the right kind on read.
 	Kind      string    `gorm:"size:32;not null;default:regular" json:"-"`
-	CreatedAt time.Time `gorm:"not null" json:"created_at"`
-	ExpiresAt time.Time `gorm:"not null;index" json:"expires_at"`
+	CreatedAt time.Time `gorm:"not null" json:"created_at" format:"date-time"`
+	ExpiresAt time.Time `gorm:"not null;index" json:"expires_at" format:"date-time"`
 	// MFAChallengeFailures is bumped atomically on every wrong code
 	// against a pending_mfa row. When it reaches the service-layer
 	// limit the row is destroyed and the user restarts. Always 0 on
@@ -40,7 +40,7 @@ type Session struct {
 	// i.e. when bcrypt accepted the password. It proves at audit-time
 	// exactly which check the user has cleared at that point. NULL on
 	// regular rows (redundant with CreatedAt there).
-	PasswordVerifiedAt *time.Time `json:"-"`
+	PasswordVerifiedAt *time.Time `json:"-" format:"date-time"`
 	// ChallengeNonce is reserved for WebAuthn: a fresh ≥16-byte nonce
 	// issued with the PublicKeyCredentialRequestOptions and verified
 	// against the assertion's clientDataJSON. TOTP and backup codes
@@ -59,8 +59,8 @@ type Session struct {
 // that served the current request so the UI can highlight it.
 type UserSessionResponse struct {
 	ID               string    `json:"id" example:"a1b2c3..."`
-	CreatedAt        time.Time `json:"created_at" example:"2026-04-22T10:00:00Z"`
-	ExpiresAt        time.Time `json:"expires_at" example:"2026-04-29T10:00:00Z"`
+	CreatedAt        time.Time `json:"created_at" format:"date-time" example:"2026-04-22T10:00:00Z"`
+	ExpiresAt        time.Time `json:"expires_at" format:"date-time" example:"2026-04-29T10:00:00Z"`
 	CreatedIP        string    `json:"created_ip" example:"203.0.113.42"`
 	CreatedUserAgent string    `json:"created_user_agent" example:"Mozilla/5.0 ..."`
 	Current          bool      `json:"current" example:"true"`

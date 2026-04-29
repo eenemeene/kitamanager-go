@@ -64,12 +64,16 @@ function axiosError(status: number): Error {
   return err as unknown as Error;
 }
 
-const factorsOne: LoginFactorDescriptor[] = [{ id: 42, type: 'totp', label: 'iPhone' }];
-const factorsTwo: LoginFactorDescriptor[] = [
-  { id: 42, type: 'totp', label: 'iPhone' },
-  { id: 43, type: 'backup_codes' },
+const factorsOne: LoginFactorDescriptor[] = [
+  { id: 42, type: 'totp', label: 'iPhone', credential_id: '' },
 ];
-const factorsWebAuthn: LoginFactorDescriptor[] = [{ id: 44, type: 'webauthn', label: 'YubiKey' }];
+const factorsTwo: LoginFactorDescriptor[] = [
+  { id: 42, type: 'totp', label: 'iPhone', credential_id: '' },
+  { id: 43, type: 'backup_codes', label: '', credential_id: '' },
+];
+const factorsWebAuthn: LoginFactorDescriptor[] = [
+  { id: 44, type: 'webauthn', label: 'YubiKey', credential_id: 'AQIDBAU...' },
+];
 
 beforeEach(() => {
   jest.clearAllMocks();

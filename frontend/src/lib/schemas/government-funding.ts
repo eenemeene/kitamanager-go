@@ -1,11 +1,16 @@
 import { z } from 'zod';
+import type { GovernmentFundingCreateRequest } from '@/lib/api/types';
 import { endDateAfterStart } from './period';
 
 export const governmentFundingSchema = z.object({
   name: z.string().min(1).max(255),
   state: z.string().min(1),
-});
+}) satisfies z.ZodType<GovernmentFundingCreateRequest>;
 
+// governmentFundingPeriodSchema is form-only: the API DTO uses date-time
+// strings, the form uses HTML date strings, and the schema's `.refine`
+// step (endDateAfterStart) returns ZodEffects which doesn't fit
+// satisfies cleanly. Conversion happens in the submit handler.
 export const governmentFundingPeriodSchema = z
   .object({
     from: z.string().min(1),
@@ -15,6 +20,9 @@ export const governmentFundingPeriodSchema = z
   })
   .refine(...endDateAfterStart('from', 'to'));
 
+// governmentFundingPropertySchema is form-only: API stores `payment` in
+// cents, the form collects `payment_euros`. Conversion happens in the
+// submit handler.
 export const governmentFundingPropertySchema = z.object({
   key: z.string().min(1).max(100),
   value: z.string().min(1).max(255),

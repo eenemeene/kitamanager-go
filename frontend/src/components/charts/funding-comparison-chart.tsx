@@ -59,7 +59,7 @@ export function FundingComparisonChart({
 
   const allPoints = data.data_points;
 
-  const rawDates = allPoints.map((dp) => dp.date);
+  const rawDates = allPoints.map((dp) => dp.date ?? '');
   const xLabels = rawDates.map(formatDateLabel);
   const kitaYearBands = useMemo(() => buildKitaYearBands(rawDates), [rawDates]);
 
@@ -67,8 +67,8 @@ export function FundingComparisonChart({
     () =>
       allPoints.map((dp) => {
         const entry: BarDatum = {
-          date: formatDateLabel(dp.date),
-          [calculatedKey]: dp.funding_income / 100,
+          date: formatDateLabel(dp.date ?? ''),
+          [calculatedKey]: (dp.funding_income ?? 0) / 100,
         };
         if (dp.actual_funding_regular != null) {
           entry[actualRegularKey] = dp.actual_funding_regular / 100;
@@ -251,7 +251,9 @@ export function FundingComparisonChart({
       }
     >();
     for (const dp of data.data_points) {
-      const ky = kitaYearLabel(dp.date);
+      const dpDate = dp.date ?? '';
+      const dpFundingIncome = dp.funding_income ?? 0;
+      const ky = kitaYearLabel(dpDate);
       const entry = map.get(ky) ?? {
         calculatedTotal: 0,
         calculatedWithBill: 0,
@@ -262,21 +264,21 @@ export function FundingComparisonChart({
         months: [],
       };
       entry.totalMonths += 1;
-      entry.calculatedTotal += dp.funding_income;
+      entry.calculatedTotal += dpFundingIncome;
       const hasActual = dp.actual_funding != null;
       if (hasActual) {
-        entry.calculatedWithBill += dp.funding_income;
+        entry.calculatedWithBill += dpFundingIncome;
         entry.regular += dp.actual_funding_regular ?? 0;
         entry.correction += dp.actual_funding_correction ?? 0;
         entry.actualMonths += 1;
       }
-      const comp = compareData?.get(dp.date);
+      const comp = compareData?.get(dpDate);
       entry.months.push({
-        date: dp.date,
-        calculated: dp.funding_income,
+        date: dpDate,
+        calculated: dpFundingIncome,
         regular: dp.actual_funding_regular ?? null,
         correction: dp.actual_funding_correction ?? null,
-        difference: hasActual ? (dp.actual_funding_regular ?? 0) - dp.funding_income : null,
+        difference: hasActual ? (dp.actual_funding_regular ?? 0) - dpFundingIncome : null,
         billOnlyCount: comp?.bill_only_count ?? null,
         billOnlyAmount: comp?.bill_only_amount ?? null,
         calcOnlyCount: comp?.calc_only_count ?? null,
@@ -411,12 +413,12 @@ export function FundingComparisonChart({
           }}
           enableLabel={false}
           tooltip={({ indexValue, id, value, color }) => {
-            const dp = allPoints.find((d) => formatDateLabel(d.date) === indexValue);
+            const dp = allPoints.find((d) => formatDateLabel(d.date ?? '') === indexValue);
             const diff =
               dp && dp.actual_funding_regular != null
-                ? dp.actual_funding_regular - dp.funding_income
+                ? dp.actual_funding_regular - (dp.funding_income ?? 0)
                 : null;
-            const comp = dp ? compareData?.get(dp.date) : undefined;
+            const comp = dp ? compareData?.get(dp.date ?? '') : undefined;
             return (
               <div
                 style={{

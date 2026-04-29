@@ -1,7 +1,7 @@
 .PHONY: build lint test clean ci dev dev-fresh \
 	api-build api-run api-lint api-test-all api-test-unit api-test-integration api-test-contract api-test-fuzz api-test-coverage api-test-backup \
 	web-install web-dev web-build web-lint web-format web-format-check web-type-check web-test web-test-coverage web-test-e2e web-test-e2e-fresh web-test-e2e-demo \
-	docs schema-docs swagger-docs docker-up docker-down docker-rebuild docker-reset install-hooks uninstall-hooks pre-commit \
+	docs schema-docs swagger-docs swagger-check api-types api-types-check docker-up docker-down docker-rebuild docker-reset install-hooks uninstall-hooks pre-commit \
 	report-pdf-build report-pdf
 
 # =============================================================================
@@ -218,9 +218,43 @@ web-playwright-install:
 # Documentation targets
 # =============================================================================
 
-# Generate OpenAPI/Swagger documentation
+# Generate OpenAPI/Swagger documentation.
+# Pipeline:
+#   1. swaggo emits OpenAPI 2.0 → docs/swagger.json (its native format)
+#   2. tools/openapi-fixer converts 2.0 → 3.0 → docs/openapi.json
+# docs/openapi.json is the canonical contract consumed by the frontend
+# type generator (frontend `npm run gen:api`).
 swagger-docs:
 	swag init -g cmd/api/main.go -o docs --parseDependency --parseInternal
+	go run ./tools/openapi-fixer/
+
+# Verify the committed spec matches the current Go source. Used in CI.
+swagger-check:
+	@tmp=$$(mktemp -d) ; \
+	swag init -g cmd/api/main.go -o $$tmp --parseDependency --parseInternal >/dev/null ; \
+	go run ./tools/openapi-fixer/ -in $$tmp/swagger.json -out $$tmp/openapi.json ; \
+	diff -q docs/swagger.json $$tmp/swagger.json >/dev/null 2>&1 || \
+	    { echo "docs/swagger.json is stale; run make swagger-docs"; rm -rf $$tmp; exit 1; } ; \
+	diff -q docs/openapi.json $$tmp/openapi.json >/dev/null 2>&1 || \
+	    { echo "docs/openapi.json is stale; run make swagger-docs"; rm -rf $$tmp; exit 1; } ; \
+	rm -rf $$tmp ; \
+	echo "spec is current"
+
+# Generate the frontend's TypeScript types from docs/openapi.json. The
+# generated file (frontend/src/lib/api/generated.ts) is committed so PR
+# diffs make backend type changes visible to reviewers.
+api-types:
+	cd frontend && npm run gen:api
+
+# Verify the committed generated types match the current spec. Used in CI.
+api-types-check:
+	@cd frontend && npm run gen:api >/dev/null
+	@if ! git diff --exit-code frontend/src/lib/api/generated.ts >/dev/null 2>&1 ; then \
+	    echo "frontend/src/lib/api/generated.ts is stale; run make api-types"; \
+	    git diff --stat frontend/src/lib/api/generated.ts; \
+	    exit 1; \
+	fi
+	@echo "generated types are current"
 
 # Update database schema documentation (requires running database)
 schema-docs:

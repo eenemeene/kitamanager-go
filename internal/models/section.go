@@ -30,9 +30,9 @@ type Section struct {
 	IsDefault      bool          `gorm:"default:false" json:"is_default" example:"false"`
 	MinAgeMonths   *int          `gorm:"default:null" json:"min_age_months,omitempty" example:"0"`
 	MaxAgeMonths   *int          `gorm:"default:null" json:"max_age_months,omitempty" example:"36"`
-	CreatedAt      time.Time     `json:"created_at" example:"2024-01-15T10:30:00Z"`
+	CreatedAt      time.Time     `json:"created_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
 	CreatedBy      string        `gorm:"size:255" json:"created_by" example:"admin@example.com"`
-	UpdatedAt      time.Time     `json:"updated_at" example:"2024-01-15T10:30:00Z"`
+	UpdatedAt      time.Time     `json:"updated_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
 	// DeletedAt is the soft-delete tombstone (see type doc-comment).
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 }
@@ -50,9 +50,9 @@ type SectionResponse struct {
 	IsDefault      bool      `json:"is_default" example:"false"`
 	MinAgeMonths   *int      `json:"min_age_months,omitempty" example:"0"`
 	MaxAgeMonths   *int      `json:"max_age_months,omitempty" example:"36"`
-	CreatedAt      time.Time `json:"created_at" example:"2024-01-15T10:30:00Z"`
+	CreatedAt      time.Time `json:"created_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
 	CreatedBy      string    `json:"created_by" example:"admin@example.com"`
-	UpdatedAt      time.Time `json:"updated_at" example:"2024-01-15T10:30:00Z"`
+	UpdatedAt      time.Time `json:"updated_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
 }
 
 // ToResponse converts a Section to SectionResponse

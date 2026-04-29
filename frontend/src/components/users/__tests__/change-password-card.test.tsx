@@ -71,7 +71,7 @@ describe('ChangePasswordCard', () => {
 
     await waitFor(() => {
       const errors = screen.getAllByRole('alert');
-      expect(errors.some((e) => e.textContent?.includes('mismatch'))).toBe(true);
+      expect(errors.some((e: HTMLElement) => e.textContent?.includes('mismatch'))).toBe(true);
     });
     expect(apiClient.changePassword).not.toHaveBeenCalled();
   });
@@ -88,7 +88,7 @@ describe('ChangePasswordCard', () => {
 
     await waitFor(() => {
       const errors = screen.getAllByRole('alert');
-      expect(errors.some((e) => e.textContent?.includes('sameAsCurrent'))).toBe(true);
+      expect(errors.some((e: HTMLElement) => e.textContent?.includes('sameAsCurrent'))).toBe(true);
     });
     expect(apiClient.changePassword).not.toHaveBeenCalled();
   });

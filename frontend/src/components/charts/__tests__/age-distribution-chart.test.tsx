@@ -81,7 +81,7 @@ describe('AgeDistributionChart', () => {
       {
         age_label: '6+',
         min_age: 6,
-        max_age: null,
+        max_age: 0,
         count: 4,
         male_count: 2,
         female_count: 2,

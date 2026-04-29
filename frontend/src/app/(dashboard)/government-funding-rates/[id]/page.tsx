@@ -120,7 +120,7 @@ export default function GovernmentFundingDetailPage() {
     createPeriodMutation.mutate({
       ...data,
       from: formatDateForApi(data.from)!,
-      to: formatDateForApi(data.to) || null,
+      to: formatDateForApi(data.to) || undefined,
     });
   };
 
@@ -134,8 +134,8 @@ export default function GovernmentFundingDetailPage() {
           label: data.label,
           payment: eurosToCents(data.payment_euros),
           requirement: data.requirement,
-          min_age: data.min_age ?? null,
-          max_age: data.max_age ?? null,
+          min_age: data.min_age ?? undefined,
+          max_age: data.max_age ?? undefined,
           comment: data.comment,
         },
       });
@@ -187,7 +187,7 @@ export default function GovernmentFundingDetailPage() {
             </p>
           ) : (
             <div className="space-y-6">
-              {funding.periods?.map((period) => (
+              {(funding.periods as GovernmentFundingPeriod[] | undefined)?.map((period) => (
                 <Card key={period.id}>
                   <CardHeader className="flex flex-row items-center justify-between py-3">
                     <div>
@@ -222,7 +222,10 @@ export default function GovernmentFundingDetailPage() {
                     <PropertiesGroupedByKey
                       period={period}
                       onDeleteProperty={(property) => {
-                        setDeletingProperty({ period, property });
+                        setDeletingProperty({
+                          period,
+                          property: property as GovernmentFundingProperty,
+                        });
                         setIsDeletePropertyDialogOpen(true);
                       }}
                       t={t}

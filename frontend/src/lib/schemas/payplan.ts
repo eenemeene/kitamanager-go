@@ -1,10 +1,15 @@
 import { z } from 'zod';
+import type { PayPlanCreateRequest } from '@/lib/api/types';
 import { endDateAfterStart } from './period';
 
 export const payPlanSchema = z.object({
   name: z.string().min(1).max(255),
-});
+}) satisfies z.ZodType<PayPlanCreateRequest>;
 
+// payPlanPeriodSchema is form-only: the API stores
+// `employer_contribution_rate` in hundredths of a percent (2200 = 22.00%)
+// but the form collects 0-100 percent. Conversion happens in the
+// submit handler. Skipping the satisfies guard.
 export const payPlanPeriodSchema = z
   .object({
     from: z.string().min(1),
@@ -14,6 +19,8 @@ export const payPlanPeriodSchema = z
   })
   .refine(...endDateAfterStart('from', 'to'));
 
+// payPlanEntrySchema is form-only: API stores `monthly_amount` in cents,
+// the form collects euros. Conversion happens in the submit handler.
 export const payPlanEntrySchema = z.object({
   grade: z.string().min(1),
   step: z.number().min(1).max(10),

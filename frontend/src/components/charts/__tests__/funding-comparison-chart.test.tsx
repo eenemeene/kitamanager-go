@@ -14,60 +14,73 @@ jest.mock('@nivo/bar', () => ({
   ResponsiveBar: () => <div data-testid="nivo-bar" />,
 }));
 
+function makeDataPoint(
+  overrides: Partial<FinancialResponse['data_points'][0]>
+): FinancialResponse['data_points'][0] {
+  return {
+    date: '2025-01-01',
+    funding_income: 0,
+    actual_funding: 0,
+    actual_funding_correction: 0,
+    actual_funding_regular: 0,
+    budget_income: 0,
+    gross_salary: 0,
+    employer_costs: 0,
+    budget_expenses: 0,
+    budget_item_details: [],
+    funding_details: [],
+    salary_details: [],
+    total_income: 0,
+    total_expenses: 0,
+    balance: 0,
+    child_count: 0,
+    staff_count: 0,
+    ...overrides,
+  };
+}
+
 const emptyData: FinancialResponse = {
   data_points: [],
+  warnings: [],
 };
 
 const dataWithActual: FinancialResponse = {
   data_points: [
-    {
+    makeDataPoint({
       date: '2025-01-01',
       funding_income: 500000,
-      budget_income: 0,
-      gross_salary: 0,
-      employer_costs: 0,
-      budget_expenses: 0,
       total_income: 500000,
-      total_expenses: 0,
       balance: 500000,
       actual_funding: 480000,
       actual_funding_regular: 470000,
       actual_funding_correction: 10000,
       child_count: 20,
       staff_count: 5,
-    },
-    {
+    }),
+    makeDataPoint({
       date: '2025-02-01',
       funding_income: 510000,
-      budget_income: 0,
-      gross_salary: 0,
-      employer_costs: 0,
-      budget_expenses: 0,
       total_income: 510000,
-      total_expenses: 0,
       balance: 510000,
       child_count: 21,
       staff_count: 5,
-    },
+    }),
   ],
+  warnings: [],
 };
 
 const dataWithoutActual: FinancialResponse = {
   data_points: [
-    {
+    makeDataPoint({
       date: '2025-01-01',
       funding_income: 500000,
-      budget_income: 0,
-      gross_salary: 0,
-      employer_costs: 0,
-      budget_expenses: 0,
       total_income: 500000,
-      total_expenses: 0,
       balance: 500000,
       child_count: 20,
       staff_count: 5,
-    },
+    }),
   ],
+  warnings: [],
 };
 
 describe('FundingComparisonChart', () => {

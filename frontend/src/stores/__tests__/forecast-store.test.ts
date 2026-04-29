@@ -64,7 +64,7 @@ describe('forecast-store', () => {
           section_id: 1,
           staff_category: 'qualified',
           weekly_hours: 39,
-          pay_plan_id: 1,
+          payplan_id: 1,
         },
       ],
     };
@@ -163,7 +163,7 @@ describe('forecast-store', () => {
           section_id: 1,
           staff_category: 'qualified',
           weekly_hours: 39,
-          pay_plan_id: 1,
+          payplan_id: 1,
         },
       ],
     });
@@ -306,7 +306,7 @@ describe('forecast-store', () => {
           section_id: 1,
           staff_category: 'qualified',
           weekly_hours: 39,
-          pay_plan_id: 1,
+          payplan_id: 1,
         },
       ],
     });

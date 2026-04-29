@@ -253,7 +253,7 @@ export default function EmployeeContractsPage() {
     } else {
       createMutation.mutate({
         from: formatDateForApi(data.from) || data.from,
-        to: formatDateForApi(data.to),
+        to: formatDateForApi(data.to) ?? undefined,
         section_id: data.section_id,
         payplan_id: data.payplan_id,
         staff_category: data.staff_category,

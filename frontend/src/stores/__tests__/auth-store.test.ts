@@ -1,5 +1,6 @@
 import { useAuthStore } from '../auth-store';
 import { apiClient } from '@/lib/api/client';
+import type { UserMembership } from '@/lib/api/types';
 
 // Mock the API client.
 // The unauthorized callback is captured via globalThis because jest.mock is hoisted
@@ -483,7 +484,9 @@ describe('useAuthStore', () => {
         user: { id: 1, email: 'test@test.com' },
         isAuthenticated: true,
         userLoaded: true,
-        memberships: [{ user_id: 1, organization_id: 5, role: 'admin' as const }],
+        memberships: [
+          { user_id: 1, organization_id: 5, role: 'admin' as const } as unknown as UserMembership,
+        ],
         orgRoleMap: new Map([[5, 'admin' as const]]),
       });
       localStorage.setItem('selectedOrgId', '5');
@@ -520,7 +523,9 @@ describe('useAuthStore', () => {
         user: { id: 1, email: 'test@test.com' },
         isAuthenticated: true,
         userLoaded: true,
-        memberships: [{ user_id: 1, organization_id: 5, role: 'admin' as const }],
+        memberships: [
+          { user_id: 1, organization_id: 5, role: 'admin' as const } as unknown as UserMembership,
+        ],
         orgRoleMap: new Map([[5, 'admin' as const]]),
       });
 

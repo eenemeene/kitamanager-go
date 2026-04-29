@@ -23,6 +23,7 @@ const rowWithAttendance: AttendanceRow = {
   attendance: {
     id: 10,
     child_id: 2,
+    child_name: 'Bob Jones',
     organization_id: 1,
     date: '2024-01-15',
     status: 'present',

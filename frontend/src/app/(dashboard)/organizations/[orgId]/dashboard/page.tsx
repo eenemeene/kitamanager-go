@@ -115,9 +115,11 @@ export default function OrgDashboardPage() {
   }, [latestCompare]);
 
   const currentMonth = staffingData?.data_points?.[0];
+  const requiredHours = currentMonth?.required_hours ?? 0;
+  const availableHours = currentMonth?.available_hours ?? 0;
   const coverageBalance =
-    currentMonth && currentMonth.required_hours > 0
-      ? Math.round((currentMonth.available_hours / currentMonth.required_hours) * 100) - 100
+    currentMonth && requiredHours > 0
+      ? Math.round((availableHours / requiredHours) * 100) - 100
       : null;
 
   return (
@@ -166,7 +168,7 @@ export default function OrgDashboardPage() {
           }
           description={
             currentMonth
-              ? `${Math.round(currentMonth.available_hours)}h / ${Math.round(currentMonth.required_hours)}h`
+              ? `${Math.round(availableHours)}h / ${Math.round(requiredHours)}h`
               : undefined
           }
           valueClassName={
@@ -213,7 +215,7 @@ export default function OrgDashboardPage() {
                                 <span>
                                   {s.bill_first_name} {s.bill_last_name}{' '}
                                   <span className="text-xs">
-                                    ({Math.round(s.similarity * 100)}%)
+                                    ({Math.round((s.similarity ?? 0) * 100)}%)
                                   </span>
                                 </span>
                                 <Button
@@ -224,9 +226,9 @@ export default function OrgDashboardPage() {
                                   onClick={() =>
                                     acceptSuggestion.mutate({
                                       childId: child.id,
-                                      firstName: s.bill_first_name,
-                                      lastName: s.bill_last_name,
-                                      voucherNumber: s.voucher_number,
+                                      firstName: s.bill_first_name ?? '',
+                                      lastName: s.bill_last_name ?? '',
+                                      voucherNumber: s.voucher_number ?? '',
                                     })
                                   }
                                 >
@@ -277,9 +279,10 @@ export default function OrgDashboardPage() {
                         // Group "different" mismatches by key to show bill vs contract
                         const byKey = new Map<string, typeof mismatched>();
                         for (const p of mismatched) {
-                          const group = byKey.get(p.key) ?? [];
+                          const key = p.key ?? '';
+                          const group = byKey.get(key) ?? [];
                           group.push(p);
-                          byKey.set(p.key, group);
+                          byKey.set(key, group);
                         }
                         return Array.from(byKey.entries())
                           .map(([key, props]) => {

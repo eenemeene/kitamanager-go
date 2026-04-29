@@ -161,7 +161,7 @@ describe('GovernmentFundingsPage', () => {
     // The delete buttons are the 3rd action button per row (view, edit, delete)
     // New button + (view, edit, delete) * 2 rows = 7 buttons
     // Delete buttons are at index 3 and 6 (0-indexed: new=0, view1=1, edit1=2, delete1=3, ...)
-    const deleteButtons = buttons.filter((_, i) => i === 3 || i === 6);
+    const deleteButtons = buttons.filter((_: HTMLElement, i: number) => i === 3 || i === 6);
     await user.click(deleteButtons[0]);
 
     await waitFor(() => {

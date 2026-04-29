@@ -44,8 +44,8 @@ func (r Role) Precedence() int {
 type UserOrganization struct {
 	UserID         uint          `gorm:"primaryKey" json:"user_id" example:"1"`
 	OrganizationID uint          `gorm:"primaryKey" json:"organization_id" example:"1"`
-	Role           Role          `gorm:"size:50;not null;default:'member'" json:"role" example:"member"`
-	CreatedAt      time.Time     `gorm:"not null" json:"created_at" example:"2024-01-15T10:30:00Z"`
+	Role           Role          `gorm:"size:50;not null;default:'member'" json:"role" enums:"admin,manager,member,staff" example:"member"`
+	CreatedAt      time.Time     `gorm:"not null" json:"created_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
 	CreatedBy      string        `gorm:"size:255" json:"created_by" example:"admin@example.com"`
 	User           *User         `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	Organization   *Organization `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
@@ -58,15 +58,15 @@ func (UserOrganization) TableName() string {
 
 // UserOrganizationRoleUpdateRequest represents the request body for updating a user's role in an organization
 type UserOrganizationRoleUpdateRequest struct {
-	Role Role `json:"role" binding:"required" example:"admin"`
+	Role Role `json:"role" enums:"admin,manager,member,staff" binding:"required" example:"admin"`
 }
 
 // UserOrganizationResponse represents a user-organization membership response
 type UserOrganizationResponse struct {
 	UserID         uint          `json:"user_id" example:"1"`
 	OrganizationID uint          `json:"organization_id" example:"1"`
-	Role           Role          `json:"role" example:"member"`
-	CreatedAt      time.Time     `json:"created_at" example:"2024-01-15T10:30:00Z"`
+	Role           Role          `json:"role" enums:"admin,manager,member,staff" example:"member"`
+	CreatedAt      time.Time     `json:"created_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
 	CreatedBy      string        `json:"created_by" example:"admin@example.com"`
 	Organization   *Organization `json:"organization,omitempty"`
 }
@@ -75,7 +75,7 @@ type UserOrganizationResponse struct {
 type UserMembership struct {
 	UserID         uint          `json:"user_id" example:"1"`
 	OrganizationID uint          `json:"organization_id" example:"1"`
-	Role           Role          `json:"role" example:"admin"`
+	Role           Role          `json:"role" enums:"admin,manager,member,staff" example:"admin"`
 	Organization   *Organization `json:"organization,omitempty"`
 }
 

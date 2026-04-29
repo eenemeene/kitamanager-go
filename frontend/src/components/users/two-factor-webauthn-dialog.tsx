@@ -100,7 +100,7 @@ export function TwoFactorWebAuthnDialog({
     // Step 2: hand options to the browser. This is where the user
     // touches their security key / uses Touch ID / etc.
     const opts = decodeCreationOptions(
-      payload.creation_options as Parameters<typeof decodeCreationOptions>[0]
+      payload.creation_options as unknown as Parameters<typeof decodeCreationOptions>[0]
     );
     const cred = (await navigator.credentials.create({
       publicKey: opts,

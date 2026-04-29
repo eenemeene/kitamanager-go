@@ -1520,9 +1520,9 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Authenticated",
+                        "description": "MFA required: no cookie set; follow up with POST /auth/mfa/verify",
                         "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.LoginResponse"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.LoginMFARequiredResponse"
                         }
                     },
                     "400": {
@@ -9382,9 +9382,9 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "WebAuthn enrollment branch (referenced via FactorResponse.enrollment)",
                         "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FactorResponse"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.WebAuthnEnrollmentPayload"
                         }
                     },
                     "400": {
@@ -10336,7 +10336,8 @@ const docTemplate = `{
                     "example": true
                 },
                 "timestamp": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "user_email": {
                     "type": "string",
@@ -10412,7 +10413,8 @@ const docTemplate = `{
                     "example": "income"
                 },
                 "created_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "entries": {
                     "type": "array",
@@ -10437,7 +10439,8 @@ const docTemplate = `{
                     "example": true
                 },
                 "updated_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 }
             }
         },
@@ -10455,6 +10458,7 @@ const docTemplate = `{
                 },
                 "from": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-01T00:00:00Z"
                 },
                 "notes": {
@@ -10464,6 +10468,7 @@ const docTemplate = `{
                 },
                 "to": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-12-31T00:00:00Z"
                 }
             }
@@ -10480,10 +10485,12 @@ const docTemplate = `{
                     "example": 1
                 },
                 "created_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "from": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-01T00:00:00Z"
                 },
                 "id": {
@@ -10496,10 +10503,12 @@ const docTemplate = `{
                 },
                 "to": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-12-31T00:00:00Z"
                 },
                 "updated_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 }
             }
         },
@@ -10517,6 +10526,7 @@ const docTemplate = `{
                 },
                 "from": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-01T00:00:00Z"
                 },
                 "notes": {
@@ -10526,6 +10536,7 @@ const docTemplate = `{
                 },
                 "to": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-12-31T00:00:00Z"
                 }
             }
@@ -10542,7 +10553,8 @@ const docTemplate = `{
                     "example": "income"
                 },
                 "created_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "id": {
                     "type": "integer",
@@ -10561,7 +10573,8 @@ const docTemplate = `{
                     "example": true
                 },
                 "updated_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 }
             }
         },
@@ -10610,7 +10623,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "employee contract references unknown pay plan"
                 },
-                "pay_plan_id": {
+                "payplan_id": {
                     "type": "integer",
                     "example": 7
                 },
@@ -10625,6 +10638,7 @@ const docTemplate = `{
             "properties": {
                 "birthdate": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "1990-05-15"
                 },
                 "contracts": {
@@ -10634,7 +10648,8 @@ const docTemplate = `{
                     }
                 },
                 "created_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "first_name": {
                     "type": "string",
@@ -10642,6 +10657,11 @@ const docTemplate = `{
                 },
                 "gender": {
                     "type": "string",
+                    "enum": [
+                        "male",
+                        "female",
+                        "diverse"
+                    ],
                     "example": "male"
                 },
                 "id": {
@@ -10660,7 +10680,8 @@ const docTemplate = `{
                     "example": 1
                 },
                 "updated_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "vouchers": {
                     "type": "array",
@@ -10678,6 +10699,7 @@ const docTemplate = `{
             "properties": {
                 "check_in_time": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2025-06-15T08:00:00Z"
                 },
                 "date": {
@@ -10729,10 +10751,12 @@ const docTemplate = `{
             "properties": {
                 "check_in_time": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2025-06-15T08:00:00Z"
                 },
                 "check_out_time": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2025-06-15T16:00:00Z"
                 },
                 "child_id": {
@@ -10744,7 +10768,8 @@ const docTemplate = `{
                     "example": "Emma Schmidt"
                 },
                 "created_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "date": {
                     "type": "string",
@@ -10772,7 +10797,8 @@ const docTemplate = `{
                     "example": "present"
                 },
                 "updated_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 }
             }
         },
@@ -10781,10 +10807,12 @@ const docTemplate = `{
             "properties": {
                 "check_in_time": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2025-06-15T08:00:00Z"
                 },
                 "check_out_time": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2025-06-15T16:00:00Z"
                 },
                 "note": {
@@ -10947,10 +10975,12 @@ const docTemplate = `{
                     "example": 1
                 },
                 "created_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "from": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "id": {
                     "type": "integer",
@@ -10971,10 +11001,12 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "to": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "updated_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 }
             }
         },
@@ -10986,6 +11018,7 @@ const docTemplate = `{
             "properties": {
                 "from": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2025-01-01"
                 },
                 "id": {
@@ -11001,6 +11034,7 @@ const docTemplate = `{
                 },
                 "to": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2025-12-31"
                 }
             }
@@ -11030,6 +11064,7 @@ const docTemplate = `{
             "properties": {
                 "from": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2025-01-01"
                 },
                 "properties": {
@@ -11041,6 +11076,7 @@ const docTemplate = `{
                 },
                 "to": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2025-12-31"
                 }
             }
@@ -11053,10 +11089,12 @@ const docTemplate = `{
                     "example": 1
                 },
                 "created_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "from": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2025-01-01"
                 },
                 "id": {
@@ -11076,10 +11114,12 @@ const docTemplate = `{
                 },
                 "to": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2025-12-31"
                 },
                 "updated_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 }
             }
         },
@@ -11088,6 +11128,7 @@ const docTemplate = `{
             "properties": {
                 "from": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2025-01-01"
                 },
                 "properties": {
@@ -11099,6 +11140,7 @@ const docTemplate = `{
                 },
                 "to": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2025-12-31"
                 }
             }
@@ -11123,6 +11165,11 @@ const docTemplate = `{
                 },
                 "gender": {
                     "type": "string",
+                    "enum": [
+                        "male",
+                        "female",
+                        "diverse"
+                    ],
                     "example": "female"
                 },
                 "last_name": {
@@ -11141,10 +11188,12 @@ const docTemplate = `{
             "properties": {
                 "birthdate": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2022-05-15T00:00:00Z"
                 },
                 "date": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2026-04-01T00:00:00Z"
                 },
                 "properties": {
@@ -11207,6 +11256,7 @@ const docTemplate = `{
             "properties": {
                 "birthdate": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2020-03-10"
                 },
                 "contracts": {
@@ -11216,7 +11266,8 @@ const docTemplate = `{
                     }
                 },
                 "created_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "first_name": {
                     "type": "string",
@@ -11224,6 +11275,11 @@ const docTemplate = `{
                 },
                 "gender": {
                     "type": "string",
+                    "enum": [
+                        "male",
+                        "female",
+                        "diverse"
+                    ],
                     "example": "female"
                 },
                 "id": {
@@ -11239,7 +11295,8 @@ const docTemplate = `{
                     "example": 1
                 },
                 "updated_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "vouchers": {
                     "type": "array",
@@ -11263,6 +11320,11 @@ const docTemplate = `{
                 },
                 "gender": {
                     "type": "string",
+                    "enum": [
+                        "male",
+                        "female",
+                        "diverse"
+                    ],
                     "example": "female"
                 },
                 "last_name": {
@@ -11279,10 +11341,12 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "created_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "first_seen": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "id": {
                     "type": "integer"
@@ -11310,6 +11374,7 @@ const docTemplate = `{
             "properties": {
                 "birthdate": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2020-03-10"
                 },
                 "contracts": {
@@ -11319,7 +11384,8 @@ const docTemplate = `{
                     }
                 },
                 "created_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "first_name": {
                     "type": "string",
@@ -11327,6 +11393,11 @@ const docTemplate = `{
                 },
                 "gender": {
                     "type": "string",
+                    "enum": [
+                        "male",
+                        "female",
+                        "diverse"
+                    ],
                     "example": "female"
                 },
                 "id": {
@@ -11348,7 +11419,8 @@ const docTemplate = `{
                     }
                 },
                 "updated_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "vouchers": {
                     "type": "array",
@@ -11380,6 +11452,7 @@ const docTemplate = `{
                 },
                 "date": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2025-01-27"
                 },
                 "weekly_hours_basis": {
@@ -11437,6 +11510,7 @@ const docTemplate = `{
             "properties": {
                 "birthdate": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "1990-05-15"
                 },
                 "contracts": {
@@ -11446,7 +11520,8 @@ const docTemplate = `{
                     }
                 },
                 "created_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "first_name": {
                     "type": "string",
@@ -11454,6 +11529,11 @@ const docTemplate = `{
                 },
                 "gender": {
                     "type": "string",
+                    "enum": [
+                        "male",
+                        "female",
+                        "diverse"
+                    ],
                     "example": "male"
                 },
                 "id": {
@@ -11472,7 +11552,8 @@ const docTemplate = `{
                     "example": 1
                 },
                 "updated_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 }
             }
         },
@@ -11480,14 +11561,16 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "created_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "employee_id": {
                     "type": "integer",
                     "example": 1
                 },
                 "from": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "grade": {
                     "type": "string",
@@ -11525,10 +11608,12 @@ const docTemplate = `{
                     "example": 3
                 },
                 "to": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "updated_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "weekly_hours": {
                     "type": "number",
@@ -11544,6 +11629,7 @@ const docTemplate = `{
             "properties": {
                 "from": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2025-01-01"
                 },
                 "grade": {
@@ -11578,6 +11664,7 @@ const docTemplate = `{
                 },
                 "to": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2025-12-31"
                 },
                 "weekly_hours": {
@@ -11616,6 +11703,7 @@ const docTemplate = `{
             "properties": {
                 "from": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2025-01-01"
                 },
                 "grade": {
@@ -11646,6 +11734,7 @@ const docTemplate = `{
                 },
                 "to": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2025-12-31"
                 },
                 "weekly_hours": {
@@ -11660,7 +11749,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "created_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "employee_id": {
                     "type": "integer",
@@ -11668,6 +11758,7 @@ const docTemplate = `{
                 },
                 "from": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2025-01-01"
                 },
                 "grade": {
@@ -11678,13 +11769,13 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 1
                 },
-                "pay_plan_name": {
-                    "type": "string",
-                    "example": "TV eene meene"
-                },
                 "payplan_id": {
                     "type": "integer",
                     "example": 1
+                },
+                "payplan_name": {
+                    "type": "string",
+                    "example": "TV eene meene"
                 },
                 "properties": {
                     "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties"
@@ -11707,10 +11798,12 @@ const docTemplate = `{
                 },
                 "to": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2025-12-31"
                 },
                 "updated_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "weekly_hours": {
                     "type": "number",
@@ -11723,6 +11816,7 @@ const docTemplate = `{
             "properties": {
                 "from": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2025-01-01"
                 },
                 "grade": {
@@ -11753,6 +11847,7 @@ const docTemplate = `{
                 },
                 "to": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2025-12-31"
                 },
                 "weekly_hours": {
@@ -11767,13 +11862,14 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "grade",
-                "pay_plan_id",
+                "payplan_id",
                 "step",
                 "weekly_hours"
             ],
             "properties": {
                 "date": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2026-04-01T00:00:00Z"
                 },
                 "grade": {
@@ -11781,7 +11877,7 @@ const docTemplate = `{
                     "maxLength": 20,
                     "example": "S8a"
                 },
-                "pay_plan_id": {
+                "payplan_id": {
                     "type": "integer",
                     "example": 1
                 },
@@ -11828,7 +11924,7 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 380000
                 },
-                "pay_plan_weekly_hours": {
+                "payplan_weekly_hours": {
                     "type": "number",
                     "example": 39.4
                 },
@@ -11870,6 +11966,11 @@ const docTemplate = `{
                 },
                 "gender": {
                     "type": "string",
+                    "enum": [
+                        "male",
+                        "female",
+                        "diverse"
+                    ],
                     "example": "male"
                 },
                 "last_name": {
@@ -11884,6 +11985,7 @@ const docTemplate = `{
             "properties": {
                 "birthdate": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "1990-05-15"
                 },
                 "contracts": {
@@ -11893,7 +11995,8 @@ const docTemplate = `{
                     }
                 },
                 "created_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "first_name": {
                     "type": "string",
@@ -11901,6 +12004,11 @@ const docTemplate = `{
                 },
                 "gender": {
                     "type": "string",
+                    "enum": [
+                        "male",
+                        "female",
+                        "diverse"
+                    ],
                     "example": "male"
                 },
                 "id": {
@@ -11916,7 +12024,8 @@ const docTemplate = `{
                     "example": 1
                 },
                 "updated_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 }
             }
         },
@@ -11978,6 +12087,11 @@ const docTemplate = `{
                 },
                 "gender": {
                     "type": "string",
+                    "enum": [
+                        "male",
+                        "female",
+                        "diverse"
+                    ],
                     "example": "male"
                 },
                 "last_name": {
@@ -12105,10 +12219,12 @@ const docTemplate = `{
                     "example": 7
                 },
                 "created_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "enabled_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "enrollment": {
                     "description": "Enrollment is populated only on the ` + "`" + `POST` + "`" + ` response during\ninitial enrollment; subsequent GETs omit it."
@@ -12122,10 +12238,16 @@ const docTemplate = `{
                     "example": "Authenticator app"
                 },
                 "last_used_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "type": {
                     "type": "string",
+                    "enum": [
+                        "totp",
+                        "backup_codes",
+                        "webauthn"
+                    ],
                     "example": "totp"
                 }
             }
@@ -12332,7 +12454,8 @@ const docTemplate = `{
                     }
                 },
                 "from": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "remove_child_ids": {
                     "type": "array",
@@ -12350,7 +12473,8 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "to": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 }
             }
         },
@@ -12759,7 +12883,8 @@ const docTemplate = `{
                     "example": 20000
                 },
                 "created_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "facility_name": {
                     "type": "string",
@@ -12809,7 +12934,8 @@ const docTemplate = `{
                     "example": 20000
                 },
                 "created_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "created_by": {
                     "description": "CreatedBy is nil when the uploader has since been deleted\n(migration 000014 ON DELETE SET NULL).",
@@ -12951,6 +13077,7 @@ const docTemplate = `{
             "properties": {
                 "created_at": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-15T10:30:00Z"
                 },
                 "id": {
@@ -12976,6 +13103,7 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-15T10:30:00Z"
                 }
             }
@@ -12989,10 +13117,12 @@ const docTemplate = `{
                 },
                 "created_at": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-15T10:30:00Z"
                 },
                 "from": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "full_time_weekly_hours": {
                     "type": "number",
@@ -13013,10 +13143,12 @@ const docTemplate = `{
                     }
                 },
                 "to": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "updated_at": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-15T10:30:00Z"
                 }
             }
@@ -13035,6 +13167,7 @@ const docTemplate = `{
                 },
                 "from": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2023-03-01"
                 },
                 "full_time_weekly_hours": {
@@ -13043,6 +13176,7 @@ const docTemplate = `{
                 },
                 "to": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-02-29"
                 }
             }
@@ -13056,10 +13190,12 @@ const docTemplate = `{
                 },
                 "created_at": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-15T10:30:00Z"
                 },
                 "from": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2023-03-01"
                 },
                 "full_time_weekly_hours": {
@@ -13076,10 +13212,12 @@ const docTemplate = `{
                 },
                 "to": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-02-29"
                 },
                 "updated_at": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-15T10:30:00Z"
                 }
             }
@@ -13094,6 +13232,7 @@ const docTemplate = `{
                 },
                 "from": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2023-03-01"
                 },
                 "full_time_weekly_hours": {
@@ -13102,6 +13241,7 @@ const docTemplate = `{
                 },
                 "to": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-02-29"
                 }
             }
@@ -13120,6 +13260,7 @@ const docTemplate = `{
                 },
                 "created_at": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-15T10:30:00Z"
                 },
                 "id": {
@@ -13227,6 +13368,7 @@ const docTemplate = `{
                 },
                 "created_at": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-15T10:30:00Z"
                 },
                 "id": {
@@ -13321,6 +13463,7 @@ const docTemplate = `{
             "properties": {
                 "created_at": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-15T10:30:00Z"
                 },
                 "id": {
@@ -13337,6 +13480,7 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-15T10:30:00Z"
                 }
             }
@@ -13370,6 +13514,59 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.LoginFactorDescriptor": {
+            "type": "object",
+            "properties": {
+                "credential_id": {
+                    "description": "CredentialID is the base64url-encoded credential id, populated\nonly for webauthn factors. The browser needs it to narrow\nallowCredentials[] on navigator.credentials.get(), which lets\nthe authenticator pre-filter before prompting the user. Safe\nto expose: credential ids are public by WebAuthn design.",
+                    "type": "string",
+                    "example": "AQIDBAU..."
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "label": {
+                    "type": "string",
+                    "example": "iPhone"
+                },
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "totp",
+                        "backup_codes",
+                        "webauthn"
+                    ],
+                    "example": "totp"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.LoginMFARequiredResponse": {
+            "type": "object",
+            "properties": {
+                "expires_at": {
+                    "type": "string",
+                    "example": "2026-04-23T10:05:00Z"
+                },
+                "factors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.LoginFactorDescriptor"
+                    }
+                },
+                "pending_token": {
+                    "type": "string",
+                    "example": "9ZmN...sBA"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "mfa_required"
+                    ],
+                    "example": "mfa_required"
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.LoginRequest": {
             "type": "object",
             "required": [
@@ -13396,6 +13593,9 @@ const docTemplate = `{
                 },
                 "status": {
                     "type": "string",
+                    "enum": [
+                        "authenticated"
+                    ],
                     "example": "authenticated"
                 }
             }
@@ -13598,6 +13798,7 @@ const docTemplate = `{
                 },
                 "created_at": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-15T10:30:00Z"
                 },
                 "created_by": {
@@ -13619,6 +13820,7 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-15T10:30:00Z"
                 }
             }
@@ -13660,6 +13862,7 @@ const docTemplate = `{
                 },
                 "created_at": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-15T10:30:00Z"
                 },
                 "created_by": {
@@ -13680,6 +13883,7 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-15T10:30:00Z"
                 }
             }
@@ -14283,7 +14487,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "created_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "id": {
                     "type": "integer",
@@ -14304,7 +14509,8 @@ const docTemplate = `{
                     }
                 },
                 "updated_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 }
             }
         },
@@ -14341,7 +14547,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "created_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "grade": {
                     "type": "string",
@@ -14368,7 +14575,8 @@ const docTemplate = `{
                     "example": 3
                 },
                 "updated_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 }
             }
         },
@@ -14417,10 +14625,12 @@ const docTemplate = `{
                 },
                 "from": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-01T00:00:00Z"
                 },
                 "to": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-12-31T00:00:00Z"
                 },
                 "weekly_hours": {
@@ -14433,7 +14643,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "created_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "employer_contribution_rate": {
                     "description": "hundredths of percent: 2200 = 22.00%",
@@ -14448,6 +14659,7 @@ const docTemplate = `{
                 },
                 "from": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-01T00:00:00Z"
                 },
                 "id": {
@@ -14460,10 +14672,12 @@ const docTemplate = `{
                 },
                 "to": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-12-31T00:00:00Z"
                 },
                 "updated_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "weekly_hours": {
                     "type": "number",
@@ -14487,10 +14701,12 @@ const docTemplate = `{
                 },
                 "from": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-01T00:00:00Z"
                 },
                 "to": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-12-31T00:00:00Z"
                 },
                 "weekly_hours": {
@@ -14503,7 +14719,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "created_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "id": {
                     "type": "integer",
@@ -14518,7 +14735,8 @@ const docTemplate = `{
                     "example": 1
                 },
                 "updated_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 }
             }
         },
@@ -14552,6 +14770,7 @@ const docTemplate = `{
             "properties": {
                 "created_at": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-15T10:30:00Z"
                 },
                 "created_by": {
@@ -14587,6 +14806,7 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-15T10:30:00Z"
                 }
             }
@@ -14617,6 +14837,7 @@ const docTemplate = `{
             "properties": {
                 "created_at": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-15T10:30:00Z"
                 },
                 "created_by": {
@@ -14649,6 +14870,7 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-15T10:30:00Z"
                 }
             }
@@ -14790,6 +15012,19 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.TOTPEnrollmentPayload": {
+            "type": "object",
+            "properties": {
+                "otpauth_uri": {
+                    "type": "string",
+                    "example": "otpauth://totp/KitaManager:..."
+                },
+                "secret": {
+                    "type": "string",
+                    "example": "JBSWY3DPEHPK3PXP"
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.UserAddOrganizationRequest": {
             "type": "object",
             "required": [
@@ -14801,6 +15036,12 @@ const docTemplate = `{
                     "example": 1
                 },
                 "role": {
+                    "enum": [
+                        "admin",
+                        "manager",
+                        "member",
+                        "staff"
+                    ],
                     "allOf": [
                         {
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Role"
@@ -14851,6 +15092,12 @@ const docTemplate = `{
                     "example": 1
                 },
                 "role": {
+                    "enum": [
+                        "admin",
+                        "manager",
+                        "member",
+                        "staff"
+                    ],
                     "allOf": [
                         {
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Role"
@@ -14880,6 +15127,7 @@ const docTemplate = `{
             "properties": {
                 "created_at": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-15T10:30:00Z"
                 },
                 "created_by": {
@@ -14894,6 +15142,12 @@ const docTemplate = `{
                     "example": 1
                 },
                 "role": {
+                    "enum": [
+                        "admin",
+                        "manager",
+                        "member",
+                        "staff"
+                    ],
                     "allOf": [
                         {
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Role"
@@ -14914,6 +15168,12 @@ const docTemplate = `{
             ],
             "properties": {
                 "role": {
+                    "enum": [
+                        "admin",
+                        "manager",
+                        "member",
+                        "staff"
+                    ],
                     "allOf": [
                         {
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Role"
@@ -14971,6 +15231,7 @@ const docTemplate = `{
                 },
                 "created_at": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-15T10:30:00Z"
                 },
                 "created_by": {
@@ -14991,6 +15252,7 @@ const docTemplate = `{
                 },
                 "last_login": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-15T10:30:00Z"
                 },
                 "name": {
@@ -14999,6 +15261,7 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2024-01-15T10:30:00Z"
                 }
             }
@@ -15008,6 +15271,7 @@ const docTemplate = `{
             "properties": {
                 "created_at": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2026-04-22T10:00:00Z"
                 },
                 "created_ip": {
@@ -15024,6 +15288,7 @@ const docTemplate = `{
                 },
                 "expires_at": {
                     "type": "string",
+                    "format": "date-time",
                     "example": "2026-04-29T10:00:00Z"
                 },
                 "id": {
@@ -15101,6 +15366,14 @@ const docTemplate = `{
                 "voucher_number": {
                     "type": "string",
                     "example": "GB-12345678901-02"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.WebAuthnEnrollmentPayload": {
+            "type": "object",
+            "properties": {
+                "creation_options": {
+                    "type": "object"
                 }
             }
         }

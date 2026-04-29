@@ -117,10 +117,11 @@ export function StaffingReportSection({ orgId, reportMonth }: Props) {
         const points = queryResult.data.data_points;
         const exact = points.find((dp) => dp.date === reportMonth.asOf);
         const dp = exact ?? points[points.length - 1];
+        if (!dp) return null;
         return {
-          sectionName: section.name,
-          required: dp.required_hours,
-          available: dp.available_hours,
+          sectionName: section.name ?? '',
+          required: dp.required_hours ?? 0,
+          available: dp.available_hours ?? 0,
         };
       })
       .filter((d): d is NonNullable<typeof d> => d !== null);

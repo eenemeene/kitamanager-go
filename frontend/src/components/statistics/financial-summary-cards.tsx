@@ -30,7 +30,9 @@ export function FinancialSummaryCards({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-success text-2xl font-bold">{formatCurrency(totalIncome)}</div>
+          <div data-visual-mask="currency" className="text-success text-2xl font-bold">
+            {formatCurrency(totalIncome)}
+          </div>
         </CardContent>
       </Card>
       <Card>
@@ -43,7 +45,9 @@ export function FinancialSummaryCards({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-destructive text-2xl font-bold">{formatCurrency(totalExpenses)}</div>
+          <div data-visual-mask="currency" className="text-destructive text-2xl font-bold">
+            {formatCurrency(totalExpenses)}
+          </div>
         </CardContent>
       </Card>
       <Card>
@@ -56,7 +60,10 @@ export function FinancialSummaryCards({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className={`text-2xl font-bold ${balance >= 0 ? 'text-info' : 'text-destructive'}`}>
+          <div
+            data-visual-mask="currency"
+            className={`text-2xl font-bold ${balance >= 0 ? 'text-info' : 'text-destructive'}`}
+          >
             {formatCurrency(balance)}
           </div>
         </CardContent>

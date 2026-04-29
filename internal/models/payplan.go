@@ -48,8 +48,8 @@ type PayPlan struct {
 	Organization   *Organization   `gorm:"foreignKey:OrganizationID" json:"-"`
 	Name           string          `gorm:"not null;uniqueIndex:idx_pay_plans_org_name" json:"name" example:"TVöD-SuE"`
 	Periods        []PayPlanPeriod `gorm:"foreignKey:PayPlanID" json:"periods,omitempty"`
-	CreatedAt      time.Time       `json:"created_at"`
-	UpdatedAt      time.Time       `json:"updated_at"`
+	CreatedAt      time.Time       `json:"created_at" format:"date-time"`
+	UpdatedAt      time.Time       `json:"updated_at" format:"date-time"`
 }
 
 // GetOrganizationID returns the organization ID for the OrgOwned interface.
@@ -68,8 +68,8 @@ type PayPlanPeriod struct {
 	WeeklyHours              float64        `gorm:"not null" json:"weekly_hours" example:"39.0"`
 	EmployerContributionRate int            `json:"employer_contribution_rate" example:"2200"` // hundredths of percent: 2200 = 22.00%
 	Entries                  []PayPlanEntry `gorm:"foreignKey:PeriodID" json:"entries,omitempty"`
-	CreatedAt                time.Time      `json:"created_at"`
-	UpdatedAt                time.Time      `json:"updated_at"`
+	CreatedAt                time.Time      `json:"created_at" format:"date-time"`
+	UpdatedAt                time.Time      `json:"updated_at" format:"date-time"`
 }
 
 // PayPlanEntry represents a specific pay grade and step with its monthly amount.
@@ -82,8 +82,8 @@ type PayPlanEntry struct {
 	Step          int            `gorm:"not null" json:"step" example:"3"`
 	MonthlyAmount int            `gorm:"not null" json:"monthly_amount" example:"350000"` // cents
 	StepMinYears  *int           `json:"step_min_years,omitempty" example:"3"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
+	CreatedAt     time.Time      `json:"created_at" format:"date-time"`
+	UpdatedAt     time.Time      `json:"updated_at" format:"date-time"`
 }
 
 // PayPlanCreateRequest is the request body for creating a pay plan.
@@ -101,8 +101,8 @@ type PayPlanResponse struct {
 	ID             uint      `json:"id" example:"1"`
 	OrganizationID uint      `json:"organization_id" example:"1"`
 	Name           string    `json:"name" example:"TVöD-SuE"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	CreatedAt      time.Time `json:"created_at" format:"date-time"`
+	UpdatedAt      time.Time `json:"updated_at" format:"date-time"`
 }
 
 // PayPlanDetailResponse includes periods for detail view.
@@ -112,22 +112,22 @@ type PayPlanDetailResponse struct {
 	OrganizationID uint                    `json:"organization_id" yaml:"organization_id" example:"1"`
 	Name           string                  `json:"name" yaml:"name" example:"TVöD-SuE"`
 	Periods        []PayPlanPeriodResponse `json:"periods" yaml:"periods"`
-	CreatedAt      time.Time               `json:"created_at" yaml:"created_at"`
-	UpdatedAt      time.Time               `json:"updated_at" yaml:"updated_at"`
+	CreatedAt      time.Time               `json:"created_at" format:"date-time" yaml:"created_at"`
+	UpdatedAt      time.Time               `json:"updated_at" format:"date-time" yaml:"updated_at"`
 }
 
 // PayPlanPeriodCreateRequest is the request body for creating a period.
 type PayPlanPeriodCreateRequest struct {
-	From                     time.Time  `json:"from" binding:"required" example:"2024-01-01T00:00:00Z"`
-	To                       *time.Time `json:"to,omitempty" example:"2024-12-31T00:00:00Z"`
+	From                     time.Time  `json:"from" format:"date-time" binding:"required" example:"2024-01-01T00:00:00Z"`
+	To                       *time.Time `json:"to,omitempty" format:"date-time" example:"2024-12-31T00:00:00Z"`
 	WeeklyHours              float64    `json:"weekly_hours" binding:"required,gt=0" example:"39.0"`
 	EmployerContributionRate int        `json:"employer_contribution_rate" binding:"min=0,max=10000" example:"2200"` // hundredths of percent: 2200 = 22.00%
 }
 
 // PayPlanPeriodUpdateRequest is the request body for updating a period.
 type PayPlanPeriodUpdateRequest struct {
-	From                     time.Time  `json:"from" binding:"required" example:"2024-01-01T00:00:00Z"`
-	To                       *time.Time `json:"to,omitempty" example:"2024-12-31T00:00:00Z"`
+	From                     time.Time  `json:"from" format:"date-time" binding:"required" example:"2024-01-01T00:00:00Z"`
+	To                       *time.Time `json:"to,omitempty" format:"date-time" example:"2024-12-31T00:00:00Z"`
 	WeeklyHours              float64    `json:"weekly_hours" binding:"required,gt=0" example:"39.0"`
 	EmployerContributionRate int        `json:"employer_contribution_rate" binding:"min=0,max=10000" example:"2200"` // hundredths of percent: 2200 = 22.00%
 }
@@ -136,13 +136,13 @@ type PayPlanPeriodUpdateRequest struct {
 type PayPlanPeriodResponse struct {
 	ID                       uint                   `json:"id" yaml:"id" example:"1"`
 	PayPlanID                uint                   `json:"payplan_id" yaml:"payplan_id" example:"1"`
-	From                     time.Time              `json:"from" yaml:"from" example:"2024-01-01T00:00:00Z"`
-	To                       *time.Time             `json:"to,omitempty" yaml:"to" example:"2024-12-31T00:00:00Z"`
+	From                     time.Time              `json:"from" format:"date-time" yaml:"from" example:"2024-01-01T00:00:00Z"`
+	To                       *time.Time             `json:"to,omitempty" format:"date-time" yaml:"to" example:"2024-12-31T00:00:00Z"`
 	WeeklyHours              float64                `json:"weekly_hours" yaml:"weekly_hours" example:"39.0"`
 	EmployerContributionRate int                    `json:"employer_contribution_rate" yaml:"employer_contribution_rate" example:"2200"` // hundredths of percent: 2200 = 22.00%
 	Entries                  []PayPlanEntryResponse `json:"entries,omitempty" yaml:"entries"`
-	CreatedAt                time.Time              `json:"created_at" yaml:"created_at"`
-	UpdatedAt                time.Time              `json:"updated_at" yaml:"updated_at"`
+	CreatedAt                time.Time              `json:"created_at" format:"date-time" yaml:"created_at"`
+	UpdatedAt                time.Time              `json:"updated_at" format:"date-time" yaml:"updated_at"`
 }
 
 // PayPlanEntryCreateRequest is the request body for creating an entry.
@@ -169,8 +169,8 @@ type PayPlanEntryResponse struct {
 	Step          int       `json:"step" yaml:"step" example:"3"`
 	MonthlyAmount int       `json:"monthly_amount" yaml:"monthly_amount" example:"350000"`
 	StepMinYears  *int      `json:"step_min_years,omitempty" yaml:"step_min_years" example:"3"`
-	CreatedAt     time.Time `json:"created_at" yaml:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at" yaml:"updated_at"`
+	CreatedAt     time.Time `json:"created_at" format:"date-time" yaml:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at" format:"date-time" yaml:"updated_at"`
 }
 
 // ToResponse converts a PayPlan to PayPlanResponse.

@@ -13,7 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import type { Employee, PayPlan } from '@/lib/api/types';
+import type { Employee, PayPlanDetail } from '@/lib/api/types';
 import { formatDate, calculateAge, formatCurrency } from '@/lib/utils/formatting';
 import { getCurrentContract } from '@/lib/utils/contracts';
 import { calculateMonthlySalary } from '@/lib/utils/salary';
@@ -21,7 +21,7 @@ import { calculateYearsOfService } from '@/lib/utils/step-promotions';
 
 export interface EmployeesTableProps {
   employees: Employee[];
-  payPlanMap: Map<number, PayPlan>;
+  payPlanMap: Map<number, PayPlanDetail>;
   onViewHistory: (employee: Employee) => void;
   onAddContract: (employee: Employee) => void;
   onEdit: (employee: Employee) => void;

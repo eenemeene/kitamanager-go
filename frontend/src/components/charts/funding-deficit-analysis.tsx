@@ -38,9 +38,10 @@ export function FundingDeficitAnalysis({
   const [showAllIssues, setShowAllIssues] = useState(forceExpanded);
   const [expanded, setExpanded] = useState(forceExpanded);
 
-  const { categories, issues } = summary;
+  const categories = summary.categories ?? [];
+  const issues = summary.issues ?? [];
   const actionableIssues = issues.filter((i) => i.actionable);
-  const maxCategoryAbs = Math.max(...categories.map((c) => Math.abs(c.total_amount)), 1);
+  const maxCategoryAbs = Math.max(...categories.map((c) => Math.abs(c.total_amount ?? 0)), 1);
 
   const visibleIssues = showAllIssues
     ? actionableIssues
@@ -80,36 +81,39 @@ export function FundingDeficitAnalysis({
                   {t('deficitCategories')}
                 </h5>
                 <div className="space-y-1.5">
-                  {categories.map((cat) => (
-                    <div key={cat.category} className="flex items-center gap-3">
-                      <span className="w-36 truncate text-sm">
-                        {t(`deficitCategory_${cat.category}`)}
-                      </span>
-                      <div className="bg-muted h-2 flex-1 rounded-full">
-                        <div
+                  {categories.map((cat) => {
+                    const totalAmount = cat.total_amount ?? 0;
+                    return (
+                      <div key={cat.category} className="flex items-center gap-3">
+                        <span className="w-36 truncate text-sm">
+                          {t(`deficitCategory_${cat.category}`)}
+                        </span>
+                        <div className="bg-muted h-2 flex-1 rounded-full">
+                          <div
+                            className={cn(
+                              'h-2 rounded-full',
+                              totalAmount < 0 ? 'bg-destructive/70' : 'bg-success/70'
+                            )}
+                            style={{
+                              width: `${(Math.abs(totalAmount) / maxCategoryAbs) * 100}%`,
+                            }}
+                          />
+                        </div>
+                        <span
                           className={cn(
-                            'h-2 rounded-full',
-                            cat.total_amount < 0 ? 'bg-destructive/70' : 'bg-success/70'
+                            'w-24 text-right text-sm font-medium tabular-nums',
+                            totalAmount < 0 ? 'text-destructive' : 'text-success'
                           )}
-                          style={{
-                            width: `${(Math.abs(cat.total_amount) / maxCategoryAbs) * 100}%`,
-                          }}
-                        />
+                        >
+                          {totalAmount >= 0 ? '+' : ''}
+                          {formatEur(totalAmount)}
+                        </span>
+                        <span className="text-muted-foreground w-16 text-right text-xs">
+                          {t('fundingChildCount', { count: cat.child_count ?? 0 })}
+                        </span>
                       </div>
-                      <span
-                        className={cn(
-                          'w-24 text-right text-sm font-medium tabular-nums',
-                          cat.total_amount < 0 ? 'text-destructive' : 'text-success'
-                        )}
-                      >
-                        {cat.total_amount >= 0 ? '+' : ''}
-                        {formatEur(cat.total_amount)}
-                      </span>
-                      <span className="text-muted-foreground w-16 text-right text-xs">
-                        {t('fundingChildCount', { count: cat.child_count })}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -159,16 +163,16 @@ export function FundingDeficitAnalysis({
                               {issue.description}
                             </TableCell>
                             <TableCell className="text-muted-foreground text-right text-xs tabular-nums">
-                              {formatEur(issue.amount_per_month)} &times; {issue.month_count}m
+                              {formatEur(issue.amount_per_month ?? 0)} &times; {issue.month_count}m
                             </TableCell>
                             <TableCell
                               className={cn(
                                 'text-right font-medium tabular-nums',
-                                issue.total_amount < 0 ? 'text-destructive' : 'text-success'
+                                (issue.total_amount ?? 0) < 0 ? 'text-destructive' : 'text-success'
                               )}
                             >
-                              {issue.total_amount >= 0 ? '+' : ''}
-                              {formatEur(issue.total_amount)}
+                              {(issue.total_amount ?? 0) >= 0 ? '+' : ''}
+                              {formatEur(issue.total_amount ?? 0)}
                             </TableCell>
                           </TableRow>
                         ))}

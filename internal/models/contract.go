@@ -20,8 +20,8 @@ type BaseContract struct {
 	// For children: {"care_type": "ganztag", "supplements": ["ndh", "mss"]}
 	// For employees: {"benefits": ["christmas_bonus"], "employer_type": "normal"}
 	Properties ContractProperties `gorm:"serializer:json" json:"properties,omitempty"`
-	CreatedAt  time.Time          `json:"created_at"`
-	UpdatedAt  time.Time          `json:"updated_at"`
+	CreatedAt  time.Time          `json:"created_at" format:"date-time"`
+	UpdatedAt  time.Time          `json:"updated_at" format:"date-time"`
 }
 
 // GetScalarProperty returns a scalar (string) property value.

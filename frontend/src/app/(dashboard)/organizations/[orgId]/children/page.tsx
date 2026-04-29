@@ -131,7 +131,7 @@ export default function ChildrenPage() {
   const billingSummaryByChildId = useMemo(
     () =>
       new Map<number, ChildBillingSummaryEntry>(
-        billingSummaryData?.children?.map((b) => [b.child_id, b]) ?? []
+        billingSummaryData?.children?.map((b) => [b.child_id, b] as const) ?? []
       ),
     [billingSummaryData]
   );
@@ -172,7 +172,7 @@ export default function ChildrenPage() {
       });
       await apiClient.createChildContract(orgId, child.id, {
         from: formatDateForApi(data.contract_from) || data.contract_from,
-        to: formatDateForApi(data.contract_to),
+        to: formatDateForApi(data.contract_to) ?? undefined,
         section_id: data.section_id,
         properties: data.properties as ContractProperties | undefined,
       });
@@ -265,7 +265,10 @@ export default function ChildrenPage() {
       childId: number;
       contractId: number;
       to: string;
-    }) => apiClient.updateChildContract(orgId, childId, contractId, { to: formatDateForApi(to) }),
+    }) =>
+      apiClient.updateChildContract(orgId, childId, contractId, {
+        to: formatDateForApi(to) ?? undefined,
+      }),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.children.all(orgId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.children.billingSummary(orgId) });
@@ -313,7 +316,7 @@ export default function ChildrenPage() {
         entityId: child.id,
         data: {
           from: formatDateForApi(data.from) || data.from,
-          to: formatDateForApi(data.to),
+          to: formatDateForApi(data.to) ?? undefined,
           section_id: data.section_id,
           properties: data.properties as ContractProperties | undefined,
         },

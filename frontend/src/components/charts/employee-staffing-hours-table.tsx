@@ -69,7 +69,7 @@ export function EmployeeStaffingHoursTable({ data }: EmployeeStaffingHoursTableP
     const sums = new Array<number>(dates.length).fill(0);
     for (const emp of employees) {
       for (let i = 0; i < dates.length; i++) {
-        sums[i] += emp.monthly_hours[i] ?? 0;
+        sums[i] += emp.monthly_hours?.[i] ?? 0;
       }
     }
     return sums;

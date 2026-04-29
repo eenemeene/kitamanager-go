@@ -32,10 +32,12 @@ const makePeriod = (
     period_id: 1,
     grade: e.grade,
     step: e.step,
+    step_min_years: 0,
     monthly_amount: e.amount,
     created_at: from,
     updated_at: from,
   })),
+  to: '',
 });
 
 describe('PayPlanSalaryChart', () => {

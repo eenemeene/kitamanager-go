@@ -145,7 +145,9 @@ func (h *FactorHandler) Get(c *gin.Context) {
 // @Security BearerAuth
 // @Param userId path string true "User id or 'me'"
 // @Param request body models.FactorEnrollRequest true "Factor type + step-up password"
-// @Success 200 {object} models.FactorResponse
+// @Success 200 {object} models.FactorResponse "Factor row; enrollment field carries TOTPEnrollmentPayload, WebAuthnEnrollmentPayload, or BackupCodesPayload depending on factor type"
+// @Success 200 {object} models.TOTPEnrollmentPayload "TOTP enrollment branch (referenced via FactorResponse.enrollment)"
+// @Success 200 {object} models.WebAuthnEnrollmentPayload "WebAuthn enrollment branch (referenced via FactorResponse.enrollment)"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Router /api/v1/users/{userId}/factors [post]

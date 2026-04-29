@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page, type Locator } from '@playwright/test';
 import { login, getFirstOrganization } from './utils/test-helpers';
 
 // Ensure English locale for consistent text rendering
@@ -7,6 +7,17 @@ test.use({ locale: 'en-US' });
 // Visual regression tests capture baseline screenshots on first run.
 // Subsequent runs compare against baselines to detect unintended visual changes.
 // Update baselines: npx playwright test visual-regression --update-snapshots
+//
+// Masking convention: any element whose textual content varies between
+// runs (currency totals derived from "today", git/version strings, the
+// build hash footer) carries `data-visual-mask="<category>"` in source.
+// `dynamicMasks(page)` returns the locators every test should mask in
+// addition to test-specific ones (charts etc.). Without this masking
+// the screenshots flip-flop and chew up CI on retries — see the
+// repo-root visual-regression-* directories left over from past runs.
+function dynamicMasks(page: Page): Locator[] {
+  return [page.locator('[data-visual-mask]')];
+}
 
 test.describe('Visual Regression - Login', () => {
   test('login page', async ({ page }) => {
@@ -14,8 +25,12 @@ test.describe('Visual Regression - Login', () => {
     await expect(page.getByLabel(/email/i)).toBeVisible({ timeout: 10000 });
     await page.waitForLoadState('load');
 
+    // Login page has no dashboard chrome (no sidebar version footer)
+    // and no dynamic data, but applying dynamicMasks here is a no-op
+    // safety net in case future copy adds a build-hash banner.
     await expect(page).toHaveScreenshot('login-page.png', {
       maxDiffPixelRatio: 0.01,
+      mask: dynamicMasks(page),
     });
   });
 });
@@ -42,6 +57,7 @@ test.describe('Visual Regression - Dashboard', () => {
 
     await expect(page).toHaveScreenshot('organizations-list.png', {
       maxDiffPixelRatio: 0.02,
+      mask: dynamicMasks(page),
     });
   });
 
@@ -53,6 +69,7 @@ test.describe('Visual Regression - Dashboard', () => {
 
     await expect(page).toHaveScreenshot('employees-list.png', {
       maxDiffPixelRatio: 0.03,
+      mask: dynamicMasks(page),
     });
   });
 
@@ -63,6 +80,7 @@ test.describe('Visual Regression - Dashboard', () => {
 
     await expect(page).toHaveScreenshot('children-list.png', {
       maxDiffPixelRatio: 0.03,
+      mask: dynamicMasks(page),
     });
   });
 
@@ -74,6 +92,7 @@ test.describe('Visual Regression - Dashboard', () => {
 
     await expect(page).toHaveScreenshot('sections-board.png', {
       maxDiffPixelRatio: 0.01,
+      mask: dynamicMasks(page),
     });
   });
 
@@ -84,6 +103,7 @@ test.describe('Visual Regression - Dashboard', () => {
 
     await expect(page).toHaveScreenshot('statistics-overview.png', {
       maxDiffPixelRatio: 0.02,
+      mask: dynamicMasks(page),
     });
   });
 
@@ -92,12 +112,15 @@ test.describe('Visual Regression - Dashboard', () => {
     // Wait for the financial overview chart card to render (avoid networkidle — react-query background requests prevent it)
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10000 });
 
-    // Mask the chart area: SVG rendering has sub-pixel anti-aliasing jitter
-    // between runs, and the "Today" marker shifts position over time.
-    const chartAreas = page.locator('[role="application"]');
+    // Mask:
+    //   - dynamic-text elements (currency totals, version footer) via
+    //     [data-visual-mask] on the source elements
+    //   - the chart area itself: SVG rendering has sub-pixel
+    //     anti-aliasing jitter between runs, and the "Today" marker
+    //     shifts position over time
     await expect(page).toHaveScreenshot('statistics-financials.png', {
       maxDiffPixelRatio: 0.01,
-      mask: [chartAreas],
+      mask: [...dynamicMasks(page), page.locator('[role="application"]')],
     });
   });
 });
@@ -126,6 +149,7 @@ test.describe('Visual Regression - Dialogs', () => {
 
     await expect(page).toHaveScreenshot('create-organization-dialog.png', {
       maxDiffPixelRatio: 0.01,
+      mask: dynamicMasks(page),
     });
   });
 
@@ -138,6 +162,7 @@ test.describe('Visual Regression - Dialogs', () => {
 
     await expect(page).toHaveScreenshot('create-employee-dialog.png', {
       maxDiffPixelRatio: 0.01,
+      mask: dynamicMasks(page),
     });
   });
 

@@ -382,7 +382,7 @@ func validateOverlayEmployees(employees []models.Employee) error {
 				return apperror.BadRequest(fmt.Sprintf("add_employees[%d].contracts[%d]: section_id is required", i, j))
 			}
 			if ct.PayPlanID == 0 {
-				return apperror.BadRequest(fmt.Sprintf("add_employees[%d].contracts[%d]: pay_plan_id is required", i, j))
+				return apperror.BadRequest(fmt.Sprintf("add_employees[%d].contracts[%d]: payplan_id is required", i, j))
 			}
 			if ct.Grade == "" {
 				return apperror.BadRequest(fmt.Sprintf("add_employees[%d].contracts[%d]: grade is required", i, j))
@@ -414,7 +414,7 @@ func validateOverlayEmployeeContracts(contracts []models.EmployeeContract) error
 			return apperror.BadRequest(fmt.Sprintf("add_employee_contracts[%d]: section_id is required", i))
 		}
 		if ct.PayPlanID == 0 {
-			return apperror.BadRequest(fmt.Sprintf("add_employee_contracts[%d]: pay_plan_id is required", i))
+			return apperror.BadRequest(fmt.Sprintf("add_employee_contracts[%d]: payplan_id is required", i))
 		}
 		if ct.Grade == "" {
 			return apperror.BadRequest(fmt.Sprintf("add_employee_contracts[%d]: grade is required", i))

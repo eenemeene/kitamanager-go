@@ -95,12 +95,14 @@ export function FinancialsReportSection({ orgId, reportMonth }: Props) {
   const compareWindows = useMemo(() => {
     const dps = financials?.data_points;
     if (!dps?.length) return [];
-    const billMonths = dps.filter((dp) => dp.actual_funding != null).map((dp) => dp.date);
+    const billMonths: string[] = dps
+      .filter((dp): dp is typeof dp & { date: string } => dp.actual_funding != null && !!dp.date)
+      .map((dp) => dp.date);
     if (billMonths.length === 0) return [];
-    const first = billMonths[0];
-    const last = billMonths[billMonths.length - 1];
+    const first = billMonths[0]!;
+    const last = billMonths[billMonths.length - 1]!;
     const windows: { from: string; to: string }[] = [];
-    let wFrom = first;
+    let wFrom: string = first;
     while (wFrom <= last) {
       const fromDate = new Date(wFrom);
       const toDate = new Date(fromDate);
@@ -182,10 +184,10 @@ export function FinancialsReportSection({ orgId, reportMonth }: Props) {
               <p className="text-muted-foreground text-sm font-medium">{t('statistics.balance')}</p>
               <p
                 className={`mt-1 text-2xl font-bold ${
-                  reportMonthFinancials.balance >= 0 ? 'text-info' : 'text-destructive'
+                  (reportMonthFinancials.balance ?? 0) >= 0 ? 'text-info' : 'text-destructive'
                 }`}
               >
-                {formatCurrency(reportMonthFinancials.balance)}
+                {formatCurrency(reportMonthFinancials.balance ?? 0)}
               </p>
             </div>
           </div>

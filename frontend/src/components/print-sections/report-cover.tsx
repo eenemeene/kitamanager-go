@@ -78,9 +78,10 @@ export function ReportCover({ orgId, orgName, reportMonth }: Props) {
   );
 
   const coverage =
-    reportMonthStaffing && reportMonthStaffing.required_hours > 0
+    reportMonthStaffing && (reportMonthStaffing.required_hours ?? 0) > 0
       ? Math.round(
-          (reportMonthStaffing.available_hours / reportMonthStaffing.required_hours) * 100
+          ((reportMonthStaffing.available_hours ?? 0) / (reportMonthStaffing.required_hours ?? 1)) *
+            100
         ) - 100
       : null;
 
@@ -134,7 +135,7 @@ export function ReportCover({ orgId, orgName, reportMonth }: Props) {
           value={reportMonthFinancials ? formatCurrency(reportMonthFinancials.balance) : '—'}
           tone={
             reportMonthFinancials
-              ? reportMonthFinancials.balance >= 0
+              ? (reportMonthFinancials.balance ?? 0) >= 0
                 ? 'info'
                 : 'destructive'
               : undefined

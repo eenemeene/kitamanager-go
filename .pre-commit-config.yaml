@@ -5,6 +5,11 @@ repos:
       - id: trailing-whitespace
       - id: check-yaml
       - id: check-added-large-files
+        # Bumped from the 500 KB default so the OpenAPI 3.0 spec
+        # (docs/openapi.json, ~700 KB) and the swaggo swagger.json
+        # artefact can be committed. They're checked-in so PR diffs
+        # show the actual API contract changes.
+        args: ['--maxkb=1024']
 
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v4.3.0
