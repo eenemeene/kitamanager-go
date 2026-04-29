@@ -272,14 +272,35 @@ You can also view the complete billing history for an individual child by naviga
 
 ### Using the Forecast
 
-The forecast page lets you look ahead and plan for the future. It shows projected income and expenses based on current contracts and lets you explore what-if scenarios.
+The Forecast page projects the next Kita year and lets you layer hypothetical changes on top -- new enrolments, hires, departures -- to see their impact on budget, occupancy, and staffing. Three tabs answer three different questions.
 
-- The **target balance** line shows where your finances are heading if nothing changes.
-- The **baseline context** helps you understand whether the trend is improving or worsening compared to the current situation.
+#### Optimize -- how many children to reach a target balance?
 
-Use the forecast when making decisions like hiring a new employee or adjusting care hours -- it shows you the financial impact before you commit.
+The default tab. Set a target cumulative balance, pick the sections to fill and a max children-per-section-per-month, and click **Find Optimal Children Count**. KitaManager projects the year with growing numbers of children until it finds the smallest count that reaches the target, then adds those children to the **Children** tab for review.
 
-{{< screenshot src="/images/screenshots/en/forecast.png" alt="Forecast" caption="The forecast page showing projected financial trends." >}}
+{{< screenshot src="/images/screenshots/en/forecast-optimize.png" alt="Forecast Optimize tab" caption="Optimize finds the minimum number of children to reach a target balance." >}}
+
+If the target isn't reachable within the limits, widen the constraints or lower the target.
+
+#### Children -- model enrolments and departures
+
+Add a hypothetical child by setting count, age, dates, section, and properties, then **Add Child**. Remove an existing child by clicking their name in the **Remove Child** list (click again to undo).
+
+{{< screenshot src="/images/screenshots/en/forecast-children.png" alt="Forecast Children tab" caption="Add hypothetical children, or remove existing ones to model a departure." >}}
+
+#### Employees -- model hires and departures
+
+Same shape as Children, for staff (count, dates, section, category, grade, step, weekly hours, pay plan).
+
+{{< screenshot src="/images/screenshots/en/forecast-employees.png" alt="Forecast Employees tab" caption="Model hires and departures the same way as children." >}}
+
+#### Calculate and read results
+
+Click **Calculate Forecast**. The results panel shows the projected year as tabbed charts: cumulative balance, financials, children, staffing, occupancy, employee hours. Toggle **Show Baseline** to overlay the unmodified projection. Click **Reset** to drop all scenario changes.
+
+{{< screenshot src="/images/screenshots/en/forecast-results.png" alt="Forecast results" caption="Projected income, costs, and balance for the Kita year with the scenario applied." >}}
+
+The forecast assumes contracts run unchanged for the whole year and funding rates don't change -- treat it as a direction, not a contract.
 
 ## Budget Planning
 
@@ -389,17 +410,71 @@ Click on a funding configuration to see the detailed rates with periods, age ran
 
 ### User Management
 
-KitaManager has three user roles with different levels of access:
+KitaManager has five user roles with different levels of access:
 
 - **Superadmin** -- Full access to everything across all organizations. This is for technical administrators.
 - **Admin** -- Full access within their assigned organization(s). This is for daycare directors.
 - **Manager** -- Operational access to employees, children, contracts, and attendance. This is for educators and office staff.
+- **Member** -- Read-only access to children, employees, contracts, sections, and pay plans. Useful for board members or auditors who need visibility without editing rights.
+- **Staff** -- Limited access for educators who only need to record attendance. Can read children, contracts, and sections, and has full control over attendance.
 
-Only superadmins and admins can manage user accounts. If you need a new account for a colleague, ask your administrator.
+Only superadmins and admins can manage user accounts. If you need a new account for a colleague, ask your administrator. The full permission matrix is in the [Administration Guide](../administration/#role-based-access-control).
 
 {{% callout type="warning" %}}
 Be careful when assigning the admin role. Admins can modify all data within their organization, including deleting records.
 {{% /callout %}}
+
+## Account Settings
+
+Open **Settings** from the top-right user menu to manage your password, two-factor authentication, and active sessions.
+
+{{< screenshot src="/images/screenshots/en/settings.png" alt="Settings page" caption="Password, two-factor authentication, and active sessions in one place." >}}
+
+### Changing your password
+
+Enter your current password and the new one twice, then click **Change password**. All other devices are signed out automatically; you stay signed in here.
+
+### Two-factor authentication (2FA)
+
+2FA asks for a 6-digit code from an authenticator app (Google Authenticator, 1Password, Authy, etc.) or a tap on a security key (YubiKey, phone passkey) on every sign-in. Turn it on for any account that can edit data.
+
+To enable it:
+
+1. Click **Enable two-factor authentication** and confirm your password.
+2. Scan the QR code with your authenticator app -- or enter the secret manually.
+
+   {{< screenshot src="/images/screenshots/en/settings-2fa-scan.png" alt="2FA QR code" caption="Scan with your authenticator app, or enter the secret manually." >}}
+
+3. Enter the 6-digit code from your app and click **Enable two-factor**.
+4. Save the recovery codes somewhere safe and acknowledge with **Done**.
+
+   {{< screenshot src="/images/screenshots/en/settings-2fa-backup-codes.png" alt="Recovery codes" caption="Recovery codes are shown only once. Each code lets you sign in if you lose your authenticator." >}}
+
+   {{% callout type="warning" %}}
+   Recovery codes are shown only once. Print them, store them in a password manager, or write them down. Without them and without your authenticator, an administrator will need to reset your account.
+   {{% /callout %}}
+
+The card now shows your active factors. The next sign-in will prompt for a code after the password.
+
+{{< screenshot src="/images/screenshots/en/settings-2fa-enabled.png" alt="2FA enabled" caption="Active factors with options to add a security key, regenerate recovery codes, or disable 2FA." >}}
+
+**Other actions** on the same card:
+
+- **Add security key** -- register a YubiKey or platform passkey via WebAuthn (your browser handles the prompt). You can register multiple keys.
+- **Regenerate recovery codes** -- replaces the old codes; confirms your password first.
+- **Disable two-factor authentication** -- removes all factors (TOTP and security keys); requires your password and a current 2FA code.
+
+### Active sessions
+
+The **Active sessions** card lists every browser currently signed in to your account. Click **Revoke** on any session you don't recognise; that device is signed out immediately. The current session is marked.
+
+## Audit log
+
+Admins can review every change made in their organization at **Settings → Audit log** in the sidebar. The table shows the time, user, action (e.g. `child_create`, `section_delete`), affected resource, and result. Filter by date range, or type into **Action** to match a substring like `delete`.
+
+{{< screenshot src="/images/screenshots/en/audit-logs.png" alt="Audit log" caption="Every create, update, and delete in your organization." >}}
+
+Login and password events are intentionally hidden from the org-scoped log; they're visible only to superadmins via the API.
 
 ## Importing and Exporting Data
 

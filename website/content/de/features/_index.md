@@ -274,7 +274,19 @@ KitaManager verwendet ein rollenbasiertes Zugriffskontrollsystem (RBAC), das sic
 
 ### Audit-Protokollierung
 
-Alle Datenänderungen werden in einem Audit-Log erfasst. Jede Erstellungs-, Aktualisierungs- und Löschaktion wird mit dem handelnden Benutzer, Zeitstempel und der betroffenen Ressource protokolliert — für Nachvollziehbarkeit und Compliance.
+Alle Datenänderungen werden in einem Audit-Log erfasst. Jede Erstellungs-, Aktualisierungs- und Löschaktion wird mit handelndem Benutzer, Zeitstempel, IP-Adresse und betroffener Ressource protokolliert — für Nachvollziehbarkeit und Compliance. Org-Admins prüfen die Ereignisse ihrer Organisation unter **Einstellungen → Protokoll**; Superadmins sehen eine globale Sicht inklusive Anmelde- und Authentifizierungsereignissen.
+
+### Kontosicherheit
+
+Kontosicherheit ist von Anfang an mitgedacht, nicht im Nachgang.
+
+| Funktion | Beschreibung |
+|---|---|
+| Zwei-Faktor-Authentifizierung | Jede Nutzerin / jeder Nutzer kann eine Authenticator-App (TOTP) und einen oder mehrere Sicherheitsschlüssel (WebAuthn / Passkeys) registrieren. Jede Anmeldung verlangt dann zusätzlich zum Passwort einen zweiten Faktor. |
+| Wiederherstellungscodes | Bei der ersten Aktivierung werden Einmalcodes ausgegeben; neue Codes lassen sich jederzeit erzeugen. |
+| Sitzungsverwaltung | Nutzer sehen alle aktuell angemeldeten Geräte und können einzelne Sitzungen beenden. Bei einem Passwortwechsel werden alle anderen Sitzungen automatisch beendet. |
+| CSRF-Schutz | Mutierende Anfragen erfordern einen CSRF-Token zum Schutz vor Cross-Site-Request-Forgery. |
+| Anmelde-Rate-Limit | Login- und MFA-Verifikationsendpunkte teilen sich eine IP-basierte Begrenzung, damit Brute-Force-Angriffe nicht zwischen Endpunkten ausweichen können. |
 
 ---
 

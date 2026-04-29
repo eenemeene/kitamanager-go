@@ -95,9 +95,37 @@ View the complete billing history for an individual child across all uploaded bi
 
 ## Forecast
 
-Model what-if scenarios to plan your Kita's financial future. The optimizer finds the minimum number of children needed to reach your target balance.
+Project the next Kita year and layer hypothetical changes on top. Three tabs: Optimize (find the children count needed for a target balance), Children, and Employees.
 
-{{< screenshot src="/images/screenshots/forecast.png" alt="Financial forecast" caption="The forecast tool with target balance, baseline context, and section selection." >}}
+{{< screenshot src="/images/screenshots/forecast-optimize.png" alt="Forecast Optimize tab" caption="Optimize: minimum children to reach a target balance." >}}
+
+{{< screenshot src="/images/screenshots/forecast-children.png" alt="Forecast Children tab" caption="Add hypothetical children, or remove existing ones." >}}
+
+{{< screenshot src="/images/screenshots/forecast-employees.png" alt="Forecast Employees tab" caption="Model hires and departures." >}}
+
+{{< screenshot src="/images/screenshots/forecast-results.png" alt="Forecast results" caption="Projected income, costs, and balance with the scenario applied." >}}
+
+---
+
+## Settings & Two-Factor Authentication
+
+Each user manages their password, 2FA (TOTP + security keys), and active sessions.
+
+{{< screenshot src="/images/screenshots/settings.png" alt="Settings page" caption="Password, 2FA, and active sessions." >}}
+
+{{< screenshot src="/images/screenshots/settings-2fa-scan.png" alt="2FA QR code" caption="Scan with an authenticator app, or enter the secret manually." >}}
+
+{{< screenshot src="/images/screenshots/settings-2fa-backup-codes.png" alt="Recovery codes" caption="Recovery codes are shown once — save them before clicking Done." >}}
+
+{{< screenshot src="/images/screenshots/settings-2fa-enabled.png" alt="2FA enabled" caption="Active factors. Add a security key, regenerate codes, or disable 2FA." >}}
+
+---
+
+## Audit Log
+
+Admins see every create / update / delete in their organization. Filter by date range or action.
+
+{{< screenshot src="/images/screenshots/audit-logs.png" alt="Audit log" caption="Who changed what and when." >}}
 
 ---
 

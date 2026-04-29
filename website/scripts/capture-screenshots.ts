@@ -15,6 +15,7 @@
  *   cd frontend && npx tsx ../website/scripts/capture-screenshots.ts
  */
 import { chromium, type Browser, type Page, type BrowserContext } from '@playwright/test';
+import { TOTP } from 'otpauth';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -28,11 +29,37 @@ interface LangConfig {
   code: string;
   browserLocale: string;
   newContractButton: RegExp;
+  enableMfaButton: RegExp;
+  optimizeButton: RegExp;
+  calculateButton: RegExp;
+  forecastChildrenTab: RegExp;
+  forecastEmployeesTab: RegExp;
+  forecastOptimizeTab: RegExp;
 }
 
 const LANGUAGES: LangConfig[] = [
-  { code: 'en', browserLocale: 'en-US', newContractButton: /new contract/i },
-  { code: 'de', browserLocale: 'de-DE', newContractButton: /neuer vertrag/i },
+  {
+    code: 'en',
+    browserLocale: 'en-US',
+    newContractButton: /new contract/i,
+    enableMfaButton: /enable two-factor authentication/i,
+    optimizeButton: /find optimal/i,
+    calculateButton: /calculate forecast/i,
+    forecastChildrenTab: /^children$/i,
+    forecastEmployeesTab: /^employees$/i,
+    forecastOptimizeTab: /^optimize$/i,
+  },
+  {
+    code: 'de',
+    browserLocale: 'de-DE',
+    newContractButton: /neuer vertrag/i,
+    enableMfaButton: /zwei-faktor-authentifizierung aktivieren/i,
+    optimizeButton: /optimale kinderzahl/i,
+    calculateButton: /prognose berechnen/i,
+    forecastChildrenTab: /^kinder$/i,
+    forecastEmployeesTab: /^mitarbeiter$/i,
+    forecastOptimizeTab: /^optimieren$/i,
+  },
 ];
 
 async function login(page: Page): Promise<void> {
@@ -199,6 +226,278 @@ async function capture(page: Page, outputDir: string, name: string): Promise<voi
 async function waitForContent(page: Page, timeoutMs = 3000): Promise<void> {
   await page.waitForLoadState('load');
   await page.waitForTimeout(timeoutMs);
+}
+
+/**
+ * Generate a couple of audit-log entries via a create+update+delete
+ * round-trip on a throwaway section. The audit log is otherwise empty
+ * in seeded environments because the seeder writes directly to the
+ * database and bypasses the handler-level audit logging.
+ */
+async function seedAuditEntries(page: Page, orgId: number): Promise<void> {
+  await page.evaluate(async (orgId) => {
+    const csrfMatch = document.cookie.match(/csrf_token=([^;]+)/);
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (csrfMatch) headers['X-CSRF-Token'] = csrfMatch[1];
+
+    const createResp = await fetch(`/api/v1/organizations/${orgId}/sections`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers,
+      body: JSON.stringify({
+        name: 'Demo (auto-removed)',
+        // Optional fields — keep minimal so this works regardless of
+        // what the section model requires today.
+      }),
+    });
+    if (!createResp.ok) return;
+    const created = await createResp.json();
+    const id = created.id ?? created.data?.id;
+    if (!id) return;
+
+    await fetch(`/api/v1/organizations/${orgId}/sections/${id}`, {
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers,
+      body: JSON.stringify({ name: 'Demo (renamed, auto-removed)' }),
+    });
+
+    await fetch(`/api/v1/organizations/${orgId}/sections/${id}`, {
+      method: 'DELETE',
+      credentials: 'same-origin',
+      headers,
+    });
+  }, orgId);
+}
+
+/**
+ * Forecast: capture each tab plus a results screenshot after clicking
+ * "Calculate Forecast" with no modifications (baseline projection).
+ */
+async function captureForecast(
+  page: Page,
+  orgId: number,
+  outputDir: string,
+  lang: LangConfig
+): Promise<void> {
+  await page.goto(`${BASE_URL}/organizations/${orgId}/statistics/forecast`);
+  await waitForContent(page, 3000);
+
+  // Default tab is "Optimize" — already captured as `forecast.png`. We
+  // re-capture explicitly so the file name matches the docs.
+  await capture(page, outputDir, 'forecast-optimize');
+
+  // Children tab
+  const childrenTab = page.getByRole('tab', { name: lang.forecastChildrenTab });
+  if (await childrenTab.count()) {
+    await childrenTab.first().click();
+    await page.waitForTimeout(800);
+    await capture(page, outputDir, 'forecast-children');
+  }
+
+  // Employees tab
+  const employeesTab = page.getByRole('tab', { name: lang.forecastEmployeesTab });
+  if (await employeesTab.count()) {
+    await employeesTab.first().click();
+    await page.waitForTimeout(800);
+    await capture(page, outputDir, 'forecast-employees');
+  }
+
+  // Switch back to optimize, click Calculate Forecast to populate
+  // results panel with the baseline projection.
+  const optimizeTab = page.getByRole('tab', { name: lang.forecastOptimizeTab });
+  if (await optimizeTab.count()) {
+    await optimizeTab.first().click();
+    await page.waitForTimeout(500);
+  }
+  const calcBtn = page.getByRole('button', { name: lang.calculateButton });
+  if (await calcBtn.count()) {
+    await calcBtn.first().click();
+    // Forecast endpoint can take a moment; results render below.
+    await page.waitForTimeout(4000);
+    // Scroll results into view so the charts are in the viewport.
+    await page.evaluate(() => {
+      const headings = document.querySelectorAll('h2, h3, [class*="CardTitle"]');
+      for (const h of headings) {
+        const t = h.textContent ?? '';
+        if (/forecast result|prognoseergebnis|results|ergebnis/i.test(t)) {
+          h.scrollIntoView({ behavior: 'instant', block: 'start' });
+          return;
+        }
+      }
+      // Fallback: scroll halfway down.
+      window.scrollTo(0, document.body.scrollHeight / 2);
+    });
+    await page.waitForTimeout(800);
+    await capture(page, outputDir, 'forecast-results');
+  }
+}
+
+/**
+ * Settings page + the 2FA enrolment flow.
+ *
+ * Captures: settings (full page, MFA disabled), 2FA password step,
+ * 2FA QR step, 2FA backup codes dialog, settings with MFA enabled.
+ *
+ * After the captures, the script disables MFA again so the seeded
+ * `admin@example.com` account remains password-only — this matters so
+ * subsequent runs of this script (and the dev environment) don't get
+ * stuck at the MFA challenge.
+ */
+async function captureSettingsAndMfa(
+  page: Page,
+  outputDir: string,
+  lang: LangConfig
+): Promise<void> {
+  await page.goto(`${BASE_URL}/settings`);
+  await waitForContent(page, 1500);
+  await capture(page, outputDir, 'settings');
+
+  // Click "Enable two-factor authentication" → password prompt step.
+  const enableBtn = page.getByRole('button', { name: lang.enableMfaButton });
+  if (!(await enableBtn.count())) {
+    console.log('  ! enable MFA button not found, skipping 2FA captures');
+    return;
+  }
+  await enableBtn.first().click();
+  await page.waitForTimeout(600);
+  await capture(page, outputDir, 'settings-2fa-password');
+
+  // Submit password to advance to the QR/scan step.
+  const passwordInput = page.locator('input[type="password"]').first();
+  if (!(await passwordInput.count())) {
+    console.log('  ! password input not found, aborting 2FA captures');
+    await page.keyboard.press('Escape');
+    return;
+  }
+  await passwordInput.fill(ADMIN_PASSWORD);
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(1500);
+  await capture(page, outputDir, 'settings-2fa-scan');
+
+  // The QR code is rendered as an SVG (not a link), so we can't pull
+  // the otpauth URI out of an href. The secret is rendered separately
+  // as plain text inside a <code> tag underneath the "Can't scan?"
+  // hint — that's our hook.
+  const secret = await page.evaluate(() => {
+    const codes = Array.from(document.querySelectorAll('code'));
+    for (const c of codes) {
+      const text = (c.textContent ?? '').replace(/\s+/g, '');
+      // Base32 secrets are A–Z plus 2–7, typically 16 or 32 chars long.
+      if (/^[A-Z2-7]{16,}$/.test(text)) return text;
+    }
+    return null;
+  });
+  if (!secret) {
+    console.log('  ! TOTP secret not found in dialog, aborting 2FA activation');
+    await page.keyboard.press('Escape');
+    return;
+  }
+  const totp = new TOTP({
+    issuer: 'KitaManager',
+    label: 'admin',
+    algorithm: 'SHA1',
+    digits: 6,
+    period: 30,
+    secret,
+  });
+  const code = totp.generate();
+
+  // shadcn's InputOTP wraps the `input-otp` library, which renders a
+  // real <input> with `inputmode="numeric"` underneath the visible
+  // slot boxes. Focus it and type — the library distributes characters
+  // into the slots automatically.
+  const otpFirst = page
+    .locator('input#enrol-code, input[autocomplete="one-time-code"], input[inputmode="numeric"]')
+    .first();
+  if (await otpFirst.count()) {
+    await otpFirst.click();
+    await otpFirst.fill(code);
+  } else {
+    console.log('  ! OTP input not found, aborting 2FA activation');
+    await page.keyboard.press('Escape');
+    return;
+  }
+  // Submit the activation form. Enter on the OTP input doesn't fire
+  // the form submit (the OTP library swallows the keypress), so we
+  // click the activate button explicitly. Button text is "Enable
+  // two-factor" / "Aktivieren" depending on locale.
+  const activateBtn = page
+    .getByRole('button')
+    .filter({ hasText: /enable two-factor|aktivieren/i });
+  if (await activateBtn.count()) {
+    await activateBtn.first().click();
+  }
+  // Wait for the backup-codes dialog to open. The activation request
+  // can take a moment under load.
+  await page.waitForTimeout(2500);
+  await capture(page, outputDir, 'settings-2fa-backup-codes');
+
+  // Tick the "I've saved these codes" checkbox — without it, the
+  // Done button stays disabled and Escape is intercepted, so the
+  // dialog can't close.
+  const ackCheckbox = page
+    .getByRole('checkbox')
+    .filter({ hasText: /saved these codes|sicher gespeichert/i });
+  if (await ackCheckbox.count()) {
+    await ackCheckbox.first().click();
+  } else {
+    // Fallback: click any checkbox in the open dialog.
+    const anyCheckbox = page.locator('[role="dialog"] [role="checkbox"]').first();
+    if (await anyCheckbox.count()) await anyCheckbox.click();
+  }
+  const closeBtns = page
+    .getByRole('button')
+    .filter({ hasText: /^done$|^fertig$/i });
+  if (await closeBtns.count()) {
+    await closeBtns.first().click();
+    await page.waitForTimeout(800);
+  } else {
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(500);
+  }
+
+  await capture(page, outputDir, 'settings-2fa-enabled');
+
+  // Disable MFA again — leave the seeded account in a clean state for
+  // subsequent script runs and for the dev environment.
+  await disableMfaForCurrentUser(page, totp);
+}
+
+/**
+ * Disable all factors for the current user via direct API calls. The
+ * delete endpoint requires the account password plus a current TOTP
+ * code, so the caller must pass the TOTP instance produced during
+ * enrolment.
+ */
+async function disableMfaForCurrentUser(page: Page, totp: TOTP): Promise<void> {
+  const code = totp.generate();
+  await page.evaluate(
+    async ({ password, code }) => {
+      const csrfMatch = document.cookie.match(/csrf_token=([^;]+)/);
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (csrfMatch) headers['X-CSRF-Token'] = csrfMatch[1];
+
+      const factorsResp = await fetch('/api/v1/users/me/factors', {
+        credentials: 'same-origin',
+        headers,
+      });
+      if (!factorsResp.ok) return;
+      const data = await factorsResp.json();
+      const factors: Array<{ id: number; type: string }> = data.factors ?? [];
+      // Delete the TOTP factor first; the service layer also sweeps
+      // the backup_codes factor when the last primary is removed.
+      const totpFactor = factors.find((f) => f.type === 'totp');
+      if (!totpFactor) return;
+      await fetch(`/api/v1/users/me/factors/${totpFactor.id}`, {
+        method: 'DELETE',
+        credentials: 'same-origin',
+        headers,
+        body: JSON.stringify({ password, code }),
+      });
+    },
+    { password: ADMIN_PASSWORD, code }
+  );
 }
 
 async function captureForLanguage(browser: Browser, lang: LangConfig): Promise<void> {
@@ -412,6 +711,25 @@ async function captureForLanguage(browser: Browser, lang: LangConfig): Promise<v
     await page.goto(`${BASE_URL}/organizations/${orgId}/children/${childId}/billing`);
     await waitForContent(page, 4000);
     await capture(page, outputDir, 'child-billing');
+
+    // 30. Audit log (admins only — `admin@example.com` has the global admin role on
+    // the seeded org, so this works without superadmin). The seed data
+    // doesn't include audit entries, so we generate a couple via a
+    // create+delete round-trip on a throwaway section. That keeps the
+    // dev DB clean while showing realistic rows in the screenshot.
+    await seedAuditEntries(page, orgId);
+    await page.goto(`${BASE_URL}/organizations/${orgId}/audit-logs`);
+    await waitForContent(page, 1500);
+    await capture(page, outputDir, 'audit-logs');
+
+    // 31. Forecast tabs. The default tab is "Optimize"; we capture each
+    // tab plus a results capture after running the optimizer.
+    await captureForecast(page, orgId, outputDir, lang);
+
+    // 32. Settings + 2FA. Done LAST because enrolling MFA puts the
+    // account into an MFA-required state for subsequent logins, which
+    // would break a re-run of this script. We disable MFA at the end.
+    await captureSettingsAndMfa(page, outputDir, lang);
 
     console.log(`  Done [${lang.code}]!`);
   } finally {

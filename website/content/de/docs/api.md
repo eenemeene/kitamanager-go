@@ -3,42 +3,87 @@ title: API-Referenz
 weight: 3
 ---
 
-KitaManager bietet eine REST-API mit interaktiver OpenAPI/Swagger-Dokumentation unter `/swagger/index.html` beim Ausführen der Anwendung. Alle Endpunkte außer Login und Token-Aktualisierung erfordern eine JWT-Authentifizierung. Mutierende Anfragen (POST, PUT, DELETE) erfordern ein CSRF-Token über den `X-CSRF-Token`-Header.
+KitaManager bietet eine REST-API mit interaktiver OpenAPI/Swagger-Dokumentation unter `/swagger/index.html` beim Ausführen der Anwendung.
+
+Die Authentifizierung erfolgt **per Cookie**: Eine erfolgreiche Anmeldung setzt ein HttpOnly-Sitzungscookie `access_token` und ein für JavaScript lesbares `csrf_token`-Cookie. Mutierende Anfragen (POST/PUT/PATCH/DELETE) müssen den CSRF-Token im `X-CSRF-Token`-Header mitsenden. Es gibt keinen separaten Refresh-Endpunkt -- Sitzungen bleiben gültig, bis Sie sich abmelden, das Cookie abläuft oder Sie die Sitzung über `/me/sessions` widerrufen.
 
 ## Authentifizierung
 
 | Methode | Endpunkt | Beschreibung |
 |---------|----------|--------------|
-| POST | `/api/v1/login` | Authentifizierung und Erhalt von Access- und Refresh-Token |
-| POST | `/api/v1/refresh` | Abgelaufenes Access-Token erneuern |
-| POST | `/api/v1/logout` | Aktuelle Sitzung beenden |
-| GET | `/api/v1/me` | Profil des aktuellen Benutzers abrufen |
-| PUT | `/api/v1/me/password` | Passwort des aktuellen Benutzers ändern |
+| POST | `/api/v1/login` | Schritt 1 der Anmeldung: Passwort prüfen. Liefert entweder die Sitzungscookies (kein MFA) oder einen kurzlebigen MFA-Challenge-Token (MFA aktiv). |
+| POST | `/api/v1/auth/mfa/challenge` | WebAuthn-Challenge für die laufende Anmeldung erzeugen (für Sicherheitsschlüssel). |
+| POST | `/api/v1/auth/mfa/verify` | Schritt 2 der Anmeldung: TOTP-Code, Wiederherstellungscode oder WebAuthn-Assertion gegen den Challenge-Token prüfen. Bei Erfolg werden die Sitzungscookies gesetzt. |
+| POST | `/api/v1/logout` | Aktuelle Sitzung beenden und Cookies löschen. |
+| GET | `/api/v1/me` | Profil des aktuellen Benutzers abrufen. |
+| PUT | `/api/v1/me/password` | Eigenes Passwort ändern. Beendet alle anderen Sitzungen. |
+| GET | `/api/v1/me/sessions` | Aktive Sitzungen des aktuellen Benutzers auflisten (Gerät, IP, letzte Aktivität). |
+| DELETE | `/api/v1/me/sessions/{id}` | Eine bestimmte Sitzung beenden. |
 
-### Login-Beispiel
+### Login-Beispiel (ohne MFA)
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/login \
+curl -i -c cookies.txt -X POST http://localhost:8080/api/v1/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "admin@example.com", "password": "admin123"}'
+  -d '{"email": "admin@example.com", "password": "supersecret"}'
 ```
 
-Antwort:
+Die Antwort setzt zwei Cookies:
+
+```
+Set-Cookie: access_token=...; HttpOnly; Path=/
+Set-Cookie: csrf_token=...; Path=/
+```
+
+### Login-Beispiel (mit MFA)
+
+Hat der Benutzer MFA aktiviert, antwortet `/login` mit `status: "mfa_required"` und liefert einen kurzlebigen `pending_token` plus die Liste verfügbarer Faktoren. Es werden noch keine Cookies gesetzt.
 
 ```json
 {
-  "token": "eyJhbGciOiJIUzI1NiIs..."
+  "status": "mfa_required",
+  "pending_token": "...",
+  "expires_at": "2026-04-23T10:05:00Z",
+  "factors": [{"id": 42, "type": "totp"}]
 }
 ```
 
-### Verwendung des Tokens
-
-Fügen Sie das Token im `Authorization`-Header für alle nachfolgenden Anfragen ein:
+Die Anmeldung wird mit einem Code (TOTP oder Wiederherstellungscode) oder einer WebAuthn-Assertion gegen `/auth/mfa/verify` abgeschlossen:
 
 ```bash
-curl http://localhost:8080/api/v1/organizations \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..."
+curl -i -c cookies.txt -X POST http://localhost:8080/api/v1/auth/mfa/verify \
+  -H "Content-Type: application/json" \
+  -d '{"pending_token": "...", "factor_id": 42, "code": "123456"}'
 ```
+
+Für WebAuthn-Faktoren wird zuerst `/auth/mfa/challenge` mit `{pending_token, factor_id}` aufgerufen, um die Request-Options zu erhalten, und anschließend das `PublicKeyCredential`-JSON aus dem Browser im Feld `webauthn_response` der Verify-Anfrage gesendet.
+
+### Cookie verwenden
+
+Für nachfolgende Aufrufe wird die Cookie-Datei mitgesendet. Mutierende Aufrufe ergänzen den CSRF-Token aus dem `csrf_token`-Cookie:
+
+```bash
+curl http://localhost:8080/api/v1/organizations -b cookies.txt
+curl -X POST http://localhost:8080/api/v1/organizations \
+  -b cookies.txt \
+  -H "X-CSRF-Token: $(grep csrf_token cookies.txt | awk '{print $7}')" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "New Org", "state": "berlin"}'
+```
+
+## Mehrfaktor-Authentifizierung (MFA-Faktoren)
+
+Benutzer verwalten ihre eigenen Faktoren über `/users/{userId}/factors`. Der Pfadparameter `:userId` akzeptiert das Schlüsselwort `me` als Selbst-Alias -- aktuell liefert das Adressieren eines anderen Benutzers 403.
+
+| Methode | Endpunkt | Beschreibung |
+|---------|----------|--------------|
+| GET | `/api/v1/users/{userId}/factors` | Registrierte Faktoren auflisten. |
+| POST | `/api/v1/users/{userId}/factors` | Neuen Faktor registrieren. Body enthält Faktortyp (`totp` oder `webauthn`) und aktuelles Passwort. Antwort enthält Registrierungsdaten (TOTP-Schlüssel + otpauth-URI bzw. WebAuthn-Registrierungs-Challenge). |
+| GET | `/api/v1/users/{userId}/factors/{id}` | Faktor abrufen. |
+| PATCH | `/api/v1/users/{userId}/factors/{id}` | Bezeichnung eines Faktors ändern. |
+| DELETE | `/api/v1/users/{userId}/factors/{id}` | Faktor löschen. Erfordert Passwort und aktuellen TOTP-Code. Beim Entfernen des letzten Primärfaktors werden auch die Wiederherstellungscodes entfernt. |
+| POST | `/api/v1/users/{userId}/factors/{id}/activate` | Pendierende Registrierung mit einem Verifikationscode aktivieren. Bei der ersten Aktivierung werden zugleich Einmal-Wiederherstellungscodes ausgegeben. |
+| POST | `/api/v1/users/{userId}/factors/{id}/regenerate` | Wiederherstellungscodes neu erzeugen; alte Codes werden ungültig. |
 
 ## Organisationen
 
@@ -253,6 +298,26 @@ Einer Organisation zugeordnet: `/api/v1/organizations/{orgId}/statistics`. Alle 
 | GET | `.../statistics/age-distribution` | Altersverteilung |
 | GET | `.../statistics/contract-properties` | Verteilung der Vertragseigenschaften |
 | GET | `.../statistics/funding` | Förderungsstatistiken |
+
+### Prognose und Schätzungen
+
+Diese Endpunkte versorgen die **Prognose**-Seite. Sie nehmen denselben Datumsbereich plus eine Liste von Szenario-Änderungen (hinzugefügte/entfernte Kinder, hinzugefügte/entfernte Mitarbeiter) entgegen und liefern die projizierten Statistiken mit den Änderungen darüber.
+
+| Methode | Endpunkt | Beschreibung |
+|---------|----------|--------------|
+| POST | `.../statistics/forecast` | Volle Kitajahresprojektion mit dem übergebenen Szenario auf Basis der aktuellen Daten. Liefert Finanzen, Personalstunden, Belegung und Mitarbeiterstunden für den Zeitraum. |
+| POST | `.../statistics/estimates/child-funding` | Schnellschätzung der monatlichen Förderung für ein hypothetisches Kind, ohne gespeicherte Daten zu verändern. |
+| POST | `.../statistics/estimates/employee-cost` | Schnellschätzung der monatlichen Kosten (brutto + Arbeitgeberanteil) für eine hypothetische Mitarbeiterin / einen hypothetischen Mitarbeiter. |
+
+## Audit-Protokolle
+
+Zwei Sichten:
+
+| Methode | Endpunkt | Beschreibung |
+|---------|----------|--------------|
+| GET | `/api/v1/audit-logs` | **Nur Superadmin**: globales Protokoll inklusive Anmelde- und Authentifizierungsereignissen. Filter `from`, `to`, `action`, `actor`. |
+| GET | `/api/v1/audit-logs/{id}` | **Nur Superadmin**: einen einzelnen Eintrag abrufen. |
+| GET | `/api/v1/organizations/{orgId}/audit-logs` | **Org-Admin**: auf eine Organisation eingeschränkte Sicht. Anmelde- und Passwortereignisse werden ausgeblendet. |
 
 ## Benutzer
 

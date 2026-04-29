@@ -49,11 +49,17 @@ Admins can update user details (name, email, active status) and delete user acco
 
 ### Resetting Passwords
 
-Admins can reset a user's password through the user management interface.
+Admins can reset a user's password through the user management interface. The user is signed out of every device after the reset.
 
 ### Superadmin Status
 
 Only existing superadmins can grant or revoke superadmin status on other users. This is done through a dedicated toggle in the user management interface.
+
+### Two-Factor Authentication
+
+Each user is responsible for enrolling their own factors via the [Settings page](../user-guide/#two-factor-authentication-2fa). Administrators **cannot** enrol or deactivate factors on behalf of another user.
+
+If a user loses access to both their authenticator and their recovery codes, the only recovery path today is to reset the password on the user record (which does **not** disable 2FA) and ask the user to use their recovery codes — or, if those are also gone, to delete and re-create the user account. Direct admin reset of MFA factors is on the roadmap; see the SECURITY-TODO for status.
 
 ## Role-Based Access Control
 
@@ -187,13 +193,24 @@ Each audit log entry contains:
 | Field | Description |
 |-------|-------------|
 | Actor | The user who performed the action |
+| Action | The action name (e.g. `child_create`, `section_delete`) |
 | Resource Type | The type of resource affected (e.g., employee, child, contract) |
 | Resource ID | The database ID of the affected resource |
 | Resource Name | A human-readable name for the affected resource |
 | IP Address | The IP address from which the action was performed |
+| Result | Whether the action succeeded or failed |
 | Timestamp | When the action occurred |
 
-Audit logs are read-only and cannot be modified or deleted.
+Audit logs are append-only — they cannot be modified or deleted from the UI.
+
+### Viewing Audit Logs
+
+Audit log access is split into two scopes:
+
+- **Org admins** can review every change made within their organization at **Settings → Audit log** in the sidebar (URL: `/organizations/{orgId}/audit-logs`). Login and password events are intentionally hidden from this view because they are sensitive across organizations.
+- **Superadmins** see a global, cross-organization audit log via the API (`GET /api/v1/audit-logs`) that includes login/auth events. There is no dedicated UI for the global view today; superadmins typically query it directly.
+
+Both views support filtering by date range and by action name (substring match).
 
 ## Seed Data
 

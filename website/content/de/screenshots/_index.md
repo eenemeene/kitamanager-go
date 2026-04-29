@@ -95,9 +95,37 @@ Die vollständige Abrechnungshistorie eines Kindes über alle hochgeladenen Abre
 
 ## Prognose
 
-Modellieren Sie Was-wäre-wenn-Szenarien für die finanzielle Zukunft Ihrer Kita.
+Projiziert das nächste Kitajahr und erlaubt hypothetische Änderungen darüber. Drei Tabs: Optimieren (minimale Kinderzahl für ein Ziel-Saldo), Kinder, Mitarbeiter.
 
-{{< screenshot src="/images/screenshots/forecast.png" alt="Finanzprognose" caption="Prognose-Tool mit Zielsaldo, Basislinie und Bereichsauswahl." >}}
+{{< screenshot src="/images/screenshots/forecast-optimize.png" alt="Tab Optimieren" caption="Optimieren: minimale Kinderzahl für ein Ziel-Saldo." >}}
+
+{{< screenshot src="/images/screenshots/forecast-children.png" alt="Tab Kinder" caption="Hypothetische Kinder hinzufügen oder bestehende entfernen." >}}
+
+{{< screenshot src="/images/screenshots/forecast-employees.png" alt="Tab Mitarbeiter" caption="Einstellungen und Abgänge modellieren." >}}
+
+{{< screenshot src="/images/screenshots/forecast-results.png" alt="Prognose-Ergebnisse" caption="Prognostizierte Einnahmen, Kosten und Saldo mit angewendetem Szenario." >}}
+
+---
+
+## Einstellungen & Zwei-Faktor-Authentifizierung
+
+Jede Nutzerin / jeder Nutzer verwaltet Passwort, 2FA (TOTP + Sicherheitsschlüssel) und aktive Sitzungen.
+
+{{< screenshot src="/images/screenshots/settings.png" alt="Einstellungsseite" caption="Passwort, 2FA und aktive Sitzungen." >}}
+
+{{< screenshot src="/images/screenshots/settings-2fa-scan.png" alt="2FA QR-Code" caption="Mit einer Authenticator-App scannen oder Schlüssel manuell eingeben." >}}
+
+{{< screenshot src="/images/screenshots/settings-2fa-backup-codes.png" alt="Wiederherstellungscodes" caption="Codes werden nur ein Mal angezeigt — vor dem Klick auf Fertig sichern." >}}
+
+{{< screenshot src="/images/screenshots/settings-2fa-enabled.png" alt="2FA aktiviert" caption="Aktive Faktoren. Sicherheitsschlüssel hinzufügen, Codes neu erzeugen, 2FA deaktivieren." >}}
+
+---
+
+## Protokoll (Audit-Log)
+
+Admins sehen alle Anlage-, Änderungs- und Löschvorgänge in ihrer Organisation. Filter nach Zeitraum oder Aktion.
+
+{{< screenshot src="/images/screenshots/audit-logs.png" alt="Audit-Protokoll" caption="Wer wann was geändert hat." >}}
 
 ---
 

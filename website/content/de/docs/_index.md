@@ -13,8 +13,9 @@ KitaManager ist eine Enterprise-REST-API und Webanwendung zur Optimierung der Ve
 - **Kinder** — Anmeldungsverfolgung, Vertragsverwaltung und Anwesenheit
 - **Förderung** — Konfiguration, Berechnung und ISBJ-Abrechnungsvergleich
 - **Budget** — Einnahmen- und Ausgabenverfolgung mit Budgetposten
-- **Statistiken** — Personal-, Finanz-, Belegungs- und Demografieberichte
+- **Statistiken & Prognose** — Personal-, Finanz-, Belegungs- und Demografieberichte sowie ein Was-wäre-wenn-Prognosetool
 - **Zugriffskontrolle** — Rollenbasierte Berechtigungen mit fünf Rollen über Organisationen hinweg
+- **Kontosicherheit** — Zwei-Faktor-Authentifizierung (TOTP und Sicherheitsschlüssel), Sitzungsverwaltung und ein Audit-Protokoll auf Organisationsebene
 
 ## Schnellnavigation
 

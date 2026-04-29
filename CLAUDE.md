@@ -138,7 +138,7 @@ This will create/update files in the `docs/` directory.
 
 ## RBAC (Role-Based Access Control)
 
-The application uses Casbin for RBAC with organization-level multi-tenancy. See `docs/RBAC.md` for full documentation.
+The application uses Casbin for RBAC with organization-level multi-tenancy. See `website/content/en/docs/administration.md` (Role-Based Access Control section) for the canonical role and permission documentation.
 
 ### Roles
 

@@ -274,7 +274,19 @@ KitaManager uses a role-based access control (RBAC) system to ensure users can o
 
 ### Audit logging
 
-All data modifications are recorded in an audit log. Every create, update, and delete action is tracked with the acting user, timestamp, and affected resource — ensuring accountability and compliance.
+All data modifications are recorded in an audit log. Every create, update, and delete action is tracked with the acting user, timestamp, IP address, and affected resource — ensuring accountability and compliance. Org admins review their organization's events at **Settings → Audit log**; superadmins see a global view that also includes login and authentication events.
+
+### Account security
+
+Account security is a first-class concern, not an afterthought.
+
+| Capability | Description |
+|---|---|
+| Two-factor authentication | Each user can enrol an authenticator app (TOTP) and one or more security keys (WebAuthn / passkeys). Every sign-in then requires a second factor in addition to the password. |
+| Recovery codes | Single-use backup codes are issued on first activation and can be regenerated at any time. |
+| Session management | Users see every device that's signed in to their account and can revoke individual sessions. Changing the password revokes all other sessions automatically. |
+| CSRF protection | Mutating requests require a CSRF token, defending against cross-site request forgery. |
+| Login rate limiting | The login and MFA verification endpoints share an IP-based rate limit so brute-force attempts can't cycle endpoints. |
 
 ---
 
