@@ -55,15 +55,16 @@ make dev
 
 ## Standard-Anmeldedaten
 
-Nach dem Start können Sie sich mit den Standard-Admin-Anmeldedaten anmelden:
+Nach dem Start können Sie sich mit einem der angelegten Testkonten anmelden. Jedes zeigt eine andere Rolle:
 
-| Feld | Wert |
-|------|------|
-| E-Mail | `superadmin@example.com` |
-| Passwort | `supersecret` |
+| E-Mail | Rolle | Passwort |
+|--------|-------|----------|
+| `superadmin@example.com` | Superadmin | `supersecret` |
+| `admin@example.com` | Admin (Kita Sonnenschein) | `supersecret` |
+| `manager@example.com` | Manager (Kita Sonnenschein) | `supersecret` |
 
 {{% callout type="warning" %}}
-Ändern Sie das Standard-Passwort sofort in Produktionsumgebungen!
+Diese Zugangsdaten sind ausschließlich für die lokale Entwicklung gedacht. Ändern Sie alle Standard-Passwörter sofort in Produktionsumgebungen und aktivieren Sie die Zwei-Faktor-Authentifizierung für jedes Konto, das Daten bearbeiten kann.
 {{% /callout %}}
 
 ## Testdaten

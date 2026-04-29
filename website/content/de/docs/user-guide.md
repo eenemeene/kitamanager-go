@@ -299,21 +299,69 @@ Sie können auch die komplette Abrechnungshistorie eines einzelnen Kindes einseh
 
 ### Prognose
 
-Mit der Prognose können Sie Was-wäre-wenn-Szenarien durchspielen, bevor Sie Entscheidungen treffen. Zum Beispiel: "Was passiert finanziell, wenn wir zwei weitere Kinder aufnehmen?" oder "Was kostet es, wenn wir eine zusätzliche Fachkraft einstellen?"
+Mit der Prognose planen Sie das nächste Kitajahr im Voraus. Sie sehen die Entwicklung "wie sie ist" (Basislinie) und können dann hypothetische Veränderungen darüberlegen -- neue Aufnahmen, Einstellungen, Abgänge -- um deren Auswirkungen auf Budget, Belegung und Personal zu sehen.
 
-1. Navigieren Sie in der Seitenleiste zu **Prognose** (unter Finanzen).
-2. Wählen Sie das Kitajahr, für das Sie die Prognose erstellen möchten.
-3. Verwenden Sie die Tabs, um Ihr Szenario zu konfigurieren:
-   - **Kinder** -- Fügen Sie Kinder hinzu oder entfernen Sie welche.
-   - **Mitarbeiter** -- Fügen Sie Personal hinzu oder entfernen Sie welches.
-   - **Optimieren** -- Lassen Sie KitaManager automatisch berechnen, wie viele Kinder Sie mindestens aufnehmen müssen, um ein bestimmtes Zielsaldo zu erreichen.
-4. Klicken Sie auf **Prognose berechnen**.
-5. Die Ergebnisse zeigen die finanziellen und personellen Auswirkungen Ihres Szenarios im Vergleich zur aktuellen Basislinie.
+Die Seite ist in drei Tabs gegliedert. Welcher Tab passt, hängt von der Frage ab, die Sie beantworten möchten.
 
-{{< screenshot src="/images/screenshots/de/forecast.png" alt="Prognose" caption="Die Prognoseseite mit Szenario-Konfiguration und Vergleich zur Basislinie." >}}
+#### Tab 1: Optimieren -- "Wie viele Kinder brauchen wir?"
+
+Der Tab **Optimieren** ist die Standardansicht und beantwortet die häufigste Planungsfrage: *Wie viele zusätzliche Kinder müssen wir bei aktuellem Personal- und Budgetstand aufnehmen, um am Ende des Kitajahrs ein bestimmtes Ziel-Saldo zu erreichen?*
+
+{{< screenshot src="/images/screenshots/de/forecast-optimize.png" alt="Tab Optimieren" caption="Der Tab Optimieren ermittelt die minimale Anzahl an Kindern, um ein Ziel-Saldo zu erreichen." >}}
+
+1. Öffnen Sie **Prognose** in der Seitenleiste.
+2. Wählen Sie mit dem Jahresumschalter oben das Kitajahr, das Sie planen möchten.
+3. Das Feld **Ziel-Saldo (EUR)** ist mit Ihrem aktuellen kumulierten Saldo vorbelegt. Setzen Sie es auf das Saldo, mit dem Sie das Jahr beenden möchten -- z. B. `0` für ein ausgeglichenes Ergebnis oder `5000` für eine kleine Rücklage.
+4. Legen Sie **Max. Kinder pro Bereich pro Monat** fest. Der Optimierer beachtet diese Grenze beim Verteilen der vorgeschlagenen Kinder.
+5. Wählen Sie die **zu befüllenden Bereiche**. Der Optimierer fügt Kinder nur den ausgewählten Bereichen hinzu.
+6. Wählen Sie die Standard-**Vertragseigenschaften** für die vorgeschlagenen Kinder (z. B. `ganztag`).
+7. Klicken Sie auf **Optimale Kinderzahl ermitteln**.
+
+KitaManager rechnet die Prognose mit steigender Kinderzahl wiederholt durch, bis die kleinste Zahl gefunden ist, die das Ziel erreicht. Das Ergebnis erscheint inline -- z. B. "5 Kinder benötigt, um ein kumuliertes Saldo von 1.234,56 EUR zu erreichen". Die vorgeschlagenen Kinder werden in den Tab **Kinder** übernommen, sodass Sie sie vor dem Klick auf **Prognose berechnen** prüfen und anpassen können.
+
+Lässt sich das Ziel mit den gewählten Grenzen nicht erreichen, weist die Ergebnismeldung darauf hin. Erweitern Sie dann die Beschränkungen (mehr Bereiche, höhere Monatsgrenze) oder senken Sie das Ziel-Saldo.
+
+#### Tab 2: Kinder -- Aufnahmen und Abgänge modellieren
+
+Im Tab **Kinder** modellieren Sie Aufnahmen und Abgänge.
+
+{{< screenshot src="/images/screenshots/de/forecast-children.png" alt="Tab Kinder" caption="Hypothetische Kinder Schritt für Schritt hinzufügen oder bestehende Kinder entfernen, um Abgänge zu simulieren." >}}
+
+Ein hypothetisches Kind **hinzufügen**:
+
+1. Wechseln Sie zum Tab **Kinder**.
+2. Geben Sie Anzahl, Alter, Vertragsdaten, Zielbereich und Eigenschaften ein.
+3. Klicken Sie auf **Kind hinzufügen**. Wiederholen Sie das für jedes Szenario.
+
+Ein bestehendes Kind **entfernen** (also einen Abgang simulieren):
+
+1. Klicken Sie in der Liste **Kind entfernen** auf den Namen.
+2. Das Kind wird in die Liste der entfernten Kinder verschoben. Erneutes Klicken nimmt den Schritt zurück.
+
+#### Tab 3: Mitarbeiter -- Einstellungen und Abgänge modellieren
+
+Der Tab **Mitarbeiter** funktioniert genauso für das Personal: hypothetische Neueinstellungen (Anzahl, Zeitraum, Bereich, Personalkategorie, Entgeltgruppe, Stufe, Wochenstunden, Entgelttabelle) hinzufügen oder bestehende Mitarbeiter entfernen, um Abgänge zu simulieren.
+
+{{< screenshot src="/images/screenshots/de/forecast-employees.png" alt="Tab Mitarbeiter" caption="Einstellungen und Abgänge analog zu den Kindern modellieren." >}}
+
+Das ist besonders nützlich, wenn Sie entscheiden müssen, ob Sie eine offene Stelle besetzen können, oder wenn Sie eine bekannte Verrentung im Voraus einplanen.
+
+#### Berechnen und Ergebnisse lesen
+
+Wenn Ihr Szenario steht, klicken Sie unten auf **Prognose berechnen**. KitaManager rechnet das gesamte Kitajahr mit Ihren Änderungen über der Basislinie durch und stellt die Ergebnisse in mehreren Diagrammen dar:
+
+- **Kumuliertes Saldo** -- der laufende Saldo Monat für Monat, Defizitphasen rot markiert.
+- **Finanzen** -- monatliche Einnahmen (Förderung + Budget) gegenüber den monatlichen Kosten (Bruttogehalt + Arbeitgeberanteil + Budgetausgaben), mit Saldolinie obenauf.
+- **Kinder**, **Personal**, **Belegung**, **Mitarbeiterstunden** -- die operativen Konsequenzen Ihres Szenarios.
+
+{{< screenshot src="/images/screenshots/de/forecast-results.png" alt="Prognose-Ergebnisse" caption="Die Ergebnisansicht zeigt Einnahmen, Kosten und Saldo des prognostizierten Jahrs mit Ihrem Szenario." >}}
+
+Aktivieren Sie **Basislinie anzeigen**, um die unveränderte Prognose darüberzulegen und visuell zu vergleichen.
+
+Mit **Zurücksetzen** verwerfen Sie alle Szenario-Änderungen und beginnen neu.
 
 {{% callout type="info" %}}
-**Tipp:** Nutzen Sie den Tab **Optimieren**, wenn Sie wissen möchten, wie viele Kinder Sie aufnehmen müssen, damit Ihre Kita am Jahresende ein bestimmtes finanzielles Polster hat. Geben Sie Ihr Zielsaldo ein und KitaManager berechnet die optimale Kinderzahl.
+Die Prognose ist ein Planungsinstrument, keine Zusage. Sie geht davon aus, dass die Verträge unverändert über das Jahr laufen und sich Fördersätze nicht ändern. Nutzen Sie sie als Richtwert und prüfen Sie die Zahlen, bevor Sie eine Einstellung oder Budgetentscheidung treffen.
 {{% /callout %}}
 
 ## Haushaltsplanung
@@ -443,15 +491,112 @@ Klicken Sie auf eine Förderkonfiguration, um die detaillierten Sätze mit Zeitr
 
 ### Benutzerverwaltung
 
-KitaManager kennt drei Rollen mit unterschiedlichen Berechtigungen:
+KitaManager kennt fünf Rollen mit unterschiedlichen Berechtigungen:
 
 | Rolle | Beschreibung |
 |-------|-------------|
-| **Superadmin** | Vollzugriff auf alle Organisationen und Systemeinstellungen. Kann Benutzer anlegen, Organisationen verwalten und Entgelttabellen/Fördersätze importieren. |
-| **Admin** | Vollzugriff innerhalb der zugewiesenen Organisation(en). Kann Mitarbeiter, Kinder, Verträge und Budgetposten verwalten. |
+| **Superadmin** | Vollzugriff auf alle Organisationen und Systemeinstellungen. Kann Organisationen verwalten und Fördersätze importieren. |
+| **Admin** | Vollzugriff innerhalb der zugewiesenen Organisation(en). Kann Mitarbeiter, Kinder, Verträge, Budgetposten und Benutzer verwalten. |
 | **Manager** | Operativer Zugriff. Kann Mitarbeiter, Kinder und Verträge einsehen und bearbeiten, aber keine Systemeinstellungen ändern. |
+| **Mitglied** | Nur-Lese-Zugriff auf Kinder, Mitarbeiter, Verträge, Bereiche und Entgelttabellen. Geeignet für Vorstandsmitglieder oder Auditoren. |
+| **Personal** | Eingeschränkter Zugriff für Erzieherinnen und Erzieher, die nur die Anwesenheit erfassen sollen. Lesezugriff auf Kinder, Verträge und Bereiche, voller Zugriff auf die Anwesenheitserfassung. |
 
-Die Benutzerverwaltung finden Sie unter **Einstellungen** > **Benutzer**. Nur Superadmins und Admins können neue Benutzer anlegen oder Rollen zuweisen.
+Die Benutzerverwaltung finden Sie unter **Einstellungen** > **Benutzer**. Nur Superadmins und Admins können neue Benutzer anlegen oder Rollen zuweisen. Die vollständige Berechtigungsmatrix finden Sie im [Administrationshandbuch](../administration/#rollenbasierte-zugriffskontrolle).
+
+## Konto absichern
+
+Auf der Seite **Einstellungen** (Benutzermenü oben rechts → Einstellungen) verwalten Sie alles, was zu Ihrem persönlichen Konto gehört: Passwort, Zwei-Faktor-Authentifizierung und die aktuell angemeldeten Geräte.
+
+{{< screenshot src="/images/screenshots/de/settings.png" alt="Einstellungsseite" caption="Die Einstellungsseite mit Passwort, Zwei-Faktor-Authentifizierung und aktiven Sitzungen." >}}
+
+### Passwort ändern
+
+1. Öffnen Sie **Einstellungen**.
+2. Geben Sie im Bereich **Passwort ändern** Ihr aktuelles Passwort ein und anschließend zweimal das neue Passwort.
+3. Klicken Sie auf **Passwort ändern**.
+
+Beim Passwortwechsel werden alle anderen angemeldeten Geräte automatisch abgemeldet -- nur das aktuelle Gerät bleibt eingeloggt. Das ist die richtige Aktion, falls Sie befürchten, dass Ihr Passwort kompromittiert wurde.
+
+### Zwei-Faktor-Authentifizierung (2FA)
+
+Die Zwei-Faktor-Authentifizierung ergänzt das Passwort um einen zweiten Anmeldeschritt. Nach der Aktivierung verlangt jede Anmeldung zusätzlich einen 6-stelligen Code aus einer Authenticator-App (z. B. Google Authenticator, 1Password, Authy oder eine andere TOTP-App) oder das Antippen eines Sicherheitsschlüssels (z. B. YubiKey oder einen integrierten Passkey Ihres Geräts).
+
+Wir empfehlen dringend, 2FA für jedes Konto zu aktivieren, das Daten bearbeiten kann. Es ist der wirksamste Schutz gegen kompromittierte Passwörter.
+
+#### 2FA mit einer Authenticator-App aktivieren
+
+1. Öffnen Sie **Einstellungen**.
+2. Klicken Sie im Bereich **Zwei-Faktor-Authentifizierung** auf **Zwei-Faktor-Authentifizierung aktivieren**.
+3. Sie werden aufgefordert, Ihr Passwort zu bestätigen -- so kann niemand mit kurzzeitigem Zugriff auf Ihren entsperrten Rechner einen Faktor auf Ihrem Konto registrieren.
+
+   {{< screenshot src="/images/screenshots/de/settings-2fa-password.png" alt="2FA-Passwortabfrage" caption="Bestätigen Sie Ihr Passwort, bevor Sie einen neuen Faktor registrieren." >}}
+
+4. Anschließend zeigt KitaManager einen QR-Code an. Scannen Sie ihn mit Ihrer Authenticator-App, oder kopieren Sie den darunter angezeigten Schlüssel, falls Sie nicht scannen können.
+
+   {{< screenshot src="/images/screenshots/de/settings-2fa-scan.png" alt="2FA QR-Code" caption="Scannen Sie den QR-Code mit Ihrer Authenticator-App oder geben Sie den Schlüssel manuell ein." >}}
+
+5. Geben Sie den 6-stelligen Code aus Ihrer App ein und klicken Sie auf **Zwei-Faktor aktivieren**.
+6. KitaManager erzeugt eine Liste mit **Wiederherstellungscodes**. Jeder Code kann einmal verwendet werden, falls Sie keinen Zugriff mehr auf Ihre Authenticator-App haben.
+
+   {{< screenshot src="/images/screenshots/de/settings-2fa-backup-codes.png" alt="2FA-Wiederherstellungscodes" caption="Speichern Sie die Wiederherstellungscodes sicher — sie werden nicht erneut angezeigt." >}}
+
+   {{% callout type="warning" %}}
+   Speichern Sie die Wiederherstellungscodes sofort. Drucken Sie sie aus, hinterlegen Sie sie in einem Passwortmanager oder bewahren Sie sie an einem sicheren Ort auf. KitaManager zeigt sie nur ein einziges Mal an — ohne Codes und Authenticator brauchen Sie eine Administratorin oder einen Administrator, um Ihr Konto zurücksetzen zu lassen.
+   {{% /callout %}}
+
+7. Setzen Sie das Häkchen bei **Ich habe diese Codes sicher gespeichert** und klicken Sie auf **Fertig**.
+
+Im 2FA-Bereich sehen Sie nun die aktiven Faktoren. Bei der nächsten Anmeldung fragt KitaManager nach dem Passwort und anschließend nach einem Code.
+
+{{< screenshot src="/images/screenshots/de/settings-2fa-enabled.png" alt="2FA aktiviert" caption="Zwei-Faktor-Authentifizierung ist aktiv. Sie können einen Sicherheitsschlüssel hinzufügen, Wiederherstellungscodes neu erzeugen oder 2FA deaktivieren." >}}
+
+#### Sicherheitsschlüssel (Passkey / YubiKey) hinzufügen
+
+Wenn Ihr Gerät bzw. Ihr Browser WebAuthn unterstützt, können Sie zusätzlich oder anstelle der Authenticator-App einen Hardware-Sicherheitsschlüssel oder einen Plattform-Passkey verwenden.
+
+1. Klicken Sie im 2FA-Bereich auf **Sicherheitsschlüssel hinzufügen**.
+2. Bestätigen Sie Ihr Passwort.
+3. Folgen Sie der Browseranleitung, um den Schlüssel zu registrieren (Taste am YubiKey berühren, Fingerabdruck scannen usw.).
+
+Sie können mehrere Schlüssel registrieren.
+
+#### Wiederherstellungscodes
+
+Wiederherstellungscodes sind Einmalcodes. Sie können sie jederzeit neu erzeugen -- die alten Codes verlieren dabei ihre Gültigkeit:
+
+1. Klicken Sie im 2FA-Bereich auf **Wiederherstellungscodes neu erzeugen**.
+2. Bestätigen Sie Ihr Passwort.
+3. Speichern Sie die neue Liste sicher.
+
+#### 2FA deaktivieren
+
+1. Klicken Sie im 2FA-Bereich auf **Zwei-Faktor-Authentifizierung deaktivieren**.
+2. Geben Sie Ihr Passwort und einen aktuellen 2FA-Code ein.
+
+Damit werden alle Faktoren -- inklusive aller Sicherheitsschlüssel -- gleichzeitig entfernt.
+
+### Aktive Sitzungen
+
+Im Bereich **Aktive Sitzungen** sehen Sie alle Geräte, die aktuell mit Ihrem Konto angemeldet sind, wann sie zuletzt aktiv waren und welches die aktuelle Sitzung ist. Falls Sie eine Sitzung sehen, die Sie nicht zuordnen können -- z. B. ein Smartphone, das Sie nicht mehr nutzen -- klicken Sie auf **Beenden**. Das Gerät wird sofort abgemeldet.
+
+{{% callout type="info" %}}
+Eine "Sitzung" entspricht einem Browser auf einem Gerät. Wenn Sie sich am Laptop und am Smartphone anmelden, sehen Sie zwei Sitzungen. Das Beenden einer Sitzung wirkt sich nicht auf die andere aus.
+{{% /callout %}}
+
+## Audit-Protokoll
+
+Admins (und Superadmins) können auf der Seite **Audit-Protokoll** alle Änderungen in ihrer Organisation einsehen. Das ist nützlich, wenn Sie nachvollziehen möchten, wer einen Datensatz angelegt oder gelöscht hat, oder wenn Sie ein Audit vorbereiten.
+
+1. Klappen Sie in der Seitenleiste **Einstellungen** auf und klicken Sie auf **Audit-Protokoll**.
+2. Mit den Datumsfiltern **Von** / **Bis** und der Suche nach **Aktion** können Sie die Ereignisse einschränken. Die Aktionssuche funktioniert per Teilstring -- `delete` zeigt z. B. alle Löschungen aller Ressourcen.
+
+Die Tabelle zeigt für jedes Ereignis Zeit, Benutzer, Aktion (z. B. `child_create`, `section_delete`), betroffene Ressource und das Ergebnis (Erfolg/Fehler).
+
+{{< screenshot src="/images/screenshots/de/audit-logs.png" alt="Audit-Protokoll" caption="Das Audit-Protokoll zeigt alle Anlage-, Änderungs- und Löschvorgänge in Ihrer Organisation." >}}
+
+{{% callout type="info" %}}
+Anmelde- und Passwortereignisse werden im Organisations-Protokoll nicht angezeigt -- sie sind organisationsübergreifend sensibel und nur für Systemadministratoren (Superadmins) sichtbar.
+{{% /callout %}}
 
 ## Daten importieren und exportieren
 

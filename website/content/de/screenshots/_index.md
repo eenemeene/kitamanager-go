@@ -95,9 +95,45 @@ Die vollständige Abrechnungshistorie eines Kindes über alle hochgeladenen Abre
 
 ## Prognose
 
-Modellieren Sie Was-wäre-wenn-Szenarien für die finanzielle Zukunft Ihrer Kita.
+Mit der Prognose modellieren Sie Szenarien für das kommende Kitajahr. Drei Tabs erlauben das Optimieren auf ein Ziel-Saldo, das Hinzufügen hypothetischer Kinder oder das Modellieren von Einstellungen und Abgängen.
 
-{{< screenshot src="/images/screenshots/forecast.png" alt="Finanzprognose" caption="Prognose-Tool mit Zielsaldo, Basislinie und Bereichsauswahl." >}}
+{{< screenshot src="/images/screenshots/forecast-optimize.png" alt="Tab Optimieren" caption="Der Tab Optimieren ermittelt die minimale Anzahl an Kindern, um ein Ziel-Saldo zu erreichen." >}}
+
+{{< screenshot src="/images/screenshots/forecast-children.png" alt="Tab Kinder" caption="Hypothetische Kinder einzeln hinzufügen oder bestehende Kinder entfernen, um Abgänge zu simulieren." >}}
+
+{{< screenshot src="/images/screenshots/forecast-employees.png" alt="Tab Mitarbeiter" caption="Einstellungen und Abgänge analog zu den Kindern modellieren." >}}
+
+Nach einem Klick auf **Prognose berechnen** zeigt KitaManager die Auswirkungen Ihres Szenarios auf das gesamte Kitajahr -- Finanzen, kumuliertes Saldo, Belegung und Personal.
+
+{{< screenshot src="/images/screenshots/forecast-results.png" alt="Prognose-Ergebnisse" caption="Prognostizierte Einnahmen, Kosten und Saldo für das Kitajahr mit angewendetem Szenario." >}}
+
+---
+
+## Einstellungen & Zwei-Faktor-Authentifizierung
+
+Auf der Einstellungsseite verwaltet jede Nutzerin / jeder Nutzer Passwort, Zwei-Faktor-Authentifizierung (Authenticator-App und Sicherheitsschlüssel) und die aktuell angemeldeten Geräte.
+
+{{< screenshot src="/images/screenshots/settings.png" alt="Einstellungsseite" caption="Einstellungen — Passwort ändern, 2FA verwalten, aktive Sitzungen einsehen." >}}
+
+Die 2FA-Aktivierung beginnt mit einer Passwortbestätigung. Anschließend zeigt KitaManager einen QR-Code, den Sie mit einer Authenticator-App scannen (z. B. Google Authenticator, 1Password, Authy).
+
+{{< screenshot src="/images/screenshots/settings-2fa-scan.png" alt="2FA QR-Code" caption="QR-Code scannen oder den Schlüssel manuell eingeben, um die Authenticator-App zu registrieren." >}}
+
+Nach Bestätigung eines Codes erzeugt KitaManager einmalige Wiederherstellungscodes — bewahren Sie sie sicher auf, bevor Sie auf Fertig klicken.
+
+{{< screenshot src="/images/screenshots/settings-2fa-backup-codes.png" alt="2FA-Wiederherstellungscodes" caption="Wiederherstellungscodes werden nur ein Mal angezeigt. Jeder Code erlaubt eine Anmeldung ohne Authenticator-App." >}}
+
+Ist die Aktivierung abgeschlossen, zeigt der 2FA-Bereich die aktiven Faktoren und ermöglicht das Hinzufügen eines Sicherheitsschlüssels, das Neugenerieren der Codes oder das Deaktivieren von 2FA.
+
+{{< screenshot src="/images/screenshots/settings-2fa-enabled.png" alt="2FA aktiviert" caption="Zwei-Faktor-Authentifizierung aktiv, mit Optionen für Sicherheitsschlüssel und Wiederherstellungscodes." >}}
+
+---
+
+## Audit-Protokoll
+
+Admins können alle Anlage-, Änderungs- und Löschvorgänge in ihrer Organisation einsehen. Filtern nach Zeitraum oder nach Teilstring der Aktion.
+
+{{< screenshot src="/images/screenshots/audit-logs.png" alt="Audit-Protokoll" caption="Das Audit-Protokoll auf Organisationsebene zeigt, wer wann was geändert hat." >}}
 
 ---
 

@@ -55,15 +55,16 @@ make dev
 
 ## Default Credentials
 
-After starting, you can log in with the default admin credentials:
+After starting, you can sign in with one of the seeded test accounts. Each demonstrates a different role:
 
-| Field | Value |
-|-------|-------|
-| Email | `superadmin@example.com` |
-| Password | `supersecret` |
+| Email | Role | Password |
+|-------|------|----------|
+| `superadmin@example.com` | Superadmin | `supersecret` |
+| `admin@example.com` | Admin (Kita Sonnenschein) | `supersecret` |
+| `manager@example.com` | Manager (Kita Sonnenschein) | `supersecret` |
 
 {{% callout type="warning" %}}
-Change the default password immediately in production environments!
+These credentials are for local development only. Change all default passwords immediately in production environments and enable two-factor authentication for every account that can edit data.
 {{% /callout %}}
 
 ## Seed Data

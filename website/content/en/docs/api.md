@@ -3,42 +3,80 @@ title: API Reference
 weight: 3
 ---
 
-KitaManager provides a REST API with interactive OpenAPI/Swagger documentation available at `/swagger/index.html` when running the application. All endpoints except login and token refresh require JWT authentication. Mutating requests (POST, PUT, DELETE) require a CSRF token via the `X-CSRF-Token` header.
+KitaManager provides a REST API with interactive OpenAPI/Swagger documentation available at `/swagger/index.html` when running the application.
+
+Authentication is **cookie-based**: a successful login sets an HttpOnly `access_token` session cookie plus a JS-readable `csrf_token` cookie. Mutating requests (POST/PUT/PATCH/DELETE) must echo the CSRF token via the `X-CSRF-Token` header. There is no separate refresh endpoint — sessions remain valid until you log out, the cookie expires, or you revoke them from `/me/sessions`.
 
 ## Authentication
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/v1/login` | Authenticate and receive access + refresh tokens |
-| POST | `/api/v1/refresh` | Refresh an expired access token |
-| POST | `/api/v1/logout` | Invalidate the current session |
-| GET | `/api/v1/me` | Get the current user's profile |
-| PUT | `/api/v1/me/password` | Change the current user's password |
+| POST | `/api/v1/login` | Step 1 of login: validate password. Returns either the session cookies (no MFA) or a short-lived MFA challenge token (MFA enrolled). |
+| POST | `/api/v1/auth/mfa/challenge` | Issue a WebAuthn challenge for the in-progress login. Used during the MFA step when the user has security keys enrolled. |
+| POST | `/api/v1/auth/mfa/verify` | Step 2 of login: verify the TOTP code, backup code, or WebAuthn assertion against the challenge token. On success, sets the session cookies. |
+| POST | `/api/v1/logout` | Invalidate the current session and clear cookies. |
+| GET | `/api/v1/me` | Get the current user's profile. |
+| PUT | `/api/v1/me/password` | Change the current user's password. Revokes all other sessions. |
+| GET | `/api/v1/me/sessions` | List active sessions for the current user (device, IP, last active). |
+| DELETE | `/api/v1/me/sessions/{id}` | Revoke a specific active session. |
 
-### Login Example
+### Login Example (no MFA)
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/login \
+curl -i -c cookies.txt -X POST http://localhost:8080/api/v1/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "admin@example.com", "password": "admin123"}'
+  -d '{"email": "admin@example.com", "password": "supersecret"}'
 ```
 
-Response:
+The response sets two cookies:
+
+```
+Set-Cookie: access_token=...; HttpOnly; Path=/
+Set-Cookie: csrf_token=...; Path=/
+```
+
+### Login Example (MFA enrolled)
+
+If the user has MFA enabled, the login response carries an `mfa_required` flag and a short-lived `mfa_challenge_token`:
 
 ```json
-{
-  "token": "eyJhbGciOiJIUzI1NiIs..."
-}
+{ "mfa_required": true, "mfa_challenge_token": "...", "factors": ["totp", "webauthn"] }
 ```
 
-### Using the Token
-
-Include the token in the `Authorization` header for all subsequent requests:
+Complete the login by submitting a code or assertion to `/auth/mfa/verify`:
 
 ```bash
-curl http://localhost:8080/api/v1/organizations \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..."
+curl -i -c cookies.txt -X POST http://localhost:8080/api/v1/auth/mfa/verify \
+  -H "Content-Type: application/json" \
+  -d '{"challenge_token": "...", "factor_type": "totp", "code": "123456"}'
 ```
+
+### Using the Cookie
+
+For subsequent calls, send back the cookie file. Mutating calls must add the CSRF token from the `csrf_token` cookie:
+
+```bash
+curl http://localhost:8080/api/v1/organizations -b cookies.txt
+curl -X POST http://localhost:8080/api/v1/organizations \
+  -b cookies.txt \
+  -H "X-CSRF-Token: $(grep csrf_token cookies.txt | awk '{print $7}')" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "New Org", "state": "berlin"}'
+```
+
+## Multi-Factor Authentication (Factors)
+
+Users self-manage their factors via `/users/{userId}/factors`. The path parameter `:userId` accepts the literal `me` as a self-alias — at the moment, addressing anyone but yourself returns 403.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/users/{userId}/factors` | List enrolled factors. |
+| POST | `/api/v1/users/{userId}/factors` | Enrol a new factor. The body specifies factor type (`totp` or `webauthn`) and current password. Returns enrolment payload (TOTP secret + otpauth URI, or WebAuthn registration challenge). |
+| GET | `/api/v1/users/{userId}/factors/{id}` | Get a factor. |
+| PATCH | `/api/v1/users/{userId}/factors/{id}` | Update the human label on a factor. |
+| DELETE | `/api/v1/users/{userId}/factors/{id}` | Delete a factor. Requires password and current TOTP code. Deleting the last primary factor also sweeps the backup-codes factor. |
+| POST | `/api/v1/users/{userId}/factors/{id}/activate` | Activate a pending enrolment with a verification code. First successful activation also returns single-use backup codes. |
+| POST | `/api/v1/users/{userId}/factors/{id}/regenerate` | Regenerate the backup-codes factor; old codes are invalidated. |
 
 ## Organizations
 
@@ -253,6 +291,26 @@ Scoped to an organization: `/api/v1/organizations/{orgId}/statistics`. All stati
 | GET | `.../statistics/age-distribution` | Age distribution |
 | GET | `.../statistics/contract-properties` | Contract property distribution |
 | GET | `.../statistics/funding` | Funding statistics |
+
+### Forecast and Estimates
+
+These endpoints power the **Forecast** page. They take the same date range plus a list of scenario modifications (added/removed children, added/removed employees) and return the projected statistics with the modifications applied.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `.../statistics/forecast` | Project the full Kita year with the supplied scenario layered on top of current data. Returns financials, staffing, occupancy, and employee hours for the period. |
+| POST | `.../statistics/estimates/child-funding` | Quickly estimate monthly funding for a hypothetical child, without affecting any stored data. |
+| POST | `.../statistics/estimates/employee-cost` | Quickly estimate monthly cost (gross + employer contributions) for a hypothetical employee. |
+
+## Audit Logs
+
+Two scopes:
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/audit-logs` | **Superadmin-only** global audit log including login/auth events. Supports `from`, `to`, `action`, `actor` filters. |
+| GET | `/api/v1/audit-logs/{id}` | **Superadmin-only** get a specific audit log entry. |
+| GET | `/api/v1/organizations/{orgId}/audit-logs` | **Org admin** view, scoped to one organization. Login/password events are excluded. |
 
 ## Users
 

@@ -13,8 +13,9 @@ KitaManager is an enterprise-grade REST API and web application designed to stre
 - **Children** — Enrollment tracking, contract management, and attendance
 - **Funding** — Government funding configuration, calculation, and ISBJ bill comparison
 - **Budget** — Income and expense tracking with budget items
-- **Statistics** — Staffing, financial, occupancy, and demographic reports
+- **Statistics & Forecast** — Staffing, financial, occupancy, demographic reports plus a what-if forecast tool
 - **Access Control** — Role-based permissions with five roles across organizations
+- **Account Security** — Two-factor authentication (TOTP and security keys), session management, and an organization-scoped audit log
 
 ## Quick Navigation
 
