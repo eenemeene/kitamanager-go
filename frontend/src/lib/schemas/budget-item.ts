@@ -1,12 +1,16 @@
 import { z } from 'zod';
+import type { BudgetItemCreateRequest } from '@/lib/api/types';
 import { endDateAfterStart } from './period';
 
 export const budgetItemSchema = z.object({
   name: z.string().min(1).max(255),
   category: z.enum(['income', 'expense']),
   per_child: z.boolean(),
-});
+}) satisfies z.ZodType<BudgetItemCreateRequest>;
 
+// budgetItemEntrySchema is form-only: API stores `amount_cents` (int),
+// the form collects `amount_euros`. Conversion happens in the submit
+// handler.
 export const budgetItemEntrySchema = z
   .object({
     from: z.string().min(1),
@@ -16,7 +20,10 @@ export const budgetItemEntrySchema = z
   })
   .refine(...endDateAfterStart('from', 'to'));
 
-// Combined schema for creating a budget item with an initial entry
+// Combined schema for creating a budget item with an initial entry —
+// composite shape with no single API counterpart (the page splits it
+// into BudgetItemCreateRequest + BudgetItemEntryCreateRequest before
+// submitting). Skipping the satisfies guard.
 export const budgetItemWithEntrySchema = budgetItemSchema
   .extend({
     entry_from: z.string().min(1),

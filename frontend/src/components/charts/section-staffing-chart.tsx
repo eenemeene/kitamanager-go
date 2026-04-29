@@ -15,12 +15,36 @@ interface SectionStaffingChartProps {
   data: SectionStaffingData[];
 }
 
-export function SectionStaffingChart({ data }: SectionStaffingChartProps) {
-  const t = useTranslations();
+export interface SectionStaffingChartRow {
+  section: string;
+  available: number;
+  required: number;
+  // The percentage value lives under a translated key (Nivo's
+  // `keys` mechanism) so the legend localises automatically. Tests
+  // pass an explicit balanceKey to keep them locale-independent.
+  [balanceKey: string]: string | number;
+}
 
-  const balanceKey = t('statistics.balancePercentage');
+/** Compute the symmetric domain max (with ~10% padding, floor at 10%). */
+export function computeSymmetricDomainMax(percentages: number[]): number {
+  const rawMax = Math.max(10, ...percentages.map(Math.abs));
+  return Math.ceil(rawMax * 1.1);
+}
 
-  const chartData = data.map((d) => {
+/**
+ * Build per-section chart rows. Pure function exported so the per-section
+ * percentage math and rounding rules are unit-tested without rendering.
+ *
+ * Edge cases handled:
+ *  - `required === 0` → percentage is 0 (avoids Infinity)
+ *  - rounding hours to whole numbers for the y-axis tick formatter
+ *  - rounding percentages to 0.1% so labels read +12.3% / -7.5%
+ */
+export function buildSectionStaffingRows(
+  data: SectionStaffingData[],
+  balanceKey: string
+): SectionStaffingChartRow[] {
+  return data.map((d) => {
     const pct =
       d.required > 0 ? Math.round(((d.available - d.required) / d.required) * 1000) / 10 : 0;
     return {
@@ -30,10 +54,15 @@ export function SectionStaffingChart({ data }: SectionStaffingChartProps) {
       required: Math.round(d.required),
     };
   });
+}
 
-  // Symmetric scale so 0% is always centered, with ~10% padding
-  const rawMax = Math.max(10, ...chartData.map((d) => Math.abs(d[balanceKey] as number)));
-  const maxAbs = Math.ceil(rawMax * 1.1);
+export function SectionStaffingChart({ data }: SectionStaffingChartProps) {
+  const t = useTranslations();
+
+  const balanceKey = t('statistics.balancePercentage');
+
+  const chartData = buildSectionStaffingRows(data, balanceKey);
+  const maxAbs = computeSymmetricDomainMax(chartData.map((d) => d[balanceKey] as number));
 
   return (
     <div className="space-y-2">

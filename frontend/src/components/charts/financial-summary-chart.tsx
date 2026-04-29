@@ -24,7 +24,7 @@ export function FinancialSummaryChart({ data }: FinancialSummaryChartProps) {
 
   const balanceKey = t('statistics.cumulativeBalance');
 
-  const rawDates = data.data_points.map((dp) => dp.date);
+  const rawDates = data.data_points.map((dp) => dp.date ?? '');
   const xLabels = rawDates.map(formatDateLabel);
   const kitaYearBands = useMemo(() => buildKitaYearBands(rawDates), [rawDates]);
 
@@ -38,15 +38,17 @@ export function FinancialSummaryChart({ data }: FinancialSummaryChartProps) {
     let inDeficit = false;
 
     data.data_points.forEach((dp) => {
-      const ky = kitaYearLabel(dp.date);
+      const dpDate = dp.date ?? '';
+      const dpBalance = dp.balance ?? 0;
+      const ky = kitaYearLabel(dpDate);
       if (ky !== currentKitaYear) {
         cumulative = 0;
         currentKitaYear = ky;
         inDeficit = false;
       }
-      cumulative += dp.balance;
-      monthlyDeltas.push(dp.balance);
-      const label = formatDateLabel(dp.date);
+      cumulative += dpBalance;
+      monthlyDeltas.push(dpBalance);
+      const label = formatDateLabel(dpDate);
       points.push({
         date: label,
         [balanceKey]: cumulative / 100,

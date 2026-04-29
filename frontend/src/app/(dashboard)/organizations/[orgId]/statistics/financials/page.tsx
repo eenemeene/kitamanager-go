@@ -75,13 +75,16 @@ export default function FinancialsPage() {
     const dps = financials?.data_points;
     if (!dps?.length) return [];
     // Only include months that have actual bills
-    const billMonths = dps.filter((dp) => dp.actual_funding != null).map((dp) => dp.date);
+    const billMonths = dps
+      .filter((dp) => dp.actual_funding != null)
+      .map((dp) => dp.date)
+      .filter((d): d is string => d !== undefined);
     if (billMonths.length === 0) return [];
-    const first = billMonths[0];
-    const last = billMonths[billMonths.length - 1];
+    const first = billMonths[0]!;
+    const last = billMonths[billMonths.length - 1]!;
     // Split into 12-month windows
     const windows: { from: string; to: string }[] = [];
-    let wFrom = first;
+    let wFrom: string = first;
     while (wFrom <= last) {
       const fromDate = new Date(wFrom);
       const toDate = new Date(fromDate);
@@ -154,9 +157,9 @@ export default function FinancialsPage() {
       {/* Financial Summary Cards */}
       {currentFinancials && (
         <FinancialSummaryCards
-          totalIncome={currentFinancials.total_income}
-          totalExpenses={currentFinancials.total_expenses}
-          balance={currentFinancials.balance}
+          totalIncome={currentFinancials.total_income ?? 0}
+          totalExpenses={currentFinancials.total_expenses ?? 0}
+          balance={currentFinancials.balance ?? 0}
         />
       )}
 

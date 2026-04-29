@@ -52,6 +52,7 @@ const user: User = {
   email: 'foobar@example.com',
   active: true,
   is_superadmin: false,
+  last_login: '',
   created_at: '2024-01-01T00:00:00Z',
   created_by: 'admin',
   updated_at: '2024-01-01T00:00:00Z',

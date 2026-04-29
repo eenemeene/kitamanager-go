@@ -44,20 +44,20 @@ export function FinancialsChart({ data }: FinancialsChartProps) {
     [budgetExpensesKey]: t('statistics.budgetExpensesTooltip'),
   };
 
-  const rawDates = data.data_points.map((dp) => dp.date);
+  const rawDates = data.data_points.map((dp) => dp.date ?? '');
   const xLabels = rawDates.map(formatDateLabel);
   const kitaYearBands = useMemo(() => buildKitaYearBands(rawDates), [rawDates]);
 
   const chartData: BarDatum[] = data.data_points.map((dp) => ({
-    date: formatDateLabel(dp.date),
-    [fundingKey]: centsToEur(dp.funding_income),
-    [budgetIncomeKey]: centsToEur(dp.budget_income),
-    [grossSalaryKey]: -centsToEur(dp.gross_salary),
-    [employerCostsKey]: -centsToEur(dp.employer_costs),
-    [budgetExpensesKey]: -centsToEur(dp.budget_expenses),
-    _balance: centsToEur(dp.balance),
-    _total_income: centsToEur(dp.total_income),
-    _total_expenses: centsToEur(dp.total_expenses),
+    date: formatDateLabel(dp.date ?? ''),
+    [fundingKey]: centsToEur(dp.funding_income ?? 0),
+    [budgetIncomeKey]: centsToEur(dp.budget_income ?? 0),
+    [grossSalaryKey]: -centsToEur(dp.gross_salary ?? 0),
+    [employerCostsKey]: -centsToEur(dp.employer_costs ?? 0),
+    [budgetExpensesKey]: -centsToEur(dp.budget_expenses ?? 0),
+    _balance: centsToEur(dp.balance ?? 0),
+    _total_income: centsToEur(dp.total_income ?? 0),
+    _total_expenses: centsToEur(dp.total_expenses ?? 0),
     _idx: data.data_points.indexOf(dp),
   }));
 
@@ -289,9 +289,9 @@ export function FinancialsChart({ data }: FinancialsChartProps) {
     let min = 0;
     for (const dp of data.data_points) {
       const expenses = -(
-        centsToEur(dp.gross_salary) +
-        centsToEur(dp.employer_costs) +
-        centsToEur(dp.budget_expenses)
+        centsToEur(dp.gross_salary ?? 0) +
+        centsToEur(dp.employer_costs ?? 0) +
+        centsToEur(dp.budget_expenses ?? 0)
       );
       if (expenses < min) min = expenses;
     }
@@ -425,7 +425,7 @@ export function FinancialsChart({ data }: FinancialsChartProps) {
                 display: 'inline-block',
               }}
             />
-            {balanceLabel}: {formatEur(hoveredDp.balance)}
+            {balanceLabel}: {formatEur(hoveredDp.balance ?? 0)}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
             <span
@@ -437,7 +437,7 @@ export function FinancialsChart({ data }: FinancialsChartProps) {
                 display: 'inline-block',
               }}
             />
-            {t('statistics.totalIncome')}: {formatEur(hoveredDp.total_income)}
+            {t('statistics.totalIncome')}: {formatEur(hoveredDp.total_income ?? 0)}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
             <span
@@ -449,7 +449,7 @@ export function FinancialsChart({ data }: FinancialsChartProps) {
                 display: 'inline-block',
               }}
             />
-            {t('statistics.totalExpenses')}: {formatEur(hoveredDp.total_expenses)}
+            {t('statistics.totalExpenses')}: {formatEur(hoveredDp.total_expenses ?? 0)}
           </div>
           <div
             style={{
@@ -461,38 +461,38 @@ export function FinancialsChart({ data }: FinancialsChartProps) {
             }}
           >
             <div>
-              {t('statistics.fundingIncome')}: {formatEur(hoveredDp.funding_income)}
+              {t('statistics.fundingIncome')}: {formatEur(hoveredDp.funding_income ?? 0)}
             </div>
             {hoveredDp.funding_details?.map((fd) => (
               <div key={`${fd.key}:${fd.value}`} style={{ paddingLeft: 12, opacity: 0.85 }}>
-                {fd.label}: {formatEur(fd.amount_cents)}
+                {fd.label}: {formatEur(fd.amount_cents ?? 0)}
               </div>
             ))}
             <div>
-              {t('statistics.budgetIncome')}: {formatEur(hoveredDp.budget_income)}
+              {t('statistics.budgetIncome')}: {formatEur(hoveredDp.budget_income ?? 0)}
             </div>
             {hoveredDp.budget_item_details
               ?.filter((bi) => bi.category === 'income')
               .map((bi) => (
                 <div key={bi.name} style={{ paddingLeft: 12, opacity: 0.85 }}>
-                  {bi.name}: {formatEur(bi.amount_cents)}
+                  {bi.name}: {formatEur(bi.amount_cents ?? 0)}
                 </div>
               ))}
             <div>
-              {t('statistics.grossSalary')}: {formatEur(hoveredDp.gross_salary)}
+              {t('statistics.grossSalary')}: {formatEur(hoveredDp.gross_salary ?? 0)}
             </div>
             <div title={t('statistics.employerCostsTooltip')}>
-              {t('statistics.employerCosts')}: {formatEur(hoveredDp.employer_costs)}
+              {t('statistics.employerCosts')}: {formatEur(hoveredDp.employer_costs ?? 0)}
               <span style={{ fontSize: 11, opacity: 0.7, marginLeft: 4 }}>(?)</span>
             </div>
             <div>
-              {t('statistics.budgetExpenses')}: {formatEur(hoveredDp.budget_expenses)}
+              {t('statistics.budgetExpenses')}: {formatEur(hoveredDp.budget_expenses ?? 0)}
             </div>
             {hoveredDp.budget_item_details
               ?.filter((bi) => bi.category === 'expense')
               .map((bi) => (
                 <div key={bi.name} style={{ paddingLeft: 12, opacity: 0.85 }}>
-                  {bi.name}: {formatEur(bi.amount_cents)}
+                  {bi.name}: {formatEur(bi.amount_cents ?? 0)}
                 </div>
               ))}
           </div>

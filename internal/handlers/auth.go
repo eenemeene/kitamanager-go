@@ -41,7 +41,8 @@ func NewAuthHandler(authService *service.AuthService, secureCookies bool) *AuthH
 // @Accept json
 // @Produce json
 // @Param request body models.LoginRequest true "Login credentials"
-// @Success 200 {object} models.LoginResponse "Authenticated"
+// @Success 200 {object} models.LoginResponse "Authenticated (no MFA): session cookie set"
+// @Success 200 {object} models.LoginMFARequiredResponse "MFA required: no cookie set; follow up with POST /auth/mfa/verify"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 429 {object} models.ErrorResponse

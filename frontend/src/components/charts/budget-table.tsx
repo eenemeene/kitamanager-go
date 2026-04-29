@@ -41,9 +41,9 @@ export function BudgetTable({ data }: BudgetTableProps) {
     for (const dp of dataPoints) {
       for (const item of dp.budget_item_details ?? []) {
         if (item.category === 'income') {
-          incomeSet.add(item.name);
+          incomeSet.add(item.name ?? '');
         } else {
-          expenseSet.add(item.name);
+          expenseSet.add(item.name ?? '');
         }
       }
     }
@@ -60,18 +60,18 @@ export function BudgetTable({ data }: BudgetTableProps) {
     return dataPoints.map((dp) => {
       const budgetMap = new Map<string, number>();
       for (const item of dp.budget_item_details ?? []) {
-        budgetMap.set(item.name, item.amount_cents);
+        budgetMap.set(item.name ?? '', item.amount_cents ?? 0);
       }
       return {
-        date: dp.date,
-        fundingIncome: dp.funding_income,
+        date: dp.date ?? '',
+        fundingIncome: dp.funding_income ?? 0,
         actualFunding: dp.actual_funding ?? null,
         incomeItemValues: incomeItems.map((name) => budgetMap.get(name) ?? 0),
-        totalIncome: dp.total_income,
-        salaries: dp.gross_salary + dp.employer_costs,
+        totalIncome: dp.total_income ?? 0,
+        salaries: (dp.gross_salary ?? 0) + (dp.employer_costs ?? 0),
         expenseItemValues: expenseItems.map((name) => budgetMap.get(name) ?? 0),
-        totalExpenses: dp.total_expenses,
-        balance: dp.balance,
+        totalExpenses: dp.total_expenses ?? 0,
+        balance: dp.balance ?? 0,
       };
     });
   }, [dataPoints, incomeItems, expenseItems]);

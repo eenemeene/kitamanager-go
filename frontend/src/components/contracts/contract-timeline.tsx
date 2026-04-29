@@ -28,7 +28,7 @@ export function ContractTimeline<T extends BaseContract>({
   const handleBoundaryChange = useCallback(
     (upperContract: BaseContract, lowerContract: BaseContract, newTo: string, newFrom: string) => {
       const updates: ContractBatchUpdateItem[] = [
-        { id: lowerContract.id, to: formatDateForApi(newTo) },
+        { id: lowerContract.id, to: formatDateForApi(newTo) ?? undefined },
         { id: upperContract.id, from: formatDateForApi(newFrom) ?? undefined },
       ];
       onBoundaryChange(updates);

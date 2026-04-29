@@ -258,7 +258,7 @@ export default function ChildContractsPage() {
     } else {
       createMutation.mutate({
         from: formatDateForApi(data.from) || data.from,
-        to: formatDateForApi(data.to),
+        to: formatDateForApi(data.to) ?? undefined,
         section_id: data.section_id,
         properties: data.properties as ContractProperties | undefined,
       });

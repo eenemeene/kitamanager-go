@@ -25,7 +25,7 @@ function formatMonthHeader(dateStr: string): string {
 export function OccupancyTable({ data }: OccupancyTableProps) {
   const t = useTranslations('statistics');
 
-  const months = useMemo(() => data.data_points.map((dp) => dp.date), [data.data_points]);
+  const months = useMemo(() => data.data_points.map((dp) => dp.date ?? ''), [data.data_points]);
 
   // Build rows: one per (age group × care type) combination
   const matrixRows = useMemo(() => {
@@ -37,13 +37,15 @@ export function OccupancyTable({ data }: OccupancyTableProps) {
     }[] = [];
     for (let agIdx = 0; agIdx < data.age_groups.length; agIdx++) {
       const ag = data.age_groups[agIdx];
+      const agLabel = ag.label ?? '';
       for (const ct of data.care_types) {
+        const ctValue = ct.value ?? '';
         const values = data.data_points.map(
-          (dp) => dp.by_age_and_care_type?.[ag.label]?.[ct.value] ?? 0
+          (dp) => dp.by_age_and_care_type?.[agLabel]?.[ctValue] ?? 0
         );
         rows.push({
-          ageLabel: ag.label,
-          careTypeLabel: ct.label || ct.value,
+          ageLabel: agLabel,
+          careTypeLabel: ct.label || ctValue,
           ageGroupIndex: agIdx,
           values,
         });
@@ -53,13 +55,16 @@ export function OccupancyTable({ data }: OccupancyTableProps) {
   }, [data]);
 
   // Total row values
-  const totalValues = useMemo(() => data.data_points.map((dp) => dp.total), [data.data_points]);
+  const totalValues = useMemo(
+    () => data.data_points.map((dp) => dp.total ?? 0),
+    [data.data_points]
+  );
 
   // Supplement rows
   const supplementRows = useMemo(() => {
     return data.supplement_types.map((st) => ({
-      label: st.label,
-      values: data.data_points.map((dp) => dp.by_supplement?.[st.value] ?? 0),
+      label: st.label ?? '',
+      values: data.data_points.map((dp) => dp.by_supplement?.[st.value ?? ''] ?? 0),
     }));
   }, [data]);
 

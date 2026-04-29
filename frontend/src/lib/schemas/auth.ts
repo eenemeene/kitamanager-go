@@ -1,9 +1,10 @@
 import { z } from 'zod';
+import type { LoginRequest } from '@/lib/api/types';
 
 export const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
-});
+}) satisfies z.ZodType<LoginRequest>;
 
 export type LoginFormData = z.infer<typeof loginSchema>;
 

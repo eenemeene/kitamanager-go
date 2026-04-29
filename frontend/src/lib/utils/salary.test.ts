@@ -1,5 +1,5 @@
 import { calculateMonthlySalary } from './salary';
-import type { EmployeeContract, PayPlan } from '@/lib/api/types';
+import type { EmployeeContract, PayPlanDetail } from '@/lib/api/types';
 
 // Helper to create a base contract
 function makeContract(overrides: Partial<EmployeeContract> = {}): EmployeeContract {
@@ -7,13 +7,16 @@ function makeContract(overrides: Partial<EmployeeContract> = {}): EmployeeContra
     id: 1,
     employee_id: 1,
     from: '2024-01-01',
-    to: null,
+    to: '',
     section_id: 1,
+    section_name: '',
     staff_category: 'qualified',
     grade: 'S8a',
     step: 3,
     weekly_hours: 39,
     payplan_id: 1,
+    payplan_name: '',
+    properties: {},
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
     ...overrides,
@@ -21,7 +24,7 @@ function makeContract(overrides: Partial<EmployeeContract> = {}): EmployeeContra
 }
 
 // Helper to create a base payplan
-function makePayPlan(overrides: Partial<PayPlan> = {}): PayPlan {
+function makePayPlan(overrides: Partial<PayPlanDetail> = {}): PayPlanDetail {
   return {
     id: 1,
     organization_id: 1,
@@ -33,7 +36,7 @@ function makePayPlan(overrides: Partial<PayPlan> = {}): PayPlan {
         id: 1,
         payplan_id: 1,
         from: '2024-01-01',
-        to: null,
+        to: '',
         weekly_hours: 39,
         employer_contribution_rate: 0,
         created_at: '2024-01-01T00:00:00Z',
@@ -44,6 +47,7 @@ function makePayPlan(overrides: Partial<PayPlan> = {}): PayPlan {
             period_id: 1,
             grade: 'S8a',
             step: 3,
+            step_min_years: 0,
             monthly_amount: 350000, // 3500.00 EUR
             created_at: '2024-01-01T00:00:00Z',
             updated_at: '2024-01-01T00:00:00Z',
@@ -105,6 +109,7 @@ describe('calculateMonthlySalary', () => {
               period_id: 1,
               grade: 'S8a',
               step: 3,
+              step_min_years: 0,
               monthly_amount: 350000,
               created_at: '2020-01-01T00:00:00Z',
               updated_at: '2020-01-01T00:00:00Z',
@@ -132,7 +137,7 @@ describe('calculateMonthlySalary', () => {
           id: 1,
           payplan_id: 1,
           from: '2024-01-01',
-          to: null,
+          to: '',
           weekly_hours: 0,
           employer_contribution_rate: 0,
           created_at: '2024-01-01T00:00:00Z',
@@ -143,6 +148,7 @@ describe('calculateMonthlySalary', () => {
               period_id: 1,
               grade: 'S8a',
               step: 3,
+              step_min_years: 0,
               monthly_amount: 350000,
               created_at: '2024-01-01T00:00:00Z',
               updated_at: '2024-01-01T00:00:00Z',
@@ -174,6 +180,7 @@ describe('calculateMonthlySalary', () => {
               period_id: 1,
               grade: 'S8a',
               step: 3,
+              step_min_years: 0,
               monthly_amount: 360000,
               created_at: '2024-01-01T00:00:00Z',
               updated_at: '2024-01-01T00:00:00Z',
@@ -205,6 +212,7 @@ describe('calculateMonthlySalary', () => {
               period_id: 1,
               grade: 'S8a',
               step: 3,
+              step_min_years: 0,
               monthly_amount: 300000, // old amount
               created_at: '2020-01-01T00:00:00Z',
               updated_at: '2020-01-01T00:00:00Z',
@@ -215,7 +223,7 @@ describe('calculateMonthlySalary', () => {
           id: 2,
           payplan_id: 1,
           from: '2024-01-01',
-          to: null,
+          to: '',
           weekly_hours: 39,
           employer_contribution_rate: 0,
           created_at: '2024-01-01T00:00:00Z',
@@ -226,6 +234,7 @@ describe('calculateMonthlySalary', () => {
               period_id: 2,
               grade: 'S8a',
               step: 3,
+              step_min_years: 0,
               monthly_amount: 350000, // current amount
               created_at: '2024-01-01T00:00:00Z',
               updated_at: '2024-01-01T00:00:00Z',
@@ -261,7 +270,7 @@ describe('calculateMonthlySalary', () => {
           id: 1,
           payplan_id: 1,
           from: '2024-01-01',
-          to: null,
+          to: '',
           weekly_hours: 39,
           employer_contribution_rate: 0,
           created_at: '2024-01-01T00:00:00Z',
@@ -276,18 +285,20 @@ describe('calculateMonthlySalary', () => {
 
   it('returns null when period entries is undefined', () => {
     const contract = makeContract();
+    // Generated types require entries to be present, but the runtime may
+    // still pass undefined; cast to exercise the defensive null-check.
     const payPlan = makePayPlan({
       periods: [
         {
           id: 1,
           payplan_id: 1,
           from: '2024-01-01',
-          to: null,
+          to: '',
           weekly_hours: 39,
           employer_contribution_rate: 0,
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
-          entries: undefined,
+          entries: undefined as unknown as PayPlanDetail['periods'][number]['entries'],
         },
       ],
     });
@@ -310,7 +321,7 @@ describe('calculateMonthlySalary', () => {
           id: 1,
           payplan_id: 1,
           from: '2024-01-01',
-          to: null,
+          to: '',
           weekly_hours: 39,
           employer_contribution_rate: 0,
           created_at: '2024-01-01T00:00:00Z',
@@ -321,6 +332,7 @@ describe('calculateMonthlySalary', () => {
               period_id: 1,
               grade: 'S8a',
               step: 3,
+              step_min_years: 0,
               monthly_amount: 350047, // produces a fractional result
               created_at: '2024-01-01T00:00:00Z',
               updated_at: '2024-01-01T00:00:00Z',
@@ -352,7 +364,7 @@ describe('calculateMonthlySalary', () => {
           id: 1,
           payplan_id: 1,
           from: '2025-06-15', // exactly today
-          to: null,
+          to: '',
           weekly_hours: 39,
           employer_contribution_rate: 0,
           created_at: '2025-06-15T00:00:00Z',
@@ -363,6 +375,7 @@ describe('calculateMonthlySalary', () => {
               period_id: 1,
               grade: 'S8a',
               step: 3,
+              step_min_years: 0,
               monthly_amount: 370000,
               created_at: '2025-06-15T00:00:00Z',
               updated_at: '2025-06-15T00:00:00Z',
@@ -394,6 +407,7 @@ describe('calculateMonthlySalary', () => {
               period_id: 1,
               grade: 'S8a',
               step: 3,
+              step_min_years: 0,
               monthly_amount: 340000,
               created_at: '2024-01-01T00:00:00Z',
               updated_at: '2024-01-01T00:00:00Z',
@@ -414,7 +428,7 @@ describe('calculateMonthlySalary', () => {
           id: 1,
           payplan_id: 1,
           from: '2025-06-16', // tomorrow
-          to: null,
+          to: '',
           weekly_hours: 39,
           employer_contribution_rate: 0,
           created_at: '2025-06-16T00:00:00Z',
@@ -425,6 +439,7 @@ describe('calculateMonthlySalary', () => {
               period_id: 1,
               grade: 'S8a',
               step: 3,
+              step_min_years: 0,
               monthly_amount: 370000,
               created_at: '2025-06-16T00:00:00Z',
               updated_at: '2025-06-16T00:00:00Z',
@@ -445,7 +460,7 @@ describe('calculateMonthlySalary', () => {
           id: 1,
           payplan_id: 1,
           from: '2024-01-01',
-          to: null,
+          to: '',
           weekly_hours: 39,
           employer_contribution_rate: 0,
           created_at: '2024-01-01T00:00:00Z',
@@ -456,6 +471,7 @@ describe('calculateMonthlySalary', () => {
               period_id: 1,
               grade: 'S8a',
               step: 3,
+              step_min_years: 0,
               monthly_amount: 350000,
               created_at: '2024-01-01T00:00:00Z',
               updated_at: '2024-01-01T00:00:00Z',
@@ -465,6 +481,7 @@ describe('calculateMonthlySalary', () => {
               period_id: 1,
               grade: 'S8b',
               step: 4,
+              step_min_years: 0,
               monthly_amount: 400000,
               created_at: '2024-01-01T00:00:00Z',
               updated_at: '2024-01-01T00:00:00Z',
@@ -474,6 +491,7 @@ describe('calculateMonthlySalary', () => {
               period_id: 1,
               grade: 'S8b',
               step: 3,
+              step_min_years: 0,
               monthly_amount: 380000,
               created_at: '2024-01-01T00:00:00Z',
               updated_at: '2024-01-01T00:00:00Z',

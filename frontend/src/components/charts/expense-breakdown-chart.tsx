@@ -11,7 +11,7 @@ interface ExpenseBreakdownChartProps {
   data: FinancialDataPoint;
 }
 
-interface SliceDatum {
+export interface SliceDatum {
   id: string;
   label: string;
   value: number;
@@ -28,63 +28,93 @@ function formatPct(value: number, total: number): string {
   return `${((value / total) * 100).toFixed(1)}%`;
 }
 
-const COLORS = ['#ef4444', '#f97316', '#f59e0b', '#e879f9', '#fb923c', '#a855f7'];
+export const EXPENSE_BREAKDOWN_COLORS = [
+  '#ef4444',
+  '#f97316',
+  '#f59e0b',
+  '#e879f9',
+  '#fb923c',
+  '#a855f7',
+] as const;
+
+/**
+ * Build pie slices for the expense breakdown.
+ *
+ * Slice ordering (matters for color cycling and stable visual diffs):
+ *   1. If `salary_details` is non-empty, one slice per category whose
+ *      (gross + employer) total is > 0, in input order.
+ *   2. Otherwise, fall back to aggregate salary: a `gross_salary` slice
+ *      and/or an `employer_costs` slice, each only if > 0.
+ *   3. Then expense-category budget items with `amount_cents > 0`,
+ *      filtered by `category === 'expense'`, in input order.
+ *
+ * Values are converted from cents to euros; consumers pass `value * 100`
+ * back into Intl currency formatting at the tooltip.
+ *
+ * Pure function, exported so unit tests can pin every branch without
+ * having to render Nivo.
+ */
+export function buildExpenseSlices(
+  data: FinancialDataPoint,
+  t: (key: string) => string,
+  colors: readonly string[] = EXPENSE_BREAKDOWN_COLORS
+): SliceDatum[] {
+  const slices: SliceDatum[] = [];
+  let colorIdx = 0;
+
+  if (data.salary_details?.length) {
+    // Per-category salary slices (gross + employer combined per category)
+    data.salary_details.forEach((sd) => {
+      const total = (sd.gross_salary ?? 0) + (sd.employer_costs ?? 0);
+      if (total > 0) {
+        slices.push({
+          id: `salary_${sd.staff_category}`,
+          label: t(`employees.staffCategory.${sd.staff_category}`),
+          value: total / 100,
+          color: colors[colorIdx++ % colors.length]!,
+          salaryDetail: sd,
+        });
+      }
+    });
+  } else {
+    // Fallback: aggregate salary slices
+    if ((data.gross_salary ?? 0) > 0) {
+      slices.push({
+        id: 'gross_salary',
+        label: t('statistics.grossSalary'),
+        value: (data.gross_salary ?? 0) / 100,
+        color: colors[colorIdx++ % colors.length]!,
+      });
+    }
+
+    if ((data.employer_costs ?? 0) > 0) {
+      slices.push({
+        id: 'employer_costs',
+        label: t('statistics.employerCosts'),
+        value: (data.employer_costs ?? 0) / 100,
+        color: colors[colorIdx++ % colors.length]!,
+      });
+    }
+  }
+
+  data.budget_item_details
+    ?.filter((bi) => bi.category === 'expense' && (bi.amount_cents ?? 0) > 0)
+    .forEach((bi) => {
+      slices.push({
+        id: `budget_${bi.name}`,
+        label: bi.name ?? '',
+        value: (bi.amount_cents ?? 0) / 100,
+        color: colors[colorIdx++ % colors.length]!,
+      });
+    });
+
+  return slices;
+}
 
 export function ExpenseBreakdownChart({ data }: ExpenseBreakdownChartProps) {
   const t = useTranslations();
 
-  const pieData = useMemo(() => {
-    const slices: SliceDatum[] = [];
-    let colorIdx = 0;
-
-    if (data.salary_details?.length) {
-      // Per-category salary slices (gross + employer combined per category)
-      data.salary_details.forEach((sd) => {
-        const total = sd.gross_salary + sd.employer_costs;
-        if (total > 0) {
-          slices.push({
-            id: `salary_${sd.staff_category}`,
-            label: t(`employees.staffCategory.${sd.staff_category}`),
-            value: total / 100,
-            color: COLORS[colorIdx++ % COLORS.length],
-            salaryDetail: sd,
-          });
-        }
-      });
-    } else {
-      // Fallback: aggregate salary slices
-      if (data.gross_salary > 0) {
-        slices.push({
-          id: 'gross_salary',
-          label: t('statistics.grossSalary'),
-          value: data.gross_salary / 100,
-          color: COLORS[colorIdx++ % COLORS.length],
-        });
-      }
-
-      if (data.employer_costs > 0) {
-        slices.push({
-          id: 'employer_costs',
-          label: t('statistics.employerCosts'),
-          value: data.employer_costs / 100,
-          color: COLORS[colorIdx++ % COLORS.length],
-        });
-      }
-    }
-
-    data.budget_item_details
-      ?.filter((bi) => bi.category === 'expense' && bi.amount_cents > 0)
-      .forEach((bi) => {
-        slices.push({
-          id: `budget_${bi.name}`,
-          label: bi.name,
-          value: bi.amount_cents / 100,
-          color: COLORS[colorIdx++ % COLORS.length],
-        });
-      });
-
-    return slices;
-  }, [data, t]);
+  const pieData = useMemo(() => buildExpenseSlices(data, t), [data, t]);
 
   const total = useMemo(() => pieData.reduce((sum, s) => sum + s.value, 0), [pieData]);
 
@@ -141,10 +171,10 @@ export function ExpenseBreakdownChart({ data }: ExpenseBreakdownChartProps) {
               {sd && (
                 <div style={{ marginTop: 4, fontSize: 12, opacity: 0.8 }}>
                   <div>
-                    {t('statistics.grossSalary')}: {formatEur(sd.gross_salary)}
+                    {t('statistics.grossSalary')}: {formatEur(sd.gross_salary ?? 0)}
                   </div>
                   <div>
-                    {t('statistics.employerCosts')}: {formatEur(sd.employer_costs)}
+                    {t('statistics.employerCosts')}: {formatEur(sd.employer_costs ?? 0)}
                   </div>
                 </div>
               )}

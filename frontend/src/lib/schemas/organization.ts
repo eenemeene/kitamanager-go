@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { OrganizationCreateRequest, OrganizationUpdateRequest } from '@/lib/api/types';
 
 const organizationBaseSchema = z.object({
   name: z.string().min(1).max(255),
@@ -8,9 +9,10 @@ const organizationBaseSchema = z.object({
 
 export const organizationCreateSchema = organizationBaseSchema.extend({
   default_section_name: z.string().min(1).max(255),
-});
+}) satisfies z.ZodType<OrganizationCreateRequest>;
 
-export const organizationUpdateSchema = organizationBaseSchema;
+export const organizationUpdateSchema =
+  organizationBaseSchema satisfies z.ZodType<OrganizationUpdateRequest>;
 
 // Use the create schema as the default form schema (superset of fields)
 export const organizationSchema = organizationBaseSchema.extend({

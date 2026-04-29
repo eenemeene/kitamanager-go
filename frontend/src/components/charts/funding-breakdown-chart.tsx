@@ -20,39 +20,70 @@ function formatPct(value: number, total: number): string {
   return `${((value / total) * 100).toFixed(1)}%`;
 }
 
-const COLORS = ['#22c55e', '#14b8a6', '#06b6d4', '#8b5cf6', '#f59e0b', '#ec4899'];
+export const FUNDING_BREAKDOWN_COLORS = [
+  '#22c55e',
+  '#14b8a6',
+  '#06b6d4',
+  '#8b5cf6',
+  '#f59e0b',
+  '#ec4899',
+] as const;
+
+export interface FundingSliceDatum {
+  id: string;
+  label: string;
+  value: number;
+  color: string;
+}
+
+/**
+ * Build pie slices for the funding breakdown.
+ *
+ * Slice ordering (matters for color cycling and legend stability):
+ *   1. Government funding entries (`funding_details`) with
+ *      `amount_cents > 0`, in input order.
+ *   2. Then income-category budget items (`budget_item_details`) with
+ *      `amount_cents > 0`, in input order.
+ *
+ * Values are converted from cents to euros. Pure function exported so
+ * unit tests can pin every branch without rendering Nivo.
+ */
+export function buildFundingSlices(
+  data: FinancialDataPoint,
+  colors: readonly string[] = FUNDING_BREAKDOWN_COLORS
+): FundingSliceDatum[] {
+  const slices: FundingSliceDatum[] = [];
+  let colorIdx = 0;
+
+  data.funding_details?.forEach((fd) => {
+    if ((fd.amount_cents ?? 0) > 0) {
+      slices.push({
+        id: `funding_${fd.key}_${fd.value}`,
+        label: fd.label ?? '',
+        value: (fd.amount_cents ?? 0) / 100,
+        color: colors[colorIdx++ % colors.length]!,
+      });
+    }
+  });
+
+  data.budget_item_details
+    ?.filter((bi) => bi.category === 'income' && (bi.amount_cents ?? 0) > 0)
+    .forEach((bi) => {
+      slices.push({
+        id: `budget_${bi.name}`,
+        label: bi.name ?? '',
+        value: (bi.amount_cents ?? 0) / 100,
+        color: colors[colorIdx++ % colors.length]!,
+      });
+    });
+
+  return slices;
+}
 
 export function FundingBreakdownChart({ data }: FundingBreakdownChartProps) {
   const t = useTranslations();
 
-  const pieData = useMemo(() => {
-    const slices: { id: string; label: string; value: number; color: string }[] = [];
-    let colorIdx = 0;
-
-    data.funding_details?.forEach((fd) => {
-      if (fd.amount_cents > 0) {
-        slices.push({
-          id: `funding_${fd.key}_${fd.value}`,
-          label: fd.label,
-          value: fd.amount_cents / 100,
-          color: COLORS[colorIdx++ % COLORS.length],
-        });
-      }
-    });
-
-    data.budget_item_details
-      ?.filter((bi) => bi.category === 'income' && bi.amount_cents > 0)
-      .forEach((bi) => {
-        slices.push({
-          id: `budget_${bi.name}`,
-          label: bi.name,
-          value: bi.amount_cents / 100,
-          color: COLORS[colorIdx++ % COLORS.length],
-        });
-      });
-
-    return slices;
-  }, [data, t]);
+  const pieData = useMemo(() => buildFundingSlices(data), [data]);
 
   const total = useMemo(() => pieData.reduce((sum, s) => sum + s.value, 0), [pieData]);
 

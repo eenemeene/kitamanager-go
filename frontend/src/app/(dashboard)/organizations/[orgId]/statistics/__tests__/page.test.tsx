@@ -93,7 +93,7 @@ describe('StatisticsPage (Overview)', () => {
     renderWithProviders(<StatisticsPage />);
 
     const links = screen.getAllByRole('link');
-    const hrefs = links.map((link) => link.getAttribute('href'));
+    const hrefs = links.map((link: HTMLElement) => link.getAttribute('href'));
 
     expect(hrefs).toContain('/organizations/1/statistics/financials');
     expect(hrefs).toContain('/organizations/1/statistics/staffing');

@@ -44,6 +44,7 @@ import type {
   UserOrganizationResponse,
   UserMembershipsResponse,
   GovernmentFunding,
+  GovernmentFundingDetail,
   GovernmentFundingCreateRequest,
   GovernmentFundingUpdateRequest,
   GovernmentFundingPeriod,
@@ -61,6 +62,7 @@ import type {
   ChildrenBillingSummaryResponse,
   ChildWithoutVoucherResponse,
   PayPlan,
+  PayPlanDetail,
   PayPlanCreateRequest,
   PayPlanUpdateRequest,
   PayPlanPeriod,
@@ -70,6 +72,7 @@ import type {
   PayPlanEntryCreateRequest,
   PayPlanEntryUpdateRequest,
   BudgetItem,
+  BudgetItemDetail,
   BudgetItemCreateRequest,
   BudgetItemUpdateRequest,
   BudgetItemEntry,
@@ -339,7 +342,7 @@ class ApiClient {
   ): Promise<FactorActivateResponse> {
     const body: FactorActivateRequest = {
       code: args.code,
-      webauthn_response: args.webauthnResponse,
+      webauthn_response: args.webauthnResponse as Record<string, never> | undefined,
     };
     const response = await this.client.post<FactorActivateResponse>(
       `/users/me/factors/${factorId}/activate`,
@@ -687,12 +690,15 @@ class ApiClient {
   updateGovernmentFunding = this._governmentFundings.update;
   deleteGovernmentFunding = this._governmentFundings.delete;
 
-  // Custom getGovernmentFunding with periodsLimit param
-  async getGovernmentFunding(id: number, periodsLimit?: number): Promise<GovernmentFunding> {
+  // GET /government-funding-rates/:id returns the detail shape
+  // (GovernmentFundingDetailResponse), which embeds periods. The list
+  // endpoint returns the simpler GovernmentFunding shape.
+  async getGovernmentFunding(id: number, periodsLimit?: number): Promise<GovernmentFundingDetail> {
     const params = periodsLimit !== undefined ? { periods_limit: periodsLimit } : {};
-    const response = await this.client.get<GovernmentFunding>(`/government-funding-rates/${id}`, {
-      params,
-    });
+    const response = await this.client.get<GovernmentFundingDetail>(
+      `/government-funding-rates/${id}`,
+      { params }
+    );
     return response.data;
   }
 
@@ -765,12 +771,15 @@ class ApiClient {
     );
   }
 
-  // PayPlans (organization-scoped)
+  // PayPlans (organization-scoped). The list / create / update endpoints
+  // return the simpler PayPlan shape; GET /:id returns PayPlanDetail with
+  // nested periods, so we override get with the detail type.
   private _payPlans = this.orgScopedCrud<PayPlan, PayPlanCreateRequest, PayPlanUpdateRequest>(
     'pay-plans'
   );
   getPayPlans = this._payPlans.list;
-  getPayPlan = this._payPlans.get;
+  getPayPlan = (orgId: number, id: number): Promise<PayPlanDetail> =>
+    this.client.get<PayPlanDetail>(`/organizations/${orgId}/pay-plans/${id}`).then((r) => r.data);
   createPayPlan = this._payPlans.create;
   updatePayPlan = this._payPlans.update;
   deletePayPlan = this._payPlans.delete;
@@ -882,14 +891,18 @@ class ApiClient {
     );
   }
 
-  // Budget Items (organization-scoped)
+  // Budget Items (organization-scoped). Same list/detail split as PayPlan:
+  // GET /:id returns BudgetItemDetail with nested entries.
   private _budgetItems = this.orgScopedCrud<
     BudgetItem,
     BudgetItemCreateRequest,
     BudgetItemUpdateRequest
   >('budget-items');
   getBudgetItems = this._budgetItems.list;
-  getBudgetItem = this._budgetItems.get;
+  getBudgetItem = (orgId: number, id: number): Promise<BudgetItemDetail> =>
+    this.client
+      .get<BudgetItemDetail>(`/organizations/${orgId}/budget-items/${id}`)
+      .then((r) => r.data);
   createBudgetItem = this._budgetItems.create;
   updateBudgetItem = this._budgetItems.update;
   deleteBudgetItem = this._budgetItems.delete;

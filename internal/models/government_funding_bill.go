@@ -62,8 +62,8 @@ type GovernmentFundingBillPeriod struct {
 	// doesn't block user deletion and doesn't destroy the bill
 	// record. Fresh inserts always have a non-nil value.
 	CreatedBy *uint                        `json:"created_by,omitempty" example:"1"`
-	CreatedAt time.Time                    `json:"created_at"`
-	UpdatedAt time.Time                    `json:"updated_at"`
+	CreatedAt time.Time                    `json:"created_at" format:"date-time"`
+	UpdatedAt time.Time                    `json:"updated_at" format:"date-time"`
 	Children  []GovernmentFundingBillChild `gorm:"foreignKey:PeriodID;constraint:OnDelete:CASCADE" json:"children,omitempty"`
 }
 
@@ -117,7 +117,7 @@ type GovernmentFundingBillPeriodResponse struct {
 	// CreatedBy is nil when the uploader has since been deleted
 	// (migration 000014 ON DELETE SET NULL).
 	CreatedBy *uint     `json:"created_by,omitempty" example:"1"`
-	CreatedAt time.Time `json:"created_at"`
+	CreatedAt time.Time `json:"created_at" format:"date-time"`
 }
 
 // GovernmentFundingBillPeriodListResponse is the summary response for list view.
@@ -131,7 +131,7 @@ type GovernmentFundingBillPeriodListResponse struct {
 	ContractBooking   int       `json:"contract_booking" example:"480000"`
 	CorrectionBooking int       `json:"correction_booking" example:"20000"`
 	ChildrenCount     int       `json:"children_count" example:"25"`
-	CreatedAt         time.Time `json:"created_at"`
+	CreatedAt         time.Time `json:"created_at" format:"date-time"`
 }
 
 // MismatchType classifies property discrepancies between bill and contract.
@@ -306,7 +306,7 @@ type VoucherBilledTotal struct {
 // BillDateVoucher is a lightweight struct for computing expected amounts: just voucher + bill date.
 type BillDateVoucher struct {
 	VoucherNumber string    `gorm:"column:voucher_number"`
-	BillFrom      time.Time `gorm:"column:bill_from"`
+	BillFrom      time.Time `format:"date-time" gorm:"column:bill_from"`
 }
 
 // ChildBillingSummaryEntry represents the billing summary for one child.

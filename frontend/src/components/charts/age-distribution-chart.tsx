@@ -12,14 +12,17 @@ interface AgeDistributionChartProps {
 export function AgeDistributionChart({ data }: AgeDistributionChartProps) {
   const t = useTranslations();
 
-  const chartData = data.distribution.map((bucket) => ({
-    age: bucket.age_label.includes('+')
-      ? t('statistics.ageSixPlus')
-      : t('statistics.ageYears', { age: bucket.age_label }),
-    [t('gender.male')]: bucket.male_count,
-    [t('gender.female')]: bucket.female_count,
-    [t('gender.diverse')]: bucket.diverse_count,
-  }));
+  const chartData = data.distribution.map((bucket) => {
+    const ageLabel = bucket.age_label ?? '';
+    return {
+      age: ageLabel.includes('+')
+        ? t('statistics.ageSixPlus')
+        : t('statistics.ageYears', { age: ageLabel }),
+      [t('gender.male')]: bucket.male_count ?? 0,
+      [t('gender.female')]: bucket.female_count ?? 0,
+      [t('gender.diverse')]: bucket.diverse_count ?? 0,
+    };
+  });
 
   const keys = [t('gender.male'), t('gender.female'), t('gender.diverse')];
 

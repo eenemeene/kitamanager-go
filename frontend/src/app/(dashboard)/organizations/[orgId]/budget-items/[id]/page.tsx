@@ -149,7 +149,7 @@ export default function BudgetItemDetailPage() {
   const onSubmitEntry = (data: BudgetItemEntryFormData) => {
     const payload = {
       from: formatDateForApi(data.from) || data.from,
-      to: formatDateForApi(data.to) || null,
+      to: formatDateForApi(data.to) || undefined,
       amount_cents: eurosToCents(data.amount_euros),
       notes: data.notes || '',
     };

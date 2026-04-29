@@ -80,7 +80,7 @@ export function ForecastEmployeesTab() {
             grade: grade || undefined,
             step: step ? Number(step) : undefined,
             weekly_hours: Number(weeklyHours),
-            pay_plan_id: payPlanId,
+            payplan_id: payPlanId,
           },
         ],
       });

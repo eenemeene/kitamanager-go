@@ -14,9 +14,9 @@ type Organization struct {
 	Name      string    `gorm:"size:255;not null" json:"name" example:"Acme Corp"`
 	Active    bool      `gorm:"default:true" json:"active" example:"true"`
 	State     string    `gorm:"size:50;not null;default:'berlin'" json:"state" example:"berlin"`
-	CreatedAt time.Time `json:"created_at" example:"2024-01-15T10:30:00Z"`
+	CreatedAt time.Time `json:"created_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
 	CreatedBy string    `gorm:"size:255" json:"created_by" example:"admin@example.com"`
-	UpdatedAt time.Time `json:"updated_at" example:"2024-01-15T10:30:00Z"`
+	UpdatedAt time.Time `json:"updated_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
 	// DeletedAt: see the analogous field on User for full semantics.
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 }
@@ -27,9 +27,9 @@ type OrganizationResponse struct {
 	Name      string    `json:"name" example:"Acme Corp"`
 	Active    bool      `json:"active" example:"true"`
 	State     string    `json:"state" example:"berlin"`
-	CreatedAt time.Time `json:"created_at" example:"2024-01-15T10:30:00Z"`
+	CreatedAt time.Time `json:"created_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
 	CreatedBy string    `json:"created_by" example:"admin@example.com"`
-	UpdatedAt time.Time `json:"updated_at" example:"2024-01-15T10:30:00Z"`
+	UpdatedAt time.Time `json:"updated_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
 }
 
 func (o *Organization) ToResponse() OrganizationResponse {

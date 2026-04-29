@@ -72,9 +72,9 @@ function renderWarning(t: ReturnType<typeof useTranslations>, w: CalculationWarn
   const datePart = w.date ? ` — ${w.date}` : '';
   switch (w.code) {
     case 'missing_pay_plan':
-      return t('missingPayPlan', { payPlan: w.pay_plan_id ?? '?' }) + empPart + datePart;
+      return t('missingPayPlan', { payPlan: w.payplan_id ?? '?' }) + empPart + datePart;
     case 'no_pay_plan_period':
-      return t('noPayPlanPeriod', { payPlan: w.pay_plan_id ?? '?' }) + empPart + datePart;
+      return t('noPayPlanPeriod', { payPlan: w.payplan_id ?? '?' }) + empPart + datePart;
     case 'no_pay_plan_entry':
       return (
         t('noPayPlanEntry', {

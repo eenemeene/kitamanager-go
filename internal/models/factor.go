@@ -26,8 +26,8 @@ type Factor struct {
 	UserID     uint       `gorm:"not null;index" json:"user_id"`
 	Type       string     `gorm:"size:32;not null" json:"type"`
 	Label      *string    `gorm:"size:100" json:"label,omitempty"`
-	EnabledAt  *time.Time `json:"enabled_at,omitempty"`
-	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
+	EnabledAt  *time.Time `json:"enabled_at,omitempty" format:"date-time"`
+	LastUsedAt *time.Time `json:"last_used_at,omitempty" format:"date-time"`
 	// ActivationFailures is incremented on every wrong code submitted
 	// to /activate. When it reaches FactorActivationFailureLimit the
 	// service layer deletes the pending row, forcing re-enrolment.
@@ -39,8 +39,8 @@ type Factor struct {
 	// backup_codes factors leave this NULL. Cleared on activation or
 	// when the row is swept by CleanupAbandonedPending.
 	RegistrationChallenge          []byte     `gorm:"type:bytea" json:"-"`
-	RegistrationChallengeExpiresAt *time.Time `json:"-"`
-	CreatedAt                      time.Time  `gorm:"not null" json:"created_at"`
+	RegistrationChallengeExpiresAt *time.Time `json:"-" format:"date-time"`
+	CreatedAt                      time.Time  `gorm:"not null" json:"created_at" format:"date-time"`
 }
 
 // TableName is explicit because GORM's default would otherwise be "factors"
@@ -67,8 +67,8 @@ type FactorBackupCode struct {
 	ID        uint       `gorm:"primaryKey" json:"-"`
 	FactorID  uint       `gorm:"not null;index" json:"-"`
 	CodeHash  string     `gorm:"type:char(64);not null" json:"-"`
-	UsedAt    *time.Time `json:"-"`
-	CreatedAt time.Time  `gorm:"not null" json:"-"`
+	UsedAt    *time.Time `json:"-" format:"date-time"`
+	CreatedAt time.Time  `gorm:"not null" json:"-" format:"date-time"`
 }
 
 func (FactorBackupCode) TableName() string { return "factor_backup_codes" }
@@ -95,7 +95,7 @@ type FactorWebAuthnCredential struct {
 	BackupEligible    bool      `gorm:"not null;default:false" json:"-"`
 	BackupState       bool      `gorm:"not null;default:false" json:"-"`
 	UVInitialized     bool      `gorm:"not null;default:false" json:"-"`
-	CreatedAt         time.Time `gorm:"not null" json:"-"`
+	CreatedAt         time.Time `gorm:"not null" json:"-" format:"date-time"`
 }
 
 func (FactorWebAuthnCredential) TableName() string { return "factor_webauthn_credentials" }
@@ -128,11 +128,11 @@ type WebAuthnEnrollmentPayload struct {
 // marshalling.
 type FactorResponse struct {
 	ID         uint       `json:"id" example:"42"`
-	Type       string     `json:"type" example:"totp"`
+	Type       string     `json:"type" enums:"totp,backup_codes,webauthn" example:"totp"`
 	Label      *string    `json:"label,omitempty" example:"Authenticator app"`
-	EnabledAt  *time.Time `json:"enabled_at,omitempty"`
-	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
-	CreatedAt  time.Time  `json:"created_at"`
+	EnabledAt  *time.Time `json:"enabled_at,omitempty" format:"date-time"`
+	LastUsedAt *time.Time `json:"last_used_at,omitempty" format:"date-time"`
+	CreatedAt  time.Time  `json:"created_at" format:"date-time"`
 	// Activated is a derived convenience field: true iff EnabledAt is set.
 	// Clients that don't need the timestamp can just read this boolean.
 	Activated bool `json:"activated" example:"true"`
@@ -175,7 +175,7 @@ type FactorListResponse struct {
 // prevent.
 type LoginFactorDescriptor struct {
 	ID    uint    `json:"id" example:"42"`
-	Type  string  `json:"type" example:"totp"`
+	Type  string  `json:"type" enums:"totp,backup_codes,webauthn" example:"totp"`
 	Label *string `json:"label,omitempty" example:"iPhone"`
 	// CredentialID is the base64url-encoded credential id, populated
 	// only for webauthn factors. The browser needs it to narrow

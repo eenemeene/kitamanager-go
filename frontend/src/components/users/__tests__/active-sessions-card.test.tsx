@@ -140,8 +140,8 @@ describe('ActiveSessionsCard', () => {
     await u.click(screen.getByRole('button', { name: /revoke/i }));
 
     // Confirm inside the dialog.
-    const confirmButton = (await screen.findAllByRole('button', { name: /revoke/i })).find((el) =>
-      el.closest('[role="alertdialog"]')
+    const confirmButton = (await screen.findAllByRole('button', { name: /revoke/i })).find(
+      (el: HTMLElement) => el.closest('[role="alertdialog"]')
     );
     expect(confirmButton).toBeDefined();
     await u.click(confirmButton!);
@@ -169,8 +169,8 @@ describe('ActiveSessionsCard', () => {
 
     await waitFor(() => screen.getByRole('button', { name: /revoke/i }));
     await u.click(screen.getByRole('button', { name: /revoke/i }));
-    const confirmButton = (await screen.findAllByRole('button', { name: /revoke/i })).find((el) =>
-      el.closest('[role="alertdialog"]')
+    const confirmButton = (await screen.findAllByRole('button', { name: /revoke/i })).find(
+      (el: HTMLElement) => el.closest('[role="alertdialog"]')
     );
     await u.click(confirmButton!);
 

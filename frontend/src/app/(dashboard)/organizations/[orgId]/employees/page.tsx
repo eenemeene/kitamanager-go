@@ -30,6 +30,7 @@ import {
   type EmployeeContractCreateRequest,
   type EmployeeContractUpdateRequest,
   type PayPlan,
+  type PayPlanDetail,
   LOOKUP_FETCH_LIMIT,
 } from '@/lib/api/types';
 import { useForm } from 'react-hook-form';
@@ -145,7 +146,7 @@ export default function EmployeesPage() {
     queryKey: queryKeys.payPlans.details(orgId, payPlanIds),
     queryFn: async () => {
       const results = await Promise.all(payPlanIds.map((id) => apiClient.getPayPlan(orgId, id)));
-      const map = new Map<number, PayPlan>();
+      const map = new Map<number, PayPlanDetail>();
       for (const pp of results) {
         map.set(pp.id, pp);
       }
@@ -153,7 +154,7 @@ export default function EmployeesPage() {
     },
     enabled: payPlanIds.length > 0,
   });
-  const payPlanMap = payPlanDetailsQueries.data ?? new Map<number, PayPlan>();
+  const payPlanMap = payPlanDetailsQueries.data ?? new Map<number, PayPlanDetail>();
 
   const createContractMutation = useContractMutation<
     EmployeeContractCreateRequest,
@@ -313,7 +314,7 @@ export default function EmployeesPage() {
           entityId: contractEmployee.id,
           data: {
             from: formatDateForApi(data.from) || data.from,
-            to: formatDateForApi(data.to),
+            to: formatDateForApi(data.to) ?? undefined,
             section_id: data.section_id,
             staff_category: data.staff_category,
             grade: data.grade,

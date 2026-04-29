@@ -153,7 +153,9 @@ export function TwoFactorEnrolDialog({
   // in TwoFactorWebAuthnDialog. The enrollment payload shape is a
   // union (TOTP | WebAuthn) — narrow it here.
   const payload =
-    factor?.enrollment && 'otpauth_uri' in factor.enrollment
+    factor?.enrollment &&
+    typeof factor.enrollment === 'object' &&
+    'otpauth_uri' in factor.enrollment
       ? (factor.enrollment as { secret: string; otpauth_uri: string })
       : undefined;
 

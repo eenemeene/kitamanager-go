@@ -6,6 +6,10 @@ const optionalAge = z.preprocess((val) => {
   return isNaN(num) ? null : num;
 }, z.number().int().min(0).nullable());
 
+// sectionSchema is form-only: the form treats empty inputs as `null`
+// for the age fields, but the API DTO uses `undefined`. Conversion
+// happens in the submit handler (null → undefined). Skipping the
+// satisfies guard.
 export const sectionSchema = z
   .object({
     name: z.string().min(1).max(255),

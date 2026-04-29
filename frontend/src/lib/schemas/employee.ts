@@ -1,7 +1,11 @@
 import { z } from 'zod';
+import type { EmployeeContractCreateRequest } from '@/lib/api/types';
 import { personBaseSchema } from './person';
 import { endDateAfterStart } from './period';
 
+// employeeSchema reuses personBaseSchema. There is no top-level Person
+// schema in the API (the spec inlines person fields into Child/Employee
+// concrete types) so no satisfies guard is appropriate here.
 export const employeeSchema = personBaseSchema;
 
 export const employeeContractSchema = z
@@ -15,7 +19,7 @@ export const employeeContractSchema = z
     step: z.number().min(1).max(10),
     weekly_hours: z.number().min(0).max(168),
   })
-  .refine(...endDateAfterStart('from', 'to'));
+  .refine(...endDateAfterStart('from', 'to')) satisfies z.ZodType<EmployeeContractCreateRequest>;
 
 export type EmployeeFormData = z.infer<typeof employeeSchema>;
 export type EmployeeContractFormData = z.infer<typeof employeeContractSchema>;

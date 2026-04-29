@@ -42,15 +42,20 @@ const totpFactor: FactorResponse = {
   created_at: '2026-04-20T09:00:00Z',
   activated: true,
   last_used_at: '2026-04-22T12:00:00Z',
+  backup_codes_remaining: 0,
+  enrollment: null,
 };
 
 const backupFactor: FactorResponse = {
   id: 43,
   type: 'backup_codes',
+  label: '',
   enabled_at: '2026-04-20T10:00:00Z',
   created_at: '2026-04-20T10:00:00Z',
   activated: true,
   backup_codes_remaining: 7,
+  last_used_at: '',
+  enrollment: null,
 };
 
 beforeEach(() => {

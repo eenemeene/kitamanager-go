@@ -402,7 +402,10 @@ export function AppSidebar() {
           conditionally rendered: if either side fails to populate, the
           other still appears. */}
       {!effectiveCollapsed && (health?.version || webVersion) && (
-        <div className="text-sidebar-foreground/60 border-sidebar-border space-y-0.5 border-t px-4 py-2 text-[10px]">
+        <div
+          data-visual-mask="version"
+          className="text-sidebar-foreground/60 border-sidebar-border space-y-0.5 border-t px-4 py-2 text-[10px]"
+        >
           {health?.version && <div>API: {health.version}</div>}
           {webVersion && <div>Web: {webVersion}</div>}
         </div>

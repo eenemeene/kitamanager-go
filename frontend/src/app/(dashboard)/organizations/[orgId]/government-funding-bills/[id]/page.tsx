@@ -165,7 +165,7 @@ export default function GovernmentFundingBillDetailPage() {
   const comparisonByVoucher = new Map<string, FundingComparisonChild>();
   if (comparison?.children) {
     for (const child of comparison.children) {
-      comparisonByVoucher.set(child.voucher_number, child);
+      comparisonByVoucher.set(child.voucher_number ?? '', child);
     }
   }
 
@@ -270,7 +270,7 @@ export default function GovernmentFundingBillDetailPage() {
                       {formatCurrency(
                         comparison.children
                           .filter((c) => c.status === 'difference')
-                          .reduce((sum, c) => sum + c.bill_total, 0)
+                          .reduce((sum, c) => sum + (c.bill_total ?? 0), 0)
                       )}
                     </span>
                   </li>
@@ -521,8 +521,8 @@ export default function GovernmentFundingBillDetailPage() {
                                           >
                                             <span>
                                               {translateLabel(
-                                                amt.key,
-                                                amt.value,
+                                                amt.key ?? '',
+                                                amt.value ?? '',
                                                 labelMap.get(`${amt.key}:${amt.value}`)
                                               )}
                                             </span>
@@ -557,7 +557,11 @@ export default function GovernmentFundingBillDetailPage() {
                                       <TableRow key={`${prop.key}-${prop.value}`}>
                                         <TableCell className="text-sm">
                                           <span className="flex items-center gap-2">
-                                            {translateLabel(prop.key, prop.value, prop.label)}
+                                            {translateLabel(
+                                              prop.key ?? '',
+                                              prop.value ?? '',
+                                              prop.label
+                                            )}
                                             {prop.mismatch && (
                                               <MismatchTag mismatch={prop.mismatch} t={t} />
                                             )}
@@ -576,12 +580,12 @@ export default function GovernmentFundingBillDetailPage() {
                                         <TableCell className="text-right text-sm">
                                           <span
                                             className={
-                                              prop.difference >= 0
+                                              (prop.difference ?? 0) >= 0
                                                 ? 'text-success'
                                                 : 'text-destructive'
                                             }
                                           >
-                                            {formatCurrency(prop.difference)}
+                                            {formatCurrency(prop.difference ?? 0)}
                                           </span>
                                         </TableCell>
                                       </TableRow>

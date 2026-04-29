@@ -63,14 +63,21 @@ describe('ForecastResults', () => {
           total_expenses: 80000,
           balance: 20000,
           funding_income: 90000,
+          actual_funding: 0,
+          actual_funding_correction: 0,
+          actual_funding_regular: 0,
           gross_salary: 60000,
           employer_costs: 15000,
           budget_income: 10000,
           budget_expenses: 5000,
+          budget_item_details: [],
+          funding_details: [],
+          salary_details: [],
           child_count: 20,
           staff_count: 5,
         },
       ],
+      warnings: [],
     },
     staffing_hours: {
       data_points: [
@@ -93,6 +100,7 @@ describe('ForecastResults', () => {
       dates: ['2026-01-01'],
       employees: [],
     },
+    warnings: [],
   };
 
   it('renders results card with tabs', () => {

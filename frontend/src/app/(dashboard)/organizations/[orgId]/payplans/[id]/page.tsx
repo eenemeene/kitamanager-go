@@ -238,7 +238,7 @@ export default function PayPlanDetailPage() {
     const payload = {
       ...data,
       from: formatDateForApi(data.from)!,
-      to: formatDateForApi(data.to) || null,
+      to: formatDateForApi(data.to) || undefined,
       employer_contribution_rate: Math.round(data.employer_contribution_rate * 100),
     };
     if (editingPeriod) {

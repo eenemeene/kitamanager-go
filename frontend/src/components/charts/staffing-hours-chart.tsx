@@ -19,21 +19,36 @@ interface StaffingHoursChartProps {
   data: StaffingHoursResponse;
 }
 
+/**
+ * Compute the per-data-point balance percentage:
+ * `(available - required) / required` × 100, rounded to one decimal.
+ *
+ * Pure function. Pinned by unit tests for its critical edge cases:
+ *   - `required === 0` → returns 0 (avoids Infinity / NaN)
+ *   - undefined `required_hours` / `available_hours` (older payloads or
+ *     spec-loose response) → treated as 0
+ *   - rounding: kept to 0.1 % precision so the bar labels (`+8.3%`)
+ *     stay legible without trailing junk digits
+ */
+export function computeBalancePercentages(
+  data_points: StaffingHoursResponse['data_points']
+): number[] {
+  return data_points.map((dp) => {
+    const required = dp.required_hours ?? 0;
+    const available = dp.available_hours ?? 0;
+    return required > 0 ? Math.round(((available - required) / required) * 1000) / 10 : 0;
+  });
+}
+
 export function StaffingHoursChart({ data }: StaffingHoursChartProps) {
   const t = useTranslations();
 
-  const rawDates = data.data_points.map((dp) => dp.date);
+  const rawDates = data.data_points.map((dp) => dp.date ?? '');
   const xLabels = rawDates.map(formatDateLabel);
   const kitaYearBands = useMemo(() => buildKitaYearBands(rawDates), [rawDates]);
 
-  // Compute balance percentages for the bar layer
   const balancePercentages = useMemo(
-    () =>
-      data.data_points.map((dp) =>
-        dp.required_hours > 0
-          ? Math.round(((dp.available_hours - dp.required_hours) / dp.required_hours) * 1000) / 10
-          : 0
-      ),
+    () => computeBalancePercentages(data.data_points),
     [data.data_points]
   );
 
@@ -151,16 +166,16 @@ export function StaffingHoursChart({ data }: StaffingHoursChartProps) {
       id: t('statistics.requiredHours'),
       color: '#f59e0b',
       data: data.data_points.map((dp) => ({
-        x: formatDateLabel(dp.date),
-        y: Math.round(dp.required_hours * 100) / 100,
+        x: formatDateLabel(dp.date ?? ''),
+        y: Math.round((dp.required_hours ?? 0) * 100) / 100,
       })),
     },
     {
       id: t('statistics.availableHours'),
       color: '#3b82f6',
       data: data.data_points.map((dp) => ({
-        x: formatDateLabel(dp.date),
-        y: dp.available_hours,
+        x: formatDateLabel(dp.date ?? ''),
+        y: dp.available_hours ?? 0,
       })),
     },
   ];

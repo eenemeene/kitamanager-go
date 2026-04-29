@@ -30,7 +30,7 @@ const DEFAULT_COLORS = ['#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899'];
 export function MonthlyContractChart({ data, occupancy }: MonthlyContractChartProps) {
   const t = useTranslations();
 
-  const rawDates = data.data_points.map((dp) => dp.date);
+  const rawDates = data.data_points.map((dp) => dp.date ?? '');
   const xLabels = rawDates.map(formatDateLabel);
   const kitaYearBands = useMemo(() => buildKitaYearBands(rawDates), [rawDates]);
 
@@ -48,14 +48,14 @@ export function MonthlyContractChart({ data, occupancy }: MonthlyContractChartPr
   const todayStr = toLocalDateString(new Date());
   const todayLabel = formatDateLabel(todayStr);
 
-  const counts = data.data_points.map((dp) => dp.child_count);
+  const counts = data.data_points.map((dp) => dp.child_count ?? 0);
 
   // Build a static age-group color legend from occupancy metadata (stable across months)
   const ageGroupLegend = useMemo(() => {
     if (!occupancy) return [];
     return occupancy.age_groups.map((ag, idx) => ({
-      label: ag.label,
-      color: AGE_GROUP_COLORS[ag.label] ?? DEFAULT_COLORS[idx % DEFAULT_COLORS.length],
+      label: ag.label ?? '',
+      color: AGE_GROUP_COLORS[ag.label ?? ''] ?? DEFAULT_COLORS[idx % DEFAULT_COLORS.length],
     }));
   }, [occupancy]);
 
@@ -64,17 +64,18 @@ export function MonthlyContractChart({ data, occupancy }: MonthlyContractChartPr
     if (!occupancy) return null;
     const map = new Map<string, { label: string; count: number; color: string }[]>();
     for (const dp of occupancy.data_points) {
-      const label = formatDateLabel(dp.date);
+      const label = formatDateLabel(dp.date ?? '');
       const groups: { label: string; count: number; color: string }[] = [];
       for (const ag of occupancy.age_groups) {
-        const careTypes = dp.by_age_and_care_type[ag.label] ?? {};
-        const count = Object.values(careTypes).reduce((s, n) => s + n, 0);
+        const agLabel = ag.label ?? '';
+        const careTypes = dp.by_age_and_care_type?.[agLabel] ?? {};
+        const count = Object.values(careTypes).reduce<number>((s, n) => s + (n ?? 0), 0);
         if (count > 0) {
           groups.push({
-            label: ag.label,
+            label: agLabel,
             count,
             color:
-              AGE_GROUP_COLORS[ag.label] ?? DEFAULT_COLORS[groups.length % DEFAULT_COLORS.length],
+              AGE_GROUP_COLORS[agLabel] ?? DEFAULT_COLORS[groups.length % DEFAULT_COLORS.length],
           });
         }
       }
@@ -88,8 +89,8 @@ export function MonthlyContractChart({ data, occupancy }: MonthlyContractChartPr
       id: t('statistics.childrenContractCount'),
       color: '#3b82f6',
       data: data.data_points.map((dp) => ({
-        x: formatDateLabel(dp.date),
-        y: dp.child_count,
+        x: formatDateLabel(dp.date ?? ''),
+        y: dp.child_count ?? 0,
       })),
     },
   ];
@@ -106,13 +107,15 @@ export function MonthlyContractChart({ data, occupancy }: MonthlyContractChartPr
         <g>
           {xLabels.map((label, i) => {
             if (i === 0) return null;
-            const diff = counts[i] - counts[i - 1];
+            const cur = counts[i] ?? 0;
+            const prev = counts[i - 1] ?? 0;
+            const diff = cur - prev;
             if (diff === 0) return null;
 
-            const x0 = xScale(xLabels[i - 1]);
+            const x0 = xScale(xLabels[i - 1] ?? '');
             const x1 = xScale(label);
-            const y0 = yScale(counts[i - 1]);
-            const y1 = yScale(counts[i]);
+            const y0 = yScale(prev);
+            const y1 = yScale(cur);
             const midX = (x0 + x1) / 2;
             const midY = (y0 + y1) / 2;
 

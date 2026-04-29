@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { UserCreateRequest, UserUpdateRequest } from '@/lib/api/types';
 
 export const passwordSchema = z.string().min(8).max(72);
 
@@ -7,14 +8,17 @@ export const userCreateSchema = z.object({
   email: z.string().email(),
   password: passwordSchema,
   active: z.boolean().default(true),
-});
+}) satisfies z.ZodType<UserCreateRequest>;
 
 export const userUpdateSchema = z.object({
   name: z.string().min(1).max(255),
   email: z.string().email(),
   active: z.boolean().default(true),
-});
+}) satisfies z.ZodType<UserUpdateRequest>;
 
+// changePasswordSchema is form-only: it adds `confirm_password` for
+// client-side match validation, which has no API counterpart. Skipping
+// the satisfies guard.
 export const changePasswordSchema = z
   .object({
     current_password: z.string().min(1),

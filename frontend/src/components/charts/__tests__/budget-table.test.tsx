@@ -14,10 +14,16 @@ function makeDataPoint(
   return {
     date,
     funding_income: 500000,
+    actual_funding: 0,
+    actual_funding_correction: 0,
+    actual_funding_regular: 0,
     gross_salary: 200000,
     employer_costs: 50000,
     budget_income: 10000,
     budget_expenses: 5000,
+    budget_item_details: [],
+    funding_details: [],
+    salary_details: [],
     total_income: 510000,
     total_expenses: 255000,
     balance: 255000,
@@ -33,6 +39,7 @@ const threeMonthData: FinancialResponse = {
     makeDataPoint('2026-02-01'),
     makeDataPoint('2026-03-01'),
   ],
+  warnings: [],
 };
 
 describe('BudgetTable', () => {
@@ -61,6 +68,7 @@ describe('BudgetTable', () => {
   it('formats currency values', () => {
     const data: FinancialResponse = {
       data_points: [makeDataPoint('2026-01-01', { total_income: 166847 })],
+      warnings: [],
     };
 
     renderWithProviders(<BudgetTable data={data} />);
@@ -77,6 +85,7 @@ describe('BudgetTable', () => {
         makeDataPoint('2026-01-01', { funding_income: 100000 }),
         makeDataPoint('2026-02-01', { funding_income: 200000 }),
       ],
+      warnings: [],
     };
 
     renderWithProviders(<BudgetTable data={data} />);
@@ -86,7 +95,7 @@ describe('BudgetTable', () => {
   });
 
   it('handles empty data gracefully', () => {
-    const data: FinancialResponse = { data_points: [] };
+    const data: FinancialResponse = { data_points: [], warnings: [] };
 
     renderWithProviders(<BudgetTable data={data} />);
 
@@ -98,11 +107,24 @@ describe('BudgetTable', () => {
       data_points: [
         makeDataPoint('2026-01-01', {
           budget_item_details: [
-            { name: 'Elternbeiträge', category: 'income', amount_cents: 9000 },
-            { name: 'Miete', category: 'expense', amount_cents: 12000 },
+            {
+              name: 'Elternbeiträge',
+              category: 'income',
+              amount_cents: 9000,
+              per_child: false,
+              unit_amount_cents: 0,
+            },
+            {
+              name: 'Miete',
+              category: 'expense',
+              amount_cents: 12000,
+              per_child: false,
+              unit_amount_cents: 0,
+            },
           ],
         }),
       ],
+      warnings: [],
     };
 
     renderWithProviders(<BudgetTable data={data} />);
@@ -117,6 +139,7 @@ describe('BudgetTable', () => {
         makeDataPoint('2026-01-01', { balance: 100000 }),
         makeDataPoint('2026-02-01', { balance: -50000 }),
       ],
+      warnings: [],
     };
 
     renderWithProviders(<BudgetTable data={data} />);
@@ -144,6 +167,7 @@ describe('BudgetTable', () => {
           balance: 0,
         }),
       ],
+      warnings: [],
     };
 
     renderWithProviders(<BudgetTable data={data} />);
@@ -157,6 +181,7 @@ describe('BudgetTable', () => {
   it('handles missing budget_item_details', () => {
     const data: FinancialResponse = {
       data_points: [makeDataPoint('2026-01-01', { budget_item_details: undefined })],
+      warnings: [],
     };
 
     renderWithProviders(<BudgetTable data={data} />);
@@ -169,12 +194,21 @@ describe('BudgetTable', () => {
     const data: FinancialResponse = {
       data_points: [
         makeDataPoint('2026-01-01', {
-          budget_item_details: [{ name: 'Spenden', category: 'income', amount_cents: 5000 }],
+          budget_item_details: [
+            {
+              name: 'Spenden',
+              category: 'income',
+              amount_cents: 5000,
+              per_child: false,
+              unit_amount_cents: 0,
+            },
+          ],
         }),
         makeDataPoint('2026-02-01', {
           budget_item_details: [],
         }),
       ],
+      warnings: [],
     };
 
     renderWithProviders(<BudgetTable data={data} />);

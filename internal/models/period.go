@@ -6,8 +6,8 @@ import "time"
 // A contract with From=2025-01-01 and To=2025-12-31 is active on both dates.
 // If To is nil, the period is ongoing (no end date).
 type Period struct {
-	From time.Time  `gorm:"column:from_date;type:date;not null" json:"from"`
-	To   *time.Time `gorm:"column:to_date;type:date" json:"to"`
+	From time.Time  `gorm:"column:from_date;type:date;not null" json:"from" format:"date-time"`
+	To   *time.Time `gorm:"column:to_date;type:date" json:"to" format:"date-time"`
 }
 
 // PeriodRecord interface for any time-bounded record
