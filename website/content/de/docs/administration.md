@@ -207,7 +207,7 @@ Audit-Protokolle sind nur lesbar -- sie können in der Oberfläche weder geände
 
 Der Zugriff auf Audit-Protokolle ist in zwei Bereiche aufgeteilt:
 
-- **Org-Admins** sehen alle Änderungen in ihrer Organisation unter **Einstellungen → Audit-Protokoll** in der Seitenleiste (URL: `/organizations/{orgId}/audit-logs`). Anmelde- und Passwortereignisse werden in dieser Ansicht bewusst ausgeblendet, da sie organisationsübergreifend sensibel sind.
+- **Org-Admins** sehen alle Änderungen in ihrer Organisation unter **Einstellungen → Protokoll** in der Seitenleiste (URL: `/organizations/{orgId}/audit-logs`). Anmelde- und Passwortereignisse werden in dieser Ansicht bewusst ausgeblendet, da sie organisationsübergreifend sensibel sind.
 - **Superadmins** sehen über die API ein globales Protokoll inklusive Anmelde- und Authentifizierungsereignissen (`GET /api/v1/audit-logs`). Eine eigene UI für die globale Sicht gibt es derzeit nicht; Superadmins fragen sie direkt ab.
 
 Beide Sichten unterstützen Filter nach Zeitraum und nach Aktionsname (Teilstring).

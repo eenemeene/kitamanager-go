@@ -272,70 +272,35 @@ You can also view the complete billing history for an individual child by naviga
 
 ### Using the Forecast
 
-The forecast page lets you look ahead and plan for the next Kita year. You can take a baseline projection (what the year looks like if nothing changes) and then layer hypothetical changes on top -- new enrolments, hires, departures -- to see what they do to your budget, occupancy, and staffing.
+The Forecast page projects the next Kita year and lets you layer hypothetical changes on top -- new enrolments, hires, departures -- to see their impact on budget, occupancy, and staffing. Three tabs answer three different questions.
 
-The page is built around three tabs that you switch between depending on the question you are trying to answer.
+#### Optimize -- how many children to reach a target balance?
 
-#### Tab 1: Optimize -- "How many children do I need to break even?"
+The default tab. Set a target cumulative balance, pick the sections to fill and a max children-per-section-per-month, and click **Find Optimal Children Count**. KitaManager projects the year with growing numbers of children until it finds the smallest count that reaches the target, then adds those children to the **Children** tab for review.
 
-Optimize is the default tab and the fastest way to answer the most common forecasting question: *given the staff and budget I already have, how many additional children would I need to hit a target cumulative balance by the end of the Kita year?*
+{{< screenshot src="/images/screenshots/en/forecast-optimize.png" alt="Forecast Optimize tab" caption="Optimize finds the minimum number of children to reach a target balance." >}}
 
-{{< screenshot src="/images/screenshots/en/forecast-optimize.png" alt="Forecast Optimize tab" caption="The Optimize tab finds the minimum number of children to reach a target balance." >}}
+If the target isn't reachable within the limits, widen the constraints or lower the target.
 
-1. Open the **Forecast** page from the sidebar.
-2. Pick the Kita year you want to plan for using the year stepper at the top.
-3. The **Target Balance (EUR)** field is pre-filled with your current cumulative balance. Set it to whatever surplus you would like to end the year with -- for example, `0` to break even or `5000` for a small reserve.
-4. Set the **Max Children per Section per Month** -- the optimizer respects this constraint when distributing the children it suggests.
-5. Tick the **Sections to Fill**. The optimizer adds children only to the sections you select.
-6. Choose default contract **properties** for the suggested children (for example, `ganztag`).
-7. Click **Find Optimal Children Count**.
+#### Children -- model enrolments and departures
 
-KitaManager runs the financial projection repeatedly with growing numbers of children until it finds the smallest count that reaches the target. The result is shown inline -- for example, "5 children needed to reach a cumulative balance of 1,234.56 EUR." The suggested children are added to the **Children** tab so you can review and tweak them before clicking **Calculate Forecast**.
+Add a hypothetical child by setting count, age, dates, section, and properties, then **Add Child**. Remove an existing child by clicking their name in the **Remove Child** list (click again to undo).
 
-If the target is not reachable within the section limits, the result message says so. Try widening the constraints (more sections, higher per-month limit) or lowering your target.
+{{< screenshot src="/images/screenshots/en/forecast-children.png" alt="Forecast Children tab" caption="Add hypothetical children, or remove existing ones to model a departure." >}}
 
-#### Tab 2: Children -- adding or removing children
+#### Employees -- model hires and departures
 
-The **Children** tab is where you model enrolments and departures.
+Same shape as Children, for staff (count, dates, section, category, grade, step, weekly hours, pay plan).
 
-{{< screenshot src="/images/screenshots/en/forecast-children.png" alt="Forecast Children tab" caption="Add hypothetical children one at a time, or remove existing children to see the impact of a departure." >}}
+{{< screenshot src="/images/screenshots/en/forecast-employees.png" alt="Forecast Employees tab" caption="Model hires and departures the same way as children." >}}
 
-To **add** a hypothetical child:
+#### Calculate and read results
 
-1. Switch to the **Children** tab.
-2. Set the count, age, contract dates, target section, and properties.
-3. Click **Add Child**. Repeat for each scenario you want to model.
+Click **Calculate Forecast**. The results panel shows the projected year as tabbed charts: cumulative balance, financials, children, staffing, occupancy, employee hours. Toggle **Show Baseline** to overlay the unmodified projection. Click **Reset** to drop all scenario changes.
 
-To **remove** an existing child (i.e. model the impact of an early departure):
+{{< screenshot src="/images/screenshots/en/forecast-results.png" alt="Forecast results" caption="Projected income, costs, and balance for the Kita year with the scenario applied." >}}
 
-1. Click the child's name in the **Remove Child** list.
-2. The child is moved to the "removed" list. Click again to undo.
-
-#### Tab 3: Employees -- modelling hiring and departures
-
-The **Employees** tab works the same way for staff: add hypothetical hires (count, dates, sections, staff category, grade, step, weekly hours, pay plan) or remove existing employees to model a departure.
-
-{{< screenshot src="/images/screenshots/en/forecast-employees.png" alt="Forecast Employees tab" caption="Model hires and departures the same way you model children." >}}
-
-This is especially useful when you are deciding whether you can afford to fill an open position, or when you need to plan around a known retirement.
-
-#### Calculating and reading the results
-
-Once your scenario is set up, click **Calculate Forecast** at the bottom. KitaManager projects the full Kita year with your changes layered on top of the baseline data, and displays the results in tabbed charts:
-
-- **Cumulative Balance** -- the running balance month by month, with deficit periods marked in red.
-- **Financials** -- monthly income (funding + budget) vs. monthly costs (gross salary + employer contributions + budget expenses), with the balance line on top.
-- **Children**, **Staffing**, **Occupancy**, **Employee Hours** -- the operational projections that result from your scenario.
-
-{{< screenshot src="/images/screenshots/en/forecast-results.png" alt="Forecast results" caption="The results panel shows the projected year's income, costs, and balance with the scenario applied." >}}
-
-Toggle **Show Baseline** to overlay the unmodified projection so you can compare the two visually.
-
-Click **Reset** to drop all scenario modifications and start over.
-
-{{% callout type="info" %}}
-The forecast is a planning tool, not a contract. The projection assumes that contracts run unchanged for the whole year and that funding rates do not change. Use it for direction, then validate the numbers before committing to a hire or a budget decision.
-{{% /callout %}}
+The forecast assumes contracts run unchanged for the whole year and funding rates don't change -- treat it as a direction, not a contract.
 
 ## Budget Planning
 
@@ -459,100 +424,57 @@ Only superadmins and admins can manage user accounts. If you need a new account 
 Be careful when assigning the admin role. Admins can modify all data within their organization, including deleting records.
 {{% /callout %}}
 
-## Securing Your Account
+## Account Settings
 
-The **Settings** page (top-right user menu → Settings) is where you manage everything tied to your individual account: password, two-factor authentication, and the devices that are currently signed in.
+Open **Settings** from the top-right user menu to manage your password, two-factor authentication, and active sessions.
 
-{{< screenshot src="/images/screenshots/en/settings.png" alt="Settings page" caption="The Settings page with sections for password, two-factor authentication, and active sessions." >}}
+{{< screenshot src="/images/screenshots/en/settings.png" alt="Settings page" caption="Password, two-factor authentication, and active sessions in one place." >}}
 
-### Changing Your Password
+### Changing your password
 
-1. Open **Settings**.
-2. In the **Change password** card, enter your current password, then your new password twice.
-3. Click **Change password**.
+Enter your current password and the new one twice, then click **Change password**. All other devices are signed out automatically; you stay signed in here.
 
-Changing your password signs out every other device that is currently logged in -- you remain signed in here. This is the right action if you suspect your password may have leaked.
+### Two-factor authentication (2FA)
 
-### Two-Factor Authentication (2FA)
+2FA asks for a 6-digit code from an authenticator app (Google Authenticator, 1Password, Authy, etc.) or a tap on a security key (YubiKey, phone passkey) on every sign-in. Turn it on for any account that can edit data.
 
-Two-factor authentication adds a second step on top of your password. After enabling it, every login asks for a 6-digit code from an authenticator app (such as Google Authenticator, 1Password, Authy, or any other TOTP app), or a tap on a security key (such as a YubiKey or your phone's built-in passkey).
+To enable it:
 
-We strongly recommend turning 2FA on for any account that can edit data. It is the single best protection against compromised passwords.
+1. Click **Enable two-factor authentication** and confirm your password.
+2. Scan the QR code with your authenticator app -- or enter the secret manually.
 
-#### Enabling 2FA with an authenticator app
+   {{< screenshot src="/images/screenshots/en/settings-2fa-scan.png" alt="2FA QR code" caption="Scan with your authenticator app, or enter the secret manually." >}}
 
-1. Open **Settings**.
-2. In the **Two-factor authentication** card, click **Enable two-factor authentication**.
-3. You are asked to confirm your password -- this prevents someone with brief access to your unlocked computer from enrolling a factor on your account.
+3. Enter the 6-digit code from your app and click **Enable two-factor**.
+4. Save the recovery codes somewhere safe and acknowledge with **Done**.
 
-   {{< screenshot src="/images/screenshots/en/settings-2fa-password.png" alt="2FA password prompt" caption="Confirm your password before enrolling a new factor." >}}
-
-4. After confirming, KitaManager shows a QR code. Scan it with your authenticator app, or copy the secret key shown underneath if you cannot scan.
-
-   {{< screenshot src="/images/screenshots/en/settings-2fa-scan.png" alt="2FA QR code" caption="Scan the QR code with your authenticator app, or enter the secret key manually." >}}
-
-5. Enter the 6-digit code your app shows and click **Enable two-factor**.
-6. KitaManager generates a list of **recovery codes**. Each code can be used once if you ever lose access to your authenticator.
-
-   {{< screenshot src="/images/screenshots/en/settings-2fa-backup-codes.png" alt="2FA recovery codes" caption="Save the recovery codes somewhere safe — you will not see them again." >}}
+   {{< screenshot src="/images/screenshots/en/settings-2fa-backup-codes.png" alt="Recovery codes" caption="Recovery codes are shown only once. Each code lets you sign in if you lose your authenticator." >}}
 
    {{% callout type="warning" %}}
-   Save the recovery codes immediately. Print them, store them in a password manager, or write them down in a safe place. KitaManager only shows them once — if you lose them and your authenticator, you will need an administrator to reset your account.
+   Recovery codes are shown only once. Print them, store them in a password manager, or write them down. Without them and without your authenticator, an administrator will need to reset your account.
    {{% /callout %}}
 
-7. Tick **I've saved these codes somewhere safe** and click **Done**.
+The card now shows your active factors. The next sign-in will prompt for a code after the password.
 
-The 2FA card now shows the active factors. The next time you sign in, KitaManager will prompt you for a code after you submit your password.
+{{< screenshot src="/images/screenshots/en/settings-2fa-enabled.png" alt="2FA enabled" caption="Active factors with options to add a security key, regenerate recovery codes, or disable 2FA." >}}
 
-{{< screenshot src="/images/screenshots/en/settings-2fa-enabled.png" alt="2FA enabled" caption="Two-factor authentication active. You can add a security key, regenerate recovery codes, or disable 2FA from this card." >}}
+**Other actions** on the same card:
 
-#### Adding a security key (passkey / YubiKey)
+- **Add security key** -- register a YubiKey or platform passkey via WebAuthn (your browser handles the prompt). You can register multiple keys.
+- **Regenerate recovery codes** -- replaces the old codes; confirms your password first.
+- **Disable two-factor authentication** -- removes all factors (TOTP and security keys); requires your password and a current 2FA code.
 
-If your device or your browser supports WebAuthn, you can add a hardware security key or platform passkey instead of -- or in addition to -- the authenticator app.
+### Active sessions
 
-1. In the 2FA card, click **Add security key**.
-2. Confirm your password.
-3. Follow your browser's prompt to register the key (touch the button on a YubiKey, scan your fingerprint, etc.).
+The **Active sessions** card lists every browser currently signed in to your account. Click **Revoke** on any session you don't recognise; that device is signed out immediately. The current session is marked.
 
-You can register multiple keys. The first one you add is treated as "primary" alongside any TOTP factor.
+## Audit log
 
-#### Recovery codes
+Admins can review every change made in their organization at **Settings → Audit log** in the sidebar. The table shows the time, user, action (e.g. `child_create`, `section_delete`), affected resource, and result. Filter by date range, or type into **Action** to match a substring like `delete`.
 
-Recovery codes are single-use. You can regenerate them at any time -- the old codes are invalidated:
+{{< screenshot src="/images/screenshots/en/audit-logs.png" alt="Audit log" caption="Every create, update, and delete in your organization." >}}
 
-1. In the 2FA card, click **Regenerate recovery codes**.
-2. Confirm your password.
-3. Save the new list of codes.
-
-#### Disabling 2FA
-
-1. In the 2FA card, click **Disable two-factor authentication**.
-2. Enter your password and a current 2FA code.
-
-This deletes all your factors at once, including the security keys.
-
-### Active Sessions
-
-The **Active sessions** card shows every device that is currently signed in to your account, when each one was last active, and which one is the current session. If you see a session you do not recognise -- for example, a phone you no longer own -- click **Revoke** next to it. The revoked device is signed out immediately.
-
-{{% callout type="info" %}}
-A "session" represents one browser on one device. If you sign in on your laptop and again on your phone, you will see two sessions. Revoking one does not affect the other.
-{{% /callout %}}
-
-## Audit Log
-
-Admins (and superadmins) can review every change made in their organization on the **Audit Log** page. This is useful when you need to find out who created or removed a record, or when you are preparing for an audit.
-
-1. In the sidebar, expand **Settings** and click **Audit log**.
-2. Use the **From** / **To** date filters and the **Action** search box to narrow down events. The action filter matches substrings, so typing `delete` shows every deletion across resources.
-
-The page lists, for each event, the time, the user who performed the action, the action name (e.g. `child_create`, `section_delete`), the affected resource, and the result (success or failure).
-
-{{< screenshot src="/images/screenshots/en/audit-logs.png" alt="Audit log" caption="The audit log shows every create, update, and delete in your organization." >}}
-
-{{% callout type="info" %}}
-Login and password events are not shown on the organization audit log -- they are sensitive across organizations and are visible only to system administrators (superadmins).
-{{% /callout %}}
+Login and password events are intentionally hidden from the org-scoped log; they're visible only to superadmins via the API.
 
 ## Importing and Exporting Data
 

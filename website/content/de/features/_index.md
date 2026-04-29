@@ -274,7 +274,7 @@ KitaManager verwendet ein rollenbasiertes Zugriffskontrollsystem (RBAC), das sic
 
 ### Audit-Protokollierung
 
-Alle Datenänderungen werden in einem Audit-Log erfasst. Jede Erstellungs-, Aktualisierungs- und Löschaktion wird mit handelndem Benutzer, Zeitstempel, IP-Adresse und betroffener Ressource protokolliert — für Nachvollziehbarkeit und Compliance. Org-Admins prüfen die Ereignisse ihrer Organisation unter **Einstellungen → Audit-Protokoll**; Superadmins sehen eine globale Sicht inklusive Anmelde- und Authentifizierungsereignissen.
+Alle Datenänderungen werden in einem Audit-Log erfasst. Jede Erstellungs-, Aktualisierungs- und Löschaktion wird mit handelndem Benutzer, Zeitstempel, IP-Adresse und betroffener Ressource protokolliert — für Nachvollziehbarkeit und Compliance. Org-Admins prüfen die Ereignisse ihrer Organisation unter **Einstellungen → Protokoll**; Superadmins sehen eine globale Sicht inklusive Anmelde- und Authentifizierungsereignissen.
 
 ### Kontosicherheit
 

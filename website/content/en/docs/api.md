@@ -37,19 +37,26 @@ Set-Cookie: csrf_token=...; Path=/
 
 ### Login Example (MFA enrolled)
 
-If the user has MFA enabled, the login response carries an `mfa_required` flag and a short-lived `mfa_challenge_token`:
+If the user has MFA enabled, the login response uses `status: "mfa_required"` and carries a short-lived `pending_token` plus a list of available factors. No cookies are set yet.
 
 ```json
-{ "mfa_required": true, "mfa_challenge_token": "...", "factors": ["totp", "webauthn"] }
+{
+  "status": "mfa_required",
+  "pending_token": "...",
+  "expires_at": "2026-04-23T10:05:00Z",
+  "factors": [{"id": 42, "type": "totp"}]
+}
 ```
 
-Complete the login by submitting a code or assertion to `/auth/mfa/verify`:
+Complete the login by submitting a code (TOTP or backup code) or a WebAuthn assertion to `/auth/mfa/verify`:
 
 ```bash
 curl -i -c cookies.txt -X POST http://localhost:8080/api/v1/auth/mfa/verify \
   -H "Content-Type: application/json" \
-  -d '{"challenge_token": "...", "factor_type": "totp", "code": "123456"}'
+  -d '{"pending_token": "...", "factor_id": 42, "code": "123456"}'
 ```
+
+For WebAuthn factors, first call `/auth/mfa/challenge` with `{pending_token, factor_id}` to get the request options, then submit the browser's `PublicKeyCredential` JSON in the `webauthn_response` field of the verify call.
 
 ### Using the Cookie
 

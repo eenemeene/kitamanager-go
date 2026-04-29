@@ -95,45 +95,37 @@ Die vollständige Abrechnungshistorie eines Kindes über alle hochgeladenen Abre
 
 ## Prognose
 
-Mit der Prognose modellieren Sie Szenarien für das kommende Kitajahr. Drei Tabs erlauben das Optimieren auf ein Ziel-Saldo, das Hinzufügen hypothetischer Kinder oder das Modellieren von Einstellungen und Abgängen.
+Projiziert das nächste Kitajahr und erlaubt hypothetische Änderungen darüber. Drei Tabs: Optimieren (minimale Kinderzahl für ein Ziel-Saldo), Kinder, Mitarbeiter.
 
-{{< screenshot src="/images/screenshots/forecast-optimize.png" alt="Tab Optimieren" caption="Der Tab Optimieren ermittelt die minimale Anzahl an Kindern, um ein Ziel-Saldo zu erreichen." >}}
+{{< screenshot src="/images/screenshots/forecast-optimize.png" alt="Tab Optimieren" caption="Optimieren: minimale Kinderzahl für ein Ziel-Saldo." >}}
 
-{{< screenshot src="/images/screenshots/forecast-children.png" alt="Tab Kinder" caption="Hypothetische Kinder einzeln hinzufügen oder bestehende Kinder entfernen, um Abgänge zu simulieren." >}}
+{{< screenshot src="/images/screenshots/forecast-children.png" alt="Tab Kinder" caption="Hypothetische Kinder hinzufügen oder bestehende entfernen." >}}
 
-{{< screenshot src="/images/screenshots/forecast-employees.png" alt="Tab Mitarbeiter" caption="Einstellungen und Abgänge analog zu den Kindern modellieren." >}}
+{{< screenshot src="/images/screenshots/forecast-employees.png" alt="Tab Mitarbeiter" caption="Einstellungen und Abgänge modellieren." >}}
 
-Nach einem Klick auf **Prognose berechnen** zeigt KitaManager die Auswirkungen Ihres Szenarios auf das gesamte Kitajahr -- Finanzen, kumuliertes Saldo, Belegung und Personal.
-
-{{< screenshot src="/images/screenshots/forecast-results.png" alt="Prognose-Ergebnisse" caption="Prognostizierte Einnahmen, Kosten und Saldo für das Kitajahr mit angewendetem Szenario." >}}
+{{< screenshot src="/images/screenshots/forecast-results.png" alt="Prognose-Ergebnisse" caption="Prognostizierte Einnahmen, Kosten und Saldo mit angewendetem Szenario." >}}
 
 ---
 
 ## Einstellungen & Zwei-Faktor-Authentifizierung
 
-Auf der Einstellungsseite verwaltet jede Nutzerin / jeder Nutzer Passwort, Zwei-Faktor-Authentifizierung (Authenticator-App und Sicherheitsschlüssel) und die aktuell angemeldeten Geräte.
+Jede Nutzerin / jeder Nutzer verwaltet Passwort, 2FA (TOTP + Sicherheitsschlüssel) und aktive Sitzungen.
 
-{{< screenshot src="/images/screenshots/settings.png" alt="Einstellungsseite" caption="Einstellungen — Passwort ändern, 2FA verwalten, aktive Sitzungen einsehen." >}}
+{{< screenshot src="/images/screenshots/settings.png" alt="Einstellungsseite" caption="Passwort, 2FA und aktive Sitzungen." >}}
 
-Die 2FA-Aktivierung beginnt mit einer Passwortbestätigung. Anschließend zeigt KitaManager einen QR-Code, den Sie mit einer Authenticator-App scannen (z. B. Google Authenticator, 1Password, Authy).
+{{< screenshot src="/images/screenshots/settings-2fa-scan.png" alt="2FA QR-Code" caption="Mit einer Authenticator-App scannen oder Schlüssel manuell eingeben." >}}
 
-{{< screenshot src="/images/screenshots/settings-2fa-scan.png" alt="2FA QR-Code" caption="QR-Code scannen oder den Schlüssel manuell eingeben, um die Authenticator-App zu registrieren." >}}
+{{< screenshot src="/images/screenshots/settings-2fa-backup-codes.png" alt="Wiederherstellungscodes" caption="Codes werden nur ein Mal angezeigt — vor dem Klick auf Fertig sichern." >}}
 
-Nach Bestätigung eines Codes erzeugt KitaManager einmalige Wiederherstellungscodes — bewahren Sie sie sicher auf, bevor Sie auf Fertig klicken.
-
-{{< screenshot src="/images/screenshots/settings-2fa-backup-codes.png" alt="2FA-Wiederherstellungscodes" caption="Wiederherstellungscodes werden nur ein Mal angezeigt. Jeder Code erlaubt eine Anmeldung ohne Authenticator-App." >}}
-
-Ist die Aktivierung abgeschlossen, zeigt der 2FA-Bereich die aktiven Faktoren und ermöglicht das Hinzufügen eines Sicherheitsschlüssels, das Neugenerieren der Codes oder das Deaktivieren von 2FA.
-
-{{< screenshot src="/images/screenshots/settings-2fa-enabled.png" alt="2FA aktiviert" caption="Zwei-Faktor-Authentifizierung aktiv, mit Optionen für Sicherheitsschlüssel und Wiederherstellungscodes." >}}
+{{< screenshot src="/images/screenshots/settings-2fa-enabled.png" alt="2FA aktiviert" caption="Aktive Faktoren. Sicherheitsschlüssel hinzufügen, Codes neu erzeugen, 2FA deaktivieren." >}}
 
 ---
 
-## Audit-Protokoll
+## Protokoll (Audit-Log)
 
-Admins können alle Anlage-, Änderungs- und Löschvorgänge in ihrer Organisation einsehen. Filtern nach Zeitraum oder nach Teilstring der Aktion.
+Admins sehen alle Anlage-, Änderungs- und Löschvorgänge in ihrer Organisation. Filter nach Zeitraum oder Aktion.
 
-{{< screenshot src="/images/screenshots/audit-logs.png" alt="Audit-Protokoll" caption="Das Audit-Protokoll auf Organisationsebene zeigt, wer wann was geändert hat." >}}
+{{< screenshot src="/images/screenshots/audit-logs.png" alt="Audit-Protokoll" caption="Wer wann was geändert hat." >}}
 
 ---
 
