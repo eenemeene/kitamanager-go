@@ -3,7 +3,9 @@ FROM cgr.dev/chainguard/node:latest-dev AS deps
 
 WORKDIR /app
 
-COPY frontend/package.json frontend/package-lock.json ./
+# Include .npmrc so npm picks up `legacy-peer-deps=true` (single source of
+# truth — same flag used by CI, dev, and Docker — see frontend/.npmrc).
+COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./
 RUN npm ci
 
 # Stage 2: Build the Next.js application
