@@ -186,10 +186,10 @@ To create a care contract:
 4. Set the contract properties:
    - **Care type** (Betreuungsart) -- Choose between Halbtag (half-day), Ganztag (full-day), or Teilzeit (part-time)
    - **Supplements** (Zuschlage) -- Select any that apply:
-     - **ndH** -- Non-German-speaking household (nichtdeutsche Herkunftssprache)
-     - **MSS** -- Extended care needs (Mehr Sprachforderung)
-     - **Integration A** -- Integration support level A
-     - **Integration B** -- Integration support level B
+     - **NdH** -- Non-German heritage language (nichtdeutsche Herkunftssprache -- the family communication language is not German)
+     - **QM/MSS** -- Kita is in a neighbourhood-management or social-monitoring area (Quartiersmanagement / Monitoring Soziale Stadtentwicklung)
+     - **Integration A** -- Integration status A (Integrationsstatus, the Berlin Kita classification under Eingliederungshilfe per SGB IX/SGB VIII)
+     - **Integration B** -- Integration status B (higher level of integration support under the same legal basis)
 5. Click **Save**.
 
 {{< screenshot src="/images/screenshots/en/child-contract-create.png" alt="Child contract creation" caption="Creating a new care contract with care type and supplement settings." >}}
@@ -206,7 +206,7 @@ KitaManager calculates funding for each child based on the combination of:
 
 - The child's **age** (determined from their birthdate)
 - The **care type** (Halbtag, Ganztag, or Teilzeit)
-- Any **supplements** (ndH, MSS, Integration)
+- Any **supplements** (NdH, QM/MSS, Integration status)
 
 Each combination maps to a specific monthly rate defined in the government funding rates. KitaManager looks up the correct rate automatically, so you do not need to calculate anything yourself. But the result is only as accurate as the data you enter.
 
@@ -214,7 +214,7 @@ Each combination maps to a specific monthly rate defined in the government fundi
 
 ### How Government Funding Works
 
-In Berlin, daycare centers receive government funding (Kita-Forderung) based on the children enrolled and their individual care arrangements. The funding rates are set by the Senate and depend on each child's age group, care type, and any approved supplements.
+In Berlin, daycare centres receive government funding (Kita-Förderung) based on the children enrolled and their individual care arrangements. The funding rates are set by the Senatsverwaltung für Bildung, Jugend und Familie (Senate Department for Education, Youth and Family) and depend on each child's age group, care type, and any approved supplements. The settlement runs through the ISBJ procedure operated by the Senate on behalf of the Berlin districts.
 
 KitaManager stores these rates and uses them to calculate how much funding your organization should receive each month. This gives you an independent check against the government's own calculations.
 
