@@ -116,3 +116,13 @@ repos:
         language: system
         files: ^website/
         pass_filenames: false
+
+      # Mirrors the lychee step in .github/workflows/website.yml so PRs
+      # cannot land with broken internal links. Falls back to `cargo
+      # install` if the binary is missing — same model as htmltest above.
+      - id: website-lychee
+        name: website lychee link check
+        entry: bash -c 'command -v lychee >/dev/null || cargo install --locked lychee && cd website && hugo --quiet && lychee --config lychee.toml --offline --root-dir public public'
+        language: system
+        files: ^website/
+        pass_filenames: false
