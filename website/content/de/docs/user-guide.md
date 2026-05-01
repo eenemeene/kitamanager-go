@@ -44,7 +44,7 @@ Das Dashboard ist Ihre Startseite nach dem Anmelden. Es zeigt auf einen Blick di
 
 Außerdem zeigt das Dashboard Warnmeldungen an, die Ihre Aufmerksamkeit erfordern:
 
-- **Kinder ohne Gutscheinnummer** -- Diese Kinder haben einen Betreuungsvertrag, aber es fehlt die Gutscheinnummer des Jugendamts. Ohne Gutscheinnummer kann die Förderung nicht abgerechnet werden.
+- **Kinder ohne Gutscheinnummer** -- Diese Kinder haben einen Betreuungsvertrag, aber es fehlt die Nummer des Kita-Gutscheins, den das zuständige Bezirks-Jugendamt ausgestellt hat. Ohne Gutscheinnummer kann die Förderung nicht abgerechnet werden.
 - **Vertragsabweichungen** -- Unterschiede zwischen den Vertragseigenschaften in KitaManager und den Daten aus der ISBJ-Abrechnung (fehlend, zusätzlich oder abweichend).
 
 {{< screenshot src="/images/screenshots/de/dashboard.png" alt="Dashboard" caption="Das Dashboard bietet eine Übersicht über Ihre Organisation mit Kennzahlen und Warnmeldungen." >}}
@@ -196,22 +196,22 @@ Um ein Kind zu bearbeiten, klicken Sie auf den Namen in der Liste, ändern die F
 
 ### Betreuungsverträge und Vertragseigenschaften
 
-Betreuungsverträge legen fest, wie ein Kind betreut wird. Die Vertragseigenschaften bestimmen, wie viel Förderung das Berliner Jugendamt (ISBJ) für dieses Kind zahlt.
+Betreuungsverträge legen fest, wie ein Kind betreut wird. Die Vertragseigenschaften bestimmen, wie viel Förderung das Land Berlin -- über das ISBJ-Verfahren der Senatsverwaltung für Bildung, Jugend und Familie -- für dieses Kind zahlt.
 
 1. Öffnen Sie die Detailseite des Kindes.
 2. Klicken Sie im Vertragsbereich auf **Vertrag erstellen**.
 3. Füllen Sie die Vertragsdetails aus:
    - **Von** -- Ab wann wird das Kind betreut?
    - **Bis** -- Bis wann läuft der Vertrag?
-   - **Gutscheinnummer** -- Die Nummer des Kita-Gutscheins, den Sie vom Jugendamt erhalten haben.
+   - **Gutscheinnummer** -- Die Nummer des Kita-Gutscheins, den Sie vom Bezirks-Jugendamt erhalten haben.
    - **Bereich** -- In welcher Gruppe wird das Kind betreut?
 4. Legen Sie die **Vertragseigenschaften** fest:
    - **Betreuungsart** -- Halbtag, Ganztag oder Teilzeit
    - **Zuschläge** -- Wählen Sie zutreffende Zuschläge aus:
-     - **ndH** -- Nichtdeutschsprachiger Haushalt
-     - **MSS** -- Mittagessen und sprachliche Förderung
-     - **Integration A** -- Eingliederungshilfe Stufe A
-     - **Integration B** -- Eingliederungshilfe Stufe B
+     - **NdH** -- nichtdeutsche Herkunftssprache (Familiensprache nicht überwiegend Deutsch)
+     - **QM/MSS** -- Quartiersmanagement / Monitoring Soziale Stadtentwicklung (Kita liegt in einem so klassifizierten Gebiet)
+     - **Integration A** -- Integrationsstatus A (Eingliederungshilfe nach SGB IX/SGB VIII)
+     - **Integration B** -- Integrationsstatus B (erhöhter Förderbedarf, Eingliederungshilfe nach SGB IX/SGB VIII)
 5. Klicken Sie auf **Speichern**.
 
 {{< screenshot src="/images/screenshots/de/child-contract-create.png" alt="Betreuungsvertrag erstellen" caption="Der Dialog zur Erstellung eines neuen Betreuungsvertrags mit Vertragseigenschaften." >}}
@@ -220,23 +220,23 @@ Betreuungsverträge legen fest, wie ein Kind betreut wird. Die Vertragseigenscha
 
 ### Wie Vertragseigenschaften die Förderung bestimmen
 
-KitaManager berechnet die Förderung automatisch auf Basis der Vertragseigenschaften und der hinterlegten Fördersätze des Berliner Jugendamts. Die Berechnung berücksichtigt:
+KitaManager berechnet die Förderung automatisch auf Basis der Vertragseigenschaften und der hinterlegten Berliner Fördersätze (festgelegt von der Senatsverwaltung für Bildung, Jugend und Familie). Die Berechnung berücksichtigt:
 
 - **Alter des Kindes** -- Jüngere Kinder erhalten höhere Fördersätze, weil sie mehr Betreuung benötigen.
 - **Betreuungsart** -- Ganztag wird höher gefördert als Halbtag oder Teilzeit.
-- **Zuschläge** -- Jeder Zuschlag (ndH, MSS, Integration) erhöht den Förderbetrag.
+- **Zuschläge** -- Jeder Zuschlag (NdH, QM/MSS, Integrationsstatus) erhöht den Förderbetrag.
 
-Auf der Kinderliste sehen Sie für jedes Kind den berechneten monatlichen Förderbetrag. So können Sie prüfen, ob die Vertragseigenschaften korrekt hinterlegt sind, bevor Sie die nächste Abrechnung mit dem Jugendamt abgleichen.
+Auf der Kinderliste sehen Sie für jedes Kind den berechneten monatlichen Förderbetrag. So können Sie prüfen, ob die Vertragseigenschaften korrekt hinterlegt sind, bevor Sie die nächste ISBJ-Abrechnung abgleichen.
 
 {{% callout type="warning" %}}
-**Wichtig:** Wenn Vertragseigenschaften falsch eingetragen sind, stimmt der berechnete Förderbetrag nicht mit der Abrechnung des Jugendamts überein. Prüfen Sie die Vertragseigenschaften sorgfältig, insbesondere Betreuungsart und Zuschläge.
+**Wichtig:** Wenn Vertragseigenschaften falsch eingetragen sind, stimmt der berechnete Förderbetrag nicht mit der ISBJ-Abrechnung überein. Prüfen Sie die Vertragseigenschaften sorgfältig, insbesondere Betreuungsart und Zuschläge.
 {{% /callout %}}
 
 ## Ihre Finanzen verstehen
 
 ### Wie die Kita-Förderung funktioniert
 
-In Berlin erhalten Kitas eine monatliche Förderung vom Jugendamt (ISBJ). Die Höhe richtet sich nach der Anzahl und den Eigenschaften der betreuten Kinder. KitaManager kennt die aktuellen Berliner Fördersätze und berechnet automatisch, wie viel Förderung Ihre Kita erhalten sollte.
+In Berlin erhalten Kitas eine monatliche Förderung des Landes Berlin, abgewickelt über das ISBJ-Verfahren der Senatsverwaltung für Bildung, Jugend und Familie. Die Höhe richtet sich nach der Anzahl und den Eigenschaften der betreuten Kinder. KitaManager kennt die aktuellen Berliner Fördersätze und berechnet automatisch, wie viel Förderung Ihre Kita erhalten sollte.
 
 Die Fördersätze werden unter **Einstellungen** > **Fördersätze** gepflegt. Sie legen fest, wie viel pro Kind und Monat gezahlt wird -- abhängig von Alter, Betreuungsart und Zuschlägen.
 
@@ -267,10 +267,10 @@ Die **Budgetübersicht** zeigt Einnahmen und Ausgaben in einer monatlichen Tabel
 
 ### ISBJ-Abrechnungen prüfen
 
-KitaManager kann die ISBJ-Abrechnungen (Excel-Dateien vom Jugendamt) mit den intern berechneten Förderbeträgen vergleichen. So erkennen Sie Abweichungen schnell.
+KitaManager kann die ISBJ-Abrechnungen (Excel-Dateien aus dem ISBJ-Verfahren) mit den intern berechneten Förderbeträgen vergleichen. So erkennen Sie Abweichungen schnell.
 
 1. Klicken Sie in der Seitenleiste auf **Abrechnungen**.
-2. Laden Sie die Excel-Datei hoch, die Sie vom Jugendamt erhalten haben: Klicken Sie auf **Hochladen** und wählen Sie die Datei aus.
+2. Laden Sie die Excel-Datei hoch, die Sie aus dem ISBJ-Verfahren erhalten haben: Klicken Sie auf **Hochladen** und wählen Sie die Datei aus.
 3. Die hochgeladene Abrechnung erscheint in der Liste, gruppiert nach Kitajahr.
 4. Verwenden Sie den **Kitajahr-Navigator** (Pfeile), um zwischen Kitajahren zu wechseln.
 5. Klicken Sie auf eine Abrechnung, um den Detailvergleich zu öffnen.
@@ -281,7 +281,7 @@ KitaManager kann die ISBJ-Abrechnungen (Excel-Dateien vom Jugendamt) mit den int
 
 Beim Vergleich einer Abrechnung mit den berechneten Beträgen zeigt KitaManager drei Arten von Abweichungen:
 
-- **Fehlend** -- Ein Kind ist in KitaManager eingetragen, taucht aber nicht in der ISBJ-Abrechnung auf. Mögliche Ursache: Die Gutscheinnummer ist falsch, oder das Kind wurde beim Jugendamt noch nicht gemeldet.
+- **Fehlend** -- Ein Kind ist in KitaManager eingetragen, taucht aber nicht in der ISBJ-Abrechnung auf. Mögliche Ursache: Die Gutscheinnummer ist falsch, oder das Kind wurde beim Bezirks-Jugendamt noch nicht gemeldet.
 - **Zusätzlich** -- Ein Kind ist in der ISBJ-Abrechnung enthalten, aber nicht in KitaManager. Mögliche Ursache: Das Kind wurde in KitaManager noch nicht angelegt, oder der Betreuungsvertrag fehlt.
 - **Abweichend** -- Das Kind ist in beiden Systemen vorhanden, aber die Beträge stimmen nicht überein. Mögliche Ursache: Unterschiedliche Vertragseigenschaften (z.B. Betreuungsart oder Zuschläge).
 
@@ -331,7 +331,7 @@ Die Prognose nimmt unveränderte Verträge und konstante Fördersätze über das
 
 ## Haushaltsplanung
 
-Neben der Förderung durch das Jugendamt hat Ihre Kita weitere Einnahmen und Ausgaben -- zum Beispiel Elternbeiträge, Spenden, Miete oder Gartenpflege. Mit den Haushaltsposten können Sie diese planen und verfolgen.
+Neben der öffentlichen Förderung über das ISBJ-Verfahren hat Ihre Kita weitere Einnahmen und Ausgaben -- zum Beispiel Elternbeiträge, Spenden, Miete oder Gartenpflege. Mit den Haushaltsposten können Sie diese planen und verfolgen.
 
 ### Haushaltsposten verwalten
 
@@ -438,13 +438,13 @@ Sie können Entgelttabellen manuell anlegen oder per YAML-Import hochladen. Wenn
 
 ### Fördersätze
 
-Die Fördersätze bestimmen, wie viel das Berliner Jugendamt pro Kind und Monat zahlt. Sie sind abhängig von Alter, Betreuungsart und Zuschlägen.
+Die Fördersätze bestimmen, wie viel das Land Berlin pro Kind und Monat zahlt. Sie werden von der Senatsverwaltung für Bildung, Jugend und Familie festgelegt und sind abhängig von Alter, Betreuungsart und Zuschlägen.
 
 1. Navigieren Sie zu **Einstellungen** > **Fördersätze**.
 2. Sie sehen die aktuell hinterlegten Sätze.
 3. Neue Fördersätze können per YAML-Import hochgeladen werden.
 
-{{< screenshot src="/images/screenshots/de/government-funding-rates.png" alt="Fördersätze" caption="Die hinterlegten Fördersätze des Berliner Jugendamts." >}}
+{{< screenshot src="/images/screenshots/de/government-funding-rates.png" alt="Fördersätze" caption="Die hinterlegten Berliner Fördersätze (Senatsverwaltung für Bildung, Jugend und Familie)." >}}
 
 Klicken Sie auf eine Förderkonfiguration, um die detaillierten Sätze mit Zeiträumen, Altersspannen und Zahlungsbeträgen pro Eigenschaft zu sehen.
 
