@@ -163,6 +163,7 @@ export default function OrgDashboardPage() {
         />
         <StatCard
           title={t('dashboard.staffingCoverage')}
+          tooltip={t('dashboard.staffingCoverageTooltip')}
           value={
             coverageBalance !== null ? `${coverageBalance >= 0 ? '+' : ''}${coverageBalance}%` : '-'
           }

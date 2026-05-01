@@ -140,6 +140,7 @@
     "requiredHours": "Required Hours",
     "availableHours": "Available Hours",
     "staffingCoverage": "Staffing Coverage",
+    "staffingCoverageTooltip": "Available staff hours vs. required hours for the current month. Negative percent means understaffed; positive means surplus.",
     "childrenWithoutVouchers": "Children Without Vouchers",
     "childrenWithoutVouchersDescription": "Children with a care contract but no Kita-Gutschein number from the Bezirks-Jugendamt — without one, no funding can be billed for them.",
     "propertyMismatches": "Contract Property Mismatches",
@@ -847,6 +848,7 @@
   },
   "upcomingChildren": {
     "title": "Upcoming Children",
+    "description": "Children whose care contract starts in the future, sorted by start date — useful for planning intake and staffing.",
     "name": "Name",
     "gender": "Gender",
     "birthdate": "Birthdate",
@@ -858,6 +860,7 @@
   },
   "stepPromotions": {
     "title": "Pending Step Promotions",
+    "description": "Employees due to advance to the next TVöD-SuE pay step. Create a follow-on contract starting on the promotion date.",
     "employee": "Employee",
     "grade": "Grade",
     "currentStep": "Current Step",
@@ -1046,6 +1049,7 @@
   },
   "sectionAgeAlerts": {
     "title": "Children Over Section Age Limit",
+    "description": "Children whose age has passed their section's configured maximum. Move them to an older-age section to keep the staffing key correct.",
     "count": "{count, plural, one {# child} other {# children}}",
     "child": "Child",
     "section": "Section",

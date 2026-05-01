@@ -140,6 +140,7 @@
     "requiredHours": "Benötigte Stunden",
     "availableHours": "Verfügbare Stunden",
     "staffingCoverage": "Personalabdeckung",
+    "staffingCoverageTooltip": "Verfügbare Personalstunden im Verhältnis zu den benötigten Stunden im aktuellen Monat. Negative Prozentwerte bedeuten Unterdeckung, positive Überschuss.",
     "childrenWithoutVouchers": "Kinder ohne Gutscheinnummer",
     "childrenWithoutVouchersDescription": "Kinder mit Betreuungsvertrag, denen die Nummer des Kita-Gutscheins vom Bezirks-Jugendamt fehlt – ohne Gutscheinnummer kann für sie keine Förderung abgerechnet werden.",
     "propertyMismatches": "Vertragsabweichungen",
@@ -847,6 +848,7 @@
   },
   "upcomingChildren": {
     "title": "Bevorstehende Aufnahmen",
+    "description": "Kinder, deren Betreuungsvertrag in Zukunft beginnt, sortiert nach Startdatum – hilfreich für die Aufnahme- und Personalplanung.",
     "name": "Name",
     "gender": "Geschlecht",
     "birthdate": "Geburtsdatum",
@@ -858,6 +860,7 @@
   },
   "stepPromotions": {
     "title": "Ausstehende Stufensteigerungen",
+    "description": "Mitarbeitende, denen die nächste TVöD-SuE-Stufe zusteht. Erstellen Sie einen Folgevertrag mit dem Stufenaufstiegsdatum als Beginn.",
     "employee": "Mitarbeiter/in",
     "grade": "Entgeltgruppe",
     "currentStep": "Aktuelle Stufe",
@@ -1046,6 +1049,7 @@
   },
   "sectionAgeAlerts": {
     "title": "Kinder über Altersgrenze des Bereichs",
+    "description": "Kinder, die das in ihrem Bereich konfigurierte Maximalalter überschritten haben. In einen passenden Bereich verschieben, damit der Personalschlüssel stimmt.",
     "count": "{count, plural, one {# Kind} other {# Kinder}}",
     "child": "Kind",
     "section": "Bereich",

@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { ArrowRight } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -131,9 +131,12 @@ export function SectionAgeAlertsWidget({ orgId }: SectionAgeAlertsWidgetProps) {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-base font-medium">{t('title')}</CardTitle>
-        <Badge variant="secondary">{t('count', { count: alerts.length })}</Badge>
+      <CardHeader className="space-y-1 pb-2">
+        <div className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base font-medium">{t('title')}</CardTitle>
+          <Badge variant="secondary">{t('count', { count: alerts.length })}</Badge>
+        </div>
+        <CardDescription>{t('description')}</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>

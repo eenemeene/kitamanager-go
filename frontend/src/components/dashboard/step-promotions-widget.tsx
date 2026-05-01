@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Table,
@@ -41,19 +41,22 @@ export function StepPromotionsWidget({ orgId }: StepPromotionsWidgetProps) {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-base font-medium">{t('title')}</CardTitle>
-        <Badge variant="secondary">
-          {t('totalCost', { amount: formatCurrency(data.total_monthly_cost_delta) })} (
-          {t('inclEmployerContrib')}{' '}
-          <Tooltip delayDuration={0}>
-            <TooltipTrigger className="cursor-help underline decoration-dotted underline-offset-2">
-              {t('employerContrib')}
-            </TooltipTrigger>
-            <TooltipContent>{t('employerContribFull')}</TooltipContent>
-          </Tooltip>
-          )
-        </Badge>
+      <CardHeader className="space-y-1 pb-2">
+        <div className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base font-medium">{t('title')}</CardTitle>
+          <Badge variant="secondary">
+            {t('totalCost', { amount: formatCurrency(data.total_monthly_cost_delta) })} (
+            {t('inclEmployerContrib')}{' '}
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger className="cursor-help underline decoration-dotted underline-offset-2">
+                {t('employerContrib')}
+              </TooltipTrigger>
+              <TooltipContent>{t('employerContribFull')}</TooltipContent>
+            </Tooltip>
+            )
+          </Badge>
+        </div>
+        <CardDescription>{t('description')}</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
