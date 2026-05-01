@@ -26,20 +26,7 @@ Nach der Anmeldung landen Sie auf dem **Dashboard**. Es ist das Herz von KitaMan
 
 ## Schritt 2 — Das Dashboard durchgehen
 
-Das Dashboard ist von oben nach unten nach Dringlichkeit organisiert.
-
-**Oben: Kennzahlen-Karten.** Aktive Mitarbeitende, aktive Kinder und Personalabdeckung für den aktuellen Monat. Der Tooltip auf der Personalabdeckung erklärt, was positive vs. negative Prozentwerte bedeuten — einmal lesen.
-
-**Darunter: Warn-Karten** (erscheinen nur, wenn etwas zu tun ist):
-
-- *Kinder ohne Gutscheinnummer* — Kinder mit Vertrag, aber ohne Nummer des Kita-Gutscheins vom Bezirks-Jugendamt. Ohne Gutscheinnummer kann nichts abgerechnet werden.
-- *Vertragsabweichungen* — Kinder, deren Vertragseigenschaften in KitaManager von der letzten ISBJ-Abrechnung abweichen. Genau diese Kinder verursachen am ehesten, dass Ihre monatliche Förderung zu niedrig ausfällt.
-
-**Weiter unten: Routine-Widgets:**
-
-- *Ausstehende Stufenaufstiege* — fällige TVöD-SuE-Stufenaufstiege. Jede Zeile ist ein:e Mitarbeiter:in; legen Sie einen Folgevertrag mit dem Berechtigungsdatum an.
-- *Bevorstehende Aufnahmen* — Betreuungsverträge mit zukünftigem Startdatum.
-- *Kinder über Altersgrenze des Bereichs* — Kinder, die das Höchstalter ihres Bereichs überschritten haben. Ziehen Sie sie auf der Bereiche-Seite in die nächste Gruppe.
+Das Dashboard ist von oben nach unten nach Dringlichkeit organisiert: Kennzahlen-Karten (KPIs für den aktuellen Monat), dann Warn-Karten, die nur erscheinen, wenn etwas zu tun ist, dann Routine-Widgets für anstehende Arbeit. Hovern Sie über einen Karten-Titel für eine ein-zeilige Erklärung.
 
 **Aktion:** Lesen Sie die Beschreibungen auf jeder Karte zwei Minuten lang. Wenn Ihr Dashboard Warnungen anzeigt (die Beispieldaten der Kita Sonnenschein haben einige Vertragsabweichungen), haben Sie Ihre erste Aufgabe gefunden.
 
@@ -62,15 +49,17 @@ Beim Hover über eine Vertragszeile sehen Sie die berechnete monatliche Förderu
 
 **Aktion:** Vergleichen Sie, was in KitaManager steht, mit Ihrem letzten Papier-Bescheid. Gleiche Gutscheinnummer? Gleiche Betreuungsart? Gleiche Zuschläge? Wenn ja, sollte dieses Kind abrechnen; wenn nein, haben Sie eine Korrektur identifiziert.
 
-## Schritt 5 — Eine ISBJ-Abrechnung hochladen
+## Schritt 5 — Einen ISBJ-Abrechnungs-Vergleich öffnen
 
-KitaManager lässt Sie die monatliche ISBJ-Excel hochladen und sofort sehen, welche Kinder matchen und welche nicht. In der Beispiel-Organisation gibt es noch keine echten Bescheide — Sie können diesen Schritt überspringen oder schnell einen erzeugen:
+Die Beispieldaten enthalten bereits einen ISBJ-Bescheid, sodass Sie für den Vergleichs-Workflow keine echte Excel brauchen.
 
 1. Klicken Sie in der Seitenleiste auf **Abrechnungen**.
-2. Klicken Sie auf **Hochladen** und wählen Sie eine aktuelle ISBJ-Excel-Datei. (Falls Sie keine zur Hand haben: in den Beispieldaten ist bereits ein Bescheid geladen — öffnen Sie den neuesten und überspringen Sie den Upload.)
-3. Die Detailansicht zeigt Ihnen einen pro-Kind-Vergleich: jede Zeile ist ein Kind, mit zwei Spalten für KitaManagers berechneten Betrag und den ISBJ-Betrag, plus Status (Übereinstimmung / abweichend / fehlt in Abrechnung / zusätzlich in Abrechnung).
+2. Klicken Sie auf die neueste Bescheid-Zeile.
+3. Die Detailansicht zeigt einen pro-Kind-Vergleich: jede Zeile ein Kind, zwei Spalten für KitaManagers berechneten und den ISBJ-Betrag, plus Status (Übereinstimmung / abweichend / fehlt in Abrechnung / zusätzlich in Abrechnung).
 
-Für jede Abweichung ist der nächste Schritt in [Abweichung in einer Abrechnung untersuchen](../../how-to/use/investigate-a-bill-discrepancy/).
+Die geseedeten Daten enthalten absichtlich einige Abweichungen. Klicken Sie eine rote Zeile an, um zu sehen, welche Vertragseigenschaft abweicht. Der nächste Schritt wäre [Abweichung in einer Abrechnung untersuchen](../../how-to/use/investigate-a-bill-discrepancy/) — für das Tutorial reicht es, dass Sie den Vergleich lesen können.
+
+(Für das Hochladen Ihres eigenen monatlichen Bescheids siehe [ISBJ-Abrechnung hochladen](../../how-to/use/upload-an-isbj-bill/).)
 
 ## Schritt 6 — Ihren ersten Bericht lesen
 

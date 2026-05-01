@@ -25,21 +25,13 @@ Wenn Eltern ihren Gutschein anfechten, schicken Sie sie zum Bezirks-Jugendamt. W
 
 ## Die Zuschläge auf einem Vertrag
 
-Drei Zuschläge erhöhen den pro-Kind-Förderbetrag in Berlin. KitaManager bietet alle drei im Vertragsformular an. Die deutschen Begriffe, die Sie auf Ihrem Bescheid sehen, bedeuten sehr Spezifisches:
+Drei Zuschläge erhöhen den pro-Kind-Förderbetrag in Berlin. KitaManager bietet alle drei im Vertragsformular an:
 
-### NdH — *nichtdeutsche Herkunftssprache*
+- **NdH** — *nichtdeutsche Herkunftssprache*: Familienkommunikationssprache ist nicht Deutsch.
+- **QM/MSS** — *Quartiersmanagement / Monitoring Soziale Stadtentwicklung*: die Kita selbst liegt in einem QM/MSS-klassifizierten Gebiet. Bezogen auf den Standort der Kita, nicht das einzelne Kind.
+- **Integrationsstatus A / B**: Kind ist für Eingliederungshilfe klassifiziert (SGB IX körperlich/geistig/Sinnes oder SGB VIII §35a seelisch). A = erhöhter Bedarf, B = erheblich erhöht. Klassifikation vom Bezirks-Jugendamt nach Antrag der Eltern.
 
-Setzen Sie diesen Zuschlag, wenn die Familienkommunikationssprache **nicht überwiegend Deutsch** ist. Die offizielle Senats-Definition bezieht sich auf die *Herkunftssprache* der Familie — nicht auf die Haushaltszusammensetzung, nicht auf die Staatsangehörigkeit. NdH ist ein statistischer Indikator; der Senat verteilt darüber zusätzliche Personalstunden, und die Kita erhält einen kleinen Zuschlag pro Kind.
-
-### QM/MSS — *Quartiersmanagement / Monitoring Soziale Stadtentwicklung*
-
-Setzen Sie diesen Zuschlag, wenn **die Kita selbst in einem QM/MSS-klassifizierten Gebiet liegt**. Der Zuschlag wird Kitas in Quartiersmanagements-Gebieten oder in Gebieten gezahlt, die im Sozialraum-Monitoring entsprechend ausgewiesen sind. Das hängt *nicht* vom einzelnen Kind ab — es hängt von der Lage der Kita und der sozialen Zusammensetzung der betreuten Kinder ab (in Kombination mit NdH greift der Zuschlag, wenn mehr als 40 % der Kinder NdH-Status haben). Wenn Sie nicht wissen, ob Ihre Kita in einem QM/MSS-Gebiet liegt, kann das Bezirks-Jugendamt Auskunft geben.
-
-### Integrationsstatus A / B
-
-Setzen Sie diesen Zuschlag, wenn das Kind formell für **Eingliederungshilfe** klassifiziert ist — nach SGB IX (körperliche, geistige, Sinnesbehinderung) oder SGB VIII §35a (seelische Behinderung). Die Klassifikation — A für erhöhten Förderbedarf, B für erheblich erhöhten — kommt vom Bezirks-Jugendamt nach gesondertem Antrag der Eltern. Beide Status bringen sowohl zusätzliche Personalstunden als auch einen höheren pro-Kind-Satz mit sich.
-
-(KitaManager beschriftet diese als `Integration A` und `Integration B`; der offizielle Berliner Begriff lautet `Integrationsstatus A/B` bzw. `A-Status / B-Status`. Die Eingliederungshilfe ist die rechtliche Grundlage; der Berliner Kita-spezifische Status sitzt darauf.)
+Jeder Zuschlag bringt zusätzliche Personalstunden und einen höheren pro-Kind-Satz. Für Felddetails (key/value-Paare im YAML, Bedarfsmengen) siehe [Referenz: Vertrags-Zuschläge](../../reference/data-model/contract-supplements/) und das [Glossar](../../reference/glossary/).
 
 ## Die Förder-Berechnung Ende-zu-Ende
 
@@ -64,9 +56,3 @@ Wenn die Berechnung von KitaManager nicht zum ISBJ-Bescheid passt, ist die Ursac
 - **Fördersätze veraltet** in KitaManager → systematische Drift über viele Kinder. Aktualisieren über [Berliner Fördersätze aktualisieren](../../how-to/operate/update-government-funding-rates/).
 
 Die ersten beiden sind mit Abstand die häufigsten.
-
-## Andere Bundesländer
-
-Das Förder-Modell von KitaManager ist datengetrieben: die Sätze und Eigenschaften liegen in YAML, nicht im Code. Ein neues Bundesland anzubinden bedeutet, eine `configs/government-fundings/<bundesland>.yaml` mit dessen Satzstruktur zu schreiben und zu importieren. Heute liegt nur `berlin.yaml` mit dem Projekt; weitere Bundesländer sind auf der Roadmap.
-
-Die anderen Bundesländer verwenden andere Verfahren (Brandenburg hat KitaServer, Bayern hat Kibig, etc.), daher unterscheiden sich Bescheid-Format und Zuschlags-Namen — aber die Form „Nachschlagen über Alter und Eigenschaften“ ist allgemein genug, sie zu erfassen.

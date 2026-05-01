@@ -89,7 +89,7 @@ err := store.ExcludeSoftDeletedUsers(q).Take(&row).Error
 
 Helpers live at `internal/store/scoping.go` (`ExcludeSoftDeletedUsers`, `ExcludeSoftDeletedOrganizations`). Use `db.Unscoped()` only for admin trash-view endpoints, `HardDelete` methods, and `FindByIDUnscoped`. Never in a default read path.
 
-For the design rationale, see [Architecture: Soft-delete](../../../explanation/architecture/#soft-delete-for-users-and-organisations). The full rule is in `.claude/rules/database.md`.
+For the design rationale, see [Why users and orgs are soft-deleted](../../../explanation/architecture/why-users-and-orgs-are-soft-deleted/). The full rule is in `.claude/rules/database.md`.
 
 ## Notes
 

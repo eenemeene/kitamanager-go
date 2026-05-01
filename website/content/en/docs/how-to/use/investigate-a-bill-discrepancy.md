@@ -35,8 +35,19 @@ When the bill and KitaManager don't agree, every non-matching child falls into e
 3. The most common drift: NdH set on one side and not the other. NdH is updated by the district independently of voucher renewal.
 4. Fix the contract in KitaManager (or contact the district to fix theirs, depending on which side is wrong).
 
+## Other failure modes
+
+| Symptom | Likely cause | Where to look |
+|---|---|---|
+| "File could not be parsed" | Excel layout drift or wrong file type | parser column map in `internal/isbj/parse.go`; verify file is the actual Bescheid |
+| "No bills found for this month" | Upload created a different period than expected | bill period dates on the Funding Bills page |
+| Many "missing from bill" entries | Voucher numbers don't match | child detail pages — see steps above |
+| Many "extra in bill" entries | Children left, Senate hasn't processed the departure | Bezirks-Jugendamt |
+| Persistent total drift across many children | Funding rates outdated | [Update government funding rates](../../operate/update-government-funding-rates/) |
+| Total matches but property breakdown differs | Supplement out of sync | child contract supplements vs paper voucher |
+
 ## Notes
 
 - After fixing, re-upload the bill. The comparison will refresh and the row should match.
 - For the calculation, see [How contract properties determine funding](../../../explanation/how-contract-properties-determine-funding/) and [How funding works in Berlin](../../../explanation/how-funding-works-in-berlin/).
-- For the parsing pipeline (relevant when an Excel won't import at all), see [The ISBJ reconciliation flow](../../../explanation/the-isbj-reconciliation-flow/).
+- For the parsing pipeline, see [The ISBJ reconciliation flow](../../../explanation/the-isbj-reconciliation-flow/).

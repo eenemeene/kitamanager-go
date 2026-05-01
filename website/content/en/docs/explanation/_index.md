@@ -16,11 +16,12 @@ If you need a *step-by-step* recipe, you want a [how-to](../how-to/). If you nee
   {{< card link="why-the-kita-year-runs-aug-to-jul/" title="Why the Kita year runs Aug–Jul" subtitle="Calendar conventions, balance reset semantics, and why charts shade by Kita year, not calendar year." icon="calendar" >}}
   {{< card link="how-attendance-is-modeled/" title="How attendance is modeled" subtitle="Per-day records, the difference between absent and not-yet-recorded, and why the weekly grid auto-saves." icon="clipboard-check" >}}
   {{< card link="the-isbj-reconciliation-flow/" title="The ISBJ reconciliation flow" subtitle="What happens when you upload an Excel: parse, match by voucher number, compare per property, the three mismatch categories." icon="refresh" >}}
+  {{< card link="today-and-timezone/" title="How \"today\" and timezone work" subtitle="Why every \"is this active today?\" decision routes through models.Today() and KITAMANAGER_TIMEZONE." icon="clock" >}}
 {{< /cards >}}
 
 ## How KitaManager itself works (developers and operators)
 
 {{< cards >}}
   {{< card link="why-money-is-stored-as-cents/" title="Why money is stored as cents" subtitle="Floating-point traps and the integer-cents convention used end-to-end. Useful when authoring funding YAMLs or working on financial code." icon="currency-euro" >}}
-  {{< card link="architecture/" title="Architecture" subtitle="System overview, RBAC, data flow, the report-pdf sidecar, soft-delete model." icon="cube" >}}
+  {{< card link="architecture/" title="Architecture" subtitle="System overview, organisation-scoped resources. Sub-pages cover the report tool and the soft-delete model." icon="cube" >}}
 {{< /cards >}}

@@ -92,15 +92,6 @@ Used for password reset / notifications. If `SMTP_HOST` is empty, email features
 | `SMTP_PASSWORD` |  | no |
 | `SMTP_FROM` |  | no |
 
-## Validator behaviour
-
-The config loader rejects:
-- A missing or empty required value.
-- A `JWT_SECRET` shorter than 32 characters or matching a known placeholder.
-- A `TOTP_ENCRYPTION_KEY` that's not exactly 64 hex characters or matching a known placeholder.
-
-Examples of failing values are visible in `internal/config/config.go` (the `knownPlaceholderJWTSecrets` and `knownPlaceholderTOTPKeys` maps).
-
 ## report-pdf tool
 
-The PDF-generating sidecar reads its own `KITAMANAGER_REPORT_*` variables. Each one mirrors a CLI flag of the same name. See [Architecture: Report tool](../../../explanation/architecture/#report-tool) and the tool's [README](https://github.com/eenemeene/kitamanager-go/tree/main/tools/report-pdf) for the full list.
+The PDF-generating sidecar reads its own `KITAMANAGER_REPORT_*` variables. Each one mirrors a CLI flag of the same name. See [The report tool](../../../explanation/architecture/the-report-tool/) and the tool's [README](https://github.com/eenemeene/kitamanager-go/tree/main/tools/report-pdf) for the full list.

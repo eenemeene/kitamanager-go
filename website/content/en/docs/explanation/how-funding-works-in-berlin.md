@@ -25,21 +25,13 @@ If a parent disputes their voucher, send them to the Bezirks-Jugendamt. If a pay
 
 ## The supplements you'll see on a contract
 
-Three supplements (Zuschläge) raise the per-child funding amount in Berlin. KitaManager exposes all three on the care-contract form. The German names you see in your Bescheid mean very specific things:
+Three supplements raise the per-child funding amount in Berlin. KitaManager exposes all three on the care-contract form:
 
-### NdH — *nichtdeutsche Herkunftssprache*
+- **NdH** — *nichtdeutsche Herkunftssprache*: family communication language is not German.
+- **QM/MSS** — *Quartiersmanagement / Monitoring Soziale Stadtentwicklung*: the Kita itself sits in a QM/MSS-classified neighbourhood. About the Kita's location, not the individual child.
+- **Integrationsstatus A / B**: child is classified for Eingliederungshilfe (SGB IX physical/intellectual/sensory disability or SGB VIII §35a mental health). A = increased support need, B = significantly increased. Classification comes from the Bezirks-Jugendamt after a parental application.
 
-Set this when the family's primary communication language is **not German**. The official Senate definition is the *Herkunftssprache* (heritage / origin language) of the family, not the household composition or the child's citizenship. NdH is a statistical indicator and the Senate uses it to allocate extra staffing hours; the Kita receives a small per-child supplement when NdH is set.
-
-### QM/MSS — *Quartiersmanagement / Monitoring Soziale Stadtentwicklung*
-
-Set this when **the Kita itself sits in a QM/MSS-classified neighbourhood**. The supplement is paid to Kitas in areas designated by Berlin's neighbourhood-management programme or its social-monitoring index. This is *not* about the individual child — it's about where the Kita is located and the social composition of the children it serves (combined with NdH it kicks in when more than 40% of children have NdH status). If you don't know whether your Kita is in a QM/MSS area, your district's Jugendamt can tell you.
-
-### Integrationsstatus A / B
-
-Set this when the child has been formally classified for **Eingliederungshilfe** (integration support) under SGB IX (physical, intellectual, sensory disability) or SGB VIII §35a (mental health). The classification — A for increased support need, B for significantly increased — comes from the Bezirks-Jugendamt after a separate application by the parents. Each status comes with both extra staffing-hour funding and a higher per-child rate.
-
-(KitaManager labels these `Integration A` and `Integration B`; the Berlin official term is `Integrationsstatus A/B` or `A-Status / B-Status`. The underlying Eingliederungshilfe is the legal basis; the Berlin Kita-specific classification sits on top of it.)
+Each supplement has both extra staffing hours and a higher per-child funding rate. For the field-level details (key/value pairs in YAML, requirement amounts), see [Reference: contract supplements](../../reference/data-model/contract-supplements/) and the [Glossary](../../reference/glossary/).
 
 ## The funding lookup, end to end
 
@@ -65,8 +57,3 @@ When KitaManager's calculation doesn't match the ISBJ Bescheid, the cause is alm
 
 The first two are by far the most common.
 
-## Other German states
-
-KitaManager's funding model is data-driven: the rates and properties live in YAML, not in code. Adding a new state means writing a `configs/government-fundings/<state>.yaml` with that state's rate structure and importing it. Today only `berlin.yaml` ships with the project; other states are on the roadmap.
-
-The other Bundesländer use different procedures (Brandenburg has KitaServer, Bayern has Kibig, etc.), so the bill upload format and the supplement names will differ — but the lookup-by-age-and-properties shape is general enough to cover them.

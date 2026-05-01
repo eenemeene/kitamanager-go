@@ -8,7 +8,8 @@ Das KitaManager-Datenmodell liegt in PostgreSQL. Das vollständige ER-Diagramm u
 Für YAML-Formate, die von Import-Endpunkten verwendet werden:
 
 {{< cards >}}
-  {{< card link="funding-yaml-format/" title="Förder-YAML-Format" subtitle="Die Form einer Fördersatz-YAML: Konfigurationen, Zeiträume, Eigenschaften, Zahlbeträge in Cents." icon="document-text" >}}
+  {{< card link="funding-yaml-format/" title="Förder-YAML-Format" subtitle="Die Form einer Fördersatz-YAML: Konfigurationen, Zeiträume, Eigenschaften, Zahlbeträge." icon="document-text" >}}
+  {{< card link="contract-supplements/" title="Vertrags-Zuschläge" subtitle="Die key/value-Paare, die Sie an einen Betreuungsvertrag eines Kindes anhängen können (NdH, QM/MSS, Integration A/B), und die Betreuungsarten." icon="document-text" >}}
 {{< /cards >}}
 
 Für die Designentscheidungen (warum Geld in Cents gespeichert wird, warum Nutzer:innen + Organisationen soft-deleted sind), siehe [Erklärungen](../../explanation/).

@@ -32,18 +32,8 @@ Das Fehlen eines explizit Speichern ist Absicht — Erzieher:innen sollten am En
 
 Das Wochenraster ist die breite Sicht. Die schmale Sicht ist auf der Detailseite des Kindes, die jeden Anwesenheits-Datensatz dieses Kindes in Datums-Reihenfolge auflistet. Nützlich für Eltern-Berichte („wie viele Tage war Max dieses Halbjahr abwesend?") und um Muster zu erkennen.
 
-## Berichte
+## Berichte und Grenzen
 
-Tages-Übersichts-Endpunkte aggregieren die pro-Kind-Datensätze zu Anwesenheits-Zählungen pro Tag. Die Tages-Übersicht des Dashboards nutzt diese. Die Daten sind exakt für jeden Tag, an dem alle Kinder erfasst wurden; sie zählen anwesende Tage zu niedrig für jeden Vergangenheits-Tag, an dem manche Zellen leer gelassen wurden.
+Tages-Übersichts-Endpunkte aggregieren die pro-Kind-Datensätze; die Tages-Übersicht des Dashboards nutzt diese. Die Daten sind exakt, wenn jedes Kind für den Tag einen Datensatz hat; sie zählen zu niedrig, wenn Zellen leer gelassen wurden.
 
-## Was bewusst nicht modelliert wird
-
-- **Halbtagsanwesenheit.** Ein Kind ist entweder den ganzen Betreuungstag anwesend oder abwesend.
-- **Grund-Codes.** „Abwesend wegen Krankheit" vs. „abwesend wegen Urlaub" wird nicht gespeichert.
-- **Bring-/Abholzeiten.** Anwesenheit ist binär pro Tag, nicht zeit-bereich-basiert.
-
-Diese Auslassungen entsprechen der Berliner Kita-Konvention. Wenn ein Bundesland oder eine Organisation reicheres Modellieren braucht, ist es eine Datenmodell-Änderung, keine UI-Änderung.
-
-## Was für Audit erfasst wird
-
-Jedes Anwesenheits-Create/Update/Delete schreibt einen Audit-Log-Eintrag: wer hat was, wann, von welcher IP erfasst. Die Einträge erscheinen im org-bezogenen Audit-Log filterbar nach `attendance_*`-Aktionen.
+Bewusst nicht modelliert (entspricht der Berliner Kita-Konvention): Halbtagsanwesenheit, Grund-Codes, Bring-/Abholzeiten. Jedes Create/Update/Delete schreibt einen Audit-Log-Eintrag, filterbar nach `attendance_*`-Aktionen.

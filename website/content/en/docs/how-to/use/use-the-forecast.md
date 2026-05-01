@@ -41,6 +41,4 @@ Click **Calculate Forecast**. The results panel shows the projected year as tabb
 
 ## Notes
 
-- The forecast assumes contracts run unchanged for the whole year and that funding rates don't change. Treat it as a *direction*, not a contract.
-- Numbers carry through to euros: the income side uses your current funding rates, the cost side uses the active pay plan and includes the employer contribution.
-- The Optimize tab is purely additive — it doesn't *remove* children to reach a smaller balance. Use Children → Remove for that.
+- The forecast assumes contracts and rates stay constant for the year. Treat it as a *direction*, not a contract. The Optimize tab is additive only; to reach a smaller balance, use Children → Remove.

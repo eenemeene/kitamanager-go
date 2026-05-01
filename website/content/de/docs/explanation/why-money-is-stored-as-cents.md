@@ -9,16 +9,7 @@ Diese Seite erklärt, warum, und was an der Grenze zu tun ist, an der Menschen E
 
 ## Das Problem mit Floats
 
-Floating-Point-Zahlen können dezimale Brüche nicht exakt darstellen. Die klassische Demo:
-
-```go
-fmt.Println(0.1 + 0.2)
-// Ausgabe: 0.30000000000000004
-```
-
-Für ein System, das tausende monatliche Bescheide gegen tausende berechnete Beträge vergleicht, summieren sich selbst winzige Rundungsfehler zu systematischer Drift. Ein €0,01-Floating-Point-Mismatch bei jedem von 120 Kindern jeden Monat sind €14,40 Phantom-Drift pro Jahr pro Organisation. Multipliziert über viele Kitas und viele Jahre verschwindet das Vertrauen in den Vergleich.
-
-Ganzzahlige Cents haben kein solches Problem: `10 + 20 = 30`, exakt, jedes Mal.
+Floating-Point-Zahlen können dezimale Brüche nicht exakt darstellen: `0.1 + 0.2` ist `0.30000000000000004`. Aufkumulierte Rundungsfehler brechen den Bescheid-Vergleich. Ganzzahlige Cents haben dieses Problem nicht.
 
 ## Die Konvention
 
@@ -74,9 +65,4 @@ Faustregel: wenn die Zahl jemals in einem Vergleich oder einer Summe auftauchen 
 
 ## Wo die Konvention lebt
 
-- Postgres-Spalten: `INTEGER NOT NULL`.
-- Go-Modelle: `int` (nicht `int64`, was Beträge groß genug zum Überlaufen von `int32` suggerieren würde — KitaManagers Domäne erreicht diesen Bereich nicht).
-- API-JSON: ganzzahliges `payment`-Feld, niemals ein String.
-- TypeScript-Typen: `number` (auto-generiert aus OpenAPI).
-- Förder-YAML: dezimaler EUR für `payment` (der einzige menschen-erstellte Eingangs-Punkt; der Importer konvertiert beim Laden zu Cents — siehe [Förder-YAML-Format](../../reference/data-model/funding-yaml-format/)).
-- Die Konvention ist in `CLAUDE.md` als bereichs-übergreifende Regel dokumentiert, die für jede Änderung gilt.
+Die Cents-als-int-Konvention gilt auf jeder Schicht: Postgres-Spalte, Go-Modell, API-JSON, TypeScript-Typ. Die einzige Ausnahme ist hand-erstelltes Förder-YAML (`payment` ist dezimaler EUR für Lesbarkeit; der Importer konvertiert beim Laden zu Cents — siehe [Förder-YAML-Format](../../reference/data-model/funding-yaml-format/)). Die Konvention ist in `CLAUDE.md` dokumentiert.

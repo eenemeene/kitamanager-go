@@ -41,6 +41,4 @@ Klicken Sie auf **Prognose berechnen**. Die Ergebnisansicht zeigt das prognostiz
 
 ## Hinweise
 
-- Die Prognose nimmt an, dass Verträge das ganze Jahr unverändert laufen und sich Fördersätze nicht ändern. Behandeln Sie sie als *Richtung*, nicht als Vertrag.
-- Zahlen werden in Euro übersetzt: die Einnahmenseite nutzt Ihre aktuellen Fördersätze, die Kostenseite nutzt die aktive Entgelttabelle und enthält den Arbeitgeberanteil.
-- Der Optimieren-Tab arbeitet rein additiv — er *entfernt* keine Kinder, um ein kleineres Saldo zu erreichen. Dafür Kinder → Entfernen nutzen.
+- Die Prognose nimmt an, dass Verträge und Sätze das Jahr über konstant bleiben. Als *Richtung* behandeln, nicht als Vertrag. Der Optimieren-Tab ist nur additiv; um ein kleineres Saldo zu erreichen, Kinder → Entfernen nutzen.

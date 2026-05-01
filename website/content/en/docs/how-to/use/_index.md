@@ -11,7 +11,9 @@ For account-level admin (managing other users, changing organisation settings) s
 
 - [Track attendance](track-attendance/)
 - [Add a child and issue a care contract](add-a-child-and-issue-contract/)
+- [Assign a Kita-Gutschein number](assign-a-voucher/)
 - [Move children between sections](move-children-between-sections/)
+- [Record a child's departure](record-a-childs-departure/)
 
 ## Employees
 
@@ -22,6 +24,7 @@ For account-level admin (managing other users, changing organisation settings) s
 
 - [Upload an ISBJ bill](upload-an-isbj-bill/)
 - [Investigate a bill discrepancy](investigate-a-bill-discrepancy/)
+- [View a child's billing history](view-a-childs-billing-history/)
 
 ## Planning
 

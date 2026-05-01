@@ -35,8 +35,19 @@ Wenn Bescheid und KitaManager nicht übereinstimmen, fällt jedes nicht passende
 3. Häufigste Drift: NdH ist auf einer Seite gesetzt, auf der anderen nicht. NdH wird vom Bezirk unabhängig von der Gutschein-Erneuerung aktualisiert.
 4. Korrigieren Sie den Vertrag in KitaManager (oder kontaktieren Sie den Bezirk, je nachdem welche Seite falsch ist).
 
+## Weitere Fehlerbilder
+
+| Symptom | Wahrscheinliche Ursache | Wo nachsehen |
+|---|---|---|
+| „Datei konnte nicht geparst werden" | Excel-Layout-Drift oder falscher Dateityp | Spalten-Map des Parsers in `internal/isbj/parse.go`; prüfen, ob die Datei wirklich der Bescheid ist |
+| „Keine Bescheide für diesen Monat gefunden" | Upload erzeugte einen anderen Zeitraum als erwartet | Bescheid-Zeitraum-Daten auf der Abrechnungs-Seite |
+| Viele „Fehlt in Abrechnung"-Einträge | Gutscheinnummern matchen nicht | Kind-Detailseiten — siehe Schritte oben |
+| Viele „Zusätzlich in Abrechnung"-Einträge | Kinder sind gegangen, Senat hat den Abgang nicht verarbeitet | Bezirks-Jugendamt |
+| Anhaltende Gesamt-Drift über viele Kinder | Fördersätze veraltet | [Berliner Fördersätze aktualisieren](../../operate/update-government-funding-rates/) |
+| Gesamt passt, aber Eigenschafts-Aufschlüsselung weicht ab | Zuschlag nicht synchron | Vertrags-Zuschläge des Kindes vs. Papier-Gutschein |
+
 ## Hinweise
 
 - Nach der Korrektur die Abrechnung erneut hochladen. Der Vergleich aktualisiert sich, und die Zeile sollte matchen.
 - Für die Berechnung siehe [Wie Vertragseigenschaften die Förderung bestimmen](../../../explanation/how-contract-properties-determine-funding/) und [Wie die Förderung in Berlin funktioniert](../../../explanation/how-funding-works-in-berlin/).
-- Für die Parsing-Pipeline (relevant, wenn eine Excel gar nicht importiert) siehe [Der ISBJ-Abgleich](../../../explanation/the-isbj-reconciliation-flow/).
+- Für die Parsing-Pipeline siehe [Der ISBJ-Abgleich](../../../explanation/the-isbj-reconciliation-flow/).

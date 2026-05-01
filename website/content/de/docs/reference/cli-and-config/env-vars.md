@@ -92,15 +92,6 @@ Für Passwort-Reset / Benachrichtigungen. Wenn `SMTP_HOST` leer ist, sind E-Mail
 | `SMTP_PASSWORD` |  | nein |
 | `SMTP_FROM` |  | nein |
 
-## Validator-Verhalten
-
-Der Config-Loader weist zurück:
-- Fehlende oder leere Pflicht-Werte.
-- Ein `JWT_SECRET` kürzer als 32 Zeichen oder das einem bekannten Platzhalter entspricht.
-- Ein `TOTP_ENCRYPTION_KEY`, der nicht genau 64 Hex-Zeichen lang ist oder einem bekannten Platzhalter entspricht.
-
-Beispiele für fehlschlagende Werte sind in `internal/config/config.go` sichtbar (die Maps `knownPlaceholderJWTSecrets` und `knownPlaceholderTOTPKeys`).
-
 ## report-pdf-Tool
 
-Das PDF-erzeugende Sidecar liest seine eigenen `KITAMANAGER_REPORT_*`-Variablen. Jede entspricht einem CLI-Schalter gleichen Namens. Siehe [Architektur: Report-Tool](../../../explanation/architecture/) und das [README des Tools](https://github.com/eenemeene/kitamanager-go/tree/main/tools/report-pdf) für die vollständige Liste.
+Das PDF-erzeugende Sidecar liest seine eigenen `KITAMANAGER_REPORT_*`-Variablen. Jede entspricht einem CLI-Schalter gleichen Namens. Siehe [Das Report-Tool](../../../explanation/architecture/the-report-tool/) und das [README des Tools](https://github.com/eenemeene/kitamanager-go/tree/main/tools/report-pdf) für die vollständige Liste.

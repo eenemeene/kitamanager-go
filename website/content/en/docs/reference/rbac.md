@@ -5,7 +5,9 @@ weight: 4
 
 KitaManager uses Casbin-based, organisation-scoped RBAC. There are five roles. Every API request resolves the caller's role for the requested organisation, then asks Casbin whether that role can perform the action on the resource.
 
-For *how to assign* roles, see [Manage users and roles](../../how-to/administer/). For the design rationale, see [Architecture: RBAC](../../explanation/architecture/#rbac-architecture).
+The implementation is hybrid: the **database** stores user-role-organisation assignments (auditable, queryable); **Casbin** stores role-permission mappings (optimised policy evaluation). When a request comes in, the middleware looks up the user's role for the requested org in the DB, then asks Casbin "can role X do action Y on resource Z?" — yes/no determines handler vs. 403.
+
+For *how to assign* roles, see [Manage users and roles](../../how-to/administer/).
 
 ## Roles
 

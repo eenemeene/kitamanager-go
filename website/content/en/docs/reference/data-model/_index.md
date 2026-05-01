@@ -8,7 +8,8 @@ The KitaManager data model lives in PostgreSQL. The full ER diagram and a per-ta
 For YAML formats used by import endpoints:
 
 {{< cards >}}
-  {{< card link="funding-yaml-format/" title="Government funding YAML format" subtitle="The shape of a funding-rate YAML: configurations, periods, properties, payment amounts in cents." icon="document-text" >}}
+  {{< card link="funding-yaml-format/" title="Government funding YAML format" subtitle="The shape of a funding-rate YAML: configurations, periods, properties, payment amounts." icon="document-text" >}}
+  {{< card link="contract-supplements/" title="Contract supplements" subtitle="The key/value pairs you can attach to a child's care contract (NdH, QM/MSS, Integration A/B) and the care types." icon="document-text" >}}
 {{< /cards >}}
 
 For the design rationale (why money is stored as cents, why users + organizations are soft-deleted), see [explanation](../../explanation/).

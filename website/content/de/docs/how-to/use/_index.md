@@ -7,15 +7,13 @@ Rezepte für die Personen, die KitaManager täglich nutzen: Erzieher:innen, Kita
 
 Für konto-bezogene Verwaltung (andere Nutzer:innen verwalten, Organisationseinstellungen ändern) siehe [Eine Organisation verwalten](../administer/).
 
-{{< callout type="info" >}}
-Vollständige deutsche Übersetzungen folgen. Bis dahin verlinken die einzelnen Themen unten auf die englische Fassung; Inhalte für KitaManager-spezifische Begriffe (NdH, QM/MSS, Integrationsstatus, ISBJ) sind in beiden Sprachen identisch.
-{{< /callout >}}
-
 ## Tägliche Abläufe
 
 - [Anwesenheit erfassen](track-attendance/)
 - [Kind anlegen und Betreuungsvertrag ausstellen](add-a-child-and-issue-contract/)
+- [Kita-Gutschein-Nummer zuweisen](assign-a-voucher/)
 - [Kinder zwischen Bereichen verschieben](move-children-between-sections/)
+- [Abgang eines Kindes erfassen](record-a-childs-departure/)
 
 ## Personal
 
@@ -26,6 +24,7 @@ Vollständige deutsche Übersetzungen folgen. Bis dahin verlinken die einzelnen 
 
 - [ISBJ-Abrechnung hochladen](upload-an-isbj-bill/)
 - [Abweichung in einer Abrechnung untersuchen](investigate-a-bill-discrepancy/)
+- [Abrechnungshistorie eines Kindes ansehen](view-a-childs-billing-history/)
 
 ## Planung
 

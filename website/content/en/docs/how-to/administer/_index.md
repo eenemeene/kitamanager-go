@@ -12,6 +12,7 @@ For org-level operations a regular user does (uploading a bill, recording attend
 ## Organization
 
 - [Update organization name and state](update-organization-details/)
+- [Manage sections (Bereiche)](manage-sections/)
 
 ## Users and access
 
@@ -25,9 +26,17 @@ For org-level operations a regular user does (uploading a bill, recording attend
 
 - [Update the pay plan when TVöD-SuE rates change](update-pay-plan/)
 
+## Bulk data
+
+- [Bulk-import children and employees from YAML](bulk-import-children-and-employees/)
+
 ## Audit
 
 - [Review the org audit log](review-audit-log/)
+
+## Security
+
+- [Enable 2FA for your team](enable-2fa-for-your-team/)
 
 ## Funding rates
 

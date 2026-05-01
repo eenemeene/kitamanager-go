@@ -50,13 +50,4 @@ The comparison is per-property: not just total amount, but per-supplement amount
 
 Real ISBJ bills carry "K" (Korrektur) and "A" (Aufhebung) markers on rows that retroactively correct or cancel a previous month's billing. KitaManager's parser **currently ignores these markers**, treating each row as standalone for the bill month. This causes a known billing-comparison drift when the Senate corrects a prior month's amounts: the corrected amount is recorded against the month the bill was *issued in*, not the month it *applies to*, so two months show offsetting deltas instead of one matching row. Tracked as a known limitation; the workaround when triaging is to ignore offsetting deltas across consecutive months.
 
-## Where to look when something goes wrong
-
-| Symptom | Likely cause | Where to look |
-|---|---|---|
-| "File could not be parsed" | Excel layout drift or wrong file type | `internal/isbj/parse.go` column map |
-| "No bills found for this month" | Upload created a different period than expected | period dates in `government_funding_bill_periods` |
-| Many "missing from bill" entries | Voucher numbers don't match | child detail pages, [Investigate a discrepancy](../../how-to/use/investigate-a-bill-discrepancy/) |
-| Many "extra in bill" entries | Children left but Senate hasn't updated | Bezirks-Jugendamt |
-| Persistent total drift across many children | Funding rates outdated | [Update government funding rates](../../how-to/operate/update-government-funding-rates/) |
-| Total matches but property breakdown differs | Supplement out of sync | child contract supplements vs paper voucher |
+For the operational triage matrix (which symptom maps to which fix), see [Investigate a bill discrepancy](../../how-to/use/investigate-a-bill-discrepancy/).

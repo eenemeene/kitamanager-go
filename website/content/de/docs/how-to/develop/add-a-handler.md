@@ -73,11 +73,11 @@ widgets.POST("", h.WidgetHandler.Create)
 ### 5. Swagger-Doc und TypeScript-Typen neu generieren
 
 ```bash
-make swagger-docs
-make api-types
+make docs        # Sammelziel: regeneriert swagger + Schema-Doku
+make api-types   # regeneriert die TypeScript-API-Typen aus dem neuen swagger
 ```
 
-Die regenerierten `docs/swagger.{json,yaml}` und `frontend/src/lib/api/openapi.d.ts` mit committen.
+Die regenerierten `docs/swagger.{json,yaml}`, `docs/schema/` und `frontend/src/lib/api/openapi.d.ts` mit committen.
 
 ### 6. Tests hinzufügen
 

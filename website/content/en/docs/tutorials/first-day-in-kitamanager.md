@@ -26,20 +26,7 @@ After signing in, you land on the **Dashboard**. This is the heart of KitaManage
 
 ## Step 2 — Walk the dashboard
 
-The dashboard is organised top to bottom by attention urgency.
-
-**At the top: stat cards.** Active employees, active children, and staffing coverage for the current month. The staffing coverage hover-tooltip explains what positive vs. negative percent means — read it once.
-
-**Below the stats: warning cards** (only show up if there's something to fix):
-
-- *Children Without Vouchers* — children with a contract but no Kita-Gutschein number from the Bezirks-Jugendamt. Without a voucher number nothing can be billed for them.
-- *Contract Property Mismatches* — children whose contract properties in KitaManager don't match the latest ISBJ bill. These are the children most likely to cause your monthly funding to come up short.
-
-**Further down: routine widgets:**
-
-- *Pending Step Promotions* — TVöD-SuE step advancements due. Each row is one employee; create a follow-on contract starting on the eligible date.
-- *Upcoming Children* — care contracts with a future start date.
-- *Children Over Section Age Limit* — children who've outgrown their assigned section. Drag them to the next group on the Sections page.
+The dashboard is organised top to bottom by urgency: stat cards (KPIs for the current month), then warning cards that only appear when there's something to fix, then routine widgets for upcoming work. Hover any card title for a one-line explanation.
 
 **Action:** spend two minutes reading the descriptions on each card. If your dashboard has any warnings (the seeded "Kita Sonnenschein" should have a few mismatches), you've found your first task.
 
@@ -62,15 +49,17 @@ Hover over a contract row to see the calculated monthly funding. If you don't re
 
 **Action:** compare what's in KitaManager with what your last paper Bescheid says. Same Gutscheinnummer? Same care type? Same supplements? If yes, this child should reconcile; if no, you've identified a fix.
 
-## Step 5 — Upload an ISBJ bill
+## Step 5 — Open an ISBJ bill comparison
 
-KitaManager lets you upload the monthly ISBJ Excel and immediately see which children match and which don't. With the seeded organisation, no real bills exist — you can either skip this step, or generate one quickly:
+The seed data already includes a sample ISBJ Bescheid so you don't need a real Excel to see the comparison flow.
 
 1. Click **Funding Bills** in the sidebar.
-2. Click **Upload** and pick a recent ISBJ Excel file. (If you don't have one, the seed data already has a sample bill loaded — open the most recent and skip the upload.)
-3. The detail page shows you a per-child comparison: each row is a child, with two columns for KitaManager's calculated amount and the ISBJ amount, plus a status (match / different / missing from bill / extra in bill).
+2. Click the most recent bill row.
+3. The detail page shows a per-child comparison: each row is a child, with two columns for KitaManager's calculated amount and the ISBJ amount, plus a status (match / different / missing from bill / extra in bill).
 
-For each non-match, the right next step is in [Investigate a bill discrepancy](../../how-to/use/investigate-a-bill-discrepancy/).
+The seeded data deliberately includes a few mismatches. Click any red row to see which contract property differs. The next step would be [Investigate a bill discrepancy](../../how-to/use/investigate-a-bill-discrepancy/) — but for the tutorial, just confirm you can read the comparison.
+
+(For uploading your own monthly Bescheid, see [Upload an ISBJ bill](../../how-to/use/upload-an-isbj-bill/).)
 
 ## Step 6 — Read your first report
 
