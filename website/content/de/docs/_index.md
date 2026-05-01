@@ -3,26 +3,20 @@ title: Dokumentation
 weight: 1
 ---
 
-Willkommen zur KitaManager Dokumentation. Diese Anleitung hilft Ihnen beim Einrichten und Verwenden von KitaManager für die Verwaltung Ihrer Kindertagesstätte.
+Willkommen zur KitaManager-Dokumentation. Die Seite ist nach dem [Diátaxis](https://diataxis.fr)-Modell aufgebaut: jede Seite gehört zu genau einer von vier Sorten.
 
-## Was ist KitaManager?
-
-KitaManager ist eine Enterprise-REST-API und Webanwendung zur Optimierung der Verwaltung von Kindertagesstätten (Kitas). Es bietet eine umfassende Plattform zur Verwaltung von:
-
-- **Personal** — Mitarbeiterdatenbank mit Vertragsverwaltung und Vergütungsplänen
-- **Kinder** — Anmeldungsverfolgung, Vertragsverwaltung und Anwesenheit
-- **Förderung** — Konfiguration, Berechnung und ISBJ-Abrechnungsvergleich
-- **Budget** — Einnahmen- und Ausgabenverfolgung mit Budgetposten
-- **Statistiken & Prognose** — Personal-, Finanz-, Belegungs- und Demografieberichte sowie ein Was-wäre-wenn-Prognosetool
-- **Zugriffskontrolle** — Rollenbasierte Berechtigungen mit fünf Rollen über Organisationen hinweg
-- **Kontosicherheit** — Zwei-Faktor-Authentifizierung (TOTP und Sicherheitsschlüssel), Sitzungsverwaltung und ein Audit-Protokoll auf Organisationsebene
-
-## Schnellnavigation
+## Nach Zweck blättern
 
 {{< cards >}}
-  {{< card link="getting-started/" title="Erste Schritte" icon="play" >}}
-  {{< card link="architecture/" title="Architektur" icon="cube" >}}
-  {{< card link="api/" title="API-Referenz" icon="code" >}}
-  {{< card link="user-guide/" title="Benutzerhandbuch" icon="book-open" >}}
-  {{< card link="administration/" title="Administration" icon="cog" >}}
+  {{< card link="tutorials/" title="Tutorials" subtitle="Lern-orientierte Schritt-für-Schritt-Anleitungen vom Nullstart bis zur lauffähigen Installation." icon="academic-cap" >}}
+  {{< card link="how-to/" title="How-to-Anleitungen" subtitle="Aufgaben-orientierte Rezepte für ein konkretes Problem." icon="document-text" >}}
+  {{< card link="reference/" title="Referenz" subtitle="Informations-orientierte technische Beschreibungen: API, CLI, Konfiguration, Schema." icon="code" >}}
+  {{< card link="explanation/" title="Erklärungen" subtitle="Verständnis-orientierte Hintergründe zum Förderungsmodell, zur Architektur und zu Designentscheidungen." icon="light-bulb" >}}
 {{< /cards >}}
+
+## Nach Rolle blättern
+
+- **Erzieher:innen, Kita-Leitungen, Elternvorstand** — beginnen Sie mit dem [Tutorial für den ersten Tag](tutorials/first-day-in-kitamanager/), und nutzen Sie dann die [Alltags-Rezepte](how-to/use/), wenn Sie ein konkretes Vorgehen brauchen. Die [Erklärung zur Berliner Förderung](explanation/how-funding-works-in-berlin/) lohnt einmaliges, aufmerksames Lesen.
+- **Org-Admins** — lesen Sie das [Tutorial für den ersten Tag](tutorials/first-day-in-kitamanager/), um Ihre Nutzer:innen unterstützen zu können, und gehen Sie dann zu den [Admin-How-Tos](how-to/administer/) und der [RBAC-Referenz](reference/rbac/).
+- **Systembetreiber:innen / Superadmins** — beginnen Sie bei [KitaManager bereitstellen](tutorials/deploy-kitamanager/), gefolgt von den [Betreiber-How-Tos](how-to/operate/) und der [CLI/Konfigurations-Referenz](reference/cli-and-config/).
+- **Entwickler:innen** — lesen Sie zuerst die [Architektur](explanation/architecture/), dann die [Entwickler-How-Tos](how-to/develop/).

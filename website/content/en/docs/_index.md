@@ -3,26 +3,20 @@ title: Documentation
 weight: 1
 ---
 
-Welcome to the KitaManager documentation. This guide will help you get started with deploying and using KitaManager for your childcare facility management needs.
+Welcome to the KitaManager documentation. The site is organised on the [Diátaxis](https://diataxis.fr) model: every page belongs to exactly one of four kinds.
 
-## What is KitaManager?
-
-KitaManager is an enterprise-grade REST API and web application designed to streamline the management of kindergarten (Kita) organizations. It provides a comprehensive platform for managing:
-
-- **Staff** — Employee database with contract management and pay plans
-- **Children** — Enrollment tracking, contract management, and attendance
-- **Funding** — Government funding configuration, calculation, and ISBJ bill comparison
-- **Budget** — Income and expense tracking with budget items
-- **Statistics & Forecast** — Staffing, financial, occupancy, demographic reports plus a what-if forecast tool
-- **Access Control** — Role-based permissions with five roles across organizations
-- **Account Security** — Two-factor authentication (TOTP and security keys), session management, and an organization-scoped audit log
-
-## Quick Navigation
+## Browse by purpose
 
 {{< cards >}}
-  {{< card link="getting-started/" title="Getting Started" icon="play" >}}
-  {{< card link="architecture/" title="Architecture" icon="cube" >}}
-  {{< card link="api/" title="API Reference" icon="code" >}}
-  {{< card link="user-guide/" title="User Guide" icon="book-open" >}}
-  {{< card link="administration/" title="Administration" icon="cog" >}}
+  {{< card link="tutorials/" title="Tutorials" subtitle="Learning-oriented walk-throughs that take you from zero to a working setup." icon="academic-cap" >}}
+  {{< card link="how-to/" title="How-to guides" subtitle="Task-oriented recipes for getting a specific job done." icon="document-text" >}}
+  {{< card link="reference/" title="Reference" subtitle="Information-oriented technical descriptions: API, CLI, config, schema." icon="code" >}}
+  {{< card link="explanation/" title="Explanation" subtitle="Understanding-oriented background on the funding model, architecture, and design decisions." icon="light-bulb" >}}
 {{< /cards >}}
+
+## Browse by who you are
+
+- **Teachers, Kita-Leitungen, parent boards** — start with the [first-day tutorial](tutorials/first-day-in-kitamanager/), then use the [day-to-day how-tos](how-to/use/) when you need a specific recipe. The [funding explanation](explanation/how-funding-works-in-berlin/) is worth one careful read.
+- **Org admins** — read the [first-day tutorial](tutorials/first-day-in-kitamanager/) so you can support your users, then move on to [admin how-tos](how-to/administer/) and the [RBAC reference](reference/rbac/).
+- **System operators / superadmins** — start at [Deploy KitaManager](tutorials/deploy-kitamanager/), then the [operator how-tos](how-to/operate/) and the [CLI / config reference](reference/cli-and-config/).
+- **Developers** — read [Architecture](explanation/architecture/) first for the system overview, then the [contributor how-tos](how-to/develop/).
