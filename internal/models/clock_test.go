@@ -119,6 +119,50 @@ func TestAppLocation_KnownZoneIsResolvable(t *testing.T) {
 	}
 }
 
+// SetNow pins the time source so Today() returns a deterministic value.
+// Validates the seam itself; downstream packages use this to remove
+// "today"-shaped flakiness from their tests without per-call injection.
+func TestSetNow_PinsToday(t *testing.T) {
+	// Use an instant late enough in UTC that Berlin is already on the next
+	// calendar day — proves the seam routes through DateIn/AppLocation
+	// instead of just returning the pinned instant.
+	pinned := time.Date(2026, 1, 14, 23, 30, 0, 0, time.UTC)
+	defer SetNow(pinned)()
+
+	got := Today()
+	want := time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)
+	if !got.Equal(want) {
+		t.Errorf("Today() with SetNow(2026-01-14 23:30 UTC) = %v, want %v (Berlin's next calendar day)", got, want)
+	}
+}
+
+// SetNow returns a restore function that brings back the real clock.
+// Without this, a test that pins the clock would leak into every test
+// that runs after it in the same process.
+func TestSetNow_RestoresPreviousClock(t *testing.T) {
+	pinned := time.Date(1999, 12, 31, 12, 0, 0, 0, time.UTC)
+	restore := SetNow(pinned)
+
+	if !Today().Equal(time.Date(1999, 12, 31, 0, 0, 0, 0, time.UTC)) {
+		t.Fatalf("SetNow did not pin Today()")
+	}
+
+	restore()
+
+	// After restore, Today() must be within a tight window around real time.
+	// Allow ± 1 day to absorb the cross-midnight edge case.
+	now := Today()
+	realToday := DateIn(time.Now(), AppLocation())
+	diff := now.Sub(realToday)
+	if diff < -24*time.Hour || diff > 24*time.Hour {
+		t.Errorf("after restore, Today() = %v drifted %v from real today %v", now, diff, realToday)
+	}
+	// And specifically: must NOT still equal the pinned date.
+	if now.Equal(time.Date(1999, 12, 31, 0, 0, 0, 0, time.UTC)) {
+		t.Error("after restore, Today() still returns the pinned 1999 date")
+	}
+}
+
 // Today: smoke test that the helper returns a UTC-midnight value matching
 // today's date in the configured zone. The calendar date is whatever the
 // machine running the test thinks "today" is in that zone — we only verify

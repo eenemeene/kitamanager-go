@@ -33,6 +33,14 @@ const (
 var (
 	appLocationOnce sync.Once
 	appLocation     *time.Location
+
+	// nowMu guards nowFn so SetNow can be called from one goroutine while
+	// Today() is read from another. Tests that pin the clock should NOT
+	// also enable t.Parallel() within the same package — the seam itself
+	// is concurrency-safe, but two pinned values racing each other is
+	// nonsense.
+	nowMu sync.RWMutex
+	nowFn = time.Now
 )
 
 // AppLocation returns the application's calendar timezone, read from
@@ -84,5 +92,37 @@ func DateIn(t time.Time, loc *time.Location) time.Time {
 // share this rule, so a mismatched "today" surfaces as off-by-one in any
 // of them.
 func Today() time.Time {
-	return DateIn(time.Now(), AppLocation())
+	nowMu.RLock()
+	now := nowFn()
+	nowMu.RUnlock()
+	return DateIn(now, AppLocation())
+}
+
+// SetNow overrides the time source used by Today() for the duration of a
+// test. The returned function restores the previous source — typical use:
+//
+//	defer models.SetNow(time.Date(2026, 1, 15, 12, 0, 0, 0, time.UTC))()
+//
+// or, with t.Cleanup:
+//
+//	t.Cleanup(models.SetNow(myInstant))
+//
+// Pin behavior, don't pin output: SetNow takes an *instant*, so Today()
+// still routes through DateIn(...) and AppLocation(), preserving the
+// timezone semantics that production code depends on.
+//
+// This seam is the answer to CLAUDE.md's "always use models.Today()" rule:
+// production code stays free of clock injection while tests can deterministically
+// pin "today" without resorting to per-call function injection or string-formatted
+// date comparisons.
+func SetNow(now time.Time) func() {
+	nowMu.Lock()
+	prev := nowFn
+	nowFn = func() time.Time { return now }
+	nowMu.Unlock()
+	return func() {
+		nowMu.Lock()
+		nowFn = prev
+		nowMu.Unlock()
+	}
 }

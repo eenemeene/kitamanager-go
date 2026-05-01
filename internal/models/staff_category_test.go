@@ -3,6 +3,7 @@ package models
 import "testing"
 
 func TestIsValidStaffCategory(t *testing.T) {
+	t.Parallel()
 	validCategories := []string{"qualified", "supplementary", "non_pedagogical"}
 	for _, cat := range validCategories {
 		if !IsValidStaffCategory(cat) {
@@ -12,6 +13,7 @@ func TestIsValidStaffCategory(t *testing.T) {
 }
 
 func TestIsValidStaffCategory_Invalid(t *testing.T) {
+	t.Parallel()
 	invalidCategories := []string{"", "invalid", "teacher", "QUALIFIED", "Qualified", "fachkraft", "ergaenzungskraft", "non-pedagogical", "non pedagogical"}
 	for _, cat := range invalidCategories {
 		if IsValidStaffCategory(cat) {
@@ -21,6 +23,7 @@ func TestIsValidStaffCategory_Invalid(t *testing.T) {
 }
 
 func TestStaffCategory_Constants(t *testing.T) {
+	t.Parallel()
 	if string(StaffCategoryQualified) != "qualified" {
 		t.Errorf("StaffCategoryQualified = %q, want %q", StaffCategoryQualified, "qualified")
 	}
