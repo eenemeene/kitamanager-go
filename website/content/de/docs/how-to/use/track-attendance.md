@@ -10,7 +10,7 @@ Sie wollen festhalten, welche Kinder heute da waren (oder eine frühere Erfassun
 1. Klicken Sie in der Seitenleiste auf **Anwesenheit**.
 2. Die Seite öffnet sich auf der aktuellen Woche. Mit den Pfeilen über dem Raster wechseln Sie die Woche.
 3. Klicken Sie für jedes Kind auf jede Tageszelle, um zwischen **anwesend** → **abwesend** → leer umzuschalten.
-4. Änderungen speichern automatisch. Es gibt keine Speichern-Schaltfläche.
+4. Änderungen werden automatisch gespeichert. Es gibt keine Speichern-Schaltfläche.
 
 Die Übersicht oben zeigt die täglichen Anwesenheitssummen für die aktuelle Woche.
 

@@ -3,7 +3,7 @@ title: Environment variables
 weight: 1
 ---
 
-KitaManager is configured almost entirely through environment variables. The API binary loads them from process environment plus an optional `.env` file in the working directory at startup. The list below mirrors `internal/config/config.go`; **required** variables make `Load()` fail if missing or placeholder.
+KitaManager is configured almost entirely through environment variables. The API binary loads them from process environment plus an optional `.env` file in the working directory at startup. The list below mirrors `internal/config/config.go`; **required** variables make `Load()` fail if missing or placeholder. A few entries (`KITAMANAGER_TIMEZONE`, `SEED_RBAC_POLICIES`) are read directly by other packages (`internal/models/clock.go`, `cmd/api/main.go`) rather than by `config.Load()`, but they share the same conventions.
 
 ## Database
 
@@ -64,6 +64,7 @@ These let an empty database bootstrap with a usable account on first start. Set 
 | `SEED_ADMIN_PASSWORD` |  | required if `SEED_ADMIN_EMAIL` is set | Initial superadmin password. Change it after first login. |
 | `SEED_ADMIN_NAME` | `admin` | no | Display name for the seeded superadmin. |
 | `SEED_TEST_DATA` | `false` | no | When `true`, seeds the demo "Kita Sonnenschein" organisation, sections, employees, children, contracts. **Never set this in production.** |
+| `SEED_RBAC_POLICIES` | `false` | no | When `true`, seeds the default Casbin role-permission policies on startup. Required exactly once on a fresh database; harmless on subsequent starts but unnecessary. |
 | `GOVERNMENT_FUNDING_SEED_PATH` |  | no | Path to a YAML funding-rate file to load on startup. Empty skips. Typical value: `configs/government-fundings/berlin.yaml`. |
 | `GOVERNMENT_FUNDING_SEED_STATE` | `berlin` | no | The state name used to label the loaded funding configuration. |
 

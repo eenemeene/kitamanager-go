@@ -33,6 +33,7 @@ Für *wie man* Rollen vergibt, siehe [Nutzer:innen und Rollen verwalten](../../h
 | Statistiken | Read | Read | Read | Read | — |
 | Nutzer:innen | CRUD | CRUD | Read | — | — |
 | ISBJ-Förderabrechnungen | Create / Read / Delete | Create / Read / Delete | Create / Read / Delete | — | — |
+| Audit-Log (org-bezogen) | Read | Read | — | — | — |
 
 **Geltungsbereich:** `superadmin` operiert über alle Organisationen. Alle anderen Rollen sind auf die Organisationen beschränkt, in denen sie Mitglied sind. Eine Person kann Mitglied mehrerer Organisationen mit unterschiedlicher Rolle pro Organisation sein (z. B. Admin in Kita A, Manager in Kita B).
 

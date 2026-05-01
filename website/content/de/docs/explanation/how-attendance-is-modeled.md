@@ -19,9 +19,9 @@ Wenn Sie das Von-/Bis-Datum eines Kindes ändern, spiegelt das Anwesenheits-Rast
 
 ## Auto-Speichern
 
-Das Raster speichert automatisch bei jedem Zell-Wechsel. Es gibt keine Speichern-Schaltfläche. Implementierung:
+Das Raster speichert Änderungen automatisch bei jedem Zell-Wechsel. Es gibt keine Speichern-Schaltfläche. Implementierung:
 
-1. Klicken Sie eine Zelle an, um durch die Zustände zu schalten.
+1. Klicken Sie auf eine Zelle, um durch die Zustände zu schalten.
 2. Das Frontend ruft je nach Zustands-Übergang den Create/Update/Delete-Endpunkt auf.
 3. Bei 2xx-Antwort zeigt die Zelle den neuen Zustand.
 4. Bei Fehler wird die Zelle zurückgesetzt und ein Inline-Fehler erscheint.

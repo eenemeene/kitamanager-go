@@ -57,7 +57,7 @@ Die Beispieldaten enthalten bereits einen ISBJ-Bescheid, sodass Sie für den Ver
 2. Klicken Sie auf die neueste Bescheid-Zeile.
 3. Die Detailansicht zeigt einen pro-Kind-Vergleich: jede Zeile ein Kind, zwei Spalten für KitaManagers berechneten und den ISBJ-Betrag, plus Status (Übereinstimmung / abweichend / fehlt in Abrechnung / zusätzlich in Abrechnung).
 
-Die geseedeten Daten enthalten absichtlich einige Abweichungen. Klicken Sie eine rote Zeile an, um zu sehen, welche Vertragseigenschaft abweicht. Der nächste Schritt wäre [Abweichung in einer Abrechnung untersuchen](../../how-to/use/investigate-a-bill-discrepancy/) — für das Tutorial reicht es, dass Sie den Vergleich lesen können.
+Die geseedeten Daten enthalten absichtlich einige Abweichungen. Klicken Sie auf eine rote Zeile, um zu sehen, welche Vertragseigenschaft abweicht. Der nächste Schritt wäre [Abweichung in einer Abrechnung untersuchen](../../how-to/use/investigate-a-bill-discrepancy/) — für das Tutorial reicht es, dass Sie den Vergleich lesen können.
 
 (Für das Hochladen Ihres eigenen monatlichen Bescheids siehe [ISBJ-Abrechnung hochladen](../../how-to/use/upload-an-isbj-bill/).)
 

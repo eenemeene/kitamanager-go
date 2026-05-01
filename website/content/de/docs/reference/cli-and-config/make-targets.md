@@ -13,6 +13,7 @@ Das `Makefile` des Repositories ist der maßgebliche Einstiegspunkt für Build, 
 | `make lint` | Lintet sowohl Web als auch API. |
 | `make test` | Führt Web- und API-Unit-Tests aus. |
 | `make ci` | Kombiniertes Lint + Build + Test (entspricht dem CI-Lauf). |
+| `make clean` | Entfernt `bin/`, den Coverage-Report und den Next.js-Build-Cache. |
 | `make dev` | Startet den vollständigen Entwicklungs-Stack (Postgres + API + Web-Dev-Server). |
 | `make dev-fresh` | Wie `dev`, setzt aber zuerst die Datenbank zurück. |
 
@@ -47,7 +48,8 @@ Das `Makefile` des Repositories ist der maßgebliche Einstiegspunkt für Build, 
 | `make web-test-coverage` | Führt Jest mit Coverage aus. |
 | `make web-test-e2e` | Führt Playwright-Tests gegen den laufenden Stack aus. |
 | `make web-test-e2e-fresh` | Wie `web-test-e2e`, setzt aber zuerst die DB zurück. |
-| `make web-test-e2e-demo` | Playwright im Headed-Modus zur manuellen Inspektion. |
+| `make web-test-e2e-headed` | Wie `web-test-e2e`, aber im sichtbaren Browser zum Live-Debugging. |
+| `make web-test-e2e-demo` | Playwright im Headed-Modus mit Slow-Motion und Video-Aufzeichnung für Demos. |
 | `make web-playwright-install` | Installiert Playwright-Browser. |
 
 ## Dokumentation
@@ -67,7 +69,7 @@ Das `Makefile` des Repositories ist der maßgebliche Einstiegspunkt für Build, 
 |---|---|
 | `make docker-up` | `docker compose up -d`. |
 | `make docker-down` | `docker compose down`. |
-| `make docker-rebuild` | Baut Images ohne Cache neu und startet neu. |
+| `make docker-rebuild` | Baut Images neu und startet neu (`docker compose up -d --build` — der Layer-Cache wird wiederverwendet; für einen vollständigen Neubau `--no-cache` manuell ergänzen). |
 | `make docker-reset` | Stoppt, droppt Volumes, startet neu. |
 
 ## Git-Hooks
@@ -82,5 +84,5 @@ Das `Makefile` des Repositories ist der maßgebliche Einstiegspunkt für Build, 
 
 | Ziel | Was es tut |
 |---|---|
-| `make report-pdf-build` | Baut die `kitamanager-report`-Binärdatei. |
-| `make report-pdf` | Baut das Report-Tool und startet es gegen einen konfigurierten Stack. |
+| `make report-pdf-build` | Baut die `report-pdf`-Binärdatei nach `bin/report-pdf`. |
+| `make report-pdf` | Startet das zuvor gebaute Report-Tool gegen einen konfigurierten Stack (nutzt standardmäßig die Demo-Zugangsdaten `admin@example.com` / `supersecret`). |

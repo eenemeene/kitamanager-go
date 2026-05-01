@@ -208,6 +208,7 @@ Nested under a funding rate: `.../government-funding-rates/{id}/periods`.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| GET | `.../periods` | List periods |
 | POST | `.../periods` | Create period |
 | GET | `.../periods/{periodId}` | Get period |
 | PUT | `.../periods/{periodId}` | Update period |
@@ -219,6 +220,7 @@ Nested under a period: `.../periods/{periodId}/properties`.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| GET | `.../properties` | List properties |
 | POST | `.../properties` | Create property |
 | GET | `.../properties/{propertyId}` | Get property |
 | PUT | `.../properties/{propertyId}` | Update property |
@@ -232,8 +234,9 @@ Scoped to an organization: `/api/v1/organizations/{orgId}/government-funding-bil
 |--------|----------|-------------|
 | GET | `.../government-funding-bills` | List bills |
 | POST | `.../government-funding-bills` | Upload ISBJ bill |
+| GET | `.../government-funding-bills/compare` | Org-wide multi-bill comparison (across all uploaded bills for the org) |
 | GET | `.../government-funding-bills/{billId}` | Get bill |
-| GET | `.../government-funding-bills/{billId}/compare` | Compare calculated vs. billed amounts |
+| GET | `.../government-funding-bills/{billId}/compare` | Compare calculated vs. billed amounts for one bill |
 | DELETE | `.../government-funding-bills/{billId}` | Delete bill |
 
 ## Pay plans
@@ -256,6 +259,7 @@ Nested under a pay plan: `.../pay-plans/{id}/periods`.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| GET | `.../periods` | List periods |
 | POST | `.../periods` | Create period |
 | GET | `.../periods/{periodId}` | Get period |
 | PUT | `.../periods/{periodId}` | Update period |
@@ -267,6 +271,7 @@ Nested under a period: `.../periods/{periodId}/entries`.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| GET | `.../entries` | List entries |
 | POST | `.../entries` | Create entry |
 | GET | `.../entries/{entryId}` | Get entry |
 | PUT | `.../entries/{entryId}` | Update entry |

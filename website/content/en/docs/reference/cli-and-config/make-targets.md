@@ -13,6 +13,7 @@ The repo's `Makefile` is the canonical entry point for build, test, and tooling 
 | `make lint` | Lint both web and API. |
 | `make test` | Run both web and API unit tests. |
 | `make ci` | Combined lint + build + test (mirrors what CI runs). |
+| `make clean` | Remove `bin/`, the coverage report, and the Next.js build cache. |
 | `make dev` | Start the full development stack (Postgres + API + web dev server). |
 | `make dev-fresh` | Same as `dev` but resets the database first. |
 
@@ -47,7 +48,8 @@ The repo's `Makefile` is the canonical entry point for build, test, and tooling 
 | `make web-test-coverage` | Run Jest with coverage. |
 | `make web-test-e2e` | Run Playwright tests against the running stack. |
 | `make web-test-e2e-fresh` | Same as `web-test-e2e` but resets the DB first. |
-| `make web-test-e2e-demo` | Playwright in headed mode for manual inspection. |
+| `make web-test-e2e-headed` | Same as `web-test-e2e` but in a headed browser for live debugging. |
+| `make web-test-e2e-demo` | Playwright in headed mode with slow motion + video recording for demos. |
 | `make web-playwright-install` | Install Playwright browsers. |
 
 ## Documentation
@@ -67,7 +69,7 @@ The repo's `Makefile` is the canonical entry point for build, test, and tooling 
 |---|---|
 | `make docker-up` | `docker compose up -d`. |
 | `make docker-down` | `docker compose down`. |
-| `make docker-rebuild` | Rebuild images without cache and restart. |
+| `make docker-rebuild` | Rebuild images and restart (`docker compose up -d --build` — the layer cache is reused; pass `--no-cache` manually for a clean build). |
 | `make docker-reset` | Stop, drop volumes, restart. |
 
 ## Git hooks
@@ -82,5 +84,5 @@ The repo's `Makefile` is the canonical entry point for build, test, and tooling 
 
 | Target | What it does |
 |---|---|
-| `make report-pdf-build` | Build the `kitamanager-report` binary. |
-| `make report-pdf` | Build and run the report tool against a configured stack. |
+| `make report-pdf-build` | Build the `report-pdf` binary into `bin/report-pdf`. |
+| `make report-pdf` | Run the previously-built report tool against a configured stack (uses the demo `admin@example.com` / `supersecret` credentials by default). |
