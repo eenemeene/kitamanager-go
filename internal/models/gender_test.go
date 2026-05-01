@@ -3,6 +3,7 @@ package models
 import "testing"
 
 func TestIsValidGender(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		gender string
@@ -19,6 +20,7 @@ func TestIsValidGender(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if got := IsValidGender(tt.gender); got != tt.want {
 				t.Errorf("IsValidGender(%q) = %v, want %v", tt.gender, got, tt.want)
 			}

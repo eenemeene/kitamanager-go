@@ -5,6 +5,7 @@ import (
 )
 
 func TestPaginationParams_Validate(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		params    PaginationParams
@@ -41,6 +42,7 @@ func TestPaginationParams_Validate(t *testing.T) {
 }
 
 func TestPaginationParams_SetDefaults(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		initial       PaginationParams
@@ -72,6 +74,7 @@ func TestPaginationParams_SetDefaults(t *testing.T) {
 }
 
 func TestPaginationParams_Offset(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		params   PaginationParams
@@ -100,6 +103,7 @@ func TestPaginationParams_Offset(t *testing.T) {
 }
 
 func TestPaginationParams_SetDefaults_Idempotent(t *testing.T) {
+	t.Parallel()
 	params := PaginationParams{Page: 0, Limit: 0}
 	params.SetDefaults()
 
@@ -113,6 +117,7 @@ func TestPaginationParams_SetDefaults_Idempotent(t *testing.T) {
 }
 
 func TestPaginationParams_ValidateThenSetDefaults(t *testing.T) {
+	t.Parallel()
 	params := PaginationParams{Page: 0, Limit: 0}
 
 	// Zero values should pass validation (they mean "not provided")
@@ -132,6 +137,7 @@ func TestPaginationParams_ValidateThenSetDefaults(t *testing.T) {
 }
 
 func TestPaginatedResponse_TotalPagesCalculation(t *testing.T) {
+	t.Parallel()
 	// Edge case: exactly divisible
 	resp := NewPaginatedResponseWithLinks([]int{}, 1, 25, 100, "/test", "")
 	if resp.TotalPages != 4 {
@@ -152,6 +158,7 @@ func TestPaginatedResponse_TotalPagesCalculation(t *testing.T) {
 }
 
 func TestPaginatedResponse_PreservesFilterParams(t *testing.T) {
+	t.Parallel()
 	resp := NewPaginatedResponseWithLinks(
 		[]int{1, 2, 3}, 2, 10, 50, "/api/v1/children",
 		"search=alice&section_id=5&page=2&limit=10",
@@ -189,6 +196,7 @@ func TestPaginatedResponse_PreservesFilterParams(t *testing.T) {
 }
 
 func TestPaginatedResponse_NoFilters(t *testing.T) {
+	t.Parallel()
 	resp := NewPaginatedResponseWithLinks([]int{1}, 1, 20, 1, "/api/v1/users", "")
 
 	assertContains(t, resp.Links.Self, "page=1")

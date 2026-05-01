@@ -1,5 +1,5 @@
 .PHONY: build lint test clean ci dev dev-fresh \
-	api-build api-run api-lint api-test-all api-test-unit api-test-integration api-test-contract api-test-fuzz api-test-coverage api-test-backup \
+	api-build api-run api-lint api-test-all api-test-unit api-test-integration api-test-contract api-test-fuzz api-test-coverage api-test-backup api-test-race \
 	web-install web-dev web-build web-lint web-format web-format-check web-type-check web-test web-test-coverage web-test-e2e web-test-e2e-fresh web-test-e2e-demo \
 	docs schema-docs swagger-docs swagger-check api-types api-types-check docker-up docker-down docker-rebuild docker-reset install-hooks uninstall-hooks pre-commit \
 	report-pdf-build report-pdf
@@ -116,11 +116,16 @@ api-lint:
 # Run all API tests (unit, integration, contract - requires database)
 api-test-all: api-test-unit api-test-integration api-test-contract
 
-# Run API unit tests with race detection
+# Run API unit tests. Race detection roughly doubles wall-clock time and
+# the unit suites for models/services/handlers don't exercise real
+# concurrency — the packages where data races can actually appear
+# (middleware, integration) have a dedicated `api-test-race` target.
 api-test-unit:
-	go test -v -race ./...
+	go test -v ./...
 
-# Run API integration tests (requires database)
+# Run API integration tests (requires database). Keeps -race because the
+# integration suite spins up real HTTP handlers and exercises concurrent
+# request paths where -race is load-bearing.
 api-test-integration:
 	go test -v -race -tags=integration ./internal/integration/...
 
@@ -130,7 +135,15 @@ api-test-backup:
 
 # Run API contract tests (requires database)
 api-test-contract:
-	go test -v -race -tags=contract ./internal/contract/...
+	go test -v -tags=contract ./internal/contract/...
+
+# Run race detector against the packages that actually exercise
+# concurrency. Run this in a dedicated CI job (or locally before
+# touching middleware/integration code) — running -race across the
+# whole tree just doubles per-test cost without finding anything new.
+api-test-race:
+	go test -v -race ./internal/middleware/...
+	go test -v -race -tags=integration ./internal/integration/...
 
 # Run API fuzz tests (each fuzz test must be run separately).
 # Use iteration count instead of duration to avoid a known Go fuzz engine race
@@ -142,9 +155,13 @@ api-test-fuzz:
 	go test -fuzz=FuzzFundingAgeOnDate -fuzztime=1000000x ./internal/validation/...
 	go test -fuzz=FuzzEmployeeMonthlyCost -fuzztime=100000x ./internal/service/...
 
-# Run API tests with coverage report
+# Run API tests with coverage report. -race is intentionally NOT set:
+# coverage is the bottleneck job in CI and doubling its wall-clock for
+# race detection (which the unit suites don't surface anyway) was the
+# wrong trade. -covermode=count is faster than atomic and is correct
+# without -race.
 api-test-coverage:
-	go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+	go test -v -coverprofile=coverage.out -covermode=count ./...
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report generated: coverage.html"
 

@@ -6,6 +6,7 @@ import (
 )
 
 func TestTruncateToDate(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    time.Time
@@ -35,6 +36,7 @@ func TestTruncateToDate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := TruncateToDate(tt.input)
 			if !result.Equal(tt.expected) {
 				t.Errorf("TruncateToDate(%v) = %v, want %v", tt.input, result, tt.expected)
@@ -47,6 +49,7 @@ func TestTruncateToDate(t *testing.T) {
 }
 
 func TestPeriod_IsActiveOn_MidnightBoundary(t *testing.T) {
+	t.Parallel()
 	// Period from Jan 1 to Jan 31 (inclusive)
 	to := time.Date(2026, 1, 31, 0, 0, 0, 0, time.UTC)
 	p := Period{
