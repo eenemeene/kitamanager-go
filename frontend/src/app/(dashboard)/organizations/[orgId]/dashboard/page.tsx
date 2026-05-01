@@ -10,7 +10,7 @@ import { StatCard } from '@/components/dashboard/stat-card';
 import { StepPromotionsWidget } from '@/components/dashboard/step-promotions-widget';
 import { UpcomingChildrenWidget } from '@/components/dashboard/upcoming-children-widget';
 import { SectionAgeAlertsWidget } from '@/components/dashboard/section-age-alerts-widget';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
@@ -163,6 +163,7 @@ export default function OrgDashboardPage() {
         />
         <StatCard
           title={t('dashboard.staffingCoverage')}
+          tooltip={t('dashboard.staffingCoverageTooltip')}
           value={
             coverageBalance !== null ? `${coverageBalance >= 0 ? '+' : ''}${coverageBalance}%` : '-'
           }
@@ -185,11 +186,14 @@ export default function OrgDashboardPage() {
 
       {childrenWithoutVouchers && childrenWithoutVouchers.length > 0 && (
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-base font-medium">
-              {t('dashboard.childrenWithoutVouchers')}
-            </CardTitle>
-            <Badge variant="secondary">{childrenWithoutVouchers.length}</Badge>
+          <CardHeader className="space-y-1 pb-2">
+            <div className="flex flex-row items-center justify-between">
+              <CardTitle className="text-base font-medium">
+                {t('dashboard.childrenWithoutVouchers')}
+              </CardTitle>
+              <Badge variant="secondary">{childrenWithoutVouchers.length}</Badge>
+            </div>
+            <CardDescription>{t('dashboard.childrenWithoutVouchersDescription')}</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
@@ -250,11 +254,14 @@ export default function OrgDashboardPage() {
 
       {propertyMismatches.length > 0 && (
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-base font-medium">
-              {t('dashboard.propertyMismatches')}
-            </CardTitle>
-            <Badge variant="destructive">{propertyMismatches.length}</Badge>
+          <CardHeader className="space-y-1 pb-2">
+            <div className="flex flex-row items-center justify-between">
+              <CardTitle className="text-base font-medium">
+                {t('dashboard.propertyMismatches')}
+              </CardTitle>
+              <Badge variant="destructive">{propertyMismatches.length}</Badge>
+            </div>
+            <CardDescription>{t('dashboard.propertyMismatchesDescription')}</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
