@@ -36,4 +36,4 @@ You can register multiple keys. The next sign-in lets you choose which factor to
 
 - 2FA is *strongly* recommended for any account that can edit data — admin, manager, staff. Members get less leverage from a stolen account but should still enable it.
 - Lost both authenticator and recovery codes? An admin can reset your **password** but cannot today reset your **MFA factors** without deleting the user record. Don't lose both.
-- For the team-wide rollout (turning 2FA into the default for everyone), see the [Enable 2FA for your team](../../../tutorials/enable-2fa-for-your-team/) tutorial.
+- For the team-wide rollout (turning 2FA into the default for everyone), see [Enable 2FA for your team](../../administer/enable-2fa-for-your-team/).

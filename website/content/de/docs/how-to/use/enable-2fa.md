@@ -36,4 +36,4 @@ Sie können mehrere Schlüssel registrieren. Bei der nächsten Anmeldung können
 
 - 2FA ist *dringend empfohlen* für jedes Konto, das Daten bearbeiten kann — Admin, Manager, Personal. Mitglieder profitieren weniger von einem gestohlenen Konto, sollten es aber dennoch aktivieren.
 - Authenticator und Wiederherstellungscodes verloren? Ein Admin kann Ihr **Passwort** zurücksetzen, aber heute nicht Ihre **MFA-Faktoren** zurücksetzen, ohne den Nutzer-Datensatz zu löschen. Verlieren Sie nicht beides.
-- Für die team-weite Einführung (2FA als Standard für alle) siehe das Tutorial [Zwei-Faktor-Authentifizierung im Team einführen](../../../tutorials/enable-2fa-for-your-team/).
+- Für die team-weite Einführung (2FA als Standard für alle) siehe [Zwei-Faktor-Authentifizierung im Team einführen](../../administer/enable-2fa-for-your-team/).

@@ -118,11 +118,12 @@ repos:
         pass_filenames: false
 
       # Mirrors the lychee step in .github/workflows/website.yml so PRs
-      # cannot land with broken internal links. Falls back to `cargo
-      # install` if the binary is missing — same model as htmltest above.
+      # cannot land with broken internal links. The script tries the
+      # native binary, then `cargo install`, then podman/docker — so
+      # contributors don't need a Rust toolchain just to run pre-commit.
       - id: website-lychee
         name: website lychee link check
-        entry: bash -c 'command -v lychee >/dev/null || cargo install --locked lychee && cd website && hugo --quiet && lychee --config lychee.toml --offline --root-dir public public'
+        entry: website/scripts/lychee-check.sh
         language: system
         files: ^website/
         pass_filenames: false
