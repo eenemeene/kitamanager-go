@@ -456,11 +456,18 @@ func TestFactorHandler_Delete_Success_204(t *testing.T) {
 
 	totpFID, secret := enrollTOTPViaHandler(t, r, user.ID, "pw")
 	code, _ := totp.GenerateCode(secret, time.Now().UTC())
-	if w := performRequest(r, "POST",
+	wact := performRequest(r, "POST",
 		fmt.Sprintf("/api/v1/users/me/factors/%d/activate", totpFID),
-		models.FactorActivateRequest{Code: code}); w.Code != http.StatusOK {
-		t.Fatalf("activate: %d body=%s", w.Code, w.Body.String())
+		models.FactorActivateRequest{Code: code})
+	if wact.Code != http.StatusOK {
+		t.Fatalf("activate: %d body=%s", wact.Code, wact.Body.String())
 	}
+	var actResp models.FactorActivateResponse
+	parseResponse(t, wact, &actResp)
+	if actResp.BackupCodes == nil || len(actResp.BackupCodes.Codes) == 0 {
+		t.Fatalf("expected auto-issued backup codes from activation")
+	}
+	stepUpCode := actResp.BackupCodes.Codes[0]
 
 	// Seed a second primary so the TOTP delete isn't last-primary and
 	// doesn't need a code. Going through the store directly here keeps
@@ -477,9 +484,11 @@ func TestFactorHandler_Delete_Success_204(t *testing.T) {
 	}
 
 	// 204 with empty body — per the REST conventions in CLAUDE.md.
+	// A current backup code from the auto-issued set satisfies the
+	// step-up requirement for the delete.
 	w := performRequest(r, "DELETE",
 		fmt.Sprintf("/api/v1/users/me/factors/%d", totpFID),
-		models.FactorDeleteRequest{Password: "pw"})
+		models.FactorDeleteRequest{Password: "pw", Code: stepUpCode})
 	if w.Code != http.StatusNoContent {
 		t.Errorf("delete: expected 204, got %d body=%s", w.Code, w.Body.String())
 	}
@@ -569,9 +578,15 @@ func TestFactorHandler_Regenerate_Success(t *testing.T) {
 
 	totpFID, secret := enrollTOTPViaHandler(t, r, user.ID, "pw")
 	code, _ := totp.GenerateCode(secret, time.Now().UTC())
-	performRequest(r, "POST",
+	wact := performRequest(r, "POST",
 		fmt.Sprintf("/api/v1/users/me/factors/%d/activate", totpFID),
 		models.FactorActivateRequest{Code: code})
+	var actResp models.FactorActivateResponse
+	parseResponse(t, wact, &actResp)
+	if actResp.BackupCodes == nil || len(actResp.BackupCodes.Codes) == 0 {
+		t.Fatalf("expected auto-issued backup codes from activation")
+	}
+	stepUpCode := actResp.BackupCodes.Codes[0]
 
 	// The auto-created backup_codes factor is the one we regenerate.
 	bcFactor, err := store.NewFactorStore(db).FindBackupCodesFactor(context.Background(), user.ID)
@@ -580,7 +595,7 @@ func TestFactorHandler_Regenerate_Success(t *testing.T) {
 	}
 	w := performRequest(r, "POST",
 		fmt.Sprintf("/api/v1/users/me/factors/%d/regenerate", bcFactor.ID),
-		models.FactorRegenerateRequest{Password: "pw"})
+		models.FactorRegenerateRequest{Password: "pw", Code: stepUpCode})
 	if w.Code != http.StatusOK {
 		t.Fatalf("regenerate: expected 200, got %d body=%s", w.Code, w.Body.String())
 	}
@@ -603,16 +618,96 @@ func TestFactorHandler_Regenerate_WrongPassword_401(t *testing.T) {
 
 	totpFID, secret := enrollTOTPViaHandler(t, r, user.ID, "pw")
 	code, _ := totp.GenerateCode(secret, time.Now().UTC())
+	wact := performRequest(r, "POST",
+		fmt.Sprintf("/api/v1/users/me/factors/%d/activate", totpFID),
+		models.FactorActivateRequest{Code: code})
+	var actResp models.FactorActivateResponse
+	parseResponse(t, wact, &actResp)
+
+	bcFactor, _ := store.NewFactorStore(db).FindBackupCodesFactor(context.Background(), user.ID)
+	// Pass a syntactically-required step-up code so bind validation
+	// passes; the wrong password must surface as 401, NOT swallowed by
+	// the step-up check.
+	stepUpCode := actResp.BackupCodes.Codes[0]
+	w := performRequest(r, "POST",
+		fmt.Sprintf("/api/v1/users/me/factors/%d/regenerate", bcFactor.ID),
+		models.FactorRegenerateRequest{Password: "wrong-pw", Code: stepUpCode})
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("regenerate wrong pw: expected 401, got %d body=%s", w.Code, w.Body.String())
+	}
+}
+
+// TestFactorHandler_Regenerate_MissingCode_400 closes audit finding A-H-3:
+// stolen-session+phished-password without a fresh MFA code must NOT
+// rotate the backup codes. Even with the correct password.
+func TestFactorHandler_Regenerate_MissingCode_400(t *testing.T) {
+	db := setupTestDB(t)
+	user := newFactorUser(t, db, "u@example.com", "pw")
+	h := newFactorHandlerForTest(t, db)
+
+	r := routerAs(user)
+	r.POST("/api/v1/users/:userId/factors", h.Enroll)
+	r.POST("/api/v1/users/:userId/factors/:id/activate", h.Activate)
+	r.POST("/api/v1/users/:userId/factors/:id/regenerate", h.Regenerate)
+
+	totpFID, secret := enrollTOTPViaHandler(t, r, user.ID, "pw")
+	code, _ := totp.GenerateCode(secret, time.Now().UTC())
 	performRequest(r, "POST",
 		fmt.Sprintf("/api/v1/users/me/factors/%d/activate", totpFID),
 		models.FactorActivateRequest{Code: code})
 
 	bcFactor, _ := store.NewFactorStore(db).FindBackupCodesFactor(context.Background(), user.ID)
+	// Code field omitted → bind validation rejects with 400 before the
+	// service even sees the request. This is the gate that breaks the
+	// "I have your password and your session" attack.
 	w := performRequest(r, "POST",
 		fmt.Sprintf("/api/v1/users/me/factors/%d/regenerate", bcFactor.ID),
-		models.FactorRegenerateRequest{Password: "wrong-pw"})
+		models.FactorRegenerateRequest{Password: "pw"})
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("regenerate without code: expected 400, got %d body=%s", w.Code, w.Body.String())
+	}
+}
+
+// TestFactorHandler_Enroll_StolenSessionPasswordCannotPlantFactor closes
+// audit finding A-H-2 at the HTTP level: when a user has a primary factor
+// activated, planting a second factor with only password (no fresh MFA
+// proof) must be rejected. This is the handler-side regression test for
+// the service's verifyStepUpMFA gate.
+func TestFactorHandler_Enroll_StolenSessionPasswordCannotPlantFactor(t *testing.T) {
+	db := setupTestDB(t)
+	user := newFactorUser(t, db, "u@example.com", "pw")
+	h := newFactorHandlerForTest(t, db)
+
+	r := routerAs(user)
+	r.POST("/api/v1/users/:userId/factors", h.Enroll)
+	r.POST("/api/v1/users/:userId/factors/:id/activate", h.Activate)
+
+	// First factor goes through (no primary yet → no step-up).
+	totpFID, secret := enrollTOTPViaHandler(t, r, user.ID, "pw")
+	code, _ := totp.GenerateCode(secret, time.Now().UTC())
+	if w := performRequest(r, "POST",
+		fmt.Sprintf("/api/v1/users/me/factors/%d/activate", totpFID),
+		models.FactorActivateRequest{Code: code}); w.Code != http.StatusOK {
+		t.Fatalf("activate: %d body=%s", w.Code, w.Body.String())
+	}
+
+	// Attacker has the session cookie + password but no current MFA
+	// code. Try to enrol a second TOTP they control.
+	w := performRequest(r, "POST",
+		"/api/v1/users/me/factors",
+		models.FactorEnrollRequest{Type: models.FactorTypeTOTP, Password: "pw"})
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("enrol without step-up code must be rejected; got %d body=%s",
+			w.Code, w.Body.String())
+	}
+
+	// Same flow with a wrong code → 401, still rejected.
+	w = performRequest(r, "POST",
+		"/api/v1/users/me/factors",
+		models.FactorEnrollRequest{Type: models.FactorTypeTOTP, Password: "pw", Code: "000000"})
 	if w.Code != http.StatusUnauthorized {
-		t.Errorf("regenerate wrong pw: expected 401, got %d body=%s", w.Code, w.Body.String())
+		t.Errorf("enrol with wrong code must be 401; got %d body=%s",
+			w.Code, w.Body.String())
 	}
 }
 

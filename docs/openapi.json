@@ -2306,6 +2306,11 @@
             },
             "FactorEnrollRequest": {
                 "properties": {
+                    "code": {
+                        "description": "Code is a current TOTP or backup-code from any of the user's\nactive factors. Required when the user already has at least one\nactive primary factor enrolled; empty string is accepted (and\nignored) only on the first-ever enrollment.",
+                        "example": "123456",
+                        "type": "string"
+                    },
                     "label": {
                         "example": "iPhone",
                         "type": "string"
@@ -2350,12 +2355,18 @@
             },
             "FactorRegenerateRequest": {
                 "properties": {
+                    "code": {
+                        "description": "Code is a current TOTP or backup-code from any of the user's\nactive factors. Required.",
+                        "example": "123456",
+                        "type": "string"
+                    },
                     "password": {
                         "example": "yourcurrentpassword",
                         "type": "string"
                     }
                 },
                 "required": [
+                    "code",
                     "password"
                 ],
                 "type": "object"

@@ -186,13 +186,19 @@ type LoginFactorDescriptor struct {
 }
 
 // FactorEnrollRequest is the request body for `POST /users/:userId/factors`.
-// Password re-entry is required (step-up) to install a factor — a stolen
-// session cookie alone must not be able to plant an authenticator the
-// attacker controls.
+// Password re-entry is required (step-up) to install a factor; once the
+// user already has an active primary factor a current TOTP/backup `code`
+// is also required so a stolen session + phished password cannot plant
+// an attacker-controlled authenticator.
 type FactorEnrollRequest struct {
 	Type     string  `json:"type" binding:"required" example:"totp"`
 	Label    *string `json:"label,omitempty" example:"iPhone"`
 	Password string  `json:"password" binding:"required" example:"yourcurrentpassword"`
+	// Code is a current TOTP or backup-code from any of the user's
+	// active factors. Required when the user already has at least one
+	// active primary factor enrolled; empty string is accepted (and
+	// ignored) only on the first-ever enrollment.
+	Code string `json:"code,omitempty" example:"123456"`
 }
 
 // FactorActivateRequest is the body for `POST /users/:userId/factors/:id/activate`.
@@ -226,9 +232,15 @@ type BackupCodesPayload struct {
 
 // FactorRegenerateRequest is the body for
 // `POST /users/:userId/factors/:id/regenerate`. Only meaningful on
-// backup_codes factors. Password re-entry required.
+// backup_codes factors. Password re-entry is always required, and a
+// current code from any active primary factor is required too — a
+// stolen session + phished password must not be able to atomically
+// invalidate the user's existing backup codes.
 type FactorRegenerateRequest struct {
 	Password string `json:"password" binding:"required" example:"yourcurrentpassword"`
+	// Code is a current TOTP or backup-code from any of the user's
+	// active factors. Required.
+	Code string `json:"code" binding:"required" example:"123456"`
 }
 
 // FactorLabelUpdateRequest is the body for `PATCH /users/:userId/factors/:id`.
@@ -238,9 +250,10 @@ type FactorLabelUpdateRequest struct {
 }
 
 // FactorDeleteRequest is the body for `DELETE /users/:userId/factors/:id`.
-// Password is always required (step-up). `code` is a valid TOTP code
-// OR a valid backup code; required when deleting the last primary
-// factor, optional otherwise (the service enforces).
+// Password is always required (step-up). `code` is a valid TOTP or
+// backup code from any of the user's active factors; required whenever
+// the user has at least one active primary factor — otherwise a stolen
+// session + phished password could silently dismantle the user's MFA.
 type FactorDeleteRequest struct {
 	Password string `json:"password" binding:"required"`
 	Code     string `json:"code,omitempty"`

@@ -20,29 +20,33 @@ export const mfaVerifySchema = z.object({
 
 export type MfaVerifyFormData = z.infer<typeof mfaVerifySchema>;
 
-// Step-up password re-entry for enrol / regenerate.
+// Step-up password re-entry — kept for callers that legitimately need
+// only the password (the very first factor enrolment, when the user
+// has no primary factor to verify against yet).
 export const factorPasswordStepUpSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
 export type FactorPasswordStepUpFormData = z.infer<typeof factorPasswordStepUpSchema>;
 
-// Disable-factor form: password + code, both required because the
-// backend service enforces password + a valid code from any active
-// factor when the user is deleting their last primary factor. The
-// UI collects both always — if the server rejects the code as
-// unnecessary (not last primary) the call still succeeds.
-export const factorDisableSchema = z.object({
+// Step-up password + current MFA code. The backend requires both for
+// every factor mutation (enrol/delete/regenerate) once the user has at
+// least one active primary factor — see security audit findings
+// A-H-1/2/3 (2026-05-01). The UI surfaces this as two inputs.
+export const factorStepUpWithCodeSchema = z.object({
   password: z.string().min(1, 'Password is required'),
   code: z.string().trim().min(1, 'Code is required').max(32, 'Code is too long'),
 });
 
-export type FactorDisableFormData = z.infer<typeof factorDisableSchema>;
+export type FactorStepUpWithCodeFormData = z.infer<typeof factorStepUpWithCodeSchema>;
 
-// Enrol TOTP: a single password-only step. Label is optional — the
-// server accepts null — but we keep it off the form for now to
-// minimise the enrolment flow's complexity. A future label-editor
-// can live in the factor list entry itself.
+// Disable-factor (delete) form: same shape as factorStepUpWithCodeSchema.
+// Kept as a separate alias so the dialog imports stay descriptive.
+export const factorDisableSchema = factorStepUpWithCodeSchema;
+export type FactorDisableFormData = FactorStepUpWithCodeFormData;
+
+// Enrol-form is the first-enrolment shape: password only. The
+// has-primary path uses factorStepUpWithCodeSchema instead.
 export const factorEnrolSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });

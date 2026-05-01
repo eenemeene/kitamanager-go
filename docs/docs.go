@@ -12159,6 +12159,11 @@ const docTemplate = `{
                 "type"
             ],
             "properties": {
+                "code": {
+                    "description": "Code is a current TOTP or backup-code from any of the user's\nactive factors. Required when the user already has at least one\nactive primary factor enrolled; empty string is accepted (and\nignored) only on the first-ever enrollment.",
+                    "type": "string",
+                    "example": "123456"
+                },
                 "label": {
                     "type": "string",
                     "example": "iPhone"
@@ -12196,9 +12201,15 @@ const docTemplate = `{
         "github_com_eenemeene_kitamanager-go_internal_models.FactorRegenerateRequest": {
             "type": "object",
             "required": [
+                "code",
                 "password"
             ],
             "properties": {
+                "code": {
+                    "description": "Code is a current TOTP or backup-code from any of the user's\nactive factors. Required.",
+                    "type": "string",
+                    "example": "123456"
+                },
                 "password": {
                     "type": "string",
                     "example": "yourcurrentpassword"

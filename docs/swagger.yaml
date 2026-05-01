@@ -1468,6 +1468,14 @@ definitions:
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.FactorEnrollRequest:
     properties:
+      code:
+        description: |-
+          Code is a current TOTP or backup-code from any of the user's
+          active factors. Required when the user already has at least one
+          active primary factor enrolled; empty string is accepted (and
+          ignored) only on the first-ever enrollment.
+        example: "123456"
+        type: string
       label:
         example: iPhone
         type: string
@@ -1496,10 +1504,17 @@ definitions:
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.FactorRegenerateRequest:
     properties:
+      code:
+        description: |-
+          Code is a current TOTP or backup-code from any of the user's
+          active factors. Required.
+        example: "123456"
+        type: string
       password:
         example: yourcurrentpassword
         type: string
     required:
+    - code
     - password
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.FactorResponse:

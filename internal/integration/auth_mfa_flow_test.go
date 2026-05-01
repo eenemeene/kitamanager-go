@@ -47,7 +47,7 @@ func seedUserWithTOTP(t *testing.T, email, password string) (userID uint, factor
 	factorSvc := service.NewFactorService(fstore, store.NewUserStore(testDB), testTOTPAEAD(t), "KitaManager (test)", nil, audit)
 
 	ctx := context.Background()
-	enroll, err := factorSvc.EnrollTOTP(ctx, u.ID, nil, password, u.Email)
+	enroll, err := factorSvc.EnrollTOTP(ctx, u.ID, nil, password, "", u.Email)
 	if err != nil {
 		t.Fatalf("enroll: %v", err)
 	}

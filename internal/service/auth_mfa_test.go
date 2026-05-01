@@ -38,7 +38,7 @@ func enrolAndActivateTOTPFor(t *testing.T, db *gorm.DB, _ *AuthService, user *mo
 		auditService,
 	)
 	ctx := context.Background()
-	enroll, err := factorSvc.EnrollTOTP(ctx, user.ID, nil, password, user.Email)
+	enroll, err := factorSvc.EnrollTOTP(ctx, user.ID, nil, password, "", user.Email)
 	if err != nil {
 		t.Fatalf("enroll: %v", err)
 	}
@@ -281,7 +281,7 @@ func TestAuthService_VerifyMFALogin_BackupCodeSuccess(t *testing.T) {
 	svc := createAuthService(db)
 	ctx := context.Background()
 	user := createTestUserWithHashedPassword(t, db, "U", "u@example.com", "pw-123456")
-	_, _ = enrolAndActivateTOTPFor(t, db, svc, user, "pw-123456")
+	_, secret := enrolAndActivateTOTPFor(t, db, svc, user, "pw-123456")
 
 	// Rotate a fresh set of backup codes so we have the raw values.
 	factorStore := store.NewFactorStore(db)
@@ -291,7 +291,8 @@ func TestAuthService_VerifyMFALogin_BackupCodeSuccess(t *testing.T) {
 	}
 	auditService := createAuditService(db)
 	factorSvc := NewFactorService(factorStore, store.NewUserStore(db), testAuthAEAD(), "KitaManager (test)", nil, auditService)
-	payload, err := factorSvc.RegenerateBackupCodes(ctx, user.ID, bf.ID, "pw-123456")
+	stepUpCode, _ := totp.GenerateCode(secret, time.Now().UTC())
+	payload, err := factorSvc.RegenerateBackupCodes(ctx, user.ID, bf.ID, "pw-123456", stepUpCode)
 	if err != nil {
 		t.Fatalf("regenerate: %v", err)
 	}
@@ -659,13 +660,14 @@ func TestAuthService_VerifyMFALogin_BackupCodeNormalisation(t *testing.T) {
 	svc := createAuthService(db)
 	ctx := context.Background()
 	user := createTestUserWithHashedPassword(t, db, "U", "u@example.com", "pw-123456")
-	_, _ = enrolAndActivateTOTPFor(t, db, svc, user, "pw-123456")
+	_, secret := enrolAndActivateTOTPFor(t, db, svc, user, "pw-123456")
 
 	factorStore := store.NewFactorStore(db)
 	bf, _ := factorStore.FindBackupCodesFactor(ctx, user.ID)
 	auditService := createAuditService(db)
 	factorSvc := NewFactorService(factorStore, store.NewUserStore(db), testAuthAEAD(), "KitaManager (test)", nil, auditService)
-	payload, err := factorSvc.RegenerateBackupCodes(ctx, user.ID, bf.ID, "pw-123456")
+	stepUpCode, _ := totp.GenerateCode(secret, time.Now().UTC())
+	payload, err := factorSvc.RegenerateBackupCodes(ctx, user.ID, bf.ID, "pw-123456", stepUpCode)
 	if err != nil {
 		t.Fatalf("regen: %v", err)
 	}

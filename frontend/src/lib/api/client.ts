@@ -351,8 +351,12 @@ class ApiClient {
     return response.data;
   }
 
-  async regenerateBackupCodes(factorId: number, password: string): Promise<BackupCodesPayload> {
-    const body: FactorRegenerateRequest = { password };
+  async regenerateBackupCodes(
+    factorId: number,
+    password: string,
+    code: string
+  ): Promise<BackupCodesPayload> {
+    const body: FactorRegenerateRequest = { password, code };
     const response = await this.client.post<BackupCodesPayload>(
       `/users/me/factors/${factorId}/regenerate`,
       body
