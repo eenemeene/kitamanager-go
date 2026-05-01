@@ -3,6 +3,18 @@ title: kitamanager-api-Schalter
 weight: 2
 ---
 
-{{< callout type="info" >}}
-Vollständige deutsche Übersetzung folgt. Bitte einstweilen die [englische Fassung](/en/docs/reference/cli-and-config/kitamanager-api-flags/) lesen. KitaManager-spezifische Begriffe (NdH, QM/MSS, Integrationsstatus, ISBJ, Bezirks-Jugendamt, Senatsverwaltung für Bildung, Jugend und Familie) sind in beiden Sprachen identisch.
-{{< /callout >}}
+Die `kitamanager-api`-Binärdatei nimmt **keine Kommandozeilen-Schalter**. Jeder Aspekt des Verhaltens wird über [Umgebungsvariablen](../env-vars/) konfiguriert — die richtige Form für Container-Bereitstellungen.
+
+```bash
+./bin/kitamanager-api
+# Komplette Konfiguration über Env oder eine .env-Datei im Arbeitsverzeichnis.
+```
+
+Die Build-Version liefert die API selbst:
+
+```bash
+curl -sf http://localhost:8080/api/v1/health
+# liefert {"status":"ok","version":"v0.34.0","commit":"...","build_time":"..."}
+```
+
+Für den deutlich reichhaltigeren Schalter-Satz des report-pdf-Tools siehe das [README des Tools](https://github.com/eenemeene/kitamanager-go/tree/main/tools/report-pdf).
