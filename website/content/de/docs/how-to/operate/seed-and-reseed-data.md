@@ -6,7 +6,7 @@ weight: 4
 Sie wollen die Demo-Organisation „Kita Sonnenschein" mit Bereichen, Mitarbeitenden, Kindern und Verträgen laden (oder neu laden). Nützlich für Entwicklung, Demos und Tests.
 
 {{< callout type="warning" >}}
-**Niemals Testdaten in eine Produktivdatenbank seeden.** Die Seed-Namen sind fiktiv, aber die Operation legt auch Demo-Konten mit Standard-Passwörtern an.
+**Niemals Testdaten in eine Produktivdatenbank seeden.** Die Demo-Konten nutzen das öffentliche Standard-Passwort `supersecret`; jede geseedete Umgebung hat dieselben Zugangsdaten. Behandeln Sie sie als kompromittiert, sobald der Host erreichbar ist.
 {{< /callout >}}
 
 ## Beim ersten Start per Env-Var seeden

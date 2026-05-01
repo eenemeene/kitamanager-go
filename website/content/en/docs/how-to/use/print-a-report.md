@@ -15,5 +15,5 @@ You want to print one of the statistics pages (or save it as a PDF) for a board 
 ## Notes
 
 - Reports are styled for printing — the sidebar, dark mode chrome, and interactive controls are hidden, and chart colours are tuned for paper.
-- For a *recurring* PDF distribution (e.g. a monthly board package emailed automatically), the project includes a separate sidecar tool — see [Architecture: Report tool](../../../explanation/architecture/#report-tool) and the operator how-to for setting it up.
+- For a *recurring* PDF distribution (e.g. a monthly board package emailed automatically), the project includes a separate sidecar tool — see [The report tool](../../../explanation/architecture/the-report-tool/) and the operator how-to for setting it up.
 - Apply filters *before* printing. The print view captures whatever's currently shown.

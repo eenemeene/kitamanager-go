@@ -50,13 +50,4 @@ Der Vergleich ist pro Eigenschaft: nicht nur Gesamtbetrag, sondern pro-Zuschlag-
 
 Echte ISBJ-Bescheide tragen „K"- (Korrektur) und „A"- (Aufhebung) Marker auf Zeilen, die rückwirkend einen vorherigen Monat korrigieren oder stornieren. KitaManagers Parser **ignoriert diese Marker derzeit** und behandelt jede Zeile als eigenständig für den Bescheid-Monat. Das verursacht eine bekannte Bescheid-Vergleichs-Drift, wenn der Senat Beträge aus einem früheren Monat korrigiert: der korrigierte Betrag wird gegen den Monat verbucht, in dem der Bescheid *ausgestellt* wurde, nicht den Monat, für den er *gilt*, sodass zwei Monate gegenläufige Differenzen statt einer passenden Zeile zeigen. Bekannte Einschränkung; die Umgehung beim Triagieren ist, gegenläufige Differenzen über aufeinanderfolgende Monate zu ignorieren.
 
-## Wo nachsehen, wenn etwas schiefgeht
-
-| Symptom | Wahrscheinliche Ursache | Wo nachsehen |
-|---|---|---|
-| „Datei konnte nicht geparst werden" | Excel-Layout-Drift oder falscher Dateityp | Spalten-Map in `internal/isbj/parse.go` |
-| „Keine Bescheide für diesen Monat gefunden" | Upload erzeugte einen anderen Zeitraum als erwartet | Zeitraum-Daten in `government_funding_bill_periods` |
-| Viele „Fehlt in Abrechnung"-Einträge | Gutscheinnummern matchen nicht | Kind-Detailseiten, [Abweichung in einer Abrechnung untersuchen](../../how-to/use/investigate-a-bill-discrepancy/) |
-| Viele „Zusätzlich in Abrechnung"-Einträge | Kinder sind gegangen, Senat hat nicht aktualisiert | Bezirks-Jugendamt |
-| Anhaltende Gesamt-Drift über viele Kinder | Fördersätze veraltet | [Berliner Fördersätze aktualisieren](../../how-to/operate/update-government-funding-rates/) |
-| Gesamt passt, aber Eigenschafts-Aufschlüsselung weicht ab | Zuschlag nicht synchron | Vertrags-Zuschläge des Kindes vs. Papier-Gutschein |
+Für die operative Triage-Matrix (welches Symptom auf welche Korrektur abbildet) siehe [Abweichung in einer Abrechnung untersuchen](../../how-to/use/investigate-a-bill-discrepancy/).

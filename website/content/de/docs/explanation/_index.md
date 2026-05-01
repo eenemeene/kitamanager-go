@@ -16,11 +16,12 @@ Wenn Sie ein Schritt-für-Schritt-*Rezept* brauchen, suchen Sie in [How-to](../h
   {{< card link="why-the-kita-year-runs-aug-to-jul/" title="Warum das Kita-Jahr von August bis Juli läuft" subtitle="Kalenderkonventionen, Saldo-Reset-Semantik und warum Diagramme nach Kita-Jahr und nicht nach Kalenderjahr schattieren." icon="calendar" >}}
   {{< card link="how-attendance-is-modeled/" title="Wie Anwesenheit modelliert wird" subtitle="Tagesgenaue Datensätze, Unterschied zwischen abwesend und nicht-erfasst, warum das Wochengitter automatisch speichert." icon="clipboard-check" >}}
   {{< card link="the-isbj-reconciliation-flow/" title="Der ISBJ-Abgleich" subtitle="Was beim Hochladen einer Excel passiert: Parsen, Matching nach Gutscheinnummer, Vergleich pro Eigenschaft, die drei Abweichungs-Kategorien." icon="refresh" >}}
+  {{< card link="today-and-timezone/" title="Wie heute und die Zeitzone funktionieren" subtitle="Warum jede ist-heute-aktiv-Entscheidung über models.Today() und KITAMANAGER_TIMEZONE läuft." icon="clock" >}}
 {{< /cards >}}
 
 ## Wie KitaManager selbst funktioniert (für Entwickler:innen und Betreiber:innen)
 
 {{< cards >}}
   {{< card link="why-money-is-stored-as-cents/" title="Warum Geldbeträge als Cents gespeichert werden" subtitle="Floating-Point-Fallen und die Konvention ganzzahliger Cents im gesamten System. Hilfreich beim Schreiben von Förder-YAMLs oder bei Finanzcode." icon="currency-euro" >}}
-  {{< card link="architecture/" title="Architektur" subtitle="Systemüberblick, RBAC, Datenfluss, das report-pdf-Sidecar, Soft-Delete-Modell." icon="cube" >}}
+  {{< card link="architecture/" title="Architektur" subtitle="Systemüberblick, organisations-bezogene Ressourcen. Unterseiten zum Report-Tool und zum Soft-Delete-Modell." icon="cube" >}}
 {{< /cards >}}

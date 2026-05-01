@@ -9,16 +9,7 @@ This page explains why, and what to do at the boundary where humans see euros.
 
 ## The problem with floats
 
-Floating-point numbers can't represent decimal fractions exactly. The classic demo:
-
-```go
-fmt.Println(0.1 + 0.2)
-// Output: 0.30000000000000004
-```
-
-For a system that compares thousands of monthly bills against thousands of calculated amounts, even tiny rounding errors compound into systematic drift. A €0.01 floating-point miscompare on every one of 120 children every month is €14.40 of phantom drift per year per organisation. Multiply across many Kitas and many years and the trust in the comparison disappears.
-
-Integer cents have no such problem: `10 + 20 = 30`, exactly, every time.
+Floating-point numbers can't represent decimal fractions exactly: `0.1 + 0.2` is `0.30000000000000004`. Compounding rounding errors break bill comparisons. Integer cents have no such problem.
 
 ## The convention
 
@@ -74,9 +65,4 @@ The rule of thumb: if the number could ever appear in a comparison or a sum, kee
 
 ## Where the convention lives
 
-- Postgres columns: `INTEGER NOT NULL`.
-- Go models: `int` (not `int64`, which would suggest amounts large enough to overflow `int32` — KitaManager's domain doesn't reach that range).
-- API JSON: integer `payment` field, never a string.
-- TypeScript types: `number` (auto-generated from OpenAPI).
-- Funding YAML: decimal EUR for `payment` (the only human-authored entry point; the importer converts to cents on load — see [Government funding YAML format](../../reference/data-model/funding-yaml-format/)).
-- The convention is documented in `CLAUDE.md` as a cross-cutting rule that applies to every change.
+The cents-as-int convention applies at every layer: Postgres column, Go model, API JSON, TypeScript type. The one exception is hand-authored funding YAML (`payment` is decimal EUR for readability; the importer converts to cents on load — see [Government funding YAML format](../../reference/data-model/funding-yaml-format/)). The convention is documented in `CLAUDE.md`.

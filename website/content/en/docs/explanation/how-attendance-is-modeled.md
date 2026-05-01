@@ -32,18 +32,8 @@ The lack of explicit save is intentional — teachers shouldn't need to remember
 
 The weekly grid is the wide view. The narrow view is on the child's detail page, which lists every attendance record for that child in date order. Useful for parent reports ("how many days has Max been absent this term?") and for spotting patterns.
 
-## Reporting
+## Reporting and limits
 
-Daily summary endpoints aggregate the per-child records into present-counts per day. The dashboard's daily summary uses these. The data is exact for any day on which all children have been recorded; it under-counts present days for any past day where some cells were left blank.
+Daily summary endpoints aggregate the per-child records; the dashboard daily summary uses these. The data is exact when every child has a record for the day; it under-counts when cells were left blank.
 
-## What's deliberately not modelled
-
-- **Half-day attendance.** A child is either present or absent for the whole care day.
-- **Reason codes.** "Absent because sick" vs "absent because vacation" is not stored.
-- **Drop-off / pick-up times.** Attendance is binary per day, not time-ranged.
-
-These omissions match the Berlin Kita convention. If a Bundesland or organisation needs richer modelling, it's a data-model change, not a UI change.
-
-## What's recorded for audit
-
-Every attendance create/update/delete writes an audit-log entry: who recorded what, when, from what IP. The entries appear in the org-scoped audit log filterable by `attendance_*` actions.
+Deliberately not modelled (matches the Berlin Kita convention): half-day attendance, reason codes, drop-off/pick-up times. Every create/update/delete writes an audit-log entry filterable by `attendance_*` actions.

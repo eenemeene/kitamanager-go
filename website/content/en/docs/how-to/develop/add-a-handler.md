@@ -73,11 +73,11 @@ widgets.POST("", h.WidgetHandler.Create)
 ### 5. Regenerate the swagger doc and TypeScript types
 
 ```bash
-make swagger-docs
-make api-types
+make docs        # umbrella: regenerates swagger + schema docs
+make api-types   # regenerates the TypeScript API types from the new swagger
 ```
 
-Commit the regenerated `docs/swagger.{json,yaml}` and `frontend/src/lib/api/openapi.d.ts`.
+Commit the regenerated `docs/swagger.{json,yaml}`, `docs/schema/`, and `frontend/src/lib/api/openapi.d.ts`.
 
 ### 6. Add tests
 

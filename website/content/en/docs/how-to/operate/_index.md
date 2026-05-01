@@ -10,7 +10,10 @@ For developer tasks (extending the codebase), see [Develop on the codebase](../d
 ## Deploy
 
 - [Deploy with Docker Compose](deploy-with-docker-compose/)
+- [Configure a reverse proxy and TLS](configure-reverse-proxy-and-tls/)
+- [Configure SMTP and WebAuthn](configure-smtp-and-webauthn/)
 - [Back up and restore the database](back-up-and-restore/)
+- [Upgrade KitaManager to a new version](upgrade-kitamanager/)
 
 ## Funding configuration
 

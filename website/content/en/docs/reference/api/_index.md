@@ -7,11 +7,7 @@ aliases:
 
 KitaManager exposes a REST API. The interactive OpenAPI/Swagger UI is bundled with the server at `/swagger/index.html` — that is the **canonical** reference and reflects the running build exactly. The pages below are a hand-written summary that organises the endpoints by resource for browsability.
 
-For the design rationale (cookie-based auth, CSRF, why we don't have a refresh endpoint), see the [Architecture page](../../explanation/architecture/) — a session-and-CSRF-specific section is on the roadmap.
-
-{{< callout type="info" >}}
-The full per-resource breakdown lives below in this index for now. Splitting one file per resource is on the roadmap; the OpenAPI spec at `/swagger/index.html` already provides per-endpoint detail.
-{{< /callout >}}
+The OpenAPI spec at `/swagger/index.html` provides per-endpoint detail; this page groups the endpoints by resource for browsability.
 
 ## Authentication
 
@@ -114,6 +110,7 @@ All section endpoints are scoped to an organization: `/api/v1/organizations/{org
 | GET | `.../sections/{sectionId}` | Get section |
 | PUT | `.../sections/{sectionId}` | Update section |
 | DELETE | `.../sections/{sectionId}` | Delete section |
+| POST | `.../sections/{sectionId}/promote-default` | Mark this section as the default for new contracts (demotes the previous default) |
 
 ## Employees
 
@@ -142,6 +139,7 @@ Nested under an employee: `.../employees/{id}/contracts`.
 | GET | `.../contracts/current` | Get current active contract |
 | GET | `.../contracts/{contractId}` | Get contract |
 | PUT | `.../contracts/{contractId}` | Update contract |
+| PUT | `.../contracts/batch` | Batch-update employee contracts (used by the contract-amend flow) |
 | DELETE | `.../contracts/{contractId}` | Delete contract |
 
 ## Children
@@ -160,6 +158,10 @@ All child endpoints are scoped to an organization: `/api/v1/organizations/{orgId
 | POST | `.../children/import` | Import children from YAML |
 | GET | `.../children/attendance` | Org-wide attendance by date |
 | GET | `.../children/attendance/summary` | Daily attendance summary |
+| GET | `.../children/without-vouchers` | List children with a contract but no Gutscheinnummer |
+| GET | `.../children/billing-summary` | Org-wide billing summary across uploaded bills |
+| POST | `.../children/{childId}/vouchers` | Assign or update the Kita-Gutschein number on a child |
+| GET | `.../children/{childId}/billing-history` | Per-child history of every billed amount across all uploaded bills |
 
 ### Child contracts
 
@@ -172,6 +174,7 @@ Nested under a child: `.../children/{id}/contracts`.
 | GET | `.../contracts/current` | Get current active contract |
 | GET | `.../contracts/{contractId}` | Get contract |
 | PUT | `.../contracts/{contractId}` | Update contract |
+| PUT | `.../contracts/batch` | Batch-update child contracts (used by the contract-amend flow) |
 | DELETE | `.../contracts/{contractId}` | Delete contract |
 
 ### Child attendance
@@ -310,6 +313,10 @@ Scoped to an organization: `/api/v1/organizations/{orgId}/statistics`. All stati
 ### Forecast and estimates
 
 These endpoints power the **Forecast** page. They take the same date range plus a list of scenario modifications (added/removed children, added/removed employees) and return the projected statistics with the modifications applied.
+
+{{< callout type="warning" >}}
+The `estimates/child-funding` and `estimates/employee-cost` endpoints are currently parked pending a domain-model refactor. The `forecast` endpoint works against current data; the per-child / per-employee estimates may return errors or stale calculations.
+{{< /callout >}}
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|

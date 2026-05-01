@@ -7,14 +7,13 @@ Rezepte für die Person, die den KitaManager-Server betreibt: bereitstellen, sic
 
 Für Entwickleraufgaben (Codebasis erweitern) siehe [An der Codebasis arbeiten](../develop/).
 
-{{< callout type="info" >}}
-Vollständige deutsche Übersetzungen folgen. Bis dahin verlinken die einzelnen Themen unten auf die englische Fassung.
-{{< /callout >}}
-
 ## Bereitstellung
 
 - [Mit Docker Compose bereitstellen](deploy-with-docker-compose/)
+- [Reverse-Proxy und TLS konfigurieren](configure-reverse-proxy-and-tls/)
+- [SMTP und WebAuthn konfigurieren](configure-smtp-and-webauthn/)
 - [Datenbank sichern und wiederherstellen](back-up-and-restore/)
+- [KitaManager auf eine neue Version aktualisieren](upgrade-kitamanager/)
 
 ## Förderkonfiguration
 
