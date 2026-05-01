@@ -338,7 +338,7 @@ func (h *GovernmentFundingBillHandler) ChildBillingHistory(c *gin.Context) {
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
 // @Param billId path int true "Bill Period ID"
-// @Success 204
+// @Success 204 "No Content"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
