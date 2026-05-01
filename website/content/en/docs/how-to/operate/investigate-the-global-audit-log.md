@@ -17,7 +17,7 @@ curl -b cookies.txt "http://localhost:8080/api/v1/audit-logs?from=2026-04-01&to=
 curl -b cookies.txt "http://localhost:8080/api/v1/audit-logs?action=login"
 
 # Filter by actor user ID
-curl -b cookies.txt "http://localhost:8080/api/v1/audit-logs?actor=42"
+curl -b cookies.txt "http://localhost:8080/api/v1/audit-logs?user_id=42"
 
 # Get a specific entry
 curl -b cookies.txt "http://localhost:8080/api/v1/audit-logs/12345"

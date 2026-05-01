@@ -33,14 +33,14 @@ The result, in cents, is what KitaManager displays as "calculated funding" for t
 
 ## A worked example
 
-Take a 2-year-old child on a `ganztag` contract with NdH set, in October 2026. Look up against `configs/government-fundings/berlin.yaml` (Berlin):
+Take a 2-year-old child on a `ganztag` contract with NdH set, in October 2026. Look up against `configs/government-fundings/berlin.yaml`:
 
 1. Active configuration: the one with `from: 2026-08-01`, no `to`.
 2. Child age: 2.
-3. Matching entry: `age: [0, 1]` — wait, the child is 2 so this doesn't match. Try the next: `age: [2, 3]`.
-4. Base rate: `care_type: ganztag` in that entry → e.g. `payment: 224012` (2,240.12 €).
-5. Supplements: NdH → `payment: 9351` (93.51 €). Plus the parent-meal universal: `−2300` (−23.00 €).
-6. Total: 224012 + 9351 − 2300 = **231063 cents = 2,310.63 €**.
+3. Matching entry: `age: [2, 3]`.
+4. Base rate: `care_type: ganztag` in that entry → e.g. `payment: 2240.12` (€2,240.12 in YAML, stored as 224 012 cents).
+5. Supplements: NdH → `payment: 93.51` (9 351 cents). Plus the parent-meal universal: `payment: -23.0` (−2 300 cents).
+6. Total: 224 012 + 9 351 − 2 300 = **231 063 cents = €2,310.63**.
 
 (The exact numbers shift each year — what matters is the chain.)
 

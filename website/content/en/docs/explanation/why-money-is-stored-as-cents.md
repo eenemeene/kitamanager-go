@@ -78,5 +78,5 @@ The rule of thumb: if the number could ever appear in a comparison or a sum, kee
 - Go models: `int` (not `int64`, which would suggest amounts large enough to overflow `int32` — KitaManager's domain doesn't reach that range).
 - API JSON: integer `payment` field, never a string.
 - TypeScript types: `number` (auto-generated from OpenAPI).
-- Funding YAML: integer `payment` (see [Government funding YAML format](../../reference/data-model/funding-yaml-format/)).
+- Funding YAML: decimal EUR for `payment` (the only human-authored entry point; the importer converts to cents on load — see [Government funding YAML format](../../reference/data-model/funding-yaml-format/)).
 - The convention is documented in `CLAUDE.md` as a cross-cutting rule that applies to every change.

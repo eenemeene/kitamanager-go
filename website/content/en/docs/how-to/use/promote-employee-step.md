@@ -19,4 +19,4 @@ Refresh the dashboard. The widget should no longer list this employee.
 
 - The widget's projected cost delta includes both the salary increase and the employer contribution change — that's the total monthly impact.
 - KitaManager uses the **From** date of the new contract to determine when the higher step takes effect, including in past months for retroactive promotions.
-- The model — and how the date math works — is summarised in the explanation of [How the staffing key works](../../../explanation/what-the-staffing-key-means/) (the staffing model is independent but uses the same per-month-active contract logic).
+- For background on the per-month-active contract logic that the cost projection uses, see [What the staffing key means](../../../explanation/what-the-staffing-key-means/).

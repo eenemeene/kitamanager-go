@@ -60,8 +60,8 @@ These let an empty database bootstrap with a usable account on first start. Set 
 
 | Variable | Default | Required | Notes |
 |---|---|---|---|
-| `SEED_ADMIN_EMAIL` |  | yes for first start | Email of the initial superadmin. |
-| `SEED_ADMIN_PASSWORD` |  | yes for first start | Initial superadmin password. Change it after first login. |
+| `SEED_ADMIN_EMAIL` |  | required to seed the bootstrap superadmin (skipped if empty) | Email of the initial superadmin. |
+| `SEED_ADMIN_PASSWORD` |  | required if `SEED_ADMIN_EMAIL` is set | Initial superadmin password. Change it after first login. |
 | `SEED_ADMIN_NAME` | `admin` | no | Display name for the seeded superadmin. |
 | `SEED_TEST_DATA` | `false` | no | When `true`, seeds the demo "Kita Sonnenschein" organisation, sections, employees, children, contracts. **Never set this in production.** |
 | `GOVERNMENT_FUNDING_SEED_PATH` |  | no | Path to a YAML funding-rate file to load on startup. Empty skips. Typical value: `configs/government-fundings/berlin.yaml`. |

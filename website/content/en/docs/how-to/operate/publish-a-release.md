@@ -13,7 +13,10 @@ You want to cut a new KitaManager release that builds and pushes container image
    ```bash
    gh release create v0.35.0 --generate-notes
    ```
-4. The release workflow takes over: it builds multi-arch container images for `kitamanager-api`, `kitamanager-frontend`, and `kitamanager-report`, and pushes them to `ghcr.io/eenemeene/kitamanager-*:v0.35.0`.
+4. The release workflow takes over: it builds multi-arch container images and pushes them to GHCR (and Docker Hub):
+   - `ghcr.io/eenemeene/kitamanager:v0.35.0` — the API
+   - `ghcr.io/eenemeene/kitamanager-ui:v0.35.0` — the Next.js frontend
+   - `ghcr.io/eenemeene/kitamanager-report:v0.35.0` — the report-pdf sidecar
 
 ## Notes
 

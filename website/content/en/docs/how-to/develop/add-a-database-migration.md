@@ -34,7 +34,16 @@ In `${NEXT}_<short_description>.down.sql`:
 ALTER TABLE children DROP COLUMN allergy_notes;
 ```
 
-The down migration must restore the prior state exactly. Test it locally with `make dev-fresh && make api-build && ./bin/kitamanager-api migrate down 1 && ./bin/kitamanager-api migrate up 1`.
+The down migration must restore the prior state exactly. Migrations run automatically inside `database.Connect`, so to test a down/up cycle locally use the `migrate` CLI directly against the dev DB:
+
+```bash
+go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+DB_URL="postgres://kitamanager:kitamanager@localhost:5432/kitamanager?sslmode=disable"
+migrate -path internal/database/migrations -database "$DB_URL" down 1
+migrate -path internal/database/migrations -database "$DB_URL" up 1
+```
+
+Or simpler: `make dev-fresh` rebuilds the DB from scratch, applying every up migration in order.
 
 ### 4. Update the GORM model
 
@@ -65,9 +74,22 @@ The integration suite spins up Postgres, runs migrations from scratch, and exerc
 
 ## Soft-delete considerations
 
-If your new column is referenced from `users` or `organizations`, read `.claude/rules/database.md`'s soft-delete section before joining against either table in raw queries. The GORM-auto-scoping rule does not apply to JOINs.
+If your new column or query references `users` or `organizations` (the two soft-deleted tables), the **raw-query rule** applies. GORM auto-scopes the primary model in a query — `db.First(&User{}, id)` adds `WHERE deleted_at IS NULL` for you — but **it does not auto-scope JOINed tables**:
 
-For the rationale, see [Architecture: Soft-delete](../../../explanation/architecture/#soft-delete-for-users-and-organisations).
+```go
+// BAD — soft-deleted users still authenticate
+db.Table("sessions").Joins("JOIN users ON users.id = sessions.user_id").
+   Where("sessions.id = ?", idHash).Take(&row)
+
+// GOOD — explicit filter via the helper
+q := db.Table("sessions").Joins("JOIN users ON users.id = sessions.user_id").
+   Where("sessions.id = ?", idHash)
+err := store.ExcludeSoftDeletedUsers(q).Take(&row).Error
+```
+
+Helpers live at `internal/store/scoping.go` (`ExcludeSoftDeletedUsers`, `ExcludeSoftDeletedOrganizations`). Use `db.Unscoped()` only for admin trash-view endpoints, `HardDelete` methods, and `FindByIDUnscoped`. Never in a default read path.
+
+For the design rationale, see [Architecture: Soft-delete](../../../explanation/architecture/#soft-delete-for-users-and-organisations). The full rule is in `.claude/rules/database.md`.
 
 ## Notes
 

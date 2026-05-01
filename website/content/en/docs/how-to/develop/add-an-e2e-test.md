@@ -66,4 +66,4 @@ npx playwright test --project=chromium --headed e2e/<feature>.spec.ts
 
 - For component-level tests, use Jest instead — Playwright is for full-stack flows.
 - The test helpers in `frontend/e2e/utils/` cover login, MFA enrolment, and common selectors.
-- A single `playwright.config.ts` lives at the repo root; it pins one worker on CI to avoid contention with the seeded backend.
+- A single `playwright.config.ts` lives at `frontend/playwright.config.ts`; it pins one worker on CI to avoid contention with the seeded backend.

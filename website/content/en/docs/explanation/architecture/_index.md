@@ -107,21 +107,6 @@ Migration 000015 made the `users` and `organizations` tables soft-deleted: a `DE
 
 Admin restore today is direct-DB only — see [Restore a soft-deleted user or organization](../../how-to/operate/restore-a-soft-deleted-user-or-organization/). A trash-view UI is planned.
 
-### The raw-query rule (developers)
+The asymmetry across tables is deliberate: only `users` and `organizations` are tombstoned. Children, employees, contracts, sections, bills, audit log entries hard-delete on `DELETE` because identity-bearing rows need the tombstone, while record-keeping rows can be physically removed without breaking the audit trail (which is preserved independently).
 
-GORM auto-scopes the **primary** model in a query — `db.First(&User{}, id)` automatically adds `WHERE deleted_at IS NULL`. **It does not auto-scope JOINed tables.** So:
-
-```go
-// BAD — soft-deleted users still authenticate
-db.Table("sessions").Joins("JOIN users ON users.id = sessions.user_id").
-   Where("sessions.id = ?", idHash).Take(&row)
-
-// GOOD — explicit filter via the helper
-q := db.Table("sessions").Joins("JOIN users ON users.id = sessions.user_id").
-   Where("sessions.id = ?", idHash)
-err := store.ExcludeSoftDeletedUsers(q).Take(&row).Error
-```
-
-Helpers live at `internal/store/scoping.go`. Any hand-written query that JOINs through `users` or `organizations` MUST filter explicitly. Use `db.Unscoped()` only for: admin trash-view endpoints, `HardDelete` methods (Art. 17 / TTL purge), and `FindByIDUnscoped`. Never in a default read path. The full rule is in `.claude/rules/database.md`.
-
-Other tables (children, employees, contracts, sections, bills, audit log entries) hard-delete on `DELETE`. The asymmetry is deliberate: identity-bearing rows need the tombstone; record-keeping rows can be physically removed without breaking the audit trail (which is preserved independently).
+For the contributor rule on writing queries that respect the soft-delete invariant (auto-scoping vs. JOIN'd tables), see [Add a database migration](../../how-to/develop/add-a-database-migration/) and `.claude/rules/database.md`.

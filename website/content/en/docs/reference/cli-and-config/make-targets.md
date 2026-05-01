@@ -54,7 +54,7 @@ The repo's `Makefile` is the canonical entry point for build, test, and tooling 
 
 | Target | What it does |
 |---|---|
-| `make docs` | Builds the website locally (Hugo). |
+| `make docs` | Regenerates the auto-built docs: swagger and the schema diagram. (Does **not** run Hugo — for the website, run `hugo --source=website` directly or use `hugo --source=website server` for live preview.) |
 | `make schema-docs` | Regenerates `docs/schema/` from the running database via `tbls`. |
 | `make swagger-docs` | Regenerates `docs/swagger.{json,yaml}` from swaggo annotations. |
 | `make swagger-check` | Verifies the swagger files are up to date (CI). |

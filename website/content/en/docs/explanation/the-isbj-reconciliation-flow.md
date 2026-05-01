@@ -48,7 +48,7 @@ The comparison is per-property: not just total amount, but per-supplement amount
 
 ## K/A markers (corrections)
 
-Real ISBJ bills carry "K" (Korrektur) and "A" (Aufhebung) markers on rows that retroactively correct or cancel a previous month's billing. KitaManager's parser **currently ignores these markers**, treating each row as standalone for the bill month. This causes a known billing-comparison drift when the Senate corrects a prior month's amounts — see the project memory `project_isbj_corrections.md` for details and the planned fix.
+Real ISBJ bills carry "K" (Korrektur) and "A" (Aufhebung) markers on rows that retroactively correct or cancel a previous month's billing. KitaManager's parser **currently ignores these markers**, treating each row as standalone for the bill month. This causes a known billing-comparison drift when the Senate corrects a prior month's amounts: the corrected amount is recorded against the month the bill was *issued in*, not the month it *applies to*, so two months show offsetting deltas instead of one matching row. Tracked as a known limitation; the workaround when triaging is to ignore offsetting deltas across consecutive months.
 
 ## Where to look when something goes wrong
 

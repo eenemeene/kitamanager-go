@@ -28,11 +28,14 @@ GOVERNMENT_FUNDING_SEED_STATE=berlin
 make dev-fresh   # drops the DB, re-runs migrations, re-seeds
 ```
 
-Or, if you already have a running stack:
+Or, if you already have a running stack and want to start fresh:
 
 ```bash
-make docker-reset
+make docker-reset   # stops the stack and drops volumes (no seed in this step)
+make dev            # brings it back up; the seed runs on the empty DB
 ```
+
+`make dev-fresh` is the one-shot equivalent.
 
 ## What gets seeded
 

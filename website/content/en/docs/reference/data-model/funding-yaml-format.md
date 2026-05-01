@@ -26,13 +26,13 @@ A YAML file is a list of **funding configurations**. Each configuration represen
 
 ## Entry properties
 
-Each entry within a configuration is a list of **property** rates that apply to children whose age falls in the entry's range. A property has a `key`, `value`, `label`, `payment` (in **cents**), and `requirement` (FTE staffing requirement per child for that property).
+Each entry within a configuration is a list of **property** rates that apply to children whose age falls in the entry's range. A property has a `key`, `value`, `label`, `payment` (in **EUR as a decimal**), and `requirement` (FTE staffing requirement per child for that property).
 
 ```yaml
 - key: care_type
   value: ganztag
   label: Full-Time (up to 9h)
-  payment: 249491          # = 2,494.91 EUR
+  payment: 2494.91         # EUR; the importer converts to cents internally
   requirement: 0.355       # 0.355 FTE staff hours per child
 ```
 
@@ -62,11 +62,13 @@ Each entry within a configuration is a list of **property** rates that apply to 
 - key: parent
   value: meals
   label: Parent Value Meal
-  payment: -2300           # = -23 EUR (deduction)
+  payment: -23.0           # EUR (deduction)
   requirement: 0
   apply_to_all_contracts: true
 ```
 
-## Money is in cents
+## Money in YAML vs. money inside KitaManager
 
-**Every `payment` value is an integer in cents** to avoid floating-point precision errors. €1,668.47 → `166847`. €−23.00 → `-2300`. Same convention everywhere in the codebase; see [Why money is stored as cents](../../../explanation/why-money-is-stored-as-cents/).
+The funding YAML uses **decimal EUR** for `payment` so a hand-edited file is readable. On import (`POST /api/v1/government-funding-rates/import` and the `GOVERNMENT_FUNDING_SEED_PATH` startup loader), the value is converted to integer cents and stored as such — `int(math.Round(eur * 100))`. Every internal calculation, every API response, and every database column is in **cents**. Round-trip exporting back to YAML re-emits decimal EUR.
+
+For why the storage layer is cents (and the floating-point trap that motivates it), see [Why money is stored as cents](../../../explanation/why-money-is-stored-as-cents/).

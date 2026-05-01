@@ -323,7 +323,7 @@ Two scopes:
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/v1/audit-logs` | **Superadmin-only** global audit log including login/auth events. Filters: `from`, `to`, `action`, `actor`. |
+| GET | `/api/v1/audit-logs` | **Superadmin-only** global audit log including login/auth events. Filters: `from`, `to`, `action`, `user_id`. |
 | GET | `/api/v1/audit-logs/{id}` | **Superadmin-only** get a specific audit log entry. |
 | GET | `/api/v1/organizations/{orgId}/audit-logs` | **Org admin** view, scoped to one organization. Login/password events are excluded. |
 

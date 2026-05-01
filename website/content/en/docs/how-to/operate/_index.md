@@ -21,6 +21,7 @@ For developer tasks (extending the codebase), see [Develop on the codebase](../d
 
 - [Rotate the TOTP encryption key](rotate-totp-encryption-key/)
 - [Investigate the global audit log](investigate-the-global-audit-log/)
+- [Restore a soft-deleted user or organization](restore-a-soft-deleted-user-or-organization/)
 
 ## Releases
 
