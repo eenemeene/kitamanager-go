@@ -29,7 +29,7 @@ Für konto-bezogene Verwaltung (andere Nutzer:innen verwalten, Organisationseins
 ## Planung
 
 - [Prognose für Aufnahme- oder Personalplanung nutzen](use-the-forecast/)
-- [Haushaltsposten verwalten](manage-budget-items/)
+- [Budgetposten verwalten](manage-budget-items/)
 
 ## Berichte
 

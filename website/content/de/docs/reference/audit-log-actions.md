@@ -61,5 +61,5 @@ Mutierende Operationen auf den meisten Ressourcen emittieren eine Aktion der For
 
 ## Hinweise
 
-- Der org-bezogene Audit-Log unter `Einstellungen → Audit-Log` blendet absichtlich Login-/Passwort-/MFA-Ereignisse aus, weil sie organisations-übergreifend sensibel sind. Superadmins sehen sie über `GET /api/v1/audit-logs` — siehe [Globales Audit-Log untersuchen](../../how-to/operate/investigate-the-global-audit-log/).
+- Der org-bezogene Audit-Log unter `Einstellungen → Protokoll` blendet absichtlich Login-/Passwort-/MFA-Ereignisse aus, weil sie organisations-übergreifend sensibel sind. Superadmins sehen sie über `GET /api/v1/audit-logs` — siehe [Globales Audit-Log untersuchen](../../how-to/operate/investigate-the-global-audit-log/).
 - Die obige Liste ist der Stand zum Zeitpunkt des Schreibens; die maßgebliche Quelle ist `internal/models/audit.go`.

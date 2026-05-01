@@ -7,7 +7,7 @@ Sie wollen sehen, wer in Ihrer Organisation was und wann geändert hat.
 
 ## Schritte
 
-1. Öffnen Sie in der Seitenleiste **Einstellungen** → **Audit-Log**.
+1. Öffnen Sie in der Seitenleiste **Einstellungen** → **Protokoll** (das Audit-Log).
 2. Die Tabelle zeigt Zeitpunkt, Nutzer:in, Aktion (z. B. `child_create`, `section_delete`), betroffene Ressource, IP-Adresse und Ergebnis.
 3. Filtern Sie nach Datumsbereich oder geben Sie eine Zeichenfolge in **Aktion** ein (z. B. `delete` matcht jede Lösch-Aktion).
 

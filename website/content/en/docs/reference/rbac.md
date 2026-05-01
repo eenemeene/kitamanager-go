@@ -35,6 +35,7 @@ For *how to assign* roles, see [Manage users and roles](../../how-to/administer/
 | Statistics | Read | Read | Read | Read | — |
 | Users | CRUD | CRUD | Read | — | — |
 | ISBJ funding bills | Create / Read / Delete | Create / Read / Delete | Create / Read / Delete | — | — |
+| Audit log (org-scoped) | Read | Read | — | — | — |
 
 **Scope:** `superadmin` operates across all organisations. All other roles are scoped to the organisations they are members of. A user can be a member of multiple organisations with a different role in each (e.g. admin in Kita A, manager in Kita B).
 

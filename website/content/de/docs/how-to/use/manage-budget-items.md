@@ -1,11 +1,11 @@
 ---
-title: Haushaltsposten verwalten
+title: Budgetposten verwalten
 weight: 9
 ---
 
 Sie wollen eine Einnahme oder Ausgabe erfassen, die nicht automatisch aus Verträgen berechnet wird (Elternbeiträge, Miete, Gartenpflege, Spenden).
 
-## Haushaltsposten anlegen
+## Budgetposten anlegen
 
 1. Klicken Sie in der Seitenleiste auf **Budgetposten**.
 2. Klicken Sie auf **Erstellen**.

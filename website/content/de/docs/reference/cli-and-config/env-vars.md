@@ -3,7 +3,7 @@ title: Umgebungsvariablen
 weight: 1
 ---
 
-KitaManager wird fast vollständig über Umgebungsvariablen konfiguriert. Die API-Binärdatei lädt sie beim Start aus der Prozess-Umgebung plus einer optionalen `.env`-Datei im Arbeitsverzeichnis. Die Liste unten spiegelt `internal/config/config.go`; **Pflicht**-Variablen lassen `Load()` fehlschlagen, wenn sie fehlen oder Platzhalter sind.
+KitaManager wird fast vollständig über Umgebungsvariablen konfiguriert. Die API-Binärdatei lädt sie beim Start aus der Prozess-Umgebung plus einer optionalen `.env`-Datei im Arbeitsverzeichnis. Die Liste unten spiegelt `internal/config/config.go`; **Pflicht**-Variablen lassen `Load()` fehlschlagen, wenn sie fehlen oder Platzhalter sind. Einige Einträge (`KITAMANAGER_TIMEZONE`, `SEED_RBAC_POLICIES`) werden direkt von anderen Paketen gelesen (`internal/models/clock.go`, `cmd/api/main.go`) statt von `config.Load()`, folgen aber denselben Konventionen.
 
 ## Datenbank
 
@@ -64,6 +64,7 @@ Diese erlauben einer leeren Datenbank, beim ersten Start mit einem nutzbaren Kon
 | `SEED_ADMIN_PASSWORD` |  | erforderlich, falls `SEED_ADMIN_EMAIL` gesetzt ist | Initiales Superadmin-Passwort. Nach dem ersten Login ändern. |
 | `SEED_ADMIN_NAME` | `admin` | nein | Anzeigename für den geseedeten Superadmin. |
 | `SEED_TEST_DATA` | `false` | nein | Bei `true` wird die Demo-Organisation „Kita Sonnenschein" mit Bereichen, Mitarbeitenden, Kindern und Verträgen geseedet. **Niemals in Produktion setzen.** |
+| `SEED_RBAC_POLICIES` | `false` | nein | Bei `true` werden die Casbin-Standardrichtlinien für Rollen und Berechtigungen beim Start geseedet. Genau einmal auf einer frischen Datenbank nötig; bei späteren Starts harmlos, aber unnötig. |
 | `GOVERNMENT_FUNDING_SEED_PATH` |  | nein | Pfad zu einer YAML-Fördersatz-Datei, die beim Start geladen wird. Leer überspringt. Typischer Wert: `configs/government-fundings/berlin.yaml`. |
 | `GOVERNMENT_FUNDING_SEED_STATE` | `berlin` | nein | Der Bundesland-Name, mit dem die geladene Förder-Konfiguration beschriftet wird. |
 
