@@ -1,19 +1,45 @@
 name: Dependabot auto-merge
 
+# pull_request_target runs against the BASE branch with full write
+# permissions, so the actor + author checks below MUST be belt-and-
+# braces. Closes audit finding O-H-2 (security review 2026-05-01):
+#
+#   1. github.actor must be dependabot[bot] (was already enforced).
+#   2. github.event.pull_request.user.login must ALSO be dependabot[bot]
+#      — actor and PR author are different fields and a workflow injection
+#      could in principle spoof one but not both.
+#   3. dependabot/fetch-metadata classifies the bump; we only auto-merge
+#      patch + minor. Major bumps drop into the manual review queue.
+#
+# Permissions are granted at the JOB level, scoped to exactly what the
+# step needs.
+
 on:
   pull_request_target:
     types: [opened, synchronize, reopened]
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
   auto-merge:
     runs-on: ubuntu-latest
-    if: github.actor == 'dependabot[bot]'
+    if: >
+      github.actor == 'dependabot[bot]' &&
+      github.event.pull_request.user.login == 'dependabot[bot]'
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
-      - name: Enable auto-merge
+      - name: Fetch dependabot metadata
+        id: meta
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge for patch + minor bumps
+        if: >
+          steps.meta.outputs.update-type == 'version-update:semver-patch' ||
+          steps.meta.outputs.update-type == 'version-update:semver-minor'
         run: gh pr merge --auto --merge "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
