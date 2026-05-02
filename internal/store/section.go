@@ -108,6 +108,14 @@ func (s *SectionStore) Update(ctx context.Context, section *models.Section) erro
 	return DBFromContext(ctx, s.db).Save(section).Error
 }
 
+// sectionPromoteLockNamespace is the pg_advisory_xact_lock namespace key
+// for serializing concurrent PromoteToDefault calls on the same
+// organization. The constant matches the migration that introduced the
+// partial-unique index (000019_section_default_unique). Using a distinct
+// namespace prevents collisions with any unrelated future caller that
+// might want to lock the same org for other reasons.
+const sectionPromoteLockNamespace = 19
+
 // PromoteToDefault flips is_default so that exactly the given section
 // is the org's default. Implemented as TWO statements inside a single
 // transaction (the caller wraps the call) rather than one UPDATE with
@@ -119,8 +127,34 @@ func (s *SectionStore) Update(ctx context.Context, section *models.Section) erro
 // invariant at every statement boundary.
 //
 // Caller must wrap in a transaction (Service does).
+//
+// Concurrency note (review finding H2): the partial-unique index
+// guarantees we can never end up with TWO defaults in an org, but
+// without an explicit serialization point two concurrent promotes can
+// still lost-update each other. Under READ COMMITTED, T2's "clear all
+// is_default=true" UPDATE blocks on the row T1 just touched; when T1
+// commits, T2 wakes up, re-reads the now-committed state, and clears
+// T1's freshly-set default — leaving T2's chosen section as the
+// default and silently dropping T1's promotion (T1's HTTP response was
+// already 200). The pg_advisory_xact_lock at the head of the function
+// serializes promotes per organization so the second caller waits
+// until the first transaction has fully committed.
+//
+// Advisory lock chosen over SELECT ... FOR UPDATE on the
+// organizations row to avoid an unnecessary write/lock side effect on
+// an unrelated table. The lock is automatically released at COMMIT or
+// ROLLBACK.
 func (s *SectionStore) PromoteToDefault(ctx context.Context, id, orgID uint) error {
 	db := DBFromContext(ctx, s.db)
+
+	// Serialize concurrent PromoteToDefault calls on this organization.
+	// Both args are int4 in the (int, int) overload; orgID fits in int4
+	// for any realistic deployment (Postgres serial PKs are int4).
+	if err := db.Exec("SELECT pg_advisory_xact_lock(?, ?)",
+		sectionPromoteLockNamespace, orgID).Error; err != nil {
+		return err
+	}
+
 	// Step 1: clear any existing default in this org. is_default rows
 	// for soft-deleted sections are also cleared (no harm — they're
 	// invisible everywhere else).
