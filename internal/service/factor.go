@@ -133,9 +133,12 @@ func (s *FactorService) GetForUser(ctx context.Context, userID, factorID uint) (
 	return &r, nil
 }
 
-// EnrollTOTP starts TOTP enrollment. Requires step-up (password re-
-// entry) so a stolen session cookie alone cannot plant an
-// authenticator the attacker controls.
+// EnrollTOTP starts TOTP enrollment. Requires step-up: password re-entry
+// always, plus — when the user already has an active primary factor — a
+// current TOTP/backup code from any active factor. The combined check
+// prevents a stolen session + phished password from planting an attacker-
+// controlled authenticator that the legitimate user wouldn't notice
+// (their existing factor remains active).
 //
 // If a pending TOTP factor already exists for this user it is
 // deleted first — "second enrollment attempt replaces the first"
@@ -148,8 +151,11 @@ func (s *FactorService) GetForUser(ctx context.Context, userID, factorID uint) (
 // event is `factor_enrolled` on successful ActivateFactor. Abandoned
 // pending rows get cleaned up by CleanupAbandonedPendingFactors and
 // carry no security signal of their own.
-func (s *FactorService) EnrollTOTP(ctx context.Context, userID uint, label *string, password string, accountLabel string) (*models.FactorResponse, error) {
+func (s *FactorService) EnrollTOTP(ctx context.Context, userID uint, label *string, password, code, accountLabel string) (*models.FactorResponse, error) {
 	if err := s.verifyPassword(ctx, userID, password); err != nil {
+		return nil, err
+	}
+	if err := s.verifyStepUpMFA(ctx, userID, code); err != nil {
 		return nil, err
 	}
 
@@ -298,10 +304,11 @@ func (s *FactorService) ActivateFactor(ctx context.Context, userID, factorID uin
 }
 
 // DeleteFactor removes a factor. Password is always required
-// (step-up). A code (TOTP or backup) is additionally required when
-// the factor is a primary (non-backup) and would be the user's LAST
-// primary — otherwise a stolen session could remove the only real
-// factor and lock the user into password-only.
+// (step-up); a current MFA code from any active factor is additionally
+// required whenever the user has at least one active primary factor —
+// otherwise a stolen session + phished password could silently
+// dismantle a user's MFA without producing a noticeable signal on the
+// account.
 //
 // When the last primary factor is deleted, any associated
 // backup_codes factor is deleted too in the same transaction
@@ -320,34 +327,31 @@ func (s *FactorService) DeleteFactor(ctx context.Context, userID, factorID uint,
 		return apperror.InternalWrap(err, "find factor")
 	}
 
-	// Determine if this delete would leave the user with no primary
-	// factor — if so, require a code from ANY active factor as
-	// additional proof.
+	// A code from any active factor is required whenever the user has
+	// any active primary factor — same step-up model as enrollment and
+	// backup-code regeneration. The "last primary delete" sweep below
+	// still relies on the primariesRemaining count.
 	active, err := s.factorStore.FindActiveByUserID(ctx, userID)
 	if err != nil {
 		return apperror.InternalWrap(err, "find active factors")
 	}
 	primariesRemaining := 0
+	hasPrimary := false
 	for _, g := range active {
-		if g.ID != f.ID && g.Type != models.FactorTypeBackupCodes {
-			primariesRemaining++
+		if g.Type != models.FactorTypeBackupCodes {
+			hasPrimary = true
+			if g.ID != f.ID {
+				primariesRemaining++
+			}
 		}
 	}
+	if hasPrimary {
+		if err := s.verifyStepUpMFA(ctx, userID, code); err != nil {
+			return err
+		}
+	}
+
 	isPrimary := f.Type != models.FactorTypeBackupCodes
-	if isPrimary && primariesRemaining == 0 {
-		if code == "" {
-			return apperror.BadRequest("code is required when removing your last primary factor")
-		}
-		if err := s.verifyAnyFactorCode(ctx, userID, code); err != nil {
-			return err
-		}
-	} else if code != "" {
-		// Even when not strictly required, a provided code must be
-		// valid — never accept a bad code silently.
-		if err := s.verifyAnyFactorCode(ctx, userID, code); err != nil {
-			return err
-		}
-	}
 
 	// Delete.
 	rows, err := s.factorStore.DeleteFactor(ctx, factorID, userID)
@@ -404,10 +408,16 @@ func (s *FactorService) UpdateLabel(ctx context.Context, userID, factorID uint, 
 }
 
 // RegenerateBackupCodes replaces every existing backup code row for
-// the factor (whether used or unused) with a fresh set. Step-up
-// required. Only meaningful for backup_codes factors.
-func (s *FactorService) RegenerateBackupCodes(ctx context.Context, userID, factorID uint, password string) (*models.BackupCodesPayload, error) {
+// the factor (whether used or unused) with a fresh set. Password and a
+// current MFA code from any active factor are both required — a stolen
+// session + phished password must not be able to atomically invalidate
+// the user's existing backup codes. Only meaningful for backup_codes
+// factors.
+func (s *FactorService) RegenerateBackupCodes(ctx context.Context, userID, factorID uint, password, code string) (*models.BackupCodesPayload, error) {
 	if err := s.verifyPassword(ctx, userID, password); err != nil {
+		return nil, err
+	}
+	if err := s.verifyStepUpMFA(ctx, userID, code); err != nil {
 		return nil, err
 	}
 	f, err := s.factorStore.FindByIDAndUser(ctx, factorID, userID)
@@ -457,10 +467,13 @@ func (s *FactorService) CleanupAbandonedPendingFactors(ctx context.Context, olde
 const WebAuthnRegistrationChallengeLifetime = 5 * time.Minute
 
 // EnrollWebAuthn begins a WebAuthn registration ceremony. Requires
-// step-up (password re-entry) so a stolen session can't plant an
-// authenticator attacker-controlled. If a pending WebAuthn factor
-// already exists for this user + label combination, it is replaced —
-// the user may simply have abandoned an earlier attempt.
+// step-up: password re-entry always, plus a current TOTP/backup code
+// when the user already has an active primary factor. The combined
+// check prevents a stolen session + phished password from planting an
+// attacker-controlled security key alongside the user's real factor.
+// If a pending WebAuthn factor already exists for this user + label
+// combination, it is replaced — the user may simply have abandoned an
+// earlier attempt.
 //
 // The returned enrollment payload wraps a PublicKeyCredentialCreationOptionsJSON
 // blob that the client hands straight to `navigator.credentials.create()`.
@@ -470,11 +483,14 @@ const WebAuthnRegistrationChallengeLifetime = 5 * time.Minute
 //
 // As with EnrollTOTP, no audit event is emitted for the pending row —
 // the audited event is `factor_enrolled` on successful ActivateFactor.
-func (s *FactorService) EnrollWebAuthn(ctx context.Context, userID uint, label *string, password, accountName, displayName string) (*models.FactorResponse, error) {
+func (s *FactorService) EnrollWebAuthn(ctx context.Context, userID uint, label *string, password, code, accountName, displayName string) (*models.FactorResponse, error) {
 	if s.webAuthn == nil {
 		return nil, apperror.BadRequest("WebAuthn is not enabled on this deployment")
 	}
 	if err := s.verifyPassword(ctx, userID, password); err != nil {
+		return nil, err
+	}
+	if err := s.verifyStepUpMFA(ctx, userID, code); err != nil {
 		return nil, err
 	}
 
@@ -983,6 +999,35 @@ func (s *FactorService) verifyTOTPForActivation(ctx context.Context, factorID ui
 		return apperror.Unauthorized("invalid code")
 	}
 	return nil
+}
+
+// verifyStepUpMFA enforces the step-up policy on enrollment, deletion,
+// and backup-code regeneration: when the user has at least one active
+// primary factor (TOTP or WebAuthn), require a current TOTP/backup code
+// from any active factor. When the user has no primary factor yet (the
+// first-ever enrollment case) the code may be empty.
+//
+// Empty code with a primary enrolled is a BadRequest, so the API can
+// distinguish "you forgot to send a code" from "the code you sent is
+// wrong" (the latter is Unauthorized via verifyAnyFactorCode).
+//
+// WebAuthn-only users (extremely rare — backup codes are auto-issued on
+// first primary activation) must keep at least one valid backup code on
+// hand to satisfy this step-up; this is documented at the request DTO.
+func (s *FactorService) verifyStepUpMFA(ctx context.Context, userID uint, code string) error {
+	hasPrimary, err := s.HasActivePrimaryFactor(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if !hasPrimary {
+		// First-ever enrollment: nothing to verify against. Accept
+		// password-only step-up and let the handler proceed.
+		return nil
+	}
+	if code == "" {
+		return apperror.BadRequest("a current TOTP or backup code is required")
+	}
+	return s.verifyAnyFactorCode(ctx, userID, code)
 }
 
 // verifyAnyFactorCode accepts a code that matches ANY of the user's

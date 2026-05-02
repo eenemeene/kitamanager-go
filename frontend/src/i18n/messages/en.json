@@ -665,10 +665,13 @@
       },
       "regenerateDialog": {
         "title": "Regenerate recovery codes",
-        "description": "Your existing recovery codes will stop working. Confirm your password to generate a new set.",
+        "description": "Your existing recovery codes will stop working. Enter your password and a current authenticator or recovery code to generate a new set.",
         "passwordLabel": "Current password",
+        "codeLabel": "Authenticator or recovery code",
+        "codePlaceholder": "123456",
+        "codeHelp": "A current 6-digit code from your authenticator app, or one of your existing recovery codes.",
         "submit": "Generate new codes",
-        "wrongPassword": "Current password is incorrect.",
+        "wrongPassword": "Wrong password or code.",
         "cancel": "Cancel"
       },
       "disableDialog": {

@@ -11897,6 +11897,14 @@ export interface components {
       password: string;
     };
     FactorEnrollRequest: {
+      /**
+       * @description Code is a current TOTP or backup-code from any of the user's
+       *     active factors. Required when the user already has at least one
+       *     active primary factor enrolled; empty string is accepted (and
+       *     ignored) only on the first-ever enrollment.
+       * @example 123456
+       */
+      code?: string;
       /** @example iPhone */
       label?: string;
       /** @example yourcurrentpassword */
@@ -11912,6 +11920,12 @@ export interface components {
       factors: components['schemas']['FactorResponse'][];
     };
     FactorRegenerateRequest: {
+      /**
+       * @description Code is a current TOTP or backup-code from any of the user's
+       *     active factors. Required.
+       * @example 123456
+       */
+      code: string;
       /** @example yourcurrentpassword */
       password: string;
     };

@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useRegenerateBackupCodes } from '@/lib/hooks/use-factors';
-import { factorPasswordStepUpSchema, type FactorPasswordStepUpFormData } from '@/lib/schemas/auth';
+import { factorStepUpWithCodeSchema, type FactorStepUpWithCodeFormData } from '@/lib/schemas/auth';
 import type { BackupCodesPayload } from '@/lib/api/types';
 
 interface Props {
@@ -40,17 +40,17 @@ export function TwoFactorRegenerateDialog({ open, onOpenChange, factorId, onComp
   const { toast } = useToast();
 
   const [error, setError] = useState<string | null>(null);
-  const form = useForm<FactorPasswordStepUpFormData>({
-    resolver: zodResolver(factorPasswordStepUpSchema),
+  const form = useForm<FactorStepUpWithCodeFormData>({
+    resolver: zodResolver(factorStepUpWithCodeSchema),
     mode: 'onChange',
-    defaultValues: { password: '' },
+    defaultValues: { password: '', code: '' },
   });
   const mutation = useRegenerateBackupCodes();
 
   useEffect(() => {
     if (!open) {
       setError(null);
-      form.reset({ password: '' });
+      form.reset({ password: '', code: '' });
       mutation.reset();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -60,7 +60,7 @@ export function TwoFactorRegenerateDialog({ open, onOpenChange, factorId, onComp
     if (!factorId) return;
     setError(null);
     mutation.mutate(
-      { factorId, password: data.password },
+      { factorId, password: data.password, code: data.code },
       {
         onSuccess: (payload) => {
           toast({ title: tParent('successRegenerated') });
@@ -74,6 +74,7 @@ export function TwoFactorRegenerateDialog({ open, onOpenChange, factorId, onComp
             toast({ title: tCommon('error'), variant: 'destructive' });
           }
           form.setValue('password', '');
+          form.setValue('code', '');
         },
       }
     );
@@ -96,6 +97,21 @@ export function TwoFactorRegenerateDialog({ open, onOpenChange, factorId, onComp
               aria-invalid={!!error}
               {...form.register('password')}
             />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="regen-code">{t('codeLabel')}</Label>
+            <Input
+              id="regen-code"
+              type="text"
+              inputMode="text"
+              autoComplete="one-time-code"
+              autoCapitalize="none"
+              spellCheck={false}
+              aria-invalid={!!error}
+              placeholder={t('codePlaceholder')}
+              {...form.register('code')}
+            />
+            <p className="text-muted-foreground text-xs">{t('codeHelp')}</p>
             {error && (
               <p role="alert" className="text-destructive text-sm">
                 {error}

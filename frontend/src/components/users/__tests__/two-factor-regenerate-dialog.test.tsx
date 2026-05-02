@@ -47,6 +47,24 @@ describe('TwoFactorRegenerateDialog', () => {
     ).toBeDisabled();
   });
 
+  it('submit is disabled when only password is filled (no code)', async () => {
+    // Closes audit finding A-H-3: stolen-session+phished-password must
+    // not be enough to rotate backup codes.
+    const u = userEvent.setup();
+    renderWithProviders(
+      <TwoFactorRegenerateDialog
+        open
+        onOpenChange={() => {}}
+        factorId={43}
+        onComplete={jest.fn()}
+      />
+    );
+    await u.type(screen.getByLabelText('settings.twoFactor.regenerateDialog.passwordLabel'), 'pw');
+    expect(
+      screen.getByRole('button', { name: 'settings.twoFactor.regenerateDialog.submit' })
+    ).toBeDisabled();
+  });
+
   it('submit is disabled when factorId is undefined', async () => {
     const u = userEvent.setup();
     renderWithProviders(
@@ -58,6 +76,7 @@ describe('TwoFactorRegenerateDialog', () => {
       />
     );
     await u.type(screen.getByLabelText('settings.twoFactor.regenerateDialog.passwordLabel'), 'pw');
+    await u.type(screen.getByLabelText('settings.twoFactor.regenerateDialog.codeLabel'), '123456');
     expect(
       screen.getByRole('button', { name: 'settings.twoFactor.regenerateDialog.submit' })
     ).toBeDisabled();
@@ -82,16 +101,17 @@ describe('TwoFactorRegenerateDialog', () => {
       screen.getByLabelText('settings.twoFactor.regenerateDialog.passwordLabel'),
       'correct'
     );
+    await u.type(screen.getByLabelText('settings.twoFactor.regenerateDialog.codeLabel'), '123456');
     await u.click(
       screen.getByRole('button', { name: 'settings.twoFactor.regenerateDialog.submit' })
     );
     await waitFor(() =>
       expect(onComplete).toHaveBeenCalledWith({ factor_id: 43, codes: ['x-y', 'a-b'] })
     );
-    expect(apiClient.regenerateBackupCodes).toHaveBeenCalledWith(43, 'correct');
+    expect(apiClient.regenerateBackupCodes).toHaveBeenCalledWith(43, 'correct', '123456');
   });
 
-  it('shows wrongPassword inline on 401 + clears the input', async () => {
+  it('shows wrongPassword inline on 401 + clears both inputs', async () => {
     (apiClient.regenerateBackupCodes as jest.Mock).mockRejectedValue(axiosError(401));
     const u = userEvent.setup();
     renderWithProviders(
@@ -102,8 +122,10 @@ describe('TwoFactorRegenerateDialog', () => {
         onComplete={jest.fn()}
       />
     );
-    const input = screen.getByLabelText('settings.twoFactor.regenerateDialog.passwordLabel');
-    await u.type(input, 'bad');
+    const password = screen.getByLabelText('settings.twoFactor.regenerateDialog.passwordLabel');
+    const code = screen.getByLabelText('settings.twoFactor.regenerateDialog.codeLabel');
+    await u.type(password, 'bad');
+    await u.type(code, '000000');
     await u.click(
       screen.getByRole('button', { name: 'settings.twoFactor.regenerateDialog.submit' })
     );
@@ -112,7 +134,8 @@ describe('TwoFactorRegenerateDialog', () => {
         'settings.twoFactor.regenerateDialog.wrongPassword'
       );
     });
-    expect((input as HTMLInputElement).value).toBe('');
+    expect((password as HTMLInputElement).value).toBe('');
+    expect((code as HTMLInputElement).value).toBe('');
   });
 
   it('cancel calls onOpenChange(false)', async () => {

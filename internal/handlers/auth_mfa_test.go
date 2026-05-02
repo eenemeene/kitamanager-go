@@ -43,7 +43,7 @@ func userWithMFA(t *testing.T, db *gorm.DB, email, password string) (*models.Use
 		audit,
 	)
 	ctx := context.Background()
-	enroll, err := factorSvc.EnrollTOTP(ctx, user.ID, nil, password, user.Email)
+	enroll, err := factorSvc.EnrollTOTP(ctx, user.ID, nil, password, "", user.Email)
 	if err != nil {
 		t.Fatalf("enroll: %v", err)
 	}

@@ -64,13 +64,18 @@ export function useActivateFactor() {
 }
 
 // useRegenerateBackupCodes replaces the user's backup code set.
-// Password step-up required. Returns the new codes for one-time
-// display. We invalidate on success so the factor list refreshes
-// any backup_codes_remaining counter the UI shows.
+// Password AND a current TOTP/backup code are both required — backup
+// code factors only exist post-first-primary, so the step-up gate
+// always fires. Closes audit finding A-H-3 (2026-05-01).
 export function useRegenerateBackupCodes() {
   const queryClient = useQueryClient();
-  return useMutation<BackupCodesPayload, Error, { factorId: number; password: string }>({
-    mutationFn: ({ factorId, password }) => apiClient.regenerateBackupCodes(factorId, password),
+  return useMutation<
+    BackupCodesPayload,
+    Error,
+    { factorId: number; password: string; code: string }
+  >({
+    mutationFn: ({ factorId, password, code }) =>
+      apiClient.regenerateBackupCodes(factorId, password, code),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.factors.all() });
     },

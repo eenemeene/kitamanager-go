@@ -665,10 +665,13 @@
       },
       "regenerateDialog": {
         "title": "Wiederherstellungscodes neu erzeugen",
-        "description": "Ihre bestehenden Wiederherstellungscodes werden ungültig. Bestätigen Sie Ihr Passwort, um neue Codes zu erzeugen.",
+        "description": "Ihre bestehenden Wiederherstellungscodes werden ungültig. Geben Sie Ihr Passwort und einen aktuellen Authenticator- oder Wiederherstellungscode ein, um neue Codes zu erzeugen.",
         "passwordLabel": "Aktuelles Passwort",
+        "codeLabel": "Authenticator- oder Wiederherstellungscode",
+        "codePlaceholder": "123456",
+        "codeHelp": "Ein aktueller 6-stelliger Code aus Ihrer Authenticator-App oder einer Ihrer vorhandenen Wiederherstellungscodes.",
         "submit": "Neue Codes erzeugen",
-        "wrongPassword": "Das aktuelle Passwort ist falsch.",
+        "wrongPassword": "Falsches Passwort oder falscher Code.",
         "cancel": "Abbrechen"
       },
       "disableDialog": {

@@ -163,7 +163,7 @@ func (h *FactorHandler) Enroll(c *gin.Context) {
 	switch req.Type {
 	case models.FactorTypeTOTP:
 		email := getUserEmailForTOTPLabel(c)
-		resp, err := h.service.EnrollTOTP(c.Request.Context(), userID, req.Label, req.Password, email)
+		resp, err := h.service.EnrollTOTP(c.Request.Context(), userID, req.Label, req.Password, req.Code, email)
 		if err != nil {
 			respondError(c, err)
 			return
@@ -175,7 +175,7 @@ func (h *FactorHandler) Enroll(c *gin.Context) {
 		// account display name; the user's real name isn't available
 		// here without a user-store lookup and the email keeps the
 		// authenticator's picker unambiguous.
-		resp, err := h.service.EnrollWebAuthn(c.Request.Context(), userID, req.Label, req.Password, email, displayName)
+		resp, err := h.service.EnrollWebAuthn(c.Request.Context(), userID, req.Label, req.Password, req.Code, email, displayName)
 		if err != nil {
 			respondError(c, err)
 			return
@@ -258,7 +258,7 @@ func (h *FactorHandler) Regenerate(c *gin.Context) {
 	if !ok {
 		return
 	}
-	payload, err := h.service.RegenerateBackupCodes(c.Request.Context(), userID, factorID, req.Password)
+	payload, err := h.service.RegenerateBackupCodes(c.Request.Context(), userID, factorID, req.Password, req.Code)
 	if err != nil {
 		respondError(c, err)
 		return
