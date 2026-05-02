@@ -728,6 +728,16 @@ func (s *AuditService) log(ctx context.Context, entry *models.AuditLog) {
 	if entry.RequestID == "" {
 		entry.RequestID = middleware.RequestIDFromContext(ctx)
 	}
+	// L3: fall back to the request's client IP if the caller didn't
+	// set one explicitly. Used by FactorService.LogFactor* and the
+	// audit-log retention purge — neither has c.ClientIP() in scope,
+	// but the IP is on the request context via the RequestID
+	// middleware. Empty stays empty for non-HTTP callers (seed
+	// imports, CLI tooling) and for service-layer purges that aren't
+	// associated with any single request.
+	if entry.IPAddress == "" {
+		entry.IPAddress = middleware.ClientIPFromContext(ctx)
+	}
 
 	select {
 	case s.logCh <- entry:

@@ -1466,8 +1466,10 @@ definitions:
   github_com_eenemeene_kitamanager-go_internal_models.FactorDeleteRequest:
     properties:
       code:
+        example: "123456"
         type: string
       password:
+        example: adminspassword
         type: string
     required:
     - password
@@ -4979,7 +4981,7 @@ paths:
       summary: List the caller's active sessions
       tags:
       - auth
-  /api/v1/me/sessions/{id}:
+  /api/v1/me/sessions/{sessionId}:
     delete:
       description: |-
         Deletes the session with the given id (sha256 hex of the
@@ -4991,7 +4993,7 @@ paths:
       parameters:
       - description: Session id (sha256 hex)
         in: path
-        name: id
+        name: sessionId
         required: true
         type: string
       produces:
@@ -10148,7 +10150,7 @@ paths:
       summary: Start MFA enrollment
       tags:
       - factors
-  /api/v1/users/{userId}/factors/{id}:
+  /api/v1/users/{userId}/factors/{factorId}:
     delete:
       consumes:
       - application/json
@@ -10166,7 +10168,7 @@ paths:
         type: string
       - description: Factor id
         in: path
-        name: id
+        name: factorId
         required: true
         type: integer
       - description: Step-up password + optional code
@@ -10206,7 +10208,7 @@ paths:
         type: string
       - description: Factor id
         in: path
-        name: id
+        name: factorId
         required: true
         type: integer
       produces:
@@ -10241,7 +10243,7 @@ paths:
         type: string
       - description: Factor id
         in: path
-        name: id
+        name: factorId
         required: true
         type: integer
       - description: New label
@@ -10274,7 +10276,7 @@ paths:
       summary: Edit a factor's label
       tags:
       - factors
-  /api/v1/users/{userId}/factors/{id}/activate:
+  /api/v1/users/{userId}/factors/{factorId}/activate:
     post:
       consumes:
       - application/json
@@ -10291,7 +10293,7 @@ paths:
         type: string
       - description: Factor id
         in: path
-        name: id
+        name: factorId
         required: true
         type: integer
       - description: Code from the authenticator
@@ -10328,7 +10330,7 @@ paths:
       summary: Activate a pending factor
       tags:
       - factors
-  /api/v1/users/{userId}/factors/{id}/regenerate:
+  /api/v1/users/{userId}/factors/{factorId}/regenerate:
     post:
       consumes:
       - application/json
@@ -10344,7 +10346,7 @@ paths:
         type: string
       - description: Factor id
         in: path
-        name: id
+        name: factorId
         required: true
         type: integer
       - description: Step-up password

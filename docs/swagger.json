@@ -1703,7 +1703,7 @@
                 }
             }
         },
-        "/api/v1/me/sessions/{id}": {
+        "/api/v1/me/sessions/{sessionId}": {
             "delete": {
                 "security": [
                     {
@@ -1722,7 +1722,7 @@
                     {
                         "type": "string",
                         "description": "Session id (sha256 hex)",
-                        "name": "id",
+                        "name": "sessionId",
                         "in": "path",
                         "required": true
                     }
@@ -9457,7 +9457,7 @@
                 }
             }
         },
-        "/api/v1/users/{userId}/factors/{id}": {
+        "/api/v1/users/{userId}/factors/{factorId}": {
             "get": {
                 "security": [
                     {
@@ -9482,7 +9482,7 @@
                     {
                         "type": "integer",
                         "description": "Factor id",
-                        "name": "id",
+                        "name": "factorId",
                         "in": "path",
                         "required": true
                     }
@@ -9536,7 +9536,7 @@
                     {
                         "type": "integer",
                         "description": "Factor id",
-                        "name": "id",
+                        "name": "factorId",
                         "in": "path",
                         "required": true
                     },
@@ -9602,7 +9602,7 @@
                     {
                         "type": "integer",
                         "description": "Factor id",
-                        "name": "id",
+                        "name": "factorId",
                         "in": "path",
                         "required": true
                     },
@@ -9644,7 +9644,7 @@
                 }
             }
         },
-        "/api/v1/users/{userId}/factors/{id}/activate": {
+        "/api/v1/users/{userId}/factors/{factorId}/activate": {
             "post": {
                 "security": [
                     {
@@ -9673,7 +9673,7 @@
                     {
                         "type": "integer",
                         "description": "Factor id",
-                        "name": "id",
+                        "name": "factorId",
                         "in": "path",
                         "required": true
                     },
@@ -9721,7 +9721,7 @@
                 }
             }
         },
-        "/api/v1/users/{userId}/factors/{id}/regenerate": {
+        "/api/v1/users/{userId}/factors/{factorId}/regenerate": {
             "post": {
                 "security": [
                     {
@@ -9750,7 +9750,7 @@
                     {
                         "type": "integer",
                         "description": "Factor id",
-                        "name": "id",
+                        "name": "factorId",
                         "in": "path",
                         "required": true
                     },
@@ -12267,10 +12267,12 @@
             ],
             "properties": {
                 "code": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "123456"
                 },
                 "password": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "adminspassword"
                 }
             }
         },

@@ -55,7 +55,7 @@ type Session struct {
 // UserSessionResponse is the per-session payload for GET /me/sessions.
 // The `ID` is the sha256 hex of the cookie value; exposing it is safe
 // (it can't be used to authenticate) and the client needs it to DELETE
-// individual sessions via /me/sessions/:id. `Current` marks the session
+// individual sessions via /me/sessions/:sessionId. `Current` marks the session
 // that served the current request so the UI can highlight it.
 type UserSessionResponse struct {
 	ID               string    `json:"id" example:"a1b2c3..."`

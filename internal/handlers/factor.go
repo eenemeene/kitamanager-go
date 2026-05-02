@@ -55,9 +55,9 @@ func resolveTargetUserID(c *gin.Context) (uint, bool) {
 	return id, true
 }
 
-// parseFactorID decodes :id into a uint.
+// parseFactorID decodes :factorId into a uint.
 func parseFactorID(c *gin.Context) (uint, bool) {
-	raw := c.Param("id")
+	raw := c.Param("factorId")
 	n, err := strconv.ParseUint(raw, 10, 32)
 	if err != nil || n == 0 {
 		// Treat a malformed / zero id as not-found so probes can't
@@ -109,11 +109,11 @@ func (h *FactorHandler) List(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param userId path string true "User id or 'me'"
-// @Param id path int true "Factor id"
+// @Param factorId path int true "Factor id"
 // @Success 200 {object} models.FactorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
-// @Router /api/v1/users/{userId}/factors/{id} [get]
+// @Router /api/v1/users/{userId}/factors/{factorId} [get]
 func (h *FactorHandler) Get(c *gin.Context) {
 	userID, ok := resolveTargetUserID(c)
 	if !ok {
@@ -199,14 +199,14 @@ func (h *FactorHandler) Enroll(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param userId path string true "User id or 'me'"
-// @Param id path int true "Factor id"
+// @Param factorId path int true "Factor id"
 // @Param request body models.FactorActivateRequest true "Code from the authenticator"
 // @Success 200 {object} models.FactorActivateResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 409 {object} models.ErrorResponse
-// @Router /api/v1/users/{userId}/factors/{id}/activate [post]
+// @Router /api/v1/users/{userId}/factors/{factorId}/activate [post]
 func (h *FactorHandler) Activate(c *gin.Context) {
 	userID, ok := resolveTargetUserID(c)
 	if !ok {
@@ -238,13 +238,13 @@ func (h *FactorHandler) Activate(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param userId path string true "User id or 'me'"
-// @Param id path int true "Factor id"
+// @Param factorId path int true "Factor id"
 // @Param request body models.FactorRegenerateRequest true "Step-up password"
 // @Success 200 {object} models.BackupCodesPayload
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
-// @Router /api/v1/users/{userId}/factors/{id}/regenerate [post]
+// @Router /api/v1/users/{userId}/factors/{factorId}/regenerate [post]
 func (h *FactorHandler) Regenerate(c *gin.Context) {
 	userID, ok := resolveTargetUserID(c)
 	if !ok {
@@ -274,13 +274,13 @@ func (h *FactorHandler) Regenerate(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param userId path string true "User id or 'me'"
-// @Param id path int true "Factor id"
+// @Param factorId path int true "Factor id"
 // @Param request body models.FactorLabelUpdateRequest true "New label"
 // @Success 200 {object} models.FactorResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
-// @Router /api/v1/users/{userId}/factors/{id} [patch]
+// @Router /api/v1/users/{userId}/factors/{factorId} [patch]
 func (h *FactorHandler) UpdateLabel(c *gin.Context) {
 	userID, ok := resolveTargetUserID(c)
 	if !ok {
@@ -314,13 +314,13 @@ func (h *FactorHandler) UpdateLabel(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param userId path string true "User id or 'me'"
-// @Param id path int true "Factor id"
+// @Param factorId path int true "Factor id"
 // @Param request body models.FactorDeleteRequest true "Step-up password + optional code"
 // @Success 204 "No Content"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
-// @Router /api/v1/users/{userId}/factors/{id} [delete]
+// @Router /api/v1/users/{userId}/factors/{factorId} [delete]
 func (h *FactorHandler) Delete(c *gin.Context) {
 	userID, ok := resolveTargetUserID(c)
 	if !ok {

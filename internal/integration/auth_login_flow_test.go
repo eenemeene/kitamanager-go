@@ -150,16 +150,16 @@ func setupAuthFlowRouter(t *testing.T) *authFlowRouter {
 	protected.GET("/me", authHandler.Me)
 	protected.POST("/logout", authHandler.Logout)
 	protected.GET("/me/sessions", authHandler.ListSessions)
-	protected.DELETE("/me/sessions/:id", authHandler.RevokeSession)
+	protected.DELETE("/me/sessions/:sessionId", authHandler.RevokeSession)
 
 	// Factor (MFA) endpoints.
 	protected.GET("/users/:userId/factors", factorHandler.List)
 	protected.POST("/users/:userId/factors", factorHandler.Enroll)
-	protected.GET("/users/:userId/factors/:id", factorHandler.Get)
-	protected.PATCH("/users/:userId/factors/:id", factorHandler.UpdateLabel)
-	protected.DELETE("/users/:userId/factors/:id", factorHandler.Delete)
-	protected.POST("/users/:userId/factors/:id/activate", factorHandler.Activate)
-	protected.POST("/users/:userId/factors/:id/regenerate", factorHandler.Regenerate)
+	protected.GET("/users/:userId/factors/:factorId", factorHandler.Get)
+	protected.PATCH("/users/:userId/factors/:factorId", factorHandler.UpdateLabel)
+	protected.DELETE("/users/:userId/factors/:factorId", factorHandler.Delete)
+	protected.POST("/users/:userId/factors/:factorId/activate", factorHandler.Activate)
+	protected.POST("/users/:userId/factors/:factorId/regenerate", factorHandler.Regenerate)
 
 	// Global user routes. Create requires ResourceUsers + ActionCreate in at
 	// least one org — superadmin satisfies this.

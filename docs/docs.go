@@ -1709,7 +1709,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/me/sessions/{id}": {
+        "/api/v1/me/sessions/{sessionId}": {
             "delete": {
                 "security": [
                     {
@@ -1728,7 +1728,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Session id (sha256 hex)",
-                        "name": "id",
+                        "name": "sessionId",
                         "in": "path",
                         "required": true
                     }
@@ -9463,7 +9463,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/users/{userId}/factors/{id}": {
+        "/api/v1/users/{userId}/factors/{factorId}": {
             "get": {
                 "security": [
                     {
@@ -9488,7 +9488,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Factor id",
-                        "name": "id",
+                        "name": "factorId",
                         "in": "path",
                         "required": true
                     }
@@ -9542,7 +9542,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Factor id",
-                        "name": "id",
+                        "name": "factorId",
                         "in": "path",
                         "required": true
                     },
@@ -9608,7 +9608,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Factor id",
-                        "name": "id",
+                        "name": "factorId",
                         "in": "path",
                         "required": true
                     },
@@ -9650,7 +9650,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/users/{userId}/factors/{id}/activate": {
+        "/api/v1/users/{userId}/factors/{factorId}/activate": {
             "post": {
                 "security": [
                     {
@@ -9679,7 +9679,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Factor id",
-                        "name": "id",
+                        "name": "factorId",
                         "in": "path",
                         "required": true
                     },
@@ -9727,7 +9727,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/users/{userId}/factors/{id}/regenerate": {
+        "/api/v1/users/{userId}/factors/{factorId}/regenerate": {
             "post": {
                 "security": [
                     {
@@ -9756,7 +9756,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Factor id",
-                        "name": "id",
+                        "name": "factorId",
                         "in": "path",
                         "required": true
                     },
@@ -12273,10 +12273,12 @@ const docTemplate = `{
             ],
             "properties": {
                 "code": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "123456"
                 },
                 "password": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "adminspassword"
                 }
             }
         },

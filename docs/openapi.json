@@ -2299,9 +2299,11 @@
             "FactorDeleteRequest": {
                 "properties": {
                     "code": {
+                        "example": "123456",
                         "type": "string"
                     },
                     "password": {
+                        "example": "adminspassword",
                         "type": "string"
                     }
                 },
@@ -8371,14 +8373,14 @@
                 ]
             }
         },
-        "/api/v1/me/sessions/{id}": {
+        "/api/v1/me/sessions/{sessionId}": {
             "delete": {
                 "description": "Deletes the session with the given id (sha256 hex of the\ncookie value). Scoped to the caller — a user cannot revoke\nanother user's session, and the response is 404 in that\ncase so the endpoint does not leak session existence. If\nthe caller revokes their own current session, their next\nrequest will 401 and the frontend will clear cookies.",
                 "parameters": [
                     {
                         "description": "Session id (sha256 hex)",
                         "in": "path",
-                        "name": "id",
+                        "name": "sessionId",
                         "required": true,
                         "schema": {
                             "type": "string"
@@ -18263,7 +18265,7 @@
                 ]
             }
         },
-        "/api/v1/users/{userId}/factors/{id}": {
+        "/api/v1/users/{userId}/factors/{factorId}": {
             "delete": {
                 "description": "Disables a factor. Password re-entry required\n(step-up). A code from any active factor is additionally\nrequired when removing your last primary factor —\notherwise a stolen session could wipe your 2FA and\nleave you with password-only protection.",
                 "parameters": [
@@ -18279,7 +18281,7 @@
                     {
                         "description": "Factor id",
                         "in": "path",
-                        "name": "id",
+                        "name": "factorId",
                         "required": true,
                         "schema": {
                             "type": "integer"
@@ -18357,7 +18359,7 @@
                     {
                         "description": "Factor id",
                         "in": "path",
-                        "name": "id",
+                        "name": "factorId",
                         "required": true,
                         "schema": {
                             "type": "integer"
@@ -18421,7 +18423,7 @@
                     {
                         "description": "Factor id",
                         "in": "path",
-                        "name": "id",
+                        "name": "factorId",
                         "required": true,
                         "schema": {
                             "type": "integer"
@@ -18493,7 +18495,7 @@
                 ]
             }
         },
-        "/api/v1/users/{userId}/factors/{id}/activate": {
+        "/api/v1/users/{userId}/factors/{factorId}/activate": {
             "post": {
                 "description": "Verifies the first code (proving the user can read\ntheir authenticator) and enables the factor. If this\nis the user's first primary factor, a fresh set of\nbackup codes is generated and returned — save them NOW.",
                 "parameters": [
@@ -18509,7 +18511,7 @@
                     {
                         "description": "Factor id",
                         "in": "path",
-                        "name": "id",
+                        "name": "factorId",
                         "required": true,
                         "schema": {
                             "type": "integer"
@@ -18591,7 +18593,7 @@
                 ]
             }
         },
-        "/api/v1/users/{userId}/factors/{id}/regenerate": {
+        "/api/v1/users/{userId}/factors/{factorId}/regenerate": {
             "post": {
                 "description": "Replaces every backup code (used or unused) with a\nfresh set. Password re-entry required. Only valid for\nbackup_codes factors.",
                 "parameters": [
@@ -18607,7 +18609,7 @@
                     {
                         "description": "Factor id",
                         "in": "path",
-                        "name": "id",
+                        "name": "factorId",
                         "required": true,
                         "schema": {
                             "type": "integer"

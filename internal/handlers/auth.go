@@ -302,12 +302,12 @@ func (h *AuthHandler) ListSessions(c *gin.Context) {
 // @Tags auth
 // @Produce json
 // @Security BearerAuth
-// @Param id path string true "Session id (sha256 hex)"
+// @Param sessionId path string true "Session id (sha256 hex)"
 // @Success 204 "No Content"
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/me/sessions/{id} [delete]
+// @Router /api/v1/me/sessions/{sessionId} [delete]
 func (h *AuthHandler) RevokeSession(c *gin.Context) {
 	userID := getUserID(c)
 	if userID == 0 {
@@ -315,7 +315,7 @@ func (h *AuthHandler) RevokeSession(c *gin.Context) {
 		return
 	}
 
-	id := c.Param("id")
+	id := c.Param("sessionId")
 
 	email, _ := c.Get(ctxkeys.UserEmail)
 	emailStr, _ := email.(string)
