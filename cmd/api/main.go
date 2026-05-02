@@ -282,7 +282,7 @@ func initServices(s *appStores, cfg *config.Config, transactor store.Transactor)
 		budgetItem:            service.NewBudgetItemService(s.budgetItem, transactor),
 		stepPromotion:         service.NewStepPromotionService(s.payPlan, s.employee),
 		statistics:            service.NewStatisticsService(s.child, s.employee, s.organization, s.governmentFunding, s.payPlan, s.budgetItem, s.section, s.governmentFundingBillPeriod),
-		governmentFundingBill: service.NewGovernmentFundingBillService(s.child, s.childVoucher, s.governmentFundingBillPeriod, s.organization, s.governmentFunding),
+		governmentFundingBill: service.NewGovernmentFundingBillService(s.child, s.childVoucher, s.governmentFundingBillPeriod, s.organization, s.governmentFunding, transactor),
 		email:                 service.NewEmailService(cfg),
 	}
 }

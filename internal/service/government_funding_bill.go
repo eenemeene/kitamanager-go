@@ -28,6 +28,12 @@ type GovernmentFundingBillService struct {
 	billPeriodStore   store.GovernmentFundingBillPeriodStorer
 	orgStore          store.OrganizationStorer
 	fundingStore      store.GovernmentFundingStorer
+	// transactor wraps multi-store mutations atomically. Currently
+	// used by AssignVoucher to make the verify-child + insert-voucher
+	// pair atomic and to surface unique-violation as a 409 (review
+	// finding M1). Optional in tests; if nil the affected paths fall
+	// back to per-call semantics with a brief best-effort warning.
+	transactor store.Transactor
 }
 
 // NewGovernmentFundingBillService creates a new GovernmentFundingBillService.
@@ -37,6 +43,7 @@ func NewGovernmentFundingBillService(
 	billPeriodStore store.GovernmentFundingBillPeriodStorer,
 	orgStore store.OrganizationStorer,
 	fundingStore store.GovernmentFundingStorer,
+	transactor store.Transactor,
 ) *GovernmentFundingBillService {
 	return &GovernmentFundingBillService{
 		childStore:        childStore,
@@ -44,6 +51,7 @@ func NewGovernmentFundingBillService(
 		billPeriodStore:   billPeriodStore,
 		orgStore:          orgStore,
 		fundingStore:      fundingStore,
+		transactor:        transactor,
 	}
 }
 
@@ -202,26 +210,63 @@ func (s *GovernmentFundingBillService) ChildrenWithoutVouchers(ctx context.Conte
 	return result, nil
 }
 
-// AssignVoucher links a voucher number to a child. The child must belong to the given org.
-// Uses ON CONFLICT DO NOTHING so assigning an already-known voucher is a no-op.
+// AssignVoucher links a voucher number to a child. The child must belong
+// to the given org.
+//
+// Semantics (review finding M1):
+//   - Voucher numbers are globally unique across child_vouchers (see
+//     migration 000006).
+//   - If the voucher is unassigned: create the row → success.
+//   - If the voucher is already assigned to THIS child: no-op success
+//     (idempotent re-assign — the UI may retry).
+//   - If the voucher is already assigned to a DIFFERENT child: return
+//     apperror.Conflict so the caller surfaces 409 with a useful
+//     message. Pre-fix this path silently succeeded because the store
+//     used ON CONFLICT DO NOTHING; the user thought their voucher was
+//     assigned but the row stayed on the original child.
+//
+// The whole flow runs in a transaction so the verify-child / insert-
+// voucher pair is atomic. CreateVoucherStrict propagates 23505 as
+// store.ErrDuplicateKey, which we then resolve via a SELECT lookup
+// (the conflicting row is committed by the time PG fires the unique
+// violation, so the lookup is guaranteed to find it).
 func (s *GovernmentFundingBillService) AssignVoucher(ctx context.Context, childID, orgID uint, voucherNumber string) error {
-	// Verify child belongs to org
-	_, err := s.childStore.FindByIDAndOrg(ctx, childID, orgID)
-	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			return apperror.NotFound("child")
+	return s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
+		// Verify child belongs to org. In-tx so a concurrent delete
+		// can't tombstone the child between this check and the insert.
+		if _, err := s.childStore.FindByIDAndOrg(txCtx, childID, orgID); err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				return apperror.NotFound("child")
+			}
+			return apperror.InternalWrap(err, "failed to verify child")
 		}
-		return apperror.InternalWrap(err, "failed to verify child")
-	}
 
-	if err := s.childVoucherStore.CreateVoucher(ctx, &models.ChildVoucher{
-		ChildID:       childID,
-		VoucherNumber: voucherNumber,
-		FirstSeen:     time.Now().UTC(),
-	}); err != nil {
-		return apperror.InternalWrap(err, "failed to create voucher")
-	}
-	return nil
+		err := s.childVoucherStore.CreateVoucherStrict(txCtx, &models.ChildVoucher{
+			ChildID:       childID,
+			VoucherNumber: voucherNumber,
+			FirstSeen:     time.Now().UTC(),
+		})
+		if err == nil {
+			return nil
+		}
+		if !errors.Is(err, store.ErrDuplicateKey) {
+			return apperror.InternalWrap(err, "failed to create voucher")
+		}
+
+		// Voucher already taken — disambiguate idempotent re-assign
+		// (same child, OK) from a real conflict (different child, 409).
+		// Under READ COMMITTED, the existing row is guaranteed visible
+		// here: PG only fires the unique violation after the conflicting
+		// transaction has committed.
+		existing, lookupErr := s.childVoucherStore.FindByVoucherNumber(txCtx, voucherNumber)
+		if lookupErr != nil {
+			return apperror.InternalWrap(lookupErr, "failed to look up voucher")
+		}
+		if existing != nil && existing.ChildID == childID {
+			return nil
+		}
+		return apperror.Conflict(fmt.Sprintf("voucher %s is already assigned to another child", voucherNumber))
+	})
 }
 
 // computeVoucherSuggestions finds fuzzy name matches between children without vouchers

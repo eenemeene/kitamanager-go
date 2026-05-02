@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -22,7 +23,7 @@ func TestGovernmentFundingBillService_ListEmpty(t *testing.T) {
 	db := setupTestDB(t)
 	childStore := store.NewChildStore(db)
 	billPeriodStore := store.NewGovernmentFundingBillPeriodStore(db)
-	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db))
+	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db), store.NewTransactor(db))
 	org := createTestOrganization(t, db, "Test Org")
 	ctx := context.Background()
 
@@ -42,7 +43,7 @@ func TestGovernmentFundingBillService_ListWithPeriods(t *testing.T) {
 	db := setupTestDB(t)
 	childStore := store.NewChildStore(db)
 	billPeriodStore := store.NewGovernmentFundingBillPeriodStore(db)
-	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db))
+	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db), store.NewTransactor(db))
 	org := createTestOrganization(t, db, "Test Org")
 	user := createTestUser(t, db, "User", "billsvc1@example.com", "password")
 	ctx := context.Background()
@@ -95,7 +96,7 @@ func TestGovernmentFundingBillService_ListOrganizationIsolation(t *testing.T) {
 	db := setupTestDB(t)
 	childStore := store.NewChildStore(db)
 	billPeriodStore := store.NewGovernmentFundingBillPeriodStore(db)
-	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db))
+	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db), store.NewTransactor(db))
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
 	user := createTestUser(t, db, "User", "billsvc2@example.com", "password")
@@ -130,7 +131,7 @@ func TestGovernmentFundingBillService_GetByID(t *testing.T) {
 	db := setupTestDB(t)
 	childStore := store.NewChildStore(db)
 	billPeriodStore := store.NewGovernmentFundingBillPeriodStore(db)
-	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db))
+	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db), store.NewTransactor(db))
 	org := createTestOrganization(t, db, "Test Org")
 	user := createTestUser(t, db, "User", "billsvc3@example.com", "password")
 	ctx := context.Background()
@@ -236,7 +237,7 @@ func TestGovernmentFundingBillService_GetByIDWithMatching(t *testing.T) {
 	db := setupTestDB(t)
 	childStore := store.NewChildStore(db)
 	billPeriodStore := store.NewGovernmentFundingBillPeriodStore(db)
-	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db))
+	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db), store.NewTransactor(db))
 	org := createTestOrganization(t, db, "Test Org")
 	user := createTestUser(t, db, "User", "billsvc4@example.com", "password")
 	section := getDefaultSection(t, db, org.ID)
@@ -344,7 +345,7 @@ func TestGovernmentFundingBillService_GetByIDWrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	childStore := store.NewChildStore(db)
 	billPeriodStore := store.NewGovernmentFundingBillPeriodStore(db)
-	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db))
+	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db), store.NewTransactor(db))
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
 	user := createTestUser(t, db, "User", "billsvc5@example.com", "password")
@@ -377,7 +378,7 @@ func TestGovernmentFundingBillService_GetByIDNotFound(t *testing.T) {
 	db := setupTestDB(t)
 	childStore := store.NewChildStore(db)
 	billPeriodStore := store.NewGovernmentFundingBillPeriodStore(db)
-	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db))
+	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db), store.NewTransactor(db))
 	ctx := context.Background()
 
 	_, err := svc.GetByID(ctx, 99999, 1)
@@ -393,7 +394,7 @@ func TestGovernmentFundingBillService_Delete(t *testing.T) {
 	db := setupTestDB(t)
 	childStore := store.NewChildStore(db)
 	billPeriodStore := store.NewGovernmentFundingBillPeriodStore(db)
-	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db))
+	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db), store.NewTransactor(db))
 	org := createTestOrganization(t, db, "Test Org")
 	user := createTestUser(t, db, "User", "billsvc6@example.com", "password")
 	ctx := context.Background()
@@ -430,7 +431,7 @@ func TestGovernmentFundingBillService_DeleteWrongOrg(t *testing.T) {
 	db := setupTestDB(t)
 	childStore := store.NewChildStore(db)
 	billPeriodStore := store.NewGovernmentFundingBillPeriodStore(db)
-	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db))
+	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db), store.NewTransactor(db))
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
 	user := createTestUser(t, db, "User", "billsvc7@example.com", "password")
@@ -469,7 +470,7 @@ func TestGovernmentFundingBillService_DeleteNotFound(t *testing.T) {
 	db := setupTestDB(t)
 	childStore := store.NewChildStore(db)
 	billPeriodStore := store.NewGovernmentFundingBillPeriodStore(db)
-	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db))
+	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db), store.NewTransactor(db))
 	ctx := context.Background()
 
 	_, err := svc.Delete(ctx, 99999, 1)
@@ -485,7 +486,7 @@ func TestGovernmentFundingBillService_GetByIDSurchargesAggregation(t *testing.T)
 	db := setupTestDB(t)
 	childStore := store.NewChildStore(db)
 	billPeriodStore := store.NewGovernmentFundingBillPeriodStore(db)
-	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db))
+	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db), store.NewTransactor(db))
 	org := createTestOrganization(t, db, "Test Org")
 	user := createTestUser(t, db, "User", "billsvc8@example.com", "password")
 	ctx := context.Background()
@@ -567,7 +568,7 @@ func TestGovernmentFundingBillService_GetByIDNoSurcharges(t *testing.T) {
 	db := setupTestDB(t)
 	childStore := store.NewChildStore(db)
 	billPeriodStore := store.NewGovernmentFundingBillPeriodStore(db)
-	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db))
+	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db), store.NewTransactor(db))
 	org := createTestOrganization(t, db, "Test Org")
 	user := createTestUser(t, db, "User", "billsvc9@example.com", "password")
 	ctx := context.Background()
@@ -617,7 +618,7 @@ func TestGovernmentFundingBillService_GetByIDNoChildren(t *testing.T) {
 	db := setupTestDB(t)
 	childStore := store.NewChildStore(db)
 	billPeriodStore := store.NewGovernmentFundingBillPeriodStore(db)
-	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db))
+	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db), store.NewTransactor(db))
 	org := createTestOrganization(t, db, "Test Org")
 	user := createTestUser(t, db, "User", "billsvc10@example.com", "password")
 	ctx := context.Background()
@@ -762,7 +763,7 @@ func TestGovernmentFundingBillService_GetByIDMatchingCrossTenancy(t *testing.T) 
 	db := setupTestDB(t)
 	childStore := store.NewChildStore(db)
 	billPeriodStore := store.NewGovernmentFundingBillPeriodStore(db)
-	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db))
+	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db), store.NewTransactor(db))
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
 	user := createTestUser(t, db, "User", "billsvc11@example.com", "password")
@@ -831,6 +832,7 @@ func setupBillCompareService(t *testing.T, db *gorm.DB) *GovernmentFundingBillSe
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 }
 
@@ -1985,7 +1987,7 @@ func TestGovernmentFundingBillService_GetByID_MultiRowGrouping(t *testing.T) {
 	db := setupTestDB(t)
 	childStore := store.NewChildStore(db)
 	billPeriodStore := store.NewGovernmentFundingBillPeriodStore(db)
-	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db))
+	svc := NewGovernmentFundingBillService(childStore, store.NewChildVoucherStore(db), billPeriodStore, store.NewOrganizationStore(db), store.NewGovernmentFundingStore(db), store.NewTransactor(db))
 	org := createTestOrganization(t, db, "Test Org")
 	user := createTestUser(t, db, "User", "billsvc_multirow@example.com", "password")
 	ctx := context.Background()
@@ -3276,6 +3278,7 @@ func TestChildBillingHistory_EmptyNoVoucher(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	ctx := context.Background()
@@ -3310,6 +3313,7 @@ func TestChildBillingHistory_ChildNotFound(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	ctx := context.Background()
 
@@ -3330,6 +3334,7 @@ func TestChildBillingHistory_WrongOrg(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
@@ -3354,6 +3359,7 @@ func TestChildBillingHistory_SingleBillMatch(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -3454,6 +3460,7 @@ func TestChildBillingHistory_MultipleBillsChronological(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -3527,6 +3534,7 @@ func TestChildBillingHistory_BillingDifference(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -3594,6 +3602,7 @@ func TestChildBillingHistory_NoContract(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -3658,6 +3667,7 @@ func TestChildBillingHistory_NoFundingConfig(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -3714,6 +3724,7 @@ func TestChildBillingHistory_MultipleVouchers(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -3840,6 +3851,7 @@ func TestChildBillingHistory_FundingConfigChanges(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -3933,6 +3945,7 @@ func TestChildBillingHistory_OrganizationIsolation(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
@@ -4016,6 +4029,7 @@ func TestChildBillingHistory_NoBills(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -4053,6 +4067,7 @@ func TestChildBillingHistory_MixedStatuses(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -4239,6 +4254,7 @@ func TestChildBillingHistory_RunningDifference(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -4316,6 +4332,7 @@ func TestChildBillingHistory_RunningDifferenceSkipsNoContract(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -4399,6 +4416,7 @@ func TestChildrenBillingSummary_Empty(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	ctx := context.Background()
@@ -4420,6 +4438,7 @@ func TestChildrenBillingSummary_SingleChildMatch(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -4480,6 +4499,7 @@ func TestChildrenBillingSummary_Difference(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -4525,6 +4545,7 @@ func TestChildrenBillingSummary_MultipleChildren(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -4593,6 +4614,7 @@ func TestChildrenBillingSummary_MultipleVouchers(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -4687,6 +4709,7 @@ func TestChildrenBillingSummary_NoContract(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	user := createTestUser(t, db, "User", "billsummary5@example.com", "password")
@@ -4718,6 +4741,7 @@ func TestChildrenBillingSummary_OrgIsolation(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
@@ -4761,6 +4785,7 @@ func TestChildrenBillingSummary_NoFundingConfig(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -4809,6 +4834,7 @@ func TestChildrenBillingSummary_ExpiredContract(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -4868,6 +4894,7 @@ func TestChildrenBillingSummary_ContractMonths(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -4920,6 +4947,7 @@ func TestChildrenBillingSummary_ContractMonthsCappedAtToday(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -4973,6 +5001,7 @@ func TestChildrenBillingSummary_FutureContractZeroMonths(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -5021,6 +5050,7 @@ func TestChildrenBillingSummary_ExpiredContractFullMonths(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -5073,6 +5103,7 @@ func TestChildBillingHistory_CrossSuffixVoucherMatching(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -5148,6 +5179,7 @@ func TestChildrenBillingSummary_CrossSuffixAggregation(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -5275,6 +5307,7 @@ func TestAutoDiscoverVouchers(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -5345,6 +5378,7 @@ func TestAutoDiscoverVouchers_NoMatch(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	ctx := context.Background()
@@ -5372,6 +5406,7 @@ func TestAutoDiscoverVouchers_CaseInsensitive(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	ctx := context.Background()
@@ -5412,6 +5447,7 @@ func TestChildrenWithoutVouchers_Empty(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	ctx := context.Background()
@@ -5433,6 +5469,7 @@ func TestChildrenWithoutVouchers_ChildWithVoucher(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -5462,6 +5499,7 @@ func TestChildrenWithoutVouchers_ChildWithoutVoucher(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -5490,6 +5528,7 @@ func TestChildrenWithoutVouchers_ExpiredContract(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -5531,6 +5570,7 @@ func TestChildrenWithoutVouchers_FuzzySuggestion(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -5602,6 +5642,7 @@ func TestChildrenWithoutVouchers_NoSuggestionWhenBirthMonthDiffers(t *testing.T)
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -5659,6 +5700,7 @@ func TestChildrenWithoutVouchers_NoSuggestionWhenNamesTooFar(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -5716,6 +5758,7 @@ func TestChildrenWithoutVouchers_NoBills(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -5761,6 +5804,7 @@ func TestChildrenWithoutVouchers_SkipsAlreadyMatchedVouchers(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -6474,6 +6518,7 @@ func TestAssignVoucher_Success(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -6507,6 +6552,7 @@ func TestAssignVoucher_Idempotent(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -6537,6 +6583,7 @@ func TestAssignVoucher_ChildNotFound(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	ctx := context.Background()
@@ -6558,6 +6605,7 @@ func TestAssignVoucher_WrongOrg(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org1 := createTestOrganization(t, db, "Org 1")
 	org2 := createTestOrganization(t, db, "Org 2")
@@ -6590,6 +6638,7 @@ func TestAssignVoucher_RemovesFromWithoutVouchersList(t *testing.T) {
 		store.NewGovernmentFundingBillPeriodStore(db),
 		store.NewOrganizationStore(db),
 		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
@@ -6618,6 +6667,202 @@ func TestAssignVoucher_RemovesFromWithoutVouchersList(t *testing.T) {
 	}
 	if len(after) != 0 {
 		t.Errorf("expected 0 children without voucher after assign, got %d", len(after))
+	}
+}
+
+// ============================================================
+// AssignVoucher — review finding M1
+// ============================================================
+//
+// Pre-fix behaviour: ChildVoucherStore.CreateVoucher used
+// `clause.OnConflict{DoNothing: true}`. So if the user tried to assign
+// voucher V to childB while V was already on childA, the INSERT silently
+// succeeded with 0 rows affected. The handler returned 200 to the user,
+// but childB had no voucher and childA kept it. Effectively a silent
+// data-loss bug.
+//
+// Post-fix: AssignVoucher runs in a transaction, uses CreateVoucherStrict
+// (no ON CONFLICT clause), and on duplicate-key looks up the existing row
+// to decide between idempotent re-assign (same child → success) and a
+// real cross-child conflict (different child → 409).
+
+func TestAssignVoucher_ConflictWhenVoucherOnDifferentChild(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewChildVoucherStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	ctx := context.Background()
+
+	childA := createTestChildWithContract(t, db, "Anna", "A", org.ID, section.ID)
+	childB := createTestChildWithContract(t, db, "Bea", "B", org.ID, section.ID)
+
+	// Assign V to childA — succeeds.
+	if err := svc.AssignVoucher(ctx, childA.ID, org.ID, "GB-12345678901-01"); err != nil {
+		t.Fatalf("first assign: %v", err)
+	}
+
+	// Try to assign the SAME voucher to childB — must fail with 409,
+	// NOT silently no-op (pre-fix bug).
+	err := svc.AssignVoucher(ctx, childB.ID, org.ID, "GB-12345678901-01")
+	if err == nil {
+		t.Fatal("expected conflict when reassigning voucher to a different child — pre-fix would silently succeed")
+	}
+	if !errors.Is(err, apperror.ErrConflict) {
+		t.Errorf("expected ErrConflict, got %v", err)
+	}
+	if apperror.HTTPStatus(err) != 409 {
+		t.Errorf("expected HTTP 409, got %d", apperror.HTTPStatus(err))
+	}
+
+	// Critical: childA still owns the voucher; childB has none.
+	vouchersA, _ := store.NewChildVoucherStore(db).FindVouchersByChildID(ctx, childA.ID)
+	if len(vouchersA) != 1 || vouchersA[0].VoucherNumber != "GB-12345678901-01" {
+		t.Errorf("childA should still own the voucher, got %+v", vouchersA)
+	}
+	vouchersB, _ := store.NewChildVoucherStore(db).FindVouchersByChildID(ctx, childB.ID)
+	if len(vouchersB) != 0 {
+		t.Errorf("childB should have no vouchers (the conflict should have prevented insertion), got %+v", vouchersB)
+	}
+}
+
+func TestAssignVoucher_ConflictAcrossOrgs(t *testing.T) {
+	// Voucher uniqueness is GLOBAL (migration 000006), not per-org. So a
+	// voucher assigned in org1 must conflict with an assign attempt in
+	// org2, even though the two orgs are otherwise isolated. This is
+	// less ergonomic than per-org uniqueness but matches the actual
+	// schema and protects against the case where a voucher number is
+	// accidentally re-used across two Kitas (which would corrupt the
+	// ISBJ matching logic).
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewChildVoucherStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
+	)
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+	child1 := createTestChildWithContract(t, db, "C1", "Org1", org1.ID, getDefaultSection(t, db, org1.ID).ID)
+	child2 := createTestChildWithContract(t, db, "C2", "Org2", org2.ID, getDefaultSection(t, db, org2.ID).ID)
+	ctx := context.Background()
+
+	if err := svc.AssignVoucher(ctx, child1.ID, org1.ID, "GB-12345678901-01"); err != nil {
+		t.Fatalf("org1 assign: %v", err)
+	}
+	err := svc.AssignVoucher(ctx, child2.ID, org2.ID, "GB-12345678901-01")
+	if !errors.Is(err, apperror.ErrConflict) {
+		t.Fatalf("expected ErrConflict for cross-org voucher reuse, got %v", err)
+	}
+}
+
+func TestAssignVoucher_ConcurrentAssignsToSameChildAreIdempotent(t *testing.T) {
+	// N goroutines all assign voucher V to childA. Exactly one INSERT
+	// wins; the others see store.ErrDuplicateKey, look up the existing
+	// row, see ChildID==childA.ID, and return nil. End state: one row,
+	// no errors.
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewChildVoucherStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	child := createTestChildWithContract(t, db, "C", "X", org.ID, section.ID)
+	ctx := context.Background()
+
+	const concurrency = 6
+	var wg sync.WaitGroup
+	errs := make([]error, concurrency)
+	for i := range concurrency {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			errs[idx] = svc.AssignVoucher(ctx, child.ID, org.ID, "GB-12345678901-01")
+		}(i)
+	}
+	wg.Wait()
+
+	for i, err := range errs {
+		if err != nil {
+			t.Errorf("worker %d returned %v — concurrent self-assign should be idempotent", i, err)
+		}
+	}
+	vouchers, _ := store.NewChildVoucherStore(db).FindVouchersByChildID(ctx, child.ID)
+	if len(vouchers) != 1 {
+		t.Errorf("expected 1 voucher row after %d concurrent self-assigns, got %d", concurrency, len(vouchers))
+	}
+}
+
+func TestAssignVoucher_ConcurrentAssignsToDifferentChildrenSerializeOnUniqueIndex(t *testing.T) {
+	// N goroutines try to assign voucher V to N different children.
+	// Exactly one wins. The others MUST get ErrConflict (HTTP 409) —
+	// pre-fix they all returned 200 with the silent no-op behaviour.
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewChildVoucherStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	ctx := context.Background()
+
+	const concurrency = 5
+	children := make([]*models.Child, concurrency)
+	for i := range concurrency {
+		children[i] = createTestChildWithContract(t, db, "Child", string(rune('A'+i)), org.ID, section.ID)
+	}
+
+	var wg sync.WaitGroup
+	errs := make([]error, concurrency)
+	for i := range concurrency {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			errs[idx] = svc.AssignVoucher(ctx, children[idx].ID, org.ID, "GB-12345678901-01")
+		}(i)
+	}
+	wg.Wait()
+
+	successes := 0
+	conflicts := 0
+	for i, err := range errs {
+		switch {
+		case err == nil:
+			successes++
+		case errors.Is(err, apperror.ErrConflict):
+			conflicts++
+		default:
+			t.Errorf("worker %d returned unexpected error: %v", i, err)
+		}
+	}
+	if successes != 1 {
+		t.Errorf("expected exactly 1 success, got %d (conflicts=%d)", successes, conflicts)
+	}
+	if conflicts != concurrency-1 {
+		t.Errorf("expected %d conflicts, got %d", concurrency-1, conflicts)
+	}
+
+	// Exactly one child ends up owning the voucher.
+	all, _ := store.NewChildVoucherStore(db).FindVouchersByOrganization(ctx, org.ID)
+	if len(all) != 1 {
+		t.Errorf("expected 1 voucher row org-wide, got %d", len(all))
 	}
 }
 
