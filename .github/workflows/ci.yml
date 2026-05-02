@@ -294,7 +294,13 @@ jobs:
           cache-to: type=gha,mode=max,scope=frontend
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        # Pinned to the v0.36.0 release SHA. Closes audit finding O-H-1
+        # (security review 2026-05-01): every other action in this
+        # repo is pinned to a major or SHA; trivy-action was the lone
+        # @master outlier, which would import arbitrary code into CI
+        # if upstream got compromised. Update by bumping the SHA AND
+        # the comment together.
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: kitamanager-api:${{ github.sha }}
           format: 'table'
