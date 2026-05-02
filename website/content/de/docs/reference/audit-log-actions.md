@@ -36,6 +36,7 @@ Jeder Audit-Log-Eintrag trägt ein `action`-Feld. Das sind die möglichen Werte.
 | `password_change` | Self-Service-Passwortwechsel erfolgreich. |
 | `password_change_failed` | Self-Service-Wechsel abgelehnt (falsches aktuelles Passwort etc.). |
 | `password_reset` | Admin hat Passwort einer anderen Nutzer:in zurückgesetzt. |
+| `password_reset_failed` | Admin-Reset am `actor_password`-Step-up gescheitert. `user_id` ist die handelnde Person, `resource_id` das Ziel. Steuert die per-Akteur-Sperre. |
 
 ## Nutzer:innen und Organisationen
 
@@ -49,9 +50,16 @@ Jeder Audit-Log-Eintrag trägt ein `action`-Feld. Das sind die möglichen Werte.
 | `role_change` | Rolle innerhalb einer Organisation geändert. |
 | `superadmin_grant` | Superadmin-Status vergeben. |
 | `superadmin_revoke` | Superadmin-Status entzogen. |
+| `superadmin_change_failed` | Superadmin-Vergabe/-Entzug am `actor_password`-Step-up gescheitert. `user_id` ist die handelnde Person, `resource_id` das Ziel. |
 | `org_create` | Organisation angelegt (nur Superadmin). |
 | `org_delete` | Organisation soft-gelöscht. |
 | `org_purged` | Organisation hart gelöscht. |
+
+## System
+
+| Code | Wann emittiert |
+|---|---|
+| `audit_log_purged` | Retention-TTL hat alte Audit-Zeilen entfernt. `details` enthält `deleted_rows` und das `older_than`-Cutoff. |
 
 ## Ressourcen
 
