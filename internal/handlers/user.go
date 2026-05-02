@@ -240,6 +240,60 @@ func (h *UserHandler) Delete(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// Purge godoc
+// @Summary Hard-delete a user (DSGVO Art. 17 erasure)
+// @Description Physically removes a user and CASCADEs through the FK
+// @Description graph (sessions, factors, user_organizations, audit
+// @Description trail rows that don't reference the user). Bypasses the
+// @Description tombstone soft-delete entirely. Irreversible.
+// @Description
+// @Description Restricted to superadmins. Cannot purge self. Cannot
+// @Description purge the last superadmin. Accepts both live and
+// @Description already-tombstoned rows so an Art. 17 request can fire
+// @Description against either state.
+// @Tags users
+// @Produce json
+// @Security BearerAuth
+// @Param userId path int true "User ID"
+// @Success 204 "No Content"
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/users/{userId}/purge [delete]
+func (h *UserHandler) Purge(c *gin.Context) {
+	id, err := parseID(c, "userId")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	requesterID := getUserID(c)
+
+	// Capture identity for audit BEFORE the cascade fires. GetByID
+	// uses the GORM-scoped lookup; for a row that's already tombstoned
+	// we still want to record what we're about to vaporize, so look
+	// up unscoped.
+	target, err := h.service.GetByIDIncludingTombstoned(c.Request.Context(), id, requesterID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	if err := h.service.HardDelete(c.Request.Context(), id, requesterID); err != nil {
+		respondError(c, err)
+		return
+	}
+
+	if h.auditService != nil {
+		h.auditService.LogResourcePurged(c.Request.Context(), requesterID, getUserEmail(c),
+			"user", id, target.Email, c.ClientIP(), nil)
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
 // AddToOrganization godoc
 // @Summary Add user to organization
 // @Description Add a user to an organization with a specific role

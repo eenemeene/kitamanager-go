@@ -345,6 +345,34 @@ func (s *UserService) Delete(ctx context.Context, id uint, requesterID uint) err
 	return nil
 }
 
+// GetByIDIncludingTombstoned looks up a user without the soft-delete
+// scope. Used by the purge handler so the audit trail can capture the
+// identity of an already-tombstoned row before HardDelete vaporises it.
+// Authorisation rules mirror GetByID.
+func (s *UserService) GetByIDIncludingTombstoned(ctx context.Context, id uint, requesterID uint) (*models.UserResponse, error) {
+	if err := s.verifyRequesterCanAccessUser(ctx, requesterID, id); err != nil {
+		// verifyRequesterCanAccessUser uses the GORM-scoped FindByID
+		// internally, so it returns NotFound for tombstoned targets.
+		// Fall through to the unscoped lookup and re-check
+		// superadmin-only access on miss — only superadmins can act on
+		// tombstoned rows anyway, and the route gates this at the
+		// middleware layer.
+		isSuperAdmin, sErr := s.userOrgStore.IsSuperAdmin(ctx, requesterID)
+		if sErr != nil {
+			return nil, apperror.InternalWrap(sErr, "failed to check superadmin status")
+		}
+		if !isSuperAdmin {
+			return nil, err
+		}
+	}
+	var user models.User
+	if err := s.store.FindByIDUnscoped(ctx, id, &user); err != nil {
+		return nil, classifyStoreError(err, "user")
+	}
+	resp := user.ToResponse()
+	return &resp, nil
+}
+
 // HardDelete permanently removes a user and cascades through the FK
 // graph (sessions, factors, user_organizations — see migration
 // 000001 + 000014). Bypasses the soft-delete tombstone. Irreversible.

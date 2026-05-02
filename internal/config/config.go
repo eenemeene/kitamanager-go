@@ -145,6 +145,27 @@ type Config struct {
 	// loopback that the operator has independently verified.
 	AllowDBSSLModeDisableInProduction bool
 
+	// AuditLogRetentionDays is the rolling window the periodic
+	// retention job keeps audit_logs rows for.
+	//
+	// **This is a policy decision the data controller must make and
+	// document under DSGVO Art. 30.** GDPR itself fixes no period;
+	// Art. 5(1)(e) requires "no longer than necessary" for the stated
+	// purpose. Common landings for security audit logs:
+	//   - PCI-DSS:                    1 year minimum (90 days online)
+	//   - BSI IT-Grundschutz APP.4.4: 30-90 days minimum
+	//   - SOC 2 / ISO 27001:          6-24 months typically
+	//   - § 257 HGB / § 147 AO:       6-10 years for financial records
+	//
+	// Default: 730 days (2 years). Long enough to cover an annual
+	// auditor review with margin and to investigate incidents that
+	// surface late, short enough that DSGVO storage minimisation is
+	// still defensible. Operators with stricter or looser legal
+	// obligations should override via AUDIT_LOG_RETENTION_DAYS — set
+	// to 0 to disable the periodic purge entirely (only do this if
+	// you have an external retention pipeline).
+	AuditLogRetentionDays int
+
 	// SMTP
 	SMTPHost     string
 	SMTPPort     int
@@ -438,6 +459,8 @@ func Load() (*Config, error) {
 
 		AllowRateLimitDisabledInProduction: getEnv("ALLOW_RATE_LIMIT_DISABLED_IN_PRODUCTION", "false") == "true",
 		AllowDBSSLModeDisableInProduction:  getEnv("ALLOW_DB_SSLMODE_DISABLE_IN_PRODUCTION", "false") == "true",
+
+		AuditLogRetentionDays: getEnvInt("AUDIT_LOG_RETENTION_DAYS", 730),
 
 		SMTPHost:     getEnv("SMTP_HOST", ""),
 		SMTPPort:     getEnvInt("SMTP_PORT", 587),

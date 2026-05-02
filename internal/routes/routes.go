@@ -110,6 +110,9 @@ func Setup(r *gin.Engine, d Deps) {
 				// Superadmin only
 				orgs.POST("", authzMiddleware.RequireSuperAdmin(), orgHandler.Create)
 				orgs.DELETE("/:orgId", authzMiddleware.RequireSuperAdmin(), orgHandler.Delete)
+				// Hard-delete (DSGVO Art. 17 erasure). Distinct path so the
+				// soft-delete DELETE remains the safer default.
+				orgs.DELETE("/:orgId/purge", authzMiddleware.RequireSuperAdmin(), orgHandler.Purge)
 
 				// List: requires read permission in any org (results filtered in service)
 				orgs.GET("",
@@ -183,6 +186,10 @@ func Setup(r *gin.Engine, d Deps) {
 				users.DELETE("/:userId",
 					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionDelete),
 					userHandler.Delete)
+				// Hard-delete (DSGVO Art. 17 erasure). Superadmin only.
+				users.DELETE("/:userId/purge",
+					authzMiddleware.RequireSuperAdmin(),
+					userHandler.Purge)
 				users.POST("/:userId/organizations",
 					authzMiddleware.RequireGlobalPermission(rbac.ResourceUsers, rbac.ActionUpdate),
 					userHandler.AddToOrganization)

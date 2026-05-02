@@ -181,6 +181,17 @@ func (s *OrganizationService) Delete(ctx context.Context, id uint) error {
 	return nil
 }
 
+// GetByIDIncludingTombstoned looks up an organization without the
+// soft-delete scope. Used by the purge handler so the audit trail
+// can capture the org name before HardDelete vaporises the row.
+func (s *OrganizationService) GetByIDIncludingTombstoned(ctx context.Context, id uint) (*models.Organization, error) {
+	var org models.Organization
+	if err := s.store.FindByIDUnscoped(ctx, id, &org); err != nil {
+		return nil, classifyStoreError(err, "organization")
+	}
+	return &org, nil
+}
+
 // HardDelete physically removes an organization and every row the FK
 // graph cascades from it (pay_plans, gov-funding bills, employees,
 // children, sections). Irreversible.

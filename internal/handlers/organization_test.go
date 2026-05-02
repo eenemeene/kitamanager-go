@@ -1,11 +1,15 @@
 package handlers
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
 
 	"github.com/eenemeene/kitamanager-go/internal/models"
+	"github.com/eenemeene/kitamanager-go/internal/service"
+	"github.com/eenemeene/kitamanager-go/internal/store"
 )
 
 func TestOrganizationHandler_List(t *testing.T) {
@@ -596,5 +600,102 @@ func TestOrganizationHandler_Update_InvalidState(t *testing.T) {
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for invalid state, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+// ----------------------------------------------------------------------
+// Purge endpoint — DSGVO Art. 17 erasure (closes audit finding O-H-3).
+// ----------------------------------------------------------------------
+
+func TestOrganizationHandler_Purge_Success(t *testing.T) {
+	db := setupTestDB(t)
+	orgService := createOrganizationService(db)
+	auditStore := store.NewAuditStore(db)
+	auditService := service.NewAuditService(auditStore)
+	t.Cleanup(auditService.Shutdown)
+	handler := NewOrganizationHandler(orgService, auditService)
+
+	admin := createTestSuperAdmin(t, db)
+	org := createTestOrganization(t, db, "To Purge")
+
+	r := setupTestRouterWithUser(admin.ID)
+	r.DELETE("/organizations/:orgId/purge", handler.Purge)
+
+	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/purge", org.ID), nil)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d body=%s", w.Code, w.Body.String())
+	}
+
+	var count int64
+	db.Unscoped().Model(&models.Organization{}).Where("id = ?", org.ID).Count(&count)
+	if count != 0 {
+		t.Errorf("expected org purged, %d row(s) remain", count)
+	}
+}
+
+func TestOrganizationHandler_Purge_AlreadyTombstoned_StillSucceeds(t *testing.T) {
+	db := setupTestDB(t)
+	orgService := createOrganizationService(db)
+	auditStore := store.NewAuditStore(db)
+	auditService := service.NewAuditService(auditStore)
+	t.Cleanup(auditService.Shutdown)
+	handler := NewOrganizationHandler(orgService, auditService)
+
+	admin := createTestSuperAdmin(t, db)
+	org := createTestOrganization(t, db, "Tombstoned")
+	if err := db.Delete(org).Error; err != nil {
+		t.Fatalf("soft-delete: %v", err)
+	}
+
+	r := setupTestRouterWithUser(admin.ID)
+	r.DELETE("/organizations/:orgId/purge", handler.Purge)
+
+	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/purge", org.ID), nil)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("expected 204 on tombstoned purge, got %d body=%s", w.Code, w.Body.String())
+	}
+	var count int64
+	db.Unscoped().Model(&models.Organization{}).Where("id = ?", org.ID).Count(&count)
+	if count != 0 {
+		t.Errorf("expected hard-delete to remove the row, %d remain", count)
+	}
+}
+
+func TestOrganizationHandler_Purge_EmitsAuditEvent(t *testing.T) {
+	db := setupTestDB(t)
+	orgService := createOrganizationService(db)
+	auditStore := store.NewAuditStore(db)
+	auditService := service.NewAuditService(auditStore)
+	handler := NewOrganizationHandler(orgService, auditService)
+
+	admin := createTestSuperAdmin(t, db)
+	org := createTestOrganization(t, db, "Tracked")
+
+	r := setupTestRouterWithUser(admin.ID)
+	r.DELETE("/organizations/:orgId/purge", handler.Purge)
+
+	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/purge", org.ID), nil)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("purge: %d", w.Code)
+	}
+	auditService.Shutdown()
+
+	logs, _, err := auditStore.FindByAction(context.Background(), models.AuditActionOrgPurged, 100, 0)
+	if err != nil {
+		t.Fatalf("find audit: %v", err)
+	}
+	if len(logs) != 1 {
+		t.Fatalf("expected exactly 1 org_purged event, got %d", len(logs))
+	}
+	if logs[0].ResourceID == nil || *logs[0].ResourceID != org.ID {
+		t.Errorf("ResourceID = %v, want %d", logs[0].ResourceID, org.ID)
+	}
+	// OrganizationID is intentionally NULL on org_purged rows: the
+	// async audit write fires after the FK target is already gone, and
+	// audit_logs.organization_id is FK-constrained. Identity is still
+	// preserved via ResourceID + ResourceType. Documented in the
+	// handler.
+	if logs[0].OrganizationID != nil {
+		t.Errorf("OrganizationID = %v, want nil (org row is purged)", logs[0].OrganizationID)
 	}
 }

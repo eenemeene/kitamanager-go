@@ -193,3 +193,58 @@ func (h *OrganizationHandler) Delete(c *gin.Context) {
 
 	c.Status(http.StatusNoContent)
 }
+
+// Purge godoc
+// @Summary Hard-delete an organization (DSGVO Art. 17 erasure)
+// @Description Physically removes an organization and CASCADEs through
+// @Description the FK graph (pay_plans, gov-funding bills, employees,
+// @Description children, sections — see migration 000014). Bypasses
+// @Description the soft-delete tombstone entirely. Irreversible.
+// @Description
+// @Description Restricted to superadmins. Accepts both live and
+// @Description already-tombstoned rows so an Art. 17 request can fire
+// @Description against either state.
+// @Tags organizations
+// @Produce json
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Success 204 "No Content"
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/organizations/{orgId}/purge [delete]
+func (h *OrganizationHandler) Purge(c *gin.Context) {
+	id, err := parseID(c, "orgId")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	// Capture identity for audit BEFORE the cascade fires. Look up
+	// unscoped so a tombstoned org can still be vaporised by an Art.
+	// 17 request that arrives after the soft-delete.
+	org, err := h.service.GetByIDIncludingTombstoned(c.Request.Context(), id)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	if err := h.service.HardDelete(c.Request.Context(), id); err != nil {
+		respondError(c, err)
+		return
+	}
+
+	if h.auditService != nil {
+		// orgID intentionally nil: the audit write is async and fires
+		// AFTER HardDelete cascades have removed the organizations row.
+		// Setting OrganizationID would FK-violate against the now-gone
+		// row. The ResourceID + Details still carry the org's identity
+		// for post-purge investigation.
+		h.auditService.LogResourcePurged(c.Request.Context(), getUserID(c), getUserEmail(c),
+			"organization", id, org.Name, c.ClientIP(), nil)
+	}
+
+	c.Status(http.StatusNoContent)
+}
