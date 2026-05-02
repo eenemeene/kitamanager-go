@@ -31,9 +31,12 @@ type CSRFMiddleware struct {
 	serverSecret string
 }
 
-// NewCSRFMiddleware creates a new CSRF middleware instance. `serverSecret`
-// is a process-wide secret used for the HMAC derivation; the JWT secret is
-// reused today because it already has the required 32-char floor.
+// NewCSRFMiddleware creates a new CSRF middleware instance.
+// `serverSecret` is a process-wide secret used for the HMAC
+// derivation. Sourced from cfg.CSRFHMACKey (CSRF_HMAC_KEY env var),
+// which falls back to JWT_SECRET when unset to keep existing
+// deployments working — see config.Config.CSRFHMACKey for the
+// rationale (audit finding C-M-3, security review 2026-05-01).
 func NewCSRFMiddleware(serverSecret string) *CSRFMiddleware {
 	return &CSRFMiddleware{serverSecret: serverSecret}
 }

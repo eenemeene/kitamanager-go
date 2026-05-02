@@ -64,6 +64,23 @@ type Config struct {
 	ServerPort string
 	JWTSecret  string
 
+	// CSRFHMACKey is the HMAC key used to derive a session-bound
+	// CSRF token from the session cookie value (see
+	// middleware.ComputeCSRFToken). Closes audit finding C-M-3
+	// (security review 2026-05-01): historically the CSRF derivation
+	// shared JWTSecret, even though the codebase signs no JWTs and
+	// "JWT secret rotation" carries different operational semantics
+	// (logs out every session) than "rotate the CSRF HMAC key"
+	// (invalidates CSRF tokens; users get a 403 once until the next
+	// page load re-issues a token). Key separation per NIST SP
+	// 800-57 §5.2.
+	//
+	// Falls back to JWTSecret when CSRF_HMAC_KEY is unset, so
+	// existing deployments don't break — set CSRF_HMAC_KEY explicitly
+	// in new deployments and document a rotation plan if you ever
+	// bump JWTSecret without wanting to also invalidate CSRF tokens.
+	CSRFHMACKey string
+
 	// RBAC
 	RBACModelPath string
 
@@ -344,6 +361,10 @@ func Load() (*Config, error) {
 
 		ServerPort: getEnv("SERVER_PORT", "8080"),
 		JWTSecret:  getEnv("JWT_SECRET", ""),
+		// Falls back to JWTSecret when unset to keep existing
+		// deployments working. New installations should set this
+		// explicitly to a distinct 32-char-minimum value.
+		CSRFHMACKey: getEnv("CSRF_HMAC_KEY", getEnv("JWT_SECRET", "")),
 
 		RBACModelPath: getEnv("RBAC_MODEL_PATH", "configs/rbac_model.conf"),
 

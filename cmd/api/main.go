@@ -268,7 +268,7 @@ func initServices(s *appStores, cfg *config.Config, transactor store.Transactor)
 	factorSvc := service.NewFactorService(s.factor, s.user, aead, cfg.TOTPIssuer, webAuthnSvc, auditService)
 	return &appServices{
 		audit:                 auditService,
-		auth:                  service.NewAuthService(s.user, s.session, cfg.JWTSecret, auditService, factorSvc),
+		auth:                  service.NewAuthService(s.user, s.session, cfg.CSRFHMACKey, auditService, factorSvc),
 		user:                  service.NewUserService(s.user, s.userOrganization, s.session).WithAuditService(auditService),
 		factor:                factorSvc,
 		userOrganization:      service.NewUserOrganizationService(s.userOrganization, s.user, transactor),
@@ -296,7 +296,7 @@ func initMiddleware(s *appStores, cfg *config.Config, permissionService *rbac.Pe
 	return &appMiddleware{
 		auth:             authMW,
 		authz:            middleware.NewAuthorizationMiddleware(permissionService),
-		csrf:             middleware.NewCSRFMiddleware(cfg.JWTSecret),
+		csrf:             middleware.NewCSRFMiddleware(cfg.CSRFHMACKey),
 		loginRateLimiter: middleware.LoginRateLimiter(cfg.LoginRateLimitPerMinute),
 		apiRateLimiter:   middleware.APIRateLimiter(cfg.APIRateLimitPerMinute),
 	}

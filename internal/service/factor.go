@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base32"
 	"encoding/hex"
 	"encoding/json"
@@ -43,6 +44,11 @@ const FactorActivationFailureLimit = 5
 // encoding. 8 bytes = 64 bits of entropy per code. With 8 codes the
 // total cumulative entropy is still well beyond brute force.
 const BackupCodeEntropyBytes = 8
+
+// otpDigitCount is the number of decimal digits in a TOTP code. Used
+// for an early length-check in tryTOTPCode so a wrong-length probe
+// (5 or 7 digits) does not walk the full skew window.
+const otpDigitCount = 6
 
 // totpSkewSteps is the TOTP library's ±step tolerance. One step
 // (±30s) matches RFC 6238 recommendation for typical clock drift.
@@ -178,12 +184,11 @@ func (s *FactorService) EnrollTOTP(ctx context.Context, userID uint, label *stri
 		return nil, apperror.InternalWrap(err, "generate totp key")
 	}
 
-	// Encrypt the base32 secret at rest.
-	ct, nonce, err := s.aead.Seal([]byte(key.Secret()))
-	if err != nil {
-		return nil, apperror.InternalWrap(err, "encrypt totp secret")
-	}
-
+	// Create the factor row first so we have a stable id to bind the
+	// AEAD AAD to. Closes audit finding C-M-2: without record-binding
+	// AAD, a DB-write attacker could swap (secret_ciphertext,
+	// secret_nonce) between rows and the row would still decrypt
+	// cleanly under the wrong factor.
 	f := &models.Factor{
 		UserID:    userID,
 		Type:      models.FactorTypeTOTP,
@@ -193,6 +198,13 @@ func (s *FactorService) EnrollTOTP(ctx context.Context, userID uint, label *stri
 	if err := s.factorStore.CreateFactor(ctx, f); err != nil {
 		return nil, apperror.InternalWrap(err, "create factor")
 	}
+
+	// Encrypt the base32 secret at rest, bound to this factor row.
+	ct, nonce, err := s.aead.Seal([]byte(key.Secret()), totpAAD(f.ID))
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "encrypt totp secret")
+	}
+
 	if err := s.factorStore.CreateTOTPSecret(ctx, &models.FactorTOTPSecret{
 		FactorID:         f.ID,
 		SecretCiphertext: ct,
@@ -1056,12 +1068,24 @@ func (s *FactorService) verifyAnyFactorCode(ctx context.Context, userID uint, co
 // tryTOTPCode verifies a TOTP code and atomically bumps last_used_step
 // on success. Returns true iff the code was accepted AND the
 // compare-and-set step-bump succeeded (catches concurrent replays).
+//
+// Closes audit findings C-M-1 / A-M-4 (security review 2026-05-01):
+// the candidate↔user-code comparison uses subtle.ConstantTimeCompare
+// rather than the Go `!=` operator. Network jitter dominates the
+// timing leak in practice but the constant-time compare is a one-line
+// improvement and matches the pattern the CSRF middleware already
+// uses. Length is also checked first so a wrong-length code doesn't
+// burn the full skew-window walk.
 func (s *FactorService) tryTOTPCode(ctx context.Context, factorID uint, code string) bool {
+	if len(code) != otpDigitCount {
+		return false
+	}
 	secret, err := s.decryptTOTPSecret(ctx, factorID)
 	if err != nil {
 		return false
 	}
 	now := time.Now().UTC()
+	codeBytes := []byte(code)
 	// Walk the skew window and find which step, if any, matches.
 	for d := -int64(totpSkewSteps); d <= int64(totpSkewSteps); d++ {
 		t := now.Add(time.Duration(d) * time.Duration(totpPeriod) * time.Second)
@@ -1073,7 +1097,7 @@ func (s *FactorService) tryTOTPCode(ctx context.Context, factorID uint, code str
 		if err != nil {
 			continue
 		}
-		if candidate != code {
+		if subtle.ConstantTimeCompare([]byte(candidate), codeBytes) != 1 {
 			continue
 		}
 		step := t.Unix() / int64(totpPeriod)
@@ -1099,12 +1123,20 @@ func (s *FactorService) tryBackupCode(ctx context.Context, factorID uint, rawCod
 	return true
 }
 
+// totpAAD returns the additional authenticated data string the AEAD
+// uses to bind a TOTP secret ciphertext to its factor row. Stable per
+// (factor) — the factor row never has its id rewritten, so the AAD
+// cannot drift relative to the encrypted value.
+func totpAAD(factorID uint) []byte {
+	return fmt.Appendf(nil, "factor:%d:totp_secret", factorID)
+}
+
 func (s *FactorService) decryptTOTPSecret(ctx context.Context, factorID uint) (string, error) {
 	row, err := s.factorStore.FindTOTPSecret(ctx, factorID)
 	if err != nil {
 		return "", classifyStoreError(err, "totp secret")
 	}
-	plain, err := s.aead.Open(row.SecretCiphertext, row.SecretNonce)
+	plain, err := s.aead.Open(row.SecretCiphertext, row.SecretNonce, totpAAD(factorID))
 	if err != nil {
 		return "", apperror.InternalWrap(err, "decrypt totp secret")
 	}

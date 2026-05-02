@@ -68,24 +68,33 @@ func DecodeKey(hexKey string) ([]byte, error) {
 // 96 random bits from crypto/rand; GCM requires a fresh nonce per
 // encryption under the same key, so callers MUST NOT reuse an existing
 // nonce.
-func (a *AEAD) Seal(plaintext []byte) (ciphertext, nonce []byte, err error) {
+//
+// `aad` (additional authenticated data) binds the ciphertext to a
+// stable record identifier so a DB-write attacker cannot move
+// ciphertext between rows and have it still authenticate. Closes
+// audit finding C-M-2 (security review 2026-05-01). Pass nil when
+// the caller has no record identity to bind to (rare); pass a
+// caller-defined byte string otherwise. The same `aad` MUST be
+// supplied at Open time — wrong AAD surfaces as the same
+// "authentication failed" error as a tampered ciphertext.
+func (a *AEAD) Seal(plaintext, aad []byte) (ciphertext, nonce []byte, err error) {
 	nonce = make([]byte, a.aead.NonceSize())
 	if _, err := rand.Read(nonce); err != nil {
 		return nil, nil, fmt.Errorf("aead: generate nonce: %w", err)
 	}
-	ciphertext = a.aead.Seal(nil, nonce, plaintext, nil)
+	ciphertext = a.aead.Seal(nil, nonce, plaintext, aad)
 	return ciphertext, nonce, nil
 }
 
-// Open decrypts (ciphertext, nonce). Returns an error if the nonce
-// length is wrong or the ciphertext fails authentication (tampered or
-// wrong key). The error is deliberately opaque — callers should not
-// surface it to users.
-func (a *AEAD) Open(ciphertext, nonce []byte) ([]byte, error) {
+// Open decrypts (ciphertext, nonce, aad). Returns an error if the
+// nonce length is wrong or the ciphertext fails authentication
+// (tampered, wrong key, or AAD mismatch). The error is deliberately
+// opaque — callers should not surface it to users.
+func (a *AEAD) Open(ciphertext, nonce, aad []byte) ([]byte, error) {
 	if len(nonce) != a.aead.NonceSize() {
 		return nil, ErrInvalidNonce
 	}
-	plaintext, err := a.aead.Open(nil, nonce, ciphertext, nil)
+	plaintext, err := a.aead.Open(nil, nonce, ciphertext, aad)
 	if err != nil {
 		return nil, fmt.Errorf("aead: authentication failed")
 	}
