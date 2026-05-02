@@ -1966,7 +1966,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/v1/me/sessions/{id}': {
+  '/api/v1/me/sessions/{sessionId}': {
     parameters: {
       query?: never;
       header?: never;
@@ -1991,7 +1991,7 @@ export interface paths {
         header?: never;
         path: {
           /** @description Session id (sha256 hex) */
-          id: string;
+          sessionId: string;
         };
         cookie?: never;
       };
@@ -10160,7 +10160,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/v1/users/{userId}/factors/{id}': {
+  '/api/v1/users/{userId}/factors/{factorId}': {
     parameters: {
       query?: never;
       header?: never;
@@ -10176,7 +10176,7 @@ export interface paths {
           /** @description User id or 'me' */
           userId: string;
           /** @description Factor id */
-          id: number;
+          factorId: number;
         };
         cookie?: never;
       };
@@ -10229,7 +10229,7 @@ export interface paths {
           /** @description User id or 'me' */
           userId: string;
           /** @description Factor id */
-          id: number;
+          factorId: number;
         };
         cookie?: never;
       };
@@ -10290,7 +10290,7 @@ export interface paths {
           /** @description User id or 'me' */
           userId: string;
           /** @description Factor id */
-          id: number;
+          factorId: number;
         };
         cookie?: never;
       };
@@ -10341,7 +10341,7 @@ export interface paths {
     };
     trace?: never;
   };
-  '/api/v1/users/{userId}/factors/{id}/activate': {
+  '/api/v1/users/{userId}/factors/{factorId}/activate': {
     parameters: {
       query?: never;
       header?: never;
@@ -10365,7 +10365,7 @@ export interface paths {
           /** @description User id or 'me' */
           userId: string;
           /** @description Factor id */
-          id: number;
+          factorId: number;
         };
         cookie?: never;
       };
@@ -10429,7 +10429,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/v1/users/{userId}/factors/{id}/regenerate': {
+  '/api/v1/users/{userId}/factors/{factorId}/regenerate': {
     parameters: {
       query?: never;
       header?: never;
@@ -10452,7 +10452,7 @@ export interface paths {
           /** @description User id or 'me' */
           userId: string;
           /** @description Factor id */
-          id: number;
+          factorId: number;
         };
         cookie?: never;
       };
@@ -11026,7 +11026,11 @@ export interface paths {
     get?: never;
     /**
      * Set user's superadmin status
-     * @description Set or unset a user's superadmin status. Requires superadmin access.
+     * @description Set or unset a user's superadmin status. Requires superadmin access
+     *     AND step-up authentication (the actor's current password in
+     *     `actor_password`). Symmetric with the admin password-reset endpoint:
+     *     without step-up a stolen superadmin session could mint a confederate
+     *     superadmin (or demote the actor) at full API rate.
      */
     put: {
       parameters: {
@@ -11038,7 +11042,7 @@ export interface paths {
         };
         cookie?: never;
       };
-      /** @description Superadmin status */
+      /** @description Superadmin status + actor_password */
       requestBody: {
         content: {
           'application/json': components['schemas']['UserSetSuperAdminRequest'];
@@ -11149,6 +11153,7 @@ export interface components {
       | 'session_revoked'
       | 'superadmin_grant'
       | 'superadmin_revoke'
+      | 'superadmin_change_failed'
       | 'user_create'
       | 'user_delete'
       | 'user_purged'
@@ -12080,7 +12085,9 @@ export interface components {
       backup_codes: components['schemas']['BackupCodesPayload'];
     };
     FactorDeleteRequest: {
+      /** @example 123456 */
       code?: string;
+      /** @example adminspassword */
       password: string;
     };
     FactorEnrollRequest: {
@@ -13585,6 +13592,13 @@ export interface components {
       sessions: components['schemas']['UserSessionResponse'][];
     };
     UserSetSuperAdminRequest: {
+      /**
+       * @description ActorPassword is the current password of the superadmin performing the
+       *     change. Required so that a session holding only a stolen token cannot
+       *     promote/demote superadmins.
+       * @example adminspassword
+       */
+      actor_password: string;
       /** @example true */
       is_superadmin?: boolean;
     };

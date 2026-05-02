@@ -27,7 +27,7 @@ const (
 	// forensic visibility — frequent failures here are a strong signal of
 	// an attacker inside a superadmin session attempting to pivot.
 	AuditActionSuperAdminChangeFailed AuditAction = "superadmin_change_failed"
-	AuditActionUserCreate       AuditAction = "user_create"
+	AuditActionUserCreate             AuditAction = "user_create"
 	// AuditActionUserDelete marks the default DELETE /users/:id
 	// path. As of migration 000015 this is a soft-delete: the row
 	// is tombstoned with a deleted_at timestamp, subsequent lookups
