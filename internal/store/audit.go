@@ -152,6 +152,20 @@ func (s *AuditStore) CountFailedPasswordChangesSince(ctx context.Context, userID
 	return count, err
 }
 
+// CountFailedPasswordResetsSince counts /users/:userId/password actor_password
+// failures attributed to `actorID` since a given time. Drives the per-actor
+// lockout on the admin reset endpoint: an attacker holding a stolen admin
+// session must not be able to iterate actor_password candidates at full
+// API-mutation-rate-limit speed.
+func (s *AuditStore) CountFailedPasswordResetsSince(ctx context.Context, actorID uint, since time.Time) (int64, error) {
+	var count int64
+	err := DBFromContext(ctx, s.db).Model(&models.AuditLog{}).
+		Where("action = ? AND user_id = ? AND timestamp >= ?",
+			models.AuditActionPasswordResetFailed, actorID, since).
+		Count(&count).Error
+	return count, err
+}
+
 // CountFailedMFAChallengesSince counts mfa_challenge_failed events for
 // a user since the given time. Backs the per-user lockout that kicks
 // in across distinct pending_mfa rows — the per-row counter alone

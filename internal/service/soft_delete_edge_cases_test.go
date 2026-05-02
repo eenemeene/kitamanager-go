@@ -280,7 +280,7 @@ func TestUserService_ResetPassword_NotFoundOnTombstone(t *testing.T) {
 	if err := svc.Delete(ctx, victim.ID, requester.ID); err != nil {
 		t.Fatalf("soft-delete: %v", err)
 	}
-	err := svc.ResetPassword(ctx, victim.ID, "newpassword-strong-123", "pw", requester.ID)
+	err := svc.ResetPassword(ctx, victim.ID, "newpassword-strong-123", "pw", requester.ID, "127.0.0.1")
 	if !errors.Is(err, apperror.ErrNotFound) {
 		t.Errorf("ResetPassword against tombstone must be ErrNotFound; got %v", err)
 	}

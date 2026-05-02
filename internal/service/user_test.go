@@ -456,7 +456,7 @@ func TestUserService_ResetPassword(t *testing.T) {
 	setUserPassword(t, db, admin.ID, "adminpw")
 	user := createTestUser(t, db, "Test User", "reset@example.com", "oldpassword")
 
-	err := svc.ResetPassword(ctx, user.ID, "newpassword123", "adminpw", admin.ID)
+	err := svc.ResetPassword(ctx, user.ID, "newpassword123", "adminpw", admin.ID, "127.0.0.1")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -479,7 +479,7 @@ func TestUserService_ResetPassword_UserNotFound(t *testing.T) {
 	admin := createTestSuperAdmin(t, db)
 	setUserPassword(t, db, admin.ID, "adminpw")
 
-	err := svc.ResetPassword(ctx, 99999, "newpassword123", "adminpw", admin.ID)
+	err := svc.ResetPassword(ctx, 99999, "newpassword123", "adminpw", admin.ID, "127.0.0.1")
 	if err == nil {
 		t.Fatal("expected error for non-existent user, got nil")
 	}
@@ -497,7 +497,7 @@ func TestUserService_ResetPassword_OldPasswordInvalidated(t *testing.T) {
 	setUserPassword(t, db, admin.ID, "adminpw")
 	user := createTestUser(t, db, "Test User", "reset2@example.com", "oldpassword")
 
-	if err := svc.ResetPassword(ctx, user.ID, "newpassword123", "adminpw", admin.ID); err != nil {
+	if err := svc.ResetPassword(ctx, user.ID, "newpassword123", "adminpw", admin.ID, "127.0.0.1"); err != nil {
 		t.Fatalf("ResetPassword: %v", err)
 	}
 
@@ -523,7 +523,7 @@ func TestUserService_ResetPassword_AdminCannotResetSuperAdminPassword(t *testing
 
 	superAdmin := createTestSuperAdmin(t, db)
 
-	err := svc.ResetPassword(ctx, superAdmin.ID, "hacked123", "adminpw", adminUser.ID)
+	err := svc.ResetPassword(ctx, superAdmin.ID, "hacked123", "adminpw", adminUser.ID, "127.0.0.1")
 	if err == nil {
 		t.Fatal("expected error when admin tries to reset superadmin password, got nil")
 	}
@@ -554,24 +554,38 @@ func TestUserService_ResetPassword_SuperAdminCanResetSuperAdminPassword(t *testi
 	superAdmin2 := createTestUser(t, db, "Super Admin 2", "super2@example.com", "password")
 	db.Model(superAdmin2).Update("is_superadmin", true)
 
-	err := svc.ResetPassword(ctx, superAdmin2.ID, "newpassword123", "super1pw", superAdmin1.ID)
+	err := svc.ResetPassword(ctx, superAdmin2.ID, "newpassword123", "super1pw", superAdmin1.ID, "127.0.0.1")
 	if err != nil {
 		t.Fatalf("expected superadmin to reset other superadmin password, got %v", err)
 	}
 }
 
-func TestUserService_ResetPassword_SelfReset(t *testing.T) {
+func TestUserService_ResetPassword_SelfReset_Rejected(t *testing.T) {
+	// Closes audit finding A-H-1: a stolen admin session must NOT be
+	// able to rotate the admin's own password without proving they
+	// know the current password. Self-rotation goes through
+	// /me/password (AuthService.ChangePassword) which has the proper
+	// lockout + session-revocation machinery.
 	db := setupTestDB(t)
 	svc := createUserService(db)
 	ctx := context.Background()
 
 	superAdmin := createTestSuperAdmin(t, db)
 
-	// A superadmin should be able to reset their own password — no
-	// actor_password needed for self-reset.
-	err := svc.ResetPassword(ctx, superAdmin.ID, "newpassword123", "", superAdmin.ID)
-	if err != nil {
-		t.Fatalf("expected self-reset to succeed, got %v", err)
+	// Even with the correct actor_password the admin reset endpoint
+	// rejects self-target. The error is BadRequest (not 401) so the
+	// caller can be told to use the right endpoint.
+	err := svc.ResetPassword(ctx, superAdmin.ID, "newpassword123", "any", superAdmin.ID, "127.0.0.1")
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Fatalf("expected BadRequest for self-reset, got %v", err)
+	}
+
+	// Empty actor_password also yields BadRequest (the self-target
+	// check runs before the actor_password check, so the message
+	// directs the user to the correct endpoint either way).
+	err = svc.ResetPassword(ctx, superAdmin.ID, "newpassword123", "", superAdmin.ID, "127.0.0.1")
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Fatalf("expected BadRequest for self-reset (empty actor_password), got %v", err)
 	}
 }
 
@@ -587,7 +601,7 @@ func TestUserService_ResetPassword_ManagerCannotResetSuperAdminPassword(t *testi
 
 	superAdmin := createTestSuperAdmin(t, db)
 
-	err := svc.ResetPassword(ctx, superAdmin.ID, "hacked", "mgrpw", manager.ID)
+	err := svc.ResetPassword(ctx, superAdmin.ID, "hacked", "mgrpw", manager.ID, "127.0.0.1")
 	if err == nil {
 		t.Fatal("expected error when manager tries to reset superadmin password")
 	}
@@ -610,7 +624,7 @@ func TestUserService_ResetPassword_AdminCanResetSameOrgUserPassword(t *testing.T
 	createTestUserOrganization(t, db, normalUser.ID, org.ID, models.RoleMember)
 
 	// Admin should be able to reset password for a user in the same org
-	err := svc.ResetPassword(ctx, normalUser.ID, "newpassword", "adminpw", adminUser.ID)
+	err := svc.ResetPassword(ctx, normalUser.ID, "newpassword", "adminpw", adminUser.ID, "127.0.0.1")
 	if err != nil {
 		t.Fatalf("expected admin to reset same-org user password, got %v", err)
 	}
@@ -632,7 +646,7 @@ func TestUserService_ResetPassword_AdminCannotResetCrossOrgUserPassword(t *testi
 	createTestUserOrganization(t, db, targetUser.ID, org2.ID, models.RoleMember)
 
 	// Admin in org1 must NOT be able to reset password for user only in org2
-	err := svc.ResetPassword(ctx, targetUser.ID, "hacked", "adminpw", adminUser.ID)
+	err := svc.ResetPassword(ctx, targetUser.ID, "hacked", "adminpw", adminUser.ID, "127.0.0.1")
 	if err == nil {
 		t.Fatal("expected error when admin tries to reset cross-org user password, got nil")
 	}
@@ -655,7 +669,7 @@ func TestUserService_ResetPassword_ManagerCannotResetSameOrgUserPassword(t *test
 	createTestUserOrganization(t, db, normalUser.ID, org.ID, models.RoleMember)
 
 	// Manager must NOT be able to reset password (not admin role)
-	err := svc.ResetPassword(ctx, normalUser.ID, "hacked", "mgrpw", manager.ID)
+	err := svc.ResetPassword(ctx, normalUser.ID, "hacked", "mgrpw", manager.ID, "127.0.0.1")
 	if err == nil {
 		t.Fatal("expected error when manager tries to reset user password, got nil")
 	}
@@ -1136,5 +1150,124 @@ func makeSuperadmin(t *testing.T, db *gorm.DB, userID uint) {
 	t.Helper()
 	if err := db.Model(&models.User{}).Where("id = ?", userID).Update("is_superadmin", true).Error; err != nil {
 		t.Fatalf("makeSuperadmin: %v", err)
+	}
+}
+
+// ----------------------------------------------------------------------
+// Audit findings A-H-1 + A-M-2 — security review 2026-05-01.
+//
+// These tests close two related issues on the admin
+// /users/:userId/password endpoint:
+//
+//   * Self-target used to bypass the actor_password step-up entirely
+//     (a stolen admin session could rotate the admin's own password).
+//   * Wrong actor_password attempts had no lockout counter — a stolen
+//     admin session could iterate actor_password candidates against
+//     any target user at the API mutation rate.
+// ----------------------------------------------------------------------
+
+// seedFailedResets seeds N password_reset_failed audit rows attributed
+// to `actorID` directly via the DB, bypassing the buffered audit
+// channel so the count is visible synchronously to the next
+// ResetPassword call. Mirrors TestAuthService_ChangePassword_LocksOutAfterThreshold.
+func seedFailedResets(t *testing.T, db *gorm.DB, actorID uint, n int64) {
+	t.Helper()
+	for i := int64(0); i < n; i++ {
+		if err := db.Create(&models.AuditLog{
+			UserID:    &actorID,
+			Action:    models.AuditActionPasswordResetFailed,
+			IPAddress: "127.0.0.1",
+			Success:   false,
+			Timestamp: time.Now(),
+		}).Error; err != nil {
+			t.Fatalf("seed audit row %d: %v", i, err)
+		}
+	}
+}
+
+func TestUserService_ResetPassword_LocksOutAfterRepeatedActorPasswordFailures(t *testing.T) {
+	db := setupTestDB(t)
+	svc, _ := createUserServiceWithAudit(db)
+	ctx := context.Background()
+
+	admin := createTestSuperAdmin(t, db)
+	setUserPassword(t, db, admin.ID, "adminpw")
+	target := createTestUser(t, db, "T", "t@example.com", "x")
+
+	// Pre-populate the failure budget directly so the count is
+	// authoritative on the next call (the audit channel is buffered).
+	seedFailedResets(t, db, admin.ID, passwordResetLockoutThreshold)
+
+	// Even the CORRECT actor_password is refused once locked out.
+	err := svc.ResetPassword(ctx, target.ID, "newpw-1234567", "adminpw", admin.ID, "127.0.0.1")
+	if !errors.Is(err, apperror.ErrTooManyRequests) {
+		t.Errorf("locked-out actor: expected ErrTooManyRequests, got %v", err)
+	}
+}
+
+func TestUserService_ResetPassword_LockoutBlocksWrongAndRightPassword(t *testing.T) {
+	// Once locked out, both wrong and right actor_password surface as
+	// TooManyRequests — same status, no timing oracle on bcrypt because
+	// the gate runs before bcrypt.
+	db := setupTestDB(t)
+	svc, _ := createUserServiceWithAudit(db)
+	ctx := context.Background()
+
+	admin := createTestSuperAdmin(t, db)
+	setUserPassword(t, db, admin.ID, "adminpw")
+	target := createTestUser(t, db, "T", "t@example.com", "x")
+
+	seedFailedResets(t, db, admin.ID, passwordResetLockoutThreshold)
+
+	for _, pw := range []string{"wrong-pw", "adminpw"} {
+		err := svc.ResetPassword(ctx, target.ID, "newpw-1234567", pw, admin.ID, "127.0.0.1")
+		if !errors.Is(err, apperror.ErrTooManyRequests) {
+			t.Errorf("password=%q: expected ErrTooManyRequests, got %v", pw, err)
+		}
+	}
+}
+
+func TestUserService_ResetPassword_BelowThresholdStillReturnsUnauthorized(t *testing.T) {
+	db := setupTestDB(t)
+	svc, _ := createUserServiceWithAudit(db)
+	ctx := context.Background()
+
+	admin := createTestSuperAdmin(t, db)
+	setUserPassword(t, db, admin.ID, "adminpw")
+	target := createTestUser(t, db, "T", "t@example.com", "x")
+
+	// One short of the threshold: wrong password still surfaces as
+	// 401, not 429.
+	seedFailedResets(t, db, admin.ID, passwordResetLockoutThreshold-1)
+	err := svc.ResetPassword(ctx, target.ID, "newpw-1234567", "wrong-pw", admin.ID, "127.0.0.1")
+	if !errors.Is(err, apperror.ErrUnauthorized) {
+		t.Errorf("below-threshold wrong password: expected ErrUnauthorized, got %v", err)
+	}
+}
+
+func TestUserService_ResetPassword_LockoutIsPerActor_NotGlobal(t *testing.T) {
+	// Failures attributed to admin1 must NOT lock out admin2. The
+	// counter is keyed on user_id (actor), not global.
+	db := setupTestDB(t)
+	svc, _ := createUserServiceWithAudit(db)
+	ctx := context.Background()
+
+	admin1 := createTestSuperAdmin(t, db)
+	setUserPassword(t, db, admin1.ID, "admin1pw")
+	admin2 := createTestSuperAdmin2(t, db)
+	setUserPassword(t, db, admin2.ID, "admin2pw")
+	target := createTestUser(t, db, "T", "t@example.com", "x")
+
+	seedFailedResets(t, db, admin1.ID, passwordResetLockoutThreshold)
+
+	// admin1 is locked out:
+	err := svc.ResetPassword(ctx, target.ID, "newpw-1234567", "admin1pw", admin1.ID, "127.0.0.1")
+	if !errors.Is(err, apperror.ErrTooManyRequests) {
+		t.Errorf("admin1: expected TooManyRequests, got %v", err)
+	}
+
+	// admin2 is NOT locked out:
+	if err := svc.ResetPassword(ctx, target.ID, "newpw-1234567", "admin2pw", admin2.ID, "127.0.0.1"); err != nil {
+		t.Errorf("admin2 should not be affected by admin1's lockout, got %v", err)
 	}
 }

@@ -59,6 +59,7 @@ definitions:
     - org_delete
     - org_purged
     - password_reset
+    - password_reset_failed
     - password_change
     - password_change_failed
     - factor_enrolled
@@ -91,6 +92,7 @@ definitions:
     - AuditActionOrgDelete
     - AuditActionOrgPurged
     - AuditActionPasswordReset
+    - AuditActionPasswordResetFailed
     - AuditActionPasswordChange
     - AuditActionPasswordChangeFailed
     - AuditActionFactorEnrolled
