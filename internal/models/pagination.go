@@ -5,6 +5,16 @@ import (
 	"net/url"
 )
 
+// MaxPage caps how high the page index can go. Closes audit finding
+// R-M-2 (security review 2026-05-01): Limit was capped at 100 but
+// Page had no ceiling, so a request like ?page=2147483640&limit=100
+// forced PostgreSQL to compute OFFSET ~= 2.1e11 — a CPU-amplification
+// DoS where the attacker pays a query string and the DB pays a full
+// index scan. 100_000 is far past any realistic legitimate paging
+// (a user clicking "next" 100k times) but well below the row-count
+// at which OFFSET starts to bite.
+const MaxPage = 100_000
+
 // PaginationParams holds pagination request parameters
 type PaginationParams struct {
 	Page  int `form:"page"`
@@ -12,12 +22,16 @@ type PaginationParams struct {
 }
 
 // Validate checks for explicitly invalid pagination values.
-// Returns an error if page or limit are negative, or if limit exceeds 100.
-// Zero values (Go default for int from query binding) are allowed as they indicate
-// "not provided" and will be defaulted by SetDefaults() (page=1, limit=20).
+// Returns an error if page or limit are negative, if limit exceeds
+// 100, or if page exceeds MaxPage. Zero values (Go default for int
+// from query binding) are allowed as they indicate "not provided"
+// and will be defaulted by SetDefaults() (page=1, limit=20).
 func (p *PaginationParams) Validate() error {
 	if p.Page < 0 {
 		return fmt.Errorf("page must be positive")
+	}
+	if p.Page > MaxPage {
+		return fmt.Errorf("page must not exceed %d", MaxPage)
 	}
 	if p.Limit < 0 {
 		return fmt.Errorf("limit must be positive")

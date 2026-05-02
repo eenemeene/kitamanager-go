@@ -163,10 +163,26 @@ func (s *UserStore) FindByOrganizations(ctx context.Context, orgIDs []uint, sear
 	return users, total, nil
 }
 
+// SharesOrganization returns true iff both users have an active
+// membership in the same organization. Closes audit finding R-M-1
+// (security review 2026-05-01): the previous version raw-joined
+// user_organizations to itself without filtering tombstoned users on
+// either side, so a tombstoned user could still appear as "still
+// sharing" with a live user. Today's callers gate this with a prior
+// FindByID (auto-scoped) on at least one side, but a future direct
+// caller would have inherited the bug. Fixed defensively.
+//
+// Both userID1 and userID2 must be non-tombstoned (users.deleted_at
+// IS NULL on each end of the JOIN). user_organizations rows
+// CASCADE-delete with the user, so a hard-deleted user is naturally
+// excluded; soft-deleted users keep their user_organizations rows
+// hence the explicit filter.
 func (s *UserStore) SharesOrganization(ctx context.Context, userID1, userID2 uint) (bool, error) {
 	var count int64
 	err := DBFromContext(ctx, s.db).Table("user_organizations uo1").
 		Joins("JOIN user_organizations uo2 ON uo2.organization_id = uo1.organization_id").
+		Joins("JOIN users u1 ON u1.id = uo1.user_id AND u1.deleted_at IS NULL").
+		Joins("JOIN users u2 ON u2.id = uo2.user_id AND u2.deleted_at IS NULL").
 		Where("uo1.user_id = ? AND uo2.user_id = ?", userID1, userID2).
 		Count(&count).Error
 	if err != nil {
@@ -175,12 +191,16 @@ func (s *UserStore) SharesOrganization(ctx context.Context, userID1, userID2 uin
 	return count > 0, nil
 }
 
-// IsAdminInSharedOrg checks whether the requester has admin role in at least one
-// organization that the target user belongs to.
+// IsAdminInSharedOrg checks whether the requester has admin role in at
+// least one organization that the target user belongs to. Closes audit
+// finding R-M-1 (same rationale as SharesOrganization): both users
+// must be non-tombstoned.
 func (s *UserStore) IsAdminInSharedOrg(ctx context.Context, requesterID, targetUserID uint) (bool, error) {
 	var count int64
 	err := DBFromContext(ctx, s.db).Table("user_organizations uo_req").
 		Joins("JOIN user_organizations uo_target ON uo_target.organization_id = uo_req.organization_id").
+		Joins("JOIN users u_req ON u_req.id = uo_req.user_id AND u_req.deleted_at IS NULL").
+		Joins("JOIN users u_target ON u_target.id = uo_target.user_id AND u_target.deleted_at IS NULL").
 		Where("uo_req.user_id = ? AND uo_target.user_id = ? AND uo_req.role = ?",
 			requesterID, targetUserID, "admin").
 		Count(&count).Error
