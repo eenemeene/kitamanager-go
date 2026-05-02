@@ -8,7 +8,7 @@ import {
   deleteUserViaApi,
   uniqueName,
 } from './utils/test-helpers';
-import { generateTotp, extractTotpSecret } from './utils/totp';
+import { generateTotp, extractTotpSecret, waitForNextTotpStep } from './utils/totp';
 
 test.use({ locale: 'en-US' });
 
@@ -175,6 +175,13 @@ test.describe('Login failures — MFA step', () => {
   });
 
   test('wrong code, then correct code — recovery works without restart', async ({ page }) => {
+    // beforeEach activated TOTP using a code from the current 30 s
+    // window; that activation now bumps last_used_step (audit A-M-1).
+    // Wait one window so the code we generate below is for a step
+    // strictly greater than last_used_step and is accepted.
+    test.setTimeout(60_000);
+    await waitForNextTotpStep();
+
     await submitPasswordForm(page, testEmail, password);
     await expect(page.getByTestId('mfa-verify-form')).toBeVisible({ timeout: 10000 });
 

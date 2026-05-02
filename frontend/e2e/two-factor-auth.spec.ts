@@ -9,7 +9,7 @@ import {
   deleteUserViaApi,
   uniqueName,
 } from './utils/test-helpers';
-import { generateTotp, extractTotpSecret } from './utils/totp';
+import { generateTotp, extractTotpSecret, waitForNextTotpStep } from './utils/totp';
 
 test.use({ locale: 'en-US' });
 
@@ -206,6 +206,10 @@ test.describe('Two-factor authentication — full lifecycle', () => {
     await logoutViaButton(page);
 
     // ---- Step 4: login again, MFA gate required ----
+    // The activation above bumped last_used_step to the current
+    // window (audit A-M-1). Wait one TOTP step so the next
+    // generateTotp returns a code with a strictly greater step.
+    await waitForNextTotpStep();
     await page.getByLabel(/email/i).fill(testEmail);
     await page.getByLabel(/password/i).fill(password);
     await page.getByRole('button', { name: /sign ?in|login/i }).click();
@@ -375,7 +379,13 @@ test.describe('Two-factor authentication — API-enrolled shortcuts', () => {
   });
 
   test('login page swaps to MFA form when the user has an enrolled factor', async ({ page }) => {
+    test.setTimeout(60_000);
     const { secret } = await enrollTotpViaApi(page, password);
+
+    // enrollTotpViaApi activated the factor with a code from the
+    // current window; that bumped last_used_step (audit A-M-1).
+    // Wait one TOTP step before generating the verify code below.
+    await waitForNextTotpStep();
 
     // Logout then login.
     await logoutViaButton(page);
