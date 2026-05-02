@@ -7,6 +7,15 @@ on:
 permissions:
   contents: read
   packages: write
+  # Required for cosign keyless signing: the workflow exchanges its
+  # OIDC token with sigstore's Fulcio CA for a short-lived signing
+  # certificate. No long-lived signing key needs to live in secrets.
+  # Closes audit finding O-M-1 (security review 2026-05-01).
+  id-token: write
+  # Required for SLSA provenance attestations. docker/build-push-action
+  # with provenance: mode=max writes the attestation to the same
+  # registry as the image manifest.
+  attestations: write
 
 jobs:
   container-images:
@@ -18,6 +27,12 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
+
+      # Cosign for image signing. Pinned to the v3.7.0 commit SHA so
+      # a compromised cosign release cannot inject a malicious signing
+      # binary into the workflow.
+      - name: Install cosign
+        uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da # v3.7.0
 
       - name: Log in to GHCR
         uses: docker/login-action@v4
@@ -74,6 +89,7 @@ jobs:
             type=raw,value=latest,enable=${{ !github.event.release.prerelease }}
 
       - name: Build and push API image
+        id: build-api
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -88,8 +104,16 @@ jobs:
             BUILD_TIME=${{ github.event.release.created_at }}
           cache-from: type=gha,scope=api
           cache-to: type=gha,mode=max,scope=api
+          # Closes audit finding O-M-1: SBOM + SLSA provenance attestations
+          # are written alongside the manifest in both registries.
+          # mode=max emits the full build graph (every layer, every
+          # build-arg) so downstream consumers can verify exactly what
+          # the binary was compiled from.
+          provenance: mode=max
+          sbom: true
 
       - name: Build and push Frontend image
+        id: build-frontend
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -108,8 +132,11 @@ jobs:
             APP_BUILD_TIME=${{ github.event.release.created_at }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
+          provenance: mode=max
+          sbom: true
 
       - name: Build and push Report image
+        id: build-report
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -135,3 +162,41 @@ jobs:
             BUILD_TIME=${{ github.event.release.created_at }}
           cache-from: type=gha,scope=report
           cache-to: type=gha,mode=max,scope=report
+          provenance: mode=max
+          sbom: true
+
+      # Cosign keyless signing. The OIDC token is exchanged with
+      # sigstore's Fulcio for an ephemeral signing certificate; no
+      # long-lived signing key lives in repo secrets. Each tag is
+      # signed in both registries (GHCR + Docker Hub).
+      #
+      # Verifying downstream:
+      #   cosign verify ghcr.io/eenemeene/kitamanager:<tag> \
+      #     --certificate-identity=https://github.com/eenemeene/kitamanager-go/.github/workflows/release.yml@refs/tags/<tag> \
+      #     --certificate-oidc-issuer=https://token.actions.githubusercontent.com
+      - name: Sign images with cosign
+        env:
+          API_DIGEST: ${{ steps.build-api.outputs.digest }}
+          FRONTEND_DIGEST: ${{ steps.build-frontend.outputs.digest }}
+          REPORT_DIGEST: ${{ steps.build-report.outputs.digest }}
+          API_TAGS: ${{ steps.meta-api.outputs.tags }}
+          FRONTEND_TAGS: ${{ steps.meta-frontend.outputs.tags }}
+          REPORT_TAGS: ${{ steps.meta-report.outputs.tags }}
+        run: |
+          set -euo pipefail
+          # docker/metadata-action emits one tag per line. Sign each
+          # one by digest so the signature binds to the exact bytes
+          # that were pushed (a future floating-tag mutation cannot
+          # invalidate or reuse the signature).
+          while IFS= read -r tag; do
+            [ -z "$tag" ] && continue
+            cosign sign --yes "${tag%:*}@${API_DIGEST}"
+          done <<< "${API_TAGS}"
+          while IFS= read -r tag; do
+            [ -z "$tag" ] && continue
+            cosign sign --yes "${tag%:*}@${FRONTEND_DIGEST}"
+          done <<< "${FRONTEND_TAGS}"
+          while IFS= read -r tag; do
+            [ -z "$tag" ] && continue
+            cosign sign --yes "${tag%:*}@${REPORT_DIGEST}"
+          done <<< "${REPORT_TAGS}"
