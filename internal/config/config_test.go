@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -149,6 +150,7 @@ func TestLoad_SucceedsWithRequiredEnv(t *testing.T) {
 	os.Setenv("DB_PASSWORD", "p")
 	os.Setenv("DB_NAME", "db")
 	os.Setenv("DB_SSLMODE", "disable")
+	os.Setenv("SECURE_COOKIES", "false") // tests are not production
 
 	cfg, err := Load()
 	if err != nil {
@@ -170,6 +172,7 @@ func TestLoad_ParsesCORSOrigins(t *testing.T) {
 	os.Setenv("DB_PASSWORD", "p")
 	os.Setenv("DB_NAME", "db")
 	os.Setenv("DB_SSLMODE", "disable")
+	os.Setenv("SECURE_COOKIES", "false") // tests are not production
 	os.Setenv("CORS_ALLOW_ORIGINS", "http://localhost:3000, http://example.com , http://test.com")
 
 	cfg, err := Load()
@@ -195,6 +198,7 @@ func TestLoad_EmptyCORSOriginsYieldsNil(t *testing.T) {
 	os.Setenv("DB_PASSWORD", "p")
 	os.Setenv("DB_NAME", "db")
 	os.Setenv("DB_SSLMODE", "disable")
+	os.Setenv("SECURE_COOKIES", "false") // tests are not production
 
 	cfg, err := Load()
 	if err != nil {
@@ -213,6 +217,7 @@ func TestLoad_ParsesCORSCredentials(t *testing.T) {
 	os.Setenv("DB_PASSWORD", "p")
 	os.Setenv("DB_NAME", "db")
 	os.Setenv("DB_SSLMODE", "disable")
+	os.Setenv("SECURE_COOKIES", "false") // tests are not production
 	os.Setenv("CORS_ALLOW_CREDENTIALS", "false")
 
 	cfg, err := Load()
@@ -249,7 +254,9 @@ func TestLoad_SecureCookiesDefaultTrue(t *testing.T) {
 	os.Setenv("DB_USER", "u")
 	os.Setenv("DB_PASSWORD", "p")
 	os.Setenv("DB_NAME", "db")
-	os.Setenv("DB_SSLMODE", "disable")
+	os.Setenv("DB_SSLMODE", "require") // SECURE_COOKIES default true → SSL must be on
+	os.Unsetenv("SECURE_COOKIES")
+	os.Setenv("LOGIN_RATE_LIMIT_PER_MINUTE", "5") // production gate G6
 
 	cfg, err := Load()
 	if err != nil {
@@ -269,6 +276,7 @@ func TestLoad_TrustedProxies(t *testing.T) {
 		os.Setenv("DB_PASSWORD", "p")
 		os.Setenv("DB_NAME", "db")
 		os.Setenv("DB_SSLMODE", "disable")
+		os.Setenv("SECURE_COOKIES", "false") // tests are not production
 		os.Setenv("TRUSTED_PROXIES", "10.0.0.1, 10.0.0.2 , 192.168.1.0/24")
 
 		cfg, err := Load()
@@ -294,6 +302,7 @@ func TestLoad_TrustedProxies(t *testing.T) {
 		os.Setenv("DB_PASSWORD", "p")
 		os.Setenv("DB_NAME", "db")
 		os.Setenv("DB_SSLMODE", "disable")
+		os.Setenv("SECURE_COOKIES", "false") // tests are not production
 
 		cfg, err := Load()
 		if err != nil {
@@ -519,6 +528,7 @@ func TestLoad_CSRFHMACKey_FallsBackToJWTSecret(t *testing.T) {
 	os.Setenv("DB_PASSWORD", "p")
 	os.Setenv("DB_NAME", "db")
 	os.Setenv("DB_SSLMODE", "disable")
+	os.Setenv("SECURE_COOKIES", "false") // dev mode bypasses production gate
 	os.Unsetenv("CSRF_HMAC_KEY")
 
 	cfg, err := Load()
@@ -543,6 +553,7 @@ func TestLoad_CSRFHMACKey_OverridesWhenSet(t *testing.T) {
 	os.Setenv("DB_PASSWORD", "p")
 	os.Setenv("DB_NAME", "db")
 	os.Setenv("DB_SSLMODE", "disable")
+	os.Setenv("SECURE_COOKIES", "false") // dev mode bypasses production gate
 
 	cfg, err := Load()
 	if err != nil {
@@ -553,5 +564,78 @@ func TestLoad_CSRFHMACKey_OverridesWhenSet(t *testing.T) {
 	}
 	if cfg.JWTSecret == cfg.CSRFHMACKey {
 		t.Error("JWTSecret and CSRFHMACKey must be independent when both env vars are set")
+	}
+}
+
+// ----------------------------------------------------------------------
+// Production-readiness gates (closes audit O-M-9, O-M-10).
+//
+// SECURE_COOKIES=true is the proxy for "this is a production
+// deployment". In that mode:
+//   - the per-IP login rate limiter must be enabled
+//   - the DB connection must use TLS
+// Each has an explicit opt-out for operators who run the equivalent
+// control upstream (WAF / pgbouncer).
+// ----------------------------------------------------------------------
+
+func TestValidate_ProductionGate_RateLimitDisabled_Rejected(t *testing.T) {
+	cfg := baseValidConfig()
+	cfg.SecureCookies = true
+	cfg.LoginRateLimitPerMinute = 0
+	cfg.DBSSLMode = "require"
+	cfg.CORSAllowCredentials = false // avoid wildcard+credentials trip
+
+	err := cfg.Validate()
+	if !errors.Is(err, ErrProductionRateLimitDisabled) {
+		t.Errorf("expected ErrProductionRateLimitDisabled, got %v", err)
+	}
+}
+
+func TestValidate_ProductionGate_RateLimitDisabled_OptOut(t *testing.T) {
+	cfg := baseValidConfig()
+	cfg.SecureCookies = true
+	cfg.LoginRateLimitPerMinute = 0
+	cfg.DBSSLMode = "require"
+	cfg.AllowRateLimitDisabledInProduction = true
+
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("opt-out should bypass the gate, got %v", err)
+	}
+}
+
+func TestValidate_ProductionGate_DBSSLDisabled_Rejected(t *testing.T) {
+	cfg := baseValidConfig()
+	cfg.SecureCookies = true
+	cfg.DBSSLMode = "disable"
+	cfg.LoginRateLimitPerMinute = 5
+
+	err := cfg.Validate()
+	if !errors.Is(err, ErrProductionInsecureDB) {
+		t.Errorf("expected ErrProductionInsecureDB, got %v", err)
+	}
+}
+
+func TestValidate_ProductionGate_DBSSLDisabled_OptOut(t *testing.T) {
+	cfg := baseValidConfig()
+	cfg.SecureCookies = true
+	cfg.DBSSLMode = "disable"
+	cfg.LoginRateLimitPerMinute = 5
+	cfg.AllowDBSSLModeDisableInProduction = true
+
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("opt-out should bypass the gate, got %v", err)
+	}
+}
+
+func TestValidate_ProductionGate_NotInDevMode(t *testing.T) {
+	// SECURE_COOKIES=false → dev mode → gates do NOT fire even with
+	// rate limit off and DB plaintext.
+	cfg := baseValidConfig()
+	cfg.SecureCookies = false
+	cfg.LoginRateLimitPerMinute = 0
+	cfg.DBSSLMode = "disable"
+
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("dev mode should not trip the gates, got %v", err)
 	}
 }

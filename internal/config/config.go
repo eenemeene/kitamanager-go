@@ -30,6 +30,19 @@ var (
 	ErrMissingTOTPKey        = errors.New("TOTP_ENCRYPTION_KEY must be set (generate with: openssl rand -hex 32)")
 	ErrInvalidTOTPKey        = errors.New("TOTP_ENCRYPTION_KEY must be exactly 32 bytes hex-encoded (64 hex chars) and must not be a known placeholder value")
 	ErrInvalidWebAuthnOrigin = errors.New("WEBAUTHN_ORIGINS contains an invalid entry (must be scheme+host[+port], no wildcards, no trailing slashes)")
+	// ErrProductionRateLimitDisabled fires when SECURE_COOKIES=true
+	// (production indicator) and the per-IP login rate limiter is
+	// disabled — closes audit finding O-M-9 (security review
+	// 2026-05-01). Operators with an external rate limiter (WAF /
+	// reverse proxy) must say so explicitly via
+	// ALLOW_RATE_LIMIT_DISABLED_IN_PRODUCTION=true.
+	ErrProductionRateLimitDisabled = errors.New("LOGIN_RATE_LIMIT_PER_MINUTE=0 is not permitted when SECURE_COOKIES=true; set a positive value, or opt out with ALLOW_RATE_LIMIT_DISABLED_IN_PRODUCTION=true if rate limiting happens upstream")
+	// ErrProductionInsecureDB fires when SECURE_COOKIES=true and the
+	// Postgres connection is configured with sslmode=disable — closes
+	// audit finding O-M-10. Operators on a private network with TLS
+	// terminated upstream of pgbouncer must opt in explicitly via
+	// ALLOW_DB_SSLMODE_DISABLE_IN_PRODUCTION=true.
+	ErrProductionInsecureDB = errors.New("DB_SSLMODE=disable is not permitted when SECURE_COOKIES=true; pick require/verify-ca/verify-full, or opt out with ALLOW_DB_SSLMODE_DISABLE_IN_PRODUCTION=true if TLS is terminated upstream")
 )
 
 // knownPlaceholderTOTPKeys mirrors knownPlaceholderJWTSecrets: any string
@@ -121,6 +134,17 @@ type Config struct {
 	// Security
 	SecureCookies bool
 
+	// AllowRateLimitDisabledInProduction is the opt-out for
+	// ErrProductionRateLimitDisabled — set true ONLY if rate-limiting
+	// happens upstream (WAF / reverse proxy / API gateway).
+	AllowRateLimitDisabledInProduction bool
+	// AllowDBSSLModeDisableInProduction is the opt-out for
+	// ErrProductionInsecureDB — set true ONLY if Postgres TLS is
+	// terminated upstream (e.g. pgbouncer on the same host) AND the
+	// connection between the API and pgbouncer is on a Unix socket /
+	// loopback that the operator has independently verified.
+	AllowDBSSLModeDisableInProduction bool
+
 	// SMTP
 	SMTPHost     string
 	SMTPPort     int
@@ -173,10 +197,28 @@ func (c *Config) Validate() error {
 		errs = append(errs, ErrMissingDBConfig)
 	}
 
-	// DB SSL mode — syntactic only; operator chooses the right value for their env.
+	// DB SSL mode — syntactic check first.
 	validSSLModes := map[string]bool{"disable": true, "require": true, "verify-ca": true, "verify-full": true}
 	if !validSSLModes[c.DBSSLMode] {
 		errs = append(errs, ErrInvalidDBSSLMode)
+	}
+
+	// Production-readiness gates. SecureCookies=true is the indicator
+	// that the operator has wired up HTTPS (cookies must be Secure)
+	// and is therefore running this in production. In that mode:
+	//   - the per-IP login rate limit MUST be enabled (closes O-M-9),
+	//     otherwise brute-force is bounded only by the network round-trip;
+	//   - the DB connection MUST be encrypted (closes O-M-10), otherwise
+	//     credentials and PII flow over plaintext.
+	// Each gate has a documented escape hatch for operators who run
+	// the equivalent control upstream (WAF / pgbouncer / VPC).
+	if c.SecureCookies {
+		if c.LoginRateLimitPerMinute == 0 && !c.AllowRateLimitDisabledInProduction {
+			errs = append(errs, ErrProductionRateLimitDisabled)
+		}
+		if c.DBSSLMode == "disable" && !c.AllowDBSSLModeDisableInProduction {
+			errs = append(errs, ErrProductionInsecureDB)
+		}
 	}
 
 	// Log level / format
@@ -393,6 +435,9 @@ func Load() (*Config, error) {
 		TrustedProxies: trustedProxies,
 
 		SecureCookies: getEnv("SECURE_COOKIES", "true") == "true",
+
+		AllowRateLimitDisabledInProduction: getEnv("ALLOW_RATE_LIMIT_DISABLED_IN_PRODUCTION", "false") == "true",
+		AllowDBSSLModeDisableInProduction:  getEnv("ALLOW_DB_SSLMODE_DISABLE_IN_PRODUCTION", "false") == "true",
 
 		SMTPHost:     getEnv("SMTP_HOST", ""),
 		SMTPPort:     getEnvInt("SMTP_PORT", 587),
