@@ -122,7 +122,23 @@ type ChildVoucherStorer interface {
 	FindVouchersByChildID(ctx context.Context, childID uint) ([]models.ChildVoucher, error)
 	FindVouchersByChildIDs(ctx context.Context, childIDs []uint) ([]models.ChildVoucher, error)
 	FindVouchersByOrganization(ctx context.Context, orgID uint) ([]models.ChildVoucher, error)
+	// CreateVoucher inserts a child_voucher row, silently ignoring
+	// duplicate-voucher conflicts via ON CONFLICT DO NOTHING. Used by
+	// the auto-discovery path during ISBJ bill upload, where a row
+	// that already exists is fine. NOT suitable for the user-driven
+	// AssignVoucher path — use CreateVoucherStrict there so the API
+	// can return a 409 instead of silently dropping the assignment.
 	CreateVoucher(ctx context.Context, voucher *models.ChildVoucher) error
+	// CreateVoucherStrict inserts a child_voucher row WITHOUT ON
+	// CONFLICT handling. A duplicate voucher_number surfaces as
+	// store.ErrDuplicateKey (mapped from PG 23505). The caller can
+	// disambiguate "same child, idempotent" vs "different child,
+	// real conflict" via FindByVoucherNumber.
+	CreateVoucherStrict(ctx context.Context, voucher *models.ChildVoucher) error
+	// FindByVoucherNumber returns the child_voucher row for the given
+	// voucher number, or store.ErrNotFound if no row exists. Used by
+	// AssignVoucher's idempotent-vs-conflict disambiguation.
+	FindByVoucherNumber(ctx context.Context, voucherNumber string) (*models.ChildVoucher, error)
 	DeleteVouchersByChild(ctx context.Context, childID uint) error
 	FindActiveContractsByChildIDsAndDate(ctx context.Context, orgID uint, childIDs []uint, date time.Time) (map[uint]models.ChildContract, error)
 	FindChildrenWithoutVouchers(ctx context.Context, orgID uint, activeOn time.Time) ([]models.Child, error)

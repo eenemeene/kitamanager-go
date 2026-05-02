@@ -443,8 +443,11 @@ func TestBudgetItemService_List_ActiveAmountCents_BoundaryFromToday(t *testing.T
 	org := createTestOrganization(t, db, "Test Org")
 	item, _ := svc.Create(ctx, org.ID, &models.BudgetItemCreateRequest{Name: "FromToday", Category: "income"})
 
-	// Entry starting today
-	today := models.TruncateToDate(time.Now())
+	// Entry starting today. models.Today() returns the Berlin-zone
+	// calendar day; TruncateToDate(time.Now()) returns the UTC
+	// calendar day, which is off-by-one for ~1h each evening Berlin
+	// time and was the source of the M4 flakiness.
+	today := models.Today()
 	_, _ = svc.CreateEntry(ctx, item.ID, org.ID, &models.BudgetItemEntryCreateRequest{
 		From:        today,
 		AmountCents: 77700,
@@ -471,8 +474,9 @@ func TestBudgetItemService_List_ActiveAmountCents_BoundaryToToday(t *testing.T) 
 	org := createTestOrganization(t, db, "Test Org")
 	item, _ := svc.Create(ctx, org.ID, &models.BudgetItemCreateRequest{Name: "ToToday", Category: "expense"})
 
-	// Entry ending today (inclusive)
-	today := models.TruncateToDate(time.Now())
+	// Entry ending today (inclusive). Use models.Today() not
+	// TruncateToDate(time.Now()) — see comment above (M4).
+	today := models.Today()
 	_, _ = svc.CreateEntry(ctx, item.ID, org.ID, &models.BudgetItemEntryCreateRequest{
 		From:        time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
 		To:          &today,

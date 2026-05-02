@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"strings"
 	"time"
@@ -207,6 +208,31 @@ const passwordResetLockoutThreshold int64 = 5
 // failure counter is consulted. Mirrors passwordChangeLockoutWindow.
 const passwordResetLockoutWindow = 15 * time.Minute
 
+// VerifyActorPassword fetches the actor's user row and bcrypt-checks
+// the supplied password. Used as a step-up authentication factor on
+// admin endpoints that mutate identity (admin password reset,
+// superadmin grant/revoke). Returns:
+//   - apperror.BadRequest when actorPassword is empty
+//   - apperror.Unauthorized when the password does not match
+//   - the wrapped store error when the actor lookup itself fails
+//
+// Does NOT emit audit events — the caller knows which endpoint it is
+// (and what target_user_id / action context to attach) and is the
+// right place to log the failure with full context.
+func (s *UserService) VerifyActorPassword(ctx context.Context, actorID uint, actorPassword string) error {
+	if actorPassword == "" {
+		return apperror.BadRequest("actor_password is required")
+	}
+	requester, err := s.store.FindByID(ctx, actorID)
+	if err != nil {
+		return classifyStoreError(err, "requester")
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(requester.Password), []byte(actorPassword)); err != nil {
+		return apperror.Unauthorized("actor password is incorrect")
+	}
+	return nil
+}
+
 // ResetPassword sets a new password for a user (admin-initiated). The
 // requester must be a superadmin or an admin in an organization the
 // target user belongs to. Non-superadmin requesters cannot reset a
@@ -239,9 +265,9 @@ func (s *UserService) ResetPassword(ctx context.Context, userID uint, newPasswor
 	// Step-up authentication: the requester must prove they currently know
 	// their own password. A stolen access token therefore cannot be used to
 	// rotate other users' credentials.
-	if actorPassword == "" {
-		return apperror.BadRequest("actor_password is required")
-	}
+	//
+	// We pre-fetch the requester so the lockout audit row can carry their
+	// email even if VerifyActorPassword bails before we'd otherwise know it.
 	requester, err := s.store.FindByID(ctx, requesterID)
 	if err != nil {
 		return classifyStoreError(err, "requester")
@@ -258,11 +284,14 @@ func (s *UserService) ResetPassword(ctx context.Context, userID uint, newPasswor
 		}
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(requester.Password), []byte(actorPassword)); err != nil {
-		if s.auditService != nil {
+	if err := s.VerifyActorPassword(ctx, requesterID, actorPassword); err != nil {
+		// Only the bcrypt-mismatch path counts toward the per-actor
+		// lockout; a missing actor_password (BadRequest) is a client
+		// bug, not a brute-force attempt.
+		if s.auditService != nil && errors.Is(err, apperror.ErrUnauthorized) {
 			s.auditService.LogPasswordResetFailed(ctx, requesterID, requester.Email, ipAddress, userID, "invalid actor_password")
 		}
-		return apperror.Unauthorized("actor password is incorrect")
+		return err
 	}
 
 	// Prevent non-superadmin from resetting a superadmin's password

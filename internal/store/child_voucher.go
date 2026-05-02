@@ -81,11 +81,71 @@ func (s *ChildVoucherStore) FindVouchersByOrganization(ctx context.Context, orgI
 }
 
 // CreateVoucher creates a new child_voucher entry. Uses ON CONFLICT DO NOTHING
-// so duplicate voucher numbers are silently ignored.
+// so duplicate voucher numbers are silently ignored. Used by the
+// auto-discovery path during ISBJ bill upload — see autoDiscoverVouchers.
+// Do NOT use from the user-driven AssignVoucher path: it would silently
+// swallow the case where the voucher is already on a different child,
+// returning 200 to the user while doing nothing. Use CreateVoucherStrict
+// in that path so the service can surface a 409 Conflict.
 func (s *ChildVoucherStore) CreateVoucher(ctx context.Context, voucher *models.ChildVoucher) error {
 	return DBFromContext(ctx, s.db).
 		Clauses(clause.OnConflict{DoNothing: true}).
 		Create(voucher).Error
+}
+
+// CreateVoucherStrict creates a new child_voucher entry WITHOUT ON CONFLICT
+// handling, wrapped in a SAVEPOINT so a duplicate-key violation does not
+// poison the surrounding transaction. A duplicate voucher_number surfaces as
+// store.ErrDuplicateKey (translated from PG 23505); after that error fires
+// the surrounding transaction is still alive (the savepoint absorbs the
+// abort) so the caller can SELECT to disambiguate idempotent self-reassign
+// from a real cross-child conflict.
+//
+// MUST be called from inside a transactor.InTransaction closure — the
+// savepoint requires a live transaction. A naked call outside a tx will
+// still work on the bare DB (savepoint becomes a no-op via implicit-tx
+// rules in PG), but disambiguation via the surrounding tx won't survive.
+func (s *ChildVoucherStore) CreateVoucherStrict(ctx context.Context, voucher *models.ChildVoucher) error {
+	db := DBFromContext(ctx, s.db)
+
+	// Savepoint name is a constant — PG nests savepoints by name, so
+	// callers nesting two CreateVoucherStrict in one tx are fine: the
+	// inner SAVEPOINT shadows the outer until released. The outer will
+	// have been released at the end of the inner's lifecycle.
+	const sp = "child_voucher_strict_insert"
+	if err := db.Exec("SAVEPOINT " + sp).Error; err != nil {
+		return err
+	}
+
+	if err := db.Create(voucher).Error; err != nil {
+		// Roll back the failed INSERT but keep the surrounding tx alive
+		// so the caller can SELECT to disambiguate. Best-effort: if
+		// ROLLBACK TO SAVEPOINT itself fails (DB pool shenanigans),
+		// surface the original error so the caller doesn't lose context.
+		_ = db.Exec("ROLLBACK TO SAVEPOINT " + sp).Error
+		if IsDuplicateKeyError(err) {
+			return ErrDuplicateKey
+		}
+		return err
+	}
+
+	// Release the savepoint on success — keeps PG's snapshot tracking
+	// tidy on long-running transactions.
+	_ = db.Exec("RELEASE SAVEPOINT " + sp).Error
+	return nil
+}
+
+// FindByVoucherNumber returns the (single) child_voucher row matching the
+// given voucher_number. Returns ErrNotFound when no row exists. The
+// uniqueness constraint is global, so at most one row matches.
+func (s *ChildVoucherStore) FindByVoucherNumber(ctx context.Context, voucherNumber string) (*models.ChildVoucher, error) {
+	var v models.ChildVoucher
+	if err := DBFromContext(ctx, s.db).
+		Where("voucher_number = ?", voucherNumber).
+		First(&v).Error; err != nil {
+		return nil, WrapNotFound(err)
+	}
+	return &v, nil
 }
 
 // DeleteVouchersByChild removes all vouchers for a child.

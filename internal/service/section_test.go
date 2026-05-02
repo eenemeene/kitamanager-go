@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -953,6 +954,140 @@ func TestSectionService_PromoteToDefault_WrongOrg_NotFound(t *testing.T) {
 	}
 	if after.IsDefault {
 		t.Error("cross-org call must not have flipped is_default")
+	}
+}
+
+func TestSectionService_PromoteToDefault_ConcurrentPromotesAllSucceed(t *testing.T) {
+	// Closes architecture review finding H2.
+	//
+	// Pre-fix race (READ COMMITTED, no advisory lock):
+	//   T1 BEGIN; UPDATE sections SET is_default=false WHERE org=?
+	//      AND is_default=true   -> locks the seeded default row
+	//   T2 BEGIN; UPDATE sections SET is_default=false WHERE org=?
+	//      AND is_default=true   -> blocks on T1's row lock
+	//   T1: UPDATE sections SET is_default=true WHERE id=X
+	//      -> inserts X into the partial-unique index
+	//   T1 COMMIT; lock released
+	//   T2 wakes; postgres re-evaluates the WHERE on the seeded row,
+	//      now sees is_default=false (T1's commit), so the seeded row
+	//      no longer matches; T2 moves on without clearing X
+	//   T2: UPDATE sections SET is_default=true WHERE id=Y
+	//      -> X already lives in the partial-unique index for this org
+	//      -> 23505 unique violation -> 500 to the user
+	//
+	// Post-fix: both calls take pg_advisory_xact_lock(19, orgID) at
+	// the head of PromoteToDefault, so T2 waits for T1's transaction
+	// to finish (commit or rollback) before scanning at all. Both
+	// calls return success; whichever ran second is the final default.
+	//
+	// Test runs N rounds of K concurrent promotes against the same
+	// org. Without the fix, expect at least one 500 in the matrix
+	// across rounds. With the fix, all calls must succeed and the
+	// org must end with exactly one default in {section[1..K]}.
+	db := setupTestDB(t)
+	svc := createSectionService(db)
+	ctx := context.Background()
+
+	const rounds = 10
+	const concurrency = 4
+
+	for round := range rounds {
+		org := createTestOrganization(t, db, "ConcOrg-"+strings.Repeat("X", round+1))
+		// Make K candidates beyond the seeded default.
+		candidates := make([]*models.Section, concurrency)
+		for i := range concurrency {
+			candidates[i] = createTestSection(t, db, "Section-"+string(rune('A'+i)), org.ID, false)
+		}
+
+		// Barrier: release all goroutines simultaneously to maximize
+		// the contention window. Without sync.WaitGroup-based barrier,
+		// goroutines spawn-then-run sequentially in the test runner.
+		var startBarrier sync.WaitGroup
+		startBarrier.Add(1)
+
+		var wg sync.WaitGroup
+		errs := make([]error, concurrency)
+		for i := range concurrency {
+			wg.Add(1)
+			go func(idx int) {
+				defer wg.Done()
+				startBarrier.Wait()
+				errs[idx] = svc.PromoteToDefault(ctx, candidates[idx].ID, org.ID)
+			}(i)
+		}
+		startBarrier.Done()
+		wg.Wait()
+
+		for i, err := range errs {
+			if err != nil {
+				t.Errorf("round %d: promote(%d) returned %v — unique-violation race regressed", round, i, err)
+			}
+		}
+
+		// Exactly one default at end-of-round; it must be one of the
+		// candidates (never the seeded default).
+		var defaults []models.Section
+		if err := db.Where("organization_id = ? AND is_default = ?", org.ID, true).Find(&defaults).Error; err != nil {
+			t.Fatalf("round %d: query defaults: %v", round, err)
+		}
+		if len(defaults) != 1 {
+			t.Fatalf("round %d: expected exactly 1 default, got %d", round, len(defaults))
+		}
+		var matched bool
+		for _, c := range candidates {
+			if defaults[0].ID == c.ID {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			t.Errorf("round %d: final default id=%d is not one of the promoted candidates", round, defaults[0].ID)
+		}
+	}
+}
+
+func TestSectionService_PromoteToDefault_ConcurrentPromotesIsolatedAcrossOrgs(t *testing.T) {
+	// The advisory lock is namespaced per-org (lock key includes
+	// orgID), so promotes against DIFFERENT orgs must never block
+	// each other. Regression guard: if a future change widened the
+	// lock key, every promote would serialize globally and throughput
+	// would collapse.
+	db := setupTestDB(t)
+	svc := createSectionService(db)
+	ctx := context.Background()
+
+	const orgCount = 6
+	orgs := make([]*models.Organization, orgCount)
+	targets := make([]*models.Section, orgCount)
+	for i := range orgCount {
+		orgs[i] = createTestOrganization(t, db, "OrgIso-"+string(rune('A'+i)))
+		targets[i] = createTestSection(t, db, "Target", orgs[i].ID, false)
+	}
+
+	var wg sync.WaitGroup
+	errs := make([]error, orgCount)
+	start := time.Now()
+	for i := range orgCount {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			errs[idx] = svc.PromoteToDefault(ctx, targets[idx].ID, orgs[idx].ID)
+		}(i)
+	}
+	wg.Wait()
+	elapsed := time.Since(start)
+
+	for i, err := range errs {
+		if err != nil {
+			t.Errorf("org %d: %v", i, err)
+		}
+	}
+	// Loose timing assertion: serializing 6 cross-org promotes one-
+	// after-another in the same testcontainer is well under 10s but
+	// the lock-collapse failure mode would be much worse — bound at
+	// 30s as a regression-only guard, not a perf benchmark.
+	if elapsed > 30*time.Second {
+		t.Errorf("cross-org promotes appear to be serializing (took %s) — advisory lock key may be too coarse", elapsed)
 	}
 }
 

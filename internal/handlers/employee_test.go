@@ -2419,8 +2419,12 @@ func TestEmployeeHandler_ExportYAML_WithActiveOnFilter(t *testing.T) {
 	r := setupTestRouter()
 	r.GET("/organizations/:orgId/employees/export/yaml", handler.ExportYAML)
 
-	// Filter by active_on=today → should only export the active employee
-	today := time.Now().Format("2006-01-02")
+	// Filter by active_on=today → should only export the active employee.
+	// Use models.Today() (Berlin tz) instead of time.Now() so the test
+	// is stable around the UTC-local boundary; the service computes
+	// "today" via models.Today() and a UTC-formatted date can land on
+	// the wrong calendar day late in the evening (M4).
+	today := models.Today().Format("2006-01-02")
 	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/employees/export/yaml?active_on=%s", org.ID, today), nil)
 
 	if w.Code != http.StatusOK {

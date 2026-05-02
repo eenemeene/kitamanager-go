@@ -447,6 +447,103 @@ func TestUserService_ListByOrganization(t *testing.T) {
 	}
 }
 
+// --- VerifyActorPassword tests (H1) ----------------------------------------
+//
+// VerifyActorPassword is the shared step-up helper used by both the admin
+// password-reset endpoint (H1's prior cousin, A-H-1) and the SetSuperAdmin
+// endpoint (H1). Direct service-level tests cover the contract once so the
+// per-endpoint tests don't have to re-prove it.
+
+func TestUserService_VerifyActorPassword_Success(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserService(db)
+	ctx := context.Background()
+
+	actor := createTestUser(t, db, "Actor", "actor@example.com", "ignored")
+	setUserPassword(t, db, actor.ID, "correct-pw")
+
+	if err := svc.VerifyActorPassword(ctx, actor.ID, "correct-pw"); err != nil {
+		t.Fatalf("expected nil for correct password, got %v", err)
+	}
+}
+
+func TestUserService_VerifyActorPassword_WrongPasswordReturnsUnauthorized(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserService(db)
+	ctx := context.Background()
+
+	actor := createTestUser(t, db, "Actor", "actor@example.com", "ignored")
+	setUserPassword(t, db, actor.ID, "correct-pw")
+
+	err := svc.VerifyActorPassword(ctx, actor.ID, "WRONG")
+	if err == nil {
+		t.Fatal("expected error for wrong password")
+	}
+	if !errors.Is(err, apperror.ErrUnauthorized) {
+		t.Errorf("expected ErrUnauthorized, got %v", err)
+	}
+}
+
+func TestUserService_VerifyActorPassword_EmptyPasswordReturnsBadRequest(t *testing.T) {
+	// Empty must be 400, not 401: it is a client bug (binding tag should
+	// have caught it), not a brute-force attempt. Distinguishing matters
+	// because the wrong-password path drives forensic audit + lockout
+	// counters; an empty password should not pollute those signals.
+	db := setupTestDB(t)
+	svc := createUserService(db)
+	ctx := context.Background()
+
+	actor := createTestUser(t, db, "Actor", "actor@example.com", "ignored")
+	setUserPassword(t, db, actor.ID, "correct-pw")
+
+	err := svc.VerifyActorPassword(ctx, actor.ID, "")
+	if err == nil {
+		t.Fatal("expected error for empty password")
+	}
+	if !errors.Is(err, apperror.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", err)
+	}
+}
+
+func TestUserService_VerifyActorPassword_UnknownActorReturnsNotFound(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createUserService(db)
+	ctx := context.Background()
+
+	err := svc.VerifyActorPassword(ctx, 999999, "any")
+	if err == nil {
+		t.Fatal("expected error for unknown actor id")
+	}
+	// classifyStoreError maps record-not-found to NotFound("requester").
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestUserService_VerifyActorPassword_TombstonedActorReturnsNotFound(t *testing.T) {
+	// A soft-deleted actor's session would already be revoked at the
+	// DeleteAllForUser path in Delete(), but defense-in-depth: even if a
+	// stale token slipped through, the requester lookup must miss the
+	// tombstoned row (FindByID is GORM-scoped).
+	db := setupTestDB(t)
+	svc := createUserService(db)
+	ctx := context.Background()
+
+	actor := createTestUser(t, db, "Actor", "actor@example.com", "ignored")
+	setUserPassword(t, db, actor.ID, "correct-pw")
+	if err := db.Delete(&models.User{}, actor.ID).Error; err != nil {
+		t.Fatalf("soft-delete actor: %v", err)
+	}
+
+	err := svc.VerifyActorPassword(ctx, actor.ID, "correct-pw")
+	if err == nil {
+		t.Fatal("expected NotFound for tombstoned actor")
+	}
+	if !errors.Is(err, apperror.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
 func TestUserService_ResetPassword(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createUserService(db)

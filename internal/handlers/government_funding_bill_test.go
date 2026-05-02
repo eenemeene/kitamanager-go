@@ -27,7 +27,7 @@ func createGovBillService(db *gorm.DB) *service.GovernmentFundingBillService {
 	orgStore := store.NewOrganizationStore(db)
 	fundingStore := store.NewGovernmentFundingStore(db)
 	childVoucherStore := store.NewChildVoucherStore(db)
-	return service.NewGovernmentFundingBillService(childStore, childVoucherStore, billPeriodStore, orgStore, fundingStore)
+	return service.NewGovernmentFundingBillService(childStore, childVoucherStore, billPeriodStore, orgStore, fundingStore, store.NewTransactor(db))
 }
 
 func createGovBillHandler(db *gorm.DB) *GovernmentFundingBillHandler {

@@ -17,11 +17,11 @@ If the dashboard suggests a name match (the bill referenced "Müller, Maria" but
 
 Vouchers are stored as a list per child — issuing a new Gutschein doesn't replace the old one; both stay on file. Add the new voucher number through the same dashboard input or via the API (`POST /organizations/{orgId}/children/{childId}/vouchers`). The most recent voucher matches against current bills; older vouchers stay on the child's record for historical reconciliation.
 
-The assignment is idempotent: re-submitting an already-known voucher number is a no-op, no error.
+Re-submitting the same voucher to the same child is a no-op. Submitting a voucher already attached to a different child returns a conflict; remove it from the previous child first.
 
 ## Notes
 
-- Voucher numbers must be unique across the organisation.
+- Voucher numbers are globally unique (matching the Bezirks-Jugendamt's own numbering).
 - If you already have ISBJ bills uploaded for past months, the comparison for those months won't change — the bill data is frozen at upload time. Re-upload the relevant Bescheide if you need the matches retroactively.
 - For the broader investigation flow when a bill won't match, see [Investigate a bill discrepancy](../investigate-a-bill-discrepancy/).
 - For the per-child billing view (which voucher hit which Bescheid), open **Billing history** on the child's detail page.

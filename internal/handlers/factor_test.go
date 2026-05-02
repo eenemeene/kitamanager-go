@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -16,6 +18,7 @@ import (
 
 	cryptopkg "github.com/eenemeene/kitamanager-go/internal/crypto"
 	"github.com/eenemeene/kitamanager-go/internal/ctxkeys"
+	"github.com/eenemeene/kitamanager-go/internal/middleware"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 	"github.com/eenemeene/kitamanager-go/internal/store"
@@ -173,6 +176,89 @@ func TestFactorHandler_Enroll_ReturnsSecretAndURI(t *testing.T) {
 	}
 }
 
+// TestFactorHandler_AuditRowsCarryClientIP closes architecture review
+// finding L3. Pre-fix, FactorService.LogFactor* called the audit
+// service with no ipAddress argument, so factor audit rows had an
+// empty IPAddress column — investigators could correlate via
+// request_id but lost the ability to filter on IP.
+//
+// Post-fix, the RequestID middleware stamps c.ClientIP() onto
+// context, and AuditService.log() pulls it as a fallback when the
+// caller didn't pass an IP explicitly. This test exercises a real
+// enrollment via the handler with the middleware mounted, then
+// inspects the resulting audit row.
+func TestFactorHandler_AuditRowsCarryClientIP(t *testing.T) {
+	db := setupTestDB(t)
+	user := newFactorUser(t, db, "ip@example.com", "pw-12345")
+
+	keyBytes, _ := hex.DecodeString(factorHandlerTestAEADKey)
+	aead, err := cryptopkg.NewAEAD(keyBytes)
+	if err != nil {
+		t.Fatalf("aead: %v", err)
+	}
+	auditSvc := createAuditService(db)
+	svc := service.NewFactorService(
+		store.NewFactorStore(db),
+		store.NewUserStore(db),
+		aead,
+		"KitaManager (test)",
+		nil,
+		auditSvc,
+	)
+	h := NewFactorHandler(svc)
+
+	r := gin.New()
+	r.Use(middleware.RequestID()) // stamps client IP onto context
+	r.Use(func(c *gin.Context) {
+		c.Set(ctxkeys.UserID, user.ID)
+		c.Set(ctxkeys.UserEmail, user.Email)
+		c.Next()
+	})
+	r.POST("/api/v1/users/:userId/factors", h.Enroll)
+	r.POST("/api/v1/users/:userId/factors/:factorId/activate", h.Activate)
+
+	// Enroll. The enrollment itself emits no LogFactorEnrolled —
+	// activation does — so enroll then activate.
+	//
+	// Use httptest.NewRequest (not the package's performRequest helper,
+	// which uses http.NewRequest and leaves RemoteAddr blank) so
+	// c.ClientIP() returns the canonical test IP 192.0.2.1 instead of
+	// the empty string. Empty would propagate through the IP-from-
+	// context fallback unchanged and hide the L3 regression we're
+	// trying to catch.
+	fid, secret := enrollTOTPViaHandler(t, r, user.ID, "pw-12345")
+	code, _ := totp.GenerateCode(secret, time.Now().UTC())
+
+	body := mustMarshal(models.FactorActivateRequest{Code: code})
+	req := httptest.NewRequest("POST",
+		fmt.Sprintf("/api/v1/users/me/factors/%d/activate", fid),
+		bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("activate: status=%d body=%s", w.Code, w.Body.String())
+	}
+
+	auditSvc.Shutdown() // flush async worker
+
+	var rows []models.AuditLog
+	if err := db.Where("action = ?", models.AuditActionFactorEnrolled).Find(&rows).Error; err != nil {
+		t.Fatalf("query audit: %v", err)
+	}
+	if len(rows) == 0 {
+		t.Fatal("no factor_enrolled audit row produced")
+	}
+	for _, row := range rows {
+		if row.IPAddress == "" {
+			t.Errorf("factor audit row %d has empty IPAddress (L3 regression) — expected 192.0.2.1, got %q", row.ID, row.IPAddress)
+		}
+		if row.RequestID == "" {
+			t.Errorf("factor audit row %d has empty RequestID — middleware should have stamped it", row.ID)
+		}
+	}
+}
+
 func TestFactorHandler_FullEnrollActivateFlow(t *testing.T) {
 	db := setupTestDB(t)
 	user := newFactorUser(t, db, "u@example.com", "pw-12345")
@@ -181,7 +267,7 @@ func TestFactorHandler_FullEnrollActivateFlow(t *testing.T) {
 	r := routerAs(user)
 	r.GET("/api/v1/users/:userId/factors", h.List)
 	r.POST("/api/v1/users/:userId/factors", h.Enroll)
-	r.POST("/api/v1/users/:userId/factors/:id/activate", h.Activate)
+	r.POST("/api/v1/users/:userId/factors/:factorId/activate", h.Activate)
 
 	// Enroll
 	fid, secret := enrollTOTPViaHandler(t, r, user.ID, "pw-12345")
@@ -222,7 +308,7 @@ func TestFactorHandler_Activate_InvalidCode(t *testing.T) {
 
 	r := routerAs(user)
 	r.POST("/api/v1/users/:userId/factors", h.Enroll)
-	r.POST("/api/v1/users/:userId/factors/:id/activate", h.Activate)
+	r.POST("/api/v1/users/:userId/factors/:factorId/activate", h.Activate)
 
 	fid, _ := enrollTOTPViaHandler(t, r, user.ID, "pw-12345")
 
@@ -245,7 +331,7 @@ func TestFactorHandler_CrossUser_Returns404(t *testing.T) {
 	// Alice enrolls + activates.
 	aliceR := routerAs(alice)
 	aliceR.POST("/api/v1/users/:userId/factors", h.Enroll)
-	aliceR.POST("/api/v1/users/:userId/factors/:id/activate", h.Activate)
+	aliceR.POST("/api/v1/users/:userId/factors/:factorId/activate", h.Activate)
 	aliceFID, aliceSecret := enrollTOTPViaHandler(t, aliceR, alice.ID, "alice-pw")
 	code, _ := totp.GenerateCode(aliceSecret, time.Now().UTC())
 	w := performRequest(aliceR, "POST",
@@ -258,10 +344,10 @@ func TestFactorHandler_CrossUser_Returns404(t *testing.T) {
 	// Bob addresses Alice's factor — by its numeric user id AND by
 	// direct factor id. Both must be 404.
 	bobR := routerAs(bob)
-	bobR.GET("/api/v1/users/:userId/factors/:id", h.Get)
-	bobR.DELETE("/api/v1/users/:userId/factors/:id", h.Delete)
-	bobR.POST("/api/v1/users/:userId/factors/:id/activate", h.Activate)
-	bobR.POST("/api/v1/users/:userId/factors/:id/regenerate", h.Regenerate)
+	bobR.GET("/api/v1/users/:userId/factors/:factorId", h.Get)
+	bobR.DELETE("/api/v1/users/:userId/factors/:factorId", h.Delete)
+	bobR.POST("/api/v1/users/:userId/factors/:factorId/activate", h.Activate)
+	bobR.POST("/api/v1/users/:userId/factors/:factorId/regenerate", h.Regenerate)
 
 	// Bob GET via /users/alice.ID/factors/X : self-scope rule → 404.
 	w = performRequest(bobR, "GET",
@@ -287,7 +373,7 @@ func TestFactorHandler_CrossUser_Returns404(t *testing.T) {
 
 	// Alice's factor must still exist.
 	aliceCheckR := routerAs(alice)
-	aliceCheckR.GET("/api/v1/users/:userId/factors/:id", h.Get)
+	aliceCheckR.GET("/api/v1/users/:userId/factors/:factorId", h.Get)
 	w = performRequest(aliceCheckR, "GET",
 		fmt.Sprintf("/api/v1/users/me/factors/%d", aliceFID), nil)
 	if w.Code != http.StatusOK {
@@ -302,8 +388,8 @@ func TestFactorHandler_UpdateLabel(t *testing.T) {
 
 	r := routerAs(user)
 	r.POST("/api/v1/users/:userId/factors", h.Enroll)
-	r.POST("/api/v1/users/:userId/factors/:id/activate", h.Activate)
-	r.PATCH("/api/v1/users/:userId/factors/:id", h.UpdateLabel)
+	r.POST("/api/v1/users/:userId/factors/:factorId/activate", h.Activate)
+	r.PATCH("/api/v1/users/:userId/factors/:factorId", h.UpdateLabel)
 
 	fid, secret := enrollTOTPViaHandler(t, r, user.ID, "pw")
 	code, _ := totp.GenerateCode(secret, time.Now().UTC())
@@ -347,7 +433,7 @@ func TestFactorHandler_MalformedFactorID(t *testing.T) {
 	h := newFactorHandlerForTest(t, db)
 
 	r := routerAs(user)
-	r.GET("/api/v1/users/:userId/factors/:id", h.Get)
+	r.GET("/api/v1/users/:userId/factors/:factorId", h.Get)
 
 	// Non-numeric id → 404 (uniform with "not found" — don't leak bad format).
 	w := performRequest(r, "GET", "/api/v1/users/me/factors/not-a-number", nil)
@@ -408,7 +494,7 @@ func TestFactorHandler_Activate_FiveWrongCodes_Returns429(t *testing.T) {
 
 	r := routerAs(user)
 	r.POST("/api/v1/users/:userId/factors", h.Enroll)
-	r.POST("/api/v1/users/:userId/factors/:id/activate", h.Activate)
+	r.POST("/api/v1/users/:userId/factors/:factorId/activate", h.Activate)
 
 	fid, _ := enrollTOTPViaHandler(t, r, user.ID, "pw")
 
@@ -451,8 +537,8 @@ func TestFactorHandler_Delete_Success_204(t *testing.T) {
 
 	r := routerAs(user)
 	r.POST("/api/v1/users/:userId/factors", h.Enroll)
-	r.POST("/api/v1/users/:userId/factors/:id/activate", h.Activate)
-	r.DELETE("/api/v1/users/:userId/factors/:id", h.Delete)
+	r.POST("/api/v1/users/:userId/factors/:factorId/activate", h.Activate)
+	r.DELETE("/api/v1/users/:userId/factors/:factorId", h.Delete)
 
 	totpFID, secret := enrollTOTPViaHandler(t, r, user.ID, "pw")
 	code, _ := totp.GenerateCode(secret, time.Now().UTC())
@@ -504,9 +590,9 @@ func TestFactorHandler_Delete_WrongPassword_401(t *testing.T) {
 
 	r := routerAs(user)
 	r.POST("/api/v1/users/:userId/factors", h.Enroll)
-	r.POST("/api/v1/users/:userId/factors/:id/activate", h.Activate)
-	r.DELETE("/api/v1/users/:userId/factors/:id", h.Delete)
-	r.GET("/api/v1/users/:userId/factors/:id", h.Get)
+	r.POST("/api/v1/users/:userId/factors/:factorId/activate", h.Activate)
+	r.DELETE("/api/v1/users/:userId/factors/:factorId", h.Delete)
+	r.GET("/api/v1/users/:userId/factors/:factorId", h.Get)
 
 	totpFID, secret := enrollTOTPViaHandler(t, r, user.ID, "pw")
 	code, _ := totp.GenerateCode(secret, time.Now().UTC())
@@ -536,9 +622,9 @@ func TestFactorHandler_Delete_LastPrimaryWithoutCode_400(t *testing.T) {
 
 	r := routerAs(user)
 	r.POST("/api/v1/users/:userId/factors", h.Enroll)
-	r.POST("/api/v1/users/:userId/factors/:id/activate", h.Activate)
-	r.DELETE("/api/v1/users/:userId/factors/:id", h.Delete)
-	r.GET("/api/v1/users/:userId/factors/:id", h.Get)
+	r.POST("/api/v1/users/:userId/factors/:factorId/activate", h.Activate)
+	r.DELETE("/api/v1/users/:userId/factors/:factorId", h.Delete)
+	r.GET("/api/v1/users/:userId/factors/:factorId", h.Get)
 
 	totpFID, secret := enrollTOTPViaHandler(t, r, user.ID, "pw")
 	code, _ := totp.GenerateCode(secret, time.Now().UTC())
@@ -573,8 +659,8 @@ func TestFactorHandler_Regenerate_Success(t *testing.T) {
 
 	r := routerAs(user)
 	r.POST("/api/v1/users/:userId/factors", h.Enroll)
-	r.POST("/api/v1/users/:userId/factors/:id/activate", h.Activate)
-	r.POST("/api/v1/users/:userId/factors/:id/regenerate", h.Regenerate)
+	r.POST("/api/v1/users/:userId/factors/:factorId/activate", h.Activate)
+	r.POST("/api/v1/users/:userId/factors/:factorId/regenerate", h.Regenerate)
 
 	totpFID, secret := enrollTOTPViaHandler(t, r, user.ID, "pw")
 	code, _ := totp.GenerateCode(secret, time.Now().UTC())
@@ -613,8 +699,8 @@ func TestFactorHandler_Regenerate_WrongPassword_401(t *testing.T) {
 
 	r := routerAs(user)
 	r.POST("/api/v1/users/:userId/factors", h.Enroll)
-	r.POST("/api/v1/users/:userId/factors/:id/activate", h.Activate)
-	r.POST("/api/v1/users/:userId/factors/:id/regenerate", h.Regenerate)
+	r.POST("/api/v1/users/:userId/factors/:factorId/activate", h.Activate)
+	r.POST("/api/v1/users/:userId/factors/:factorId/regenerate", h.Regenerate)
 
 	totpFID, secret := enrollTOTPViaHandler(t, r, user.ID, "pw")
 	code, _ := totp.GenerateCode(secret, time.Now().UTC())
@@ -647,8 +733,8 @@ func TestFactorHandler_Regenerate_MissingCode_400(t *testing.T) {
 
 	r := routerAs(user)
 	r.POST("/api/v1/users/:userId/factors", h.Enroll)
-	r.POST("/api/v1/users/:userId/factors/:id/activate", h.Activate)
-	r.POST("/api/v1/users/:userId/factors/:id/regenerate", h.Regenerate)
+	r.POST("/api/v1/users/:userId/factors/:factorId/activate", h.Activate)
+	r.POST("/api/v1/users/:userId/factors/:factorId/regenerate", h.Regenerate)
 
 	totpFID, secret := enrollTOTPViaHandler(t, r, user.ID, "pw")
 	code, _ := totp.GenerateCode(secret, time.Now().UTC())
@@ -680,7 +766,7 @@ func TestFactorHandler_Enroll_StolenSessionPasswordCannotPlantFactor(t *testing.
 
 	r := routerAs(user)
 	r.POST("/api/v1/users/:userId/factors", h.Enroll)
-	r.POST("/api/v1/users/:userId/factors/:id/activate", h.Activate)
+	r.POST("/api/v1/users/:userId/factors/:factorId/activate", h.Activate)
 
 	// First factor goes through (no primary yet → no step-up).
 	totpFID, secret := enrollTOTPViaHandler(t, r, user.ID, "pw")

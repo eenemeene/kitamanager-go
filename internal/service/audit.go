@@ -358,6 +358,29 @@ func (s *AuditService) CountRecentFailedMFAChallenges(ctx context.Context, userI
 	return s.store.CountFailedMFAChallengesSince(ctx, userID, time.Now().UTC().Add(-window))
 }
 
+// LogSuperAdminChangeFailed logs a /users/:userId/superadmin attempt that
+// failed the actor_password step-up. UserID on the row is the actor (the
+// brute-force victim in the stolen-session threat model); ResourceID carries
+// the target user so investigators can see who was about to be
+// promoted/demoted. `granted` is the change that *would* have happened.
+func (s *AuditService) LogSuperAdminChangeFailed(ctx context.Context, actorID uint, actorEmail string, targetUserID uint, targetEmail string, granted bool, ipAddress, reason string) {
+	s.log(ctx, &models.AuditLog{
+		UserID:       &actorID,
+		UserEmail:    actorEmail,
+		Action:       models.AuditActionSuperAdminChangeFailed,
+		ResourceType: "user",
+		ResourceID:   &targetUserID,
+		IPAddress:    ipAddress,
+		Details: mustMarshalJSON(map[string]any{
+			"target_user_id":    targetUserID,
+			"target_user_email": targetEmail,
+			"granted":           granted,
+			"reason":            reason,
+		}),
+		Success: false,
+	})
+}
+
 // LogSuperAdminChange logs a superadmin status change
 func (s *AuditService) LogSuperAdminChange(ctx context.Context, actorID uint, actorEmail string, targetUserID uint, targetEmail string, granted bool, ipAddress string) {
 	action := models.AuditActionSuperAdminGrant
@@ -704,6 +727,16 @@ func (s *AuditService) log(ctx context.Context, entry *models.AuditLog) {
 	entry.Timestamp = time.Now().UTC()
 	if entry.RequestID == "" {
 		entry.RequestID = middleware.RequestIDFromContext(ctx)
+	}
+	// L3: fall back to the request's client IP if the caller didn't
+	// set one explicitly. Used by FactorService.LogFactor* and the
+	// audit-log retention purge — neither has c.ClientIP() in scope,
+	// but the IP is on the request context via the RequestID
+	// middleware. Empty stays empty for non-HTTP callers (seed
+	// imports, CLI tooling) and for service-layer purges that aren't
+	// associated with any single request.
+	if entry.IPAddress == "" {
+		entry.IPAddress = middleware.ClientIPFromContext(ctx)
 	}
 
 	select {

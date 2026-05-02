@@ -715,7 +715,7 @@ func TestAuthHandler_RevokeSession_Success(t *testing.T) {
 
 	handler := createAuthHandler(db)
 	r := routerWithUserAndSession(user.ID, "different-current-hash")
-	r.DELETE("/me/sessions/:id", handler.RevokeSession)
+	r.DELETE("/me/sessions/:sessionId", handler.RevokeSession)
 
 	w := performRequest(r, "DELETE", fmt.Sprintf("/me/sessions/%s", h), nil)
 	if w.Code != http.StatusNoContent {
@@ -732,7 +732,7 @@ func TestAuthHandler_RevokeSession_UnknownID_404(t *testing.T) {
 	handler := createAuthHandler(db)
 
 	r := routerWithUserAndSession(user.ID, "")
-	r.DELETE("/me/sessions/:id", handler.RevokeSession)
+	r.DELETE("/me/sessions/:sessionId", handler.RevokeSession)
 
 	// Pass a fully-formed sha256-looking id but one that does not exist.
 	fakeID := store.HashSessionToken("never-issued")
@@ -763,7 +763,7 @@ func TestAuthHandler_RevokeSession_CrossUser_404_NotLeaking(t *testing.T) {
 	handler := createAuthHandler(db)
 	// Router acts as Bob.
 	r := routerWithUserAndSession(bob.ID, "")
-	r.DELETE("/me/sessions/:id", handler.RevokeSession)
+	r.DELETE("/me/sessions/:sessionId", handler.RevokeSession)
 
 	w := performRequest(r, "DELETE", fmt.Sprintf("/me/sessions/%s", aliceH), nil)
 	if w.Code != http.StatusNotFound {
@@ -795,7 +795,7 @@ func TestAuthHandler_RevokeSession_SelfRevoke(t *testing.T) {
 	handler := createAuthHandler(db)
 	// Router thinks the current session IS `h`.
 	r := routerWithUserAndSession(user.ID, h)
-	r.DELETE("/me/sessions/:id", handler.RevokeSession)
+	r.DELETE("/me/sessions/:sessionId", handler.RevokeSession)
 
 	w := performRequest(r, "DELETE", fmt.Sprintf("/me/sessions/%s", h), nil)
 	if w.Code != http.StatusNoContent {
@@ -811,7 +811,7 @@ func TestAuthHandler_RevokeSession_NotAuthenticated(t *testing.T) {
 	handler := createAuthHandler(db)
 
 	r := gin.New()
-	r.DELETE("/me/sessions/:id", handler.RevokeSession)
+	r.DELETE("/me/sessions/:sessionId", handler.RevokeSession)
 
 	w := performRequest(r, "DELETE", "/me/sessions/anything", nil)
 	if w.Code != http.StatusUnauthorized {

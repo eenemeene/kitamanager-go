@@ -20,6 +20,14 @@ const (
 // collision with context keys from other packages.
 type requestIDContextKey struct{}
 
+// clientIPContextKey is the context.Context key for the request's
+// client IP. Stamped by the same RequestID middleware that handles
+// request ids — wiring one middleware (not two) keeps the
+// composition simple. Used by AuditService.log() as a fallback IP
+// source for callers that don't take an ipAddress argument
+// (e.g. FactorService.LogFactor*). Closes review finding L3.
+type clientIPContextKey struct{}
+
 // RequestID returns a middleware that generates a unique request ID for
 // each request. If the incoming request already has an X-Request-ID
 // header, it is reused.
@@ -44,6 +52,11 @@ func RequestID() gin.HandlerFunc {
 		c.Header(RequestIDHeader, id)
 
 		ctx := context.WithValue(c.Request.Context(), requestIDContextKey{}, id)
+		// Also stash the client IP so service-layer audit emissions
+		// that don't take an ipAddress argument can still record it
+		// (L3). c.ClientIP() honours the framework's trusted-proxy
+		// chain and falls back to RemoteAddr.
+		ctx = context.WithValue(ctx, clientIPContextKey{}, c.ClientIP())
 		c.Request = c.Request.WithContext(ctx)
 
 		c.Next()
@@ -71,4 +84,22 @@ func RequestIDFromContext(ctx context.Context) string {
 // should.
 func ContextWithRequestIDForTest(ctx context.Context, id string) context.Context {
 	return context.WithValue(ctx, requestIDContextKey{}, id)
+}
+
+// ClientIPFromContext returns the client IP previously stamped by the
+// RequestID middleware, or "" if no IP is present (non-HTTP callers:
+// seed imports, background jobs, tests that did not route through
+// middleware).
+func ClientIPFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	ip, _ := ctx.Value(clientIPContextKey{}).(string)
+	return ip
+}
+
+// ContextWithClientIPForTest is the test-only counterpart of
+// ContextWithRequestIDForTest for the client IP slot.
+func ContextWithClientIPForTest(ctx context.Context, ip string) context.Context {
+	return context.WithValue(ctx, clientIPContextKey{}, ip)
 }

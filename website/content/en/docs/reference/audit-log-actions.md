@@ -36,6 +36,7 @@ Every audit log entry carries an `action` field. These are the values it can tak
 | `password_change` | Self-service password change succeeded. |
 | `password_change_failed` | Self-service change rejected (wrong current password, etc.). |
 | `password_reset` | An admin reset another user's password. |
+| `password_reset_failed` | Admin reset rejected on the `actor_password` step-up. `user_id` is the actor; `resource_id` is the target. Drives the per-actor lockout. |
 
 ## Users and organisations
 
@@ -49,9 +50,16 @@ Every audit log entry carries an `action` field. These are the values it can tak
 | `role_change` | Role within an organisation changed. |
 | `superadmin_grant` | Superadmin status granted. |
 | `superadmin_revoke` | Superadmin status revoked. |
+| `superadmin_change_failed` | Superadmin grant/revoke rejected on the `actor_password` step-up. `user_id` is the actor; `resource_id` is the target. |
 | `org_create` | Organisation created (superadmin only). |
 | `org_delete` | Organisation soft-deleted. |
 | `org_purged` | Organisation hard-deleted. |
+
+## System
+
+| Code | When emitted |
+|---|---|
+| `audit_log_purged` | Retention TTL swept old audit rows. `details` carries `deleted_rows` and the `older_than` cutoff. |
 
 ## Resources
 

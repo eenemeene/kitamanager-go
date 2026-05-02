@@ -1709,7 +1709,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/me/sessions/{id}": {
+        "/api/v1/me/sessions/{sessionId}": {
             "delete": {
                 "security": [
                     {
@@ -1728,7 +1728,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Session id (sha256 hex)",
-                        "name": "id",
+                        "name": "sessionId",
                         "in": "path",
                         "required": true
                     }
@@ -9463,7 +9463,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/users/{userId}/factors/{id}": {
+        "/api/v1/users/{userId}/factors/{factorId}": {
             "get": {
                 "security": [
                     {
@@ -9488,7 +9488,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Factor id",
-                        "name": "id",
+                        "name": "factorId",
                         "in": "path",
                         "required": true
                     }
@@ -9542,7 +9542,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Factor id",
-                        "name": "id",
+                        "name": "factorId",
                         "in": "path",
                         "required": true
                     },
@@ -9608,7 +9608,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Factor id",
-                        "name": "id",
+                        "name": "factorId",
                         "in": "path",
                         "required": true
                     },
@@ -9650,7 +9650,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/users/{userId}/factors/{id}/activate": {
+        "/api/v1/users/{userId}/factors/{factorId}/activate": {
             "post": {
                 "security": [
                     {
@@ -9679,7 +9679,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Factor id",
-                        "name": "id",
+                        "name": "factorId",
                         "in": "path",
                         "required": true
                     },
@@ -9727,7 +9727,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/users/{userId}/factors/{id}/regenerate": {
+        "/api/v1/users/{userId}/factors/{factorId}/regenerate": {
             "post": {
                 "security": [
                     {
@@ -9756,7 +9756,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Factor id",
-                        "name": "id",
+                        "name": "factorId",
                         "in": "path",
                         "required": true
                     },
@@ -10222,7 +10222,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Set or unset a user's superadmin status. Requires superadmin access.",
+                "description": "Set or unset a user's superadmin status. Requires superadmin access\nAND step-up authentication (the actor's current password in\n` + "`" + `actor_password` + "`" + `). Symmetric with the admin password-reset endpoint:\nwithout step-up a stolen superadmin session could mint a confederate\nsuperadmin (or demote the actor) at full API rate.",
                 "consumes": [
                     "application/json"
                 ],
@@ -10242,7 +10242,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Superadmin status",
+                        "description": "Superadmin status + actor_password",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -10356,6 +10356,7 @@ const docTemplate = `{
                 "session_revoked",
                 "superadmin_grant",
                 "superadmin_revoke",
+                "superadmin_change_failed",
                 "user_create",
                 "user_delete",
                 "user_purged",
@@ -10390,6 +10391,7 @@ const docTemplate = `{
                 "AuditActionSessionRevoked",
                 "AuditActionSuperAdminGrant",
                 "AuditActionSuperAdminRevoke",
+                "AuditActionSuperAdminChangeFailed",
                 "AuditActionUserCreate",
                 "AuditActionUserDelete",
                 "AuditActionUserPurged",
@@ -12271,10 +12273,12 @@ const docTemplate = `{
             ],
             "properties": {
                 "code": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "123456"
                 },
                 "password": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "adminspassword"
                 }
             }
         },
@@ -15449,7 +15453,15 @@ const docTemplate = `{
         },
         "github_com_eenemeene_kitamanager-go_internal_models.UserSetSuperAdminRequest": {
             "type": "object",
+            "required": [
+                "actor_password"
+            ],
             "properties": {
+                "actor_password": {
+                    "description": "ActorPassword is the current password of the superadmin performing the\nchange. Required so that a session holding only a stolen token cannot\npromote/demote superadmins.",
+                    "type": "string",
+                    "example": "adminspassword"
+                },
                 "is_superadmin": {
                     "type": "boolean",
                     "example": true

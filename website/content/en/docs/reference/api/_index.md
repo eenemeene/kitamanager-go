@@ -22,7 +22,7 @@ Authentication is **cookie-based**: a successful login sets an HttpOnly `access_
 | GET | `/api/v1/me` | Get the current user's profile. |
 | PUT | `/api/v1/me/password` | Change the current user's password. Revokes all other sessions. |
 | GET | `/api/v1/me/sessions` | List active sessions for the current user (device, IP, last active). |
-| DELETE | `/api/v1/me/sessions/{id}` | Revoke a specific active session. |
+| DELETE | `/api/v1/me/sessions/{sessionId}` | Revoke a specific active session. |
 
 ### Login example (no MFA)
 
@@ -83,11 +83,11 @@ Users self-manage their factors via `/users/{userId}/factors`. The path paramete
 |--------|----------|-------------|
 | GET | `/api/v1/users/{userId}/factors` | List enrolled factors. |
 | POST | `/api/v1/users/{userId}/factors` | Enrol a new factor. The body specifies factor type (`totp` or `webauthn`) and current password. Returns enrolment payload (TOTP secret + otpauth URI, or WebAuthn registration challenge). |
-| GET | `/api/v1/users/{userId}/factors/{id}` | Get a factor. |
-| PATCH | `/api/v1/users/{userId}/factors/{id}` | Update the human label on a factor. |
-| DELETE | `/api/v1/users/{userId}/factors/{id}` | Delete a factor. Requires password and current TOTP code. Deleting the last primary factor also sweeps the backup-codes factor. |
-| POST | `/api/v1/users/{userId}/factors/{id}/activate` | Activate a pending enrolment with a verification code. First successful activation also returns single-use backup codes. |
-| POST | `/api/v1/users/{userId}/factors/{id}/regenerate` | Regenerate the backup-codes factor; old codes are invalidated. |
+| GET | `/api/v1/users/{userId}/factors/{factorId}` | Get a factor. |
+| PATCH | `/api/v1/users/{userId}/factors/{factorId}` | Update the human label on a factor. |
+| DELETE | `/api/v1/users/{userId}/factors/{factorId}` | Delete a factor. Requires password and current TOTP code. Deleting the last primary factor also sweeps the backup-codes factor. |
+| POST | `/api/v1/users/{userId}/factors/{factorId}/activate` | Activate a pending enrolment with a verification code. First successful activation also returns single-use backup codes. |
+| POST | `/api/v1/users/{userId}/factors/{factorId}/regenerate` | Regenerate the backup-codes factor; old codes are invalidated. |
 
 ## Organizations
 
@@ -354,8 +354,8 @@ Global user management.
 | POST | `/api/v1/users/{id}/organizations` | Add user to organization |
 | PUT | `/api/v1/users/{id}/organizations/{orgId}` | Update user's role in organization |
 | DELETE | `/api/v1/users/{id}/organizations/{orgId}` | Remove user from organization |
-| PUT | `/api/v1/users/{id}/password` | Reset user's password (admin) |
-| PUT | `/api/v1/users/{id}/superadmin` | Set superadmin status |
+| PUT | `/api/v1/users/{id}/password` | Reset user's password (admin). Requires `actor_password` step-up. |
+| PUT | `/api/v1/users/{id}/superadmin` | Set superadmin status. Requires `actor_password` step-up. |
 
 ### Organization users
 

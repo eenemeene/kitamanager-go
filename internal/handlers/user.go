@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -472,13 +473,17 @@ func (h *UserHandler) GetMemberships(c *gin.Context) {
 
 // SetSuperAdmin godoc
 // @Summary Set user's superadmin status
-// @Description Set or unset a user's superadmin status. Requires superadmin access.
+// @Description Set or unset a user's superadmin status. Requires superadmin access
+// @Description AND step-up authentication (the actor's current password in
+// @Description `actor_password`). Symmetric with the admin password-reset endpoint:
+// @Description without step-up a stolen superadmin session could mint a confederate
+// @Description superadmin (or demote the actor) at full API rate.
 // @Tags users
 // @Accept json
 // @Produce json
 // @Security BearerAuth
 // @Param userId path int true "User ID"
-// @Param request body models.UserSetSuperAdminRequest true "Superadmin status"
+// @Param request body models.UserSetSuperAdminRequest true "Superadmin status + actor_password"
 // @Success 200 {object} models.UserResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
@@ -498,10 +503,28 @@ func (h *UserHandler) SetSuperAdmin(c *gin.Context) {
 		return
 	}
 
-	// Get user info before change for audit log
+	// Get target user info up-front so the audit row (success or failure)
+	// can carry the target email even if the step-up fails.
 	actorID := getUserID(c)
 	targetUser, err := h.service.GetByID(c.Request.Context(), userID, actorID)
 	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	// Step-up: require the actor's current password before mutating
+	// superadmin status. Closes the H1 finding from the architecture
+	// review — without this a stolen superadmin session could promote a
+	// confederate (or demote the actor) without proving control of the
+	// actor's credentials.
+	if err := h.service.VerifyActorPassword(c.Request.Context(), actorID, req.ActorPassword); err != nil {
+		// Only the bcrypt-mismatch path emits a forensic row; a missing
+		// actor_password is a client bug already surfaced as 400 by the
+		// binding tag.
+		if errors.Is(err, apperror.ErrUnauthorized) {
+			h.auditService.LogSuperAdminChangeFailed(c.Request.Context(), actorID, getUserEmail(c),
+				userID, targetUser.Email, req.IsSuperAdmin, c.ClientIP(), "invalid actor_password")
+		}
 		respondError(c, err)
 		return
 	}

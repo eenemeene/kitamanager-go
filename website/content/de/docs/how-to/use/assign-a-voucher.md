@@ -17,11 +17,11 @@ Wenn das Dashboard einen Namens-Vorschlag macht (der Bescheid nennt „Müller, 
 
 Gutscheine sind eine Liste pro Kind — ein neuer Gutschein ersetzt nicht den alten; beide bleiben hinterlegt. Neuen Wert über dasselbe Dashboard-Eingabefeld oder über die API hinzufügen (`POST /organizations/{orgId}/children/{childId}/vouchers`). Der neueste Gutschein matcht aktuelle Bescheide; alte Gutscheine bleiben für historische Abgleiche im Datensatz.
 
-Die Zuweisung ist idempotent: erneutes Senden einer schon bekannten Gutscheinnummer ist ein No-Op, kein Fehler.
+Dieselbe Gutscheinnummer erneut auf dasselbe Kind zu schreiben ist ein No-Op. Eine Gutscheinnummer, die bereits an einem anderen Kind hängt, wird mit einem Conflict abgelehnt; vorher beim alten Kind entfernen.
 
 ## Hinweise
 
-- Gutscheinnummern müssen innerhalb einer Organisation eindeutig sein.
+- Gutscheinnummern sind systemweit eindeutig (entsprechend der Nummerierung des Bezirks-Jugendamts).
 - Wenn Sie für vergangene Monate bereits ISBJ-Bescheide hochgeladen haben, ändert sich der Vergleich für diese Monate nicht — die Bescheid-Daten sind beim Upload festgefroren. Laden Sie die betreffenden Bescheide erneut hoch, wenn Sie die Matches rückwirkend brauchen.
 - Für den allgemeinen Untersuchungs-Workflow bei nicht-passenden Bescheiden siehe [Abweichung in einer Abrechnung untersuchen](../investigate-a-bill-discrepancy/).
 - Für die pro-Kind-Abrechnungssicht (welcher Gutschein welchen Bescheid getroffen hat) auf der Detailseite des Kindes auf **Abrechnungshistorie** klicken.
