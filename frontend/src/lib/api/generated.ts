@@ -10976,6 +10976,7 @@ export interface components {
       | 'org_delete'
       | 'org_purged'
       | 'password_reset'
+      | 'password_reset_failed'
       | 'password_change'
       | 'password_change_failed'
       | 'factor_enrolled'

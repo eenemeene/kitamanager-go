@@ -147,6 +147,17 @@ func createUserService(db *gorm.DB) *UserService {
 	return NewUserService(userStore, userOrgStore)
 }
 
+// createUserServiceWithAudit returns a UserService wired with a real
+// AuditService — needed for tests that exercise the password-reset
+// lockout counter (the lockout query is a no-op when auditService is
+// nil).
+func createUserServiceWithAudit(db *gorm.DB) (*UserService, *AuditService) {
+	userStore := store.NewUserStore(db)
+	userOrgStore := store.NewUserOrganizationStore(db)
+	audit := createAuditService(db)
+	return NewUserService(userStore, userOrgStore).WithAuditService(audit), audit
+}
+
 func createUserServiceWithSessionStore(db *gorm.DB) (*UserService, store.SessionStorer) {
 	userStore := store.NewUserStore(db)
 	userOrgStore := store.NewUserOrganizationStore(db)

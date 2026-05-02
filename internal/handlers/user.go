@@ -500,7 +500,7 @@ func (h *UserHandler) ResetPassword(c *gin.Context) {
 
 	actorID := getUserID(c)
 
-	if err := h.service.ResetPassword(c.Request.Context(), targetUserID, req.NewPassword, req.ActorPassword, actorID); err != nil {
+	if err := h.service.ResetPassword(c.Request.Context(), targetUserID, req.NewPassword, req.ActorPassword, actorID, c.ClientIP()); err != nil {
 		respondError(c, err)
 		return
 	}

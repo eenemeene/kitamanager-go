@@ -186,6 +186,25 @@ func (s *AuditService) LogPasswordChangeFailed(ctx context.Context, userID uint,
 	})
 }
 
+// LogPasswordResetFailed logs a failed /users/:userId/password attempt:
+// the actor's actor_password did not match. UserID on the row is the
+// actor (the brute-force victim); ResourceID carries the target user
+// so investigators can see who the actor was trying to reset.
+// Counted by CountRecentFailedPasswordResets to drive the per-actor
+// lockout counter.
+func (s *AuditService) LogPasswordResetFailed(ctx context.Context, actorID uint, actorEmail, ipAddress string, targetUserID uint, reason string) {
+	s.log(ctx, &models.AuditLog{
+		UserID:       &actorID,
+		UserEmail:    actorEmail,
+		Action:       models.AuditActionPasswordResetFailed,
+		ResourceType: "user",
+		ResourceID:   &targetUserID,
+		IPAddress:    ipAddress,
+		Details:      mustMarshalJSON(map[string]string{"reason": reason}),
+		Success:      false,
+	})
+}
+
 // LogFactorEnrolled logs completion of MFA factor enrollment.
 // `factorType` is the factor-generic type string ("totp", etc.) so
 // audit queries can pivot on it.
@@ -627,6 +646,21 @@ func (s *AuditService) CountRecentFailedPasswordChanges(ctx context.Context, use
 
 	since := time.Now().UTC().Add(-duration)
 	return s.store.CountFailedPasswordChangesSince(ctx, userID, since)
+}
+
+// CountRecentFailedPasswordResets counts /users/:userId/password actor_password
+// failures for an actor in the last duration. Used for the per-actor lockout
+// check on the admin reset endpoint so an attacker holding a stolen admin
+// session cannot iterate actor_password candidates against arbitrary target
+// users at full API rate. `actorID` is the row's UserID (the actor under
+// brute-force pressure), not the reset target.
+func (s *AuditService) CountRecentFailedPasswordResets(ctx context.Context, actorID uint, duration time.Duration) (int64, error) {
+	if s == nil || s.store == nil {
+		return 0, nil
+	}
+
+	since := time.Now().UTC().Add(-duration)
+	return s.store.CountFailedPasswordResetsSince(ctx, actorID, since)
 }
 
 // log sends an audit log entry to the worker channel, stamping the

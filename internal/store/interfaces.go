@@ -347,6 +347,7 @@ type AuditStorer interface {
 	FindFailedLogins(ctx context.Context, email string, since time.Time, limit int) ([]models.AuditLog, error)
 	CountFailedLoginsSince(ctx context.Context, email string, since time.Time) (int64, error)
 	CountFailedPasswordChangesSince(ctx context.Context, userID uint, since time.Time) (int64, error)
+	CountFailedPasswordResetsSince(ctx context.Context, actorID uint, since time.Time) (int64, error)
 	CountFailedMFAChallengesSince(ctx context.Context, userID uint, since time.Time) (int64, error)
 	Cleanup(ctx context.Context, olderThan time.Time) (int64, error)
 }

@@ -50,6 +50,14 @@ const (
 	// Irreversible.
 	AuditActionOrgPurged     AuditAction = "org_purged"
 	AuditActionPasswordReset AuditAction = "password_reset"
+	// AuditActionPasswordResetFailed records a /users/:userId/password
+	// attempt that failed the actor_password check. Used by the lockout
+	// counter on the actor: an attacker holding a stolen admin session
+	// cannot iterate actor_password candidates against the reset endpoint
+	// at full API-mutation-rate-limit speed. UserID on the row is the
+	// ACTOR (the would-be brute-force victim); ResourceID carries the
+	// target so an investigator can see which user was being reset.
+	AuditActionPasswordResetFailed AuditAction = "password_reset_failed"
 	// AuditActionPasswordChange records a user rotating their own password.
 	AuditActionPasswordChange AuditAction = "password_change"
 	// AuditActionPasswordChangeFailed records a /me/password attempt that

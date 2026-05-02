@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -18,6 +19,11 @@ type UserService struct {
 	store        store.UserStorer
 	userOrgStore store.UserOrganizationStorer
 	sessionStore store.SessionStorer
+	// auditService is optional. ResetPassword uses it to log
+	// password_reset_failed events that drive the per-actor lockout
+	// counter (see security audit finding A-M-2). Tests that don't
+	// exercise the lockout path may leave it nil.
+	auditService *AuditService
 }
 
 // NewUserService creates a new user service. `sessionStore` is optional —
@@ -29,6 +35,14 @@ func NewUserService(store store.UserStorer, userOrgStore store.UserOrganizationS
 		svc.sessionStore = sessionStore[0]
 	}
 	return svc
+}
+
+// WithAuditService attaches an AuditService for the password-reset
+// lockout audit trail. Returns the receiver for builder-style use in
+// the wiring done by cmd/api/main.go.
+func (s *UserService) WithAuditService(audit *AuditService) *UserService {
+	s.auditService = audit
+	return s
 }
 
 // List returns a paginated list of users visible to the requester.
@@ -182,18 +196,41 @@ func (s *UserService) Update(ctx context.Context, id uint, req *models.UserUpdat
 	return &resp, nil
 }
 
-// ResetPassword sets a new password for a user (admin-initiated).
-// The requester must be a superadmin or an admin in an organization the
+// passwordResetLockoutThreshold caps consecutive actor_password failures
+// against the admin /users/:userId/password endpoint before the actor is
+// locked out. Closes audit finding A-M-2: without this the per-IP API
+// rate limit (60/min) was the only brake on brute-forcing the actor's
+// password from a stolen admin session.
+const passwordResetLockoutThreshold int64 = 5
+
+// passwordResetLockoutWindow is the rolling window inside which the
+// failure counter is consulted. Mirrors passwordChangeLockoutWindow.
+const passwordResetLockoutWindow = 15 * time.Minute
+
+// ResetPassword sets a new password for a user (admin-initiated). The
+// requester must be a superadmin or an admin in an organization the
 // target user belongs to. Non-superadmin requesters cannot reset a
 // superadmin's password.
 //
-// `actorPassword` MUST contain the requester's own current password and is
-// verified against their stored hash before any mutation runs (M1 step-up).
-// An empty actorPassword is always rejected unless the requester is resetting
-// their own password — in the self-reset case the new password being set IS
-// effectively the proof of knowledge of the session, and there is no
-// "compromised session rotating a peer account" concern.
-func (s *UserService) ResetPassword(ctx context.Context, userID uint, newPassword, actorPassword string, requesterID uint) error {
+// **Self-target is rejected** (BadRequest) — closes audit finding
+// A-H-1. A stolen admin session would otherwise have rotated the
+// admin's own password without proof of the current password,
+// bypassing the M1 step-up that the self-service /me/password
+// endpoint enforces. Self password rotation goes through
+// AuthService.ChangePassword which has the proper lockout +
+// session-revocation machinery.
+//
+// `actorPassword` is always required and verified via bcrypt before
+// any mutation runs. Repeated wrong actor_password values from the
+// same actor are counted via password_reset_failed audit events;
+// once `passwordResetLockoutThreshold` failures land within
+// `passwordResetLockoutWindow`, further attempts return 429 without
+// touching bcrypt — closes audit finding A-M-2.
+func (s *UserService) ResetPassword(ctx context.Context, userID uint, newPassword, actorPassword string, requesterID uint, ipAddress string) error {
+	if requesterID == userID {
+		return apperror.BadRequest("use /me/password to change your own password")
+	}
+
 	user, err := s.store.FindByID(ctx, userID)
 	if err != nil {
 		return classifyStoreError(err, "user")
@@ -202,21 +239,34 @@ func (s *UserService) ResetPassword(ctx context.Context, userID uint, newPasswor
 	// Step-up authentication: the requester must prove they currently know
 	// their own password. A stolen access token therefore cannot be used to
 	// rotate other users' credentials.
-	if requesterID != userID {
-		if actorPassword == "" {
-			return apperror.BadRequest("actor_password is required")
-		}
-		requester, err := s.store.FindByID(ctx, requesterID)
-		if err != nil {
-			return classifyStoreError(err, "requester")
-		}
-		if err := bcrypt.CompareHashAndPassword([]byte(requester.Password), []byte(actorPassword)); err != nil {
-			return apperror.Unauthorized("actor password is incorrect")
+	if actorPassword == "" {
+		return apperror.BadRequest("actor_password is required")
+	}
+	requester, err := s.store.FindByID(ctx, requesterID)
+	if err != nil {
+		return classifyStoreError(err, "requester")
+	}
+
+	// Lockout check. If the actor has burned through their failure budget
+	// within the rolling window, fail closed without touching bcrypt so
+	// timing analysis cannot tell "locked out" from "wrong password".
+	if s.auditService != nil {
+		failedCount, countErr := s.auditService.CountRecentFailedPasswordResets(ctx, requesterID, passwordResetLockoutWindow)
+		if countErr == nil && failedCount >= passwordResetLockoutThreshold {
+			s.auditService.LogPasswordResetFailed(ctx, requesterID, requester.Email, ipAddress, userID, "actor locked - too many failed actor_password attempts")
+			return apperror.TooManyRequests("too many failed attempts, please try again later")
 		}
 	}
 
+	if err := bcrypt.CompareHashAndPassword([]byte(requester.Password), []byte(actorPassword)); err != nil {
+		if s.auditService != nil {
+			s.auditService.LogPasswordResetFailed(ctx, requesterID, requester.Email, ipAddress, userID, "invalid actor_password")
+		}
+		return apperror.Unauthorized("actor password is incorrect")
+	}
+
 	// Prevent non-superadmin from resetting a superadmin's password
-	if user.IsSuperAdmin && requesterID != userID {
+	if user.IsSuperAdmin {
 		requesterIsSuperAdmin, err := s.userOrgStore.IsSuperAdmin(ctx, requesterID)
 		if err != nil {
 			return apperror.InternalWrap(err, "failed to check superadmin status")
