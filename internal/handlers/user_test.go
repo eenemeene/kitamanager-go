@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -9,6 +10,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/eenemeene/kitamanager-go/internal/models"
+	"github.com/eenemeene/kitamanager-go/internal/service"
 	"github.com/eenemeene/kitamanager-go/internal/store"
 )
 
@@ -1591,5 +1593,128 @@ func TestUserHandler_ResetPassword_SessionsRevoked(t *testing.T) {
 	db.Model(&models.Session{}).Where("user_id = ?", targetUser.ID).Count(&sessionCount)
 	if sessionCount != 0 {
 		t.Errorf("expected target user's sessions to be revoked, %d remain", sessionCount)
+	}
+}
+
+// ----------------------------------------------------------------------
+// Purge endpoint — DSGVO Art. 17 erasure (closes audit finding O-H-3).
+// ----------------------------------------------------------------------
+
+func TestUserHandler_Purge_Success(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userOrgService := createUserOrganizationService(db)
+	auditStore := store.NewAuditStore(db)
+	auditService := service.NewAuditService(auditStore)
+	t.Cleanup(auditService.Shutdown)
+	handler := NewUserHandler(userService, userOrgService, auditService, nil)
+
+	admin := createTestSuperAdmin(t, db)
+	target := createTestUser(t, db, "Doomed", "doomed@example.com", "password")
+
+	r := setupTestRouterWithUser(admin.ID)
+	r.DELETE("/users/:userId/purge", handler.Purge)
+
+	w := performRequest(r, "DELETE", fmt.Sprintf("/users/%d/purge", target.ID), nil)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d body=%s", w.Code, w.Body.String())
+	}
+
+	// Row physically gone — even an unscoped lookup returns zero rows.
+	var count int64
+	db.Unscoped().Model(&models.User{}).Where("id = ?", target.ID).Count(&count)
+	if count != 0 {
+		t.Errorf("expected user purged, %d row(s) remain", count)
+	}
+}
+
+func TestUserHandler_Purge_AlreadyTombstoned_StillSucceeds(t *testing.T) {
+	// Art. 17 requests sometimes arrive AFTER the user has already
+	// soft-deleted themselves. Purge must still vaporise the row.
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userOrgService := createUserOrganizationService(db)
+	auditStore := store.NewAuditStore(db)
+	auditService := service.NewAuditService(auditStore)
+	t.Cleanup(auditService.Shutdown)
+	handler := NewUserHandler(userService, userOrgService, auditService, nil)
+
+	admin := createTestSuperAdmin(t, db)
+	target := createTestUser(t, db, "Tomb", "tomb@example.com", "password")
+	// Soft-delete first (sets deleted_at).
+	if err := db.Delete(target).Error; err != nil {
+		t.Fatalf("soft-delete: %v", err)
+	}
+
+	r := setupTestRouterWithUser(admin.ID)
+	r.DELETE("/users/:userId/purge", handler.Purge)
+
+	w := performRequest(r, "DELETE", fmt.Sprintf("/users/%d/purge", target.ID), nil)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("expected 204 on already-tombstoned, got %d body=%s", w.Code, w.Body.String())
+	}
+	var count int64
+	db.Unscoped().Model(&models.User{}).Where("id = ?", target.ID).Count(&count)
+	if count != 0 {
+		t.Errorf("expected hard-delete to remove the row, %d remain", count)
+	}
+}
+
+func TestUserHandler_Purge_SelfTarget_BadRequest(t *testing.T) {
+	// "Cannot purge your own account" — same invariant as Delete.
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userOrgService := createUserOrganizationService(db)
+	handler := NewUserHandler(userService, userOrgService, nil, nil)
+
+	admin := createTestSuperAdmin(t, db)
+
+	r := setupTestRouterWithUser(admin.ID)
+	r.DELETE("/users/:userId/purge", handler.Purge)
+
+	w := performRequest(r, "DELETE", fmt.Sprintf("/users/%d/purge", admin.ID), nil)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 self-purge, got %d body=%s", w.Code, w.Body.String())
+	}
+}
+
+// NOTE: the "cannot purge the last superadmin" guard exists in
+// UserService.HardDelete as defense-in-depth, but is unreachable via
+// the HTTP handler in practice — the cannot-purge-self check fires
+// first. The guard is exercised at the service layer via
+// TestUserService_Delete_CannotDeleteLastSuperAdmin (delete shares
+// the same guard logic).
+
+func TestUserHandler_Purge_EmitsAuditEvent(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userOrgService := createUserOrganizationService(db)
+	auditStore := store.NewAuditStore(db)
+	auditService := service.NewAuditService(auditStore)
+	handler := NewUserHandler(userService, userOrgService, auditService, nil)
+
+	admin := createTestSuperAdmin(t, db)
+	target := createTestUser(t, db, "Tracked", "tracked@example.com", "password")
+
+	r := setupTestRouterWithUser(admin.ID)
+	r.DELETE("/users/:userId/purge", handler.Purge)
+
+	w := performRequest(r, "DELETE", fmt.Sprintf("/users/%d/purge", target.ID), nil)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("purge: %d", w.Code)
+	}
+
+	// Drain async audit channel before asserting on rows.
+	auditService.Shutdown()
+
+	logs, _, err := auditStore.FindByAction(context.Background(), models.AuditActionUserPurged, 100, 0)
+	if err != nil {
+		t.Fatalf("find audit: %v", err)
+	}
+	if len(logs) != 1 {
+		t.Fatalf("expected exactly 1 user_purged event, got %d", len(logs))
+	}
+	if logs[0].ResourceID == nil || *logs[0].ResourceID != target.ID {
+		t.Errorf("audit row: ResourceID = %v, want %d", logs[0].ResourceID, target.ID)
 	}
 }

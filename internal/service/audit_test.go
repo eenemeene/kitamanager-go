@@ -1196,3 +1196,47 @@ func TestAuditService_SuperAdminChange_ActorNotSwappedWithTarget(t *testing.T) {
 		t.Errorf("target and actor emails are identical — likely a parameter swap")
 	}
 }
+
+// TestAuditService_LogAuditLogPurged emits the self-marker that the
+// hourly retention sweeper writes after deleting old rows. Closes
+// audit finding O-M-8 follow-up: an investigator must be able to
+// distinguish "rows missing because retention purged them" from
+// "rows missing because someone tampered."
+func TestAuditService_LogAuditLogPurged(t *testing.T) {
+	db := setupTestDB(t)
+	auditStore := store.NewAuditStore(db)
+	svc := NewAuditService(auditStore)
+
+	cutoff := time.Now().UTC().Add(-30 * 24 * time.Hour) // 30 days ago
+	svc.LogAuditLogPurged(context.Background(), 142, cutoff)
+	svc.Shutdown()
+
+	logs, _, err := auditStore.FindByAction(context.Background(), models.AuditActionAuditLogPurged, 100, 0)
+	if err != nil {
+		t.Fatalf("find: %v", err)
+	}
+	if len(logs) != 1 {
+		t.Fatalf("expected 1 audit_log_purged row, got %d", len(logs))
+	}
+	row := logs[0]
+	if row.UserID != nil {
+		t.Errorf("UserID should be nil (system actor), got %v", row.UserID)
+	}
+	if row.ResourceType != "audit_log" {
+		t.Errorf("ResourceType = %q, want audit_log", row.ResourceType)
+	}
+	if !row.Success {
+		t.Error("Success = false, want true")
+	}
+	var details map[string]any
+	if err := json.Unmarshal([]byte(row.Details), &details); err != nil {
+		t.Fatalf("details: %v", err)
+	}
+	// JSON-decoded numbers come back as float64.
+	if details["deleted_rows"].(float64) != 142 {
+		t.Errorf("details.deleted_rows = %v, want 142", details["deleted_rows"])
+	}
+	if details["older_than"] == "" {
+		t.Error("details.older_than missing")
+	}
+}

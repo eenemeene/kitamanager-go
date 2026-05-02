@@ -7794,6 +7794,67 @@
                 }
             }
         },
+        "/api/v1/organizations/{orgId}/purge": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Physically removes an organization and CASCADEs through\nthe FK graph (pay_plans, gov-funding bills, employees,\nchildren, sections — see migration 000014). Bypasses\nthe soft-delete tombstone entirely. Irreversible.\n\nRestricted to superadmins. Accepts both live and\nalready-tombstoned rows so an Art. 17 request can fire\nagainst either state.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Hard-delete an organization (DSGVO Art. 17 erasure)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/organizations/{orgId}/sections": {
             "get": {
                 "security": [
@@ -10087,6 +10148,67 @@
                 }
             }
         },
+        "/api/v1/users/{userId}/purge": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Physically removes a user and CASCADEs through the FK\ngraph (sessions, factors, user_organizations, audit\ntrail rows that don't reference the user). Bypasses the\ntombstone soft-delete entirely. Irreversible.\n\nRestricted to superadmins. Cannot purge self. Cannot\npurge the last superadmin. Accepts both live and\nalready-tombstoned rows so an Art. 17 request can fire\nagainst either state.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Hard-delete a user (DSGVO Art. 17 erasure)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/users/{userId}/superadmin": {
             "put": {
                 "security": [
@@ -10241,6 +10363,7 @@
                 "org_purged",
                 "password_reset",
                 "password_reset_failed",
+                "audit_log_purged",
                 "password_change",
                 "password_change_failed",
                 "factor_enrolled",
@@ -10274,6 +10397,7 @@
                 "AuditActionOrgPurged",
                 "AuditActionPasswordReset",
                 "AuditActionPasswordResetFailed",
+                "AuditActionAuditLogPurged",
                 "AuditActionPasswordChange",
                 "AuditActionPasswordChangeFailed",
                 "AuditActionFactorEnrolled",

@@ -58,6 +58,15 @@ const (
 	// ACTOR (the would-be brute-force victim); ResourceID carries the
 	// target so an investigator can see which user was being reset.
 	AuditActionPasswordResetFailed AuditAction = "password_reset_failed"
+	// AuditActionAuditLogPurged records the periodic retention sweep
+	// removing audit rows older than the configured window. Without
+	// this self-marker, an investigator cannot tell "rows are missing
+	// because we deleted them on schedule" from "rows are missing
+	// because someone tampered with the table." The marker itself
+	// rotates with the same retention, so very old marker rows are
+	// also eventually purged — but the most recent one always exists,
+	// which is the only one needed to ratify the deletion pattern.
+	AuditActionAuditLogPurged AuditAction = "audit_log_purged"
 	// AuditActionPasswordChange records a user rotating their own password.
 	AuditActionPasswordChange AuditAction = "password_change"
 	// AuditActionPasswordChangeFailed records a /me/password attempt that

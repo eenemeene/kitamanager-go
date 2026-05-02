@@ -170,6 +170,24 @@ func (s *AuditService) LogPasswordChange(ctx context.Context, userID uint, email
 	})
 }
 
+// LogAuditLogPurged records the periodic retention sweep itself —
+// "deleted N audit rows older than <cutoff>". UserID is nil
+// because the actor is the system retention job, not a user. The
+// row is itself subject to the same retention but the most recent
+// one always exists, ratifying the deletion pattern for any
+// investigator looking at the table.
+func (s *AuditService) LogAuditLogPurged(ctx context.Context, deleted int64, olderThan time.Time) {
+	s.log(ctx, &models.AuditLog{
+		Action:       models.AuditActionAuditLogPurged,
+		ResourceType: "audit_log",
+		Details: mustMarshalJSON(map[string]any{
+			"deleted_rows": deleted,
+			"older_than":   olderThan.Format(time.RFC3339),
+		}),
+		Success: true,
+	})
+}
+
 // LogPasswordChangeFailed logs a failed /me/password attempt. Used by the
 // lockout counter so an attacker with a stolen access token cannot brute-force
 // the current password at full API-mutation-rate-limit speed.

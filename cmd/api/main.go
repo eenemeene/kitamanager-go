@@ -170,7 +170,7 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	sessionCleanupDone := startSessionCleanup(stores.session, stores.factor)
+	sessionCleanupDone := startSessionCleanup(stores.session, stores.factor, stores.audit, svc.audit, cfg.AuditLogRetentionDays)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -379,7 +379,19 @@ func setupRouter(cfg *config.Config, db *gorm.DB, s *appStores, svc *appServices
 	return r
 }
 
-func startSessionCleanup(sessionStore *store.SessionStore, factorStore *store.FactorStore) chan struct{} {
+// startSessionCleanup runs the hourly background sweeper. Beyond
+// expired sessions and abandoned MFA enrolments, it also enforces the
+// configured audit-log retention window (closes audit finding O-M-8:
+// audit_logs.Cleanup exists but was never invoked). When
+// auditRetentionDays <= 0 the audit cleanup branch is skipped and the
+// log table grows unbounded — operators with an external retention
+// pipeline can opt into that.
+//
+// Each successful audit-log purge ALSO writes a self-marker
+// (audit_log_purged) so an investigator looking at the table later
+// can ratify the deletion pattern as scheduled retention rather than
+// tampering.
+func startSessionCleanup(sessionStore *store.SessionStore, factorStore *store.FactorStore, auditStore *store.AuditStore, auditService *service.AuditService, auditRetentionDays int) chan struct{} {
 	done := make(chan struct{})
 	go func() {
 		ticker := time.NewTicker(1 * time.Hour)
@@ -397,6 +409,18 @@ func startSessionCleanup(sessionStore *store.SessionStore, factorStore *store.Fa
 				// or start over."
 				if _, err := factorStore.CleanupAbandonedPending(ctx, time.Hour); err != nil {
 					slog.Error("Failed to cleanup abandoned pending factors", "error", err)
+				}
+				if auditRetentionDays > 0 {
+					cutoff := time.Now().UTC().AddDate(0, 0, -auditRetentionDays)
+					n, err := auditStore.Cleanup(ctx, cutoff)
+					if err != nil {
+						slog.Error("Failed to cleanup old audit logs", "error", err, "older_than", cutoff)
+					} else if n > 0 {
+						slog.Info("Audit log retention purge complete", "deleted_rows", n, "older_than", cutoff)
+						if auditService != nil {
+							auditService.LogAuditLogPurged(ctx, n, cutoff)
+						}
+					}
 				}
 			case <-done:
 				return
