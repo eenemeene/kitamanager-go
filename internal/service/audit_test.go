@@ -721,6 +721,66 @@ func TestAuditService_GetLogByID(t *testing.T) {
 	})
 }
 
+// TestAuditService_GetLogsByOrganization_HidesIdentityEvents is the
+// service-layer regression test for review finding M2: identity-level
+// audit events (org_id IS NULL) MUST stay invisible to org admins.
+// Counterpart to TestAuditStore_FindByOrganization_ExcludesEveryIdentityEvent
+// at the store layer; this test exercises the public service method that
+// the org-scoped HTTP handler calls.
+func TestAuditService_GetLogsByOrganization_HidesIdentityEvents(t *testing.T) {
+	db := setupTestDB(t)
+	auditStore := store.NewAuditStore(db)
+	svc := NewAuditService(auditStore)
+
+	org := createTestOrganization(t, db, "Kita M2")
+	ctx := context.Background()
+	actor := uint(1)
+
+	// One in-org event the query SHOULD see.
+	svc.LogResourceCreate(ctx, actor, "actor@example.com", "child", 42, "Anna", "127.0.0.1", &org.ID)
+
+	// Identity-level events the query MUST NOT see.
+	svc.LogLogin(ctx, actor, "actor@example.com", "127.0.0.1", "ua")
+	svc.LogPasswordChange(ctx, actor, "actor@example.com", "127.0.0.1")
+	svc.LogPasswordReset(ctx, actor, "actor@example.com", 7, "target@example.com", "127.0.0.1")
+	svc.LogSuperAdminChange(ctx, actor, "actor@example.com", 8, "promoted@example.com", true, "127.0.0.1")
+	svc.LogSuperAdminChangeFailed(ctx, actor, "actor@example.com", 9, "denied@example.com", true, "127.0.0.1", "invalid actor_password")
+	svc.LogFactorEnrolled(ctx, actor, "totp")
+	svc.LogFactorDeleted(ctx, actor, "totp")
+	svc.LogSessionRevoked(ctx, actor, "actor@example.com", "abc123hash", "127.0.0.1")
+
+	// Drain the async worker so the SELECT below is deterministic.
+	// Shutdown closes the producer channel and waits for the worker
+	// to flush — must NOT be called twice (double-close panic).
+	svc.Shutdown()
+
+	// Reads bypass the worker entirely (svc.GetLogs* hit the store
+	// directly), so a fresh service instance against the same store
+	// is fine for the read side.
+	readSvc := NewAuditService(auditStore)
+	defer readSvc.Shutdown()
+
+	logs, total, err := readSvc.GetLogsByOrganization(ctx, org.ID, "", nil, nil, nil, 100, 0)
+	if err != nil {
+		t.Fatalf("GetLogsByOrganization: %v", err)
+	}
+	if total != 1 || len(logs) != 1 {
+		t.Fatalf("expected exactly 1 row (the in-org child_create), got total=%d len=%d; first=%+v", total, len(logs), logs)
+	}
+	if logs[0].Action != models.AuditAction("child_create") {
+		t.Errorf("returned row should be the in-org child_create, got %v", logs[0].Action)
+	}
+
+	// Sanity: the global (superadmin) endpoint DOES see everything.
+	allLogs, allTotal, err := readSvc.GetLogsFiltered(ctx, "", nil, nil, nil, 100, 0)
+	if err != nil {
+		t.Fatalf("GetLogsFiltered: %v", err)
+	}
+	if allTotal < 9 {
+		t.Errorf("global endpoint should see all 9 emitted rows, got total=%d len=%d", allTotal, len(allLogs))
+	}
+}
+
 func TestAuditService_GetLogsFiltered_NilService(t *testing.T) {
 	var svc *AuditService
 	ctx := context.Background()

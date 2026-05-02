@@ -288,10 +288,12 @@ func TestAmendContractTx_UsesCallerToday(t *testing.T) {
 	sectionID := getDefaultSection(t, db, org.ID).ID
 
 	// Create a contract that started yesterday so a real Update goes into
-	// amend mode — that path passes today=models.TruncateToDate(time.Now())
-	// to amendContractTx. We then read back what the helper produced and
-	// assert today/yesterday agree to within one day.
-	yesterday := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, 0, -1)
+	// amend mode — that path passes today=models.Today() to amendContractTx.
+	// We then read back what the helper produced and assert today/yesterday
+	// agree to within one day. Use models.Today() (Berlin tz) for the
+	// "yesterday" computation too so the test is stable around the
+	// UTC-local boundary (M4).
+	yesterday := models.Today().AddDate(0, 0, -1)
 	old, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		From: yesterday, SectionID: sectionID,
 	})

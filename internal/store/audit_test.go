@@ -562,6 +562,85 @@ func TestAuditStore_FindByOrganization(t *testing.T) {
 	}
 }
 
+// TestAuditStore_FindByOrganization_ExcludesEveryIdentityEvent locks in
+// the M2 invariant from the architecture review: org-scoped audit log
+// queries MUST NOT return rows with organization_id IS NULL — those are
+// identity-level events (login, password change, MFA enroll/delete,
+// session revoke, superadmin grant/revoke, etc.) that are reachable
+// only via the superadmin-only global endpoint.
+//
+// The pre-existing TestAuditStore_FindByOrganization covers the core
+// invariant with a single login row. This expanded test enumerates the
+// full identity-level event surface so a future change that "helpfully"
+// widens the scoping — e.g. `WHERE organization_id = ? OR organization_id
+// IS NULL` — would fail loudly across every action type, not just login.
+func TestAuditStore_FindByOrganization_ExcludesEveryIdentityEvent(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewAuditStore(db)
+	org := createTestOrganization(t, db, "Kita Identity")
+	orgID := org.ID
+	ctx := context.Background()
+	ip := "127.0.0.1"
+
+	// One in-org row that the query SHOULD return.
+	mustCreate(t, store, &models.AuditLog{
+		UserID: uintPtr(1), UserEmail: "a@example.com",
+		Action: models.AuditActionChildDelete, ResourceType: "child",
+		OrganizationID: &orgID, IPAddress: ip,
+	})
+
+	// Exhaustive list of identity-level (org_id IS NULL) actions the
+	// audit service emits. Every one of these MUST stay invisible to
+	// the org-scoped read path.
+	identityActions := []models.AuditAction{
+		models.AuditActionLogin,
+		models.AuditActionLoginFailed,
+		models.AuditActionLogout,
+		models.AuditActionLoginMFARequired,
+		models.AuditActionMFAChallengeSucceeded,
+		models.AuditActionMFAChallengeFailed,
+		models.AuditActionMFAChallengeLocked,
+		models.AuditActionPasswordChange,
+		models.AuditActionPasswordChangeFailed,
+		models.AuditActionPasswordReset,
+		models.AuditActionPasswordResetFailed,
+		models.AuditActionSessionRevoked,
+		models.AuditActionSuperAdminGrant,
+		models.AuditActionSuperAdminRevoke,
+		models.AuditActionSuperAdminChangeFailed,
+		models.AuditActionFactorEnrolled,
+		models.AuditActionFactorDeleted,
+		models.AuditActionFactorLabelUpdated,
+		models.AuditActionFactorActivationLocked,
+		models.AuditActionBackupCodesRegenerated,
+		models.AuditActionAuditLogPurged,
+		models.AuditActionUserCreate, // identity-level — not org-scoped
+		models.AuditActionUserDelete,
+		models.AuditActionUserPurged,
+	}
+	for _, action := range identityActions {
+		mustCreate(t, store, &models.AuditLog{
+			UserID: uintPtr(2), UserEmail: "actor@example.com",
+			Action: action, IPAddress: ip,
+			// OrganizationID intentionally nil
+		})
+	}
+
+	logs, total, err := store.FindByOrganization(ctx, orgID, "", nil, nil, nil, 100, 0)
+	if err != nil {
+		t.Fatalf("FindByOrganization: %v", err)
+	}
+	if total != 1 || len(logs) != 1 {
+		t.Fatalf("expected exactly 1 row (the in-org child_delete), got total=%d len=%d", total, len(logs))
+	}
+	if logs[0].Action != models.AuditActionChildDelete {
+		t.Errorf("returned row should be the in-org child_delete, got %v", logs[0].Action)
+	}
+	if logs[0].OrganizationID == nil || *logs[0].OrganizationID != orgID {
+		t.Errorf("returned row should carry organization_id=%d, got %v", orgID, logs[0].OrganizationID)
+	}
+}
+
 // TestAuditStore_ActionFilter_Substring verifies the action filter applied
 // by findFiltered / FindByOrganization / FindAllFiltered is a case-insensitive
 // substring match rather than an exact match. A user filtering on "ild" now

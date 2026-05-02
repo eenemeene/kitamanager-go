@@ -162,13 +162,7 @@ func main() {
 	mw := initMiddleware(stores, cfg, permissionService)
 	r := setupRouter(cfg, db, stores, svc, mw, transactor)
 
-	srv := &http.Server{
-		Addr:         ":" + cfg.ServerPort,
-		Handler:      r,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
-	}
+	srv := buildHTTPServer(cfg.ServerPort, r)
 
 	sessionCleanupDone := startSessionCleanup(stores.session, stores.factor, stores.audit, svc.audit, cfg.AuditLogRetentionDays)
 
@@ -189,6 +183,31 @@ func main() {
 	<-quit
 
 	shutdown(srv, sessionCleanupDone, mw, svc, db)
+}
+
+// buildHTTPServer constructs the production HTTP server with safe defaults.
+// Extracted from main() so the timeout configuration is unit-testable —
+// see TestBuildHTTPServer_HasReadHeaderTimeout (architecture review M3).
+//
+// Timeout rationale:
+//   - ReadHeaderTimeout (10s): caps how long the server waits for the
+//     HTTP request HEADER to arrive. Without it a slow-loris client
+//     trickling header bytes one-by-one keeps the connection alive
+//     without ever triggering ReadTimeout (which only starts after the
+//     headers are fully read), so a single attacker can pin every
+//     server file descriptor.
+//   - ReadTimeout (15s): full request body deadline.
+//   - WriteTimeout (15s): response generation deadline.
+//   - IdleTimeout (60s): keep-alive idle window.
+func buildHTTPServer(port string, handler http.Handler) *http.Server {
+	return &http.Server{
+		Addr:              ":" + port,
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
 }
 
 func initStores(db *gorm.DB) *appStores {
