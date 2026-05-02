@@ -268,10 +268,20 @@ test.describe('Two-factor authentication — full lifecycle', () => {
     await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
 
     // ---- Step 7: regenerate backup codes, old codes stop working ----
+    // Wait past the current TOTP step so the regenerate step-up code
+    // we generate next is in a fresh window — otherwise it collides
+    // with the per-factor last_used_step set by the most recent login.
+    // Same reason as the previous waitForTimeout(31000) above.
+    await page.waitForTimeout(31000);
     await page.goto('/settings', { waitUntil: 'load' });
     await page.getByRole('button', { name: /regenerate recovery codes/i }).click();
     const regenDialog = page.getByRole('dialog', { name: /regenerate recovery codes/i });
     await regenDialog.getByLabel(/current password/i).fill(password);
+    // Step-up code is now required (closes A-H-3): supply a fresh
+    // TOTP code from the enrolled authenticator.
+    await regenDialog
+      .getByLabel(/authenticator or recovery code/i)
+      .fill(generateTotp(enrolSecret));
     await regenDialog.getByRole('button', { name: /generate new codes/i }).click();
 
     const newBackupDialog = page.getByTestId('backup-codes-dialog');
