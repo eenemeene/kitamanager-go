@@ -50,7 +50,24 @@ func enrolAndActivateTOTPFor(t *testing.T, db *gorm.DB, _ *AuthService, user *mo
 	if _, err := factorSvc.ActivateFactor(ctx, user.ID, enroll.ID, &models.FactorActivateRequest{Code: code}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
+	// A-M-1 (security audit 2026-05-01): activation now bumps
+	// last_used_step. Reset the step bump so callers that immediately
+	// validate a TOTP code under the same window can still test that
+	// happy-path. Production callers fall through to the next 30-s
+	// window naturally; tests can't wait that long.
+	resetTOTPStepForTesting(t, db, enroll.ID)
 	return enroll.ID, payload.Secret
+}
+
+// resetTOTPStepForTesting clears last_used_step on the given factor
+// row. Test-only helper: production code never wants this. Used by
+// helpers that must exercise login/verify with a TOTP code generated
+// in the same 30-second window as the activation.
+func resetTOTPStepForTesting(t *testing.T, db *gorm.DB, factorID uint) {
+	t.Helper()
+	if err := db.Exec("UPDATE factor_totp_secrets SET last_used_step = 0 WHERE factor_id = ?", factorID).Error; err != nil {
+		t.Fatalf("reset last_used_step: %v", err)
+	}
 }
 
 // seedPendingMFARow bypasses the password step and creates a
@@ -388,8 +405,13 @@ func TestAuthService_VerifyMFALogin_ExpiredPending(t *testing.T) {
 	}
 }
 
-// Cross-user factor_id (Alice's pending token, Bob's factor id) → 401.
-func TestAuthService_VerifyMFALogin_CrossUserFactorID(t *testing.T) {
+// Cross-user factor_id (Alice's pending token, Bob's factor id) → 401
+// AND the per-row counter IS bumped. Closes audit finding A-M-3
+// (security review 2026-05-01): the previous behaviour skipped the
+// bump on unknown-factor, which gave an attacker iterating factor
+// IDs ~4× the budget per pending row before the per-row lockout
+// fires.
+func TestAuthService_VerifyMFALogin_CrossUserFactorID_BumpsCounter(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createAuthService(db)
 	ctx := context.Background()
@@ -407,15 +429,47 @@ func TestAuthService_VerifyMFALogin_CrossUserFactorID(t *testing.T) {
 	if !errors.Is(err, apperror.ErrUnauthorized) {
 		t.Errorf("cross-user factor id: expected ErrUnauthorized, got %v", err)
 	}
-	// Alice's pending row should NOT have its failure counter bumped —
-	// we decided unknown-factor is not a brute-force signal and so
-	// doesn't burn retry budget.
+	// Alice's pending row's counter MUST be bumped — unknown-factor
+	// counts toward the per-row lockout.
 	var failures int
 	_ = db.Model(&models.Session{}).Select("mfa_challenge_failures").
 		Where("id = ?", store.HashSessionToken(step1.Pending.PendingToken)).
 		Scan(&failures)
-	if failures != 0 {
-		t.Errorf("cross-user shouldn't bump counter, got %d", failures)
+	if failures != 1 {
+		t.Errorf("cross-user must bump counter to 1, got %d", failures)
+	}
+}
+
+// TestAuthService_VerifyMFALogin_UnknownFactorID_HitsLockout proves the
+// per-row lockout fires after MFAChallengeFailureLimit unknown-factor
+// attempts, even without a single valid wrong-code attempt mixed in.
+// Otherwise the unknown-factor path would still be a useful brute-
+// force amplifier even after the bump.
+func TestAuthService_VerifyMFALogin_UnknownFactorID_HitsLockout(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createAuthService(db)
+	ctx := context.Background()
+	user := createTestUserWithHashedPassword(t, db, "U", "u@example.com", "pw-123456")
+	_, _ = enrolAndActivateTOTPFor(t, db, svc, user, "pw-123456")
+
+	step1, err := svc.Login(ctx, "u@example.com", "pw-123456", "127.0.0.1", "ua")
+	if err != nil {
+		t.Fatalf("login: %v", err)
+	}
+
+	// Hammer a fictional factor id (99999) MFAChallengeFailureLimit
+	// times. Each call should return Unauthorized and bump the
+	// counter; the last one should escalate to TooManyRequests.
+	for i := range MFAChallengeFailureLimit - 1 {
+		_, err := svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, 99999, "123456", nil, "127.0.0.1", "ua")
+		if !errors.Is(err, apperror.ErrUnauthorized) {
+			t.Fatalf("attempt %d: expected ErrUnauthorized, got %v", i, err)
+		}
+	}
+	// The next attempt trips the threshold.
+	_, err = svc.VerifyMFALogin(ctx, step1.Pending.PendingToken, 99999, "123456", nil, "127.0.0.1", "ua")
+	if !errors.Is(err, apperror.ErrTooManyRequests) {
+		t.Errorf("threshold attempt: expected ErrTooManyRequests, got %v", err)
 	}
 }
 

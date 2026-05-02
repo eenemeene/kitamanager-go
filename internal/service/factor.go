@@ -46,8 +46,9 @@ const FactorActivationFailureLimit = 5
 const BackupCodeEntropyBytes = 8
 
 // otpDigitCount is the number of decimal digits in a TOTP code. Used
-// for an early length-check in tryTOTPCode so a wrong-length probe
-// (5 or 7 digits) does not walk the full skew window.
+// for an early length-check in tryTOTPCode and verifyTOTPForActivation
+// so a wrong-length probe (5 or 7 digits) does not walk the full skew
+// window.
 const otpDigitCount = 6
 
 // totpSkewSteps is the TOTP library's ±step tolerance. One step
@@ -993,24 +994,58 @@ func (s *FactorService) verifyPassword(ctx context.Context, userID uint, passwor
 	return nil
 }
 
-// verifyTOTPForActivation verifies a code against the encrypted-at-rest
-// secret, but does NOT bump last_used_step. That's because activation
-// happens before the factor is enabled; enabling it sets enabled_at to
-// now() and future verifications will bump the step counter.
+// verifyTOTPForActivation verifies a code against the encrypted-at-
+// rest secret AND bumps last_used_step on success — closes audit
+// finding A-M-1 (security review 2026-05-01).
+//
+// Without the bump, the same code that activated the factor was still
+// valid for one subsequent login (within the same 30 s step window),
+// because tryTOTPCode's CAS UPDATE on last_used_step had no prior
+// value to compare against. Bumping at activation establishes the
+// invariant "the activation code can never also be the first-login
+// code."
+//
+// Walks the skew window manually so we can identify which step
+// matched and CAS-bump to that step, mirroring tryTOTPCode.
 func (s *FactorService) verifyTOTPForActivation(ctx context.Context, factorID uint, code string) error {
+	if len(code) != otpDigitCount {
+		return apperror.Unauthorized("invalid code")
+	}
 	secret, err := s.decryptTOTPSecret(ctx, factorID)
 	if err != nil {
 		return err
 	}
-	ok, _ := totp.ValidateCustom(code, secret, time.Now().UTC(), totp.ValidateOpts{
-		Period: totpPeriod,
-		Skew:   totpSkewSteps,
-		Digits: otp.DigitsSix,
-	})
-	if !ok {
-		return apperror.Unauthorized("invalid code")
+	now := time.Now().UTC()
+	codeBytes := []byte(code)
+	for d := -int64(totpSkewSteps); d <= int64(totpSkewSteps); d++ {
+		t := now.Add(time.Duration(d) * time.Duration(totpPeriod) * time.Second)
+		candidate, err := totp.GenerateCodeCustom(secret, t, totp.ValidateOpts{
+			Period: totpPeriod,
+			Skew:   0,
+			Digits: otp.DigitsSix,
+		})
+		if err != nil {
+			continue
+		}
+		if subtle.ConstantTimeCompare([]byte(candidate), codeBytes) != 1 {
+			continue
+		}
+		// Found it. Bump last_used_step so a login attempt within
+		// the same window cannot replay this code.
+		step := t.Unix() / int64(totpPeriod)
+		ok, err := s.factorStore.AcceptTOTPStep(ctx, factorID, step)
+		if err != nil {
+			return apperror.InternalWrap(err, "accept totp step")
+		}
+		if !ok {
+			// last_used_step was already at or past this step. The
+			// matching candidate must have been used by a concurrent
+			// activation attempt; treat as wrong-code on this call.
+			return apperror.Unauthorized("invalid code")
+		}
+		return nil
 	}
-	return nil
+	return apperror.Unauthorized("invalid code")
 }
 
 // verifyStepUpMFA enforces the step-up policy on enrollment, deletion,

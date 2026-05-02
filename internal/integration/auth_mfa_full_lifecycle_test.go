@@ -170,6 +170,12 @@ func TestAuthFlow_MFAFullLifecycle(t *testing.T) {
 	backupCodes := activateResp.BackupCodes.Codes
 	backupFactorID := activateResp.BackupCodes.FactorID
 
+	// A-M-1 (security audit 2026-05-01): activation now bumps
+	// last_used_step. Reset for the immediate-login step below.
+	if err := testDB.Exec("UPDATE factor_totp_secrets SET last_used_step = 0 WHERE factor_id = ?", enrollResp.ID).Error; err != nil {
+		t.Fatalf("reset last_used_step: %v", err)
+	}
+
 	// ---------- Step 4: logout ----------
 	w = doRequest(t, fr.router, http.MethodPost, "/api/v1/logout", userCookies, nil)
 	if w.Code != http.StatusOK {
@@ -344,6 +350,10 @@ func TestAuthFlow_MFADisableReverts(t *testing.T) {
 		userCookies, models.FactorActivateRequest{Code: code})
 	if w.Code != http.StatusOK {
 		t.Fatalf("activate: status=%d body=%s", w.Code, w.Body.String())
+	}
+	// A-M-1: reset last_used_step for the immediate two-step login.
+	if err := testDB.Exec("UPDATE factor_totp_secrets SET last_used_step = 0 WHERE factor_id = ?", enrollResp.ID).Error; err != nil {
+		t.Fatalf("reset last_used_step: %v", err)
 	}
 
 	// Logout.

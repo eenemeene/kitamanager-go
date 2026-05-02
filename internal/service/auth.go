@@ -264,8 +264,23 @@ func (s *AuthService) VerifyMFALogin(ctx context.Context, pendingToken string, f
 		// "wrong code." The audit record preserves the detail.
 		if errors.Is(verifyErr, apperror.ErrNotFound) {
 			s.auditService.LogMFAChallengeFailed(ctx, pending.UserID, pending.UserEmail, "", ipAddress, userAgent, "unknown factor")
-			// Do NOT bump the per-row counter: a totally invalid
-			// factor id is more likely a UI bug than a brute force.
+			// Closes audit finding A-M-3 (security review 2026-05-01):
+			// count unknown-factor responses against the per-row
+			// counter just like wrong-code responses. Without this,
+			// an attacker iterating factor IDs gets approximately 4×
+			// the budget per pending row before the per-row lockout
+			// fires — the per-user lockout is the only backstop and
+			// has a higher threshold (audit notes that scenario).
+			newCount, bumpErr := s.sessionStore.BumpMFAChallengeFailures(ctx, pendHash)
+			if bumpErr != nil {
+				slog.Error("bump mfa failures (unknown factor)", "error", bumpErr)
+				return nil, apperror.Unauthorized("invalid code")
+			}
+			if newCount >= MFAChallengeFailureLimit {
+				_ = s.sessionStore.DeletePendingMFA(ctx, pendHash)
+				s.auditService.LogMFAChallengeLocked(ctx, pending.UserID, pending.UserEmail, ipAddress, userAgent)
+				return nil, apperror.TooManyRequests("too many wrong codes, please restart login")
+			}
 			return nil, apperror.Unauthorized("invalid code")
 		}
 		if errors.Is(verifyErr, apperror.ErrUnauthorized) {

@@ -74,7 +74,11 @@ func createUserWithPassword(t *testing.T, db *gorm.DB, name, email, password str
 //
 // Always called as the user's first-ever enrollment so the step-up MFA
 // code can stay empty.
-func enrolAndActivateTOTP(t *testing.T, svc *FactorService, user *models.User, password string) (uint, string, []string) {
+//
+// `db` is needed to reset last_used_step after activation so tests
+// that immediately validate a TOTP code in the same 30-s window are
+// not blocked by the activation-step bump (A-M-1, audit 2026-05-01).
+func enrolAndActivateTOTP(t *testing.T, db *gorm.DB, svc *FactorService, user *models.User, password string) (uint, string, []string) {
 	t.Helper()
 	ctx := context.Background()
 	enroll, err := svc.EnrollTOTP(ctx, user.ID, nil, password, "", user.Email)
@@ -93,6 +97,13 @@ func enrolAndActivateTOTP(t *testing.T, svc *FactorService, user *models.User, p
 	resp, err := svc.ActivateFactor(ctx, user.ID, enroll.ID, &models.FactorActivateRequest{Code: code})
 	if err != nil {
 		t.Fatalf("activate: %v", err)
+	}
+	// Reset the step bump so tests can immediately exercise login /
+	// step-up code paths under the same time window. Production code
+	// must never want this; this is the test-time equivalent of
+	// "wait 30 seconds for the next window."
+	if err := db.Exec("UPDATE factor_totp_secrets SET last_used_step = 0 WHERE factor_id = ?", enroll.ID).Error; err != nil {
+		t.Fatalf("reset last_used_step: %v", err)
 	}
 	var codes []string
 	if resp.BackupCodes != nil {
@@ -214,7 +225,7 @@ func TestFactorService_ActivateFactor_SecondPrimaryDoesNotRegenerateBackupCodes(
 	svc, _ := newFactorService(t, db)
 	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
 
-	_, secret, _ := enrolAndActivateTOTP(t, svc, user, "pw")
+	_, secret, _ := enrolAndActivateTOTP(t, db, svc, user, "pw")
 
 	// Second TOTP enrolment — needs step-up code (user already has a primary).
 	enroll2, err := svc.EnrollTOTP(context.Background(), user.ID, nil, "pw", validTOTPCode(t, secret), user.Email)
@@ -302,7 +313,7 @@ func TestFactorService_ListForUser_IncludesBackupCodesRemaining(t *testing.T) {
 	svc, _ := newFactorService(t, db)
 	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
 
-	_, _, _ = enrolAndActivateTOTP(t, svc, user, "pw")
+	_, _, _ = enrolAndActivateTOTP(t, db, svc, user, "pw")
 
 	list, err := svc.ListForUser(context.Background(), user.ID)
 	if err != nil {
@@ -337,7 +348,7 @@ func TestFactorService_GetForUser_CrossUser_NotFound(t *testing.T) {
 	alice := createUserWithPassword(t, db, "Alice", "alice@example.com", "pw-a")
 	bob := createUserWithPassword(t, db, "Bob", "bob@example.com", "pw-b")
 
-	fid, _, _ := enrolAndActivateTOTP(t, svc, alice, "pw-a")
+	fid, _, _ := enrolAndActivateTOTP(t, db, svc, alice, "pw-a")
 
 	_, err := svc.GetForUser(context.Background(), bob.ID, fid)
 	if !errors.Is(err, apperror.ErrNotFound) {
@@ -350,7 +361,7 @@ func TestFactorService_DeleteFactor_LastPrimaryRequiresCode(t *testing.T) {
 	svc, _ := newFactorService(t, db)
 	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
 
-	fid, _, _ := enrolAndActivateTOTP(t, svc, user, "pw")
+	fid, _, _ := enrolAndActivateTOTP(t, db, svc, user, "pw")
 
 	// Without a code, deletion is rejected (this would leave the user
 	// with password-only, so extra proof is required).
@@ -365,7 +376,7 @@ func TestFactorService_DeleteFactor_SweepsBackupCodesOnLastPrimary(t *testing.T)
 	svc, _ := newFactorService(t, db)
 	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
 
-	fid, secret, _ := enrolAndActivateTOTP(t, svc, user, "pw")
+	fid, secret, _ := enrolAndActivateTOTP(t, db, svc, user, "pw")
 	// Confirm backup_codes factor exists before delete.
 	if _, err := store.NewFactorStore(db).FindBackupCodesFactor(context.Background(), user.ID); err != nil {
 		t.Fatalf("precondition: backup_codes factor should exist: %v", err)
@@ -396,7 +407,7 @@ func TestFactorService_DeleteFactor_NonLastPrimary_RequiresCode(t *testing.T) {
 	svc, _ := newFactorService(t, db)
 	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
 
-	_, _, backups := enrolAndActivateTOTP(t, svc, user, "pw")
+	_, _, backups := enrolAndActivateTOTP(t, db, svc, user, "pw")
 	// Use single-use backup codes for sequential step-ups so we don't
 	// fight TOTP's per-step replay protection within one 30s window.
 	if len(backups) < 3 {
@@ -436,7 +447,7 @@ func TestFactorService_DeleteFactor_WrongPassword(t *testing.T) {
 	db := setupTestDB(t)
 	svc, _ := newFactorService(t, db)
 	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
-	fid, _, _ := enrolAndActivateTOTP(t, svc, user, "pw")
+	fid, _, _ := enrolAndActivateTOTP(t, db, svc, user, "pw")
 
 	err := svc.DeleteFactor(context.Background(), user.ID, fid, "wrong-password", "000000")
 	if !errors.Is(err, apperror.ErrUnauthorized) {
@@ -450,7 +461,7 @@ func TestFactorService_DeleteFactor_CrossUser_NotFound(t *testing.T) {
 	alice := createUserWithPassword(t, db, "Alice", "alice@example.com", "pw-a")
 	bob := createUserWithPassword(t, db, "Bob", "bob@example.com", "pw-b")
 
-	fid, _, _ := enrolAndActivateTOTP(t, svc, alice, "pw-a")
+	fid, _, _ := enrolAndActivateTOTP(t, db, svc, alice, "pw-a")
 
 	// Bob provides his own correct password but targets Alice's factor.
 	err := svc.DeleteFactor(context.Background(), bob.ID, fid, "pw-b", "anything")
@@ -472,7 +483,10 @@ func TestFactorService_DeleteFactor_WebAuthn_LastPrimary_RequiresCode(t *testing
 	// Set up a realistic two-primary state: TOTP (which also spawns
 	// the backup_codes factor via auto-create) + WebAuthn seeded
 	// directly.
-	totpFID, secret, _ := enrolAndActivateTOTP(t, svc, user, "pw")
+	totpFID, _, autoBackups := enrolAndActivateTOTP(t, db, svc, user, "pw")
+	if len(autoBackups) < 1 {
+		t.Fatalf("expected >= 1 auto backup code, got %d", len(autoBackups))
+	}
 	now := time.Now().UTC()
 	wa := &models.Factor{
 		UserID:    user.ID,
@@ -484,9 +498,11 @@ func TestFactorService_DeleteFactor_WebAuthn_LastPrimary_RequiresCode(t *testing
 		t.Fatalf("seed webauthn: %v", err)
 	}
 
-	// Delete TOTP (still have WebAuthn as primary, so no code needed).
-	code, _ := totp.GenerateCode(secret, time.Now().UTC())
-	if err := svc.DeleteFactor(context.Background(), user.ID, totpFID, "pw", code); err != nil {
+	// Delete TOTP using a backup code as step-up. Closes audit
+	// finding A-M-1: the activation code now bumps last_used_step,
+	// so a fresh TOTP code cannot serve as step-up in the same 30-s
+	// window. Backup codes are single-use and unaffected.
+	if err := svc.DeleteFactor(context.Background(), user.ID, totpFID, "pw", autoBackups[0]); err != nil {
 		t.Fatalf("delete totp: %v", err)
 	}
 
@@ -515,7 +531,7 @@ func TestFactorService_DeleteFactor_WebAuthn_LastPrimary_SweepsBackupCodes(t *te
 
 	// Seed state: TOTP (for its backup codes) then delete TOTP with
 	// WebAuthn also active so backup_codes survive the TOTP deletion.
-	totpFID, _, autoBackups := enrolAndActivateTOTP(t, svc, user, "pw")
+	totpFID, _, autoBackups := enrolAndActivateTOTP(t, db, svc, user, "pw")
 	if len(autoBackups) < 2 {
 		t.Fatalf("expected >= 2 auto backup codes, got %d", len(autoBackups))
 	}
@@ -572,7 +588,7 @@ func TestFactorService_UpdateLabel(t *testing.T) {
 	db := setupTestDB(t)
 	svc, _ := newFactorService(t, db)
 	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
-	fid, _, _ := enrolAndActivateTOTP(t, svc, user, "pw")
+	fid, _, _ := enrolAndActivateTOTP(t, db, svc, user, "pw")
 
 	label := "Old phone"
 	resp, err := svc.UpdateLabel(context.Background(), user.ID, fid, &label)
@@ -599,13 +615,19 @@ func TestFactorService_RegenerateBackupCodes_InvalidatesOld(t *testing.T) {
 	svc, _ := newFactorService(t, db)
 	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
 
-	_, secret, _ := enrolAndActivateTOTP(t, svc, user, "pw")
+	_, _, autoBackups := enrolAndActivateTOTP(t, db, svc, user, "pw")
+	if len(autoBackups) < 1 {
+		t.Fatal("expected >= 1 auto backup code")
+	}
 	bf, err := store.NewFactorStore(db).FindBackupCodesFactor(context.Background(), user.ID)
 	if err != nil {
 		t.Fatalf("find bf: %v", err)
 	}
 
-	payload, err := svc.RegenerateBackupCodes(context.Background(), user.ID, bf.ID, "pw", validTOTPCode(t, secret))
+	// Use a backup code as step-up — TOTP would replay-conflict in
+	// the same 30-s window because the activation code already
+	// bumped last_used_step (A-M-1).
+	payload, err := svc.RegenerateBackupCodes(context.Background(), user.ID, bf.ID, "pw", autoBackups[0])
 	if err != nil {
 		t.Fatalf("regenerate: %v", err)
 	}
@@ -628,7 +650,7 @@ func TestFactorService_RegenerateBackupCodes_WrongPassword(t *testing.T) {
 	db := setupTestDB(t)
 	svc, _ := newFactorService(t, db)
 	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
-	_, secret, _ := enrolAndActivateTOTP(t, svc, user, "pw")
+	_, secret, _ := enrolAndActivateTOTP(t, db, svc, user, "pw")
 	bf, _ := store.NewFactorStore(db).FindBackupCodesFactor(context.Background(), user.ID)
 
 	// Wrong password fails before the step-up code is even checked.
@@ -646,7 +668,7 @@ func TestFactorService_RegenerateBackupCodes_CrossUser_NotFound(t *testing.T) {
 	alice := createUserWithPassword(t, db, "Alice", "alice@example.com", "pw-a")
 	bob := createUserWithPassword(t, db, "Bob", "bob@example.com", "pw-b")
 
-	_, _, _ = enrolAndActivateTOTP(t, svc, alice, "pw-a")
+	_, _, _ = enrolAndActivateTOTP(t, db, svc, alice, "pw-a")
 	bf, _ := store.NewFactorStore(db).FindBackupCodesFactor(context.Background(), alice.ID)
 
 	// Bob has no factors → step-up is a no-op (no primary). FindByIDAndUser
@@ -665,10 +687,13 @@ func TestFactorService_BackupCode_CaseAndHyphenInsensitive(t *testing.T) {
 	svc, _ := newFactorService(t, db)
 	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
 
-	_, secret, _ := enrolAndActivateTOTP(t, svc, user, "pw")
+	_, _, autoBackups := enrolAndActivateTOTP(t, db, svc, user, "pw")
+	if len(autoBackups) < 1 {
+		t.Fatal("expected >= 1 auto backup code")
+	}
 	bf, _ := store.NewFactorStore(db).FindBackupCodesFactor(context.Background(), user.ID)
 
-	payload, err := svc.RegenerateBackupCodes(context.Background(), user.ID, bf.ID, "pw", validTOTPCode(t, secret))
+	payload, err := svc.RegenerateBackupCodes(context.Background(), user.ID, bf.ID, "pw", autoBackups[0])
 	if err != nil {
 		t.Fatalf("regen: %v", err)
 	}
@@ -793,7 +818,7 @@ func TestFactorService_ListForUser_SortOrder(t *testing.T) {
 
 	// Activate two TOTP factors; give the second one a more-recent
 	// last_used_at so it must sort first.
-	_, _, autoBackups := enrolAndActivateTOTP(t, svc, user, "pw")
+	_, _, autoBackups := enrolAndActivateTOTP(t, db, svc, user, "pw")
 	if len(autoBackups) < 1 {
 		t.Fatalf("expected >= 1 backup code from auto-issue")
 	}
@@ -843,7 +868,7 @@ func TestFactorService_ActivateFactor_BackupCodesType_Rejected(t *testing.T) {
 	svc, _ := newFactorService(t, db)
 	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
 
-	_, _, _ = enrolAndActivateTOTP(t, svc, user, "pw")
+	_, _, _ = enrolAndActivateTOTP(t, db, svc, user, "pw")
 	bf, err := store.NewFactorStore(db).FindBackupCodesFactor(context.Background(), user.ID)
 	if err != nil {
 		t.Fatalf("find backup_codes factor: %v", err)
@@ -871,8 +896,11 @@ func TestFactorService_RegenerateBackupCodes_OnTOTPFactor_Rejected(t *testing.T)
 	svc, _ := newFactorService(t, db)
 	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
 
-	totpID, secret, _ := enrolAndActivateTOTP(t, svc, user, "pw")
-	_, err := svc.RegenerateBackupCodes(context.Background(), user.ID, totpID, "pw", validTOTPCode(t, secret))
+	totpID, _, autoBackups := enrolAndActivateTOTP(t, db, svc, user, "pw")
+	if len(autoBackups) < 1 {
+		t.Fatal("expected >= 1 auto backup code")
+	}
+	_, err := svc.RegenerateBackupCodes(context.Background(), user.ID, totpID, "pw", autoBackups[0])
 	if !errors.Is(err, apperror.ErrBadRequest) {
 		t.Errorf("expected BadRequest when regenerating on a TOTP factor, got %v", err)
 	}
@@ -888,7 +916,7 @@ func TestFactorService_TryTOTPCode_FailedVerify_NoLastUsedBump(t *testing.T) {
 	svc, _ := newFactorService(t, db)
 	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
 
-	fid, _, _ := enrolAndActivateTOTP(t, svc, user, "pw")
+	fid, _, _ := enrolAndActivateTOTP(t, db, svc, user, "pw")
 
 	// Snapshot last_used_at right after activation.
 	var before models.Factor
@@ -926,7 +954,7 @@ func TestFactorService_UpdateLabel_TooLong(t *testing.T) {
 	svc, _ := newFactorService(t, db)
 	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
 
-	fid, _, _ := enrolAndActivateTOTP(t, svc, user, "pw")
+	fid, _, _ := enrolAndActivateTOTP(t, db, svc, user, "pw")
 
 	tooLong := strings.Repeat("a", 101)
 	_, err := svc.UpdateLabel(context.Background(), user.ID, fid, &tooLong)
@@ -998,7 +1026,7 @@ func TestFactorService_EnrollTOTP_SecondEnrollment_RequiresStepUpCode(t *testing
 	db := setupTestDB(t)
 	svc, _ := newFactorService(t, db)
 	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
-	_, _, _ = enrolAndActivateTOTP(t, svc, user, "pw")
+	_, _, _ = enrolAndActivateTOTP(t, db, svc, user, "pw")
 
 	_, err := svc.EnrollTOTP(context.Background(), user.ID, nil, "pw", "", user.Email)
 	if !errors.Is(err, apperror.ErrBadRequest) {
@@ -1011,7 +1039,7 @@ func TestFactorService_EnrollTOTP_SecondEnrollment_WrongStepUpCode(t *testing.T)
 	db := setupTestDB(t)
 	svc, _ := newFactorService(t, db)
 	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
-	_, _, _ = enrolAndActivateTOTP(t, svc, user, "pw")
+	_, _, _ = enrolAndActivateTOTP(t, db, svc, user, "pw")
 
 	_, err := svc.EnrollTOTP(context.Background(), user.ID, nil, "pw", "000000", user.Email)
 	if !errors.Is(err, apperror.ErrUnauthorized) {
@@ -1025,7 +1053,7 @@ func TestFactorService_EnrollWebAuthn_RequiresStepUpWhenPrimaryExists(t *testing
 	db := setupTestDB(t)
 	svc, _ := newFactorService(t, db)
 	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
-	_, _, _ = enrolAndActivateTOTP(t, svc, user, "pw")
+	_, _, _ = enrolAndActivateTOTP(t, db, svc, user, "pw")
 
 	// WebAuthn is not wired in tests (svc.webAuthn is nil) — that
 	// returns BadRequest("WebAuthn is not enabled..."). To assert the
@@ -1047,7 +1075,7 @@ func TestFactorService_RegenerateBackupCodes_StolenSessionPasswordIsNotEnough(t 
 	db := setupTestDB(t)
 	svc, _ := newFactorService(t, db)
 	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
-	_, _, _ = enrolAndActivateTOTP(t, svc, user, "pw")
+	_, _, _ = enrolAndActivateTOTP(t, db, svc, user, "pw")
 	bf, _ := store.NewFactorStore(db).FindBackupCodesFactor(context.Background(), user.ID)
 
 	// Empty code → BadRequest. The "I just have your session and
@@ -1071,7 +1099,7 @@ func TestFactorService_DeleteFactor_PrimaryEnrolled_NoCode_BadRequest(t *testing
 	db := setupTestDB(t)
 	svc, _ := newFactorService(t, db)
 	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
-	fid, _, autoBackups := enrolAndActivateTOTP(t, svc, user, "pw")
+	fid, _, autoBackups := enrolAndActivateTOTP(t, db, svc, user, "pw")
 
 	// Single-factor user: even deleting their LAST primary requires a
 	// code (this was already the behaviour, kept as regression).
@@ -1083,4 +1111,48 @@ func TestFactorService_DeleteFactor_PrimaryEnrolled_NoCode_BadRequest(t *testing
 	if err := svc.DeleteFactor(context.Background(), user.ID, fid, "pw", autoBackups[0]); err != nil {
 		t.Errorf("expected delete to succeed with backup code, got %v", err)
 	}
+}
+
+// TestFactorService_VerifyTOTPForActivation_BumpsLastUsedStep closes
+// audit finding A-M-1 (security review 2026-05-01): activation must
+// bump last_used_step so the activation code cannot ALSO serve as the
+// first-login code in the same 30-s window.
+//
+// Walks the flow without the test helper's reset hook so we can
+// verify the bump is real, not papered over by the helper.
+func TestFactorService_VerifyTOTPForActivation_BumpsLastUsedStep(t *testing.T) {
+	db := setupTestDB(t)
+	svc, _ := newFactorService(t, db)
+	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
+
+	enroll, err := svc.EnrollTOTP(context.Background(), user.ID, nil, "pw", "", user.Email)
+	if err != nil {
+		t.Fatalf("enroll: %v", err)
+	}
+	pl := enroll.Enrollment.(models.TOTPEnrollmentPayload)
+	code, _ := totp.GenerateCode(pl.Secret, time.Now().UTC())
+
+	if _, err := svc.ActivateFactor(context.Background(), user.ID, enroll.ID, &models.FactorActivateRequest{Code: code}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+
+	// Same code, same window — must NOT pass tryTOTPCode now.
+	if svc.tryTOTPCode(context.Background(), enroll.ID, code) {
+		t.Error("activation code accepted as login code in same window — A-M-1 regression")
+	}
+
+	// Generate a fresh code RIGHT NOW. If we're still in the same
+	// window, the matching candidate is ALSO blocked by the
+	// last_used_step CAS (the activation already bumped it).
+	fresh, _ := totp.GenerateCode(pl.Secret, time.Now().UTC())
+	if fresh == code {
+		// Same window — tryTOTPCode must reject.
+		if svc.tryTOTPCode(context.Background(), enroll.ID, fresh) {
+			t.Error("freshly-generated same-window code accepted — A-M-1 regression")
+		}
+	}
+	// The next-window code (advanced 30s) would pass — but we don't
+	// wait 30s in tests. The CAS on last_used_step is the regression
+	// guard; future steps strictly > the activation step succeed by
+	// construction.
 }
