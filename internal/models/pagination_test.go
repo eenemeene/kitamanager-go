@@ -20,7 +20,13 @@ func TestPaginationParams_Validate(t *testing.T) {
 		{"invalid negative limit", PaginationParams{Page: 1, Limit: -1}, true, "limit must be positive"},
 		{"both negative", PaginationParams{Page: -5, Limit: -10}, true, "page must be positive"},
 		{"large valid limit", PaginationParams{Page: 1, Limit: 100}, false, ""},
-		{"large page number", PaginationParams{Page: 10000, Limit: 20}, false, ""},
+		{"large page number within cap", PaginationParams{Page: 10000, Limit: 20}, false, ""},
+		// Closes audit finding R-M-2 (security review 2026-05-01):
+		// without an upper bound on Page, ?page=2147483640&limit=100
+		// asks Postgres for OFFSET ~= 2.1e11 — CPU-amplification DoS.
+		{"page exceeds MaxPage", PaginationParams{Page: MaxPage + 1, Limit: 20}, true, "page must not exceed 100000"},
+		{"page far past MaxPage", PaginationParams{Page: 2_147_483_640, Limit: 100}, true, "page must not exceed 100000"},
+		{"page exactly MaxPage", PaginationParams{Page: MaxPage, Limit: 20}, false, ""},
 	}
 
 	for _, tt := range tests {

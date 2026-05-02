@@ -376,3 +376,86 @@ func TestUserStore_IsAdminInSharedOrg_ManagerNotAdmin(t *testing.T) {
 		t.Error("manager should not have admin access for user modification")
 	}
 }
+
+// ----------------------------------------------------------------------
+// Soft-delete safety on the raw user_organizations joins.
+// Closes audit finding R-M-1 (security review 2026-05-01).
+// ----------------------------------------------------------------------
+
+func TestUserStore_SharesOrganization_TombstonedUserExcluded(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewUserStore(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	alice := createTestUser(t, db, "Alice", "alice@example.com")
+	bob := createTestUser(t, db, "Bob", "bob@example.com")
+	createTestUserOrganization(t, db, alice.ID, org.ID, models.RoleAdmin)
+	createTestUserOrganization(t, db, bob.ID, org.ID, models.RoleMember)
+
+	// Sanity: live users in same org → shared.
+	if shares, err := store.SharesOrganization(ctx, alice.ID, bob.ID); err != nil || !shares {
+		t.Fatalf("precondition: live users should share org, shares=%v err=%v", shares, err)
+	}
+
+	// Soft-delete bob. SharesOrganization must now return false on
+	// either side of the comparison — soft-deleted users are not
+	// "in the org" for any purpose.
+	if err := db.Delete(bob).Error; err != nil {
+		t.Fatalf("soft-delete bob: %v", err)
+	}
+	if shares, err := store.SharesOrganization(ctx, alice.ID, bob.ID); err != nil || shares {
+		t.Errorf("alice→bob (bob tombstoned): shares=%v err=%v, want false", shares, err)
+	}
+	if shares, err := store.SharesOrganization(ctx, bob.ID, alice.ID); err != nil || shares {
+		t.Errorf("bob→alice (bob tombstoned): shares=%v err=%v, want false", shares, err)
+	}
+}
+
+func TestUserStore_IsAdminInSharedOrg_TombstonedTargetExcluded(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewUserStore(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	admin := createTestUser(t, db, "Admin", "admin@example.com")
+	target := createTestUser(t, db, "Target", "target@example.com")
+	createTestUserOrganization(t, db, admin.ID, org.ID, models.RoleAdmin)
+	createTestUserOrganization(t, db, target.ID, org.ID, models.RoleMember)
+
+	if isAdmin, err := store.IsAdminInSharedOrg(ctx, admin.ID, target.ID); err != nil || !isAdmin {
+		t.Fatalf("precondition: live admin over live target → true, got %v / %v", isAdmin, err)
+	}
+
+	if err := db.Delete(target).Error; err != nil {
+		t.Fatalf("soft-delete target: %v", err)
+	}
+
+	// A tombstoned target user must not appear "still admin-reachable"
+	// to anyone. Critical for the user-purge / Art. 17 flow that
+	// downstream callers rely on this returning false.
+	if isAdmin, err := store.IsAdminInSharedOrg(ctx, admin.ID, target.ID); err != nil || isAdmin {
+		t.Errorf("admin → tombstoned target: isAdmin=%v err=%v, want false", isAdmin, err)
+	}
+}
+
+func TestUserStore_IsAdminInSharedOrg_TombstonedRequesterExcluded(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewUserStore(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	admin := createTestUser(t, db, "Admin", "admin@example.com")
+	target := createTestUser(t, db, "Target", "target@example.com")
+	createTestUserOrganization(t, db, admin.ID, org.ID, models.RoleAdmin)
+	createTestUserOrganization(t, db, target.ID, org.ID, models.RoleMember)
+
+	if err := db.Delete(admin).Error; err != nil {
+		t.Fatalf("soft-delete admin: %v", err)
+	}
+
+	// A tombstoned requester must not appear as having admin rights.
+	if isAdmin, err := store.IsAdminInSharedOrg(ctx, admin.ID, target.ID); err != nil || isAdmin {
+		t.Errorf("tombstoned admin → target: isAdmin=%v err=%v, want false", isAdmin, err)
+	}
+}
