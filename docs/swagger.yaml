@@ -47,6 +47,7 @@ definitions:
     - session_revoked
     - superadmin_grant
     - superadmin_revoke
+    - superadmin_change_failed
     - user_create
     - user_delete
     - user_purged
@@ -81,6 +82,7 @@ definitions:
     - AuditActionSessionRevoked
     - AuditActionSuperAdminGrant
     - AuditActionSuperAdminRevoke
+    - AuditActionSuperAdminChangeFailed
     - AuditActionUserCreate
     - AuditActionUserDelete
     - AuditActionUserPurged
@@ -3784,9 +3786,18 @@ definitions:
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.UserSetSuperAdminRequest:
     properties:
+      actor_password:
+        description: |-
+          ActorPassword is the current password of the superadmin performing the
+          change. Required so that a session holding only a stolen token cannot
+          promote/demote superadmins.
+        example: adminspassword
+        type: string
       is_superadmin:
         example: true
         type: boolean
+    required:
+    - actor_password
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.UserUpdateRequest:
     properties:
@@ -10649,14 +10660,19 @@ paths:
     put:
       consumes:
       - application/json
-      description: Set or unset a user's superadmin status. Requires superadmin access.
+      description: |-
+        Set or unset a user's superadmin status. Requires superadmin access
+        AND step-up authentication (the actor's current password in
+        `actor_password`). Symmetric with the admin password-reset endpoint:
+        without step-up a stolen superadmin session could mint a confederate
+        superadmin (or demote the actor) at full API rate.
       parameters:
       - description: User ID
         in: path
         name: userId
         required: true
         type: integer
-      - description: Superadmin status
+      - description: Superadmin status + actor_password
         in: body
         name: request
         required: true

@@ -19,6 +19,14 @@ const (
 	AuditActionSessionRevoked   AuditAction = "session_revoked"
 	AuditActionSuperAdminGrant  AuditAction = "superadmin_grant"
 	AuditActionSuperAdminRevoke AuditAction = "superadmin_revoke"
+	// AuditActionSuperAdminChangeFailed records a /users/:userId/superadmin
+	// attempt that failed the actor_password step-up check. Mirrors the
+	// password_reset_failed event: the row carries the ACTOR (the stolen-
+	// session victim) in user_id and the target in resource_id so an
+	// investigator can see who was being promoted/demoted. Emitted for
+	// forensic visibility — frequent failures here are a strong signal of
+	// an attacker inside a superadmin session attempting to pivot.
+	AuditActionSuperAdminChangeFailed AuditAction = "superadmin_change_failed"
 	AuditActionUserCreate       AuditAction = "user_create"
 	// AuditActionUserDelete marks the default DELETE /users/:id
 	// path. As of migration 000015 this is a soft-delete: the row

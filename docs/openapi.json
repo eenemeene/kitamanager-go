@@ -77,6 +77,7 @@
                     "session_revoked",
                     "superadmin_grant",
                     "superadmin_revoke",
+                    "superadmin_change_failed",
                     "user_create",
                     "user_delete",
                     "user_purged",
@@ -112,6 +113,7 @@
                     "AuditActionSessionRevoked",
                     "AuditActionSuperAdminGrant",
                     "AuditActionSuperAdminRevoke",
+                    "AuditActionSuperAdminChangeFailed",
                     "AuditActionUserCreate",
                     "AuditActionUserDelete",
                     "AuditActionUserPurged",
@@ -6103,11 +6105,19 @@
             },
             "UserSetSuperAdminRequest": {
                 "properties": {
+                    "actor_password": {
+                        "description": "ActorPassword is the current password of the superadmin performing the\nchange. Required so that a session holding only a stolen token cannot\npromote/demote superadmins.",
+                        "example": "adminspassword",
+                        "type": "string"
+                    },
                     "is_superadmin": {
                         "example": true,
                         "type": "boolean"
                     }
                 },
+                "required": [
+                    "actor_password"
+                ],
                 "type": "object"
             },
             "UserUpdateRequest": {
@@ -19204,7 +19214,7 @@
         },
         "/api/v1/users/{userId}/superadmin": {
             "put": {
-                "description": "Set or unset a user's superadmin status. Requires superadmin access.",
+                "description": "Set or unset a user's superadmin status. Requires superadmin access\nAND step-up authentication (the actor's current password in\n`actor_password`). Symmetric with the admin password-reset endpoint:\nwithout step-up a stolen superadmin session could mint a confederate\nsuperadmin (or demote the actor) at full API rate.",
                 "parameters": [
                     {
                         "description": "User ID",
@@ -19224,7 +19234,7 @@
                             }
                         }
                     },
-                    "description": "Superadmin status",
+                    "description": "Superadmin status + actor_password",
                     "required": true,
                     "x-originalParamName": "request"
                 },

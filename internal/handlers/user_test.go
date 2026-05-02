@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
@@ -1197,124 +1198,252 @@ func TestUserHandler_GetMemberships_SuperAdminSeesEverything(t *testing.T) {
 }
 
 // SetSuperAdmin tests
+//
+// Every PUT /users/:userId/superadmin call carries a step-up authentication
+// factor in `actor_password` — see review finding H1. The route is
+// superadmin-only at the router level; without step-up a stolen superadmin
+// session could mint a confederate. The tests below cover the full matrix:
+// happy paths (grant, demote with multiple superadmins), step-up failure
+// (wrong / missing actor_password), pre-existing guards (last superadmin,
+// not-found target), and forensic audit emission.
 
-func TestUserHandler_SetSuperAdmin_True(t *testing.T) {
+const setSuperAdminActorPw = "adminpw"
+
+// setupSetSuperAdminTest wires the handler with a real audit service and
+// returns the router (with the admin actor in context), the admin actor,
+// and the audit service so individual tests can assert audit emission.
+func setupSetSuperAdminTest(t *testing.T) (*gin.Engine, *models.User, *service.AuditService, *gorm.DB) {
+	t.Helper()
 	db := setupTestDB(t)
+	auditSvc := createAuditService(db)
 	userService := createUserService(db)
 	userOrgService := createUserOrganizationService(db)
-	handler := NewUserHandler(userService, userOrgService, nil, nil)
+	handler := NewUserHandler(userService, userOrgService, auditSvc, nil)
 
-	user := createTestUser(t, db, "Test User", "test@example.com", "password")
-
-	r := setupTestRouter()
-	r.PUT("/users/:userId/superadmin", handler.SetSuperAdmin)
-
-	body := models.UserSetSuperAdminRequest{
-		IsSuperAdmin: true,
-	}
-
-	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/superadmin", user.ID), body)
-
-	if w.Code != http.StatusOK {
-		t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
-	}
-
-	var result models.UserResponse
-	parseResponse(t, w, &result)
-
-	if !result.IsSuperAdmin {
-		t.Error("expected IsSuperAdmin = true")
-	}
-}
-
-func TestUserHandler_SetSuperAdmin_False(t *testing.T) {
-	db := setupTestDB(t)
-	userService := createUserService(db)
-	userOrgService := createUserOrganizationService(db)
-	handler := NewUserHandler(userService, userOrgService, nil, nil)
-
-	// Create two superadmins so we can demote one
 	admin := createTestSuperAdmin(t, db)
-	user := createTestUser(t, db, "Test User", "test@example.com", "password")
-	db.Model(&models.User{}).Where("id = ?", user.ID).Update("is_superadmin", true)
+	hashedAdminPw(t, db, admin.ID, setSuperAdminActorPw)
 
 	r := setupTestRouterWithUser(admin.ID)
 	r.PUT("/users/:userId/superadmin", handler.SetSuperAdmin)
+	return r, admin, auditSvc, db
+}
+
+// drainAudit forces the async audit worker to flush so tests can read
+// rows synchronously without sleeping. Calling Shutdown closes the
+// channel and waits for the worker to drain.
+func drainAudit(svc *service.AuditService) {
+	svc.Shutdown()
+}
+
+func TestUserHandler_SetSuperAdmin_GrantSucceedsWithCorrectActorPassword(t *testing.T) {
+	r, _, auditSvc, db := setupSetSuperAdminTest(t)
+	user := createTestUser(t, db, "Target", "target@example.com", "password")
 
 	body := models.UserSetSuperAdminRequest{
-		IsSuperAdmin: false,
+		IsSuperAdmin:  true,
+		ActorPassword: setSuperAdminActorPw,
 	}
-
 	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/superadmin", user.ID), body)
 
 	if w.Code != http.StatusOK {
-		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
-
 	var result models.UserResponse
 	parseResponse(t, w, &result)
+	if !result.IsSuperAdmin {
+		t.Error("expected IsSuperAdmin=true on response")
+	}
 
-	if result.IsSuperAdmin {
-		t.Error("expected IsSuperAdmin = false")
+	// Verify the DB was actually updated and a success audit row landed.
+	var fresh models.User
+	if err := db.First(&fresh, user.ID).Error; err != nil {
+		t.Fatalf("re-fetch user: %v", err)
+	}
+	if !fresh.IsSuperAdmin {
+		t.Error("DB row not updated to is_superadmin=true")
+	}
+
+	drainAudit(auditSvc)
+	var grants []models.AuditLog
+	if err := db.Where("action = ?", models.AuditActionSuperAdminGrant).Find(&grants).Error; err != nil {
+		t.Fatalf("query audit: %v", err)
+	}
+	if len(grants) != 1 {
+		t.Fatalf("expected 1 superadmin_grant audit row, got %d", len(grants))
 	}
 }
 
-func TestUserHandler_SetSuperAdmin_UserNotFound(t *testing.T) {
-	db := setupTestDB(t)
-	userService := createUserService(db)
-	userOrgService := createUserOrganizationService(db)
-	handler := NewUserHandler(userService, userOrgService, nil, nil)
-
-	r := setupTestRouter()
-	r.PUT("/users/:userId/superadmin", handler.SetSuperAdmin)
+func TestUserHandler_SetSuperAdmin_RevokeSucceedsWithCorrectActorPassword(t *testing.T) {
+	r, _, _, db := setupSetSuperAdminTest(t)
+	// Create another superadmin so we can demote them without violating the
+	// last-superadmin guard.
+	target := createTestUser(t, db, "Other Admin", "other-admin@example.com", "password")
+	db.Model(&models.User{}).Where("id = ?", target.ID).Update("is_superadmin", true)
 
 	body := models.UserSetSuperAdminRequest{
-		IsSuperAdmin: true,
+		IsSuperAdmin:  false,
+		ActorPassword: setSuperAdminActorPw,
+	}
+	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/superadmin", target.ID), body)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var fresh models.User
+	if err := db.First(&fresh, target.ID).Error; err != nil {
+		t.Fatalf("re-fetch user: %v", err)
+	}
+	if fresh.IsSuperAdmin {
+		t.Error("DB row not updated to is_superadmin=false")
+	}
+}
+
+func TestUserHandler_SetSuperAdmin_RejectsWrongActorPassword(t *testing.T) {
+	r, _, auditSvc, db := setupSetSuperAdminTest(t)
+	user := createTestUser(t, db, "Target", "target@example.com", "password")
+
+	body := models.UserSetSuperAdminRequest{
+		IsSuperAdmin:  true,
+		ActorPassword: "WRONG",
+	}
+	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/superadmin", user.ID), body)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d: %s", w.Code, w.Body.String())
 	}
 
-	w := performRequest(r, "PUT", "/users/999/superadmin", body)
+	// CRITICAL: the target user MUST NOT have been promoted.
+	var fresh models.User
+	if err := db.First(&fresh, user.ID).Error; err != nil {
+		t.Fatalf("re-fetch user: %v", err)
+	}
+	if fresh.IsSuperAdmin {
+		t.Fatal("target was promoted to superadmin despite wrong actor_password — H1 regression")
+	}
+
+	// Forensic audit row MUST exist with action=superadmin_change_failed.
+	drainAudit(auditSvc)
+	var failures []models.AuditLog
+	if err := db.Where("action = ?", models.AuditActionSuperAdminChangeFailed).Find(&failures).Error; err != nil {
+		t.Fatalf("query audit: %v", err)
+	}
+	if len(failures) != 1 {
+		t.Fatalf("expected 1 superadmin_change_failed audit row, got %d", len(failures))
+	}
+	if failures[0].ResourceID == nil || *failures[0].ResourceID != user.ID {
+		t.Errorf("audit row should reference target user_id %d, got %v", user.ID, failures[0].ResourceID)
+	}
+	if failures[0].Success {
+		t.Error("audit row Success should be false on step-up failure")
+	}
+}
+
+func TestUserHandler_SetSuperAdmin_RejectsMissingActorPassword(t *testing.T) {
+	r, _, _, db := setupSetSuperAdminTest(t)
+	user := createTestUser(t, db, "Target", "target@example.com", "password")
+
+	// Send body with IsSuperAdmin only — actor_password is required by the
+	// binding tag, so this must surface as 400 from bindJSON, not as a
+	// successful mutation.
+	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/superadmin", user.ID),
+		map[string]any{"is_superadmin": true})
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for missing actor_password, got %d: %s", w.Code, w.Body.String())
+	}
+	var fresh models.User
+	if err := db.First(&fresh, user.ID).Error; err != nil {
+		t.Fatalf("re-fetch user: %v", err)
+	}
+	if fresh.IsSuperAdmin {
+		t.Fatal("target was promoted despite missing actor_password — H1 regression")
+	}
+}
+
+func TestUserHandler_SetSuperAdmin_RejectsEmptyActorPassword(t *testing.T) {
+	r, _, _, db := setupSetSuperAdminTest(t)
+	user := createTestUser(t, db, "Target", "target@example.com", "password")
+
+	// Explicit empty string vs. missing field — both must be rejected.
+	// `binding:"required"` treats empty string as missing for strings.
+	body := models.UserSetSuperAdminRequest{
+		IsSuperAdmin:  true,
+		ActorPassword: "",
+	}
+	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/superadmin", user.ID), body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for empty actor_password, got %d", w.Code)
+	}
+	var fresh models.User
+	_ = db.First(&fresh, user.ID).Error
+	if fresh.IsSuperAdmin {
+		t.Fatal("target was promoted despite empty actor_password — H1 regression")
+	}
+}
+
+func TestUserHandler_SetSuperAdmin_DemoteLastSuperAdminBlockedEvenWithCorrectStepUp(t *testing.T) {
+	// Even though the actor passes step-up, the last-superadmin guard inside
+	// the service must still fire. This proves the step-up check is layered
+	// on top of pre-existing safety checks, not a replacement for them.
+	r, admin, _, db := setupSetSuperAdminTest(t)
+
+	body := models.UserSetSuperAdminRequest{
+		IsSuperAdmin:  false,
+		ActorPassword: setSuperAdminActorPw,
+	}
+	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/superadmin", admin.ID), body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 (cannot demote last superadmin), got %d: %s", w.Code, w.Body.String())
+	}
+	var fresh models.User
+	if err := db.First(&fresh, admin.ID).Error; err != nil {
+		t.Fatalf("re-fetch admin: %v", err)
+	}
+	if !fresh.IsSuperAdmin {
+		t.Fatal("last superadmin was demoted")
+	}
+}
+
+func TestUserHandler_SetSuperAdmin_TargetUserNotFound(t *testing.T) {
+	r, _, _, _ := setupSetSuperAdminTest(t)
+
+	// Body is well-formed (valid actor_password) so the request reaches
+	// the GetByID(target) lookup, which returns 404 for an unknown id.
+	body := models.UserSetSuperAdminRequest{
+		IsSuperAdmin:  true,
+		ActorPassword: setSuperAdminActorPw,
+	}
+	w := performRequest(r, "PUT", "/users/999999/superadmin", body)
 
 	if w.Code != http.StatusNotFound {
-		t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
+		t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
 	}
 }
 
-func TestUserHandler_SetSuperAdmin_InvalidUserID(t *testing.T) {
-	db := setupTestDB(t)
-	userService := createUserService(db)
-	userOrgService := createUserOrganizationService(db)
-	handler := NewUserHandler(userService, userOrgService, nil, nil)
-
-	r := setupTestRouter()
-	r.PUT("/users/:userId/superadmin", handler.SetSuperAdmin)
+func TestUserHandler_SetSuperAdmin_InvalidUserIDPath(t *testing.T) {
+	r, _, _, _ := setupSetSuperAdminTest(t)
 
 	body := models.UserSetSuperAdminRequest{
-		IsSuperAdmin: true,
+		IsSuperAdmin:  true,
+		ActorPassword: setSuperAdminActorPw,
 	}
-
 	w := performRequest(r, "PUT", "/users/invalid/superadmin", body)
 
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+		t.Fatalf("expected 400 for non-numeric userId, got %d", w.Code)
 	}
 }
 
-func TestUserHandler_SetSuperAdmin_MissingBody(t *testing.T) {
-	db := setupTestDB(t)
-	userService := createUserService(db)
-	userOrgService := createUserOrganizationService(db)
-	handler := NewUserHandler(userService, userOrgService, nil, nil)
+func TestUserHandler_SetSuperAdmin_EmptyBody(t *testing.T) {
+	r, _, _, db := setupSetSuperAdminTest(t)
+	user := createTestUser(t, db, "Target", "target@example.com", "password")
 
-	user := createTestUser(t, db, "Test User", "test@example.com", "password")
-
-	r := setupTestRouter()
-	r.PUT("/users/:userId/superadmin", handler.SetSuperAdmin)
-
-	// Send empty body
 	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d/superadmin", user.ID), nil)
 
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("expected status %d for missing body, got %d", http.StatusBadRequest, w.Code)
+		t.Fatalf("expected 400 for empty body, got %d", w.Code)
 	}
 }
 

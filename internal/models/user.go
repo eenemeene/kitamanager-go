@@ -77,7 +77,15 @@ func (u *User) ToResponse() UserResponse {
 	}
 }
 
-// UserSetSuperAdminRequest represents the request body for setting superadmin status
+// UserSetSuperAdminRequest represents the request body for setting superadmin status.
+// The actor MUST include their OWN current password as a step-up authentication
+// factor — without it a compromised superadmin session could mint a confederate
+// superadmin (or demote the actor) without proving control of the actor's
+// credentials. Symmetric with UserPasswordResetRequest.ActorPassword.
 type UserSetSuperAdminRequest struct {
 	IsSuperAdmin bool `json:"is_superadmin" example:"true"`
+	// ActorPassword is the current password of the superadmin performing the
+	// change. Required so that a session holding only a stolen token cannot
+	// promote/demote superadmins.
+	ActorPassword string `json:"actor_password" binding:"required" example:"adminspassword"`
 }
