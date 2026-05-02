@@ -52,6 +52,13 @@ func userWithMFA(t *testing.T, db *gorm.DB, email, password string) (*models.Use
 	if _, err := factorSvc.ActivateFactor(ctx, user.ID, enroll.ID, &models.FactorActivateRequest{Code: code}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
+	// A-M-1 (security audit 2026-05-01): activation now bumps
+	// last_used_step. Tests that immediately exercise login with a
+	// TOTP code in the same 30-s window need the step reset, since
+	// they can't realistically wait for the next window.
+	if err := db.Exec("UPDATE factor_totp_secrets SET last_used_step = 0 WHERE factor_id = ?", enroll.ID).Error; err != nil {
+		t.Fatalf("reset last_used_step: %v", err)
+	}
 	return user, enroll.ID, payload.Secret
 }
 

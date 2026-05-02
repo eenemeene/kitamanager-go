@@ -56,6 +56,12 @@ func seedUserWithTOTP(t *testing.T, email, password string) (userID uint, factor
 	if _, err := factorSvc.ActivateFactor(ctx, u.ID, enroll.ID, &models.FactorActivateRequest{Code: code}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
+	// A-M-1 (security audit 2026-05-01): activation now bumps
+	// last_used_step. Reset it so two-step login tests can use a
+	// TOTP code under the same window.
+	if err := testDB.Exec("UPDATE factor_totp_secrets SET last_used_step = 0 WHERE factor_id = ?", enroll.ID).Error; err != nil {
+		t.Fatalf("reset last_used_step: %v", err)
+	}
 	return u.ID, enroll.ID, payload.Secret
 }
 
