@@ -619,6 +619,52 @@ func TestGovernmentFundingBillHandler_AssignVoucher_MissingVoucherNumber(t *test
 	}
 }
 
+// G7 / I-M-4 — voucher numbers must match the canonical Berlin format
+// `GB-DDDDDDDDDDD-NN`. Previously only the database `size:17` boundary
+// would have rejected truly oversized values; freeform garbage like
+// "totally-wrong" reached the audit log and the store layer first.
+func TestGovernmentFundingBillHandler_AssignVoucher_RejectsBadPattern(t *testing.T) {
+	db := setupTestDB(t)
+	handler := createGovBillHandler(db)
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Test", LastName: "Child", Gender: "female", Birthdate: time.Date(2020, 3, 15, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(child)
+
+	r := setupTestRouter()
+	r.POST("/organizations/:orgId/children/:childId/vouchers", handler.AssignVoucher)
+
+	bad := []string{
+		"totally-wrong",
+		"GB-1-1",                       // too few digits
+		"GB-12345678901-1",             // 1-digit suffix
+		"GB-12345678901-001",           // 3-digit suffix
+		"gb-12345678901-01",            // wrong case
+		"GB-12345678901-01\n",          // trailing newline
+		" GB-12345678901-01",           // leading space
+		"GB-12345678901-01;DROP TABLE", // SQLi-shaped
+	}
+	for _, voucher := range bad {
+		t.Run(voucher, func(t *testing.T) {
+			body := models.ChildVoucherCreateRequest{VoucherNumber: voucher}
+			w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/children/%d/vouchers", org.ID, child.ID), body)
+			if w.Code != http.StatusBadRequest {
+				t.Fatalf("expected 400 for %q, got %d: %s", voucher, w.Code, w.Body.String())
+			}
+
+			// Even the malformed voucher must NOT have hit the database
+			// table — gating happens at JSON binding, before the service.
+			var count int64
+			db.Model(&models.ChildVoucher{}).Where("voucher_number = ?", voucher).Count(&count)
+			if count != 0 {
+				t.Errorf("voucher %q persisted despite 400 response", voucher)
+			}
+		})
+	}
+}
+
 func TestGovernmentFundingBillHandler_List_Search(t *testing.T) {
 	db := setupTestDB(t)
 	r, _ := setupBillRouter(db)

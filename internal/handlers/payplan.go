@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v3"
@@ -481,7 +480,11 @@ func (h *PayPlanHandler) Export(c *gin.Context) {
 		return
 	}
 
-	filename := strings.ReplaceAll(strings.ToLower(payplan.Name), " ", "-") + ".yaml"
+	// safeAttachmentFilename strips everything outside [a-z0-9_-] before
+	// embedding payplan.Name into the Content-Disposition header. Without
+	// this an attacker who can rename a pay plan could inject quotes or
+	// extra parameters into the response header.
+	filename := safeAttachmentFilename(payplan.Name, ".yaml")
 	c.Header("Content-Type", "application/x-yaml")
 	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
 	c.Writer.WriteHeader(http.StatusOK)
@@ -516,13 +519,13 @@ func (h *PayPlanHandler) Import(c *gin.Context) {
 		return
 	}
 
-	var data models.PayPlanDetailResponse
-	if err := yaml.Unmarshal(fileBytes, &data); err != nil {
+	data, err := decodeYAMLStrict[models.PayPlanDetailResponse](fileBytes)
+	if err != nil {
 		respondError(c, apperror.BadRequest("invalid YAML: "+err.Error()))
 		return
 	}
 
-	result, err := h.service.Import(c.Request.Context(), orgID, &data)
+	result, err := h.service.Import(c.Request.Context(), orgID, data)
 	if err != nil {
 		respondError(c, err)
 		return

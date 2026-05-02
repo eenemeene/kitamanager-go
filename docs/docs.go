@@ -13589,10 +13589,12 @@ const docTemplate = `{
             "properties": {
                 "email": {
                     "type": "string",
+                    "maxLength": 320,
                     "example": "user@example.com"
                 },
                 "password": {
                     "type": "string",
+                    "maxLength": 256,
                     "example": "secret123"
                 }
             }
