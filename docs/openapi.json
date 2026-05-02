@@ -90,6 +90,7 @@
                     "org_purged",
                     "password_reset",
                     "password_reset_failed",
+                    "audit_log_purged",
                     "password_change",
                     "password_change_failed",
                     "factor_enrolled",
@@ -124,6 +125,7 @@
                     "AuditActionOrgPurged",
                     "AuditActionPasswordReset",
                     "AuditActionPasswordResetFailed",
+                    "AuditActionAuditLogPurged",
                     "AuditActionPasswordChange",
                     "AuditActionPasswordChangeFailed",
                     "AuditActionFactorEnrolled",
@@ -16183,6 +16185,86 @@
                 ]
             }
         },
+        "/api/v1/organizations/{orgId}/purge": {
+            "delete": {
+                "description": "Physically removes an organization and CASCADEs through\nthe FK graph (pay_plans, gov-funding bills, employees,\nchildren, sections — see migration 000014). Bypasses\nthe soft-delete tombstone entirely. Irreversible.\n\nRestricted to superadmins. Accepts both live and\nalready-tombstoned rows so an Art. 17 request can fire\nagainst either state.",
+                "parameters": [
+                    {
+                        "description": "Organization ID",
+                        "in": "path",
+                        "name": "orgId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "Hard-delete an organization (DSGVO Art. 17 erasure)",
+                "tags": [
+                    "organizations"
+                ]
+            }
+        },
         "/api/v1/organizations/{orgId}/sections": {
             "get": {
                 "description": "Get a paginated list of sections within a specific organization",
@@ -19035,6 +19117,86 @@
                     }
                 ],
                 "summary": "Reset a user's password (admin)",
+                "tags": [
+                    "users"
+                ]
+            }
+        },
+        "/api/v1/users/{userId}/purge": {
+            "delete": {
+                "description": "Physically removes a user and CASCADEs through the FK\ngraph (sessions, factors, user_organizations, audit\ntrail rows that don't reference the user). Bypasses the\ntombstone soft-delete entirely. Irreversible.\n\nRestricted to superadmins. Cannot purge self. Cannot\npurge the last superadmin. Accepts both live and\nalready-tombstoned rows so an Art. 17 request can fire\nagainst either state.",
+                "parameters": [
+                    {
+                        "description": "User ID",
+                        "in": "path",
+                        "name": "userId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "Hard-delete a user (DSGVO Art. 17 erasure)",
                 "tags": [
                     "users"
                 ]
