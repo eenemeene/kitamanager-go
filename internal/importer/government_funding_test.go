@@ -281,6 +281,52 @@ func TestImportGovernmentFundingFromFile_InvalidState(t *testing.T) {
 	assert.Contains(t, err.Error(), "invalid state")
 }
 
+// G7 / I-M-2 — strict YAML decoding rejects unknown keys in the
+// funding-rate config files. A typo or forgotten rename (e.g. someone
+// writes `from_date` instead of `from`) used to silently drop the
+// value; now it surfaces as a parse error so the misconfigured file
+// fails the seed step rather than booting with empty funding.
+func TestImportGovernmentFundingFromFile_RejectsUnknownYAMLField(t *testing.T) {
+	imp, _, _ := setupImporter(t)
+	yaml := `---
+-
+  from: '2024-01-01'
+  to: ''
+  full_time_weekly_hours: 39
+  bogus_key: oops
+  entries:
+    - age: [0,6]
+      properties:
+        - key: care_type
+          value: ganztag
+          payment: 1668.47
+          requirement: 0.261
+`
+	filePath := createTestYAMLFile(t, yaml)
+	_, err := imp.ImportGovernmentFundingFromFile(context.Background(), filePath, "berlin")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "bogus_key")
+}
+
+// G7 / I-M-2 — strict decoding refuses additional YAML documents in
+// the same file. The importer expects exactly one document.
+func TestImportGovernmentFundingFromFile_RejectsTrailingDocument(t *testing.T) {
+	imp, _, _ := setupImporter(t)
+	yaml := `---
+-
+  from: '2024-01-01'
+  to: ''
+  full_time_weekly_hours: 39
+  entries: []
+---
+- from: 'extra'
+`
+	filePath := createTestYAMLFile(t, yaml)
+	_, err := imp.ImportGovernmentFundingFromFile(context.Background(), filePath, "berlin")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "extra")
+}
+
 func TestImportGovernmentFunding_LabelFromYAML(t *testing.T) {
 	imp, fundingStore, _ := setupImporter(t)
 	yaml := `---

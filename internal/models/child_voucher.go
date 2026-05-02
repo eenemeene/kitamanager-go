@@ -14,6 +14,13 @@ type ChildVoucher struct {
 }
 
 // ChildVoucherCreateRequest is the request body for assigning a voucher to a child.
+//
+// The `voucher` validator (registered in cmd/api/main.go via
+// RegisterCustomValidators) enforces the Berlin Gutschein format
+// `GB-DDDDDDDDDDD-NN` — 11 carrier-account digits and a 2-digit suffix.
+// Closes audit finding I-M-4: previously the only validation was at
+// the database `size:17` boundary, so a wildly malformed value would
+// reach the audit log before being rejected.
 type ChildVoucherCreateRequest struct {
-	VoucherNumber string `json:"voucher_number" binding:"required" example:"GB-12345678901-02"`
+	VoucherNumber string `json:"voucher_number" binding:"required,voucher" example:"GB-12345678901-02"`
 }

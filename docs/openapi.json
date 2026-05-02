@@ -4020,10 +4020,12 @@
                 "properties": {
                     "email": {
                         "example": "user@example.com",
+                        "maxLength": 320,
                         "type": "string"
                     },
                     "password": {
                         "example": "secret123",
+                        "maxLength": 256,
                         "type": "string"
                     }
                 },

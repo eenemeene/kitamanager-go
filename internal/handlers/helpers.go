@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -13,7 +15,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
+	"gopkg.in/yaml.v3"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/ctxkeys"
@@ -30,6 +34,14 @@ const MaxDateRangeMonths = service.MaxStatisticsRangeMonths
 
 // MaxUploadSize is the maximum allowed file upload size (5MB).
 const MaxUploadSize = 5 << 20
+
+// MaxJSONBodySize caps the size of an inbound application/json request
+// body. The default Go HTTP server has no limit, so a malicious or buggy
+// client could stream gigabytes into the JSON decoder's reflection
+// machinery. 1 MB is far above any legitimate DTO this API accepts —
+// the largest known body is the forecast endpoint's nested params shape
+// at well under 100 KB.
+const MaxJSONBodySize = 1 << 20
 
 // MaxSearchLength is the maximum allowed length for search query parameters.
 const MaxSearchLength = 255
@@ -226,15 +238,90 @@ func parseOrgResourceAndContractID(c *gin.Context, resourceParam string) (uint, 
 	return parseOrgResourceAndSubID(c, resourceParam, "contractId")
 }
 
-// bindJSON binds JSON request body to the given type.
-// Returns (request, ok). If ok is false, error response has been sent.
+// bindJSON binds a JSON request body to T with strict decoding semantics.
+//
+// Hardening contract (security audit O-M-3 / I-M-5 / I-M-6):
+//   - body capped at MaxJSONBodySize so attackers cannot OOM the decoder
+//     by streaming gigabytes into reflection-based unmarshal,
+//   - DisallowUnknownFields rejects payloads with extra keys (typo bait,
+//     forgotten fields after a schema change, smuggled audit fields like
+//     internal toggles),
+//   - exactly-one-object: a trailing token after the first decoded value
+//     is rejected, foiling tools that try to slip multiple JSON documents
+//     into a single request body,
+//   - validator/v10 then enforces the binding tags (`required`, `email`,
+//     `min`, `max`, custom `voucher`).
+//
+// Returns (request, ok). If ok is false, an error response has been sent.
 func bindJSON[T any](c *gin.Context) (*T, bool) {
+	if c.Request == nil || c.Request.Body == nil {
+		respondError(c, apperror.BadRequest("missing request body"))
+		return nil, false
+	}
+
+	limited := http.MaxBytesReader(c.Writer, c.Request.Body, MaxJSONBodySize)
+	body, err := io.ReadAll(limited)
+	if err != nil {
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			respondError(c, apperror.BadRequest(fmt.Sprintf("request body exceeds maximum of %d bytes", MaxJSONBodySize)))
+			return nil, false
+		}
+		respondError(c, apperror.BadRequest("failed to read request body"))
+		return nil, false
+	}
+
 	var req T
-	if err := c.ShouldBindJSON(&req); err != nil {
+	dec := json.NewDecoder(bytes.NewReader(body))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
+		respondError(c, apperror.BadRequest(sanitizeJSONDecodeError(err)))
+		return nil, false
+	}
+	if dec.More() {
+		respondError(c, apperror.BadRequest("request body must contain exactly one JSON value"))
+		return nil, false
+	}
+
+	if err := binding.Validator.ValidateStruct(&req); err != nil {
 		respondError(c, apperror.BadRequest(sanitizeBindError(err)))
 		return nil, false
 	}
 	return &req, true
+}
+
+// sanitizeJSONDecodeError converts json.Decoder errors into user-facing
+// messages without echoing internal Go field paths or struct-tag noise.
+func sanitizeJSONDecodeError(err error) string {
+	if err == nil {
+		return "invalid request body"
+	}
+	msg := err.Error()
+	// Unknown field: encoding/json reports e.g. `json: unknown field "foo"`.
+	// Surface the field name so clients get a useful diagnostic, but strip
+	// the Go-specific prefix.
+	if strings.HasPrefix(msg, "json: unknown field ") {
+		return "request contains " + strings.TrimPrefix(msg, "json: ")
+	}
+	if errors.Is(err, io.EOF) {
+		return "request body is empty"
+	}
+	if errors.Is(err, io.ErrUnexpectedEOF) {
+		return "request body is truncated"
+	}
+	var syntaxErr *json.SyntaxError
+	if errors.As(err, &syntaxErr) {
+		return fmt.Sprintf("malformed JSON at offset %d", syntaxErr.Offset)
+	}
+	var typeErr *json.UnmarshalTypeError
+	if errors.As(err, &typeErr) {
+		field := typeErr.Field
+		if field == "" {
+			field = "value"
+		}
+		return fmt.Sprintf("%s has wrong type (expected %s)", field, typeErr.Type.String())
+	}
+	return "invalid request body"
 }
 
 // sanitizeBindError converts validator errors into user-friendly messages
@@ -261,6 +348,8 @@ func sanitizeBindError(err error) string {
 				msgs = append(msgs, field+" must be at least "+fe.Param()+" characters")
 			case "max":
 				msgs = append(msgs, field+" must be at most "+fe.Param()+" characters")
+			case "voucher":
+				msgs = append(msgs, field+" must match the voucher format GB-XXXXXXXXXXX-NN")
 			default:
 				msgs = append(msgs, field+" is invalid")
 			}
@@ -466,4 +555,74 @@ func sanitizeFilename(name string) string {
 		name = name[:MaxFilenameLength]
 	}
 	return name
+}
+
+// MaxAttachmentSegment caps the length of a Content-Disposition filename
+// segment built from user-controlled input. RFC 6266 puts no hard limit
+// on the value but most browsers truncate around 200 characters; we cap
+// well below that to leave room for the file extension.
+const MaxAttachmentSegment = 100
+
+// safeAttachmentFilename returns a Content-Disposition-safe filename
+// derived from `name` with `ext` (must include the leading dot, e.g.
+// ".yaml") appended.
+//
+// The fix here closes audit finding I-M-3: the previous payplan export
+// embedded payplan.Name verbatim into a quoted filename parameter, so a
+// resource named  attack" filename=evil.exe; foo="
+// could break out of the quoted-string and inject arbitrary
+// Content-Disposition parameters (response splitting / unintended
+// download names). After this normalization only [a-z0-9_-] survives,
+// which cannot escape a quoted parameter and cannot start a header
+// continuation. Empty or all-stripped names fall back to "export".
+func safeAttachmentFilename(name, ext string) string {
+	name = strings.ToLower(strings.TrimSpace(name))
+	var b strings.Builder
+	b.Grow(len(name))
+	for _, r := range name {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '-', r == '_':
+			b.WriteRune(r)
+		case r == ' ':
+			b.WriteRune('-')
+		}
+	}
+	cleaned := strings.Trim(b.String(), "-")
+	if cleaned == "" {
+		cleaned = "export"
+	}
+	if len(cleaned) > MaxAttachmentSegment {
+		cleaned = cleaned[:MaxAttachmentSegment]
+	}
+	return cleaned + ext
+}
+
+// decodeYAMLStrict decodes a YAML document into T with strict semantics:
+// unknown keys cause a decode error (closing audit finding I-M-2). This
+// is safe because every YAML import endpoint round-trips the matching
+// export shape — a stray key is either a typo, an attacker probing for
+// silent ignore-and-coerce, or a forgotten field after a schema rename.
+//
+// The caller MUST pre-cap the input bytes (`readUploadFile` enforces
+// MaxUploadSize). yaml.v3 has no built-in decompression bomb, but the
+// resulting in-memory tree can still be large; the upload-size cap
+// upstream is what bounds memory here.
+func decodeYAMLStrict[T any](data []byte) (*T, error) {
+	var out T
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	dec.KnownFields(true)
+	if err := dec.Decode(&out); err != nil {
+		return nil, err
+	}
+	// Reject documents with a trailing second YAML document — our
+	// importers only ever expect a single document and any extra body
+	// is either accident or smuggling.
+	var trailing any
+	if err := dec.Decode(&trailing); !errors.Is(err, io.EOF) {
+		if err == nil {
+			return nil, fmt.Errorf("yaml: extra document after the first")
+		}
+		return nil, fmt.Errorf("yaml: trailing input: %w", err)
+	}
+	return &out, nil
 }

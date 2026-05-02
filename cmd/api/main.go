@@ -24,6 +24,7 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/handlers"
 	"github.com/eenemeene/kitamanager-go/internal/importer"
 	"github.com/eenemeene/kitamanager-go/internal/middleware"
+	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/rbac"
 	"github.com/eenemeene/kitamanager-go/internal/routes"
 	"github.com/eenemeene/kitamanager-go/internal/seed"
@@ -106,6 +107,15 @@ func main() {
 	// emits debug route tables or verbose diagnostics. Tests override via
 	// gin.SetMode(gin.TestMode).
 	gin.SetMode(gin.ReleaseMode)
+
+	// Register custom binding validators (e.g. "voucher" for Berlin
+	// Gutschein format) before any handler binds JSON. Tests that exercise
+	// the binding path call this from their own setup; here it must run
+	// before routes/handlers are wired below.
+	if err := models.RegisterCustomValidators(); err != nil {
+		slog.Error("Failed to register custom validators", "error", err)
+		os.Exit(1)
+	}
 
 	cfg, err := config.Load()
 	if err != nil {

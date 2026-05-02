@@ -97,7 +97,17 @@ export default function BudgetItemsPage() {
       }
       return budgetItem;
     },
-    updateFn: (orgId, id, data) => apiClient.updateBudgetItem(orgId, id, data),
+    // The form schema includes the entry_* fields used by the create flow,
+    // but BudgetItemUpdateRequest accepts only {name, category, per_child}.
+    // Strip the entry fields here — sending them through verbatim used to
+    // be tolerated by the API but is now rejected by the strict JSON
+    // binding (security audit G7 / I-M-6).
+    updateFn: (orgId, id, data) =>
+      apiClient.updateBudgetItem(orgId, id, {
+        name: data.name,
+        category: data.category,
+        per_child: data.per_child,
+      }),
     deleteFn: (orgId, id) => apiClient.deleteBudgetItem(orgId, id),
     queryKeys: {
       list: (orgId, page, search) => queryKeys.budgetItems.list(orgId, page, search),

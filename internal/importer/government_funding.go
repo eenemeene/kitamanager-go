@@ -1,8 +1,10 @@
 package importer
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"math"
 	"os"
@@ -68,9 +70,22 @@ func (i *GovernmentFundingImporter) ImportGovernmentFunding(ctx context.Context,
 		return nil, fmt.Errorf("invalid state: %s", state)
 	}
 
+	// Strict YAML decoding (audit finding I-M-2): rejects unknown keys
+	// and trailing documents. The funding-rate config files are
+	// committed to the repo, so a stray field is always either a typo
+	// or a forgotten rename — surfacing it here prevents silent drops.
 	var yamlPeriods []YAMLGovernmentFundingPeriod
-	if err := yaml.Unmarshal(data, &yamlPeriods); err != nil {
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	dec.KnownFields(true)
+	if err := dec.Decode(&yamlPeriods); err != nil {
 		return nil, fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	var trailing any
+	if err := dec.Decode(&trailing); !errors.Is(err, io.EOF) {
+		if err == nil {
+			return nil, fmt.Errorf("yaml: extra document after the first")
+		}
+		return nil, fmt.Errorf("yaml: trailing input: %w", err)
 	}
 
 	// Check if funding already exists

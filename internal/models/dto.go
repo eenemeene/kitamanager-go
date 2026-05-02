@@ -16,10 +16,18 @@ type ErrorResponse struct {
 	Message string `json:"message" example:"resource not found"`
 }
 
-// LoginRequest represents the login request body
+// LoginRequest represents the login request body.
+//
+// Length caps close audit finding I-M-5: an unbounded Email forces the
+// email regex (and downstream bcrypt verify) to spend CPU on attacker
+// payloads, and an unbounded Password forces a full bcrypt hash on
+// MB-scale inputs. Email is bounded at RFC 5321's 320-byte maximum
+// (64-byte local-part + "@" + 255-byte domain). Password is bounded at
+// 256 bytes — bcrypt itself only consumes the first 72, so anything
+// larger is wasted memory at best and DoS amplification at worst.
 type LoginRequest struct {
-	Email    string `json:"email" binding:"required,email" example:"user@example.com"`
-	Password string `json:"password" binding:"required" example:"secret123"`
+	Email    string `json:"email" binding:"required,email,max=320" example:"user@example.com"`
+	Password string `json:"password" binding:"required,max=256" example:"secret123"`
 }
 
 // LoginStatusAuthenticated and LoginStatusMFARequired are the two

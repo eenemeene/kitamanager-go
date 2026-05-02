@@ -505,13 +505,13 @@ func (h *ChildHandler) Import(c *gin.Context) {
 		return
 	}
 
-	var data models.ChildImportExportData
-	if err := yaml.Unmarshal(fileBytes, &data); err != nil {
+	data, err := decodeYAMLStrict[models.ChildImportExportData](fileBytes)
+	if err != nil {
 		respondError(c, apperror.BadRequest("invalid YAML: "+err.Error()))
 		return
 	}
 
-	results, err := h.service.Import(c.Request.Context(), orgID, &data)
+	results, err := h.service.Import(c.Request.Context(), orgID, data)
 	if err != nil {
 		respondError(c, err)
 		return

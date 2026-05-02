@@ -183,9 +183,64 @@ func cellAsCentsRequired(f *excelize.File, sheetName string, cell string) (int, 
 	return int(cents), nil
 }
 
+// XLSX hardening caps (audit finding I-M-1).
+//
+// The HTTP layer caps the *compressed* upload at 5 MB
+// (`handlers.MaxUploadSize`), but a malicious XLSX can decompress
+// hundreds of times its on-disk size. Without an explicit cap, excelize
+// will happily inflate a 5 MB zip-bomb to multiple GB of XML in
+// memory and OOM the server. The two `Unzip*SizeLimit` options bound
+// the worst case before any parsing begins.
+//
+// MaxXLSXSheetCount and MaxXLSXRowsPerSheet are post-open guards on
+// the parsed workbook: even within the unzip budget an attacker could
+// produce a workbook with millions of empty rows that explode the
+// downstream `f.GetRows` slice. The chosen values comfortably exceed
+// any real ISBJ Senatsabrechnung (typically 3 sheets, < 1000 rows).
+const (
+	MaxXLSXUnzipSize    int64 = 100 << 20 // 100 MB total decompressed
+	MaxXLSXUnzipXMLSize int64 = 25 << 20  // 25 MB per worksheet XML
+	MaxXLSXSheetCount         = 32
+	MaxXLSXRowsPerSheet       = 100_000
+)
+
+// xlsxOpenOptions returns the excelize.Options used by every code path
+// that opens an untrusted workbook. Centralised so the limits are
+// applied uniformly at every entry point.
+func xlsxOpenOptions() excelize.Options {
+	return excelize.Options{
+		UnzipSizeLimit:    MaxXLSXUnzipSize,
+		UnzipXMLSizeLimit: MaxXLSXUnzipXMLSize,
+	}
+}
+
+// enforceWorkbookLimits rejects pathological workbooks that slipped past
+// the unzip caps but would still blow up the row-iteration paths. We
+// fail fast before parsing anything so the OOM surface is bounded.
+func enforceWorkbookLimits(f *excelize.File) error {
+	sheets := f.GetSheetList()
+	if len(sheets) > MaxXLSXSheetCount {
+		return fmt.Errorf("workbook has %d sheets, exceeds maximum of %d", len(sheets), MaxXLSXSheetCount)
+	}
+	for _, sheet := range sheets {
+		rows, err := f.GetRows(sheet)
+		if err != nil {
+			return fmt.Errorf("reading rows from sheet %q: %w", sheet, err)
+		}
+		if len(rows) > MaxXLSXRowsPerSheet {
+			return fmt.Errorf("sheet %q has %d rows, exceeds maximum of %d", sheet, len(rows), MaxXLSXRowsPerSheet)
+		}
+	}
+	return nil
+}
+
 func OpenSenatsabrechnung(dateiname string) (*excelize.File, error) {
-	f, err := excelize.OpenFile(dateiname)
+	f, err := excelize.OpenFile(dateiname, xlsxOpenOptions())
 	if err != nil {
+		return nil, err
+	}
+	if err := enforceWorkbookLimits(f); err != nil {
+		_ = f.Close()
 		return nil, err
 	}
 	return f, nil
@@ -193,11 +248,15 @@ func OpenSenatsabrechnung(dateiname string) (*excelize.File, error) {
 
 // ParseFromReader parses a Senatsabrechnung from an io.Reader (e.g., HTTP upload body).
 func ParseFromReader(r io.Reader) (*SenatsabrechnungOutput, error) {
-	f, err := excelize.OpenReader(r)
+	f, err := excelize.OpenReader(r, xlsxOpenOptions())
 	if err != nil {
 		return nil, fmt.Errorf("opening excel from reader: %w", err)
 	}
 	defer func() { _ = f.Close() }()
+
+	if err := enforceWorkbookLimits(f); err != nil {
+		return nil, err
+	}
 
 	eu, err := ParseEinrichtung(f)
 	if err != nil {
