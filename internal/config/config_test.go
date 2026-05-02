@@ -503,3 +503,55 @@ func TestIsValidPort(t *testing.T) {
 		})
 	}
 }
+
+// ----------------------------------------------------------------------
+// CSRF_HMAC_KEY — separate from JWT_SECRET (closes audit C-M-3).
+// ----------------------------------------------------------------------
+
+func TestLoad_CSRFHMACKey_FallsBackToJWTSecret(t *testing.T) {
+	// Existing deployments don't set CSRF_HMAC_KEY. The fallback to
+	// JWT_SECRET keeps them booting and CSRF-validating without a
+	// breaking change.
+	defer snapshotEnv(t)()
+	os.Setenv("JWT_SECRET", validTestJWTSecret)
+	os.Setenv("TOTP_ENCRYPTION_KEY", validTestTOTPKey)
+	os.Setenv("DB_USER", "u")
+	os.Setenv("DB_PASSWORD", "p")
+	os.Setenv("DB_NAME", "db")
+	os.Setenv("DB_SSLMODE", "disable")
+	os.Unsetenv("CSRF_HMAC_KEY")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.CSRFHMACKey != validTestJWTSecret {
+		t.Errorf("CSRFHMACKey = %q, want fallback to JWTSecret", cfg.CSRFHMACKey)
+	}
+}
+
+func TestLoad_CSRFHMACKey_OverridesWhenSet(t *testing.T) {
+	// New deployments set CSRF_HMAC_KEY explicitly to a distinct
+	// value, so future JWT_SECRET rotations don't silently invalidate
+	// every CSRF token.
+	defer snapshotEnv(t)()
+	const distinct = "another-32-plus-character-secret-for-csrf-only"
+	os.Setenv("JWT_SECRET", validTestJWTSecret)
+	os.Setenv("CSRF_HMAC_KEY", distinct)
+	os.Setenv("TOTP_ENCRYPTION_KEY", validTestTOTPKey)
+	os.Setenv("DB_USER", "u")
+	os.Setenv("DB_PASSWORD", "p")
+	os.Setenv("DB_NAME", "db")
+	os.Setenv("DB_SSLMODE", "disable")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.CSRFHMACKey != distinct {
+		t.Errorf("CSRFHMACKey = %q, want %q", cfg.CSRFHMACKey, distinct)
+	}
+	if cfg.JWTSecret == cfg.CSRFHMACKey {
+		t.Error("JWTSecret and CSRFHMACKey must be independent when both env vars are set")
+	}
+}
