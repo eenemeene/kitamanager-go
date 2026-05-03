@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Download, Upload } from 'lucide-react';
+import { Plus, Download, Upload, Users } from 'lucide-react';
 import { MonthStepper } from '@/components/ui/month-stepper';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,6 +40,7 @@ import { getActiveContract } from '@/lib/utils/contracts';
 import { Pagination } from '@/components/ui/pagination';
 import { DeleteConfirmDialog } from '@/components/crud/delete-confirm-dialog';
 import { QueryError } from '@/components/crud/query-error';
+import { EmptyState } from '@/components/crud/empty-state';
 import { PersonFormDialog } from '@/components/crud/person-form-dialog';
 import { EmployeesTable } from '@/components/employees/employees-table';
 import { EmployeeContractDialog } from '@/components/employees/employee-contract-dialog';
@@ -332,9 +333,12 @@ export default function EmployeesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div className="min-w-0">
           <h1 className="text-3xl font-bold tracking-tight">{t('employees.title')}</h1>
+          <p className="text-muted-foreground mt-1 max-w-3xl text-sm">
+            {t('employees.description')}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -378,7 +382,10 @@ export default function EmployeesPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 md:gap-4">
-        <MonthStepper value={activeOn} onChange={setActiveOn} />
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground text-sm">{t('common.activeOn')}</span>
+          <MonthStepper value={activeOn} onChange={setActiveOn} />
+        </div>
         <SearchInput id="search-employees" value={searchInput} onChange={setSearchInput} />
         <Select
           value={staffCategoryFilter}
@@ -416,6 +423,28 @@ export default function EmployeesPage() {
                 <Skeleton key={i} className="h-12 w-full" />
               ))}
             </div>
+          ) : !search &&
+            !staffCategoryFilter &&
+            paginatedData &&
+            paginatedData.total === 0 &&
+            (employees?.length ?? 0) === 0 ? (
+            <EmptyState
+              icon={Users}
+              title="employees.emptyTitle"
+              description="employees.emptyDescription"
+              action={
+                <>
+                  <Button onClick={dialogs.handleCreate}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    {t('employees.newEmployee')}
+                  </Button>
+                  <Button variant="outline" onClick={triggerFileInput} disabled={isImporting}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    {isImporting ? t('employees.importing') : t('employees.importYaml')}
+                  </Button>
+                </>
+              }
+            />
           ) : (
             <EmployeesTable
               employees={employees ?? []}

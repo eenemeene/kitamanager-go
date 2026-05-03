@@ -64,6 +64,7 @@ export default function ChildrenStatisticsPage() {
     <div className="space-y-6">
       <StatisticsPageHeader
         titleKey="nav.statisticsChildren"
+        descriptionKey="statistics.navChildrenDescription"
         printHref={`/organizations/${orgId}/statistics/children/print`}
       />
 

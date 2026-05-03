@@ -141,13 +141,17 @@ export default function ForecastPage() {
 
       {/* Kita Year Selector */}
       <div className="flex flex-wrap items-center gap-2 md:gap-4">
-        <KitaYearStepper value={year} onChange={setYear} />
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground text-sm">{t('common.kitaYearLabel')}</span>
+          <KitaYearStepper value={year} onChange={setYear} />
+        </div>
       </div>
 
       {/* Scenario Configuration */}
       <Card>
         <CardHeader>
           <CardTitle>{t('statistics.forecastConfigTitle')}</CardTitle>
+          <p className="text-muted-foreground text-sm">{t('statistics.forecastWorkflowHint')}</p>
         </CardHeader>
         <CardContent className="space-y-4">
           <Tabs defaultValue="optimize">

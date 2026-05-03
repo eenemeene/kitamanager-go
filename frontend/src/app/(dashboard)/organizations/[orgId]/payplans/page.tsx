@@ -108,6 +108,7 @@ export default function PayPlansPage() {
     <div className="space-y-6">
       <CrudPageHeader
         title="payPlans.title"
+        description="payPlans.description"
         onNew={crud.dialogs.handleCreate}
         newButtonText="payPlans.newPayPlan"
       >

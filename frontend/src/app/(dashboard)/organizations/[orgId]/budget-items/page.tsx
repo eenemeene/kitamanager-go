@@ -180,6 +180,7 @@ export default function BudgetItemsPage() {
     <div className="space-y-6">
       <CrudPageHeader
         title="budgetItems.title"
+        description="budgetItems.description"
         onNew={crud.dialogs.handleCreate}
         newButtonText="budgetItems.newBudgetItem"
       />

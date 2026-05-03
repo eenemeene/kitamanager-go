@@ -59,6 +59,24 @@ describe('CrudPageHeader', () => {
     expect(screen.getByText('Add New')).toBeInTheDocument();
   });
 
+  it('renders description as i18n key when no spaces (treated as key)', () => {
+    render(<CrudPageHeader {...defaultProps} description="items.description" />);
+
+    expect(screen.getByText('items.description')).toBeInTheDocument();
+  });
+
+  it('renders description directly when it contains spaces (raw text)', () => {
+    render(<CrudPageHeader {...defaultProps} description="A short subtitle." />);
+
+    expect(screen.getByText('A short subtitle.')).toBeInTheDocument();
+  });
+
+  it('does not render description block when description is omitted', () => {
+    const { container } = render(<CrudPageHeader {...defaultProps} />);
+    // Only the h1 should be present in the title column
+    expect(container.querySelectorAll('p').length).toBe(0);
+  });
+
   it('includes Plus icon in button', () => {
     render(<CrudPageHeader {...defaultProps} />);
 

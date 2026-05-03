@@ -121,14 +121,15 @@ describe('EmployeesPage', () => {
     expect(screen.getByText('Jane Smith')).toBeInTheDocument();
   });
 
-  it('shows no results when empty', async () => {
+  it('shows empty state when there are no employees and no filter applied', async () => {
     (apiClient.getEmployees as jest.Mock).mockResolvedValue(mockEmptyResponse);
 
     renderWithProviders(<EmployeesPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('common.noResults')).toBeInTheDocument();
+      expect(screen.getByText('employees.emptyTitle')).toBeInTheDocument();
     });
+    expect(screen.getByText('employees.emptyDescription')).toBeInTheDocument();
   });
 
   it('renders search input', async () => {
@@ -139,13 +140,13 @@ describe('EmployeesPage', () => {
     expect(screen.getByPlaceholderText('common.search')).toBeInTheDocument();
   });
 
-  it('renders table headers', async () => {
-    (apiClient.getEmployees as jest.Mock).mockResolvedValue(mockEmptyResponse);
+  it('renders table headers when there are employees', async () => {
+    (apiClient.getEmployees as jest.Mock).mockResolvedValue(mockPaginatedResponse);
 
     renderWithProviders(<EmployeesPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('common.noResults')).toBeInTheDocument();
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
 
     expect(screen.getByText('common.name')).toBeInTheDocument();
