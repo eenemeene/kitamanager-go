@@ -620,6 +620,21 @@ func TestMapContractDeferredOverlap_Mapping(t *testing.T) {
 			t.Errorf("expected ErrConflict, got %v", mapped)
 		}
 	})
+	t.Run("40P01 (deadlock) maps to Conflict", func(t *testing.T) {
+		// PG breaks lock cycles by killing one transaction (40P01). For
+		// the contract-create race against the EXCLUDE constraint, the
+		// victim's intent was always going to lose to a concurrent
+		// writer — same user-visible meaning as 23P01. Without this
+		// mapping the loser surfaces as a 5xx, which is what the
+		// flake-driven re-runs of TestEmployeeService /
+		// TestChildService _CreateContract_ConcurrentRaceLosesExactlyOne
+		// were chasing in CI before the follow-up fix landed.
+		err := &pgconn.PgError{Code: "40P01", Message: "deadlock detected"}
+		mapped := mapContractDeferredOverlap(err)
+		if !errors.Is(mapped, apperror.ErrConflict) {
+			t.Errorf("expected ErrConflict, got %v", mapped)
+		}
+	})
 	t.Run("nil passes through", func(t *testing.T) {
 		if mapContractDeferredOverlap(nil) != nil {
 			t.Error("nil must remain nil")
