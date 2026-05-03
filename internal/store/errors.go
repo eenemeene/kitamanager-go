@@ -55,3 +55,19 @@ func IsExclusionViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23P01"
 }
+
+// IsDeadlock checks if the error is a PostgreSQL deadlock-detected error
+// (40P01). PG raises this when two concurrent transactions hold locks the
+// other needs and breaks the cycle by killing one — the victim sees 40P01
+// and its transaction is rolled back. From the caller's perspective this
+// is "lost a race with another writer", semantically the same as 23505 /
+// 23P01: the write did not land because someone else's did. Service-layer
+// callers map all three to apperror.Conflict so the user sees a
+// consistent 409 instead of a 5xx for a transient race.
+func IsDeadlock(err error) bool {
+	if err == nil {
+		return false
+	}
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "40P01"
+}

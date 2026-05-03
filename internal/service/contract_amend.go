@@ -53,12 +53,22 @@ func contractOverlapError(err error) error {
 	return apperror.InternalWrap(err, "failed to validate contract")
 }
 
-// mapContractDeferredOverlap translates a Postgres exclusion-constraint
-// violation (sqlstate 23P01) into apperror.Conflict. The exclusion constraint
-// is the truthful gate against the SELECT-then-INSERT race in
-// PeriodStore.ValidateNoOverlap; with DEFERRABLE INITIALLY DEFERRED it fires
-// at COMMIT, so this must be called on the error returned by
-// transactor.InTransaction (not on errors from inside the closure).
+// mapContractDeferredOverlap translates two Postgres race outcomes into
+// apperror.Conflict so the user sees a consistent 409 for any concurrent
+// "your contract conflicts with someone else's" path:
+//
+//   - sqlstate 23P01 (exclusion-constraint violation) — the truthful gate
+//     against the SELECT-then-INSERT race in PeriodStore.ValidateNoOverlap.
+//     With DEFERRABLE INITIALLY DEFERRED it fires at COMMIT, so this must
+//     be called on the error returned by transactor.InTransaction (not on
+//     errors from inside the closure).
+//   - sqlstate 40P01 (deadlock detected) — when N transactions race to
+//     insert overlapping rows, PG can detect a lock cycle and pick a
+//     victim before the EXCLUDE check fires. The victim's transaction is
+//     rolled back with 40P01. Same user-visible meaning as 23P01: another
+//     concurrent writer won. Without this mapping the loser surfaces as
+//     a 5xx for what is logically the same conflict the next-friendlier
+//     race ordering would have produced.
 //
 // All other errors pass through unchanged so the application-level
 // pre-check that returns ErrPeriodOverlap (already mapped to Conflict by
@@ -67,7 +77,7 @@ func mapContractDeferredOverlap(err error) error {
 	if err == nil {
 		return nil
 	}
-	if store.IsExclusionViolation(err) {
+	if store.IsExclusionViolation(err) || store.IsDeadlock(err) {
 		return apperror.Conflict("contract dates overlap with an existing contract")
 	}
 	return err
