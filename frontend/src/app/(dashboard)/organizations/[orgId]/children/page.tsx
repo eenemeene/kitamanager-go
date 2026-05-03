@@ -420,7 +420,7 @@ export default function ChildrenPage() {
                 <>
                   <Button onClick={dialogs.handleCreate}>
                     <Plus className="mr-2 h-4 w-4" />
-                    {t('children.newChild')}
+                    {t('children.emptyAction')}
                   </Button>
                   <Button variant="outline" onClick={triggerFileInput} disabled={isImporting}>
                     <Upload className="mr-2 h-4 w-4" />

@@ -143,7 +143,7 @@ export default function SectionsPage() {
                   action={
                     <Button onClick={crud.dialogs.handleCreate}>
                       <Plus className="mr-2 h-4 w-4" />
-                      {t('sections.newSection')}
+                      {t('sections.emptyAction')}
                     </Button>
                   }
                 />
