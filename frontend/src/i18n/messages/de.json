@@ -781,7 +781,7 @@
   },
   "sections": {
     "title": "Bereiche",
-    "description": "Gruppen, in denen Kinder betreut werden (z. B. Käfergruppe). Im Board lassen sich Kinder und Mitarbeiter per Drag-and-drop zwischen Bereichen verschieben; unter Verwalten werden Bereiche angelegt, umbenannt oder gelöscht und Altersgrenzen konfiguriert.",
+    "description": "Gruppen, in denen Kinder betreut werden (z. B. Käfergruppe). Im Board werden Kinder und Mitarbeiter zwischen den Gruppen umverteilt; unter Verwalten lassen sich Bereiche anlegen, umbenennen oder löschen und Altersgrenzen konfigurieren.",
     "emptyTitle": "Noch keine Bereiche",
     "emptyDescription": "Legen Sie den ersten Bereich an, um Kinder und Mitarbeiter zu gruppieren.",
     "emptyAction": "Ersten Bereich anlegen",
