@@ -20,18 +20,13 @@ test.describe('Statistics', () => {
       timeout: 10000,
     });
 
-    // Verify financial summary cards
-    await expect(page.getByText(/total income/i)).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText(/total expenses/i)).toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole('heading', { name: /balance/i })).toBeVisible({
-      timeout: 10000,
-    });
-
-    // Verify navigation cards to sub-pages (rendered as headings within cards)
+    // The hub page is just navigation cards — financial summaries live on the
+    // Financials sub-page so users don't see the same numbers twice.
     await expect(page.getByRole('heading', { name: /financials/i })).toBeVisible();
     await expect(page.getByRole('heading', { name: /staffing/i })).toBeVisible();
     await expect(page.getByRole('heading', { name: /children/i })).toBeVisible();
     await expect(page.getByRole('heading', { name: /occupancy/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /forecast/i })).toBeVisible();
   });
 
   test('should navigate to children statistics', async ({ page }) => {

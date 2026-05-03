@@ -781,7 +781,7 @@
   },
   "sections": {
     "title": "Sections",
-    "description": "Groups in which children are cared for (e.g. Käfergruppe). Use the Board to drag children and employees between sections; use Manage to create, rename or delete sections and configure their age range.",
+    "description": "Groups in which children are cared for (e.g. Käfergruppe). The Board lets you reassign children and employees between groups; Manage is where you create, rename or delete sections and configure their age range.",
     "emptyTitle": "No sections yet",
     "emptyDescription": "Create your first section to start grouping children and employees.",
     "emptyAction": "Create first section",
