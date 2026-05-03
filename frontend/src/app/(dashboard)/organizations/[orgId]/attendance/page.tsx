@@ -30,6 +30,7 @@ export default function AttendancePage() {
   const orgId = Number(params.orgId);
   const t = useTranslations('attendance');
   const tStats = useTranslations('statistics');
+  const tCommon = useTranslations('common');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -358,10 +359,16 @@ export default function AttendancePage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+        <p className="text-muted-foreground mt-1 max-w-3xl text-sm">{t('description')}</p>
+      </div>
 
       <div className="flex flex-wrap items-center gap-2 md:gap-4">
-        <WeekStepper value={selectedDate} onChange={setSelectedDate} />
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground text-sm">{tCommon('week')}</span>
+          <WeekStepper value={selectedDate} onChange={setSelectedDate} />
+        </div>
         <Select
           value={sectionFilter ? String(sectionFilter) : 'all'}
           onValueChange={(value) => setSectionFilter(value === 'all' ? undefined : Number(value))}

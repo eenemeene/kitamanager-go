@@ -36,6 +36,7 @@ export default function OccupancyPage() {
     <div className="space-y-6">
       <StatisticsPageHeader
         titleKey="nav.statisticsOccupancy"
+        descriptionKey="statistics.navOccupancyDescription"
         printHref={`/organizations/${orgId}/statistics/occupancy/print`}
       />
 

@@ -269,7 +269,12 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <CrudPageHeader title="users.title" onNew={handleCreate} newButtonText="users.newUser" />
+      <CrudPageHeader
+        title="users.title"
+        description="users.description"
+        onNew={handleCreate}
+        newButtonText="users.newUser"
+      />
 
       <Card>
         <CardHeader>

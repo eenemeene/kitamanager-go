@@ -217,6 +217,9 @@ export function StaffingHoursChart({ data }: StaffingHoursChartProps) {
           tickSize: 5,
           tickPadding: 5,
           tickRotation: 0,
+          legend: t('statistics.axisHours'),
+          legendPosition: 'middle',
+          legendOffset: -50,
         }}
         colors={['#f59e0b', '#3b82f6']}
         pointSize={6}

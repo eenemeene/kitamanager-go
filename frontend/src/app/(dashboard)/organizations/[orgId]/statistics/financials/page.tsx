@@ -143,6 +143,7 @@ export default function FinancialsPage() {
     <div className="space-y-6">
       <StatisticsPageHeader
         titleKey="nav.statisticsFinancials"
+        descriptionKey="statistics.navFinancialsDescription"
         printHref={`/organizations/${orgId}/statistics/financials/print`}
       />
 
@@ -263,7 +264,10 @@ export default function FinancialsPage() {
               {t('statistics.budgetDescription')}
             </p>
           </div>
-          <YearStepper value={budgetYear} onChange={setBudgetYear} />
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground text-sm">{t('common.year')}</span>
+            <YearStepper value={budgetYear} onChange={setBudgetYear} />
+          </div>
         </CardHeader>
         <CardContent>
           {isLoadingBudget ? (

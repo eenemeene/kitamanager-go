@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { Plus } from 'lucide-react';
+import { Plus, LayoutGrid } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,7 @@ import {
   ResourceTable,
   DeleteConfirmDialog,
   CrudFormDialog,
+  EmptyState,
   QueryError,
   Column,
 } from '@/components/crud';
@@ -102,7 +103,10 @@ export default function SectionsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight">{t('sections.title')}</h1>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">{t('sections.title')}</h1>
+        <p className="text-muted-foreground mt-1 max-w-3xl text-sm">{t('sections.description')}</p>
+      </div>
 
       <Tabs defaultValue="board">
         <TabsList>
@@ -128,15 +132,32 @@ export default function SectionsPage() {
             </CardHeader>
             <CardContent>
               <QueryError error={crud.error} onRetry={crud.refetch} />
-              <ResourceTable
-                items={crud.items}
-                columns={columns}
-                getItemKey={(section) => section.id}
-                isLoading={crud.isLoading}
-                onEdit={crud.dialogs.handleEdit}
-                onDelete={crud.dialogs.handleDelete}
-              />
-              {crud.paginatedData && (
+              {!crud.isLoading &&
+              crud.paginatedData &&
+              crud.paginatedData.total === 0 &&
+              (crud.items?.length ?? 0) === 0 ? (
+                <EmptyState
+                  icon={LayoutGrid}
+                  title="sections.emptyTitle"
+                  description="sections.emptyDescription"
+                  action={
+                    <Button onClick={crud.dialogs.handleCreate}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      {t('sections.newSection')}
+                    </Button>
+                  }
+                />
+              ) : (
+                <ResourceTable
+                  items={crud.items}
+                  columns={columns}
+                  getItemKey={(section) => section.id}
+                  isLoading={crud.isLoading}
+                  onEdit={crud.dialogs.handleEdit}
+                  onDelete={crud.dialogs.handleDelete}
+                />
+              )}
+              {crud.paginatedData && crud.paginatedData.total > 0 && (
                 <Pagination
                   page={crud.paginatedData.page}
                   totalPages={crud.paginatedData.total_pages}

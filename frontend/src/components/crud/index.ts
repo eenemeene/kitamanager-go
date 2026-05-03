@@ -8,3 +8,4 @@ export { ResourceTable, type ResourceTableProps, type Column } from './resource-
 export { CrudPageHeader, type CrudPageHeaderProps } from './crud-page-header';
 export { CrudFormDialog, type CrudFormDialogProps } from './crud-form-dialog';
 export { QueryError } from './query-error';
+export { EmptyState, type EmptyStateProps } from './empty-state';

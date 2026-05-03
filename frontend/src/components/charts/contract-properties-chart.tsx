@@ -45,6 +45,9 @@ export function ContractPropertiesChart({ data }: ContractPropertiesChartProps) 
             tickSize: 5,
             tickPadding: 5,
             tickRotation: 0,
+            legend: t('statistics.axisChildren'),
+            legendPosition: 'middle',
+            legendOffset: -50,
           }}
           enableLabel={true}
           labelSkipWidth={12}

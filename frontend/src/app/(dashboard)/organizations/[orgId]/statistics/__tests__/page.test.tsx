@@ -1,14 +1,6 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import StatisticsPage from '../page';
-import { apiClient } from '@/lib/api/client';
 import { renderWithProviders } from '@/test-utils';
-
-jest.mock('@/lib/api/client', () => ({
-  apiClient: {
-    getFinancials: jest.fn(),
-  },
-  getErrorMessage: jest.fn((error, fallback) => fallback),
-}));
 
 jest.mock('next/navigation', () => ({
   useParams: () => ({ orgId: '1' }),
@@ -26,38 +18,18 @@ jest.mock('@/lib/hooks/use-toast', () => ({
   useToast: () => ({ toast: jest.fn() }),
 }));
 
-const mockFinancials = {
-  data_points: [
-    {
-      date: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`,
-      total_income: 500000,
-      total_expenses: 300000,
-      balance: 200000,
-      funding_income: 500000,
-      gross_salary: 200000,
-      employer_costs: 50000,
-      budget_income: 0,
-      budget_expenses: 0,
-    },
-  ],
-};
-
 describe('StatisticsPage (Overview)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('renders page title', async () => {
-    (apiClient.getFinancials as jest.Mock).mockResolvedValue(mockFinancials);
-
+  it('renders page title', () => {
     renderWithProviders(<StatisticsPage />);
 
     expect(screen.getByText('statistics.title')).toBeInTheDocument();
   });
 
-  it('renders sub-page link cards', async () => {
-    (apiClient.getFinancials as jest.Mock).mockResolvedValue(mockFinancials);
-
+  it('renders sub-page link cards', () => {
     renderWithProviders(<StatisticsPage />);
 
     expect(screen.getByText('nav.statisticsFinancials')).toBeInTheDocument();
@@ -65,31 +37,7 @@ describe('StatisticsPage (Overview)', () => {
     expect(screen.getByText('nav.statisticsChildren')).toBeInTheDocument();
   });
 
-  it('renders financial summary cards when data is loaded', async () => {
-    (apiClient.getFinancials as jest.Mock).mockResolvedValue(mockFinancials);
-
-    renderWithProviders(<StatisticsPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('statistics.totalIncome')).toBeInTheDocument();
-    });
-
-    expect(screen.getByText('statistics.totalExpenses')).toBeInTheDocument();
-    expect(screen.getByText('statistics.balance')).toBeInTheDocument();
-  });
-
-  it('shows loading skeletons while fetching', async () => {
-    (apiClient.getFinancials as jest.Mock).mockImplementation(() => new Promise(() => {}));
-
-    renderWithProviders(<StatisticsPage />);
-
-    const skeletons = document.querySelectorAll('.animate-pulse');
-    expect(skeletons.length).toBeGreaterThan(0);
-  });
-
-  it('renders links to sub-pages with correct hrefs', async () => {
-    (apiClient.getFinancials as jest.Mock).mockResolvedValue(mockFinancials);
-
+  it('renders links to sub-pages with correct hrefs', () => {
     renderWithProviders(<StatisticsPage />);
 
     const links = screen.getAllByRole('link');
@@ -101,11 +49,15 @@ describe('StatisticsPage (Overview)', () => {
     expect(hrefs).toContain('/organizations/1/statistics/budget');
   });
 
-  it('renders budget link card', async () => {
-    (apiClient.getFinancials as jest.Mock).mockResolvedValue(mockFinancials);
-
+  it('renders budget link card', () => {
     renderWithProviders(<StatisticsPage />);
 
     expect(screen.getByText('nav.statisticsBudget')).toBeInTheDocument();
+  });
+
+  it('renders forecast link card', () => {
+    renderWithProviders(<StatisticsPage />);
+
+    expect(screen.getByText('nav.statisticsForecast')).toBeInTheDocument();
   });
 });

@@ -192,11 +192,17 @@ export default function GovernmentFundingBillsPage() {
   return (
     <TooltipProvider>
       <div className="space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <h1 className="text-2xl font-bold">{t('title')}</h1>
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+            <p className="text-muted-foreground mt-1 max-w-3xl text-sm">{t('description')}</p>
+          </div>
           <div className="flex flex-wrap items-center gap-4">
             <SearchInput id="search-bills" value={searchInput} onChange={setSearchInput} />
-            <KitaYearStepper value={kitaYear} onChange={setKitaYear} />
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground text-sm">{tCommon('kitaYearLabel')}</span>
+              <KitaYearStepper value={kitaYear} onChange={setKitaYear} />
+            </div>
           </div>
         </div>
 

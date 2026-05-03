@@ -141,14 +141,15 @@ describe('ChildrenPage', () => {
     expect(screen.getByText('Emma Schmidt')).toBeInTheDocument();
   });
 
-  it('shows no results when empty', async () => {
+  it('shows empty state when there are no children and no filter applied', async () => {
     (apiClient.getChildren as jest.Mock).mockResolvedValue(mockEmptyResponse);
 
     renderWithProviders(<ChildrenPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('common.noResults')).toBeInTheDocument();
+      expect(screen.getByText('children.emptyTitle')).toBeInTheDocument();
     });
+    expect(screen.getByText('children.emptyDescription')).toBeInTheDocument();
   });
 
   it('renders search input', async () => {
@@ -159,13 +160,13 @@ describe('ChildrenPage', () => {
     expect(screen.getByPlaceholderText('common.search')).toBeInTheDocument();
   });
 
-  it('renders table headers', async () => {
-    (apiClient.getChildren as jest.Mock).mockResolvedValue(mockEmptyResponse);
+  it('renders table headers when there are children', async () => {
+    (apiClient.getChildren as jest.Mock).mockResolvedValue(mockPaginatedResponse);
 
     renderWithProviders(<ChildrenPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('common.noResults')).toBeInTheDocument();
+      expect(screen.getByText('Max Mustermann')).toBeInTheDocument();
     });
 
     expect(screen.getByText('common.name')).toBeInTheDocument();

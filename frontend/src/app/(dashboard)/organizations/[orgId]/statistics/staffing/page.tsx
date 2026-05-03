@@ -116,6 +116,7 @@ export default function StaffingPage() {
     <div className="space-y-6">
       <StatisticsPageHeader
         titleKey="nav.statisticsStaffing"
+        descriptionKey="statistics.navStaffingDescription"
         printHref={`/organizations/${orgId}/statistics/staffing/print`}
       />
 
@@ -168,7 +169,10 @@ export default function StaffingPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2 md:gap-4">
             {sectionFilterElement}
-            <YearStepper value={year} onChange={setYear} />
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground text-sm">{t('common.year')}</span>
+              <YearStepper value={year} onChange={setYear} />
+            </div>
           </div>
         </CardHeader>
         <CardContent>

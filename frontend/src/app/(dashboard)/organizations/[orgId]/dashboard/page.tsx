@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Users, Baby, Clock, Upload, ArrowRight } from 'lucide-react';
+import { Users, Baby, Clock, Upload, ArrowRight, Check } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { StepPromotionsWidget } from '@/components/dashboard/step-promotions-widget';
 import { UpcomingChildrenWidget } from '@/components/dashboard/upcoming-children-widget';
@@ -13,11 +13,20 @@ import { SectionAgeAlertsWidget } from '@/components/dashboard/section-age-alert
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { getCurrentMonthRange } from '@/lib/utils/formatting';
 import { useAuthStore } from '@/stores/auth-store';
+import { useUiStore } from '@/stores/ui-store';
 
 export default function OrgDashboardPage() {
   const params = useParams();
@@ -122,10 +131,14 @@ export default function OrgDashboardPage() {
       ? Math.round((availableHours / requiredHours) * 100) - 100
       : null;
 
+  const orgName = useUiStore((state) => state.organizations.find((o) => o.id === orgId)?.name);
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">{t('dashboard.title')}</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          {orgName ? t('dashboard.titleForOrg', { name: orgName }) : t('dashboard.title')}
+        </h1>
         <p className="text-muted-foreground">
           {t('dashboard.welcome')}
           {user?.name && `, ${user.name}`}
@@ -151,12 +164,14 @@ export default function OrgDashboardPage() {
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard
           title={t('dashboard.activeEmployees')}
+          tooltip={t('dashboard.activeEmployeesTooltip')}
           value={employeesData?.total ?? '-'}
           icon={Users}
           loading={employeesLoading}
         />
         <StatCard
           title={t('dashboard.activeChildren')}
+          tooltip={t('dashboard.activeChildrenTooltip')}
           value={childrenData?.total ?? '-'}
           icon={Baby}
           loading={childrenLoading}
@@ -222,22 +237,30 @@ export default function OrgDashboardPage() {
                                     ({Math.round((s.similarity ?? 0) * 100)}%)
                                   </span>
                                 </span>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-6 px-2 text-xs"
-                                  disabled={acceptSuggestion.isPending}
-                                  onClick={() =>
-                                    acceptSuggestion.mutate({
-                                      childId: child.id,
-                                      firstName: s.bill_first_name ?? '',
-                                      lastName: s.bill_last_name ?? '',
-                                      voucherNumber: s.voucher_number ?? '',
-                                    })
-                                  }
-                                >
-                                  {t('dashboard.acceptSuggestion')}
-                                </Button>
+                                <Tooltip delayDuration={0}>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-7 px-2 text-xs"
+                                      disabled={acceptSuggestion.isPending}
+                                      onClick={() =>
+                                        acceptSuggestion.mutate({
+                                          childId: child.id,
+                                          firstName: s.bill_first_name ?? '',
+                                          lastName: s.bill_last_name ?? '',
+                                          voucherNumber: s.voucher_number ?? '',
+                                        })
+                                      }
+                                    >
+                                      <Check className="mr-1 h-3 w-3" />
+                                      {t('dashboard.acceptSuggestion')}
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-xs">
+                                    {t('dashboard.acceptSuggestionTooltip')}
+                                  </TooltipContent>
+                                </Tooltip>
                               </div>
                             ))}
                           </div>
@@ -265,54 +288,87 @@ export default function OrgDashboardPage() {
           </CardHeader>
           <CardContent>
             <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('children.title')}</TableHead>
+                  <TableHead>{t('dashboard.mismatchProperty')}</TableHead>
+                  <TableHead>{t('dashboard.mismatchBillValue')}</TableHead>
+                  <TableHead>{t('dashboard.mismatchContractValue')}</TableHead>
+                </TableRow>
+              </TableHeader>
               <TableBody>
-                {propertyMismatches.map((child) => (
-                  <TableRow key={child.child_id ?? child.voucher_number}>
-                    <TableCell>
-                      <Link
-                        href={
-                          child.child_id
-                            ? `/organizations/${orgId}/children/${child.child_id}/billing`
-                            : `/organizations/${orgId}/government-funding-bills`
+                {propertyMismatches.flatMap((child) => {
+                  // Group mismatched properties by key so a "different" pair
+                  // (one row from the bill, one from the contract) collapses
+                  // to a single visual row with bill and contract values
+                  // shown side-by-side.
+                  const mismatched = child.properties?.filter((p) => !!p.mismatch) ?? [];
+                  const byKey = new Map<string, typeof mismatched>();
+                  for (const p of mismatched) {
+                    const key = p.key ?? '';
+                    const group = byKey.get(key) ?? [];
+                    group.push(p);
+                    byKey.set(key, group);
+                  }
+
+                  const rows: Array<{
+                    propLabel: string;
+                    billCell: React.ReactNode;
+                    contractCell: React.ReactNode;
+                  }> = [];
+
+                  for (const [key, props] of byKey) {
+                    if (props.length >= 2 && props[0].mismatch === 'different') {
+                      const bill = props.find((p) => p.bill_amount !== null);
+                      const calc = props.find((p) => p.calculated_amount !== null);
+                      rows.push({
+                        propLabel: bill?.label || calc?.label || key,
+                        billCell: bill?.value ?? '?',
+                        contractCell: calc?.value ?? '?',
+                      });
+                    } else {
+                      for (const p of props) {
+                        const label = p.label || `${p.key}: ${p.value}`;
+                        if (p.mismatch === 'missing') {
+                          rows.push({
+                            propLabel: label,
+                            billCell: <span className="text-muted-foreground">—</span>,
+                            contractCell: p.value ?? '?',
+                          });
+                        } else if (p.mismatch === 'additional') {
+                          rows.push({
+                            propLabel: label,
+                            billCell: p.value ?? '?',
+                            contractCell: <span className="text-muted-foreground">—</span>,
+                          });
                         }
-                        className="hover:text-primary hover:underline"
-                      >
-                        {child.child_name}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {(() => {
-                        const mismatched = child.properties?.filter((p) => !!p.mismatch) ?? [];
-                        // Group "different" mismatches by key to show bill vs contract
-                        const byKey = new Map<string, typeof mismatched>();
-                        for (const p of mismatched) {
-                          const key = p.key ?? '';
-                          const group = byKey.get(key) ?? [];
-                          group.push(p);
-                          byKey.set(key, group);
-                        }
-                        return Array.from(byKey.entries())
-                          .map(([key, props]) => {
-                            if (props.length >= 2 && props[0].mismatch === 'different') {
-                              const billVal = props.find((p) => p.bill_amount !== null)?.value;
-                              const calcVal = props.find(
-                                (p) => p.calculated_amount !== null
-                              )?.value;
-                              return `${key}: ${billVal ?? '?'} (${t('dashboard.billValue')}) / ${calcVal ?? '?'} (${t('dashboard.contractValue')})`;
+                      }
+                    }
+                  }
+
+                  const childKey = child.child_id ?? child.voucher_number ?? '';
+                  return rows.map((r, idx) => (
+                    <TableRow key={`${childKey}-${idx}`}>
+                      <TableCell>
+                        {idx === 0 ? (
+                          <Link
+                            href={
+                              child.child_id
+                                ? `/organizations/${orgId}/children/${child.child_id}/billing`
+                                : `/organizations/${orgId}/government-funding-bills`
                             }
-                            return props
-                              .map((p) => {
-                                const label = p.label || `${p.key}: ${p.value}`;
-                                const mm = p.mismatch!;
-                                return `${label} (${t(`dashboard.mismatch${mm.charAt(0).toUpperCase() + mm.slice(1)}` as Parameters<typeof t>[0])})`;
-                              })
-                              .join(', ');
-                          })
-                          .join('; ');
-                      })()}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                            className="hover:text-primary hover:underline"
+                          >
+                            {child.child_name}
+                          </Link>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="text-sm">{r.propLabel}</TableCell>
+                      <TableCell className="text-sm">{r.billCell}</TableCell>
+                      <TableCell className="text-sm">{r.contractCell}</TableCell>
+                    </TableRow>
+                  ));
+                })}
               </TableBody>
             </Table>
           </CardContent>
