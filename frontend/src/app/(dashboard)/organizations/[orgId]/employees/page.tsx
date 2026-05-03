@@ -436,7 +436,7 @@ export default function EmployeesPage() {
                 <>
                   <Button onClick={dialogs.handleCreate}>
                     <Plus className="mr-2 h-4 w-4" />
-                    {t('employees.newEmployee')}
+                    {t('employees.emptyAction')}
                   </Button>
                   <Button variant="outline" onClick={triggerFileInput} disabled={isImporting}>
                     <Upload className="mr-2 h-4 w-4" />
