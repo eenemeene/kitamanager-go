@@ -3,8 +3,11 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -304,5 +307,106 @@ func TestAuthFlow_TwoStepLogin_PendingDestroyedAfterLimit(t *testing.T) {
 	}
 	if got := verify("000000"); got != http.StatusUnauthorized {
 		t.Errorf("post-limit: expected 401, got %d", got)
+	}
+}
+
+// TestAuthFlow_TwoStepLogin_DecryptFailureIsLoud is the regression test
+// for the production incident on 2026-05-08: the C-M-2 AAD change
+// (commit 6b1c3d7b, "fix(security): crypto cleanup — TOTP CT compare,
+// GCM AAD, CSRF key separation") shipped without a data migration, so
+// every TOTP secret encrypted before the deploy could no longer be
+// decrypted, and `tryTOTPCode` silently swallowed the AEAD authentication
+// error and returned `false`. To the user this looked like "code
+// suddenly invalid"; to ops there was nothing in the logs at all.
+//
+// What this test actually guards:
+//
+//  1. When the TOTP secret cannot be decrypted (corrupt ciphertext,
+//     wrong AEAD key, unmigrated AAD scheme drift, DB tamper), the HTTP
+//     verify path MUST return 401. Not 500, not silent success.
+//  2. The decrypt failure MUST be visible to ops via slog. Specifically
+//     a record at Level=ERROR carrying the factor_id attribute. This is
+//     the bit that, had it existed in May 2026, would have surfaced the
+//     production breakage in monitoring within seconds of the deploy
+//     instead of waiting for a user to complain.
+//
+// If a future PR re-introduces a silent `return false` on decrypt error
+// — or removes the slog.Error call — this test fails. If a future PR
+// changes the AEAD scheme (key derivation, AAD format, cipher) without
+// a data migration, every existing factor's verify path lights up the
+// same code path this test exercises, and the production logs will
+// scream the moment the new binary serves a real login.
+func TestAuthFlow_TwoStepLogin_DecryptFailureIsLoud(t *testing.T) {
+	cleanupDatabase()
+	flow := setupAuthFlowRouter(t)
+
+	_, factorID, secret := seedUserWithTOTP(t, "decrypt-fail@test.local", "correct-pw")
+
+	// Overwrite the encrypted secret with a fixed-length blob that
+	// passes the GCM tag-length check but fails authentication. This
+	// is a faithful stand-in for the production failure mode: the row
+	// looks structurally fine but Open returns "authentication failed".
+	if err := testDB.Exec(
+		`UPDATE factor_totp_secrets
+		 SET secret_ciphertext = decode('00000000000000000000000000000000', 'hex')
+		 WHERE factor_id = ?`, factorID,
+	).Error; err != nil {
+		t.Fatalf("corrupt ciphertext: %v", err)
+	}
+
+	// Capture slog output for the duration of the request. Only
+	// records emitted between Setup and Cleanup go into the buffer,
+	// so the assertion is precise. JSON handler so the assertion
+	// can grep for structured attributes (factor_id, level, msg).
+	var logBuf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	// Drive the full two-step login. Step 1 succeeds (password +
+	// pending row); step 2 hits the corrupted secret and must fail.
+	body, _ := json.Marshal(models.LoginRequest{Email: "decrypt-fail@test.local", Password: "correct-pw"})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/login", strings.NewReader(string(body)))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	flow.router.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("step1 status=%d body=%s", w.Code, w.Body.String())
+	}
+	var step1 models.LoginMFARequiredResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &step1); err != nil {
+		t.Fatalf("decode step1: %v", err)
+	}
+
+	// Use a code that *would* be valid against the original secret —
+	// proves the failure is the decrypt path, not a wrong-code path.
+	code, _ := totp.GenerateCode(secret, time.Now().UTC())
+	body, _ = json.Marshal(models.MFAVerifyRequest{
+		PendingToken: step1.PendingToken, FactorID: factorID, Code: code,
+	})
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/auth/mfa/verify", strings.NewReader(string(body)))
+	req.Header.Set("Content-Type", "application/json")
+	w = httptest.NewRecorder()
+	flow.router.ServeHTTP(w, req)
+
+	// Assertion 1: HTTP contract. The user sees a clean 401, not a 500.
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("corrupt-ciphertext verify: expected 401, got %d body=%s", w.Code, w.Body.String())
+	}
+
+	// Assertion 2: ops contract. The decrypt failure left a loud trail.
+	// Without this, the C-M-2-style silent-breakage is back.
+	out := logBuf.String()
+	if !strings.Contains(out, `"level":"ERROR"`) {
+		t.Fatalf("no slog.Error record captured for corrupt ciphertext.\n"+
+			"This is the regression: the production incident on 2026-05-08 happened\n"+
+			"because tryTOTPCode silently swallowed decrypt errors. Captured log:\n%s", out)
+	}
+	if !strings.Contains(out, "TOTP secret decrypt failed") {
+		t.Errorf("expected log message 'TOTP secret decrypt failed', got:\n%s", out)
+	}
+	wantFactor := fmt.Sprintf(`"factor_id":%d`, factorID)
+	if !strings.Contains(out, wantFactor) {
+		t.Errorf("expected factor_id=%d in log attrs, got:\n%s", factorID, out)
 	}
 }

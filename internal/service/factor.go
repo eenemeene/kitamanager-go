@@ -1013,6 +1013,17 @@ func (s *FactorService) verifyTOTPForActivation(ctx context.Context, factorID ui
 	}
 	secret, err := s.decryptTOTPSecret(ctx, factorID)
 	if err != nil {
+		// Decrypt failures here mean the encrypted secret cannot be
+		// read at all — wrong AEAD key, AAD scheme drift after a
+		// breaking change without a migration, or DB corruption.
+		// They MUST be loud: a silent return would surface to the
+		// user as "invalid code" and to ops as nothing at all, which
+		// is exactly how the C-M-2 AAD change shipped in production
+		// without anyone noticing TOTP login was broken. Public API
+		// still returns the original error (typically Unauthorized
+		// from classifyStoreError, or InternalWrap on AEAD failure).
+		slog.Error("TOTP secret decrypt failed during activation",
+			"factor_id", factorID, "error", err)
 		return err
 	}
 	now := time.Now().UTC()
@@ -1117,6 +1128,17 @@ func (s *FactorService) tryTOTPCode(ctx context.Context, factorID uint, code str
 	}
 	secret, err := s.decryptTOTPSecret(ctx, factorID)
 	if err != nil {
+		// Same reasoning as verifyTOTPForActivation: any decrypt
+		// failure on the login path is a systemic problem (wrong
+		// AEAD key, AAD scheme change without migration, DB
+		// corruption) that must be visible to ops the moment it
+		// starts happening. Returning a silent `false` is what let
+		// the C-M-2 AAD change ship without anyone noticing every
+		// pre-existing TOTP factor was now unusable. The user-
+		// visible response stays "invalid code" — this log line is
+		// the only place ops learn the truth.
+		slog.Error("TOTP secret decrypt failed during login",
+			"factor_id", factorID, "error", err)
 		return false
 	}
 	now := time.Now().UTC()
