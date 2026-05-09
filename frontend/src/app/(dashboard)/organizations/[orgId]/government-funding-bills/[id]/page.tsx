@@ -400,7 +400,7 @@ export default function GovernmentFundingBillDetailPage() {
                       <TableCell>
                         {(child.matched || comp?.child_id) && child.child_id ? (
                           <Link
-                            href={`/organizations/${orgId}/children/${child.child_id}`}
+                            href={`/organizations/${orgId}/children/${child.child_id}/billing`}
                             className="hover:text-primary hover:underline"
                             onClick={(e) => e.stopPropagation()}
                           >
@@ -636,7 +636,7 @@ export default function GovernmentFundingBillDetailPage() {
                         <TableCell>
                           {child.child_id ? (
                             <Link
-                              href={`/organizations/${orgId}/children/${child.child_id}`}
+                              href={`/organizations/${orgId}/children/${child.child_id}/billing`}
                               className="hover:text-primary hover:underline"
                             >
                               {child.child_name}

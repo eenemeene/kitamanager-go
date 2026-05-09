@@ -218,7 +218,7 @@ export default function OrgDashboardPage() {
                     <TableCell>
                       <div>
                         <Link
-                          href={`/organizations/${orgId}/children/${child.id}`}
+                          href={`/organizations/${orgId}/children/${child.id}/billing`}
                           className="hover:text-primary hover:underline"
                         >
                           {child.first_name} {child.last_name}

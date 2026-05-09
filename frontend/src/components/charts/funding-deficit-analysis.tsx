@@ -146,7 +146,7 @@ export function FundingDeficitAnalysis({
                               <div>
                                 {issue.child_id ? (
                                   <Link
-                                    href={`/organizations/${orgId}/children/${issue.child_id}`}
+                                    href={`/organizations/${orgId}/children/${issue.child_id}/billing`}
                                     className="text-primary hover:underline"
                                   >
                                     {issue.child_name}
