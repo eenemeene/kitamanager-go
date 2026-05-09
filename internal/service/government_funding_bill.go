@@ -180,6 +180,29 @@ func (s *GovernmentFundingBillService) ProcessISBJ(ctx context.Context, orgID ui
 // minSuggestionSimilarity is the minimum NameSimilarity score to surface a voucher suggestion.
 const minSuggestionSimilarity = 0.65
 
+// maxBirthDateMismatchMonths is the largest |delta_in_months| between
+// the KitaManager birthdate and the bill's MM.YY at which we still
+// surface a suggestion. 0 = exact, anything non-zero is a near-miss
+// that picks up the penalty below. Beyond ±2 we stop suggesting — the
+// data is too divergent to be plausibly the same child.
+//
+// The window exists because either side of the data (KitaManager
+// birthdate or the ISBJ bill's Geb.-datum cell) can carry a one-off
+// data-entry slip. With strict equality, a single off-by-one month
+// dropped an otherwise-perfect (1.0 fuzzy) candidate and left the
+// child silently in "Children Without Vouchers" with no suggestion to
+// accept — operationally invisible. ±2 months catches that class of
+// slip without trusting wildly different dates.
+const maxBirthDateMismatchMonths = 2
+
+// birthDateMismatchPenalty is subtracted from the fuzzy NameSimilarity
+// score when the bill's MM.YY differs from the child's birthdate within
+// the tolerated window. 0.3 is chosen so that a perfect (1.0) name match
+// still surfaces (1.0 - 0.3 = 0.7 ≥ 0.65), but a marginal one (0.7)
+// drops below the threshold (0.7 - 0.3 = 0.4 < 0.65). Strong-name-only
+// matches survive a date discrepancy; weak ones don't.
+const birthDateMismatchPenalty = 0.3
+
 // ChildrenWithoutVouchers returns children with active contracts but no voucher entries,
 // enriched with fuzzy-matched voucher suggestions from unmatched bill children.
 func (s *GovernmentFundingBillService) ChildrenWithoutVouchers(ctx context.Context, orgID uint) ([]models.ChildWithoutVoucherResponse, error) {
@@ -373,12 +396,21 @@ func (s *GovernmentFundingBillService) computeVoucherSuggestions(ctx context.Con
 
 	for _, child := range children {
 		for _, ubc := range unmatched {
-			// Hard filter: birth month + year must match
+			// Bill date must parse as MM.YY. A row whose date doesn't
+			// parse is silently dropped across the whole pipeline — the
+			// matcher has no birthdate axis to score against.
 			billMonth, billYear, err := parseBillBirthMonth(ubc.child.BirthDate)
 			if err != nil {
 				continue
 			}
-			if child.Birthdate.Month() != billMonth || child.Birthdate.Year() != billYear {
+
+			// Soft tolerance: allow up to ±maxBirthDateMismatchMonths
+			// between the child's KitaManager birthdate and the bill's
+			// MM.YY. Beyond the window, drop the suggestion. Inside the
+			// window, the score picks up birthDateMismatchPenalty so
+			// only confident-name matches still surface.
+			delta := monthDelta(child.Birthdate, billMonth, billYear)
+			if delta > maxBirthDateMismatchMonths {
 				continue
 			}
 
@@ -389,6 +421,9 @@ func (s *GovernmentFundingBillService) computeVoucherSuggestions(ctx context.Con
 			}
 
 			score := fuzzy.NameSimilarity(child.FirstName, child.LastName, billFirst, billLast)
+			if delta != 0 {
+				score -= birthDateMismatchPenalty
+			}
 			if score < minSuggestionSimilarity {
 				continue
 			}
@@ -420,6 +455,19 @@ func (s *GovernmentFundingBillService) computeVoucherSuggestions(ctx context.Con
 	}
 
 	return result
+}
+
+// monthDelta returns the absolute month-distance between dbBirthdate
+// and (billMonth, billYear). Used by the suggestion path's tolerance
+// window. Year wraparound handled correctly via (year*12 + month).
+func monthDelta(dbBirthdate time.Time, billMonth time.Month, billYear int) int {
+	dbMonths := dbBirthdate.Year()*12 + int(dbBirthdate.Month())
+	billMonths := billYear*12 + int(billMonth)
+	d := dbMonths - billMonths
+	if d < 0 {
+		d = -d
+	}
+	return d
 }
 
 // parseBillChildName splits a bill child name "LastName,FirstName" into first and last name.

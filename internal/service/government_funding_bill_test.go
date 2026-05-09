@@ -5634,7 +5634,12 @@ func TestChildrenWithoutVouchers_FuzzySuggestion(t *testing.T) {
 	}
 }
 
-func TestChildrenWithoutVouchers_NoSuggestionWhenBirthMonthDiffers(t *testing.T) {
+// A bill date inside the ±2 month tolerance window is now surfaced as
+// a suggestion even with a perfect-name match — the prior strict-
+// equality filter dropped these, leaving children silently without a
+// match candidate to accept. Score is penalised so only confident-name
+// matches survive.
+func TestChildrenWithoutVouchers_BirthDateNearMissOneMonth(t *testing.T) {
 	db := setupTestDB(t)
 	svc := NewGovernmentFundingBillService(
 		store.NewChildStore(db),
@@ -5646,10 +5651,10 @@ func TestChildrenWithoutVouchers_NoSuggestionWhenBirthMonthDiffers(t *testing.T)
 	)
 	org := createTestOrganization(t, db, "Test Org")
 	section := getDefaultSection(t, db, org.ID)
-	user := createTestUser(t, db, "User", "fuzzy2@example.com", "password")
+	user := createTestUser(t, db, "User", "fuzzy-near-1mo@example.com", "password")
 	ctx := context.Background()
 
-	// Child born August 2020
+	// Child born August 2020.
 	child := &models.Child{
 		Person: models.Person{
 			FirstName:      "Anna",
@@ -5669,12 +5674,135 @@ func TestChildrenWithoutVouchers_NoSuggestionWhenBirthMonthDiffers(t *testing.T)
 		},
 	})
 
-	// Bill child: same name but born September 2020 (different month!)
+	// Bill child: identical name, born September 2020 — one month off.
 	createBillFixture(t, db, org.ID, user.ID, 2025, time.November, []models.GovernmentFundingBillChild{
 		{
-			VoucherNumber: "GB-FUZZY00002-01",
+			VoucherNumber: "GB-NEAR00001-01",
 			ChildName:     "Berger, Anna",
-			BirthDate:     "09.20", // different month
+			BirthDate:     "09.20",
+			District:      1,
+			Payments:      []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 120000}},
+		},
+	})
+
+	result, err := svc.ChildrenWithoutVouchers(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(result) != 1 || len(result[0].Suggestions) != 1 {
+		t.Fatalf("expected 1 child with 1 suggestion (1-month near-miss), got %d children / %d suggestions",
+			len(result), len(result[0].Suggestions))
+	}
+	s := result[0].Suggestions[0]
+	if s.VoucherNumber != "GB-NEAR00001-01" {
+		t.Errorf("expected voucher GB-NEAR00001-01, got %s", s.VoucherNumber)
+	}
+	// Perfect name match (1.0) penalised by 0.3 — score must be <1 but ≥ threshold.
+	if s.Similarity >= 1.0 {
+		t.Errorf("expected score <1.0 due to penalty, got %f", s.Similarity)
+	}
+	if s.Similarity < 0.65 {
+		t.Errorf("expected score ≥0.65 (passes threshold post-penalty), got %f", s.Similarity)
+	}
+}
+
+// ±2 months is the inclusive boundary — still surfaced.
+func TestChildrenWithoutVouchers_BirthDateNearMissTwoMonthsBoundary(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewChildVoucherStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	user := createTestUser(t, db, "User", "fuzzy-near-2mo@example.com", "password")
+	ctx := context.Background()
+
+	child := &models.Child{
+		Person: models.Person{
+			FirstName:      "Anna",
+			LastName:       "Berger",
+			Gender:         "female",
+			Birthdate:      time.Date(2020, 8, 1, 0, 0, 0, 0, time.UTC),
+			OrganizationID: org.ID,
+		},
+	}
+	db.Create(child)
+	db.Create(&models.ChildContract{
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+			SectionID:  section.ID,
+			Properties: models.ContractProperties{"care_type": "ganztag"},
+		},
+	})
+
+	// Bill child: identical name, born June 2020 — two months earlier (boundary).
+	createBillFixture(t, db, org.ID, user.ID, 2025, time.November, []models.GovernmentFundingBillChild{
+		{
+			VoucherNumber: "GB-NEAR00002-01",
+			ChildName:     "Berger, Anna",
+			BirthDate:     "06.20",
+			District:      1,
+			Payments:      []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 120000}},
+		},
+	})
+
+	result, err := svc.ChildrenWithoutVouchers(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(result) != 1 || len(result[0].Suggestions) != 1 {
+		t.Fatalf("expected 1 suggestion at the ±2 month boundary, got %d", len(result[0].Suggestions))
+	}
+}
+
+// >2 months: the suggestion is dropped — too divergent to plausibly be
+// the same child even with an identical name.
+func TestChildrenWithoutVouchers_NoSuggestionWhenBirthDateDeltaTooLarge(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewChildVoucherStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	user := createTestUser(t, db, "User", "fuzzy-far@example.com", "password")
+	ctx := context.Background()
+
+	child := &models.Child{
+		Person: models.Person{
+			FirstName:      "Anna",
+			LastName:       "Berger",
+			Gender:         "female",
+			Birthdate:      time.Date(2020, 8, 1, 0, 0, 0, 0, time.UTC),
+			OrganizationID: org.ID,
+		},
+	}
+	db.Create(child)
+	db.Create(&models.ChildContract{
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+			SectionID:  section.ID,
+			Properties: models.ContractProperties{"care_type": "ganztag"},
+		},
+	})
+
+	// Bill child: identical name, born December 2020 — four months off.
+	createBillFixture(t, db, org.ID, user.ID, 2025, time.November, []models.GovernmentFundingBillChild{
+		{
+			VoucherNumber: "GB-FAR00001-01",
+			ChildName:     "Berger, Anna",
+			BirthDate:     "12.20",
 			District:      1,
 			Payments:      []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 120000}},
 		},
@@ -5688,7 +5816,69 @@ func TestChildrenWithoutVouchers_NoSuggestionWhenBirthMonthDiffers(t *testing.T)
 		t.Fatalf("expected 1 child, got %d", len(result))
 	}
 	if len(result[0].Suggestions) != 0 {
-		t.Errorf("expected 0 suggestions (birth month mismatch), got %d", len(result[0].Suggestions))
+		t.Errorf("expected 0 suggestions (>2 month delta), got %d", len(result[0].Suggestions))
+	}
+}
+
+// A weak-name fuzzy match (~0.75) combined with a date mismatch falls
+// below threshold after the 0.3 penalty — strong-name-only matches
+// survive a date discrepancy, weak ones don't pollute the suggestion list.
+func TestChildrenWithoutVouchers_WeakNameWithDateMismatchDropped(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewChildVoucherStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	user := createTestUser(t, db, "User", "fuzzy-weak@example.com", "password")
+	ctx := context.Background()
+
+	child := &models.Child{
+		Person: models.Person{
+			FirstName:      "Anna",
+			LastName:       "Berger",
+			Gender:         "female",
+			Birthdate:      time.Date(2020, 8, 1, 0, 0, 0, 0, time.UTC),
+			OrganizationID: org.ID,
+		},
+	}
+	db.Create(child)
+	db.Create(&models.ChildContract{
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period:     models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+			SectionID:  section.ID,
+			Properties: models.ContractProperties{"care_type": "ganztag"},
+		},
+	})
+
+	// Different last name (fuzzy ~0.7) AND date 1 month off — penalty
+	// pushes combined score below 0.65 → no suggestion.
+	createBillFixture(t, db, org.ID, user.ID, 2025, time.November, []models.GovernmentFundingBillChild{
+		{
+			VoucherNumber: "GB-WEAK00001-01",
+			ChildName:     "Müller, Anna",
+			BirthDate:     "09.20",
+			District:      1,
+			Payments:      []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 120000}},
+		},
+	})
+
+	result, err := svc.ChildrenWithoutVouchers(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("expected 1 child, got %d", len(result))
+	}
+	if len(result[0].Suggestions) != 0 {
+		t.Errorf("expected 0 suggestions (weak name + date mismatch combine to fail threshold), got %d",
+			len(result[0].Suggestions))
 	}
 }
 
