@@ -5,6 +5,7 @@ package integration
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -291,11 +292,29 @@ func TestRoleAuthorization_PositiveBaseline(t *testing.T) {
 		{"member can list employees", models.RoleMember, "GET", "/api/v1/organizations/%d/employees", http.StatusOK},
 		{"manager can list budget items", models.RoleManager, "GET", "/api/v1/organizations/%d/budget-items", http.StatusOK},
 		{"admin can read audit log", models.RoleAdmin, "GET", "/api/v1/organizations/%d/audit-logs", http.StatusOK},
+
+		// /me/memberships must be reachable by EVERY authenticated user
+		// regardless of role. The frontend's auth-store loadUser() calls
+		// it on every page load to populate orgRoleMap, which the
+		// sidebar's role-based nav filtering depends on. A 403 here
+		// silently breaks the dashboard for staff and member users
+		// (currentRole resolves to null, no nav items render). We had
+		// exactly that bug shipped — the admin-facing
+		// /users/{userId}/memberships requires users:read which staff
+		// and member don't have. This row pins the "/me/memberships
+		// must NOT be permission-gated" invariant.
+		{"staff can read own memberships", models.RoleStaff, "GET", "/api/v1/me/memberships", http.StatusOK},
+		{"member can read own memberships", models.RoleMember, "GET", "/api/v1/me/memberships", http.StatusOK},
+		{"manager can read own memberships", models.RoleManager, "GET", "/api/v1/me/memberships", http.StatusOK},
+		{"admin can read own memberships", models.RoleAdmin, "GET", "/api/v1/me/memberships", http.StatusOK},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			path := fmt.Sprintf(tc.path, org.ID)
+			path := tc.path
+			if hasPathPlaceholder(path) {
+				path = fmt.Sprintf(path, org.ID)
+			}
 			w := doAuthed(t, r, tc.method, path, tokens[tc.role], nil)
 			if w.Code != tc.wantStatus {
 				t.Errorf("[%s] %s %s: got %d, want %d. body=%s",
@@ -338,6 +357,164 @@ func TestRoleAuthorization_CrossOrgIsolation(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestMyMemberships_Edges covers the failure surface around the
+// self-memberships route specifically. The positive matrix above
+// confirms each role gets a 200 with their data; this file pins the
+// behaviour at the rough edges:
+//
+//  1. No auth at all → 401 (the endpoint must NOT silently leak the
+//     calling user's identity to anonymous callers).
+//  2. Authenticated but with zero org memberships → 200 + empty list.
+//     Not 404, not 500. The frontend renders the empty case as "no
+//     orgs assigned" — a 4xx/5xx here would brick the dashboard.
+//  3. Authenticated with multiple org memberships → 200 + every
+//     membership returned. The auth-store rebuilds orgRoleMap from
+//     this list; missing entries would silently strip nav items.
+//  4. The response contains ONLY the caller's data, never another
+//     user's. There is no userId path param to abuse, but a future
+//     refactor that mistakenly reads the param from a query string
+//     or body would need to be caught somewhere — here.
+func TestMyMemberships_Edges(t *testing.T) {
+	cleanupDatabase()
+	r, _ := setupFullProductionRouter(t)
+	orgA := createOrg(t, "Kita Alpha")
+	orgB := createOrg(t, "Kita Beta")
+
+	t.Run("unauthenticated returns 401", func(t *testing.T) {
+		// No Authorization header, no session cookie. The auth
+		// middleware must reject this before the handler runs.
+		w := doAuthed(t, r, "GET", "/api/v1/me/memberships", "", nil)
+		if w.Code != http.StatusUnauthorized {
+			t.Errorf("got %d, want 401. body=%s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("invalid bearer token returns 401", func(t *testing.T) {
+		// A syntactically-shaped but unknown token. The auth
+		// middleware should treat this the same as no token —
+		// 401, not 200, not 500.
+		w := doAuthed(t, r, "GET", "/api/v1/me/memberships", "not-a-real-session-token", nil)
+		if w.Code != http.StatusUnauthorized {
+			t.Errorf("got %d, want 401. body=%s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("user with zero memberships returns empty list", func(t *testing.T) {
+		// Provision a user but do NOT assign any role in any org.
+		// The frontend's auth-store handles this case by rendering
+		// only the global nav, but it expects 200 + {memberships: []}.
+		// A 404 or 500 would leave orgRoleMap permanently empty in a
+		// way that looks indistinguishable from "fetch failed".
+		const email = "no-memberships@role-auth.test"
+		const password = "no-memberships-pw-1234"
+		hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		u := &models.User{Name: "Lonely User", Email: email, Password: string(hash), Active: true}
+		if err := testDB.Create(u).Error; err != nil {
+			t.Fatalf("create user: %v", err)
+		}
+		_, token := doLogin(t, r, email, password)
+
+		w := doAuthed(t, r, "GET", "/api/v1/me/memberships", token, nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("got %d, want 200. body=%s", w.Code, w.Body.String())
+		}
+		// Body shape: {"memberships": []}. The frontend buildOrgRoleMap
+		// helper expects the array to be present even when empty.
+		body := w.Body.String()
+		if !strings.Contains(body, `"memberships"`) {
+			t.Errorf("response missing 'memberships' field: %s", body)
+		}
+	})
+
+	t.Run("user with multiple memberships returns all", func(t *testing.T) {
+		// Roles deliberately chosen to differ across orgs so a sloppy
+		// implementation that returns the first match (or that loses
+		// the role enum) would visibly fail the assertion.
+		const email = "multi-org@role-auth.test"
+		const password = "multi-org-pw-1234"
+		hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		u := &models.User{Name: "Multi User", Email: email, Password: string(hash), Active: true}
+		if err := testDB.Create(u).Error; err != nil {
+			t.Fatalf("create user: %v", err)
+		}
+		// admin in A, manager in B.
+		for _, m := range []models.UserOrganization{
+			{UserID: u.ID, OrganizationID: orgA.ID, Role: models.RoleAdmin},
+			{UserID: u.ID, OrganizationID: orgB.ID, Role: models.RoleManager},
+		} {
+			if err := testDB.Create(&m).Error; err != nil {
+				t.Fatalf("create membership: %v", err)
+			}
+		}
+		_, token := doLogin(t, r, email, password)
+
+		w := doAuthed(t, r, "GET", "/api/v1/me/memberships", token, nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("got %d, want 200. body=%s", w.Code, w.Body.String())
+		}
+		body := w.Body.String()
+		if !strings.Contains(body, fmt.Sprintf(`"organization_id":%d`, orgA.ID)) {
+			t.Errorf("orgA membership missing from response: %s", body)
+		}
+		if !strings.Contains(body, fmt.Sprintf(`"organization_id":%d`, orgB.ID)) {
+			t.Errorf("orgB membership missing from response: %s", body)
+		}
+		if !strings.Contains(body, `"role":"admin"`) {
+			t.Errorf("admin role missing from response: %s", body)
+		}
+		if !strings.Contains(body, `"role":"manager"`) {
+			t.Errorf("manager role missing from response: %s", body)
+		}
+	})
+
+	t.Run("response is scoped to the calling user only", func(t *testing.T) {
+		// Two users, distinct memberships. User one calls the endpoint
+		// and must see ONLY their own row, not user two's. The route
+		// has no userId path param so cross-user is structurally
+		// impossible today — this test pins it so it stays that way.
+		const userOneEmail = "scope-one@role-auth.test"
+		const userTwoEmail = "scope-two@role-auth.test"
+		const password = "scope-pw-1234"
+		hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		userOne := &models.User{Name: "Scope One", Email: userOneEmail, Password: string(hash), Active: true}
+		userTwo := &models.User{Name: "Scope Two", Email: userTwoEmail, Password: string(hash), Active: true}
+		if err := testDB.Create(userOne).Error; err != nil {
+			t.Fatalf("create userOne: %v", err)
+		}
+		if err := testDB.Create(userTwo).Error; err != nil {
+			t.Fatalf("create userTwo: %v", err)
+		}
+		// userOne is admin in A; userTwo is staff in B. They share no
+		// org membership.
+		if err := testDB.Create(&models.UserOrganization{UserID: userOne.ID, OrganizationID: orgA.ID, Role: models.RoleAdmin}).Error; err != nil {
+			t.Fatalf("create userOne membership: %v", err)
+		}
+		if err := testDB.Create(&models.UserOrganization{UserID: userTwo.ID, OrganizationID: orgB.ID, Role: models.RoleStaff}).Error; err != nil {
+			t.Fatalf("create userTwo membership: %v", err)
+		}
+		_, oneToken := doLogin(t, r, userOneEmail, password)
+
+		w := doAuthed(t, r, "GET", "/api/v1/me/memberships", oneToken, nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("got %d, want 200. body=%s", w.Code, w.Body.String())
+		}
+		body := w.Body.String()
+		// userOne sees their orgA admin row.
+		if !strings.Contains(body, fmt.Sprintf(`"organization_id":%d`, orgA.ID)) {
+			t.Errorf("userOne should see orgA in their own response: %s", body)
+		}
+		// userOne must NOT see orgB at all — that's userTwo's org.
+		// If a future bug returns "all memberships in any org the
+		// caller can see" the orgB id would leak in. Pin it.
+		if strings.Contains(body, fmt.Sprintf(`"organization_id":%d`, orgB.ID)) {
+			t.Errorf("userOne response leaked orgB (userTwo's org): %s", body)
+		}
+		if strings.Contains(body, `"role":"staff"`) {
+			t.Errorf("userOne response leaked userTwo's staff role: %s", body)
+		}
+	})
 }
 
 // hasPathPlaceholder reports whether the path template contains a

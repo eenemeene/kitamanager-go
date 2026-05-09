@@ -8259,6 +8259,52 @@
                 ]
             }
         },
+        "/api/v1/me/memberships": {
+            "get": {
+                "description": "Returns the calling user's own memberships and roles. Self-only —\ndoes not require users:read. Used by the frontend on every page\nload to populate orgRoleMap, which the sidebar's role-based nav\nfiltering depends on. The admin-facing /users/{userId}/memberships\nstill exists separately for user-management screens.",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserMembershipsResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "Get the current user's organization memberships",
+                "tags": [
+                    "users"
+                ]
+            }
+        },
         "/api/v1/me/password": {
             "put": {
                 "description": "Authenticated user changes their own password. Requires current password verification. Revokes every other session the user has.",

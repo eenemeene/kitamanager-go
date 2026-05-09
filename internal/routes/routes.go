@@ -86,6 +86,13 @@ func Setup(r *gin.Engine, d Deps) {
 		protected.PUT("/me/password", authHandler.ChangePassword)
 		protected.GET("/me/sessions", authHandler.ListSessions)
 		protected.DELETE("/me/sessions/:sessionId", authHandler.RevokeSession)
+		// Self-memberships: every authenticated user must be able to read
+		// their own org roles so the frontend can build orgRoleMap. Lower
+		// roles (member, staff) lack users:read, so the admin-facing
+		// /users/{userId}/memberships gated on users:read is not usable
+		// for the self case. Without this route, those users hit a broken
+		// sidebar (currentRole resolves to null, no nav items render).
+		protected.GET("/me/memberships", userHandler.GetMyMemberships)
 
 		// MFA factors. Path template is /users/:userId/factors/... with
 		// :userId=me as the self-alias (Okta convention). Admin routes

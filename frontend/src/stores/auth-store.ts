@@ -76,14 +76,15 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     try {
       const userData = await apiClient.getCurrentUser();
       set({ user: userData, userLoaded: true });
-      if (userData.id) {
-        try {
-          const { memberships } = await apiClient.getUserMemberships(userData.id);
-          set({ memberships, orgRoleMap: buildOrgRoleMap(memberships) });
-        } catch {
-          // Non-critical: navigation shows all items if memberships
-          // fail, the page still works.
-        }
+      // Self-memberships: same reasoning as in loadUser. The
+      // session cookie is already in place, so /me/memberships
+      // resolves the user from the session — no userData.id guard
+      // needed, which is also why we no longer test for it.
+      try {
+        const { memberships } = await apiClient.getMyMemberships();
+        set({ memberships, orgRoleMap: buildOrgRoleMap(memberships) });
+      } catch {
+        // Non-critical: navigation falls back to global-only items.
       }
     } catch {
       set({ userLoaded: true });
@@ -120,14 +121,17 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       const userData = await apiClient.getCurrentUser();
       set({ user: userData, userLoaded: true, userLoading: false });
 
-      // Fetch memberships for role-based navigation
-      if (userData.id) {
-        try {
-          const { memberships } = await apiClient.getUserMemberships(userData.id);
-          set({ memberships, orgRoleMap: buildOrgRoleMap(memberships) });
-        } catch {
-          // Non-critical: navigation will show all items if memberships fail
-        }
+      // Fetch memberships for role-based navigation. Use the self-route
+      // (/me/memberships) — it does not require users:read, so it works
+      // for staff and member users too. The admin-facing
+      // /users/{userId}/memberships still exists for user-management
+      // screens but isn't usable here.
+      try {
+        const { memberships } = await apiClient.getMyMemberships();
+        set({ memberships, orgRoleMap: buildOrgRoleMap(memberships) });
+      } catch {
+        // Non-critical: navigation will silently fail open if memberships
+        // can't be loaded. The sidebar then renders only global items.
       }
     } catch {
       // Cookie may be expired or invalid

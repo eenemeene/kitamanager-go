@@ -471,6 +471,31 @@ func (h *UserHandler) GetMemberships(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// GetMyMemberships godoc
+// @Summary Get the current user's organization memberships
+// @Description Returns the calling user's own memberships and roles. Self-only —
+// @Description does not require users:read. Used by the frontend on every page
+// @Description load to populate orgRoleMap, which the sidebar's role-based nav
+// @Description filtering depends on. The admin-facing /users/{userId}/memberships
+// @Description still exists separately for user-management screens.
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} models.UserMembershipsResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/me/memberships [get]
+func (h *UserHandler) GetMyMemberships(c *gin.Context) {
+	actorID := getUserID(c)
+	resp, err := h.userOrgService.GetUserMemberships(c.Request.Context(), actorID, actorID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
 // SetSuperAdmin godoc
 // @Summary Set user's superadmin status
 // @Description Set or unset a user's superadmin status. Requires superadmin access
