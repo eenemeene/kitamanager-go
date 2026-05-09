@@ -40,7 +40,7 @@ jest.mock('next-intl', () => ({
   },
 }));
 
-const billChild: UnmatchedBillChild = {
+const billChild = {
   voucher_number: 'GB-12345678901-02',
   child_name: 'Beispiel,Anna',
   first_name: 'Anna',
@@ -49,7 +49,7 @@ const billChild: UnmatchedBillChild = {
   district: 11,
   first_seen_bill_id: 42,
   first_seen_bill_from: '2025-02-01',
-};
+} as UnmatchedBillChild;
 
 const sections = createMockPaginatedResponse([
   { id: 7, name: 'Sonnengruppe', organization_id: 1, created_at: '', updated_at: '' },

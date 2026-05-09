@@ -1462,6 +1462,21 @@ definitions:
         example: resource not found
         type: string
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ExistingChildMatchResponse:
+    properties:
+      birthdate:
+        example: "2020-03-15"
+        type: string
+      first_name:
+        example: Max
+        type: string
+      id:
+        example: 42
+        type: integer
+      last_name:
+        example: Mustermann
+        type: string
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.FactorActivateRequest:
     properties:
       code:
@@ -3609,6 +3624,8 @@ definitions:
       district:
         example: 11
         type: integer
+      existing_child_match:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ExistingChildMatchResponse'
       first_name:
         example: Max
         type: string

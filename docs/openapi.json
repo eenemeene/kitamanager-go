@@ -2295,6 +2295,33 @@
                 ],
                 "type": "object"
             },
+            "ExistingChildMatchResponse": {
+                "properties": {
+                    "birthdate": {
+                        "example": "2020-03-15",
+                        "type": "string"
+                    },
+                    "first_name": {
+                        "example": "Max",
+                        "type": "string"
+                    },
+                    "id": {
+                        "example": 42,
+                        "type": "integer"
+                    },
+                    "last_name": {
+                        "example": "Mustermann",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "birthdate",
+                    "first_name",
+                    "id",
+                    "last_name"
+                ],
+                "type": "object"
+            },
             "FactorActivateRequest": {
                 "properties": {
                     "code": {
@@ -5824,6 +5851,9 @@
                         "example": 11,
                         "type": "integer"
                     },
+                    "existing_child_match": {
+                        "$ref": "#/components/schemas/ExistingChildMatchResponse"
+                    },
                     "first_name": {
                         "example": "Max",
                         "type": "string"
@@ -5849,6 +5879,7 @@
                     "bill_birth_date",
                     "child_name",
                     "district",
+                    "existing_child_match",
                     "first_name",
                     "first_seen_bill_from",
                     "first_seen_bill_id",

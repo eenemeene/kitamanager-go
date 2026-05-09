@@ -12331,6 +12331,16 @@ export interface components {
       /** @example resource not found */
       message: string;
     };
+    ExistingChildMatchResponse: {
+      /** @example 2020-03-15 */
+      birthdate: string;
+      /** @example Max */
+      first_name: string;
+      /** @example 42 */
+      id: number;
+      /** @example Mustermann */
+      last_name: string;
+    };
     FactorActivateRequest: {
       /** @example 123456 */
       code?: string;
@@ -13726,6 +13736,7 @@ export interface components {
       child_name: string;
       /** @example 11 */
       district: number;
+      existing_child_match: components['schemas']['ExistingChildMatchResponse'];
       /** @example Max */
       first_name: string;
       /** @example 2025-01-01 */

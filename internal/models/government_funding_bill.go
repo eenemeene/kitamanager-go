@@ -343,7 +343,7 @@ type ChildWithoutVoucherResponse struct {
 
 // UnmatchedBillChildResponse represents a bill row whose voucher has
 // no `child_vouchers` mapping in this org — i.e. the Bezirks-Jugendamt
-// is billing for a child KitaManager has never recorded. The row
+// is billing for a child whose voucher hasn't been linked. The row
 // carries metadata from the EARLIEST bill the voucher was seen in, so
 // the frontend can pre-fill a contract start date and a placeholder
 // birthdate (first day of FirstSeenBillFrom).
@@ -351,15 +351,36 @@ type ChildWithoutVoucherResponse struct {
 // FirstName / LastName are pre-parsed from the bill's "LastName,FirstName"
 // ChildName so the frontend can render and pre-fill the create-child
 // form without re-implementing parseBillChildName client-side.
+//
+// ExistingChildMatch is populated when EXACTLY ONE KitaManager child
+// in this org matches the parsed name (case-insensitive) AND the
+// bill's birth month/year. Active or ended contract — both count, so
+// residual settlement bill rows for departed children get linked to
+// the right child instead of triggering a "create new child" prompt.
+// Null when there's no match or multiple ambiguous matches.
 type UnmatchedBillChildResponse struct {
-	VoucherNumber     string `json:"voucher_number" example:"GB-12345678901-02"`
-	ChildName         string `json:"child_name" example:"Mustermann,Max"`
-	FirstName         string `json:"first_name" example:"Max"`
-	LastName          string `json:"last_name" example:"Mustermann"`
-	BillBirthDate     string `json:"bill_birth_date" example:"03.20"`
-	District          int64  `json:"district" example:"11"`
-	FirstSeenBillID   uint   `json:"first_seen_bill_id" example:"42"`
-	FirstSeenBillFrom string `json:"first_seen_bill_from" example:"2025-01-01"`
+	VoucherNumber      string                      `json:"voucher_number" example:"GB-12345678901-02"`
+	ChildName          string                      `json:"child_name" example:"Mustermann,Max"`
+	FirstName          string                      `json:"first_name" example:"Max"`
+	LastName           string                      `json:"last_name" example:"Mustermann"`
+	BillBirthDate      string                      `json:"bill_birth_date" example:"03.20"`
+	District           int64                       `json:"district" example:"11"`
+	FirstSeenBillID    uint                        `json:"first_seen_bill_id" example:"42"`
+	FirstSeenBillFrom  string                      `json:"first_seen_bill_from" example:"2025-01-01"`
+	ExistingChildMatch *ExistingChildMatchResponse `json:"existing_child_match,omitempty"`
+}
+
+// ExistingChildMatchResponse identifies a KitaManager child whose name
+// + birth month/year match the bill row. Used by the dashboard to
+// route the user to "Link voucher to existing child" instead of
+// "Create new child" — covers the residual-settlement case where the
+// child existed (now possibly with an ended contract) but their
+// voucher was never linked.
+type ExistingChildMatchResponse struct {
+	ID        uint   `json:"id" example:"42"`
+	FirstName string `json:"first_name" example:"Max"`
+	LastName  string `json:"last_name" example:"Mustermann"`
+	Birthdate string `json:"birthdate" example:"2020-03-15"`
 }
 
 // GovernmentFundingBillResponse is the full response for the ISBJ upload endpoint (backwards compatible).

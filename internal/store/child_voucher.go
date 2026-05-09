@@ -234,3 +234,17 @@ func (s *ChildVoucherStore) FindChildByNameAndBirthMonth(ctx context.Context, or
 		Find(&children).Error
 	return children, err
 }
+
+// FindAllByOrgMinimal returns minimal child records (ID, FirstName,
+// LastName, Birthdate) for the org. No contracts/voucher preloading,
+// no pagination — used by the in-memory fuzzy matcher in the
+// unmatched-bill-children path. For typical Kita sizes (≤500 children)
+// the full slice is cheap to materialise once and score against.
+func (s *ChildVoucherStore) FindAllByOrgMinimal(ctx context.Context, orgID uint) ([]models.Child, error) {
+	var children []models.Child
+	err := DBFromContext(ctx, s.db).
+		Select("id", "organization_id", "first_name", "last_name", "birthdate").
+		Where("organization_id = ?", orgID).
+		Find(&children).Error
+	return children, err
+}

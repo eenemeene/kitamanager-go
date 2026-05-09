@@ -590,6 +590,225 @@ func TestGovernmentFundingBillHandler_UnmatchedBillChildren(t *testing.T) {
 	}
 }
 
+// When the bill row's name + birth-month match an existing KitaManager
+// child (active OR ended contract), the response carries an
+// existing_child_match pointer so the dashboard can route the user to
+// "Link voucher" instead of "Create new child". Covers the residual-
+// settlement case for departed children.
+func TestGovernmentFundingBillHandler_UnmatchedBillChildren_LinkToExistingChild(t *testing.T) {
+	db := setupTestDB(t)
+	handler := createGovBillHandler(db)
+
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "unmatched-existing@example.com", "password")
+
+	// Existing child in KitaManager — no voucher row; could be a child
+	// who left and whose voucher was never linked, or a current child
+	// who slipped past auto-discover.
+	existing := &models.Child{
+		Person: models.Person{
+			OrganizationID: org.ID,
+			FirstName:      "Anna",
+			LastName:       "Berger",
+			Gender:         "female",
+			Birthdate:      time.Date(2020, 3, 15, 0, 0, 0, 0, time.UTC),
+		},
+	}
+	db.Create(existing)
+
+	// Bill row with the same name and matching MM.YY birth date.
+	to := time.Date(2025, 3, 0, 0, 0, 0, 0, time.UTC)
+	db.Create(&models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC), To: &to},
+		FileName:       "abrechnung_02-25.xlsx",
+		FileSha256:     "hash-link-existing",
+		FacilityName:   "Kita Test",
+		CreatedBy:      &user.ID,
+		Children: []models.GovernmentFundingBillChild{
+			{VoucherNumber: "GB-LINK00000001-01", ChildName: "Berger,Anna", BirthDate: "03.20", District: 1},
+		},
+	})
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/government-funding-bills/unmatched-children", handler.UnmatchedBillChildren)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/government-funding-bills/unmatched-children", org.ID), nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp []models.UnmatchedBillChildResponse
+	parseResponse(t, w, &resp)
+	if len(resp) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(resp))
+	}
+	if resp[0].ExistingChildMatch == nil {
+		t.Fatalf("expected existing_child_match populated, got nil")
+	}
+	if resp[0].ExistingChildMatch.ID != existing.ID {
+		t.Errorf("expected existing match id=%d, got %d", existing.ID, resp[0].ExistingChildMatch.ID)
+	}
+	if resp[0].ExistingChildMatch.FirstName != "Anna" || resp[0].ExistingChildMatch.LastName != "Berger" {
+		t.Errorf("unexpected match identity: %+v", resp[0].ExistingChildMatch)
+	}
+}
+
+// Truncated-middle-name case: bill has full name "First Mid Mid Last",
+// KitaManager has just "First Last". Fuzzy NameSimilarity scores ≥0.65
+// → match should still surface.
+func TestGovernmentFundingBillHandler_UnmatchedBillChildren_LinkToExistingChild_TruncatedName(t *testing.T) {
+	db := setupTestDB(t)
+	handler := createGovBillHandler(db)
+
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "unmatched-truncated@example.com", "password")
+
+	existing := &models.Child{
+		Person: models.Person{
+			OrganizationID: org.ID,
+			FirstName:      "Anna",
+			LastName:       "Berger",
+			Gender:         "female",
+			Birthdate:      time.Date(2020, 3, 15, 0, 0, 0, 0, time.UTC),
+		},
+	}
+	db.Create(existing)
+
+	to := time.Date(2025, 3, 0, 0, 0, 0, 0, time.UTC)
+	db.Create(&models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC), To: &to},
+		FileName:       "abrechnung_02-25.xlsx",
+		FileSha256:     "hash-truncated",
+		FacilityName:   "Kita Test",
+		CreatedBy:      &user.ID,
+		Children: []models.GovernmentFundingBillChild{
+			// Bill carries extra middle names the KitaManager record
+			// doesn't have — strict equality would miss this.
+			{VoucherNumber: "GB-TRUNC0000001-01", ChildName: "Berger,Anna Maria Lena", BirthDate: "03.20", District: 1},
+		},
+	})
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/government-funding-bills/unmatched-children", handler.UnmatchedBillChildren)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/government-funding-bills/unmatched-children", org.ID), nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	var resp []models.UnmatchedBillChildResponse
+	parseResponse(t, w, &resp)
+	if len(resp) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(resp))
+	}
+	if resp[0].ExistingChildMatch == nil {
+		t.Fatalf("expected existing_child_match populated for truncated-name case, got nil")
+	}
+	if resp[0].ExistingChildMatch.ID != existing.ID {
+		t.Errorf("expected existing match id=%d, got %d", existing.ID, resp[0].ExistingChildMatch.ID)
+	}
+}
+
+// ±1 month birth-date drift: bill says March, DB says April. The fuzzy
+// matcher accepts up to ±2 months with a score penalty; a perfect
+// name match (1.0 - 0.3 = 0.7) survives the threshold.
+func TestGovernmentFundingBillHandler_UnmatchedBillChildren_LinkToExistingChild_BirthMonthDrift(t *testing.T) {
+	db := setupTestDB(t)
+	handler := createGovBillHandler(db)
+
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "unmatched-drift@example.com", "password")
+
+	existing := &models.Child{
+		Person: models.Person{
+			OrganizationID: org.ID,
+			FirstName:      "Anna",
+			LastName:       "Berger",
+			Gender:         "female",
+			Birthdate:      time.Date(2020, 4, 15, 0, 0, 0, 0, time.UTC),
+		},
+	}
+	db.Create(existing)
+
+	to := time.Date(2025, 3, 0, 0, 0, 0, 0, time.UTC)
+	db.Create(&models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC), To: &to},
+		FileName:       "abrechnung_02-25.xlsx",
+		FileSha256:     "hash-drift",
+		FacilityName:   "Kita Test",
+		CreatedBy:      &user.ID,
+		Children: []models.GovernmentFundingBillChild{
+			{VoucherNumber: "GB-DRIFT0000001-01", ChildName: "Berger,Anna", BirthDate: "03.20", District: 1},
+		},
+	})
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/government-funding-bills/unmatched-children", handler.UnmatchedBillChildren)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/government-funding-bills/unmatched-children", org.ID), nil)
+	var resp []models.UnmatchedBillChildResponse
+	parseResponse(t, w, &resp)
+	if len(resp) != 1 || resp[0].ExistingChildMatch == nil {
+		t.Fatalf("expected ±1 month drift to still match, got %+v", resp)
+	}
+}
+
+// Two existing children that BOTH score above threshold for the same
+// bill row → ambiguous; the response must NOT pick one. The user
+// resolves manually via the Vouchers dialog instead of the dashboard
+// guessing.
+func TestGovernmentFundingBillHandler_UnmatchedBillChildren_LinkToExistingChild_AmbiguousNoMatch(t *testing.T) {
+	db := setupTestDB(t)
+	handler := createGovBillHandler(db)
+
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "unmatched-ambig@example.com", "password")
+
+	// Two children with identical name + birth-month — both will tie
+	// at fuzzy score 1.0.
+	for i := range 2 {
+		c := &models.Child{
+			Person: models.Person{
+				OrganizationID: org.ID,
+				FirstName:      "Anna",
+				LastName:       "Berger",
+				Gender:         "female",
+				Birthdate:      time.Date(2020, 3, 10+i, 0, 0, 0, 0, time.UTC),
+			},
+		}
+		db.Create(c)
+	}
+
+	to := time.Date(2025, 3, 0, 0, 0, 0, 0, time.UTC)
+	db.Create(&models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC), To: &to},
+		FileName:       "abrechnung_02-25.xlsx",
+		FileSha256:     "hash-ambig",
+		FacilityName:   "Kita Test",
+		CreatedBy:      &user.ID,
+		Children: []models.GovernmentFundingBillChild{
+			{VoucherNumber: "GB-AMBIG0000001-01", ChildName: "Berger,Anna", BirthDate: "03.20", District: 1},
+		},
+	})
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/government-funding-bills/unmatched-children", handler.UnmatchedBillChildren)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/government-funding-bills/unmatched-children", org.ID), nil)
+	var resp []models.UnmatchedBillChildResponse
+	parseResponse(t, w, &resp)
+	if len(resp) != 1 {
+		t.Fatalf("expected 1 unmatched bill row, got %d", len(resp))
+	}
+	if resp[0].ExistingChildMatch != nil {
+		t.Errorf("expected NO existing match (ambiguous), got %+v", resp[0].ExistingChildMatch)
+	}
+}
+
 // Empty / cross-org isolation case: an unmatched voucher in another org
 // must not leak into this org's response.
 func TestGovernmentFundingBillHandler_UnmatchedBillChildren_CrossOrgIsolation(t *testing.T) {
