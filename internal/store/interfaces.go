@@ -140,6 +140,13 @@ type ChildVoucherStorer interface {
 	// AssignVoucher's idempotent-vs-conflict disambiguation.
 	FindByVoucherNumber(ctx context.Context, voucherNumber string) (*models.ChildVoucher, error)
 	DeleteVouchersByChild(ctx context.Context, childID uint) error
+	// FindVoucherByID returns a single voucher by primary key, or
+	// ErrNotFound. Caller scopes to a child by checking the returned
+	// row's ChildID against the expected one.
+	FindVoucherByID(ctx context.Context, voucherID uint) (*models.ChildVoucher, error)
+	// DeleteVoucherByID hard-deletes a single voucher row. Returns
+	// ErrNotFound when no row was affected so the caller can return 404.
+	DeleteVoucherByID(ctx context.Context, voucherID uint) error
 	FindActiveContractsByChildIDsAndDate(ctx context.Context, orgID uint, childIDs []uint, date time.Time) (map[uint]models.ChildContract, error)
 	FindChildrenWithoutVouchers(ctx context.Context, orgID uint, activeOn time.Time) ([]models.Child, error)
 	FindChildByNameAndBirthMonth(ctx context.Context, orgID uint, firstName, lastName string, birthMonth time.Month, birthYear int) ([]models.Child, error)

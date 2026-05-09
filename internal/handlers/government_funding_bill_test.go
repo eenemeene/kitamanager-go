@@ -19,6 +19,7 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 	"github.com/eenemeene/kitamanager-go/internal/store"
+	"github.com/eenemeene/kitamanager-go/internal/testutil"
 )
 
 func createGovBillService(db *gorm.DB) *service.GovernmentFundingBillService {
@@ -662,6 +663,227 @@ func TestGovernmentFundingBillHandler_AssignVoucher_RejectsBadPattern(t *testing
 				t.Errorf("voucher %q persisted despite 400 response", voucher)
 			}
 		})
+	}
+}
+
+func TestGovernmentFundingBillHandler_ListChildVouchers(t *testing.T) {
+	db := setupTestDB(t)
+	handler := createGovBillHandler(db)
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Test", LastName: "Child", Gender: "female", Birthdate: time.Date(2020, 3, 15, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(child)
+
+	// Insert in non-canonical order — handler must return them sorted by first_seen ascending.
+	older := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	newer := time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC)
+	db.Create(&models.ChildVoucher{ChildID: child.ID, VoucherNumber: "GB-12345678901-02", FirstSeen: newer})
+	db.Create(&models.ChildVoucher{ChildID: child.ID, VoucherNumber: "GB-12345678901-01", FirstSeen: older})
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/children/:childId/vouchers", handler.ListChildVouchers)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/%d/vouchers", org.ID, child.ID), nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp []models.ChildVoucherResponse
+	parseResponse(t, w, &resp)
+	if len(resp) != 2 {
+		t.Fatalf("expected 2 vouchers, got %d", len(resp))
+	}
+	// first_seen ascending → -01 (older) comes first.
+	if resp[0].VoucherNumber != "GB-12345678901-01" {
+		t.Errorf("expected first voucher GB-12345678901-01, got %s", resp[0].VoucherNumber)
+	}
+	if resp[1].VoucherNumber != "GB-12345678901-02" {
+		t.Errorf("expected second voucher GB-12345678901-02, got %s", resp[1].VoucherNumber)
+	}
+}
+
+func TestGovernmentFundingBillHandler_ListChildVouchers_Empty(t *testing.T) {
+	db := setupTestDB(t)
+	handler := createGovBillHandler(db)
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Test", LastName: "Child", Gender: "female", Birthdate: time.Date(2020, 3, 15, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(child)
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/children/:childId/vouchers", handler.ListChildVouchers)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/%d/vouchers", org.ID, child.ID), nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp []models.ChildVoucherResponse
+	parseResponse(t, w, &resp)
+	if len(resp) != 0 {
+		t.Errorf("expected empty list, got %d vouchers", len(resp))
+	}
+}
+
+func TestGovernmentFundingBillHandler_ListChildVouchers_ChildNotFound(t *testing.T) {
+	db := setupTestDB(t)
+	handler := createGovBillHandler(db)
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/children/:childId/vouchers", handler.ListChildVouchers)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/99999/vouchers", org.ID), nil)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestGovernmentFundingBillHandler_ListChildVouchers_WrongOrg(t *testing.T) {
+	db := setupTestDB(t)
+	handler := createGovBillHandler(db)
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org1.ID, FirstName: "Test", LastName: "Child", Gender: "female", Birthdate: time.Date(2020, 3, 15, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(child)
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/children/:childId/vouchers", handler.ListChildVouchers)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/children/%d/vouchers", org2.ID, child.ID), nil)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404 (cross-org leak guard), got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestGovernmentFundingBillHandler_RemoveChildVoucher(t *testing.T) {
+	db := setupTestDB(t)
+	handler := createGovBillHandler(db)
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Test", LastName: "Child", Gender: "female", Birthdate: time.Date(2020, 3, 15, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(child)
+	voucher := &models.ChildVoucher{ChildID: child.ID, VoucherNumber: "GB-12345678901-01", FirstSeen: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)}
+	db.Create(voucher)
+
+	r := setupTestRouter()
+	r.DELETE("/organizations/:orgId/children/:childId/vouchers/:voucherId", handler.RemoveChildVoucher)
+
+	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/children/%d/vouchers/%d", org.ID, child.ID, voucher.ID), nil)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d: %s", w.Code, w.Body.String())
+	}
+
+	// Voucher row gone.
+	var count int64
+	db.Model(&models.ChildVoucher{}).Where("id = ?", voucher.ID).Count(&count)
+	if count != 0 {
+		t.Errorf("expected voucher row to be hard-deleted, found %d row(s)", count)
+	}
+
+	// Audit log captures resource_id + voucher_number.
+	row := testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+		Action:       models.AuditAction("child_voucher_delete"),
+		ResourceType: "child_voucher",
+		ResourceID:   voucher.ID,
+	})
+	// Resource name is stored in the JSON Details field.
+	if !strings.Contains(row.Details, "GB-12345678901-01") {
+		t.Errorf("audit row Details = %q, expected to contain voucher number", row.Details)
+	}
+
+	// Freed unique slot — same number can be reassigned to another child.
+	other := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Other", LastName: "Child", Gender: "male", Birthdate: time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(other)
+	if err := db.Create(&models.ChildVoucher{ChildID: other.ID, VoucherNumber: "GB-12345678901-01", FirstSeen: time.Now().UTC()}).Error; err != nil {
+		t.Errorf("expected freed voucher slot to allow re-insert, got error: %v", err)
+	}
+}
+
+func TestGovernmentFundingBillHandler_RemoveChildVoucher_NotFound(t *testing.T) {
+	db := setupTestDB(t)
+	handler := createGovBillHandler(db)
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Test", LastName: "Child", Gender: "female", Birthdate: time.Date(2020, 3, 15, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(child)
+
+	r := setupTestRouter()
+	r.DELETE("/organizations/:orgId/children/:childId/vouchers/:voucherId", handler.RemoveChildVoucher)
+
+	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/children/%d/vouchers/99999", org.ID, child.ID), nil)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+// Voucher exists but on a different child than the URL claims. Must be
+// 404 (not 403) so the response is identical to "voucher does not exist"
+// — leaks no information about other children's voucher IDs.
+func TestGovernmentFundingBillHandler_RemoveChildVoucher_WrongChild(t *testing.T) {
+	db := setupTestDB(t)
+	handler := createGovBillHandler(db)
+
+	org := createTestOrganization(t, db, "Test Org")
+	childA := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "A", LastName: "Child", Gender: "female", Birthdate: time.Date(2020, 3, 15, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(childA)
+	childB := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "B", LastName: "Child", Gender: "male", Birthdate: time.Date(2020, 3, 15, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(childB)
+	voucher := &models.ChildVoucher{ChildID: childA.ID, VoucherNumber: "GB-12345678901-01", FirstSeen: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)}
+	db.Create(voucher)
+
+	r := setupTestRouter()
+	r.DELETE("/organizations/:orgId/children/:childId/vouchers/:voucherId", handler.RemoveChildVoucher)
+
+	// Try to delete childA's voucher under childB's URL.
+	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/children/%d/vouchers/%d", org.ID, childB.ID, voucher.ID), nil)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404 (cross-child leak guard), got %d: %s", w.Code, w.Body.String())
+	}
+	// Voucher must still exist.
+	var count int64
+	db.Model(&models.ChildVoucher{}).Where("id = ?", voucher.ID).Count(&count)
+	if count != 1 {
+		t.Errorf("expected voucher to be untouched, found %d rows", count)
+	}
+}
+
+func TestGovernmentFundingBillHandler_RemoveChildVoucher_WrongOrg(t *testing.T) {
+	db := setupTestDB(t)
+	handler := createGovBillHandler(db)
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org1.ID, FirstName: "Test", LastName: "Child", Gender: "female", Birthdate: time.Date(2020, 3, 15, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(child)
+	voucher := &models.ChildVoucher{ChildID: child.ID, VoucherNumber: "GB-12345678901-01", FirstSeen: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)}
+	db.Create(voucher)
+
+	r := setupTestRouter()
+	r.DELETE("/organizations/:orgId/children/:childId/vouchers/:voucherId", handler.RemoveChildVoucher)
+
+	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/children/%d/vouchers/%d", org2.ID, child.ID, voucher.ID), nil)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404 (cross-org leak guard), got %d: %s", w.Code, w.Body.String())
 	}
 }
 

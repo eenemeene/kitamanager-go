@@ -5232,7 +5232,62 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /**
+     * List vouchers for a child
+     * @description List all Kita-Gutschein numbers assigned to a child, ordered by first_seen ascending. Visible to any role with read access to the child.
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description Organization ID */
+          orgId: number;
+          /** @description Child ID */
+          childId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ChildVoucherResponse'][];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Child not found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
     put?: never;
     /**
      * Assign a voucher to a child
@@ -5305,6 +5360,77 @@ export interface paths {
       };
     };
     delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/organizations/{orgId}/children/{childId}/vouchers/{voucherId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Remove a voucher from a child
+     * @description Hard-deletes a single voucher row. The freed unique slot allows the same number to be re-assigned to another child. Past bill rows that referenced the deleted voucher_number lose their child-link in /billing pages; the audit log preserves the trail.
+     */
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description Organization ID */
+          orgId: number;
+          /** @description Child ID */
+          childId: number;
+          /** @description Voucher ID */
+          voucherId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description No Content */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Child or voucher not found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
     options?: never;
     head?: never;
     patch?: never;
@@ -11781,6 +11907,16 @@ export interface components {
       voucher_number: string;
     };
     ChildVoucherCreateRequest: {
+      /** @example GB-12345678901-02 */
+      voucher_number: string;
+    };
+    ChildVoucherResponse: {
+      /** @example 1 */
+      child_id: number;
+      /** Format: date-time */
+      first_seen: string;
+      /** @example 1 */
+      id: number;
       /** @example GB-12345678901-02 */
       voucher_number: string;
     };

@@ -480,10 +480,20 @@ func Setup(r *gin.Engine, d Deps) {
 						authzMiddleware.RequirePermission(rbac.ResourceGovernmentFundingBills, rbac.ActionRead),
 						governmentFundingBillHandler.ChildBillingHistory)
 
-					// Per-child voucher assignment
+					// Per-child voucher management.
+					// Read is gated on Children.Read so members + staff can
+					// see voucher numbers; create + delete are gated on
+					// GovernmentFundingBills so only managers + admins can
+					// modify them.
+					children.GET("/:childId/vouchers",
+						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
+						governmentFundingBillHandler.ListChildVouchers)
 					children.POST("/:childId/vouchers",
 						authzMiddleware.RequirePermission(rbac.ResourceGovernmentFundingBills, rbac.ActionCreate),
 						governmentFundingBillHandler.AssignVoucher)
+					children.DELETE("/:childId/vouchers/:voucherId",
+						authzMiddleware.RequirePermission(rbac.ResourceGovernmentFundingBills, rbac.ActionDelete),
+						governmentFundingBillHandler.RemoveChildVoucher)
 
 					// ============================================================
 					// Per-child attendance tracking

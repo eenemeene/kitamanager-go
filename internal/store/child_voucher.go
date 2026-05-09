@@ -155,6 +155,38 @@ func (s *ChildVoucherStore) DeleteVouchersByChild(ctx context.Context, childID u
 		Delete(&models.ChildVoucher{}).Error
 }
 
+// FindVoucherByID returns a single voucher by ID. Returns ErrNotFound when
+// no row exists. Caller is responsible for verifying the voucher's child_id
+// matches the expected child (org scoping happens via the child).
+func (s *ChildVoucherStore) FindVoucherByID(ctx context.Context, voucherID uint) (*models.ChildVoucher, error) {
+	var v models.ChildVoucher
+	if err := DBFromContext(ctx, s.db).
+		Where("id = ?", voucherID).
+		First(&v).Error; err != nil {
+		return nil, WrapNotFound(err)
+	}
+	return &v, nil
+}
+
+// DeleteVoucherByID hard-deletes a single voucher row. Returns ErrNotFound
+// when no row was affected (already gone) so the caller can return 404
+// instead of silent success. Hard delete by design — the voucher unique
+// slot is freed so the same number can be reassigned to a different child
+// afterwards. Bill rows that reference the deleted voucher_number lose their
+// child-link in /billing pages; the audit log is the recovery trail.
+func (s *ChildVoucherStore) DeleteVoucherByID(ctx context.Context, voucherID uint) error {
+	res := DBFromContext(ctx, s.db).
+		Where("id = ?", voucherID).
+		Delete(&models.ChildVoucher{})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 // FindActiveContractsByChildIDsAndDate returns the active contract for each child on the given date.
 // Returns a map of child_id → ChildContract (at most one per child).
 func (s *ChildVoucherStore) FindActiveContractsByChildIDsAndDate(ctx context.Context, orgID uint, childIDs []uint, date time.Time) (map[uint]models.ChildContract, error) {

@@ -226,6 +226,14 @@ func TestRoleAuthorization_NegativeMatrix(t *testing.T) {
 		{"member cannot create budget items", models.RoleMember, "POST", "/api/v1/organizations/%d/budget-items", http.StatusForbidden},
 		{"member cannot create attendance", models.RoleMember, "POST", "/api/v1/organizations/%d/children/1/attendance", http.StatusForbidden},
 		{"member cannot create funding bill", models.RoleMember, "POST", "/api/v1/organizations/%d/government-funding-bills", http.StatusForbidden},
+		// Voucher writes (POST + DELETE) are admin/manager only — they're
+		// gated on ResourceGovernmentFundingBills, the same resource the
+		// rest of the funding-bill matrix uses. Read is intentionally
+		// broader (Children.Read), tested separately in PositiveBaseline.
+		{"member cannot assign voucher", models.RoleMember, "POST", "/api/v1/organizations/%d/children/1/vouchers", http.StatusForbidden},
+		{"member cannot remove voucher", models.RoleMember, "DELETE", "/api/v1/organizations/%d/children/1/vouchers/1", http.StatusForbidden},
+		{"staff cannot assign voucher", models.RoleStaff, "POST", "/api/v1/organizations/%d/children/1/vouchers", http.StatusForbidden},
+		{"staff cannot remove voucher", models.RoleStaff, "DELETE", "/api/v1/organizations/%d/children/1/vouchers/1", http.StatusForbidden},
 		{"member cannot list users (global)", models.RoleMember, "GET", "/api/v1/users", http.StatusForbidden},
 		{"member cannot read audit log", models.RoleMember, "GET", "/api/v1/organizations/%d/audit-logs", http.StatusForbidden},
 
@@ -292,6 +300,17 @@ func TestRoleAuthorization_PositiveBaseline(t *testing.T) {
 		{"member can list employees", models.RoleMember, "GET", "/api/v1/organizations/%d/employees", http.StatusOK},
 		{"manager can list budget items", models.RoleManager, "GET", "/api/v1/organizations/%d/budget-items", http.StatusOK},
 		{"admin can read audit log", models.RoleAdmin, "GET", "/api/v1/organizations/%d/audit-logs", http.StatusOK},
+
+		// Voucher reads must be reachable by every role with access to
+		// the child (member + staff included) — this is the whole reason
+		// the GET endpoint uses Children.Read, not GovernmentFundingBills.
+		// Without this, the new VouchersDialog would 403 for member/staff
+		// on click. The path includes a non-existent child id; we accept
+		// any non-403 response — what matters is that authz didn't deny.
+		{"staff can read child vouchers", models.RoleStaff, "GET", "/api/v1/organizations/%d/children/1/vouchers", http.StatusNotFound},
+		{"member can read child vouchers", models.RoleMember, "GET", "/api/v1/organizations/%d/children/1/vouchers", http.StatusNotFound},
+		{"manager can read child vouchers", models.RoleManager, "GET", "/api/v1/organizations/%d/children/1/vouchers", http.StatusNotFound},
+		{"admin can read child vouchers", models.RoleAdmin, "GET", "/api/v1/organizations/%d/children/1/vouchers", http.StatusNotFound},
 
 		// /me/memberships must be reachable by EVERY authenticated user
 		// regardless of role. The frontend's auth-store loadUser() calls

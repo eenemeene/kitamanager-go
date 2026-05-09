@@ -4826,6 +4826,66 @@ const docTemplate = `{
             }
         },
         "/api/v1/organizations/{orgId}/children/{childId}/vouchers": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List all Kita-Gutschein numbers assigned to a child, ordered by first_seen ascending. Visible to any role with read access to the child.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "children"
+                ],
+                "summary": "List vouchers for a child",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Child ID",
+                        "name": "childId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildVoucherResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Child not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -4895,6 +4955,69 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/organizations/{orgId}/children/{childId}/vouchers/{voucherId}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Hard-deletes a single voucher row. The freed unique slot allows the same number to be re-assigned to another child. Past bill rows that referenced the deleted voucher_number lose their child-link in /billing pages; the audit log preserves the trail.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "children"
+                ],
+                "summary": "Remove a voucher from a child",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Child ID",
+                        "name": "childId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Voucher ID",
+                        "name": "voucherId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Child or voucher not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
                         }
@@ -11531,6 +11654,27 @@ const docTemplate = `{
                 "voucher_number"
             ],
             "properties": {
+                "voucher_number": {
+                    "type": "string",
+                    "example": "GB-12345678901-02"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ChildVoucherResponse": {
+            "type": "object",
+            "properties": {
+                "child_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "first_seen": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
                 "voucher_number": {
                     "type": "string",
                     "example": "GB-12345678901-02"

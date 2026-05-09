@@ -269,6 +269,65 @@ func (s *GovernmentFundingBillService) AssignVoucher(ctx context.Context, childI
 	})
 }
 
+// ListVouchersForChild returns all vouchers for a child, ordered by
+// first_seen ascending. Verifies the child belongs to the org.
+func (s *GovernmentFundingBillService) ListVouchersForChild(ctx context.Context, childID, orgID uint) ([]models.ChildVoucher, error) {
+	if _, err := s.childStore.FindByIDAndOrg(ctx, childID, orgID); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, apperror.NotFound("child")
+		}
+		return nil, apperror.InternalWrap(err, "failed to verify child")
+	}
+
+	vouchers, err := s.childVoucherStore.FindVouchersByChildID(ctx, childID)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "failed to list vouchers")
+	}
+	return vouchers, nil
+}
+
+// RemoveVoucher hard-deletes a single voucher row. Verifies that the
+// voucher exists, belongs to the given child, and that the child belongs
+// to the given org. Returns the deleted voucher_number so the caller can
+// audit-log it before returning 204 to the user.
+//
+// Hard delete (chosen over soft-delete to keep the schema flat). The
+// freed unique slot lets the same Gutschein-Nr be reassigned to a
+// different child afterwards — the typical "fix the typo" workflow. The
+// audit log is the recovery trail.
+func (s *GovernmentFundingBillService) RemoveVoucher(ctx context.Context, voucherID, childID, orgID uint) (string, error) {
+	if _, err := s.childStore.FindByIDAndOrg(ctx, childID, orgID); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return "", apperror.NotFound("child")
+		}
+		return "", apperror.InternalWrap(err, "failed to verify child")
+	}
+
+	voucher, err := s.childVoucherStore.FindVoucherByID(ctx, voucherID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return "", apperror.NotFound("voucher")
+		}
+		return "", apperror.InternalWrap(err, "failed to fetch voucher")
+	}
+	if voucher.ChildID != childID {
+		// Treat cross-child as 404 rather than 403. Leaks no information
+		// about other children's voucher IDs (a manager guessing voucher
+		// IDs sees identical 404s for "doesn't exist" and "exists on a
+		// different child").
+		return "", apperror.NotFound("voucher")
+	}
+
+	if err := s.childVoucherStore.DeleteVoucherByID(ctx, voucherID); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			// Lost a race with a concurrent delete. Surface as 404.
+			return "", apperror.NotFound("voucher")
+		}
+		return "", apperror.InternalWrap(err, "failed to delete voucher")
+	}
+	return voucher.VoucherNumber, nil
+}
+
 // computeVoucherSuggestions finds fuzzy name matches between children without vouchers
 // and unmatched bill children (bill children whose voucher is not in child_vouchers).
 // Returns suggestions grouped by child ID.

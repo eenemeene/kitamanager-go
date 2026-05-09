@@ -1407,6 +1407,33 @@
                 ],
                 "type": "object"
             },
+            "ChildVoucherResponse": {
+                "properties": {
+                    "child_id": {
+                        "example": 1,
+                        "type": "integer"
+                    },
+                    "first_seen": {
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "id": {
+                        "example": 1,
+                        "type": "integer"
+                    },
+                    "voucher_number": {
+                        "example": "GB-12345678901-02",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "child_id",
+                    "first_seen",
+                    "id",
+                    "voucher_number"
+                ],
+                "type": "object"
+            },
             "ChildWithoutVoucherResponse": {
                 "properties": {
                     "birthdate": {
@@ -12343,6 +12370,83 @@
             }
         },
         "/api/v1/organizations/{orgId}/children/{childId}/vouchers": {
+            "get": {
+                "description": "List all Kita-Gutschein numbers assigned to a child, ordered by first_seen ascending. Visible to any role with read access to the child.",
+                "parameters": [
+                    {
+                        "description": "Organization ID",
+                        "in": "path",
+                        "name": "orgId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Child ID",
+                        "in": "path",
+                        "name": "childId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "items": {
+                                        "$ref": "#/components/schemas/ChildVoucherResponse"
+                                    },
+                                    "type": "array"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Child not found"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "List vouchers for a child",
+                "tags": [
+                    "children"
+                ]
+            },
             "post": {
                 "description": "Link a Gutschein number to a child. Idempotent — assigning an already-known voucher is a no-op.",
                 "parameters": [
@@ -12435,6 +12539,84 @@
                     }
                 ],
                 "summary": "Assign a voucher to a child",
+                "tags": [
+                    "children"
+                ]
+            }
+        },
+        "/api/v1/organizations/{orgId}/children/{childId}/vouchers/{voucherId}": {
+            "delete": {
+                "description": "Hard-deletes a single voucher row. The freed unique slot allows the same number to be re-assigned to another child. Past bill rows that referenced the deleted voucher_number lose their child-link in /billing pages; the audit log preserves the trail.",
+                "parameters": [
+                    {
+                        "description": "Organization ID",
+                        "in": "path",
+                        "name": "orgId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Child ID",
+                        "in": "path",
+                        "name": "childId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Voucher ID",
+                        "in": "path",
+                        "name": "voucherId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Child or voucher not found"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "Remove a voucher from a child",
                 "tags": [
                     "children"
                 ]

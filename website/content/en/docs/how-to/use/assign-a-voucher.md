@@ -15,9 +15,29 @@ If the dashboard suggests a name match (the bill referenced "Müller, Maria" but
 
 ## Add another voucher (renewal or correction)
 
-Vouchers are stored as a list per child — issuing a new Gutschein doesn't replace the old one; both stay on file. Add the new voucher number through the same dashboard input or via the API (`POST /organizations/{orgId}/children/{childId}/vouchers`). The most recent voucher matches against current bills; older vouchers stay on the child's record for historical reconciliation.
+Vouchers are stored as a list per child — issuing a new Gutschein doesn't replace the old one; both stay on file.
 
-Re-submitting the same voucher to the same child is a no-op. Submitting a voucher already attached to a different child returns a conflict; remove it from the previous child first.
+### From the children list (recommended)
+
+1. Open **Children** in the sidebar.
+2. Find the child and click the **Vouchers** action button (ticket icon) in the row.
+3. The Vouchers dialog opens with all currently-assigned numbers. Type the new Kita-Gutschein number in the format `GB-DDDDDDDDDDD-NN` (11 digits, dash, 2-digit suffix) and click **Add**.
+4. To remove a wrong number (e.g. typo correction), click the trash icon next to the entry and confirm. The unique slot is freed, so the same number can then be assigned to a different child afterwards.
+
+### From the dashboard
+
+The **Children Without Vouchers** card on the dashboard remains the fastest path for the *first* assignment after creating a child or uploading a bill. Once a voucher exists on a child, use the dialog above for any subsequent additions or corrections.
+
+### Via the API
+
+`POST /organizations/{orgId}/children/{childId}/vouchers` (add) and `DELETE /organizations/{orgId}/children/{childId}/vouchers/{voucherId}` (remove). The most recent voucher matches against current bills; older vouchers stay on the child's record for historical reconciliation.
+
+Re-submitting the same voucher to the same child is a no-op. Submitting a voucher already attached to a different child returns a conflict; remove it from the previous child first using the Vouchers dialog.
+
+## Who can do what
+
+- **View voucher numbers**: every role with access to the child (admin, manager, member, staff).
+- **Add or remove voucher numbers**: admins and managers only. Members and staff see the list read-only — the Add input and Remove buttons are hidden for them.
 
 ## Notes
 

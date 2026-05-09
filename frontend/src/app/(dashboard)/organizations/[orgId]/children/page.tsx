@@ -45,6 +45,7 @@ import { EmptyState } from '@/components/crud/empty-state';
 import { PersonFormDialog } from '@/components/crud/person-form-dialog';
 import { ChildCreateDialog } from '@/components/children/child-create-dialog';
 import { ChildContractCreateDialog } from '@/components/children/child-contract-create-dialog';
+import { VouchersDialog } from '@/components/children/vouchers-dialog';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useUiStore } from '@/stores/ui-store';
 import {
@@ -240,6 +241,11 @@ export default function ChildrenPage() {
   const handleAddContract = useCallback((child: Child) => {
     setContractChild(child);
     setIsContractDialogOpen(true);
+  }, []);
+
+  const [vouchersChild, setVouchersChild] = useState<Child | null>(null);
+  const handleManageVouchers = useCallback((child: Child) => {
+    setVouchersChild(child);
   }, []);
 
   const handleViewContractHistory = useCallback(
@@ -441,6 +447,7 @@ export default function ChildrenPage() {
               onAddContract={handleAddContract}
               onEdit={dialogs.handleEdit}
               onDelete={dialogs.handleDelete}
+              onManageVouchers={handleManageVouchers}
               onAdjustContractEnd={handleAdjustContractEnd}
               isAdjustingContractEnd={adjustContractEndMutation.isPending}
             />
@@ -486,6 +493,16 @@ export default function ChildrenPage() {
           onSubmit={onSubmitCreate}
         />
       )}
+
+      {/* Vouchers Dialog */}
+      <VouchersDialog
+        open={vouchersChild !== null}
+        onOpenChange={(next) => {
+          if (!next) setVouchersChild(null);
+        }}
+        orgId={orgId}
+        child={vouchersChild}
+      />
 
       {/* Contract Create Dialog */}
       <ChildContractCreateDialog
