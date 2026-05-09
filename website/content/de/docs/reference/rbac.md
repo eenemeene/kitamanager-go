@@ -12,8 +12,8 @@ Für *wie man* Rollen vergibt, siehe [Nutzer:innen und Rollen verwalten](../../h
 | Rolle | Geltungsbereich | Beschreibung |
 |---|---|---|
 | `superadmin` | Global | Vollzugriff auf das gesamte System über alle Organisationen. Kann Organisationen anlegen/löschen, Förder-Konfigurationen verwalten, das globale Audit-Log einsehen. |
-| `admin` | Organisation | Vollzugriff innerhalb der zugewiesenen Organisation(en). Kann Mitarbeitende, Kinder, Verträge, Bereiche, Entgelttabellen und Nutzer:innen verwalten. Kann keine Organisationen anlegen/löschen oder Förder-Konfigurationen verwalten. |
-| `manager` | Organisation | Operativer Zugriff innerhalb der zugewiesenen Organisation(en). Kann Mitarbeitende, Kinder und Verträge verwalten. Nur-Lesen auf Nutzer:innen, Bereichen, Entgelttabellen. |
+| `admin` | Organisation | Vollzugriff innerhalb der zugewiesenen Organisation(en). Kann Mitarbeitende, Kinder, Verträge, Bereiche, Entgelttabellen, Nutzer:innen, Haushaltsposten und ISBJ-Förderabrechnungen verwalten. Nur-Lesen auf Förder-Konfigurationen. Kann keine Organisationen anlegen/löschen und keine Förder-Konfigurationen bearbeiten. |
+| `manager` | Organisation | Operativer + finanzieller Zugriff innerhalb der zugewiesenen Organisation(en). Kann Mitarbeitende, Kinder, Verträge, Haushaltsposten und ISBJ-Förderabrechnungen verwalten. Nur-Lesen auf Nutzer:innen, Bereichen, Entgelttabellen, Förder-Konfigurationen und den Einstellungen der eigenen Organisation. Kann das Audit-Log nicht einsehen. |
 | `member` | Organisation | Nur-Lese-Zugriff innerhalb der zugewiesenen Organisation(en). Kann Mitarbeitende, Kinder, Verträge, Bereiche, Entgelttabellen einsehen, aber nichts verändern. |
 | `staff` | Organisation | Für Erzieher:innen, die Anwesenheit erfassen. Nur-Lesen auf Kindern, Betreuungsverträgen, Bereichen; volles CRUD nur auf Anwesenheit. |
 
@@ -27,9 +27,9 @@ Für *wie man* Rollen vergibt, siehe [Nutzer:innen und Rollen verwalten](../../h
 | Verträge | CRUD | CRUD | CRUD | Read | Read (nur Kind) |
 | Anwesenheit | CRUD | CRUD | CRUD | Read | CRUD |
 | Bereiche | CRUD | CRUD | Read | Read | Read |
-| Förder-Konfigurationen | CRUD | — | — | — | — |
+| Förder-Konfigurationen | CRUD | Read | Read | — | — |
 | Entgelttabellen | CRUD | CRUD | Read | Read | — |
-| Haushaltsposten | CRUD | CRUD | Read | Read | — |
+| Haushaltsposten | CRUD | CRUD | CRUD | Read | — |
 | Statistiken | Read | Read | Read | Read | — |
 | Nutzer:innen | CRUD | CRUD | Read | — | — |
 | ISBJ-Förderabrechnungen | Create / Read / Delete | Create / Read / Delete | Create / Read / Delete | — | — |
