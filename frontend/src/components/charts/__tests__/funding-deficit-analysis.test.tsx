@@ -374,7 +374,7 @@ describe('FundingDeficitAnalysis', () => {
         />
       );
       const link = screen.getByRole('link', { name: 'Linked' });
-      expect(link).toHaveAttribute('href', '/organizations/42/children/99');
+      expect(link).toHaveAttribute('href', '/organizations/42/children/99/billing');
     });
 
     it('renders child name as plain text (no link) when child_id is missing', () => {
