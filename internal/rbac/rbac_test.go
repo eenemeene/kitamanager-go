@@ -223,6 +223,10 @@ func TestEnforcer_CheckPermission_Admin(t *testing.T) {
 		{"admin can CRUD users", 2, 1, ResourceUsers, ActionCreate, true},
 		{"admin can read audit log", 2, 1, ResourceAuditLog, ActionRead, true},
 		{"admin cannot write audit log", 2, 1, ResourceAuditLog, ActionCreate, false},
+		{"admin can read government funding rates", 2, 1, ResourceFundings, ActionRead, true},
+		{"admin cannot edit government funding rates", 2, 1, ResourceFundings, ActionUpdate, false},
+		{"admin cannot create government funding rates", 2, 1, ResourceFundings, ActionCreate, false},
+		{"admin cannot delete government funding rates", 2, 1, ResourceFundings, ActionDelete, false},
 		{"admin cannot access other org", 2, 2, ResourceEmployees, ActionRead, false},
 		{"admin cannot read audit log for other org", 2, 2, ResourceAuditLog, ActionRead, false},
 	}
@@ -254,16 +258,137 @@ func TestEnforcer_CheckPermission_Manager(t *testing.T) {
 		action   string
 		expected bool
 	}{
+		// Operational CRUD — same as admin
 		{"manager can read org", 3, 1, ResourceOrganizations, ActionRead, true},
 		{"manager cannot update org", 3, 1, ResourceOrganizations, ActionUpdate, false},
 		{"manager can CRUD employees", 3, 1, ResourceEmployees, ActionCreate, true},
 		{"manager can CRUD children", 3, 1, ResourceChildren, ActionDelete, true},
-		{"manager can CRUD contracts", 3, 1, ResourceEmployeeContracts, ActionCreate, true},
+		{"manager can CRUD employee contracts", 3, 1, ResourceEmployeeContracts, ActionCreate, true},
+		{"manager can CRUD child contracts", 3, 1, ResourceChildContracts, ActionUpdate, true},
+		{"manager can CRUD attendance", 3, 1, ResourceChildAttendance, ActionCreate, true},
+
+		// Finance — manager has full CRUD on Budget Items + Budget Item
+		// Entries (granted 2026-05-09 to make managers responsible for the
+		// finance group end-to-end). Government Funding Bills follow the
+		// system-wide pattern of Create/Read/Delete only (no Update).
+		{"manager can create budget items", 3, 1, ResourceBudgetItems, ActionCreate, true},
+		{"manager can read budget items", 3, 1, ResourceBudgetItems, ActionRead, true},
+		{"manager can update budget items", 3, 1, ResourceBudgetItems, ActionUpdate, true},
+		{"manager can delete budget items", 3, 1, ResourceBudgetItems, ActionDelete, true},
+		{"manager can create budget item entries", 3, 1, ResourceBudgetItemEntries, ActionCreate, true},
+		{"manager can read budget item entries", 3, 1, ResourceBudgetItemEntries, ActionRead, true},
+		{"manager can update budget item entries", 3, 1, ResourceBudgetItemEntries, ActionUpdate, true},
+		{"manager can delete budget item entries", 3, 1, ResourceBudgetItemEntries, ActionDelete, true},
+		{"manager can create funding bills", 3, 1, ResourceGovernmentFundingBills, ActionCreate, true},
+		{"manager can read funding bills", 3, 1, ResourceGovernmentFundingBills, ActionRead, true},
+		{"manager can delete funding bills", 3, 1, ResourceGovernmentFundingBills, ActionDelete, true},
+		{"manager can read statistics", 3, 1, ResourceStatistics, ActionRead, true},
+
+		// Government funding rates — read-only (admin-shared visibility,
+		// only superadmin can edit).
+		{"manager can read government funding rates", 3, 1, ResourceFundings, ActionRead, true},
+		{"manager cannot edit government funding rates", 3, 1, ResourceFundings, ActionUpdate, false},
+		{"manager cannot create government funding rates", 3, 1, ResourceFundings, ActionCreate, false},
+		{"manager cannot delete government funding rates", 3, 1, ResourceFundings, ActionDelete, false},
+
+		// Settings group — read-only. The five admin-vs-manager
+		// differences are pinned here so any future drift fails this test.
 		{"manager can only read users", 3, 1, ResourceUsers, ActionRead, true},
 		{"manager cannot create users", 3, 1, ResourceUsers, ActionCreate, false},
+		{"manager cannot update users", 3, 1, ResourceUsers, ActionUpdate, false},
 		{"manager cannot delete users", 3, 1, ResourceUsers, ActionDelete, false},
+		{"manager can only read sections", 3, 1, ResourceSections, ActionRead, true},
+		{"manager cannot create sections", 3, 1, ResourceSections, ActionCreate, false},
+		{"manager cannot update sections", 3, 1, ResourceSections, ActionUpdate, false},
+		{"manager cannot delete sections", 3, 1, ResourceSections, ActionDelete, false},
+		{"manager can only read pay plans", 3, 1, ResourcePayPlans, ActionRead, true},
+		{"manager cannot create pay plans", 3, 1, ResourcePayPlans, ActionCreate, false},
+		{"manager cannot update pay plans", 3, 1, ResourcePayPlans, ActionUpdate, false},
+		{"manager cannot delete pay plans", 3, 1, ResourcePayPlans, ActionDelete, false},
 		{"manager cannot read audit log", 3, 1, ResourceAuditLog, ActionRead, false},
+
+		// Tenant isolation — same rule as every other role.
 		{"manager cannot access other org", 3, 2, ResourceEmployees, ActionRead, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			allowed, err := enforcer.CheckPermission(tt.userID, tt.orgID, tt.resource, tt.action)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if allowed != tt.expected {
+				t.Errorf("expected %v, got %v", tt.expected, allowed)
+			}
+		})
+	}
+}
+
+// TestEnforcer_CheckPermission_Member pins the member role to "read-only
+// observer of operational data, no settings, no audit log, no users."
+// The role exists as a step between staff (only sees attendance + their
+// own room) and manager (operational CRUD). Negative cases for "member
+// cannot edit X" matter just as much as positives — they're the
+// invariants ops relies on when assigning the role.
+func TestEnforcer_CheckPermission_Member(t *testing.T) {
+	enforcer := setupTestEnforcer(t)
+
+	// Assign member to org 1.
+	_ = enforcer.AssignRole(7, RoleMember, 1)
+
+	tests := []struct {
+		name     string
+		userID   uint
+		orgID    uint
+		resource string
+		action   string
+		expected bool
+	}{
+		// Read access to operational and finance data.
+		{"member can read org", 7, 1, ResourceOrganizations, ActionRead, true},
+		{"member can read employees", 7, 1, ResourceEmployees, ActionRead, true},
+		{"member can read children", 7, 1, ResourceChildren, ActionRead, true},
+		{"member can read employee contracts", 7, 1, ResourceEmployeeContracts, ActionRead, true},
+		{"member can read child contracts", 7, 1, ResourceChildContracts, ActionRead, true},
+		{"member can read sections", 7, 1, ResourceSections, ActionRead, true},
+		{"member can read pay plans", 7, 1, ResourcePayPlans, ActionRead, true},
+		{"member can read attendance", 7, 1, ResourceChildAttendance, ActionRead, true},
+		{"member can read budget items", 7, 1, ResourceBudgetItems, ActionRead, true},
+		{"member can read budget item entries", 7, 1, ResourceBudgetItemEntries, ActionRead, true},
+		{"member can read statistics", 7, 1, ResourceStatistics, ActionRead, true},
+
+		// No mutations — anywhere. The headline negative is "member
+		// cannot edit pay plans"; same rule covers every other resource.
+		{"member cannot create pay plans", 7, 1, ResourcePayPlans, ActionCreate, false},
+		{"member cannot update pay plans", 7, 1, ResourcePayPlans, ActionUpdate, false},
+		{"member cannot delete pay plans", 7, 1, ResourcePayPlans, ActionDelete, false},
+		{"member cannot create employees", 7, 1, ResourceEmployees, ActionCreate, false},
+		{"member cannot update employees", 7, 1, ResourceEmployees, ActionUpdate, false},
+		{"member cannot delete employees", 7, 1, ResourceEmployees, ActionDelete, false},
+		{"member cannot create children", 7, 1, ResourceChildren, ActionCreate, false},
+		{"member cannot update children", 7, 1, ResourceChildren, ActionUpdate, false},
+		{"member cannot delete children", 7, 1, ResourceChildren, ActionDelete, false},
+		{"member cannot create attendance", 7, 1, ResourceChildAttendance, ActionCreate, false},
+		{"member cannot update attendance", 7, 1, ResourceChildAttendance, ActionUpdate, false},
+		{"member cannot delete attendance", 7, 1, ResourceChildAttendance, ActionDelete, false},
+		{"member cannot create sections", 7, 1, ResourceSections, ActionCreate, false},
+		{"member cannot update sections", 7, 1, ResourceSections, ActionUpdate, false},
+		{"member cannot delete sections", 7, 1, ResourceSections, ActionDelete, false},
+		{"member cannot create budget items", 7, 1, ResourceBudgetItems, ActionCreate, false},
+		{"member cannot update budget items", 7, 1, ResourceBudgetItems, ActionUpdate, false},
+		{"member cannot delete budget items", 7, 1, ResourceBudgetItems, ActionDelete, false},
+		{"member cannot update org", 7, 1, ResourceOrganizations, ActionUpdate, false},
+
+		// Settings + administrative resources are completely off-limits.
+		{"member cannot read users", 7, 1, ResourceUsers, ActionRead, false},
+		{"member cannot create users", 7, 1, ResourceUsers, ActionCreate, false},
+		{"member cannot read fundings", 7, 1, ResourceFundings, ActionRead, false},
+		{"member cannot read government funding bills", 7, 1, ResourceGovernmentFundingBills, ActionRead, false},
+		{"member cannot create government funding bills", 7, 1, ResourceGovernmentFundingBills, ActionCreate, false},
+		{"member cannot read audit log", 7, 1, ResourceAuditLog, ActionRead, false},
+
+		// Tenant isolation.
+		{"member cannot access other org", 7, 2, ResourceChildren, ActionRead, false},
 	}
 
 	for _, tt := range tests {

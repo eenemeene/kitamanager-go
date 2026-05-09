@@ -67,7 +67,7 @@ const globalNavigation: NavItem[] = [
     href: '/government-funding-rates',
     icon: Landmark,
     requiresOrg: false,
-    minRole: 'superadmin',
+    minRole: 'manager',
   },
 ];
 
@@ -77,7 +77,7 @@ const orgNavigationGroups: NavGroup[] = [
     minRole: 'member',
     items: [
       { name: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard, minRole: 'member' },
-      { name: 'nav.attendance', href: '/attendance', icon: CalendarCheck, minRole: 'member' },
+      { name: 'nav.attendance', href: '/attendance', icon: CalendarCheck, minRole: 'staff' },
       { name: 'nav.sections', href: '/sections', icon: LayoutGrid, minRole: 'manager' },
     ],
   },
@@ -91,20 +91,20 @@ const orgNavigationGroups: NavGroup[] = [
   },
   {
     label: 'nav.groupFinance',
-    minRole: 'admin',
+    minRole: 'manager',
     items: [
       {
         name: 'nav.governmentFundingBills',
         href: '/government-funding-bills',
         icon: Landmark,
-        minRole: 'admin',
+        minRole: 'manager',
       },
-      { name: 'nav.budgetItems', href: '/budget-items', icon: Wallet, minRole: 'admin' },
+      { name: 'nav.budgetItems', href: '/budget-items', icon: Wallet, minRole: 'manager' },
       {
         name: 'nav.statistics',
         href: '/statistics',
         icon: BarChart3,
-        minRole: 'admin',
+        minRole: 'manager',
         children: [
           { name: 'nav.statisticsOverview', href: '/statistics', exact: true },
           { name: 'nav.statisticsFinancials', href: '/statistics/financials' },
@@ -117,7 +117,7 @@ const orgNavigationGroups: NavGroup[] = [
         name: 'nav.statisticsForecast',
         href: '/statistics/forecast',
         icon: TrendingUp,
-        minRole: 'admin',
+        minRole: 'manager',
       },
     ],
   },

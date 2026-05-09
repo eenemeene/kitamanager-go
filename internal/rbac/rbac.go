@@ -230,6 +230,7 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleAdmin, "*", ResourceGovernmentFundingBills, ActionCreate},
 		{RoleAdmin, "*", ResourceGovernmentFundingBills, ActionRead},
 		{RoleAdmin, "*", ResourceGovernmentFundingBills, ActionDelete},
+		{RoleAdmin, "*", ResourceFundings, ActionRead},
 		{RoleAdmin, "*", ResourceStatistics, ActionRead},
 		{RoleAdmin, "*", ResourceAuditLog, ActionRead},
 
@@ -258,11 +259,18 @@ func (e *Enforcer) SeedDefaultPolicies() error {
 		{RoleManager, "*", ResourceChildAttendance, ActionRead},
 		{RoleManager, "*", ResourceChildAttendance, ActionUpdate},
 		{RoleManager, "*", ResourceChildAttendance, ActionDelete},
+		{RoleManager, "*", ResourceBudgetItems, ActionCreate},
 		{RoleManager, "*", ResourceBudgetItems, ActionRead},
+		{RoleManager, "*", ResourceBudgetItems, ActionUpdate},
+		{RoleManager, "*", ResourceBudgetItems, ActionDelete},
+		{RoleManager, "*", ResourceBudgetItemEntries, ActionCreate},
 		{RoleManager, "*", ResourceBudgetItemEntries, ActionRead},
+		{RoleManager, "*", ResourceBudgetItemEntries, ActionUpdate},
+		{RoleManager, "*", ResourceBudgetItemEntries, ActionDelete},
 		{RoleManager, "*", ResourceGovernmentFundingBills, ActionCreate},
 		{RoleManager, "*", ResourceGovernmentFundingBills, ActionRead},
 		{RoleManager, "*", ResourceGovernmentFundingBills, ActionDelete},
+		{RoleManager, "*", ResourceFundings, ActionRead},
 		{RoleManager, "*", ResourceStatistics, ActionRead},
 
 		// Member - read-only access to employees, children, contracts in their org
