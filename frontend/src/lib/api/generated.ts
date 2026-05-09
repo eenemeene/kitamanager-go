@@ -6876,6 +6876,66 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/organizations/{orgId}/government-funding-bills/unmatched-children': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List bill children with no KitaManager record
+     * @description Returns bill rows whose voucher_number has no child_vouchers row anywhere — i.e. the Bezirks-Jugendamt is billing for a child KitaManager has never recorded. Each row carries metadata from the earliest bill the voucher was seen in, so the caller can pre-fill a contract start date.
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description Organization ID */
+          orgId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['UnmatchedBillChildResponse'][];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/organizations/{orgId}/government-funding-bills/{billId}': {
     parameters: {
       query?: never;
@@ -13658,6 +13718,24 @@ export interface components {
       otpauth_uri: string;
       /** @example JBSWY3DPEHPK3PXP */
       secret: string;
+    };
+    UnmatchedBillChildResponse: {
+      /** @example 03.20 */
+      bill_birth_date: string;
+      /** @example Mustermann,Max */
+      child_name: string;
+      /** @example 11 */
+      district: number;
+      /** @example Max */
+      first_name: string;
+      /** @example 2025-01-01 */
+      first_seen_bill_from: string;
+      /** @example 42 */
+      first_seen_bill_id: number;
+      /** @example Mustermann */
+      last_name: string;
+      /** @example GB-12345678901-02 */
+      voucher_number: string;
     };
     UserAddOrganizationRequest: {
       /** @example 1 */

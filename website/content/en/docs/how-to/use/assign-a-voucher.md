@@ -34,6 +34,18 @@ The **Children Without Vouchers** card on the dashboard remains the fastest path
 
 Re-submitting the same voucher to the same child is a no-op. Submitting a voucher already attached to a different child returns a conflict; remove it from the previous child first using the Vouchers dialog.
 
+## Add a child the bill knows about but KitaManager doesn't
+
+If the Bezirks-Jugendamt is billing for a Kita-Gutschein that isn't assigned to anyone in KitaManager, the dashboard surfaces it under **Children Only In The Bill**. This is the inverse of *Children Without Vouchers* — the bill has the child, you don't.
+
+1. Click **Add to KitaManager** on the row.
+2. The dialog opens with name, birthdate, and contract start pre-filled from the bill data.
+3. **Verify the birthdate against the Kita-Gutschein paperwork before saving.** The bill format only carries month and year, so the day defaults to the 1st of the first-seen billing month — that's almost certainly wrong as a real birthday and *will* skew the school-enrollment classification ("Muss-Kind") and any age-based statistics if left as-is.
+4. Pick a section and gender (these aren't in the bill data).
+5. Click **Create child** — the dialog creates the child, an initial contract starting on the bill's first-seen month, and assigns the voucher number, in that order.
+
+If the voucher is already on a different child globally (extremely unusual — the constraint is global), the create-child step still succeeds but the voucher assignment returns a 409. The dialog surfaces the conflict so you know to clean it up via the Vouchers dialog on the other child first.
+
 ## Who can do what
 
 - **View voucher numbers**: every role with access to the child (admin, manager, member, staff).

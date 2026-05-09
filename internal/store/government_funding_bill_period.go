@@ -1,7 +1,9 @@
 package store
 
 import (
+	"cmp"
 	"context"
+	"slices"
 	"time"
 
 	"gorm.io/gorm"
@@ -57,6 +59,73 @@ func (s *GovernmentFundingBillPeriodStore) FindByOrganization(ctx context.Contex
 	}
 
 	return periods, total, nil
+}
+
+// UnmatchedBillChildRow is the projection of a bill row whose voucher
+// has no child_vouchers row anywhere — i.e. the Bezirks-Jugendamt is
+// billing for a child this Kita has never recorded in KitaManager.
+//
+// Voucher_number is the natural key. The query picks the row from the
+// EARLIEST bill containing that voucher (DISTINCT ON ordered by
+// from_date ASC), so the caller can pre-fill a contract start date
+// from a real bill date instead of guessing.
+//
+// The "no child_vouchers row" check is GLOBAL (not org-scoped) on
+// purpose: voucher_number is globally unique by DB constraint, so if
+// the row exists in another org we can't reuse it here either —
+// excluding upfront saves the user a doomed POST + 409 cycle.
+type UnmatchedBillChildRow struct {
+	VoucherNumber string    `gorm:"column:voucher_number"`
+	ChildName     string    `gorm:"column:child_name"`
+	BirthDate     string    `gorm:"column:birth_date"`
+	District      int64     `gorm:"column:district"`
+	BillID        uint      `gorm:"column:bill_id"`
+	BillFrom      time.Time `gorm:"column:bill_from"`
+}
+
+// FindUnmatchedBillChildren returns one row per voucher_number that
+// appears in any bill for orgID but has no child_vouchers row anywhere.
+// The returned row carries the metadata from the EARLIEST bill the
+// voucher was seen in, so the caller can derive a contract start date.
+//
+// Ordering: by bill_from ASC, then voucher_number — so the dashboard
+// list shows the longest-unmatched cases first (most likely to be a
+// real "we never created this child" gap, not just "we just uploaded
+// a bill and haven't synced yet").
+func (s *GovernmentFundingBillPeriodStore) FindUnmatchedBillChildren(ctx context.Context, orgID uint) ([]UnmatchedBillChildRow, error) {
+	var rows []UnmatchedBillChildRow
+	err := DBFromContext(ctx, s.db).
+		Raw(`
+			SELECT DISTINCT ON (c.voucher_number)
+			  c.voucher_number,
+			  c.child_name,
+			  c.birth_date,
+			  c.district,
+			  p.id AS bill_id,
+			  p.from_date AS bill_from
+			FROM government_funding_bill_children c
+			JOIN government_funding_bill_periods p ON p.id = c.period_id
+			WHERE p.organization_id = ?
+			  AND NOT EXISTS (
+			    SELECT 1 FROM child_vouchers cv
+			    WHERE cv.voucher_number = c.voucher_number
+			  )
+			ORDER BY c.voucher_number, p.from_date ASC
+		`, orgID).
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	// Re-sort for UI: earliest first-seen first, then voucher number for stability.
+	// DISTINCT ON forced the inner ORDER BY (voucher_number, from_date), so we
+	// re-order in Go for the desired display order.
+	slices.SortFunc(rows, func(a, b UnmatchedBillChildRow) int {
+		return cmp.Or(
+			a.BillFrom.Compare(b.BillFrom),
+			cmp.Compare(a.VoucherNumber, b.VoucherNumber),
+		)
+	})
+	return rows, nil
 }
 
 func (s *GovernmentFundingBillPeriodStore) FindByOrganizationAndVoucherNumber(ctx context.Context, orgID uint, voucherNumber string) ([]models.BillAppearance, error) {

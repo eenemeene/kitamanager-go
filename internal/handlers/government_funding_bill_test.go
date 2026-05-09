@@ -499,6 +499,182 @@ func TestGovernmentFundingBillHandler_Compare_NotFound(t *testing.T) {
 	}
 }
 
+// TestGovernmentFundingBillHandler_UnmatchedBillChildren verifies the
+// happy path: bill rows whose voucher has no child_vouchers row anywhere
+// surface as one entry per voucher. The earliest bill is the one whose
+// metadata lands in the response.
+func TestGovernmentFundingBillHandler_UnmatchedBillChildren(t *testing.T) {
+	db := setupTestDB(t)
+	handler := createGovBillHandler(db)
+
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "unmatched-bill@example.com", "password")
+
+	// Three bills covering Jan, Feb, March 2025.
+	mkBill := func(month time.Month, children []models.GovernmentFundingBillChild) {
+		to := time.Date(2025, month+1, 0, 0, 0, 0, 0, time.UTC)
+		period := &models.GovernmentFundingBillPeriod{
+			OrganizationID: org.ID,
+			Period:         models.Period{From: time.Date(2025, month, 1, 0, 0, 0, 0, time.UTC), To: &to},
+			FileName:       fmt.Sprintf("abrechnung_%02d-25.xlsx", month),
+			FileSha256:     fmt.Sprintf("hash_%02d_%d", month, org.ID),
+			FacilityName:   "Kita Test",
+			FacilityTotal:  300000,
+			CreatedBy:      &user.ID,
+			Children:       children,
+		}
+		if err := db.Create(period).Error; err != nil {
+			t.Fatalf("setup: create bill: %v", err)
+		}
+	}
+
+	// Voucher A: present in Feb + March bills, no child_vouchers row → unmatched, earliest = Feb
+	mkBill(time.February, []models.GovernmentFundingBillChild{
+		{VoucherNumber: "GB-AAAAAAAAAAA-01", ChildName: "Beispiel,Anna", BirthDate: "03.20", District: 1},
+	})
+	mkBill(time.March, []models.GovernmentFundingBillChild{
+		{VoucherNumber: "GB-AAAAAAAAAAA-01", ChildName: "Beispiel,Anna", BirthDate: "03.20", District: 1},
+		{VoucherNumber: "GB-BBBBBBBBBBB-01", ChildName: "Muster,Bert", BirthDate: "07.21", District: 11},
+	})
+	// Voucher C: in Jan bill, has a matching child_voucher → MUST be excluded.
+	matched := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Carla", LastName: "Match", Gender: "female", Birthdate: time.Date(2020, 5, 5, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(matched)
+	db.Create(&models.ChildVoucher{ChildID: matched.ID, VoucherNumber: "GB-CCCCCCCCCCC-01", FirstSeen: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)})
+	mkBill(time.January, []models.GovernmentFundingBillChild{
+		{VoucherNumber: "GB-CCCCCCCCCCC-01", ChildName: "Match,Carla", BirthDate: "05.20", District: 2},
+	})
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/government-funding-bills/unmatched-children", handler.UnmatchedBillChildren)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/government-funding-bills/unmatched-children", org.ID), nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp []models.UnmatchedBillChildResponse
+	parseResponse(t, w, &resp)
+	if len(resp) != 2 {
+		t.Fatalf("expected 2 unmatched vouchers (A + B), got %d: %+v", len(resp), resp)
+	}
+
+	// Order: earliest-bill-first, then voucher_number for stability.
+	// A first seen Feb 1; B first seen March 1.
+	if resp[0].VoucherNumber != "GB-AAAAAAAAAAA-01" {
+		t.Errorf("expected first row voucher A, got %s", resp[0].VoucherNumber)
+	}
+	if resp[0].FirstSeenBillFrom != "2025-02-01" {
+		t.Errorf("expected A first_seen 2025-02-01, got %s", resp[0].FirstSeenBillFrom)
+	}
+	if resp[0].FirstName != "Anna" || resp[0].LastName != "Beispiel" {
+		t.Errorf("name parse wrong: first=%q last=%q", resp[0].FirstName, resp[0].LastName)
+	}
+	if resp[0].BillBirthDate != "03.20" {
+		t.Errorf("expected bill_birth_date 03.20, got %s", resp[0].BillBirthDate)
+	}
+
+	if resp[1].VoucherNumber != "GB-BBBBBBBBBBB-01" {
+		t.Errorf("expected second row voucher B, got %s", resp[1].VoucherNumber)
+	}
+	if resp[1].FirstSeenBillFrom != "2025-03-01" {
+		t.Errorf("expected B first_seen 2025-03-01, got %s", resp[1].FirstSeenBillFrom)
+	}
+
+	// Voucher C MUST NOT be present (it has a child_vouchers row).
+	for _, row := range resp {
+		if row.VoucherNumber == "GB-CCCCCCCCCCC-01" {
+			t.Errorf("voucher C is matched and must NOT appear in unmatched list, got %+v", row)
+		}
+	}
+}
+
+// Empty / cross-org isolation case: an unmatched voucher in another org
+// must not leak into this org's response.
+func TestGovernmentFundingBillHandler_UnmatchedBillChildren_CrossOrgIsolation(t *testing.T) {
+	db := setupTestDB(t)
+	handler := createGovBillHandler(db)
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+	user := createTestUser(t, db, "User", "unmatched-cross@example.com", "password")
+
+	// Unmatched voucher only in org2.
+	to := time.Date(2025, 3, 0, 0, 0, 0, 0, time.UTC)
+	db.Create(&models.GovernmentFundingBillPeriod{
+		OrganizationID: org2.ID,
+		Period:         models.Period{From: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC), To: &to},
+		FileName:       "org2-feb.xlsx",
+		FileSha256:     "hash-org2",
+		FacilityName:   "Kita Other",
+		CreatedBy:      &user.ID,
+		Children: []models.GovernmentFundingBillChild{
+			{VoucherNumber: "GB-OTHERORG001-01", ChildName: "Foo,Bar", BirthDate: "01.20", District: 5},
+		},
+	})
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/government-funding-bills/unmatched-children", handler.UnmatchedBillChildren)
+
+	// Querying org1 must return empty.
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/government-funding-bills/unmatched-children", org1.ID), nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var resp []models.UnmatchedBillChildResponse
+	parseResponse(t, w, &resp)
+	if len(resp) != 0 {
+		t.Errorf("expected 0 (cross-org leak guard), got %d", len(resp))
+	}
+}
+
+// A voucher that's in child_vouchers in a DIFFERENT org must STILL be
+// excluded from this org's unmatched list — voucher_number is globally
+// unique so AssignVoucher would 409 anyway. Save the user a doomed POST.
+func TestGovernmentFundingBillHandler_UnmatchedBillChildren_ExcludesGloballyAssigned(t *testing.T) {
+	db := setupTestDB(t)
+	handler := createGovBillHandler(db)
+
+	org1 := createTestOrganization(t, db, "Org 1")
+	org2 := createTestOrganization(t, db, "Org 2")
+	user := createTestUser(t, db, "User", "unmatched-global@example.com", "password")
+
+	// Voucher X is in a child_vouchers row in org2.
+	otherChild := &models.Child{
+		Person: models.Person{OrganizationID: org2.ID, FirstName: "X", LastName: "Y", Gender: "male", Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(otherChild)
+	db.Create(&models.ChildVoucher{ChildID: otherChild.ID, VoucherNumber: "GB-GLOBAL00001-01", FirstSeen: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)})
+
+	// The same voucher_number appears in org1's bill — but is "claimed" globally.
+	to := time.Date(2025, 3, 0, 0, 0, 0, 0, time.UTC)
+	db.Create(&models.GovernmentFundingBillPeriod{
+		OrganizationID: org1.ID,
+		Period:         models.Period{From: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC), To: &to},
+		FileName:       "org1-feb.xlsx",
+		FileSha256:     "hash-org1",
+		FacilityName:   "Kita One",
+		CreatedBy:      &user.ID,
+		Children: []models.GovernmentFundingBillChild{
+			{VoucherNumber: "GB-GLOBAL00001-01", ChildName: "Foo,Bar", BirthDate: "01.20", District: 5},
+		},
+	})
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/government-funding-bills/unmatched-children", handler.UnmatchedBillChildren)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/government-funding-bills/unmatched-children", org1.ID), nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var resp []models.UnmatchedBillChildResponse
+	parseResponse(t, w, &resp)
+	if len(resp) != 0 {
+		t.Errorf("expected 0 (voucher globally assigned to other org), got %d: %+v", len(resp), resp)
+	}
+}
+
 func TestGovernmentFundingBillHandler_AssignVoucher(t *testing.T) {
 	db := setupTestDB(t)
 	handler := createGovBillHandler(db)

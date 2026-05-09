@@ -6407,6 +6407,55 @@
                 }
             }
         },
+        "/api/v1/organizations/{orgId}/government-funding-bills/unmatched-children": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns bill rows whose voucher_number has no child_vouchers row anywhere — i.e. the Bezirks-Jugendamt is billing for a child KitaManager has never recorded. Each row carries metadata from the earliest bill the voucher was seen in, so the caller can pre-fill a contract start date.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "government-funding-bills"
+                ],
+                "summary": "List bill children with no KitaManager record",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UnmatchedBillChildResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/organizations/{orgId}/government-funding-bills/{billId}": {
             "get": {
                 "security": [
@@ -15343,6 +15392,43 @@
                 "secret": {
                     "type": "string",
                     "example": "JBSWY3DPEHPK3PXP"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.UnmatchedBillChildResponse": {
+            "type": "object",
+            "properties": {
+                "bill_birth_date": {
+                    "type": "string",
+                    "example": "03.20"
+                },
+                "child_name": {
+                    "type": "string",
+                    "example": "Mustermann,Max"
+                },
+                "district": {
+                    "type": "integer",
+                    "example": 11
+                },
+                "first_name": {
+                    "type": "string",
+                    "example": "Max"
+                },
+                "first_seen_bill_from": {
+                    "type": "string",
+                    "example": "2025-01-01"
+                },
+                "first_seen_bill_id": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "last_name": {
+                    "type": "string",
+                    "example": "Mustermann"
+                },
+                "voucher_number": {
+                    "type": "string",
+                    "example": "GB-12345678901-02"
                 }
             }
         },

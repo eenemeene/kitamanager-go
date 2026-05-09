@@ -1,11 +1,14 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Users, Baby, Clock, Upload, ArrowRight, Check } from 'lucide-react';
+import { Users, Baby, Clock, Upload, ArrowRight, Check, UserPlus } from 'lucide-react';
+import { AddChildFromBillDialog } from '@/components/dashboard/add-child-from-bill-dialog';
+import { useCurrentRole, hasMinimumRole } from '@/hooks/use-current-role';
+import type { UnmatchedBillChild } from '@/lib/api/types';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { StepPromotionsWidget } from '@/components/dashboard/step-promotions-widget';
 import { UpcomingChildrenWidget } from '@/components/dashboard/upcoming-children-widget';
@@ -84,6 +87,19 @@ export default function OrgDashboardPage() {
     enabled: !!orgId,
     staleTime: 5 * 60 * 1000,
   });
+
+  // Bill children with no KitaManager record (inverse of Children Without Vouchers).
+  const { data: unmatchedBillChildren } = useQuery({
+    queryKey: queryKeys.governmentFundingBillPeriods.unmatchedChildren(orgId),
+    queryFn: () => apiClient.getUnmatchedBillChildren(orgId),
+    enabled: !!orgId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Add-from-bill dialog state. Opens when the user picks a row.
+  const role = useCurrentRole();
+  const canCreateChildren = hasMinimumRole(role, 'manager');
+  const [addFromBillTarget, setAddFromBillTarget] = useState<UnmatchedBillChild | null>(null);
 
   // Accept suggestion: rename child to match bill name and assign the voucher
   const acceptSuggestion = useMutation({
@@ -274,6 +290,85 @@ export default function OrgDashboardPage() {
           </CardContent>
         </Card>
       )}
+
+      {unmatchedBillChildren && unmatchedBillChildren.length > 0 && (
+        <Card>
+          <CardHeader className="space-y-1 pb-2">
+            <div className="flex flex-row items-center justify-between">
+              <CardTitle className="text-base font-medium">
+                {t('dashboard.unmatchedBillChildren')}
+              </CardTitle>
+              <Badge variant="secondary">{unmatchedBillChildren.length}</Badge>
+            </div>
+            <CardDescription>{t('dashboard.unmatchedBillChildrenDescription')}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('common.name')}</TableHead>
+                  <TableHead className="hidden md:table-cell">
+                    {t('dashboard.voucherNumber')}
+                  </TableHead>
+                  <TableHead className="hidden md:table-cell">
+                    {t('dashboard.billBirthDate')}
+                  </TableHead>
+                  <TableHead className="hidden lg:table-cell">{t('dashboard.firstSeen')}</TableHead>
+                  <TableHead className="text-right">{t('common.actions')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {unmatchedBillChildren.map((row) => (
+                  <TableRow key={row.voucher_number}>
+                    <TableCell className="font-medium">
+                      {row.first_name} {row.last_name}
+                    </TableCell>
+                    <TableCell className="hidden font-mono text-xs md:table-cell">
+                      {row.voucher_number}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">{row.bill_birth_date}</TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {row.first_seen_bill_from}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {canCreateChildren && (
+                        <Tooltip delayDuration={0}>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setAddFromBillTarget(row)}
+                            >
+                              <UserPlus className="mr-1 h-3 w-3" />
+                              {t('dashboard.addToKitaManager')}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            {t('dashboard.addToKitaManagerTooltip')}
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Keyed by voucher_number so the dialog remounts (initialisers
+          fire fresh) when the user picks a different bill row, instead
+          of relying on a forbidden setState-in-useEffect reset. */}
+      <AddChildFromBillDialog
+        key={addFromBillTarget?.voucher_number ?? 'closed'}
+        open={addFromBillTarget !== null}
+        onOpenChange={(next) => {
+          if (!next) setAddFromBillTarget(null);
+        }}
+        orgId={orgId}
+        billChild={addFromBillTarget}
+      />
 
       {propertyMismatches.length > 0 && (
         <Card>
