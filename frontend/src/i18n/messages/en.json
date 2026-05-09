@@ -157,6 +157,8 @@
     "firstSeen": "First seen",
     "addToKitaManager": "Add to KitaManager",
     "addToKitaManagerTooltip": "Create the child in KitaManager with name, birthdate, and contract pre-filled from the bill. The voucher will be assigned automatically.",
+    "linkToExistingChild": "Link to {name}",
+    "linkToExistingChildTooltip": "A KitaManager child with a matching name and birth month already exists (active or ended contract). Clicking links the bill voucher to that child without creating a duplicate.",
     "propertyMismatches": "Contract Property Mismatches",
     "propertyMismatchesDescription": "Children whose contract properties in KitaManager don't match the latest ISBJ bill. Fix the contract values or re-upload the corrected bill.",
     "mismatchDifferent": "different",

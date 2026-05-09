@@ -12475,6 +12475,27 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.ExistingChildMatchResponse": {
+            "type": "object",
+            "properties": {
+                "birthdate": {
+                    "type": "string",
+                    "example": "2020-03-15"
+                },
+                "first_name": {
+                    "type": "string",
+                    "example": "Max"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "last_name": {
+                    "type": "string",
+                    "example": "Mustermann"
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.FactorActivateRequest": {
             "type": "object",
             "properties": {
@@ -15415,6 +15436,9 @@ const docTemplate = `{
                 "district": {
                     "type": "integer",
                     "example": 11
+                },
+                "existing_child_match": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ExistingChildMatchResponse"
                 },
                 "first_name": {
                     "type": "string",

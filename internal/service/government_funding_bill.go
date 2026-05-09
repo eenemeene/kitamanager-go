@@ -233,25 +233,56 @@ func (s *GovernmentFundingBillService) ChildrenWithoutVouchers(ctx context.Conte
 	return result, nil
 }
 
+// existingChildMatchThreshold is the minimum fuzzy score for promoting
+// a KitaManager child to "this is the same person the bill is talking
+// about". Same threshold as the suggestion path uses, so the two
+// matchers stay symmetric.
+const existingChildMatchThreshold = 0.65
+
 // ListUnmatchedBillChildren returns one row per voucher_number that
 // appears in any bill for the org but has no child_vouchers row
 // anywhere. The dashboard surfaces these as "the Bezirks-Jugendamt is
-// billing for a child you don't have on file" — the inverse of
+// billing for a child whose voucher isn't linked" — the inverse of
 // "Children Without Vouchers".
 //
 // Each row carries the EARLIEST bill the voucher was seen in, so the
 // caller can pre-fill a contract start date from real bill data
 // instead of the user having to look it up manually.
+//
+// For each row we also probe whether the bill's parsed name + birth
+// month/year match an existing KitaManager child (active or ended
+// contract — the residual-settlement case for departed children
+// specifically needs the ended-contract carve-out). The probe uses
+// the same fuzzy infrastructure as the suggestion path:
+//
+//   - ±2 month birth tolerance, with a 0.3 score penalty when the
+//     bill's MM.YY differs from the DB birthdate
+//   - Jaro-Winkler token similarity on the names (handles truncated
+//     middle names, hyphenated last names, minor spelling drift)
+//
+// If exactly one candidate scores ≥ 0.65, the response carries that
+// child's identity so the frontend can route the user to "Link
+// voucher" instead of "Create new child". Multiple candidates above
+// threshold → no match returned (ambiguous).
 func (s *GovernmentFundingBillService) ListUnmatchedBillChildren(ctx context.Context, orgID uint) ([]models.UnmatchedBillChildResponse, error) {
 	rows, err := s.billPeriodStore.FindUnmatchedBillChildren(ctx, orgID)
 	if err != nil {
 		return nil, apperror.InternalWrap(err, "failed to list unmatched bill children")
 	}
 
+	// Fetch the org's full child roster once — fuzzy scoring runs in
+	// memory against this slice for each unmatched bill row. For
+	// typical Kita sizes the slice is small (≤500 rows) and avoids
+	// the N+1 query that a per-row store call would incur.
+	allChildren, err := s.childVoucherStore.FindAllByOrgMinimal(ctx, orgID)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "failed to load children for matching")
+	}
+
 	out := make([]models.UnmatchedBillChildResponse, 0, len(rows))
 	for _, r := range rows {
 		first, last := parseBillChildName(r.ChildName)
-		out = append(out, models.UnmatchedBillChildResponse{
+		resp := models.UnmatchedBillChildResponse{
 			VoucherNumber:     r.VoucherNumber,
 			ChildName:         r.ChildName,
 			FirstName:         first,
@@ -260,9 +291,68 @@ func (s *GovernmentFundingBillService) ListUnmatchedBillChildren(ctx context.Con
 			District:          r.District,
 			FirstSeenBillID:   r.BillID,
 			FirstSeenBillFrom: r.BillFrom.Format(models.DateFormat),
-		})
+		}
+
+		if match := matchExistingChild(r, first, last, allChildren); match != nil {
+			resp.ExistingChildMatch = match
+		}
+
+		out = append(out, resp)
 	}
 	return out, nil
+}
+
+// matchExistingChild scores each candidate KitaManager child against
+// the bill row and returns the best unique match above threshold, or
+// nil if there's no match / it's ambiguous. Pure function for testability.
+func matchExistingChild(r store.UnmatchedBillChildRow, billFirst, billLast string, candidates []models.Child) *models.ExistingChildMatchResponse {
+	if billFirst == "" || billLast == "" {
+		return nil
+	}
+	billMonth, billYear, err := parseBillBirthMonth(r.BirthDate)
+	if err != nil {
+		return nil
+	}
+
+	type scored struct {
+		child *models.Child
+		score float64
+	}
+	var bestScored scored
+	above := 0
+
+	for i := range candidates {
+		c := &candidates[i]
+		delta := monthDelta(c.Birthdate, billMonth, billYear)
+		if delta > maxBirthDateMismatchMonths {
+			continue
+		}
+		score := fuzzy.NameSimilarity(c.FirstName, c.LastName, billFirst, billLast)
+		if delta != 0 {
+			score -= birthDateMismatchPenalty
+		}
+		if score < existingChildMatchThreshold {
+			continue
+		}
+		above++
+		if score > bestScored.score {
+			bestScored = scored{child: c, score: score}
+		}
+	}
+
+	// Exactly one candidate above threshold → unambiguous match.
+	// More than one → ambiguous; let the user resolve via a different
+	// path rather than guess.
+	if above != 1 || bestScored.child == nil {
+		return nil
+	}
+	c := bestScored.child
+	return &models.ExistingChildMatchResponse{
+		ID:        c.ID,
+		FirstName: c.FirstName,
+		LastName:  c.LastName,
+		Birthdate: c.Birthdate.Format(models.DateFormat),
+	}
 }
 
 // AssignVoucher links a voucher number to a child. The child must belong

@@ -157,6 +157,8 @@
     "firstSeen": "Erstmals gesehen",
     "addToKitaManager": "In KitaManager anlegen",
     "addToKitaManagerTooltip": "Legt das Kind in KitaManager an. Name, Geburtsdatum und Vertragsbeginn werden aus der Abrechnung vorbefüllt; der Gutschein wird automatisch zugewiesen.",
+    "linkToExistingChild": "Mit {name} verknüpfen",
+    "linkToExistingChildTooltip": "Ein KitaManager-Kind mit passendem Namen und Geburtsmonat existiert bereits (aktiver oder beendeter Vertrag). Ein Klick verknüpft die Gutscheinnummer mit diesem Kind, ohne ein Duplikat anzulegen.",
     "propertyMismatches": "Vertragsabweichungen",
     "propertyMismatchesDescription": "Kinder, deren Vertragseigenschaften in KitaManager von der letzten ISBJ-Abrechnung abweichen. Vertragswerte korrigieren oder die korrigierte Abrechnung neu hochladen.",
     "mismatchDifferent": "abweichend",

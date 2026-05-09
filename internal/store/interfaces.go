@@ -139,6 +139,10 @@ type ChildVoucherStorer interface {
 	// voucher number, or store.ErrNotFound if no row exists. Used by
 	// AssignVoucher's idempotent-vs-conflict disambiguation.
 	FindByVoucherNumber(ctx context.Context, voucherNumber string) (*models.ChildVoucher, error)
+	// FindAllByOrgMinimal returns minimal child records for the org —
+	// no contracts/voucher preload, no pagination. Used for in-memory
+	// fuzzy matching by the unmatched-bill-children path.
+	FindAllByOrgMinimal(ctx context.Context, orgID uint) ([]models.Child, error)
 	DeleteVouchersByChild(ctx context.Context, childID uint) error
 	// FindVoucherByID returns a single voucher by primary key, or
 	// ErrNotFound. Caller scopes to a child by checking the returned

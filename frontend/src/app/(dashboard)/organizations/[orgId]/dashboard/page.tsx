@@ -5,7 +5,16 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Users, Baby, Clock, Upload, ArrowRight, Check, UserPlus } from 'lucide-react';
+import {
+  Users,
+  Baby,
+  Clock,
+  Upload,
+  ArrowRight,
+  Check,
+  UserPlus,
+  Link as LinkIcon,
+} from 'lucide-react';
 import { AddChildFromBillDialog } from '@/components/dashboard/add-child-from-bill-dialog';
 import { useCurrentRole, hasMinimumRole } from '@/hooks/use-current-role';
 import type { UnmatchedBillChild } from '@/lib/api/types';
@@ -100,6 +109,23 @@ export default function OrgDashboardPage() {
   const role = useCurrentRole();
   const canCreateChildren = hasMinimumRole(role, 'manager');
   const [addFromBillTarget, setAddFromBillTarget] = useState<UnmatchedBillChild | null>(null);
+
+  // Link a bill voucher to an already-existing KitaManager child the
+  // server probe identified as a high-confidence name+birth match.
+  // Used for the residual-settlement case (child departed, voucher
+  // never linked) and the truncated/extended-name case where strict
+  // auto-discover missed the link at upload time.
+  const linkExistingMutation = useMutation({
+    mutationFn: async ({ childId, voucherNumber }: { childId: number; voucherNumber: string }) => {
+      await apiClient.assignChildVoucher(orgId, childId, voucherNumber);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.governmentFundingBillPeriods.unmatchedChildren(orgId),
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.children.withoutVouchers(orgId) });
+    },
+  });
 
   // Accept suggestion: rename child to match bill name and assign the voucher
   const acceptSuggestion = useMutation({
@@ -331,23 +357,48 @@ export default function OrgDashboardPage() {
                       {row.first_seen_bill_from}
                     </TableCell>
                     <TableCell className="text-right">
-                      {canCreateChildren && (
-                        <Tooltip delayDuration={0}>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setAddFromBillTarget(row)}
-                            >
-                              <UserPlus className="mr-1 h-3 w-3" />
-                              {t('dashboard.addToKitaManager')}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-xs">
-                            {t('dashboard.addToKitaManagerTooltip')}
-                          </TooltipContent>
-                        </Tooltip>
-                      )}
+                      {canCreateChildren &&
+                        (row.existing_child_match ? (
+                          <Tooltip delayDuration={0}>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={linkExistingMutation.isPending}
+                                onClick={() =>
+                                  linkExistingMutation.mutate({
+                                    childId: row.existing_child_match!.id,
+                                    voucherNumber: row.voucher_number,
+                                  })
+                                }
+                              >
+                                <LinkIcon className="mr-1 h-3 w-3" />
+                                {t('dashboard.linkToExistingChild', {
+                                  name: `${row.existing_child_match.first_name} ${row.existing_child_match.last_name}`,
+                                })}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              {t('dashboard.linkToExistingChildTooltip')}
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <Tooltip delayDuration={0}>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setAddFromBillTarget(row)}
+                              >
+                                <UserPlus className="mr-1 h-3 w-3" />
+                                {t('dashboard.addToKitaManager')}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              {t('dashboard.addToKitaManagerTooltip')}
+                            </TooltipContent>
+                          </Tooltip>
+                        ))}
                     </TableCell>
                   </TableRow>
                 ))}
