@@ -898,6 +898,21 @@ definitions:
     required:
     - voucher_number
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ChildVoucherResponse:
+    properties:
+      child_id:
+        example: 1
+        type: integer
+      first_seen:
+        format: date-time
+        type: string
+      id:
+        example: 1
+        type: integer
+      voucher_number:
+        example: GB-12345678901-02
+        type: string
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildWithoutVoucherResponse:
     properties:
       birthdate:
@@ -6764,6 +6779,46 @@ paths:
       tags:
       - children
   /api/v1/organizations/{orgId}/children/{childId}/vouchers:
+    get:
+      description: List all Kita-Gutschein numbers assigned to a child, ordered by
+        first_seen ascending. Visible to any role with read access to the child.
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Child ID
+        in: path
+        name: childId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildVoucherResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Child not found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List vouchers for a child
+      tags:
+      - children
     post:
       consumes:
       - application/json
@@ -6812,6 +6867,50 @@ paths:
       security:
       - BearerAuth: []
       summary: Assign a voucher to a child
+      tags:
+      - children
+  /api/v1/organizations/{orgId}/children/{childId}/vouchers/{voucherId}:
+    delete:
+      description: Hard-deletes a single voucher row. The freed unique slot allows
+        the same number to be re-assigned to another child. Past bill rows that referenced
+        the deleted voucher_number lose their child-link in /billing pages; the audit
+        log preserves the trail.
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Child ID
+        in: path
+        name: childId
+        required: true
+        type: integer
+      - description: Voucher ID
+        in: path
+        name: voucherId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Child or voucher not found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove a voucher from a child
       tags:
       - children
   /api/v1/organizations/{orgId}/children/attendance:

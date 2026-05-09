@@ -428,6 +428,21 @@
     "diverse": "Diverse",
     "selectGender": "Select Gender"
   },
+  "vouchers": {
+    "dialogTitle": "Vouchers",
+    "assignedLabel": "Assigned voucher numbers",
+    "noneAssigned": "No voucher numbers assigned yet.",
+    "addLabel": "Add voucher number",
+    "addAction": "Add",
+    "removeAction": "Remove voucher {number}",
+    "formatHint": "Format: GB- followed by 11 digits, dash, 2 digits (e.g. GB-12345678901-02).",
+    "addSuccess": "Voucher added.",
+    "addError": "Failed to add voucher.",
+    "removeSuccess": "Voucher removed.",
+    "removeError": "Failed to remove voucher.",
+    "removeConfirmTitle": "Remove voucher?",
+    "removeConfirmBody": "Voucher {number} will be unlinked from this child. Past bills that referenced this voucher will lose their child-link in the billing history. This cannot be undone."
+  },
   "children": {
     "title": "Children",
     "description": "Children currently enrolled or scheduled to attend. Add new children, manage care contracts and Kita-Gutschein numbers, and track funding. Use the date picker to view the roster active on a specific day.",

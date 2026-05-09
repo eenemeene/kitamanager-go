@@ -7,6 +7,7 @@ import {
   FileText,
   History,
   Receipt,
+  Ticket,
   ArrowDown,
   ArrowUp,
   AlertTriangle,
@@ -47,6 +48,7 @@ export interface ChildrenTableProps {
   onAddContract: (child: Child) => void;
   onEdit: (child: Child) => void;
   onDelete: (child: Child) => void;
+  onManageVouchers: (child: Child) => void;
   onAdjustContractEnd?: (child: Child, contractId: number, newTo: string) => void;
   isAdjustingContractEnd?: boolean;
 }
@@ -62,6 +64,7 @@ export function ChildrenTable({
   onAddContract,
   onEdit,
   onDelete,
+  onManageVouchers,
   onAdjustContractEnd,
   isAdjustingContractEnd,
 }: ChildrenTableProps) {
@@ -290,6 +293,16 @@ export function ChildrenTable({
                       className="hidden lg:inline-flex"
                     >
                       <FileText className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onManageVouchers(child)}
+                      title={t('vouchers.dialogTitle')}
+                      aria-label={t('vouchers.dialogTitle')}
+                      className="hidden lg:inline-flex"
+                    >
+                      <Ticket className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"

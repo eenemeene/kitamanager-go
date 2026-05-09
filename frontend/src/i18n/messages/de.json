@@ -428,6 +428,21 @@
     "diverse": "Divers",
     "selectGender": "Geschlecht auswählen"
   },
+  "vouchers": {
+    "dialogTitle": "Voucher-Nummern",
+    "assignedLabel": "Zugewiesene Gutschein-Nummern",
+    "noneAssigned": "Noch keine Gutschein-Nummern zugewiesen.",
+    "addLabel": "Gutschein-Nummer hinzufügen",
+    "addAction": "Hinzufügen",
+    "removeAction": "Gutschein {number} entfernen",
+    "formatHint": "Format: GB- gefolgt von 11 Ziffern, Bindestrich, 2 Ziffern (z. B. GB-12345678901-02).",
+    "addSuccess": "Gutschein hinzugefügt.",
+    "addError": "Gutschein konnte nicht hinzugefügt werden.",
+    "removeSuccess": "Gutschein entfernt.",
+    "removeError": "Gutschein konnte nicht entfernt werden.",
+    "removeConfirmTitle": "Gutschein entfernen?",
+    "removeConfirmBody": "Gutschein {number} wird von diesem Kind getrennt. Vergangene Rechnungen, die diesen Gutschein referenzieren, verlieren in der Abrechnungs-Historie ihre Verknüpfung zum Kind. Diese Aktion kann nicht rückgängig gemacht werden."
+  },
   "children": {
     "title": "Kinder",
     "description": "Aktuell betreute oder angemeldete Kinder. Neue Kinder anlegen, Betreuungsverträge und Kita-Gutscheinnummern verwalten und Förderbeträge nachverfolgen. Mit dem Datumsschalter wird der Stand für einen bestimmten Tag angezeigt.",

@@ -24,3 +24,21 @@ type ChildVoucher struct {
 type ChildVoucherCreateRequest struct {
 	VoucherNumber string `json:"voucher_number" binding:"required,voucher" example:"GB-12345678901-02"`
 }
+
+// ChildVoucherResponse is the response shape for a single voucher row.
+type ChildVoucherResponse struct {
+	ID            uint      `json:"id" example:"1"`
+	ChildID       uint      `json:"child_id" example:"1"`
+	VoucherNumber string    `json:"voucher_number" example:"GB-12345678901-02"`
+	FirstSeen     time.Time `json:"first_seen" format:"date-time"`
+}
+
+// ToResponse converts a ChildVoucher to its response DTO.
+func (v *ChildVoucher) ToResponse() ChildVoucherResponse {
+	return ChildVoucherResponse{
+		ID:            v.ID,
+		ChildID:       v.ChildID,
+		VoucherNumber: v.VoucherNumber,
+		FirstSeen:     v.FirstSeen,
+	}
+}

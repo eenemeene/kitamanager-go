@@ -61,6 +61,7 @@ import type {
   ChildBillingHistoryResponse,
   ChildrenBillingSummaryResponse,
   ChildWithoutVoucherResponse,
+  ChildVoucher,
   PayPlan,
   PayPlanDetail,
   PayPlanCreateRequest,
@@ -619,6 +620,17 @@ class ApiClient {
     await this.client.post(`/organizations/${orgId}/children/${childId}/vouchers`, {
       voucher_number: voucherNumber,
     });
+  }
+
+  async getChildVouchers(orgId: number, childId: number): Promise<ChildVoucher[]> {
+    const response = await this.client.get<ChildVoucher[]>(
+      `/organizations/${orgId}/children/${childId}/vouchers`
+    );
+    return response.data;
+  }
+
+  async removeChildVoucher(orgId: number, childId: number, voucherId: number): Promise<void> {
+    await this.client.delete(`/organizations/${orgId}/children/${childId}/vouchers/${voucherId}`);
   }
 
   async createChildContract(

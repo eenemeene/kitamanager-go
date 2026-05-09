@@ -360,6 +360,69 @@ func (h *GovernmentFundingBillHandler) Delete(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// ListChildVouchers godoc
+// @Summary List vouchers for a child
+// @Description List all Kita-Gutschein numbers assigned to a child, ordered by first_seen ascending. Visible to any role with read access to the child.
+// @Tags children
+// @Produce json
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Param childId path int true "Child ID"
+// @Success 200 {array} models.ChildVoucherResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse "Child not found"
+// @Router /api/v1/organizations/{orgId}/children/{childId}/vouchers [get]
+func (h *GovernmentFundingBillHandler) ListChildVouchers(c *gin.Context) {
+	orgID, childID, ok := parseOrgAndResourceID(c, "childId")
+	if !ok {
+		return
+	}
+
+	vouchers, err := h.service.ListVouchersForChild(c.Request.Context(), childID, orgID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	resp := make([]models.ChildVoucherResponse, len(vouchers))
+	for i := range vouchers {
+		resp[i] = vouchers[i].ToResponse()
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+// RemoveChildVoucher godoc
+// @Summary Remove a voucher from a child
+// @Description Hard-deletes a single voucher row. The freed unique slot allows the same number to be re-assigned to another child. Past bill rows that referenced the deleted voucher_number lose their child-link in /billing pages; the audit log preserves the trail.
+// @Tags children
+// @Produce json
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Param childId path int true "Child ID"
+// @Param voucherId path int true "Voucher ID"
+// @Success 204 "No Content"
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse "Child or voucher not found"
+// @Router /api/v1/organizations/{orgId}/children/{childId}/vouchers/{voucherId} [delete]
+func (h *GovernmentFundingBillHandler) RemoveChildVoucher(c *gin.Context) {
+	orgID, childID, voucherID, ok := parseOrgResourceAndSubID(c, "childId", "voucherId")
+	if !ok {
+		return
+	}
+
+	voucherNumber, err := h.service.RemoveVoucher(c.Request.Context(), voucherID, childID, orgID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	auditDelete(c, h.auditService, "child_voucher", voucherID, voucherNumber)
+
+	c.Status(http.StatusNoContent)
+}
+
 // AssignVoucher godoc
 // @Summary Assign a voucher to a child
 // @Description Link a Gutschein number to a child. Idempotent — assigning an already-known voucher is a no-op.

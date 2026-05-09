@@ -38,6 +38,10 @@ jest.mock('@/lib/api/client', () => ({
     getChildrenExportUrl: jest
       .fn()
       .mockReturnValue('/api/v1/organizations/1/children/export/excel'),
+    // Indirectly required: VouchersDialog → useCurrentRole → auth-store
+    // calls setOnUnauthorized at module load. Without it, Jest hits an
+    // "is not a function" on the mock.
+    setOnUnauthorized: jest.fn(),
   },
   getErrorMessage: jest.fn((e: unknown, f: string) => f),
 }));

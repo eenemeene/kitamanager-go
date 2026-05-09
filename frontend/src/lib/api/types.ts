@@ -125,6 +125,7 @@ export type ContractBatchUpdateRequest = S['ChildContractBatchUpdateRequest'];
 
 export type ChildWithoutVoucherResponse = S['ChildWithoutVoucherResponse'];
 export type VoucherSuggestion = S['ChildVoucherCreateRequest'];
+export type ChildVoucher = S['ChildVoucherResponse'];
 
 // ============================================================
 // Sections
