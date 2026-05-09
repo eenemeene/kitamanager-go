@@ -233,6 +233,38 @@ func (s *GovernmentFundingBillService) ChildrenWithoutVouchers(ctx context.Conte
 	return result, nil
 }
 
+// ListUnmatchedBillChildren returns one row per voucher_number that
+// appears in any bill for the org but has no child_vouchers row
+// anywhere. The dashboard surfaces these as "the Bezirks-Jugendamt is
+// billing for a child you don't have on file" — the inverse of
+// "Children Without Vouchers".
+//
+// Each row carries the EARLIEST bill the voucher was seen in, so the
+// caller can pre-fill a contract start date from real bill data
+// instead of the user having to look it up manually.
+func (s *GovernmentFundingBillService) ListUnmatchedBillChildren(ctx context.Context, orgID uint) ([]models.UnmatchedBillChildResponse, error) {
+	rows, err := s.billPeriodStore.FindUnmatchedBillChildren(ctx, orgID)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "failed to list unmatched bill children")
+	}
+
+	out := make([]models.UnmatchedBillChildResponse, 0, len(rows))
+	for _, r := range rows {
+		first, last := parseBillChildName(r.ChildName)
+		out = append(out, models.UnmatchedBillChildResponse{
+			VoucherNumber:     r.VoucherNumber,
+			ChildName:         r.ChildName,
+			FirstName:         first,
+			LastName:          last,
+			BillBirthDate:     r.BirthDate,
+			District:          r.District,
+			FirstSeenBillID:   r.BillID,
+			FirstSeenBillFrom: r.BillFrom.Format(models.DateFormat),
+		})
+	}
+	return out, nil
+}
+
 // AssignVoucher links a voucher number to a child. The child must belong
 // to the given org.
 //

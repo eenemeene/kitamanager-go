@@ -150,6 +150,13 @@
     "staffingCoverageTooltip": "Available staff hours vs. required hours for the current month. Negative percent means understaffed; positive means surplus.",
     "childrenWithoutVouchers": "Children Without Vouchers",
     "childrenWithoutVouchersDescription": "Children with a care contract but no Kita-Gutschein number from the Bezirks-Jugendamt — without one, no funding can be billed for them.",
+    "unmatchedBillChildren": "Children Only In The Bill",
+    "unmatchedBillChildrenDescription": "Children appearing in an ISBJ bill whose Kita-Gutschein is not assigned to anyone in KitaManager. The Bezirks-Jugendamt is billing for them, but you have no record. Check the paperwork and add them to KitaManager.",
+    "voucherNumber": "Kita-Gutschein-Nr.",
+    "billBirthDate": "Birth (MM.YY)",
+    "firstSeen": "First seen",
+    "addToKitaManager": "Add to KitaManager",
+    "addToKitaManagerTooltip": "Create the child in KitaManager with name, birthdate, and contract pre-filled from the bill. The voucher will be assigned automatically.",
     "propertyMismatches": "Contract Property Mismatches",
     "propertyMismatchesDescription": "Children whose contract properties in KitaManager don't match the latest ISBJ bill. Fix the contract values or re-upload the corrected bill.",
     "mismatchDifferent": "different",
@@ -427,6 +434,16 @@
     "female": "Female",
     "diverse": "Diverse",
     "selectGender": "Select Gender"
+  },
+  "addChildFromBill": {
+    "title": "Add child from bill",
+    "subtitle": "Voucher {voucher}",
+    "birthdateWarning": "The birthdate is a placeholder — the bill only has month + year, not the day. Verify against the Kita-Gutschein paperwork before saving and adjust if needed.",
+    "birthdateHint": "Pre-filled to the 1st of the bill's first-seen month ({billDate}).",
+    "contractFromHint": "Pre-filled to the start of the bill's first-seen month.",
+    "createAction": "Create child",
+    "success": "Child added and voucher assigned.",
+    "error": "Failed to add child from bill."
   },
   "vouchers": {
     "dialogTitle": "Vouchers",

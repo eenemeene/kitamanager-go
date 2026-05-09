@@ -150,6 +150,13 @@
     "staffingCoverageTooltip": "Verfügbare Personalstunden im Verhältnis zu den benötigten Stunden im aktuellen Monat. Negative Prozentwerte bedeuten Unterdeckung, positive Überschuss.",
     "childrenWithoutVouchers": "Kinder ohne Gutscheinnummer",
     "childrenWithoutVouchersDescription": "Kinder mit Betreuungsvertrag, denen die Nummer des Kita-Gutscheins vom Bezirks-Jugendamt fehlt – ohne Gutscheinnummer kann für sie keine Förderung abgerechnet werden.",
+    "unmatchedBillChildren": "Kinder nur in der Abrechnung",
+    "unmatchedBillChildrenDescription": "Kinder, die in einer ISBJ-Abrechnung auftauchen, deren Kita-Gutschein in KitaManager aber niemandem zugeordnet ist. Das Bezirks-Jugendamt rechnet für sie ab, obwohl Sie keinen Datensatz haben. Unterlagen prüfen und in KitaManager anlegen.",
+    "voucherNumber": "Kita-Gutschein-Nr.",
+    "billBirthDate": "Geburt (MM.JJ)",
+    "firstSeen": "Erstmals gesehen",
+    "addToKitaManager": "In KitaManager anlegen",
+    "addToKitaManagerTooltip": "Legt das Kind in KitaManager an. Name, Geburtsdatum und Vertragsbeginn werden aus der Abrechnung vorbefüllt; der Gutschein wird automatisch zugewiesen.",
     "propertyMismatches": "Vertragsabweichungen",
     "propertyMismatchesDescription": "Kinder, deren Vertragseigenschaften in KitaManager von der letzten ISBJ-Abrechnung abweichen. Vertragswerte korrigieren oder die korrigierte Abrechnung neu hochladen.",
     "mismatchDifferent": "abweichend",
@@ -427,6 +434,16 @@
     "female": "Weiblich",
     "diverse": "Divers",
     "selectGender": "Geschlecht auswählen"
+  },
+  "addChildFromBill": {
+    "title": "Kind aus Abrechnung anlegen",
+    "subtitle": "Gutschein {voucher}",
+    "birthdateWarning": "Das Geburtsdatum ist ein Platzhalter — die Abrechnung enthält nur Monat und Jahr, nicht den Tag. Vor dem Speichern bitte gegen den Kita-Gutschein abgleichen und ggf. korrigieren.",
+    "birthdateHint": "Vorbefüllt mit dem 1. des ersten gesehenen Abrechnungsmonats ({billDate}).",
+    "contractFromHint": "Vorbefüllt mit dem Beginn des ersten gesehenen Abrechnungsmonats.",
+    "createAction": "Kind anlegen",
+    "success": "Kind angelegt und Gutschein zugewiesen.",
+    "error": "Kind konnte nicht aus der Abrechnung angelegt werden."
   },
   "vouchers": {
     "dialogTitle": "Voucher-Nummern",

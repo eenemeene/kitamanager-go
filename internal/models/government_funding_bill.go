@@ -341,6 +341,27 @@ type ChildWithoutVoucherResponse struct {
 	Suggestions []VoucherSuggestion `json:"suggestions,omitempty"`
 }
 
+// UnmatchedBillChildResponse represents a bill row whose voucher has
+// no `child_vouchers` mapping in this org — i.e. the Bezirks-Jugendamt
+// is billing for a child KitaManager has never recorded. The row
+// carries metadata from the EARLIEST bill the voucher was seen in, so
+// the frontend can pre-fill a contract start date and a placeholder
+// birthdate (first day of FirstSeenBillFrom).
+//
+// FirstName / LastName are pre-parsed from the bill's "LastName,FirstName"
+// ChildName so the frontend can render and pre-fill the create-child
+// form without re-implementing parseBillChildName client-side.
+type UnmatchedBillChildResponse struct {
+	VoucherNumber     string `json:"voucher_number" example:"GB-12345678901-02"`
+	ChildName         string `json:"child_name" example:"Mustermann,Max"`
+	FirstName         string `json:"first_name" example:"Max"`
+	LastName          string `json:"last_name" example:"Mustermann"`
+	BillBirthDate     string `json:"bill_birth_date" example:"03.20"`
+	District          int64  `json:"district" example:"11"`
+	FirstSeenBillID   uint   `json:"first_seen_bill_id" example:"42"`
+	FirstSeenBillFrom string `json:"first_seen_bill_from" example:"2025-01-01"`
+}
+
 // GovernmentFundingBillResponse is the full response for the ISBJ upload endpoint (backwards compatible).
 type GovernmentFundingBillResponse struct {
 	ID                uint                                 `json:"id" example:"1"`

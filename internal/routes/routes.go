@@ -388,6 +388,12 @@ func Setup(r *gin.Engine, d Deps) {
 					fundingBills.GET("/compare",
 						authzMiddleware.RequirePermission(rbac.ResourceGovernmentFundingBills, rbac.ActionRead),
 						governmentFundingBillHandler.CompareUnified)
+					// Bill children with no KitaManager record. Read is gated
+					// on Children.Read so members + staff can see this on
+					// the dashboard, mirroring the children/vouchers GET.
+					fundingBills.GET("/unmatched-children",
+						authzMiddleware.RequirePermission(rbac.ResourceChildren, rbac.ActionRead),
+						governmentFundingBillHandler.UnmatchedBillChildren)
 					fundingBills.GET("/:billId",
 						authzMiddleware.RequirePermission(rbac.ResourceGovernmentFundingBills, rbac.ActionRead),
 						governmentFundingBillHandler.Get)

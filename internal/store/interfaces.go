@@ -388,6 +388,11 @@ type GovernmentFundingBillPeriodStorer interface {
 	FindBillTotalsByRowTypeInDateRange(ctx context.Context, orgID uint, from, to time.Time) (map[time.Time]BillTotalsByRowType, error)
 	FindLatestByOrganization(ctx context.Context, orgID uint) (*models.GovernmentFundingBillPeriod, error)
 	FindByOrgAndMonth(ctx context.Context, orgID uint, from time.Time) (*models.GovernmentFundingBillPeriod, error)
+	// FindUnmatchedBillChildren returns one row per voucher_number that
+	// appears in any bill for the org but has no child_vouchers row
+	// anywhere. The row carries the metadata from the EARLIEST bill the
+	// voucher was seen in.
+	FindUnmatchedBillChildren(ctx context.Context, orgID uint) ([]UnmatchedBillChildRow, error)
 	ExistsByOrgAndHash(ctx context.Context, orgID uint, fileHash string) (bool, error)
 	ExistsByOrgAndMonth(ctx context.Context, orgID uint, from time.Time) (bool, error)
 	Delete(ctx context.Context, id uint) error

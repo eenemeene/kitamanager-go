@@ -62,6 +62,7 @@ import type {
   ChildrenBillingSummaryResponse,
   ChildWithoutVoucherResponse,
   ChildVoucher,
+  UnmatchedBillChild,
   PayPlan,
   PayPlanDetail,
   PayPlanCreateRequest,
@@ -631,6 +632,13 @@ class ApiClient {
 
   async removeChildVoucher(orgId: number, childId: number, voucherId: number): Promise<void> {
     await this.client.delete(`/organizations/${orgId}/children/${childId}/vouchers/${voucherId}`);
+  }
+
+  async getUnmatchedBillChildren(orgId: number): Promise<UnmatchedBillChild[]> {
+    const response = await this.client.get<UnmatchedBillChild[]>(
+      `/organizations/${orgId}/government-funding-bills/unmatched-children`
+    );
+    return response.data;
   }
 
   async createChildContract(

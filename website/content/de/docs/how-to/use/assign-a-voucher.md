@@ -34,6 +34,18 @@ Die Karte **Kinder ohne Gutscheinnummer** auf dem Dashboard bleibt der schnellst
 
 Dieselbe Gutscheinnummer erneut auf dasselbe Kind zu schreiben ist ein No-Op. Eine Gutscheinnummer, die bereits an einem anderen Kind hängt, wird mit einem Conflict abgelehnt; vorher beim alten Kind über den Voucher-Dialog entfernen.
 
+## Kind anlegen, das nur in der Abrechnung erscheint
+
+Wenn das Bezirks-Jugendamt einen Kita-Gutschein abrechnet, der in KitaManager keinem Kind zugewiesen ist, listet das Dashboard ihn unter **Kinder nur in der Abrechnung**. Der Spiegel zu *Kinder ohne Gutscheinnummer* — die Abrechnung kennt das Kind, KitaManager nicht.
+
+1. **In KitaManager anlegen** in der Zeile klicken.
+2. Der Dialog öffnet sich mit Name, Geburtsdatum und Vertragsbeginn, vorbefüllt aus den Abrechnungsdaten.
+3. **Vor dem Speichern das Geburtsdatum gegen den Kita-Gutschein abgleichen.** Die Abrechnung enthält nur Monat und Jahr, daher steht als Tag der 1. des ersten gesehenen Abrechnungsmonats — das ist als echter Geburtstag mit hoher Wahrscheinlichkeit falsch und verfälscht die Einschulungs-Klassifikation („Muss-Kind") und altersbasierte Statistiken, wenn man es nicht korrigiert.
+4. Sektion und Geschlecht auswählen (in der Abrechnung nicht enthalten).
+5. **Kind anlegen** klicken — der Dialog legt das Kind an, einen Vertrag ab dem ersten gesehenen Abrechnungsmonat und weist die Gutscheinnummer zu, in dieser Reihenfolge.
+
+Falls die Gutscheinnummer global bereits einem anderen Kind zugewiesen ist (sehr selten — die Constraint ist global), wird das Kind trotzdem angelegt, aber die Zuweisung schlägt mit 409 fehl. Der Dialog zeigt den Konflikt an, sodass die Nummer zuerst beim anderen Kind über den Voucher-Dialog entfernt werden kann.
+
 ## Wer darf was
 
 - **Gutscheinnummern ansehen**: jede Rolle mit Zugriff auf das Kind (Admin, Manager, Mitglied, Personal).

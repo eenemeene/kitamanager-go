@@ -276,6 +276,32 @@ func (h *GovernmentFundingBillHandler) ChildrenWithoutVouchers(c *gin.Context) {
 	c.JSON(http.StatusOK, children)
 }
 
+// UnmatchedBillChildren godoc
+// @Summary List bill children with no KitaManager record
+// @Description Returns bill rows whose voucher_number has no child_vouchers row anywhere — i.e. the Bezirks-Jugendamt is billing for a child KitaManager has never recorded. Each row carries metadata from the earliest bill the voucher was seen in, so the caller can pre-fill a contract start date.
+// @Tags government-funding-bills
+// @Produce json
+// @Security BearerAuth
+// @Param orgId path int true "Organization ID"
+// @Success 200 {array} models.UnmatchedBillChildResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Router /api/v1/organizations/{orgId}/government-funding-bills/unmatched-children [get]
+func (h *GovernmentFundingBillHandler) UnmatchedBillChildren(c *gin.Context) {
+	orgID, ok := parseOrgID(c)
+	if !ok {
+		return
+	}
+
+	result, err := h.service.ListUnmatchedBillChildren(c.Request.Context(), orgID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
 // ChildrenBillingSummary godoc
 // @Summary Get billing summary for all children
 // @Description Get aggregated billing totals (billed vs calculated) for all children in an organization

@@ -3598,6 +3598,33 @@ definitions:
         example: JBSWY3DPEHPK3PXP
         type: string
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.UnmatchedBillChildResponse:
+    properties:
+      bill_birth_date:
+        example: "03.20"
+        type: string
+      child_name:
+        example: Mustermann,Max
+        type: string
+      district:
+        example: 11
+        type: integer
+      first_name:
+        example: Max
+        type: string
+      first_seen_bill_from:
+        example: "2025-01-01"
+        type: string
+      first_seen_bill_id:
+        example: 42
+        type: integer
+      last_name:
+        example: Mustermann
+        type: string
+      voucher_number:
+        example: GB-12345678901-02
+        type: string
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.UserAddOrganizationRequest:
     properties:
       organization_id:
@@ -8251,6 +8278,40 @@ paths:
       security:
       - BearerAuth: []
       summary: Compare funding bills with calculated funding
+      tags:
+      - government-funding-bills
+  /api/v1/organizations/{orgId}/government-funding-bills/unmatched-children:
+    get:
+      description: Returns bill rows whose voucher_number has no child_vouchers row
+        anywhere — i.e. the Bezirks-Jugendamt is billing for a child KitaManager has
+        never recorded. Each row carries metadata from the earliest bill the voucher
+        was seen in, so the caller can pre-fill a contract start date.
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UnmatchedBillChildResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List bill children with no KitaManager record
       tags:
       - government-funding-bills
   /api/v1/organizations/{orgId}/pay-plans:

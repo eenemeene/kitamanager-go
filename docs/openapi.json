@@ -5810,6 +5810,53 @@
                 ],
                 "type": "object"
             },
+            "UnmatchedBillChildResponse": {
+                "properties": {
+                    "bill_birth_date": {
+                        "example": "03.20",
+                        "type": "string"
+                    },
+                    "child_name": {
+                        "example": "Mustermann,Max",
+                        "type": "string"
+                    },
+                    "district": {
+                        "example": 11,
+                        "type": "integer"
+                    },
+                    "first_name": {
+                        "example": "Max",
+                        "type": "string"
+                    },
+                    "first_seen_bill_from": {
+                        "example": "2025-01-01",
+                        "type": "string"
+                    },
+                    "first_seen_bill_id": {
+                        "example": 42,
+                        "type": "integer"
+                    },
+                    "last_name": {
+                        "example": "Mustermann",
+                        "type": "string"
+                    },
+                    "voucher_number": {
+                        "example": "GB-12345678901-02",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "bill_birth_date",
+                    "child_name",
+                    "district",
+                    "first_name",
+                    "first_seen_bill_from",
+                    "first_seen_bill_id",
+                    "last_name",
+                    "voucher_number"
+                ],
+                "type": "object"
+            },
             "UserAddOrganizationRequest": {
                 "properties": {
                     "organization_id": {
@@ -14400,6 +14447,66 @@
                     }
                 ],
                 "summary": "Compare funding bills with calculated funding",
+                "tags": [
+                    "government-funding-bills"
+                ]
+            }
+        },
+        "/api/v1/organizations/{orgId}/government-funding-bills/unmatched-children": {
+            "get": {
+                "description": "Returns bill rows whose voucher_number has no child_vouchers row anywhere — i.e. the Bezirks-Jugendamt is billing for a child KitaManager has never recorded. Each row carries metadata from the earliest bill the voucher was seen in, so the caller can pre-fill a contract start date.",
+                "parameters": [
+                    {
+                        "description": "Organization ID",
+                        "in": "path",
+                        "name": "orgId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "items": {
+                                        "$ref": "#/components/schemas/UnmatchedBillChildResponse"
+                                    },
+                                    "type": "array"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "List bill children with no KitaManager record",
                 "tags": [
                     "government-funding-bills"
                 ]
