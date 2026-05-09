@@ -14,8 +14,8 @@ For *how to assign* roles, see [Manage users and roles](../../how-to/administer/
 | Role | Scope | Description |
 |---|---|---|
 | `superadmin` | Global | Full system access across all organisations. Can create/delete organisations, manage funding configurations, view the global audit log. |
-| `admin` | Organisation | Full access within assigned organisation(s). Can manage employees, children, contracts, sections, pay plans, and users. Cannot create/delete organisations or manage funding configurations. |
-| `manager` | Organisation | Operational access within assigned organisation(s). Can manage employees, children, and contracts. Read-only on users, sections, pay plans. |
+| `admin` | Organisation | Full access within assigned organisation(s). Can manage employees, children, contracts, sections, pay plans, users, budget items, and ISBJ funding bills. Read-only on government funding rates. Cannot create/delete organisations or edit funding rate configurations. |
+| `manager` | Organisation | Operational + finance access within assigned organisation(s). Can manage employees, children, contracts, budget items, and ISBJ funding bills. Read-only on users, sections, pay plans, government funding rates, and the org's own settings. Cannot read the audit log. |
 | `member` | Organisation | Read-only access within assigned organisation(s). Can view employees, children, contracts, sections, pay plans. Cannot modify anything. |
 | `staff` | Organisation | Designed for educators tracking attendance. Read-only on children, child contracts, sections; full CRUD on attendance only. |
 
@@ -29,9 +29,9 @@ For *how to assign* roles, see [Manage users and roles](../../how-to/administer/
 | Contracts | CRUD | CRUD | CRUD | Read | Read (child only) |
 | Attendance | CRUD | CRUD | CRUD | Read | CRUD |
 | Sections | CRUD | CRUD | Read | Read | Read |
-| Funding configurations | CRUD | — | — | — | — |
+| Funding configurations | CRUD | Read | Read | — | — |
 | Pay plans | CRUD | CRUD | Read | Read | — |
-| Budget items | CRUD | CRUD | Read | Read | — |
+| Budget items | CRUD | CRUD | CRUD | Read | — |
 | Statistics | Read | Read | Read | Read | — |
 | Users | CRUD | CRUD | Read | — | — |
 | ISBJ funding bills | Create / Read / Delete | Create / Read / Delete | Create / Read / Delete | — | — |
