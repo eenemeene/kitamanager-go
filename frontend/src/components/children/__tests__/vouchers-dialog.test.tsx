@@ -58,10 +58,10 @@ jest.mock('@/hooks/use-current-role', () => ({
 const child: Child = {
   id: 7,
   organization_id: 1,
-  first_name: 'Wanda',
-  last_name: 'Fliegner',
+  first_name: 'Anna',
+  last_name: 'Berger',
   gender: 'female',
-  birthdate: '2019-09-27',
+  birthdate: '2020-03-15',
   active: true,
   contracts: [],
   vouchers: [],
