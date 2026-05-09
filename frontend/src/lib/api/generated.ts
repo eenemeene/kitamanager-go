@@ -1835,6 +1835,67 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/me/memberships': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get the current user's organization memberships
+     * @description Returns the calling user's own memberships and roles. Self-only —
+     *     does not require users:read. Used by the frontend on every page
+     *     load to populate orgRoleMap, which the sidebar's role-based nav
+     *     filtering depends on. The admin-facing /users/{userId}/memberships
+     *     still exists separately for user-management screens.
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['UserMembershipsResponse'];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/me/password': {
     parameters: {
       query?: never;
