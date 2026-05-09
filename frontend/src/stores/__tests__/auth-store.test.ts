@@ -10,7 +10,7 @@ jest.mock('@/lib/api/client', () => ({
     login: jest.fn(),
     logout: jest.fn(),
     getCurrentUser: jest.fn(),
-    getUserMemberships: jest.fn(),
+    getMyMemberships: jest.fn(),
     setOnUnauthorized: jest.fn((cb: () => void) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (globalThis as any).__authTestUnauthorizedCb = cb;
@@ -140,7 +140,7 @@ describe('useAuthStore', () => {
         id: 7,
         email: 'u@example.com',
       });
-      (apiClient.getUserMemberships as jest.Mock).mockResolvedValue({ memberships: [] });
+      (apiClient.getMyMemberships as jest.Mock).mockResolvedValue({ memberships: [] });
 
       await useAuthStore.getState().hydrateAfterAuth();
 
@@ -297,7 +297,7 @@ describe('useAuthStore', () => {
         expires_in: 3600,
       });
       (apiClient.getCurrentUser as jest.Mock).mockResolvedValue({ id: 1, email: 'a@b.com' });
-      (apiClient.getUserMemberships as jest.Mock).mockResolvedValue({ memberships: [] });
+      (apiClient.getMyMemberships as jest.Mock).mockResolvedValue({ memberships: [] });
 
       await useAuthStore.getState().login({ email: 'a@b.com', password: 'pass' });
 
@@ -312,7 +312,7 @@ describe('useAuthStore', () => {
         expires_in: 3600,
       });
       (apiClient.getCurrentUser as jest.Mock).mockResolvedValue({ id: 5, email: 'a@b.com' });
-      (apiClient.getUserMemberships as jest.Mock).mockResolvedValue({
+      (apiClient.getMyMemberships as jest.Mock).mockResolvedValue({
         memberships: [
           { user_id: 5, organization_id: 10, role: 'admin' },
           { user_id: 5, organization_id: 20, role: 'manager' },
@@ -336,7 +336,7 @@ describe('useAuthStore', () => {
         expires_in: 3600,
       });
       (apiClient.getCurrentUser as jest.Mock).mockResolvedValue({ id: 1, email: 'a@b.com' });
-      (apiClient.getUserMemberships as jest.Mock).mockResolvedValue({
+      (apiClient.getMyMemberships as jest.Mock).mockResolvedValue({
         memberships: [
           { user_id: 1, organization_id: 0, role: 'admin' },
           { user_id: 1, organization_id: null, role: 'manager' },
@@ -359,7 +359,7 @@ describe('useAuthStore', () => {
         expires_in: 3600,
       });
       (apiClient.getCurrentUser as jest.Mock).mockResolvedValue({ id: 1, email: 'a@b.com' });
-      (apiClient.getUserMemberships as jest.Mock).mockResolvedValue({
+      (apiClient.getMyMemberships as jest.Mock).mockResolvedValue({
         memberships: [
           { user_id: 1, organization_id: 10, role: 'member' },
           { user_id: 1, organization_id: 10, role: 'admin' },
@@ -381,13 +381,16 @@ describe('useAuthStore', () => {
         expires_in: 3600,
       });
       (apiClient.getCurrentUser as jest.Mock).mockResolvedValue({ id: 7, email: 'a@b.com' });
-      (apiClient.getUserMemberships as jest.Mock).mockResolvedValue({
+      (apiClient.getMyMemberships as jest.Mock).mockResolvedValue({
         memberships: [{ user_id: 7, organization_id: 3, role: 'admin' }],
       });
 
       await useAuthStore.getState().login({ email: 'a@b.com', password: 'pass' });
 
-      expect(apiClient.getUserMemberships).toHaveBeenCalledWith(7);
+      // /me/memberships is self-only — no userId argument. Asserting
+      // toHaveBeenCalled() rather than toHaveBeenCalledWith() reflects
+      // that the route resolves the caller from the session cookie.
+      expect(apiClient.getMyMemberships).toHaveBeenCalled();
       const state = useAuthStore.getState();
       expect(state.memberships).toHaveLength(1);
       expect(state.orgRoleMap.get(3)).toBe('admin');
@@ -399,7 +402,7 @@ describe('useAuthStore', () => {
         expires_in: 3600,
       });
       (apiClient.getCurrentUser as jest.Mock).mockResolvedValue({ id: 7, email: 'a@b.com' });
-      (apiClient.getUserMemberships as jest.Mock).mockRejectedValue(new Error('500 Server Error'));
+      (apiClient.getMyMemberships as jest.Mock).mockRejectedValue(new Error('500 Server Error'));
 
       await useAuthStore.getState().login({ email: 'a@b.com', password: 'pass' });
 
@@ -412,16 +415,21 @@ describe('useAuthStore', () => {
       expect(state.orgRoleMap.size).toBe(0);
     });
 
-    it('does not fetch memberships when user data has no id', async () => {
+    it('still fetches memberships even if getCurrentUser returned no id', async () => {
+      // /me/memberships derives the caller from the session cookie,
+      // not from getCurrentUser's response, so the previous "skip
+      // memberships when userData has no id" guard was an unnecessary
+      // optimization. Drop the guard, drop the precondition.
       (apiClient.login as jest.Mock).mockResolvedValue({
         status: 'authenticated',
         expires_in: 3600,
       });
       (apiClient.getCurrentUser as jest.Mock).mockResolvedValue({ email: 'a@b.com' });
+      (apiClient.getMyMemberships as jest.Mock).mockResolvedValue({ memberships: [] });
 
       await useAuthStore.getState().login({ email: 'a@b.com', password: 'pass' });
 
-      expect(apiClient.getUserMemberships).not.toHaveBeenCalled();
+      expect(apiClient.getMyMemberships).toHaveBeenCalled();
       const state = useAuthStore.getState();
       expect(state.isAuthenticated).toBe(true);
       expect(state.userLoaded).toBe(true);
@@ -432,13 +440,15 @@ describe('useAuthStore', () => {
     it('fetches memberships after loading user', async () => {
       mockCookies['csrf_token'] = 'tok';
       (apiClient.getCurrentUser as jest.Mock).mockResolvedValue({ id: 3, email: 'u@x.com' });
-      (apiClient.getUserMemberships as jest.Mock).mockResolvedValue({
+      (apiClient.getMyMemberships as jest.Mock).mockResolvedValue({
         memberships: [{ user_id: 3, organization_id: 5, role: 'manager' }],
       });
 
       await useAuthStore.getState().loadUser();
 
-      expect(apiClient.getUserMemberships).toHaveBeenCalledWith(3);
+      // /me/memberships takes no args; the session-derived caller is
+      // the only thing the backend needs.
+      expect(apiClient.getMyMemberships).toHaveBeenCalled();
       const state = useAuthStore.getState();
       expect(state.memberships).toHaveLength(1);
       expect(state.orgRoleMap.get(5)).toBe('manager');
@@ -449,7 +459,7 @@ describe('useAuthStore', () => {
     it('completes loadUser successfully even when memberships fetch fails', async () => {
       mockCookies['csrf_token'] = 'tok';
       (apiClient.getCurrentUser as jest.Mock).mockResolvedValue({ id: 3, email: 'u@x.com' });
-      (apiClient.getUserMemberships as jest.Mock).mockRejectedValue(new Error('Network error'));
+      (apiClient.getMyMemberships as jest.Mock).mockRejectedValue(new Error('Network error'));
 
       await useAuthStore.getState().loadUser();
 
@@ -463,13 +473,17 @@ describe('useAuthStore', () => {
       expect(state.orgRoleMap.size).toBe(0);
     });
 
-    it('does not fetch memberships when user has no id', async () => {
+    it('still fetches memberships even if getCurrentUser returned no id', async () => {
+      // Same reasoning as the corresponding login-flow test: the
+      // self-route resolves the caller from the session, so the
+      // userData.id guard is gone.
       mockCookies['csrf_token'] = 'tok';
       (apiClient.getCurrentUser as jest.Mock).mockResolvedValue({ email: 'u@x.com' });
+      (apiClient.getMyMemberships as jest.Mock).mockResolvedValue({ memberships: [] });
 
       await useAuthStore.getState().loadUser();
 
-      expect(apiClient.getUserMemberships).not.toHaveBeenCalled();
+      expect(apiClient.getMyMemberships).toHaveBeenCalled();
     });
   });
 

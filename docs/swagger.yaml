@@ -4917,6 +4917,36 @@ paths:
       summary: Get current user
       tags:
       - auth
+  /api/v1/me/memberships:
+    get:
+      consumes:
+      - application/json
+      description: |-
+        Returns the calling user's own memberships and roles. Self-only —
+        does not require users:read. Used by the frontend on every page
+        load to populate orgRoleMap, which the sidebar's role-based nav
+        filtering depends on. The admin-facing /users/{userId}/memberships
+        still exists separately for user-management screens.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.UserMembershipsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get the current user's organization memberships
+      tags:
+      - users
   /api/v1/me/password:
     put:
       consumes:

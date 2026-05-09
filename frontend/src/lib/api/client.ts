@@ -465,6 +465,15 @@ class ApiClient {
     return response.data;
   }
 
+  // Self-memberships endpoint. Required by useCurrentRole (via auth-store) on
+  // every page load — the admin-facing getUserMemberships is gated on
+  // users:read which staff and member don't have, so they would silently end
+  // up with an empty orgRoleMap and a blank sidebar.
+  async getMyMemberships(): Promise<UserMembershipsResponse> {
+    const response = await this.client.get<UserMembershipsResponse>(`/me/memberships`);
+    return response.data;
+  }
+
   async setSuperAdmin(userId: number, isSuperAdmin: boolean): Promise<User> {
     const response = await this.client.put<User>(`/users/${userId}/superadmin`, {
       is_superadmin: isSuperAdmin,
