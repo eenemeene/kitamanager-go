@@ -6674,7 +6674,7 @@ export interface paths {
     get: {
       parameters: {
         query?: {
-          /** @description Search by facility name (case-insensitive) */
+          /** @description Search by facility name, child name or voucher number (case-insensitive substring) */
           search?: string;
           /** @description Page number */
           page?: number;
