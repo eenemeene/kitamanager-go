@@ -42,7 +42,7 @@ func (s *GovernmentFundingBillPeriodStore) FindByOrganization(ctx context.Contex
 
 	query := DBFromContext(ctx, s.db).Model(&models.GovernmentFundingBillPeriod{}).Where("organization_id = ?", orgID)
 	if search != "" {
-		query = query.Scopes(NameSearch("government_funding_bill_periods", "facility_name", search))
+		query = query.Scopes(BillPeriodSearch(search))
 	}
 
 	if err := query.Count(&total).Error; err != nil {
@@ -51,7 +51,7 @@ func (s *GovernmentFundingBillPeriodStore) FindByOrganization(ctx context.Contex
 
 	dataQuery := DBFromContext(ctx, s.db).Where("organization_id = ?", orgID)
 	if search != "" {
-		dataQuery = dataQuery.Scopes(NameSearch("government_funding_bill_periods", "facility_name", search))
+		dataQuery = dataQuery.Scopes(BillPeriodSearch(search))
 	}
 
 	if err := dataQuery.Order("from_date DESC").Limit(limit).Offset(offset).Find(&periods).Error; err != nil {

@@ -1366,3 +1366,126 @@ func TestGovernmentFundingBillHandler_List_Search(t *testing.T) {
 		}
 	})
 }
+
+func TestGovernmentFundingBillHandler_List_Search_BillChildren(t *testing.T) {
+	db := setupTestDB(t)
+	r, _ := setupBillRouter(db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "Search User", "billsearchchildren@example.com", "password")
+
+	// Period 1: vanilla, single "Kind, Test" child with voucher GB-00000000001-01.
+	createBillPeriodInDB(t, db, org.ID, user.ID, "Kita Sonnenschein", time.January)
+
+	// Period 2: distinctive child name "Mustermann, Anna" with distinctive voucher prefix.
+	feb := time.February
+	febTo := time.Date(2025, feb+1, 0, 0, 0, 0, 0, time.UTC)
+	period2 := &models.GovernmentFundingBillPeriod{
+		OrganizationID:    org.ID,
+		Period:            models.Period{From: time.Date(2025, feb, 1, 0, 0, 0, 0, time.UTC), To: &febTo},
+		FileName:          "abrechnung_02-25.xlsx",
+		FileSha256:        "hash_search_children_02",
+		FacilityName:      "Kita Regenbogen",
+		FacilityTotal:     300000,
+		ContractBooking:   280000,
+		CorrectionBooking: 20000,
+		CreatedBy:         &user.ID,
+		Children: []models.GovernmentFundingBillChild{
+			{VoucherNumber: "GB-99999999991-01", ChildName: "Mustermann, Anna", BirthDate: "01.20", District: 1},
+		},
+	}
+	if err := db.Create(period2).Error; err != nil {
+		t.Fatalf("setup: create period2: %v", err)
+	}
+
+	// Period 3: two children sharing a last name, to verify EXISTS de-duplicates.
+	mar := time.March
+	marTo := time.Date(2025, mar+1, 0, 0, 0, 0, 0, time.UTC)
+	period3 := &models.GovernmentFundingBillPeriod{
+		OrganizationID:    org.ID,
+		Period:            models.Period{From: time.Date(2025, mar, 1, 0, 0, 0, 0, time.UTC), To: &marTo},
+		FileName:          "abrechnung_03-25.xlsx",
+		FileSha256:        "hash_search_children_03",
+		FacilityName:      "Hort Abenteuer",
+		FacilityTotal:     300000,
+		ContractBooking:   280000,
+		CorrectionBooking: 20000,
+		CreatedBy:         &user.ID,
+		Children: []models.GovernmentFundingBillChild{
+			{VoucherNumber: "GB-11111111111-01", ChildName: "Schulze, Ben", BirthDate: "01.20", District: 1},
+			{VoucherNumber: "GB-22222222222-01", ChildName: "Schulze, Ida", BirthDate: "02.21", District: 1},
+		},
+	}
+	if err := db.Create(period3).Error; err != nil {
+		t.Fatalf("setup: create period3: %v", err)
+	}
+
+	t.Run("matches by child name", func(t *testing.T) {
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/government-funding-bills?search=Mustermann", org.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.GovernmentFundingBillPeriodListResponse]
+		parseResponse(t, w, &response)
+		if response.Total != 1 || len(response.Data) != 1 {
+			t.Fatalf("expected 1 bill matching child 'Mustermann', got total=%d data=%d", response.Total, len(response.Data))
+		}
+		if response.Data[0].FacilityName != "Kita Regenbogen" {
+			t.Errorf("expected Kita Regenbogen, got %q", response.Data[0].FacilityName)
+		}
+	})
+
+	t.Run("matches by voucher number", func(t *testing.T) {
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/government-funding-bills?search=GB-9999", org.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.GovernmentFundingBillPeriodListResponse]
+		parseResponse(t, w, &response)
+		if response.Total != 1 || len(response.Data) != 1 {
+			t.Fatalf("expected 1 bill matching voucher 'GB-9999', got total=%d data=%d", response.Total, len(response.Data))
+		}
+		if response.Data[0].FacilityName != "Kita Regenbogen" {
+			t.Errorf("expected Kita Regenbogen, got %q", response.Data[0].FacilityName)
+		}
+	})
+
+	t.Run("does not duplicate periods when multiple children match", func(t *testing.T) {
+		// Both Schulze children belong to period3 — EXISTS must return that period exactly once.
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/government-funding-bills?search=Schulze", org.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.GovernmentFundingBillPeriodListResponse]
+		parseResponse(t, w, &response)
+		if response.Total != 1 || len(response.Data) != 1 {
+			t.Fatalf("expected 1 bill (de-duplicated), got total=%d data=%d", response.Total, len(response.Data))
+		}
+	})
+
+	t.Run("LIKE wildcards in search are matched literally", func(t *testing.T) {
+		// Underscores are LIKE wildcards. If escapeLIKE is broken, "_____" matches any 5+ chars
+		// and would return all 3 bills; with proper escaping, it matches only literal underscores.
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/government-funding-bills?search=_____", org.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.GovernmentFundingBillPeriodListResponse]
+		parseResponse(t, w, &response)
+		if response.Total != 0 || len(response.Data) != 0 {
+			t.Errorf("expected 0 (underscore wildcards must be escaped), got total=%d data=%d", response.Total, len(response.Data))
+		}
+	})
+
+	t.Run("facility name match still works alongside child search", func(t *testing.T) {
+		// Regression: existing facility-name behaviour must not regress with the new OR clause.
+		w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/government-funding-bills?search=Sonnenschein", org.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var response models.PaginatedResponse[models.GovernmentFundingBillPeriodListResponse]
+		parseResponse(t, w, &response)
+		if response.Total != 1 || len(response.Data) != 1 {
+			t.Fatalf("expected 1 bill matching facility 'Sonnenschein', got total=%d data=%d", response.Total, len(response.Data))
+		}
+	})
+}

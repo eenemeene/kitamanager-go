@@ -66,3 +66,21 @@ func PersonNameSearch(tablePrefix, search string) func(*gorm.DB) *gorm.DB {
 		)
 	}
 }
+
+// BillPeriodSearch returns a GORM scope filtering government_funding_bill_periods
+// by facility name OR by any nested bill child's child_name / voucher_number.
+// All matches are case-insensitive substring (LIKE %q%) with LIKE special chars escaped.
+// EXISTS (rather than JOIN) is used so a period with multiple matching children is
+// returned exactly once and Count(*) stays correct.
+func BillPeriodSearch(search string) func(*gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		pattern := "%" + escapeLIKE(strings.ToLower(search)) + "%"
+		return db.Where(
+			"LOWER(government_funding_bill_periods.facility_name) LIKE ? "+
+				"OR EXISTS (SELECT 1 FROM government_funding_bill_children c "+
+				"WHERE c.period_id = government_funding_bill_periods.id "+
+				"AND (LOWER(c.child_name) LIKE ? OR LOWER(c.voucher_number) LIKE ?))",
+			pattern, pattern, pattern,
+		)
+	}
+}

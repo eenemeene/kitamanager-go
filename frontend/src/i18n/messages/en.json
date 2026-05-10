@@ -1036,6 +1036,7 @@
   "governmentFundingBills": {
     "title": "Government Funding Bills",
     "description": "Monthly ISBJ bills from the Senatsverwaltung. Upload the .xlsx file each month — KitaManager compares the billed amounts against what was expected and highlights any mismatches.",
+    "searchPlaceholder": "Search by facility, child or voucher",
     "upload": "Upload",
     "selectFile": "Select ISBJ Excel file (.xlsx)",
     "facilityName": "Facility",
