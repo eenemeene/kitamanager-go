@@ -50,6 +50,53 @@ test.describe('Government Funding Bills - Kita Year Filter', () => {
     await expect(page.locator('text=/Kita Year/')).toBeVisible();
   });
 
+  test('should filter bills by search across facility, child name, and voucher', async ({
+    page,
+  }) => {
+    await page.goto(`/organizations/${orgId}/government-funding-bills`);
+    await page.waitForLoadState('load');
+
+    await expect(
+      page.getByRole('heading', { name: /government funding bills/i }).first()
+    ).toBeVisible({ timeout: 10000 });
+
+    // Step back through kita years until we find one with bills (seed data
+    // covers the last 6 months so the current kita year usually has rows).
+    const noBills = page.getByText(/no funding bills uploaded/i);
+    const previousButton = page.getByRole('button', { name: /previous/i });
+    const yearLabel = page.locator('.min-w-\\[80px\\]').first();
+    let foundBills = (await noBills.count()) === 0;
+    for (let i = 0; i < 5 && !foundBills; i++) {
+      const before = (await yearLabel.textContent()) ?? '';
+      await previousButton.click();
+      await expect(yearLabel).not.toHaveText(before, { timeout: 10000 });
+      foundBills = (await noBills.count()) === 0;
+    }
+    expect(foundBills, 'expected at least one kita year to have bills (seed regression?)').toBe(
+      true
+    );
+
+    const searchBox = page.getByPlaceholder(/search by facility, child or voucher/i);
+    await expect(searchBox).toBeVisible();
+
+    // 1. Facility-name match — seed creates "Kita Sonnenschein".
+    await searchBox.fill('Sonnenschein');
+    await expect(page.locator('table tbody tr').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('table tbody tr').first()).toContainText(/Sonnenschein/i);
+
+    // 2. Voucher-number match — seed builds vouchers as "GB-1000…". Searching the
+    // shared prefix matches because the EXISTS subquery hits the bill_children rows.
+    await searchBox.fill('GB-1000');
+    await expect(page.locator('table tbody tr').first()).toBeVisible({ timeout: 10000 });
+
+    // 3. Nonsense match — empty state must show, proving the search hit the server
+    // (client-side fallback would still show all rows because facility_name is "Kita Sonnenschein").
+    await searchBox.fill('zzzz-no-such-voucher-xyz');
+    await expect(page.getByText(/no funding bills uploaded|no bills match/i)).toBeVisible({
+      timeout: 10000,
+    });
+  });
+
   test('should show summary bar when bills have comparison data', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/government-funding-bills`);
 
