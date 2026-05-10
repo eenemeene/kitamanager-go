@@ -6235,7 +6235,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Search by facility name (case-insensitive)",
+                        "description": "Search by facility name, child name or voucher number (case-insensitive substring)",
                         "name": "search",
                         "in": "query"
                     },

@@ -55,8 +55,10 @@ export const queryKeys = {
   },
   governmentFundingBillPeriods: {
     all: (orgId: number) => ['governmentFundingBillPeriods', orgId] as const,
-    list: (orgId: number, page: number) =>
-      ['governmentFundingBillPeriods', orgId, 'list', page] as const,
+    list: (orgId: number, page: number, search?: string) =>
+      search
+        ? (['governmentFundingBillPeriods', orgId, 'list', page, search] as const)
+        : (['governmentFundingBillPeriods', orgId, 'list', page] as const),
     detail: (orgId: number, id: number) =>
       ['governmentFundingBillPeriods', orgId, 'detail', id] as const,
     compare: (orgId: number, id: number) =>

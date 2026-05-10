@@ -14227,7 +14227,7 @@
                         }
                     },
                     {
-                        "description": "Search by facility name (case-insensitive)",
+                        "description": "Search by facility name, child name or voucher number (case-insensitive substring)",
                         "in": "query",
                         "name": "search",
                         "schema": {

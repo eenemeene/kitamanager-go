@@ -1155,11 +1155,13 @@ class ApiClient {
 
   async getGovernmentFundingBillPeriods(
     orgId: number,
-    params: PaginationParams = {}
+    params: PaginationParams & { search?: string } = {}
   ): Promise<PaginatedResponse<GovernmentFundingBillPeriodListItem>> {
-    const { page = 1, limit = DEFAULT_PAGE_SIZE } = params;
+    const { page = 1, limit = DEFAULT_PAGE_SIZE, search } = params;
+    const qs = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (search) qs.set('search', search);
     const response = await this.client.get<PaginatedResponse<GovernmentFundingBillPeriodListItem>>(
-      `/organizations/${orgId}/government-funding-bills?page=${page}&limit=${limit}`
+      `/organizations/${orgId}/government-funding-bills?${qs.toString()}`
     );
     return response.data;
   }

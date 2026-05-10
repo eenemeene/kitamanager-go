@@ -64,7 +64,7 @@ export default function GovernmentFundingBillsPage() {
     null
   );
 
-  // Search filter (client-side on facility_name)
+  // Search is server-side: matches facility name, child name, or voucher number.
   const [searchInput, setSearchInput] = useState('');
   const search = useDebouncedValue(searchInput, 300);
 
@@ -81,18 +81,16 @@ export default function GovernmentFundingBillsPage() {
     error: queryError,
     refetch,
   } = useQuery({
-    queryKey: queryKeys.governmentFundingBillPeriods.all(orgId),
-    queryFn: () => apiClient.getGovernmentFundingBillPeriods(orgId, { limit: 100 }),
+    queryKey: queryKeys.governmentFundingBillPeriods.list(orgId, 1, search || undefined),
+    queryFn: () =>
+      apiClient.getGovernmentFundingBillPeriods(orgId, { limit: 100, search: search || undefined }),
   });
 
-  // Filter bills by selected kita year and optional search term
+  // Server already filtered by search; client narrows to the selected kita year.
   const filteredItems = useMemo(() => {
     const all = billPeriods?.data ?? [];
-    const byYear = all.filter((item) => kitaYearForDate(item.from) === kitaYear);
-    if (!search) return byYear;
-    const lowerSearch = search.toLowerCase();
-    return byYear.filter((item) => item.facility_name.toLowerCase().includes(lowerSearch));
-  }, [billPeriods, kitaYear, search]);
+    return all.filter((item) => kitaYearForDate(item.from) === kitaYear);
+  }, [billPeriods, kitaYear]);
 
   // Fetch comparison data for the entire kita year range in one call
   const { data: comparison, isLoading: comparisonLoading } = useQuery({
@@ -198,7 +196,12 @@ export default function GovernmentFundingBillsPage() {
             <p className="text-muted-foreground mt-1 max-w-3xl text-sm">{t('description')}</p>
           </div>
           <div className="flex flex-wrap items-center gap-4">
-            <SearchInput id="search-bills" value={searchInput} onChange={setSearchInput} />
+            <SearchInput
+              id="search-bills"
+              value={searchInput}
+              onChange={setSearchInput}
+              placeholder={t('searchPlaceholder')}
+            />
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground text-sm">{tCommon('kitaYearLabel')}</span>
               <KitaYearStepper value={kitaYear} onChange={setKitaYear} />

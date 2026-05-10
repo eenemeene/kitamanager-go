@@ -1036,6 +1036,7 @@
   "governmentFundingBills": {
     "title": "Senatsabrechnungen",
     "description": "Monatliche ISBJ-Abrechnungen der Senatsverwaltung. Laden Sie die .xlsx-Datei jeden Monat hoch — KitaManager vergleicht die abgerechneten Beträge mit den erwarteten und zeigt Abweichungen an.",
+    "searchPlaceholder": "Suche nach Einrichtung, Kind oder Gutschein",
     "upload": "Hochladen",
     "selectFile": "ISBJ Excel-Datei auswählen (.xlsx)",
     "facilityName": "Einrichtung",
