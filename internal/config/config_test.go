@@ -650,6 +650,64 @@ func TestValidate_ProductionGate_SeedTestData_AllowedInDev(t *testing.T) {
 	}
 }
 
+func TestValidate_TrustedProxies_WildcardV4Rejected(t *testing.T) {
+	cfg := baseValidConfig()
+	cfg.TrustedProxies = []string{"0.0.0.0/0"}
+
+	if err := cfg.Validate(); !errors.Is(err, ErrInvalidTrustedProxy) {
+		t.Errorf("0.0.0.0/0 must be rejected, got %v", err)
+	}
+}
+
+func TestValidate_TrustedProxies_WildcardV6Rejected(t *testing.T) {
+	cfg := baseValidConfig()
+	cfg.TrustedProxies = []string{"::/0"}
+
+	if err := cfg.Validate(); !errors.Is(err, ErrInvalidTrustedProxy) {
+		t.Errorf("::/0 must be rejected, got %v", err)
+	}
+}
+
+func TestValidate_TrustedProxies_GarbageRejected(t *testing.T) {
+	cfg := baseValidConfig()
+	cfg.TrustedProxies = []string{"not-an-ip-or-cidr"}
+
+	if err := cfg.Validate(); !errors.Is(err, ErrInvalidTrustedProxy) {
+		t.Errorf("non-IP/CIDR garbage must be rejected, got %v", err)
+	}
+}
+
+func TestValidate_TrustedProxies_BareIPAccepted(t *testing.T) {
+	// Gin's SetTrustedProxies treats a bare IP as /32 (or /128), so
+	// the config layer must accept the same shape — otherwise users
+	// who matched their TRUSTED_PROXIES to gin's documented input
+	// format would fail validation.
+	cfg := baseValidConfig()
+	cfg.TrustedProxies = []string{"10.0.0.1"}
+
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("bare IP must be accepted (Gin shorthand), got %v", err)
+	}
+}
+
+func TestValidate_TrustedProxies_PrivateRangeAccepted(t *testing.T) {
+	cfg := baseValidConfig()
+	cfg.TrustedProxies = []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"}
+
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("private RFC1918 ranges must be accepted, got %v", err)
+	}
+}
+
+func TestValidate_TrustedProxies_EmptyAccepted(t *testing.T) {
+	cfg := baseValidConfig()
+	cfg.TrustedProxies = nil
+
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("empty TrustedProxies (default-safe) must validate, got %v", err)
+	}
+}
+
 func TestValidate_TOTPKey_AllOnesRejected(t *testing.T) {
 	cfg := baseValidConfig()
 	cfg.TOTPEncryptionKey = strings.Repeat("1", 64)

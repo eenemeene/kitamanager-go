@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"strconv"
@@ -51,6 +52,12 @@ var (
 	// escape hatch — nothing upstream can substitute for "do not seed
 	// fixture accounts".
 	ErrSeedTestDataInProduction = errors.New("SEED_TEST_DATA=true is not permitted when SECURE_COOKIES=true; the test seeder creates fully-privileged accounts with a publicly-known password")
+	// ErrInvalidTrustedProxy fires when TRUSTED_PROXIES contains an
+	// entry that is not a valid CIDR or that covers the entire IPv4
+	// or IPv6 address space (0.0.0.0/0, ::/0). The latter would
+	// effectively trust every client to set X-Forwarded-For, which is
+	// the same as having no rate-limit IP keying — defeats O-M-9.
+	ErrInvalidTrustedProxy = errors.New("TRUSTED_PROXIES entry is invalid: each value must parse as a CIDR (e.g. 10.0.0.0/8) and must not be 0.0.0.0/0 or ::/0")
 )
 
 // knownPlaceholderTOTPKeys mirrors knownPlaceholderJWTSecrets: any string
@@ -252,6 +259,37 @@ func (c *Config) Validate() error {
 		if c.SeedTestData {
 			errs = append(errs, ErrSeedTestDataInProduction)
 		}
+	}
+
+	// TRUSTED_PROXIES feeds gin's SetTrustedProxies. The default
+	// behaviour (empty list) is safe: ClientIP() returns the direct
+	// peer and X-Forwarded-* is ignored. A misconfigured value flips
+	// this on for everyone — most catastrophically 0.0.0.0/0 (or
+	// ::/0), which makes every client a "trusted proxy" allowed to
+	// claim any source IP via X-Forwarded-For. That collapses the
+	// per-IP login rate limiter to a no-op. Run the check
+	// unconditionally (not behind SecureCookies) so a dev-mode
+	// misconfiguration fails the same way it would in prod.
+	for _, raw := range c.TrustedProxies {
+		if _, ipnet, err := net.ParseCIDR(raw); err == nil {
+			ones, bits := ipnet.Mask.Size()
+			if ones == 0 && bits > 0 {
+				// 0.0.0.0/0 or ::/0 — entire address space. Reject
+				// outright: anything that wide is indistinguishable
+				// from "no protection at all" and is more likely a
+				// typo than a deliberate choice.
+				errs = append(errs, fmt.Errorf("%w: %s", ErrInvalidTrustedProxy, raw))
+			}
+			continue
+		}
+		// Bare IP form (e.g. "10.0.0.1") — Gin's SetTrustedProxies
+		// accepts these as /32 or /128 single-host trusts, so we mirror
+		// that. A bare IP cannot encode the entire address space, so
+		// it skips the wildcard check.
+		if net.ParseIP(raw) != nil {
+			continue
+		}
+		errs = append(errs, fmt.Errorf("%w: %s", ErrInvalidTrustedProxy, raw))
 	}
 
 	// Log level / format
