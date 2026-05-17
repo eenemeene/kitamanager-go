@@ -650,6 +650,39 @@ func TestValidate_ProductionGate_SeedTestData_AllowedInDev(t *testing.T) {
 	}
 }
 
+func TestValidate_TOTPKey_AllOnesRejected(t *testing.T) {
+	cfg := baseValidConfig()
+	cfg.TOTPEncryptionKey = strings.Repeat("1", 64)
+
+	if err := cfg.Validate(); !errors.Is(err, ErrInvalidTOTPKey) {
+		t.Errorf("64x'1' must be rejected as a known placeholder, got %v", err)
+	}
+}
+
+func TestValidate_TOTPKey_UniformBytesRejected(t *testing.T) {
+	// Same shape as 64x'1' but a value that is NOT in the explicit
+	// placeholder allowlist — the uniformity check must still trip.
+	cfg := baseValidConfig()
+	cfg.TOTPEncryptionKey = strings.Repeat("ab", 32)
+
+	if err := cfg.Validate(); !errors.Is(err, ErrInvalidTOTPKey) {
+		t.Errorf("all-same-byte key must be rejected, got %v", err)
+	}
+}
+
+func TestValidate_TOTPKey_DeadbeefStillAccepted(t *testing.T) {
+	// "deadbeef…" has only four distinct bytes but is the test
+	// fixture and a perfectly reasonable hex pattern — the uniformity
+	// check is intentionally narrow ("all bytes equal"), not a generic
+	// entropy heuristic, so this must continue to pass.
+	cfg := baseValidConfig()
+	cfg.TOTPEncryptionKey = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("deadbeef test fixture must remain valid, got %v", err)
+	}
+}
+
 func TestValidate_ProductionGate_NotInDevMode(t *testing.T) {
 	// SECURE_COOKIES=false → dev mode → gates do NOT fire even with
 	// rate limit off and DB plaintext.

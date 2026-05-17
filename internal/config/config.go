@@ -58,6 +58,7 @@ var (
 // placeholder cannot boot with a predictable key.
 var knownPlaceholderTOTPKeys = map[string]bool{
 	"0000000000000000000000000000000000000000000000000000000000000000": true,
+	"1111111111111111111111111111111111111111111111111111111111111111": true,
 	"change-me-in-production": true,
 	"dev-only-totp-key-do-not-use-in-production-please-replace-now": true,
 }
@@ -299,6 +300,12 @@ func (c *Config) Validate() error {
 		errs = append(errs, ErrInvalidTOTPKey)
 	case !isValidHex64(c.TOTPEncryptionKey):
 		errs = append(errs, ErrInvalidTOTPKey)
+	case isUniformHex64(c.TOTPEncryptionKey):
+		// Catches the "developer typed `1` 64 times" failure mode that
+		// the dev-example file historically ground in. Trips on
+		// trivially-uniform keys (all 0x00, all 0x11, ...) that an
+		// allowlist of literal placeholder strings wouldn't catch.
+		errs = append(errs, ErrInvalidTOTPKey)
 	}
 
 	// WebAuthn: require all three fields together, or all three empty.
@@ -378,6 +385,30 @@ func isValidHex64(s string) bool {
 		case r >= 'a' && r <= 'f':
 		case r >= 'A' && r <= 'F':
 		default:
+			return false
+		}
+	}
+	return true
+}
+
+// isUniformHex64 returns true when s is a hex string whose decoded
+// bytes are all identical (`0x00 0x00 ... 0x00`, `0x11 0x11 ... 0x11`,
+// etc.). It rules out the specific "developer typed a single character
+// 64 times" failure mode where a placeholder like "1111…1111" ships
+// to a real environment. It is intentionally narrower than a generic
+// entropy heuristic — patterns like "deadbeefdeadbeef…" (4 distinct
+// bytes) are still legal for tests, while genuine random keys from
+// `openssl rand -hex 32` have a vanishing chance of tripping it.
+func isUniformHex64(s string) bool {
+	if len(s) != 64 {
+		return false
+	}
+	// Hex is case-insensitive at the byte level — normalise via
+	// per-pair comparison so "11111111…" and "1111…" still match the
+	// uniformity check regardless of the case the operator typed.
+	first := strings.ToLower(s[:2])
+	for i := 2; i < 64; i += 2 {
+		if strings.ToLower(s[i:i+2]) != first {
 			return false
 		}
 	}
