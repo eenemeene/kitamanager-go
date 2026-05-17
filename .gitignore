@@ -30,6 +30,16 @@ go.work.sum
 # env file
 .env
 
+# Cryptographic material — TLS certs, signing keys, private keys
+# of any shape. We don't expect any of these to live in-tree
+# (production loads them from secrets managers), so a tripwire is
+# cheap defence-in-depth against an accidental `git add .`.
+*.key
+*.pem
+*.crt
+*.pfx
+*.p12
+
 # Editor/IDE
 .idea/
 .vscode/
