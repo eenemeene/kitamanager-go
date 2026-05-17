@@ -150,6 +150,14 @@ func (s *AuthService) Login(ctx context.Context, email, password, ipAddress, use
 
 	failedCount, err := s.auditService.CountRecentFailedLogins(ctx, canonical, lockoutWindow)
 	if err == nil && failedCount >= lockoutThreshold {
+		// Burn the same dummy bcrypt the user-not-found and inactive
+		// branches use, so the lockout path's latency sits inside the
+		// same envelope as every other login outcome. Without this,
+		// the lockout branch returns ~100ms faster than the rest and
+		// becomes a timing oracle for "this account is currently
+		// locked" — which implies the account exists AND someone is
+		// actively brute-forcing it. The bcrypt result is discarded.
+		_ = bcrypt.CompareHashAndPassword(s.dummyPasswordHash, []byte(password))
 		s.auditService.LogLoginFailed(ctx, canonical, ipAddress, userAgent, "account locked - too many failed attempts")
 		return nil, apperror.TooManyRequests("too many failed login attempts, please try again later")
 	}
