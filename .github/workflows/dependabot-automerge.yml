@@ -40,7 +40,13 @@ jobs:
         if: >
           steps.meta.outputs.update-type == 'version-update:semver-patch' ||
           steps.meta.outputs.update-type == 'version-update:semver-minor'
-        run: gh pr merge --auto --merge "$PR_URL"
+        # --rebase, not --merge: the repo currently has
+        # allow_merge_commit toggled off (or was when this last ran)
+        # and `gh pr merge --merge` fails with "Merge commits are not
+        # allowed on this repository", which is what kept the
+        # dependabot PRs sitting in queue. main's history is already
+        # linear, so --rebase matches the observed style too.
+        run: gh pr merge --auto --rebase "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
