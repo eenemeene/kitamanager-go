@@ -3,10 +3,8 @@ package service
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base32"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -44,6 +42,18 @@ const FactorActivationFailureLimit = 5
 // encoding. 8 bytes = 64 bits of entropy per code. With 8 codes the
 // total cumulative entropy is still well beyond brute force.
 const BackupCodeEntropyBytes = 8
+
+// BackupCodeBcryptCost is the bcrypt cost used when hashing backup
+// codes. Production keeps DefaultCost (10), the same envelope as
+// password hashing — paid only on MFA enrol and on the rare backup-
+// code verify path, never on a typical login. Tests override this to
+// bcrypt.MinCost via init_test.go in packages that exercise MFA
+// enrol; otherwise the suite spends multiple seconds per test
+// hashing 8 codes at production cost and the pre-commit `go test
+// -race` wall (10 min/package) breaks. Mutated only from test setup
+// before any goroutine starts, so the lack of synchronization is
+// fine.
+var BackupCodeBcryptCost = bcrypt.DefaultCost
 
 // otpDigitCount is the number of decimal digits in a TOTP code. Used
 // for an early length-check in tryTOTPCode and verifyTOTPForActivation
@@ -1169,15 +1179,37 @@ func (s *FactorService) tryTOTPCode(ctx context.Context, factorID uint, code str
 }
 
 // tryBackupCode attempts to atomically consume a backup code. Returns
-// true iff the hash matched an unused row and the UPDATE won the race.
+// true iff the submitted code bcrypt-matches an unused row AND that
+// row was successfully claimed via the conditional UPDATE.
+//
+// The pre-bcrypt path computed a deterministic SHA-256 and pushed
+// equality to the WHERE clause. Bcrypt's per-row salt rules that out:
+// every candidate row has to be compared in-process. n is small (<=
+// BackupCodeCount per factor), and bcrypt.CompareHashAndPassword is
+// itself constant-time, so this is fine. We break on the first match
+// to avoid pointlessly burning CPU on the remaining rows.
 func (s *FactorService) tryBackupCode(ctx context.Context, factorID uint, rawCode string) bool {
-	h := hashBackupCode(normalizeBackupCode(rawCode))
-	ok, err := s.factorStore.ConsumeBackupCode(ctx, factorID, h)
-	if err != nil || !ok {
+	norm := normalizeBackupCode(rawCode)
+	rows, err := s.factorStore.ListUnusedBackupCodes(ctx, factorID)
+	if err != nil {
 		return false
 	}
-	_ = s.factorStore.TouchLastUsed(ctx, factorID)
-	return true
+	for _, row := range rows {
+		if bcrypt.CompareHashAndPassword([]byte(row.CodeHash), []byte(norm)) != nil {
+			continue
+		}
+		ok, err := s.factorStore.MarkBackupCodeUsed(ctx, row.ID)
+		if err != nil || !ok {
+			// Either a DB error or a concurrent verify won the race
+			// on this row. Either way we refuse — don't keep
+			// scanning, because at most one row can match a given
+			// input (codes are unique within the factor's set).
+			return false
+		}
+		_ = s.factorStore.TouchLastUsed(ctx, factorID)
+		return true
+	}
+	return false
 }
 
 // totpAAD returns the additional authenticated data string the AEAD
@@ -1262,7 +1294,11 @@ func generateBackupCodes(n int) ([]string, []string, error) {
 			code = code[:mid] + "-" + code[mid:]
 		}
 		raw = append(raw, code)
-		hashed = append(hashed, hashBackupCode(normalizeBackupCode(code)))
+		h, err := hashBackupCode(normalizeBackupCode(code))
+		if err != nil {
+			return nil, nil, err
+		}
+		hashed = append(hashed, h)
 	}
 	return raw, hashed, nil
 }
@@ -1281,7 +1317,17 @@ func normalizeBackupCode(s string) string {
 	return b.String()
 }
 
-func hashBackupCode(code string) string {
-	h := sha256.Sum256([]byte(code))
-	return hex.EncodeToString(h[:])
+// hashBackupCode returns a bcrypt hash of an already-normalized
+// backup code. Bcrypt is used here for the same reason it is used for
+// passwords: the codespace is small (8 bytes of entropy) and a leaked
+// table of fast unsalted SHA-256 hashes — the prior design — would be
+// tractable on a single GPU. Cost matches password hashing so the
+// verify path's latency budget is the existing bcrypt envelope, not
+// something operators have to tune separately.
+func hashBackupCode(code string) (string, error) {
+	h, err := bcrypt.GenerateFromPassword([]byte(code), BackupCodeBcryptCost)
+	if err != nil {
+		return "", err
+	}
+	return string(h), nil
 }

@@ -269,16 +269,29 @@ func (s *FactorStore) CountUnusedBackupCodes(ctx context.Context, factorID uint)
 	return int(n), err
 }
 
-// ConsumeBackupCode atomically marks a code used iff the hash matches
-// AND the code has not been used yet. Returns (true, nil) on accept,
-// (false, nil) if the hash doesn't match any unused code (which covers
-// both "wrong code" and "already used"). This is the single-use
-// guarantee — two concurrent attempts can't both succeed.
-func (s *FactorStore) ConsumeBackupCode(ctx context.Context, factorID uint, codeHash string) (bool, error) {
-	now := time.Now().UTC()
+// ListUnusedBackupCodes returns every still-redeemable code row for a
+// factor (used_at IS NULL). The pre-bcrypt design did a single
+// WHERE code_hash = ? UPDATE — impossible now that each row carries
+// its own salt — so the verify path lists candidates and uses
+// bcrypt.CompareHashAndPassword to find the match, then claims the
+// matching row via MarkBackupCodeUsed.
+func (s *FactorStore) ListUnusedBackupCodes(ctx context.Context, factorID uint) ([]models.FactorBackupCode, error) {
+	var out []models.FactorBackupCode
+	err := DBFromContext(ctx, s.db).
+		Where("factor_id = ? AND used_at IS NULL", factorID).
+		Find(&out).Error
+	return out, err
+}
+
+// MarkBackupCodeUsed atomically claims a row by primary key iff the
+// row is still unused. Returns (true, nil) on the winning claim,
+// (false, nil) if the row was already consumed by a concurrent verify
+// attempt — this WHERE used_at IS NULL guard is what preserves the
+// single-use guarantee under concurrent races.
+func (s *FactorStore) MarkBackupCodeUsed(ctx context.Context, id uint) (bool, error) {
 	res := DBFromContext(ctx, s.db).Model(&models.FactorBackupCode{}).
-		Where("factor_id = ? AND code_hash = ? AND used_at IS NULL", factorID, codeHash).
-		Update("used_at", now)
+		Where("id = ? AND used_at IS NULL", id).
+		Update("used_at", time.Now().UTC())
 	if res.Error != nil {
 		return false, res.Error
 	}

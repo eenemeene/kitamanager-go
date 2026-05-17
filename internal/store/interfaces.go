@@ -328,7 +328,8 @@ type FactorStorer interface {
 	InsertBackupCodes(ctx context.Context, codes []models.FactorBackupCode) error
 	ListBackupCodes(ctx context.Context, factorID uint) ([]models.FactorBackupCode, error)
 	CountUnusedBackupCodes(ctx context.Context, factorID uint) (int, error)
-	ConsumeBackupCode(ctx context.Context, factorID uint, codeHash string) (bool, error)
+	ListUnusedBackupCodes(ctx context.Context, factorID uint) ([]models.FactorBackupCode, error)
+	MarkBackupCodeUsed(ctx context.Context, id uint) (bool, error)
 	ReplaceBackupCodes(ctx context.Context, factorID uint, fresh []models.FactorBackupCode) error
 
 	// WebAuthn subtable + registration-challenge lifecycle.

@@ -3,11 +3,11 @@ package store
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
-	"encoding/hex"
 	"sync"
 	"testing"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/eenemeene/kitamanager-go/internal/models"
 )
@@ -41,9 +41,18 @@ func seedTOTPFactor(t *testing.T, s *FactorStore, userID uint, activated bool) u
 	return f.ID
 }
 
-func hashCode(raw string) string {
-	h := sha256.Sum256([]byte(raw))
-	return hex.EncodeToString(h[:])
+// hashCode returns a bcrypt hash of the given raw code at MinCost
+// (4) — DefaultCost would make each enrol-shaped test pay ~100ms per
+// code and turn the suite into a multi-minute affair. The store
+// layer only stores and lists hash strings; cost doesn't affect what
+// is being tested here.
+func hashCode(t *testing.T, raw string) string {
+	t.Helper()
+	h, err := bcrypt.GenerateFromPassword([]byte(raw), bcrypt.MinCost)
+	if err != nil {
+		t.Fatalf("bcrypt: %v", err)
+	}
+	return string(h)
 }
 
 func TestFactorStore_FindByIDAndUser_OwnerOnly(t *testing.T) {
@@ -188,7 +197,7 @@ func TestFactorStore_AcceptTOTPStep_ConcurrentRacesOneWinner(t *testing.T) {
 	}
 }
 
-func TestFactorStore_ConsumeBackupCode_SingleUse(t *testing.T) {
+func TestFactorStore_MarkBackupCodeUsed_SingleClaim(t *testing.T) {
 	db := setupTestDB(t)
 	s := NewFactorStore(db)
 	user := createTestUser(t, db, "U", "u@example.com")
@@ -200,33 +209,52 @@ func TestFactorStore_ConsumeBackupCode_SingleUse(t *testing.T) {
 	if err := s.CreateFactor(ctx, bf); err != nil {
 		t.Fatalf("create backup factor: %v", err)
 	}
-	rawCode := "hk7m93px2fnr"
-	codes := []models.FactorBackupCode{
-		{FactorID: bf.ID, CodeHash: hashCode(rawCode), CreatedAt: time.Now().UTC()},
-	}
-	if err := s.InsertBackupCodes(ctx, codes); err != nil {
+	if err := s.InsertBackupCodes(ctx, []models.FactorBackupCode{
+		{FactorID: bf.ID, CodeHash: hashCode(t, "hk7m93px2fnr"), CreatedAt: time.Now().UTC()},
+	}); err != nil {
 		t.Fatalf("insert codes: %v", err)
 	}
 
-	// First use: succeeds.
-	ok, err := s.ConsumeBackupCode(ctx, bf.ID, hashCode(rawCode))
+	// ListUnusedBackupCodes surfaces the row.
+	rows, err := s.ListUnusedBackupCodes(ctx, bf.ID)
 	if err != nil {
-		t.Fatalf("consume 1: %v", err)
+		t.Fatalf("list: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 unused row, got %d", len(rows))
+	}
+	id := rows[0].ID
+
+	// First claim wins.
+	ok, err := s.MarkBackupCodeUsed(ctx, id)
+	if err != nil {
+		t.Fatalf("mark 1: %v", err)
 	}
 	if !ok {
-		t.Fatal("first consume should succeed")
+		t.Fatal("first MarkBackupCodeUsed should succeed")
 	}
-	// Second use of the same code: rejected.
-	ok, err = s.ConsumeBackupCode(ctx, bf.ID, hashCode(rawCode))
+
+	// Second claim on the same row is rejected by the used_at IS NULL
+	// guard — this is the single-use guarantee.
+	ok, err = s.MarkBackupCodeUsed(ctx, id)
 	if err != nil {
-		t.Fatalf("consume 2: %v", err)
+		t.Fatalf("mark 2: %v", err)
 	}
 	if ok {
-		t.Fatal("second consume of same code must be rejected")
+		t.Fatal("second MarkBackupCodeUsed on same row must be rejected")
+	}
+
+	// And the row no longer appears as unused.
+	rows, err = s.ListUnusedBackupCodes(ctx, bf.ID)
+	if err != nil {
+		t.Fatalf("list after: %v", err)
+	}
+	if len(rows) != 0 {
+		t.Fatalf("expected 0 unused rows after claim, got %d", len(rows))
 	}
 }
 
-func TestFactorStore_ConsumeBackupCode_ConcurrentRacesOneWinner(t *testing.T) {
+func TestFactorStore_MarkBackupCodeUsed_ConcurrentRacesOneWinner(t *testing.T) {
 	db := setupTestDB(t)
 	s := NewFactorStore(db)
 	user := createTestUser(t, db, "U", "u@example.com")
@@ -238,12 +266,16 @@ func TestFactorStore_ConsumeBackupCode_ConcurrentRacesOneWinner(t *testing.T) {
 	if err := s.CreateFactor(ctx, bf); err != nil {
 		t.Fatalf("create backup factor: %v", err)
 	}
-	rawCode := "race-code-xyz1"
 	if err := s.InsertBackupCodes(ctx, []models.FactorBackupCode{
-		{FactorID: bf.ID, CodeHash: hashCode(rawCode), CreatedAt: time.Now().UTC()},
+		{FactorID: bf.ID, CodeHash: hashCode(t, "race-code-xyz1"), CreatedAt: time.Now().UTC()},
 	}); err != nil {
 		t.Fatalf("insert: %v", err)
 	}
+	rows, err := s.ListUnusedBackupCodes(ctx, bf.ID)
+	if err != nil || len(rows) != 1 {
+		t.Fatalf("setup list: rows=%d err=%v", len(rows), err)
+	}
+	id := rows[0].ID
 
 	var wg sync.WaitGroup
 	results := make([]bool, 4)
@@ -252,7 +284,7 @@ func TestFactorStore_ConsumeBackupCode_ConcurrentRacesOneWinner(t *testing.T) {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
-			results[idx], errs[idx] = s.ConsumeBackupCode(ctx, bf.ID, hashCode(rawCode))
+			results[idx], errs[idx] = s.MarkBackupCodeUsed(ctx, id)
 		}(i)
 	}
 	wg.Wait()
@@ -268,7 +300,7 @@ func TestFactorStore_ConsumeBackupCode_ConcurrentRacesOneWinner(t *testing.T) {
 		}
 	}
 	if winners != 1 {
-		t.Errorf("exactly one concurrent consume should win, got %d", winners)
+		t.Errorf("exactly one concurrent claim should win, got %d", winners)
 	}
 }
 
@@ -304,19 +336,27 @@ func TestFactorStore_ReplaceBackupCodes_Atomic(t *testing.T) {
 	if err := s.CreateFactor(ctx, bf); err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	// Seed 3 old codes.
-	if err := s.InsertBackupCodes(ctx, []models.FactorBackupCode{
-		{FactorID: bf.ID, CodeHash: hashCode("old-1"), CreatedAt: time.Now().UTC()},
-		{FactorID: bf.ID, CodeHash: hashCode("old-2"), CreatedAt: time.Now().UTC()},
-		{FactorID: bf.ID, CodeHash: hashCode("old-3"), CreatedAt: time.Now().UTC()},
-	}); err != nil {
+	// Seed 3 old codes. Bcrypt hashes are non-deterministic — each
+	// call to hashCode(t, ...) returns a different string for the
+	// same input — so capture the inserted hash strings up front and
+	// assert by equality on those exact strings.
+	oldHashes := []string{
+		hashCode(t, "old-1"),
+		hashCode(t, "old-2"),
+		hashCode(t, "old-3"),
+	}
+	old := make([]models.FactorBackupCode, 0, len(oldHashes))
+	for _, h := range oldHashes {
+		old = append(old, models.FactorBackupCode{FactorID: bf.ID, CodeHash: h, CreatedAt: time.Now().UTC()})
+	}
+	if err := s.InsertBackupCodes(ctx, old); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 
 	// Replace with a fresh set of 2.
 	fresh := []models.FactorBackupCode{
-		{FactorID: bf.ID, CodeHash: hashCode("new-1"), CreatedAt: time.Now().UTC()},
-		{FactorID: bf.ID, CodeHash: hashCode("new-2"), CreatedAt: time.Now().UTC()},
+		{FactorID: bf.ID, CodeHash: hashCode(t, "new-1"), CreatedAt: time.Now().UTC()},
+		{FactorID: bf.ID, CodeHash: hashCode(t, "new-2"), CreatedAt: time.Now().UTC()},
 	}
 	if err := s.ReplaceBackupCodes(ctx, bf.ID, fresh); err != nil {
 		t.Fatalf("replace: %v", err)
@@ -330,8 +370,12 @@ func TestFactorStore_ReplaceBackupCodes_Atomic(t *testing.T) {
 		t.Errorf("expected 2 rows after replace, got %d", len(rows))
 	}
 	// None of the old hashes should remain.
+	oldSet := map[string]struct{}{}
+	for _, h := range oldHashes {
+		oldSet[h] = struct{}{}
+	}
 	for _, r := range rows {
-		if r.CodeHash == hashCode("old-1") || r.CodeHash == hashCode("old-2") || r.CodeHash == hashCode("old-3") {
+		if _, found := oldSet[r.CodeHash]; found {
 			t.Error("old code hash survived replace")
 		}
 	}
@@ -514,7 +558,7 @@ func TestFactorStore_CascadeDelete_WhenUserDeleted(t *testing.T) {
 		t.Fatalf("create bf: %v", err)
 	}
 	if err := s.InsertBackupCodes(ctx, []models.FactorBackupCode{
-		{FactorID: bf.ID, CodeHash: hashCode("x"), CreatedAt: time.Now().UTC()},
+		{FactorID: bf.ID, CodeHash: hashCode(t, "x"), CreatedAt: time.Now().UTC()},
 	}); err != nil {
 		t.Fatalf("insert codes: %v", err)
 	}
