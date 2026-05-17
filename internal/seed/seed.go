@@ -16,7 +16,6 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/config"
 	"github.com/eenemeene/kitamanager-go/internal/importer"
 	"github.com/eenemeene/kitamanager-go/internal/models"
-	"github.com/eenemeene/kitamanager-go/internal/rbac"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 	"github.com/eenemeene/kitamanager-go/internal/store"
 	"github.com/eenemeene/kitamanager-go/internal/validation"
@@ -45,7 +44,7 @@ func randomGender() string {
 // SeedAdmin creates an initial admin user if SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD are set.
 // If the user already exists, it will be skipped.
 // The user will be assigned the superadmin role (in database).
-func SeedAdmin(cfg *config.Config, userStore *store.UserStore, userOrgStore *store.UserOrganizationStore, enforcer *rbac.Enforcer) error {
+func SeedAdmin(cfg *config.Config, userStore *store.UserStore, userOrgStore *store.UserOrganizationStore) error {
 	ctx := context.Background()
 	if cfg.SeedAdminEmail == "" || cfg.SeedAdminPassword == "" {
 		slog.Info("Admin seeding skipped: SEED_ADMIN_EMAIL or SEED_ADMIN_PASSWORD not set")
@@ -70,11 +69,6 @@ func SeedAdmin(cfg *config.Config, userStore *store.UserStore, userOrgStore *sto
 			} else {
 				slog.Info("Superadmin status set in database", "userId", existingUser.ID)
 			}
-		}
-
-		// Also keep Casbin assignment for backwards compatibility during migration
-		if err := enforcer.AssignSuperAdmin(existingUser.ID); err != nil {
-			slog.Warn("Failed to ensure superadmin role in Casbin", "error", err)
 		}
 		return nil
 	}
@@ -104,12 +98,6 @@ func SeedAdmin(cfg *config.Config, userStore *store.UserStore, userOrgStore *sto
 	}
 
 	slog.Info("Admin user created", "email", seedEmail, "id", user.ID)
-
-	// Also assign superadmin role in Casbin for backwards compatibility during migration
-	if err := enforcer.AssignSuperAdmin(user.ID); err != nil {
-		slog.Warn("Failed to assign superadmin role in Casbin", "error", err)
-	}
-
 	slog.Info("Superadmin role assigned", "userId", user.ID)
 
 	return nil
