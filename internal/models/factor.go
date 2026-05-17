@@ -66,7 +66,7 @@ func (FactorTOTPSecret) TableName() string { return "factor_totp_secrets" }
 type FactorBackupCode struct {
 	ID        uint       `gorm:"primaryKey" json:"-"`
 	FactorID  uint       `gorm:"not null;index" json:"-"`
-	CodeHash  string     `gorm:"type:char(64);not null" json:"-"`
+	CodeHash  string     `gorm:"type:text;not null" json:"-"`
 	UsedAt    *time.Time `json:"-" format:"date-time"`
 	CreatedAt time.Time  `gorm:"not null" json:"-" format:"date-time"`
 }
