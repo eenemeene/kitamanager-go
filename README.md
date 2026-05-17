@@ -32,13 +32,13 @@ Both paths read config from `.env`. Docker compose overrides `DB_HOST` to the in
 - **API:** http://localhost:8080
 - **Login:** `admin@example.com` / `supersecret`
 
-The `.env.dev.example` file ships with dev-only values (`DB_SSLMODE=disable`, a well-known `JWT_SECRET`, `SECURE_COOKIES=false`, rate limiters disabled, test data seeded). These values are safe to use on your laptop and nowhere else.
+The `.env.dev.example` file ships with dev-only values (`DB_SSLMODE=disable`, `SECURE_COOKIES=false`, rate limiters disabled, test data seeded). These values are safe to use on your laptop and nowhere else. `CSRF_HMAC_KEY` and `TOTP_ENCRYPTION_KEY` ship as obviously-invalid placeholders that fail startup — generate real ones with `openssl rand -hex 32` even for dev.
 
 ### Required env vars (all environments)
 
 | Var | Rule |
 |---|---|
-| `JWT_SECRET` | Required. ≥32 characters. Must not be a known placeholder string. Used for CSRF-token HMAC derivation; name is kept for backwards compatibility. |
+| `CSRF_HMAC_KEY` | Required. ≥32 characters. Must not be a known placeholder string. Used to derive the double-submit CSRF token from the session cookie. |
 | `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` | Required. |
 | `DB_SSLMODE` | One of `disable`, `require`, `verify-ca`, `verify-full`. |
 | `SERVER_PORT` | Valid TCP port. Defaults to `8080`. |
@@ -74,10 +74,11 @@ Use `.env.production.example` as a template:
 ```bash
 cp .env.production.example .env
 $EDITOR .env   # replace every REPLACE_ME
-openssl rand -hex 32   # for JWT_SECRET
+openssl rand -hex 32   # for CSRF_HMAC_KEY
+openssl rand -hex 32   # for TOTP_ENCRYPTION_KEY
 ```
 
-Then bring the stack up with the demo compose file (which enforces `DB_SSLMODE=require`, `SECURE_COOKIES=true`, and refuses to start without `JWT_SECRET` / `DB_PASSWORD` / `SEED_ADMIN_PASSWORD`):
+Then bring the stack up with the demo compose file (which enforces `DB_SSLMODE=require`, `SECURE_COOKIES=true`, and refuses to start without `CSRF_HMAC_KEY` / `DB_PASSWORD` / `SEED_ADMIN_PASSWORD`):
 
 ```bash
 docker compose -f docker-compose.demo.yml up -d --build

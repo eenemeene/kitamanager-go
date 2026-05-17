@@ -75,11 +75,11 @@ func setupFullProductionRouter(t *testing.T) (*gin.Engine, *rbac.Enforcer) {
 	billPeriodStore := store.NewGovernmentFundingBillPeriodStore(testDB)
 	childVoucherStore := store.NewChildVoucherStore(testDB)
 
-	// Services. AuthService needs the JWT/CSRF secret; FactorService
+	// Services. AuthService needs the CSRF HMAC key; FactorService
 	// needs the AEAD; both come from the existing test fixtures.
 	auditService := service.NewAuditService(auditStore)
 	factorService := service.NewFactorService(factorStore, userStore, testTOTPAEAD(t), "KitaManager (test)", nil, auditService)
-	authService := service.NewAuthService(userStore, sessionStore, testJWTSecret, auditService, factorService)
+	authService := service.NewAuthService(userStore, sessionStore, testCSRFHMACKey, auditService, factorService)
 	userService := service.NewUserService(userStore, userOrgStore, sessionStore).WithAuditService(auditService)
 	userOrgService := service.NewUserOrganizationService(userOrgStore, userStore, transactor)
 	orgService := service.NewOrganizationService(orgStore, userStore)
@@ -98,7 +98,7 @@ func setupFullProductionRouter(t *testing.T) (*gin.Engine, *rbac.Enforcer) {
 	permissionService := rbac.NewPermissionService(userOrgStore, enforcer)
 	authMW := middleware.NewAuthMiddleware(sessionStore)
 	authzMW := middleware.NewAuthorizationMiddleware(permissionService)
-	csrfMW := middleware.NewCSRFMiddleware(testJWTSecret)
+	csrfMW := middleware.NewCSRFMiddleware(testCSRFHMACKey)
 
 	r := gin.New()
 	routes.Setup(r, routes.Deps{

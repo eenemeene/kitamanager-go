@@ -14,8 +14,8 @@ import (
 
 // Validation errors
 var (
-	ErrMissingJWTSecret      = errors.New("JWT_SECRET must be set (generate with: openssl rand -hex 32)")
-	ErrWeakJWTSecret         = errors.New("JWT_SECRET must be at least 32 characters and must not be the default placeholder value")
+	ErrMissingCSRFHMACKey    = errors.New("CSRF_HMAC_KEY must be set (generate with: openssl rand -hex 32)")
+	ErrWeakCSRFHMACKey       = errors.New("CSRF_HMAC_KEY must be at least 32 characters and must not be a known placeholder value")
 	ErrInvalidServerPort     = errors.New("SERVER_PORT must be a valid port number (1-65535)")
 	ErrInvalidDBPort         = errors.New("DB_PORT must be a valid port number (1-65535)")
 	ErrInvalidLogLevel       = errors.New("LOG_LEVEL must be one of: debug, info, warn, error")
@@ -60,7 +60,7 @@ var (
 	ErrInvalidTrustedProxy = errors.New("TRUSTED_PROXIES entry is invalid: each value must parse as a CIDR (e.g. 10.0.0.0/8) and must not be 0.0.0.0/0 or ::/0")
 )
 
-// knownPlaceholderTOTPKeys mirrors knownPlaceholderJWTSecrets: any string
+// knownPlaceholderTOTPKeys mirrors knownPlaceholderCSRFKeys: any string
 // that's ever appeared in an example .env file is rejected so a forgotten
 // placeholder cannot boot with a predictable key.
 var knownPlaceholderTOTPKeys = map[string]bool{
@@ -70,14 +70,20 @@ var knownPlaceholderTOTPKeys = map[string]bool{
 	"dev-only-totp-key-do-not-use-in-production-please-replace-now": true,
 }
 
-// knownPlaceholderJWTSecrets are legacy placeholder values that must be rejected.
-// Add every placeholder string that has ever shipped in example files here so that
-// a forgotten .env cannot boot with a predictable secret.
-var knownPlaceholderJWTSecrets = map[string]bool{
-	"default-secret-key":                               true,
-	"your-super-secret-jwt-key-change-in-production":   true,
-	"change-me-in-production":                          true,
-	"dev-only-do-not-use-in-production-please-replace": true,
+// knownPlaceholderCSRFKeys are placeholder values that must be rejected.
+// Add every placeholder string that has ever shipped in example files here
+// so that a forgotten .env cannot boot with a predictable secret. The
+// "*jwt-key*" entries are retained from the period when this value lived
+// under the JWT_SECRET name (the codebase never actually signed JWTs);
+// keeping them in the allowlist means an old .env that still uses the
+// legacy literal still fails fast.
+var knownPlaceholderCSRFKeys = map[string]bool{
+	"default-secret-key":                                           true,
+	"your-super-secret-jwt-key-change-in-production":               true,
+	"change-me-in-production":                                      true,
+	"dev-only-do-not-use-in-production-please-replace":             true,
+	"dev-only-jwt-secret-not-for-production-use-change-me-32chars": true,
+	"ci-only-jwt-secret-not-for-production-use-at-least-32-chars":  true,
 }
 
 type Config struct {
@@ -91,23 +97,16 @@ type Config struct {
 
 	// Server
 	ServerPort string
-	JWTSecret  string
 
 	// CSRFHMACKey is the HMAC key used to derive a session-bound
 	// CSRF token from the session cookie value (see
 	// middleware.ComputeCSRFToken). Closes audit finding C-M-3
-	// (security review 2026-05-01): historically the CSRF derivation
-	// shared JWTSecret, even though the codebase signs no JWTs and
-	// "JWT secret rotation" carries different operational semantics
-	// (logs out every session) than "rotate the CSRF HMAC key"
-	// (invalidates CSRF tokens; users get a 403 once until the next
-	// page load re-issues a token). Key separation per NIST SP
-	// 800-57 §5.2.
+	// (security review 2026-05-01). Required; rejected if unset, if
+	// shorter than 32 characters, or if it matches a known placeholder.
 	//
-	// Falls back to JWTSecret when CSRF_HMAC_KEY is unset, so
-	// existing deployments don't break — set CSRF_HMAC_KEY explicitly
-	// in new deployments and document a rotation plan if you ever
-	// bump JWTSecret without wanting to also invalidate CSRF tokens.
+	// Historically this value lived under JWT_SECRET (the codebase never
+	// signed JWTs — the name was misleading). The JWT_SECRET fallback
+	// has been retired; deployments must set CSRF_HMAC_KEY explicitly.
 	CSRFHMACKey string
 
 	// RBAC
@@ -211,14 +210,16 @@ type Config struct {
 func (c *Config) Validate() error {
 	var errs []error
 
-	// JWT Secret: always required, always strong, never a known placeholder.
+	// CSRF HMAC key: always required, always strong, never a known
+	// placeholder. Used by middleware.ComputeCSRFToken to derive the
+	// double-submit token from the session cookie value.
 	switch {
-	case c.JWTSecret == "":
-		errs = append(errs, ErrMissingJWTSecret)
-	case knownPlaceholderJWTSecrets[c.JWTSecret]:
-		errs = append(errs, ErrWeakJWTSecret)
-	case len(c.JWTSecret) < 32:
-		errs = append(errs, ErrWeakJWTSecret)
+	case c.CSRFHMACKey == "":
+		errs = append(errs, ErrMissingCSRFHMACKey)
+	case knownPlaceholderCSRFKeys[c.CSRFHMACKey]:
+		errs = append(errs, ErrWeakCSRFHMACKey)
+	case len(c.CSRFHMACKey) < 32:
+		errs = append(errs, ErrWeakCSRFHMACKey)
 	}
 
 	// Ports
@@ -326,7 +327,7 @@ func (c *Config) Validate() error {
 		}
 	}
 
-	// TOTP encryption key. Same shape discipline as JWT_SECRET: required,
+	// TOTP encryption key. Same shape discipline as CSRF_HMAC_KEY: required,
 	// known-placeholder values rejected, exact length enforced. Hex
 	// decoding is done at startup (cmd/api/main.go) — here we only
 	// validate the shape of the input string to fail fast with a clear
@@ -502,12 +503,8 @@ func Load() (*Config, error) {
 		DBName:     getEnv("DB_NAME", ""),
 		DBSSLMode:  getEnv("DB_SSLMODE", "require"),
 
-		ServerPort: getEnv("SERVER_PORT", "8080"),
-		JWTSecret:  getEnv("JWT_SECRET", ""),
-		// Falls back to JWTSecret when unset to keep existing
-		// deployments working. New installations should set this
-		// explicitly to a distinct 32-char-minimum value.
-		CSRFHMACKey: getEnv("CSRF_HMAC_KEY", getEnv("JWT_SECRET", "")),
+		ServerPort:  getEnv("SERVER_PORT", "8080"),
+		CSRFHMACKey: getEnv("CSRF_HMAC_KEY", ""),
 
 		RBACModelPath: getEnv("RBAC_MODEL_PATH", "configs/rbac_model.conf"),
 

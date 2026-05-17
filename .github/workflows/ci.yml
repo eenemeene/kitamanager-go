@@ -425,7 +425,7 @@ jobs:
           DB_PASSWORD=kitamanager \
           DB_NAME=kitamanager \
           DB_SSLMODE=disable \
-          JWT_SECRET=ci-only-jwt-secret-not-for-production-use-at-least-32-chars \
+          CSRF_HMAC_KEY=ci-only-csrf-hmac-key-not-for-production-at-least-32-chars \
           TOTP_ENCRYPTION_KEY=deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef \
           WEBAUTHN_RP_ID=localhost \
           WEBAUTHN_RP_NAME="KitaManager CI" \

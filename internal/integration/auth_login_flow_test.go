@@ -55,11 +55,11 @@ func testTOTPAEAD(t *testing.T) *cryptopkg.AEAD {
 	return aead
 }
 
-// testJWTSecret is a deterministic, ≥32-character secret used by the real
+// testCSRFHMACKey is a deterministic, ≥32-character secret used by the real
 // auth + CSRF middleware. Config enforces the 32-char floor in production;
 // we mirror it here so a future tightening of service-level checks does not
 // silently skip this test.
-const testJWTSecret = "integration-test-jwt-secret-at-least-32-chars-long"
+const testCSRFHMACKey = "integration-test-csrf-hmac-key-at-least-32-chars-long"
 
 // authFlowRouter wires a router with the real auth, authorization, user, and
 // organization stack — no hardcoded userID middleware, no CSRF shortcut.
@@ -103,7 +103,7 @@ func setupAuthFlowRouter(t *testing.T) *authFlowRouter {
 	// cookie), so our tests can ignore it.
 	authMW := middleware.NewAuthMiddleware(sessionStore)
 	authzMW := middleware.NewAuthorizationMiddleware(permissionService)
-	csrfMW := middleware.NewCSRFMiddleware(testJWTSecret)
+	csrfMW := middleware.NewCSRFMiddleware(testCSRFHMACKey)
 
 	factorStore := store.NewFactorStore(testDB)
 	// Build a real WebAuthn service so the integration tests can
@@ -126,7 +126,7 @@ func setupAuthFlowRouter(t *testing.T) *authFlowRouter {
 	// Real auth service — hashes passwords with bcrypt.DefaultCost and issues
 	// opaque session tokens backed by the sessions table. Gets a factor
 	// service so two-step login fires for MFA-enrolled users.
-	authService := service.NewAuthService(userStore, sessionStore, testJWTSecret, auditService, factorService)
+	authService := service.NewAuthService(userStore, sessionStore, testCSRFHMACKey, auditService, factorService)
 
 	authHandler := handlers.NewAuthHandler(authService, false /*secureCookies*/)
 	userHandler := handlers.NewUserHandler(userService, userOrgService, auditService, sessionStore)
@@ -504,7 +504,7 @@ func TestAuthFlow_StaffRole_CanReadChildrenButNotEmployees(t *testing.T) {
 	authzMW := middleware.NewAuthorizationMiddleware(permissionService)
 	sessionStore := store.NewSessionStore(testDB)
 	authMW := middleware.NewAuthMiddleware(sessionStore)
-	csrfMW := middleware.NewCSRFMiddleware(testJWTSecret)
+	csrfMW := middleware.NewCSRFMiddleware(testCSRFHMACKey)
 
 	protected := fr.router.Group("/api/v1")
 	protected.Use(authMW.RequireAuth())

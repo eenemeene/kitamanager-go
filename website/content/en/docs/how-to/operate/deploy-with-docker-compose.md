@@ -9,14 +9,14 @@ You want to bring up KitaManager (Postgres + API + frontend) on a host using Doc
 
 - Docker and Docker Compose installed.
 - Open ports for the frontend and API (defaults `3000` and `8080`).
-- A long random `JWT_SECRET` (at least 32 chars) and a 64-char hex `TOTP_ENCRYPTION_KEY`.
+- A long random `CSRF_HMAC_KEY` (at least 32 chars) and a 64-char hex `TOTP_ENCRYPTION_KEY`.
 
 ## Steps
 
 1. Clone or check out the repo at the version you want to run.
 2. Copy `.env.production.example` to `.env` and fill in:
    - `DB_USER`, `DB_PASSWORD`, `DB_NAME`
-   - `JWT_SECRET` — `openssl rand -hex 32`
+   - `CSRF_HMAC_KEY` — `openssl rand -hex 32`
    - `TOTP_ENCRYPTION_KEY` — `openssl rand -hex 32`
    - `WEBAUTHN_RP_ID`, `WEBAUTHN_RP_NAME`, `WEBAUTHN_ORIGINS` if you'll use security keys
    - `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_ADMIN_NAME` (for the bootstrap superadmin)

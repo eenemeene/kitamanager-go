@@ -36,7 +36,7 @@ DB_USER=kitamanager
 DB_PASSWORD=<langes Zufallspasswort>
 DB_NAME=kitamanager
 
-JWT_SECRET=<openssl rand -hex 32>
+CSRF_HMAC_KEY=<openssl rand -hex 32>
 TOTP_ENCRYPTION_KEY=<openssl rand -hex 32>
 
 WEBAUTHN_RP_ID=<Ihre Domain, z. B. kitamanager.example.org>
@@ -54,7 +54,7 @@ SECURE_COOKIES=true
 DB_SSLMODE=require
 ```
 
-**Überspringen Sie weder `JWT_SECRET` noch `TOTP_ENCRYPTION_KEY`.** Der Validator weigert sich ohne starke Werte zu starten.
+**Überspringen Sie weder `CSRF_HMAC_KEY` noch `TOTP_ENCRYPTION_KEY`.** Der Validator weigert sich ohne starke Werte zu starten.
 
 Die vollständige Referenz: [Umgebungsvariablen](../../reference/cli-and-config/env-vars/).
 

@@ -36,7 +36,7 @@ DB_USER=kitamanager
 DB_PASSWORD=<long random>
 DB_NAME=kitamanager
 
-JWT_SECRET=<openssl rand -hex 32>
+CSRF_HMAC_KEY=<openssl rand -hex 32>
 TOTP_ENCRYPTION_KEY=<openssl rand -hex 32>
 
 WEBAUTHN_RP_ID=<your domain, e.g. kitamanager.example.org>
@@ -54,7 +54,7 @@ SECURE_COOKIES=true
 DB_SSLMODE=require
 ```
 
-**Do not skip `JWT_SECRET` or `TOTP_ENCRYPTION_KEY`.** The validator refuses to start without strong values.
+**Do not skip `CSRF_HMAC_KEY` or `TOTP_ENCRYPTION_KEY`.** The validator refuses to start without strong values.
 
 For the full reference, see [Environment variables](../../reference/cli-and-config/env-vars/).
 
