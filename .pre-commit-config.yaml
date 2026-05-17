@@ -96,6 +96,19 @@ repos:
         types: [go]
         pass_filenames: false
 
+      # gosec finds AST-level security issues — hardcoded creds, weak
+      # crypto, unsafe file/path handling, unchecked errors on security-
+      # relevant calls. Complements govulncheck (CVE scanning) and
+      # golangci-lint (general lint). False positives get a #nosec line
+      # with an explicit justification, same shape as the existing
+      # annotations in internal/seed and internal/importer.
+      - id: gosec
+        name: gosec
+        entry: bash -c 'go install github.com/securego/gosec/v2/cmd/gosec@latest && gosec -quiet ./...'
+        language: system
+        types: [go]
+        pass_filenames: false
+
       - id: web-test
         name: web unit tests with coverage
         entry: bash -c 'cd frontend && npx jest --coverage'

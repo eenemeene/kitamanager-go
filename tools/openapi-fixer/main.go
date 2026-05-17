@@ -58,6 +58,10 @@ func main() {
 }
 
 func run(inPath, outPath string) error {
+	// #nosec G304 -- inPath is the path the developer typed on the
+	// command line to a local dev tool that runs in `make swagger-fix`.
+	// There is no network surface, no untrusted input source, and the
+	// tool is never deployed.
 	data, err := os.ReadFile(inPath)
 	if err != nil {
 		return fmt.Errorf("read %s: %w", inPath, err)
