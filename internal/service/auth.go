@@ -103,10 +103,10 @@ type AuthService struct {
 }
 
 // NewAuthService creates a new auth service. `serverSecret` is used for CSRF
-// HMAC derivation; the existing JWT_SECRET config value is reused because it
-// already has a 32-char floor. `factorService` may be nil in tests that do
-// not exercise two-step login; Login will then behave as if no user has
-// MFA enrolled.
+// HMAC derivation; the caller passes cfg.CSRFHMACKey (CSRF_HMAC_KEY env var),
+// which is validated for length + non-placeholder shape in config.Validate.
+// `factorService` may be nil in tests that do not exercise two-step login;
+// Login will then behave as if no user has MFA enrolled.
 func NewAuthService(userStore store.UserStorer, sessionStore store.SessionStorer, serverSecret string, auditService *AuditService, factorService *FactorService) *AuthService {
 	dummyHash, err := bcrypt.GenerateFromPassword([]byte("timing-equalizer"), bcrypt.DefaultCost)
 	if err != nil {

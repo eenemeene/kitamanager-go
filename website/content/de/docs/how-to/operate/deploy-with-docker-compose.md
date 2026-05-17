@@ -9,14 +9,14 @@ Sie wollen KitaManager (Postgres + API + Frontend) auf einem Host mit Docker Com
 
 - Docker und Docker Compose installiert.
 - Offene Ports für Frontend und API (Standard `3000` und `8080`).
-- Ein langes zufälliges `JWT_SECRET` (mindestens 32 Zeichen) und ein 64-Zeichen-Hex-`TOTP_ENCRYPTION_KEY`.
+- Ein langes zufälliges `CSRF_HMAC_KEY` (mindestens 32 Zeichen) und ein 64-Zeichen-Hex-`TOTP_ENCRYPTION_KEY`.
 
 ## Schritte
 
 1. Repository auschecken auf der gewünschten Version.
 2. `.env.production.example` nach `.env` kopieren und ausfüllen:
    - `DB_USER`, `DB_PASSWORD`, `DB_NAME`
-   - `JWT_SECRET` — `openssl rand -hex 32`
+   - `CSRF_HMAC_KEY` — `openssl rand -hex 32`
    - `TOTP_ENCRYPTION_KEY` — `openssl rand -hex 32`
    - `WEBAUTHN_RP_ID`, `WEBAUTHN_RP_NAME`, `WEBAUTHN_ORIGINS`, falls Sicherheitsschlüssel genutzt werden
    - `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_ADMIN_NAME` (für den Bootstrap-Superadmin)

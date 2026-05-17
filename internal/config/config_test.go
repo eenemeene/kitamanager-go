@@ -7,9 +7,9 @@ import (
 	"testing"
 )
 
-// validTestJWTSecret is a 32+ character secret suitable for tests.
-// It must not appear in knownPlaceholderJWTSecrets.
-const validTestJWTSecret = "test-secret-this-value-is-at-least-32-chars-long"
+// validTestCSRFHMACKey is a 32+ character secret suitable for tests.
+// It must not appear in knownPlaceholderCSRFKeys.
+const validTestCSRFHMACKey = "test-secret-this-value-is-at-least-32-chars-long"
 
 // validTestTOTPKey is a 64-hex-char key suitable for tests. Must not
 // appear in knownPlaceholderTOTPKeys.
@@ -26,7 +26,7 @@ func baseValidConfig() *Config {
 		DBName:               "db",
 		DBSSLMode:            "disable",
 		ServerPort:           "8080",
-		JWTSecret:            validTestJWTSecret,
+		CSRFHMACKey:          validTestCSRFHMACKey,
 		TOTPEncryptionKey:    validTestTOTPKey,
 		TOTPIssuer:           "KitaManager",
 		LogLevel:             "info",
@@ -91,7 +91,7 @@ func TestGetEnv(t *testing.T) {
 // behavior from the host environment.
 var envKeysUnderTest = []string{
 	"DB_HOST", "DB_PORT", "DB_USER", "DB_PASSWORD", "DB_NAME", "DB_SSLMODE",
-	"SERVER_PORT", "JWT_SECRET", "RBAC_MODEL_PATH",
+	"SERVER_PORT", "CSRF_HMAC_KEY", "RBAC_MODEL_PATH",
 	"SEED_ADMIN_EMAIL", "SEED_ADMIN_PASSWORD", "SEED_ADMIN_NAME", "SEED_TEST_DATA",
 	"GOVERNMENT_FUNDING_SEED_PATH", "GOVERNMENT_FUNDING_SEED_STATE",
 	"CORS_ALLOW_ORIGINS", "CORS_ALLOW_CREDENTIALS",
@@ -121,20 +121,20 @@ func snapshotEnv(t *testing.T) func() {
 	}
 }
 
-func TestLoad_RejectsEmptyJWTSecret(t *testing.T) {
+func TestLoad_RejectsEmptyCSRFHMACKey(t *testing.T) {
 	defer snapshotEnv(t)()
 	os.Setenv("DB_USER", "u")
 	os.Setenv("DB_PASSWORD", "p")
 	os.Setenv("DB_NAME", "db")
 
 	if _, err := Load(); err == nil {
-		t.Fatal("Load() with empty JWT_SECRET expected to fail, got nil")
+		t.Fatal("Load() with empty CSRF_HMAC_KEY expected to fail, got nil")
 	}
 }
 
 func TestLoad_RejectsMissingDBCreds(t *testing.T) {
 	defer snapshotEnv(t)()
-	os.Setenv("JWT_SECRET", validTestJWTSecret)
+	os.Setenv("CSRF_HMAC_KEY", validTestCSRFHMACKey)
 	// DB_USER, DB_PASSWORD, DB_NAME intentionally unset.
 
 	if _, err := Load(); err == nil {
@@ -144,7 +144,7 @@ func TestLoad_RejectsMissingDBCreds(t *testing.T) {
 
 func TestLoad_SucceedsWithRequiredEnv(t *testing.T) {
 	defer snapshotEnv(t)()
-	os.Setenv("JWT_SECRET", validTestJWTSecret)
+	os.Setenv("CSRF_HMAC_KEY", validTestCSRFHMACKey)
 	os.Setenv("TOTP_ENCRYPTION_KEY", validTestTOTPKey)
 	os.Setenv("DB_USER", "u")
 	os.Setenv("DB_PASSWORD", "p")
@@ -156,8 +156,8 @@ func TestLoad_SucceedsWithRequiredEnv(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load() = %v", err)
 	}
-	if cfg.JWTSecret != validTestJWTSecret {
-		t.Errorf("JWTSecret = %q", cfg.JWTSecret)
+	if cfg.CSRFHMACKey != validTestCSRFHMACKey {
+		t.Errorf("CSRFHMACKey = %q", cfg.CSRFHMACKey)
 	}
 	if cfg.DBHost != "localhost" {
 		t.Errorf("DBHost default = %q, want localhost", cfg.DBHost)
@@ -166,7 +166,7 @@ func TestLoad_SucceedsWithRequiredEnv(t *testing.T) {
 
 func TestLoad_ParsesCORSOrigins(t *testing.T) {
 	defer snapshotEnv(t)()
-	os.Setenv("JWT_SECRET", validTestJWTSecret)
+	os.Setenv("CSRF_HMAC_KEY", validTestCSRFHMACKey)
 	os.Setenv("TOTP_ENCRYPTION_KEY", validTestTOTPKey)
 	os.Setenv("DB_USER", "u")
 	os.Setenv("DB_PASSWORD", "p")
@@ -192,7 +192,7 @@ func TestLoad_ParsesCORSOrigins(t *testing.T) {
 
 func TestLoad_EmptyCORSOriginsYieldsNil(t *testing.T) {
 	defer snapshotEnv(t)()
-	os.Setenv("JWT_SECRET", validTestJWTSecret)
+	os.Setenv("CSRF_HMAC_KEY", validTestCSRFHMACKey)
 	os.Setenv("TOTP_ENCRYPTION_KEY", validTestTOTPKey)
 	os.Setenv("DB_USER", "u")
 	os.Setenv("DB_PASSWORD", "p")
@@ -211,7 +211,7 @@ func TestLoad_EmptyCORSOriginsYieldsNil(t *testing.T) {
 
 func TestLoad_ParsesCORSCredentials(t *testing.T) {
 	defer snapshotEnv(t)()
-	os.Setenv("JWT_SECRET", validTestJWTSecret)
+	os.Setenv("CSRF_HMAC_KEY", validTestCSRFHMACKey)
 	os.Setenv("TOTP_ENCRYPTION_KEY", validTestTOTPKey)
 	os.Setenv("DB_USER", "u")
 	os.Setenv("DB_PASSWORD", "p")
@@ -231,7 +231,7 @@ func TestLoad_ParsesCORSCredentials(t *testing.T) {
 
 func TestLoad_DBSSLDefaultsToRequire(t *testing.T) {
 	defer snapshotEnv(t)()
-	os.Setenv("JWT_SECRET", validTestJWTSecret)
+	os.Setenv("CSRF_HMAC_KEY", validTestCSRFHMACKey)
 	os.Setenv("TOTP_ENCRYPTION_KEY", validTestTOTPKey)
 	os.Setenv("DB_USER", "u")
 	os.Setenv("DB_PASSWORD", "p")
@@ -249,7 +249,7 @@ func TestLoad_DBSSLDefaultsToRequire(t *testing.T) {
 
 func TestLoad_SecureCookiesDefaultTrue(t *testing.T) {
 	defer snapshotEnv(t)()
-	os.Setenv("JWT_SECRET", validTestJWTSecret)
+	os.Setenv("CSRF_HMAC_KEY", validTestCSRFHMACKey)
 	os.Setenv("TOTP_ENCRYPTION_KEY", validTestTOTPKey)
 	os.Setenv("DB_USER", "u")
 	os.Setenv("DB_PASSWORD", "p")
@@ -270,7 +270,7 @@ func TestLoad_SecureCookiesDefaultTrue(t *testing.T) {
 func TestLoad_TrustedProxies(t *testing.T) {
 	t.Run("parses comma-separated list", func(t *testing.T) {
 		defer snapshotEnv(t)()
-		os.Setenv("JWT_SECRET", validTestJWTSecret)
+		os.Setenv("CSRF_HMAC_KEY", validTestCSRFHMACKey)
 		os.Setenv("TOTP_ENCRYPTION_KEY", validTestTOTPKey)
 		os.Setenv("DB_USER", "u")
 		os.Setenv("DB_PASSWORD", "p")
@@ -296,7 +296,7 @@ func TestLoad_TrustedProxies(t *testing.T) {
 
 	t.Run("empty yields nil", func(t *testing.T) {
 		defer snapshotEnv(t)()
-		os.Setenv("JWT_SECRET", validTestJWTSecret)
+		os.Setenv("CSRF_HMAC_KEY", validTestCSRFHMACKey)
 		os.Setenv("TOTP_ENCRYPTION_KEY", validTestTOTPKey)
 		os.Setenv("DB_USER", "u")
 		os.Setenv("DB_PASSWORD", "p")
@@ -320,34 +320,35 @@ func TestConfig_Validate_Passes(t *testing.T) {
 	}
 }
 
-func TestConfig_Validate_RejectsEmptyJWTSecret(t *testing.T) {
+func TestConfig_Validate_RejectsEmptyCSRFHMACKey(t *testing.T) {
 	cfg := baseValidConfig()
-	cfg.JWTSecret = ""
+	cfg.CSRFHMACKey = ""
 	err := cfg.Validate()
-	if err == nil || !strings.Contains(err.Error(), "JWT_SECRET") {
-		t.Errorf("Validate() = %v, want JWT_SECRET error", err)
+	if err == nil || !strings.Contains(err.Error(), "CSRF_HMAC_KEY") {
+		t.Errorf("Validate() = %v, want CSRF_HMAC_KEY error", err)
 	}
 }
 
-func TestConfig_Validate_RejectsShortJWTSecret(t *testing.T) {
+func TestConfig_Validate_RejectsShortCSRFHMACKey(t *testing.T) {
 	cfg := baseValidConfig()
-	cfg.JWTSecret = "too-short"
+	cfg.CSRFHMACKey = "too-short"
 	err := cfg.Validate()
 	if err == nil {
-		t.Error("Validate() = nil, want error for short JWT secret")
+		t.Error("Validate() = nil, want error for short CSRF HMAC key")
 	}
 }
 
-func TestConfig_Validate_RejectsKnownPlaceholderJWTSecret(t *testing.T) {
+func TestConfig_Validate_RejectsKnownPlaceholderCSRFHMACKey(t *testing.T) {
 	placeholders := []string{
 		"default-secret-key",
 		"your-super-secret-jwt-key-change-in-production",
 		"change-me-in-production",
+		"dev-only-jwt-secret-not-for-production-use-change-me-32chars",
 	}
 	for _, p := range placeholders {
 		t.Run(p, func(t *testing.T) {
 			cfg := baseValidConfig()
-			cfg.JWTSecret = p
+			cfg.CSRFHMACKey = p
 			if err := cfg.Validate(); err == nil {
 				t.Errorf("Validate() = nil, want error for placeholder %q", p)
 			}
@@ -514,15 +515,15 @@ func TestIsValidPort(t *testing.T) {
 }
 
 // ----------------------------------------------------------------------
-// CSRF_HMAC_KEY — separate from JWT_SECRET (closes audit C-M-3).
+// CSRF_HMAC_KEY — required, no fallback (closes audit C-M-3; the
+// previous JWT_SECRET fallback has been retired).
 // ----------------------------------------------------------------------
 
-func TestLoad_CSRFHMACKey_FallsBackToJWTSecret(t *testing.T) {
-	// Existing deployments don't set CSRF_HMAC_KEY. The fallback to
-	// JWT_SECRET keeps them booting and CSRF-validating without a
-	// breaking change.
+func TestLoad_CSRFHMACKey_RejectedWhenUnset(t *testing.T) {
+	// No legacy fallback any more: an env without CSRF_HMAC_KEY must
+	// refuse to boot rather than silently lifting the value from
+	// another variable.
 	defer snapshotEnv(t)()
-	os.Setenv("JWT_SECRET", validTestJWTSecret)
 	os.Setenv("TOTP_ENCRYPTION_KEY", validTestTOTPKey)
 	os.Setenv("DB_USER", "u")
 	os.Setenv("DB_PASSWORD", "p")
@@ -531,22 +532,14 @@ func TestLoad_CSRFHMACKey_FallsBackToJWTSecret(t *testing.T) {
 	os.Setenv("SECURE_COOKIES", "false") // dev mode bypasses production gate
 	os.Unsetenv("CSRF_HMAC_KEY")
 
-	cfg, err := Load()
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	if cfg.CSRFHMACKey != validTestJWTSecret {
-		t.Errorf("CSRFHMACKey = %q, want fallback to JWTSecret", cfg.CSRFHMACKey)
+	if _, err := Load(); err == nil {
+		t.Fatal("Load: expected error with CSRF_HMAC_KEY unset, got nil")
 	}
 }
 
-func TestLoad_CSRFHMACKey_OverridesWhenSet(t *testing.T) {
-	// New deployments set CSRF_HMAC_KEY explicitly to a distinct
-	// value, so future JWT_SECRET rotations don't silently invalidate
-	// every CSRF token.
+func TestLoad_CSRFHMACKey_ExplicitValueFlowsThrough(t *testing.T) {
 	defer snapshotEnv(t)()
 	const distinct = "another-32-plus-character-secret-for-csrf-only"
-	os.Setenv("JWT_SECRET", validTestJWTSecret)
 	os.Setenv("CSRF_HMAC_KEY", distinct)
 	os.Setenv("TOTP_ENCRYPTION_KEY", validTestTOTPKey)
 	os.Setenv("DB_USER", "u")
@@ -561,9 +554,6 @@ func TestLoad_CSRFHMACKey_OverridesWhenSet(t *testing.T) {
 	}
 	if cfg.CSRFHMACKey != distinct {
 		t.Errorf("CSRFHMACKey = %q, want %q", cfg.CSRFHMACKey, distinct)
-	}
-	if cfg.JWTSecret == cfg.CSRFHMACKey {
-		t.Error("JWTSecret and CSRFHMACKey must be independent when both env vars are set")
 	}
 }
 

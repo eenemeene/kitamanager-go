@@ -8,12 +8,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const testJWTSecret = "test-secret-key-for-csrf"
+const testCSRFHMACKey = "test-secret-key-for-csrf"
 
 func TestCSRFMiddleware_SafeMethods(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	middleware := NewCSRFMiddleware(testJWTSecret)
+	middleware := NewCSRFMiddleware(testCSRFHMACKey)
 
 	safeMethods := []string{"GET", "HEAD", "OPTIONS"}
 
@@ -39,9 +39,9 @@ func TestCSRFMiddleware_SafeMethods(t *testing.T) {
 func TestCSRFMiddleware_UnsafeMethods_WithValidToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	middleware := NewCSRFMiddleware(testJWTSecret)
+	middleware := NewCSRFMiddleware(testCSRFHMACKey)
 	accessToken := "test-access-token-jwt"
-	csrfToken := ComputeCSRFToken(accessToken, testJWTSecret)
+	csrfToken := ComputeCSRFToken(accessToken, testCSRFHMACKey)
 
 	unsafeMethods := []string{"POST", "PUT", "PATCH", "DELETE"}
 
@@ -70,7 +70,7 @@ func TestCSRFMiddleware_UnsafeMethods_WithValidToken(t *testing.T) {
 func TestCSRFMiddleware_UnsafeMethods_MissingHeader(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	middleware := NewCSRFMiddleware(testJWTSecret)
+	middleware := NewCSRFMiddleware(testCSRFHMACKey)
 
 	router := gin.New()
 	router.POST("/test", middleware.ValidateCSRF(), func(c *gin.Context) {
@@ -92,7 +92,7 @@ func TestCSRFMiddleware_UnsafeMethods_MissingHeader(t *testing.T) {
 func TestCSRFMiddleware_UnsafeMethods_WrongToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	middleware := NewCSRFMiddleware(testJWTSecret)
+	middleware := NewCSRFMiddleware(testCSRFHMACKey)
 
 	router := gin.New()
 	router.POST("/test", middleware.ValidateCSRF(), func(c *gin.Context) {
@@ -114,10 +114,10 @@ func TestCSRFMiddleware_UnsafeMethods_WrongToken(t *testing.T) {
 func TestCSRFMiddleware_UnsafeMethods_TokenFromDifferentSession(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	middleware := NewCSRFMiddleware(testJWTSecret)
+	middleware := NewCSRFMiddleware(testCSRFHMACKey)
 
 	// Compute CSRF for a different access token
-	csrfForOtherSession := ComputeCSRFToken("other-access-token", testJWTSecret)
+	csrfForOtherSession := ComputeCSRFToken("other-access-token", testCSRFHMACKey)
 
 	router := gin.New()
 	router.POST("/test", middleware.ValidateCSRF(), func(c *gin.Context) {
@@ -139,7 +139,7 @@ func TestCSRFMiddleware_UnsafeMethods_TokenFromDifferentSession(t *testing.T) {
 func TestCSRFMiddleware_SkipWhenNoCookie_WithAuthHeader(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	middleware := NewCSRFMiddleware(testJWTSecret)
+	middleware := NewCSRFMiddleware(testCSRFHMACKey)
 
 	router := gin.New()
 	router.POST("/test", middleware.ValidateCSRF(), func(c *gin.Context) {
@@ -163,7 +163,7 @@ func TestCSRFMiddleware_SkipWhenNoCookie_WithAuthHeader(t *testing.T) {
 func TestCSRFMiddleware_RequireCSRFForCookieAuth(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	middleware := NewCSRFMiddleware(testJWTSecret)
+	middleware := NewCSRFMiddleware(testCSRFHMACKey)
 
 	router := gin.New()
 	router.POST("/test", middleware.ValidateCSRF(), func(c *gin.Context) {
@@ -233,11 +233,11 @@ func TestIsSafeMethod(t *testing.T) {
 func TestCSRFMiddleware_EmptyAccessTokenCookie(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	middleware := NewCSRFMiddleware(testJWTSecret)
+	middleware := NewCSRFMiddleware(testCSRFHMACKey)
 
 	// ComputeCSRFToken with empty string is deterministic
 	accessToken := ""
-	csrfToken := ComputeCSRFToken(accessToken, testJWTSecret)
+	csrfToken := ComputeCSRFToken(accessToken, testCSRFHMACKey)
 
 	router := gin.New()
 	router.POST("/test", middleware.ValidateCSRF(), func(c *gin.Context) {
@@ -260,7 +260,7 @@ func TestCSRFMiddleware_EmptyAccessTokenCookie(t *testing.T) {
 func TestCSRFMiddleware_SkipWhenNoCookie_NoAuthHeader(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	middleware := NewCSRFMiddleware(testJWTSecret)
+	middleware := NewCSRFMiddleware(testCSRFHMACKey)
 
 	router := gin.New()
 	router.POST("/test", middleware.ValidateCSRF(), func(c *gin.Context) {
@@ -283,12 +283,12 @@ func TestCSRFMiddleware_SkipWhenNoCookie_NoAuthHeader(t *testing.T) {
 func TestCSRFMiddleware_ExpiredAccessTokenCookie_ValidCSRF(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	middleware := NewCSRFMiddleware(testJWTSecret)
+	middleware := NewCSRFMiddleware(testCSRFHMACKey)
 
 	// The CSRF middleware doesn't validate the JWT itself,
 	// it just checks the CSRF is derived from the cookie value.
 	accessToken := "expired-access-token"
-	csrfToken := ComputeCSRFToken(accessToken, testJWTSecret)
+	csrfToken := ComputeCSRFToken(accessToken, testCSRFHMACKey)
 
 	router := gin.New()
 	router.POST("/test", middleware.ValidateCSRF(), func(c *gin.Context) {

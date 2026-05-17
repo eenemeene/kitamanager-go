@@ -34,7 +34,7 @@ KitaManager is configured almost entirely through environment variables. The API
 
 | Variable | Default | Required | Notes |
 |---|---|---|---|
-| `JWT_SECRET` |  | **yes** | At least 32 chars. Used to sign session tokens. Rotating it logs out every active session. |
+| `CSRF_HMAC_KEY` |  | **yes** | At least 32 chars; not a known placeholder. HMAC key used to derive the double-submit CSRF token from the session cookie. Rotating it invalidates every outstanding CSRF token (users get a 403 once on their next state-changing request, then a fresh token is re-issued). |
 | `LOGIN_RATE_LIMIT_PER_MINUTE` | `5` | no | Per-IP login attempts per minute. `0` disables. |
 | `API_RATE_LIMIT_PER_MINUTE` | `60` | no | Per-IP authenticated request rate. `0` disables. |
 

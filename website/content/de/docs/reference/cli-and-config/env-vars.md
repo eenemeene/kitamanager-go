@@ -34,7 +34,7 @@ KitaManager wird fast vollständig über Umgebungsvariablen konfiguriert. Die AP
 
 | Variable | Default | Pflicht | Hinweise |
 |---|---|---|---|
-| `JWT_SECRET` |  | **ja** | Mindestens 32 Zeichen. Signiert Sitzungs-Tokens. Rotation meldet jede aktive Sitzung ab. |
+| `CSRF_HMAC_KEY` |  | **ja** | Mindestens 32 Zeichen, kein bekannter Platzhalter. HMAC-Schlüssel zur Ableitung des Double-Submit-CSRF-Tokens aus dem Sitzungs-Cookie. Rotation invalidiert alle offenen CSRF-Tokens (User erhalten beim nächsten state-ändernden Request einmalig 403, anschließend wird ein frisches Token ausgestellt). |
 | `LOGIN_RATE_LIMIT_PER_MINUTE` | `5` | nein | Login-Versuche pro IP pro Minute. `0` deaktiviert. |
 | `API_RATE_LIMIT_PER_MINUTE` | `60` | nein | Authentifizierte Request-Rate pro IP. `0` deaktiviert. |
 
