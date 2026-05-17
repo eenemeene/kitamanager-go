@@ -50,7 +50,13 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      # 127.0.0.1-only: the api container reaches the DB over the
+      # internal compose network ("db:5432"); the host-side binding
+      # only exists so a developer can attach psql / a GUI client
+      # from the same machine. Binding to 0.0.0.0 would expose the
+      # Postgres port — with whatever DB_PASSWORD the developer set,
+      # often the dev-example "kitamanager" — to anyone on their LAN.
+      - "127.0.0.1:5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
       interval: 5s
