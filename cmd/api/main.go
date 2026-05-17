@@ -158,7 +158,7 @@ func main() {
 	permissionService := rbac.NewPermissionService(stores.userOrganization, enforcer)
 
 	svc := initServices(stores, cfg, transactor)
-	seedData(cfg, db, stores, enforcer, svc.governmentFunding, transactor)
+	seedData(cfg, db, stores, svc.governmentFunding, transactor)
 	mw := initMiddleware(stores, cfg, permissionService)
 	r := setupRouter(cfg, db, stores, svc, mw, transactor)
 
@@ -230,7 +230,7 @@ func initStores(db *gorm.DB) *appStores {
 	}
 }
 
-func seedData(cfg *config.Config, db *gorm.DB, s *appStores, enforcer *rbac.Enforcer, fundingSvc *service.GovernmentFundingService, transactor store.Transactor) {
+func seedData(cfg *config.Config, db *gorm.DB, s *appStores, fundingSvc *service.GovernmentFundingService, transactor store.Transactor) {
 	if err := seed.SeedAdmin(cfg, s.user, s.userOrganization); err != nil {
 		slog.Error("Failed to seed admin user", "error", err)
 		os.Exit(1)
