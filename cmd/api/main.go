@@ -231,7 +231,7 @@ func initStores(db *gorm.DB) *appStores {
 }
 
 func seedData(cfg *config.Config, db *gorm.DB, s *appStores, enforcer *rbac.Enforcer, fundingSvc *service.GovernmentFundingService, transactor store.Transactor) {
-	if err := seed.SeedAdmin(cfg, s.user, s.userOrganization, enforcer); err != nil {
+	if err := seed.SeedAdmin(cfg, s.user, s.userOrganization); err != nil {
 		slog.Error("Failed to seed admin user", "error", err)
 		os.Exit(1)
 	}
