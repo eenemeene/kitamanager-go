@@ -464,10 +464,15 @@ func SeedTestData(cfg *config.Config, db *gorm.DB, imp *importer.GovernmentFundi
 	}
 	slog.Info("Created ISBJ billing periods", "count", billCount)
 
+	// Password is intentionally not logged. It is constant ("supersecret"),
+	// documented in DEVELOPMENT.md, and only available behind the
+	// SEED_TEST_DATA + non-production gate enforced in config.Validate,
+	// but emitting it widens the surface that logs sensitive-shaped
+	// strings — best to keep credential material out of structured logs
+	// as a policy.
 	slog.Info("Test data seeding completed",
 		"organization", org.Name,
 		"users", "superadmin@example.com, admin@example.com, manager@example.com",
-		"password", "supersecret",
 	)
 	return nil
 }

@@ -43,6 +43,14 @@ var (
 	// terminated upstream of pgbouncer must opt in explicitly via
 	// ALLOW_DB_SSLMODE_DISABLE_IN_PRODUCTION=true.
 	ErrProductionInsecureDB = errors.New("DB_SSLMODE=disable is not permitted when SECURE_COOKIES=true; pick require/verify-ca/verify-full, or opt out with ALLOW_DB_SSLMODE_DISABLE_IN_PRODUCTION=true if TLS is terminated upstream")
+	// ErrSeedTestDataInProduction fires when SECURE_COOKIES=true and
+	// SEED_TEST_DATA=true. The test seeder plants six fully-privileged
+	// users (superadmin/admin/manager) with the publicly-documented
+	// password "supersecret"; no legitimate production deployment
+	// needs that. Unlike the rate-limit and DB-SSL gates there is no
+	// escape hatch — nothing upstream can substitute for "do not seed
+	// fixture accounts".
+	ErrSeedTestDataInProduction = errors.New("SEED_TEST_DATA=true is not permitted when SECURE_COOKIES=true; the test seeder creates fully-privileged accounts with a publicly-known password")
 )
 
 // knownPlaceholderTOTPKeys mirrors knownPlaceholderJWTSecrets: any string
@@ -239,6 +247,9 @@ func (c *Config) Validate() error {
 		}
 		if c.DBSSLMode == "disable" && !c.AllowDBSSLModeDisableInProduction {
 			errs = append(errs, ErrProductionInsecureDB)
+		}
+		if c.SeedTestData {
+			errs = append(errs, ErrSeedTestDataInProduction)
 		}
 	}
 

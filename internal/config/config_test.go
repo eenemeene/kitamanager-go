@@ -627,6 +627,29 @@ func TestValidate_ProductionGate_DBSSLDisabled_OptOut(t *testing.T) {
 	}
 }
 
+func TestValidate_ProductionGate_SeedTestData_Rejected(t *testing.T) {
+	cfg := baseValidConfig()
+	cfg.SecureCookies = true
+	cfg.DBSSLMode = "require"
+	cfg.LoginRateLimitPerMinute = 5
+	cfg.SeedTestData = true
+
+	err := cfg.Validate()
+	if !errors.Is(err, ErrSeedTestDataInProduction) {
+		t.Errorf("expected ErrSeedTestDataInProduction, got %v", err)
+	}
+}
+
+func TestValidate_ProductionGate_SeedTestData_AllowedInDev(t *testing.T) {
+	cfg := baseValidConfig()
+	cfg.SecureCookies = false // dev mode
+	cfg.SeedTestData = true
+
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("SeedTestData=true should be allowed when SecureCookies=false, got %v", err)
+	}
+}
+
 func TestValidate_ProductionGate_NotInDevMode(t *testing.T) {
 	// SECURE_COOKIES=false → dev mode → gates do NOT fire even with
 	// rate limit off and DB plaintext.
