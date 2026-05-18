@@ -152,7 +152,7 @@ export function ForecastChildrenTab() {
             />
           </div>
         </div>
-        <Button size="sm" onClick={handleAdd} disabled={!canAdd}>
+        <Button onClick={handleAdd} disabled={!canAdd}>
           <Plus className="mr-1 h-4 w-4" />
           {t('statistics.forecastAddChild')}
           {count > 1 && ` (×${count})`}
