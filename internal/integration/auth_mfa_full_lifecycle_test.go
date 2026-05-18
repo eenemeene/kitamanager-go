@@ -15,7 +15,6 @@ import (
 	"github.com/pquerna/otp/totp"
 
 	"github.com/eenemeene/kitamanager-go/internal/models"
-	"github.com/eenemeene/kitamanager-go/internal/rbac"
 )
 
 // clientCookies is what a real curl script keeps in its cookie jar:
@@ -93,8 +92,7 @@ func doRequest(t *testing.T, r *gin.Engine, method, path string, cc clientCookie
 func TestAuthFlow_MFAFullLifecycle(t *testing.T) {
 	cleanupDatabase()
 	fr := setupAuthFlowRouter(t)
-	enforcer, _ := rbac.NewEnforcer(testDB, findRBACModel(t))
-	_, superEmail, superPass := seedSuperadmin(t, enforcer)
+	_, superEmail, superPass := seedSuperadmin(t)
 
 	// ---------- Step 1: superadmin logs in and creates a user ----------
 	superCookies := loginPasswordStep(t, fr.router, superEmail, superPass)
@@ -315,8 +313,7 @@ func TestAuthFlow_MFAFullLifecycle(t *testing.T) {
 func TestAuthFlow_MFADisableReverts(t *testing.T) {
 	cleanupDatabase()
 	fr := setupAuthFlowRouter(t)
-	enforcer, _ := rbac.NewEnforcer(testDB, findRBACModel(t))
-	_, superEmail, superPass := seedSuperadmin(t, enforcer)
+	_, superEmail, superPass := seedSuperadmin(t)
 
 	// Create a regular user via the admin API.
 	superCookies := loginPasswordStep(t, fr.router, superEmail, superPass)

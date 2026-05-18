@@ -76,15 +76,15 @@ func TestEnforcer_SeedDefaultPolicies(t *testing.T) {
 		t.Error("expected policies to be seeded")
 	}
 
-	// Check that we have policies for all three roles
+	// Check that we have policies for every Casbin-modelled role.
+	// Superadmin is intentionally absent: it short-circuits in
+	// PermissionService before Casbin runs, so seeding a Casbin row
+	// for it would be dead.
 	hasRole := make(map[string]bool)
 	for _, p := range policies {
 		hasRole[p[0]] = true
 	}
 
-	if !hasRole[RoleSuperAdmin] {
-		t.Error("missing superadmin policies")
-	}
 	if !hasRole[RoleAdmin] {
 		t.Error("missing admin policies")
 	}
@@ -93,24 +93,6 @@ func TestEnforcer_SeedDefaultPolicies(t *testing.T) {
 	}
 	if !hasRole[RoleStaff] {
 		t.Error("missing staff policies")
-	}
-}
-
-func TestEnforcer_AssignSuperAdmin(t *testing.T) {
-	enforcer := setupTestEnforcer(t)
-
-	err := enforcer.AssignSuperAdmin(1)
-	if err != nil {
-		t.Fatalf("failed to assign superadmin: %v", err)
-	}
-
-	isSuperAdmin, err := enforcer.IsSuperAdmin(1)
-	if err != nil {
-		t.Fatalf("failed to check superadmin: %v", err)
-	}
-
-	if !isSuperAdmin {
-		t.Error("expected user 1 to be superadmin")
 	}
 }
 
@@ -149,54 +131,6 @@ func TestEnforcer_RemoveRole(t *testing.T) {
 
 	if len(roles) != 0 {
 		t.Errorf("expected no roles, got %v", roles)
-	}
-}
-
-func TestEnforcer_RemoveSuperAdmin(t *testing.T) {
-	enforcer := setupTestEnforcer(t)
-
-	_ = enforcer.AssignSuperAdmin(1)
-
-	err := enforcer.RemoveSuperAdmin(1)
-	if err != nil {
-		t.Fatalf("failed to remove superadmin: %v", err)
-	}
-
-	isSuperAdmin, _ := enforcer.IsSuperAdmin(1)
-	if isSuperAdmin {
-		t.Error("expected user 1 to not be superadmin")
-	}
-}
-
-func TestEnforcer_CheckPermission_SuperAdmin(t *testing.T) {
-	enforcer := setupTestEnforcer(t)
-
-	// Assign superadmin
-	_ = enforcer.AssignSuperAdmin(1)
-
-	tests := []struct {
-		name     string
-		userID   uint
-		orgID    uint
-		resource string
-		action   string
-		expected bool
-	}{
-		{"superadmin can create org", 1, 1, ResourceOrganizations, ActionCreate, true},
-		{"superadmin can delete employees", 1, 1, ResourceEmployees, ActionDelete, true},
-		{"superadmin can access any org", 1, 999, ResourceChildren, ActionRead, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			allowed, err := enforcer.CheckPermission(tt.userID, tt.orgID, tt.resource, tt.action)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if allowed != tt.expected {
-				t.Errorf("expected %v, got %v", tt.expected, allowed)
-			}
-		})
 	}
 }
 
@@ -560,21 +494,6 @@ func TestEnforcer_NoRoleNoAccess(t *testing.T) {
 	}
 }
 
-func TestEnforcer_HasPermissionInAnyOrg_SuperAdmin(t *testing.T) {
-	enforcer := setupTestEnforcer(t)
-
-	_ = enforcer.AssignSuperAdmin(1)
-
-	allowed, err := enforcer.HasPermissionInAnyOrg(1, ResourceUsers, ActionCreate)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if !allowed {
-		t.Error("superadmin should have permission in any org")
-	}
-}
-
 func TestEnforcer_HasPermissionInAnyOrg_AdminInOneOrg(t *testing.T) {
 	enforcer := setupTestEnforcer(t)
 
@@ -637,21 +556,6 @@ func TestEnforcer_HasPermissionInAnyOrg_NoRole(t *testing.T) {
 
 	if allowed {
 		t.Error("user without any role should not have permission")
-	}
-}
-
-func TestEnforcer_HasAnyRole_SuperAdmin(t *testing.T) {
-	enforcer := setupTestEnforcer(t)
-
-	_ = enforcer.AssignSuperAdmin(1)
-
-	hasRole, err := enforcer.HasAnyRole(1)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if !hasRole {
-		t.Error("superadmin should have role")
 	}
 }
 
