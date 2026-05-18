@@ -197,7 +197,7 @@ function EditableNote({ value, onSave }: EditableNoteProps) {
   return (
     <button
       type="button"
-      className="text-muted-foreground hover:text-foreground mt-0.5 inline-flex min-h-8 max-w-[8rem] cursor-pointer items-center truncate rounded px-1 py-1 text-left text-[0.65rem] leading-tight underline decoration-dotted underline-offset-2"
+      className="text-muted-foreground hover:text-foreground mt-0.5 inline-flex min-h-9 max-w-[8rem] cursor-pointer items-center truncate rounded px-2 py-1 text-left text-[0.65rem] leading-tight underline decoration-dotted underline-offset-2"
       onClick={() => {
         setDraft(value);
         setEditing(true);
@@ -282,7 +282,6 @@ function StatusNotePopover({
               onChange={(e) => setNote(e.target.value)}
             />
             <Button
-              size="sm"
               className="w-full"
               onClick={() => {
                 onSaveNote(childId, dateStr, attendance.id, note);
@@ -350,8 +349,7 @@ function AttendanceCell({
             <TooltipTrigger asChild>
               <Button
                 variant="outline"
-                size="sm"
-                className="h-11 gap-1 text-green-600 hover:bg-green-50 hover:text-green-700"
+                className="gap-1 text-green-600 hover:bg-green-50 hover:text-green-700"
                 onClick={() => onCheckIn(childId, dateStr)}
                 aria-label={t('checkIn')}
               >
@@ -401,8 +399,7 @@ function AttendanceCell({
               <TooltipTrigger asChild>
                 <Button
                   variant="outline"
-                  size="sm"
-                  className="h-11 gap-1 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
+                  className="gap-1 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
                   onClick={() => onCheckOut(childId, dateStr, attendance.id)}
                   aria-label={t('checkOut')}
                 >
