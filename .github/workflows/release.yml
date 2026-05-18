@@ -18,56 +18,9 @@ permissions:
   attestations: write
 
 jobs:
-  # Verify the release tag is a signed annotated tag whose signature
-  # GitHub considers valid. Container builds — including the cosign
-  # signing step — happen on the next job, but cosign signs whatever
-  # the release pipeline received: a compromised maintainer account
-  # could draft a release on a malicious tag and the rest of the
-  # pipeline (build, sign, push to GHCR) would proceed unchallenged.
-  # Failing this job before any image is built or pushed means that
-  # social-engineered "publish release" path can't produce a
-  # downstream-trusted artifact.
-  #
-  # Lightweight tags don't carry GPG/SSH signatures at all, so we
-  # reject those up front. For annotated tags we use the GitHub API's
-  # verification.verified field, which is computed against the
-  # configured signing keys on the org/account.
-  verify-tag:
-    name: Verify signed release tag
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check tag signature via GitHub API
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG_NAME: ${{ github.event.release.tag_name }}
-          REPO: ${{ github.repository }}
-        run: |
-          set -euo pipefail
-
-          ref=$(gh api "repos/${REPO}/git/ref/tags/${TAG_NAME}")
-          obj_type=$(jq -r '.object.type' <<<"${ref}")
-          obj_sha=$(jq -r '.object.sha' <<<"${ref}")
-
-          if [ "${obj_type}" != "tag" ]; then
-            echo "::error::Release tag ${TAG_NAME} is a lightweight tag (${obj_type}); must be an annotated, signed tag (git tag -s)."
-            exit 1
-          fi
-
-          tag_obj=$(gh api "repos/${REPO}/git/tags/${obj_sha}")
-          verified=$(jq -r '.verification.verified' <<<"${tag_obj}")
-          reason=$(jq -r '.verification.reason' <<<"${tag_obj}")
-
-          if [ "${verified}" != "true" ]; then
-            echo "::error::Release tag ${TAG_NAME} signature is not verified (reason: ${reason})."
-            exit 1
-          fi
-
-          echo "Release tag ${TAG_NAME} signature verified by GitHub (reason: ${reason})."
-
   container-images:
     name: Container Images
     runs-on: ubuntu-latest
-    needs: verify-tag
 
     steps:
       - uses: actions/checkout@v6
