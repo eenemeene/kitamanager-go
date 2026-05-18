@@ -2131,57 +2131,61 @@ func TestGetForecast_NoSectionScope_AllowsMixedOverlaySections(t *testing.T) {
 // F3: virtual-ID allocator (collision + brittleness fixes)
 // ============================================================
 
-func TestOverlayIDAllocator_EmptyDataSet_StartsAtBase(t *testing.T) {
-	// With no real entities the allocator must start exactly at
-	// virtualIDBase so the legacy "id >= 1_000_000 means virtual" rule
-	// of thumb (used by some log greps and frontend diagnostics) keeps
-	// holding for fresh deployments.
+func TestOverlayIDAllocator_EmptyDataSet_StartsAtOne(t *testing.T) {
+	// With no real entities the allocator's only invariant is "hand
+	// out monotonically-increasing IDs that don't collide with any
+	// real ID" — there are no real IDs, so 1, 2, 3, … is fine.
 	alloc := newOverlayIDAllocator(&DataSet{})
 	first := alloc.nextID()
-	if first != virtualIDBase {
-		t.Errorf("first id = %d, want %d (virtualIDBase)", first, virtualIDBase)
+	if first != 1 {
+		t.Errorf("first id = %d, want 1", first)
 	}
-	if alloc.nextID() != virtualIDBase+1 {
+	if alloc.nextID() != 2 {
 		t.Errorf("expected monotonic +1 increments")
 	}
 }
 
-func TestOverlayIDAllocator_RealIDAboveBase_StartsAboveMax(t *testing.T) {
-	// A long-lived org whose auto-incrementing employee sequence has
-	// crossed virtualIDBase used to silently overlap with overlay IDs.
-	// The allocator must take max(virtualIDBase, max real id) + 1.
+func TestOverlayIDAllocator_StartsAboveMaxRealID(t *testing.T) {
+	// The allocator must never collide with a real entity ID. The
+	// realistic failure mode is a long-lived org whose
+	// auto-incrementing sequence is large; pick a value that would
+	// have been "virtual" under the retired 1_000_000 heuristic to
+	// exercise the same path.
+	const largeRealID uint = 1_000_005
 	ds := &DataSet{
 		Employees: []models.Employee{
-			{Person: models.Person{ID: virtualIDBase + 5}},
+			{Person: models.Person{ID: largeRealID}},
 		},
 	}
 	alloc := newOverlayIDAllocator(ds)
 	first := alloc.nextID()
-	if first != virtualIDBase+6 {
-		t.Errorf("first id = %d, want %d (one above max real)", first, virtualIDBase+6)
+	if first != largeRealID+1 {
+		t.Errorf("first id = %d, want %d (one above max real)", first, largeRealID+1)
 	}
 }
 
-func TestOverlayIDAllocator_RealContractIDAboveBase_StartsAboveMax(t *testing.T) {
-	// Same scenario via a real CONTRACT id (not the parent entity id) —
-	// the allocator must scan contracts too, not only entity ids,
-	// because contracts have their own auto-increment sequence.
+func TestOverlayIDAllocator_ScansContractIDsToo(t *testing.T) {
+	// Contracts have their own auto-increment sequence; the allocator
+	// must scan contracts as well as entity ids, otherwise a real
+	// contract id above the largest entity id would silently collide
+	// with the first overlay id.
+	const largeContractID uint = 1_000_030
 	ds := &DataSet{
 		Employees: []models.Employee{{
 			Person: models.Person{ID: 1},
 			Contracts: []models.EmployeeContract{{
-				ID: virtualIDBase + 12,
+				ID: 1_000_012,
 			}},
 		}},
 		Children: []models.Child{{
 			Person:    models.Person{ID: 2},
-			Contracts: []models.ChildContract{{ID: virtualIDBase + 30}},
+			Contracts: []models.ChildContract{{ID: largeContractID}},
 		}},
 	}
 	alloc := newOverlayIDAllocator(ds)
 	first := alloc.nextID()
-	if first != virtualIDBase+31 {
-		t.Errorf("first id = %d, want %d (one above max contract id)", first, virtualIDBase+31)
+	if first != largeContractID+1 {
+		t.Errorf("first id = %d, want %d (one above max contract id)", first, largeContractID+1)
 	}
 }
 
@@ -2245,13 +2249,15 @@ func TestApplyOverlay_TwoEmployeesEachWithMultipleContracts_AllUnique(t *testing
 }
 
 func TestApplyOverlay_VirtualVsRealCollision_NoOverlap(t *testing.T) {
-	// Real entity already has id == virtualIDBase + 1 (a long-lived org's
-	// auto-increment crossed the line). Overlay-added entities must
-	// start above that, never silently shadow it.
+	// Real entity has a large auto-increment id. Overlay-added entities
+	// must start above any real id, never silently shadow it. Pick a
+	// large id so the test fails if the allocator regresses to a fixed
+	// low floor.
+	const realID uint = 1_000_001
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	ds := &DataSet{
 		Employees: []models.Employee{{
-			Person:    models.Person{ID: virtualIDBase + 1},
+			Person:    models.Person{ID: realID},
 			Contracts: []models.EmployeeContract{{ID: 50}}, // small, ignored
 		}},
 		PayPlans: map[uint]*models.PayPlan{},
@@ -2271,18 +2277,16 @@ func TestApplyOverlay_VirtualVsRealCollision_NoOverlap(t *testing.T) {
 
 	applyOverlay(ds, req)
 
-	// First overlay employee should land at virtualIDBase + 2 (one past
-	// the real overlapping id), not virtualIDBase (the legacy starting
-	// point that would have shadowed the real row).
+	// First overlay employee must land strictly above the real id.
 	if len(ds.Employees) != 2 {
 		t.Fatalf("expected 2 employees post-overlay, got %d", len(ds.Employees))
 	}
 	overlayEmp := ds.Employees[1]
-	if overlayEmp.ID == virtualIDBase+1 {
+	if overlayEmp.ID == realID {
 		t.Errorf("overlay employee id collided with real id %d", overlayEmp.ID)
 	}
-	if overlayEmp.ID < virtualIDBase+2 {
-		t.Errorf("overlay employee id %d should be >= %d", overlayEmp.ID, virtualIDBase+2)
+	if overlayEmp.ID <= realID {
+		t.Errorf("overlay employee id %d must be > %d (real id)", overlayEmp.ID, realID)
 	}
 }
 
