@@ -158,7 +158,7 @@ export function ChildrenTable({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6 shrink-0"
+                            className="shrink-0"
                             disabled={isAdjustingContractEnd}
                             onClick={() =>
                               onAdjustContractEnd(
