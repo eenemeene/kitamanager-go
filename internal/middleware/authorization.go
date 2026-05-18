@@ -66,8 +66,13 @@ func (m *AuthorizationMiddleware) RequirePermission(resource, action string) gin
 		// Get organization ID from path parameter
 		orgIDStr := c.Param("orgId")
 		if orgIDStr == "" {
-			// For endpoints without orgId, try to get it from the resource itself
-			// This requires looking up the resource - for now, deny access
+			// RequirePermission is intended for routes that include
+			// :orgId in their pattern; everything else uses
+			// RequireGlobalPermission. Reaching this branch means a
+			// developer wired a route through the wrong middleware —
+			// fail closed with a 403 rather than try to infer the
+			// tenant scope from a resource lookup (which would need
+			// the resource's type and a DB round-trip per request).
 			c.AbortWithStatusJSON(http.StatusForbidden, models.ErrorResponse{
 				Code:    apperror.CodeForbidden,
 				Message: "organization context required",
