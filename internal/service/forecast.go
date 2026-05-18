@@ -9,37 +9,28 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
-// virtualIDBase is the FLOOR for virtual (overlay-added) entity IDs. The
-// allocator below takes max(this, max-real-ID-in-DataSet) + 1 as its
-// starting point, so:
+// overlayIDAllocator hands out unique uint IDs for virtual (overlay-
+// added) entities and their contracts. A single counter spans
+// employees, employee contracts, children, and child contracts so we
+// never have to reason about "could two contract kinds share an ID
+// space" (they would, but the downstream code is type-disambiguated,
+// so collision-free is simpler than collision-safe).
 //
-//   - Old assumption "any id >= 1_000_000 is a virtual entity" still
-//     holds for fresh deployments (front-end / log-grep filters relying
-//     on it keep working).
-//   - A long-lived org whose auto-incrementing sequence has crossed
-//     1_000_000 no longer collides — the allocator starts above the
-//     real max, deterministically.
-//
-// Picking 1_000_000 keeps the boundary visible in logs and avoids the
-// top-half-of-uint trick, which would make virtual IDs look like
-// uint-overflow garbage.
-const virtualIDBase uint = 1_000_000
-
-// overlayIDAllocator hands out unique uint IDs for virtual entities and
-// their contracts. A single counter spans employees, employee contracts,
-// children, and child contracts so we never have to reason about
-// "could two contract kinds share an ID space" (they would, but the
-// downstream code is type-disambiguated, so collision-free is simpler
-// than collision-safe).
-//
-// The starting point is `max(virtualIDBase, max(real IDs in DataSet)+1)`
-// — see virtualIDBase doc-comment for why both inputs matter.
+// The starting point is `max(real IDs in DataSet) + 1`, which is the
+// only invariant the rest of the forecast code actually depends on.
+// Overlay IDs are an in-memory artefact of a single GetForecast()
+// call; they never persist to the DB and no downstream consumer
+// (frontend, log filter, response DTO) keys on a specific numeric
+// range.
 type overlayIDAllocator struct {
 	next uint
 }
 
 func newOverlayIDAllocator(ds *DataSet) *overlayIDAllocator {
-	next := virtualIDBase
+	// Start at 1 (not 0) so a fresh allocator with no real entities
+	// hands out 1, 2, 3, … — the bump loop below elevates `next`
+	// above any real ID in the dataset.
+	next := uint(1)
 	bump := func(id uint) {
 		if id >= next {
 			next = id + 1
@@ -63,9 +54,9 @@ func newOverlayIDAllocator(ds *DataSet) *overlayIDAllocator {
 // nextID returns a fresh ID and advances the counter. Per-call so each
 // virtual contract — even within the same overlay-added employee — gets
 // its own ID. Without this, two overlay employees with one contract
-// each previously both ended up with contract.ID == virtualIDBase, an
-// upstream bug that mostly survived because nothing yet keys per
-// contract.ID; left in place it would silently corrupt any future
+// each previously both ended up sharing a contract ID — an upstream
+// bug that mostly survived because nothing yet keys per contract.ID;
+// left in place it would silently corrupt any future
 // `map[contractID]Foo`.
 func (a *overlayIDAllocator) nextID() uint {
 	id := a.next
