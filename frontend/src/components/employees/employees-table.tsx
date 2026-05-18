@@ -127,40 +127,44 @@ export function EmployeesTable({
                   {yearsOfService !== null ? yearsOfService.toFixed(1) : '-'}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onViewHistory(employee)}
-                    title={t('employees.contractHistory')}
-                    aria-label={t('employees.contractHistory')}
-                  >
-                    <History className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onAddContract(employee)}
-                    title={t('employees.addContract')}
-                    aria-label={t('employees.addContract')}
-                  >
-                    <FileText className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onEdit(employee)}
-                    aria-label={t('common.edit')}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onDelete(employee)}
-                    aria-label={t('common.delete')}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex flex-nowrap items-center justify-end gap-0.5">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onViewHistory(employee)}
+                      title={t('employees.contractHistory')}
+                      aria-label={t('employees.contractHistory')}
+                      className="hidden lg:inline-flex"
+                    >
+                      <History className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onAddContract(employee)}
+                      title={t('employees.addContract')}
+                      aria-label={t('employees.addContract')}
+                      className="hidden lg:inline-flex"
+                    >
+                      <FileText className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onEdit(employee)}
+                      aria-label={t('common.edit')}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onDelete(employee)}
+                      aria-label={t('common.delete')}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             );
