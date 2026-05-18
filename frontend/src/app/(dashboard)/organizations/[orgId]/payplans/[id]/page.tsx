@@ -336,7 +336,7 @@ export default function PayPlanDetailPage() {
                 </Button>
               </div>
               {view === 'panels' && (
-                <Button size="sm" onClick={handleAddPeriod}>
+                <Button onClick={handleAddPeriod}>
                   <Plus className="mr-2 h-4 w-4" />
                   {t('payPlans.addPeriod')}
                 </Button>
@@ -381,7 +381,7 @@ export default function PayPlanDetailPage() {
                         </p>
                       </div>
                       <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => handleAddEntry(period)}>
+                        <Button variant="outline" onClick={() => handleAddEntry(period)}>
                           <Plus className="mr-2 h-4 w-4" />
                           {t('payPlans.addEntry')}
                         </Button>

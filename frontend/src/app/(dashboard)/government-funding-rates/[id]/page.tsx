@@ -175,7 +175,7 @@ export default function GovernmentFundingDetailPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>{t('governmentFundings.periods')}</CardTitle>
-          <Button size="sm" onClick={() => setIsPeriodDialogOpen(true)}>
+          <Button onClick={() => setIsPeriodDialogOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             {t('governmentFundings.addPeriod')}
           </Button>
@@ -202,7 +202,7 @@ export default function GovernmentFundingDetailPage() {
                       )}
                     </div>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => handleAddProperty(period)}>
+                      <Button variant="outline" onClick={() => handleAddProperty(period)}>
                         <Plus className="mr-2 h-4 w-4" />
                         {t('governmentFundings.addProperty')}
                       </Button>

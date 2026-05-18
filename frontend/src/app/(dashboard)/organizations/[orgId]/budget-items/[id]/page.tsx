@@ -204,7 +204,7 @@ export default function BudgetItemDetailPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>{t('payPlans.entry')}</CardTitle>
-          <Button size="sm" onClick={handleAddEntry}>
+          <Button onClick={handleAddEntry}>
             <Plus className="mr-2 h-4 w-4" />
             {t('budgetItems.addEntry')}
           </Button>

@@ -196,7 +196,7 @@ export function ForecastEmployeesTab() {
             </Select>
           </div>
         </div>
-        <Button size="sm" onClick={handleAdd} disabled={!canAdd}>
+        <Button onClick={handleAdd} disabled={!canAdd}>
           <Plus className="mr-1 h-4 w-4" />
           {t('statistics.forecastAddEmployee')}
           {count > 1 && ` (×${count})`}

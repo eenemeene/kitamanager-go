@@ -193,9 +193,9 @@ export default function OrgDashboardPage() {
             <CardTitle className="text-base font-medium">
               {t('governmentFundingBills.missingBillAlert', { month: previousMonthMissing })}
             </CardTitle>
-            <Button variant="outline" size="sm" asChild>
+            <Button variant="outline" asChild>
               <Link href={`/organizations/${orgId}/government-funding-bills`}>
-                <Upload className="mr-1 h-3 w-3" />
+                <Upload className="mr-2 h-4 w-4" />
                 {t('governmentFundingBills.uploadBill')}
               </Link>
             </Button>
@@ -283,8 +283,6 @@ export default function OrgDashboardPage() {
                                   <TooltipTrigger asChild>
                                     <Button
                                       variant="outline"
-                                      size="sm"
-                                      className="h-7 px-2 text-xs"
                                       disabled={acceptSuggestion.isPending}
                                       onClick={() =>
                                         acceptSuggestion.mutate({
@@ -295,7 +293,7 @@ export default function OrgDashboardPage() {
                                         })
                                       }
                                     >
-                                      <Check className="mr-1 h-3 w-3" />
+                                      <Check className="mr-2 h-4 w-4" />
                                       {t('dashboard.acceptSuggestion')}
                                     </Button>
                                   </TooltipTrigger>
@@ -363,7 +361,6 @@ export default function OrgDashboardPage() {
                             <TooltipTrigger asChild>
                               <Button
                                 variant="outline"
-                                size="sm"
                                 disabled={linkExistingMutation.isPending}
                                 onClick={() =>
                                   linkExistingMutation.mutate({
@@ -372,7 +369,7 @@ export default function OrgDashboardPage() {
                                   })
                                 }
                               >
-                                <LinkIcon className="mr-1 h-3 w-3" />
+                                <LinkIcon className="mr-2 h-4 w-4" />
                                 {t('dashboard.linkToExistingChild', {
                                   name: `${row.existing_child_match.first_name} ${row.existing_child_match.last_name}`,
                                 })}
@@ -385,12 +382,8 @@ export default function OrgDashboardPage() {
                         ) : (
                           <Tooltip delayDuration={0}>
                             <TooltipTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setAddFromBillTarget(row)}
-                              >
-                                <UserPlus className="mr-1 h-3 w-3" />
+                              <Button variant="outline" onClick={() => setAddFromBillTarget(row)}>
+                                <UserPlus className="mr-2 h-4 w-4" />
                                 {t('dashboard.addToKitaManager')}
                               </Button>
                             </TooltipTrigger>
