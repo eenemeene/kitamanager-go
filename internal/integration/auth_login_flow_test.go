@@ -202,11 +202,13 @@ func findRBACModel(t *testing.T) string {
 	return ""
 }
 
-// seedSuperadmin inserts a superadmin user with a bcrypt-hashed password,
-// then registers them in Casbin. Returns (userID, email, password).
-// Using the real hash lets us log in through the production code path
-// instead of faking it with a preset context.
-func seedSuperadmin(t *testing.T, enforcer *rbac.Enforcer) (uint, string, string) {
+// seedSuperadmin inserts a superadmin user with a bcrypt-hashed password.
+// Returns (userID, email, password). Using the real hash lets us log in
+// through the production code path instead of faking it with a preset
+// context. Superadmin state lives in users.is_superadmin; no separate
+// Casbin write is needed (PermissionService.IsSuperAdmin reads the DB
+// column before consulting Casbin).
+func seedSuperadmin(t *testing.T) (uint, string, string) {
 	t.Helper()
 	const email = "superadmin@test.local"
 	const password = "super-secret-123"
@@ -223,9 +225,6 @@ func seedSuperadmin(t *testing.T, enforcer *rbac.Enforcer) (uint, string, string
 	}
 	if err := testDB.Create(u).Error; err != nil {
 		t.Fatalf("create superadmin: %v", err)
-	}
-	if err := enforcer.AssignSuperAdmin(u.ID); err != nil {
-		t.Fatalf("assign superadmin: %v", err)
 	}
 	return u.ID, email, password
 }
@@ -289,8 +288,7 @@ func createOrg(t *testing.T, name string) *models.Organization {
 func TestAuthFlow_SuperadminCreatesAdmin_AdminLoginsAndAccessesOrg(t *testing.T) {
 	cleanupDatabase()
 	fr := setupAuthFlowRouter(t)
-	enforcer, _ := rbac.NewEnforcer(testDB, findRBACModel(t))
-	_, superEmail, superPass := seedSuperadmin(t, enforcer)
+	_, superEmail, superPass := seedSuperadmin(t)
 	org := createOrg(t, "Kita Sonnenschein")
 
 	// 1. Superadmin logs in.
@@ -370,8 +368,7 @@ func TestAuthFlow_SuperadminCreatesAdmin_AdminLoginsAndAccessesOrg(t *testing.T)
 func TestAuthFlow_AdminWithoutOrg_CanLoginButIsRefusedOnOrgEndpoints(t *testing.T) {
 	cleanupDatabase()
 	fr := setupAuthFlowRouter(t)
-	enforcer, _ := rbac.NewEnforcer(testDB, findRBACModel(t))
-	_, superEmail, superPass := seedSuperadmin(t, enforcer)
+	_, superEmail, superPass := seedSuperadmin(t)
 	org := createOrg(t, "Kita Sonnenschein")
 
 	_, superToken := doLogin(t, fr.router, superEmail, superPass)
@@ -422,8 +419,7 @@ func TestAuthFlow_AdminWithoutOrg_CanLoginButIsRefusedOnOrgEndpoints(t *testing.
 func TestAuthFlow_ManagerRole_HasReadButNotOrgUpdate(t *testing.T) {
 	cleanupDatabase()
 	fr := setupAuthFlowRouter(t)
-	enforcer, _ := rbac.NewEnforcer(testDB, findRBACModel(t))
-	_, superEmail, superPass := seedSuperadmin(t, enforcer)
+	_, superEmail, superPass := seedSuperadmin(t)
 	org := createOrg(t, "Kita Sonnenschein")
 
 	_, superToken := doLogin(t, fr.router, superEmail, superPass)
@@ -479,8 +475,7 @@ func TestAuthFlow_ManagerRole_HasReadButNotOrgUpdate(t *testing.T) {
 func TestAuthFlow_StaffRole_CanReadChildrenButNotEmployees(t *testing.T) {
 	cleanupDatabase()
 	fr := setupAuthFlowRouter(t)
-	enforcer, _ := rbac.NewEnforcer(testDB, findRBACModel(t))
-	_, superEmail, superPass := seedSuperadmin(t, enforcer)
+	_, superEmail, superPass := seedSuperadmin(t)
 	org := createOrg(t, "Kita Sonnenschein")
 
 	// The auth-flow router only registers /organizations and /users endpoints
@@ -500,6 +495,7 @@ func TestAuthFlow_StaffRole_CanReadChildrenButNotEmployees(t *testing.T) {
 	employeeHandler := handlers.NewEmployeeHandler(employeeService, auditService)
 
 	userOrgStore := store.NewUserOrganizationStore(testDB)
+	enforcer, _ := rbac.NewEnforcer(testDB, findRBACModel(t))
 	permissionService := rbac.NewPermissionService(userOrgStore, enforcer)
 	authzMW := middleware.NewAuthorizationMiddleware(permissionService)
 	sessionStore := store.NewSessionStore(testDB)
@@ -565,8 +561,7 @@ func TestAuthFlow_StaffRole_CanReadChildrenButNotEmployees(t *testing.T) {
 func TestAuthFlow_WrongPasswordRejected(t *testing.T) {
 	cleanupDatabase()
 	fr := setupAuthFlowRouter(t)
-	enforcer, _ := rbac.NewEnforcer(testDB, findRBACModel(t))
-	_, superEmail, superPass := seedSuperadmin(t, enforcer)
+	_, superEmail, superPass := seedSuperadmin(t)
 
 	_, superToken := doLogin(t, fr.router, superEmail, superPass)
 
@@ -612,8 +607,7 @@ func TestAuthFlow_WrongPasswordRejected(t *testing.T) {
 func TestAuthFlow_InactiveUserCannotLogin(t *testing.T) {
 	cleanupDatabase()
 	fr := setupAuthFlowRouter(t)
-	enforcer, _ := rbac.NewEnforcer(testDB, findRBACModel(t))
-	_, superEmail, superPass := seedSuperadmin(t, enforcer)
+	_, superEmail, superPass := seedSuperadmin(t)
 
 	_, superToken := doLogin(t, fr.router, superEmail, superPass)
 
@@ -653,8 +647,7 @@ func TestAuthFlow_InactiveUserCannotLogin(t *testing.T) {
 func TestAuthFlow_SessionManagement_CrossUserRevokeIs404(t *testing.T) {
 	cleanupDatabase()
 	fr := setupAuthFlowRouter(t)
-	enforcer, _ := rbac.NewEnforcer(testDB, findRBACModel(t))
-	_, superEmail, superPass := seedSuperadmin(t, enforcer)
+	_, superEmail, superPass := seedSuperadmin(t)
 	_, superToken := doLogin(t, fr.router, superEmail, superPass)
 
 	// Two members, both via the real create-user flow.
@@ -734,8 +727,7 @@ func TestAuthFlow_SessionManagement_CrossUserRevokeIs404(t *testing.T) {
 func TestAuthFlow_Factors_CrossUserIsolation(t *testing.T) {
 	cleanupDatabase()
 	fr := setupAuthFlowRouter(t)
-	enforcer, _ := rbac.NewEnforcer(testDB, findRBACModel(t))
-	_, superEmail, superPass := seedSuperadmin(t, enforcer)
+	_, superEmail, superPass := seedSuperadmin(t)
 	_, superToken := doLogin(t, fr.router, superEmail, superPass)
 
 	// Two members provisioned via the real user-create API path.

@@ -2,7 +2,6 @@ package rbac
 
 import (
 	"fmt"
-	"slices"
 
 	"github.com/casbin/casbin/v3"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
@@ -10,12 +9,17 @@ import (
 )
 
 // Roles
+//
+// Superadmin is intentionally NOT a Casbin role. It is implemented as the
+// users.is_superadmin boolean column and short-circuits authorisation
+// before Casbin is consulted (see PermissionService.CheckPermission).
+// Encoding it as a Casbin role too would create two sources of truth and
+// — historically — has only ever caused confusion.
 const (
-	RoleSuperAdmin = "superadmin"
-	RoleAdmin      = "admin"
-	RoleManager    = "manager"
-	RoleMember     = "member"
-	RoleStaff      = "staff"
+	RoleAdmin   = "admin"
+	RoleManager = "manager"
+	RoleMember  = "member"
+	RoleStaff   = "staff"
 )
 
 // Resources
@@ -56,12 +60,11 @@ const (
 
 // Enforcer wraps casbin.Enforcer for role-permission policy management.
 //
-// This enforcer is used for:
-// - Storing role -> permission mappings (e.g., "admin can create employees")
-// - Storing superadmin assignments (user -> superadmin role)
-//
-// Note: Regular user -> role assignments are stored in the database (UserOrganization table),
-// not in Casbin. See PermissionService for the complete authorization flow.
+// This enforcer is used for storing role -> permission mappings (e.g.,
+// "admin can create employees"). User -> role assignments are stored
+// in the database (UserOrganization table), not in Casbin. Superadmin
+// is also a DB concern — see PermissionService for the complete
+// authorisation flow.
 type Enforcer struct {
 	*casbin.Enforcer
 }
@@ -96,93 +99,15 @@ func NewEnforcerWithAdapter(adapter any, modelPath string) (*Enforcer, error) {
 	return &Enforcer{Enforcer: e}, nil
 }
 
-// AssignSuperAdmin assigns the superadmin role to a user (global, not org-scoped).
-// This is stored in Casbin because superadmin is a special case that bypasses
-// the normal database-based role assignment.
-func (e *Enforcer) AssignSuperAdmin(userID uint) error {
-	sub := fmt.Sprintf("user:%d", userID)
-
-	_, err := e.AddGroupingPolicy(sub, RoleSuperAdmin, "*")
-	if err != nil {
-		return fmt.Errorf("failed to assign superadmin role: %w", err)
-	}
-	return nil
-}
-
-// RemoveSuperAdmin removes the superadmin role from a user.
-func (e *Enforcer) RemoveSuperAdmin(userID uint) error {
-	sub := fmt.Sprintf("user:%d", userID)
-
-	_, err := e.RemoveGroupingPolicy(sub, RoleSuperAdmin, "*")
-	if err != nil {
-		return fmt.Errorf("failed to remove superadmin role: %w", err)
-	}
-	return nil
-}
-
 // SeedDefaultPolicies adds the default role-permission policies.
 // This should be called once during initial setup.
 //
 // These policies define what each role can do. The actual user -> role
-// assignments are managed separately (superadmin in Casbin, others in database).
+// assignments are managed by the UserOrganization database table; the
+// superadmin role is not represented here because it short-circuits
+// authorisation before Casbin runs.
 func (e *Enforcer) SeedDefaultPolicies() error {
 	policies := [][]string{
-		// Superadmin - full access to everything (domain "*" = all orgs)
-		{RoleSuperAdmin, "*", ResourceOrganizations, ActionCreate},
-		{RoleSuperAdmin, "*", ResourceOrganizations, ActionRead},
-		{RoleSuperAdmin, "*", ResourceOrganizations, ActionUpdate},
-		{RoleSuperAdmin, "*", ResourceOrganizations, ActionDelete},
-		{RoleSuperAdmin, "*", ResourceEmployees, ActionCreate},
-		{RoleSuperAdmin, "*", ResourceEmployees, ActionRead},
-		{RoleSuperAdmin, "*", ResourceEmployees, ActionUpdate},
-		{RoleSuperAdmin, "*", ResourceEmployees, ActionDelete},
-		{RoleSuperAdmin, "*", ResourceChildren, ActionCreate},
-		{RoleSuperAdmin, "*", ResourceChildren, ActionRead},
-		{RoleSuperAdmin, "*", ResourceChildren, ActionUpdate},
-		{RoleSuperAdmin, "*", ResourceChildren, ActionDelete},
-		{RoleSuperAdmin, "*", ResourceEmployeeContracts, ActionCreate},
-		{RoleSuperAdmin, "*", ResourceEmployeeContracts, ActionRead},
-		{RoleSuperAdmin, "*", ResourceEmployeeContracts, ActionUpdate},
-		{RoleSuperAdmin, "*", ResourceEmployeeContracts, ActionDelete},
-		{RoleSuperAdmin, "*", ResourceChildContracts, ActionCreate},
-		{RoleSuperAdmin, "*", ResourceChildContracts, ActionRead},
-		{RoleSuperAdmin, "*", ResourceChildContracts, ActionUpdate},
-		{RoleSuperAdmin, "*", ResourceChildContracts, ActionDelete},
-		{RoleSuperAdmin, "*", ResourceUsers, ActionCreate},
-		{RoleSuperAdmin, "*", ResourceUsers, ActionRead},
-		{RoleSuperAdmin, "*", ResourceUsers, ActionUpdate},
-		{RoleSuperAdmin, "*", ResourceUsers, ActionDelete},
-		{RoleSuperAdmin, "*", ResourceUsers, ActionResetPassword},
-		{RoleSuperAdmin, "*", ResourceSections, ActionCreate},
-		{RoleSuperAdmin, "*", ResourceSections, ActionRead},
-		{RoleSuperAdmin, "*", ResourceSections, ActionUpdate},
-		{RoleSuperAdmin, "*", ResourceSections, ActionDelete},
-		{RoleSuperAdmin, "*", ResourceFundings, ActionCreate},
-		{RoleSuperAdmin, "*", ResourceFundings, ActionRead},
-		{RoleSuperAdmin, "*", ResourceFundings, ActionUpdate},
-		{RoleSuperAdmin, "*", ResourceFundings, ActionDelete},
-		{RoleSuperAdmin, "*", ResourcePayPlans, ActionCreate},
-		{RoleSuperAdmin, "*", ResourcePayPlans, ActionRead},
-		{RoleSuperAdmin, "*", ResourcePayPlans, ActionUpdate},
-		{RoleSuperAdmin, "*", ResourcePayPlans, ActionDelete},
-		{RoleSuperAdmin, "*", ResourceChildAttendance, ActionCreate},
-		{RoleSuperAdmin, "*", ResourceChildAttendance, ActionRead},
-		{RoleSuperAdmin, "*", ResourceChildAttendance, ActionUpdate},
-		{RoleSuperAdmin, "*", ResourceChildAttendance, ActionDelete},
-		{RoleSuperAdmin, "*", ResourceBudgetItems, ActionCreate},
-		{RoleSuperAdmin, "*", ResourceBudgetItems, ActionRead},
-		{RoleSuperAdmin, "*", ResourceBudgetItems, ActionUpdate},
-		{RoleSuperAdmin, "*", ResourceBudgetItems, ActionDelete},
-		{RoleSuperAdmin, "*", ResourceBudgetItemEntries, ActionCreate},
-		{RoleSuperAdmin, "*", ResourceBudgetItemEntries, ActionRead},
-		{RoleSuperAdmin, "*", ResourceBudgetItemEntries, ActionUpdate},
-		{RoleSuperAdmin, "*", ResourceBudgetItemEntries, ActionDelete},
-		{RoleSuperAdmin, "*", ResourceGovernmentFundingBills, ActionCreate},
-		{RoleSuperAdmin, "*", ResourceGovernmentFundingBills, ActionRead},
-		{RoleSuperAdmin, "*", ResourceGovernmentFundingBills, ActionDelete},
-		{RoleSuperAdmin, "*", ResourceStatistics, ActionRead},
-		{RoleSuperAdmin, "*", ResourceAuditLog, ActionRead},
-
 		// Admin - full access within their organization (domain is checked at runtime)
 		{RoleAdmin, "*", ResourceOrganizations, ActionRead},
 		{RoleAdmin, "*", ResourceOrganizations, ActionUpdate},
@@ -328,15 +253,6 @@ func (e *Enforcer) ClearAllPolicies() error {
 // See PermissionService.CheckPermission() for the production implementation.
 // =============================================================================
 
-// IsSuperAdmin checks if a user has the superadmin role in Casbin.
-// Used for testing. Production code uses PermissionService.IsSuperAdmin().
-func (e *Enforcer) IsSuperAdmin(userID uint) (bool, error) {
-	sub := fmt.Sprintf("user:%d", userID)
-	roles := e.GetRolesForUserInDomain(sub, "*")
-
-	return slices.Contains(roles, RoleSuperAdmin), nil
-}
-
 // CheckPermission checks if a user has permission via Casbin grouping policies.
 // Used for testing. Production code uses PermissionService.CheckPermission().
 func (e *Enforcer) CheckPermission(userID uint, orgID uint, resource, action string) (bool, error) {
@@ -393,17 +309,9 @@ func (e *Enforcer) GetUserRolesAllOrgs(userID uint) ([][]string, error) {
 }
 
 // HasPermissionInAnyOrg checks if a user has permission in any of their Casbin-assigned organizations.
-// Used for testing. Production code uses PermissionService.HasPermissionInAnyOrg().
+// Used for testing. Production code uses PermissionService.HasPermissionInAnyOrg(),
+// which short-circuits on the users.is_superadmin column before consulting Casbin.
 func (e *Enforcer) HasPermissionInAnyOrg(userID uint, resource, action string) (bool, error) {
-	// First check if superadmin
-	isSuperAdmin, err := e.IsSuperAdmin(userID)
-	if err != nil {
-		return false, err
-	}
-	if isSuperAdmin {
-		return true, nil
-	}
-
 	// Get all role assignments for this user
 	policies, err := e.GetUserRolesAllOrgs(userID)
 	if err != nil {
@@ -438,16 +346,9 @@ func (e *Enforcer) HasPermissionInAnyOrg(userID uint, resource, action string) (
 }
 
 // HasAnyRole checks if a user has any role in any organization (for testing).
-// Production code uses PermissionService.HasAnyRole().
+// Production code uses PermissionService.HasAnyRole(), which short-circuits
+// on the users.is_superadmin column before consulting Casbin.
 func (e *Enforcer) HasAnyRole(userID uint) (bool, error) {
-	isSuperAdmin, err := e.IsSuperAdmin(userID)
-	if err != nil {
-		return false, err
-	}
-	if isSuperAdmin {
-		return true, nil
-	}
-
 	policies, err := e.GetUserRolesAllOrgs(userID)
 	if err != nil {
 		return false, err
