@@ -62,8 +62,8 @@ dev: api-build web-install
 		DB_PASSWORD=kitamanager \
 		DB_NAME=kitamanager \
 		DB_SSLMODE=disable \
-		JWT_SECRET=dev-only-jwt-secret-not-for-production-use-change-me-32chars \
-		TOTP_ENCRYPTION_KEY=1111111111111111111111111111111111111111111111111111111111111111 \
+		CSRF_HMAC_KEY=make-dev-csrf-hmac-key-eenemeene-2026-not-for-production-use \
+		TOTP_ENCRYPTION_KEY=deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef \
 		WEBAUTHN_RP_ID=localhost \
 		WEBAUTHN_RP_NAME="KitaManager (dev)" \
 		WEBAUTHN_ORIGINS="http://localhost:3000,http://localhost:8080" \
@@ -82,10 +82,21 @@ dev: api-build web-install
 		LOG_FORMAT=text \
 		./bin/kitamanager-api > /tmp/kitamanager-api.log 2>&1 & echo $$! > /tmp/kitamanager-api.pid
 	@echo "   Waiting for API to be healthy..."
-	@until curl -sf http://localhost:8080/api/v1/health > /dev/null 2>&1; do \
+	@for i in $$(seq 1 30); do \
+		if curl -sf http://localhost:8080/api/v1/health > /dev/null 2>&1; then \
+			echo "   API is ready!"; \
+			exit 0; \
+		fi; \
+		if ! kill -0 $$(cat /tmp/kitamanager-api.pid) 2>/dev/null; then \
+			echo "   API process exited before becoming healthy. Last log lines:"; \
+			tail -n 20 /tmp/kitamanager-api.log; \
+			exit 1; \
+		fi; \
 		sleep 1; \
-	done
-	@echo "   API is ready!"
+	done; \
+	echo "   API did not become healthy within 30s. Last log lines:"; \
+	tail -n 20 /tmp/kitamanager-api.log; \
+	exit 1
 	@echo "4. Starting web dev server (Ctrl+C to stop all)..."
 	@echo ""
 	@echo "================================================"
