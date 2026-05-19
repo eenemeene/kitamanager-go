@@ -493,7 +493,7 @@ func (h *EmployeeHandler) Import(c *gin.Context) {
 		return
 	}
 
-	fileBytes, ok := readUploadFile(c)
+	fileBytes, header, ok := readUploadFileWithHeader(c)
 	if !ok {
 		return
 	}
@@ -510,7 +510,12 @@ func (h *EmployeeHandler) Import(c *gin.Context) {
 		return
 	}
 
-	auditCreate(c, h.auditService, "employee_import", 0, "YAML import")
+	ids := make([]uint, len(results))
+	for i := range results {
+		ids[i] = results[i].ID
+	}
+	h.auditService.LogResourceImport(c.Request.Context(), getUserID(c), getUserEmail(c),
+		"employee", orgID, len(results), ids, sanitizeFilename(header.Filename), c.ClientIP())
 
 	c.JSON(http.StatusCreated, results)
 }

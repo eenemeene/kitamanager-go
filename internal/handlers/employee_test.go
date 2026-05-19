@@ -1,8 +1,14 @@
 package handlers
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
+	"net/http/httptest"
+	"slices"
 	"testing"
 	"time"
 
@@ -2479,5 +2485,131 @@ func TestEmployeeHandler_ExportYAML_WithSearchFilter(t *testing.T) {
 
 	if len(data.Employees) != 1 {
 		t.Errorf("expected 1 employee with search=Alice, got %d", len(data.Employees))
+	}
+}
+
+// TestEmployeeHandler_Import_AuditDetailsCaptured closes review finding
+// M1 for the employee path. Pre-fix the import audit row was
+// `auditCreate(..., 0, "YAML import")` — id=0, no row count, no
+// filename, no list of created ids. Post-fix the row records
+// record_count, filename, and the new entity ids so investigators can
+// pivot from a single employee back to the import event that created
+// them.
+func TestEmployeeHandler_Import_AuditDetailsCaptured(t *testing.T) {
+	db := setupTestDB(t)
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService, createAuditService(db))
+
+	org := createTestOrganization(t, db, "Test Org")
+	sectionID := ensureTestSection(t, db, org.ID)
+	payPlanID := ensureTestPayPlan(t, db, org.ID)
+	// Look up the pay plan name so the YAML payload can reference it
+	// by name — that's the format the importer expects.
+	var payPlan models.PayPlan
+	if err := db.First(&payPlan, payPlanID).Error; err != nil {
+		t.Fatalf("lookup pay plan: %v", err)
+	}
+	var section models.Section
+	if err := db.First(&section, sectionID).Error; err != nil {
+		t.Fatalf("lookup section: %v", err)
+	}
+
+	r := setupTestRouter()
+	r.POST("/organizations/:orgId/employees/import", handler.Import)
+
+	payload := models.EmployeeImportExportData{
+		Employees: []models.EmployeeResponse{
+			{
+				FirstName: "Imp",
+				LastName:  "Emp1",
+				Gender:    "female",
+				Birthdate: time.Date(1985, 4, 1, 0, 0, 0, 0, time.UTC),
+				Contracts: []models.EmployeeContractResponse{{
+					From:          time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+					SectionName:   &section.Name,
+					PayPlanName:   &payPlan.Name,
+					StaffCategory: "qualified",
+					Grade:         "S8a",
+					Step:          3,
+					WeeklyHours:   39.0,
+				}},
+			},
+			{
+				FirstName: "Imp",
+				LastName:  "Emp2",
+				Gender:    "male",
+				Birthdate: time.Date(1990, 8, 12, 0, 0, 0, 0, time.UTC),
+				Contracts: []models.EmployeeContractResponse{{
+					From:          time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC),
+					SectionName:   &section.Name,
+					PayPlanName:   &payPlan.Name,
+					StaffCategory: "qualified",
+					Grade:         "S8a",
+					Step:          3,
+					WeeklyHours:   39.0,
+				}},
+			},
+		},
+	}
+	yamlBytes, err := yaml.Marshal(payload)
+	if err != nil {
+		t.Fatalf("yaml.Marshal: %v", err)
+	}
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "mitarbeiter-2024.yaml")
+	if err != nil {
+		t.Fatalf("CreateFormFile: %v", err)
+	}
+	if _, err := io.Copy(part, bytes.NewReader(yamlBytes)); err != nil {
+		t.Fatalf("io.Copy: %v", err)
+	}
+	writer.Close()
+
+	req, _ := http.NewRequest("POST", fmt.Sprintf("/organizations/%d/employees/import", org.ID), body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var imported []models.EmployeeResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &imported); err != nil {
+		t.Fatalf("response decode: %v", err)
+	}
+	if len(imported) != 2 {
+		t.Fatalf("expected 2 imported employees, got %d", len(imported))
+	}
+
+	row := testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+		Action:       models.AuditAction("employee_import"),
+		ResourceType: "employee",
+	})
+	if row.OrganizationID == nil || *row.OrganizationID != org.ID {
+		t.Errorf("audit row OrganizationID = %v, want %d", row.OrganizationID, org.ID)
+	}
+
+	var details map[string]any
+	if err := json.Unmarshal([]byte(row.Details), &details); err != nil {
+		t.Fatalf("Details JSON parse: %v (raw=%q)", err, row.Details)
+	}
+	if got, _ := details["record_count"].(float64); int(got) != 2 {
+		t.Errorf("Details.record_count = %v, want 2", details["record_count"])
+	}
+	if got, _ := details["filename"].(string); got != "mitarbeiter-2024.yaml" {
+		t.Errorf("Details.filename = %q, want mitarbeiter-2024.yaml", got)
+	}
+	ids, _ := details["ids"].([]any)
+	if len(ids) != 2 {
+		t.Fatalf("Details.ids length = %d, want 2", len(ids))
+	}
+	gotIDs := make([]uint, len(ids))
+	for i, v := range ids {
+		gotIDs[i] = uint(v.(float64))
+	}
+	if !slices.Contains(gotIDs, imported[0].ID) || !slices.Contains(gotIDs, imported[1].ID) {
+		t.Errorf("Details.ids = %v, want all of %d and %d", gotIDs, imported[0].ID, imported[1].ID)
 	}
 }
