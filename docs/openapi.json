@@ -5478,6 +5478,11 @@
                         "example": 1,
                         "type": "integer"
                     },
+                    "periods_count": {
+                        "description": "PeriodsCount is the total number of periods belonging to this\npay plan, included so the list view can render the count\nwithout fetching the full detail response per row. Populated\nby PayPlanService.List via a separate GROUP BY query.",
+                        "example": 4,
+                        "type": "integer"
+                    },
                     "updated_at": {
                         "format": "date-time",
                         "type": "string"
@@ -5488,6 +5493,7 @@
                     "id",
                     "name",
                     "organization_id",
+                    "periods_count",
                     "updated_at"
                 ],
                 "type": "object"

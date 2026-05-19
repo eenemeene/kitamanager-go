@@ -164,6 +164,63 @@ func TestPayPlanService_List(t *testing.T) {
 	}
 }
 
+// TestPayPlanService_List_PopulatesPeriodsCount is the regression
+// for the "Pay Plans list shows Periods: 0 even though the detail
+// view shows many" bug. Pre-fix the list DTO (PayPlanResponse) had
+// no count field; the frontend rendered a hard-coded 0 for every
+// row. Post-fix PayPlanService.List runs a GROUP BY query on
+// pay_plan_periods and populates PayPlanResponse.PeriodsCount.
+//
+// This test also guards the zero-period edge case (a freshly
+// created pay plan with no periods at all): the count must be 0,
+// not "missing".
+func TestPayPlanService_List_PopulatesPeriodsCount(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createPayPlanService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	// Plan A: 3 periods. The exact From/To values don't matter for
+	// the count — they just need to be non-overlapping so the
+	// constraint added in migration 000022 doesn't reject the insert.
+	planA := createTestPayPlan(t, db, "Plan A", org.ID)
+	createTestPayPlanPeriod(t, db, planA.ID, time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), timePtr(time.Date(2020, 12, 31, 0, 0, 0, 0, time.UTC)), 39.0)
+	createTestPayPlanPeriod(t, db, planA.ID, time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC), timePtr(time.Date(2021, 12, 31, 0, 0, 0, 0, time.UTC)), 39.0)
+	createTestPayPlanPeriod(t, db, planA.ID, time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0)
+
+	// Plan B: 1 period.
+	planB := createTestPayPlan(t, db, "Plan B", org.ID)
+	createTestPayPlanPeriod(t, db, planB.ID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 40.0)
+
+	// Plan C: 0 periods — the freshly-created case the original
+	// bug masked behind a 0 default.
+	createTestPayPlan(t, db, "Plan C", org.ID)
+
+	plans, total, err := svc.List(ctx, org.ID, "", 100, 0)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if total != 3 {
+		t.Fatalf("expected total 3, got %d", total)
+	}
+
+	got := map[string]int{}
+	for _, p := range plans {
+		got[p.Name] = p.PeriodsCount
+	}
+	want := map[string]int{
+		"Plan A": 3,
+		"Plan B": 1,
+		"Plan C": 0,
+	}
+	for name, expected := range want {
+		if got[name] != expected {
+			t.Errorf("PeriodsCount[%q] = %d, want %d (full map: %+v)", name, got[name], expected, got)
+		}
+	}
+}
+
 func TestPayPlanService_List_Empty(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createPayPlanService(db)
