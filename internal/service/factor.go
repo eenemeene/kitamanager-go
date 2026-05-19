@@ -275,7 +275,7 @@ func (s *FactorService) ActivateFactor(ctx context.Context, userID, factorID uin
 					if _, delErr := s.factorStore.DeleteFactor(ctx, f.ID, userID); delErr != nil {
 						slog.Error("delete pending factor after activation limit", "factor_id", f.ID, "error", delErr)
 					}
-					s.auditService.LogFactorActivationLocked(ctx, userID, f.Type)
+					s.auditService.LogFactorActivationLocked(ctx, userID, f.ID, f.Type)
 					return nil, apperror.TooManyRequests("too many wrong codes; re-enroll the factor")
 				}
 			}
@@ -305,7 +305,7 @@ func (s *FactorService) ActivateFactor(ctx context.Context, userID, factorID uin
 		return nil, apperror.Conflict("factor already activated")
 	}
 
-	s.auditService.LogFactorEnrolled(ctx, userID, f.Type)
+	s.auditService.LogFactorEnrolled(ctx, userID, f.ID, f.Type)
 
 	// First-primary-factor auto-create: if the user now has exactly
 	// one enabled primary factor (the one we just activated) and no
@@ -394,7 +394,7 @@ func (s *FactorService) DeleteFactor(ctx context.Context, userID, factorID uint,
 		}
 	}
 
-	s.auditService.LogFactorDeleted(ctx, userID, f.Type)
+	s.auditService.LogFactorDeleted(ctx, userID, f.ID, f.Type)
 	return nil
 }
 
@@ -470,7 +470,7 @@ func (s *FactorService) RegenerateBackupCodes(ctx context.Context, userID, facto
 		return nil, apperror.InternalWrap(err, "replace backup codes")
 	}
 
-	s.auditService.LogBackupCodesRegenerated(ctx, userID)
+	s.auditService.LogBackupCodesRegenerated(ctx, userID, f.ID)
 
 	return &models.BackupCodesPayload{FactorID: f.ID, Codes: raw}, nil
 }
