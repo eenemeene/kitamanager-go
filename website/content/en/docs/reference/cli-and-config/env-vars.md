@@ -38,7 +38,7 @@ These exist only as conscious escape hatches for the production gates that `SECU
 |---|---|---|---|
 | `ALLOW_RATE_LIMIT_DISABLED_IN_PRODUCTION` | `false` | no | When `true`, permits `LOGIN_RATE_LIMIT_PER_MINUTE=0` or `API_RATE_LIMIT_PER_MINUTE=0` even with `SECURE_COOKIES=true`. |
 | `ALLOW_DB_SSLMODE_DISABLE_IN_PRODUCTION` | `false` | no | When `true`, permits `DB_SSLMODE=disable` even with `SECURE_COOKIES=true`. |
-| `AUDIT_LOG_RETENTION_DAYS` | `730` | no | How long mutating-action audit log rows are kept before the retention worker deletes them. DSGVO Art. 17 obligation; do not lower below 365 without legal review. |
+| `AUDIT_LOG_RETENTION_DAYS` | `730` | no | How long mutating-action audit log rows are kept before the retention worker deletes them. DSGVO Art. 17 obligation; do not lower below 365 without legal review. Audit writes are asynchronous (channel buffer 4096) with a 5 s synchronous fallback; on a double failure the row is dropped and `audit_entries_dropped_total` increments — alert on any non-zero rate. |
 
 ## Authentication and sessions
 

@@ -38,7 +38,7 @@ Diese existieren ausschließlich als bewusste Ausnahmen für die Produktions-Gat
 |---|---|---|---|
 | `ALLOW_RATE_LIMIT_DISABLED_IN_PRODUCTION` | `false` | nein | Bei `true` erlaubt der Loader `LOGIN_RATE_LIMIT_PER_MINUTE=0` oder `API_RATE_LIMIT_PER_MINUTE=0` auch bei `SECURE_COOKIES=true`. |
 | `ALLOW_DB_SSLMODE_DISABLE_IN_PRODUCTION` | `false` | nein | Bei `true` erlaubt der Loader `DB_SSLMODE=disable` auch bei `SECURE_COOKIES=true`. |
-| `AUDIT_LOG_RETENTION_DAYS` | `730` | nein | Wie viele Tage Audit-Log-Einträge für mutierende Aktionen aufbewahrt werden, bevor der Retention-Worker sie löscht. DSGVO-Art.-17-Pflicht; unter 365 nur nach rechtlicher Prüfung absenken. |
+| `AUDIT_LOG_RETENTION_DAYS` | `730` | nein | Wie viele Tage Audit-Log-Einträge für mutierende Aktionen aufbewahrt werden, bevor der Retention-Worker sie löscht. DSGVO-Art.-17-Pflicht; unter 365 nur nach rechtlicher Prüfung absenken. Audit-Schreibvorgänge laufen asynchron (Channel-Buffer 4096) mit 5-Sekunden-Synchron-Fallback; schlägt beides fehl, wird der Eintrag verworfen und `audit_entries_dropped_total` erhöht sich — auf jede positive Rate alarmieren. |
 
 ## Authentifizierung und Sitzungen
 
