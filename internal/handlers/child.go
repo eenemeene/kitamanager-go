@@ -202,13 +202,27 @@ func (h *ChildHandler) Update(c *gin.Context) {
 		return
 	}
 
+	// Capture the pre-update state for the audit diff (review finding
+	// H2). On a NotFound the Update path below would surface the same
+	// error, so propagating it here keeps the response canonical.
+	before, beforeErr := h.service.GetByID(c.Request.Context(), id, orgID)
+	if beforeErr != nil {
+		respondError(c, beforeErr)
+		return
+	}
+
 	child, err := h.service.Update(c.Request.Context(), id, orgID, req)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	auditUpdate(c, h.auditService, "child", child.ID, child.FullName())
+	changes := map[string]any{}
+	recordChange(changes, "first_name", before.FirstName, child.FirstName)
+	recordChange(changes, "last_name", before.LastName, child.LastName)
+	recordChange(changes, "gender", before.Gender, child.Gender)
+	recordTimeChange(changes, "birthdate", before.Birthdate, child.Birthdate)
+	auditUpdateWithChanges(c, h.auditService, "child", child.ID, child.FullName(), changes)
 
 	c.JSON(http.StatusOK, child)
 }

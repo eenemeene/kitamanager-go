@@ -180,11 +180,79 @@ func TestEmployeeHandler_Update(t *testing.T) {
 		t.Errorf("expected first name 'Updated', got '%s'", result.FirstName)
 	}
 
-	testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+	row := testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
 		Action:       models.AuditAction("employee_update"),
 		ResourceType: "employee",
 		ResourceID:   employee.ID,
 	})
+
+	// H2: per-field diff must be in Details.changes.
+	var details map[string]any
+	if err := json.Unmarshal([]byte(row.Details), &details); err != nil {
+		t.Fatalf("Details JSON parse: %v (raw=%q)", err, row.Details)
+	}
+	changes, _ := details["changes"].(map[string]any)
+	if changes == nil {
+		t.Fatalf("audit row Details missing `changes` map: %q", row.Details)
+	}
+	fn, ok := changes["first_name"].(map[string]any)
+	if !ok {
+		t.Fatalf("changes missing first_name: %+v", changes)
+	}
+	if fn["old"] != "Original" || fn["new"] != "Updated" {
+		t.Errorf("first_name change = %+v, want {old: Original, new: Updated}", fn)
+	}
+	if _, present := changes["last_name"]; present {
+		t.Errorf("changes should NOT include last_name (unchanged): %+v", changes)
+	}
+}
+
+// TestEmployeeHandler_Update_MultipleFieldsDiff covers the multi-
+// field path of review finding H2 for employees.
+func TestEmployeeHandler_Update_MultipleFieldsDiff(t *testing.T) {
+	db := setupTestDB(t)
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService, createAuditService(db))
+
+	org := createTestOrganization(t, db, "Test Org")
+	employee := &models.Employee{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Old", LastName: "Last", Gender: "female", Birthdate: time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(employee)
+
+	r := setupTestRouter()
+	r.PUT("/organizations/:orgId/employees/:employeeId", handler.Update)
+
+	newFirst := "New"
+	newGender := "diverse"
+	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/employees/%d", org.ID, employee.ID),
+		models.EmployeeUpdateRequest{FirstName: &newFirst, Gender: &newGender})
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	row := testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+		Action:       models.AuditAction("employee_update"),
+		ResourceType: "employee",
+		ResourceID:   employee.ID,
+	})
+	var details map[string]any
+	if err := json.Unmarshal([]byte(row.Details), &details); err != nil {
+		t.Fatalf("Details JSON parse: %v", err)
+	}
+	changes, _ := details["changes"].(map[string]any)
+	if changes == nil {
+		t.Fatalf("missing changes map: %q", row.Details)
+	}
+	if _, ok := changes["first_name"]; !ok {
+		t.Errorf("changes missing first_name: %+v", changes)
+	}
+	if _, ok := changes["gender"]; !ok {
+		t.Errorf("changes missing gender: %+v", changes)
+	}
+	if _, ok := changes["last_name"]; ok {
+		t.Errorf("changes should NOT include last_name (unchanged): %+v", changes)
+	}
 }
 
 func TestEmployeeHandler_Update_WrongOrg(t *testing.T) {
