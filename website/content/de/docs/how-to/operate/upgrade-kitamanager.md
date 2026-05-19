@@ -30,6 +30,16 @@ Sie wollen von Version vX auf vY wechseln.
    ```
    Anmelden. Dashboard auf unerwartete Fehler prüfen. Audit-Log auf Migrations-Fehler prüfen.
 
+## Wenn der neue Container nicht startet
+
+Der Config-Loader bricht beim ersten Fehler ab und gibt alle Probleme in einer einzigen Zeile aus. Wenn `docker compose up -d` die API hochfährt, sie aber beendet, folgendes ausführen:
+
+```bash
+docker logs <api-container> 2>&1 | grep -A1 'configuration validation failed'
+```
+
+Alle erforderlichen oder fehlerhaften Env-Vars sind dort aufgeführt. Mit den Release-Notes (für Umbenennungen oder neue Variablen) und der [Umgebungsvariablen-Referenz](../../../reference/cli-and-config/env-vars/) abgleichen.
+
 ## Erwartete Ausfallzeit
 
 Die API ist nicht verfügbar von „alter Container stoppt" bis „neuer Container hat Migration abgeschlossen und Health-Check besteht". Für die meisten Aktualisierungen sind das Sekunden. Eine Schema-Migration auf einer großen Tabelle (selten) kann Minuten dauern.

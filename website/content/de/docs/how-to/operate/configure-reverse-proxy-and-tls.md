@@ -71,6 +71,7 @@ Dann `docker compose restart api`. Verifizieren durch Anmelden und Prüfen in de
 
 ## Hinweise
 
+- `TRUSTED_PROXIES` muss die tatsächlichen Proxy-CIDRs enthalten. `0.0.0.0/0` / `::/0` werden vom Loader abgelehnt; ein zu weiter Wert würde jedem Client erlauben, `X-Forwarded-For` zu fälschen, und Per-IP-Rate-Limiting aushebeln.
 - `WEBAUTHN_RP_ID` muss **exakt** zum öffentlichen Host passen — kein `https://` davor. Nicht-passende RP IDs lassen Sicherheitsschlüssel ohne brauchbare Fehlermeldung scheitern.
 - Wenn Frontend und API einen Hostnamen teilen (z. B. beide auf `kitamanager.example.org` mit API unter `/api/`), nutzen Sie einen Server-Block und routen pfadbasiert. WebAuthn wird einfacher, weil es nur einen Origin gibt.
 - Für die Env-Var-Referenz siehe [Umgebungsvariablen](../../../reference/cli-and-config/env-vars/).

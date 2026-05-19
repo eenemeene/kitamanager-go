@@ -35,9 +35,10 @@ Sie wollen KitaManager (Postgres + API + Frontend) auf einem Host mit Docker Com
 
 - Vollständige Env-Var-Referenz: [Umgebungsvariablen](../../../reference/cli-and-config/env-vars/).
 - Für den *erstmaligen* Durchlauf mit Beispieldaten folgen Sie stattdessen dem Tutorial [KitaManager bereitstellen](../../../tutorials/deploy-kitamanager/).
-- Produktiv-Checkliste:
+- Produktiv-Checkliste (der Loader setzt jeden Punkt durch, sobald `SECURE_COOKIES=true` — die API startet nicht, wenn auch nur einer verletzt ist):
   - `SECURE_COOKIES=true`
   - `DB_SSLMODE=require` (oder strenger)
-  - `LOGIN_RATE_LIMIT_PER_MINUTE` auf Default (5) und `API_RATE_LIMIT_PER_MINUTE` (60), oder an Ihren Traffic angepasst
-  - **Niemals** `SEED_TEST_DATA=true` in Produktion setzen
+  - `LOGIN_RATE_LIMIT_PER_MINUTE` und `API_RATE_LIMIT_PER_MINUTE` > 0 — Defaults (5 bzw. 60) sind sinnvoll; an Traffic anpassen
+  - `SEED_TEST_DATA` nicht gesetzt oder `false`
+  - `TRUSTED_PROXIES` auf die tatsächlichen Proxy-CIDRs setzen (`0.0.0.0/0` wird abgelehnt)
   - Sofort das erste Backup machen — siehe [Datenbank sichern und wiederherstellen](../back-up-and-restore/)

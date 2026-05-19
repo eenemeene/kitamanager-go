@@ -25,10 +25,20 @@ KitaManager is configured almost entirely through environment variables. The API
 | Variable | Default | Required | Notes |
 |---|---|---|---|
 | `SERVER_PORT` | `8080` | no | Listen port. |
-| `TRUSTED_PROXIES` | (none) | no | Comma-separated list of CIDRs/IPs whose `X-Forwarded-*` headers Gin will trust. Behind one reverse proxy, set this to the proxy's IP. Empty means trust no proxy. |
-| `SECURE_COOKIES` | `true` | no | When `true`, session cookies are `Secure` (HTTPS only). Set `false` only for local HTTP dev. |
+| `TRUSTED_PROXIES` | (none) | no | Comma-separated list of CIDRs/IPs whose `X-Forwarded-*` headers Gin will trust. Behind one reverse proxy, set this to the proxy's IP. Empty means trust no proxy. `0.0.0.0/0` and `::/0` are rejected — they would defeat per-IP rate limiting by letting any client spoof its source address. |
+| `SECURE_COOKIES` | `true` | no | When `true`, session cookies are `Secure` (HTTPS only) and the loader enforces production gates (no `DB_SSLMODE=disable`, rate limits > 0, no `SEED_TEST_DATA`). Set `false` only for local HTTP dev. |
 | `CORS_ALLOW_ORIGINS` | (none) | no | Comma-separated list of allowed origins. Empty disables CORS. |
 | `CORS_ALLOW_CREDENTIALS` | `true` | no | Whether CORS responses include `Access-Control-Allow-Credentials: true`. |
+
+## Production gate opt-outs
+
+These exist only as conscious escape hatches for the production gates that `SECURE_COOKIES=true` activates. Default to leaving them unset; use them only for known constrained environments (e.g. an isolated LAN where the DB really cannot serve TLS).
+
+| Variable | Default | Required | Notes |
+|---|---|---|---|
+| `ALLOW_RATE_LIMIT_DISABLED_IN_PRODUCTION` | `false` | no | When `true`, permits `LOGIN_RATE_LIMIT_PER_MINUTE=0` or `API_RATE_LIMIT_PER_MINUTE=0` even with `SECURE_COOKIES=true`. |
+| `ALLOW_DB_SSLMODE_DISABLE_IN_PRODUCTION` | `false` | no | When `true`, permits `DB_SSLMODE=disable` even with `SECURE_COOKIES=true`. |
+| `AUDIT_LOG_RETENTION_DAYS` | `730` | no | How long mutating-action audit log rows are kept before the retention worker deletes them. DSGVO Art. 17 obligation; do not lower below 365 without legal review. |
 
 ## Authentication and sessions
 
@@ -42,7 +52,7 @@ KitaManager is configured almost entirely through environment variables. The API
 
 | Variable | Default | Required | Notes |
 |---|---|---|---|
-| `TOTP_ENCRYPTION_KEY` |  | **yes** | Exactly 64 hex chars (32 bytes). Encrypts stored TOTP secrets at rest. **Rotating this key invalidates every stored TOTP factor** — affected users must re-enrol. Generate with `openssl rand -hex 32`. |
+| `TOTP_ENCRYPTION_KEY` |  | **yes** | Exactly 64 hex chars (32 bytes). Encrypts stored TOTP secrets at rest. **Rotating this key invalidates every stored TOTP factor** — affected users must re-enrol. Generate with `openssl rand -hex 32`. Uniform-byte values (e.g. 64 zeros or 64 ones) and known placeholders are rejected at startup — the loader requires real entropy, not a typed-by-hand string. |
 | `TOTP_ISSUER` | `KitaManager` | no | The issuer string shown in the user's authenticator app. |
 | `WEBAUTHN_RP_ID` |  | only if WebAuthn is used | The Relying Party ID — the host part of your URL (e.g. `kitamanager.example.org`). Must match the URL the browser sees. |
 | `WEBAUTHN_RP_NAME` |  | only if WebAuthn is used | Human-readable name shown in the browser's security-key prompt. |

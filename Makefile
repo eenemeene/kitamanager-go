@@ -46,6 +46,10 @@ dev: api-build web-install
 	@if [ ! -f .env ]; then \
 		echo "0. No .env found — creating from .env.dev.example"; \
 		cp .env.dev.example .env; \
+		CSRF=$$(openssl rand -hex 32); \
+		TOTP=$$(openssl rand -hex 32); \
+		sed -i.bak "s|^CSRF_HMAC_KEY=.*|CSRF_HMAC_KEY=$$CSRF|; s|^TOTP_ENCRYPTION_KEY=.*|TOTP_ENCRYPTION_KEY=$$TOTP|" .env && rm .env.bak; \
+		echo "   Generated dev-only CSRF_HMAC_KEY and TOTP_ENCRYPTION_KEY in .env"; \
 	fi
 	@echo "1. Starting database..."
 	@docker compose up -d db
