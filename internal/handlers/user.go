@@ -197,7 +197,22 @@ func (h *UserHandler) Update(c *gin.Context) {
 		return
 	}
 
-	auditUpdate(c, h.auditService, "user", user.ID, user.Email)
+	// Cross-post the user_update audit event to every org the user
+	// belongs to (review finding M4). The /users/:userId route has
+	// no :orgId in the URL, so the default auditUpdate path would
+	// emit a single OrganizationID=NULL row — invisible to org
+	// admins in their org-scoped audit feed. Look up the memberships
+	// now and emit one row per org, plus the identity-level row.
+	// Membership lookup failure must not 500 the update; degrade to
+	// the legacy single-row path so we still produce an audit trail.
+	orgIDs, lookupErr := h.userOrgService.ListMembershipOrgIDs(c.Request.Context(), user.ID)
+	if lookupErr != nil {
+		slog.Warn("failed to fetch user memberships for audit cross-post", "user_id", user.ID, "error", lookupErr)
+		auditUpdate(c, h.auditService, "user", user.ID, user.Email)
+	} else {
+		h.auditService.LogResourceUpdateAcrossOrgs(c.Request.Context(), getUserID(c), getUserEmail(c),
+			"user", user.ID, user.Email, c.ClientIP(), orgIDs)
+	}
 
 	c.JSON(http.StatusOK, user)
 }

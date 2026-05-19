@@ -572,6 +572,57 @@ func (s *AuditService) LogResourceUpdate(ctx context.Context, actorID uint, acto
 	})
 }
 
+// LogResourceUpdateAcrossOrgs emits one update audit row per org id
+// in `orgIDs`, plus exactly one identity-level row (OrganizationID =
+// nil) so the superadmin global feed always shows the event even for
+// users with no org memberships. Each per-org row gets the same
+// timestamp window and Details, so an investigator who pivots from
+// any org view to the global view sees a consistent picture.
+//
+// Closes review finding M4: pre-fix `PUT /users/:userId` recorded
+// only one row with OrganizationID = NULL, invisible to the org admin
+// of every org the user was a member of. Now an org admin who manages
+// users in their org sees the update in their org-scoped audit feed
+// the moment it happens.
+func (s *AuditService) LogResourceUpdateAcrossOrgs(ctx context.Context, actorID uint, actorEmail, resourceType string, resourceID uint, resourceName, ipAddress string, orgIDs []uint) {
+	// De-duplicate so a user that's somehow listed twice in
+	// user_organizations (shouldn't happen, but defence in depth)
+	// doesn't produce duplicate audit rows.
+	seen := make(map[uint]bool, len(orgIDs))
+	for _, id := range orgIDs {
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		idCopy := id
+		s.log(ctx, &models.AuditLog{
+			UserID:         &actorID,
+			UserEmail:      actorEmail,
+			Action:         models.AuditAction(resourceType + "_update"),
+			ResourceType:   resourceType,
+			ResourceID:     &resourceID,
+			OrganizationID: &idCopy,
+			IPAddress:      ipAddress,
+			Details:        mustMarshalJSON(map[string]any{"resource_name": resourceName}),
+			Success:        true,
+		})
+	}
+
+	// Always emit the identity-level row too: the superadmin global
+	// feed must see the event even when the target user has no
+	// memberships (e.g. a freshly-created user pre-AddToOrganization).
+	s.log(ctx, &models.AuditLog{
+		UserID:       &actorID,
+		UserEmail:    actorEmail,
+		Action:       models.AuditAction(resourceType + "_update"),
+		ResourceType: resourceType,
+		ResourceID:   &resourceID,
+		IPAddress:    ipAddress,
+		Details:      mustMarshalJSON(map[string]any{"resource_name": resourceName}),
+		Success:      true,
+	})
+}
+
 // LogPasswordReset logs when an admin resets another user's password.
 func (s *AuditService) LogPasswordReset(ctx context.Context, actorID uint, actorEmail string, targetUserID uint, targetEmail, ipAddress string) {
 	s.log(ctx, &models.AuditLog{

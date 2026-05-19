@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -236,6 +237,139 @@ func TestUserHandler_Update(t *testing.T) {
 
 	if result.Name != "Updated Name" {
 		t.Errorf("expected name 'Updated Name', got '%s'", result.Name)
+	}
+}
+
+// TestUserHandler_Update_CrossPostsToMemberOrgs closes review finding
+// M4. Pre-fix, PUT /users/:userId emitted exactly one audit row with
+// OrganizationID = NULL — invisible to the org-scoped audit feed
+// every org admin uses. An admin whose org contained the updated user
+// got no notification in their feed even when the row sat one click
+// away from them.
+//
+// Post-fix the handler cross-posts: one user_update row per org the
+// user is a member of (visible to that org's admin) plus a final
+// identity-level row (so the superadmin global feed still sees the
+// event when the user has no memberships).
+func TestUserHandler_Update_CrossPostsToMemberOrgs(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userOrgService := createUserOrganizationService(db)
+	auditService := createAuditService(db)
+	t.Cleanup(auditService.Shutdown)
+	handler := NewUserHandler(userService, userOrgService, auditService, nil)
+
+	user := createTestUser(t, db, "Two-Org User", "twoorg@example.com", "password")
+	org1 := createTestOrganization(t, db, "Org One")
+	org2 := createTestOrganization(t, db, "Org Two")
+	createTestUserOrganization(t, db, user.ID, org1.ID, models.RoleMember)
+	createTestUserOrganization(t, db, user.ID, org2.ID, models.RoleMember)
+
+	r := setupTestRouter()
+	r.PUT("/users/:userId", handler.Update)
+
+	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d", user.ID),
+		models.UserUpdateRequest{Name: "Renamed"})
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	// Each member org must see the update in its scoped feed. We
+	// query by OrganizationID rather than relying on AuditLogQuery
+	// (which doesn't carry OrgID) to keep the assertion precise.
+	expectAuditRowForOrg := func(orgID uint) {
+		t.Helper()
+		// Audit writes are async — give the worker time to land the
+		// row before reading.
+		deadline := time.Now().Add(2 * time.Second)
+		for {
+			var count int64
+			db.Model(&models.AuditLog{}).
+				Where("action = ? AND resource_type = ? AND resource_id = ? AND organization_id = ?",
+					"user_update", "user", user.ID, orgID).
+				Count(&count)
+			if count == 1 {
+				return
+			}
+			if count > 1 {
+				t.Errorf("orgID=%d: expected exactly 1 user_update row, got %d", orgID, count)
+				return
+			}
+			if time.Now().After(deadline) {
+				t.Errorf("orgID=%d: no user_update audit row within 2s (count=%d)", orgID, count)
+				return
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+	expectAuditRowForOrg(org1.ID)
+	expectAuditRowForOrg(org2.ID)
+
+	// The identity-level row (OrganizationID = NULL) must also exist
+	// so the superadmin global feed sees the event regardless of
+	// memberships. Without this, a user with no memberships would
+	// produce no audit rows at all.
+	var nullOrgCount int64
+	db.Model(&models.AuditLog{}).
+		Where("action = ? AND resource_type = ? AND resource_id = ? AND organization_id IS NULL",
+			"user_update", "user", user.ID).
+		Count(&nullOrgCount)
+	if nullOrgCount != 1 {
+		t.Errorf("expected exactly 1 identity-level (org_id NULL) user_update row, got %d", nullOrgCount)
+	}
+}
+
+// TestUserHandler_Update_NoMembershipsStillAudits checks the safety
+// net: a user with zero memberships must still produce an audit row
+// in the global feed. Pre-fix this was the only behaviour; post-fix
+// it's the fallback identity-level row.
+func TestUserHandler_Update_NoMembershipsStillAudits(t *testing.T) {
+	db := setupTestDB(t)
+	userService := createUserService(db)
+	userOrgService := createUserOrganizationService(db)
+	auditService := createAuditService(db)
+	t.Cleanup(auditService.Shutdown)
+	handler := NewUserHandler(userService, userOrgService, auditService, nil)
+
+	user := createTestUser(t, db, "Orphan User", "orphan@example.com", "password")
+
+	r := setupTestRouter()
+	r.PUT("/users/:userId", handler.Update)
+
+	w := performRequest(r, "PUT", fmt.Sprintf("/users/%d", user.ID),
+		models.UserUpdateRequest{Name: "Renamed Orphan"})
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	// Only the identity-level row should exist — no membership = no
+	// per-org cross-post rows.
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		var total int64
+		db.Model(&models.AuditLog{}).
+			Where("action = ? AND resource_type = ? AND resource_id = ?",
+				"user_update", "user", user.ID).
+			Count(&total)
+		if total == 1 {
+			break
+		}
+		if total > 1 {
+			t.Fatalf("expected 1 user_update row, got %d", total)
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("no user_update audit row within 2s (count=%d)", total)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	var nullOrgCount int64
+	db.Model(&models.AuditLog{}).
+		Where("action = ? AND resource_type = ? AND resource_id = ? AND organization_id IS NULL",
+			"user_update", "user", user.ID).
+		Count(&nullOrgCount)
+	if nullOrgCount != 1 {
+		t.Errorf("expected exactly 1 identity-level row, got %d", nullOrgCount)
 	}
 }
 
