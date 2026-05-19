@@ -179,6 +179,27 @@ type Config struct {
 	// obligations should override via AUDIT_LOG_RETENTION_DAYS — set
 	// to 0 to disable the periodic purge entirely (only do this if
 	// you have an external retention pipeline).
+	//
+	// **Async pipeline + drop semantics.** AuditService persists rows
+	// from a background goroutine fed by a buffered channel (capacity
+	// 4096, defined in internal/service/audit.go). The trade-off is
+	// favour-availability-over-completeness:
+	//
+	//   1. Normal path: the handler returns immediately; the worker
+	//      writes the row asynchronously.
+	//   2. Channel full: the producer falls back to a synchronous
+	//      DB write with a 5-second timeout. Increments the
+	//      `audit_entries_fallback_total` Prometheus counter.
+	//   3. Both paths fail: the row is dropped (logged via slog at
+	//      ERROR level), and the `audit_entries_dropped_total`
+	//      Prometheus counter increments. There is no on-disk spool.
+	//
+	// **Operate accordingly.** Alert on a non-zero rate of
+	// audit_entries_dropped_total in your monitoring stack — every
+	// increment is a mutation that happened without an audit row.
+	// audit_entries_fallback_total above zero is a softer signal
+	// (latency spike or DB hot-spot) but worth dashboarding so
+	// drops have a leading indicator.
 	AuditLogRetentionDays int
 
 	// SMTP
