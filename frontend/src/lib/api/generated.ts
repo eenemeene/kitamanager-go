@@ -13593,6 +13593,14 @@ export interface components {
       name: string;
       /** @example 1 */
       organization_id: number;
+      /**
+       * @description PeriodsCount is the total number of periods belonging to this
+       *     pay plan, included so the list view can render the count
+       *     without fetching the full detail response per row. Populated
+       *     by PayPlanService.List via a separate GROUP BY query.
+       * @example 4
+       */
+      periods_count: number;
       /** Format: date-time */
       updated_at: string;
     };

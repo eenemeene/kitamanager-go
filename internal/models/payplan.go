@@ -50,6 +50,12 @@ type PayPlan struct {
 	Periods        []PayPlanPeriod `gorm:"foreignKey:PayPlanID" json:"periods,omitempty"`
 	CreatedAt      time.Time       `json:"created_at" format:"date-time"`
 	UpdatedAt      time.Time       `json:"updated_at" format:"date-time"`
+
+	// PeriodsCount is populated by the list/service layer via a
+	// dedicated GROUP BY query so the slim list response can carry
+	// the count without preloading the full Periods slice. `gorm:"-"`
+	// keeps GORM out of it — the column doesn't exist on the table.
+	PeriodsCount int `gorm:"-" json:"-"`
 }
 
 // GetOrganizationID returns the organization ID for the OrgOwned interface.
@@ -101,8 +107,13 @@ type PayPlanResponse struct {
 	ID             uint      `json:"id" example:"1"`
 	OrganizationID uint      `json:"organization_id" example:"1"`
 	Name           string    `json:"name" example:"TVöD-SuE"`
-	CreatedAt      time.Time `json:"created_at" format:"date-time"`
-	UpdatedAt      time.Time `json:"updated_at" format:"date-time"`
+	// PeriodsCount is the total number of periods belonging to this
+	// pay plan, included so the list view can render the count
+	// without fetching the full detail response per row. Populated
+	// by PayPlanService.List via a separate GROUP BY query.
+	PeriodsCount int       `json:"periods_count" example:"4"`
+	CreatedAt    time.Time `json:"created_at" format:"date-time"`
+	UpdatedAt    time.Time `json:"updated_at" format:"date-time"`
 }
 
 // PayPlanDetailResponse includes periods for detail view.
@@ -179,6 +190,7 @@ func (p *PayPlan) ToResponse() PayPlanResponse {
 		ID:             p.ID,
 		OrganizationID: p.OrganizationID,
 		Name:           p.Name,
+		PeriodsCount:   p.PeriodsCount,
 		CreatedAt:      p.CreatedAt,
 		UpdatedAt:      p.UpdatedAt,
 	}

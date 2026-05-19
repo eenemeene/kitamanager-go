@@ -15131,6 +15131,11 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 1
                 },
+                "periods_count": {
+                    "description": "PeriodsCount is the total number of periods belonging to this\npay plan, included so the list view can render the count\nwithout fetching the full detail response per row. Populated\nby PayPlanService.List via a separate GROUP BY query.",
+                    "type": "integer",
+                    "example": 4
+                },
                 "updated_at": {
                     "type": "string",
                     "format": "date-time"

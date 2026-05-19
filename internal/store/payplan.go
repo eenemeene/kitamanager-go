@@ -135,6 +135,37 @@ func (s *PayPlanStore) FindByOrganization(ctx context.Context, orgID uint, searc
 	return payplans, total, nil
 }
 
+// CountPeriodsByPayPlanIDs returns a map of pay-plan ID → number of
+// periods for the given ids. One GROUP BY query covers any number of
+// pay plans, so the list endpoint can populate
+// PayPlanResponse.PeriodsCount in a single round-trip regardless of
+// page size. Pay-plan IDs with no periods are absent from the map;
+// callers default those to 0.
+func (s *PayPlanStore) CountPeriodsByPayPlanIDs(ctx context.Context, payPlanIDs []uint) (map[uint]int, error) {
+	if len(payPlanIDs) == 0 {
+		return map[uint]int{}, nil
+	}
+	type row struct {
+		PayPlanID uint
+		Count     int
+	}
+	var rows []row
+	err := DBFromContext(ctx, s.db).
+		Model(&models.PayPlanPeriod{}).
+		Select("pay_plan_id, COUNT(*) AS count").
+		Where("pay_plan_id IN ?", payPlanIDs).
+		Group("pay_plan_id").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[uint]int, len(rows))
+	for _, r := range rows {
+		out[r.PayPlanID] = r.Count
+	}
+	return out, nil
+}
+
 // FindByNameAndOrg retrieves a pay plan by name within an organization.
 func (s *PayPlanStore) FindByNameAndOrg(ctx context.Context, name string, orgID uint) (*models.PayPlan, error) {
 	var payplan models.PayPlan

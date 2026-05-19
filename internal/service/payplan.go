@@ -152,11 +152,34 @@ func (s *PayPlanService) GetByID(ctx context.Context, id, orgID uint, activeOn *
 	return &resp, nil
 }
 
-// List retrieves all pay plans for an organization.
+// List retrieves all pay plans for an organization. Each returned
+// PayPlanResponse carries `periods_count` — the total number of
+// periods on the pay plan — so the list page can render the column
+// without an N+1 fetch of the detail endpoint per row.
+//
+// We compute the counts via a single GROUP BY query on
+// pay_plan_periods keyed by the IDs of the listed pay plans, rather
+// than preloading the full Periods slice. With many periods per plan
+// the preload would otherwise inflate the response by tens of rows
+// per pay plan for no UI benefit at the list level.
 func (s *PayPlanService) List(ctx context.Context, orgID uint, search string, limit, offset int) ([]models.PayPlanResponse, int64, error) {
 	payplans, total, err := s.store.FindByOrganization(ctx, orgID, search, limit, offset)
 	if err != nil {
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch pay plans")
+	}
+
+	if len(payplans) > 0 {
+		ids := make([]uint, len(payplans))
+		for i := range payplans {
+			ids[i] = payplans[i].ID
+		}
+		counts, err := s.store.CountPeriodsByPayPlanIDs(ctx, ids)
+		if err != nil {
+			return nil, 0, apperror.InternalWrap(err, "failed to count pay plan periods")
+		}
+		for i := range payplans {
+			payplans[i].PeriodsCount = counts[payplans[i].ID]
+		}
 	}
 
 	return toResponseList(payplans, (*models.PayPlan).ToResponse), total, nil

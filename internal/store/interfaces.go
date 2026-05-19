@@ -251,6 +251,12 @@ type PayPlanStorer interface {
 	FindByIDWithPeriods(ctx context.Context, id uint, activeOn *time.Time) (*models.PayPlan, error)
 	FindByIDsWithPeriods(ctx context.Context, ids []uint) (map[uint]*models.PayPlan, error)
 	FindByOrganization(ctx context.Context, orgID uint, search string, limit, offset int) ([]models.PayPlan, int64, error)
+	// CountPeriodsByPayPlanIDs returns the number of periods per
+	// pay plan ID, keyed by pay-plan ID. Pay-plan IDs with no
+	// periods are absent from the map (callers default to 0).
+	// Used by the list endpoint to populate PayPlanResponse.PeriodsCount
+	// without preloading the full Periods slice for every row.
+	CountPeriodsByPayPlanIDs(ctx context.Context, payPlanIDs []uint) (map[uint]int, error)
 	FindByNameAndOrg(ctx context.Context, name string, orgID uint) (*models.PayPlan, error)
 	Update(ctx context.Context, payplan *models.PayPlan) error
 	Delete(ctx context.Context, id uint) error

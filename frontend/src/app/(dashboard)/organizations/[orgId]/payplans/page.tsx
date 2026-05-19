@@ -92,13 +92,7 @@ export default function PayPlansPage() {
       {
         key: 'periods',
         header: 'governmentFundings.periods',
-        // TODO(api-types-migration): the PayPlan list DTO doesn't expose
-        // total_periods/periods. Fetch the detail response or extend the
-        // backend list response to include the count.
-        render: (payPlan) =>
-          (payPlan as PayPlan & { total_periods?: number; periods?: unknown[] }).total_periods ||
-          (payPlan as PayPlan & { total_periods?: number; periods?: unknown[] }).periods?.length ||
-          0,
+        render: (payPlan) => payPlan.periods_count,
       },
     ],
     []
