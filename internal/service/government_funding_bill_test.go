@@ -6716,9 +6716,15 @@ func TestAssignVoucher_Success(t *testing.T) {
 
 	child := createTestChildWithContract(t, db, "No", "Voucher", org.ID, section.ID)
 
-	err := svc.AssignVoucher(ctx, child.ID, org.ID, "GB-12345678901-01")
+	voucher, err := svc.AssignVoucher(ctx, child.ID, org.ID, "GB-12345678901-01")
 	if err != nil {
 		t.Fatalf("AssignVoucher() error = %v", err)
+	}
+	if voucher == nil || voucher.ID == 0 {
+		t.Fatalf("AssignVoucher() returned voucher with zero id: %+v", voucher)
+	}
+	if voucher.VoucherNumber != "GB-12345678901-01" {
+		t.Errorf("returned voucher number = %q, want GB-12345678901-01", voucher.VoucherNumber)
 	}
 
 	// Verify voucher was created
@@ -6751,11 +6757,18 @@ func TestAssignVoucher_Idempotent(t *testing.T) {
 	child := createTestChildWithContract(t, db, "Test", "Child", org.ID, section.ID)
 
 	// Assign twice
-	if err := svc.AssignVoucher(ctx, child.ID, org.ID, "GB-12345678901-01"); err != nil {
+	first, err := svc.AssignVoucher(ctx, child.ID, org.ID, "GB-12345678901-01")
+	if err != nil {
 		t.Fatalf("first AssignVoucher() error = %v", err)
 	}
-	if err := svc.AssignVoucher(ctx, child.ID, org.ID, "GB-12345678901-01"); err != nil {
+	second, err := svc.AssignVoucher(ctx, child.ID, org.ID, "GB-12345678901-01")
+	if err != nil {
 		t.Fatalf("second AssignVoucher() error = %v", err)
+	}
+	// Idempotent assign must return the SAME voucher row both times so
+	// the audit log records a stable ResourceID.
+	if first.ID != second.ID {
+		t.Errorf("idempotent assign returned different voucher ids: first=%d second=%d", first.ID, second.ID)
 	}
 
 	// Only one voucher entry
@@ -6778,7 +6791,7 @@ func TestAssignVoucher_ChildNotFound(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 	ctx := context.Background()
 
-	err := svc.AssignVoucher(ctx, 99999, org.ID, "GB-12345678901-01")
+	_, err := svc.AssignVoucher(ctx, 99999, org.ID, "GB-12345678901-01")
 	if err == nil {
 		t.Fatal("expected error for non-existent child")
 	}
@@ -6805,7 +6818,7 @@ func TestAssignVoucher_WrongOrg(t *testing.T) {
 	child := createTestChildWithContract(t, db, "Test", "Child", org1.ID, section.ID)
 
 	// Try to assign via wrong org
-	err := svc.AssignVoucher(ctx, child.ID, org2.ID, "GB-12345678901-01")
+	_, err := svc.AssignVoucher(ctx, child.ID, org2.ID, "GB-12345678901-01")
 	if err == nil {
 		t.Fatal("expected error for wrong org")
 	}
@@ -6846,7 +6859,7 @@ func TestAssignVoucher_RemovesFromWithoutVouchersList(t *testing.T) {
 	}
 
 	// Assign voucher
-	if err := svc.AssignVoucher(ctx, child.ID, org.ID, "GB-12345678901-01"); err != nil {
+	if _, err := svc.AssignVoucher(ctx, child.ID, org.ID, "GB-12345678901-01"); err != nil {
 		t.Fatalf("AssignVoucher() error = %v", err)
 	}
 
@@ -6894,13 +6907,13 @@ func TestAssignVoucher_ConflictWhenVoucherOnDifferentChild(t *testing.T) {
 	childB := createTestChildWithContract(t, db, "Bea", "B", org.ID, section.ID)
 
 	// Assign V to childA — succeeds.
-	if err := svc.AssignVoucher(ctx, childA.ID, org.ID, "GB-12345678901-01"); err != nil {
+	if _, err := svc.AssignVoucher(ctx, childA.ID, org.ID, "GB-12345678901-01"); err != nil {
 		t.Fatalf("first assign: %v", err)
 	}
 
 	// Try to assign the SAME voucher to childB — must fail with 409,
 	// NOT silently no-op (pre-fix bug).
-	err := svc.AssignVoucher(ctx, childB.ID, org.ID, "GB-12345678901-01")
+	_, err := svc.AssignVoucher(ctx, childB.ID, org.ID, "GB-12345678901-01")
 	if err == nil {
 		t.Fatal("expected conflict when reassigning voucher to a different child — pre-fix would silently succeed")
 	}
@@ -6945,10 +6958,10 @@ func TestAssignVoucher_ConflictAcrossOrgs(t *testing.T) {
 	child2 := createTestChildWithContract(t, db, "C2", "Org2", org2.ID, getDefaultSection(t, db, org2.ID).ID)
 	ctx := context.Background()
 
-	if err := svc.AssignVoucher(ctx, child1.ID, org1.ID, "GB-12345678901-01"); err != nil {
+	if _, err := svc.AssignVoucher(ctx, child1.ID, org1.ID, "GB-12345678901-01"); err != nil {
 		t.Fatalf("org1 assign: %v", err)
 	}
-	err := svc.AssignVoucher(ctx, child2.ID, org2.ID, "GB-12345678901-01")
+	_, err := svc.AssignVoucher(ctx, child2.ID, org2.ID, "GB-12345678901-01")
 	if !errors.Is(err, apperror.ErrConflict) {
 		t.Fatalf("expected ErrConflict for cross-org voucher reuse, got %v", err)
 	}
@@ -6980,7 +6993,7 @@ func TestAssignVoucher_ConcurrentAssignsToSameChildAreIdempotent(t *testing.T) {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
-			errs[idx] = svc.AssignVoucher(ctx, child.ID, org.ID, "GB-12345678901-01")
+			_, errs[idx] = svc.AssignVoucher(ctx, child.ID, org.ID, "GB-12345678901-01")
 		}(i)
 	}
 	wg.Wait()
@@ -7025,7 +7038,7 @@ func TestAssignVoucher_ConcurrentAssignsToDifferentChildrenSerializeOnUniqueInde
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
-			errs[idx] = svc.AssignVoucher(ctx, children[idx].ID, org.ID, "GB-12345678901-01")
+			_, errs[idx] = svc.AssignVoucher(ctx, children[idx].ID, org.ID, "GB-12345678901-01")
 		}(i)
 	}
 	wg.Wait()

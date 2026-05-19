@@ -476,12 +476,17 @@ func (h *GovernmentFundingBillHandler) AssignVoucher(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.AssignVoucher(c.Request.Context(), childID, orgID, req.VoucherNumber); err != nil {
+	voucher, err := h.service.AssignVoucher(c.Request.Context(), childID, orgID, req.VoucherNumber)
+	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	auditCreate(c, h.auditService, "child_voucher", childID, req.VoucherNumber)
+	// Use the voucher's own ID so the audit row pairs with the
+	// matching child_voucher_delete row by ResourceID. Pre-fix this
+	// stuffed childID into ResourceID, which made create/delete
+	// events impossible to correlate per voucher.
+	auditCreate(c, h.auditService, "child_voucher", voucher.ID, req.VoucherNumber)
 
 	c.JSON(http.StatusCreated, models.MessageResponse{Message: "voucher assigned"})
 }
