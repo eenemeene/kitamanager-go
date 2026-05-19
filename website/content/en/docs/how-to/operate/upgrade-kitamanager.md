@@ -30,6 +30,16 @@ You want to move from version vX to vY.
    ```
    Sign in. Check the dashboard for unexpected errors. Check the audit log for failed migrations.
 
+## If the new container won't start
+
+The config loader fails fast and prints every problem in a single line. If `docker compose up -d` brings up the API but it exits, run:
+
+```bash
+docker logs <api-container> 2>&1 | grep -A1 'configuration validation failed'
+```
+
+Every required-or-malformed env var is enumerated there. Cross-reference against the release notes (for renames or new variables) and against [Environment variables](../../../reference/cli-and-config/env-vars/).
+
 ## Downtime expectation
 
 The API is unavailable from "old container stopping" to "new container's migration finishes and health check passes". For most upgrades this is seconds. A schema migration that touches a large table (rare) can take minutes.

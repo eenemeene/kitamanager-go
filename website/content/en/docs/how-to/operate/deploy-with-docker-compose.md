@@ -35,9 +35,10 @@ You want to bring up KitaManager (Postgres + API + frontend) on a host using Doc
 
 - For the full env-var reference, see [Environment variables](../../../reference/cli-and-config/env-vars/).
 - For the *first-time* walkthrough with seed data, follow the [Deploy KitaManager](../../../tutorials/deploy-kitamanager/) tutorial instead.
-- Production checklist:
+- Production checklist (the loader enforces every row whenever `SECURE_COOKIES=true` — the API will refuse to start if any is violated):
   - `SECURE_COOKIES=true`
   - `DB_SSLMODE=require` (or stricter)
-  - `LOGIN_RATE_LIMIT_PER_MINUTE` left at default (5) and `API_RATE_LIMIT_PER_MINUTE` (60), or tuned to your traffic
-  - **Never** set `SEED_TEST_DATA=true` in production
+  - `LOGIN_RATE_LIMIT_PER_MINUTE` and `API_RATE_LIMIT_PER_MINUTE` > 0 — defaults (5 and 60) are sane; tune for your traffic
+  - `SEED_TEST_DATA` unset or `false`
+  - `TRUSTED_PROXIES` set to the actual proxy CIDRs (`0.0.0.0/0` is rejected)
   - Take the first backup immediately — see [Back up and restore](../back-up-and-restore/)

@@ -6,7 +6,7 @@ weight: 4
 You want to load (or reload) the demo "Kita Sonnenschein" organisation, sections, employees, children, and contracts. Useful for development, demos, and tests.
 
 {{< callout type="warning" >}}
-**Never seed test data into a production database.** The demo accounts use the public default password `supersecret`; every seeded environment has the same credentials. Treat as compromised the moment the host is reachable.
+**Never seed test data into a production database.** The demo accounts use the public default password `supersecret`; every seeded environment has the same credentials. Treat as compromised the moment the host is reachable. The loader enforces this: `SEED_TEST_DATA=true` combined with `SECURE_COOKIES=true` makes the API refuse to start.
 {{< /callout >}}
 
 ## Seed via env var on first start

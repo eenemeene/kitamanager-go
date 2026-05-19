@@ -48,7 +48,7 @@ All test users have password: `supersecret`
 - **Government Funding**: Berlin funding plan
 - **Children**: 50 children with age-appropriate distribution and contracts
 
-See the [Administration Guide](website/content/en/docs/administration.md#role-based-access-control) for the detailed permission matrix.
+See the [RBAC reference](website/content/en/docs/reference/rbac.md) for the detailed permission matrix.
 
 ## Makefile Targets
 

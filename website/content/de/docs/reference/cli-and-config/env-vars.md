@@ -25,10 +25,20 @@ KitaManager wird fast vollständig über Umgebungsvariablen konfiguriert. Die AP
 | Variable | Default | Pflicht | Hinweise |
 |---|---|---|---|
 | `SERVER_PORT` | `8080` | nein | Listen-Port. |
-| `TRUSTED_PROXIES` | (keiner) | nein | Komma-getrennte Liste von CIDRs/IPs, deren `X-Forwarded-*`-Header Gin vertraut. Hinter einem Reverse-Proxy: dessen IP eintragen. Leer = keinem Proxy vertrauen. |
-| `SECURE_COOKIES` | `true` | nein | Bei `true` sind Sitzungs-Cookies `Secure` (nur HTTPS). `false` nur für lokale HTTP-Dev. |
+| `TRUSTED_PROXIES` | (keiner) | nein | Komma-getrennte Liste von CIDRs/IPs, deren `X-Forwarded-*`-Header Gin vertraut. Hinter einem Reverse-Proxy: dessen IP eintragen. Leer = keinem Proxy vertrauen. `0.0.0.0/0` und `::/0` werden abgelehnt — sie würden Per-IP-Rate-Limiting aushebeln, weil jeder Client seine Quell-Adresse fälschen könnte. |
+| `SECURE_COOKIES` | `true` | nein | Bei `true` sind Sitzungs-Cookies `Secure` (nur HTTPS), und der Loader erzwingt Produktions-Gates (kein `DB_SSLMODE=disable`, Rate-Limits > 0, kein `SEED_TEST_DATA`). Nur für lokale HTTP-Dev auf `false` setzen. |
 | `CORS_ALLOW_ORIGINS` | (keiner) | nein | Komma-getrennte Liste erlaubter Origins. Leer deaktiviert CORS. |
 | `CORS_ALLOW_CREDENTIALS` | `true` | nein | Ob CORS-Antworten `Access-Control-Allow-Credentials: true` enthalten. |
+
+## Produktions-Gates: bewusste Opt-outs
+
+Diese existieren ausschließlich als bewusste Ausnahmen für die Produktions-Gates, die `SECURE_COOKIES=true` aktiviert. Standardmäßig leer lassen; nur für bekannte, eingeschränkte Umgebungen nutzen (z. B. isoliertes LAN, in dem die DB tatsächlich kein TLS bedienen kann).
+
+| Variable | Default | Pflicht | Hinweise |
+|---|---|---|---|
+| `ALLOW_RATE_LIMIT_DISABLED_IN_PRODUCTION` | `false` | nein | Bei `true` erlaubt der Loader `LOGIN_RATE_LIMIT_PER_MINUTE=0` oder `API_RATE_LIMIT_PER_MINUTE=0` auch bei `SECURE_COOKIES=true`. |
+| `ALLOW_DB_SSLMODE_DISABLE_IN_PRODUCTION` | `false` | nein | Bei `true` erlaubt der Loader `DB_SSLMODE=disable` auch bei `SECURE_COOKIES=true`. |
+| `AUDIT_LOG_RETENTION_DAYS` | `730` | nein | Wie viele Tage Audit-Log-Einträge für mutierende Aktionen aufbewahrt werden, bevor der Retention-Worker sie löscht. DSGVO-Art.-17-Pflicht; unter 365 nur nach rechtlicher Prüfung absenken. |
 
 ## Authentifizierung und Sitzungen
 
@@ -42,7 +52,7 @@ KitaManager wird fast vollständig über Umgebungsvariablen konfiguriert. Die AP
 
 | Variable | Default | Pflicht | Hinweise |
 |---|---|---|---|
-| `TOTP_ENCRYPTION_KEY` |  | **ja** | Genau 64 Hex-Zeichen (32 Bytes). Verschlüsselt gespeicherte TOTP-Secrets ruhend. **Rotation invalidiert jeden gespeicherten TOTP-Faktor** — betroffene Personen müssen sich neu einrichten. Erzeugen mit `openssl rand -hex 32`. |
+| `TOTP_ENCRYPTION_KEY` |  | **ja** | Genau 64 Hex-Zeichen (32 Bytes). Verschlüsselt gespeicherte TOTP-Secrets ruhend. **Rotation invalidiert jeden gespeicherten TOTP-Faktor** — betroffene Personen müssen sich neu einrichten. Erzeugen mit `openssl rand -hex 32`. Werte mit einheitlichen Bytes (z. B. 64 Nullen oder 64 Einsen) und bekannte Platzhalter werden beim Start abgelehnt — der Loader verlangt echte Entropie, keine getippte Zeichenkette. |
 | `TOTP_ISSUER` | `KitaManager` | nein | Der Issuer-String, der in der Authenticator-App angezeigt wird. |
 | `WEBAUTHN_RP_ID` |  | nur bei WebAuthn-Nutzung | Die Relying-Party-ID — der Host-Teil Ihrer URL (z. B. `kitamanager.example.org`). Muss zur URL passen, die der Browser sieht. |
 | `WEBAUTHN_RP_NAME` |  | nur bei WebAuthn-Nutzung | Lesbarer Name in der WebAuthn-Aufforderung des Browsers. |
