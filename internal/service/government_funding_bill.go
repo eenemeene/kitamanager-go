@@ -356,7 +356,9 @@ func matchExistingChild(r store.UnmatchedBillChildRow, billFirst, billLast strin
 }
 
 // AssignVoucher links a voucher number to a child. The child must belong
-// to the given org.
+// to the given org. Returns the resulting (created or pre-existing)
+// voucher row so callers — notably the audit handler — can record the
+// real ChildVoucher.ID instead of synthesizing one.
 //
 // Semantics (review finding M1):
 //   - Voucher numbers are globally unique across child_vouchers (see
@@ -375,8 +377,9 @@ func matchExistingChild(r store.UnmatchedBillChildRow, billFirst, billLast strin
 // store.ErrDuplicateKey, which we then resolve via a SELECT lookup
 // (the conflicting row is committed by the time PG fires the unique
 // violation, so the lookup is guaranteed to find it).
-func (s *GovernmentFundingBillService) AssignVoucher(ctx context.Context, childID, orgID uint, voucherNumber string) error {
-	return s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
+func (s *GovernmentFundingBillService) AssignVoucher(ctx context.Context, childID, orgID uint, voucherNumber string) (*models.ChildVoucher, error) {
+	var result *models.ChildVoucher
+	err := s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
 		// Verify child belongs to org. In-tx so a concurrent delete
 		// can't tombstone the child between this check and the insert.
 		if _, err := s.childStore.FindByIDAndOrg(txCtx, childID, orgID); err != nil {
@@ -386,12 +389,14 @@ func (s *GovernmentFundingBillService) AssignVoucher(ctx context.Context, childI
 			return apperror.InternalWrap(err, "failed to verify child")
 		}
 
-		err := s.childVoucherStore.CreateVoucherStrict(txCtx, &models.ChildVoucher{
+		voucher := &models.ChildVoucher{
 			ChildID:       childID,
 			VoucherNumber: voucherNumber,
 			FirstSeen:     time.Now().UTC(),
-		})
+		}
+		err := s.childVoucherStore.CreateVoucherStrict(txCtx, voucher)
 		if err == nil {
+			result = voucher
 			return nil
 		}
 		if !errors.Is(err, store.ErrDuplicateKey) {
@@ -408,10 +413,15 @@ func (s *GovernmentFundingBillService) AssignVoucher(ctx context.Context, childI
 			return apperror.InternalWrap(lookupErr, "failed to look up voucher")
 		}
 		if existing != nil && existing.ChildID == childID {
+			result = existing
 			return nil
 		}
 		return apperror.Conflict(fmt.Sprintf("voucher %s is already assigned to another child", voucherNumber))
 	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 // ListVouchersForChild returns all vouchers for a child, ordered by

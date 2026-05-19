@@ -919,6 +919,83 @@ func TestGovernmentFundingBillHandler_AssignVoucher(t *testing.T) {
 	if err := db.Where("child_id = ? AND voucher_number = ?", child.ID, "GB-12345678901-01").First(&voucher).Error; err != nil {
 		t.Fatalf("voucher not found in database: %v", err)
 	}
+
+	// Regression for review finding H1: the audit row MUST carry the
+	// voucher's own ID in ResourceID, NOT the child id. Pre-fix the
+	// handler stuffed childID into the audit row's ResourceID, which
+	// made create/delete events impossible to correlate per voucher and
+	// would have mis-attributed cross-resource queries.
+	testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+		Action:       models.AuditAction("child_voucher_create"),
+		ResourceType: "child_voucher",
+		ResourceID:   voucher.ID,
+	})
+	// Belt-and-braces: a row keyed on childID under resource_type
+	// child_voucher must NOT exist (unless the child id happens to
+	// equal the voucher id, which we guard against by making them
+	// distinct in this setup — child.ID is created first).
+	if child.ID != voucher.ID {
+		testutil.AssertNoAuditLog(t, db, testutil.AuditLogQuery{
+			Action:       models.AuditAction("child_voucher_create"),
+			ResourceType: "child_voucher",
+			ResourceID:   child.ID,
+		})
+	}
+}
+
+// TestGovernmentFundingBillHandler_AssignVoucher_AuditPairsWithDelete
+// closes review finding H1: the create and delete audit rows for the
+// same voucher must share the same ResourceID so an investigator can
+// reconstruct the voucher's lifecycle by ID alone.
+func TestGovernmentFundingBillHandler_AssignVoucher_AuditPairsWithDelete(t *testing.T) {
+	db := setupTestDB(t)
+	handler := createGovBillHandler(db)
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Test", LastName: "Child", Gender: "female", Birthdate: time.Date(2020, 3, 15, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(child)
+
+	r := setupTestRouter()
+	r.POST("/organizations/:orgId/children/:childId/vouchers", handler.AssignVoucher)
+	r.DELETE("/organizations/:orgId/children/:childId/vouchers/:voucherId", handler.RemoveChildVoucher)
+
+	// Assign
+	w := performRequest(r, "POST", fmt.Sprintf("/organizations/%d/children/%d/vouchers", org.ID, child.ID),
+		models.ChildVoucherCreateRequest{VoucherNumber: "GB-12345678901-01"})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("assign: expected %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
+	}
+
+	var voucher models.ChildVoucher
+	if err := db.Where("voucher_number = ?", "GB-12345678901-01").First(&voucher).Error; err != nil {
+		t.Fatalf("voucher not found: %v", err)
+	}
+
+	// Delete
+	w = performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/children/%d/vouchers/%d", org.ID, child.ID, voucher.ID), nil)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("delete: expected %d, got %d: %s", http.StatusNoContent, w.Code, w.Body.String())
+	}
+
+	createRow := testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+		Action:       models.AuditAction("child_voucher_create"),
+		ResourceType: "child_voucher",
+		ResourceID:   voucher.ID,
+	})
+	deleteRow := testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+		Action:       models.AuditAction("child_voucher_delete"),
+		ResourceType: "child_voucher",
+		ResourceID:   voucher.ID,
+	})
+	if createRow.ResourceID == nil || deleteRow.ResourceID == nil {
+		t.Fatalf("create/delete audit rows must both carry a ResourceID, got create=%v delete=%v", createRow.ResourceID, deleteRow.ResourceID)
+	}
+	if *createRow.ResourceID != *deleteRow.ResourceID {
+		t.Errorf("create.ResourceID=%d, delete.ResourceID=%d — must match so the voucher lifecycle can be queried by id",
+			*createRow.ResourceID, *deleteRow.ResourceID)
+	}
 }
 
 func TestGovernmentFundingBillHandler_AssignVoucher_Idempotent(t *testing.T) {
