@@ -17,6 +17,7 @@ import (
 	cryptopkg "github.com/eenemeene/kitamanager-go/internal/crypto"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/store"
+	"github.com/eenemeene/kitamanager-go/internal/testutil"
 )
 
 // testFactorAEAD builds a deterministic AEAD for tests using a fixed
@@ -1155,4 +1156,119 @@ func TestFactorService_VerifyTOTPForActivation_BumpsLastUsedStep(t *testing.T) {
 	// wait 30s in tests. The CAS on last_used_step is the regression
 	// guard; future steps strictly > the activation step succeed by
 	// construction.
+}
+
+// TestFactorService_AuditRowsCarryFactorID closes review finding M2.
+// Pre-fix LogFactorEnrolled / Deleted / ActivationLocked /
+// BackupCodesRegenerated wrote audit rows with no ResourceID, so a
+// user with several TOTP authenticators produced an indistinguishable
+// stream of `factor_*` events. The fix threads f.ID through each call
+// site; this test asserts the rows actually persist it.
+func TestFactorService_AuditRowsCarryFactorID(t *testing.T) {
+	db := setupTestDB(t)
+	svc, audit := newFactorService(t, db)
+	defer audit.Shutdown()
+
+	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
+
+	// Enroll + activate two distinct TOTP factors so we can prove the
+	// audit row points at the SPECIFIC factor, not just "some factor."
+	// The first activation auto-issues backup codes — we use one of
+	// those as the step-up proof for the second enrollment.
+	factorAID, _, backupCodes := enrolAndActivateTOTP(t, db, svc, user, "pw")
+	if len(backupCodes) == 0 {
+		t.Fatal("expected backup codes after first primary activation")
+	}
+	enroll2, err := svc.EnrollTOTP(context.Background(), user.ID, nil, "pw", backupCodes[0], user.Email)
+	if err != nil {
+		t.Fatalf("enroll 2: %v", err)
+	}
+	pl2 := enroll2.Enrollment.(models.TOTPEnrollmentPayload)
+	code2, _ := totp.GenerateCode(pl2.Secret, time.Now().UTC())
+	if _, err := svc.ActivateFactor(context.Background(), user.ID, enroll2.ID, &models.FactorActivateRequest{Code: code2}); err != nil {
+		t.Fatalf("activate 2: %v", err)
+	}
+	factorBID := enroll2.ID
+	if factorAID == factorBID {
+		t.Fatalf("setup error: both factors got id=%d", factorAID)
+	}
+
+	// factor_enrolled rows: one per activated factor, each carrying its
+	// own ResourceID.
+	testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+		Action:       models.AuditActionFactorEnrolled,
+		ResourceType: "factor",
+		ResourceID:   factorAID,
+	})
+	testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+		Action:       models.AuditActionFactorEnrolled,
+		ResourceType: "factor",
+		ResourceID:   factorBID,
+	})
+
+	// Delete factor A using a backup code from the auto-issued set
+	// (single-use, so it sidesteps both the TOTP same-window replay
+	// guard and the bump-step gate on factor B that activation just
+	// performed).
+	if err := svc.DeleteFactor(context.Background(), user.ID, factorAID, "pw", backupCodes[1]); err != nil {
+		t.Fatalf("delete factor A: %v", err)
+	}
+
+	// factor_deleted row must carry factorAID, NOT factorBID. The
+	// regression this guards: without a ResourceID, a user with two
+	// TOTPs deleting one produces an audit row that an investigator
+	// can't pin to which authenticator was removed.
+	testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+		Action:       models.AuditActionFactorDeleted,
+		ResourceType: "factor",
+		ResourceID:   factorAID,
+	})
+	testutil.AssertNoAuditLog(t, db, testutil.AuditLogQuery{
+		Action:       models.AuditActionFactorDeleted,
+		ResourceType: "factor",
+		ResourceID:   factorBID,
+	})
+
+	// backup_codes_regenerated row must carry the backup_codes factor
+	// id (distinct from both primary factors). Step-up proof is
+	// another backup code from the auto-issued set.
+	bf := mustFindBackupCodesFactor(t, db, user.ID)
+	if _, err := svc.RegenerateBackupCodes(context.Background(), user.ID, bf.ID, "pw", backupCodes[2]); err != nil {
+		t.Fatalf("regenerate: %v", err)
+	}
+	testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+		Action:       models.AuditActionBackupCodesRegenerated,
+		ResourceType: "factor",
+		ResourceID:   bf.ID,
+	})
+}
+
+// TestFactorService_ActivationLockedAuditCarriesFactorID covers the
+// fourth factor_* helper from review finding M2.
+func TestFactorService_ActivationLockedAuditCarriesFactorID(t *testing.T) {
+	db := setupTestDB(t)
+	svc, audit := newFactorService(t, db)
+	defer audit.Shutdown()
+
+	user := createUserWithPassword(t, db, "U", "u@example.com", "pw")
+
+	// Enroll a pending factor we never activate.
+	enroll, err := svc.EnrollTOTP(context.Background(), user.ID, nil, "pw", "", user.Email)
+	if err != nil {
+		t.Fatalf("enroll: %v", err)
+	}
+	factorID := enroll.ID
+
+	// Drive activation failures past the limit. Each wrong code
+	// increments the counter; the helper deletes the row and emits a
+	// factor_activation_locked audit row at FactorActivationFailureLimit.
+	for range FactorActivationFailureLimit {
+		_, _ = svc.ActivateFactor(context.Background(), user.ID, factorID, &models.FactorActivateRequest{Code: "000000"})
+	}
+
+	testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+		Action:       models.AuditActionFactorActivationLocked,
+		ResourceType: "factor",
+		ResourceID:   factorID,
+	})
 }

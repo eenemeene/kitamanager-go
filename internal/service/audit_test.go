@@ -745,8 +745,8 @@ func TestAuditService_GetLogsByOrganization_HidesIdentityEvents(t *testing.T) {
 	svc.LogPasswordReset(ctx, actor, "actor@example.com", 7, "target@example.com", "127.0.0.1")
 	svc.LogSuperAdminChange(ctx, actor, "actor@example.com", 8, "promoted@example.com", true, "127.0.0.1")
 	svc.LogSuperAdminChangeFailed(ctx, actor, "actor@example.com", 9, "denied@example.com", true, "127.0.0.1", "invalid actor_password")
-	svc.LogFactorEnrolled(ctx, actor, "totp")
-	svc.LogFactorDeleted(ctx, actor, "totp")
+	svc.LogFactorEnrolled(ctx, actor, 11, "totp")
+	svc.LogFactorDeleted(ctx, actor, 11, "totp")
 	svc.LogSessionRevoked(ctx, actor, "actor@example.com", "abc123hash", "127.0.0.1")
 
 	// Drain the async worker so the SELECT below is deterministic.

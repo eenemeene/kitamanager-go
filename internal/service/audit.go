@@ -225,23 +225,29 @@ func (s *AuditService) LogPasswordResetFailed(ctx context.Context, actorID uint,
 
 // LogFactorEnrolled logs completion of MFA factor enrollment.
 // `factorType` is the factor-generic type string ("totp", etc.) so
-// audit queries can pivot on it.
-func (s *AuditService) LogFactorEnrolled(ctx context.Context, userID uint, factorType string) {
+// audit queries can pivot on it. factorID is recorded as the
+// ResourceID so a user with multiple authenticators of the same type
+// can still be told apart in the audit trail (review finding M2).
+func (s *AuditService) LogFactorEnrolled(ctx context.Context, userID, factorID uint, factorType string) {
 	s.log(ctx, &models.AuditLog{
 		UserID:       &userID,
 		Action:       models.AuditActionFactorEnrolled,
 		ResourceType: "factor",
+		ResourceID:   &factorID,
 		Details:      mustMarshalJSON(map[string]string{"factor_type": factorType}),
 		Success:      true,
 	})
 }
 
-// LogFactorDeleted logs a user removing their OWN MFA factor.
-func (s *AuditService) LogFactorDeleted(ctx context.Context, userID uint, factorType string) {
+// LogFactorDeleted logs a user removing their OWN MFA factor. factorID
+// goes into ResourceID so it pairs with the LogFactorEnrolled row for
+// the same authenticator (review finding M2).
+func (s *AuditService) LogFactorDeleted(ctx context.Context, userID, factorID uint, factorType string) {
 	s.log(ctx, &models.AuditLog{
 		UserID:       &userID,
 		Action:       models.AuditActionFactorDeleted,
 		ResourceType: "factor",
+		ResourceID:   &factorID,
 		Details:      mustMarshalJSON(map[string]string{"factor_type": factorType}),
 		Success:      true,
 	})
@@ -264,12 +270,16 @@ func (s *AuditService) LogFactorLabelUpdated(ctx context.Context, userID, factor
 // LogFactorActivationLocked logs a pending factor being auto-deleted
 // because activation failures hit the limit. This is a security
 // signal: the common cause is an attacker in a hijacked session trying
-// codes against a freshly-enrolled pending row.
-func (s *AuditService) LogFactorActivationLocked(ctx context.Context, userID uint, factorType string) {
+// codes against a freshly-enrolled pending row. factorID identifies
+// which pending row was destroyed — a user with several abandoned
+// enrollments otherwise produces indistinguishable lock events
+// (review finding M2).
+func (s *AuditService) LogFactorActivationLocked(ctx context.Context, userID, factorID uint, factorType string) {
 	s.log(ctx, &models.AuditLog{
 		UserID:       &userID,
 		Action:       models.AuditActionFactorActivationLocked,
 		ResourceType: "factor",
+		ResourceID:   &factorID,
 		Details:      mustMarshalJSON(map[string]string{"factor_type": factorType}),
 		Success:      false,
 	})
@@ -277,12 +287,14 @@ func (s *AuditService) LogFactorActivationLocked(ctx context.Context, userID uin
 
 // LogBackupCodesRegenerated logs a user regenerating their backup
 // codes. A spike in these signals a user having trouble with their
-// primary factor.
-func (s *AuditService) LogBackupCodesRegenerated(ctx context.Context, userID uint) {
+// primary factor. factorID identifies the backup_codes factor whose
+// codes were rotated (review finding M2).
+func (s *AuditService) LogBackupCodesRegenerated(ctx context.Context, userID, factorID uint) {
 	s.log(ctx, &models.AuditLog{
 		UserID:       &userID,
 		Action:       models.AuditActionBackupCodesRegenerated,
 		ResourceType: "factor",
+		ResourceID:   &factorID,
 		Success:      true,
 	})
 }
