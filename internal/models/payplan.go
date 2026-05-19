@@ -104,9 +104,9 @@ type PayPlanUpdateRequest struct {
 
 // PayPlanResponse is the response for a pay plan.
 type PayPlanResponse struct {
-	ID             uint      `json:"id" example:"1"`
-	OrganizationID uint      `json:"organization_id" example:"1"`
-	Name           string    `json:"name" example:"TVöD-SuE"`
+	ID             uint   `json:"id" example:"1"`
+	OrganizationID uint   `json:"organization_id" example:"1"`
+	Name           string `json:"name" example:"TVöD-SuE"`
 	// PeriodsCount is the total number of periods belonging to this
 	// pay plan, included so the list view can render the count
 	// without fetching the full detail response per row. Populated
