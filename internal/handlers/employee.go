@@ -195,13 +195,27 @@ func (h *EmployeeHandler) Update(c *gin.Context) {
 		return
 	}
 
+	// Capture pre-update state so the audit row carries the diff
+	// (review finding H2). A NotFound here surfaces the same response
+	// as Update would, so propagating it keeps behaviour consistent.
+	before, beforeErr := h.service.GetByID(c.Request.Context(), id, orgID)
+	if beforeErr != nil {
+		respondError(c, beforeErr)
+		return
+	}
+
 	employee, err := h.service.Update(c.Request.Context(), id, orgID, req)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	auditUpdate(c, h.auditService, "employee", employee.ID, employee.FullName())
+	changes := map[string]any{}
+	recordChange(changes, "first_name", before.FirstName, employee.FirstName)
+	recordChange(changes, "last_name", before.LastName, employee.LastName)
+	recordChange(changes, "gender", before.Gender, employee.Gender)
+	recordTimeChange(changes, "birthdate", before.Birthdate, employee.Birthdate)
+	auditUpdateWithChanges(c, h.auditService, "employee", employee.ID, employee.FullName(), changes)
 
 	c.JSON(http.StatusOK, employee)
 }

@@ -572,6 +572,36 @@ func (s *AuditService) LogResourceUpdate(ctx context.Context, actorID uint, acto
 	})
 }
 
+// LogResourceUpdateWithChanges logs an update event together with the
+// per-field diff so the audit row answers "what changed?", not just
+// "who touched what". `changes` is a map keyed by field name; each
+// value is typically {"old": <prev>, "new": <next>}. Pass an empty
+// map (or nil) for an update with no observable change and the row
+// degrades to the behaviour of LogResourceUpdate.
+//
+// Closes review finding H2: pre-fix LogResourceUpdate stored only
+// `{"resource_name": "…"}` in Details, so updates were
+// indistinguishable for compliance purposes — an investigator could
+// see "Anna's record was edited at 14:03" but not "her voucher number
+// changed from X to Y".
+func (s *AuditService) LogResourceUpdateWithChanges(ctx context.Context, actorID uint, actorEmail, resourceType string, resourceID uint, resourceName, ipAddress string, orgID *uint, changes map[string]any) {
+	details := map[string]any{"resource_name": resourceName}
+	if len(changes) > 0 {
+		details["changes"] = changes
+	}
+	s.log(ctx, &models.AuditLog{
+		UserID:         &actorID,
+		UserEmail:      actorEmail,
+		Action:         models.AuditAction(resourceType + "_update"),
+		ResourceType:   resourceType,
+		ResourceID:     &resourceID,
+		OrganizationID: orgID,
+		IPAddress:      ipAddress,
+		Details:        mustMarshalJSON(details),
+		Success:        true,
+	})
+}
+
 // LogResourceUpdateAcrossOrgs emits one update audit row per org id
 // in `orgIDs`, plus exactly one identity-level row (OrganizationID =
 // nil) so the superadmin global feed always shows the event even for

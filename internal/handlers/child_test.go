@@ -153,11 +153,128 @@ func TestChildHandler_Update(t *testing.T) {
 		t.Errorf("expected first name 'Updated', got '%s'", result.FirstName)
 	}
 
-	testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+	row := testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
 		Action:       models.AuditAction("child_update"),
 		ResourceType: "child",
 		ResourceID:   child.ID,
 	})
+
+	// H2: the audit row must carry the per-field diff. Pre-fix
+	// Details only had `{"resource_name": "…"}` — the change to
+	// first_name was invisible. Post-fix the Details JSON includes a
+	// `changes` map keyed by field with {old, new} pairs.
+	var details map[string]any
+	if err := json.Unmarshal([]byte(row.Details), &details); err != nil {
+		t.Fatalf("Details JSON parse: %v (raw=%q)", err, row.Details)
+	}
+	changes, _ := details["changes"].(map[string]any)
+	if changes == nil {
+		t.Fatalf("audit row Details missing `changes` map: %q", row.Details)
+	}
+	fn, ok := changes["first_name"].(map[string]any)
+	if !ok {
+		t.Fatalf("changes missing first_name: %+v", changes)
+	}
+	if fn["old"] != "Original" || fn["new"] != "Updated" {
+		t.Errorf("first_name change = %+v, want {old: Original, new: Updated}", fn)
+	}
+	if _, present := changes["last_name"]; present {
+		t.Errorf("changes should NOT include last_name (unchanged): %+v", changes)
+	}
+}
+
+// TestChildHandler_Update_MultipleFieldsDiff covers the multi-field
+// path. The diff must include every changed scalar and skip every
+// unchanged one — pre-fix the entire Details payload was a static
+// resource_name string so this distinction did not exist.
+func TestChildHandler_Update_MultipleFieldsDiff(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService, createAuditService(db))
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Anna", LastName: "Old", Gender: "female", Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(child)
+
+	r := setupTestRouter()
+	r.PUT("/organizations/:orgId/children/:childId", handler.Update)
+
+	newLast := "New"
+	newBirth := "2020-06-15"
+	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/children/%d", org.ID, child.ID),
+		models.ChildUpdateRequest{LastName: &newLast, Birthdate: &newBirth})
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	row := testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+		Action:       models.AuditAction("child_update"),
+		ResourceType: "child",
+		ResourceID:   child.ID,
+	})
+	var details map[string]any
+	if err := json.Unmarshal([]byte(row.Details), &details); err != nil {
+		t.Fatalf("Details JSON parse: %v", err)
+	}
+	changes, _ := details["changes"].(map[string]any)
+	if changes == nil {
+		t.Fatalf("missing changes map: %q", row.Details)
+	}
+	if _, ok := changes["last_name"]; !ok {
+		t.Errorf("changes missing last_name: %+v", changes)
+	}
+	if _, ok := changes["birthdate"]; !ok {
+		t.Errorf("changes missing birthdate: %+v", changes)
+	}
+	if _, ok := changes["first_name"]; ok {
+		t.Errorf("changes should NOT include first_name (unchanged): %+v", changes)
+	}
+	if _, ok := changes["gender"]; ok {
+		t.Errorf("changes should NOT include gender (unchanged): %+v", changes)
+	}
+}
+
+// TestChildHandler_Update_NoOpHasNoChangesMap proves the helper
+// degrades cleanly when nothing actually changed: the audit row
+// exists (we want "user touched X" still visible) but carries no
+// `changes` map so dashboards filtering on `changes IS NOT NULL`
+// don't surface no-op edits.
+func TestChildHandler_Update_NoOpHasNoChangesMap(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService, createAuditService(db))
+
+	org := createTestOrganization(t, db, "Test Org")
+	child := &models.Child{
+		Person: models.Person{OrganizationID: org.ID, FirstName: "Same", LastName: "Same", Gender: "female", Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	db.Create(child)
+
+	r := setupTestRouter()
+	r.PUT("/organizations/:orgId/children/:childId", handler.Update)
+
+	// Submit identical values — nothing should change.
+	sameFirst, sameLast := "Same", "Same"
+	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/children/%d", org.ID, child.ID),
+		models.ChildUpdateRequest{FirstName: &sameFirst, LastName: &sameLast})
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	row := testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+		Action:       models.AuditAction("child_update"),
+		ResourceType: "child",
+		ResourceID:   child.ID,
+	})
+	var details map[string]any
+	if err := json.Unmarshal([]byte(row.Details), &details); err != nil {
+		t.Fatalf("Details JSON parse: %v", err)
+	}
+	if _, present := details["changes"]; present {
+		t.Errorf("no-op update should not carry a `changes` map, got %+v", details)
+	}
 }
 
 func TestChildHandler_Delete(t *testing.T) {
