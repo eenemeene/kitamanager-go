@@ -594,6 +594,51 @@ func (s *AuditService) LogDataExport(ctx context.Context, actorID uint, actorEma
 	})
 }
 
+// LogResourceImport logs a bulk import of `resourceType` into `orgID`.
+// Mirrors LogDataExport for symmetry; the action is `<resource>_import`.
+// Captures enough to answer "where did these rows come from?" from the
+// audit trail alone:
+//
+//   - record_count: how many child/employee rows the import touched
+//   - filename: the original upload name (best-effort: the multipart
+//     header value, which is client-supplied — informational only)
+//   - ids: the entity IDs that were created or updated, so an
+//     investigator can pivot from a single suspicious row back to the
+//     import event that placed it. Capped to the first 1000 to keep
+//     the audit row from blowing past the column TEXT budget on
+//     pathologically large imports; record_count remains accurate.
+//
+// Pre-fix the importer audit calls used `auditCreate(..., 0, "YAML import")`
+// which discarded every one of these fields. Closes review finding M1.
+func (s *AuditService) LogResourceImport(ctx context.Context, actorID uint, actorEmail, resourceType string, orgID uint, recordCount int, ids []uint, filename, ipAddress string) {
+	const maxIDsInDetails = 1000
+	truncatedIDs := ids
+	idsTruncated := false
+	if len(truncatedIDs) > maxIDsInDetails {
+		truncatedIDs = truncatedIDs[:maxIDsInDetails]
+		idsTruncated = true
+	}
+	details := map[string]any{
+		"organization_id": orgID,
+		"record_count":    recordCount,
+		"filename":        filename,
+		"ids":             truncatedIDs,
+	}
+	if idsTruncated {
+		details["ids_truncated"] = true
+	}
+	s.log(ctx, &models.AuditLog{
+		UserID:         &actorID,
+		UserEmail:      actorEmail,
+		Action:         models.AuditAction(resourceType + "_import"),
+		ResourceType:   resourceType,
+		OrganizationID: &orgID,
+		IPAddress:      ipAddress,
+		Details:        mustMarshalJSON(details),
+		Success:        true,
+	})
+}
+
 // GetLogs returns paginated audit logs
 func (s *AuditService) GetLogs(ctx context.Context, limit, offset int) ([]models.AuditLogResponse, int64, error) {
 	if s == nil || s.store == nil {

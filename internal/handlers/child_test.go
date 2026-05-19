@@ -1,8 +1,14 @@
 package handlers
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
+	"net/http/httptest"
+	"slices"
 	"testing"
 	"time"
 
@@ -2186,5 +2192,108 @@ func TestChildHandler_ExportYAML_WithSearchFilter(t *testing.T) {
 
 	if len(data.Children) != 1 {
 		t.Errorf("expected 1 child with search=Alice, got %d", len(data.Children))
+	}
+}
+
+// TestChildHandler_Import_AuditDetailsCaptured closes review finding
+// M1: pre-fix the import audit row was `auditCreate(..., 0, "YAML
+// import")` — id=0, no row count, no filename, no list of created ids.
+// Post-fix the row records record_count, filename, and the new entity
+// ids so investigators can pivot from a single child back to the
+// import event that created it.
+func TestChildHandler_Import_AuditDetailsCaptured(t *testing.T) {
+	db := setupTestDB(t)
+	childService := createChildService(db)
+	handler := NewChildHandler(childService, createAuditService(db))
+
+	org := createTestOrganization(t, db, "Test Org")
+	// Default section is required so contracts can resolve their section_name.
+	_ = ensureTestSection(t, db, org.ID)
+
+	r := setupTestRouter()
+	r.POST("/organizations/:orgId/children/import", handler.Import)
+
+	payload := models.ChildImportExportData{
+		Children: []models.ChildResponse{
+			{
+				FirstName: "Imp",
+				LastName:  "One",
+				Gender:    "female",
+				Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+				Contracts: []models.ChildContractResponse{
+					{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+				},
+			},
+			{
+				FirstName: "Imp",
+				LastName:  "Two",
+				Gender:    "male",
+				Birthdate: time.Date(2021, 6, 15, 0, 0, 0, 0, time.UTC),
+				Contracts: []models.ChildContractResponse{
+					{From: time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)},
+				},
+			},
+		},
+	}
+	yamlBytes, err := yaml.Marshal(payload)
+	if err != nil {
+		t.Fatalf("yaml.Marshal: %v", err)
+	}
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "kinder-2024.yaml")
+	if err != nil {
+		t.Fatalf("CreateFormFile: %v", err)
+	}
+	if _, err := io.Copy(part, bytes.NewReader(yamlBytes)); err != nil {
+		t.Fatalf("io.Copy: %v", err)
+	}
+	writer.Close()
+
+	req, _ := http.NewRequest("POST", fmt.Sprintf("/organizations/%d/children/import", org.ID), body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var imported []models.ChildResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &imported); err != nil {
+		t.Fatalf("response decode: %v", err)
+	}
+	if len(imported) != 2 {
+		t.Fatalf("expected 2 imported children, got %d", len(imported))
+	}
+
+	row := testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+		Action:       models.AuditAction("child_import"),
+		ResourceType: "child",
+	})
+	if row.OrganizationID == nil || *row.OrganizationID != org.ID {
+		t.Errorf("audit row OrganizationID = %v, want %d", row.OrganizationID, org.ID)
+	}
+
+	var details map[string]any
+	if err := json.Unmarshal([]byte(row.Details), &details); err != nil {
+		t.Fatalf("Details JSON parse: %v (raw=%q)", err, row.Details)
+	}
+	if got, _ := details["record_count"].(float64); int(got) != 2 {
+		t.Errorf("Details.record_count = %v, want 2", details["record_count"])
+	}
+	if got, _ := details["filename"].(string); got != "kinder-2024.yaml" {
+		t.Errorf("Details.filename = %q, want kinder-2024.yaml", got)
+	}
+	ids, _ := details["ids"].([]any)
+	if len(ids) != 2 {
+		t.Fatalf("Details.ids length = %d, want 2", len(ids))
+	}
+	gotIDs := make([]uint, len(ids))
+	for i, v := range ids {
+		gotIDs[i] = uint(v.(float64))
+	}
+	if !slices.Contains(gotIDs, imported[0].ID) || !slices.Contains(gotIDs, imported[1].ID) {
+		t.Errorf("Details.ids = %v, want all of %d and %d", gotIDs, imported[0].ID, imported[1].ID)
 	}
 }
