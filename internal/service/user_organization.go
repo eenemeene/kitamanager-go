@@ -215,6 +215,28 @@ func (s *UserOrganizationService) requesterOrgSet(ctx context.Context, requester
 	return out, nil
 }
 
+// ListMembershipOrgIDs returns every organization id `targetUserID` is a
+// member of, with no visibility filtering. Intended for the audit log
+// cross-post path (review finding M4): when a global PUT /users/:userId
+// updates a user, the audit row must be visible to every org admin whose
+// org contains the user, not just to the superadmin global feed.
+//
+// Distinct from GetUserMemberships, which scopes results to what the
+// requester is allowed to see — the audit cross-post has no requester
+// (the system is the actor), so the visibility filter would suppress
+// exactly the rows the org admins need to see.
+func (s *UserOrganizationService) ListMembershipOrgIDs(ctx context.Context, targetUserID uint) ([]uint, error) {
+	memberships, err := s.userOrgStore.FindByUser(ctx, targetUserID)
+	if err != nil {
+		return nil, apperror.InternalWrap(err, "failed to fetch memberships")
+	}
+	out := make([]uint, len(memberships))
+	for i, m := range memberships {
+		out[i] = m.OrganizationID
+	}
+	return out, nil
+}
+
 // SetSuperAdmin sets or unsets superadmin status for a user.
 // The last superadmin cannot be demoted.
 func (s *UserOrganizationService) SetSuperAdmin(ctx context.Context, userID uint, isSuperAdmin bool) error {
