@@ -63,6 +63,8 @@
     "exportExcel": "Export Excel",
     "previousMonth": "Previous month",
     "nextMonth": "Next month",
+    "previousYear": "Previous year",
+    "nextYear": "Next year",
     "notFound": "Not found",
     "print": "Print"
   },

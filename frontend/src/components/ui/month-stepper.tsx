@@ -1,9 +1,9 @@
 'use client';
 
-import { format, addMonths, subMonths, startOfMonth } from 'date-fns';
+import { format, addMonths, subMonths, addYears, subYears, startOfMonth } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { useLocale, useTranslations } from 'next-intl';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -13,6 +13,14 @@ const dateFnsLocales: Record<string, typeof de> = {
   de: de,
   en: enUS,
 };
+
+// yearRangeOffsets bounds the calendar popover's year dropdown. Ten
+// years back covers historical contract lookups (a long-tenured
+// employee's first contract); five years forward covers planning
+// scenarios (next year's pay plan, upcoming contracts). Wider than
+// that and the dropdown becomes a scroll-jungle for no real use.
+const yearRangeBackOffset = 10;
+const yearRangeForwardOffset = 5;
 
 interface MonthStepperProps {
   value: Date;
@@ -25,8 +33,24 @@ export function MonthStepper({ value, onChange }: MonthStepperProps) {
   const [open, setOpen] = useState(false);
   const dfLocale = dateFnsLocales[locale] ?? enUS;
 
+  // Year-range bounds for the calendar popover's dropdown caption.
+  // Anchored on today (not `value`) so the bounds don't drift when
+  // the user navigates through history — every time the popover
+  // opens the dropdown spans the same window.
+  const today = new Date();
+  const startMonth = startOfMonth(subYears(today, yearRangeBackOffset));
+  const endMonth = startOfMonth(addYears(today, yearRangeForwardOffset));
+
   return (
     <div className="flex items-center gap-1">
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={() => onChange(startOfMonth(subYears(value, 1)))}
+        aria-label={t('previousYear')}
+      >
+        <ChevronsLeft className="h-4 w-4" />
+      </Button>
       <Button
         variant="outline"
         size="icon"
@@ -53,6 +77,13 @@ export function MonthStepper({ value, onChange }: MonthStepperProps) {
               }
             }}
             defaultMonth={value}
+            // Dropdown caption lets the user jump directly to any
+            // month/year in the bounded range — the keyboard-free
+            // path to "show me 2028". The chevron buttons outside the
+            // popover stay for touch-friendly ±1 month / year stepping.
+            captionLayout="dropdown"
+            startMonth={startMonth}
+            endMonth={endMonth}
           />
         </PopoverContent>
       </Popover>
@@ -64,6 +95,14 @@ export function MonthStepper({ value, onChange }: MonthStepperProps) {
         aria-label={t('nextMonth')}
       >
         <ChevronRight className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={() => onChange(startOfMonth(addYears(value, 1)))}
+        aria-label={t('nextYear')}
+      >
+        <ChevronsRight className="h-4 w-4" />
       </Button>
 
       <Button variant="ghost" className="text-sm" onClick={() => onChange(new Date())}>
