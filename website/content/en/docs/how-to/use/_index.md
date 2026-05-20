@@ -11,13 +11,17 @@ For account-level admin (managing other users, changing organisation settings) s
 
 - [Track attendance](track-attendance/)
 - [Add a child and issue a care contract](add-a-child-and-issue-contract/)
+- [Update a child's care contract](update-child-contract/)
 - [Assign a Kita-Gutschein number](assign-a-voucher/)
 - [Move children between sections](move-children-between-sections/)
 - [Record a child's departure](record-a-childs-departure/)
+- [Update a child's or employee's personal data](update-personal-data/)
 
 ## Employees
 
 - [Add an employee and create an employment contract](add-an-employee-and-create-contract/)
+- [Update an employee contract on a change](update-employee-contract/)
+- [Move an employee between sections](move-employee-between-sections/)
 - [Promote an employee step (Stufenaufstieg)](promote-employee-step/)
 
 ## Funding and bills
