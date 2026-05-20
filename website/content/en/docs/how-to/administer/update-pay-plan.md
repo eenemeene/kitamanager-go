@@ -3,21 +3,37 @@ title: Update the pay plan when TVöD-SuE rates change
 weight: 7
 ---
 
-The TVöD-SuE pay scale changes (typically annually). You want to load the new salary table so future contracts and reports reflect it.
+The TVöD-SuE pay scale changes (typically annually after each Tarifrunde). You want to load the new salary table so future contracts and reports reflect it. This is an **admin** task per organization — every Kita imports its own pay plan.
 
-## Steps
+## Quick path: import a YAML
 
-1. Get the new pay-plan YAML — either from your provider, your last KitaManager PR, or write it by hand following the format used by `make-payplan-yaml`.
-2. Open **Settings** → **Pay Plans** in the sidebar.
-3. Click **Import**.
-4. Pick the YAML file. KitaManager parses it and shows a preview.
-5. Confirm the import.
+If someone already produced a YAML for the new period (a colleague, your provider, or a previous KitaManager release), this is the fastest update.
 
-The new period appears in the pay plan. From its `from` date onwards, salary calculations use the new table.
+{{< screenshot src="/images/screenshots/payplan-list.png" alt="Pay plans page" caption="Pay plans for the organization. The Import YAML button is at the top right." >}}
+
+1. Open **Pay Plans** in the sidebar (under the Settings group — admin role required).
+2. Click **Import YAML**.
+3. Pick the YAML file in the system file picker. The import runs immediately; a toast confirms success.
+
+The new period appears inside the matching pay plan. From its `from` date onwards, salary calculations use the new table.
+
+{{< screenshot src="/images/screenshots/payplan-detail.png" alt="Pay plan detail with periods" caption="A pay plan with multiple validity periods. Each period contains per-grade, per-step monthly amounts." >}}
+
+## Manual path: add a period in the UI
+
+For a small change (one extra step, a single grade correction), or when no YAML is available:
+
+1. Open the pay plan you want to extend from the list.
+2. Click **Add Period**. Set **From**, optional **To**, **Weekly hours**, and **Employer contribution rate**. Save.
+3. Inside the new period, click **Add Entry** for each grade/step combination. Set **Grade** (e.g. `S 8a`), **Step** (1–6), and **Monthly amount** in euros.
+4. Save each entry.
+
+The detail page also has an **Export YAML** button so you can dump the resulting table and share it with peers (or keep it as a backup).
 
 ## Notes
 
-- The pay plan is structured as `pay plan → periods → entries`. A period has a from/to date, weekly hours, and an employer contribution rate. Entries within a period are per-grade, per-step monthly salaries (in cents).
+- The pay plan is structured as `pay plan → periods → entries`. A period has a from/to date, weekly hours, and an employer contribution rate. Entries within a period are per-grade, per-step monthly salaries.
 - Existing contracts don't need updating — they reference grade and step, and the rate lookup uses whichever period covers the bill month.
-- You can also create a pay plan period manually in the UI (Pay Plans → open plan → add Period). The YAML import is faster for the full annual update.
 - Salary cost calculations on the dashboard, financial overview, and forecast all immediately reflect the new rates after import.
+- The audit log records every import and every manual change to a period or entry. Admins can review it via [Review the audit log](../review-audit-log/).
+- For the salary calculation chain (grade × step × hours × period-rate), see the user-side recipe [Update an employee contract](../../use/update-employee-contract/).

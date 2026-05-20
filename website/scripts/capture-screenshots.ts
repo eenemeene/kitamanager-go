@@ -35,6 +35,12 @@ interface LangConfig {
   forecastChildrenTab: RegExp;
   forecastEmployeesTab: RegExp;
   forecastOptimizeTab: RegExp;
+  // aria-label of the pencil edit button rendered next to every row.
+  // Same string is used by the contracts table, children/employees list,
+  // and budget-item entry table.
+  editButtonLabel: string;
+  // Text on the "Add Entry" button on the budget-item detail page.
+  addEntryButton: RegExp;
 }
 
 const LANGUAGES: LangConfig[] = [
@@ -48,6 +54,8 @@ const LANGUAGES: LangConfig[] = [
     forecastChildrenTab: /^children$/i,
     forecastEmployeesTab: /^employees$/i,
     forecastOptimizeTab: /^optimize$/i,
+    editButtonLabel: 'Edit',
+    addEntryButton: /add entry/i,
   },
   {
     code: 'de',
@@ -59,6 +67,8 @@ const LANGUAGES: LangConfig[] = [
     forecastChildrenTab: /^kinder$/i,
     forecastEmployeesTab: /^mitarbeiter$/i,
     forecastOptimizeTab: /^optimieren$/i,
+    editButtonLabel: 'Bearbeiten',
+    addEntryButton: /eintrag hinzufügen/i,
   },
 ];
 
@@ -221,6 +231,31 @@ async function capture(page: Page, outputDir: string, name: string): Promise<voi
   const filepath = path.join(outputDir, `${name}.png`);
   await page.screenshot({ path: filepath, fullPage: false });
   console.log(`  ✓ ${name}`);
+}
+
+/**
+ * Click the first row's "Edit" pencil button (matched by aria-label
+ * which carries the localized "Edit"/"Bearbeiten" string) and capture
+ * the resulting dialog. Used for the PersonFormDialog on the children
+ * and employees list pages, and for the contract edit dialog on the
+ * contract history pages — same button, same selector.
+ */
+async function captureEditDialog(
+  page: Page,
+  outputDir: string,
+  lang: LangConfig,
+  name: string
+): Promise<void> {
+  const editBtn = page.locator(`button[aria-label="${lang.editButtonLabel}"]`);
+  if (!(await editBtn.count())) {
+    console.log(`  ! ${name}: no edit button found, skipping`);
+    return;
+  }
+  await editBtn.first().click();
+  await page.waitForTimeout(800);
+  await capture(page, outputDir, name);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(400);
 }
 
 async function waitForContent(page: Page, timeoutMs = 3000): Promise<void> {
@@ -540,10 +575,18 @@ async function captureForLanguage(browser: Browser, lang: LangConfig): Promise<v
     await waitForContent(page);
     await capture(page, outputDir, 'employees');
 
+    // 5b. Employee personal-data edit dialog. Pencil button has the
+    // localized "Edit" aria-label. Same PersonFormDialog is shared by
+    // employees and children — see #6b for the child variant.
+    await captureEditDialog(page, outputDir, lang, 'employee-edit-personal');
+
     // 6. Children
     await page.goto(`${BASE_URL}/organizations/${orgId}/children`);
     await waitForContent(page);
     await capture(page, outputDir, 'children');
+
+    // 6b. Child personal-data edit dialog.
+    await captureEditDialog(page, outputDir, lang, 'child-edit-personal');
 
     // 7. Government Funding Rates
     await page.goto(`${BASE_URL}/government-funding-rates`);
@@ -583,6 +626,16 @@ async function captureForLanguage(browser: Browser, lang: LangConfig): Promise<v
     await waitForContent(page);
     await capture(page, outputDir, 'budget-item-detail');
 
+    // 13b. Budget Item — Add Entry dialog.
+    const addEntryBtn = page.getByRole('button', { name: lang.addEntryButton });
+    if (await addEntryBtn.count()) {
+      await addEntryBtn.first().click();
+      await page.waitForTimeout(800);
+      await capture(page, outputDir, 'budget-item-entry-add');
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(400);
+    }
+
     // 14. Statistics Overview
     await page.goto(`${BASE_URL}/organizations/${orgId}/statistics`);
     await waitForContent(page);
@@ -620,6 +673,9 @@ async function captureForLanguage(browser: Browser, lang: LangConfig): Promise<v
       await page.waitForTimeout(500);
     }
 
+    // 19b. Employee Contract Edit Dialog — click the first row's pencil.
+    await captureEditDialog(page, outputDir, lang, 'employee-contract-edit');
+
     // 20. Child Contract Creation Dialog
     await page.goto(`${BASE_URL}/organizations/${orgId}/children/${childId}/contracts`);
     await waitForContent(page);
@@ -631,6 +687,9 @@ async function captureForLanguage(browser: Browser, lang: LangConfig): Promise<v
       await page.keyboard.press('Escape');
       await page.waitForTimeout(500);
     }
+
+    // 20b. Child Contract Edit Dialog.
+    await captureEditDialog(page, outputDir, lang, 'child-contract-edit');
 
     // 21. Government Funding Bills
     await page.goto(`${BASE_URL}/organizations/${orgId}/government-funding-bills`);
@@ -696,10 +755,11 @@ async function captureForLanguage(browser: Browser, lang: LangConfig): Promise<v
     await waitForContent(page);
     await capture(page, outputDir, 'government-funding-rate-detail');
 
-    // 28. Pay Plan Detail (navigate to first one)
+    // 28. Pay Plan List + Detail
     await page.goto(`${BASE_URL}/organizations/${orgId}/payplans`);
     await waitForContent(page);
-    // Click first view link in the pay plans table
+    await capture(page, outputDir, 'payplan-list');
+    // Click first view link in the pay plans table to drill into the detail.
     const payPlanLink = page.locator('table a, table button').first();
     if (await payPlanLink.count() > 0) {
       await payPlanLink.click();

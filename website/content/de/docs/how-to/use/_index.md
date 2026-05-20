@@ -11,13 +11,17 @@ Für konto-bezogene Verwaltung (andere Nutzer:innen verwalten, Organisationseins
 
 - [Anwesenheit erfassen](track-attendance/)
 - [Kind anlegen und Betreuungsvertrag ausstellen](add-a-child-and-issue-contract/)
+- [Betreuungsvertrag eines Kindes aktualisieren](update-child-contract/)
 - [Kita-Gutschein-Nummer zuweisen](assign-a-voucher/)
 - [Kinder zwischen Bereichen verschieben](move-children-between-sections/)
 - [Abgang eines Kindes erfassen](record-a-childs-departure/)
+- [Personendaten eines Kindes oder einer Mitarbeiter:in aktualisieren](update-personal-data/)
 
 ## Personal
 
 - [Mitarbeiter:in anlegen und Arbeitsvertrag erstellen](add-an-employee-and-create-contract/)
+- [Arbeitsvertrag bei einer Änderung aktualisieren](update-employee-contract/)
+- [Mitarbeiter:in zwischen Bereichen verschieben](move-employee-between-sections/)
 - [Stufenaufstieg dokumentieren](promote-employee-step/)
 
 ## Förderung und Abrechnungen
