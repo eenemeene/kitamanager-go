@@ -24,8 +24,10 @@ describe('MonthStepper', () => {
   it('renders navigation buttons', () => {
     renderWithProviders(<MonthStepper value={new Date(2026, 1, 1)} onChange={onChange} />);
 
+    expect(screen.getByRole('button', { name: 'previousYear' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'previousMonth' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'nextMonth' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'nextYear' })).toBeInTheDocument();
     expect(screen.getByText('today')).toBeInTheDocument();
   });
 
@@ -89,5 +91,54 @@ describe('MonthStepper', () => {
     const calledDate = onChange.mock.calls[0][0] as Date;
     expect(calledDate.getFullYear()).toBe(2026);
     expect(calledDate.getMonth()).toBe(0); // January
+  });
+
+  // Year-step buttons close the "no way to jump years" feedback —
+  // pre-fix the user had to click the month chevron twelve times to
+  // get from May 2026 to May 2025.
+
+  it('calls onChange one year earlier when previousYear arrow clicked', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<MonthStepper value={new Date(2026, 4, 1)} onChange={onChange} />);
+
+    await user.click(screen.getByRole('button', { name: 'previousYear' }));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    const calledDate = onChange.mock.calls[0][0] as Date;
+    expect(calledDate.getFullYear()).toBe(2025);
+    expect(calledDate.getMonth()).toBe(4); // May, month preserved
+    expect(calledDate.getDate()).toBe(1); // start of month
+  });
+
+  it('calls onChange one year later when nextYear arrow clicked', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<MonthStepper value={new Date(2026, 4, 1)} onChange={onChange} />);
+
+    await user.click(screen.getByRole('button', { name: 'nextYear' }));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    const calledDate = onChange.mock.calls[0][0] as Date;
+    expect(calledDate.getFullYear()).toBe(2027);
+    expect(calledDate.getMonth()).toBe(4); // May, month preserved
+    expect(calledDate.getDate()).toBe(1);
+  });
+
+  // Leap-day safety: addYears in date-fns clamps Feb 29 → Feb 28 on
+  // a non-leap target year. Verify so the year-step never silently
+  // produces an invalid date.
+  it('clamps Feb 29 to Feb 28 when stepping into a non-leap year', async () => {
+    const user = userEvent.setup();
+    // 2024-02-29 is a leap day; 2025 is not a leap year.
+    renderWithProviders(<MonthStepper value={new Date(2024, 1, 29)} onChange={onChange} />);
+
+    await user.click(screen.getByRole('button', { name: 'nextYear' }));
+
+    const calledDate = onChange.mock.calls[0][0] as Date;
+    expect(calledDate.getFullYear()).toBe(2025);
+    expect(calledDate.getMonth()).toBe(1); // still February
+    // startOfMonth pulls us back to the 1st regardless of the
+    // clamped 28/29; what we care about here is that the result
+    // is a valid date in the right month/year.
+    expect(calledDate.getDate()).toBe(1);
   });
 });
