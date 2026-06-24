@@ -73,6 +73,32 @@ describe('isActivePeriod', () => {
   });
 });
 
+// "Today" is resolved in Europe/Berlin (matching the backend's models.Today()),
+// not the browser's UTC day. At 23:30 UTC on 2025-06-15 it is already
+// 01:30 on 2025-06-16 in Berlin (CEST, UTC+2), so a period starting
+// 2025-06-16 is active. The pre-fix UTC-day logic reported it as not-yet-
+// active (off by one) during this post-midnight window.
+describe('isActivePeriod / getContractStatus — Europe/Berlin day boundary', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2025-06-15T23:30:00Z')); // 2025-06-16 01:30 Berlin
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('treats a period starting on the Berlin "today" as active', () => {
+    expect(isActivePeriod({ from: '2025-06-16' })).toBe(true);
+    expect(getContractStatus({ from: '2025-06-16' })).toBe('active');
+  });
+
+  it('treats a period starting on the Berlin "tomorrow" as upcoming', () => {
+    expect(isActivePeriod({ from: '2025-06-17' })).toBe(false);
+    expect(getContractStatus({ from: '2025-06-17' })).toBe('upcoming');
+  });
+});
+
 // ---------------------------------------------------------------------------
 // getActiveContract
 // ---------------------------------------------------------------------------
