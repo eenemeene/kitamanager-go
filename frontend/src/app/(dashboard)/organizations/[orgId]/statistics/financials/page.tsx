@@ -16,7 +16,7 @@ import { BudgetTable } from '@/components/charts/budget-table';
 import { YearStepper } from '@/components/ui/year-stepper';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
-import { getCurrentMonthStart } from '@/lib/utils/formatting';
+import { getCurrentMonthStart, toLocalDateString } from '@/lib/utils/formatting';
 
 const FinancialsChart = dynamic(
   () => import('@/components/charts/financials-bar-chart').then((mod) => mod.FinancialsChart),
@@ -86,15 +86,20 @@ export default function FinancialsPage() {
     const windows: { from: string; to: string }[] = [];
     let wFrom: string = first;
     while (wFrom <= last) {
-      const fromDate = new Date(wFrom);
+      // Parse as local midnight and format with toLocalDateString so the
+      // month arithmetic round-trips on the same calendar date. The old
+      // `new Date(wFrom)` (parsed as UTC) + `.toISOString().slice(0,10)`
+      // (formatted as UTC) mixed zones and shifted the date by a day in
+      // behind-UTC locales.
+      const fromDate = new Date(`${wFrom}T00:00:00`);
       const toDate = new Date(fromDate);
       toDate.setMonth(toDate.getMonth() + 11);
-      const wTo =
-        toDate.toISOString().slice(0, 10) > last ? last : toDate.toISOString().slice(0, 10);
+      const wToStr = toLocalDateString(toDate);
+      const wTo = wToStr > last ? last : wToStr;
       windows.push({ from: wFrom, to: wTo });
       const nextDate = new Date(fromDate);
       nextDate.setMonth(nextDate.getMonth() + 12);
-      wFrom = nextDate.toISOString().slice(0, 10);
+      wFrom = toLocalDateString(nextDate);
     }
     return windows;
   }, [financials]);

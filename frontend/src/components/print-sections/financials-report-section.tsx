@@ -10,7 +10,7 @@ import { BudgetTable } from '@/components/charts/budget-table';
 import type { FundingComparisonResponse, FundingComparisonSummary } from '@/lib/api/types';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
-import { formatCurrency } from '@/lib/utils/formatting';
+import { formatCurrency, toLocalDateString } from '@/lib/utils/formatting';
 import {
   type ReportMonth,
   formatReportMonthLong,
@@ -104,15 +104,20 @@ export function FinancialsReportSection({ orgId, reportMonth }: Props) {
     const windows: { from: string; to: string }[] = [];
     let wFrom: string = first;
     while (wFrom <= last) {
-      const fromDate = new Date(wFrom);
+      // Parse as local midnight and format with toLocalDateString so the
+      // month arithmetic round-trips on the same calendar date. The old
+      // `new Date(wFrom)` (parsed as UTC) + `.toISOString().slice(0,10)`
+      // (formatted as UTC) mixed zones and shifted the date by a day in
+      // behind-UTC locales.
+      const fromDate = new Date(`${wFrom}T00:00:00`);
       const toDate = new Date(fromDate);
       toDate.setMonth(toDate.getMonth() + 11);
-      const wTo =
-        toDate.toISOString().slice(0, 10) > last ? last : toDate.toISOString().slice(0, 10);
+      const wToStr = toLocalDateString(toDate);
+      const wTo = wToStr > last ? last : wToStr;
       windows.push({ from: wFrom, to: wTo });
       const nextDate = new Date(fromDate);
       nextDate.setMonth(nextDate.getMonth() + 12);
-      wFrom = nextDate.toISOString().slice(0, 10);
+      wFrom = toLocalDateString(nextDate);
     }
     return windows;
   }, [financials]);
