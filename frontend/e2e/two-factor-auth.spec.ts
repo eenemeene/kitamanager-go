@@ -236,7 +236,10 @@ test.describe('Two-factor authentication — full lifecycle', () => {
     const picker = page.getByLabel(/verify with/i);
     await picker.click();
     await page.getByRole('option', { name: /recovery codes/i }).click();
-    await page.getByLabel(/code/i).fill(backupCodes[0]);
+    // Scope to the form: the radix Select renders its options in a portal, and
+    // the selected "Recovery codes" option also matches /code/i — an unscoped
+    // getByLabel(/code/i) is a strict-mode violation (two matches).
+    await page.getByTestId('mfa-verify-form').getByLabel(/code/i).fill(backupCodes[0]);
     await page.getByRole('button', { name: /verify/i }).click();
     await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
 
@@ -248,7 +251,7 @@ test.describe('Two-factor authentication — full lifecycle', () => {
     await expect(page.getByTestId('mfa-verify-form')).toBeVisible({ timeout: 10000 });
     await page.getByLabel(/verify with/i).click();
     await page.getByRole('option', { name: /recovery codes/i }).click();
-    await page.getByLabel(/code/i).fill(backupCodes[0]); // reused!
+    await page.getByTestId('mfa-verify-form').getByLabel(/code/i).fill(backupCodes[0]); // reused!
     await page.getByRole('button', { name: /verify/i }).click();
     await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toContainText(
       /invalid code/i,
@@ -267,7 +270,7 @@ test.describe('Two-factor authentication — full lifecycle', () => {
     // "reset last_used_step" endpoint, both gated on SEED_TEST_DATA.
     // See memory: project_e2e_totp_sleep_debt.md for the planned fix.
     await page.waitForTimeout(31000);
-    await page.getByLabel(/code/i).fill(generateTotp(enrolSecret));
+    await page.getByTestId('mfa-verify-form').getByLabel(/code/i).fill(generateTotp(enrolSecret));
     await page.getByRole('button', { name: /verify/i }).click();
     await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
 
@@ -305,7 +308,7 @@ test.describe('Two-factor authentication — full lifecycle', () => {
     await expect(page.getByTestId('mfa-verify-form')).toBeVisible();
     await page.getByLabel(/verify with/i).click();
     await page.getByRole('option', { name: /recovery codes/i }).click();
-    await page.getByLabel(/code/i).fill(backupCodes[1]);
+    await page.getByTestId('mfa-verify-form').getByLabel(/code/i).fill(backupCodes[1]);
     await page.getByRole('button', { name: /verify/i }).click();
     await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toContainText(
       /invalid code/i,
@@ -313,7 +316,7 @@ test.describe('Two-factor authentication — full lifecycle', () => {
     );
 
     // One of the fresh codes works.
-    await page.getByLabel(/code/i).fill(freshCodes[0]);
+    await page.getByTestId('mfa-verify-form').getByLabel(/code/i).fill(freshCodes[0]);
     await page.getByRole('button', { name: /verify/i }).click();
     await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
 
