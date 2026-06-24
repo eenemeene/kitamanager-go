@@ -9,6 +9,16 @@ on:
 env:
   GO_VERSION: '1.25.11'
   MIN_COVERAGE: 35
+  # Disable the testcontainers Ryuk reaper. The unit suites start one
+  # Postgres container per package (internal/testutil); `go test ./...`
+  # runs those binaries in parallel, and the Ryuk handshake intermittently
+  # fails under that fan-out ("Reaper handshake failed: read ack: EOF"),
+  # taking the DB down mid-run ("connection refused" cascades). Ryuk only
+  # garbage-collects containers after the run — GitHub runners are
+  # ephemeral and discard everything when the job ends, so the reaper buys
+  # nothing here while being a flake source. Removing it leaves container
+  # startup itself untouched.
+  TESTCONTAINERS_RYUK_DISABLED: 'true'
 
 jobs:
   api-lint:
