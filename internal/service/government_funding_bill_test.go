@@ -1217,6 +1217,125 @@ func TestGovernmentFundingBillService_Compare_CalcOnlyChild(t *testing.T) {
 	}
 }
 
+// --- minimal stub stores for exercising comparePeriod directly ---
+//
+// Each stub embeds the full store interface (so it satisfies the type) but
+// overrides only the methods the calc-only path actually calls; any
+// unexpected call nil-panics, which is the signal we got the path wrong.
+
+type stubCmpChildStore struct {
+	store.ChildStorer
+	children []models.Child
+}
+
+func (s stubCmpChildStore) FindByOrganizationWithActiveOn(_ context.Context, _ uint, _ time.Time) ([]models.Child, error) {
+	return s.children, nil
+}
+
+type stubCmpVoucherStore struct {
+	store.ChildVoucherStorer
+}
+
+func (stubCmpVoucherStore) FindVouchersByChildIDs(_ context.Context, _ []uint) ([]models.ChildVoucher, error) {
+	return nil, nil
+}
+
+type stubCmpOrgStore struct {
+	store.OrganizationStorer
+}
+
+func (stubCmpOrgStore) FindByID(_ context.Context, id uint) (*models.Organization, error) {
+	return &models.Organization{State: string(models.StateBerlin)}, nil
+}
+
+type stubCmpFundingStore struct {
+	store.GovernmentFundingStorer
+	funding *models.GovernmentFunding
+}
+
+func (s stubCmpFundingStore) FindByStateWithDetails(_ context.Context, _ string, _ int, _ *time.Time) (*models.GovernmentFunding, error) {
+	return s.funding, nil
+}
+
+// comparePeriod resolves a calc-only child's active contract with
+// pickActiveChildContract(ac.Contracts, period.From) rather than the old
+// ac.Contracts[0]. This test exercises comparePeriod end-to-end (via stub
+// stores) with a child holding TWO simultaneously-active contracts and asserts
+// the funding reported is the deterministically-picked (latest From) contract's
+// regardless of contract slice order.
+//
+// It is stub-backed rather than DB-backed on purpose: the child_contracts
+// EXCLUDE constraint forbids persisting two overlapping contracts, so the very
+// data-integrity case this defends against cannot be reproduced through the
+// store. With the old Contracts[0] selection the "forward" ordering would report
+// the older (halbtag) contract's funding and this test would fail.
+func TestComparePeriod_CalcOnlySelectionOrderIndependent(t *testing.T) {
+	const (
+		ganztagPayment = 120000
+		halbtagPayment = 60000
+	)
+	billDate := date(2025, 6, 1)
+	lastDay := lastDayOfMonth(billDate)
+
+	funding := &models.GovernmentFunding{
+		Periods: []models.GovernmentFundingPeriod{
+			makeFundingPeriod(date(2024, 1, 1), nil, 39, []models.GovernmentFundingProperty{
+				makeFundingProp("care_type", "ganztag", "Ganztag", ganztagPayment, 1.0, nil, nil),
+				makeFundingProp("care_type", "halbtag", "Halbtag", halbtagPayment, 0.5, nil, nil),
+			}),
+		},
+	}
+
+	// Two contracts both active on billDate; the newer (later From) must win.
+	older := models.ChildContract{
+		ID:           1,
+		ChildID:      10,
+		BaseContract: models.BaseContract{Period: models.Period{From: date(2024, 1, 1), To: nil}, Properties: models.ContractProperties{"care_type": "halbtag"}},
+	}
+	newer := models.ChildContract{
+		ID:           2,
+		ChildID:      10,
+		BaseContract: models.BaseContract{Period: models.Period{From: date(2025, 3, 1), To: nil}, Properties: models.ContractProperties{"care_type": "ganztag"}},
+	}
+
+	orders := map[string][]models.ChildContract{
+		"forward":  {older, newer},
+		"reversed": {newer, older},
+	}
+	for name, contracts := range orders {
+		child := models.Child{
+			Person:    models.Person{ID: 10, OrganizationID: 1, FirstName: "Calc", LastName: "Only", Birthdate: date(2021, 1, 1)},
+			Contracts: contracts,
+		}
+		svc := NewGovernmentFundingBillService(
+			stubCmpChildStore{children: []models.Child{child}},
+			stubCmpVoucherStore{},
+			nil, // billPeriodStore — unused: child has no vouchers
+			stubCmpOrgStore{},
+			stubCmpFundingStore{funding: funding},
+			nil, // transactor — unused by comparePeriod
+		)
+
+		period := &models.GovernmentFundingBillPeriod{
+			Period: models.Period{From: billDate, To: &lastDay},
+		}
+
+		result, err := svc.comparePeriod(context.Background(), period, 1)
+		if err != nil {
+			t.Fatalf("[%s] comparePeriod() error = %v", name, err)
+		}
+		if result.CalcOnlyCount != 1 {
+			t.Fatalf("[%s] expected calc_only_count 1, got %d", name, result.CalcOnlyCount)
+		}
+		got := result.Children[0]
+		if got.CalcTotal == nil {
+			t.Errorf("[%s] expected calc_total %d (newer/ganztag contract), got nil", name, ganztagPayment)
+		} else if *got.CalcTotal != ganztagPayment {
+			t.Errorf("[%s] expected calc_total %d (newer/ganztag contract), got %d", name, ganztagPayment, *got.CalcTotal)
+		}
+	}
+}
+
 func TestGovernmentFundingBillService_Compare_MixedStatuses(t *testing.T) {
 	db := setupTestDB(t)
 	svc := setupBillCompareService(t, db)
