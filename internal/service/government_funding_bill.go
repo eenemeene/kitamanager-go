@@ -1361,10 +1361,15 @@ func (s *GovernmentFundingBillService) comparePeriod(ctx context.Context, period
 			continue
 		}
 
-		if len(ac.Contracts) == 0 {
+		// Use the deterministic active-contract picker (latest From, tie-break
+		// highest ID) rather than Contracts[0]; the preload already filters to
+		// contracts active on period.From, but should two ever overlap the
+		// GORM row order is arbitrary. Keeps this path consistent with every
+		// other "which contract is active?" decision in the codebase.
+		contract := pickActiveChildContract(ac.Contracts, period.From)
+		if contract == nil {
 			continue
 		}
-		contract := ac.Contracts[0]
 
 		fundingAge := validation.FundingAgeOnDate(ac.Birthdate, period.From)
 		calcAmounts, calcTotal := calcAmountsFromFunding(fundingAge, contract.Properties, fundingPeriod)
