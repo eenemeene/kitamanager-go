@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 env:
-  GO_VERSION: '1.25.10'
+  GO_VERSION: '1.25.11'
   MIN_COVERAGE: 35
 
 jobs:
