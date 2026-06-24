@@ -309,13 +309,32 @@ func TestUserHandler_Update_CrossPostsToMemberOrgs(t *testing.T) {
 	// so the superadmin global feed sees the event regardless of
 	// memberships. Without this, a user with no memberships would
 	// produce no audit rows at all.
-	var nullOrgCount int64
-	db.Model(&models.AuditLog{}).
-		Where("action = ? AND resource_type = ? AND resource_id = ? AND organization_id IS NULL",
-			"user_update", "user", user.ID).
-		Count(&nullOrgCount)
-	if nullOrgCount != 1 {
-		t.Errorf("expected exactly 1 identity-level (org_id NULL) user_update row, got %d", nullOrgCount)
+	//
+	// LogResourceUpdateAcrossOrgs enqueues this row LAST, after the
+	// per-org rows, and the audit worker drains the channel serially —
+	// so by the time the per-org polls above succeed, this row may still
+	// be in flight. Poll it like the org-scoped rows rather than reading
+	// once; a single read races the worker (and fails reliably when the
+	// DB write latency is non-trivial, e.g. a shared Postgres server).
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		var nullOrgCount int64
+		db.Model(&models.AuditLog{}).
+			Where("action = ? AND resource_type = ? AND resource_id = ? AND organization_id IS NULL",
+				"user_update", "user", user.ID).
+			Count(&nullOrgCount)
+		if nullOrgCount == 1 {
+			break
+		}
+		if nullOrgCount > 1 {
+			t.Errorf("expected exactly 1 identity-level (org_id NULL) user_update row, got %d", nullOrgCount)
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Errorf("no identity-level (org_id NULL) user_update row within 2s (count=%d)", nullOrgCount)
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 
