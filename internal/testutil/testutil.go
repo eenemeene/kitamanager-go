@@ -3,6 +3,8 @@ package testutil
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -17,6 +19,19 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/database"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 )
+
+// testDatabaseURLEnv, when set, points at an already-running PostgreSQL
+// *server* (e.g. a CI `services:` container). In that mode SetupTestDB does
+// NOT start a per-package testcontainer — instead each test binary carves out
+// its own freshly-migrated database on that shared server (see startContainer).
+//
+// This exists because `go test ./...` runs one test binary per package in
+// parallel, and the testcontainers path starts one Postgres container per
+// binary. Under that fan-out the Docker daemon / Ryuk reaper flakes on CI
+// runners (postmaster exits mid-run, "connection refused" cascades). Pointing
+// every binary at one shared server removes the per-package container churn
+// while a unique database per process preserves test isolation.
+const testDatabaseURLEnv = "TEST_DATABASE_URL"
 
 var (
 	once         sync.Once
@@ -53,6 +68,14 @@ var truncateTables = []string{
 }
 
 func startContainer() {
+	// Shared-server mode: reuse an external Postgres provided by CI instead of
+	// spinning up a testcontainer for this package. Each test binary gets its
+	// own database on that server for isolation.
+	if serverURL := os.Getenv(testDatabaseURLEnv); serverURL != "" {
+		initErr = setupExternalDB(serverURL)
+		return
+	}
+
 	ctx := context.Background()
 
 	pgContainer, initErr = postgres.Run(ctx,
@@ -87,6 +110,66 @@ func startContainer() {
 	sharedDB, initErr = gorm.Open(gormpostgres.Open(containerDSN), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
+}
+
+// setupExternalDB carves out a fresh, uniquely-named database on the shared
+// PostgreSQL server given by serverURL, migrates it, and opens the package's
+// shared GORM pool against it. A database per test binary keeps packages that
+// `go test ./...` runs in parallel from truncating each other's data — the
+// same isolation the per-package testcontainer used to provide.
+//
+// The database is intentionally not dropped on exit: the shared server only
+// exists for the lifetime of a CI job and is discarded with it, so a teardown
+// (which Go's per-package test lifecycle makes awkward without a TestMain in
+// every package) would buy nothing.
+func setupExternalDB(serverURL string) error {
+	admin, err := gorm.Open(gormpostgres.Open(serverURL), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
+	if err != nil {
+		return fmt.Errorf("connect to shared test server: %w", err)
+	}
+
+	// Unique per process: go test runs each package in its own process, so
+	// pid is unique among concurrently-running binaries; the nanosecond clock
+	// guards against pid reuse across a long run. Both are digits/underscore,
+	// so the identifier needs no escaping.
+	dbName := fmt.Sprintf("km_test_%d_%d", os.Getpid(), time.Now().UnixNano())
+	if err := admin.Exec(`CREATE DATABASE "` + dbName + `"`).Error; err != nil {
+		return fmt.Errorf("create test database %q: %w", dbName, err)
+	}
+	if sqlDB, derr := admin.DB(); derr == nil {
+		_ = sqlDB.Close() // CREATE DATABASE done; the admin handle is no longer needed.
+	}
+
+	procURL, err := withDatabaseName(serverURL, dbName)
+	if err != nil {
+		return err
+	}
+	containerDSN = procURL
+
+	if err := database.RunMigrationsWithURL(procURL); err != nil {
+		return fmt.Errorf("migrate test database %q: %w", dbName, err)
+	}
+
+	sharedDB, err = gorm.Open(gormpostgres.Open(procURL), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
+	if err != nil {
+		return fmt.Errorf("open test database %q: %w", dbName, err)
+	}
+	return nil
+}
+
+// withDatabaseName returns serverURL with its database path replaced by name,
+// preserving credentials, host, and query parameters (e.g. sslmode).
+func withDatabaseName(serverURL, name string) (string, error) {
+	u, err := url.Parse(serverURL)
+	if err != nil {
+		return "", fmt.Errorf("parse %s: %w", testDatabaseURLEnv, err)
+	}
+	u.Path = "/" + name
+	return u.String(), nil
 }
 
 // SetupTestDB starts a shared PostgreSQL testcontainer (once per process),

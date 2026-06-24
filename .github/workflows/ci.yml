@@ -69,6 +69,27 @@ jobs:
   api-test:
     name: API Unit Tests
     runs-on: ubuntu-latest
+    # A single Postgres service shared by every test binary. The unit suites
+    # used to start one testcontainer per package; `go test ./...` runs those
+    # binaries in parallel, and the resulting container fan-out flaked the
+    # Docker daemon / Ryuk reaper on CI runners (postmaster exits mid-run,
+    # "connection refused" cascades). testutil now carves out a fresh database
+    # per binary on this shared server instead (TEST_DATABASE_URL), keeping
+    # isolation without the per-package containers.
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: kitamanager
+          POSTGRES_PASSWORD: kitamanager
+          POSTGRES_DB: kitamanager_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kitamanager"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v6
         with:
@@ -81,6 +102,8 @@ jobs:
           cache-dependency-path: go.sum
 
       - name: Run API tests
+        env:
+          TEST_DATABASE_URL: postgres://kitamanager:kitamanager@localhost:5432/kitamanager_test?sslmode=disable
         run: make api-test-coverage
 
       - name: Check coverage threshold
