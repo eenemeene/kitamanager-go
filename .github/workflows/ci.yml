@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 env:
-  GO_VERSION: '1.25.11'
+  GO_VERSION: '1.25.12'
   MIN_COVERAGE: 35
   # Disable the testcontainers Ryuk reaper. The unit suites start one
   # Postgres container per package (internal/testutil); `go test ./...`
