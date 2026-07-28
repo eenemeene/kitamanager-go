@@ -8,7 +8,7 @@ import (
 	"time"
 
 	pdfcpuapi "github.com/pdfcpu/pdfcpu/pkg/api"
-	"github.com/playwright-community/playwright-go"
+	"github.com/mxschmitt/playwright-go"
 )
 
 // loginPathPrefix is the SPA route the frontend redirects to when no

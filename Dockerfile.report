@@ -16,16 +16,22 @@
 # Two reasons we install Playwright here rather than in the runtime
 # stage:
 #   1. The matching Chromium version. playwright-go is pinned to
-#      Playwright JS 1.50.1 which expects a specific revision
-#      (`chromium_headless_shell-1155`). The previous Dockerfile
+#      Playwright JS 1.61.1 which expects a specific revision
+#      (`chromium_headless_shell-1228`). The previous Dockerfile
 #      ran `npx playwright install chromium` which pulled npm's
-#      latest Playwright (1.55+) and downloaded a different
-#      revision (1217) — never used at runtime. ~290 MB of dead
-#      weight in the published image.
+#      latest Playwright and downloaded a different revision —
+#      never used at runtime. ~290 MB of dead weight in the
+#      published image.
 #   2. We can use the Go-native `playwright-go/cmd/playwright`
 #      installer here (Go is already in the builder stage),
 #      skipping `npx` and the entire dev-tooling base image the
 #      previous setup needed.
+# NOTE: the module path is github.com/mxschmitt/playwright-go (the
+# github.com/playwright-community/... path redirects here). From
+# v0.6100.0 the installer fetches playwright-core from the npm
+# registry and Node.js from nodejs.org, then the browser from
+# cdn.playwright.dev — it no longer uses the retired
+# playwright.azureedge.net driver CDN, which 404s for every version.
 # `chromium-headless-shell` (with hyphen) installs ONLY the
 # headless variant, not the full Chromium browser — saves another
 # ~557 MB vs `playwright install chromium`.
@@ -47,7 +53,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo \
 
 ENV HOME=/install
 RUN mkdir -p /install && \
-    go run github.com/playwright-community/playwright-go/cmd/playwright install chromium-headless-shell
+    go run github.com/mxschmitt/playwright-go/cmd/playwright install chromium-headless-shell
 
 # Stage 2: Runtime — wolfi-base (~15 MB) + node + chromium-as-dep-puller.
 #

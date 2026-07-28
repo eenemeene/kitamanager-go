@@ -3,8 +3,8 @@ module github.com/eenemeene/kitamanager-go/tools/report-pdf
 go 1.25.9
 
 require (
+	github.com/mxschmitt/playwright-go v0.6100.0
 	github.com/pdfcpu/pdfcpu v0.11.1
-	github.com/playwright-community/playwright-go v0.5001.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
@@ -12,9 +12,9 @@ require (
 
 require (
 	github.com/clipperhouse/uax29/v2 v2.2.0 // indirect
-	github.com/deckarep/golang-set/v2 v2.6.0 // indirect
+	github.com/deckarep/golang-set/v2 v2.8.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
-	github.com/go-jose/go-jose/v3 v3.0.3 // indirect
+	github.com/go-jose/go-jose/v3 v3.0.5 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/hhrutter/lzw v1.0.0 // indirect
