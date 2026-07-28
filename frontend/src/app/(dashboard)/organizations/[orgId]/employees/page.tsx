@@ -266,9 +266,7 @@ export default function EmployeesPage() {
           section_id: active.section_id,
           payplan_id: active.payplan_id || defaultPayPlanId,
           staff_category: active.staff_category as
-            | 'qualified'
-            | 'supplementary'
-            | 'non_pedagogical',
+            'qualified' | 'supplementary' | 'non_pedagogical',
           grade: active.grade,
           step: active.step,
           weekly_hours: active.weekly_hours,
