@@ -206,8 +206,13 @@ const birthDateMismatchPenalty = 0.3
 // ChildrenWithoutVouchers returns children with active contracts but no voucher entries,
 // enriched with fuzzy-matched voucher suggestions from unmatched bill children.
 func (s *GovernmentFundingBillService) ChildrenWithoutVouchers(ctx context.Context, orgID uint) ([]models.ChildWithoutVoucherResponse, error) {
-	now := time.Now().UTC()
-	children, err := s.childVoucherStore.FindChildrenWithoutVouchers(ctx, orgID, now)
+	// "Active contract" is a calendar-day question against the DATE column
+	// cc.to_date (inclusive last active day), so it must use models.Today().
+	// A full time.Now() timestamp makes `to_date >= now` false for the whole
+	// final day of a contract, dropping a child off the missing-voucher
+	// dashboard on exactly the day the operator still needs the signal.
+	today := models.Today()
+	children, err := s.childVoucherStore.FindChildrenWithoutVouchers(ctx, orgID, today)
 	if err != nil {
 		return nil, apperror.InternalWrap(err, "failed to fetch children without vouchers")
 	}
