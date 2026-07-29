@@ -47,6 +47,13 @@ updates:
       # or when we migrate Jest to ESM.
       - dependency-name: msw
         versions: [">=2.13.4"]
+      # typescript 7 is the new native (Go) compiler; its npm package ships
+      # platform-native binaries and drops the classic JS Compiler API, which
+      # breaks openapi-typescript (make api-types-check: ts.factory undefined)
+      # and `next build`. Unpin once openapi-typescript and Next.js support
+      # the TS7 native compiler.
+      - dependency-name: typescript
+        versions: [">=7"]
 
   # Docker
   - package-ecosystem: docker
