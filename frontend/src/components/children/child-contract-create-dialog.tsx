@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -88,10 +88,23 @@ export function ChildContractCreateDialog({
 
   const activeContract = child ? getActiveContract(child.contracts) : null;
 
-  // Reset form when dialog opens with a child
+  // Track whether default funding properties have been applied for this dialog
+  // session, so a fresh defaultProperties reference can't re-trigger a reset.
+  const appliedDefaultsRef = useRef(false);
+
+  // Reset form when dialog opens with a child.
+  //
+  // defaultProperties must NOT be a dependency here: useFundingAttributes
+  // returns a brand-new object reference every time the watched from/to fields
+  // change (its useMemo is keyed on those dates and returns a fresh {} even
+  // with no funding config). Depending on it would re-run reset() on every date
+  // edit, silently reverting the user's start/end date, section and properties.
+  // Instead, apply defaults once in a separate setValue effect below — the same
+  // pattern child-create-dialog.tsx uses.
   useEffect(() => {
     if (open && child) {
       setEndCurrentContract(true);
+      appliedDefaultsRef.current = false;
 
       const birthdate = formatDateForInput(child.birthdate);
       const suggestedTo =
@@ -109,13 +122,23 @@ export function ChildContractCreateDialog({
           section_id: active.section_id,
           properties: active.properties as Record<string, string> | undefined,
         });
+        // An active contract supplies its own properties; don't let the
+        // defaults effect overwrite them.
+        appliedDefaultsRef.current = true;
       } else {
-        const initialProps =
-          Object.keys(defaultProperties).length > 0 ? defaultProperties : undefined;
-        reset({ from: '', to: suggestedTo, section_id: 0, properties: initialProps });
+        reset({ from: '', to: suggestedTo, section_id: 0, properties: undefined });
       }
     }
-  }, [open, child, orgState, reset, defaultProperties]);
+  }, [open, child, orgState, reset]);
+
+  // Apply default funding properties once when they become available, without
+  // resetting the form (which would clobber user-entered dates/section).
+  useEffect(() => {
+    if (open && !appliedDefaultsRef.current && Object.keys(defaultProperties).length > 0) {
+      appliedDefaultsRef.current = true;
+      setValue('properties', defaultProperties);
+    }
+  }, [open, defaultProperties, setValue]);
 
   const handleFormSubmit = useCallback(
     (data: ChildContractFormData) => {
