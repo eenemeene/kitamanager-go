@@ -38,7 +38,7 @@ const jestConfig = createJestConfig(customJestConfig);
 module.exports = async () => {
   const config = await jestConfig();
   config.transformIgnorePatterns = [
-    'node_modules/(?!(msw|@mswjs|until-async|@bundled-es-modules|rettime)/)',
+    'node_modules/(?!(msw|@mswjs|@open-draft|until-async|@bundled-es-modules|rettime|strict-event-emitter|is-node-process|outvariant|headers-polyfill)/)',
     '^.+\\.module\\.(css|sass|scss)$',
   ];
   return config;

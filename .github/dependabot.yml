@@ -42,11 +42,6 @@ updates:
       # eslint-plugin-react ships a release compatible with eslint 10.
       - dependency-name: eslint
         versions: [">=10"]
-      # msw 2.13.4 ships ESM source that Jest cannot parse without extra
-      # transformIgnorePatterns config. Revisit when msw ships a CJS build
-      # or when we migrate Jest to ESM.
-      - dependency-name: msw
-        versions: [">=2.13.4"]
       # typescript 7 is the new native (Go) compiler; its npm package ships
       # platform-native binaries and drops the classic JS Compiler API, which
       # breaks openapi-typescript (make api-types-check: ts.factory undefined)
