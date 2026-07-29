@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -206,8 +205,13 @@ func (s *SectionService) DeleteByIDAndOrg(ctx context.Context, id, orgID uint) e
 		// tombstone. Without the time filter, an org that reorganised
 		// its sections years ago would have permanent "zombie"
 		// sections it could never clean up.
-		now := time.Now().UTC()
-		hasChildren, err := s.store.HasActiveChildren(txCtx, id, now)
+		// "Currently active" is a calendar-day question against DATE
+		// columns (contract to_date is the inclusive last active day),
+		// so it must use models.Today() — a full time.Now() timestamp
+		// would make `to_date >= now` false for the whole final day of a
+		// contract and let us delete a section still in use today.
+		today := models.Today()
+		hasChildren, err := s.store.HasActiveChildren(txCtx, id, today)
 		if err != nil {
 			return apperror.InternalWrap(err, "failed to check section children")
 		}
@@ -217,18 +221,18 @@ func (s *SectionService) DeleteByIDAndOrg(ctx context.Context, id, orgID uint) e
 			// extra round trip only fires on the rejection path, so
 			// the cost lands precisely where the user is already
 			// facing an error.
-			n, _ := s.store.CountActiveChildren(txCtx, id, now)
+			n, _ := s.store.CountActiveChildren(txCtx, id, today)
 			return apperror.BadRequest(fmt.Sprintf(
 				"cannot delete section with %d currently-assigned children; reassign them first",
 				n))
 		}
 
-		hasEmployees, err := s.store.HasActiveEmployees(txCtx, id, now)
+		hasEmployees, err := s.store.HasActiveEmployees(txCtx, id, today)
 		if err != nil {
 			return apperror.InternalWrap(err, "failed to check section employees")
 		}
 		if hasEmployees {
-			n, _ := s.store.CountActiveEmployees(txCtx, id, now)
+			n, _ := s.store.CountActiveEmployees(txCtx, id, today)
 			return apperror.BadRequest(fmt.Sprintf(
 				"cannot delete section with %d currently-assigned employees; reassign them first",
 				n))
