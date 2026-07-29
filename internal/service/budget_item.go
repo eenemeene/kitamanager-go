@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -80,9 +79,10 @@ func (s *BudgetItemService) Create(ctx context.Context, orgID uint, req *models.
 	}
 
 	// Newly-created item has no entries yet; asOf is irrelevant but
-	// must be passed. Use now for consistency with other "what's
-	// active right now" call sites.
-	resp := item.ToResponse(time.Now().UTC())
+	// must be passed. Use models.Today() for consistency with other
+	// "what's active right now" call sites (Berlin calendar day, not
+	// the server's UTC clock instant).
+	resp := item.ToResponse(models.Today())
 	return &resp, nil
 }
 
@@ -111,12 +111,13 @@ func (s *BudgetItemService) List(ctx context.Context, orgID uint, search string,
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch budget items")
 	}
 
-	// Use a single "now" for the whole page so two items in the same
+	// Use a single "today" for the whole page so two items in the same
 	// list response can't pick entries against drifted clock values.
-	now := time.Now().UTC()
+	// models.Today() gives the Berlin calendar day, not the server UTC day.
+	today := models.Today()
 	out := make([]models.BudgetItemResponse, 0, len(items))
 	for i := range items {
-		out = append(out, items[i].ToResponse(now))
+		out = append(out, items[i].ToResponse(today))
 	}
 	return out, total, nil
 }
@@ -187,7 +188,7 @@ func (s *BudgetItemService) Update(ctx context.Context, id, orgID uint, req *mod
 		return nil, apperror.InternalWrap(err, "failed to update budget item")
 	}
 
-	resp := item.ToResponse(time.Now().UTC())
+	resp := item.ToResponse(models.Today())
 	return &resp, nil
 }
 

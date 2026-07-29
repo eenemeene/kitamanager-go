@@ -2132,16 +2132,18 @@ func (s *GovernmentFundingBillService) ChildrenBillingSummary(ctx context.Contex
 	}
 
 	// 7. Compute contract months per child (how many months their voucher contracts cover)
-	now := time.Now().UTC()
+	// Cap at the Berlin calendar day via models.Today(), not the server's UTC
+	// clock instant, so the last-day-of-month boundary is judged consistently.
+	today := models.Today()
 	contractMonthsByChild := make(map[uint]int)
 	for childID, childContracts := range contractsByChild {
 		months := 0
 		for _, c := range childContracts {
-			end := now
-			if c.To != nil && c.To.Before(now) {
+			end := today
+			if c.To != nil && c.To.Before(today) {
 				end = *c.To
 			}
-			if end.Before(c.From) || c.From.After(now) {
+			if end.Before(c.From) || c.From.After(today) {
 				continue
 			}
 			// Count months: from start month to end month (capped at today) inclusive
