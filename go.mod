@@ -3,7 +3,7 @@ module github.com/eenemeene/kitamanager-go
 go 1.25.12
 
 require (
-	github.com/casbin/casbin/v3 v3.10.0
+	github.com/casbin/casbin/v3 v3.11.0
 	github.com/casbin/gorm-adapter/v3 v3.41.0
 	github.com/fxamacker/cbor/v2 v2.9.2
 	github.com/getkin/kin-openapi v0.139.0
@@ -27,7 +27,7 @@ require (
 	github.com/xuri/excelize/v2 v2.11.0
 	golang.org/x/crypto v0.54.0
 	gopkg.in/yaml.v3 v3.0.1
-	gorm.io/driver/postgres v1.6.1
+	gorm.io/driver/postgres v1.6.2
 	gorm.io/gorm v1.31.2
 )
 
