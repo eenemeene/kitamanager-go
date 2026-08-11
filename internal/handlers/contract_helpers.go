@@ -141,38 +141,57 @@ func handleUpdateContract[Req any, Resp any](
 	}
 
 	id, parentID := getAuditInfo(resp)
-	changes := contractAuditChanges(before, resp, id, getAuditInfo, diffFn)
-	auditUpdateWithChanges(c, audit.auditService, audit.resourceType, id,
-		fmt.Sprintf("%s=%d", audit.parentLabel, parentID), changes)
+	parentLabel := fmt.Sprintf("%s=%d", audit.parentLabel, parentID)
+
+	beforeID := uint(0)
+	if before != nil {
+		beforeID, _ = getAuditInfo(before)
+	}
+
+	if before != nil && beforeID != id {
+		// Amend: the request closed one contract and created another. Emitting a
+		// single `_update` row on the new contract's id claimed that a row which
+		// was in fact *created* had been edited. Record what actually happened —
+		// an update of the closed contract, then a create of its successor. Both
+		// use the existing action vocabulary; no new audit action is introduced.
+		//
+		// The old contract's post-update state has to be read back, because the
+		// response carries the successor. Only on the amend path, and only to
+		// make the audit truthful.
+		closedChanges := map[string]any{}
+		if closed, err := getFn(c.Request.Context(), beforeID, resourceID, orgID); err == nil && diffFn != nil {
+			closedChanges = diffFn(before, closed)
+		}
+		// Link the pair so a reader landing on either row can find the other.
+		closedChanges["amended"] = map[string]any{
+			"closed_contract_id": beforeID,
+			"new_contract_id":    id,
+		}
+		auditUpdateWithChanges(c, audit.auditService, audit.resourceType, beforeID, parentLabel, closedChanges)
+		auditCreate(c, audit.auditService, audit.resourceType, id, parentLabel)
+
+		c.JSON(http.StatusOK, resp)
+		return
+	}
+
+	changes := contractAuditChanges(before, resp, diffFn)
+	auditUpdateWithChanges(c, audit.auditService, audit.resourceType, id, parentLabel, changes)
 
 	c.JSON(http.StatusOK, resp)
 }
 
-// contractAuditChanges builds the audit `changes` map for one contract update.
-//
-// Amend mode makes this less obvious than it looks: updating a contract that
-// started before today closes that row and returns a *different* contract, so a
-// raw before/after diff would silently compare two identities. When that
-// happens the diff is still the useful part — it is what the operator changed —
-// but the row also records which contract was closed and which was created, so
-// the reader is not misled into thinking one row was edited in place.
+// contractAuditChanges builds the audit `changes` map for an in-place contract
+// update, where the contract's identity is unchanged. The amend case — which
+// closes one contract and creates another — is handled in handleUpdateContract
+// and emits an update/create pair instead, so it never reaches here.
 func contractAuditChanges[Resp any](
 	before, after *Resp,
-	afterID uint,
-	getAuditInfo func(*Resp) (uint, uint),
 	diffFn func(before, after *Resp) map[string]any,
 ) map[string]any {
 	if before == nil || diffFn == nil {
 		return nil
 	}
-	changes := diffFn(before, after)
-	if beforeID, _ := getAuditInfo(before); beforeID != afterID {
-		changes["amended"] = map[string]any{
-			"closed_contract_id": beforeID,
-			"new_contract_id":    afterID,
-		}
-	}
-	return changes
+	return diffFn(before, after)
 }
 
 // handleBatchUpdateContracts handles atomically updating multiple contracts with audit logging.
@@ -222,7 +241,7 @@ func handleBatchUpdateContracts[Req any, Resp any](
 		id, parentID := getAuditInfo(&results[i])
 		// Batch updates are always in place, so the id is stable and the
 		// before-state is found by it.
-		changes := contractAuditChanges(before[id], &results[i], id, getAuditInfo, diffFn)
+		changes := contractAuditChanges(before[id], &results[i], diffFn)
 		auditUpdateWithChanges(c, audit.auditService, audit.resourceType, id,
 			fmt.Sprintf("%s=%d", audit.parentLabel, parentID), changes)
 	}
@@ -238,6 +257,7 @@ func handleDeleteContract[Resp any](
 	getFn func(context.Context, uint, uint, uint) (*Resp, error),
 	deleteFn func(context.Context, uint, uint, uint) error,
 	getAuditInfo func(*Resp) (uint, uint), // returns (contractID, parentID)
+	snapshotFn func(*Resp) map[string]any,
 ) {
 	orgID, resourceID, contractID, ok := parseOrgResourceAndContractID(c, parentParam)
 	if !ok {
@@ -256,8 +276,17 @@ func handleDeleteContract[Resp any](
 		return
 	}
 
+	// The pre-fetched contract was already being thrown away apart from its
+	// parent id. Record its field values instead: an update can be reconstructed
+	// from the surviving row plus its diff, but a deleted contract's care type,
+	// supplements and period are gone for good otherwise.
 	_, parentID := getAuditInfo(item)
-	auditDelete(c, audit.auditService, audit.resourceType, contractID, fmt.Sprintf("%s=%d", audit.parentLabel, parentID))
+	var snapshot map[string]any
+	if snapshotFn != nil {
+		snapshot = snapshotFn(item)
+	}
+	auditDeleteWithSnapshot(c, audit.auditService, audit.resourceType, contractID,
+		fmt.Sprintf("%s=%d", audit.parentLabel, parentID), snapshot)
 
 	c.Status(http.StatusNoContent)
 }

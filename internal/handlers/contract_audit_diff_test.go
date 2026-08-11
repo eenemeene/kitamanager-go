@@ -190,67 +190,6 @@ func TestContractAudit_NoOpUpdate_NoChangesMap(t *testing.T) {
 	}
 }
 
-// Amend mode returns a *different* contract. The row must say so, otherwise the
-// diff silently compares two identities.
-func TestContractAudit_Amend_RecordsBothContractIDs(t *testing.T) {
-	db := setupTestDB(t)
-	restore := models.SetNow(time.Date(2026, 8, 11, 10, 0, 0, 0, time.UTC))
-	defer restore()
-
-	childService := createChildService(db)
-	handler := NewChildHandler(childService, createAuditService(db))
-
-	org := createTestOrganization(t, db, "Audit Amend")
-	sectionID := ensureTestSection(t, db, org.ID)
-	child := &models.Child{Person: models.Person{
-		OrganizationID: org.ID, FirstName: "Amend", LastName: "Child", Gender: "female",
-		Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)}}
-	db.Create(child)
-
-	// Started before today, so UpdateContract amends instead of editing.
-	past := &models.ChildContract{
-		ChildID: child.ID,
-		BaseContract: models.BaseContract{
-			Period:     models.Period{From: models.Today().AddDate(-1, 0, 0), To: nil},
-			SectionID:  sectionID,
-			Properties: models.ContractProperties{"care_type": "halbtag"},
-		},
-	}
-	if err := db.Create(past).Error; err != nil {
-		t.Fatalf("seed: %v", err)
-	}
-
-	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/children/:childId/contracts/:contractId", handler.UpdateContract)
-
-	body := models.ChildContractUpdateRequest{
-		Properties: models.ContractProperties{"care_type": "ganztag"},
-	}
-	w := performRequest(r, "PUT",
-		fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org.ID, child.ID, past.ID), body)
-	if w.Code != http.StatusOK {
-		t.Fatalf("update: status %d: %s", w.Code, w.Body.String())
-	}
-
-	var updated models.ChildContractResponse
-	parseResponse(t, w, &updated)
-	if updated.ID == past.ID {
-		t.Fatalf("expected amend to create a new contract, still got id %d", updated.ID)
-	}
-
-	changes := contractAuditChangesFor(t, db, updated.ID, "child_contract", "child_contract_update")
-	amended, ok := changes["amended"].(map[string]any)
-	if !ok {
-		t.Fatalf("expected an `amended` marker, got changes=%+v", changes)
-	}
-	if uint(amended["closed_contract_id"].(float64)) != past.ID {
-		t.Errorf("closed_contract_id = %v, want %d", amended["closed_contract_id"], past.ID)
-	}
-	if uint(amended["new_contract_id"].(float64)) != updated.ID {
-		t.Errorf("new_contract_id = %v, want %d", amended["new_contract_id"], updated.ID)
-	}
-}
-
 // A property-less contract must not gain a properties diff from an edit that
 // hands it an empty map.
 //
@@ -404,5 +343,153 @@ func TestContractAudit_EmployeeSalaryFields_Recorded(t *testing.T) {
 	}
 	if _, present := changes["payplan_id"]; present {
 		t.Errorf("payplan_id was not changed, should not be recorded: %+v", changes["payplan_id"])
+	}
+}
+
+// Deleting a contract must record what it contained. Unlike an update there is
+// no surviving row to diff against, so without this the care type, supplements
+// and period are gone for good.
+func TestContractAudit_Delete_RecordsSnapshot(t *testing.T) {
+	db := setupTestDB(t)
+	restore := models.SetNow(time.Date(2026, 8, 11, 10, 0, 0, 0, time.UTC))
+	defer restore()
+
+	childService := createChildService(db)
+	handler := NewChildHandler(childService, createAuditService(db))
+
+	org := createTestOrganization(t, db, "Audit Delete")
+	sectionID := ensureTestSection(t, db, org.ID)
+	child := &models.Child{Person: models.Person{
+		OrganizationID: org.ID, FirstName: "Delete", LastName: "Child", Gender: "female",
+		Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)}}
+	db.Create(child)
+
+	end := models.Today().AddDate(0, 6, 0)
+	contract := &models.ChildContract{
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period:     models.Period{From: models.Today().AddDate(0, 0, 1), To: &end},
+			SectionID:  sectionID,
+			Properties: models.ContractProperties{"care_type": "ganztag", "integration": "integration a"},
+		},
+	}
+	if err := db.Create(contract).Error; err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	r := setupTestRouter()
+	r.DELETE("/organizations/:orgId/children/:childId/contracts/:contractId", handler.DeleteContract)
+
+	w := performRequest(r, "DELETE",
+		fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org.ID, child.ID, contract.ID), nil)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("delete: status %d: %s", w.Code, w.Body.String())
+	}
+
+	row := testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+		Action:       models.AuditAction("child_contract_delete"),
+		ResourceType: "child_contract",
+		ResourceID:   contract.ID,
+	})
+	var details map[string]any
+	if err := json.Unmarshal([]byte(row.Details), &details); err != nil {
+		t.Fatalf("Details JSON parse: %v (raw=%q)", err, row.Details)
+	}
+	snap, ok := details["snapshot"].(map[string]any)
+	if !ok {
+		t.Fatalf("delete row carries no snapshot: %q", row.Details)
+	}
+
+	props, _ := snap["properties"].(map[string]any)
+	if props["care_type"] != "ganztag" {
+		t.Errorf("snapshot.properties.care_type = %v, want ganztag", props["care_type"])
+	}
+	if props["integration"] != "integration a" {
+		t.Errorf("snapshot must preserve the supplement, got %+v", props)
+	}
+	if snap["from"] == nil || snap["to"] == nil {
+		t.Errorf("snapshot must carry the period, got from=%v to=%v", snap["from"], snap["to"])
+	}
+	if snap["section_id"] == nil {
+		t.Error("snapshot must carry the section")
+	}
+}
+
+// An amend closed one contract and created another, but emitted a single
+// `_update` row against the NEW contract — claiming a row that was created had
+// been edited. It now emits the pair that actually happened.
+func TestContractAudit_Amend_EmitsUpdateAndCreatePair(t *testing.T) {
+	db := setupTestDB(t)
+	restore := models.SetNow(time.Date(2026, 8, 11, 10, 0, 0, 0, time.UTC))
+	defer restore()
+
+	childService := createChildService(db)
+	handler := NewChildHandler(childService, createAuditService(db))
+
+	org := createTestOrganization(t, db, "Audit AmendPair")
+	sectionID := ensureTestSection(t, db, org.ID)
+	child := &models.Child{Person: models.Person{
+		OrganizationID: org.ID, FirstName: "Pair", LastName: "Child", Gender: "male",
+		Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)}}
+	db.Create(child)
+
+	past := &models.ChildContract{
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period:     models.Period{From: models.Today().AddDate(-1, 0, 0), To: nil},
+			SectionID:  sectionID,
+			Properties: models.ContractProperties{"care_type": "halbtag"},
+		},
+	}
+	if err := db.Create(past).Error; err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	r := setupTestRouter()
+	r.PUT("/organizations/:orgId/children/:childId/contracts/:contractId", handler.UpdateContract)
+
+	w := performRequest(r, "PUT",
+		fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org.ID, child.ID, past.ID),
+		models.ChildContractUpdateRequest{Properties: models.ContractProperties{"care_type": "ganztag"}})
+	if w.Code != http.StatusOK {
+		t.Fatalf("update: status %d: %s", w.Code, w.Body.String())
+	}
+	var created models.ChildContractResponse
+	parseResponse(t, w, &created)
+	if created.ID == past.ID {
+		t.Fatalf("expected an amend; still contract %d", created.ID)
+	}
+
+	// Row 1: the CLOSED contract was updated — its `to` moved to yesterday.
+	closedChanges := contractAuditChangesFor(t, db, past.ID, "child_contract", "child_contract_update")
+	if closedChanges == nil {
+		t.Fatal("expected an update row against the closed contract")
+	}
+	if _, ok := closedChanges["to"]; !ok {
+		t.Errorf("the closed contract's row should record its new end date, got %+v", closedChanges)
+	}
+	amended, ok := closedChanges["amended"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected the pair to be linked via `amended`, got %+v", closedChanges)
+	}
+	if uint(amended["new_contract_id"].(float64)) != created.ID {
+		t.Errorf("new_contract_id = %v, want %d", amended["new_contract_id"], created.ID)
+	}
+
+	// Row 2: the successor was CREATED, not updated.
+	testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+		Action:       models.AuditAction("child_contract_create"),
+		ResourceType: "child_contract",
+		ResourceID:   created.ID,
+	})
+
+	// And there must be no update row claiming the new contract was edited.
+	var bogus int64
+	db.Model(&models.AuditLog{}).
+		Where("action = ? AND resource_type = ? AND resource_id = ?",
+			"child_contract_update", "child_contract", created.ID).
+		Count(&bogus)
+	if bogus != 0 {
+		t.Errorf("found %d update row(s) against the newly created contract %d; an amend creates it, it is not an edit", bogus, created.ID)
 	}
 }
