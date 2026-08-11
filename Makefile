@@ -292,7 +292,13 @@ screenshots:
 		{ echo "API not reachable on :8080 — run 'make dev' in another terminal first."; exit 1; }
 	@curl -sf http://localhost:3000 >/dev/null 2>&1 || \
 		{ echo "Frontend not reachable on :3000 — run 'make dev' in another terminal first."; exit 1; }
-	cd frontend && npx tsx ../website/scripts/capture-screenshots.ts
+	# NODE_PATH is required, not decorative: the script lives in website/scripts/,
+	# and Node resolves its imports by walking up from the *script's* directory —
+	# website/scripts/, website/, then the repo root — none of which contain
+	# node_modules. Without this it dies on "Cannot find module
+	# '@playwright/test'" even though the guard above just confirmed the package
+	# is installed under frontend/.
+	cd frontend && NODE_PATH="$$PWD/node_modules" npx tsx ../website/scripts/capture-screenshots.ts
 
 # =============================================================================
 # Documentation targets
