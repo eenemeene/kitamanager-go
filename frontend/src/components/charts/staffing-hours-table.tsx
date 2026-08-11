@@ -43,7 +43,9 @@ function formatCount(value: number): string {
 export function StaffingHoursTable({ data }: StaffingHoursTableProps) {
   const t = useTranslations('statistics');
 
-  const dataPoints = data.data_points ?? [];
+  // Memoised so the `?? []` fallback does not produce a fresh array on every
+  // render, which would invalidate the useMemo below that depends on it.
+  const dataPoints = useMemo(() => data.data_points ?? [], [data.data_points]);
 
   const computed = useMemo(() => {
     const required = dataPoints.map((dp) => dp.required_hours ?? 0);

@@ -32,7 +32,9 @@ function formatCurrencyCell(cents: number): string {
 export function BudgetTable({ data }: BudgetTableProps) {
   const t = useTranslations('statistics');
 
-  const dataPoints = data.data_points ?? [];
+  // Memoised so the `?? []` fallback does not produce a fresh array on every
+  // render, which would invalidate the useMemo hooks below that depend on it.
+  const dataPoints = useMemo(() => data.data_points ?? [], [data.data_points]);
 
   // Extract unique budget item names by category across all data points
   const { incomeItems, expenseItems } = useMemo(() => {

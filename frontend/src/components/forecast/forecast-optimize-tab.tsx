@@ -159,7 +159,8 @@ export function ForecastOptimizeTab({
       sections,
       maxPerSectionPerMonth,
       properties,
-      store.from,
+      // store.from is intentionally absent: contractStartMonth above is derived
+      // from it, and the callback only ever uses the month portion.
       store.to,
     ]
   );
