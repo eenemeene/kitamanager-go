@@ -470,7 +470,21 @@ func (h *ChildHandler) BatchUpdateContracts(c *gin.Context) {
 // @Router /api/v1/organizations/{orgId}/children/{childId}/contracts/{contractId} [delete]
 func (h *ChildHandler) DeleteContract(c *gin.Context) {
 	handleDeleteContract(c, "childId", h.contractAudit(), h.service.GetContractByID, h.service.DeleteContract,
-		func(r *models.ChildContractResponse) (uint, uint) { return r.ID, r.ChildID })
+		func(r *models.ChildContractResponse) (uint, uint) { return r.ID, r.ChildID },
+		childContractSnapshot)
+}
+
+// childContractSnapshot captures a child contract's fields for the audit row of
+// a deletion. Unlike an update, nothing survives to diff against afterwards, so
+// this is the only remaining record of the care type and supplements the
+// contract carried — the values that determined its funding.
+func childContractSnapshot(r *models.ChildContractResponse) map[string]any {
+	return map[string]any{
+		"from":       timeValue(r.From),
+		"to":         nullableTimeValue(r.To),
+		"section_id": r.SectionID,
+		"properties": r.Properties,
+	}
 }
 
 // ExportYAML godoc

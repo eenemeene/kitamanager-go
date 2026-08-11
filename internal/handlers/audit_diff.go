@@ -27,6 +27,18 @@ func auditUpdateWithChanges(c *gin.Context, svc *service.AuditService, resourceT
 		resourceType, id, name, c.ClientIP(), auditOrgIDFromContext(c), changes)
 }
 
+// auditDeleteWithSnapshot logs a resource deletion whose Details JSON carries a
+// `snapshot` of the record's fields as they were. Degrades to plain auditDelete
+// when the snapshot is empty.
+func auditDeleteWithSnapshot(c *gin.Context, svc *service.AuditService, resourceType string, id uint, name string, snapshot map[string]any) {
+	if len(snapshot) == 0 {
+		auditDelete(c, svc, resourceType, id, name)
+		return
+	}
+	svc.LogResourceDeleteWithSnapshot(c.Request.Context(), getUserID(c), getUserEmail(c),
+		resourceType, id, name, c.ClientIP(), auditOrgIDFromContext(c), snapshot)
+}
+
 // recordChange adds a `{field: {old, new}}` entry to `m` when before
 // and after differ. Generic on any comparable type — covers strings,
 // ints, bools, and pointer values used in DTOs. Use recordTimeChange
@@ -72,6 +84,12 @@ func nullableTimeValue(t *time.Time) any {
 	if t == nil {
 		return nil
 	}
+	return t.UTC().Format(time.RFC3339)
+}
+
+// timeValue renders a time.Time the same way nullableTimeValue renders its
+// pointer form, so audit snapshots and diffs agree on the wire format.
+func timeValue(t time.Time) any {
 	return t.UTC().Format(time.RFC3339)
 }
 

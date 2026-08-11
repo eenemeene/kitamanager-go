@@ -499,6 +499,34 @@ func (s *AuditService) LogResourceDelete(ctx context.Context, actorID uint, acto
 	})
 }
 
+// LogResourceDeleteWithSnapshot is LogResourceDelete plus a `snapshot` of the
+// record's field values as they were at deletion, in the Details JSON.
+//
+// Updates can be reconstructed from the surviving row plus the `changes` diff.
+// A delete cannot: once the row is gone, "contract 42 was deleted" is all that
+// is left, and for a contract that means the care type, the funding supplements
+// and the period are unrecoverable. The snapshot is the only record of what the
+// deletion removed.
+func (s *AuditService) LogResourceDeleteWithSnapshot(ctx context.Context, actorID uint, actorEmail, resourceType string, resourceID uint, resourceName, ipAddress string, orgID *uint, snapshot map[string]any) {
+	if len(snapshot) == 0 {
+		s.LogResourceDelete(ctx, actorID, actorEmail, resourceType, resourceID, resourceName, ipAddress, orgID)
+		return
+	}
+
+	details := map[string]any{"resource_name": resourceName, "snapshot": snapshot}
+	s.log(ctx, &models.AuditLog{
+		UserID:         &actorID,
+		UserEmail:      actorEmail,
+		Action:         models.AuditAction(resourceType + "_delete"),
+		ResourceType:   resourceType,
+		ResourceID:     &resourceID,
+		OrganizationID: orgID,
+		IPAddress:      ipAddress,
+		Details:        mustMarshalJSON(details),
+		Success:        true,
+	})
+}
+
 // LogResourcePurged logs a hard-delete (purge) event, distinct from
 // the soft-delete path that LogResourceDelete emits. Used by the
 // retention TTL cleanup job and admin-initiated Art. 17 erasure.

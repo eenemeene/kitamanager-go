@@ -468,7 +468,25 @@ func (h *EmployeeHandler) BatchUpdateContracts(c *gin.Context) {
 // @Router /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/{contractId} [delete]
 func (h *EmployeeHandler) DeleteContract(c *gin.Context) {
 	handleDeleteContract(c, "employeeId", h.contractAudit(), h.service.GetContractByID, h.service.DeleteContract,
-		func(r *models.EmployeeContractResponse) (uint, uint) { return r.ID, r.EmployeeID })
+		func(r *models.EmployeeContractResponse) (uint, uint) { return r.ID, r.EmployeeID },
+		employeeContractSnapshot)
+}
+
+// employeeContractSnapshot captures an employee contract's fields for the audit
+// row of a deletion — including the salary-bearing ones, which are otherwise
+// unrecoverable once the row is gone.
+func employeeContractSnapshot(r *models.EmployeeContractResponse) map[string]any {
+	return map[string]any{
+		"from":           timeValue(r.From),
+		"to":             nullableTimeValue(r.To),
+		"section_id":     r.SectionID,
+		"staff_category": r.StaffCategory,
+		"grade":          r.Grade,
+		"step":           r.Step,
+		"weekly_hours":   r.WeeklyHours,
+		"payplan_id":     r.PayPlanID,
+		"properties":     r.Properties,
+	}
 }
 
 // ExportYAML godoc

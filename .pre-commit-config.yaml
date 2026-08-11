@@ -50,9 +50,13 @@ repos:
       # annotation change makes them stale too. CI checks this in the Web Lint
       # job; without it here, a green local commit still fails CI — which is
       # exactly how it was discovered.
+      # Bootstraps its own dependency, like swagger-check does with swag:
+      # openapi-typescript lives in frontend/node_modules, and a fresh worktree
+      # has none — without the install the check fails claiming the types are
+      # stale when the real problem is that the generator could not run.
       - id: api-types-check
         name: generated API types check
-        entry: make api-types-check
+        entry: bash -c 'test -d frontend/node_modules || (cd frontend && npm ci) && make api-types-check'
         language: system
         types: [go]
         pass_filenames: false

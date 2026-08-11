@@ -77,9 +77,15 @@ Einige Update-Aktionen führen in `details` eine `changes`-Map, die jedes geänd
 | `child_contract_update` | `from`, `to`, `section_id`, `properties` (Betreuungsart und alle Zuschläge) |
 | `employee_contract_update` | `from`, `to`, `section_id`, `staff_category`, `grade`, `step`, `weekly_hours`, `payplan_id`, `properties` |
 
-`to` erscheint als `null`, solange ein Vertrag läuft. Löst ein Vertrags-Update einen Folgevertrag aus — beim Bearbeiten eines Vertrags, der vor heute begann, wird dieser beendet und ein neuer angelegt — enthält `changes` zusätzlich `amended` mit `closed_contract_id` und `new_contract_id`, weil die Ressourcen-ID der Zeile auf den *neuen* Vertrag zeigt.
+`to` erscheint als `null`, solange ein Vertrag läuft.
 
-Andere Ressourcen (Budgetposten, Förder-Konfigurationen) erfassen die Änderung ohne Feldwerte.
+**Ein Folgevertrag erzeugt zwei Zeilen, nicht eine.** Beim Bearbeiten eines Vertrags, der vor heute begann, wird dieser beendet und ein neuer angelegt — das Protokoll hält genau das fest: ein `_update` auf dem **beendeten** Vertrag (dessen `to` auf gestern gesetzt wurde) und ein `_create` auf dem Folgevertrag. Die `changes` der Update-Zeile enthalten `amended` mit `closed_contract_id` und `new_contract_id`, damit sich beide Zeilen einander zuordnen lassen. Ein Filter auf eine Vertrags-ID zeigt daher nur das Ereignis dieses Vertrags.
+
+### Snapshots beim Löschen
+
+`child_contract_delete` und `employee_contract_delete` führen in `details` einen `snapshot` — die Feldwerte des Vertrags im Moment der Löschung. Eine Änderung lässt sich aus der verbliebenen Zeile plus ihrem Diff rekonstruieren, ein gelöschter Vertrag nicht: der Snapshot ist der einzige Nachweis der Betreuungsart, der Zuschläge und des Zeitraums.
+
+Andere Ressourcen (Budgetposten, Förder-Konfigurationen) erfassen die Änderung ohne Feldwerte, und ihre Löschungen führen keinen Snapshot.
 
 ## Hinweise
 

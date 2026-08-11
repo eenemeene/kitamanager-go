@@ -77,9 +77,15 @@ Some update actions carry a `changes` map in `details`, listing each modified fi
 | `child_contract_update` | `from`, `to`, `section_id`, `properties` (care type and every supplement) |
 | `employee_contract_update` | `from`, `to`, `section_id`, `staff_category`, `grade`, `step`, `weekly_hours`, `payplan_id`, `properties` |
 
-`to` is rendered as `null` when a contract is ongoing. For contract updates that trigger an amend — editing a contract that started before today closes it and creates a successor — `changes` also carries `amended` with `closed_contract_id` and `new_contract_id`, because the row's own resource id is the *new* contract.
+`to` is rendered as `null` when a contract is ongoing.
 
-Other resources (budget items, funding configurations) record the fact of the update without field values.
+**An amend produces two rows, not one.** Editing a contract that started before today closes it and creates a successor, so the log records what happened: a `_update` on the contract that was **closed** (its `to` moved to yesterday), and a `_create` on the successor. The update row's `changes` carries `amended` with `closed_contract_id` and `new_contract_id` so the pair can be correlated. Filtering by one contract id therefore shows only that contract's own event.
+
+### Deletion snapshots
+
+`child_contract_delete` and `employee_contract_delete` carry a `snapshot` in `details` — the contract's field values as they were when it was deleted. An update can be reconstructed from the surviving row plus its diff; a deleted contract cannot, so this is the only record of the care type, supplements and period it carried.
+
+Other resources (budget items, funding configurations) record the fact of the update without field values, and their deletions carry no snapshot.
 
 ## Notes
 
