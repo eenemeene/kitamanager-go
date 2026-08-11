@@ -1,6 +1,6 @@
 .PHONY: build lint test clean ci dev dev-fresh \
 	api-build api-run api-lint api-test-all api-test-unit api-test-integration api-test-contract api-test-fuzz api-test-coverage api-test-backup api-test-race \
-	web-install web-dev web-build web-lint web-format web-format-check web-type-check web-test web-test-coverage web-test-e2e web-test-e2e-fresh web-test-e2e-demo \
+	web-install web-dev web-build web-lint web-format web-format-check web-type-check web-test web-test-coverage web-test-e2e web-test-e2e-fresh web-test-e2e-demo screenshots \
 	docs schema-docs swagger-docs swagger-check api-types api-types-check docker-up docker-down docker-rebuild docker-reset install-hooks uninstall-hooks pre-commit \
 	report-pdf-build report-pdf
 
@@ -245,6 +245,26 @@ web-test-e2e-demo:
 # Install Playwright browsers
 web-playwright-install:
 	cd frontend && npx playwright install --with-deps
+
+# Recapture every website screenshot (all 44, in both en and de).
+#
+# Needs a running seeded dev environment — start `make dev` in another
+# terminal first. The script logs in as the seed admin, walks each screen at
+# :3000, and overwrites website/static/images/screenshots/{en,de}/.
+#
+# tsx is fetched on demand by npx and is deliberately not a frontend
+# dependency, so the first run may pause to download it.
+#
+# The screenshots carry a version watermark, so recapture after any UI change
+# that alters labels or layout — otherwise the docs cite a build nobody runs.
+screenshots:
+	@test -d frontend/node_modules/@playwright/test || \
+		{ echo "frontend deps missing — run 'make web-install' first (the script imports @playwright/test)."; exit 1; }
+	@curl -sf http://localhost:8080/api/v1/health >/dev/null 2>&1 || \
+		{ echo "API not reachable on :8080 — run 'make dev' in another terminal first."; exit 1; }
+	@curl -sf http://localhost:3000 >/dev/null 2>&1 || \
+		{ echo "Frontend not reachable on :3000 — run 'make dev' in another terminal first."; exit 1; }
+	cd frontend && npx tsx ../website/scripts/capture-screenshots.ts
 
 # =============================================================================
 # Documentation targets

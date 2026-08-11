@@ -11,7 +11,7 @@ Ein Kind erscheint auf dem Dashboard unter „Kinder ohne Gutscheinnummer“, od
 2. Pro Zeile die Gutscheinnummer vom Papier-Gutschein in das Inline-Eingabefeld einfügen.
 3. **Eingabe** drücken (oder das Speichern-Symbol klicken). Das Kind verschwindet sofort aus der Warn-Liste.
 
-Wenn das Dashboard einen Namens-Vorschlag macht (der Bescheid nennt „Müller, Maria“, Sie hatten „Maria Mueller“ eingegeben), erscheint eine **Vorschlag übernehmen**-Schaltfläche. Damit gleichen Sie die Namen mit einem Klick an.
+Wenn das Dashboard einen Namens-Vorschlag macht (der Bescheid nennt „Müller, Maria“, Sie hatten „Maria Mueller“ eingegeben), erscheint eine Schaltfläche **Treffer übernehmen**. Damit gleichen Sie die Namen mit einem Klick an.
 
 ## Weiteren Gutschein hinzufügen (Verlängerung oder Korrektur)
 

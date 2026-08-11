@@ -51,6 +51,7 @@ Das `Makefile` des Repositories ist der maßgebliche Einstiegspunkt für Build, 
 | `make web-test-e2e-headed` | Wie `web-test-e2e`, aber im sichtbaren Browser zum Live-Debugging. |
 | `make web-test-e2e-demo` | Playwright im Headed-Modus mit Slow-Motion und Video-Aufzeichnung für Demos. |
 | `make web-playwright-install` | Installiert Playwright-Browser. |
+| `make screenshots` | Nimmt alle 44 Website-Screenshots in beiden Sprachen neu auf, nach `website/static/images/screenshots/{en,de}/`. Setzt ein laufendes `make dev` in einem zweiten Terminal voraus; bricht mit einer Meldung ab, wenn API, Frontend oder die Frontend-Abhängigkeiten fehlen. |
 
 ## Dokumentation
 

@@ -11,7 +11,7 @@ A child shows up under "Children Without Vouchers" on the dashboard, or you got 
 2. For each row, paste the Gutscheinnummer from the paper Kita-Gutschein into the inline input.
 3. Press **Enter** (or click the save icon). The child immediately drops out of the warning list.
 
-If the dashboard suggests a name match (the bill referenced "Müller, Maria" but you entered "Maria Mueller"), an **Accept suggestion** button appears next to the suggested rename. Use it to align the names in one click.
+If the dashboard suggests a name match (the bill referenced "Müller, Maria" but you entered "Maria Mueller"), a **Use this match** button appears next to the suggested rename. Use it to align the names in one click.
 
 ## Add another voucher (renewal or correction)
 

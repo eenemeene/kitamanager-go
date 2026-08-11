@@ -51,6 +51,7 @@ The repo's `Makefile` is the canonical entry point for build, test, and tooling 
 | `make web-test-e2e-headed` | Same as `web-test-e2e` but in a headed browser for live debugging. |
 | `make web-test-e2e-demo` | Playwright in headed mode with slow motion + video recording for demos. |
 | `make web-playwright-install` | Install Playwright browsers. |
+| `make screenshots` | Recapture all 44 website screenshots in both languages into `website/static/images/screenshots/{en,de}/`. Needs `make dev` running in another terminal; fails fast with a message if the API, the frontend, or the frontend deps are missing. |
 
 ## Documentation
 
