@@ -250,3 +250,159 @@ func TestContractAudit_Amend_RecordsBothContractIDs(t *testing.T) {
 		t.Errorf("new_contract_id = %v, want %d", amended["new_contract_id"], updated.ID)
 	}
 }
+
+// A property-less contract must not gain a properties diff from an edit that
+// hands it an empty map.
+//
+// Note this passes even without recordPropertiesChange's nil-vs-empty
+// short-circuit, because the response DTO carries `properties,omitempty` so an
+// empty map round-trips as nil and DeepEqual already reports equality. The
+// short-circuit itself is guarded directly in
+// TestRecordPropertiesChange (audit_diff_helpers_test.go). This test covers the
+// end-to-end behaviour a user sees.
+func TestContractAudit_NilVsEmptyProperties_NotAChange(t *testing.T) {
+	db := setupTestDB(t)
+	restore := models.SetNow(time.Date(2026, 8, 11, 10, 0, 0, 0, time.UTC))
+	defer restore()
+
+	childService := createChildService(db)
+	handler := NewChildHandler(childService, createAuditService(db))
+
+	org := createTestOrganization(t, db, "Audit NilEmpty")
+	sectionID := ensureTestSection(t, db, org.ID)
+	child := &models.Child{Person: models.Person{
+		OrganizationID: org.ID, FirstName: "NilEmpty", LastName: "Child", Gender: "female",
+		Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)}}
+	db.Create(child)
+
+	// No properties at all, and starting tomorrow so the update stays in place.
+	contract := &models.ChildContract{
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period:    models.Period{From: models.Today().AddDate(0, 0, 1), To: nil},
+			SectionID: sectionID,
+		},
+	}
+	if err := db.Create(contract).Error; err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	r := setupTestRouter()
+	r.PUT("/organizations/:orgId/children/:childId/contracts/batch", handler.BatchUpdateContracts)
+
+	// Hand it an explicitly empty map while moving a date.
+	newTo := models.Today().AddDate(0, 3, 0)
+	body := models.ChildContractBatchUpdateRequest{
+		Updates: []models.ChildContractBatchUpdateEntry{
+			{ID: contract.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{
+				To:         &newTo,
+				Properties: models.ContractProperties{},
+			}},
+		},
+	}
+	w := performRequest(r, "PUT",
+		fmt.Sprintf("/organizations/%d/children/%d/contracts/batch", org.ID, child.ID), body)
+	if w.Code != http.StatusOK {
+		t.Fatalf("batch update: status %d: %s", w.Code, w.Body.String())
+	}
+
+	changes := contractAuditChangesFor(t, db, contract.ID, "child_contract", "child_contract_update")
+	if _, present := changes["properties"]; present {
+		t.Errorf("nil -> empty must not be recorded as a properties change, got %+v", changes["properties"])
+	}
+	// The date move is still recorded, so this is not passing by writing nothing.
+	if _, ok := changes["to"]; !ok {
+		t.Errorf("expected the date move to be recorded, got changes=%+v", changes)
+	}
+}
+
+// Employee contracts diff five fields the child ones do not: staff_category,
+// grade, step, weekly_hours and payplan_id. employeeContractChanges was wired up
+// without a test — this covers it.
+func TestContractAudit_EmployeeSalaryFields_Recorded(t *testing.T) {
+	db := setupTestDB(t)
+	restore := models.SetNow(time.Date(2026, 8, 11, 10, 0, 0, 0, time.UTC))
+	defer restore()
+
+	employeeService := createEmployeeService(db)
+	handler := NewEmployeeHandler(employeeService, createAuditService(db))
+
+	org := createTestOrganization(t, db, "Audit Emp Salary")
+	sectionID := ensureTestSection(t, db, org.ID)
+	payPlanID := ensureTestPayPlan(t, db, org.ID)
+	employee := &models.Employee{Person: models.Person{
+		OrganizationID: org.ID, FirstName: "Salary", LastName: "Employee", Gender: "male",
+		Birthdate: time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC)}}
+	db.Create(employee)
+
+	contract := &models.EmployeeContract{
+		EmployeeID: employee.ID,
+		BaseContract: models.BaseContract{
+			Period:     models.Period{From: models.Today().AddDate(0, 0, 1), To: nil},
+			SectionID:  sectionID,
+			Properties: models.ContractProperties{"note": "before"},
+		},
+		StaffCategory: "qualified",
+		Grade:         "S8a",
+		Step:          2,
+		WeeklyHours:   30,
+		PayPlanID:     payPlanID,
+	}
+	if err := db.Create(contract).Error; err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	r := setupTestRouter()
+	r.PUT("/organizations/:orgId/employees/:employeeId/contracts/batch", handler.BatchUpdateContracts)
+
+	newGrade := "S8b"
+	newStep := 3
+	newHours := 35.0
+	newCategory := "supplementary"
+	body := models.EmployeeContractBatchUpdateRequest{
+		Updates: []models.EmployeeContractBatchUpdateEntry{
+			{ID: contract.ID, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{
+				Grade:         &newGrade,
+				Step:          &newStep,
+				WeeklyHours:   &newHours,
+				StaffCategory: &newCategory,
+			}},
+		},
+	}
+	w := performRequest(r, "PUT",
+		fmt.Sprintf("/organizations/%d/employees/%d/contracts/batch", org.ID, employee.ID), body)
+	if w.Code != http.StatusOK {
+		t.Fatalf("batch update: status %d: %s", w.Code, w.Body.String())
+	}
+
+	changes := contractAuditChangesFor(t, db, contract.ID, "employee_contract", "employee_contract_update")
+	if changes == nil {
+		t.Fatal("expected a changes map for an employee contract update")
+	}
+
+	for _, tc := range []struct {
+		field     string
+		old, want any
+	}{
+		{"grade", "S8a", "S8b"},
+		{"step", float64(2), float64(3)},
+		{"weekly_hours", float64(30), float64(35)},
+		{"staff_category", "qualified", "supplementary"},
+	} {
+		old, nw := oldNew(t, changes, tc.field)
+		if old != tc.old {
+			t.Errorf("%s.old = %v (%T), want %v", tc.field, old, old, tc.old)
+		}
+		if nw != tc.want {
+			t.Errorf("%s.new = %v (%T), want %v", tc.field, nw, nw, tc.want)
+		}
+	}
+
+	// Untouched fields must not appear — the salary diff should be readable.
+	if _, present := changes["properties"]; present {
+		t.Errorf("properties were not changed, should not be recorded: %+v", changes["properties"])
+	}
+	if _, present := changes["payplan_id"]; present {
+		t.Errorf("payplan_id was not changed, should not be recorded: %+v", changes["payplan_id"])
+	}
+}
