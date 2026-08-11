@@ -18,7 +18,7 @@ Wenn Bescheid und KitaManager nicht übereinstimmen, fällt jedes nicht passende
 ### Fehlt in Abrechnung
 
 1. Öffnen Sie die Detailseite des Kindes in KitaManager.
-2. Bestätigen Sie, dass die Gutscheinnummer mit dem Papier-Gutschein übereinstimmt. Tippfehler hier verursachen >90 % der „Fehlt"-Fälle.
+2. Bestätigen Sie, dass die Gutscheinnummer mit dem Papier-Gutschein übereinstimmt. Tippfehler hier verursachen >90 % der „Fehlt“-Fälle.
 3. Wenn der Gutschein neu ist, geben Sie dem Bezirk einen Abrechnungszyklus, um aufzuholen.
 4. Wenn die Gutscheinnummer korrekt und nicht neu ist, kontaktieren Sie das Bezirks-Jugendamt: möglicherweise wurde die Aufnahme nicht verarbeitet.
 
@@ -39,10 +39,10 @@ Wenn Bescheid und KitaManager nicht übereinstimmen, fällt jedes nicht passende
 
 | Symptom | Wahrscheinliche Ursache | Wo nachsehen |
 |---|---|---|
-| „Datei konnte nicht geparst werden" | Excel-Layout-Drift oder falscher Dateityp | Spalten-Map des Parsers in `internal/isbj/parse.go`; prüfen, ob die Datei wirklich der Bescheid ist |
-| „Keine Bescheide für diesen Monat gefunden" | Upload erzeugte einen anderen Zeitraum als erwartet | Bescheid-Zeitraum-Daten auf der Abrechnungs-Seite |
-| Viele „Fehlt in Abrechnung"-Einträge | Gutscheinnummern matchen nicht | Kind-Detailseiten — siehe Schritte oben |
-| Viele „Zusätzlich in Abrechnung"-Einträge | Kinder sind gegangen, Senat hat den Abgang nicht verarbeitet | Bezirks-Jugendamt |
+| Die Datei wird beim Hochladen abgelehnt | Excel-Layout-Drift oder falscher Dateityp | Spalten-Map des Parsers in `internal/isbj/parse.go`; prüfen, ob die Datei wirklich der Bescheid ist |
+| „Keine Bescheide für diesen Monat gefunden“ | Upload erzeugte einen anderen Zeitraum als erwartet | Bescheid-Zeitraum-Daten auf der Abrechnungs-Seite |
+| Viele „Fehlt in Abrechnung“-Einträge | Gutscheinnummern matchen nicht | Kind-Detailseiten — siehe Schritte oben |
+| Viele „Zusätzlich in Abrechnung“-Einträge | Kinder sind gegangen, Senat hat den Abgang nicht verarbeitet | Bezirks-Jugendamt |
 | Anhaltende Gesamt-Drift über viele Kinder | Fördersätze veraltet | [Berliner Fördersätze aktualisieren](../../operate/update-government-funding-rates/) |
 | Gesamt passt, aber Eigenschafts-Aufschlüsselung weicht ab | Zuschlag nicht synchron | Vertrags-Zuschläge des Kindes vs. Papier-Gutschein |
 
@@ -50,4 +50,4 @@ Wenn Bescheid und KitaManager nicht übereinstimmen, fällt jedes nicht passende
 
 - Nach der Korrektur die Abrechnung erneut hochladen. Der Vergleich aktualisiert sich, und die Zeile sollte matchen.
 - Für die Berechnung siehe [Wie Vertragseigenschaften die Förderung bestimmen](../../../explanation/how-contract-properties-determine-funding/) und [Wie die Förderung in Berlin funktioniert](../../../explanation/how-funding-works-in-berlin/).
-- Für die Parsing-Pipeline siehe [Der ISBJ-Abgleich](../../../explanation/the-isbj-reconciliation-flow/).
+- Zum Ablauf beim Einlesen siehe [Der ISBJ-Abgleich](../../../explanation/the-isbj-reconciliation-flow/).

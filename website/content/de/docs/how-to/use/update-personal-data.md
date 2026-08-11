@@ -34,13 +34,13 @@ Das Geburtsdatum des Kindes bestimmt, welcher Altersbereichs-Eintrag aus der Fö
 Vor dem Speichern einer Geburtsdatums-Änderung:
 
 - Mit dem Kita-Gutschein-Papier abgleichen. Der Abgleich-Algorithmus für ISBJ sieht nur Monat und Jahr, ein kleiner Tippfehler beim Tag bricht den Abgleich meist nicht — ein falscher Monat oder ein falsches Jahr schon.
-- Prüfen, ob das Kind nun nahe an der Schuleinschulungs-Grenze („Muss-Kind") für Ihr Bundesland liegt. KitaManager füllt das Vertragsende-Datum aus Geburtsdatum + Bundesland automatisch aus, wenn ein neuer Vertrag angelegt wird; **bereits angelegte Verträge haben weiterhin das alte Enddatum** — diese durchsehen und ggf. anpassen.
+- Prüfen, ob das Kind nun nahe an der Schuleinschulungs-Grenze („Muss-Kind“) für Ihr Bundesland liegt. KitaManager füllt das Vertragsende-Datum aus Geburtsdatum + Bundesland automatisch aus, wenn ein neuer Vertrag angelegt wird; **bereits angelegte Verträge haben weiterhin das alte Enddatum** — diese durchsehen und ggf. anpassen.
 
 Bei einer Mitarbeiter:in beeinflusst das Geburtsdatum nur die Anzeige — Gehalt und Personalplanung sind nicht betroffen.
 
 ## Achtung — Namensänderungen können den ISBJ-Auto-Abgleich brechen
 
-Wenn der nächste ISBJ-Bescheid „Müller, Maria" enthält und Sie den Eintrag in „Mueller, Maria" umbenannt haben, fällt der Auto-Abgleich auf die Gutscheinnummer zurück. Das Dashboard meldet das als *Namens-Vorschlag* auf der Karte **Kinder ohne Gutschein** oder im Bescheid-Vergleich — Vorschlag annehmen, um die Namen wieder anzugleichen.
+Wenn der nächste ISBJ-Bescheid „Müller, Maria“ enthält und Sie den Eintrag in „Mueller, Maria“ umbenannt haben, fällt der Auto-Abgleich auf die Gutscheinnummer zurück. Das Dashboard meldet das als *Namens-Vorschlag* auf der Karte **Kinder ohne Gutschein** oder im Bescheid-Vergleich — Vorschlag annehmen, um die Namen wieder anzugleichen.
 
 Vermeiden Sie kreative Schreibweisen. Spiegeln Sie das Kita-Gutschein-Papier exakt, inkl. Bindestriche, Umlaute und Doppelnamen.
 

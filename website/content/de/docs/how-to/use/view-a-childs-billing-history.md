@@ -16,5 +16,5 @@ Die Seite zeigt eine Zeile pro Monat, mit dem berechneten Betrag, dem abgerechne
 ## Hinweise
 
 - Es erscheinen nur Monate, für die ein Bescheid hochgeladen wurde. Wenn ein Kind im Januar startete und der älteste Bescheid vom März ist, fehlen Januar und Februar — sie werden nicht mit Null aufgefüllt.
-- Das Kind muss eine Gutscheinnummer haben, damit überhaupt etwas matcht. Bei vielen „Fehlt in Abrechnung" zuerst [Kita-Gutschein-Nummer zuweisen](../assign-a-voucher/) prüfen.
+- Das Kind muss eine Gutscheinnummer haben, damit überhaupt etwas matcht. Bei vielen „Fehlt in Abrechnung“ zuerst [Kita-Gutschein-Nummer zuweisen](../assign-a-voucher/) prüfen.
 - Um stattdessen in einen einzelnen Bescheid hineinzuzoomen, öffnen Sie ihn von der **Abrechnungen**-Seite aus.

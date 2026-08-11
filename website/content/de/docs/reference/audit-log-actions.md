@@ -22,7 +22,7 @@ Jeder Audit-Log-Eintrag trägt ein `action`-Feld. Das sind die möglichen Werte.
 | `factor_enrolled` | TOTP- oder WebAuthn-Faktor aktiviert. |
 | `factor_deleted` | Nutzer:in hat einen eigenen Faktor entfernt. |
 | `factor_admin_deleted` | Admin hat den Faktor einer Nutzer:in entfernt. |
-| `factor_label_updated` | Faktor umbenannt (z. B. „Yubikey-blau"). |
+| `factor_label_updated` | Faktor umbenannt (z. B. „Yubikey-blau“). |
 | `factor_activation_locked` | Zu viele falsche Codes beim Einrichten. |
 | `backup_codes_regenerated` | Nutzer:in hat Wiederherstellungscodes neu erzeugt. |
 | `mfa_challenge_succeeded` | TOTP-/Backup-Code-/WebAuthn-Schritt bestanden. |

@@ -26,7 +26,7 @@ Für konto-bezogene Verwaltung (andere Nutzer:innen verwalten, Organisationseins
 
 ## Förderung und Abrechnungen
 
-- [ISBJ-Abrechnung hochladen](upload-an-isbj-bill/)
+- [Senatsabrechnung hochladen](upload-an-isbj-bill/)
 - [Abweichung in einer Abrechnung untersuchen](investigate-a-bill-discrepancy/)
 - [Abrechnungshistorie eines Kindes ansehen](view-a-childs-billing-history/)
 

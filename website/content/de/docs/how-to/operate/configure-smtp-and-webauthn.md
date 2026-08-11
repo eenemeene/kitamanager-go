@@ -29,7 +29,7 @@ WEBAUTHN_RP_NAME=KitaManager — Kita Sonnenschein    # in der Browser-Aufforder
 WEBAUTHN_ORIGINS=https://kitamanager.example.org    # voller Origin, komma-getrennt für mehrere
 ```
 
-Nach Neustart funktioniert die **Sicherheitsschlüssel hinzufügen**-Schaltfläche auf der Einstellungsseite. Wenn sie still scheitert oder der Browser sagt „der Sicherheitsschlüssel ist für diese Seite nicht gültig", passt die RP ID nicht zur URL.
+Nach Neustart funktioniert die **Sicherheitsschlüssel hinzufügen**-Schaltfläche auf der Einstellungsseite. Wenn sie still scheitert oder der Browser sagt „der Sicherheitsschlüssel ist für diese Seite nicht gültig“, passt die RP ID nicht zur URL.
 
 ## Hinweise
 

@@ -1,9 +1,9 @@
 ---
-title: Was die Personalkennzahl bedeutet
+title: Was der Personalschlüssel bedeutet
 weight: 3
 ---
 
-KitaManagers Zahl zur **Personalabdeckung** ist eine ein-Zeilen-Zusammenfassung von „habe ich genug Personal für die Kinder, die ich habe?". Diese Seite erklärt, was tatsächlich berechnet wird.
+KitaManagers Zahl zur **Personalabdeckung** ist eine ein-Zeilen-Zusammenfassung von „habe ich genug Personal für die Kinder, die ich habe?“. Diese Seite erklärt, was tatsächlich berechnet wird.
 
 ## Die zwei Seiten der Gleichung
 

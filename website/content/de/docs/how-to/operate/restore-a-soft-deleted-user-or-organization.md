@@ -6,7 +6,7 @@ weight: 8
 Sie haben eine Nutzer:in (oder Organisation) gelöscht und brauchen sie zurück. Möglich — KitaManager **soft-deleted** Nutzer:innen und Organisationen, die Zeile ist also noch in der Datenbank, nur ausgeblendet.
 
 {{< callout type="warning" >}}
-Es gibt heute **keine UI und keinen API-Endpunkt** für Wiederherstellung. Dieses Rezept erfordert direkten Datenbankzugriff. Die in einigen Kommentaren erwähnte „Admin-Trash-View" ist geplant, aber noch nicht umgesetzt.
+Es gibt heute **keine UI und keinen API-Endpunkt** für Wiederherstellung. Dieses Rezept erfordert direkten Datenbankzugriff. Die in einigen Kommentaren erwähnte „Admin-Trash-View“ ist geplant, aber noch nicht umgesetzt.
 {{< /callout >}}
 
 ## Zeile finden

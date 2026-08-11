@@ -42,7 +42,7 @@ Alle erforderlichen oder fehlerhaften Env-Vars sind dort aufgeführt. Mit den Re
 
 ## Erwartete Ausfallzeit
 
-Die API ist nicht verfügbar von „alter Container stoppt" bis „neuer Container hat Migration abgeschlossen und Health-Check besteht". Für die meisten Aktualisierungen sind das Sekunden. Eine Schema-Migration auf einer großen Tabelle (selten) kann Minuten dauern.
+Die API ist nicht verfügbar von „alter Container stoppt“ bis „neuer Container hat Migration abgeschlossen und Health-Check besteht“. Für die meisten Aktualisierungen sind das Sekunden. Eine Schema-Migration auf einer großen Tabelle (selten) kann Minuten dauern.
 
 ## Wenn eine Migration scheitert
 

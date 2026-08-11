@@ -7,20 +7,31 @@ Sie wollen ein Kind von einem Bereich in einen anderen verschieben (z. B. weil e
 
 ## Schneller Weg: Drag-and-Drop
 
+{{< screenshot src="/images/screenshots/sections.png" alt="Bereiche-Ansicht mit einer Spalte pro Bereich" caption="Jeder Bereich ist eine Spalte. Die Karte des Kindes in die Zielspalte ziehen." >}}
+
 1. Klicken Sie in der Seitenleiste auf **Bereiche**.
 2. Jeder Bereich ist eine Spalte. Greifen Sie die Karte des Kindes und ziehen Sie sie in die Zielspalte.
-3. Loslassen. KitaManager legt einen neuen Vertrag im Zielbereich mit Beginn heute an und beendet den alten Vertrag mit Bis-Datum gestern.
+3. Loslassen. KitaManager beendet den laufenden Vertrag mit Bis-Datum **gestern** und legt einen neuen Vertrag im Zielbereich mit Beginn **heute** an. Die Historie bleibt damit erhalten.
 
-## Manueller Weg: Vertrag bearbeiten
+Passt das Alter des Kindes nicht in den Zielbereich, verschiebt KitaManager es trotzdem, zeigt aber eine Warnung.
 
-Wenn Sie ein bestimmtes Wechseldatum brauchen (nicht „heute"):
+### Zwei Ausnahmen
 
-1. Öffnen Sie die Detailseite des Kindes.
-2. Beenden Sie den aktuellen Vertrag, indem Sie sein **Bis**-Datum setzen.
-3. Klicken Sie auf **Vertrag erstellen** und setzen Sie **Von** auf den Folgetag, mit dem neuen Bereich.
+- **Der Vertrag beginnt heute oder später.** Dann wird er direkt geändert, ohne neuen Vertrag — es gibt noch keine Vergangenheit zu bewahren.
+- **Der Vertrag ist schon beendet** (Bis-Datum in der Vergangenheit). Dann lehnt KitaManager die Änderung ab. Legen Sie in diesem Fall über **Neuer Vertrag** einen Vertrag im Zielbereich an, statt zu ziehen.
+
+## Manueller Weg: für ein bestimmtes Wechseldatum
+
+Wenn der Wechsel nicht heute gilt (nicht „heute“), sondern zu einem geplanten Datum:
+
+1. Öffnen Sie das Kind über die **Kinder**-Liste und klicken Sie auf das **Verlaufs**-Symbol, um die Vertragshistorie zu öffnen.
+2. Suchen Sie den **aktiven** Vertrag, klicken Sie auf den **Stift** und setzen Sie **Bis** auf den Tag vor dem Wechsel. **Speichern**.
+3. Klicken Sie auf **Neuer Vertrag**, setzen Sie **Von** auf das Wechseldatum und wählen Sie den neuen **Bereich**. **Speichern**.
+
+Liegt das Wechseldatum in der Vergangenheit, funktioniert nur dieser Weg — siehe den Hinweis zu rückwirkenden Änderungen in [Betreuungsvertrag eines Kindes aktualisieren](../update-child-contract/).
 
 ## Hinweise
 
-- Drag-and-Drop ist das richtige Werkzeug für „dieses Kind wechselt jetzt in die nächste Gruppe". Der manuelle Pfad ist für vorausschauende Planung („Max wechselt am 1. August in die Gruppe Große").
+- Drag-and-Drop ist das richtige Werkzeug für „dieses Kind wechselt jetzt in die nächste Gruppe“. Der manuelle Weg ist für vorausschauende Planung („Max wechselt am 1. August in die Gruppe Große“).
 - Das Dashboard-Widget **Kinder über Altersgrenze des Bereichs** zeigt Kinder, die das Höchstalter ihres Bereichs überschritten haben — Verschieben ist die Lösung.
-- Für das Bereichs-Altersmodell siehe [Was die Personalkennzahl bedeutet](../../../explanation/what-the-staffing-key-means/).
+- Für das Bereichs-Altersmodell siehe [Was der Personalschlüssel bedeutet](../../../explanation/what-the-staffing-key-means/).

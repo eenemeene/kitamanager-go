@@ -19,4 +19,4 @@ Aktualisieren Sie das Dashboard. Die Mitarbeiter:in sollte nicht mehr im Widget 
 
 - Die prognostizierte Kostendifferenz im Widget enthält sowohl die Gehaltserhöhung als auch die Veränderung des Arbeitgeberanteils — das ist die monatliche Gesamtwirkung.
 - KitaManager nutzt das **Von**-Datum des neuen Vertrags, um zu bestimmen, ab wann die höhere Stufe wirkt — auch in Vergangenheits-Monaten bei rückwirkenden Aufstiegen.
-- Hintergrund zur „pro-Monat-aktiv-Vertrag"-Logik, die der Kosten-Projektion zugrundeliegt: [Was die Personalkennzahl bedeutet](../../../explanation/what-the-staffing-key-means/).
+- Hintergrund zur „pro-Monat-aktiv-Vertrag“-Logik, die der Kosten-Projektion zugrundeliegt: [Was der Personalschlüssel bedeutet](../../../explanation/what-the-staffing-key-means/).

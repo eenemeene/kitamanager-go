@@ -15,4 +15,4 @@ Sie wollen sehen, welche Browser aktuell bei Ihrem Konto angemeldet sind, und ni
 
 - Ein Passwort-Wechsel beendet automatisch jede andere Sitzung.
 - Wenn Sie eine aktive Sitzung nicht erkennen, behandeln Sie es wie eine Kompromittierung: beenden, dann Passwort ändern und Audit-Log prüfen.
-- Sitzungen laufen in dieser Version nicht durch Inaktivität ab — sie bleiben gültig bis zum Logout, Cookie-Ablauf oder bis Sie sie beenden. Es gibt keine „30 Tage angemeldet bleiben"-Option.
+- Sitzungen laufen in dieser Version nicht durch Inaktivität ab — sie bleiben gültig bis zum Logout, Cookie-Ablauf oder bis Sie sie beenden. Es gibt keine „30 Tage angemeldet bleiben“-Option.

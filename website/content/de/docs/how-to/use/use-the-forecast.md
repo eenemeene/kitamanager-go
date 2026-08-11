@@ -9,7 +9,7 @@ Die Prognose-Seite hat drei Tabs, die drei verschiedene Fragen beantworten.
 
 ## Optimieren — wie viele Kinder, um ein Ziel-Saldo zu erreichen?
 
-Nutzen Sie das, wenn die Frage „wie voll muss ich sein?" lautet.
+Nutzen Sie das, wenn die Frage „wie voll muss ich sein?“ lautet.
 
 1. Klicken Sie auf **Statistiken** → **Prognose** → **Optimieren**.
 2. Setzen Sie ein **Ziel-Saldo** (Überschuss oder Defizit am Ende des Kita-Jahres).
@@ -22,7 +22,7 @@ Wenn das Ziel innerhalb der Grenzen nicht erreichbar ist, weiten Sie Bereich ode
 
 ## Kinder — Aufnahmen und Abgänge modellieren
 
-Für „was wäre, wenn wir im November drei weitere 1-Jährige aufnehmen?"
+Für „was wäre, wenn wir im November drei weitere 1-Jährige aufnehmen?“
 
 1. Klicken Sie auf **Prognose** → **Kinder**.
 2. **Kind hinzufügen** mit Anzahl, Alter, Datum, Bereich und Vertragseigenschaften.
@@ -30,7 +30,7 @@ Für „was wäre, wenn wir im November drei weitere 1-Jährige aufnehmen?"
 
 ## Mitarbeiter — Einstellungen und Abgänge modellieren
 
-Gleiche Form wie bei Kindern, für Personal. Nützlich für „was wäre, wenn wir ab Oktober eine S 8a Stufe 3 mit 30h einstellen?"
+Gleiche Form wie bei Kindern, für Personal. Nützlich für „was wäre, wenn wir ab Oktober eine S 8a Stufe 3 mit 30h einstellen?“
 
 ## Berechnen und Ergebnisse lesen
 

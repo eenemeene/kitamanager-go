@@ -59,7 +59,7 @@ The seed data already includes a sample ISBJ Bescheid so you don't need a real E
 
 The seeded data deliberately includes a few mismatches. Click any red row to see which contract property differs. The next step would be [Investigate a bill discrepancy](../../how-to/use/investigate-a-bill-discrepancy/) — but for the tutorial, just confirm you can read the comparison.
 
-(For uploading your own monthly Bescheid, see [Upload an ISBJ bill](../../how-to/use/upload-an-isbj-bill/).)
+(For uploading your own monthly Bescheid, see [Upload a funding bill](../../how-to/use/upload-an-isbj-bill/).)
 
 ## Step 6 — Read your first report
 

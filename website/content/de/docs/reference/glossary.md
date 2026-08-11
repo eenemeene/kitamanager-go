@@ -10,7 +10,7 @@ Das deutsche Kita- und ISBJ-Vokabular, das Ihnen in KitaManager begegnet. Begrif
 - **Bezirks-Jugendamt** — Berlin hat 12, eines pro Bezirk. Stellt Kita-Gutscheine aus, verarbeitet Gutschein-Anträge, ist Anlaufstelle für Eltern. Wohin Eltern sich wenden.
 - **Senatsverwaltung für Bildung, Jugend und Familie** — Berliner Senatsverwaltung. Legt die Fördersätze fest, die das Land pro Kind und Monat zahlt. Betreibt das ISBJ-Verfahren im Auftrag der Bezirke.
 - **ISBJ** — *Integriertes Software-System Berliner Jugendhilfe*. Das Verfahren (und die Software dahinter) für den monatlichen Abrechnungs-Austausch zwischen Kita und Senat. Die Excel-Dateien, die Sie in KitaManager hochladen, kommen daher.
-- **Bescheid** — die monatliche Abrechnungsmitteilung aus ISBJ in Excel-Form.
+- **Senatsabrechnung** — die monatliche Abrechnungsmitteilung aus ISBJ in Excel-Form. Auch *Bescheid*, *ISBJ-Bescheid* oder *ISBJ-Abrechnung* genannt; in KitaManager heißt die Seite **Abrechnungen**. Hochladen: [Senatsabrechnung hochladen](../../how-to/use/upload-an-isbj-bill/).
 - **Kostenblatt** — die vom Senat veröffentlichte Tabelle der pro-Kind-Sätze. Aktualisierung typischerweise einmal jährlich am 1. August.
 
 ## Kinder-seitige Begriffe
@@ -26,7 +26,7 @@ Das deutsche Kita- und ISBJ-Vokabular, das Ihnen in KitaManager begegnet. Begrif
 
 ## Mitarbeiter-seitige Begriffe
 
-- **Personalkategorie** — das Vertragsfeld `staff_category` nimmt einen von drei Werten an: `qualified` (Fachkraft — voll qualifiziertes pädagogisches Personal), `supplementary` (Ergänzungskraft — ergänzendes pädagogisches Personal), `non_pedagogical` (Hauswirtschaft, Verwaltung etc.). Steuert, ob der Vertrag pädagogisch für die Personalkennzahl zählt.
+- **Personalkategorie** — das Vertragsfeld `staff_category` nimmt einen von drei Werten an: `qualified` (Fachkraft — voll qualifiziertes pädagogisches Personal), `supplementary` (Ergänzungskraft — ergänzendes pädagogisches Personal), `non_pedagogical` (Hauswirtschaft, Verwaltung etc.). Steuert, ob der Vertrag pädagogisch für den Personalschlüssel zählt.
 - **Entgeltgruppe** — Gehaltsgruppe in TVöD-SuE (z. B. `S 8a`). Mit `Stufe` kombiniert, um das Gehalt nachzuschlagen.
 - **Stufe** — Erfahrungsstufe innerhalb einer Entgeltgruppe (1–6 für TVöD-SuE).
 - **Stufenaufstieg** — Beförderung in die nächste Stufe. Zeitabhängig laut Tarifvertrag; das Dashboard-Widget zeigt berechtigte Mitarbeitende.
@@ -35,10 +35,10 @@ Das deutsche Kita- und ISBJ-Vokabular, das Ihnen in KitaManager begegnet. Begrif
 
 ## System-Begriffe
 
-- **Bereich** — Gruppe innerhalb einer Kita (z. B. Nest, Nestflüchter, Große). Im Englischen heißen sie „sections".
+- **Bereich** — Gruppe innerhalb einer Kita (z. B. Nest, Nestflüchter, Große). Im Englischen heißen sie „sections“.
 - **Kitajahr** — August → Juli. Anders als das Kalenderjahr. Siehe [Warum das Kita-Jahr von August bis Juli läuft](../../explanation/why-the-kita-year-runs-aug-to-jul/).
-- **Personalkennzahl / Personalabdeckung** — verfügbare Personalstunden im Verhältnis zu den Anforderungen aus der Förder-Konfiguration. Siehe [Was die Personalkennzahl bedeutet](../../explanation/what-the-staffing-key-means/).
+- **Personalschlüssel / Personalabdeckung** — verfügbare Personalstunden im Verhältnis zu den Anforderungen aus der Förder-Konfiguration. Siehe [Was der Personalschlüssel bedeutet](../../explanation/what-the-staffing-key-means/).
 
 ## Andere Bundesländer (kurz)
 
-KitaManager liefert heute nur das Berliner Förder-Modell. Andere Länder nutzen andere Verfahren — Brandenburg hat KitaServer, Bayern hat Kibig etc. — und andere Zuschlags-Namen. Ein neues Bundesland anzubinden bedeutet, eine `configs/government-fundings/<bundesland>.yaml` zu schreiben; die Form „Nachschlagen über Alter und Eigenschaften" verallgemeinert.
+KitaManager liefert heute nur das Berliner Förder-Modell. Andere Länder nutzen andere Verfahren — Brandenburg hat KitaServer, Bayern hat Kibig etc. — und andere Zuschlags-Namen. Ein neues Bundesland anzubinden bedeutet, eine `configs/government-fundings/<bundesland>.yaml` zu schreiben; die Form „Nachschlagen über Alter und Eigenschaften“ verallgemeinert.

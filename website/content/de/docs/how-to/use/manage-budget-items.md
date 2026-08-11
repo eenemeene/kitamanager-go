@@ -11,12 +11,12 @@ Sie wollen eine Einnahme oder Ausgabe erfassen, die nicht automatisch aus Vertr�
 
 1. **Budgetposten** in der Seitenleiste klicken.
 2. **Erstellen** klicken.
-3. **Namen** setzen (z. B. „Miete" oder „Elternbeiträge") und **Einnahme** oder **Ausgabe** wählen.
+3. **Namen** setzen (z. B. „Miete“ oder „Elternbeiträge“) und **Einnahme** oder **Ausgabe** wählen.
 4. **Speichern**.
 
 ## Einträge zum Posten hinzufügen
 
-Jeder Posten hält einen oder mehrere zeitlich begrenzte Einträge. Ein Eintrag bedeutet „dieser Posten kostet/bringt X EUR/Monat zwischen Datum A und Datum B".
+Jeder Posten hält einen oder mehrere zeitlich begrenzte Einträge. Ein Eintrag bedeutet „dieser Posten kostet/bringt X EUR/Monat zwischen Datum A und Datum B“.
 
 {{< screenshot src="/images/screenshots/budget-item-detail.png" alt="Budgetposten-Detail mit Einträgen" caption="Ein Budgetposten mit mehreren Einträgen — jeder ein zeitlich begrenzter EUR/Monat-Betrag." >}}
 
@@ -26,7 +26,7 @@ Jeder Posten hält einen oder mehrere zeitlich begrenzte Einträge. Ein Eintrag 
    - **Von** — Startdatum.
    - **Bis** — Enddatum (leer lassen für laufend).
    - **Betrag** — Eurobetrag **pro Monat**.
-   - **Notizen** — optionaler Kontext (z. B. „inkl. Nebenkosten", „Jahres-Spende auf 12 Monate verteilt").
+   - **Notizen** — optionaler Kontext (z. B. „inkl. Nebenkosten“, „Jahres-Spende auf 12 Monate verteilt“).
 4. **Speichern**.
 
 {{< screenshot src="/images/screenshots/budget-item-entry-add.png" alt="Dialog Eintrag hinzufügen" caption="Zeitraum, monatlichen Betrag und optionale Notizen setzen." >}}

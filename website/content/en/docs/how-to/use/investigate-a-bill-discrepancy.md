@@ -39,7 +39,7 @@ When the bill and KitaManager don't agree, every non-matching child falls into e
 
 | Symptom | Likely cause | Where to look |
 |---|---|---|
-| "File could not be parsed" | Excel layout drift or wrong file type | parser column map in `internal/isbj/parse.go`; verify file is the actual Bescheid |
+| The file is rejected on upload | Excel layout drift or wrong file type | parser column map in `internal/isbj/parse.go`; verify file is the actual Bescheid |
 | "No bills found for this month" | Upload created a different period than expected | bill period dates on the Funding Bills page |
 | Many "missing from bill" entries | Voucher numbers don't match | child detail pages — see steps above |
 | Many "extra in bill" entries | Children left, Senate hasn't processed the departure | Bezirks-Jugendamt |
@@ -50,4 +50,4 @@ When the bill and KitaManager don't agree, every non-matching child falls into e
 
 - After fixing, re-upload the bill. The comparison will refresh and the row should match.
 - For the calculation, see [How contract properties determine funding](../../../explanation/how-contract-properties-determine-funding/) and [How funding works in Berlin](../../../explanation/how-funding-works-in-berlin/).
-- For the parsing pipeline, see [The ISBJ reconciliation flow](../../../explanation/the-isbj-reconciliation-flow/).
+- For the sequence used when reading the file, see [The ISBJ reconciliation flow](../../../explanation/the-isbj-reconciliation-flow/).

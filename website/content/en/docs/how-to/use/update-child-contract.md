@@ -25,7 +25,7 @@ The one exception is **correcting an input error** — you typed `halbtag` but m
 
 1. Open the child from the **Children** list and click the **history** icon to open their contract history.
 2. Find the **active** contract (status badge: *active*). Click the **pencil** to edit.
-3. Set **To** to the day before the change takes effect (e.g. Integrationsstatus A is granted from 1 February → To = 31 January). Click **Save**.
+3. Set **To** to the day before the change takes effect (e.g. Integrationsstatus A is granted from 1 February → To = 31 January). Click **Save**. The **To** date must be today or later — for an effective date in the past, see [Backdated changes](#backdated-changes).
 4. Back on the contract history, click **New contract**.
 5. Set **From** to the effective date. Pick the same **Section** (unless the section is also changing — then see [Move children between sections](../move-children-between-sections/)).
 6. Set the contract **Properties**:
@@ -48,6 +48,19 @@ The child's calculated monthly funding amount updates immediately — verify the
 | Supplement expires or is revoked | Remove that supplement |
 | Voucher extension or new voucher number | See [Assign a Kita-Gutschein](../assign-a-voucher/) — same contract, no end-and-create needed |
 
+## Backdated changes
+
+When the effective date is in the past (the Bescheid arrives in August, the change applies from 1 February), the interface currently **cannot** record it.
+
+Here's why: for a contract that started before today, saving an edit makes KitaManager create the follow-on contract **starting today**. A **To** date in the past would give that contract an end before its start, which KitaManager rejects ("from date must be before or equal to to date"). The reverse route — creating the backdated contract first — is rejected too, because it overlaps the running contract.
+
+What you can do instead:
+
+1. Record the change **from today**, as described above. From now on KitaManager calculates correctly.
+2. Expect the months between the effective date and today to keep using the old values and to show up as discrepancies during reconciliation. [Investigate a bill discrepancy](../investigate-a-bill-discrepancy/) helps when checking those.
+
+This is a known limitation, not a mistake on your part. If you regularly receive backdated Bescheide, this is the gap worth closing in the product.
+
 ## Fix a wrong date (no new contract needed)
 
 If only the start or end **date** is wrong (you wrote March 1 when the contract really started March 15), use one of:
@@ -57,7 +70,7 @@ If only the start or end **date** is wrong (you wrote March 1 when the contract 
 
 ## Notes
 
-- A wrong care-type or missing supplement silently mismatches the next ISBJ Bescheid. The mismatch can be hundreds of euros per child per month — fix it as soon as you learn about the change, even if the effective date is in the past (KitaManager handles backdated changes correctly).
+- A wrong care-type or missing supplement silently mismatches the next ISBJ Bescheid. The mismatch can be hundreds of euros per child per month — fix it as soon as you learn about the change.
 - Don't delete the old contract. Ending it preserves the historical record; deletion erases it from staffing, occupancy, and funding reports.
 - For the lookup chain (age × care_type × supplements → euros), see [How contract properties determine funding](../../../explanation/how-contract-properties-determine-funding/).
 - The audit log records every contract create / edit / delete with old → new values. Admins can review it via [Review the audit log](../../administer/review-audit-log/).

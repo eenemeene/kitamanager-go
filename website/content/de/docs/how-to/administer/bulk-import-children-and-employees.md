@@ -9,7 +9,7 @@ Sie haben eine Liste an Kindern oder Mitarbeitenden zu laden — typischerweise 
 
 1. In der Seitenleiste auf **Kinder** oder **Mitarbeiter** navigieren.
 2. **Importieren** klicken.
-3. YAML-Datei wählen. KitaManager parst sie und zeigt eine Vorschau der anzulegenden Datensätze.
+3. YAML-Datei wählen. KitaManager liest sie und zeigt eine Vorschau der anzulegenden Datensätze.
 4. Sorgfältig prüfen. **Importe legen an, sie mergen nicht** — doppelte Gutscheinnummern oder doppelte (Vorname, Nachname, Geburtsdatum)-Tupel erzeugen Duplikate, die manuell aufzuräumen wären.
 5. Bestätigen.
 

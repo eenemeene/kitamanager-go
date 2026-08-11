@@ -21,7 +21,7 @@ Floating-Point-Zahlen können dezimale Brüche nicht exakt darstellen: `0.1 + 0.
 | €1.668,47 | 166847 |
 | −€23,00 | −2300 |
 
-Negative Beträge sind gültig — werden für den Eltern-Essensbeitrag (Abzug) und für jeden anderen „dies wird zurückgeschuldet"-Eintrag genutzt.
+Negative Beträge sind gültig — werden für den Eltern-Essensbeitrag (Abzug) und für jeden anderen „dies wird zurückgeschuldet“-Eintrag genutzt.
 
 ## Konvertierung an der Grenze
 

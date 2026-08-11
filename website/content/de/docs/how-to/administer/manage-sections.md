@@ -36,4 +36,4 @@ Auf der Detailseite **Löschen** anklicken. Der Bereich wird nur gelöscht, wenn
 ## Hinweise
 
 - Bereiche sind organisations-bezogen. Multi-Org-Nutzer:innen sehen je Organisation andere Bereichs-Listen.
-- Min/Max-Alter speisen zwei Dinge: die Altersüberlauf-Warnung des Dashboards und die Personalbedarfs-Berechnung in [Was die Personalkennzahl bedeutet](../../../explanation/what-the-staffing-key-means/).
+- Min/Max-Alter speisen zwei Dinge: die Altersüberlauf-Warnung des Dashboards und die Personalbedarfs-Berechnung in [Was der Personalschlüssel bedeutet](../../../explanation/what-the-staffing-key-means/).

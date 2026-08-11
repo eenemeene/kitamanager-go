@@ -29,7 +29,7 @@ Für jedes (Kind, Monat)-Paar:
 5. **Jeden Zuschlagsbetrag addieren.** Für jeden auf dem Vertrag gesetzten Zuschlag (`ndh`, `qm/mss`, `integration` mit Wert `integration a` oder `integration b`) die passende Eigenschaft im selben Eintrag suchen und ihren `payment` zur laufenden Summe addieren.
 6. **Die universellen Abzugs-Eigenschaften addieren.** Eigenschaften mit `apply_to_all_contracts: true` (derzeit der Eltern-Essensbeitrag bei −€23) werden bei jedem Vertrag unabhängig von dessen anderen Eigenschaften addiert.
 
-Das Ergebnis, in Cents, ist das, was KitaManager als „berechnete Förderung" für dieses Kind in diesem Monat anzeigt.
+Das Ergebnis, in Cents, ist das, was KitaManager als „berechnete Förderung“ für dieses Kind in diesem Monat anzeigt.
 
 ## Ein durchgerechnetes Beispiel
 
@@ -46,7 +46,7 @@ Nehmen wir ein 2-jähriges Kind mit `ganztag`-Vertrag und gesetztem NdH, im Okto
 
 ## Warum die Kette in der Praxis wichtig ist
 
-Die meisten „die Abrechnung passt nicht zu KitaManager"-Fälle führen auf eine der Eingaben zurück:
+Die meisten „die Abrechnung passt nicht zu KitaManager“-Fälle führen auf eine der Eingaben zurück:
 
 - **Falsche `care_type` auf dem Vertrag** → falscher Grundsatz. Die Abweichung kann hunderte Euro pro Kind und Monat ausmachen.
 - **Fehlender oder veralteter Zuschlag** (NdH, QM/MSS, Integration) → der Zuschlagsbetrag fehlt stillschweigend. Kleinere pro-Kind-Wirkung (€60–€350), aber sehr häufig.
