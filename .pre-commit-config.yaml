@@ -46,6 +46,17 @@ repos:
         types: [go]
         pass_filenames: false
 
+      # The frontend types are generated FROM docs/openapi.json, so a swagger
+      # annotation change makes them stale too. CI checks this in the Web Lint
+      # job; without it here, a green local commit still fails CI — which is
+      # exactly how it was discovered.
+      - id: api-types-check
+        name: generated API types check
+        entry: make api-types-check
+        language: system
+        types: [go]
+        pass_filenames: false
+
       - id: web-type-check
         name: web type check
         entry: bash -c 'cd frontend && npm run type-check'

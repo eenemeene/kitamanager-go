@@ -4833,8 +4833,20 @@ export interface paths {
     get?: never;
     /**
      * Batch update child contracts
-     * @description Atomically update multiple contracts for a child. All updates are applied in-place
-     *     (no amend mode). If any update fails, all changes are rolled back.
+     * @description Atomically update multiple contracts for a child. This is the endpoint for
+     *     CORRECTING A HISTORICAL TIMELINE: unlike the single-contract PUT there is NO amend
+     *     mode, so dates and fields are written in place even on contracts that started — or
+     *     ended — in the past. It backs the timeline boundary drag in the UI.
+     *
+     *     Entries are PARTIAL: a field you omit keeps its current value, with one exception —
+     *     `to` is CLEARED when omitted, because that is how a contract is set back to ongoing.
+     *     Always send `to` explicitly when you want to keep it, otherwise a contract that has a
+     *     successor becomes ongoing and collides with it (409). `properties` is carried forward
+     *     when omitted; send an empty object to clear it deliberately.
+     *
+     *     Adjacent ranges may be swapped within one request (extend A's `to`, shift B's `from`):
+     *     the no-overlap constraint is deferred to commit, so only the final state must be
+     *     valid. If any entry fails, the whole batch is rolled back.
      */
     put: {
       parameters: {
@@ -5074,8 +5086,24 @@ export interface paths {
     };
     /**
      * Update child contract
-     * @description Update an existing contract by ID. The same date rules apply as for creation:
-     *     both dates are inclusive, same-day contracts allowed, no overlapping contracts.
+     * @description Update an existing contract by ID. Date rules as for creation: both dates
+     *     inclusive, same-day contracts allowed, no overlaps.
+     *
+     *     IMPORTANT — what happens depends on when the contract started, because changing a
+     *     past contract in place would silently recompute funding for months already billed:
+     *
+     *     - started BEFORE today: the contract is AMENDED, not edited. The existing row is
+     *     closed with to = yesterday and a NEW contract is created starting TODAY carrying
+     *     the changes. Any `from` in the request is IGNORED; `to`, if given, applies to the
+     *     new contract, so a `to` in the past is rejected (400) as from-after-to.
+     *     - starts TODAY or later: updated in place.
+     *     - already ENDED (to before today): rejected with 400.
+     *
+     *     So this endpoint records a change going FORWARD. To correct a historical timeline —
+     *     move a boundary into the past — use the batch endpoint instead.
+     *
+     *     Nullable fields (`to`, `properties`) are replaced wholesale: omitting one CLEARS it.
+     *     Send the full properties map on every update unless you mean to remove them.
      */
     put: {
       parameters: {
@@ -6268,8 +6296,20 @@ export interface paths {
     get?: never;
     /**
      * Batch update employee contracts
-     * @description Atomically update multiple contracts for an employee. All updates are applied in-place
-     *     (no amend mode). If any update fails, all changes are rolled back.
+     * @description Atomically update multiple contracts for an employee. This is the endpoint for
+     *     CORRECTING A HISTORICAL TIMELINE: unlike the single-contract PUT there is NO amend
+     *     mode, so dates and fields are written in place even on contracts that started — or
+     *     ended — in the past. It backs the timeline boundary drag in the UI.
+     *
+     *     Entries are PARTIAL: a field you omit keeps its current value, with one exception —
+     *     `to` is CLEARED when omitted, because that is how a contract is set back to ongoing.
+     *     Always send `to` explicitly when you want to keep it, otherwise a contract that has a
+     *     successor becomes ongoing and collides with it (409). `properties` is carried forward
+     *     when omitted; send an empty object to clear it deliberately.
+     *
+     *     Adjacent ranges may be swapped within one request (extend A's `to`, shift B's `from`):
+     *     the no-overlap constraint is deferred to commit, so only the final state must be
+     *     valid. If any entry fails, the whole batch is rolled back.
      */
     put: {
       parameters: {
@@ -6509,8 +6549,24 @@ export interface paths {
     };
     /**
      * Update employee contract
-     * @description Update an existing contract by ID. The same date rules apply as for creation:
-     *     both dates are inclusive, same-day contracts allowed, no overlapping contracts.
+     * @description Update an existing contract by ID. Date rules as for creation: both dates
+     *     inclusive, same-day contracts allowed, no overlaps.
+     *
+     *     IMPORTANT — what happens depends on when the contract started, because changing a
+     *     past contract in place would silently recompute funding for months already billed:
+     *
+     *     - started BEFORE today: the contract is AMENDED, not edited. The existing row is
+     *     closed with to = yesterday and a NEW contract is created starting TODAY carrying
+     *     the changes. Any `from` in the request is IGNORED; `to`, if given, applies to the
+     *     new contract, so a `to` in the past is rejected (400) as from-after-to.
+     *     - starts TODAY or later: updated in place.
+     *     - already ENDED (to before today): rejected with 400.
+     *
+     *     So this endpoint records a change going FORWARD. To correct a historical timeline —
+     *     move a boundary into the past — use the batch endpoint instead.
+     *
+     *     Nullable fields (`to`, `properties`) are replaced wholesale: omitting one CLEARS it.
+     *     Send the full properties map on every update unless you mean to remove them.
      */
     put: {
       parameters: {
