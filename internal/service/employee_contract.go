@@ -238,7 +238,15 @@ func (s *EmployeeService) BatchUpdateContracts(ctx context.Context, employeeID, 
 				return err
 			}
 
-			applyEmployeeContractFields(contract, &entry.EmployeeContractUpdateRequest)
+			// Batch entries are *partial* — see the note in
+			// ChildService.BatchUpdateContracts. Carry existing properties
+			// forward so a dates-only timeline drag does not strip them.
+			update := entry.EmployeeContractUpdateRequest
+			if update.Properties == nil {
+				update.Properties = contract.Properties
+			}
+
+			applyEmployeeContractFields(contract, &update)
 
 			if err := validation.ValidatePeriod(contract.From, contract.To); err != nil {
 				return apperror.BadRequest(err.Error())
@@ -424,7 +432,10 @@ func applyEmployeeContractFields(contract *models.EmployeeContract, req *models.
 		contract.SectionID = *req.SectionID
 		contract.Section = nil
 	}
-	// Always assign nullable fields so the frontend can clear them by sending null.
+	// Nullable fields are assigned unconditionally so a PUT can clear them by
+	// omitting them — see TestEmployeeService_UpdateContract_ClearNullableProperties.
+	// Callers that send *partial* entries (BatchUpdateContracts) must carry the
+	// existing values forward themselves before calling this.
 	contract.Properties = req.Properties
 	if req.From != nil {
 		contract.From = *req.From

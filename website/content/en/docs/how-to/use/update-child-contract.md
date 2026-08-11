@@ -51,16 +51,16 @@ The child's calculated monthly funding amount updates immediately — verify the
 
 ## Backdated changes
 
-When the effective date is in the past (the Bescheid arrives in August, the change applies from 1 February), the interface currently **cannot** record it.
+When the effective date is in the past (the Bescheid arrives in August, the change applies from 1 February), it takes two steps:
 
-Here's why: for a contract that started before today, saving an edit makes KitaManager create the follow-on contract **starting today**. A **To** date in the past would give that contract an end before its start, which KitaManager rejects ("from date must be before or equal to to date"). The reverse route — creating the backdated contract first — is rejected too, because it overlaps the running contract.
+1. **Record the change normally**, as above. KitaManager ends the old contract yesterday and starts the new one today — not yet the date you want.
+2. **Open the Timeline** (the **Timeline** tab on the contracts page) and drag the boundary between the two contracts to the effective date. The old contract then ends the day before, and the new one starts on the effective date.
 
-What you can do instead:
+From then on KitaManager also calculates the past months from the effective date using the new values.
 
-1. Record the change **from today**, as described above. From now on KitaManager calculates correctly.
-2. Expect the months between the effective date and today to keep using the old values and to show up as discrepancies during reconciliation. [Investigate a bill discrepancy](../investigate-a-bill-discrepancy/) helps when checking those.
+Why two steps: in the edit dialog for a contract that started before today, saving always creates the follow-on contract **starting today** — a **To** date in the past would give that contract an end before its start, and is rejected. The Timeline works directly on the existing contracts, so it is allowed to reach into the past.
 
-This is a known limitation, not a mistake on your part. If you regularly receive backdated Bescheide, this is the gap worth closing in the product.
+The boundary can only move within the neighbouring contracts — not before the start of the older one.
 
 ## Fix a wrong date (no new contract needed)
 
@@ -74,4 +74,4 @@ If only the start or end **date** is wrong (you wrote March 1 when the contract 
 - A wrong care-type or missing supplement silently mismatches the next ISBJ Bescheid. The mismatch can be hundreds of euros per child per month — fix it as soon as you learn about the change.
 - Don't delete the old contract. Ending it preserves the historical record; deletion erases it from staffing, occupancy, and funding reports.
 - For the lookup chain (age × care_type × supplements → euros), see [How contract properties determine funding](../../../explanation/how-contract-properties-determine-funding/).
-- The audit log records every contract create / edit / delete with old → new values. Admins can review it via [Review the audit log](../../administer/review-audit-log/).
+- The audit log records that a contract was created / edited / deleted, with who and when — but for contracts it does **not** store the old and new field values (unlike edits to a child's personal data, which do record a before/after diff). So the log tells you a contract changed, not what it changed from. Admins can review it via [Review the audit log](../../administer/review-audit-log/).

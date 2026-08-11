@@ -358,8 +358,24 @@ func (h *ChildHandler) CreateContract(c *gin.Context) {
 
 // UpdateContract godoc
 // @Summary Update child contract
-// @Description Update an existing contract by ID. The same date rules apply as for creation:
-// @Description both dates are inclusive, same-day contracts allowed, no overlapping contracts.
+// @Description Update an existing contract by ID. Date rules as for creation: both dates
+// @Description inclusive, same-day contracts allowed, no overlaps.
+// @Description
+// @Description IMPORTANT — what happens depends on when the contract started, because changing a
+// @Description past contract in place would silently recompute funding for months already billed:
+// @Description
+// @Description   - started BEFORE today: the contract is AMENDED, not edited. The existing row is
+// @Description     closed with to = yesterday and a NEW contract is created starting TODAY carrying
+// @Description     the changes. Any `from` in the request is IGNORED; `to`, if given, applies to the
+// @Description     new contract, so a `to` in the past is rejected (400) as from-after-to.
+// @Description   - starts TODAY or later: updated in place.
+// @Description   - already ENDED (to before today): rejected with 400.
+// @Description
+// @Description So this endpoint records a change going FORWARD. To correct a historical timeline —
+// @Description move a boundary into the past — use the batch endpoint instead.
+// @Description
+// @Description Nullable fields (`to`, `properties`) are replaced wholesale: omitting one CLEARS it.
+// @Description Send the full properties map on every update unless you mean to remove them.
 // @Tags children
 // @Accept json
 // @Produce json
@@ -382,8 +398,20 @@ func (h *ChildHandler) UpdateContract(c *gin.Context) {
 
 // BatchUpdateContracts godoc
 // @Summary Batch update child contracts
-// @Description Atomically update multiple contracts for a child. All updates are applied in-place
-// @Description (no amend mode). If any update fails, all changes are rolled back.
+// @Description Atomically update multiple contracts for a child. This is the endpoint for
+// @Description CORRECTING A HISTORICAL TIMELINE: unlike the single-contract PUT there is NO amend
+// @Description mode, so dates and fields are written in place even on contracts that started — or
+// @Description ended — in the past. It backs the timeline boundary drag in the UI.
+// @Description
+// @Description Entries are PARTIAL: a field you omit keeps its current value, with one exception —
+// @Description `to` is CLEARED when omitted, because that is how a contract is set back to ongoing.
+// @Description Always send `to` explicitly when you want to keep it, otherwise a contract that has a
+// @Description successor becomes ongoing and collides with it (409). `properties` is carried forward
+// @Description when omitted; send an empty object to clear it deliberately.
+// @Description
+// @Description Adjacent ranges may be swapped within one request (extend A's `to`, shift B's `from`):
+// @Description the no-overlap constraint is deferred to commit, so only the final state must be
+// @Description valid. If any entry fails, the whole batch is rolled back.
 // @Tags children
 // @Accept json
 // @Produce json

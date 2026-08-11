@@ -51,16 +51,16 @@ Der berechnete monatliche Förderbetrag des Kindes aktualisiert sich sofort — 
 
 ## Rückwirkende Änderungen
 
-Liegt der Stichtag in der Vergangenheit (der Bescheid kommt im August, die Änderung gilt ab 1. Februar), lässt sich das über die Oberfläche derzeit **nicht** eintragen.
+Liegt der Stichtag in der Vergangenheit (der Bescheid kommt im August, die Änderung gilt ab 1. Februar), geht das in zwei Schritten:
 
-Der Grund: Bei einem Vertrag, der vor heute begann, legt KitaManager beim Speichern automatisch einen Folgevertrag **ab heute** an. Ein **Bis**-Datum in der Vergangenheit ergäbe damit einen Vertrag, dessen Ende vor seinem Anfang liegt — das lehnt KitaManager ab („from date must be before or equal to to date“). Auch der umgekehrte Weg — zuerst den neuen Vertrag rückwirkend anlegen — wird abgelehnt, weil er sich mit dem laufenden Vertrag überschneidet.
+1. **Änderung normal erfassen**, wie oben beschrieben. KitaManager beendet den alten Vertrag gestern und legt den neuen ab heute an — noch nicht das gewünschte Datum.
+2. **Zeitleiste öffnen** (Tab **Zeitleiste** auf der Vertragsseite) und die Grenze zwischen den beiden Verträgen auf den Stichtag ziehen. Der alte Vertrag endet dann am Tag davor, der neue beginnt am Stichtag.
 
-Was Sie stattdessen tun können:
+Danach rechnet KitaManager auch die vergangenen Monate ab dem Stichtag mit den neuen Werten.
 
-1. Die Änderung **ab heute** eintragen, wie oben beschrieben. Ab jetzt rechnet KitaManager korrekt.
-2. Damit rechnen, dass die Monate zwischen Stichtag und heute weiter mit den alten Werten rechnen und beim Abgleich als Abweichung erscheinen. Beim Prüfen hilft [Abweichung in einer Abrechnung untersuchen](../investigate-a-bill-discrepancy/).
+Warum zwei Schritte: Im Bearbeiten-Dialog eines Vertrags, der vor heute begann, legt KitaManager beim Speichern immer einen Folgevertrag **ab heute** an — ein **Bis**-Datum in der Vergangenheit ergäbe dort einen Vertrag, dessen Ende vor seinem Anfang liegt, und wird abgelehnt. Die Zeitleiste arbeitet direkt an den bestehenden Verträgen und darf deshalb in die Vergangenheit greifen.
 
-Das ist eine bekannte Einschränkung, kein Bedienfehler. Wenn Sie regelmäßig rückwirkende Bescheide bekommen, ist das der Punkt, den es im Produkt zu lösen gilt.
+Die Grenze lässt sich nur innerhalb der Nachbarverträge verschieben — nicht vor den Beginn des älteren Vertrags.
 
 ## Falsches Datum korrigieren (kein neuer Vertrag nötig)
 
@@ -74,4 +74,4 @@ Wenn nur das Start- oder Enddatum falsch ist (Sie haben 1. März eingetragen, de
 - Eine falsche Betreuungsart oder ein fehlender Zuschlag verursacht stillschweigend eine Abweichung beim nächsten ISBJ-Bescheid. Die Differenz kann hunderte Euro pro Kind und Monat ausmachen — die Änderung sofort eintragen, sobald sie bekannt wird.
 - Den alten Vertrag nicht löschen. Beenden bewahrt den historischen Eintrag; Löschen entfernt ihn aus Personal-, Belegungs- und Förderberichten.
 - Zur Berechnungskette (Alter × Betreuungsart × Zuschläge → Euro), siehe [Wie Vertragseigenschaften die Förderung bestimmen](../../../explanation/how-contract-properties-determine-funding/).
-- Das Protokoll erfasst jede Anlage / Bearbeitung / Löschung eines Vertrags mit Alt → Neu-Werten. Admins können es einsehen: [Protokoll prüfen](../../administer/review-audit-log/).
+- Das Protokoll erfasst, dass ein Vertrag angelegt / bearbeitet / gelöscht wurde, mit Person und Zeitpunkt — bei Verträgen aber **nicht** die alten und neuen Feldwerte (anders als bei Änderungen an den Personendaten eines Kindes, dort wird ein Vorher/Nachher festgehalten). Das Protokoll sagt also, dass sich ein Vertrag geändert hat, nicht wovon. Admins können es einsehen: [Protokoll prüfen](../../administer/review-audit-log/).

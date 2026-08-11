@@ -27,9 +27,23 @@ export function ContractTimeline<T extends BaseContract>({
 
   const handleBoundaryChange = useCallback(
     (upperContract: BaseContract, lowerContract: BaseContract, newTo: string, newFrom: string) => {
+      // Send BOTH dates for BOTH contracts, not just the one that moved. The
+      // batch endpoint assigns `to` unconditionally, so an entry that omits it
+      // clears it — that is how a contract is set back to ongoing. Sending only
+      // `from` for the upper contract therefore wiped its `to` whenever a third
+      // contract followed it, making it ongoing and colliding with that third
+      // contract: dragging any but the newest boundary failed with a 409.
       const updates: ContractBatchUpdateItem[] = [
-        { id: lowerContract.id, to: formatDateForApi(newTo) ?? undefined },
-        { id: upperContract.id, from: formatDateForApi(newFrom) ?? undefined },
+        {
+          id: lowerContract.id,
+          from: formatDateForApi(lowerContract.from) ?? undefined,
+          to: formatDateForApi(newTo) ?? undefined,
+        },
+        {
+          id: upperContract.id,
+          from: formatDateForApi(newFrom) ?? undefined,
+          to: formatDateForApi(upperContract.to) ?? undefined,
+        },
       ];
       onBoundaryChange(updates);
     },
