@@ -389,7 +389,13 @@ func TestAuthFlow_MFADisableReverts(t *testing.T) {
 	// actually needs a future code, because the previous verify
 	// consumed the current step. A real human waiting at their
 	// authenticator would see the next code naturally.
-	nextStepCode, _ := totp.GenerateCode(payload.Secret, time.Now().UTC().Add(31*time.Second))
+	// Exactly one period, not 31s. TOTP steps are aligned to absolute 30s
+	// boundaries rather than to "now", so adding 31s advances one step only when
+	// `now` is early in the current step — start within the final second and it
+	// advances TWO, landing outside the server's ±1 skew window and failing as
+	// "invalid code". Adding exactly one period always advances exactly one step.
+	// This was a ~1-in-30 flake.
+	nextStepCode, _ := totp.GenerateCode(payload.Secret, time.Now().UTC().Add(30*time.Second))
 	w = doRequest(t, fr.router, http.MethodDelete,
 		fmt.Sprintf("/api/v1/users/me/factors/%d", enrollResp.ID),
 		loggedInCookies, models.FactorDeleteRequest{
@@ -476,4 +482,35 @@ func loginPasswordStep(t *testing.T, r *gin.Engine, email, password string) clie
 		t.Fatalf("login %s: status=%q, want authenticated (this helper is for non-MFA users)", email, resp.Status)
 	}
 	return extractCookies(w.Result())
+}
+
+// TestTOTPNextStepOffset proves why the delete above adds exactly one period
+// rather than 31 seconds. TOTP steps are floor(unix/30), aligned to absolute
+// boundaries, so the offset needed to reach "the next code" does not depend on
+// where in the current window you happen to be — but only if it is exactly one
+// period. 31s overshoots into step+2 for the last second of every window, and a
+// step+2 code falls outside the server's ±1 skew window and is rejected as an
+// invalid code. That made the lifecycle test fail roughly one run in thirty.
+func TestTOTPNextStepOffset(t *testing.T) {
+	const period = 30
+	step := func(sec int64) int64 { return sec / period }
+
+	var overshoot int
+	for offsetIntoWindow := int64(0); offsetIntoWindow < period; offsetIntoWindow++ {
+		now := int64(1_700_000_000) + offsetIntoWindow // start of a window + offset
+
+		if got := step(now+period) - step(now); got != 1 {
+			t.Errorf("offset %ds into the window: +%ds advanced %d steps, want exactly 1",
+				offsetIntoWindow, period, got)
+		}
+		if step(now+31)-step(now) != 1 {
+			overshoot++
+		}
+	}
+
+	if overshoot == 0 {
+		t.Error("expected +31s to overshoot for at least one position; the flake this guards is real")
+	}
+	t.Logf("+%ds advances exactly one step at all %d positions; +31s overshoots at %d of them",
+		period, period, overshoot)
 }
