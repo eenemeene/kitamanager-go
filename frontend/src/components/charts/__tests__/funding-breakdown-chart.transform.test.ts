@@ -1,8 +1,6 @@
 jest.mock('@nivo/pie', () => ({ ResponsivePie: () => null }));
 
-// eslint-disable-next-line import/first
 import { buildFundingSlices, FUNDING_BREAKDOWN_COLORS } from '../funding-breakdown-chart';
-// eslint-disable-next-line import/first
 import type {
   FinancialBudgetItemDetail,
   FinancialDataPoint,

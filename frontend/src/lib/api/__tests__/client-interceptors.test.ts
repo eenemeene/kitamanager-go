@@ -10,7 +10,6 @@ import type { AxiosError, InternalAxiosRequestConfig } from 'axios';
 // non-hoisted declarations (`const`/`let`) are initialised. The mock
 // stuffs the captured handlers into this object; tests below read it
 // after the module load completes.
-// eslint-disable-next-line no-var
 var captured: {
   requestSuccess: ((c: InternalAxiosRequestConfig) => InternalAxiosRequestConfig) | null;
   requestError: ((e: unknown) => unknown) | null;
@@ -54,9 +53,7 @@ jest.mock('@/lib/utils', () => ({
   getCookie: jest.fn(),
 }));
 
-// eslint-disable-next-line import/first
 import { apiClient } from '../client';
-// eslint-disable-next-line import/first
 import { getCookie } from '@/lib/utils';
 
 const getCookieMock = getCookie as jest.Mock;

@@ -4,9 +4,7 @@
 // uses no Nivo APIs, so this stub is invisible to the tests below.
 jest.mock('@nivo/pie', () => ({ ResponsivePie: () => null }));
 
-// eslint-disable-next-line import/first
 import { buildExpenseSlices, EXPENSE_BREAKDOWN_COLORS } from '../expense-breakdown-chart';
-// eslint-disable-next-line import/first
 import type {
   FinancialBudgetItemDetail,
   FinancialDataPoint,

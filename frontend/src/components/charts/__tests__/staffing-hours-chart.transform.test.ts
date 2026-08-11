@@ -3,9 +3,7 @@
 jest.mock('@nivo/line', () => ({ ResponsiveLine: () => null }));
 jest.mock('d3-scale', () => ({ scaleLinear: () => () => 0 }));
 
-// eslint-disable-next-line import/first
 import { computeBalancePercentages } from '../staffing-hours-chart';
-// eslint-disable-next-line import/first
 import type { StaffingHoursResponse } from '@/lib/api/types';
 
 type DataPoint = StaffingHoursResponse['data_points'][number];
