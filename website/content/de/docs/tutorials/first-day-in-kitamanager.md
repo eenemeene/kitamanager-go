@@ -5,7 +5,7 @@ aliases:
   - /docs/user-guide/
 ---
 
-Dieses Tutorial bringt Sie in etwa 30 Minuten von „Ich habe gerade einen Zugang bekommen" zu „Ich kann KitaManager im Kita-Alltag souverän nutzen". Sie werden sich anmelden, das Dashboard erkunden, einen Anwesenheitstag erfassen, einen Vertrag eines Kindes ansehen, eine fiktive ISBJ-Abrechnung hochladen und Ihren ersten Bericht lesen.
+Dieses Tutorial bringt Sie in etwa 30 Minuten von „Ich habe gerade einen Zugang bekommen“ zu „Ich kann KitaManager im Kita-Alltag souverän nutzen“. Sie werden sich anmelden, das Dashboard erkunden, einen Anwesenheitstag erfassen, einen Vertrag eines Kindes ansehen, eine fiktive ISBJ-Abrechnung hochladen und Ihren ersten Bericht lesen.
 
 Sie brauchen:
 
@@ -59,7 +59,7 @@ Die Beispieldaten enthalten bereits einen ISBJ-Bescheid, sodass Sie für den Ver
 
 Die geseedeten Daten enthalten absichtlich einige Abweichungen. Klicken Sie auf eine rote Zeile, um zu sehen, welche Vertragseigenschaft abweicht. Der nächste Schritt wäre [Abweichung in einer Abrechnung untersuchen](../../how-to/use/investigate-a-bill-discrepancy/) — für das Tutorial reicht es, dass Sie den Vergleich lesen können.
 
-(Für das Hochladen Ihres eigenen monatlichen Bescheids siehe [ISBJ-Abrechnung hochladen](../../how-to/use/upload-an-isbj-bill/).)
+(Für das Hochladen Ihres eigenen monatlichen Bescheids siehe [Senatsabrechnung hochladen](../../how-to/use/upload-an-isbj-bill/).)
 
 ## Schritt 6 — Ihren ersten Bericht lesen
 

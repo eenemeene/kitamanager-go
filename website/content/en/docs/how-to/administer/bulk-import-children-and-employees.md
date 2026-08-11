@@ -9,7 +9,7 @@ You have a list of children or employees to load — typically the first time yo
 
 1. Navigate to **Children** or **Employees** in the sidebar.
 2. Click **Import**.
-3. Select the YAML file. KitaManager parses it and shows a preview of which records would be created.
+3. Select the YAML file. KitaManager reads it and shows a preview of which records would be created.
 4. Review carefully. **Imports create, they don't merge** — duplicate Gutscheinnummern or duplicate (first_name, last_name, birthdate) tuples will create duplicates that you'd then have to clean up by hand.
 5. Confirm.
 

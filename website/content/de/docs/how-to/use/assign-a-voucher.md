@@ -3,7 +3,7 @@ title: Kita-Gutschein-Nummer zuweisen
 weight: 15
 ---
 
-Ein Kind erscheint auf dem Dashboard unter „Kinder ohne Gutscheinnummer", oder Sie haben einen frischen Kita-Gutschein vom Bezirks-Jugendamt bekommen. Sie wollen die Gutscheinnummer hinterlegen, damit KitaManager dieses Kind beim nächsten ISBJ-Bescheid abgleichen kann.
+Ein Kind erscheint auf dem Dashboard unter „Kinder ohne Gutscheinnummer“, oder Sie haben einen frischen Kita-Gutschein vom Bezirks-Jugendamt bekommen. Sie wollen die Gutscheinnummer hinterlegen, damit KitaManager dieses Kind beim nächsten ISBJ-Bescheid abgleichen kann.
 
 ## Schritte (vom Dashboard)
 
@@ -11,7 +11,7 @@ Ein Kind erscheint auf dem Dashboard unter „Kinder ohne Gutscheinnummer", oder
 2. Pro Zeile die Gutscheinnummer vom Papier-Gutschein in das Inline-Eingabefeld einfügen.
 3. **Eingabe** drücken (oder das Speichern-Symbol klicken). Das Kind verschwindet sofort aus der Warn-Liste.
 
-Wenn das Dashboard einen Namens-Vorschlag macht (der Bescheid nennt „Müller, Maria", Sie hatten „Maria Mueller" eingegeben), erscheint eine **Vorschlag übernehmen**-Schaltfläche. Damit gleichen Sie die Namen mit einem Klick an.
+Wenn das Dashboard einen Namens-Vorschlag macht (der Bescheid nennt „Müller, Maria“, Sie hatten „Maria Mueller“ eingegeben), erscheint eine **Vorschlag übernehmen**-Schaltfläche. Damit gleichen Sie die Namen mit einem Klick an.
 
 ## Weiteren Gutschein hinzufügen (Verlängerung oder Korrektur)
 
@@ -40,7 +40,7 @@ Wenn das Bezirks-Jugendamt einen Kita-Gutschein abrechnet, der in KitaManager ke
 
 1. **In KitaManager anlegen** in der Zeile klicken.
 2. Der Dialog öffnet sich mit Name, Geburtsdatum und Vertragsbeginn, vorbefüllt aus den Abrechnungsdaten.
-3. **Vor dem Speichern das Geburtsdatum gegen den Kita-Gutschein abgleichen.** Die Abrechnung enthält nur Monat und Jahr, daher steht als Tag der 1. des ersten gesehenen Abrechnungsmonats — das ist als echter Geburtstag mit hoher Wahrscheinlichkeit falsch und verfälscht die Einschulungs-Klassifikation („Muss-Kind") und altersbasierte Statistiken, wenn man es nicht korrigiert.
+3. **Vor dem Speichern das Geburtsdatum gegen den Kita-Gutschein abgleichen.** Die Abrechnung enthält nur Monat und Jahr, daher steht als Tag der 1. des ersten gesehenen Abrechnungsmonats — das ist als echter Geburtstag mit hoher Wahrscheinlichkeit falsch und verfälscht die Einschulungs-Klassifikation („Muss-Kind“) und altersbasierte Statistiken, wenn man es nicht korrigiert.
 4. Sektion und Geschlecht auswählen (in der Abrechnung nicht enthalten).
 5. **Kind anlegen** klicken — der Dialog legt das Kind an, einen Vertrag ab dem ersten gesehenen Abrechnungsmonat und weist die Gutscheinnummer zu, in dieser Reihenfolge.
 

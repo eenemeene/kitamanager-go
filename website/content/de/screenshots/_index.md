@@ -3,7 +3,7 @@ title: Bildschirmfotos
 weight: 3
 ---
 
-Ein Rundgang durch die KitaManager-Benutzeroberfläche mit den wichtigsten Bildschirmen für den täglichen Einsatz. Alle Screenshots zeigen die mitgelieferten Demodaten („Kita Sonnenschein").
+Ein Rundgang durch die KitaManager-Benutzeroberfläche mit den wichtigsten Bildschirmen für den täglichen Einsatz. Alle Screenshots zeigen die mitgelieferten Demodaten („Kita Sonnenschein“).
 
 ---
 

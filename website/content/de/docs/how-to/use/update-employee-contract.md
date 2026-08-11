@@ -11,7 +11,7 @@ Für Stufenaufstiege gibt es eine eigene Anleitung: [Stufenaufstieg dokumentiere
 
 Eine reale Änderung hat ein Stichtag-Datum — den Tag, ab dem die neuen Stunden / Entgeltgruppe / der neue Bereich gelten. **Beenden Sie den aktuellen Vertrag am Tag davor und legen Sie einen neuen Vertrag ab dem Stichtag an.** Der alte Vertrag dokumentiert die vorherige Phase; KitaManager nutzt beide für historische Auswertungen, Personalabdeckungen vergangener Monate und das Gehaltsdiagramm.
 
-Wenn Sie stattdessen den bestehenden Vertrag bearbeiten, überschreiben Sie die Historie: eine Gehaltszahl aus drei Monaten zuvor ändert sich stillschweigend, und der Eintrag im Protokoll zeigt nur den „neuen" Zustand, nicht die echte Änderung.
+Wenn Sie stattdessen den bestehenden Vertrag bearbeiten, überschreiben Sie die Historie: eine Gehaltszahl aus drei Monaten zuvor ändert sich stillschweigend, und der Eintrag im Protokoll zeigt nur den „neuen“ Zustand, nicht die echte Änderung.
 
 Ausnahme: **Eingabefehler korrigieren** (Sie haben `30h` statt `35h` von Anfang an eingetragen, das Startdatum war ein Tippfehler). In diesen Fällen den Vertrag direkt bearbeiten — die Zeitleiste spiegelt dann die Realität.
 
@@ -34,7 +34,7 @@ Die Personalstunden- und Gehaltskosten-Werte im Dashboard aktualisieren sich sof
 
 ## Sonderfall: Mitarbeiter:in in einen anderen Bereich verschieben
 
-Für einen Bereichswechsel ist Drag-and-Drop auf der **Bereiche**-Seite der schnellste Weg — KitaManager schließt den alten Vertrag und legt einen neuen im Zielbereich automatisch an. Der Vertrag-Bearbeiten-Dialog selbst hat kein Bereichs-Feld, deshalb können Sie den Bereich von dieser Seite aus nicht ändern. Beide Wege (Drag-and-Drop und Planung im Voraus) stehen in [Mitarbeiter:in zwischen Bereichen verschieben](../move-employee-between-sections/).
+Für einen Bereichswechsel ist Drag-and-Drop auf der **Bereiche**-Seite der schnellste Weg — bei einem Vertrag, der vor heute begann, schließt KitaManager den alten Vertrag und legt einen neuen im Zielbereich automatisch an. Der Vertrag-Bearbeiten-Dialog selbst hat kein Bereichs-Feld, deshalb können Sie den Bereich von dieser Seite aus nicht ändern. Beide Wege (Drag-and-Drop und Planung im Voraus) stehen in [Mitarbeiter:in zwischen Bereichen verschieben](../move-employee-between-sections/).
 
 ## Sonderfall: Vertragsende (befristet, Austritt, Elternzeit)
 

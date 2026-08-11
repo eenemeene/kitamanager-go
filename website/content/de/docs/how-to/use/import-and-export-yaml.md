@@ -9,7 +9,7 @@ Sie wollen Kinder, Mitarbeiter oder Entgelttabellen massenhaft laden oder export
 
 1. Navigieren Sie zur entsprechenden Seite — **Kinder**, **Mitarbeiter**, **Entgelttabellen** oder **Fördersätze**.
 2. Klicken Sie auf **Importieren**.
-3. Wählen Sie die YAML-Datei. KitaManager parst sie und zeigt eine Vorschau.
+3. Wählen Sie die YAML-Datei. KitaManager liest sie und zeigt eine Vorschau.
 4. Vorschau prüfen, dann bestätigen. Datensätze werden angelegt.
 
 Unterstützte Importe:

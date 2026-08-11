@@ -10,7 +10,7 @@ The German Kita and ISBJ vocabulary you'll encounter in KitaManager. Terms used 
 - **Bezirks-Jugendamt** — district youth office. Berlin has 12, one per Bezirk. Issues Kita-Gutscheine, processes voucher applications, handles parent-facing voucher questions. Where parents go.
 - **Senatsverwaltung für Bildung, Jugend und Familie** — Berlin Senate department for education, youth, and family. Sets the funding rates the state pays per child per month. Operates the ISBJ procedure on behalf of the districts.
 - **ISBJ** — *Integriertes Software-System Berliner Jugendhilfe*. The procedure (and the software behind it) for the monthly bill exchange between Kita and the Senate. The Excel files you upload to KitaManager come from here.
-- **Bescheid** — the monthly billing notice from ISBJ, in Excel form.
+- **Senatsabrechnung** — the monthly billing notice from ISBJ, in Excel form. Also called *Bescheid*, *ISBJ Bescheid* or *ISBJ-Abrechnung*; in KitaManager the page is called **Funding Bills**. To upload one: [Upload a funding bill](../../how-to/use/upload-an-isbj-bill/).
 - **Kostenblatt** — the Senate's published table of per-child rates. Updated typically once a year on August 1.
 
 ## Children-side terms

@@ -5,7 +5,7 @@ weight: 4
 
 KitaManager behandelt das Kita-Jahr als **1. August → 31. Juli**, nicht als Kalenderjahr. Das ist die deutsche Schuljahres-Konvention: Schulen und Kitas führen Aufnahme, Personal und Haushalt über diesen Zeitraum.
 
-Falls Sie als Entwickler:in auf Finanz-Berichte schauen und sich wundern, warum das kumulierte Saldo im August „zurückgesetzt" wird: diese Seite erklärt es.
+Falls Sie als Entwickler:in auf Finanz-Berichte schauen und sich wundern, warum das kumulierte Saldo im August „zurückgesetzt“ wird: diese Seite erklärt es.
 
 ## Was dem Kita-Jahr folgt
 

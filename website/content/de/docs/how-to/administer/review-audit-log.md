@@ -17,6 +17,6 @@ Sie wollen sehen, wer in Ihrer Organisation was und wann geändert hat.
 - Login- und Passwort-Ereignisse sind aus dem org-bezogenen Log absichtlich **ausgeschlossen**, weil sie organisationsübergreifend sind. Superadmins sehen sie über die API — siehe [Globales Audit-Log untersuchen](../../operate/investigate-the-global-audit-log/).
 - Für das Pro-Feld-Schema siehe [API: Audit-Logs](../../../reference/api/).
 - Häufige Detektiv-Szenarien:
-  - „Wer hat das Kind gelöscht?" — nach Aktion `child_delete` filtern.
-  - „Was hat sich gestern geändert?" — nach Datumsbereich filtern.
-  - „Hat jemand einen Bescheid bearbeitet?" — nach Aktion `government_funding_bill_*` filtern.
+  - „Wer hat das Kind gelöscht?“ — nach Aktion `child_delete` filtern.
+  - „Was hat sich gestern geändert?“ — nach Datumsbereich filtern.
+  - „Hat jemand einen Bescheid bearbeitet?“ — nach Aktion `government_funding_bill_*` filtern.

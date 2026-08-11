@@ -56,7 +56,7 @@ Bereiche sind die Gruppen in Ihrer Kita. Zwei Dinge driften: wer in welchem Bere
 
 Die **Bereiche**-Seite übernimmt die tägliche Neuzuordnung per Drag-and-Drop für Kinder und pädagogische Mitarbeiter:innen. Die Bereichs-Konfiguration (Name, Altersgrenzen, Standard) ist eine Admin-Aufgabe an der Detailseite jedes Bereichs.
 
-{{< screenshot src="/images/screenshots/sections.png" alt="Bereiche-Kanban" caption="Jede Bereichsspalte zeigt Kinder und pädagogische Mitarbeiter:innen. Eine Karte ziehen, um neu zuzuordnen — der Vertrag wird geschlossen und ein neuer im Zielbereich automatisch angelegt." >}}
+{{< screenshot src="/images/screenshots/sections.png" alt="Bereiche-Kanban" caption="Jede Bereichsspalte zeigt Kinder und pädagogische Mitarbeiter:innen. Eine Karte ziehen, um neu zuzuordnen — der laufende Vertrag wird in der Regel geschlossen und ein neuer im Zielbereich ab heute angelegt." >}}
 
 Anleitungen:
 
@@ -92,7 +92,7 @@ Das Wartungsmuster spiegelt das von Verträgen: Wenn sich ein Betrag unterjähri
 
 Anleitung:
 
-- [Budgetposten verwalten](../../how-to/use/manage-budget-items/) — Anlegen, Einträge hinzufügen und die Muster „Wert ändert sich unterjährig" / „Kategorie endet" / „Einmalzahlung" / „Eingabefehler".
+- [Budgetposten verwalten](../../how-to/use/manage-budget-items/) — Anlegen, Einträge hinzufügen und die Muster „Wert ändert sich unterjährig“ / „Kategorie endet“ / „Einmalzahlung“ / „Eingabefehler“.
 
 ## 7. (Superadmin) Fördersätze aktuell halten
 

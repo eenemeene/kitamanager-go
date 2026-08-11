@@ -26,7 +26,7 @@ Sie wollen `TOTP_ENCRYPTION_KEY` ändern (z. B. im Rahmen routinemäßiger Schl�
 
 ## Wenn Sie TOTP einer Person ohne deren Mitwirkung deaktivieren müssen
 
-Heute gibt es keine Admin-„MFA zurücksetzen"-Oberfläche. Wenn eine Person nach der Rotation Authenticator und Wiederherstellungscodes verloren hat, ist der Wiederherstellungspfad:
+Heute gibt es keine Admin-„MFA zurücksetzen“-Oberfläche. Wenn eine Person nach der Rotation Authenticator und Wiederherstellungscodes verloren hat, ist der Wiederherstellungspfad:
 
 1. Passwort der Person zurücksetzen (deaktiviert 2FA nicht).
 2. Nutzer-Datensatz löschen.

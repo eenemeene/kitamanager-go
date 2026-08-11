@@ -56,7 +56,7 @@ Sections (Bereiche) are the groups inside your Kita. Two things keep drifting: w
 
 The **Sections** page handles the day-to-day reassignment via drag-and-drop for both children and pedagogical employees. The section configuration (name, age limits, default) is an admin task done from each section's detail page.
 
-{{< screenshot src="/images/screenshots/sections.png" alt="Sections kanban" caption="Each section column shows children and pedagogical employees. Drag a card to reassign — the contract is closed and a new one in the target section is created automatically." >}}
+{{< screenshot src="/images/screenshots/sections.png" alt="Sections kanban" caption="Each section column shows children and pedagogical employees. Drag a card to reassign — the running contract is normally closed and a new one in the target section created from today." >}}
 
 Recipes:
 

@@ -23,7 +23,7 @@ Nachdem TOTP an ist, hat dieselbe Karte **Sicherheitsschlüssel hinzufügen**:
 
 1. Klicken Sie auf **Sicherheitsschlüssel hinzufügen**.
 2. Der Browser öffnet seine WebAuthn-Aufforderung — tippen Sie auf Ihren YubiKey, stecken Sie Ihren Phone-Passkey ein, oder nutzen Sie das Plattform-Biometrie-System.
-3. Optional einen Namen für den Schlüssel vergeben (z. B. „Yubikey-blau").
+3. Optional einen Namen für den Schlüssel vergeben (z. B. „Yubikey-blau“).
 
 Sie können mehrere Schlüssel registrieren. Bei der nächsten Anmeldung können Sie wählen, welchen Faktor Sie verwenden.
 

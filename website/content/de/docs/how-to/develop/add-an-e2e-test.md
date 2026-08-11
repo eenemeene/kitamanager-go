@@ -50,7 +50,7 @@ npx playwright test --project=chromium e2e/<feature>.spec.ts
 - **`test.use({ locale: 'en-US' })`** am Anfang jeder Datei. Die Codebasis nutzt englisches Locale für stabiles Text-Matching unabhängig vom Locale des Entwickler-Systems.
 - **Niemals `waitForLoadState('networkidle')`.** react-query hält Hintergrund-Requests am Leben; networkidle löst nie auf, und der Test läuft nach 30 s in einen Timeout. `'load'` plus explizite Element-Assertions nutzen.
 - **Niemals `waitForTimeout(...)`.** Durch `expect(...).toHaveText(...)` oder andere explizite Waits ersetzen. Bestehende TOTP-Ausnahmen sind inline dokumentiert.
-- **Keine datums-abhängigen Assertions** — kein Assert auf „Active", „Upcoming", „Ended"-Status, der von heute abhängt. Feste vergangene Daten für Testdaten nutzen und den Datensatz statt des berechneten Status prüfen.
+- **Keine datums-abhängigen Assertions** — kein Assert auf „Active“, „Upcoming“, „Ended“-Status, der von heute abhängt. Feste vergangene Daten für Testdaten nutzen und den Datensatz statt des berechneten Status prüfen.
 
 Die vollständigen Konventionen liegen in `.claude/rules/e2e-tests.md`.
 

@@ -3,13 +3,13 @@ title: Wie Anwesenheit modelliert wird
 weight: 5
 ---
 
-Anwesenheit in KitaManager ist tagesgenau, pro Kind. Diese Seite erklärt das Datenmodell, damit das Verhalten der Oberfläche („warum erscheint diese Zeile hier?", „was bedeutet leer?") Sinn ergibt.
+Anwesenheit in KitaManager ist tagesgenau, pro Kind. Diese Seite erklärt das Datenmodell, damit das Verhalten der Oberfläche („warum erscheint diese Zeile hier?“, „was bedeutet leer?“) Sinn ergibt.
 
 ## Das Modell
 
-Für jedes (Kind, Datum)-Paar gibt es höchstens einen **Anwesenheits-Datensatz**. Der Datensatz trägt einen Status — derzeit `present` oder `absent`. Das Fehlen eines Datensatzes bedeutet **es wurde keine Beobachtung gemacht**, nicht „das Kind war nicht da".
+Für jedes (Kind, Datum)-Paar gibt es höchstens einen **Anwesenheits-Datensatz**. Der Datensatz trägt einen Status — derzeit `present` oder `absent`. Das Fehlen eines Datensatzes bedeutet **es wurde keine Beobachtung gemacht**, nicht „das Kind war nicht da“.
 
-Dieses Drei-Zustands-Modell (anwesend / abwesend / kein Datensatz) ist wichtig. Eine leere Zelle im Wochenraster ist *nicht* eine ungekennzeichnete Abwesenheit — sie ist „wir wissen es nicht". Berichte, die „Abwesenheits-Tage" zählen, zählen nur Zeilen mit `absent`-Status; Zeilen, die einfach nicht existieren, gehen in keine der Zählungen ein.
+Dieses Drei-Zustands-Modell (anwesend / abwesend / kein Datensatz) ist wichtig. Eine leere Zelle im Wochenraster ist *nicht* eine ungekennzeichnete Abwesenheit — sie ist „wir wissen es nicht“. Berichte, die „Abwesenheits-Tage“ zählen, zählen nur Zeilen mit `absent`-Status; Zeilen, die einfach nicht existieren, gehen in keine der Zählungen ein.
 
 ## Aktiver-Vertrag-Geltungsbereich
 
@@ -30,7 +30,7 @@ Das Fehlen eines explizit Speichern ist Absicht — Erzieher:innen sollten am En
 
 ## Pro-Kind-Anwesenheits-Historie
 
-Das Wochenraster ist die breite Sicht. Die schmale Sicht ist auf der Detailseite des Kindes, die jeden Anwesenheits-Datensatz dieses Kindes in Datums-Reihenfolge auflistet. Nützlich für Eltern-Berichte („wie viele Tage war Max dieses Halbjahr abwesend?") und um Muster zu erkennen.
+Das Wochenraster ist die breite Sicht. Die schmale Sicht ist auf der Detailseite des Kindes, die jeden Anwesenheits-Datensatz dieses Kindes in Datums-Reihenfolge auflistet. Nützlich für Eltern-Berichte („wie viele Tage war Max dieses Halbjahr abwesend?“) und um Muster zu erkennen.
 
 ## Berichte und Grenzen
 

@@ -26,7 +26,7 @@ For account-level admin (managing other users, changing organisation settings) s
 
 ## Funding and bills
 
-- [Upload an ISBJ bill](upload-an-isbj-bill/)
+- [Upload a funding bill](upload-an-isbj-bill/)
 - [Investigate a bill discrepancy](investigate-a-bill-discrepancy/)
 - [View a child's billing history](view-a-childs-billing-history/)
 

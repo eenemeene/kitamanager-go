@@ -49,7 +49,7 @@ Administratoren sehen alle ihre Organisationen auf einer Übersichtsseite und k�
 
 ## Bereiche
 
-Bereiche repräsentieren Gruppen innerhalb einer Kita — zum Beispiel „Schmetterlinge" oder „Sonnenkäfer". Sie ermöglichen die Gliederung Ihrer Einrichtung in überschaubare Einheiten.
+Bereiche repräsentieren Gruppen innerhalb einer Kita — zum Beispiel „Schmetterlinge“ oder „Sonnenkäfer“. Sie ermöglichen die Gliederung Ihrer Einrichtung in überschaubare Einheiten.
 
 | Funktion | Beschreibung |
 |---|---|
@@ -189,7 +189,7 @@ KitaManager unterstützt den Upload von Förderabrechnungen im **ISBJ-Format** (
 
 ### Finanzprognose
 
-Das Prognose-Tool ermöglicht „Was-wäre-wenn"-Szenarien zur vorausschauenden Planung:
+Das Prognose-Tool ermöglicht „Was-wäre-wenn“-Szenarien zur vorausschauenden Planung:
 
 - **Zielsaldo** — setzen Sie ein finanzielles Ziel und sehen Sie, wie viele Kinder Sie benötigen, um es zu erreichen
 - **Basislinie** — die Prognose wird mit Ihrem aktuellen kumulierten Saldo vorausgefüllt, damit Sie immer Ihren Ausgangspunkt kennen
@@ -203,7 +203,7 @@ Das Budgetmodul ermöglicht die Planung und Nachverfolgung von Einnahmen und Aus
 
 | Funktion | Beschreibung |
 |---|---|
-| Budgetposten | Kategorien für Einnahmen und Ausgaben anlegen (z.B. „Personalkosten", „Sachmittel", „Elternbeiträge") |
+| Budgetposten | Kategorien für Einnahmen und Ausgaben anlegen (z.B. „Personalkosten“, „Sachmittel“, „Elternbeiträge“) |
 | Zeitgebundene Einträge | Einträge mit Beträgen und Gültigkeitszeiträumen zu jedem Budgetposten hinzufügen |
 | Ausgabenverfolgung | Tatsächliche Ausgaben im Vergleich zu geplanten Budgets überwachen |
 | Organisationsbezogen | Jede Organisation verwaltet ein eigenes unabhängiges Budget |

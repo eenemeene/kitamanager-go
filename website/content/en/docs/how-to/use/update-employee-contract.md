@@ -34,7 +34,7 @@ The dashboard's staffing-hours and salary-cost figures update immediately. From 
 
 ## Special case: moving an employee to a different section
 
-For a section change, drag-and-drop on the **Sections** page is the quickest path — KitaManager closes the old contract and creates a new one in the target section automatically. The contract edit dialog itself doesn't expose the section field, so you can't change it from this page. See [Move an employee between sections](../move-employee-between-sections/) for both the drag-and-drop and the advance-planning recipes.
+For a section change, drag-and-drop on the **Sections** page is the quickest path — for a contract that started before today, KitaManager closes the old contract and creates a new one in the target section automatically. The contract edit dialog itself doesn't expose the section field, so you can't change it from this page. See [Move an employee between sections](../move-employee-between-sections/) for both the drag-and-drop and the advance-planning recipes.
 
 ## Special case: contract end (fixed-term, departure, parental leave)
 
