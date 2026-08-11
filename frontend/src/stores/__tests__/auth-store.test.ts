@@ -12,14 +12,12 @@ jest.mock('@/lib/api/client', () => ({
     getCurrentUser: jest.fn(),
     getMyMemberships: jest.fn(),
     setOnUnauthorized: jest.fn((cb: () => void) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (globalThis as any).__authTestUnauthorizedCb = cb;
     }),
   },
 }));
 
 function getUnauthorizedCallback(): () => void {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (globalThis as any).__authTestUnauthorizedCb;
 }
 

@@ -1,6 +1,5 @@
 jest.mock('@nivo/bar', () => ({ ResponsiveBar: () => null }));
 
-// eslint-disable-next-line import/first
 import {
   buildSectionStaffingRows,
   computeSymmetricDomainMax,
