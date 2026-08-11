@@ -11,7 +11,7 @@ Sie wollen eine Einnahme oder Ausgabe erfassen, die nicht automatisch aus Vertr�
 
 1. **Budgetposten** in der Seitenleiste klicken.
 2. **Erstellen** klicken.
-3. **Namen** setzen (z. B. „Miete“ oder „Elternbeiträge“) und **Einnahme** oder **Ausgabe** wählen.
+3. **Namen** setzen (z. B. „Miete“ oder „Elternbeiträge“) und **Einnahmen** oder **Ausgaben** wählen.
 4. **Speichern**.
 
 ## Einträge zum Posten hinzufügen

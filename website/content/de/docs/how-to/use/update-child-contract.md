@@ -29,8 +29,9 @@ Ausnahme: **Eingabefehler korrigieren** — Sie hatten `halbtag` eingetragen, ge
 4. Zurück in der Vertragshistorie klicken Sie auf **Neuer Vertrag**.
 5. Setzen Sie **Von** auf das Stichtag-Datum. Wählen Sie denselben **Bereich** (es sei denn, der Bereich ändert sich ebenfalls — dann siehe [Kinder zwischen Bereichen verschieben](../move-children-between-sections/)).
 6. Setzen Sie die **Eigenschaften** des Vertrags:
-   - **Betreuungsart** — die passende auswählen: Halbtag, Teilzeit, Ganztag, Ganztag erweitert.
+   - **Betreuungsart** — die passende auswählen: Halbtag (bis 5h), Teilzeit (bis 7h), Ganztag (bis 9h), Ganztag Erweitert (>9h).
    - **Zuschläge** — alle zutreffenden ankreuzen: NdH, QM/MSS, Integration A, Integration B. Nicht mehr zutreffende entfernen.
+   - Das Badge **Essen** setzen Sie nicht selbst. Der Eltern-Essensbeitrag ist in der Förder-Konfiguration für alle Verträge hinterlegt und wird automatisch angewendet — er erscheint an jedem Vertrag und lässt sich hier nicht abwählen.
 7. **Speichern**.
 
 {{< screenshot src="/images/screenshots/child-contract-create.png" alt="Dialog Neuer Betreuungsvertrag" caption="Betreuungsart wählen und jeden zutreffenden Zuschlag ankreuzen." >}}
