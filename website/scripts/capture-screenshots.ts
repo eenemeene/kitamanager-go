@@ -41,6 +41,8 @@ interface LangConfig {
   editButtonLabel: string;
   // Text on the "Add Entry" button on the budget-item detail page.
   addEntryButton: RegExp;
+  // aria-label of the Kita-year stepper's "back" chevron (common.previousYear).
+  previousYearLabel: string;
 }
 
 const LANGUAGES: LangConfig[] = [
@@ -56,6 +58,7 @@ const LANGUAGES: LangConfig[] = [
     forecastOptimizeTab: /^optimize$/i,
     editButtonLabel: 'Edit',
     addEntryButton: /add entry/i,
+    previousYearLabel: 'Previous year',
   },
   {
     code: 'de',
@@ -69,6 +72,7 @@ const LANGUAGES: LangConfig[] = [
     forecastOptimizeTab: /^optimieren$/i,
     editButtonLabel: 'Bearbeiten',
     addEntryButton: /eintrag hinzufügen/i,
+    previousYearLabel: 'Vorheriges Jahr',
   },
 ];
 
@@ -506,8 +510,14 @@ async function captureSettingsAndMfa(
  * enrolment.
  */
 async function disableMfaForCurrentUser(page: Page, totp: TOTP): Promise<void> {
-  const code = totp.generate();
-  await page.evaluate(
+  // TOTP codes are single-use: the backend records the last-used time step to
+  // defeat replays (internal/models/factor.go). Enrolment has just consumed the
+  // current step, so a code generated now would be rejected and the account
+  // would stay enrolled — which locks every later run of this script out of the
+  // password-only login. Wait for the next step before asking for the delete.
+  await waitForNextTotpStep(totp);
+
+  const result = await page.evaluate(
     async ({ password, code }) => {
       const csrfMatch = document.cookie.match(/csrf_token=([^;]+)/);
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -517,22 +527,56 @@ async function disableMfaForCurrentUser(page: Page, totp: TOTP): Promise<void> {
         credentials: 'same-origin',
         headers,
       });
-      if (!factorsResp.ok) return;
+      if (!factorsResp.ok) return { ok: false, stage: 'list', status: factorsResp.status };
       const data = await factorsResp.json();
       const factors: Array<{ id: number; type: string }> = data.factors ?? [];
       // Delete the TOTP factor first; the service layer also sweeps
       // the backup_codes factor when the last primary is removed.
       const totpFactor = factors.find((f) => f.type === 'totp');
-      if (!totpFactor) return;
-      await fetch(`/api/v1/users/me/factors/${totpFactor.id}`, {
+      if (!totpFactor) return { ok: true, stage: 'none-enrolled', status: 200 };
+      const del = await fetch(`/api/v1/users/me/factors/${totpFactor.id}`, {
         method: 'DELETE',
         credentials: 'same-origin',
         headers,
         body: JSON.stringify({ password, code }),
       });
+      if (!del.ok) {
+        return { ok: false, stage: 'delete', status: del.status, body: await del.text() };
+      }
+      // Confirm the account really is password-only again.
+      const after = await fetch('/api/v1/users/me/factors', {
+        credentials: 'same-origin',
+        headers,
+      });
+      const remaining = after.ok ? ((await after.json()).factors ?? []).length : -1;
+      return { ok: remaining === 0, stage: 'verify', status: del.status, remaining };
     },
-    { password: ADMIN_PASSWORD, code }
+    { password: ADMIN_PASSWORD, code: totp.generate() }
   );
+
+  if (!result.ok) {
+    // Loud on purpose. A silent failure here leaves MFA enrolled on the seed
+    // admin, and the only way back is re-seeding the database.
+    throw new Error(
+      `Failed to disable MFA for the seed admin (stage=${result.stage}, ` +
+        `status=${result.status}${'remaining' in result ? `, remaining=${result.remaining}` : ''}` +
+        `${'body' in result ? `, body=${result.body}` : ''}). ` +
+        'The account is still enrolled — re-seed with `make dev-fresh` before running again.'
+    );
+  }
+}
+
+/**
+ * Block until the TOTP time step advances, so the next generated code has not
+ * been used before. Costs up to one period (30s by default) and only runs once
+ * per language pass.
+ */
+async function waitForNextTotpStep(totp: TOTP): Promise<void> {
+  const periodMs = (totp.period ?? 30) * 1000;
+  const msIntoStep = Date.now() % periodMs;
+  const waitMs = periodMs - msIntoStep + 1000;
+  console.log(`  … waiting ${Math.round(waitMs / 1000)}s for a fresh TOTP step before disabling MFA`);
+  await new Promise((resolve) => setTimeout(resolve, waitMs));
 }
 
 async function captureForLanguage(browser: Browser, lang: LangConfig): Promise<void> {
@@ -694,6 +738,16 @@ async function captureForLanguage(browser: Browser, lang: LangConfig): Promise<v
     // 21. Government Funding Bills
     await page.goto(`${BASE_URL}/organizations/${orgId}/government-funding-bills`);
     await waitForContent(page);
+    // The page opens on the *current* Kita year, but the seeder plants bills for
+    // the last six calendar months. In the opening months of a Kita year (Aug
+    // onwards) those two barely overlap, so the table would be empty and the
+    // screenshot would show nothing useful. Step back until rows appear, so the
+    // capture shows real data whichever month it runs in.
+    for (let back = 0; back < 2; back++) {
+      if ((await page.locator('table tbody tr').count()) > 0) break;
+      await page.getByRole('button', { name: lang.previousYearLabel }).click();
+      await waitForContent(page);
+    }
     await capture(page, outputDir, 'government-funding-bills');
 
     // 22. Government Funding Bill Detail (if bills exist)
