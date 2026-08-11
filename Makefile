@@ -1,6 +1,6 @@
 .PHONY: build lint test clean ci dev dev-fresh \
 	api-build api-run api-lint api-test-all api-test-unit api-test-integration api-test-contract api-test-fuzz api-test-coverage api-test-backup api-test-race \
-	web-install web-dev web-build web-lint web-format web-format-check web-type-check web-test web-test-coverage web-test-e2e web-test-e2e-fresh web-test-e2e-demo screenshots \
+	web-install web-dev web-build web-lint web-format web-format-check web-type-check web-test web-test-coverage web-test-e2e web-test-e2e-fresh web-test-e2e-demo web-test-e2e-headed web-playwright-install screenshots \
 	docs schema-docs swagger-docs swagger-check api-types api-types-check docker-up docker-down docker-rebuild docker-reset install-hooks uninstall-hooks pre-commit \
 	report-pdf-build report-pdf
 
@@ -30,9 +30,14 @@ test: web-test api-test-unit
 clean:
 	rm -rf bin/ coverage.out coverage.html frontend/.next
 
-# Run all CI checks locally
+# Fast local gate: lint, unit tests and both builds. NOT the same as CI —
+# GitHub additionally runs web-type-check, web-format-check, swagger-check,
+# api-types-check, api-test-integration, api-test-contract, api-test-fuzz and
+# the E2E suite. Green here does not mean green there; `make pre-commit` is the
+# closer approximation.
 ci: lint test build
-	@echo "All CI checks passed!"
+	@echo "Local checks passed (lint, unit tests, builds)."
+	@echo "This is not the full CI suite — see the comment above this target."
 
 # Reset everything and start fresh development environment
 dev-fresh: docker-reset clean dev
@@ -184,66 +189,89 @@ api-test-coverage:
 # Web targets (Next.js frontend)
 # =============================================================================
 
-# Install web dependencies
+# Install web dependencies. Always reinstalls — use this when you want a clean
+# node_modules. Targets that merely *need* deps present depend on the
+# frontend/node_modules sentinel below instead, so they don't wipe and reinstall
+# on every lint.
 web-install:
 	cd frontend && npm ci
 
+# Sentinel: install only when the lockfile is newer than the installed tree.
+# Every npm/npx-driven target below depends on this, because previously a fresh
+# clone failed on `make lint`, `make test` and therefore `make ci` — the web
+# halves shell out to npm and nothing had installed it. `touch` is needed
+# because npm does not reliably bump the directory mtime.
+frontend/node_modules: frontend/package-lock.json
+	cd frontend && npm ci
+	@touch frontend/node_modules
+
 # Start web dev server
-web-dev:
+web-dev: frontend/node_modules
 	cd frontend && npm run dev
 
 # Build web for production
-web-build:
+web-build: frontend/node_modules
 	cd frontend && npm run build
 
 # Lint web code
-web-lint:
+web-lint: frontend/node_modules
 	cd frontend && npm run lint
 
 # Format web code (Prettier)
-web-format:
+web-format: frontend/node_modules
 	cd frontend && npm run format
 
 # Check formatting without writing
-web-format-check:
+web-format-check: frontend/node_modules
 	cd frontend && npm run format:check
 
 # Type-check web code
-web-type-check:
+web-type-check: frontend/node_modules
 	cd frontend && npm run type-check
 
 # Run web unit tests
-web-test:
+web-test: frontend/node_modules
 	cd frontend && npm run test
 
 # Run web tests with coverage
-web-test-coverage:
+web-test-coverage: frontend/node_modules
 	cd frontend && npm run test:coverage
 
 # Run web E2E tests (requires dev server running or will start it)
-web-test-e2e:
+web-test-e2e: frontend/node_modules
 	cd frontend && npm run test:e2e
 
 # Run web E2E tests with a fresh database (resets all data first)
-web-test-e2e-fresh:
-	@echo "Stopping any running API server..."
+web-test-e2e-fresh: frontend/node_modules
+	@echo "Stopping any running dev environment..."
 	@-kill $$(cat /tmp/kitamanager-api.pid 2>/dev/null) 2>/dev/null || true
 	@rm -f /tmp/kitamanager-api.pid
+	# The frontend has to go too. Playwright's webServer uses
+	# reuseExistingServer and keys on :3000, so a surviving `next dev` made it
+	# skip starting `make dev` entirely — leaving no API and the empty database
+	# we just created, and every test failing for the wrong reason.
+	@-pkill -f "next dev" 2>/dev/null || true
+	@for i in $$(seq 1 20); do \
+		curl -sf http://localhost:3000 >/dev/null 2>&1 || break; \
+		sleep 0.5; \
+	done
+	@curl -sf http://localhost:3000 >/dev/null 2>&1 && \
+		{ echo "Something is still serving :3000 — stop it before running this target."; exit 1; } || true
 	docker compose down -v
-	@echo "Database reset. Starting E2E tests with fresh database..."
+	@echo "Database reset. Playwright will start a fresh dev environment..."
 	cd frontend && npm run test:e2e
 
 # Run web E2E tests with browser visible
-web-test-e2e-headed:
+web-test-e2e-headed: frontend/node_modules
 	cd frontend && npm run test:e2e:headed
 
 # Run web E2E tests with browser visible and slow motion (for human watching)
 # Uses Chromium for better video recording support
-web-test-e2e-demo:
+web-test-e2e-demo: frontend/node_modules
 	cd frontend && SLOWMO=500 VIDEO=1 npx playwright test --headed --project=chromium
 
 # Install Playwright browsers
-web-playwright-install:
+web-playwright-install: frontend/node_modules
 	cd frontend && npx playwright install --with-deps
 
 # Recapture every website screenshot (all 44, in both en and de).
@@ -295,11 +323,11 @@ swagger-check:
 # Generate the frontend's TypeScript types from docs/openapi.json. The
 # generated file (frontend/src/lib/api/generated.ts) is committed so PR
 # diffs make backend type changes visible to reviewers.
-api-types:
+api-types: frontend/node_modules
 	cd frontend && npm run gen:api
 
 # Verify the committed generated types match the current spec. Used in CI.
-api-types-check:
+api-types-check: frontend/node_modules
 	@cd frontend && npm run gen:api >/dev/null
 	@if ! git diff --exit-code frontend/src/lib/api/generated.ts >/dev/null 2>&1 ; then \
 	    echo "frontend/src/lib/api/generated.ts is stale; run make api-types"; \
@@ -370,6 +398,8 @@ REPORT_LDFLAGS := -ldflags "-X $(REPORT_VERSION_PKG).GitVersion=$(GIT_VERSION) -
 report-pdf-build:
 	cd tools/report-pdf && go build $(REPORT_LDFLAGS) -o ../../bin/report-pdf .
 
-# Generate PDF reports (requires running dev environment)
-report-pdf:
+# Generate PDF reports (requires running dev environment).
+# Depends on the build: without it this ran ./bin/report-pdf on a clean tree and
+# failed with "no such file".
+report-pdf: report-pdf-build
 	./bin/report-pdf --email admin@example.com --password supersecret --org-id 1
