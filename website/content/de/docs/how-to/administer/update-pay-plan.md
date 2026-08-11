@@ -9,10 +9,10 @@ Die TVöD-SuE-Tabelle ändert sich (typischerweise jährlich nach jeder Tarifrun
 
 Wenn bereits ein YAML für den neuen Zeitraum existiert (Kolleg:in, Bezugsstelle oder ein KitaManager-Release), ist das der schnellste Weg.
 
-{{< screenshot src="/images/screenshots/payplan-list.png" alt="Entgelttabellen-Übersicht" caption="Entgelttabellen der Organisation. Der Button YAML importieren ist oben rechts." >}}
+{{< screenshot src="/images/screenshots/payplan-list.png" alt="Entgelttabellen-Übersicht" caption="Entgelttabellen der Organisation. Der Button **YAML Import** ist oben rechts." >}}
 
 1. **Entgelttabellen** in der Seitenleiste öffnen (unter der Einstellungen-Gruppe — Admin-Rolle erforderlich).
-2. Auf **YAML importieren** klicken.
+2. Auf **YAML Import** klicken.
 3. Die YAML-Datei im System-Dateidialog auswählen. Der Import läuft sofort; ein Toast bestätigt den Erfolg.
 
 Der neue Zeitraum erscheint in der passenden Entgelttabelle. Ab dessen `from`-Datum nutzen Gehaltsberechnungen die neue Tabelle.
@@ -28,7 +28,7 @@ Für eine kleine Änderung (eine zusätzliche Stufe, eine einzelne Korrektur) od
 3. Innerhalb des neuen Zeitraums **Eintrag hinzufügen** für jede Entgeltgruppen-/Stufen-Kombination. **Entgeltgruppe** (z. B. `S 8a`), **Stufe** (1–6) und **Monatsbetrag** in Euro setzen.
 4. Jeden Eintrag speichern.
 
-Die Detailseite hat zusätzlich einen Button **YAML exportieren**, mit dem Sie die Tabelle ausgeben und mit anderen teilen können (oder als Backup behalten).
+Die Detailseite hat zusätzlich einen Button **YAML Export**, mit dem Sie die Tabelle ausgeben und mit anderen teilen können (oder als Backup behalten).
 
 ## Hinweise
 

@@ -29,8 +29,9 @@ The one exception is **correcting an input error** — you typed `halbtag` but m
 4. Back on the contract history, click **New contract**.
 5. Set **From** to the effective date. Pick the same **Section** (unless the section is also changing — then see [Move children between sections](../move-children-between-sections/)).
 6. Set the contract **Properties**:
-   - **Care type (Betreuungsart)** — pick the right one: Halbtag, Teilzeit, Ganztag, Ganztag erweitert.
+   - **Care type (Betreuungsart)** — pick the right one: Half-Day (up to 5h), Part-Time (up to 7h), Full-Time (up to 9h), Extended Full-Time (>9h).
    - **Supplements (Zuschläge)** — check every applicable supplement: NdH, QM/MSS, Integration A, Integration B. Remove any that no longer apply.
+   - You don't set the **Meals** badge yourself. The parent meal contribution is configured for all contracts in the funding config and applied automatically — it shows on every contract and can't be unchecked here.
 7. Click **Save**.
 
 {{< screenshot src="/images/screenshots/child-contract-create.png" alt="New child contract dialog" caption="Pick care type and check every applicable supplement." >}}
