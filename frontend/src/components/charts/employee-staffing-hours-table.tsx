@@ -62,8 +62,10 @@ export function EmployeeStaffingHoursTable({ data }: EmployeeStaffingHoursTableP
   const t = useTranslations('statistics');
   const tRoot = useTranslations();
 
-  const dates = data.dates ?? [];
-  const employees = data.employees ?? [];
+  // Memoised so the `?? []` fallbacks do not produce fresh arrays on every
+  // render, which would invalidate the useMemo hooks below that depend on them.
+  const dates = useMemo(() => data.dates ?? [], [data.dates]);
+  const employees = useMemo(() => data.employees ?? [], [data.employees]);
 
   const totals = useMemo(() => {
     const sums = new Array<number>(dates.length).fill(0);
