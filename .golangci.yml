@@ -33,6 +33,12 @@ linters:
           - govet
         text: 'shadow: declaration of "err"'
     paths:
+      # Some npm packages ship Go sources next to their JavaScript (e.g.
+      # flatted, pulled in transitively by eslint). They carry no go.mod of
+      # their own, so `./...` treats them as part of this module and lints
+      # third-party code. CI never hits this because the API lint job does
+      # not install frontend deps, but `make ci` does — so exclude them.
+      - frontend/node_modules
       - third_party$
       - builtin$
       - examples$
@@ -47,6 +53,9 @@ formatters:
   exclusions:
     generated: lax
     paths:
+      # Same rationale as the linters exclusion above; without this gofmt and
+      # goimports flag the vendored-by-npm Go sources too.
+      - frontend/node_modules
       - third_party$
       - builtin$
       - examples$
