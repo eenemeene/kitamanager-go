@@ -66,4 +66,4 @@ Wenn Sie 200 eingegeben haben, gemeint waren 2000, klicken Sie auf den Stift und
 - Einmalige Kosten (Renovierung): ein Eintrag mit kurzem Datumsbereich.
 - Jährliche Pauschalbeträge (Spende): über die relevanten Monate verteilen, indem Sie einen kurzen Datumsbereich passend zum Zahlungstermin setzen.
 - Beträge werden in **Euro** eingegeben, nicht in Cents. KitaManager konvertiert intern zu Cents — siehe [Warum Geldbeträge als Cents gespeichert werden](../../../explanation/why-money-is-stored-as-cents/).
-- Das Protokoll erfasst jede Anlage / Bearbeitung / Löschung eines Eintrags mit Alt → Neu-Werten. Admins können es einsehen: [Protokoll prüfen](../../administer/review-audit-log/).
+- Das Protokoll erfasst, dass ein Budgetposten angelegt / bearbeitet / gelöscht wurde, mit Person und Zeitpunkt — nicht die alten und neuen Beträge. Admins können es einsehen: [Protokoll prüfen](../../administer/review-audit-log/).

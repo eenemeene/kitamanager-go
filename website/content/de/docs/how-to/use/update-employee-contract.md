@@ -53,5 +53,5 @@ Wenn nur das Start- oder Enddatum falsch ist (Sie haben den 1. März eingetragen
 
 - Stufenaufstiege haben ein eigenes Widget und eine eigene Anleitung — folgen Sie *nicht* dem manuellen Weg hier. Siehe [Stufenaufstieg dokumentieren](../promote-employee-step/).
 - Eine falsche Kombination aus Entgeltgruppe/Stufe/Stunden berechnet die Gehaltskosten still verfälscht. Prüfen Sie den neuen Vertrag am Gehaltsdiagramm (das Diagramm aktualisiert sich sofort nach dem Speichern).
-- Das Protokoll erfasst jede Anlage / Bearbeitung / Löschung eines Vertrags mit Alt → Neu-Werten. Admins können es einsehen: [Protokoll prüfen](../../administer/review-audit-log/).
+- Das Protokoll erfasst, dass ein Vertrag angelegt / bearbeitet / gelöscht wurde, mit Person und Zeitpunkt — bei Verträgen aber **nicht** die alten und neuen Feldwerte (anders als bei Änderungen an den Personendaten einer Mitarbeiter:in, dort wird ein Vorher/Nachher festgehalten). Admins können es einsehen: [Protokoll prüfen](../../administer/review-audit-log/).
 - Zur Berechnungskette für Gehälter (Entgeltgruppe × Stufe × Stunden × Tabelle), siehe die Admin-Anleitung [Entgelttabelle aktualisieren](../../administer/update-pay-plan/).

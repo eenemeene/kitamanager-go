@@ -30,4 +30,4 @@ Für eine einzelne Korrektur:
 - Das Format ist dokumentiert unter [Förder-YAML-Format](../../../reference/data-model/funding-yaml-format/).
 - Im YAML ist `payment` **dezimaler EUR-Wert** (z. B. `2494.91`). Beim Import konvertiert KitaManager zu Cents (`249491`) — das ist die intern gespeicherte Form.
 - Nach dem Update: der nächste Bescheid-Vergleich nutzt die neuen Sätze ab dem Bescheid-Monat. Vergangene Bescheide bleiben in der Speicherung unverändert, aber ihr erneuter Vergleich würde nun andere Zahlen erzeugen.
-- Audit-Log dokumentiert jede Eigenschafts-Bearbeitung mit Alt → Neu.
+- Das Protokoll erfasst, dass eine Förder-Konfiguration bearbeitet wurde, mit Person und Zeitpunkt — nicht die alten und neuen Werte der einzelnen Eigenschaften.

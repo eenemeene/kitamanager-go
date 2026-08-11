@@ -4439,7 +4439,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Atomically update multiple contracts for a child. All updates are applied in-place\n(no amend mode). If any update fails, all changes are rolled back.",
+                "description": "Atomically update multiple contracts for a child. This is the endpoint for\nCORRECTING A HISTORICAL TIMELINE: unlike the single-contract PUT there is NO amend\nmode, so dates and fields are written in place even on contracts that started — or\nended — in the past. It backs the timeline boundary drag in the UI.\n\nEntries are PARTIAL: a field you omit keeps its current value, with one exception —\n`to` is CLEARED when omitted, because that is how a contract is set back to ongoing.\nAlways send `to` explicitly when you want to keep it, otherwise a contract that has a\nsuccessor becomes ongoing and collides with it (409). `properties` is carried forward\nwhen omitted; send an empty object to clear it deliberately.\n\nAdjacent ranges may be swapped within one request (extend A's `to`, shift B's `from`):\nthe no-overlap constraint is deferred to commit, so only the final state must be\nvalid. If any entry fails, the whole batch is rolled back.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4666,7 +4666,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update an existing contract by ID. The same date rules apply as for creation:\nboth dates are inclusive, same-day contracts allowed, no overlapping contracts.",
+                "description": "Update an existing contract by ID. Date rules as for creation: both dates\ninclusive, same-day contracts allowed, no overlaps.\n\nIMPORTANT — what happens depends on when the contract started, because changing a\npast contract in place would silently recompute funding for months already billed:\n\n- started BEFORE today: the contract is AMENDED, not edited. The existing row is\nclosed with to = yesterday and a NEW contract is created starting TODAY carrying\nthe changes. Any `from` in the request is IGNORED; `to`, if given, applies to the\nnew contract, so a `to` in the past is rejected (400) as from-after-to.\n- starts TODAY or later: updated in place.\n- already ENDED (to before today): rejected with 400.\n\nSo this endpoint records a change going FORWARD. To correct a historical timeline —\nmove a boundary into the past — use the batch endpoint instead.\n\nNullable fields (`to`, `properties`) are replaced wholesale: omitting one CLEARS it.\nSend the full properties map on every update unless you mean to remove them.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5824,7 +5824,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Atomically update multiple contracts for an employee. All updates are applied in-place\n(no amend mode). If any update fails, all changes are rolled back.",
+                "description": "Atomically update multiple contracts for an employee. This is the endpoint for\nCORRECTING A HISTORICAL TIMELINE: unlike the single-contract PUT there is NO amend\nmode, so dates and fields are written in place even on contracts that started — or\nended — in the past. It backs the timeline boundary drag in the UI.\n\nEntries are PARTIAL: a field you omit keeps its current value, with one exception —\n`to` is CLEARED when omitted, because that is how a contract is set back to ongoing.\nAlways send `to` explicitly when you want to keep it, otherwise a contract that has a\nsuccessor becomes ongoing and collides with it (409). `properties` is carried forward\nwhen omitted; send an empty object to clear it deliberately.\n\nAdjacent ranges may be swapped within one request (extend A's `to`, shift B's `from`):\nthe no-overlap constraint is deferred to commit, so only the final state must be\nvalid. If any entry fails, the whole batch is rolled back.",
                 "consumes": [
                     "application/json"
                 ],
@@ -6051,7 +6051,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update an existing contract by ID. The same date rules apply as for creation:\nboth dates are inclusive, same-day contracts allowed, no overlapping contracts.",
+                "description": "Update an existing contract by ID. Date rules as for creation: both dates\ninclusive, same-day contracts allowed, no overlaps.\n\nIMPORTANT — what happens depends on when the contract started, because changing a\npast contract in place would silently recompute funding for months already billed:\n\n- started BEFORE today: the contract is AMENDED, not edited. The existing row is\nclosed with to = yesterday and a NEW contract is created starting TODAY carrying\nthe changes. Any `from` in the request is IGNORED; `to`, if given, applies to the\nnew contract, so a `to` in the past is rejected (400) as from-after-to.\n- starts TODAY or later: updated in place.\n- already ENDED (to before today): rejected with 400.\n\nSo this endpoint records a change going FORWARD. To correct a historical timeline —\nmove a boundary into the past — use the batch endpoint instead.\n\nNullable fields (`to`, `properties`) are replaced wholesale: omitting one CLEARS it.\nSend the full properties map on every update unless you mean to remove them.",
                 "consumes": [
                     "application/json"
                 ],

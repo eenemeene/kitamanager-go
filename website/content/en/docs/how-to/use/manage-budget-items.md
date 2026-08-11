@@ -66,4 +66,4 @@ If you typed 200 when you meant 2000, click the pencil and just change the amoun
 - One-off costs (renovation): one entry with a short date range.
 - Annual lump sums (Spende): split across the relevant months by setting a short date range that approximates the cash flow date.
 - Amounts are entered in **euros**, not cents. KitaManager converts to cents internally — see [Why money is stored as cents](../../../explanation/why-money-is-stored-as-cents/).
-- The audit log records every entry create / edit / delete with old → new values. Admins can review it via [Review the audit log](../../administer/review-audit-log/).
+- The audit log records that a budget item was created / edited / deleted, with who and when — not the old and new amounts. Admins can review it via [Review the audit log](../../administer/review-audit-log/).

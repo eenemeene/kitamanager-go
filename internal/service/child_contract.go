@@ -192,7 +192,11 @@ func (s *ChildService) applyChildContractFields(ctx context.Context, contract *m
 		contract.SectionID = *req.SectionID
 		contract.Section = nil
 	}
-	// Merge auto-apply funding properties into updated contract
+	// Merge auto-apply funding properties into updated contract.
+	// Nullable fields are assigned unconditionally so a PUT can clear them by
+	// omitting them — see TestChildService_UpdateContract_ClearNullableProperties.
+	// Callers that send *partial* entries (BatchUpdateContracts) must therefore
+	// carry the existing values forward themselves before calling this.
 	defaults := s.getAutoApplyProperties(ctx, orgID, contract.From)
 	contract.Properties = req.Properties.MergeDefaults(defaults)
 }
@@ -314,7 +318,18 @@ func (s *ChildService) BatchUpdateContracts(ctx context.Context, childID, orgID 
 				return err
 			}
 
-			s.applyChildContractFields(txCtx, contract, orgID, &entry.ChildContractUpdateRequest)
+			// Batch entries are *partial*: the timeline boundary drag sends one
+			// or two dates and nothing else. applyChildContractFields assigns
+			// Properties unconditionally (a PUT clears by omitting), so without
+			// this carry-forward a dates-only entry stripped care_type and every
+			// supplement off the contract, silently recomputing its funding at
+			// the base rate. Send `properties: {}` to clear them deliberately.
+			update := entry.ChildContractUpdateRequest
+			if update.Properties == nil {
+				update.Properties = contract.Properties
+			}
+
+			s.applyChildContractFields(txCtx, contract, orgID, &update)
 
 			if err := validation.ValidatePeriod(contract.From, contract.To); err != nil {
 				return apperror.BadRequest(err.Error())

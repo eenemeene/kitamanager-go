@@ -30,4 +30,4 @@ For a one-off correction:
 - The format is documented at [Government funding YAML format](../../../reference/data-model/funding-yaml-format/).
 - `payment` values are in **cents** (integers) to avoid floating-point precision errors. €2,494.91 → `249491`. €−23 → `-2300`.
 - After updating: the next bill comparison uses the new rates from the bill's month onwards. Past bills are unchanged in storage, but their re-comparison would now produce different numbers.
-- Audit log records every property edit with old → new values.
+- The audit log records that a funding configuration was edited, with who and when — not the old and new values of each property.
