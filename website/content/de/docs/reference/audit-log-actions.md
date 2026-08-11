@@ -67,6 +67,20 @@ Mutierende Operationen auf den meisten Ressourcen emittieren eine Aktion der For
 
 `employee_delete` und `child_delete` sind oben separat aufgeführt, weil sie bei Triagen am häufigsten geprüft werden.
 
+### Feld-Diffs
+
+Einige Update-Aktionen führen in `details` eine `changes`-Map, die jedes geänderte Feld als `{"old": …, "new": …}` auflistet. Eine Änderung ohne Wirkung führt keine `changes`-Map.
+
+| Aktion | Erfasste Felder |
+|---|---|
+| `child_update`, `employee_update` | Personendaten — Name, Geschlecht, Geburtsdatum |
+| `child_contract_update` | `from`, `to`, `section_id`, `properties` (Betreuungsart und alle Zuschläge) |
+| `employee_contract_update` | `from`, `to`, `section_id`, `staff_category`, `grade`, `step`, `weekly_hours`, `payplan_id`, `properties` |
+
+`to` erscheint als `null`, solange ein Vertrag läuft. Löst ein Vertrags-Update einen Folgevertrag aus — beim Bearbeiten eines Vertrags, der vor heute begann, wird dieser beendet und ein neuer angelegt — enthält `changes` zusätzlich `amended` mit `closed_contract_id` und `new_contract_id`, weil die Ressourcen-ID der Zeile auf den *neuen* Vertrag zeigt.
+
+Andere Ressourcen (Budgetposten, Förder-Konfigurationen) erfassen die Änderung ohne Feldwerte.
+
 ## Hinweise
 
 - Der org-bezogene Audit-Log unter `Einstellungen → Protokoll` blendet absichtlich Login-/Passwort-/MFA-Ereignisse aus, weil sie organisations-übergreifend sensibel sind. Superadmins sehen sie über `GET /api/v1/audit-logs` — siehe [Globales Audit-Log untersuchen](../../how-to/operate/investigate-the-global-audit-log/).

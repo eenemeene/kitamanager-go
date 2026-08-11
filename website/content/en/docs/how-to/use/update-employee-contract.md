@@ -53,5 +53,5 @@ If only the start or end **date** is wrong (you wrote March 1 when the contract 
 
 - Step promotions have their own widget and recipe — don't follow the manual steps here for that. See [Promote an employee step](../promote-employee-step/).
 - A wrong grade/step/hours combination silently miscomputes salary cost. Double-check the new contract on the salary chart (the chart updates as soon as you save).
-- The audit log records that a contract was created / edited / deleted, with who and when — but for contracts it does **not** store the old and new field values (unlike edits to an employee's personal data, which do record a before/after diff). Admins can review it via [Review the audit log](../../administer/review-audit-log/).
+- The audit log records every contract edit **with the old and new values** of the fields that changed — dates, section, pay group, step, weekly hours and pay plan. Admins can review it via [Review the audit log](../../administer/review-audit-log/).
 - For the salary calculation chain (grade × step × hours × pay-plan-rate), see the admin-side recipe [Update the pay plan](../../administer/update-pay-plan/).

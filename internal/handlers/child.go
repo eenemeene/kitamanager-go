@@ -393,7 +393,20 @@ func (h *ChildHandler) CreateContract(c *gin.Context) {
 // @Router /api/v1/organizations/{orgId}/children/{childId}/contracts/{contractId} [put]
 func (h *ChildHandler) UpdateContract(c *gin.Context) {
 	handleUpdateContract(c, "childId", h.contractAudit(), h.service.UpdateContract,
-		func(r *models.ChildContractResponse) (uint, uint) { return r.ID, r.ChildID })
+		func(r *models.ChildContractResponse) (uint, uint) { return r.ID, r.ChildID },
+		h.service.GetContractByID, childContractChanges)
+}
+
+// childContractChanges builds the audit diff for a child contract. Properties
+// carry the funding-relevant fields (care_type plus supplements), which is why
+// they get their own map-aware comparison — see recordPropertiesChange.
+func childContractChanges(before, after *models.ChildContractResponse) map[string]any {
+	changes := map[string]any{}
+	recordTimeChange(changes, "from", before.From, after.From)
+	recordNullableTimeChange(changes, "to", before.To, after.To)
+	recordChange(changes, "section_id", before.SectionID, after.SectionID)
+	recordPropertiesChange(changes, "properties", before.Properties, after.Properties)
+	return changes
 }
 
 // BatchUpdateContracts godoc
@@ -428,7 +441,15 @@ func (h *ChildHandler) UpdateContract(c *gin.Context) {
 // @Router /api/v1/organizations/{orgId}/children/{childId}/contracts/batch [put]
 func (h *ChildHandler) BatchUpdateContracts(c *gin.Context) {
 	handleBatchUpdateContracts(c, "childId", h.contractAudit(), h.service.BatchUpdateContracts,
-		func(r *models.ChildContractResponse) (uint, uint) { return r.ID, r.ChildID })
+		func(r *models.ChildContractResponse) (uint, uint) { return r.ID, r.ChildID },
+		h.service.GetContractByID, childContractChanges,
+		func(req *models.ChildContractBatchUpdateRequest) []uint {
+			ids := make([]uint, 0, len(req.Updates))
+			for _, u := range req.Updates {
+				ids = append(ids, u.ID)
+			}
+			return ids
+		})
 }
 
 // DeleteContract godoc

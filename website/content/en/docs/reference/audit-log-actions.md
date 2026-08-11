@@ -67,6 +67,20 @@ The mutating operations on most resources emit an action of the form `<resource>
 
 `employee_delete` and `child_delete` are listed explicitly above because they are the most-checked entries during a triage.
 
+### Field-level diffs
+
+Some update actions carry a `changes` map in `details`, listing each modified field as `{"old": …, "new": …}`. An update that changes nothing carries no `changes` map at all.
+
+| Action | Fields diffed |
+|---|---|
+| `child_update`, `employee_update` | personal data — name, gender, birthdate |
+| `child_contract_update` | `from`, `to`, `section_id`, `properties` (care type and every supplement) |
+| `employee_contract_update` | `from`, `to`, `section_id`, `staff_category`, `grade`, `step`, `weekly_hours`, `payplan_id`, `properties` |
+
+`to` is rendered as `null` when a contract is ongoing. For contract updates that trigger an amend — editing a contract that started before today closes it and creates a successor — `changes` also carries `amended` with `closed_contract_id` and `new_contract_id`, because the row's own resource id is the *new* contract.
+
+Other resources (budget items, funding configurations) record the fact of the update without field values.
+
 ## Notes
 
 - The org-scoped audit log at `Settings → Audit log` deliberately excludes login/password/MFA events because they are sensitive across organisations. Superadmins see them via `GET /api/v1/audit-logs` — see [Investigate the global audit log](../../how-to/operate/investigate-the-global-audit-log/).
