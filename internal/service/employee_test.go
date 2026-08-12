@@ -1043,7 +1043,7 @@ func TestEmployeeService_DeleteContract_WrongOrg(t *testing.T) {
 	}
 
 	// Try to delete contract for employee from org1 using org2's context
-	err = svc.DeleteContract(ctx, contract.ID, employee.ID, org2.ID)
+	err = svc.DeleteContract(ctx, contract.ID, employee.ID, org2.ID, nil)
 	if err == nil {
 		t.Fatal("SECURITY: expected error when deleting contract for employee from wrong org, got nil")
 	}
@@ -1085,7 +1085,7 @@ func TestEmployeeService_DeleteContract(t *testing.T) {
 	}
 
 	// Delete the contract
-	err = svc.DeleteContract(ctx, contract.ID, employee.ID, org.ID)
+	err = svc.DeleteContract(ctx, contract.ID, employee.ID, org.ID, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1108,7 +1108,7 @@ func TestEmployeeService_DeleteContract_NotFound(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
 
-	err := svc.DeleteContract(ctx, 999, employee.ID, org.ID)
+	err := svc.DeleteContract(ctx, 999, employee.ID, org.ID, nil)
 	if err == nil {
 		t.Fatal("expected error for non-existent contract, got nil")
 	}
@@ -1143,7 +1143,7 @@ func TestEmployeeService_DeleteContract_WrongEmployee(t *testing.T) {
 	}
 
 	// Try to delete employee1's contract using employee2's ID
-	err = svc.DeleteContract(ctx, contract.ID, employee2.ID, org.ID)
+	err = svc.DeleteContract(ctx, contract.ID, employee2.ID, org.ID, nil)
 	if err == nil {
 		t.Fatal("SECURITY: expected error when deleting contract with wrong employee ID, got nil")
 	}
@@ -2507,7 +2507,7 @@ func TestEmployeeService_DeleteContract_NotFoundByID(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
 
-	err := svc.DeleteContract(ctx, 99999, employee.ID, org.ID)
+	err := svc.DeleteContract(ctx, 99999, employee.ID, org.ID, nil)
 	if err == nil {
 		t.Fatal("expected error for non-existent contract, got nil")
 	}

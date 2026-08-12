@@ -237,8 +237,30 @@ func (s *EmployeeStore) UpdateContract(ctx context.Context, contract *models.Emp
 	return nil
 }
 
-func (s *EmployeeStore) DeleteContract(ctx context.Context, id uint) error {
-	return DBFromContext(ctx, s.db).Delete(&models.EmployeeContract{}, id).Error
+// DeleteContract removes a contract, refusing the delete when expectedVersion no
+// longer matches the stored one.
+//
+// Guarded for the same reason updates are: deleting a contract someone else just
+// changed destroys their edit with no trace beyond the audit snapshot. A nil
+// expectedVersion skips the check, which is what non-HTTP callers (the YAML
+// importer's delete-then-recreate) need.
+func (s *EmployeeStore) DeleteContract(ctx context.Context, id uint, expectedVersion *int64) error {
+	q := DBFromContext(ctx, s.db)
+	if expectedVersion != nil {
+		q = q.Where("version = ?", *expectedVersion)
+	}
+	res := q.Delete(&models.EmployeeContract{}, id)
+	if res.Error != nil {
+		return res.Error
+	}
+	// Zero rows with a version guard means the row moved on (or is already gone);
+	// the caller has just read it, so "changed by someone else" is the useful
+	// report. Without a guard, zero rows is simply "already deleted", which the
+	// service treats as success.
+	if expectedVersion != nil && res.RowsAffected == 0 {
+		return ErrVersionConflict
+	}
+	return nil
 }
 
 // FindByOrganizationInDateRange returns employees that have contracts overlapping the given date range.

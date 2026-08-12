@@ -77,7 +77,7 @@ type EmployeeStorer interface {
 	CreateContract(ctx context.Context, contract *models.EmployeeContract) error
 	FindContractByID(ctx context.Context, id uint) (*models.EmployeeContract, error)
 	UpdateContract(ctx context.Context, contract *models.EmployeeContract) error
-	DeleteContract(ctx context.Context, id uint) error
+	DeleteContract(ctx context.Context, id uint, expectedVersion *int64) error
 	Contracts() PeriodStorer[models.EmployeeContract]
 	FindByOrganizationWithContracts(ctx context.Context, orgID uint, date time.Time) ([]models.Employee, error)
 	FindContractsByEmployeePaginated(ctx context.Context, employeeID uint, limit, offset int) ([]models.EmployeeContract, int64, error)
@@ -109,7 +109,7 @@ type ChildStorer interface {
 	CreateContract(ctx context.Context, contract *models.ChildContract) error
 	FindContractByID(ctx context.Context, id uint) (*models.ChildContract, error)
 	UpdateContract(ctx context.Context, contract *models.ChildContract) error
-	DeleteContract(ctx context.Context, id uint) error
+	DeleteContract(ctx context.Context, id uint, expectedVersion *int64) error
 	Contracts() PeriodStorer[models.ChildContract]
 	FindContractsByChildPaginated(ctx context.Context, childID uint, limit, offset int) ([]models.ChildContract, int64, error)
 	FindByNameBirthdateAndOrg(ctx context.Context, firstName, lastName string, birthdate time.Time, orgID uint) (*models.Child, error)

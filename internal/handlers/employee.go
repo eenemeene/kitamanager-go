@@ -460,11 +460,14 @@ func (h *EmployeeHandler) BatchUpdateContracts(c *gin.Context) {
 // @Param orgId path int true "Organization ID"
 // @Param employeeId path int true "Employee ID"
 // @Param contractId path int true "Contract ID"
+// @Param If-Match header string true "The contract's current version, quoted, e.g. \"3\" — read it from the contract's `version` field or its ETag. Required: it is what makes a concurrent edit fail loudly instead of silently winning."
 // @Success 204 "No Content"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
+// @Failure 412 {object} models.ErrorResponse "The contract was changed by someone else since you read it (precondition_failed) — reload and reapply"
+// @Failure 428 {object} models.ErrorResponse "If-Match header missing (precondition_required)"
 // @Router /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/{contractId} [delete]
 func (h *EmployeeHandler) DeleteContract(c *gin.Context) {
 	handleDeleteContract(c, "employeeId", h.contractAudit(), h.service.GetContractByID, h.service.DeleteContract,

@@ -174,3 +174,71 @@ func TestEmployeeStore_UpdateContract_StaleWriteRejected(t *testing.T) {
 		t.Errorf("weekly_hours = %v, want 35 — the stale write must not land", reloaded.WeeklyHours)
 	}
 }
+
+// The delete's version guard exists for the window between the service checking
+// the version and the DELETE running: if another writer lands in that window, the
+// guard must match nothing rather than destroy the change. That window cannot be
+// hit deterministically from the HTTP tests — the service's own check catches
+// every stale version before the store is reached — so the guard is pinned here,
+// at the level where it is the only thing standing between a concurrent edit and
+// a contract that no longer exists.
+func TestChildStore_DeleteContract_StaleVersionRefused(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	s := NewChildStore(db)
+	ctx := context.Background()
+
+	org := testutil.CreateTestOrganization(t, db, "Delete Guard Org")
+	section := testutil.CreateTestSection(t, db, "Nest", org.ID, false)
+	child := testutil.CreateTestChild(t, db, "Delete", "Guard", org.ID)
+
+	contract := &models.ChildContract{
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period:     models.Period{From: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)},
+			SectionID:  section.ID,
+			Properties: models.ContractProperties{"care_type": "ganztag", "ndh": "ndh"},
+		},
+	}
+	if err := s.CreateContract(ctx, contract); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	// Someone else edits it, so version 1 is stale.
+	contract.Properties = models.ContractProperties{"care_type": "halbtag"}
+	if err := s.UpdateContract(ctx, contract); err != nil {
+		t.Fatalf("update: %v", err)
+	}
+
+	stale := int64(1)
+	if err := s.DeleteContract(ctx, contract.ID, &stale); !errors.Is(err, ErrVersionConflict) {
+		t.Fatalf("stale delete err = %v, want ErrVersionConflict", err)
+	}
+	if _, err := s.FindContractByID(ctx, contract.ID); err != nil {
+		t.Fatalf("the contract must survive a refused delete: %v", err)
+	}
+
+	// The current version deletes it.
+	current := contract.Version
+	if err := s.DeleteContract(ctx, contract.ID, &current); err != nil {
+		t.Fatalf("delete with current version: %v", err)
+	}
+	if _, err := s.FindContractByID(ctx, contract.ID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("after delete, find err = %v, want ErrNotFound", err)
+	}
+
+	// And an unguarded delete (nil version) stays available for the importer's
+	// delete-then-recreate, where there is no client version to honour.
+	other := &models.ChildContract{
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period:    models.Period{From: time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)},
+			SectionID: section.ID,
+		},
+	}
+	if err := s.CreateContract(ctx, other); err != nil {
+		t.Fatalf("create second: %v", err)
+	}
+	if err := s.DeleteContract(ctx, other.ID, nil); err != nil {
+		t.Fatalf("unguarded delete: %v", err)
+	}
+}

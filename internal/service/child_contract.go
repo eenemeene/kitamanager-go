@@ -368,7 +368,7 @@ func (s *ChildService) BatchUpdateContracts(ctx context.Context, childID, orgID 
 }
 
 // DeleteContract deletes a contract, validating it belongs to a child in the specified organization
-func (s *ChildService) DeleteContract(ctx context.Context, contractID, childID, orgID uint) error {
+func (s *ChildService) DeleteContract(ctx context.Context, contractID, childID, orgID uint, expectedVersion *int64) error {
 	// Security: Validate child belongs to the specified organization (use minimal query - no preloads needed)
 	child, err := s.store.FindByIDMinimal(ctx, childID)
 	if err != nil {
@@ -387,7 +387,17 @@ func (s *ChildService) DeleteContract(ctx context.Context, contractID, childID, 
 		return err
 	}
 
-	if err := s.store.DeleteContract(ctx, contractID); err != nil {
+	if err := checkVersion(expectedVersion, contract.Version, "this contract"); err != nil {
+		return err
+	}
+
+	// The guard closes the window between the check above and the delete itself:
+	// if the row moved on in between, it matches nothing rather than destroying
+	// an edit the caller never saw.
+	if err := s.store.DeleteContract(ctx, contractID, expectedVersion); err != nil {
+		if mapped := mapVersionRace(err, expectedVersion != nil); mapped != err {
+			return mapped
+		}
 		return apperror.InternalWrap(err, "failed to delete contract")
 	}
 	return nil

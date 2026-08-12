@@ -36,6 +36,9 @@ type ChildContractCorrectRequest struct {
 	To         Opt[time.Time]          `json:"to" swaggertype:"string" format:"date-time" extensions:"x-nullable" example:"2025-12-31"`
 	SectionID  Opt[uint]               `json:"section_id" swaggertype:"integer" example:"2"`
 	Properties Opt[ContractProperties] `json:"properties" swaggertype:"object" extensions:"x-nullable"`
+
+	// ExpectedVersion is set from the If-Match header, not from JSON.
+	ExpectedVersion *int64 `json:"-" swaggerignore:"true"`
 }
 
 // ChildContractAmendRequest records a change to a child's contract effective
@@ -51,6 +54,9 @@ type ChildContractAmendRequest struct {
 	To            Opt[time.Time]          `json:"to" swaggertype:"string" format:"date-time" extensions:"x-nullable" example:"2025-12-31"`
 	SectionID     Opt[uint]               `json:"section_id" swaggertype:"integer" example:"2"`
 	Properties    Opt[ContractProperties] `json:"properties" swaggertype:"object" extensions:"x-nullable"`
+
+	// ExpectedVersion is set from the If-Match header, not from JSON.
+	ExpectedVersion *int64 `json:"-" swaggerignore:"true"`
 }
 
 // EmployeeContractCorrectRequest corrects an employee contract in place.
@@ -68,6 +74,9 @@ type EmployeeContractCorrectRequest struct {
 	WeeklyHours   Opt[float64]            `json:"weekly_hours" swaggertype:"number" example:"40"`
 	PayPlanID     Opt[uint]               `json:"payplan_id" swaggertype:"integer" example:"1"`
 	Properties    Opt[ContractProperties] `json:"properties" swaggertype:"object" extensions:"x-nullable"`
+
+	// ExpectedVersion is set from the If-Match header, not from JSON.
+	ExpectedVersion *int64 `json:"-" swaggerignore:"true"`
 }
 
 // EmployeeContractAmendRequest records a change to an employee's contract
@@ -87,6 +96,9 @@ type EmployeeContractAmendRequest struct {
 	WeeklyHours   Opt[float64]            `json:"weekly_hours" swaggertype:"number" example:"40"`
 	PayPlanID     Opt[uint]               `json:"payplan_id" swaggertype:"integer" example:"1"`
 	Properties    Opt[ContractProperties] `json:"properties" swaggertype:"object" extensions:"x-nullable"`
+
+	// ExpectedVersion is set from the If-Match header, not from JSON.
+	ExpectedVersion *int64 `json:"-" swaggerignore:"true"`
 }
 
 // ContractEndRequest sets or clears a contract's end date. Shared by children
@@ -97,6 +109,9 @@ type EmployeeContractAmendRequest struct {
 // indistinguishable from "don't touch it".
 type ContractEndRequest struct {
 	To Opt[time.Time] `json:"to" swaggertype:"string" format:"date-time" extensions:"x-nullable" example:"2025-12-31"`
+
+	// ExpectedVersion is set from the If-Match header, not from JSON.
+	ExpectedVersion *int64 `json:"-" swaggerignore:"true"`
 }
 
 // ContractBoundaryMoveRequest moves the seam between two adjacent contracts:
@@ -110,6 +125,17 @@ type ContractBoundaryMoveRequest struct {
 	EarlierID uint      `json:"earlier_id" binding:"required" example:"5"`
 	LaterID   uint      `json:"later_id" binding:"required" example:"6"`
 	At        time.Time `json:"at" binding:"required" format:"date-time" example:"2025-09-01"`
+	// The versions of both contracts, as read. These live in the body rather than
+	// in an If-Match header because this request changes two resources and is
+	// addressed to the collection: one header cannot name a version per contract,
+	// and If-Match on a collection URL means something else entirely.
+	//
+	// Required, like If-Match is on the single-contract writes: a seam move
+	// rewrites dates on a contract the user did not open, so it is the operation
+	// where a lost update is least likely to be noticed. Versions start at 1, so
+	// `required` rejecting 0 is correct here.
+	EarlierVersion int64 `json:"earlier_version" binding:"required" example:"3"`
+	LaterVersion   int64 `json:"later_version" binding:"required" example:"1"`
 }
 
 // ChildContractAmendResponse returns both contracts an amend touched, so the
@@ -139,3 +165,34 @@ type EmployeeContractBoundaryResponse struct {
 	Earlier EmployeeContractResponse `json:"earlier"`
 	Later   EmployeeContractResponse `json:"later"`
 }
+
+// ExpectedVersion carries the If-Match precondition from the transport layer to
+// the service. Never part of the JSON body: it is a header on a single-contract
+// write, and putting it in the body too would give a client two ways to say the
+// same thing.
+//
+// nil means the caller sent `*` — "any current version" — so no comparison is
+// made. The zero value (a request built in Go, e.g. by the YAML importer) also
+// means no comparison, which is why these types keep working for callers that
+// never see an HTTP header.
+
+// SetExpectedVersion records the If-Match expectation for this correction.
+func (r *ChildContractCorrectRequest) SetExpectedVersion(v *int64) { r.ExpectedVersion = v }
+
+// SetExpectedVersion records the If-Match expectation for this amendment.
+func (r *ChildContractAmendRequest) SetExpectedVersion(v *int64) { r.ExpectedVersion = v }
+
+// SetExpectedVersion records the If-Match expectation for this correction.
+func (r *EmployeeContractCorrectRequest) SetExpectedVersion(v *int64) { r.ExpectedVersion = v }
+
+// SetExpectedVersion records the If-Match expectation for this amendment.
+func (r *EmployeeContractAmendRequest) SetExpectedVersion(v *int64) { r.ExpectedVersion = v }
+
+// SetExpectedVersion records the If-Match expectation for this end-date change.
+func (r *ContractEndRequest) SetExpectedVersion(v *int64) { r.ExpectedVersion = v }
+
+// GetVersion exposes the optimistic-concurrency token for ETag generation.
+func (r ChildContractResponse) GetVersion() int64 { return r.Version }
+
+// GetVersion exposes the optimistic-concurrency token for ETag generation.
+func (r EmployeeContractResponse) GetVersion() int64 { return r.Version }

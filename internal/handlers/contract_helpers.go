@@ -72,6 +72,10 @@ func handleGetContract[Resp any](
 		return
 	}
 
+	// So a client can read the precondition it will have to send back. The list
+	// response carries `version` on every item for the same reason, which is what
+	// the UI actually reads — it renders timelines from the list.
+	setVersionETag(c, contract)
 	c.JSON(http.StatusOK, contract)
 }
 
@@ -128,6 +132,15 @@ func handleUpdateContract[Req any, Resp any](
 	req, ok := bindJSON[Req](c)
 	if !ok {
 		return
+	}
+
+	// Only the intent requests carry a precondition; the old PUT's DTO does not
+	// implement the interface, so it keeps its previous behaviour untouched while
+	// both surfaces coexist.
+	if _, wantsPrecondition := any(req).(versionPrecondition); wantsPrecondition {
+		if !applyIfMatch(c, req) {
+			return
+		}
 	}
 
 	// Best-effort: a failure here must not block the update. If the contract is
@@ -255,11 +268,20 @@ func handleDeleteContract[Resp any](
 	parentParam string,
 	audit auditConfig,
 	getFn func(context.Context, uint, uint, uint) (*Resp, error),
-	deleteFn func(context.Context, uint, uint, uint) error,
+	deleteFn func(context.Context, uint, uint, uint, *int64) error,
 	getAuditInfo func(*Resp) (uint, uint), // returns (contractID, parentID)
 	snapshotFn func(*Resp) map[string]any,
 ) {
 	orgID, resourceID, contractID, ok := parseOrgResourceAndContractID(c, parentParam)
+	if !ok {
+		return
+	}
+
+	// Deleting a contract destroys its care type, supplements and period. If a
+	// second editor changed any of that since this client read it, the delete has
+	// to be refused rather than silently winning, so the precondition applies here
+	// too — and it is read before the fetch so a missing header costs no query.
+	expectedVersion, ok := requireIfMatch(c)
 	if !ok {
 		return
 	}
@@ -271,7 +293,7 @@ func handleDeleteContract[Resp any](
 		return
 	}
 
-	if err := deleteFn(c.Request.Context(), contractID, resourceID, orgID); err != nil {
+	if err := deleteFn(c.Request.Context(), contractID, resourceID, orgID, expectedVersion); err != nil {
 		respondError(c, err)
 		return
 	}

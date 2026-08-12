@@ -32,12 +32,15 @@ func employeeContractAuditInfo(r *models.EmployeeContractResponse) (uint, uint) 
 // @Param employeeId path int true "Employee ID"
 // @Param contractId path int true "Contract ID"
 // @Param request body models.EmployeeContractCorrectRequest true "Fields to correct"
+// @Param If-Match header string true "The contract's current version, quoted, e.g. \"3\" — read it from the contract's `version` field or its ETag. Required: it is what makes a concurrent edit fail loudly instead of silently winning."
 // @Success 200 {object} models.EmployeeContractResponse
 // @Failure 400 {object} models.ErrorResponse "Invalid request (e.g. from after to, unknown pay plan, grade/step not covered)"
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse "Contract not found"
 // @Failure 409 {object} models.ErrorResponse "Dates overlap another contract (contract_overlap), or the contract was changed by someone else"
 // @Failure 500 {object} models.ErrorResponse
+// @Failure 412 {object} models.ErrorResponse "The contract was changed by someone else since you read it (precondition_failed) — reload and reapply"
+// @Failure 428 {object} models.ErrorResponse "If-Match header missing (precondition_required)"
 // @Router /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/{contractId} [patch]
 func (h *EmployeeHandler) CorrectContract(c *gin.Context) {
 	handleUpdateContract(c, "employeeId", h.contractAudit(), h.service.CorrectContract,
@@ -66,12 +69,15 @@ func (h *EmployeeHandler) CorrectContract(c *gin.Context) {
 // @Param employeeId path int true "Employee ID"
 // @Param contractId path int true "Contract ID"
 // @Param request body models.EmployeeContractAmendRequest true "Effective date and the terms that changed"
+// @Param If-Match header string true "The contract's current version, quoted, e.g. \"3\" — read it from the contract's `version` field or its ETag. Required: it is what makes a concurrent edit fail loudly instead of silently winning."
 // @Success 200 {object} models.EmployeeContractAmendResponse
 // @Failure 400 {object} models.ErrorResponse "effective_from not after the start, contract already ended before it, or grade/step not covered at that date"
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse "Contract not found"
 // @Failure 409 {object} models.ErrorResponse "The successor would overlap another contract (contract_overlap)"
 // @Failure 500 {object} models.ErrorResponse
+// @Failure 412 {object} models.ErrorResponse "The contract was changed by someone else since you read it (precondition_failed) — reload and reapply"
+// @Failure 428 {object} models.ErrorResponse "If-Match header missing (precondition_required)"
 // @Router /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/{contractId}/amend [post]
 func (h *EmployeeHandler) AmendContract(c *gin.Context) {
 	handleAmendContract(c, "employeeId", h.contractAudit(), h.service.AmendContract,
@@ -97,12 +103,15 @@ func (h *EmployeeHandler) AmendContract(c *gin.Context) {
 // @Param employeeId path int true "Employee ID"
 // @Param contractId path int true "Contract ID"
 // @Param request body models.ContractEndRequest true "The end date, or null to reopen"
+// @Param If-Match header string true "The contract's current version, quoted, e.g. \"3\" — read it from the contract's `version` field or its ETag. Required: it is what makes a concurrent edit fail loudly instead of silently winning."
 // @Success 200 {object} models.EmployeeContractResponse
 // @Failure 400 {object} models.ErrorResponse "`to` missing, or before `from`"
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse "Contract not found"
 // @Failure 409 {object} models.ErrorResponse "Reopening would overlap a later contract (contract_overlap)"
 // @Failure 500 {object} models.ErrorResponse
+// @Failure 412 {object} models.ErrorResponse "The contract was changed by someone else since you read it (precondition_failed) — reload and reapply"
+// @Failure 428 {object} models.ErrorResponse "If-Match header missing (precondition_required)"
 // @Router /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/{contractId}/end [post]
 func (h *EmployeeHandler) EndContract(c *gin.Context) {
 	handleUpdateContract(c, "employeeId", h.contractAudit(), h.service.EndContract,

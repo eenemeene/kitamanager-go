@@ -254,7 +254,7 @@ func TestEmployeeStore_DeleteContract(t *testing.T) {
 	}
 	db.Create(contract)
 
-	err := store.DeleteContract(ctx, contract.ID)
+	err := store.DeleteContract(ctx, contract.ID, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}

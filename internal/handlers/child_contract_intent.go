@@ -36,12 +36,15 @@ func childContractAuditInfo(r *models.ChildContractResponse) (uint, uint) {
 // @Param childId path int true "Child ID"
 // @Param contractId path int true "Contract ID"
 // @Param request body models.ChildContractCorrectRequest true "Fields to correct"
+// @Param If-Match header string true "The contract's current version, quoted, e.g. \"3\" — read it from the contract's `version` field or its ETag. Required: it is what makes a concurrent edit fail loudly instead of silently winning."
 // @Success 200 {object} models.ChildContractResponse
 // @Failure 400 {object} models.ErrorResponse "Invalid request (e.g. from after to, null from, dates before birthdate)"
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse "Contract not found"
 // @Failure 409 {object} models.ErrorResponse "Dates overlap another contract (contract_overlap), or the contract was changed by someone else"
 // @Failure 500 {object} models.ErrorResponse
+// @Failure 412 {object} models.ErrorResponse "The contract was changed by someone else since you read it (precondition_failed) — reload and reapply"
+// @Failure 428 {object} models.ErrorResponse "If-Match header missing (precondition_required)"
 // @Router /api/v1/organizations/{orgId}/children/{childId}/contracts/{contractId} [patch]
 func (h *ChildHandler) CorrectContract(c *gin.Context) {
 	handleUpdateContract(c, "childId", h.contractAudit(), h.service.CorrectContract,
@@ -74,12 +77,15 @@ func (h *ChildHandler) CorrectContract(c *gin.Context) {
 // @Param childId path int true "Child ID"
 // @Param contractId path int true "Contract ID"
 // @Param request body models.ChildContractAmendRequest true "Effective date and the fields that changed"
+// @Param If-Match header string true "The contract's current version, quoted, e.g. \"3\" — read it from the contract's `version` field or its ETag. Required: it is what makes a concurrent edit fail loudly instead of silently winning."
 // @Success 200 {object} models.ChildContractAmendResponse
 // @Failure 400 {object} models.ErrorResponse "effective_from not after the start, or the contract already ended before it"
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse "Contract not found"
 // @Failure 409 {object} models.ErrorResponse "The successor would overlap another contract (contract_overlap)"
 // @Failure 500 {object} models.ErrorResponse
+// @Failure 412 {object} models.ErrorResponse "The contract was changed by someone else since you read it (precondition_failed) — reload and reapply"
+// @Failure 428 {object} models.ErrorResponse "If-Match header missing (precondition_required)"
 // @Router /api/v1/organizations/{orgId}/children/{childId}/contracts/{contractId}/amend [post]
 func (h *ChildHandler) AmendContract(c *gin.Context) {
 	handleAmendContract(c, "childId", h.contractAudit(), h.service.AmendContract,
@@ -108,12 +114,15 @@ func (h *ChildHandler) AmendContract(c *gin.Context) {
 // @Param childId path int true "Child ID"
 // @Param contractId path int true "Contract ID"
 // @Param request body models.ContractEndRequest true "The end date, or null to reopen"
+// @Param If-Match header string true "The contract's current version, quoted, e.g. \"3\" — read it from the contract's `version` field or its ETag. Required: it is what makes a concurrent edit fail loudly instead of silently winning."
 // @Success 200 {object} models.ChildContractResponse
 // @Failure 400 {object} models.ErrorResponse "`to` missing, before `from`, or before the child's birthdate"
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse "Contract not found"
 // @Failure 409 {object} models.ErrorResponse "Reopening would overlap a later contract (contract_overlap)"
 // @Failure 500 {object} models.ErrorResponse
+// @Failure 412 {object} models.ErrorResponse "The contract was changed by someone else since you read it (precondition_failed) — reload and reapply"
+// @Failure 428 {object} models.ErrorResponse "If-Match header missing (precondition_required)"
 // @Router /api/v1/organizations/{orgId}/children/{childId}/contracts/{contractId}/end [post]
 func (h *ChildHandler) EndContract(c *gin.Context) {
 	handleUpdateContract(c, "childId", h.contractAudit(), h.service.EndContract,

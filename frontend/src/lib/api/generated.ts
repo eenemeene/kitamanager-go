@@ -5295,7 +5295,10 @@ export interface paths {
     delete: {
       parameters: {
         query?: never;
-        header?: never;
+        header: {
+          /** @description The contract's current version, quoted, e.g. \ */
+          'If-Match': string;
+        };
         path: {
           /** @description Organization ID */
           orgId: number;
@@ -5342,6 +5345,24 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
+        /** @description The contract was changed by someone else since you read it (precondition_failed) — reload and reapply */
+        412: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description If-Match header missing (precondition_required) */
+        428: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
         /** @description Internal Server Error */
         500: {
           headers: {
@@ -5376,7 +5397,10 @@ export interface paths {
     patch: {
       parameters: {
         query?: never;
-        header?: never;
+        header: {
+          /** @description The contract's current version, quoted, e.g. \ */
+          'If-Match': string;
+        };
         path: {
           /** @description Organization ID */
           orgId: number;
@@ -5439,6 +5463,24 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
+        /** @description The contract was changed by someone else since you read it (precondition_failed) — reload and reapply */
+        412: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description If-Match header missing (precondition_required) */
+        428: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
         /** @description Internal Server Error */
         500: {
           headers: {
@@ -5483,7 +5525,10 @@ export interface paths {
     post: {
       parameters: {
         query?: never;
-        header?: never;
+        header: {
+          /** @description The contract's current version, quoted, e.g. \ */
+          'If-Match': string;
+        };
         path: {
           /** @description Organization ID */
           orgId: number;
@@ -5546,6 +5591,24 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
+        /** @description The contract was changed by someone else since you read it (precondition_failed) — reload and reapply */
+        412: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description If-Match header missing (precondition_required) */
+        428: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
         /** @description Internal Server Error */
         500: {
           headers: {
@@ -5586,7 +5649,10 @@ export interface paths {
     post: {
       parameters: {
         query?: never;
-        header?: never;
+        header: {
+          /** @description The contract's current version, quoted, e.g. \ */
+          'If-Match': string;
+        };
         path: {
           /** @description Organization ID */
           orgId: number;
@@ -5642,6 +5708,24 @@ export interface paths {
         };
         /** @description Reopening would overlap a later contract (contract_overlap) */
         409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description The contract was changed by someone else since you read it (precondition_failed) — reload and reapply */
+        412: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description If-Match header missing (precondition_required) */
+        428: {
           headers: {
             [name: string]: unknown;
           };
@@ -7167,7 +7251,10 @@ export interface paths {
     delete: {
       parameters: {
         query?: never;
-        header?: never;
+        header: {
+          /** @description The contract's current version, quoted, e.g. \ */
+          'If-Match': string;
+        };
         path: {
           /** @description Organization ID */
           orgId: number;
@@ -7214,6 +7301,24 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
+        /** @description The contract was changed by someone else since you read it (precondition_failed) — reload and reapply */
+        412: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description If-Match header missing (precondition_required) */
+        428: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
         /** @description Internal Server Error */
         500: {
           headers: {
@@ -7244,7 +7349,10 @@ export interface paths {
     patch: {
       parameters: {
         query?: never;
-        header?: never;
+        header: {
+          /** @description The contract's current version, quoted, e.g. \ */
+          'If-Match': string;
+        };
         path: {
           /** @description Organization ID */
           orgId: number;
@@ -7307,6 +7415,24 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
+        /** @description The contract was changed by someone else since you read it (precondition_failed) — reload and reapply */
+        412: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description If-Match header missing (precondition_required) */
+        428: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
         /** @description Internal Server Error */
         500: {
           headers: {
@@ -7347,7 +7473,10 @@ export interface paths {
     post: {
       parameters: {
         query?: never;
-        header?: never;
+        header: {
+          /** @description The contract's current version, quoted, e.g. \ */
+          'If-Match': string;
+        };
         path: {
           /** @description Organization ID */
           orgId: number;
@@ -7410,6 +7539,24 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
+        /** @description The contract was changed by someone else since you read it (precondition_failed) — reload and reapply */
+        412: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description If-Match header missing (precondition_required) */
+        428: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
         /** @description Internal Server Error */
         500: {
           headers: {
@@ -7447,7 +7594,10 @@ export interface paths {
     post: {
       parameters: {
         query?: never;
-        header?: never;
+        header: {
+          /** @description The contract's current version, quoted, e.g. \ */
+          'If-Match': string;
+        };
         path: {
           /** @description Organization ID */
           orgId: number;
@@ -7503,6 +7653,24 @@ export interface paths {
         };
         /** @description Reopening would overlap a later contract (contract_overlap) */
         409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description The contract was changed by someone else since you read it (precondition_failed) — reload and reapply */
+        412: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description If-Match header missing (precondition_required) */
+        428: {
           headers: {
             [name: string]: unknown;
           };
@@ -12948,8 +13116,23 @@ export interface components {
       at: string;
       /** @example 5 */
       earlier_id: number;
+      /**
+       * @description The versions of both contracts, as read. These live in the body rather than
+       *     in an If-Match header because this request changes two resources and is
+       *     addressed to the collection: one header cannot name a version per contract,
+       *     and If-Match on a collection URL means something else entirely.
+       *
+       *     Required, like If-Match is on the single-contract writes: a seam move
+       *     rewrites dates on a contract the user did not open, so it is the operation
+       *     where a lost update is least likely to be noticed. Versions start at 1, so
+       *     `required` rejecting 0 is correct here.
+       * @example 3
+       */
+      earlier_version: number;
       /** @example 6 */
       later_id: number;
+      /** @example 1 */
+      later_version: number;
     };
     ContractEndRequest: {
       /**
