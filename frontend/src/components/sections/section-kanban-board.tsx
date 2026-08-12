@@ -130,8 +130,10 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
 
   const moveChildMutation = useMoveContractMutation<Child>({
     orgId,
-    updateFn: (childId, contractId, sectionId) =>
-      apiClient.updateChildContract(orgId, childId, contractId, { section_id: sectionId }),
+    updateFn: (childId, contractId, sectionId, version) =>
+      apiClient.correctChildContract(orgId, childId, contractId, version, {
+        section_id: sectionId,
+      }),
     allUnpaginatedKey: queryKeys.children.allUnpaginated(orgId),
     invalidateKeys: (childId) => [
       queryKeys.children.all(orgId),
@@ -144,8 +146,10 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
 
   const moveEmployeeMutation = useMoveContractMutation<Employee>({
     orgId,
-    updateFn: (employeeId, contractId, sectionId) =>
-      apiClient.updateEmployeeContract(orgId, employeeId, contractId, { section_id: sectionId }),
+    updateFn: (employeeId, contractId, sectionId, version) =>
+      apiClient.correctEmployeeContract(orgId, employeeId, contractId, version, {
+        section_id: sectionId,
+      }),
     allUnpaginatedKey: queryKeys.employees.allUnpaginated(orgId),
     invalidateKeys: (employeeId) => [
       queryKeys.employees.all(orgId),
@@ -201,6 +205,7 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
         entityId: child.id,
         contractId: activeContract.id,
         sectionId: newSectionId,
+        version: activeContract.version,
       });
     } else {
       const employee = currentItem.item;
@@ -211,6 +216,7 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
         entityId: employee.id,
         contractId: activeContract.id,
         sectionId: newSectionId,
+        version: activeContract.version,
       });
     }
   }

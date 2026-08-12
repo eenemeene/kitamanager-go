@@ -28,6 +28,7 @@ import { Badge } from '@/components/ui/badge';
 import { SchoolEnrollmentBadge } from '@/components/children/school-enrollment-badge';
 import type {
   Child,
+  ChildContract,
   ChildFundingResponse,
   ChildBillingSummaryEntry,
   ContractProperties,
@@ -49,7 +50,11 @@ export interface ChildrenTableProps {
   onEdit: (child: Child) => void;
   onDelete: (child: Child) => void;
   onManageVouchers: (child: Child) => void;
-  onAdjustContractEnd?: (child: Child, contractId: number, newTo: string) => void;
+  onAdjustContractEnd?: (
+    child: Child,
+    contract: Pick<ChildContract, 'id' | 'version'>,
+    newTo: string
+  ) => void;
   isAdjustingContractEnd?: boolean;
 }
 
@@ -163,7 +168,7 @@ export function ChildrenTable({
                             onClick={() =>
                               onAdjustContractEnd(
                                 child,
-                                currentContract.id,
+                                currentContract,
                                 enrollment.mussContractEnd
                               )
                             }

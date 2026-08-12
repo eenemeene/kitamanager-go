@@ -15,13 +15,13 @@ jest.mock('next-intl', () => ({
 }));
 
 const adjacentContracts: BaseContract[] = [
-  { id: 2, from: '2024-07-01T00:00:00Z', to: '2024-12-31T00:00:00Z' },
-  { id: 1, from: '2024-01-01T00:00:00Z', to: '2024-06-30T00:00:00Z' },
+  { id: 2, version: 1, from: '2024-07-01T00:00:00Z', to: '2024-12-31T00:00:00Z' },
+  { id: 1, version: 1, from: '2024-01-01T00:00:00Z', to: '2024-06-30T00:00:00Z' },
 ];
 
 const gapContracts: BaseContract[] = [
-  { id: 2, from: '2024-07-01T00:00:00Z', to: '2024-12-31T00:00:00Z' },
-  { id: 1, from: '2024-01-01T00:00:00Z', to: '2024-03-31T00:00:00Z' },
+  { id: 2, version: 1, from: '2024-07-01T00:00:00Z', to: '2024-12-31T00:00:00Z' },
+  { id: 1, version: 1, from: '2024-01-01T00:00:00Z', to: '2024-03-31T00:00:00Z' },
 ];
 
 const renderContent = (contract: BaseContract) => <span>Contract {contract.id}</span>;
@@ -104,7 +104,7 @@ describe('ContractTimeline', () => {
 
   it('renders single contract without boundary or gap', () => {
     const single: BaseContract[] = [
-      { id: 1, from: '2024-01-01T00:00:00Z', to: '2024-12-31T00:00:00Z' },
+      { id: 1, version: 1, from: '2024-01-01T00:00:00Z', to: '2024-12-31T00:00:00Z' },
     ];
     render(
       <ContractTimeline

@@ -28,7 +28,8 @@ import {
   type Employee,
   type EmployeeContract,
   type EmployeeContractCreateRequest,
-  type EmployeeContractUpdateRequest,
+  type EmployeeContractAmendRequest,
+  type EmployeeContractAmendResponse,
   type PayPlan,
   type PayPlanDetail,
   LOOKUP_FETCH_LIMIT,
@@ -159,13 +160,16 @@ export default function EmployeesPage() {
 
   const createContractMutation = useContractMutation<
     EmployeeContractCreateRequest,
-    EmployeeContractUpdateRequest,
-    EmployeeContract
+    EmployeeContractAmendRequest,
+    EmployeeContract,
+    EmployeeContractAmendResponse
   >({
     createFn: (employeeId, data) => apiClient.createEmployeeContract(orgId, employeeId, data),
-    updateFn: (employeeId, contractId, data) =>
-      apiClient.updateEmployeeContract(orgId, employeeId, contractId, data),
-    toUpdateData: ({ from, ...rest }) => rest,
+    amendFn: (employeeId, contractId, version, data) =>
+      apiClient.amendEmployeeContract(orgId, employeeId, contractId, version, data),
+    // The date the user picked is when the new terms take effect — a raise
+    // recorded from the wrong date restates what was already paid.
+    toAmendData: ({ from, ...rest }) => ({ effective_from: from, ...rest }),
     invalidateQueryKeys: [
       queryKeys.employees.all(orgId),
       queryKeys.employees.allUnpaginated(orgId),

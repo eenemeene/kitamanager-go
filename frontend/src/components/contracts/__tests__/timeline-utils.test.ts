@@ -4,11 +4,13 @@ describe('areAdjacent', () => {
   it('returns true when lower.to + 1 day = upper.from', () => {
     const lower: BaseContract = {
       id: 1,
+      version: 1,
       from: '2024-01-01T00:00:00Z',
       to: '2024-06-30T00:00:00Z',
     };
     const upper: BaseContract = {
       id: 2,
+      version: 1,
       from: '2024-07-01T00:00:00Z',
       to: '2024-12-31T00:00:00Z',
     };
@@ -19,11 +21,13 @@ describe('areAdjacent', () => {
   it('returns false when there is a gap between contracts', () => {
     const lower: BaseContract = {
       id: 1,
+      version: 1,
       from: '2024-01-01T00:00:00Z',
       to: '2024-03-31T00:00:00Z',
     };
     const upper: BaseContract = {
       id: 2,
+      version: 1,
       from: '2024-07-01T00:00:00Z',
       to: '2024-12-31T00:00:00Z',
     };
@@ -32,9 +36,10 @@ describe('areAdjacent', () => {
   });
 
   it('returns false when upper has no to date', () => {
-    const upper: BaseContract = { id: 2, from: '2024-07-01T00:00:00Z' };
+    const upper: BaseContract = { id: 2, version: 1, from: '2024-07-01T00:00:00Z' };
     const lower: BaseContract = {
       id: 1,
+      version: 1,
       from: '2024-01-01T00:00:00Z',
       to: '2024-06-30T00:00:00Z',
     };
@@ -42,9 +47,10 @@ describe('areAdjacent', () => {
   });
 
   it('returns false when upper.to is null', () => {
-    const upper: BaseContract = { id: 2, from: '2024-07-01T00:00:00Z', to: null };
+    const upper: BaseContract = { id: 2, version: 1, from: '2024-07-01T00:00:00Z', to: null };
     const lower: BaseContract = {
       id: 1,
+      version: 1,
       from: '2024-01-01T00:00:00Z',
       to: '2024-06-30T00:00:00Z',
     };
@@ -59,7 +65,7 @@ describe('buildTimelineItems', () => {
 
   it('returns single segment for one contract', () => {
     const contracts: BaseContract[] = [
-      { id: 1, from: '2024-01-01T00:00:00Z', to: '2024-12-31T00:00:00Z' },
+      { id: 1, version: 1, from: '2024-01-01T00:00:00Z', to: '2024-12-31T00:00:00Z' },
     ];
     const items = buildTimelineItems(contracts);
     expect(items).toEqual([{ type: 'segment', contract: contracts[0], index: 0 }]);
@@ -67,8 +73,8 @@ describe('buildTimelineItems', () => {
 
   it('inserts boundary between adjacent contracts (newest-first)', () => {
     const contracts: BaseContract[] = [
-      { id: 2, from: '2024-07-01T00:00:00Z', to: '2024-12-31T00:00:00Z' },
-      { id: 1, from: '2024-01-01T00:00:00Z', to: '2024-06-30T00:00:00Z' },
+      { id: 2, version: 1, from: '2024-07-01T00:00:00Z', to: '2024-12-31T00:00:00Z' },
+      { id: 1, version: 1, from: '2024-01-01T00:00:00Z', to: '2024-06-30T00:00:00Z' },
     ];
     const items = buildTimelineItems(contracts);
     expect(items).toHaveLength(3);
@@ -79,8 +85,8 @@ describe('buildTimelineItems', () => {
 
   it('inserts gap for non-adjacent contracts', () => {
     const contracts: BaseContract[] = [
-      { id: 2, from: '2024-07-01T00:00:00Z', to: '2024-12-31T00:00:00Z' },
-      { id: 1, from: '2024-01-01T00:00:00Z', to: '2024-03-31T00:00:00Z' },
+      { id: 2, version: 1, from: '2024-07-01T00:00:00Z', to: '2024-12-31T00:00:00Z' },
+      { id: 1, version: 1, from: '2024-01-01T00:00:00Z', to: '2024-03-31T00:00:00Z' },
     ];
     const items = buildTimelineItems(contracts);
     expect(items).toHaveLength(3);
@@ -92,9 +98,9 @@ describe('buildTimelineItems', () => {
 
   it('handles three adjacent contracts', () => {
     const contracts: BaseContract[] = [
-      { id: 3, from: '2025-01-01T00:00:00Z', to: '2025-06-30T00:00:00Z' },
-      { id: 2, from: '2024-07-01T00:00:00Z', to: '2024-12-31T00:00:00Z' },
-      { id: 1, from: '2024-01-01T00:00:00Z', to: '2024-06-30T00:00:00Z' },
+      { id: 3, version: 1, from: '2025-01-01T00:00:00Z', to: '2025-06-30T00:00:00Z' },
+      { id: 2, version: 1, from: '2024-07-01T00:00:00Z', to: '2024-12-31T00:00:00Z' },
+      { id: 1, version: 1, from: '2024-01-01T00:00:00Z', to: '2024-06-30T00:00:00Z' },
     ];
     const items = buildTimelineItems(contracts);
     expect(items).toHaveLength(5); // 3 segments + 2 boundaries
@@ -107,9 +113,9 @@ describe('buildTimelineItems', () => {
 
   it('handles mix of adjacent and gap', () => {
     const contracts: BaseContract[] = [
-      { id: 3, from: '2025-01-01T00:00:00Z', to: '2025-06-30T00:00:00Z' },
-      { id: 2, from: '2024-07-01T00:00:00Z', to: '2024-12-31T00:00:00Z' },
-      { id: 1, from: '2024-01-01T00:00:00Z', to: '2024-03-31T00:00:00Z' },
+      { id: 3, version: 1, from: '2025-01-01T00:00:00Z', to: '2025-06-30T00:00:00Z' },
+      { id: 2, version: 1, from: '2024-07-01T00:00:00Z', to: '2024-12-31T00:00:00Z' },
+      { id: 1, version: 1, from: '2024-01-01T00:00:00Z', to: '2024-03-31T00:00:00Z' },
     ];
     const items = buildTimelineItems(contracts);
     expect(items).toHaveLength(5);

@@ -24,6 +24,8 @@ interface AgeAlert {
   childId: number;
   childName: string;
   contractId: number;
+  /** The contract version as read, sent as the correction's If-Match precondition. */
+  contractVersion: number;
   sectionName: string;
   ageMonths: number;
   maxAgeMonths: number;
@@ -78,11 +80,16 @@ export function SectionAgeAlertsWidget({ orgId }: SectionAgeAlertsWidgetProps) {
       childId,
       contractId,
       sectionId,
+      version,
     }: {
       childId: number;
       contractId: number;
       sectionId: number;
-    }) => apiClient.updateChildContract(orgId, childId, contractId, { section_id: sectionId }),
+      version: number;
+    }) =>
+      apiClient.correctChildContract(orgId, childId, contractId, version, {
+        section_id: sectionId,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.children.allUnpaginated(orgId) });
     },
@@ -113,6 +120,7 @@ export function SectionAgeAlertsWidget({ orgId }: SectionAgeAlertsWidgetProps) {
           childId: child.id,
           childName: `${child.first_name} ${child.last_name}`,
           contractId: activeContract.id,
+          contractVersion: activeContract.version,
           sectionName: section.name,
           ageMonths,
           maxAgeMonths: section.max_age_months,
@@ -167,6 +175,7 @@ export function SectionAgeAlertsWidget({ orgId }: SectionAgeAlertsWidgetProps) {
                           childId: alert.childId,
                           contractId: alert.contractId,
                           sectionId: alert.nextSection!.id,
+                          version: alert.contractVersion,
                         })
                       }
                     >

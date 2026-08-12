@@ -100,7 +100,6 @@ export type EmployeeContract = S['EmployeeContractResponse'];
 export type EmployeeCreateRequest = Override<S['EmployeeCreateRequest'], 'gender', Gender>;
 export type EmployeeUpdateRequest = S['EmployeeUpdateRequest'];
 export type EmployeeContractCreateRequest = S['EmployeeContractCreateRequest'];
-export type EmployeeContractUpdateRequest = S['EmployeeContractUpdateRequest'];
 
 export type Child = Override<S['ChildResponse'], 'gender', Gender>;
 export type ChildContract = OverrideOptional<
@@ -115,13 +114,30 @@ export type ChildContractCreateRequest = OverrideOptional<
   'properties',
   ContractProperties
 >;
-export type ChildContractUpdateRequest = OverrideOptional<
-  S['ChildContractUpdateRequest'],
+// Intent-based contract writes. Each names one thing a user can do, so a given
+// payload always means the same thing — unlike the PUT these replace, where an
+// omitted field cleared data on one code path and was inherited on another.
+export type ChildContractCorrectRequest = OverrideOptional<
+  S['ChildContractCorrectRequest'],
   'properties',
   ContractProperties
 >;
-export type ContractBatchUpdateItem = S['ChildContractBatchUpdateEntry'];
-export type ContractBatchUpdateRequest = S['ChildContractBatchUpdateRequest'];
+export type ChildContractAmendRequest = OverrideOptional<
+  S['ChildContractAmendRequest'],
+  'properties',
+  ContractProperties
+>;
+export type ChildContractAmendResponse = S['ChildContractAmendResponse'];
+export type ChildContractBoundaryResponse = S['ChildContractBoundaryResponse'];
+// Not narrowed on `properties`, matching EmployeeContractCreateRequest: employee
+// properties are passed straight through from the form, and narrowing only one
+// side of the create/amend pair makes the two incompatible.
+export type EmployeeContractCorrectRequest = S['EmployeeContractCorrectRequest'];
+export type EmployeeContractAmendRequest = S['EmployeeContractAmendRequest'];
+export type EmployeeContractAmendResponse = S['EmployeeContractAmendResponse'];
+export type EmployeeContractBoundaryResponse = S['EmployeeContractBoundaryResponse'];
+export type ContractEndRequest = S['ContractEndRequest'];
+export type ContractBoundaryMoveRequest = S['ContractBoundaryMoveRequest'];
 
 export type ChildWithoutVoucherResponse = S['ChildWithoutVoucherResponse'];
 export type VoucherSuggestion = S['ChildVoucherCreateRequest'];

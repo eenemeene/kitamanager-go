@@ -33,22 +33,27 @@ jest.mock('../boundary-handle', () => ({
 }));
 
 // Three contracts, newest first. The middle one HAS a `to` because a third
-// contract follows it — that is the case that regressed.
+// contract follows it — that is the case that regressed twice.
 const threeContracts: BaseContract[] = [
-  { id: 3, from: '2025-01-01T00:00:00Z', to: null },
-  { id: 2, from: '2024-07-01T00:00:00Z', to: '2024-12-31T00:00:00Z' },
-  { id: 1, from: '2024-01-01T00:00:00Z', to: '2024-06-30T00:00:00Z' },
+  { id: 3, version: 7, from: '2025-01-01T00:00:00Z', to: null },
+  { id: 2, version: 4, from: '2024-07-01T00:00:00Z', to: '2024-12-31T00:00:00Z' },
+  { id: 1, version: 2, from: '2024-01-01T00:00:00Z', to: '2024-06-30T00:00:00Z' },
 ];
 
 const renderContent = (c: BaseContract) => <span>Contract {c.id}</span>;
 
 describe('ContractTimeline boundary payload', () => {
-  // Regression guard for two bugs fixed together:
-  //  - omitting `to` for the upper contract cleared it, so a contract with a
-  //    successor became ongoing and collided with it (409)
-  //  - a dates-only entry also stripped funding properties server-side
-  // Both are avoided by sending the full date pair for both contracts.
-  it('sends from AND to for both contracts, preserving the upper contract to', async () => {
+  // This file used to guard a four-date payload: the client computed `from` and
+  // `to` for BOTH contracts, because the batch endpoint it posted to cleared `to`
+  // whenever an entry omitted it. Getting that wrong caused two funding bugs —
+  // the neighbour's end date was wiped (a 409 for every child with three or more
+  // contracts) and, in another version, its care type and supplements went too.
+  //
+  // The payload is now a seam: one date, two ids, two versions. The guard is
+  // therefore inverted — what matters is that no end date is sent at all, which
+  // is what makes clearing the neighbour's structurally impossible rather than
+  // merely avoided.
+  it('sends one seam date with both contract ids and versions', async () => {
     const onBoundaryChange = jest.fn().mockResolvedValue(undefined);
     render(
       <ContractTimeline
@@ -58,26 +63,24 @@ describe('ContractTimeline boundary payload', () => {
       />
     );
 
-    // Move the OLDER boundary: between contract 1 (lower) and contract 2 (upper).
+    // Move the OLDER boundary: between contract 1 (earlier) and contract 2.
     await userEvent.click(screen.getByTestId('boundary-1-2'));
 
     expect(onBoundaryChange).toHaveBeenCalledTimes(1);
-    const updates = onBoundaryChange.mock.calls[0][0];
-    expect(updates).toHaveLength(2);
+    const move = onBoundaryChange.mock.calls[0][0];
 
-    const lower = updates.find((u: { id: number }) => u.id === 1);
-    const upper = updates.find((u: { id: number }) => u.id === 2);
-
-    // The lower contract keeps its own start and takes the new end.
-    expect(lower).toEqual({ id: 1, from: '2024-01-01T00:00:00Z', to: '2024-09-30T00:00:00Z' });
-
-    // The upper contract takes the new start and MUST retain its existing end,
-    // otherwise the batch endpoint clears it and it collides with contract 3.
-    expect(upper).toEqual({ id: 2, from: '2024-10-01T00:00:00Z', to: '2024-12-31T00:00:00Z' });
-    expect(upper.to).toBeDefined();
+    // The timeline is sorted newest-first, so the "lower" contract is the earlier
+    // one. Naming them explicitly is what lets the server derive both sides.
+    expect(move).toEqual({
+      earlier_id: 1,
+      later_id: 2,
+      at: '2024-10-01T00:00:00Z',
+      earlier_version: 2,
+      later_version: 4,
+    });
   });
 
-  it('leaves to undefined when the upper contract is genuinely ongoing', async () => {
+  it('never sends an end date, so a neighbour cannot be cleared', async () => {
     const onBoundaryChange = jest.fn().mockResolvedValue(undefined);
     render(
       <ContractTimeline
@@ -87,12 +90,19 @@ describe('ContractTimeline boundary payload', () => {
       />
     );
 
-    // The newest boundary: contract 2 (lower) and contract 3 (upper, to = null).
     await userEvent.click(screen.getByTestId('boundary-2-3'));
 
-    const updates = onBoundaryChange.mock.calls[0][0];
-    const upper = updates.find((u: { id: number }) => u.id === 3);
-    expect(upper.from).toBe('2024-10-01T00:00:00Z');
-    expect(upper.to).toBeUndefined();
+    const move = onBoundaryChange.mock.calls[0][0];
+    expect(move).not.toHaveProperty('to');
+    expect(move).not.toHaveProperty('updates');
+    // The still-ongoing contract 3 is the later side; its open end is simply not
+    // part of the request, so it cannot be lost.
+    expect(move).toEqual({
+      earlier_id: 2,
+      later_id: 3,
+      at: '2024-10-01T00:00:00Z',
+      earlier_version: 4,
+      later_version: 7,
+    });
   });
 });

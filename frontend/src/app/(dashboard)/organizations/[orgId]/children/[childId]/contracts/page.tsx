@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { format, parseISO, subDays } from 'date-fns';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Trash2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -40,9 +41,9 @@ import { queryKeys } from '@/lib/api/queryKeys';
 import {
   type ChildContract,
   type ChildContractCreateRequest,
-  type ChildContractUpdateRequest,
+  type ChildContractCorrectRequest,
   type ContractProperties,
-  type ContractBatchUpdateRequest,
+  type ContractBoundaryMoveRequest,
   LOOKUP_FETCH_LIMIT,
 } from '@/lib/api/types';
 import { useForm, Controller } from 'react-hook-form';
@@ -122,9 +123,16 @@ export default function ChildContractsPage() {
     },
   });
 
-  const updateMutation = useResourceMutation({
-    mutationFn: ({ contractId, data }: { contractId: number; data: ChildContractUpdateRequest }) =>
-      apiClient.updateChildContract(orgId, childId, contractId, data),
+  const correctMutation = useResourceMutation({
+    // The whole contract, not just its id: correcting it needs the version as an
+    // If-Match precondition, so an edit cannot silently overwrite someone else's.
+    mutationFn: ({
+      contract,
+      data,
+    }: {
+      contract: ChildContract;
+      data: ChildContractCorrectRequest;
+    }) => apiClient.correctChildContract(orgId, childId, contract.id, contract.version, data),
     invalidateQueryKey: invalidateKeys,
     successMessage: t('contracts.updateSuccess'),
     errorMessage: t('common.failedToSave', { resource: 'contract' }),
@@ -149,24 +157,26 @@ export default function ChildContractsPage() {
 
   const contractsQueryKey = queryKeys.children.contracts(orgId, childId);
 
-  const batchUpdateMutation = useMutation({
-    mutationFn: (data: ContractBatchUpdateRequest) =>
-      apiClient.batchUpdateChildContracts(orgId, childId, data),
-    onMutate: async (newData) => {
+  const boundaryMutation = useMutation({
+    mutationFn: (move: ContractBoundaryMoveRequest) =>
+      apiClient.moveChildContractBoundary(orgId, childId, move),
+    onMutate: async (move) => {
       await queryClient.cancelQueries({ queryKey: contractsQueryKey });
       const previous = queryClient.getQueryData<ChildContract[]>(contractsQueryKey);
-      queryClient.setQueryData<ChildContract[]>(contractsQueryKey, (old) => {
-        if (!old) return old;
-        return old.map((c) => {
-          const update = newData.updates.find((u) => u.id === c.id);
-          if (!update) return c;
-          return {
-            ...c,
-            ...(update.from !== undefined && { from: update.from }),
-            ...(update.to !== undefined && { to: update.to }),
-          };
-        });
-      });
+      // Mirror what the server will do: the later contract starts at the seam,
+      // the earlier one ends the day before. Only these two dates change, which
+      // is the point of sending one date instead of four.
+      const dayBefore =
+        formatDateForApi(format(subDays(parseISO(move.at), 1), 'yyyy-MM-dd')) ?? undefined;
+      queryClient.setQueryData<ChildContract[]>(contractsQueryKey, (old) =>
+        old?.map((c) =>
+          c.id === move.later_id
+            ? { ...c, from: move.at }
+            : c.id === move.earlier_id
+              ? { ...c, to: dayBefore ?? c.to }
+              : c
+        )
+      );
       return { previous };
     },
     onError: (error: unknown, _vars, context) => {
@@ -248,11 +258,17 @@ export default function ChildContractsPage() {
 
   const onSubmit = (data: ChildContractFormData) => {
     if (editingContract) {
-      updateMutation.mutate({
-        contractId: editingContract.id,
+      correctMutation.mutate({
+        contract: editingContract,
+        // section_id is included because the dialog renders a section select and
+        // the old payload left it out: changing a contract's section here was
+        // silently discarded. `to` is sent as null rather than omitted when the
+        // field is empty, because omitting now means "leave alone" — clearing an
+        // end date has to be said explicitly.
         data: {
           from: formatDateForApi(data.from) || undefined,
-          to: formatDateForApi(data.to) || undefined,
+          to: formatDateForApi(data.to),
+          section_id: data.section_id,
           properties: data.properties as ContractProperties | undefined,
         },
       });
@@ -460,8 +476,8 @@ export default function ChildContractsPage() {
                         )}
                       </div>
                     )}
-                    onBoundaryChange={(updates) => batchUpdateMutation.mutateAsync({ updates })}
-                    isUpdating={batchUpdateMutation.isPending}
+                    onBoundaryChange={(move) => boundaryMutation.mutateAsync(move)}
+                    isUpdating={boundaryMutation.isPending}
                   />
                 </TabsContent>
               </>
@@ -476,7 +492,7 @@ export default function ChildContractsPage() {
         isEditing={!!editingContract}
         translationPrefix="contracts"
         onSubmit={handleSubmit(onSubmit)}
-        isSaving={createMutation.isPending || updateMutation.isPending}
+        isSaving={createMutation.isPending || correctMutation.isPending}
       >
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-2">

@@ -11,7 +11,7 @@ jest.mock('../use-toast', () => ({
 interface TestEntity {
   id: number;
   name: string;
-  contracts?: { id: number; section_id: number }[];
+  contracts?: { id: number; section_id: number; version: number }[];
 }
 
 describe('useMoveContractMutation', () => {
@@ -32,8 +32,8 @@ describe('useMoveContractMutation', () => {
   it('optimistically updates section_id in cache', async () => {
     const allKey = ['childrenAll', 1];
     const entities: TestEntity[] = [
-      { id: 10, name: 'Alice', contracts: [{ id: 100, section_id: 1 }] },
-      { id: 11, name: 'Bob', contracts: [{ id: 101, section_id: 1 }] },
+      { id: 10, name: 'Alice', contracts: [{ id: 100, section_id: 1, version: 1 }] },
+      { id: 11, name: 'Bob', contracts: [{ id: 101, section_id: 1, version: 1 }] },
     ];
     queryClient.setQueryData(allKey, entities);
 
@@ -56,20 +56,21 @@ describe('useMoveContractMutation', () => {
     );
 
     act(() => {
-      result.current.mutate({ entityId: 10, contractId: 100, sectionId: 2 });
+      result.current.mutate({ entityId: 10, contractId: 100, sectionId: 2, version: 1 });
     });
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(updateFn).toHaveBeenCalledWith(10, 100, 2);
+    // The trailing 1 is the contract version, sent as the If-Match precondition.
+    expect(updateFn).toHaveBeenCalledWith(10, 100, 2, 1);
   });
 
   it('rolls back optimistic update on error', async () => {
     const allKey = ['childrenAll', 1];
     const entities: TestEntity[] = [
-      { id: 10, name: 'Alice', contracts: [{ id: 100, section_id: 1 }] },
+      { id: 10, name: 'Alice', contracts: [{ id: 100, section_id: 1, version: 1 }] },
     ];
     queryClient.setQueryData(allKey, entities);
 
@@ -89,7 +90,7 @@ describe('useMoveContractMutation', () => {
     );
 
     act(() => {
-      result.current.mutate({ entityId: 10, contractId: 100, sectionId: 5 });
+      result.current.mutate({ entityId: 10, contractId: 100, sectionId: 5, version: 1 });
     });
 
     await waitFor(() => {
@@ -109,7 +110,7 @@ describe('useMoveContractMutation', () => {
   it('invalidates all keys including entity-specific keys on settled', async () => {
     const allKey = ['childrenAll', 1];
     queryClient.setQueryData(allKey, [
-      { id: 10, name: 'Alice', contracts: [{ id: 100, section_id: 1 }] },
+      { id: 10, name: 'Alice', contracts: [{ id: 100, section_id: 1, version: 1 }] },
     ]);
 
     const updateFn = jest.fn().mockResolvedValue({});
@@ -132,7 +133,7 @@ describe('useMoveContractMutation', () => {
     );
 
     act(() => {
-      result.current.mutate({ entityId: 10, contractId: 100, sectionId: 3 });
+      result.current.mutate({ entityId: 10, contractId: 100, sectionId: 3, version: 1 });
     });
 
     await waitFor(() => {

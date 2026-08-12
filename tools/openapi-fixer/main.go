@@ -78,6 +78,7 @@ func run(inPath, outPath string) error {
 	}
 
 	markResponsePropertiesRequired(v3)
+	allowFreeFormObjectProperties(v3)
 
 	// kin-openapi marshals fields in a stable order via tagged structs;
 	// the only non-determinism left would come from unordered maps in the
@@ -95,6 +96,43 @@ func run(inPath, outPath string) error {
 		return fmt.Errorf("write %s: %w", outPath, err)
 	}
 	return nil
+}
+
+// allowFreeFormObjectProperties states that an object-typed schema with no
+// declared properties accepts arbitrary ones.
+//
+// swaggo emits `{"type": "object"}` for a `swaggertype:"object"` field — its way
+// of saying "free-form object", which is how the contract-property maps on the
+// correct/amend requests are declared. OpenAPI reads that literally, and strict
+// generators take it at its word: openapi-typescript renders it as
+// `Record<string, never>`, an object permitted to have *no* properties, which no
+// caller can satisfy. The response side does not hit this because it $refs the
+// named ContractProperties schema, which carries additionalProperties.
+//
+// Stating additionalProperties: true says what swaggo meant. The rule is safe
+// because an object with neither declared properties nor a $ref carries no
+// information otherwise — there is nothing it could describe except a free-form
+// map.
+func allowFreeFormObjectProperties(doc *openapi3.T) {
+	if doc.Components == nil {
+		return
+	}
+	for _, ref := range doc.Components.Schemas {
+		if ref == nil || ref.Value == nil {
+			continue
+		}
+		for _, prop := range ref.Value.Properties {
+			if prop == nil || prop.Value == nil {
+				continue
+			}
+			v := prop.Value
+			if !v.Type.Is("object") || len(v.Properties) > 0 || v.AdditionalProperties.Has != nil || v.AdditionalProperties.Schema != nil {
+				continue
+			}
+			allow := true
+			v.AdditionalProperties.Has = &allow
+		}
+	}
 }
 
 // markResponsePropertiesRequired walks every schema whose name does NOT

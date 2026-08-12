@@ -11,8 +11,18 @@ jest.mock('next-intl', () => ({
   },
 }));
 
-const upper: BaseContract = { id: 2, from: '2024-07-01T00:00:00Z', to: '2024-12-31T00:00:00Z' };
-const lower: BaseContract = { id: 1, from: '2024-01-01T00:00:00Z', to: '2024-06-30T00:00:00Z' };
+const upper: BaseContract = {
+  id: 2,
+  version: 1,
+  from: '2024-07-01T00:00:00Z',
+  to: '2024-12-31T00:00:00Z',
+};
+const lower: BaseContract = {
+  id: 1,
+  version: 1,
+  from: '2024-01-01T00:00:00Z',
+  to: '2024-06-30T00:00:00Z',
+};
 
 describe('BoundaryHandle', () => {
   const defaultProps = {
