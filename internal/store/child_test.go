@@ -235,7 +235,7 @@ func TestChildStore_DeleteContract(t *testing.T) {
 	}
 	db.Create(contract)
 
-	err := store.DeleteContract(ctx, contract.ID)
+	err := store.DeleteContract(ctx, contract.ID, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -824,7 +824,7 @@ func TestChildStore_ContractProperties_JSONSerialization(t *testing.T) {
 			}
 
 			// Cleanup for next test
-			_ = store.DeleteContract(ctx, contract.ID)
+			_ = store.DeleteContract(ctx, contract.ID, nil)
 		})
 	}
 }

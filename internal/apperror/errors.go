@@ -31,6 +31,11 @@ const (
 	CodeContractConflict   = "contract_overlap"
 	CodeDuplicateBillHash  = "duplicate_bill_hash"
 	CodeDuplicateBillMonth = "duplicate_bill_month"
+	// CodePreconditionRequired and CodePreconditionFailed are separate because
+	// the remedies differ: the first means "send If-Match", the second means
+	// "reload, the record moved on".
+	CodePreconditionRequired = "precondition_required"
+	CodePreconditionFailed   = "precondition_failed"
 )
 
 // AppError wraps errors with HTTP context
@@ -101,6 +106,22 @@ func EmailConflict() *AppError {
 // ContractConflict creates an error for overlapping contracts
 func ContractConflict(msg string) *AppError {
 	return &AppError{Err: ErrConflict, Message: msg, Code: http.StatusConflict, ErrorCode: CodeContractConflict}
+}
+
+// PreconditionRequired creates a 428 for a write that arrived without the
+// If-Match precondition it is required to carry. Distinct from 412: nothing was
+// compared, so the client has to read the resource and try again with its
+// version rather than assume it lost a race.
+func PreconditionRequired(msg string) *AppError {
+	return &AppError{Err: ErrBadRequest, Message: msg, Code: http.StatusPreconditionRequired, ErrorCode: CodePreconditionRequired}
+}
+
+// PreconditionFailed creates a 412 for a write whose If-Match version no longer
+// matches the stored one: someone else changed the record since the client read
+// it. The remedy is to reload and reapply, which is why this is not a 409 — no
+// overlap or constraint was violated.
+func PreconditionFailed(msg string) *AppError {
+	return &AppError{Err: ErrConflict, Message: msg, Code: http.StatusPreconditionFailed, ErrorCode: CodePreconditionFailed}
 }
 
 // TooManyRequests creates a 429 rate-limit error

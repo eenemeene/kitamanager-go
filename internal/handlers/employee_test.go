@@ -314,7 +314,7 @@ func TestEmployeeHandler_Delete(t *testing.T) {
 	r := setupTestRouter()
 	r.DELETE("/organizations/:orgId/employees/:employeeId", handler.Delete)
 
-	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d", org.ID, employee.ID), nil)
+	w := requestWithHeaders(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d", org.ID, employee.ID), "", anyVersion)
 
 	if w.Code != http.StatusNoContent {
 		t.Errorf("expected status %d, got %d", http.StatusNoContent, w.Code)
@@ -345,7 +345,7 @@ func TestEmployeeHandler_Delete_WrongOrg(t *testing.T) {
 	r.DELETE("/organizations/:orgId/employees/:employeeId", handler.Delete)
 
 	// Try to delete employee from org2 (should fail with 404)
-	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d", org2.ID, employee.ID), nil)
+	w := requestWithHeaders(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d", org2.ID, employee.ID), "", anyVersion)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d for cross-org access, got %d", http.StatusNotFound, w.Code)
@@ -753,7 +753,7 @@ func TestEmployeeHandler_DeleteContract(t *testing.T) {
 	r := setupTestRouter()
 	r.DELETE("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.DeleteContract)
 
-	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d/contracts/%d", org.ID, employee.ID, contract.ID), nil)
+	w := requestWithHeaders(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d/contracts/%d", org.ID, employee.ID, contract.ID), "", anyVersion)
 
 	if w.Code != http.StatusNoContent {
 		t.Errorf("expected status %d, got %d", http.StatusNoContent, w.Code)
@@ -791,7 +791,7 @@ func TestEmployeeHandler_DeleteContract_WrongOrg(t *testing.T) {
 	r.DELETE("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.DeleteContract)
 
 	// Try to delete contract from org2 (should fail with 404)
-	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d/contracts/%d", org2.ID, employee.ID, contract.ID), nil)
+	w := requestWithHeaders(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d/contracts/%d", org2.ID, employee.ID, contract.ID), "", anyVersion)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d for cross-org access, got %d", http.StatusNotFound, w.Code)
@@ -840,7 +840,7 @@ func TestEmployeeHandler_DeleteContract_WrongEmployee(t *testing.T) {
 	r.DELETE("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.DeleteContract)
 
 	// Try to delete contract via employee2 URL (should fail with 404)
-	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d/contracts/%d", org.ID, employee2.ID, contract.ID), nil)
+	w := requestWithHeaders(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d/contracts/%d", org.ID, employee2.ID, contract.ID), "", anyVersion)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d for wrong employee access, got %d", http.StatusNotFound, w.Code)
@@ -1245,7 +1245,7 @@ func TestEmployeeHandler_Delete_NotFound(t *testing.T) {
 	r := setupTestRouter()
 	r.DELETE("/organizations/:orgId/employees/:employeeId", handler.Delete)
 
-	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/999", org.ID), nil)
+	w := requestWithHeaders(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/999", org.ID), "", anyVersion)
 
 	// Should return NotFound for non-existent employee
 	if w.Code != http.StatusNotFound {
@@ -1263,7 +1263,7 @@ func TestEmployeeHandler_Delete_InvalidID(t *testing.T) {
 	r := setupTestRouter()
 	r.DELETE("/organizations/:orgId/employees/:employeeId", handler.Delete)
 
-	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/invalid", org.ID), nil)
+	w := requestWithHeaders(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/invalid", org.ID), "", anyVersion)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
@@ -1640,7 +1640,7 @@ func TestEmployeeHandler_DeleteContract_NotFound(t *testing.T) {
 	r := setupTestRouter()
 	r.DELETE("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.DeleteContract)
 
-	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d/contracts/999", org.ID, employee.ID), nil)
+	w := requestWithHeaders(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d/contracts/999", org.ID, employee.ID), "", anyVersion)
 
 	// Should return NotFound for non-existent contract
 	if w.Code != http.StatusNotFound {
@@ -1662,7 +1662,7 @@ func TestEmployeeHandler_DeleteContract_InvalidContractID(t *testing.T) {
 	r := setupTestRouter()
 	r.DELETE("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.DeleteContract)
 
-	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d/contracts/invalid", org.ID, employee.ID), nil)
+	w := requestWithHeaders(r, "DELETE", fmt.Sprintf("/organizations/%d/employees/%d/contracts/invalid", org.ID, employee.ID), "", anyVersion)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)

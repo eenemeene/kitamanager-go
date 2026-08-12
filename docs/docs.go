@@ -4875,6 +4875,13 @@ const docTemplate = `{
                         "name": "contractId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "The contract's current version, quoted, e.g. \\",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -4895,6 +4902,18 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "412": {
+                        "description": "The contract was changed by someone else since you read it (precondition_failed) — reload and reapply",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "If-Match header missing (precondition_required)",
                         "schema": {
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
                         }
@@ -4954,6 +4973,13 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractCorrectRequest"
                         }
+                    },
+                    {
+                        "type": "string",
+                        "description": "The contract's current version, quoted, e.g. \\",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -4983,6 +5009,18 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "Dates overlap another contract (contract_overlap), or the contract was changed by someone else",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "412": {
+                        "description": "The contract was changed by someone else since you read it (precondition_failed) — reload and reapply",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "If-Match header missing (precondition_required)",
                         "schema": {
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
                         }
@@ -5044,6 +5082,13 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractAmendRequest"
                         }
+                    },
+                    {
+                        "type": "string",
+                        "description": "The contract's current version, quoted, e.g. \\",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -5073,6 +5118,18 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "The successor would overlap another contract (contract_overlap)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "412": {
+                        "description": "The contract was changed by someone else since you read it (precondition_failed) — reload and reapply",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "If-Match header missing (precondition_required)",
                         "schema": {
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
                         }
@@ -5134,6 +5191,13 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractEndRequest"
                         }
+                    },
+                    {
+                        "type": "string",
+                        "description": "The contract's current version, quoted, e.g. \\",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -5163,6 +5227,18 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "Reopening would overlap a later contract (contract_overlap)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "412": {
+                        "description": "The contract was changed by someone else since you read it (precondition_failed) — reload and reapply",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "If-Match header missing (precondition_required)",
                         "schema": {
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
                         }
@@ -6611,6 +6687,13 @@ const docTemplate = `{
                         "name": "contractId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "The contract's current version, quoted, e.g. \\",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -6631,6 +6714,18 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "412": {
+                        "description": "The contract was changed by someone else since you read it (precondition_failed) — reload and reapply",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "If-Match header missing (precondition_required)",
                         "schema": {
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
                         }
@@ -6690,6 +6785,13 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractCorrectRequest"
                         }
+                    },
+                    {
+                        "type": "string",
+                        "description": "The contract's current version, quoted, e.g. \\",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -6719,6 +6821,18 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "Dates overlap another contract (contract_overlap), or the contract was changed by someone else",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "412": {
+                        "description": "The contract was changed by someone else since you read it (precondition_failed) — reload and reapply",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "If-Match header missing (precondition_required)",
                         "schema": {
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
                         }
@@ -6780,6 +6894,13 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractAmendRequest"
                         }
+                    },
+                    {
+                        "type": "string",
+                        "description": "The contract's current version, quoted, e.g. \\",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -6809,6 +6930,18 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "The successor would overlap another contract (contract_overlap)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "412": {
+                        "description": "The contract was changed by someone else since you read it (precondition_failed) — reload and reapply",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "If-Match header missing (precondition_required)",
                         "schema": {
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
                         }
@@ -6870,6 +7003,13 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractEndRequest"
                         }
+                    },
+                    {
+                        "type": "string",
+                        "description": "The contract's current version, quoted, e.g. \\",
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -6899,6 +7039,18 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "Reopening would overlap a later contract (contract_overlap)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "412": {
+                        "description": "The contract was changed by someone else since you read it (precondition_failed) — reload and reapply",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "428": {
+                        "description": "If-Match header missing (precondition_required)",
                         "schema": {
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
                         }
@@ -12611,7 +12763,9 @@ const docTemplate = `{
             "required": [
                 "at",
                 "earlier_id",
-                "later_id"
+                "earlier_version",
+                "later_id",
+                "later_version"
             ],
             "properties": {
                 "at": {
@@ -12623,9 +12777,18 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 5
                 },
+                "earlier_version": {
+                    "description": "The versions of both contracts, as read. These live in the body rather than\nin an If-Match header because this request changes two resources and is\naddressed to the collection: one header cannot name a version per contract,\nand If-Match on a collection URL means something else entirely.\n\nRequired, like If-Match is on the single-contract writes: a seam move\nrewrites dates on a contract the user did not open, so it is the operation\nwhere a lost update is least likely to be noticed. Versions start at 1, so\n` + "`" + `required` + "`" + ` rejecting 0 is correct here.",
+                    "type": "integer",
+                    "example": 3
+                },
                 "later_id": {
                     "type": "integer",
                     "example": 6
+                },
+                "later_version": {
+                    "type": "integer",
+                    "example": 1
                 }
             }
         },

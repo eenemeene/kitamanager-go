@@ -136,7 +136,8 @@ export default function ChildContractsPage() {
   });
 
   const deleteMutation = useResourceMutation({
-    mutationFn: (contractId: number) => apiClient.deleteChildContract(orgId, childId, contractId),
+    mutationFn: (contract: ChildContract) =>
+      apiClient.deleteChildContract(orgId, childId, contract.id, contract.version),
     invalidateQueryKey: invalidateKeys,
     successMessage: t('contracts.deleteSuccess'),
     errorMessage: t('common.failedToDelete', { resource: 'contract' }),
@@ -542,7 +543,7 @@ export default function ChildContractsPage() {
       <DeleteConfirmDialog
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
-        onConfirm={() => deletingContract && deleteMutation.mutate(deletingContract.id)}
+        onConfirm={() => deletingContract && deleteMutation.mutate(deletingContract)}
         isLoading={deleteMutation.isPending}
         resourceName="contracts"
       />

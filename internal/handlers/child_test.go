@@ -291,7 +291,7 @@ func TestChildHandler_Delete(t *testing.T) {
 	r := setupTestRouter()
 	r.DELETE("/organizations/:orgId/children/:childId", handler.Delete)
 
-	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/children/%d", org.ID, child.ID), nil)
+	w := requestWithHeaders(r, "DELETE", fmt.Sprintf("/organizations/%d/children/%d", org.ID, child.ID), "", anyVersion)
 
 	if w.Code != http.StatusNoContent {
 		t.Errorf("expected status %d, got %d", http.StatusNoContent, w.Code)
@@ -548,7 +548,7 @@ func TestChildHandler_DeleteContract(t *testing.T) {
 	r := setupTestRouter()
 	r.DELETE("/organizations/:orgId/children/:childId/contracts/:contractId", handler.DeleteContract)
 
-	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org.ID, child.ID, contract.ID), nil)
+	w := requestWithHeaders(r, "DELETE", fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org.ID, child.ID, contract.ID), "", anyVersion)
 
 	if w.Code != http.StatusNoContent {
 		t.Errorf("expected status %d, got %d", http.StatusNoContent, w.Code)
@@ -729,7 +729,7 @@ func TestChildHandler_Delete_NotFound(t *testing.T) {
 	r := setupTestRouter()
 	r.DELETE("/organizations/:orgId/children/:childId", handler.Delete)
 
-	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/children/999", org.ID), nil)
+	w := requestWithHeaders(r, "DELETE", fmt.Sprintf("/organizations/%d/children/999", org.ID), "", anyVersion)
 
 	if w.Code != http.StatusNoContent && w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d or %d, got %d", http.StatusNoContent, http.StatusNotFound, w.Code)
@@ -746,7 +746,7 @@ func TestChildHandler_Delete_InvalidID(t *testing.T) {
 	r := setupTestRouter()
 	r.DELETE("/organizations/:orgId/children/:childId", handler.Delete)
 
-	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/children/invalid", org.ID), nil)
+	w := requestWithHeaders(r, "DELETE", fmt.Sprintf("/organizations/%d/children/invalid", org.ID), "", anyVersion)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
@@ -969,7 +969,7 @@ func TestChildHandler_DeleteContract_NotFound(t *testing.T) {
 	r := setupTestRouter()
 	r.DELETE("/organizations/:orgId/children/:childId/contracts/:contractId", handler.DeleteContract)
 
-	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/children/%d/contracts/999", org.ID, child.ID), nil)
+	w := requestWithHeaders(r, "DELETE", fmt.Sprintf("/organizations/%d/children/%d/contracts/999", org.ID, child.ID), "", anyVersion)
 
 	if w.Code != http.StatusNoContent && w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d or %d, got %d", http.StatusNoContent, http.StatusNotFound, w.Code)
@@ -990,7 +990,7 @@ func TestChildHandler_DeleteContract_InvalidContractID(t *testing.T) {
 	r := setupTestRouter()
 	r.DELETE("/organizations/:orgId/children/:childId/contracts/:contractId", handler.DeleteContract)
 
-	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/children/%d/contracts/invalid", org.ID, child.ID), nil)
+	w := requestWithHeaders(r, "DELETE", fmt.Sprintf("/organizations/%d/children/%d/contracts/invalid", org.ID, child.ID), "", anyVersion)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
@@ -1192,7 +1192,7 @@ func TestChildHandler_Delete_WrongOrg(t *testing.T) {
 	r.DELETE("/organizations/:orgId/children/:childId", handler.Delete)
 
 	// Try to delete org1's child via org2's URL
-	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/children/%d", org2.ID, child.ID), nil)
+	w := requestWithHeaders(r, "DELETE", fmt.Sprintf("/organizations/%d/children/%d", org2.ID, child.ID), "", anyVersion)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("SECURITY: expected status %d when deleting child from wrong org, got %d", http.StatusNotFound, w.Code)
@@ -1284,7 +1284,7 @@ func TestChildHandler_DeleteContract_WrongOrg(t *testing.T) {
 	r.DELETE("/organizations/:orgId/children/:childId/contracts/:contractId", handler.DeleteContract)
 
 	// Try to delete contract for org1's child via org2's URL
-	w := performRequest(r, "DELETE", fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org2.ID, child.ID, contract.ID), nil)
+	w := requestWithHeaders(r, "DELETE", fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org2.ID, child.ID, contract.ID), "", anyVersion)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("SECURITY: expected status %d when deleting contract from wrong org, got %d", http.StatusNotFound, w.Code)

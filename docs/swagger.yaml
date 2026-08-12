@@ -1054,13 +1054,31 @@ definitions:
       earlier_id:
         example: 5
         type: integer
+      earlier_version:
+        description: |-
+          The versions of both contracts, as read. These live in the body rather than
+          in an If-Match header because this request changes two resources and is
+          addressed to the collection: one header cannot name a version per contract,
+          and If-Match on a collection URL means something else entirely.
+
+          Required, like If-Match is on the single-contract writes: a seam move
+          rewrites dates on a contract the user did not open, so it is the operation
+          where a lost update is least likely to be noticed. Versions start at 1, so
+          `required` rejecting 0 is correct here.
+        example: 3
+        type: integer
       later_id:
         example: 6
+        type: integer
+      later_version:
+        example: 1
         type: integer
     required:
     - at
     - earlier_id
+    - earlier_version
     - later_id
+    - later_version
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ContractEndRequest:
     properties:
@@ -6790,6 +6808,11 @@ paths:
         name: contractId
         required: true
         type: integer
+      - description: The contract's current version, quoted, e.g. \
+        in: header
+        name: If-Match
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -6805,6 +6828,15 @@ paths:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "412":
+          description: The contract was changed by someone else since you read it
+            (precondition_failed) — reload and reapply
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "428":
+          description: If-Match header missing (precondition_required)
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "500":
@@ -6905,6 +6937,11 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractCorrectRequest'
+      - description: The contract's current version, quoted, e.g. \
+        in: header
+        name: If-Match
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -6928,6 +6965,15 @@ paths:
         "409":
           description: Dates overlap another contract (contract_overlap), or the contract
             was changed by someone else
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "412":
+          description: The contract was changed by someone else since you read it
+            (precondition_failed) — reload and reapply
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "428":
+          description: If-Match header missing (precondition_required)
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "500":
@@ -7058,6 +7104,11 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractAmendRequest'
+      - description: The contract's current version, quoted, e.g. \
+        in: header
+        name: If-Match
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -7080,6 +7131,15 @@ paths:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "409":
           description: The successor would overlap another contract (contract_overlap)
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "412":
+          description: The contract was changed by someone else since you read it
+            (precondition_failed) — reload and reapply
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "428":
+          description: If-Match header missing (precondition_required)
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "500":
@@ -7126,6 +7186,11 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractEndRequest'
+      - description: The contract's current version, quoted, e.g. \
+        in: header
+        name: If-Match
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -7147,6 +7212,15 @@ paths:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "409":
           description: Reopening would overlap a later contract (contract_overlap)
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "412":
+          description: The contract was changed by someone else since you read it
+            (precondition_failed) — reload and reapply
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "428":
+          description: If-Match header missing (precondition_required)
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "500":
@@ -8148,6 +8222,11 @@ paths:
         name: contractId
         required: true
         type: integer
+      - description: The contract's current version, quoted, e.g. \
+        in: header
+        name: If-Match
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -8163,6 +8242,15 @@ paths:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "412":
+          description: The contract was changed by someone else since you read it
+            (precondition_failed) — reload and reapply
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "428":
+          description: If-Match header missing (precondition_required)
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "500":
@@ -8259,6 +8347,11 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractCorrectRequest'
+      - description: The contract's current version, quoted, e.g. \
+        in: header
+        name: If-Match
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -8282,6 +8375,15 @@ paths:
         "409":
           description: Dates overlap another contract (contract_overlap), or the contract
             was changed by someone else
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "412":
+          description: The contract was changed by someone else since you read it
+            (precondition_failed) — reload and reapply
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "428":
+          description: If-Match header missing (precondition_required)
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "500":
@@ -8408,6 +8510,11 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractAmendRequest'
+      - description: The contract's current version, quoted, e.g. \
+        in: header
+        name: If-Match
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -8430,6 +8537,15 @@ paths:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "409":
           description: The successor would overlap another contract (contract_overlap)
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "412":
+          description: The contract was changed by someone else since you read it
+            (precondition_failed) — reload and reapply
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "428":
+          description: If-Match header missing (precondition_required)
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "500":
@@ -8473,6 +8589,11 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractEndRequest'
+      - description: The contract's current version, quoted, e.g. \
+        in: header
+        name: If-Match
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -8494,6 +8615,15 @@ paths:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "409":
           description: Reopening would overlap a later contract (contract_overlap)
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "412":
+          description: The contract was changed by someone else since you read it
+            (precondition_failed) — reload and reapply
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "428":
+          description: If-Match header missing (precondition_required)
           schema:
             $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
         "500":

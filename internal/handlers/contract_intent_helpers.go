@@ -43,6 +43,9 @@ func handleAmendContract[Req any, Resp any, Item any](
 	if !ok {
 		return
 	}
+	if !applyIfMatch(c, req) {
+		return
+	}
 
 	// Best-effort: a failure here must not block the amendment. If the contract is
 	// really missing, amendFn reports it properly a moment later.

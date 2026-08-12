@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
@@ -17,6 +19,48 @@ import (
 // Note that from_date/to_date are Postgres DATE columns: any time-of-day is
 // dropped on write. Comparisons here truncate for the same reason, so a request
 // carrying a midday timestamp cannot compare differently to what gets stored.
+
+// checkVersion compares a client's If-Match expectation against the contract as
+// just loaded, and is the reason optimistic concurrency actually protects
+// anything: the version column makes a stale write *fail*, but only once someone
+// says which version the write was based on.
+//
+// Deliberately compared here rather than in the handler. The handler already
+// fetches the contract for the audit diff, but comparing there would leave a
+// window in which another writer bumps the version between that read and the
+// service's own load — the store's `WHERE version = ?` guard would then match the
+// newer row and cheerfully overwrite it. Compared against the loaded value, the
+// two checks compose: a mismatch here is a 412, and a change landing after the
+// load makes the guarded UPDATE match no rows — see mapVersionRace, which also
+// reports 412 once a precondition was stated.
+//
+// A nil expectation means the caller sent If-Match: * , or is not an HTTP caller
+// at all (the YAML importer builds these requests in Go).
+func checkVersion(expected *int64, current int64, what string) error {
+	if expected == nil || *expected == current {
+		return nil
+	}
+	return apperror.PreconditionFailed(fmt.Sprintf(
+		"%s was changed by someone else (you have version %d, current is %d) — reload and reapply your change",
+		what, *expected, current))
+}
+
+// mapVersionRace reports a version-guarded write that matched no rows, choosing
+// the status by whether the client actually stated a precondition.
+//
+// Same underlying event — the row moved on between the load and the write — but
+// 412 means "the If-Match you sent no longer holds", and answering 412 to a
+// request that sent no precondition would be nonsense. Those callers (the old
+// PUT paths, the YAML importer) get 409.
+func mapVersionRace(err error, hadPrecondition bool) error {
+	if !errors.Is(err, store.ErrVersionConflict) {
+		return err
+	}
+	if hadPrecondition {
+		return apperror.PreconditionFailed("this contract was changed by someone else since you read it — reload and reapply your change")
+	}
+	return apperror.Conflict("this contract was changed by someone else — reload and try again")
+}
 
 // checkAmendSeam validates that a contract can be amended at the given seam,
 // i.e. closed the day before `seam` with a successor starting on `seam`.

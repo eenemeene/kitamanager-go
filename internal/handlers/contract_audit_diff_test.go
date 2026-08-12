@@ -380,8 +380,8 @@ func TestContractAudit_Delete_RecordsSnapshot(t *testing.T) {
 	r := setupTestRouter()
 	r.DELETE("/organizations/:orgId/children/:childId/contracts/:contractId", handler.DeleteContract)
 
-	w := performRequest(r, "DELETE",
-		fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org.ID, child.ID, contract.ID), nil)
+	w := requestWithHeaders(r, "DELETE",
+		fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org.ID, child.ID, contract.ID), "", anyVersion)
 	if w.Code != http.StatusNoContent {
 		t.Fatalf("delete: status %d: %s", w.Code, w.Body.String())
 	}

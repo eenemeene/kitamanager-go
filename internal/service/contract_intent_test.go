@@ -406,7 +406,10 @@ func TestChildService_MoveBoundary_ThreeContracts(t *testing.T) {
 
 	// Move the first/second seam back a month.
 	resp, err := svc.MoveContractBoundary(ctx, child.ID, org.ID,
-		&models.ContractBoundaryMoveRequest{EarlierID: first.ID, LaterID: second.ID, At: date(2026, 3, 1)})
+		&models.ContractBoundaryMoveRequest{
+			EarlierID: first.ID, LaterID: second.ID, At: date(2026, 3, 1),
+			EarlierVersion: first.Version, LaterVersion: second.Version,
+		})
 	if err != nil {
 		t.Fatalf("move boundary: %v", err)
 	}
@@ -468,16 +471,20 @@ func TestChildService_MoveBoundary_Rejections(t *testing.T) {
 		}
 	}
 
+	v := func(req *models.ContractBoundaryMoveRequest, earlier, later *models.ChildContract) *models.ContractBoundaryMoveRequest {
+		req.EarlierVersion, req.LaterVersion = earlier.Version, later.Version
+		return req
+	}
 	cases := map[string]*models.ContractBoundaryMoveRequest{
 		// One seam, two ids — naming the same contract twice is meaningless.
-		"same contract twice": {EarlierID: first.ID, LaterID: first.ID, At: date(2026, 3, 1)},
+		"same contract twice": v(&models.ContractBoundaryMoveRequest{EarlierID: first.ID, LaterID: first.ID, At: date(2026, 3, 1)}, first, first),
 		// Swapped roles: the server will not guess which the caller meant.
-		"wrong order": {EarlierID: second.ID, LaterID: first.ID, At: date(2026, 3, 1)},
+		"wrong order": v(&models.ContractBoundaryMoveRequest{EarlierID: second.ID, LaterID: first.ID, At: date(2026, 3, 1)}, second, first),
 		// A gap is two boundaries, not one seam; moving "the" seam would swallow it.
-		"not adjacent": {EarlierID: second.ID, LaterID: gapped.ID, At: date(2026, 7, 15)},
+		"not adjacent": v(&models.ContractBoundaryMoveRequest{EarlierID: second.ID, LaterID: gapped.ID, At: date(2026, 7, 15)}, second, gapped),
 		// Both sides must keep at least one day.
-		"empties the earlier side": {EarlierID: first.ID, LaterID: second.ID, At: date(2026, 1, 1)},
-		"empties the later side":   {EarlierID: first.ID, LaterID: second.ID, At: date(2026, 7, 1)},
+		"empties the earlier side": v(&models.ContractBoundaryMoveRequest{EarlierID: first.ID, LaterID: second.ID, At: date(2026, 1, 1)}, first, second),
+		"empties the later side":   v(&models.ContractBoundaryMoveRequest{EarlierID: first.ID, LaterID: second.ID, At: date(2026, 7, 1)}, first, second),
 	}
 	for name, req := range cases {
 		t.Run(name, func(t *testing.T) {

@@ -51,6 +51,10 @@ func (s *ChildService) CorrectContract(ctx context.Context, contractID, childID,
 		return nil, err
 	}
 
+	if err := checkVersion(req.ExpectedVersion, contract.Version, "this contract"); err != nil {
+		return nil, err
+	}
+
 	if req.From.IsNull() {
 		return nil, apperror.BadRequest("from cannot be null: every contract has a start date")
 	}
@@ -115,6 +119,10 @@ func (s *ChildService) CorrectContract(ctx context.Context, contractID, childID,
 func (s *ChildService) AmendContract(ctx context.Context, contractID, childID, orgID uint, req *models.ChildContractAmendRequest) (*models.ChildContractAmendResponse, error) {
 	child, contract, err := s.loadChildContract(ctx, contractID, childID, orgID)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := checkVersion(req.ExpectedVersion, contract.Version, "this contract"); err != nil {
 		return nil, err
 	}
 
@@ -188,6 +196,9 @@ func (s *ChildService) EndContract(ctx context.Context, contractID, childID, org
 	if err != nil {
 		return nil, err
 	}
+	if err := checkVersion(req.ExpectedVersion, contract.Version, "this contract"); err != nil {
+		return nil, err
+	}
 	if !req.To.Set {
 		return nil, apperror.BadRequest("to is required; send null to reopen the contract as ongoing")
 	}
@@ -231,6 +242,13 @@ func (s *ChildService) MoveContractBoundary(ctx context.Context, childID, orgID 
 	}
 	_, later, err := s.loadChildContract(ctx, req.LaterID, childID, orgID)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := checkVersion(&req.EarlierVersion, earlier.Version, "the earlier contract"); err != nil {
+		return nil, err
+	}
+	if err := checkVersion(&req.LaterVersion, later.Version, "the later contract"); err != nil {
 		return nil, err
 	}
 

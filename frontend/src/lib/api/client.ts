@@ -540,13 +540,19 @@ class ApiClient {
     return response.data;
   }
 
+  /**
+   * Deletes an employee contract. `version` is sent as an If-Match precondition —
+   * see deleteChildContract for why deletes carry one.
+   */
   async deleteEmployeeContract(
     orgId: number,
     employeeId: number,
-    contractId: number
+    contractId: number,
+    version: number
   ): Promise<void> {
     await this.client.delete(
-      `/organizations/${orgId}/employees/${employeeId}/contracts/${contractId}`
+      `/organizations/${orgId}/employees/${employeeId}/contracts/${contractId}`,
+      { headers: { 'If-Match': `"${version}"` } }
     );
   }
 
@@ -666,8 +672,24 @@ class ApiClient {
     return response.data;
   }
 
-  async deleteChildContract(orgId: number, childId: number, contractId: number): Promise<void> {
-    await this.client.delete(`/organizations/${orgId}/children/${childId}/contracts/${contractId}`);
+  /**
+   * Deletes a child contract.
+   *
+   * `version` is the contract's optimistic-concurrency token, sent as an If-Match
+   * precondition: deleting a contract destroys its care type, supplements and
+   * period, so if someone changed any of that since this client read it the
+   * server refuses with 412 rather than silently discarding their edit.
+   */
+  async deleteChildContract(
+    orgId: number,
+    childId: number,
+    contractId: number,
+    version: number
+  ): Promise<void> {
+    await this.client.delete(
+      `/organizations/${orgId}/children/${childId}/contracts/${contractId}`,
+      { headers: { 'If-Match': `"${version}"` } }
+    );
   }
 
   async batchUpdateChildContracts(

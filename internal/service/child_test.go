@@ -800,7 +800,7 @@ func TestChildService_DeleteContract_WrongOrg(t *testing.T) {
 	contract, _ := svc.CreateContract(ctx, child.ID, org1.ID, req)
 
 	// Try to delete contract from wrong organization
-	err := svc.DeleteContract(ctx, contract.ID, child.ID, org2.ID)
+	err := svc.DeleteContract(ctx, contract.ID, child.ID, org2.ID, nil)
 	if err == nil {
 		t.Fatal("expected error when deleting contract from wrong org, got nil")
 	}
@@ -2319,7 +2319,7 @@ func TestChildService_DeleteContract(t *testing.T) {
 		t.Fatalf("failed to create contract: %v", err)
 	}
 
-	err = svc.DeleteContract(ctx, contract.ID, child.ID, org.ID)
+	err = svc.DeleteContract(ctx, contract.ID, child.ID, org.ID, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -2984,7 +2984,7 @@ func TestChildService_DeleteContract_NotFound(t *testing.T) {
 	org := createTestOrganization(t, db, "Test Org")
 	child := createTestChild(t, db, "John", "Doe", org.ID)
 
-	err := svc.DeleteContract(ctx, 99999, child.ID, org.ID)
+	err := svc.DeleteContract(ctx, 99999, child.ID, org.ID, nil)
 	if err == nil {
 		t.Fatal("expected error for non-existent contract, got nil")
 	}
@@ -3013,7 +3013,7 @@ func TestChildService_DeleteContract_WrongChild(t *testing.T) {
 	}
 
 	// Try to delete via wrong child
-	err = svc.DeleteContract(ctx, contract.ID, child2.ID, org.ID)
+	err = svc.DeleteContract(ctx, contract.ID, child2.ID, org.ID, nil)
 	if err == nil {
 		t.Fatal("expected error when deleting via wrong child, got nil")
 	}

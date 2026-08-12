@@ -1650,15 +1650,26 @@
                         "example": 5,
                         "type": "integer"
                     },
+                    "earlier_version": {
+                        "description": "The versions of both contracts, as read. These live in the body rather than\nin an If-Match header because this request changes two resources and is\naddressed to the collection: one header cannot name a version per contract,\nand If-Match on a collection URL means something else entirely.\n\nRequired, like If-Match is on the single-contract writes: a seam move\nrewrites dates on a contract the user did not open, so it is the operation\nwhere a lost update is least likely to be noticed. Versions start at 1, so\n`required` rejecting 0 is correct here.",
+                        "example": 3,
+                        "type": "integer"
+                    },
                     "later_id": {
                         "example": 6,
+                        "type": "integer"
+                    },
+                    "later_version": {
+                        "example": 1,
                         "type": "integer"
                     }
                 },
                 "required": [
                     "at",
                     "earlier_id",
-                    "later_id"
+                    "earlier_version",
+                    "later_id",
+                    "later_version"
                 ],
                 "type": "object"
             },
@@ -12554,6 +12565,15 @@
                         "schema": {
                             "type": "integer"
                         }
+                    },
+                    {
+                        "description": "The contract's current version, quoted, e.g. \\",
+                        "in": "header",
+                        "name": "If-Match",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
@@ -12589,6 +12609,26 @@
                             }
                         },
                         "description": "Not Found"
+                    },
+                    "412": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "The contract was changed by someone else since you read it (precondition_failed) — reload and reapply"
+                    },
+                    "428": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "If-Match header missing (precondition_required)"
                     },
                     "500": {
                         "content": {
@@ -12733,6 +12773,15 @@
                         "schema": {
                             "type": "integer"
                         }
+                    },
+                    {
+                        "description": "The contract's current version, quoted, e.g. \\",
+                        "in": "header",
+                        "name": "If-Match",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "requestBody": {
@@ -12797,6 +12846,26 @@
                             }
                         },
                         "description": "Dates overlap another contract (contract_overlap), or the contract was changed by someone else"
+                    },
+                    "412": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "The contract was changed by someone else since you read it (precondition_failed) — reload and reapply"
+                    },
+                    "428": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "If-Match header missing (precondition_required)"
                     },
                     "500": {
                         "content": {
@@ -12965,6 +13034,15 @@
                         "schema": {
                             "type": "integer"
                         }
+                    },
+                    {
+                        "description": "The contract's current version, quoted, e.g. \\",
+                        "in": "header",
+                        "name": "If-Match",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "requestBody": {
@@ -13030,6 +13108,26 @@
                         },
                         "description": "The successor would overlap another contract (contract_overlap)"
                     },
+                    "412": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "The contract was changed by someone else since you read it (precondition_failed) — reload and reapply"
+                    },
+                    "428": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "If-Match header missing (precondition_required)"
+                    },
                     "500": {
                         "content": {
                             "application/json": {
@@ -13081,6 +13179,15 @@
                         "required": true,
                         "schema": {
                             "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "The contract's current version, quoted, e.g. \\",
+                        "in": "header",
+                        "name": "If-Match",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 ],
@@ -13146,6 +13253,26 @@
                             }
                         },
                         "description": "Reopening would overlap a later contract (contract_overlap)"
+                    },
+                    "412": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "The contract was changed by someone else since you read it (precondition_failed) — reload and reapply"
+                    },
+                    "428": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "If-Match header missing (precondition_required)"
                     },
                     "500": {
                         "content": {
@@ -14777,6 +14904,15 @@
                         "schema": {
                             "type": "integer"
                         }
+                    },
+                    {
+                        "description": "The contract's current version, quoted, e.g. \\",
+                        "in": "header",
+                        "name": "If-Match",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
@@ -14812,6 +14948,26 @@
                             }
                         },
                         "description": "Not Found"
+                    },
+                    "412": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "The contract was changed by someone else since you read it (precondition_failed) — reload and reapply"
+                    },
+                    "428": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "If-Match header missing (precondition_required)"
                     },
                     "500": {
                         "content": {
@@ -14956,6 +15112,15 @@
                         "schema": {
                             "type": "integer"
                         }
+                    },
+                    {
+                        "description": "The contract's current version, quoted, e.g. \\",
+                        "in": "header",
+                        "name": "If-Match",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "requestBody": {
@@ -15020,6 +15185,26 @@
                             }
                         },
                         "description": "Dates overlap another contract (contract_overlap), or the contract was changed by someone else"
+                    },
+                    "412": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "The contract was changed by someone else since you read it (precondition_failed) — reload and reapply"
+                    },
+                    "428": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "If-Match header missing (precondition_required)"
                     },
                     "500": {
                         "content": {
@@ -15188,6 +15373,15 @@
                         "schema": {
                             "type": "integer"
                         }
+                    },
+                    {
+                        "description": "The contract's current version, quoted, e.g. \\",
+                        "in": "header",
+                        "name": "If-Match",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "requestBody": {
@@ -15253,6 +15447,26 @@
                         },
                         "description": "The successor would overlap another contract (contract_overlap)"
                     },
+                    "412": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "The contract was changed by someone else since you read it (precondition_failed) — reload and reapply"
+                    },
+                    "428": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "If-Match header missing (precondition_required)"
+                    },
                     "500": {
                         "content": {
                             "application/json": {
@@ -15304,6 +15518,15 @@
                         "required": true,
                         "schema": {
                             "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "The contract's current version, quoted, e.g. \\",
+                        "in": "header",
+                        "name": "If-Match",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 ],
@@ -15369,6 +15592,26 @@
                             }
                         },
                         "description": "Reopening would overlap a later contract (contract_overlap)"
+                    },
+                    "412": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "The contract was changed by someone else since you read it (precondition_failed) — reload and reapply"
+                    },
+                    "428": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "If-Match header missing (precondition_required)"
                     },
                     "500": {
                         "content": {

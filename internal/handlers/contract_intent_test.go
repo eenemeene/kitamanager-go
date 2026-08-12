@@ -75,9 +75,9 @@ func TestContractIntent_Patch_SectionOnly_KeepsEverythingElse(t *testing.T) {
 		t.Fatalf("seed second section: %v", err)
 	}
 
-	w := performRequestRaw(r, "PATCH",
+	w := requestWithHeaders(r, "PATCH",
 		fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org.ID, child.ID, contract.ID),
-		fmt.Sprintf(`{"section_id": %d}`, other.ID))
+		fmt.Sprintf(`{"section_id": %d}`, other.ID), ifMatch(contract.Version))
 	if w.Code != http.StatusOK {
 		t.Fatalf("PATCH: status %d: %s", w.Code, w.Body.String())
 	}
@@ -118,9 +118,9 @@ func TestContractIntent_Patch_ExplicitNullClearsTo(t *testing.T) {
 	end := time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)
 	org, child, contract, r := childIntentRouter(t, db, "Patch Null", time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), &end)
 
-	w := performRequestRaw(r, "PATCH",
+	w := requestWithHeaders(r, "PATCH",
 		fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org.ID, child.ID, contract.ID),
-		`{"to": null}`)
+		`{"to": null}`, ifMatch(contract.Version))
 	if w.Code != http.StatusOK {
 		t.Fatalf("PATCH: status %d: %s", w.Code, w.Body.String())
 	}
@@ -146,9 +146,10 @@ func TestContractIntent_Amend_RecordsUpdateAndCreatePair(t *testing.T) {
 
 	org, child, contract, r := childIntentRouter(t, db, "Amend Audit", time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), nil)
 
-	w := performRequestRaw(r, "POST",
+	w := requestWithHeaders(r, "POST",
 		fmt.Sprintf("/organizations/%d/children/%d/contracts/%d/amend", org.ID, child.ID, contract.ID),
-		`{"effective_from": "2026-05-01T00:00:00Z", "properties": {"care_type": "ganztag"}}`)
+		`{"effective_from": "2026-05-01T00:00:00Z", "properties": {"care_type": "ganztag"}}`,
+		ifMatch(contract.Version))
 	if w.Code != http.StatusOK {
 		t.Fatalf("amend: status %d: %s", w.Code, w.Body.String())
 	}
@@ -207,7 +208,8 @@ func TestContractIntent_Boundary_RecordsBothSidesLinked(t *testing.T) {
 
 	w := performRequestRaw(r, "POST",
 		fmt.Sprintf("/organizations/%d/children/%d/contracts/boundary", org.ID, child.ID),
-		fmt.Sprintf(`{"earlier_id": %d, "later_id": %d, "at": "2026-03-01T00:00:00Z"}`, first.ID, second.ID))
+		fmt.Sprintf(`{"earlier_id": %d, "later_id": %d, "at": "2026-03-01T00:00:00Z", "earlier_version": %d, "later_version": %d}`,
+			first.ID, second.ID, first.Version, second.Version))
 	if w.Code != http.StatusOK {
 		t.Fatalf("boundary: status %d: %s", w.Code, w.Body.String())
 	}
@@ -302,8 +304,9 @@ func TestContractIntent_End_EmptyBodyRejected(t *testing.T) {
 
 	org, child, contract, r := childIntentRouter(t, db, "End Empty", time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), nil)
 
-	w := performRequestRaw(r, "POST",
-		fmt.Sprintf("/organizations/%d/children/%d/contracts/%d/end", org.ID, child.ID, contract.ID), `{}`)
+	w := requestWithHeaders(r, "POST",
+		fmt.Sprintf("/organizations/%d/children/%d/contracts/%d/end", org.ID, child.ID, contract.ID), `{}`,
+		ifMatch(contract.Version))
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400: %s", w.Code, w.Body.String())
 	}
@@ -319,9 +322,9 @@ func TestContractIntent_End_NullReopens(t *testing.T) {
 	end := time.Date(2026, 6, 30, 0, 0, 0, 0, time.UTC)
 	org, child, contract, r := childIntentRouter(t, db, "End Reopen", time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), &end)
 
-	w := performRequestRaw(r, "POST",
+	w := requestWithHeaders(r, "POST",
 		fmt.Sprintf("/organizations/%d/children/%d/contracts/%d/end", org.ID, child.ID, contract.ID),
-		`{"to": null}`)
+		`{"to": null}`, ifMatch(contract.Version))
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200: %s", w.Code, w.Body.String())
 	}
