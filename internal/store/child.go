@@ -207,7 +207,26 @@ func (s *ChildStore) FindContractsByChildPaginated(ctx context.Context, childID 
 }
 
 func (s *ChildStore) UpdateContract(ctx context.Context, contract *models.ChildContract) error {
-	return DBFromContext(ctx, s.db).Save(contract).Error
+	// Version-guarded update. The previous bare Save() overwrote whatever was in
+	// the row, so two concurrent editors silently last-write-wins; for a contract
+	// that means one of them quietly changes the child's funding. Matching on the
+	// version the caller read turns that into zero rows affected, which we report
+	// as ErrVersionConflict.
+	prev := contract.Version
+	contract.Version = prev + 1
+	res := DBFromContext(ctx, s.db).Model(contract).
+		Where("version = ?", prev).
+		Select("*").Omit("id", "created_at").
+		Updates(contract)
+	if res.Error != nil {
+		contract.Version = prev
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		contract.Version = prev
+		return ErrVersionConflict
+	}
+	return nil
 }
 
 func (s *ChildStore) DeleteContract(ctx context.Context, id uint) error {

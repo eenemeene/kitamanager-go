@@ -11347,6 +11347,10 @@ const docTemplate = `{
                 "updated_at": {
                     "type": "string",
                     "format": "date-time"
+                },
+                "version": {
+                    "description": "Version is the optimistic-concurrency counter. Every write bumps it, and\nupdates are guarded with ` + "`" + `WHERE id = ? AND version = ?` + "`" + ` so a writer holding\nstale data affects zero rows instead of silently overwriting a newer state.\nClients echo it back as an If-Match precondition; a contract's care type and\nsupplements determine its funding, so a lost update quietly changes money.",
+                    "type": "integer"
                 }
             }
         },
@@ -11460,6 +11464,11 @@ const docTemplate = `{
                 "updated_at": {
                     "type": "string",
                     "format": "date-time"
+                },
+                "version": {
+                    "description": "Version is the optimistic-concurrency token a client echoes back as an\nIf-Match precondition on the next write. yaml:\"-\" keeps it out of the\nperson YAML dumps: it describes a row's revision, not the contract.",
+                    "type": "integer",
+                    "example": 3
                 }
             }
         },
@@ -11976,6 +11985,10 @@ const docTemplate = `{
                     "type": "string",
                     "format": "date-time"
                 },
+                "version": {
+                    "description": "Version is the optimistic-concurrency counter. Every write bumps it, and\nupdates are guarded with ` + "`" + `WHERE id = ? AND version = ?` + "`" + ` so a writer holding\nstale data affects zero rows instead of silently overwriting a newer state.\nClients echo it back as an If-Match precondition; a contract's care type and\nsupplements determine its funding, so a lost update quietly changes money.",
+                    "type": "integer"
+                },
                 "weekly_hours": {
                     "type": "number",
                     "example": 40
@@ -12165,6 +12178,11 @@ const docTemplate = `{
                 "updated_at": {
                     "type": "string",
                     "format": "date-time"
+                },
+                "version": {
+                    "description": "Version is the optimistic-concurrency token a client echoes back as an\nIf-Match precondition on the next write. yaml:\"-\" keeps it out of the\nperson YAML dumps: it describes a row's revision, not the contract.",
+                    "type": "integer",
+                    "example": 3
                 },
                 "weekly_hours": {
                     "type": "number",

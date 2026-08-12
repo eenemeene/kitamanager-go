@@ -13,6 +13,11 @@ var ErrNotFound = errors.New("record not found")
 // ErrDuplicateKey is returned when a unique constraint is violated.
 var ErrDuplicateKey = errors.New("duplicate key")
 
+// ErrVersionConflict is returned when a version-guarded update matched no rows:
+// the record was changed by someone else since the caller read it. Distinct from
+// ErrNotFound, because the row almost certainly still exists — it just moved on.
+var ErrVersionConflict = errors.New("record was modified by someone else")
+
 // WrapNotFound converts gorm.ErrRecordNotFound to ErrNotFound for consistent error handling.
 // Other errors are returned unchanged.
 func WrapNotFound(err error) error {
