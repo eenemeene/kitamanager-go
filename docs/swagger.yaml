@@ -646,6 +646,33 @@ definitions:
           supplements determine its funding, so a lost update quietly changes money.
         type: integer
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ChildContractAmendRequest:
+    properties:
+      effective_from:
+        example: "2025-08-01"
+        format: date-time
+        type: string
+      properties:
+        type: object
+        x-nullable: true
+      section_id:
+        example: 2
+        type: integer
+      to:
+        example: "2025-12-31"
+        format: date-time
+        type: string
+        x-nullable: true
+    required:
+    - effective_from
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ChildContractAmendResponse:
+    properties:
+      closed:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractResponse'
+      created:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractResponse'
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildContractBatchUpdateEntry:
     properties:
       from:
@@ -677,6 +704,31 @@ definitions:
         type: array
     required:
     - updates
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ChildContractBoundaryResponse:
+    properties:
+      earlier:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractResponse'
+      later:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractResponse'
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ChildContractCorrectRequest:
+    properties:
+      from:
+        example: "2025-01-01"
+        format: date-time
+        type: string
+      properties:
+        type: object
+        x-nullable: true
+      section_id:
+        example: 2
+        type: integer
+      to:
+        example: "2025-12-31"
+        format: date-time
+        type: string
+        x-nullable: true
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildContractCreateRequest:
     properties:
@@ -993,6 +1045,31 @@ definitions:
         example: 39
         type: number
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ContractBoundaryMoveRequest:
+    properties:
+      at:
+        example: "2025-09-01"
+        format: date-time
+        type: string
+      earlier_id:
+        example: 5
+        type: integer
+      later_id:
+        example: 6
+        type: integer
+    required:
+    - at
+    - earlier_id
+    - later_id
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ContractEndRequest:
+    properties:
+      to:
+        example: "2025-12-31"
+        format: date-time
+        type: string
+        x-nullable: true
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.ContractProperties:
     additionalProperties: {}
     type: object
@@ -1118,6 +1195,48 @@ definitions:
         example: 40
         type: number
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractAmendRequest:
+    properties:
+      effective_from:
+        example: "2025-08-01"
+        format: date-time
+        type: string
+      grade:
+        example: S8a
+        type: string
+      payplan_id:
+        example: 1
+        type: integer
+      properties:
+        type: object
+        x-nullable: true
+      section_id:
+        example: 2
+        type: integer
+      staff_category:
+        example: qualified
+        type: string
+      step:
+        example: 3
+        type: integer
+      to:
+        example: "2025-12-31"
+        format: date-time
+        type: string
+        x-nullable: true
+      weekly_hours:
+        example: 40
+        type: number
+    required:
+    - effective_from
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractAmendResponse:
+    properties:
+      closed:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractResponse'
+      created:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractResponse'
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractBatchUpdateEntry:
     properties:
       from:
@@ -1170,6 +1289,46 @@ definitions:
     required:
     - updates
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractBoundaryResponse:
+    properties:
+      earlier:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractResponse'
+      later:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractResponse'
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractCorrectRequest:
+    properties:
+      from:
+        example: "2025-01-01"
+        format: date-time
+        type: string
+      grade:
+        example: S8a
+        type: string
+      payplan_id:
+        example: 1
+        type: integer
+      properties:
+        type: object
+        x-nullable: true
+      section_id:
+        example: 2
+        type: integer
+      staff_category:
+        example: qualified
+        type: string
+      step:
+        example: 3
+        type: integer
+      to:
+        example: "2025-12-31"
+        format: date-time
+        type: string
+        x-nullable: true
+      weekly_hours:
+        example: 40
+        type: number
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractCreateRequest:
     properties:
       from:
@@ -1201,6 +1360,13 @@ definitions:
         format: date-time
         type: string
       weekly_hours:
+        description: |-
+          WeeklyHours is a pointer so that 0 — a contract kept open with no hours,
+          e.g. during parental leave — is distinguishable from a client that omitted
+          the field. On a float64 `required` rejects zero values, so a legitimate
+          0-hour contract could not be created at all; on a pointer it only checks
+          non-nil, which is exactly "present". The field therefore stays required in
+          the spec, and 0 is now expressible.
         example: 40
         maximum: 168
         minimum: 0
@@ -6698,6 +6864,81 @@ paths:
       summary: Get child contract by ID
       tags:
       - children
+    patch:
+      consumes:
+      - application/json
+      description: |-
+        Fix what a contract period records, in place. Use this when the stored facts were
+        wrong — a typo'd start date, the wrong section, a care type entered incorrectly.
+        Use amend instead when the facts themselves changed as of a date.
+
+        This is a true partial update: a field you omit is left exactly as it was. To clear
+        `to` or `properties`, send them as null. That is the difference from the old PUT,
+        where omitting `to` cleared it.
+
+        Corrections are allowed on past contracts, including ones that already ended,
+        because correcting history is the point. Every changed field is written to the audit
+        log with its old and new value, since a change to care type or a supplement changes
+        what the Kita is paid.
+
+        Auto-applied funding properties are re-merged only when the request touches
+        `properties` or `from`, so correcting a section cannot quietly add funding keys.
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Child ID
+        in: path
+        name: childId
+        required: true
+        type: integer
+      - description: Contract ID
+        in: path
+        name: contractId
+        required: true
+        type: integer
+      - description: Fields to correct
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractCorrectRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractResponse'
+        "400":
+          description: Invalid request (e.g. from after to, null from, dates before
+            birthdate)
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Contract not found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "409":
+          description: Dates overlap another contract (contract_overlap), or the contract
+            was changed by someone else
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Correct a child contract
+      tags:
+      - children
     put:
       consumes:
       - application/json
@@ -6774,6 +7015,149 @@ paths:
       summary: Update child contract
       tags:
       - children
+  /api/v1/organizations/{orgId}/children/{childId}/contracts/{contractId}/amend:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Record that the facts changed as of a date: the addressed contract is closed the day
+        before `effective_from`, and a successor carrying the changes starts on it. Both
+        contracts are returned, so the caller never has to guess which id it now holds.
+
+        `effective_from` is honoured, including in the past — a Bescheid that arrives late is
+        one call. It also anchors the auto-applied funding properties, which the old PUT
+        resolved at today and therefore got wrong for any backdated change that crossed a
+        funding period.
+
+        Fields you omit inherit from the contract being amended, which is usually what you
+        want: a new Bescheid typically changes the care type and nothing else. Send `to` as
+        null to make the successor open-ended.
+
+        Rejected with 400 if `effective_from` is not after the contract's start (that is a
+        correction, so use PATCH), or if the contract already ended before it (amending would
+        silently extend a finished contract over months that were already billed).
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Child ID
+        in: path
+        name: childId
+        required: true
+        type: integer
+      - description: Contract ID
+        in: path
+        name: contractId
+        required: true
+        type: integer
+      - description: Effective date and the fields that changed
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractAmendRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractAmendResponse'
+        "400":
+          description: effective_from not after the start, or the contract already
+            ended before it
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Contract not found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "409":
+          description: The successor would overlap another contract (contract_overlap)
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Amend a child contract from a date
+      tags:
+      - children
+  /api/v1/organizations/{orgId}/children/{childId}/contracts/{contractId}/end:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Record that a contract stops on a date — a child leaving — or undo that by sending
+        `to` as null, which makes it ongoing again.
+
+        `to` is required in the body. The old surface could only reopen a contract by
+        *omitting* the field, which was indistinguishable from "leave it alone"; here the
+        null is explicit.
+
+        Reopening a contract that has a successor is a 409, not a silent overwrite.
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Child ID
+        in: path
+        name: childId
+        required: true
+        type: integer
+      - description: Contract ID
+        in: path
+        name: contractId
+        required: true
+        type: integer
+      - description: The end date, or null to reopen
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractEndRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractResponse'
+        "400":
+          description: '`to` missing, before `from`, or before the child''s birthdate'
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Contract not found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "409":
+          description: Reopening would overlap a later contract (contract_overlap)
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Set or clear a child contract's end date
+      tags:
+      - children
   /api/v1/organizations/{orgId}/children/{childId}/contracts/batch:
     put:
       consumes:
@@ -6842,6 +7226,73 @@ paths:
       security:
       - BearerAuth: []
       summary: Batch update child contracts
+      tags:
+      - children
+  /api/v1/organizations/{orgId}/children/{childId}/contracts/boundary:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Move the seam between two contracts that meet: the later one starts on `at` and the
+        earlier one is closed the day before. This backs the timeline drag in the UI.
+
+        One date, both sides derived on the server. The client used to compute four dates and
+        send them as a batch, which went wrong twice: it cleared the neighbour's `to`
+        (dragging any but the newest boundary failed with a 409) and it wiped the
+        neighbour's properties, silently recomputing its funding at the base rate.
+
+        The two contracts must actually be adjacent — the earlier one's `to` plus one day
+        equals the later one's `from`. With a gap between them there are two independent
+        boundaries rather than one seam, so set each end date instead. The seam must also
+        leave both sides at least one day long.
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Child ID
+        in: path
+        name: childId
+        required: true
+        type: integer
+      - description: The two contracts and the new seam date
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractBoundaryMoveRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractBoundaryResponse'
+        "400":
+          description: Same id twice, not adjacent, wrong order, or the seam would
+            empty one side
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Child or contract not found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "409":
+          description: The resulting timeline would overlap another contract (contract_overlap)
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Move the boundary between two adjacent child contracts
       tags:
       - children
   /api/v1/organizations/{orgId}/children/{childId}/contracts/current:
@@ -7771,6 +8222,77 @@ paths:
       summary: Get employee contract by ID
       tags:
       - employees
+    patch:
+      consumes:
+      - application/json
+      description: |-
+        Fix what a contract period records, in place — a typo'd start date, the wrong
+        section, a pay grade entered incorrectly. Use amend instead when the terms actually
+        changed as of a date, so the old terms stay on record for the months they applied to.
+
+        A true partial update: a field you omit is left exactly as it was, and `to` or
+        `properties` are cleared only by an explicit null. `weekly_hours` accepts 0 — a
+        contract with no hours (parental leave) is legitimate and the old request could not
+        express it, because `required` rejects zero.
+
+        Pay-plan coverage is re-checked only when pay plan, grade, step or `from` move, so
+        correcting a section cannot fail because the pay plan was edited years later.
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Employee ID
+        in: path
+        name: employeeId
+        required: true
+        type: integer
+      - description: Contract ID
+        in: path
+        name: contractId
+        required: true
+        type: integer
+      - description: Fields to correct
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractCorrectRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractResponse'
+        "400":
+          description: Invalid request (e.g. from after to, unknown pay plan, grade/step
+            not covered)
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Contract not found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "409":
+          description: Dates overlap another contract (contract_overlap), or the contract
+            was changed by someone else
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Correct an employee contract
+      tags:
+      - employees
     put:
       consumes:
       - application/json
@@ -7847,6 +8369,142 @@ paths:
       summary: Update employee contract
       tags:
       - employees
+  /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/{contractId}/amend:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Record that the terms changed as of a date — a raise, a change in weekly hours, a
+        move to another section. The addressed contract is closed the day before
+        `effective_from` and a successor carrying the changes starts on it; both are returned.
+
+        This is the operation to use for anything that affects pay, because it keeps the old
+        terms on record for the months they applied to. `effective_from` is honoured,
+        including in the past, and it anchors the pay-plan coverage check — the old path
+        checked at today, which accepted a backdated amendment to a grade the plan only
+        gained later, and rejected one it had at the time.
+
+        Fields you omit inherit from the contract being amended. Send `to` as null to make
+        the successor open-ended.
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Employee ID
+        in: path
+        name: employeeId
+        required: true
+        type: integer
+      - description: Contract ID
+        in: path
+        name: contractId
+        required: true
+        type: integer
+      - description: Effective date and the terms that changed
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractAmendRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractAmendResponse'
+        "400":
+          description: effective_from not after the start, contract already ended
+            before it, or grade/step not covered at that date
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Contract not found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "409":
+          description: The successor would overlap another contract (contract_overlap)
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Amend an employee contract from a date
+      tags:
+      - employees
+  /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/{contractId}/end:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Record that a contract stops on a date — an employee leaving, or a fixed term — or
+        undo that by sending `to` as null, which makes it ongoing again.
+
+        `to` is required in the body: the old surface could only reopen a contract by
+        omitting the field, which was indistinguishable from "leave it alone".
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Employee ID
+        in: path
+        name: employeeId
+        required: true
+        type: integer
+      - description: Contract ID
+        in: path
+        name: contractId
+        required: true
+        type: integer
+      - description: The end date, or null to reopen
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractEndRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractResponse'
+        "400":
+          description: '`to` missing, or before `from`'
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Contract not found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "409":
+          description: Reopening would overlap a later contract (contract_overlap)
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Set or clear an employee contract's end date
+      tags:
+      - employees
   /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/batch:
     put:
       consumes:
@@ -7915,6 +8573,69 @@ paths:
       security:
       - BearerAuth: []
       summary: Batch update employee contracts
+      tags:
+      - employees
+  /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/boundary:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Move the seam between two contracts that meet: the later one starts on `at` and the
+        earlier one is closed the day before. One date, both sides derived on the server.
+
+        The two contracts must actually be adjacent — the earlier one's `to` plus one day
+        equals the later one's `from`. With a gap there are two independent boundaries rather
+        than one seam, so set each end date instead. The seam must leave both sides at least
+        one day long, and the pay plan must cover the later contract's grade and step at its
+        new start date.
+      parameters:
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      - description: Employee ID
+        in: path
+        name: employeeId
+        required: true
+        type: integer
+      - description: The two contracts and the new seam date
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractBoundaryMoveRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractBoundaryResponse'
+        "400":
+          description: Same id twice, not adjacent, wrong order, seam would empty
+            one side, or grade/step not covered at the new start
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "404":
+          description: Employee or contract not found
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "409":
+          description: The resulting timeline would overlap another contract (contract_overlap)
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Move the boundary between two adjacent employee contracts
       tags:
       - employees
   /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/current:

@@ -95,7 +95,13 @@ func (s *EmployeeService) CreateContract(ctx context.Context, employeeID, orgID 
 	if err := validation.ValidatePeriod(req.From, req.To); err != nil {
 		return nil, apperror.BadRequest(err.Error())
 	}
-	if err := validation.ValidateWeeklyHours(req.WeeklyHours, "weekly_hours"); err != nil {
+	// Over HTTP the binding tag already rejects an absent field (`required` on a
+	// pointer means non-nil), but this method is also called directly by the YAML
+	// importer, which never goes through binding.
+	if req.WeeklyHours == nil {
+		return nil, apperror.BadRequest("weekly_hours is required; send 0 for a contract with no hours")
+	}
+	if err := validation.ValidateWeeklyHours(*req.WeeklyHours, "weekly_hours"); err != nil {
 		return nil, apperror.BadRequest(err.Error())
 	}
 	req.Grade = strings.TrimSpace(req.Grade)
@@ -149,7 +155,7 @@ func (s *EmployeeService) CreateContract(ctx context.Context, employeeID, orgID 
 		StaffCategory: req.StaffCategory,
 		Grade:         req.Grade,
 		Step:          req.Step,
-		WeeklyHours:   req.WeeklyHours,
+		WeeklyHours:   *req.WeeklyHours,
 		PayPlanID:     req.PayPlanID,
 	}
 

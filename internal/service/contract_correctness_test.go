@@ -40,7 +40,7 @@ func TestEmployeeService_CreateContract_BeforeBirthdate(t *testing.T) {
 		StaffCategory: "qualified",
 		Grade:         "S8a",
 		Step:          1,
-		WeeklyHours:   40,
+		WeeklyHours:   float64Ptr(40),
 		PayPlanID:     payPlan.ID,
 	})
 	if err == nil {
@@ -57,7 +57,7 @@ func TestEmployeeService_CreateContract_BeforeBirthdate(t *testing.T) {
 		StaffCategory: "qualified",
 		Grade:         "S8a",
 		Step:          1,
-		WeeklyHours:   40,
+		WeeklyHours:   float64Ptr(40),
 		PayPlanID:     payPlan.ID,
 	})
 	if err != nil {
@@ -92,7 +92,7 @@ func TestEmployeeService_CreateContract_ToBeforeBirthdate(t *testing.T) {
 		StaffCategory: "qualified",
 		Grade:         "S8a",
 		Step:          1,
-		WeeklyHours:   40,
+		WeeklyHours:   float64Ptr(40),
 		PayPlanID:     payPlan.ID,
 	})
 	if !errors.Is(err, apperror.ErrBadRequest) {
@@ -203,7 +203,7 @@ func TestEmployeeService_UpdateContract_FromMovedBeforeBirthdate(t *testing.T) {
 	from := time.Now().UTC().AddDate(0, 0, 30).Truncate(24 * time.Hour)
 	created, err := svc.CreateContract(ctx, emp.ID, org.ID, &models.EmployeeContractCreateRequest{
 		From: from, SectionID: sectionID, StaffCategory: "qualified",
-		Grade: "S8a", Step: 1, WeeklyHours: 40, PayPlanID: payPlan.ID,
+		Grade: "S8a", Step: 1, WeeklyHours: float64Ptr(40), PayPlanID: payPlan.ID,
 	})
 	if err != nil {
 		t.Fatalf("setup: %v", err)
@@ -512,7 +512,7 @@ func TestEmployeeService_CreateContract_ConcurrentRaceLosesExactlyOne(t *testing
 			_, err := svc.CreateContract(context.Background(), emp.ID, org.ID, &models.EmployeeContractCreateRequest{
 				From: from, To: to, SectionID: sectionID,
 				StaffCategory: "qualified", Grade: "S8a", Step: 1,
-				WeeklyHours: 40, PayPlanID: payPlan.ID,
+				WeeklyHours: float64Ptr(40), PayPlanID: payPlan.ID,
 			})
 			results[i] = err
 		})
@@ -822,7 +822,7 @@ func mustCreateEmployeeContract(t *testing.T, ctx context.Context, svc *Employee
 	resp, err := svc.CreateContract(ctx, empID, orgID, &models.EmployeeContractCreateRequest{
 		From: from, To: to, SectionID: sectionID,
 		StaffCategory: "qualified", Grade: "S8a", Step: 1,
-		WeeklyHours: 40, PayPlanID: payPlanID,
+		WeeklyHours: float64Ptr(40), PayPlanID: payPlanID,
 	})
 	if err != nil {
 		t.Fatalf("setup: create employee contract %v..%v: %v", from, to, err)

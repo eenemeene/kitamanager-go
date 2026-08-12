@@ -4524,6 +4524,89 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/organizations/{orgId}/children/{childId}/contracts/boundary": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Move the seam between two contracts that meet: the later one starts on ` + "`" + `at` + "`" + ` and the\nearlier one is closed the day before. This backs the timeline drag in the UI.\n\nOne date, both sides derived on the server. The client used to compute four dates and\nsend them as a batch, which went wrong twice: it cleared the neighbour's ` + "`" + `to` + "`" + `\n(dragging any but the newest boundary failed with a 409) and it wiped the\nneighbour's properties, silently recomputing its funding at the base rate.\n\nThe two contracts must actually be adjacent — the earlier one's ` + "`" + `to` + "`" + ` plus one day\nequals the later one's ` + "`" + `from` + "`" + `. With a gap between them there are two independent\nboundaries rather than one seam, so set each end date instead. The seam must also\nleave both sides at least one day long.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "children"
+                ],
+                "summary": "Move the boundary between two adjacent child contracts",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Child ID",
+                        "name": "childId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "The two contracts and the new seam date",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractBoundaryMoveRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractBoundaryResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Same id twice, not adjacent, wrong order, or the seam would empty one side",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Child or contract not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "The resulting timeline would overlap another contract (contract_overlap)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/organizations/{orgId}/children/{childId}/contracts/current": {
             "get": {
                 "security": [
@@ -4812,6 +4895,274 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Fix what a contract period records, in place. Use this when the stored facts were\nwrong — a typo'd start date, the wrong section, a care type entered incorrectly.\nUse amend instead when the facts themselves changed as of a date.\n\nThis is a true partial update: a field you omit is left exactly as it was. To clear\n` + "`" + `to` + "`" + ` or ` + "`" + `properties` + "`" + `, send them as null. That is the difference from the old PUT,\nwhere omitting ` + "`" + `to` + "`" + ` cleared it.\n\nCorrections are allowed on past contracts, including ones that already ended,\nbecause correcting history is the point. Every changed field is written to the audit\nlog with its old and new value, since a change to care type or a supplement changes\nwhat the Kita is paid.\n\nAuto-applied funding properties are re-merged only when the request touches\n` + "`" + `properties` + "`" + ` or ` + "`" + `from` + "`" + `, so correcting a section cannot quietly add funding keys.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "children"
+                ],
+                "summary": "Correct a child contract",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Child ID",
+                        "name": "childId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Contract ID",
+                        "name": "contractId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fields to correct",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractCorrectRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request (e.g. from after to, null from, dates before birthdate)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Contract not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Dates overlap another contract (contract_overlap), or the contract was changed by someone else",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/organizations/{orgId}/children/{childId}/contracts/{contractId}/amend": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Record that the facts changed as of a date: the addressed contract is closed the day\nbefore ` + "`" + `effective_from` + "`" + `, and a successor carrying the changes starts on it. Both\ncontracts are returned, so the caller never has to guess which id it now holds.\n\n` + "`" + `effective_from` + "`" + ` is honoured, including in the past — a Bescheid that arrives late is\none call. It also anchors the auto-applied funding properties, which the old PUT\nresolved at today and therefore got wrong for any backdated change that crossed a\nfunding period.\n\nFields you omit inherit from the contract being amended, which is usually what you\nwant: a new Bescheid typically changes the care type and nothing else. Send ` + "`" + `to` + "`" + ` as\nnull to make the successor open-ended.\n\nRejected with 400 if ` + "`" + `effective_from` + "`" + ` is not after the contract's start (that is a\ncorrection, so use PATCH), or if the contract already ended before it (amending would\nsilently extend a finished contract over months that were already billed).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "children"
+                ],
+                "summary": "Amend a child contract from a date",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Child ID",
+                        "name": "childId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Contract ID",
+                        "name": "contractId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Effective date and the fields that changed",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractAmendRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractAmendResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "effective_from not after the start, or the contract already ended before it",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Contract not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "The successor would overlap another contract (contract_overlap)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/organizations/{orgId}/children/{childId}/contracts/{contractId}/end": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Record that a contract stops on a date — a child leaving — or undo that by sending\n` + "`" + `to` + "`" + ` as null, which makes it ongoing again.\n\n` + "`" + `to` + "`" + ` is required in the body. The old surface could only reopen a contract by\n*omitting* the field, which was indistinguishable from \"leave it alone\"; here the\nnull is explicit.\n\nReopening a contract that has a successor is a 409, not a silent overwrite.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "children"
+                ],
+                "summary": "Set or clear a child contract's end date",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Child ID",
+                        "name": "childId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Contract ID",
+                        "name": "contractId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "The end date, or null to reopen",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractEndRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "` + "`" + `to` + "`" + ` missing, before ` + "`" + `from` + "`" + `, or before the child's birthdate",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Contract not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Reopening would overlap a later contract (contract_overlap)",
                         "schema": {
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
                         }
@@ -5909,6 +6260,89 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/organizations/{orgId}/employees/{employeeId}/contracts/boundary": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Move the seam between two contracts that meet: the later one starts on ` + "`" + `at` + "`" + ` and the\nearlier one is closed the day before. One date, both sides derived on the server.\n\nThe two contracts must actually be adjacent — the earlier one's ` + "`" + `to` + "`" + ` plus one day\nequals the later one's ` + "`" + `from` + "`" + `. With a gap there are two independent boundaries rather\nthan one seam, so set each end date instead. The seam must leave both sides at least\none day long, and the pay plan must cover the later contract's grade and step at its\nnew start date.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "employees"
+                ],
+                "summary": "Move the boundary between two adjacent employee contracts",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Employee ID",
+                        "name": "employeeId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "The two contracts and the new seam date",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractBoundaryMoveRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractBoundaryResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Same id twice, not adjacent, wrong order, seam would empty one side, or grade/step not covered at the new start",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Employee or contract not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "The resulting timeline would overlap another contract (contract_overlap)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/organizations/{orgId}/employees/{employeeId}/contracts/current": {
             "get": {
                 "security": [
@@ -6197,6 +6631,274 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Fix what a contract period records, in place — a typo'd start date, the wrong\nsection, a pay grade entered incorrectly. Use amend instead when the terms actually\nchanged as of a date, so the old terms stay on record for the months they applied to.\n\nA true partial update: a field you omit is left exactly as it was, and ` + "`" + `to` + "`" + ` or\n` + "`" + `properties` + "`" + ` are cleared only by an explicit null. ` + "`" + `weekly_hours` + "`" + ` accepts 0 — a\ncontract with no hours (parental leave) is legitimate and the old request could not\nexpress it, because ` + "`" + `required` + "`" + ` rejects zero.\n\nPay-plan coverage is re-checked only when pay plan, grade, step or ` + "`" + `from` + "`" + ` move, so\ncorrecting a section cannot fail because the pay plan was edited years later.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "employees"
+                ],
+                "summary": "Correct an employee contract",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Employee ID",
+                        "name": "employeeId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Contract ID",
+                        "name": "contractId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fields to correct",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractCorrectRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request (e.g. from after to, unknown pay plan, grade/step not covered)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Contract not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Dates overlap another contract (contract_overlap), or the contract was changed by someone else",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/organizations/{orgId}/employees/{employeeId}/contracts/{contractId}/amend": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Record that the terms changed as of a date — a raise, a change in weekly hours, a\nmove to another section. The addressed contract is closed the day before\n` + "`" + `effective_from` + "`" + ` and a successor carrying the changes starts on it; both are returned.\n\nThis is the operation to use for anything that affects pay, because it keeps the old\nterms on record for the months they applied to. ` + "`" + `effective_from` + "`" + ` is honoured,\nincluding in the past, and it anchors the pay-plan coverage check — the old path\nchecked at today, which accepted a backdated amendment to a grade the plan only\ngained later, and rejected one it had at the time.\n\nFields you omit inherit from the contract being amended. Send ` + "`" + `to` + "`" + ` as null to make\nthe successor open-ended.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "employees"
+                ],
+                "summary": "Amend an employee contract from a date",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Employee ID",
+                        "name": "employeeId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Contract ID",
+                        "name": "contractId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Effective date and the terms that changed",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractAmendRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractAmendResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "effective_from not after the start, contract already ended before it, or grade/step not covered at that date",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Contract not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "The successor would overlap another contract (contract_overlap)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/organizations/{orgId}/employees/{employeeId}/contracts/{contractId}/end": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Record that a contract stops on a date — an employee leaving, or a fixed term — or\nundo that by sending ` + "`" + `to` + "`" + ` as null, which makes it ongoing again.\n\n` + "`" + `to` + "`" + ` is required in the body: the old surface could only reopen a contract by\nomitting the field, which was indistinguishable from \"leave it alone\".",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "employees"
+                ],
+                "summary": "Set or clear an employee contract's end date",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Employee ID",
+                        "name": "employeeId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Contract ID",
+                        "name": "contractId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "The end date, or null to reopen",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractEndRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "` + "`" + `to` + "`" + ` missing, or before ` + "`" + `from` + "`" + `",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Contract not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Reopening would overlap a later contract (contract_overlap)",
                         "schema": {
                             "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse"
                         }
@@ -11354,6 +12056,44 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.ChildContractAmendRequest": {
+            "type": "object",
+            "required": [
+                "effective_from"
+            ],
+            "properties": {
+                "effective_from": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2025-08-01"
+                },
+                "properties": {
+                    "type": "object",
+                    "x-nullable": true
+                },
+                "section_id": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "to": {
+                    "type": "string",
+                    "format": "date-time",
+                    "x-nullable": true,
+                    "example": "2025-12-31"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ChildContractAmendResponse": {
+            "type": "object",
+            "properties": {
+                "closed": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractResponse"
+                },
+                "created": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractResponse"
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.ChildContractBatchUpdateEntry": {
             "type": "object",
             "required": [
@@ -11396,6 +12136,41 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractBatchUpdateEntry"
                     }
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ChildContractBoundaryResponse": {
+            "type": "object",
+            "properties": {
+                "earlier": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractResponse"
+                },
+                "later": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractResponse"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ChildContractCorrectRequest": {
+            "type": "object",
+            "properties": {
+                "from": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2025-01-01"
+                },
+                "properties": {
+                    "type": "object",
+                    "x-nullable": true
+                },
+                "section_id": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "to": {
+                    "type": "string",
+                    "format": "date-time",
+                    "x-nullable": true,
+                    "example": "2025-12-31"
                 }
             }
         },
@@ -11831,6 +12606,40 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.ContractBoundaryMoveRequest": {
+            "type": "object",
+            "required": [
+                "at",
+                "earlier_id",
+                "later_id"
+            ],
+            "properties": {
+                "at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2025-09-01"
+                },
+                "earlier_id": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "later_id": {
+                    "type": "integer",
+                    "example": 6
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ContractEndRequest": {
+            "type": "object",
+            "properties": {
+                "to": {
+                    "type": "string",
+                    "format": "date-time",
+                    "x-nullable": true,
+                    "example": "2025-12-31"
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.ContractProperties": {
             "type": "object",
             "additionalProperties": {}
@@ -11995,6 +12804,64 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractAmendRequest": {
+            "type": "object",
+            "required": [
+                "effective_from"
+            ],
+            "properties": {
+                "effective_from": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2025-08-01"
+                },
+                "grade": {
+                    "type": "string",
+                    "example": "S8a"
+                },
+                "payplan_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "properties": {
+                    "type": "object",
+                    "x-nullable": true
+                },
+                "section_id": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "staff_category": {
+                    "type": "string",
+                    "example": "qualified"
+                },
+                "step": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "to": {
+                    "type": "string",
+                    "format": "date-time",
+                    "x-nullable": true,
+                    "example": "2025-12-31"
+                },
+                "weekly_hours": {
+                    "type": "number",
+                    "example": 40
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractAmendResponse": {
+            "type": "object",
+            "properties": {
+                "closed": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractResponse"
+                },
+                "created": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractResponse"
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractBatchUpdateEntry": {
             "type": "object",
             "required": [
@@ -12065,6 +12932,61 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractBoundaryResponse": {
+            "type": "object",
+            "properties": {
+                "earlier": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractResponse"
+                },
+                "later": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractResponse"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractCorrectRequest": {
+            "type": "object",
+            "properties": {
+                "from": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2025-01-01"
+                },
+                "grade": {
+                    "type": "string",
+                    "example": "S8a"
+                },
+                "payplan_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "properties": {
+                    "type": "object",
+                    "x-nullable": true
+                },
+                "section_id": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "staff_category": {
+                    "type": "string",
+                    "example": "qualified"
+                },
+                "step": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "to": {
+                    "type": "string",
+                    "format": "date-time",
+                    "x-nullable": true,
+                    "example": "2025-12-31"
+                },
+                "weekly_hours": {
+                    "type": "number",
+                    "example": 40
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractCreateRequest": {
             "type": "object",
             "required": [
@@ -12112,6 +13034,7 @@ const docTemplate = `{
                     "example": "2025-12-31"
                 },
                 "weekly_hours": {
+                    "description": "WeeklyHours is a pointer so that 0 — a contract kept open with no hours,\ne.g. during parental leave — is distinguishable from a client that omitted\nthe field. On a float64 ` + "`" + `required` + "`" + ` rejects zero values, so a legitimate\n0-hour contract could not be created at all; on a pointer it only checks\nnon-nil, which is exactly \"present\". The field therefore stays required in\nthe spec, and 0 is now expressible.",
                     "type": "number",
                     "maximum": 168,
                     "minimum": 0,

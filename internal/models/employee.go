@@ -34,15 +34,21 @@ func (c EmployeeContract) GetOwnerID() uint {
 
 // EmployeeContractCreateRequest represents the request body for creating an employee contract.
 type EmployeeContractCreateRequest struct {
-	From          time.Time          `json:"from" format:"date-time" binding:"required" example:"2025-01-01"`
-	To            *time.Time         `json:"to" format:"date-time" example:"2025-12-31"`
-	SectionID     uint               `json:"section_id" binding:"required" example:"2"`
-	StaffCategory string             `json:"staff_category" binding:"required" example:"qualified"`
-	Grade         string             `json:"grade" binding:"max=20" example:"S8a"`
-	Step          int                `json:"step" binding:"gte=0,lte=10" example:"3"`
-	WeeklyHours   float64            `json:"weekly_hours" binding:"required,gte=0,lte=168" example:"40"`
-	PayPlanID     uint               `json:"payplan_id" binding:"required" example:"1"`
-	Properties    ContractProperties `json:"properties,omitempty"`
+	From          time.Time  `json:"from" format:"date-time" binding:"required" example:"2025-01-01"`
+	To            *time.Time `json:"to" format:"date-time" example:"2025-12-31"`
+	SectionID     uint       `json:"section_id" binding:"required" example:"2"`
+	StaffCategory string     `json:"staff_category" binding:"required" example:"qualified"`
+	Grade         string     `json:"grade" binding:"max=20" example:"S8a"`
+	Step          int        `json:"step" binding:"gte=0,lte=10" example:"3"`
+	// WeeklyHours is a pointer so that 0 — a contract kept open with no hours,
+	// e.g. during parental leave — is distinguishable from a client that omitted
+	// the field. On a float64 `required` rejects zero values, so a legitimate
+	// 0-hour contract could not be created at all; on a pointer it only checks
+	// non-nil, which is exactly "present". The field therefore stays required in
+	// the spec, and 0 is now expressible.
+	WeeklyHours *float64           `json:"weekly_hours" binding:"required,gte=0,lte=168" example:"40"`
+	PayPlanID   uint               `json:"payplan_id" binding:"required" example:"1"`
+	Properties  ContractProperties `json:"properties,omitempty"`
 }
 
 // EmployeeContractUpdateRequest represents the request body for updating an employee contract.

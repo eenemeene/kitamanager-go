@@ -357,3 +357,8 @@ func parseTime(t *testing.T, value string) time.Time {
 	}
 	return parsed
 }
+
+// float64Ptr is for EmployeeContractCreateRequest.WeeklyHours, which is a
+// pointer so that a legitimate 0-hour contract is distinguishable from a client
+// that omitted the field.
+func float64Ptr(v float64) *float64 { return &v }

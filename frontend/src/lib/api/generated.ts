@@ -4930,6 +4930,111 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/organizations/{orgId}/children/{childId}/contracts/boundary': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Move the boundary between two adjacent child contracts
+     * @description Move the seam between two contracts that meet: the later one starts on `at` and the
+     *     earlier one is closed the day before. This backs the timeline drag in the UI.
+     *
+     *     One date, both sides derived on the server. The client used to compute four dates and
+     *     send them as a batch, which went wrong twice: it cleared the neighbour's `to`
+     *     (dragging any but the newest boundary failed with a 409) and it wiped the
+     *     neighbour's properties, silently recomputing its funding at the base rate.
+     *
+     *     The two contracts must actually be adjacent — the earlier one's `to` plus one day
+     *     equals the later one's `from`. With a gap between them there are two independent
+     *     boundaries rather than one seam, so set each end date instead. The seam must also
+     *     leave both sides at least one day long.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description Organization ID */
+          orgId: number;
+          /** @description Child ID */
+          childId: number;
+        };
+        cookie?: never;
+      };
+      /** @description The two contracts and the new seam date */
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ContractBoundaryMoveRequest'];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ChildContractBoundaryResponse'];
+          };
+        };
+        /** @description Same id twice, not adjacent, wrong order, or the seam would empty one side */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Child or contract not found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description The resulting timeline would overlap another contract (contract_overlap) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/organizations/{orgId}/children/{childId}/contracts/current': {
     parameters: {
       query?: never;
@@ -5248,6 +5353,314 @@ export interface paths {
         };
       };
     };
+    options?: never;
+    head?: never;
+    /**
+     * Correct a child contract
+     * @description Fix what a contract period records, in place. Use this when the stored facts were
+     *     wrong — a typo'd start date, the wrong section, a care type entered incorrectly.
+     *     Use amend instead when the facts themselves changed as of a date.
+     *
+     *     This is a true partial update: a field you omit is left exactly as it was. To clear
+     *     `to` or `properties`, send them as null. That is the difference from the old PUT,
+     *     where omitting `to` cleared it.
+     *
+     *     Corrections are allowed on past contracts, including ones that already ended,
+     *     because correcting history is the point. Every changed field is written to the audit
+     *     log with its old and new value, since a change to care type or a supplement changes
+     *     what the Kita is paid.
+     *
+     *     Auto-applied funding properties are re-merged only when the request touches
+     *     `properties` or `from`, so correcting a section cannot quietly add funding keys.
+     */
+    patch: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description Organization ID */
+          orgId: number;
+          /** @description Child ID */
+          childId: number;
+          /** @description Contract ID */
+          contractId: number;
+        };
+        cookie?: never;
+      };
+      /** @description Fields to correct */
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ChildContractCorrectRequest'];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ChildContractResponse'];
+          };
+        };
+        /** @description Invalid request (e.g. from after to, null from, dates before birthdate) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Contract not found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Dates overlap another contract (contract_overlap), or the contract was changed by someone else */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    trace?: never;
+  };
+  '/api/v1/organizations/{orgId}/children/{childId}/contracts/{contractId}/amend': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Amend a child contract from a date
+     * @description Record that the facts changed as of a date: the addressed contract is closed the day
+     *     before `effective_from`, and a successor carrying the changes starts on it. Both
+     *     contracts are returned, so the caller never has to guess which id it now holds.
+     *
+     *     `effective_from` is honoured, including in the past — a Bescheid that arrives late is
+     *     one call. It also anchors the auto-applied funding properties, which the old PUT
+     *     resolved at today and therefore got wrong for any backdated change that crossed a
+     *     funding period.
+     *
+     *     Fields you omit inherit from the contract being amended, which is usually what you
+     *     want: a new Bescheid typically changes the care type and nothing else. Send `to` as
+     *     null to make the successor open-ended.
+     *
+     *     Rejected with 400 if `effective_from` is not after the contract's start (that is a
+     *     correction, so use PATCH), or if the contract already ended before it (amending would
+     *     silently extend a finished contract over months that were already billed).
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description Organization ID */
+          orgId: number;
+          /** @description Child ID */
+          childId: number;
+          /** @description Contract ID */
+          contractId: number;
+        };
+        cookie?: never;
+      };
+      /** @description Effective date and the fields that changed */
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ChildContractAmendRequest'];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ChildContractAmendResponse'];
+          };
+        };
+        /** @description effective_from not after the start, or the contract already ended before it */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Contract not found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description The successor would overlap another contract (contract_overlap) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/organizations/{orgId}/children/{childId}/contracts/{contractId}/end': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Set or clear a child contract's end date
+     * @description Record that a contract stops on a date — a child leaving — or undo that by sending
+     *     `to` as null, which makes it ongoing again.
+     *
+     *     `to` is required in the body. The old surface could only reopen a contract by
+     *     *omitting* the field, which was indistinguishable from "leave it alone"; here the
+     *     null is explicit.
+     *
+     *     Reopening a contract that has a successor is a 409, not a silent overwrite.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description Organization ID */
+          orgId: number;
+          /** @description Child ID */
+          childId: number;
+          /** @description Contract ID */
+          contractId: number;
+        };
+        cookie?: never;
+      };
+      /** @description The end date, or null to reopen */
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ContractEndRequest'];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ChildContractResponse'];
+          };
+        };
+        /** @description `to` missing, before `from`, or before the child's birthdate */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Contract not found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Reopening would overlap a later contract (contract_overlap) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -6393,6 +6806,107 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/organizations/{orgId}/employees/{employeeId}/contracts/boundary': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Move the boundary between two adjacent employee contracts
+     * @description Move the seam between two contracts that meet: the later one starts on `at` and the
+     *     earlier one is closed the day before. One date, both sides derived on the server.
+     *
+     *     The two contracts must actually be adjacent — the earlier one's `to` plus one day
+     *     equals the later one's `from`. With a gap there are two independent boundaries rather
+     *     than one seam, so set each end date instead. The seam must leave both sides at least
+     *     one day long, and the pay plan must cover the later contract's grade and step at its
+     *     new start date.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description Organization ID */
+          orgId: number;
+          /** @description Employee ID */
+          employeeId: number;
+        };
+        cookie?: never;
+      };
+      /** @description The two contracts and the new seam date */
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ContractBoundaryMoveRequest'];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['EmployeeContractBoundaryResponse'];
+          };
+        };
+        /** @description Same id twice, not adjacent, wrong order, seam would empty one side, or grade/step not covered at the new start */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Employee or contract not found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description The resulting timeline would overlap another contract (contract_overlap) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/organizations/{orgId}/employees/{employeeId}/contracts/current': {
     parameters: {
       query?: never;
@@ -6711,6 +7225,303 @@ export interface paths {
         };
       };
     };
+    options?: never;
+    head?: never;
+    /**
+     * Correct an employee contract
+     * @description Fix what a contract period records, in place — a typo'd start date, the wrong
+     *     section, a pay grade entered incorrectly. Use amend instead when the terms actually
+     *     changed as of a date, so the old terms stay on record for the months they applied to.
+     *
+     *     A true partial update: a field you omit is left exactly as it was, and `to` or
+     *     `properties` are cleared only by an explicit null. `weekly_hours` accepts 0 — a
+     *     contract with no hours (parental leave) is legitimate and the old request could not
+     *     express it, because `required` rejects zero.
+     *
+     *     Pay-plan coverage is re-checked only when pay plan, grade, step or `from` move, so
+     *     correcting a section cannot fail because the pay plan was edited years later.
+     */
+    patch: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description Organization ID */
+          orgId: number;
+          /** @description Employee ID */
+          employeeId: number;
+          /** @description Contract ID */
+          contractId: number;
+        };
+        cookie?: never;
+      };
+      /** @description Fields to correct */
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['EmployeeContractCorrectRequest'];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['EmployeeContractResponse'];
+          };
+        };
+        /** @description Invalid request (e.g. from after to, unknown pay plan, grade/step not covered) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Contract not found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Dates overlap another contract (contract_overlap), or the contract was changed by someone else */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    trace?: never;
+  };
+  '/api/v1/organizations/{orgId}/employees/{employeeId}/contracts/{contractId}/amend': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Amend an employee contract from a date
+     * @description Record that the terms changed as of a date — a raise, a change in weekly hours, a
+     *     move to another section. The addressed contract is closed the day before
+     *     `effective_from` and a successor carrying the changes starts on it; both are returned.
+     *
+     *     This is the operation to use for anything that affects pay, because it keeps the old
+     *     terms on record for the months they applied to. `effective_from` is honoured,
+     *     including in the past, and it anchors the pay-plan coverage check — the old path
+     *     checked at today, which accepted a backdated amendment to a grade the plan only
+     *     gained later, and rejected one it had at the time.
+     *
+     *     Fields you omit inherit from the contract being amended. Send `to` as null to make
+     *     the successor open-ended.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description Organization ID */
+          orgId: number;
+          /** @description Employee ID */
+          employeeId: number;
+          /** @description Contract ID */
+          contractId: number;
+        };
+        cookie?: never;
+      };
+      /** @description Effective date and the terms that changed */
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['EmployeeContractAmendRequest'];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['EmployeeContractAmendResponse'];
+          };
+        };
+        /** @description effective_from not after the start, contract already ended before it, or grade/step not covered at that date */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Contract not found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description The successor would overlap another contract (contract_overlap) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/organizations/{orgId}/employees/{employeeId}/contracts/{contractId}/end': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Set or clear an employee contract's end date
+     * @description Record that a contract stops on a date — an employee leaving, or a fixed term — or
+     *     undo that by sending `to` as null, which makes it ongoing again.
+     *
+     *     `to` is required in the body: the old surface could only reopen a contract by
+     *     omitting the field, which was indistinguishable from "leave it alone".
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description Organization ID */
+          orgId: number;
+          /** @description Employee ID */
+          employeeId: number;
+          /** @description Contract ID */
+          contractId: number;
+        };
+        cookie?: never;
+      };
+      /** @description The end date, or null to reopen */
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ContractEndRequest'];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['EmployeeContractResponse'];
+          };
+        };
+        /** @description `to` missing, or before `from` */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Contract not found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Reopening would overlap a later contract (contract_overlap) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -11860,6 +12671,25 @@ export interface components {
        */
       version: number;
     };
+    ChildContractAmendRequest: {
+      /**
+       * Format: date-time
+       * @example 2025-08-01
+       */
+      effective_from: string;
+      properties?: Record<string, never> | null;
+      /** @example 2 */
+      section_id?: number;
+      /**
+       * Format: date-time
+       * @example 2025-12-31
+       */
+      to?: string | null;
+    };
+    ChildContractAmendResponse: {
+      closed: components['schemas']['ChildContractResponse'];
+      created: components['schemas']['ChildContractResponse'];
+    };
     ChildContractBatchUpdateEntry: {
       /**
        * Format: date-time
@@ -11879,6 +12709,25 @@ export interface components {
     };
     ChildContractBatchUpdateRequest: {
       updates: components['schemas']['ChildContractBatchUpdateEntry'][];
+    };
+    ChildContractBoundaryResponse: {
+      earlier: components['schemas']['ChildContractResponse'];
+      later: components['schemas']['ChildContractResponse'];
+    };
+    ChildContractCorrectRequest: {
+      /**
+       * Format: date-time
+       * @example 2025-01-01
+       */
+      from?: string;
+      properties?: Record<string, never> | null;
+      /** @example 2 */
+      section_id?: number;
+      /**
+       * Format: date-time
+       * @example 2025-12-31
+       */
+      to?: string | null;
     };
     ChildContractCreateRequest: {
       /**
@@ -12091,6 +12940,24 @@ export interface components {
       /** @example 39 */
       weekly_hours_basis: number;
     };
+    ContractBoundaryMoveRequest: {
+      /**
+       * Format: date-time
+       * @example 2025-09-01
+       */
+      at: string;
+      /** @example 5 */
+      earlier_id: number;
+      /** @example 6 */
+      later_id: number;
+    };
+    ContractEndRequest: {
+      /**
+       * Format: date-time
+       * @example 2025-12-31
+       */
+      to?: string | null;
+    };
     ContractProperties: {
       [key: string]: unknown;
     };
@@ -12180,6 +13047,35 @@ export interface components {
       /** @example 40 */
       weekly_hours: number;
     };
+    EmployeeContractAmendRequest: {
+      /**
+       * Format: date-time
+       * @example 2025-08-01
+       */
+      effective_from: string;
+      /** @example S8a */
+      grade?: string;
+      /** @example 1 */
+      payplan_id?: number;
+      properties?: Record<string, never> | null;
+      /** @example 2 */
+      section_id?: number;
+      /** @example qualified */
+      staff_category?: string;
+      /** @example 3 */
+      step?: number;
+      /**
+       * Format: date-time
+       * @example 2025-12-31
+       */
+      to?: string | null;
+      /** @example 40 */
+      weekly_hours?: number;
+    };
+    EmployeeContractAmendResponse: {
+      closed: components['schemas']['EmployeeContractResponse'];
+      created: components['schemas']['EmployeeContractResponse'];
+    };
     EmployeeContractBatchUpdateEntry: {
       /**
        * Format: date-time
@@ -12210,6 +13106,35 @@ export interface components {
     EmployeeContractBatchUpdateRequest: {
       updates: components['schemas']['EmployeeContractBatchUpdateEntry'][];
     };
+    EmployeeContractBoundaryResponse: {
+      earlier: components['schemas']['EmployeeContractResponse'];
+      later: components['schemas']['EmployeeContractResponse'];
+    };
+    EmployeeContractCorrectRequest: {
+      /**
+       * Format: date-time
+       * @example 2025-01-01
+       */
+      from?: string;
+      /** @example S8a */
+      grade?: string;
+      /** @example 1 */
+      payplan_id?: number;
+      properties?: Record<string, never> | null;
+      /** @example 2 */
+      section_id?: number;
+      /** @example qualified */
+      staff_category?: string;
+      /** @example 3 */
+      step?: number;
+      /**
+       * Format: date-time
+       * @example 2025-12-31
+       */
+      to?: string | null;
+      /** @example 40 */
+      weekly_hours?: number;
+    };
     EmployeeContractCreateRequest: {
       /**
        * Format: date-time
@@ -12232,7 +13157,15 @@ export interface components {
        * @example 2025-12-31
        */
       to?: string;
-      /** @example 40 */
+      /**
+       * @description WeeklyHours is a pointer so that 0 — a contract kept open with no hours,
+       *     e.g. during parental leave — is distinguishable from a client that omitted
+       *     the field. On a float64 `required` rejects zero values, so a legitimate
+       *     0-hour contract could not be created at all; on a pointer it only checks
+       *     non-nil, which is exactly "present". The field therefore stays required in
+       *     the spec, and 0 is now expressible.
+       * @example 40
+       */
       weekly_hours: number;
     };
     EmployeeContractResponse: {
